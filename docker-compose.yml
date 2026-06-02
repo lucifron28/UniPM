@@ -1,0 +1,72 @@
+services:
+  unipm-db:
+    build:
+      context: .
+      dockerfile: database/Dockerfile
+    image: unipm-sqlserver:2025-fts
+    container_name: unipm-db
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: "Developer"
+      MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD:?Set MSSQL_SA_PASSWORD in .env}"
+      TZ: "Asia/Manila"
+    ports:
+      - "${UNIPM_DB_PORT:-1433}:1433"
+    volumes:
+      - unipm-sqlserver-2025-data:/var/opt/mssql
+    networks:
+      - unipm-network
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          '/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$$MSSQL_SA_PASSWORD" -C -b -Q "SELECT 1" -o /dev/null',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+
+  unipm-db-init:
+    image: unipm-sqlserver:2025-fts
+    container_name: unipm-db-init
+    environment:
+      MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD:?Set MSSQL_SA_PASSWORD in .env}"
+    command:
+      [
+        "/bin/bash",
+        "-c",
+        '/opt/mssql-tools18/bin/sqlcmd -S unipm-db -U sa -P "$$MSSQL_SA_PASSWORD" -C -b -i /bootstrap/bootstrap.sql',
+      ]
+    volumes:
+      - ./database/bootstrap.sql:/bootstrap/bootstrap.sql:ro
+    depends_on:
+      unipm-db:
+        condition: service_healthy
+    networks:
+      - unipm-network
+
+  unipm-api:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    container_name: unipm-api
+    environment:
+      ASPNETCORE_ENVIRONMENT: "Development"
+      ASPNETCORE_HTTP_PORTS: "8080"
+      ConnectionStrings__DefaultConnection: "Server=unipm-db,1433;Database=${UNIPM_DB_NAME:-UniPMDb};User Id=sa;Password=${MSSQL_SA_PASSWORD:?Set MSSQL_SA_PASSWORD in .env};Encrypt=True;TrustServerCertificate=True;"
+    ports:
+      - "${UNIPM_API_PORT:-5000}:8080"
+    depends_on:
+      unipm-db:
+        condition: service_healthy
+      unipm-db-init:
+        condition: service_completed_successfully
+    networks:
+      - unipm-network
+
+volumes:
+  unipm-sqlserver-2025-data:
+
+networks:
+  unipm-network:
