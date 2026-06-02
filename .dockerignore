@@ -1,0 +1,15 @@
+**/bin/
+**/obj/
+**/.vs/
+**/.idea/
+**/.vscode/
+.git/
+.gitignore
+.env
+.env.*
+!.env.example
+docs/
+scripts/
+tests/
+*.sln
+*.slnx
