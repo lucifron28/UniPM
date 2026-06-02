@@ -1,0 +1,14 @@
+@server_HostAddress = http://localhost:5254
+
+GET {{server_HostAddress}}/
+Accept: application/json
+
+###
+
+GET {{server_HostAddress}}/health/live
+
+###
+
+GET {{server_HostAddress}}/health/ready
+
+###
