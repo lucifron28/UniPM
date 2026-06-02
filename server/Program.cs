@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using UniPM.Api.Data;
+using UniPM.Api.Features;
 using UniPM.Api.Health;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -35,6 +36,8 @@ app.MapGet("/", () => Results.Ok(new
     status = "running"
 }))
 .WithName("GetApiInfo");
+
+app.MapApiEndpoints();
 
 app.MapHealthChecks("/health/live", new HealthCheckOptions
 {
