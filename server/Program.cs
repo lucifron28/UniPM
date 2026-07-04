@@ -18,6 +18,7 @@ builder.Services.AddDbContextFactory<ApplicationDbContext>((serviceProvider, opt
         options.UseSqlServer(connectionString);
     }
 });
+
 builder.Services
     .AddHealthChecks()
     .AddCheck("self", () => HealthCheckResult.Healthy(), tags: ["live"])
