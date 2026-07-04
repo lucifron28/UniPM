@@ -71,3 +71,7 @@ Desktop.ini
 *.bak
 *.swp
 *~
+
+.codex
+.codegraph
+graphify-out
