@@ -18,10 +18,13 @@ builder.Services.AddDbContextFactory<ApplicationDbContext>((serviceProvider, opt
         options.UseSqlServer(connectionString);
     }
 });
+
 builder.Services
     .AddHealthChecks()
     .AddCheck("self", () => HealthCheckResult.Healthy(), tags: ["live"])
     .AddCheck<DatabaseHealthCheck>("database", tags: ["ready"]);
+
+builder.Services.AddScoped<UniPM.Api.Features.MaintenanceHistory.IMaintenanceHistoryRetrievalService, UniPM.Api.Features.MaintenanceHistory.ReciprocalRankFusionRetrievalService>();
 
 var app = builder.Build();
 
