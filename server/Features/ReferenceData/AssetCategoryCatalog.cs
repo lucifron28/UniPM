@@ -11,4 +11,12 @@ internal static class AssetCategoryCatalog
         new("emergency-light", "Emergency Light"),
         new("water-drinking-station", "Water Drinking Station")
     ];
+
+    internal static bool ContainsCode(string code)
+    {
+        return All.Any(category => string.Equals(
+            category.Code,
+            code.Trim(),
+            StringComparison.OrdinalIgnoreCase));
+    }
 }
