@@ -64,10 +64,116 @@ public static class AssetsEndpoints
         {
             await using var context = await factory.CreateDbContextAsync(cancellationToken);
             var asset = await context.Assets.FirstOrDefaultAsync(asset => asset.Id == id, cancellationToken);
-            return asset is not null ? Results.Ok(asset) : ApiErrors.NotFound("Asset not found.");
+            return asset is not null ? Results.Ok(AssetResponse.FromAsset(asset)) : ApiErrors.NotFound("Asset not found.");
+        });
+
+        group.MapGet("/", async (
+            string? assetCategory,
+            string? status,
+            string? building,
+            string? department,
+            IDbContextFactory<ApplicationDbContext> factory,
+            CancellationToken cancellationToken) =>
+        {
+            await using var context = await factory.CreateDbContextAsync(cancellationToken);
+            var query = context.Assets.AsNoTracking();
+
+            if (!string.IsNullOrWhiteSpace(assetCategory))
+            {
+                var normalizedCategory = assetCategory.Trim().ToUpper();
+                query = query.Where(asset => asset.AssetCategory.ToUpper() == normalizedCategory);
+            }
+
+            if (!string.IsNullOrWhiteSpace(status))
+            {
+                var normalizedStatus = status.Trim().ToUpper();
+                query = query.Where(asset => asset.Status.ToUpper() == normalizedStatus);
+            }
+
+            if (!string.IsNullOrWhiteSpace(building))
+            {
+                var normalizedBuilding = building.Trim().ToUpper();
+                query = query.Where(asset => asset.Building != null && asset.Building.ToUpper() == normalizedBuilding);
+            }
+
+            if (!string.IsNullOrWhiteSpace(department))
+            {
+                var normalizedDepartment = department.Trim().ToUpper();
+                query = query.Where(asset => asset.Department != null && asset.Department.ToUpper() == normalizedDepartment);
+            }
+
+            var assets = await query
+                .OrderBy(asset => asset.AssetCode)
+                .Select(asset => new AssetResponse(
+                    asset.Id,
+                    asset.AssetCode,
+                    asset.AssetCategory,
+                    asset.Building,
+                    asset.Department,
+                    asset.Location,
+                    asset.QrCodeValue,
+                    asset.Status,
+                    asset.CreatedAt,
+                    asset.UpdatedAt))
+                .ToListAsync(cancellationToken);
+
+            return Results.Ok(assets);
+        });
+
+        group.MapGet("/by-qr/{qrCodeValue}", async (
+            string qrCodeValue,
+            IDbContextFactory<ApplicationDbContext> factory,
+            CancellationToken cancellationToken) =>
+        {
+            if (string.IsNullOrWhiteSpace(qrCodeValue))
+            {
+                return ApiErrors.Validation(new Dictionary<string, string[]>
+                {
+                    [nameof(qrCodeValue)] = ["QR code value is required."]
+                });
+            }
+
+            var normalizedQrCodeValue = qrCodeValue.Trim().ToUpper();
+
+            await using var context = await factory.CreateDbContextAsync(cancellationToken);
+            var asset = await context.Assets
+                .AsNoTracking()
+                .FirstOrDefaultAsync(
+                    asset => asset.QrCodeValue != null && asset.QrCodeValue.ToUpper() == normalizedQrCodeValue,
+                    cancellationToken);
+
+            return asset is not null ? Results.Ok(AssetResponse.FromAsset(asset)) : ApiErrors.NotFound("Asset not found.");
         });
 
         return endpoints;
+    }
+}
+
+public sealed record AssetResponse(
+    Guid Id,
+    string AssetCode,
+    string AssetCategory,
+    string? Building,
+    string? Department,
+    string? Location,
+    string? QrCodeValue,
+    string Status,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset UpdatedAt)
+{
+    internal static AssetResponse FromAsset(Asset asset)
+    {
+        return new AssetResponse(
+            asset.Id,
+            asset.AssetCode,
+            asset.AssetCategory,
+            asset.Building,
+            asset.Department,
+            asset.Location,
+            asset.QrCodeValue,
+            asset.Status,
+            asset.CreatedAt,
+            asset.UpdatedAt);
     }
 }
 
