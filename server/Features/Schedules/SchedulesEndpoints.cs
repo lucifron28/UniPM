@@ -47,12 +47,164 @@ public static class SchedulesEndpoints
             context.PreventiveMaintenanceSchedules.Add(schedule);
             await context.SaveChangesAsync(cancellationToken);
 
-            return Results.Created($"/api/v1/schedules/{schedule.Id}", schedule);
+            return Results.Created($"/api/v1/schedules/{schedule.Id}", ScheduleResponse.FromSchedule(schedule));
+        });
+
+        group.MapGet("/", async (
+            Guid? assetId,
+            string? status,
+            DateTimeOffset? from,
+            DateTimeOffset? to,
+            string? quarter,
+            int? year,
+            IDbContextFactory<ApplicationDbContext> factory,
+            CancellationToken cancellationToken) =>
+        {
+            if (from is not null && to is not null && from > to)
+            {
+                return ApiErrors.Validation(new Dictionary<string, string[]>
+                {
+                    [nameof(from)] = ["From date must be earlier than or equal to to date."]
+                });
+            }
+
+            await using var context = await factory.CreateDbContextAsync(cancellationToken);
+            var query = context.PreventiveMaintenanceSchedules.AsNoTracking();
+
+            if (assetId is not null)
+            {
+                query = query.Where(schedule => schedule.AssetId == assetId.Value);
+            }
+
+            if (!string.IsNullOrWhiteSpace(status))
+            {
+                var normalizedStatus = status.Trim().ToUpper();
+                query = query.Where(schedule => schedule.Status.ToUpper() == normalizedStatus);
+            }
+
+            if (from is not null)
+            {
+                query = query.Where(schedule => schedule.ScheduleDate >= from.Value);
+            }
+
+            if (to is not null)
+            {
+                query = query.Where(schedule => schedule.ScheduleDate <= to.Value);
+            }
+
+            if (!string.IsNullOrWhiteSpace(quarter))
+            {
+                var normalizedQuarter = quarter.Trim().ToUpper();
+                query = query.Where(schedule => schedule.Quarter != null && schedule.Quarter.ToUpper() == normalizedQuarter);
+            }
+
+            if (year is not null)
+            {
+                query = query.Where(schedule => schedule.Year == year.Value);
+            }
+
+            var schedules = await query
+                .OrderBy(schedule => schedule.ScheduleDate)
+                .ThenBy(schedule => schedule.Id)
+                .Select(schedule => new ScheduleResponse(
+                    schedule.Id,
+                    schedule.AssetId,
+                    schedule.ScheduleDate,
+                    schedule.PeriodType,
+                    schedule.Status,
+                    schedule.Quarter,
+                    schedule.Semester,
+                    schedule.Year,
+                    schedule.AcademicYear,
+                    schedule.AssignedToUserId,
+                    schedule.CompletedAt,
+                    schedule.CreatedAt,
+                    schedule.UpdatedAt,
+                    schedule.Asset == null
+                        ? null
+                        : new ScheduleAssetResponse(
+                            schedule.Asset.Id,
+                            schedule.Asset.AssetCode,
+                            schedule.Asset.AssetCategory,
+                            schedule.Asset.Building,
+                            schedule.Asset.Department,
+                            schedule.Asset.Location)))
+                .ToListAsync(cancellationToken);
+
+            return Results.Ok(schedules);
+        });
+
+        group.MapGet("/{id}", async (
+            Guid id,
+            IDbContextFactory<ApplicationDbContext> factory,
+            CancellationToken cancellationToken) =>
+        {
+            await using var context = await factory.CreateDbContextAsync(cancellationToken);
+            var schedule = await context.PreventiveMaintenanceSchedules
+                .AsNoTracking()
+                .Include(schedule => schedule.Asset)
+                .FirstOrDefaultAsync(schedule => schedule.Id == id, cancellationToken);
+
+            return schedule is not null
+                ? Results.Ok(ScheduleResponse.FromSchedule(schedule))
+                : ApiErrors.NotFound("Schedule not found.");
         });
 
         return endpoints;
     }
 }
+
+public sealed record ScheduleResponse(
+    Guid Id,
+    Guid AssetId,
+    DateTimeOffset ScheduleDate,
+    string PeriodType,
+    string Status,
+    string? Quarter,
+    string? Semester,
+    int? Year,
+    string? AcademicYear,
+    Guid? AssignedToUserId,
+    DateTimeOffset? CompletedAt,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset UpdatedAt,
+    ScheduleAssetResponse? Asset)
+{
+    internal static ScheduleResponse FromSchedule(PreventiveMaintenanceSchedule schedule)
+    {
+        return new ScheduleResponse(
+            schedule.Id,
+            schedule.AssetId,
+            schedule.ScheduleDate,
+            schedule.PeriodType,
+            schedule.Status,
+            schedule.Quarter,
+            schedule.Semester,
+            schedule.Year,
+            schedule.AcademicYear,
+            schedule.AssignedToUserId,
+            schedule.CompletedAt,
+            schedule.CreatedAt,
+            schedule.UpdatedAt,
+            schedule.Asset is null
+                ? null
+                : new ScheduleAssetResponse(
+                    schedule.Asset.Id,
+                    schedule.Asset.AssetCode,
+                    schedule.Asset.AssetCategory,
+                    schedule.Asset.Building,
+                    schedule.Asset.Department,
+                    schedule.Asset.Location));
+    }
+}
+
+public sealed record ScheduleAssetResponse(
+    Guid Id,
+    string AssetCode,
+    string AssetCategory,
+    string? Building,
+    string? Department,
+    string? Location);
 
 public class CreateScheduleDto
 {
