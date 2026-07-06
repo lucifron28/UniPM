@@ -1,20 +1,49 @@
 name: Backend CI
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
+      - "feat/**"
+      - "fix/**"
+      - "ci/**"
+      - "chore/**"
+      - "test/**"
+    paths:
+      - ".github/workflows/backend-ci.yml"
+      - "server/**"
+      - "tests/**"
+      - "database/**"
+      - "global.json"
+      - "UniPM.slnx"
   pull_request:
     branches:
       - main
+    paths:
+      - ".github/workflows/backend-ci.yml"
+      - "server/**"
+      - "tests/**"
+      - "database/**"
+      - "global.json"
+      - "UniPM.slnx"
 
 permissions:
   contents: read
+
+concurrency:
+  group: backend-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  DOTNET_NOLOGO: "1"
 
 jobs:
   backend:
     name: Build and test backend
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - name: Check out repository
@@ -32,4 +61,10 @@ jobs:
         run: dotnet build ./UniPM.slnx --configuration Release --no-restore
 
       - name: Run tests
-        run: dotnet test ./UniPM.slnx --configuration Release --no-build --verbosity normal
+        run: >
+          dotnet test ./UniPM.slnx
+          --configuration Release
+          --no-build
+          --verbosity normal
+          --logger "trx;LogFileName=backend-tests.trx"
+          --blame-hang-timeout 5m
