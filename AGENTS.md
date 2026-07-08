@@ -30,6 +30,23 @@ Do not change the stack without discussion.
   - Do not assume constant connectivity in mobile-facing API contracts.
 - Testing: xUnit
 
+## Repository Structure Rule
+
+UniPM uses a single monorepo for backend, web, mobile, database, tests, and reference docs.
+
+Expected top-level structure:
+
+- `server/` - ASP.NET Core Web API
+- `web/` - React + TypeScript + Vite frontend
+- `mobile/` - Flutter mobile app
+- `database/` - SQL Server bootstrap/init scripts
+- `tests/` - backend tests and future shared test projects
+- `reference/` - planning, API contracts, project guidance, and non-private references
+- `.github/` - CI workflows
+
+Do not split the frontend or mobile app into separate repositories unless explicitly decided later.
+Do not create empty `web/` or `mobile/` folders until scaffolding actually starts.
+
 ## Hard Architecture Rules
 
 These are non-negotiable.
