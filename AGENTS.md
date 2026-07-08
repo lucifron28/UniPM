@@ -45,7 +45,7 @@ Expected top-level structure:
 - `.github/` - CI workflows
 
 Do not split the frontend or mobile app into separate repositories unless explicitly decided later.
-Do not create empty `web/` or `mobile/` folders until scaffolding actually starts.
+The `web/` and `mobile/` directories may exist as placeholder directories until scaffolding starts; keep them empty except for required Git placeholder files.
 
 ## Hard Architecture Rules
 
