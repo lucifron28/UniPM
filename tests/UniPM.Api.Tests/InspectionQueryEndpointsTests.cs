@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Net;
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Hosting;
@@ -307,7 +308,15 @@ public sealed class InspectionQueryEndpointsTests
         });
 
         response.EnsureSuccessStatusCode();
-        var inspection = await response.Content.ReadFromJsonAsync<InspectionResponse>();
+        var responseBody = await response.Content.ReadAsStringAsync();
+        using var document = JsonDocument.Parse(responseBody);
+        Assert.False(document.RootElement.TryGetProperty("remarksEmbedding", out _));
+        Assert.False(document.RootElement.TryGetProperty("asset", out _));
+        Assert.False(document.RootElement.TryGetProperty("schedule", out _));
+
+        var inspection = JsonSerializer.Deserialize<InspectionResponse>(
+            responseBody,
+            new JsonSerializerOptions(JsonSerializerDefaults.Web));
         Assert.NotNull(inspection);
         return inspection;
     }

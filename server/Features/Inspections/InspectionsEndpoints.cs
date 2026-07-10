@@ -62,7 +62,9 @@ public static class InspectionsEndpoints
             context.InspectionRecords.Add(inspection);
             await context.SaveChangesAsync(cancellationToken);
 
-            return Results.Created($"/api/v1/inspections/{inspection.Id}", inspection);
+            return Results.Created(
+                $"/api/v1/inspections/{inspection.Id}",
+                InspectionResponse.FromInspection(inspection));
         });
 
         group.MapGet("/history/{assetId}", async (
