@@ -14,12 +14,12 @@ The local stack runs:
 - `unipm-db-init`: one-shot bootstrap that creates an empty `UniPMDb`
 
 SQL Server 2025 is used so the later bounded retrieval feature can use
-Full-Text Search plus semantic similarity. The database already contains the
-initial `Asset`, `PreventiveMaintenanceSchedule`, and `InspectionRecord`
-schema. The backend now contains a versioned deterministic maintenance issue
-lexicon. It does not yet contain `MaintenanceSearchDocument`, FTS query logic,
-embeddings, semantic retrieval, result fusion/RRF, source-bounded summaries, or
-a maintenance-review endpoint.
+Full-Text Search plus semantic similarity. The database contains the initial
+`Asset`, `PreventiveMaintenanceSchedule`, and `InspectionRecord` schema plus
+the rebuildable `MaintenanceSearchDocument` projection. The backend now
+contains a versioned deterministic maintenance issue lexicon. It does not yet
+contain FTS query logic, embeddings, semantic retrieval, result fusion/RRF,
+source-bounded summaries, or a maintenance-review endpoint.
 
 ## Current API Surface
 
@@ -75,21 +75,23 @@ and is not a final production import contract. It is based only on visible Page
 1 blank forms and will be revised after Page 2 forms and official completed
 samples become available.
 
-With `ASPNETCORE_ENVIRONMENT=Development` and a reachable configured database:
+With a reachable configured database, run seed/reset only in Development:
 
 ```powershell
 $env:ASPNETCORE_ENVIRONMENT = "Development"
 dotnet run --project server -- --seed-synthetic
 dotnet run --project server -- --reset-synthetic-seed
+dotnet run --project server -- --rebuild-maintenance-search-documents
 ```
 
 `--seed-synthetic` deterministically upserts 20 fixture assets, 34 schedules,
 and 30 inspections. `--reset-synthetic-seed` removes only records whose IDs
 belong to the fixture, in inspection, schedule, then asset order. Reset refuses
 to continue if unrelated records depend on fixture-owned assets or schedules.
-Neither command runs during normal API startup, and both fail outside
-Development. Supplying both command flags is rejected without starting HTTP
-hosting or executing a seed operation.
+Seed/reset neither runs during normal API startup nor succeeds outside
+Development. The rebuild command is explicit, transactional on SQL Server,
+idempotent, and does not start HTTP hosting. Supplying more than one
+maintenance command flag is rejected without executing an operation.
 
 The fixture uses five deterministic synthetic actor IDs for assignee and
 inspector references. When development users are introduced later, reuse those
