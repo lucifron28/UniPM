@@ -87,7 +87,116 @@ public static class InspectionsEndpoints
             return Results.Ok(history);
         });
 
+        group.MapGet("/", async (
+            Guid? assetId,
+            Guid? scheduleId,
+            bool? isOperational,
+            DateTimeOffset? dateFrom,
+            DateTimeOffset? dateTo,
+            IDbContextFactory<ApplicationDbContext> factory,
+            CancellationToken cancellationToken) =>
+        {
+            if (dateFrom is not null && dateTo is not null && dateFrom > dateTo)
+            {
+                return ApiErrors.Validation(new Dictionary<string, string[]>
+                {
+                    [nameof(dateFrom)] = ["Date from must be earlier than or equal to date to."]
+                });
+            }
+
+            await using var context = await factory.CreateDbContextAsync(cancellationToken);
+            var query = context.InspectionRecords
+                .AsNoTracking()
+                .AsQueryable();
+
+            if (assetId is not null)
+            {
+                query = query.Where(inspection => inspection.AssetId == assetId.Value);
+            }
+
+            if (scheduleId is not null)
+            {
+                query = query.Where(inspection => inspection.ScheduleId == scheduleId.Value);
+            }
+
+            if (isOperational is not null)
+            {
+                query = query.Where(inspection => inspection.IsOperational == isOperational.Value);
+            }
+
+            if (dateFrom is not null)
+            {
+                query = query.Where(inspection => inspection.DateInspected >= dateFrom.Value);
+            }
+
+            if (dateTo is not null)
+            {
+                query = query.Where(inspection => inspection.DateInspected <= dateTo.Value);
+            }
+
+            var inspections = await query
+                .OrderByDescending(inspection => inspection.DateInspected)
+                .ThenBy(inspection => inspection.Id)
+                .Select(inspection => new InspectionResponse(
+                    inspection.Id,
+                    inspection.ScheduleId,
+                    inspection.AssetId,
+                    inspection.InspectorUserId,
+                    inspection.DateInspected,
+                    inspection.IsOperational,
+                    inspection.Remarks,
+                    inspection.ActionsRecommendations,
+                    inspection.CreatedAt,
+                    inspection.UpdatedAt))
+                .ToListAsync(cancellationToken);
+
+            return Results.Ok(inspections);
+        });
+
+        group.MapGet("/{id}", async (
+            Guid id,
+            IDbContextFactory<ApplicationDbContext> factory,
+            CancellationToken cancellationToken) =>
+        {
+            await using var context = await factory.CreateDbContextAsync(cancellationToken);
+            var inspection = await context.InspectionRecords
+                .AsNoTracking()
+                .FirstOrDefaultAsync(candidate => candidate.Id == id, cancellationToken);
+
+            return inspection is not null
+                ? Results.Ok(InspectionResponse.FromInspection(inspection))
+                : ApiErrors.NotFound("Inspection not found.");
+        });
+
         return endpoints;
+    }
+}
+
+public sealed record InspectionResponse(
+    Guid Id,
+    Guid ScheduleId,
+    Guid AssetId,
+    Guid InspectorUserId,
+    DateTimeOffset DateInspected,
+    bool IsOperational,
+    string? Remarks,
+    string? ActionsRecommendations,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset UpdatedAt)
+{
+    internal static InspectionResponse FromInspection(InspectionRecord inspection)
+    {
+        return new InspectionResponse(
+            inspection.Id,
+            inspection.ScheduleId,
+            inspection.AssetId,
+            inspection.InspectorUserId,
+            inspection.DateInspected,
+            inspection.IsOperational,
+            inspection.Remarks,
+            inspection.ActionsRecommendations,
+            inspection.CreatedAt,
+            inspection.UpdatedAt);
     }
 }
 
