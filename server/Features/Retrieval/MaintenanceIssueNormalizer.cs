@@ -100,8 +100,7 @@ public sealed class MaintenanceIssueNormalizer
             return true;
         }
 
-        var afterAlias = paddedText[(aliasStart + normalizedAlias.Length)..];
-        return afterAlias.StartsWith(" finding ", StringComparison.Ordinal);
+        return false;
     }
 
     private sealed record NormalizedIssueDefinition(

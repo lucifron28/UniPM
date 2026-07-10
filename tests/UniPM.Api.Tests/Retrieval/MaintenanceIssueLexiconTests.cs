@@ -125,6 +125,18 @@ public sealed class MaintenanceIssueLexiconTests
     }
 
     [Fact]
+    public void Normalize_preserves_positive_finding_phrases()
+    {
+        var normalizer = CreateNormalizer();
+
+        var matches = normalizer.Normalize(
+            "low pressure finding confirmed during inspection",
+            "fire-extinguisher");
+
+        Assert.Contains(matches, match => match.IssueKey == "low_pressure");
+    }
+
+    [Fact]
     public void Normalize_keeps_positive_aliases_and_local_matches_after_negation()
     {
         var normalizer = CreateNormalizer();
