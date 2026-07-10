@@ -86,11 +86,14 @@ public sealed class SyntheticMaintenanceSeeder(
         var dataset = await datasetLoader.LoadAsync(cancellationToken);
 
         await using var context = await CreateReadyContextAsync(cancellationToken);
-        await using var transaction = await BeginTransactionIfRelationalAsync(context, cancellationToken);
 
         var inspectionIds = dataset.Inspections.Select(inspection => inspection.Id).ToHashSet();
         var scheduleIds = dataset.Schedules.Select(schedule => schedule.Id).ToHashSet();
         var assetIds = dataset.Assets.Select(asset => asset.Id).ToHashSet();
+
+        await ValidateResetDependenciesAsync(context, inspectionIds, scheduleIds, assetIds, cancellationToken);
+
+        await using var transaction = await BeginTransactionIfRelationalAsync(context, cancellationToken);
 
         var inspections = await context.InspectionRecords
             .Where(inspection => inspectionIds.Contains(inspection.Id))
@@ -116,6 +119,40 @@ public sealed class SyntheticMaintenanceSeeder(
         }
 
         return new SyntheticMaintenanceResetResult(assets.Count, schedules.Count, inspections.Count);
+    }
+
+    private static async Task ValidateResetDependenciesAsync(
+        ApplicationDbContext context,
+        IReadOnlySet<Guid> fixtureInspectionIds,
+        IReadOnlySet<Guid> fixtureScheduleIds,
+        IReadOnlySet<Guid> fixtureAssetIds,
+        CancellationToken cancellationToken)
+    {
+        var hasUnrelatedScheduleDependency = await context.PreventiveMaintenanceSchedules
+            .AnyAsync(
+                schedule => fixtureAssetIds.Contains(schedule.AssetId)
+                    && !fixtureScheduleIds.Contains(schedule.Id),
+                cancellationToken);
+
+        var hasUnrelatedAssetInspectionDependency = await context.InspectionRecords
+            .AnyAsync(
+                inspection => fixtureAssetIds.Contains(inspection.AssetId)
+                    && !fixtureInspectionIds.Contains(inspection.Id),
+                cancellationToken);
+
+        var hasUnrelatedScheduleInspectionDependency = await context.InspectionRecords
+            .AnyAsync(
+                inspection => fixtureScheduleIds.Contains(inspection.ScheduleId)
+                    && !fixtureInspectionIds.Contains(inspection.Id),
+                cancellationToken);
+
+        if (hasUnrelatedScheduleDependency
+            || hasUnrelatedAssetInspectionDependency
+            || hasUnrelatedScheduleInspectionDependency)
+        {
+            throw new SyntheticMaintenanceFixtureException(
+                "Synthetic reset cannot continue because non-fixture records depend on fixture-owned assets or schedules.");
+        }
     }
 
     private async Task<ApplicationDbContext> CreateReadyContextAsync(CancellationToken cancellationToken)

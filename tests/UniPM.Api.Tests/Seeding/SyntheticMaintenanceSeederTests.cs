@@ -88,6 +88,66 @@ public sealed class SyntheticMaintenanceSeederTests
     }
 
     [Fact]
+    public async Task Reset_refuses_non_fixture_schedule_for_fixture_asset_without_changes()
+    {
+        await AssertResetRefusesDependencyAsync(async (factory, dataset) =>
+        {
+            await using var context = factory.CreateDbContext();
+            context.PreventiveMaintenanceSchedules.Add(new PreventiveMaintenanceSchedule
+            {
+                Id = Guid.NewGuid(),
+                AssetId = dataset.Assets[0].Id,
+                ScheduleDate = DateTimeOffset.Parse("2026-01-01T00:00:00+08:00"),
+                PeriodType = "Quarter",
+                Status = "Due",
+                Quarter = "Q1",
+                Year = 2026
+            });
+            await context.SaveChangesAsync();
+        });
+    }
+
+    [Fact]
+    public async Task Reset_refuses_non_fixture_inspection_for_fixture_asset_without_changes()
+    {
+        await AssertResetRefusesDependencyAsync(async (factory, dataset) =>
+        {
+            await using var context = factory.CreateDbContext();
+            context.InspectionRecords.Add(new InspectionRecord
+            {
+                Id = Guid.NewGuid(),
+                ScheduleId = Guid.NewGuid(),
+                AssetId = dataset.Assets[0].Id,
+                InspectorUserId = dataset.Actors[0].Id,
+                DateInspected = DateTimeOffset.Parse("2026-01-01T00:00:00+08:00"),
+                IsOperational = true,
+                Remarks = "Unrelated test inspection"
+            });
+            await context.SaveChangesAsync();
+        });
+    }
+
+    [Fact]
+    public async Task Reset_refuses_non_fixture_inspection_for_fixture_schedule_without_changes()
+    {
+        await AssertResetRefusesDependencyAsync(async (factory, dataset) =>
+        {
+            await using var context = factory.CreateDbContext();
+            context.InspectionRecords.Add(new InspectionRecord
+            {
+                Id = Guid.NewGuid(),
+                ScheduleId = dataset.Schedules[0].Id,
+                AssetId = Guid.NewGuid(),
+                InspectorUserId = dataset.Actors[0].Id,
+                DateInspected = DateTimeOffset.Parse("2026-01-01T00:00:00+08:00"),
+                IsOperational = true,
+                Remarks = "Unrelated test inspection"
+            });
+            await context.SaveChangesAsync();
+        });
+    }
+
+    [Fact]
     public async Task Invalid_fixture_reference_fails_before_writes()
     {
         var invalidPath = await CreateModifiedFixtureAsync(root =>
@@ -165,6 +225,34 @@ public sealed class SyntheticMaintenanceSeederTests
             Status = "Active"
         });
         await context.SaveChangesAsync();
+    }
+
+    private static async Task AssertResetRefusesDependencyAsync(
+        Func<TestContextFactory, SyntheticMaintenanceDataset, Task> addDependency)
+    {
+        var factory = new TestContextFactory();
+        var seeder = CreateSeeder(factory);
+        var dataset = await LoadDatasetAsync();
+
+        await seeder.SeedAsync();
+        await addDependency(factory, dataset);
+
+        await using var beforeContext = factory.CreateDbContext();
+        var beforeCounts = (
+            Assets: await beforeContext.Assets.CountAsync(),
+            Schedules: await beforeContext.PreventiveMaintenanceSchedules.CountAsync(),
+            Inspections: await beforeContext.InspectionRecords.CountAsync());
+
+        var exception = await Assert.ThrowsAsync<SyntheticMaintenanceFixtureException>(() => seeder.ResetAsync());
+
+        Assert.Contains(
+            "Synthetic reset cannot continue because non-fixture records depend on fixture-owned assets or schedules.",
+            exception.Message);
+
+        await using var afterContext = factory.CreateDbContext();
+        Assert.Equal(beforeCounts.Assets, await afterContext.Assets.CountAsync());
+        Assert.Equal(beforeCounts.Schedules, await afterContext.PreventiveMaintenanceSchedules.CountAsync());
+        Assert.Equal(beforeCounts.Inspections, await afterContext.InspectionRecords.CountAsync());
     }
 
     private static async Task<string> CreateModifiedFixtureAsync(Action<JsonObject> mutate)
