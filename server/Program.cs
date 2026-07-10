@@ -25,7 +25,6 @@ builder.Services
     .AddCheck("self", () => HealthCheckResult.Healthy(), tags: ["live"])
     .AddCheck<DatabaseHealthCheck>("database", tags: ["ready"]);
 
-builder.Services.AddScoped<UniPM.Api.Features.MaintenanceHistory.IMaintenanceHistoryRetrievalService, UniPM.Api.Features.MaintenanceHistory.ReciprocalRankFusionRetrievalService>();
 builder.Services.AddSingleton<SyntheticMaintenanceSeedOptions>();
 builder.Services.AddSingleton<SyntheticMaintenanceDatasetValidator>();
 builder.Services.AddSingleton<SyntheticMaintenanceDatasetLoader>();
