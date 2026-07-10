@@ -29,7 +29,7 @@ helps a human verify them.
 - Development seed/reset commands: completed and Development-only.
 - Retrieval evaluation manifest: completed at version `1.0.0` and test-only.
 - RRF placeholder: removed; RRF is not implemented yet.
-- Maintenance issue lexicon: next after inspection list/detail.
+- Maintenance issue lexicon: done at version `1.0.0`.
 - `MaintenanceSearchDocument`: pending.
 - SQL Server FTS retrieval: pending.
 - Semantic retrieval: pending, but required as a target channel.
@@ -41,13 +41,12 @@ helps a human verify them.
 
 1. Confirm the backend baseline.
 2. Keep the synthetic fixture and Development-only seeder verified.
-3. Implement the maintenance issue lexicon.
-4. Add a `MaintenanceSearchDocument` projection.
-5. Implement lexical and semantic retrieval separately.
-6. Benchmark retrieval channels.
-7. Add inspectable result fusion.
-8. Add sanitization and source-bounded summarization.
-9. Add authentication scaffolding.
+3. Add a `MaintenanceSearchDocument` projection.
+4. Implement lexical and semantic retrieval separately.
+5. Benchmark retrieval channels.
+6. Add inspectable result fusion.
+7. Add sanitization and source-bounded summarization.
+8. Add authentication scaffolding.
 
 ## Task 0: Project Boot And Baseline Check
 
@@ -113,7 +112,7 @@ Completed:
 - schedule create, list, and detail;
 - inspection submission and asset-history lookup.
 
-Next implementation:
+Completed implementation:
 
 - `GET /api/v1/inspections`
 - `GET /api/v1/inspections/{id}`
@@ -129,15 +128,16 @@ as part of inspection list/detail reads.
 Goal: normalize maintenance language before retrieval work becomes provider- or
 model-dependent.
 
-With inspection list/detail complete:
+With inspection list/detail and lexicon v1.0 complete:
 
-- define a small, versioned issue lexicon from the synthetic fixture and visible
-  form vocabulary;
-- keep English, Tagalog, and mixed-language aliases inspectable;
-- add a `MaintenanceSearchDocument` projection only for approved operational
-  source fields;
-- keep evaluation labels outside the projection and all runtime search content;
-- test normalization, category boundaries, and no-history behavior.
+Completed scope includes a small versioned JSON lexicon from the synthetic
+fixture and visible form vocabulary, inspectable English/Tagalog/Taglish aliases,
+required category-bounded matching, deterministic scoring, and narrow negation
+handling. Evaluation labels remain outside the resource and runtime code.
+
+Next, add a `MaintenanceSearchDocument` projection only for approved
+operational source fields. Keep evaluation labels outside the projection and
+all runtime search content.
 
 Do not treat the lexicon as a diagnosis system or invent official GSD wording.
 
@@ -222,7 +222,6 @@ directly.
 
 ## Next Branches
 
-- `feat/retrieval-maintenance-issue-lexicon`
 - `feat/retrieval-search-document`
 - `feat/retrieval-lexical-fts`
 - `feat/retrieval-semantic`

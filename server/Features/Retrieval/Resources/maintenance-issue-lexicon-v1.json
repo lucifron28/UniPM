@@ -1,0 +1,108 @@
+{
+  "$schema": "maintenance-issue-lexicon-v1.schema.json",
+  "lexiconVersion": "1.0.0",
+  "issues": [
+    {
+      "key": "alarm_panel_fault",
+      "assetCategory": "fire-alarm",
+      "aliases": [
+        "alarm panel fault",
+        "intermittent fault bumabalik sa alarm panel",
+        "intermittent panel fault"
+      ]
+    },
+    {
+      "key": "battery_issue",
+      "assetCategory": "emergency-light",
+      "aliases": [
+        "battery issue",
+        "sira ang battery"
+      ]
+    },
+    {
+      "key": "clogged_filter",
+      "assetCategory": "water-drinking-station",
+      "aliases": [
+        "barado ang filter",
+        "clogged sediment filter",
+        "clogged filter",
+        "filter saturation"
+      ]
+    },
+    {
+      "key": "device_not_responding",
+      "assetCategory": "fire-alarm",
+      "aliases": [
+        "hindi nagrerespond",
+        "not responding",
+        "failed to report back",
+        "unresponsive"
+      ]
+    },
+    {
+      "key": "expired_unit",
+      "assetCategory": "fire-extinguisher",
+      "aliases": [
+        "expired inspection tag",
+        "expired unit"
+      ]
+    },
+    {
+      "key": "leaking",
+      "assetCategory": "water-drinking-station",
+      "aliases": [
+        "may tagas",
+        "tagas",
+        "leaking",
+        "leak",
+        "moisture returns around the outlet fitting"
+      ]
+    },
+    {
+      "key": "low_pressure",
+      "assetCategory": "fire-extinguisher",
+      "aliases": [
+        "low pressure",
+        "mahina ang pressure",
+        "pressure gauge below acceptable range",
+        "kulang ang pressure",
+        "nasa red zone ang gauge",
+        "needs refill",
+        "approaching the refill section"
+      ]
+    },
+    {
+      "key": "not_lighting",
+      "assetCategory": "emergency-light",
+      "aliases": [
+        "hindi umiilaw",
+        "not lighting",
+        "ayaw mag on"
+      ]
+    },
+    {
+      "key": "smoke_detector_issue",
+      "assetCategory": "fire-alarm",
+      "aliases": [
+        "hindi nagrerespond ang smoke detector",
+        "smoke detector issue"
+      ]
+    },
+    {
+      "key": "uv_light_issue",
+      "assetCategory": "water-drinking-station",
+      "aliases": [
+        "uv light not functioning"
+      ]
+    },
+    {
+      "key": "weak_water_flow",
+      "assetCategory": "water-drinking-station",
+      "aliases": [
+        "mahina ang daloy",
+        "weak water flow",
+        "dispenser output slows"
+      ]
+    }
+  ]
+}

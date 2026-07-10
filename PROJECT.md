@@ -19,6 +19,8 @@
   - Asset create, list, detail, and QR lookup endpoints.
   - Schedule create, list, and detail endpoints.
   - Inspection submission, list, detail, and asset-history endpoints.
+  - Versioned maintenance issue lexicon with deterministic multilingual
+    normalization and category-bounded matching.
   - Reference-data categories, validation contracts, health checks, backend tests,
     and CI.
   - Fictional synthetic maintenance fixture, retrieval evaluation manifest, and
@@ -55,11 +57,10 @@ LLM being available.
 
 ## Next Steps
 
-1. Implement the maintenance issue lexicon (`feat/retrieval-maintenance-issue-lexicon`).
-2. Add `MaintenanceSearchDocument` projection.
-3. Implement lexical retrieval with SQL Server FTS.
-4. Add a semantic retriever behind `IEmbeddingService`.
-5. Build the retrieval benchmark.
-6. Add result fusion.
-7. Add sanitizer and source-bounded maintenance review.
-8. Add authentication scaffolding.
+1. Add `MaintenanceSearchDocument` projection (`feat/retrieval-search-document`).
+2. Implement lexical retrieval with SQL Server FTS.
+3. Add a semantic retriever behind `IEmbeddingService`.
+4. Build the retrieval benchmark.
+5. Add result fusion.
+6. Add sanitizer and source-bounded maintenance review.
+7. Add authentication scaffolding.

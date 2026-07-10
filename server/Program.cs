@@ -5,6 +5,7 @@ using UniPM.Api.Data;
 using UniPM.Api.Data.Seeding;
 using UniPM.Api.Features;
 using UniPM.Api.Health;
+using UniPM.Api.Features.Retrieval;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -29,6 +30,9 @@ builder.Services.AddSingleton<SyntheticMaintenanceSeedOptions>();
 builder.Services.AddSingleton<SyntheticMaintenanceDatasetValidator>();
 builder.Services.AddSingleton<SyntheticMaintenanceDatasetLoader>();
 builder.Services.AddScoped<SyntheticMaintenanceSeeder>();
+builder.Services.AddSingleton<MaintenanceIssueLexiconOptions>();
+builder.Services.AddSingleton<MaintenanceIssueLexiconLoader>();
+builder.Services.AddSingleton<MaintenanceIssueNormalizer>();
 
 var app = builder.Build();
 
