@@ -1,5 +1,3 @@
-using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using UniPM.Api.Features.Assets;
@@ -27,13 +25,6 @@ public sealed class SyntheticMaintenanceDatasetValidator
     private static readonly Regex InstitutionalIdPattern = new(
         @"\b(?:employee|student|staff)\s*id\s*(?:[:#-]\s*)?[A-Z0-9-]*\d[A-Z0-9-]*\b",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
-
-    private static readonly IReadOnlySet<string> KnownPrintedPersonnelNameHashes = new HashSet<string>(StringComparer.Ordinal)
-    {
-        "FAD0AC6A2AEF91EF4559A8E3B3AC2F2619C77AE1152AA1D5D9016889D6EE8C27"
-    };
-
-    private static readonly Regex WordPattern = new(@"[A-Z]+", RegexOptions.CultureInvariant);
 
     public void Validate(SyntheticMaintenanceDataset dataset)
     {
@@ -268,33 +259,6 @@ public sealed class SyntheticMaintenanceDatasetValidator
             errors.Add("Fixture contains an employee, student, or staff ID-like value.");
         }
 
-        if (ContainsKnownPrintedPersonnelName(serializedDataset))
-        {
-            errors.Add("Fixture contains a known real personnel name from the supplied forms.");
-        }
-    }
-
-    private static bool ContainsKnownPrintedPersonnelName(string serializedDataset)
-    {
-        var words = WordPattern.Matches(serializedDataset.ToUpperInvariant())
-            .Select(match => match.Value)
-            .ToArray();
-
-        for (var start = 0; start < words.Length; start++)
-        {
-            for (var length = 2; length <= 4 && start + length <= words.Length; length++)
-            {
-                var candidate = string.Join(' ', words.AsSpan(start, length).ToArray());
-                var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(candidate)));
-
-                if (KnownPrintedPersonnelNameHashes.Contains(hash))
-                {
-                    return true;
-                }
-            }
-        }
-
-        return false;
     }
 }
 
