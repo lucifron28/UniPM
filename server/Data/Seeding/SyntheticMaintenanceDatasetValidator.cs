@@ -23,7 +23,7 @@ public sealed class SyntheticMaintenanceDatasetValidator
         RegexOptions.CultureInvariant);
 
     private static readonly Regex InstitutionalIdPattern = new(
-        @"\b(?:employee|student|staff)\s*id\s*[:#-]?\s*[A-Z0-9-]+\b",
+        @"\b(?:employee|student|staff)\s*id\s*(?:[:#-]\s*)?[A-Z0-9-]*\d[A-Z0-9-]*\b",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
     private static readonly string[] KnownPrintedPersonnelNames = ["MARK NEL INOJOSA"];
