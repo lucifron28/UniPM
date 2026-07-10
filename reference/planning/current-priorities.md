@@ -1,320 +1,234 @@
 # Current Priorities - Active Work Items
 
-Read `AGENTS.md` first. These tasks assume those rules.
+Read `AGENTS.md` first. These tasks assume its architecture, privacy, scope,
+and retrieval-safety rules.
 
 The current strategy is risk-first:
 
-1. make the project run
-2. seed realistic synthetic data
-3. expose read endpoints for frontend work
-4. prove the thin RAG loop early
-5. add auth scaffolding
-6. expand tests and refinement
+1. keep the project runnable and tested
+2. keep realistic synthetic data available for development
+3. finish the read-side contracts needed by the clients
+4. prove retrieval channels separately before fusion
+5. add the bounded maintenance-history review loop
+6. add authentication scaffolding after the core evidence path is stable
 
-The RAG feature is not a chatbot and not an autonomous diagnostic tool. It is a bounded, source-bounded maintenance-history review feature.
+The RAG feature is not a chatbot and not an autonomous diagnostic tool. It is a
+bounded maintenance-history review feature that retrieves source records and
+helps a human verify them.
 
 ## Current Status
 
-- Task 0: mostly done.
-- Task 1: not done.
-- Task 2: partially done.
-  - Asset list/get/QR lookup: done.
-  - Schedule list/get: done if `feat/api-schedule-query-endpoints` is merged.
-  - Inspection detail/list/history: still pending.
-- Task 3: blocked until synthetic seed data exists.
-- Task 4: pending.
-- Task 5: pending.
-- Task 6: useful before frontend/mobile screen work.
+- Backend baseline: done. Restore, build, and the backend test suite pass.
+- Initial migration: done for `Asset`, `PreventiveMaintenanceSchedule`, and
+  `InspectionRecord`.
+- Asset reads: done. Create, list, detail, and QR lookup are available.
+- Schedule reads: done. Create, list, and detail are available.
+- Inspection history: done.
+- Inspection list/detail: pending.
+- Operational synthetic fixture: completed at version `1.1.0`.
+- Development seed/reset commands: completed and Development-only.
+- Retrieval evaluation manifest: completed at version `1.0.0` and test-only.
+- RRF placeholder: removed; RRF is not implemented yet.
+- Maintenance issue lexicon: next after inspection list/detail.
+- `MaintenanceSearchDocument`: pending.
+- SQL Server FTS retrieval: pending.
+- Semantic retrieval: pending, but required as a target channel.
+- Retrieval benchmark and fusion: pending.
+- Source-bounded maintenance review and summarization: pending.
+- Authentication scaffolding: pending.
+
+## Risk-First Order
+
+1. Confirm the backend baseline.
+2. Keep the synthetic fixture and Development-only seeder verified.
+3. Complete inspection list/detail endpoints.
+4. Implement the maintenance issue lexicon.
+5. Add a `MaintenanceSearchDocument` projection.
+6. Implement lexical and semantic retrieval separately.
+7. Benchmark retrieval channels.
+8. Add inspectable result fusion.
+9. Add sanitization and source-bounded summarization.
+10. Add authentication scaffolding.
 
 ## Task 0: Project Boot And Baseline Check
 
-Goal: Confirm the current backend state before making changes.
+Goal: keep the current backend state known before each risky change.
 
-Do:
+Completed evidence:
 
-- Read `AGENTS.md`.
-- Run the backend locally using the existing documented workflow.
-- Run the test suite.
-- Inspect existing entity, endpoint, service, DbContext, and migration structure.
-- Summarize what already exists for:
-  - Assets
-  - Schedules
-  - Inspections
-  - existing seed data
-  - existing tests
-  - existing authentication/authorization, if any
-- Identify the current route prefix style, DTO style, and test style.
-- Do not change architecture yet.
+- `AGENTS.md`, project memory, reference forms, and existing code were read.
+- The current entity, endpoint, service, DbContext, migration, and test styles
+  were inspected.
+- The solution restores, builds, and tests successfully.
+- The current route prefix, DTO conventions, and test conventions are known.
 
-Do not:
+Maintain this baseline after meaningful backend changes with:
 
-- Do not add new patterns.
-- Do not introduce a new folder structure unless clearly consistent with the current codebase.
-- Do not change the stack.
-- Do not touch AI providers yet.
+```powershell
+dotnet restore .\UniPM.slnx
+dotnet build .\UniPM.slnx
+dotnet test .\UniPM.slnx --no-build
+```
 
-Done when: the current project status is known, tests have been run, and the next task can be started without guessing the existing structure.
+Do not change the stack or introduce competing endpoint patterns while doing
+baseline work.
 
-## Task 1: Seed Dataset For RAG And Frontend Development
+## Task 1: Synthetic Fixture And Development Seeder
 
-Goal: Create realistic-enough synthetic maintenance history to support RAG MVP testing and frontend development.
+Goal: provide reproducible fictional records for API, retrieval, and frontend
+development without importing real institutional records.
 
-Do:
+Completed scope:
 
-- Write a reproducible seed script, migration seed, fixture, or dev-only seeding routine.
-- Seed 20-30 synthetic `InspectionRecord` entries for the MVP.
-- Cover the four asset categories:
-  - fire extinguishers
-  - fire alarm systems
-  - emergency lights
-  - water drinking stations
-- Include:
-  - recurring issues on the same asset
-  - similar issues on similar assets
-  - same-building/context records
-  - pure-English remarks
-  - pure-Tagalog remarks
-  - mixed English/Tagalog remarks
-  - at least 2 distractor records that should not be retrieved for unrelated findings
-  - at least 1 cold-start scenario where an asset has no same-asset history
-- Include issue phrases such as:
-  - `mahina ang pressure`
-  - `kulang ang pressure`
-  - `pressure gauge below acceptable range`
-  - `needs refill`
-  - `hindi umiilaw`
-  - `not lighting`
-  - `sira battery`
-  - `barado ang filter`
-  - `clogged filter`
-  - `may tagas`
-  - `leaking`
-- Use synthetic names only if names are needed.
-- Avoid real personnel names, real phone numbers, real emails, or real institutional private data.
-- Keep the seed data easy to reset and rerun.
+- 20 assets, 34 schedules, and 30 inspections across the four selected
+  categories.
+- Recurring same-asset findings, similar-asset context, building context,
+  English, Tagalog, Taglish, and distractor records.
+- Four cold-start assets with Due schedules and no inspection history.
+- Deterministic IDs, timestamps, seed keys, and helper-derived asset QR values.
+- Development-only explicit seed and reset commands.
+- Deterministic fixture-owned upsert behavior and scoped reset behavior.
+- Preflight validation before writes, including references, statuses, counts,
+  QR values, actor roles, synthetic labels, and sensitive-data patterns.
+- Reset dependency protection for non-fixture schedules and inspections.
+- Strict rejection of unmapped JSON properties.
 
-Do not:
+The operational fixture retains operational metadata, actors, assets, schedules,
+inspections, category details, form data, remarks, and recommendations. It does
+not contain evaluation labels. The evaluation manifest is test-only and must not
+be loaded by runtime code, persisted, indexed, embedded, placed in prompts, or
+returned through ordinary API DTOs.
 
-- Do not hand-insert rows manually in a way that cannot be reproduced.
-- Do not use real GSD records unless explicitly approved.
-- Do not add final acknowledgement/handoff/RMRF workflow schema in this task.
-
-Done when: a fresh dev environment can load the seed data and Task 3 can run against it.
+Limitations remain explicit: the source forms are blank visible Page 1
+references. Page 2, completed samples, acknowledgement workflow, RMRF rules,
+and final institutional reference lists remain provisional pending GSD/adviser
+clarification.
 
 ## Task 2: List/GET Endpoints For Existing Entities
 
-Goal: Give the web/mobile frontends real read-side API contracts to build against.
+Goal: give the web and mobile clients stable read-side contracts.
+
+Completed:
+
+- asset create, list, detail, and QR lookup;
+- schedule create, list, and detail;
+- inspection submission and asset-history lookup.
+
+Next implementation:
+
+- `GET /api/v1/inspections`
+- `GET /api/v1/inspections/{id}`
+- preserve the existing asset-history route and conventions;
+- add pagination or filtering only where it matches the existing API style;
+- add happy-path and meaningful failure-case tests.
+
+Do not finalize acknowledgement, handoff, RMRF, or other deferred workflow rules
+as part of inspection list/detail reads.
+
+## Task 3: Maintenance Issue Lexicon And Search Document
+
+Goal: normalize maintenance language before retrieval work becomes provider- or
+model-dependent.
+
+After inspection list/detail is complete:
+
+- define a small, versioned issue lexicon from the synthetic fixture and visible
+  form vocabulary;
+- keep English, Tagalog, and mixed-language aliases inspectable;
+- add a `MaintenanceSearchDocument` projection only for approved operational
+  source fields;
+- keep evaluation labels outside the projection and all runtime search content;
+- test normalization, category boundaries, and no-history behavior.
+
+Do not treat the lexicon as a diagnosis system or invent official GSD wording.
+
+## Task 4: Thin Retrieval MVP
+
+Goal: prove retrieval before investing in advanced fusion or UI polish.
+
+Required shape:
+
+`current finding -> retrieval -> source selection -> sanitization -> source-bounded summary -> source display -> human verification`
 
 Do:
 
-- Add or confirm:
-  - `GET /api/v1/assets`
-  - `GET /api/v1/assets/{id}`
-  - `GET /api/v1/schedules`
-  - `GET /api/v1/schedules/{id}`
-  - `GET /api/v1/inspections/{id}`
-  - `GET /api/v1/inspections/history/{assetId}` or equivalent
-- Add basic filtering where cheap and consistent:
-  - assets by category
-  - assets by status
-  - schedules by date/status
-  - inspections by asset
-- Add pagination if list sizes could realistically exceed about 50 records.
-- Match existing endpoint/service/DTO conventions.
-- Add tests for list and get-by-id endpoints.
+- retrieve related records before generation;
+- use same-asset, same-category, and available location/building context;
+- implement lexical retrieval separately from semantic retrieval;
+- keep embeddings behind `IEmbeddingService` and summaries behind
+  `ISummaryService` or equivalent interfaces;
+- use SQL Server FTS when ready, with a clearly reported lexical fallback when
+  semantic embeddings are unavailable;
+- return the source records used and limitations beside any summary;
+- keep source selection and prompt construction inspectable;
+- add sanitizer tests before any external provider call.
 
-Do not:
+Semantic retrieval is a required target channel, not an excuse to block core
+maintenance workflows. Core workflows must work with AI disabled. No separate
+vector database may be introduced.
 
-- Do not add update/delete unless already planned.
-- Do not finalize acknowledgement/handoff tables.
-- Do not introduce a new API pattern if one already exists.
+Do not build chatbot behavior, autonomous decisions, automatic corrective
+handoffs, raw prompt persistence, token-map persistence, or unsupported claims
+about dates, causes, RMRF values, or personnel decisions.
 
-Done when: every existing entity needed by the frontend has list plus get-by-id/history reads, with tests.
+## Task 5: Retrieval Evaluation Benchmark
 
-## Task 3: Thin End-To-End RAG MVP
+Goal: measure whether lexical, semantic, and hybrid retrieval improve on the
+fictional dataset.
 
-Goal: Prove the core retrieval-plus-summary loop works before investing in RRF, advanced rule scoring, full privacy masking, or UI polish.
+The test-only evaluation manifest currently contains four cold-start asset
+annotations and one exact annotation for every operational inspection. It keeps
+benchmark queries empty until the retrieval contract and lexicon are ready.
 
-Required input/output shape:
+When the retrieval channels exist:
 
-- Input:
-  - `assetId`
-  - current finding text / remarks
-- Output:
-  - source-bounded summary
-  - list of source records used
-  - limitations / evidence status where applicable
+- add 15-30 English, Tagalog, and mixed-language benchmark queries;
+- define expected relevant record IDs in test-only data;
+- compare lexical, semantic, and hybrid results;
+- report simple Hit@5, Recall@10, or MRR where useful;
+- keep cold-start assets due and clearly label similar-asset fallback context.
 
-Do:
+Do not claim synthetic benchmark performance proves production performance.
 
-- Read `AGENTS.md`.
-- Use the synthetic seeded data from Task 1.
-- Add one maintenance-review endpoint, for example `POST /api/v1/maintenance-review`.
-- Add request/response DTOs.
-- Run a relational prefilter where applicable:
-  - same asset
-  - same category
-  - same building/location if available
-- Add basic SQL Server Full-Text Search or a temporary keyword search if FTS setup blocks the MVP.
-- Add one embedding retrieval path behind `IEmbeddingService`.
-- Pick the cheapest/fastest embedding candidate first:
-  - local model
-  - Gemini free tier
-  - another approved free/prepaid option
-- Cache embeddings for seeded records.
-- Store embeddings in SQL Server or a reproducible local fixture for MVP.
-- If SQL Server native vector search slows setup, compute cosine similarity in backend code first.
-- Combine FTS/keyword and semantic results with the simplest inspectable approach:
-  - union plus dedupe is okay for MVP
-  - RRF comes later
-- Select the top few source records.
-- Add a minimal `PrivacySanitizerService` before any external LLM call.
-- Add an LLM summary call behind `ISummaryService`.
-- Use a fixed prompt template:
-  - summarize only the provided records
-  - do not invent details not present
-  - do not invent dates
-  - do not invent RMRF numbers
-  - do not invent causes
-  - do not invent corrective actions
-  - include limitations
-  - include assistive-only disclaimer
-- Return the summary beside the source records used.
-- Add tests for:
-  - endpoint happy path
-  - no source records / insufficient evidence
-  - source records returned with summary
-  - sanitizer masks email/phone/employee ID
-  - no raw prompt persisted, if persistence exists
+## Task 6: Authentication And Client Contract Notes
 
-Do not:
+Authentication follows the core inspection and retrieval read contracts:
 
-- Do not build a chat interface.
-- Do not auto-diagnose.
-- Do not auto-change asset status.
-- Do not auto-create corrective handoffs.
-- Do not implement full RRF yet.
-- Do not implement full rule-based scoring yet.
-- Do not implement full token-map rehydration yet.
-- Do not persist raw prompts.
-- Do not persist token maps.
-- Do not introduce a separate vector database.
-- Do not hard-lock one AI provider in a way that is hard to swap.
+- scaffold the five approved development roles: Admin, GSD, Inspector,
+  DepartmentHead, and Supervisor;
+- keep JWT secrets out of committed configuration;
+- protect writes first and keep reads usable for authenticated development;
+- add tests for login, rejected unauthenticated writes, and allowed writes.
 
-Done when: given a seeded finding such as `mahina ang pressure`, the endpoint returns a plausible source-bounded summary and the records it was grounded in. It does not need to be excellent yet. It needs to exist, be inspectable, and be safe enough for synthetic MVP testing.
+Document only implemented routes in tracked API contract notes. Web handles
+administration, monitoring, reporting, review, and source verification. Mobile
+handles QR lookup, assigned schedules, checklist completion, and inspection
+submission. Neither client calls SQL Server, an embedding provider, or an LLM
+directly.
 
-## Task 4: Auth Stub And Role Scaffolding
+## Current Constraints
 
-Goal: Add enough authentication/authorization to unblock frontend work. This is not the final RBAC matrix.
+- The four physical forms are blank Page 1 references only.
+- Page 2, acknowledgement, RMRF, official location lists, schedule authority,
+  final audit rules, and the approved reference knowledge base are deferred.
+- The operational fixture is fictional and provisional, not a production import
+  contract.
+- Evaluation annotations are test-only and never runtime operational data.
+- Semantic retrieval is required but may degrade to an explicitly reported
+  lexical fallback when embeddings are unavailable.
+- SQL Server remains the relational, FTS, and future vector-search store. Do not
+  introduce Pinecone, Qdrant, Weaviate, Chroma, Milvus, or another vector DB.
+- No LLM output may approve, diagnose, change status, create a handoff, or make
+  an official maintenance decision.
 
-Do:
-
-- Add a minimal JWT-based auth flow:
-  - login endpoint
-  - token issuance
-- Seed 5 roles:
-  - Admin
-  - GSD
-  - Inspector
-  - DepartmentHead
-  - Supervisor
-- Add a dev user per role for local testing.
-- Protect existing write endpoints behind authentication at minimum:
-  - POST assets
-  - POST schedules
-  - POST inspections
-- Coarse role restrictions are okay for now:
-  - Admin + GSD can write
-  - authenticated users can read, unless an existing rule says otherwise
-- Add tests:
-  - seeded user can log in
-  - unauthenticated write request is rejected
-  - authenticated write request works for an allowed dev role
-
-Do not:
-
-- Do not build the full permission matrix yet.
-- Do not touch acknowledgement/handoff tables.
-- Do not finalize source-record visibility rules yet.
-- Do not put JWT secrets in committed config.
-
-Done when: a seeded user can log in, get a token, and existing write endpoints reject unauthenticated requests.
-
-## Task 5: RAG Retrieval Benchmark Harness
-
-Goal: Create a small repeatable benchmark so we can tell if retrieval is improving.
-
-Do:
-
-- Add a test fixture or small console/test harness for retrieval evaluation.
-- Use seeded records from Task 1.
-- Create 15-30 benchmark queries first.
-- Include English, Tagalog, and mixed variants:
-  - `low pressure`
-  - `mahina ang pressure`
-  - `kulang ang pressure`
-  - `pressure gauge below acceptable range`
-  - `hindi umiilaw`
-  - `not lighting`
-  - `sira battery`
-  - `barado ang filter`
-  - `clogged filter`
-  - `may tagas`
-  - `leaking`
-- For each query, define expected relevant record IDs.
-- Compare:
-  - keyword/FTS only
-  - semantic only
-  - hybrid union/dedupe
-- If easy, report:
-  - Hit@5
-  - Recall@10
-  - MRR
-- Keep output simple and readable.
-
-Do not:
-
-- Do not chase perfect benchmark tooling.
-- Do not add public benchmark dependencies unless necessary.
-- Do not claim public benchmark performance proves UniPM performance.
-
-Done when: one command or test run shows whether FTS, semantic, or hybrid retrieval is performing better on the seeded UniPM data.
-
-## Task 6: Web/Mobile API Contract Notes
-
-Goal: Speed up frontend/mobile work by documenting the current API contracts.
-
-Do:
-
-- Create or update a tracked API notes file, for example `reference/api-contracts.md`.
-- Document:
-  - auth endpoint
-  - asset list/get
-  - schedule list/get
-  - inspection list/get/history
-  - maintenance-review endpoint
-- For each endpoint include:
-  - route
-  - method
-  - request body, if any
-  - response shape
-  - auth requirement
-  - notes for web/mobile usage
-- Include web/mobile function split:
-  - web handles management, reporting, review, source verification
-  - mobile handles QR lookup, assigned schedules, checklist completion, inspection submission
-
-Do not:
-
-- Do not document imaginary final endpoints as if implemented.
-- Do not include real secrets, tokens, or private data.
-- Do not treat API notes as final manuscript text.
-
-Done when: frontend/mobile agents can start building screens without reading backend code for every endpoint.
-
-## Recommended Next Branches
+## Next Branches
 
 - `feat/api-inspection-detail-endpoints`
-- `chore(seed): add synthetic maintenance records`
-- `docs(api): document current backend contracts`
-- `feat(auth): scaffold dev role authentication`
+- `feat/retrieval-maintenance-issue-lexicon`
+- `feat/retrieval-search-document`
+- `feat/retrieval-lexical-fts`
+- `feat/retrieval-semantic`
+- `test(rag): add retrieval benchmark`
+- `feat/rag: add inspectable result fusion`
+- `feat/rag: add source-bounded maintenance review`
+- `feat/auth: scaffold development roles`

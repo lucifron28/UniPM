@@ -67,7 +67,9 @@ public sealed class AssetReadEndpointsTests
             "GSD",
             "Cafeteria");
 
-        Assert.False(string.IsNullOrWhiteSpace(created.QrCodeValue));
+        Assert.Equal(
+            $"UNIPM-WATER-DRINKING-STATION-{created.Id.ToString()[..8]}",
+            created.QrCodeValue);
 
         var response = await client.GetAsync($"/api/v1/assets/by-qr/{created.QrCodeValue}");
 

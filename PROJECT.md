@@ -12,27 +12,55 @@
 
 ## Active Context
 - **Architecture**: ASP.NET Core API + SQL Server 2025 (Docker local / IIS prod).
-- **Core Entities**: `Asset`, `PreventiveMaintenanceSchedule`, `InspectionRecord` scaffolded.
+- **Core Entities**: `Asset`, `PreventiveMaintenanceSchedule`, and `InspectionRecord` are migrated.
 - **Completed**:
   - Docker environment with SQL Server 2025 + Full-Text Search.
-  - DB Migration `InitialDomainSchema` applied to container.
-  - Minimal API endpoints:
-    - POST `/api/v1/assets`, GET `/api/v1/assets/{id}`
-    - POST `/api/v1/schedules`
-    - POST `/api/v1/inspections`, GET `/api/v1/inspections/history/{assetId}`
-  - Unit tests and health checks passing (resolved DBContextFactory injection).
+  - Initial `InitialDomainSchema` migration.
+  - Asset create, list, detail, and QR lookup endpoints.
+  - Schedule create, list, and detail endpoints.
+  - Inspection submission and asset-history endpoint.
+  - Reference-data categories, validation contracts, health checks, backend tests,
+    and CI.
+  - Fictional synthetic maintenance fixture, retrieval evaluation manifest, and
+    Development-only seed/reset commands.
+  - Reset dependency protection, strict fixture-property loading, exact
+    evaluation correspondence tests, case-insensitive uniqueness checks, and
+    unambiguous seed-command handling.
 
-## Upcoming Plans & Tasks
-1. **GSD Clarifications**:
-   - Resolve form details (verify "Page 2" content for the four forms).
-   - Get official list of buildings and departments.
-   - Confirm schedule adjustment authority & rules.
-2. **Backend & Database**:
-   - Add specific detail tables for asset categories (e.g., `FireExtinguisherDetail`).
-   - Implement user role management (Admin, GSD, Inspector, Department Head, Supervisor).
-   - Setup IIS deployment configuration (remove Docker assumptions for production).
-3. **Mobile Sync**:
-   - Design offline-first sync APIs (inspectors need local SQLite/Hive/Isar sync).
-4. **AI & RAG Support**:
-   - Establish vector embeddings pipeline (Gemini Free Tier, DeepSeek V4, Qwen3:4b-instruct with Ollama).
-   - Implement Reciprocal Rank Fusion (RRF) combining SQL FTS & Vector search.
+## Synthetic Seed Commands
+
+Run these only with `ASPNETCORE_ENVIRONMENT=Development` and a configured,
+reachable database:
+
+```powershell
+$env:ASPNETCORE_ENVIRONMENT = "Development"
+dotnet run --project server -- --seed-synthetic
+dotnet run --project server -- --reset-synthetic-seed
+```
+
+Seeding deterministically upserts 20 synthetic assets, 34 schedules, and 30
+inspections. Reset removes only fixture-owned IDs and preserves unrelated
+records, refusing to proceed when unrelated dependent records would block safe
+deletion. The fixture is fictional, provisional, and based only on visible
+Page 1 blank forms; it is not a production import contract.
+
+## Retrieval Architecture Rule
+
+Semantic retrieval is a required target channel of the UniPM
+maintenance-history review feature, but it is operationally degradable. If
+embeddings are unavailable, maintenance review may use SQL, lexicon
+normalization, and FTS fallback while explicitly reporting lexical fallback.
+Core preventive-maintenance workflows must never depend on embeddings or an
+LLM being available.
+
+## Next Steps
+
+1. Complete inspection list/detail endpoints (`feat/api-inspection-detail-endpoints`).
+2. Implement the maintenance issue lexicon.
+3. Add `MaintenanceSearchDocument` projection.
+4. Implement lexical retrieval with SQL Server FTS.
+5. Add a semantic retriever behind `IEmbeddingService`.
+6. Build the retrieval benchmark.
+7. Add result fusion.
+8. Add sanitizer and source-bounded maintenance review.
+9. Add authentication scaffolding.

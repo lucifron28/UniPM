@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using UniPM.Api.Data;
+using UniPM.Api.Data.Seeding;
 using UniPM.Api.Features;
 using UniPM.Api.Health;
 
@@ -24,9 +25,54 @@ builder.Services
     .AddCheck("self", () => HealthCheckResult.Healthy(), tags: ["live"])
     .AddCheck<DatabaseHealthCheck>("database", tags: ["ready"]);
 
-builder.Services.AddScoped<UniPM.Api.Features.MaintenanceHistory.IMaintenanceHistoryRetrievalService, UniPM.Api.Features.MaintenanceHistory.ReciprocalRankFusionRetrievalService>();
+builder.Services.AddSingleton<SyntheticMaintenanceSeedOptions>();
+builder.Services.AddSingleton<SyntheticMaintenanceDatasetValidator>();
+builder.Services.AddSingleton<SyntheticMaintenanceDatasetLoader>();
+builder.Services.AddScoped<SyntheticMaintenanceSeeder>();
 
 var app = builder.Build();
+
+var seedCommand = SyntheticMaintenanceCommandParser.Parse(args);
+if (seedCommand != SyntheticMaintenanceCommand.None)
+{
+    if (seedCommand == SyntheticMaintenanceCommand.Ambiguous)
+    {
+        await Console.Error.WriteLineAsync("Specify only one synthetic maintenance seed command.");
+        Environment.ExitCode = 1;
+        return;
+    }
+
+    if (!app.Environment.IsDevelopment())
+    {
+        await Console.Error.WriteLineAsync("Synthetic maintenance seed commands are available only in Development.");
+        Environment.ExitCode = 1;
+        return;
+    }
+
+    try
+    {
+        await using var scope = app.Services.CreateAsyncScope();
+        var seeder = scope.ServiceProvider.GetRequiredService<SyntheticMaintenanceSeeder>();
+
+        if (seedCommand == SyntheticMaintenanceCommand.Seed)
+        {
+            var result = await seeder.SeedAsync();
+            await Console.Out.WriteLineAsync($"Seeded {result.Assets} assets, {result.Schedules} schedules, and {result.Inspections} inspections.");
+        }
+        else
+        {
+            var result = await seeder.ResetAsync();
+            await Console.Out.WriteLineAsync($"Removed {result.AssetsRemoved} assets, {result.SchedulesRemoved} schedules, and {result.InspectionsRemoved} inspections.");
+        }
+    }
+    catch (Exception exception)
+    {
+        app.Logger.LogError(exception, "Synthetic maintenance seed command failed.");
+        Environment.ExitCode = 1;
+    }
+
+    return;
+}
 
 if (app.Environment.IsDevelopment())
 {

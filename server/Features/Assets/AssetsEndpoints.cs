@@ -49,7 +49,7 @@ public static class AssetsEndpoints
                 UpdatedAt = now
             };
 
-            asset.QrCodeValue = $"UNIPM-{asset.AssetCategory.ToUpper().Replace(" ", "")}-{asset.Id.ToString().Substring(0, 8)}";
+            asset.QrCodeValue = AssetQrCodeValue.Create(asset.AssetCategory, asset.Id);
 
             context.Assets.Add(asset);
             await context.SaveChangesAsync(cancellationToken);

@@ -1,0 +1,133 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "retrieval-evaluation-v1.schema.json",
+  "title": "UniPM Retrieval Evaluation Manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "evaluationVersion",
+    "datasetVersion",
+    "assetAnnotations",
+    "recordAnnotations",
+    "queries"
+  ],
+  "properties": {
+    "$schema": {
+      "const": "retrieval-evaluation-v1.schema.json"
+    },
+    "evaluationVersion": {
+      "const": "1.0.0"
+    },
+    "datasetVersion": {
+      "const": "1.1.0"
+    },
+    "assetAnnotations": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/assetAnnotation"
+      }
+    },
+    "recordAnnotations": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/recordAnnotation"
+      }
+    },
+    "queries": {
+      "type": "array",
+      "maxItems": 0
+    }
+  },
+  "$defs": {
+    "guid": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "issueKey": {
+      "type": "string",
+      "pattern": "^[a-z0-9_]+$"
+    },
+    "scenarioTag": {
+      "type": "string",
+      "enum": [
+        "same-asset-history",
+        "similar-asset-fallback",
+        "same-building-context",
+        "recurring-issue",
+        "resolved",
+        "unresolved",
+        "distractor",
+        "different-category-distractor",
+        "normal-operational",
+        "retrieval-relevant",
+        "lexicon-covered",
+        "semantic-paraphrase",
+        "checklist-work-done",
+        "english",
+        "tagalog",
+        "taglish"
+      ]
+    },
+    "assetAnnotation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "assetId",
+        "assetCode",
+        "tags"
+      ],
+      "properties": {
+        "assetId": {
+          "$ref": "#/$defs/guid"
+        },
+        "assetCode": {
+          "type": "string",
+          "pattern": "^(FE|FA|EL|WDS)-\\d{3}$"
+        },
+        "tags": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "const": "cold-start"
+          }
+        }
+      }
+    },
+    "recordAnnotation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "inspectionId",
+        "inspectionSeedKey",
+        "expectedIssueKeys",
+        "scenarioTags"
+      ],
+      "properties": {
+        "inspectionId": {
+          "$ref": "#/$defs/guid"
+        },
+        "inspectionSeedKey": {
+          "type": "string",
+          "minLength": 1
+        },
+        "expectedIssueKeys": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/issueKey"
+          }
+        },
+        "scenarioTags": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/scenarioTag"
+          }
+        }
+      }
+    }
+  }
+}

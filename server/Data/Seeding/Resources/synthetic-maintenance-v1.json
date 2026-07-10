@@ -1,0 +1,1483 @@
+﻿{
+    "$schema":  "synthetic-maintenance-v1.schema.json",
+    "datasetVersion":  "1.1.0",
+    "title":  "UniPM Synthetic Preventive Maintenance Dataset",
+    "description":  "A deterministic fictional development fixture for UniPM retrieval, API, and frontend testing. It is based on the visible fields of the supplied blank preventive-maintenance forms and does not represent actual General Services Department maintenance history.",
+    "createdAt":  "2026-07-10T00:00:00Z",
+    "expectedCounts":  {
+                           "actors":  5,
+                           "assets":  20,
+                           "schedules":  34,
+                           "inspections":  30
+                       },
+    "sourceBasis":  [
+                        {
+                            "assetCategory":  "fire-extinguisher",
+                            "formTitle":  "Fire Extinguishers Monitoring Form",
+                            "pageObserved":  "Page 1 of 2",
+                            "revision":  "2",
+                            "effectivityDate":  "2023-11",
+                            "documentCode":  null
+                        },
+                        {
+                            "assetCategory":  "fire-alarm",
+                            "formTitle":  "Fire Alarm Preventive Maintenance Form",
+                            "pageObserved":  "Page 1 of 2",
+                            "revision":  "1",
+                            "effectivityDate":  "2022-05",
+                            "documentCode":  "GSD-F-FAPMF"
+                        },
+                        {
+                            "assetCategory":  "emergency-light",
+                            "formTitle":  "Emergency Lights Preventive Maintenance Form",
+                            "pageObserved":  "Page 1 of 2",
+                            "revision":  "1",
+                            "effectivityDate":  "2022-05",
+                            "documentCode":  "GSD-F-ELPMF"
+                        },
+                        {
+                            "assetCategory":  "water-drinking-station",
+                            "formTitle":  "Water Drinking Station Preventive Maintenance Form",
+                            "pageObserved":  "Page 1 of 2",
+                            "revision":  "1",
+                            "effectivityDate":  "2023-11",
+                            "documentCode":  "GSD/PPFO-F-WDSPMF"
+                        }
+                    ],
+    "assumptions":  [
+                        "All assets, dates, findings, recommendations, actors, and identifiers in this file are fictional.",
+                        "Only Page 1 of each supplied physical form was available when version 1.0.0 was created.",
+                        "Page-2 checklist items and final acknowledgement, corrective-handoff, and RMRF rules remain provisional.",
+                        "No real personnel names, contact details, signatures, employee IDs, or completed institutional records are included.",
+                        "Quarterly schedules are used for fire extinguishers and water drinking stations.",
+                        "Semester schedules are used for fire alarms and emergency lights.",
+                        "Category-specific formData is retained for future schema expansion even when the current database seeder maps only generic fields."
+                    ],
+    "actors":  [
+                   {
+                       "seedKey":  "actor-inspector-fire",
+                       "id":  "d9bb5dc6-fbf0-551b-b875-6d46635c3464",
+                       "roleToken":  "GSD_FIRE_INSPECTOR",
+                       "displayLabel":  "Synthetic GSD Fire Safety Inspector"
+                   },
+                   {
+                       "seedKey":  "actor-electrical-engineer",
+                       "id":  "95b04a45-c91f-5e87-a95c-290e9c606ca8",
+                       "roleToken":  "ELECTRICAL_ENGINEER",
+                       "displayLabel":  "Synthetic Electrical Engineer"
+                   },
+                   {
+                       "seedKey":  "actor-plumber",
+                       "id":  "66c06ecc-6b3c-556e-b7b5-73323e82e9b3",
+                       "roleToken":  "PLUMBER",
+                       "displayLabel":  "Synthetic Plumber"
+                   },
+                   {
+                       "seedKey":  "actor-ppf-supervisor",
+                       "id":  "986db61e-880e-52d7-bb40-22b9b4ffacfe",
+                       "roleToken":  "PPF_SUPERVISOR",
+                       "displayLabel":  "Synthetic PPF Supervisor"
+                   },
+                   {
+                       "seedKey":  "actor-department-head",
+                       "id":  "282d2f40-84e8-5a62-ac94-bc6744da2c7b",
+                       "roleToken":  "DEPARTMENT_HEAD",
+                       "displayLabel":  "Synthetic Department Head"
+                   }
+               ],
+    "assets":  [
+                   {
+                       "seedKey":  "asset-fe-001",
+                       "id":  "f6420fec-4fb8-5c78-8299-12767e924b1a",
+                       "assetCode":  "FE-001",
+                       "assetCategory":  "fire-extinguisher",
+                       "building":  "Main Building",
+                       "department":  "Administration",
+                       "location":  "Ground Floor East Hallway",
+                       "status":  "Active",
+                       "categoryDetails":  {
+                                               "type":  "ABC Dry Chemical",
+                                               "capacity":  "10 lb",
+                                               "expirationDate":  "2027-05-31"
+                                           },
+                       "qrCodeValue":  "UNIPM-FIRE-EXTINGUISHER-f6420fec"
+                   },
+                   {
+                       "seedKey":  "asset-fe-002",
+                       "id":  "d9f9c2a0-d786-5f52-87c4-9f4344d0ebd0",
+                       "assetCode":  "FE-002",
+                       "assetCategory":  "fire-extinguisher",
+                       "building":  "Main Building",
+                       "department":  "Library",
+                       "location":  "Ground Floor Lobby",
+                       "status":  "Active",
+                       "categoryDetails":  {
+                                               "type":  "ABC Dry Chemical",
+                                               "capacity":  "10 lb",
+                                               "expirationDate":  "2027-08-31"
+                                           },
+                       "qrCodeValue":  "UNIPM-FIRE-EXTINGUISHER-d9f9c2a0"
+                   },
+                   {
+                       "seedKey":  "asset-fe-003",
+                       "id":  "fff47bb5-b0f7-599c-843e-a91cb0a85d61",
+                       "assetCode":  "FE-003",
+                       "assetCategory":  "fire-extinguisher",
+                       "building":  "Annex Building",
+                       "department":  "CCMS",
+                       "location":  "Second Floor Laboratory Corridor",
+                       "status":  "Active",
+                       "categoryDetails":  {
+                                               "type":  "Carbon Dioxide",
+                                               "capacity":  "10 lb",
+                                               "expirationDate":  "2026-11-30"
+                                           },
+                       "qrCodeValue":  "UNIPM-FIRE-EXTINGUISHER-fff47bb5"
+                   },
+                   {
+                       "seedKey":  "asset-fe-004",
+                       "id":  "0795fa54-d639-5b01-b0d4-60406b7ae83f",
+                       "assetCode":  "FE-004",
+                       "assetCategory":  "fire-extinguisher",
+                       "building":  "University Gymnasium",
+                       "department":  "Sports Office",
+                       "location":  "Main Entrance",
+                       "status":  "Active",
+                       "categoryDetails":  {
+                                               "type":  "ABC Dry Chemical",
+                                               "capacity":  "15 lb",
+                                               "expirationDate":  "2028-02-28"
+                                           },
+                       "qrCodeValue":  "UNIPM-FIRE-EXTINGUISHER-0795fa54"
+                   },
+                   {
+                       "seedKey":  "asset-fe-050",
+                       "id":  "f83fc630-5a2e-582d-88da-b4e21f25191f",
+                       "assetCode":  "FE-050",
+                       "assetCategory":  "fire-extinguisher",
+                       "building":  "Science Building",
+                       "department":  "Laboratory Services",
+                       "location":  "First Floor Chemistry Laboratory Exit",
+                       "status":  "Active",
+                       "categoryDetails":  {
+                                               "type":  "ABC Dry Chemical",
+                                               "capacity":  "10 lb",
+                                               "expirationDate":  "2028-07-31"
+                                           },
+                       "qrCodeValue":  "UNIPM-FIRE-EXTINGUISHER-f83fc630"
+                   },
+                   {
+                       "seedKey":  "asset-fa-001",
+                       "id":  "fd1e4eaa-6892-5911-b286-bb202b6fcbdb",
+                       "assetCode":  "FA-001",
+                       "assetCategory":  "fire-alarm",
+                       "building":  "Main Building",
+                       "department":  "Administration",
+                       "location":  "Security and Control Room",
+                       "status":  "Active",
+                       "categoryDetails":  {
+                                               "deviceParticulars":  "Main fire alarm control panel",
+                                               "deviceType":  "Control panel"
+                                           },
+                       "qrCodeValue":  "UNIPM-FIRE-ALARM-fd1e4eaa"
+                   },
+                   {
+                       "seedKey":  "asset-fa-002",
+                       "id":  "251074ae-2cfc-563d-88d6-fafddb628a13",
+                       "assetCode":  "FA-002",
+                       "assetCategory":  "fire-alarm",
+                       "building":  "Annex Building",
+                       "department":  "CCMS",
+                       "location":  "Second Floor Laboratory Hallway",
+                       "status":  "Active",
+                       "categoryDetails":  {
+                                               "deviceParticulars":  "Smoke detector SD-02",
+                                               "deviceType":  "Smoke detector"
+                                           },
+                       "qrCodeValue":  "UNIPM-FIRE-ALARM-251074ae"
+                   },
+                   {
+                       "seedKey":  "asset-fa-003",
+                       "id":  "7bfa4436-d0f1-5997-9310-6dafbc8183fe",
+                       "assetCode":  "FA-003",
+                       "assetCategory":  "fire-alarm",
+                       "building":  "Library Building",
+                       "department":  "Library",
+                       "location":  "Ground Floor Lobby",
+                       "status":  "Active",
+                       "categoryDetails":  {
+                                               "deviceParticulars":  "Manual call point and strobe assembly",
+                                               "deviceType":  "Manual call point"
+                                           },
+                       "qrCodeValue":  "UNIPM-FIRE-ALARM-7bfa4436"
+                   },
+                   {
+                       "seedKey":  "asset-fa-004",
+                       "id":  "bbb98f04-7a7a-5dea-9518-ebbdf28d5f06",
+                       "assetCode":  "FA-004",
+                       "assetCategory":  "fire-alarm",
+                       "building":  "University Gymnasium",
+                       "department":  "Sports Office",
+                       "location":  "Main Hall",
+                       "status":  "Active",
+                       "categoryDetails":  {
+                                               "deviceParticulars":  "Bell and strobe notification appliance",
+                                               "deviceType":  "Bell/strobe"
+                                           },
+                       "qrCodeValue":  "UNIPM-FIRE-ALARM-bbb98f04"
+                   },
+                   {
+                       "seedKey":  "asset-fa-050",
+                       "id":  "39ff1332-33a5-55cf-979f-27214a1df108",
+                       "assetCode":  "FA-050",
+                       "assetCategory":  "fire-alarm",
+                       "building":  "Science Building",
+                       "department":  "Laboratory Services",
+                       "location":  "Laboratory 204",
+                       "status":  "Active",
+                       "categoryDetails":  {
+                                               "deviceParticulars":  "Smoke detector SD-50",
+                                               "deviceType":  "Smoke detector"
+                                           },
+                       "qrCodeValue":  "UNIPM-FIRE-ALARM-39ff1332"
+                   },
+                   {
+                       "seedKey":  "asset-el-001",
+                       "id":  "54c526f8-e644-50dd-bb13-a7893b822722",
+                       "assetCode":  "EL-001",
+                       "assetCategory":  "emergency-light",
+                       "building":  "Main Building",
+                       "department":  "Administration",
+                       "location":  "East Stairwell",
+                       "status":  "Active",
+                       "categoryDetails":  {
+                                               "dateInstalled":  "2022-07-15",
+                                               "unitType":  "Twin-head LED emergency light"
+                                           },
+                       "qrCodeValue":  "UNIPM-EMERGENCY-LIGHT-54c526f8"
+                   },
+                   {
+                       "seedKey":  "asset-el-002",
+                       "id":  "9deca5e0-48d3-548f-819f-50548f5e8c49",
+                       "assetCode":  "EL-002",
+                       "assetCategory":  "emergency-light",
+                       "building":  "Main Building",
+                       "department":  "Registrar",
+                       "location":  "West Hallway",
+                       "status":  "Active",
+                       "categoryDetails":  {
+                                               "dateInstalled":  "2023-01-20",
+                                               "unitType":  "Twin-head LED emergency light"
+                                           },
+                       "qrCodeValue":  "UNIPM-EMERGENCY-LIGHT-9deca5e0"
+                   },
+                   {
+                       "seedKey":  "asset-el-003",
+                       "id":  "0a81c141-b49f-59f0-930d-b0627c924af8",
+                       "assetCode":  "EL-003",
+                       "assetCategory":  "emergency-light",
+                       "building":  "Annex Building",
+                       "department":  "CCMS",
+                       "location":  "Laboratory Corridor",
+                       "status":  "Active",
+                       "categoryDetails":  {
+                                               "dateInstalled":  "2022-11-05",
+                                               "unitType":  "LED emergency light"
+                                           },
+                       "qrCodeValue":  "UNIPM-EMERGENCY-LIGHT-0a81c141"
+                   },
+                   {
+                       "seedKey":  "asset-el-004",
+                       "id":  "150ba5b1-0ace-5c3b-bf9f-152ded558e2b",
+                       "assetCode":  "EL-004",
+                       "assetCategory":  "emergency-light",
+                       "building":  "Library Building",
+                       "department":  "Library",
+                       "location":  "Reading Room Exit",
+                       "status":  "Active",
+                       "categoryDetails":  {
+                                               "dateInstalled":  "2023-06-18",
+                                               "unitType":  "Exit-integrated emergency light"
+                                           },
+                       "qrCodeValue":  "UNIPM-EMERGENCY-LIGHT-150ba5b1"
+                   },
+                   {
+                       "seedKey":  "asset-el-050",
+                       "id":  "3b667d5b-9638-5d3f-bc0e-2207d21640f2",
+                       "assetCode":  "EL-050",
+                       "assetCategory":  "emergency-light",
+                       "building":  "Science Building",
+                       "department":  "Laboratory Services",
+                       "location":  "Second Floor Laboratory Exit",
+                       "status":  "Active",
+                       "categoryDetails":  {
+                                               "dateInstalled":  "2024-02-12",
+                                               "unitType":  "Twin-head LED emergency light"
+                                           },
+                       "qrCodeValue":  "UNIPM-EMERGENCY-LIGHT-3b667d5b"
+                   },
+                   {
+                       "seedKey":  "asset-wds-001",
+                       "id":  "40bccea3-c507-52b6-941d-a9051a6d4b2b",
+                       "assetCode":  "WDS-001",
+                       "assetCategory":  "water-drinking-station",
+                       "building":  "Main Building",
+                       "department":  "Food Services",
+                       "location":  "Cafeteria",
+                       "status":  "Active",
+                       "categoryDetails":  {
+                                               "stationType":  "Floor-standing filtered station",
+                                               "filterConfiguration":  [
+                                                                           "carbon filter",
+                                                                           "sediment filter"
+                                                                       ],
+                                               "hasUvLight":  true
+                                           },
+                       "qrCodeValue":  "UNIPM-WATER-DRINKING-STATION-40bccea3"
+                   },
+                   {
+                       "seedKey":  "asset-wds-002",
+                       "id":  "7716f6cf-bd56-5646-a143-883f4c5d5dc7",
+                       "assetCode":  "WDS-002",
+                       "assetCategory":  "water-drinking-station",
+                       "building":  "Annex Building",
+                       "department":  "CCMS",
+                       "location":  "Ground Floor Lobby",
+                       "status":  "Active",
+                       "categoryDetails":  {
+                                               "stationType":  "Floor-standing filtered station",
+                                               "filterConfiguration":  [
+                                                                           "carbon filter",
+                                                                           "sediment filter"
+                                                                       ],
+                                               "hasUvLight":  true
+                                           },
+                       "qrCodeValue":  "UNIPM-WATER-DRINKING-STATION-7716f6cf"
+                   },
+                   {
+                       "seedKey":  "asset-wds-003",
+                       "id":  "b0d5ddc9-9bba-5152-933d-f6ae01b679f6",
+                       "assetCode":  "WDS-003",
+                       "assetCategory":  "water-drinking-station",
+                       "building":  "Library Building",
+                       "department":  "Library",
+                       "location":  "Ground Floor Reading Area",
+                       "status":  "Active",
+                       "categoryDetails":  {
+                                               "stationType":  "Bottle-filling filtered station",
+                                               "filterConfiguration":  [
+                                                                           "carbon filter",
+                                                                           "sediment filter"
+                                                                       ],
+                                               "hasUvLight":  true
+                                           },
+                       "qrCodeValue":  "UNIPM-WATER-DRINKING-STATION-b0d5ddc9"
+                   },
+                   {
+                       "seedKey":  "asset-wds-004",
+                       "id":  "3fb831e9-81ec-5948-8a86-1ca29f60ea28",
+                       "assetCode":  "WDS-004",
+                       "assetCategory":  "water-drinking-station",
+                       "building":  "University Gymnasium",
+                       "department":  "Sports Office",
+                       "location":  "Lobby",
+                       "status":  "Active",
+                       "categoryDetails":  {
+                                               "stationType":  "Floor-standing filtered station",
+                                               "filterConfiguration":  [
+                                                                           "carbon filter",
+                                                                           "sediment filter"
+                                                                       ],
+                                               "hasUvLight":  false
+                                           },
+                       "qrCodeValue":  "UNIPM-WATER-DRINKING-STATION-3fb831e9"
+                   },
+                   {
+                       "seedKey":  "asset-wds-050",
+                       "id":  "84b14d99-4c97-5afc-8d30-a9b6aeb83cdc",
+                       "assetCode":  "WDS-050",
+                       "assetCategory":  "water-drinking-station",
+                       "building":  "Science Building",
+                       "department":  "Laboratory Services",
+                       "location":  "Second Floor Hallway",
+                       "status":  "Active",
+                       "categoryDetails":  {
+                                               "stationType":  "Bottle-filling filtered station",
+                                               "filterConfiguration":  [
+                                                                           "carbon filter",
+                                                                           "sediment filter"
+                                                                       ],
+                                               "hasUvLight":  true
+                                           },
+                       "qrCodeValue":  "UNIPM-WATER-DRINKING-STATION-84b14d99"
+                   }
+               ],
+    "schedules":  [
+                      {
+                          "seedKey":  "schedule-fe-001-2025-05-15-1",
+                          "id":  "e0665856-e579-5eab-9453-610e81631115",
+                          "assetId":  "f6420fec-4fb8-5c78-8299-12767e924b1a",
+                          "assetCode":  "FE-001",
+                          "scheduleDate":  "2025-05-15",
+                          "periodType":  "Quarter",
+                          "quarter":  "Q2",
+                          "semester":  null,
+                          "year":  2025,
+                          "academicYear":  null,
+                          "status":  "Completed",
+                          "assignedToUserId":  "d9bb5dc6-fbf0-551b-b875-6d46635c3464",
+                          "completedAt":  "2025-05-15T08:30:00+08:00"
+                      },
+                      {
+                          "seedKey":  "schedule-fe-001-2025-08-15-2",
+                          "id":  "7e75f664-e127-5952-85d2-5e9a42706acb",
+                          "assetId":  "f6420fec-4fb8-5c78-8299-12767e924b1a",
+                          "assetCode":  "FE-001",
+                          "scheduleDate":  "2025-08-15",
+                          "periodType":  "Quarter",
+                          "quarter":  "Q3",
+                          "semester":  null,
+                          "year":  2025,
+                          "academicYear":  null,
+                          "status":  "Completed",
+                          "assignedToUserId":  "d9bb5dc6-fbf0-551b-b875-6d46635c3464",
+                          "completedAt":  "2025-08-15T08:30:00+08:00"
+                      },
+                      {
+                          "seedKey":  "schedule-fe-001-2025-11-15-3",
+                          "id":  "4e9125f1-fa08-5fb3-9e12-611e89744b2d",
+                          "assetId":  "f6420fec-4fb8-5c78-8299-12767e924b1a",
+                          "assetCode":  "FE-001",
+                          "scheduleDate":  "2025-11-15",
+                          "periodType":  "Quarter",
+                          "quarter":  "Q4",
+                          "semester":  null,
+                          "year":  2025,
+                          "academicYear":  null,
+                          "status":  "Completed",
+                          "assignedToUserId":  "d9bb5dc6-fbf0-551b-b875-6d46635c3464",
+                          "completedAt":  "2025-11-15T08:30:00+08:00"
+                      },
+                      {
+                          "seedKey":  "schedule-fe-002-2025-05-16-1",
+                          "id":  "4a169945-c40f-517a-b49f-fc27c7c8a22a",
+                          "assetId":  "d9f9c2a0-d786-5f52-87c4-9f4344d0ebd0",
+                          "assetCode":  "FE-002",
+                          "scheduleDate":  "2025-05-16",
+                          "periodType":  "Quarter",
+                          "quarter":  "Q2",
+                          "semester":  null,
+                          "year":  2025,
+                          "academicYear":  null,
+                          "status":  "Completed",
+                          "assignedToUserId":  "d9bb5dc6-fbf0-551b-b875-6d46635c3464",
+                          "completedAt":  "2025-05-16T08:30:00+08:00"
+                      },
+                      {
+                          "seedKey":  "schedule-fe-002-2025-08-16-2",
+                          "id":  "2cea9c7b-c581-5319-91fe-189b72474c08",
+                          "assetId":  "d9f9c2a0-d786-5f52-87c4-9f4344d0ebd0",
+                          "assetCode":  "FE-002",
+                          "scheduleDate":  "2025-08-16",
+                          "periodType":  "Quarter",
+                          "quarter":  "Q3",
+                          "semester":  null,
+                          "year":  2025,
+                          "academicYear":  null,
+                          "status":  "Completed",
+                          "assignedToUserId":  "d9bb5dc6-fbf0-551b-b875-6d46635c3464",
+                          "completedAt":  "2025-08-16T08:30:00+08:00"
+                      },
+                      {
+                          "seedKey":  "schedule-fe-003-2025-06-10-1",
+                          "id":  "0f7255fc-0584-58a0-861d-3782b73cbbfd",
+                          "assetId":  "fff47bb5-b0f7-599c-843e-a91cb0a85d61",
+                          "assetCode":  "FE-003",
+                          "scheduleDate":  "2025-06-10",
+                          "periodType":  "Quarter",
+                          "quarter":  "Q2",
+                          "semester":  null,
+                          "year":  2025,
+                          "academicYear":  null,
+                          "status":  "Completed",
+                          "assignedToUserId":  "d9bb5dc6-fbf0-551b-b875-6d46635c3464",
+                          "completedAt":  "2025-06-10T08:30:00+08:00"
+                      },
+                      {
+                          "seedKey":  "schedule-fe-003-2025-09-10-2",
+                          "id":  "eb062df5-b1e5-5267-adbd-b0a3809d236e",
+                          "assetId":  "fff47bb5-b0f7-599c-843e-a91cb0a85d61",
+                          "assetCode":  "FE-003",
+                          "scheduleDate":  "2025-09-10",
+                          "periodType":  "Quarter",
+                          "quarter":  "Q3",
+                          "semester":  null,
+                          "year":  2025,
+                          "academicYear":  null,
+                          "status":  "Completed",
+                          "assignedToUserId":  "d9bb5dc6-fbf0-551b-b875-6d46635c3464",
+                          "completedAt":  "2025-09-10T08:30:00+08:00"
+                      },
+                      {
+                          "seedKey":  "schedule-fe-004-2025-05-20-1",
+                          "id":  "87f2dd05-3ed3-5931-b900-d1d25b754ca5",
+                          "assetId":  "0795fa54-d639-5b01-b0d4-60406b7ae83f",
+                          "assetCode":  "FE-004",
+                          "scheduleDate":  "2025-05-20",
+                          "periodType":  "Quarter",
+                          "quarter":  "Q2",
+                          "semester":  null,
+                          "year":  2025,
+                          "academicYear":  null,
+                          "status":  "Completed",
+                          "assignedToUserId":  "d9bb5dc6-fbf0-551b-b875-6d46635c3464",
+                          "completedAt":  "2025-05-20T08:30:00+08:00"
+                      },
+                      {
+                          "seedKey":  "schedule-fe-004-2025-08-20-2",
+                          "id":  "7e2461d0-1784-5262-a6c1-1d14513a0482",
+                          "assetId":  "0795fa54-d639-5b01-b0d4-60406b7ae83f",
+                          "assetCode":  "FE-004",
+                          "scheduleDate":  "2025-08-20",
+                          "periodType":  "Quarter",
+                          "quarter":  "Q3",
+                          "semester":  null,
+                          "year":  2025,
+                          "academicYear":  null,
+                          "status":  "Completed",
+                          "assignedToUserId":  "d9bb5dc6-fbf0-551b-b875-6d46635c3464",
+                          "completedAt":  "2025-08-20T08:30:00+08:00"
+                      },
+                      {
+                          "seedKey":  "schedule-fa-001-2024-06-18-1",
+                          "id":  "a82bd716-87ab-5566-ba99-cc0e90d28c71",
+                          "assetId":  "fd1e4eaa-6892-5911-b286-bb202b6fcbdb",
+                          "assetCode":  "FA-001",
+                          "scheduleDate":  "2024-06-18",
+                          "periodType":  "Semester",
+                          "quarter":  null,
+                          "semester":  "First",
+                          "year":  null,
+                          "academicYear":  "2024-2025",
+                          "status":  "Completed",
+                          "assignedToUserId":  "95b04a45-c91f-5e87-a95c-290e9c606ca8",
+                          "completedAt":  "2024-06-18T08:30:00+08:00"
+                      },
+                      {
+                          "seedKey":  "schedule-fa-001-2024-12-18-2",
+                          "id":  "605549a4-25b0-5f72-a86f-5b749d8529f1",
+                          "assetId":  "fd1e4eaa-6892-5911-b286-bb202b6fcbdb",
+                          "assetCode":  "FA-001",
+                          "scheduleDate":  "2024-12-18",
+                          "periodType":  "Semester",
+                          "quarter":  null,
+                          "semester":  "Second",
+                          "year":  null,
+                          "academicYear":  "2024-2025",
+                          "status":  "Completed",
+                          "assignedToUserId":  "95b04a45-c91f-5e87-a95c-290e9c606ca8",
+                          "completedAt":  "2024-12-18T08:30:00+08:00"
+                      },
+                      {
+                          "seedKey":  "schedule-fa-002-2024-06-19-1",
+                          "id":  "e5c957b5-bd56-5212-a3ea-f0d656c007a1",
+                          "assetId":  "251074ae-2cfc-563d-88d6-fafddb628a13",
+                          "assetCode":  "FA-002",
+                          "scheduleDate":  "2024-06-19",
+                          "periodType":  "Semester",
+                          "quarter":  null,
+                          "semester":  "First",
+                          "year":  null,
+                          "academicYear":  "2024-2025",
+                          "status":  "Completed",
+                          "assignedToUserId":  "95b04a45-c91f-5e87-a95c-290e9c606ca8",
+                          "completedAt":  "2024-06-19T08:30:00+08:00"
+                      },
+                      {
+                          "seedKey":  "schedule-fa-002-2024-12-19-2",
+                          "id":  "50b013d8-7a78-5df9-ad95-069acf311da9",
+                          "assetId":  "251074ae-2cfc-563d-88d6-fafddb628a13",
+                          "assetCode":  "FA-002",
+                          "scheduleDate":  "2024-12-19",
+                          "periodType":  "Semester",
+                          "quarter":  null,
+                          "semester":  "Second",
+                          "year":  null,
+                          "academicYear":  "2024-2025",
+                          "status":  "Completed",
+                          "assignedToUserId":  "95b04a45-c91f-5e87-a95c-290e9c606ca8",
+                          "completedAt":  "2024-12-19T08:30:00+08:00"
+                      },
+                      {
+                          "seedKey":  "schedule-fa-003-2025-06-20-1",
+                          "id":  "b52c198e-1bb4-5d01-8ded-91b99b8669f5",
+                          "assetId":  "7bfa4436-d0f1-5997-9310-6dafbc8183fe",
+                          "assetCode":  "FA-003",
+                          "scheduleDate":  "2025-06-20",
+                          "periodType":  "Semester",
+                          "quarter":  null,
+                          "semester":  "First",
+                          "year":  null,
+                          "academicYear":  "2025-2026",
+                          "status":  "Completed",
+                          "assignedToUserId":  "95b04a45-c91f-5e87-a95c-290e9c606ca8",
+                          "completedAt":  "2025-06-20T08:30:00+08:00"
+                      },
+                      {
+                          "seedKey":  "schedule-fa-003-2025-12-20-2",
+                          "id":  "6a09cb3d-a8ed-5f2a-acc8-ff8bac97df8d",
+                          "assetId":  "7bfa4436-d0f1-5997-9310-6dafbc8183fe",
+                          "assetCode":  "FA-003",
+                          "scheduleDate":  "2025-12-20",
+                          "periodType":  "Semester",
+                          "quarter":  null,
+                          "semester":  "Second",
+                          "year":  null,
+                          "academicYear":  "2025-2026",
+                          "status":  "Completed",
+                          "assignedToUserId":  "95b04a45-c91f-5e87-a95c-290e9c606ca8",
+                          "completedAt":  "2025-12-20T08:30:00+08:00"
+                      },
+                      {
+                          "seedKey":  "schedule-fa-004-2025-06-21-1",
+                          "id":  "56f1adc7-65ed-5735-bf40-ffb78eb33824",
+                          "assetId":  "bbb98f04-7a7a-5dea-9518-ebbdf28d5f06",
+                          "assetCode":  "FA-004",
+                          "scheduleDate":  "2025-06-21",
+                          "periodType":  "Semester",
+                          "quarter":  null,
+                          "semester":  "First",
+                          "year":  null,
+                          "academicYear":  "2025-2026",
+                          "status":  "Completed",
+                          "assignedToUserId":  "95b04a45-c91f-5e87-a95c-290e9c606ca8",
+                          "completedAt":  "2025-06-21T08:30:00+08:00"
+                      },
+                      {
+                          "seedKey":  "schedule-el-001-2024-06-12-1",
+                          "id":  "d0ca774f-6815-5544-bb54-2b7fcd1d917c",
+                          "assetId":  "54c526f8-e644-50dd-bb13-a7893b822722",
+                          "assetCode":  "EL-001",
+                          "scheduleDate":  "2024-06-12",
+                          "periodType":  "Semester",
+                          "quarter":  null,
+                          "semester":  "First",
+                          "year":  null,
+                          "academicYear":  "2024-2025",
+                          "status":  "Completed",
+                          "assignedToUserId":  "95b04a45-c91f-5e87-a95c-290e9c606ca8",
+                          "completedAt":  "2024-06-12T08:30:00+08:00"
+                      },
+                      {
+                          "seedKey":  "schedule-el-001-2024-12-12-2",
+                          "id":  "f1cf53dd-242e-585e-8e6d-00a968fede33",
+                          "assetId":  "54c526f8-e644-50dd-bb13-a7893b822722",
+                          "assetCode":  "EL-001",
+                          "scheduleDate":  "2024-12-12",
+                          "periodType":  "Semester",
+                          "quarter":  null,
+                          "semester":  "Second",
+                          "year":  null,
+                          "academicYear":  "2024-2025",
+                          "status":  "Completed",
+                          "assignedToUserId":  "95b04a45-c91f-5e87-a95c-290e9c606ca8",
+                          "completedAt":  "2024-12-12T08:30:00+08:00"
+                      },
+                      {
+                          "seedKey":  "schedule-el-001-2025-06-12-3",
+                          "id":  "d84c4875-5a9a-5dea-a554-224e638650d2",
+                          "assetId":  "54c526f8-e644-50dd-bb13-a7893b822722",
+                          "assetCode":  "EL-001",
+                          "scheduleDate":  "2025-06-12",
+                          "periodType":  "Semester",
+                          "quarter":  null,
+                          "semester":  "First",
+                          "year":  null,
+                          "academicYear":  "2025-2026",
+                          "status":  "Completed",
+                          "assignedToUserId":  "95b04a45-c91f-5e87-a95c-290e9c606ca8",
+                          "completedAt":  "2025-06-12T08:30:00+08:00"
+                      },
+                      {
+                          "seedKey":  "schedule-el-002-2024-06-13-1",
+                          "id":  "7a96fb6e-efbf-57a7-894b-70d8d662136e",
+                          "assetId":  "9deca5e0-48d3-548f-819f-50548f5e8c49",
+                          "assetCode":  "EL-002",
+                          "scheduleDate":  "2024-06-13",
+                          "periodType":  "Semester",
+                          "quarter":  null,
+                          "semester":  "First",
+                          "year":  null,
+                          "academicYear":  "2024-2025",
+                          "status":  "Completed",
+                          "assignedToUserId":  "95b04a45-c91f-5e87-a95c-290e9c606ca8",
+                          "completedAt":  "2024-06-13T08:30:00+08:00"
+                      },
+                      {
+                          "seedKey":  "schedule-el-002-2024-12-13-2",
+                          "id":  "2aa9b8bc-557d-5b8a-946b-1c1225736d38",
+                          "assetId":  "9deca5e0-48d3-548f-819f-50548f5e8c49",
+                          "assetCode":  "EL-002",
+                          "scheduleDate":  "2024-12-13",
+                          "periodType":  "Semester",
+                          "quarter":  null,
+                          "semester":  "Second",
+                          "year":  null,
+                          "academicYear":  "2024-2025",
+                          "status":  "Completed",
+                          "assignedToUserId":  "95b04a45-c91f-5e87-a95c-290e9c606ca8",
+                          "completedAt":  "2024-12-13T08:30:00+08:00"
+                      },
+                      {
+                          "seedKey":  "schedule-el-003-2025-06-14-1",
+                          "id":  "f95bdf19-e8f0-556a-aefa-72e5dbc6b6df",
+                          "assetId":  "0a81c141-b49f-59f0-930d-b0627c924af8",
+                          "assetCode":  "EL-003",
+                          "scheduleDate":  "2025-06-14",
+                          "periodType":  "Semester",
+                          "quarter":  null,
+                          "semester":  "First",
+                          "year":  null,
+                          "academicYear":  "2025-2026",
+                          "status":  "Completed",
+                          "assignedToUserId":  "95b04a45-c91f-5e87-a95c-290e9c606ca8",
+                          "completedAt":  "2025-06-14T08:30:00+08:00"
+                      },
+                      {
+                          "seedKey":  "schedule-el-004-2025-06-15-1",
+                          "id":  "b817a5f1-9cb0-58bd-96eb-f99ce3557cd4",
+                          "assetId":  "150ba5b1-0ace-5c3b-bf9f-152ded558e2b",
+                          "assetCode":  "EL-004",
+                          "scheduleDate":  "2025-06-15",
+                          "periodType":  "Semester",
+                          "quarter":  null,
+                          "semester":  "First",
+                          "year":  null,
+                          "academicYear":  "2025-2026",
+                          "status":  "Completed",
+                          "assignedToUserId":  "95b04a45-c91f-5e87-a95c-290e9c606ca8",
+                          "completedAt":  "2025-06-15T08:30:00+08:00"
+                      },
+                      {
+                          "seedKey":  "schedule-wds-001-2025-05-08-1",
+                          "id":  "dc6141c6-6eeb-546b-a805-fa9617a7e4e9",
+                          "assetId":  "40bccea3-c507-52b6-941d-a9051a6d4b2b",
+                          "assetCode":  "WDS-001",
+                          "scheduleDate":  "2025-05-08",
+                          "periodType":  "Quarter",
+                          "quarter":  "Q2",
+                          "semester":  null,
+                          "year":  2025,
+                          "academicYear":  null,
+                          "status":  "Completed",
+                          "assignedToUserId":  "66c06ecc-6b3c-556e-b7b5-73323e82e9b3",
+                          "completedAt":  "2025-05-08T08:30:00+08:00"
+                      },
+                      {
+                          "seedKey":  "schedule-wds-001-2025-08-08-2",
+                          "id":  "19941abd-dee3-5fad-b02c-40836d2fbbc4",
+                          "assetId":  "40bccea3-c507-52b6-941d-a9051a6d4b2b",
+                          "assetCode":  "WDS-001",
+                          "scheduleDate":  "2025-08-08",
+                          "periodType":  "Quarter",
+                          "quarter":  "Q3",
+                          "semester":  null,
+                          "year":  2025,
+                          "academicYear":  null,
+                          "status":  "Completed",
+                          "assignedToUserId":  "66c06ecc-6b3c-556e-b7b5-73323e82e9b3",
+                          "completedAt":  "2025-08-08T08:30:00+08:00"
+                      },
+                      {
+                          "seedKey":  "schedule-wds-001-2025-11-08-3",
+                          "id":  "66895327-76de-5457-90d9-ddc684a7146e",
+                          "assetId":  "40bccea3-c507-52b6-941d-a9051a6d4b2b",
+                          "assetCode":  "WDS-001",
+                          "scheduleDate":  "2025-11-08",
+                          "periodType":  "Quarter",
+                          "quarter":  "Q4",
+                          "semester":  null,
+                          "year":  2025,
+                          "academicYear":  null,
+                          "status":  "Completed",
+                          "assignedToUserId":  "66c06ecc-6b3c-556e-b7b5-73323e82e9b3",
+                          "completedAt":  "2025-11-08T08:30:00+08:00"
+                      },
+                      {
+                          "seedKey":  "schedule-wds-002-2025-05-09-1",
+                          "id":  "420da488-4fe8-5d78-a520-b1d38a57533a",
+                          "assetId":  "7716f6cf-bd56-5646-a143-883f4c5d5dc7",
+                          "assetCode":  "WDS-002",
+                          "scheduleDate":  "2025-05-09",
+                          "periodType":  "Quarter",
+                          "quarter":  "Q2",
+                          "semester":  null,
+                          "year":  2025,
+                          "academicYear":  null,
+                          "status":  "Completed",
+                          "assignedToUserId":  "66c06ecc-6b3c-556e-b7b5-73323e82e9b3",
+                          "completedAt":  "2025-05-09T08:30:00+08:00"
+                      },
+                      {
+                          "seedKey":  "schedule-wds-002-2025-08-09-2",
+                          "id":  "a5ecb8fc-537c-5208-9082-3a0675a0a1ff",
+                          "assetId":  "7716f6cf-bd56-5646-a143-883f4c5d5dc7",
+                          "assetCode":  "WDS-002",
+                          "scheduleDate":  "2025-08-09",
+                          "periodType":  "Quarter",
+                          "quarter":  "Q3",
+                          "semester":  null,
+                          "year":  2025,
+                          "academicYear":  null,
+                          "status":  "Completed",
+                          "assignedToUserId":  "66c06ecc-6b3c-556e-b7b5-73323e82e9b3",
+                          "completedAt":  "2025-08-09T08:30:00+08:00"
+                      },
+                      {
+                          "seedKey":  "schedule-wds-003-2025-05-10-1",
+                          "id":  "4656b7ce-6b03-5c49-a0c9-dbf65a545fbd",
+                          "assetId":  "b0d5ddc9-9bba-5152-933d-f6ae01b679f6",
+                          "assetCode":  "WDS-003",
+                          "scheduleDate":  "2025-05-10",
+                          "periodType":  "Quarter",
+                          "quarter":  "Q2",
+                          "semester":  null,
+                          "year":  2025,
+                          "academicYear":  null,
+                          "status":  "Completed",
+                          "assignedToUserId":  "66c06ecc-6b3c-556e-b7b5-73323e82e9b3",
+                          "completedAt":  "2025-05-10T08:30:00+08:00"
+                      },
+                      {
+                          "seedKey":  "schedule-wds-004-2025-05-11-1",
+                          "id":  "a0d03fcd-d74d-5017-ad71-c36a0f1c09d2",
+                          "assetId":  "3fb831e9-81ec-5948-8a86-1ca29f60ea28",
+                          "assetCode":  "WDS-004",
+                          "scheduleDate":  "2025-05-11",
+                          "periodType":  "Quarter",
+                          "quarter":  "Q2",
+                          "semester":  null,
+                          "year":  2025,
+                          "academicYear":  null,
+                          "status":  "Completed",
+                          "assignedToUserId":  "66c06ecc-6b3c-556e-b7b5-73323e82e9b3",
+                          "completedAt":  "2025-05-11T08:30:00+08:00"
+                      },
+                      {
+                          "seedKey":  "schedule-fe-050-2026-08-15-cold-start",
+                          "id":  "b82bd411-2334-5c4a-a29a-5579de0bd7a9",
+                          "assetId":  "f83fc630-5a2e-582d-88da-b4e21f25191f",
+                          "assetCode":  "FE-050",
+                          "scheduleDate":  "2026-08-15",
+                          "periodType":  "Quarter",
+                          "quarter":  "Q3",
+                          "semester":  null,
+                          "year":  2026,
+                          "academicYear":  null,
+                          "status":  "Due",
+                          "assignedToUserId":  "d9bb5dc6-fbf0-551b-b875-6d46635c3464",
+                          "completedAt":  null
+                      },
+                      {
+                          "seedKey":  "schedule-fa-050-2026-12-15-cold-start",
+                          "id":  "dae93484-b66f-5f0d-a65b-ee1267008da6",
+                          "assetId":  "39ff1332-33a5-55cf-979f-27214a1df108",
+                          "assetCode":  "FA-050",
+                          "scheduleDate":  "2026-12-15",
+                          "periodType":  "Semester",
+                          "quarter":  null,
+                          "semester":  "Second",
+                          "year":  null,
+                          "academicYear":  "2026-2027",
+                          "status":  "Due",
+                          "assignedToUserId":  "95b04a45-c91f-5e87-a95c-290e9c606ca8",
+                          "completedAt":  null
+                      },
+                      {
+                          "seedKey":  "schedule-el-050-2026-12-16-cold-start",
+                          "id":  "810fe96d-fe52-58b1-bf8d-4360b67d55ed",
+                          "assetId":  "3b667d5b-9638-5d3f-bc0e-2207d21640f2",
+                          "assetCode":  "EL-050",
+                          "scheduleDate":  "2026-12-16",
+                          "periodType":  "Semester",
+                          "quarter":  null,
+                          "semester":  "Second",
+                          "year":  null,
+                          "academicYear":  "2026-2027",
+                          "status":  "Due",
+                          "assignedToUserId":  "95b04a45-c91f-5e87-a95c-290e9c606ca8",
+                          "completedAt":  null
+                      },
+                      {
+                          "seedKey":  "schedule-wds-050-2026-08-16-cold-start",
+                          "id":  "a9d23ce8-84cb-5718-97a1-c1fd7367e058",
+                          "assetId":  "84b14d99-4c97-5afc-8d30-a9b6aeb83cdc",
+                          "assetCode":  "WDS-050",
+                          "scheduleDate":  "2026-08-16",
+                          "periodType":  "Quarter",
+                          "quarter":  "Q3",
+                          "semester":  null,
+                          "year":  2026,
+                          "academicYear":  null,
+                          "status":  "Due",
+                          "assignedToUserId":  "66c06ecc-6b3c-556e-b7b5-73323e82e9b3",
+                          "completedAt":  null
+                      }
+                  ],
+    "inspections":  [
+                        {
+                            "seedKey":  "inspection-fe-001-2025-05-15-1",
+                            "id":  "267babd6-4e6d-5082-843a-6db5d9d3e5ae",
+                            "scheduleId":  "e0665856-e579-5eab-9453-610e81631115",
+                            "assetId":  "f6420fec-4fb8-5c78-8299-12767e924b1a",
+                            "assetCode":  "FE-001",
+                            "assetCategory":  "fire-extinguisher",
+                            "inspectorUserId":  "d9bb5dc6-fbf0-551b-b875-6d46635c3464",
+                            "dateInspected":  "2025-05-15T08:00:00+08:00",
+                            "isOperational":  false,
+                            "remarks":  "mahina ang pressure, for refill",
+                            "actionsRecommendations":  "Schedule the unit for refilling and perform a follow-up pressure check.",
+                            "formData":  {
+                                             "acknowledgedByRole":  "DEPARTMENT_HEAD",
+                                             "notedByRole":  "PPF_SUPERVISOR"
+                                         }
+                        },
+                        {
+                            "seedKey":  "inspection-fe-001-2025-08-15-2",
+                            "id":  "334f4c25-2a02-50e7-b93e-79a01ebee7a7",
+                            "scheduleId":  "7e75f664-e127-5952-85d2-5e9a42706acb",
+                            "assetId":  "f6420fec-4fb8-5c78-8299-12767e924b1a",
+                            "assetCode":  "FE-001",
+                            "assetCategory":  "fire-extinguisher",
+                            "inspectorUserId":  "d9bb5dc6-fbf0-551b-b875-6d46635c3464",
+                            "dateInspected":  "2025-08-15T08:00:00+08:00",
+                            "isOperational":  false,
+                            "remarks":  "Pressure gauge below acceptable range; needs refill.",
+                            "actionsRecommendations":  "Endorse for refilling and reinspection before returning the unit to service.",
+                            "formData":  {
+                                             "acknowledgedByRole":  "DEPARTMENT_HEAD",
+                                             "notedByRole":  "PPF_SUPERVISOR"
+                                         }
+                        },
+                        {
+                            "seedKey":  "inspection-fe-001-2025-11-15-3",
+                            "id":  "1a069120-c57f-5249-bde9-cbe4538c70e2",
+                            "scheduleId":  "4e9125f1-fa08-5fb3-9e12-611e89744b2d",
+                            "assetId":  "f6420fec-4fb8-5c78-8299-12767e924b1a",
+                            "assetCode":  "FE-001",
+                            "assetCategory":  "fire-extinguisher",
+                            "inspectorUserId":  "d9bb5dc6-fbf0-551b-b875-6d46635c3464",
+                            "dateInspected":  "2025-11-15T08:00:00+08:00",
+                            "isOperational":  true,
+                            "remarks":  "Pressure restored after refilling; gauge reading is within the acceptable zone.",
+                            "actionsRecommendations":  "Continue regular quarterly monitoring.",
+                            "formData":  {
+                                             "acknowledgedByRole":  "DEPARTMENT_HEAD",
+                                             "notedByRole":  "PPF_SUPERVISOR"
+                                         }
+                        },
+                        {
+                            "seedKey":  "inspection-fe-002-2025-05-16-1",
+                            "id":  "924a832f-9dfa-5798-bf39-21ada836fa18",
+                            "scheduleId":  "4a169945-c40f-517a-b49f-fc27c7c8a22a",
+                            "assetId":  "d9f9c2a0-d786-5f52-87c4-9f4344d0ebd0",
+                            "assetCode":  "FE-002",
+                            "assetCategory":  "fire-extinguisher",
+                            "inspectorUserId":  "d9bb5dc6-fbf0-551b-b875-6d46635c3464",
+                            "dateInspected":  "2025-05-16T08:00:00+08:00",
+                            "isOperational":  false,
+                            "remarks":  "kulang ang pressure at nasa red zone ang gauge",
+                            "actionsRecommendations":  "For refilling and verification of gauge reading.",
+                            "formData":  {
+                                             "acknowledgedByRole":  "DEPARTMENT_HEAD",
+                                             "notedByRole":  "PPF_SUPERVISOR"
+                                         }
+                        },
+                        {
+                            "seedKey":  "inspection-fe-002-2025-08-16-2",
+                            "id":  "03c117f8-1207-5a48-9564-2914844d6883",
+                            "scheduleId":  "2cea9c7b-c581-5319-91fe-189b72474c08",
+                            "assetId":  "d9f9c2a0-d786-5f52-87c4-9f4344d0ebd0",
+                            "assetCode":  "FE-002",
+                            "assetCategory":  "fire-extinguisher",
+                            "inspectorUserId":  "d9bb5dc6-fbf0-551b-b875-6d46635c3464",
+                            "dateInspected":  "2025-08-16T08:00:00+08:00",
+                            "isOperational":  true,
+                            "remarks":  "The indicator is approaching the refill section even though the cylinder has no visible damage.",
+                            "actionsRecommendations":  "Verify pressure and schedule refilling if the reading continues to decline.",
+                            "formData":  {
+                                             "acknowledgedByRole":  "DEPARTMENT_HEAD",
+                                             "notedByRole":  "PPF_SUPERVISOR"
+                                         }
+                        },
+                        {
+                            "seedKey":  "inspection-fe-003-2025-06-10-1",
+                            "id":  "927b9511-3b89-5380-82cc-a38095fe6748",
+                            "scheduleId":  "0f7255fc-0584-58a0-861d-3782b73cbbfd",
+                            "assetId":  "fff47bb5-b0f7-599c-843e-a91cb0a85d61",
+                            "assetCode":  "FE-003",
+                            "assetCategory":  "fire-extinguisher",
+                            "inspectorUserId":  "d9bb5dc6-fbf0-551b-b875-6d46635c3464",
+                            "dateInspected":  "2025-06-10T08:00:00+08:00",
+                            "isOperational":  true,
+                            "remarks":  "Expired inspection tag observed.",
+                            "actionsRecommendations":  "Replace the inspection tag after verification and update the monitoring record.",
+                            "formData":  {
+                                             "acknowledgedByRole":  "DEPARTMENT_HEAD",
+                                             "notedByRole":  "PPF_SUPERVISOR"
+                                         }
+                        },
+                        {
+                            "seedKey":  "inspection-fe-003-2025-09-10-2",
+                            "id":  "2c0cf8d1-6fab-50cf-a06b-384f9f628e0e",
+                            "scheduleId":  "eb062df5-b1e5-5267-adbd-b0a3809d236e",
+                            "assetId":  "fff47bb5-b0f7-599c-843e-a91cb0a85d61",
+                            "assetCode":  "FE-003",
+                            "assetCategory":  "fire-extinguisher",
+                            "inspectorUserId":  "d9bb5dc6-fbf0-551b-b875-6d46635c3464",
+                            "dateInspected":  "2025-09-10T08:00:00+08:00",
+                            "isOperational":  false,
+                            "remarks":  "Walang safety seal at maluwag ang pin.",
+                            "actionsRecommendations":  "Replace the missing seal and inspect the safety pin assembly.",
+                            "formData":  {
+                                             "acknowledgedByRole":  "DEPARTMENT_HEAD",
+                                             "notedByRole":  "PPF_SUPERVISOR"
+                                         }
+                        },
+                        {
+                            "seedKey":  "inspection-fe-004-2025-05-20-1",
+                            "id":  "ff3690b2-6887-5e99-a8e8-f3928266be27",
+                            "scheduleId":  "87f2dd05-3ed3-5931-b900-d1d25b754ca5",
+                            "assetId":  "0795fa54-d639-5b01-b0d4-60406b7ae83f",
+                            "assetCode":  "FE-004",
+                            "assetCategory":  "fire-extinguisher",
+                            "inspectorUserId":  "d9bb5dc6-fbf0-551b-b875-6d46635c3464",
+                            "dateInspected":  "2025-05-20T08:00:00+08:00",
+                            "isOperational":  true,
+                            "remarks":  "Label is faded, but the pressure reading is normal and the unit is accessible.",
+                            "actionsRecommendations":  "Replace the faded label during the next scheduled service.",
+                            "formData":  {
+                                             "acknowledgedByRole":  "DEPARTMENT_HEAD",
+                                             "notedByRole":  "PPF_SUPERVISOR"
+                                         }
+                        },
+                        {
+                            "seedKey":  "inspection-fe-004-2025-08-20-2",
+                            "id":  "58d70953-67cb-5cf1-90a6-791e78c2d5b2",
+                            "scheduleId":  "7e2461d0-1784-5262-a6c1-1d14513a0482",
+                            "assetId":  "0795fa54-d639-5b01-b0d4-60406b7ae83f",
+                            "assetCode":  "FE-004",
+                            "assetCategory":  "fire-extinguisher",
+                            "inspectorUserId":  "d9bb5dc6-fbf0-551b-b875-6d46635c3464",
+                            "dateInspected":  "2025-08-20T08:00:00+08:00",
+                            "isOperational":  true,
+                            "remarks":  "Operational and properly mounted; no low-pressure finding.",
+                            "actionsRecommendations":  "No corrective action required.",
+                            "formData":  {
+                                             "acknowledgedByRole":  "DEPARTMENT_HEAD",
+                                             "notedByRole":  "PPF_SUPERVISOR"
+                                         }
+                        },
+                        {
+                            "seedKey":  "inspection-fa-001-2024-06-18-1",
+                            "id":  "db839e0d-f540-5bb7-ad16-71068a91ff87",
+                            "scheduleId":  "a82bd716-87ab-5566-ba99-cc0e90d28c71",
+                            "assetId":  "fd1e4eaa-6892-5911-b286-bb202b6fcbdb",
+                            "assetCode":  "FA-001",
+                            "assetCategory":  "fire-alarm",
+                            "inspectorUserId":  "95b04a45-c91f-5e87-a95c-290e9c606ca8",
+                            "dateInspected":  "2024-06-18T08:00:00+08:00",
+                            "isOperational":  false,
+                            "remarks":  "Alarm panel fault reported during scheduled test.",
+                            "actionsRecommendations":  "Inspect panel indicators and verify the affected circuit.",
+                            "formData":  {
+                                             "acknowledgedByRole":  "DEPARTMENT_HEAD",
+                                             "notedByRole":  "ELECTRICAL_ENGINEER"
+                                         }
+                        },
+                        {
+                            "seedKey":  "inspection-fa-001-2024-12-18-2",
+                            "id":  "651444ef-4b05-53c1-8df7-9b1d72607d4e",
+                            "scheduleId":  "605549a4-25b0-5f72-a86f-5b749d8529f1",
+                            "assetId":  "fd1e4eaa-6892-5911-b286-bb202b6fcbdb",
+                            "assetCode":  "FA-001",
+                            "assetCategory":  "fire-alarm",
+                            "inspectorUserId":  "95b04a45-c91f-5e87-a95c-290e9c606ca8",
+                            "dateInspected":  "2024-12-18T08:00:00+08:00",
+                            "isOperational":  false,
+                            "remarks":  "Intermittent fault bumabalik sa alarm panel during reset.",
+                            "actionsRecommendations":  "Trace the intermittent panel fault and document the affected zone.",
+                            "formData":  {
+                                             "acknowledgedByRole":  "DEPARTMENT_HEAD",
+                                             "notedByRole":  "ELECTRICAL_ENGINEER"
+                                         }
+                        },
+                        {
+                            "seedKey":  "inspection-fa-002-2024-06-19-1",
+                            "id":  "87f404ae-7662-5e5f-b577-424af2cd4bd9",
+                            "scheduleId":  "e5c957b5-bd56-5212-a3ea-f0d656c007a1",
+                            "assetId":  "251074ae-2cfc-563d-88d6-fafddb628a13",
+                            "assetCode":  "FA-002",
+                            "assetCategory":  "fire-alarm",
+                            "inspectorUserId":  "95b04a45-c91f-5e87-a95c-290e9c606ca8",
+                            "dateInspected":  "2024-06-19T08:00:00+08:00",
+                            "isOperational":  false,
+                            "remarks":  "hindi nagrerespond ang smoke detector during test",
+                            "actionsRecommendations":  "Clean and retest the detector; replace if still unresponsive.",
+                            "formData":  {
+                                             "acknowledgedByRole":  "DEPARTMENT_HEAD",
+                                             "notedByRole":  "ELECTRICAL_ENGINEER"
+                                         }
+                        },
+                        {
+                            "seedKey":  "inspection-fa-002-2024-12-19-2",
+                            "id":  "cc805de9-166f-5f3e-a579-c6432503f55f",
+                            "scheduleId":  "50b013d8-7a78-5df9-ad95-069acf311da9",
+                            "assetId":  "251074ae-2cfc-563d-88d6-fafddb628a13",
+                            "assetCode":  "FA-002",
+                            "assetCategory":  "fire-alarm",
+                            "inspectorUserId":  "95b04a45-c91f-5e87-a95c-290e9c606ca8",
+                            "dateInspected":  "2024-12-19T08:00:00+08:00",
+                            "isOperational":  false,
+                            "remarks":  "Detector failed to report back to the panel until the third activation attempt.",
+                            "actionsRecommendations":  "Check detector connection and communication reliability.",
+                            "formData":  {
+                                             "acknowledgedByRole":  "DEPARTMENT_HEAD",
+                                             "notedByRole":  "ELECTRICAL_ENGINEER"
+                                         }
+                        },
+                        {
+                            "seedKey":  "inspection-fa-003-2025-06-20-1",
+                            "id":  "725c0c6a-6d5a-56c6-aa93-ee4d38ad8d10",
+                            "scheduleId":  "b52c198e-1bb4-5d01-8ded-91b99b8669f5",
+                            "assetId":  "7bfa4436-d0f1-5997-9310-6dafbc8183fe",
+                            "assetCode":  "FA-003",
+                            "assetCategory":  "fire-alarm",
+                            "inspectorUserId":  "95b04a45-c91f-5e87-a95c-290e9c606ca8",
+                            "dateInspected":  "2025-06-20T08:00:00+08:00",
+                            "isOperational":  false,
+                            "remarks":  "Manual call point works but the strobe is not flashing.",
+                            "actionsRecommendations":  "Inspect the strobe circuit and replace the unit if defective.",
+                            "formData":  {
+                                             "acknowledgedByRole":  "DEPARTMENT_HEAD",
+                                             "notedByRole":  "ELECTRICAL_ENGINEER"
+                                         }
+                        },
+                        {
+                            "seedKey":  "inspection-fa-003-2025-12-20-2",
+                            "id":  "12132427-f8f3-5902-8ac5-180213861399",
+                            "scheduleId":  "6a09cb3d-a8ed-5f2a-acc8-ff8bac97df8d",
+                            "assetId":  "7bfa4436-d0f1-5997-9310-6dafbc8183fe",
+                            "assetCode":  "FA-003",
+                            "assetCategory":  "fire-alarm",
+                            "inspectorUserId":  "95b04a45-c91f-5e87-a95c-290e9c606ca8",
+                            "dateInspected":  "2025-12-20T08:00:00+08:00",
+                            "isOperational":  true,
+                            "remarks":  "Strobe restored after wiring was secured; call point and indicator are operational.",
+                            "actionsRecommendations":  "Continue semiannual testing.",
+                            "formData":  {
+                                             "acknowledgedByRole":  "DEPARTMENT_HEAD",
+                                             "notedByRole":  "ELECTRICAL_ENGINEER"
+                                         }
+                        },
+                        {
+                            "seedKey":  "inspection-fa-004-2025-06-21-1",
+                            "id":  "b768b170-af71-54d3-8809-e023168d6641",
+                            "scheduleId":  "56f1adc7-65ed-5735-bf40-ffb78eb33824",
+                            "assetId":  "bbb98f04-7a7a-5dea-9518-ebbdf28d5f06",
+                            "assetCode":  "FA-004",
+                            "assetCategory":  "fire-alarm",
+                            "inspectorUserId":  "95b04a45-c91f-5e87-a95c-290e9c606ca8",
+                            "dateInspected":  "2025-06-21T08:00:00+08:00",
+                            "isOperational":  true,
+                            "remarks":  "All tested alarm devices, bell, and strobe responded normally.",
+                            "actionsRecommendations":  "No corrective action required.",
+                            "formData":  {
+                                             "acknowledgedByRole":  "DEPARTMENT_HEAD",
+                                             "notedByRole":  "ELECTRICAL_ENGINEER"
+                                         }
+                        },
+                        {
+                            "seedKey":  "inspection-el-001-2024-06-12-1",
+                            "id":  "7bf49237-b9c5-5ed6-99ea-f3aa38204559",
+                            "scheduleId":  "d0ca774f-6815-5544-bb54-2b7fcd1d917c",
+                            "assetId":  "54c526f8-e644-50dd-bb13-a7893b822722",
+                            "assetCode":  "EL-001",
+                            "assetCategory":  "emergency-light",
+                            "inspectorUserId":  "95b04a45-c91f-5e87-a95c-290e9c606ca8",
+                            "dateInspected":  "2024-06-12T08:00:00+08:00",
+                            "isOperational":  false,
+                            "remarks":  "hindi umiilaw during power interruption test",
+                            "actionsRecommendations":  "Check the battery and charging circuit.",
+                            "formData":  {
+                                             "acknowledgedByRole":  "DEPARTMENT_HEAD",
+                                             "notedByRole":  "ELECTRICAL_ENGINEER"
+                                         }
+                        },
+                        {
+                            "seedKey":  "inspection-el-001-2024-12-12-2",
+                            "id":  "d852f1d5-c1c3-565b-8cdd-a887015f031a",
+                            "scheduleId":  "f1cf53dd-242e-585e-8e6d-00a968fede33",
+                            "assetId":  "54c526f8-e644-50dd-bb13-a7893b822722",
+                            "assetCode":  "EL-001",
+                            "assetCategory":  "emergency-light",
+                            "inspectorUserId":  "95b04a45-c91f-5e87-a95c-290e9c606ca8",
+                            "dateInspected":  "2024-12-12T08:00:00+08:00",
+                            "isOperational":  false,
+                            "remarks":  "Battery issue; emergency light is not lighting when mains power is removed.",
+                            "actionsRecommendations":  "Replace the battery and repeat the interruption test.",
+                            "formData":  {
+                                             "acknowledgedByRole":  "DEPARTMENT_HEAD",
+                                             "notedByRole":  "ELECTRICAL_ENGINEER"
+                                         }
+                        },
+                        {
+                            "seedKey":  "inspection-el-001-2025-06-12-3",
+                            "id":  "3ee28351-0d1d-5af2-871a-e6e2e0ffe1cd",
+                            "scheduleId":  "d84c4875-5a9a-5dea-a554-224e638650d2",
+                            "assetId":  "54c526f8-e644-50dd-bb13-a7893b822722",
+                            "assetCode":  "EL-001",
+                            "assetCategory":  "emergency-light",
+                            "inspectorUserId":  "95b04a45-c91f-5e87-a95c-290e9c606ca8",
+                            "dateInspected":  "2025-06-12T08:00:00+08:00",
+                            "isOperational":  true,
+                            "remarks":  "Unit lights normally after battery replacement.",
+                            "actionsRecommendations":  "Continue scheduled semiannual testing.",
+                            "formData":  {
+                                             "acknowledgedByRole":  "DEPARTMENT_HEAD",
+                                             "notedByRole":  "ELECTRICAL_ENGINEER"
+                                         }
+                        },
+                        {
+                            "seedKey":  "inspection-el-002-2024-06-13-1",
+                            "id":  "e168c814-8c47-58b4-918a-9d44131a36d2",
+                            "scheduleId":  "7a96fb6e-efbf-57a7-894b-70d8d662136e",
+                            "assetId":  "9deca5e0-48d3-548f-819f-50548f5e8c49",
+                            "assetCode":  "EL-002",
+                            "assetCategory":  "emergency-light",
+                            "inspectorUserId":  "95b04a45-c91f-5e87-a95c-290e9c606ca8",
+                            "dateInspected":  "2024-06-13T08:00:00+08:00",
+                            "isOperational":  false,
+                            "remarks":  "sira ang battery at ayaw mag-on",
+                            "actionsRecommendations":  "Replace battery and inspect charging indicator.",
+                            "formData":  {
+                                             "acknowledgedByRole":  "DEPARTMENT_HEAD",
+                                             "notedByRole":  "ELECTRICAL_ENGINEER"
+                                         }
+                        },
+                        {
+                            "seedKey":  "inspection-el-002-2024-12-13-2",
+                            "id":  "a9be1357-744f-50b8-815a-9793a40d9a35",
+                            "scheduleId":  "2aa9b8bc-557d-5b8a-946b-1c1225736d38",
+                            "assetId":  "9deca5e0-48d3-548f-819f-50548f5e8c49",
+                            "assetCode":  "EL-002",
+                            "assetCategory":  "emergency-light",
+                            "inspectorUserId":  "95b04a45-c91f-5e87-a95c-290e9c606ca8",
+                            "dateInspected":  "2024-12-13T08:00:00+08:00",
+                            "isOperational":  false,
+                            "remarks":  "Charging indicator remains off even after the unit is connected overnight.",
+                            "actionsRecommendations":  "Inspect charging circuit and battery terminals.",
+                            "formData":  {
+                                             "acknowledgedByRole":  "DEPARTMENT_HEAD",
+                                             "notedByRole":  "ELECTRICAL_ENGINEER"
+                                         }
+                        },
+                        {
+                            "seedKey":  "inspection-el-003-2025-06-14-1",
+                            "id":  "f0f1b829-eb05-5504-8312-20abcf98890d",
+                            "scheduleId":  "f95bdf19-e8f0-556a-aefa-72e5dbc6b6df",
+                            "assetId":  "0a81c141-b49f-59f0-930d-b0627c924af8",
+                            "assetCode":  "EL-003",
+                            "assetCategory":  "emergency-light",
+                            "inspectorUserId":  "95b04a45-c91f-5e87-a95c-290e9c606ca8",
+                            "dateInspected":  "2025-06-14T08:00:00+08:00",
+                            "isOperational":  false,
+                            "remarks":  "Unit turns on but dim ang ilaw and the test button is intermittent.",
+                            "actionsRecommendations":  "Inspect the battery, lamp output, and test switch.",
+                            "formData":  {
+                                             "acknowledgedByRole":  "DEPARTMENT_HEAD",
+                                             "notedByRole":  "ELECTRICAL_ENGINEER"
+                                         }
+                        },
+                        {
+                            "seedKey":  "inspection-el-004-2025-06-15-1",
+                            "id":  "45582ca7-aa25-5155-bc22-04f0763bccef",
+                            "scheduleId":  "b817a5f1-9cb0-58bd-96eb-f99ce3557cd4",
+                            "assetId":  "150ba5b1-0ace-5c3b-bf9f-152ded558e2b",
+                            "assetCode":  "EL-004",
+                            "assetCategory":  "emergency-light",
+                            "inspectorUserId":  "95b04a45-c91f-5e87-a95c-290e9c606ca8",
+                            "dateInspected":  "2025-06-15T08:00:00+08:00",
+                            "isOperational":  true,
+                            "remarks":  "Charging indicator is active and the emergency light operated normally.",
+                            "actionsRecommendations":  "No corrective action required.",
+                            "formData":  {
+                                             "acknowledgedByRole":  "DEPARTMENT_HEAD",
+                                             "notedByRole":  "ELECTRICAL_ENGINEER"
+                                         }
+                        },
+                        {
+                            "seedKey":  "inspection-wds-001-2025-05-08-1",
+                            "id":  "4a9714bf-4059-501b-85e0-03a00e1a6a2b",
+                            "scheduleId":  "dc6141c6-6eeb-546b-a805-fa9617a7e4e9",
+                            "assetId":  "40bccea3-c507-52b6-941d-a9051a6d4b2b",
+                            "assetCode":  "WDS-001",
+                            "assetCategory":  "water-drinking-station",
+                            "inspectorUserId":  "66c06ecc-6b3c-556e-b7b5-73323e82e9b3",
+                            "dateInspected":  "2025-05-08T08:00:00+08:00",
+                            "isOperational":  false,
+                            "remarks":  "barado ang filter, mahina ang daloy",
+                            "actionsRecommendations":  "Replace the sediment filter and inspect the carbon filter.",
+                            "formData":  {
+                                             "workDone":  [
+                                                              "replace sediment filter",
+                                                              "check carbon filter",
+                                                              "check UV light"
+                                                          ],
+                                             "rmrfNumber":  null,
+                                             "dateAccomplished":  "2025-05-09",
+                                             "acknowledgedByRole":  "DEPARTMENT_HEAD",
+                                             "notedByRole":  "PPF_SUPERVISOR"
+                                         }
+                        },
+                        {
+                            "seedKey":  "inspection-wds-001-2025-08-08-2",
+                            "id":  "c89793f3-432b-50c1-9c18-07e21a6900c2",
+                            "scheduleId":  "19941abd-dee3-5fad-b02c-40836d2fbbc4",
+                            "assetId":  "40bccea3-c507-52b6-941d-a9051a6d4b2b",
+                            "assetCode":  "WDS-001",
+                            "assetCategory":  "water-drinking-station",
+                            "inspectorUserId":  "66c06ecc-6b3c-556e-b7b5-73323e82e9b3",
+                            "dateInspected":  "2025-08-08T08:00:00+08:00",
+                            "isOperational":  true,
+                            "remarks":  "Clogged sediment filter caused weak water flow.",
+                            "actionsRecommendations":  "Replaced the sediment filter and checked the UV light.",
+                            "formData":  {
+                                             "workDone":  [
+                                                              "replace sediment filter",
+                                                              "check UV light"
+                                                          ],
+                                             "rmrfNumber":  null,
+                                             "dateAccomplished":  "2025-08-08",
+                                             "acknowledgedByRole":  "DEPARTMENT_HEAD",
+                                             "notedByRole":  "PPF_SUPERVISOR"
+                                         }
+                        },
+                        {
+                            "seedKey":  "inspection-wds-001-2025-11-08-3",
+                            "id":  "ad67c157-d11b-5486-8de0-801a706c0524",
+                            "scheduleId":  "66895327-76de-5457-90d9-ddc684a7146e",
+                            "assetId":  "40bccea3-c507-52b6-941d-a9051a6d4b2b",
+                            "assetCode":  "WDS-001",
+                            "assetCategory":  "water-drinking-station",
+                            "inspectorUserId":  "66c06ecc-6b3c-556e-b7b5-73323e82e9b3",
+                            "dateInspected":  "2025-11-08T08:00:00+08:00",
+                            "isOperational":  true,
+                            "remarks":  "The dispenser output slows after several uses even though no visible blockage is present.",
+                            "actionsRecommendations":  "Inspect internal filter saturation and replace filters if required.",
+                            "formData":  {
+                                             "workDone":  [
+                                                              "check carbon filter",
+                                                              "check sediment filter",
+                                                              "check UV light"
+                                                          ],
+                                             "rmrfNumber":  null,
+                                             "dateAccomplished":  null,
+                                             "acknowledgedByRole":  "DEPARTMENT_HEAD",
+                                             "notedByRole":  "PPF_SUPERVISOR"
+                                         }
+                        },
+                        {
+                            "seedKey":  "inspection-wds-002-2025-05-09-1",
+                            "id":  "b65f8b77-bead-5b95-9533-bb4e2474d4bf",
+                            "scheduleId":  "420da488-4fe8-5d78-a520-b1d38a57533a",
+                            "assetId":  "7716f6cf-bd56-5646-a143-883f4c5d5dc7",
+                            "assetCode":  "WDS-002",
+                            "assetCategory":  "water-drinking-station",
+                            "inspectorUserId":  "66c06ecc-6b3c-556e-b7b5-73323e82e9b3",
+                            "dateInspected":  "2025-05-09T08:00:00+08:00",
+                            "isOperational":  false,
+                            "remarks":  "may tagas near the dispenser connection",
+                            "actionsRecommendations":  "Tighten the connection and inspect the hose and fitting.",
+                            "formData":  {
+                                             "workDone":  [
+                                                              "check dispenser connection",
+                                                              "check UV light"
+                                                          ],
+                                             "rmrfNumber":  null,
+                                             "dateAccomplished":  null,
+                                             "acknowledgedByRole":  "DEPARTMENT_HEAD",
+                                             "notedByRole":  "PPF_SUPERVISOR"
+                                         }
+                        },
+                        {
+                            "seedKey":  "inspection-wds-002-2025-08-09-2",
+                            "id":  "293463e1-b69e-5fee-a7a0-c6650e0af24d",
+                            "scheduleId":  "a5ecb8fc-537c-5208-9082-3a0675a0a1ff",
+                            "assetId":  "7716f6cf-bd56-5646-a143-883f4c5d5dc7",
+                            "assetCode":  "WDS-002",
+                            "assetCategory":  "water-drinking-station",
+                            "inspectorUserId":  "66c06ecc-6b3c-556e-b7b5-73323e82e9b3",
+                            "dateInspected":  "2025-08-09T08:00:00+08:00",
+                            "isOperational":  false,
+                            "remarks":  "Moisture returns around the outlet fitting several hours after the connection is dried.",
+                            "actionsRecommendations":  "Replace the worn fitting and confirm that the leak does not recur.",
+                            "formData":  {
+                                             "workDone":  [
+                                                              "inspect outlet fitting"
+                                                          ],
+                                             "rmrfNumber":  null,
+                                             "dateAccomplished":  null,
+                                             "acknowledgedByRole":  "DEPARTMENT_HEAD",
+                                             "notedByRole":  "PPF_SUPERVISOR"
+                                         }
+                        },
+                        {
+                            "seedKey":  "inspection-wds-003-2025-05-10-1",
+                            "id":  "fb1ae4d6-c444-580e-96b9-dd8172331c4a",
+                            "scheduleId":  "4656b7ce-6b03-5c49-a0c9-dbf65a545fbd",
+                            "assetId":  "b0d5ddc9-9bba-5152-933d-f6ae01b679f6",
+                            "assetCode":  "WDS-003",
+                            "assetCategory":  "water-drinking-station",
+                            "inspectorUserId":  "66c06ecc-6b3c-556e-b7b5-73323e82e9b3",
+                            "dateInspected":  "2025-05-10T08:00:00+08:00",
+                            "isOperational":  false,
+                            "remarks":  "UV light not functioning during inspection.",
+                            "actionsRecommendations":  "Replace or service the UV lamp before continued use.",
+                            "formData":  {
+                                             "workDone":  [
+                                                              "replace carbon filter",
+                                                              "replace sediment filter",
+                                                              "check UV light"
+                                                          ],
+                                             "rmrfNumber":  null,
+                                             "dateAccomplished":  null,
+                                             "acknowledgedByRole":  "DEPARTMENT_HEAD",
+                                             "notedByRole":  "PPF_SUPERVISOR"
+                                         }
+                        },
+                        {
+                            "seedKey":  "inspection-wds-004-2025-05-11-1",
+                            "id":  "1ef1305e-abed-524b-8c09-c247a99ddf2a",
+                            "scheduleId":  "a0d03fcd-d74d-5017-ad71-c36a0f1c09d2",
+                            "assetId":  "3fb831e9-81ec-5948-8a86-1ca29f60ea28",
+                            "assetCode":  "WDS-004",
+                            "assetCategory":  "water-drinking-station",
+                            "inspectorUserId":  "66c06ecc-6b3c-556e-b7b5-73323e82e9b3",
+                            "dateInspected":  "2025-05-11T08:00:00+08:00",
+                            "isOperational":  true,
+                            "remarks":  "Water pressure is weak at the supply line, but the station filters are clean and there is no leak.",
+                            "actionsRecommendations":  "Coordinate inspection of the building water supply; no filter replacement required.",
+                            "formData":  {
+                                             "workDone":  [
+                                                              "check carbon filter",
+                                                              "check sediment filter"
+                                                          ],
+                                             "rmrfNumber":  null,
+                                             "dateAccomplished":  null,
+                                             "acknowledgedByRole":  "DEPARTMENT_HEAD",
+                                             "notedByRole":  "PPF_SUPERVISOR"
+                                         }
+                        }
+                    ]
+}
