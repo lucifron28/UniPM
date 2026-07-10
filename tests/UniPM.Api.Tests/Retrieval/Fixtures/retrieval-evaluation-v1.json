@@ -1,0 +1,457 @@
+﻿{
+    "$schema":  "retrieval-evaluation-v1.schema.json",
+    "evaluationVersion":  "1.0.0",
+    "datasetVersion":  "1.1.0",
+    "assetAnnotations":  [
+                             {
+                                 "assetId":  "f83fc630-5a2e-582d-88da-b4e21f25191f",
+                                 "assetCode":  "FE-050",
+                                 "tags":  [
+                                              "cold-start"
+                                          ]
+                             },
+                             {
+                                 "assetId":  "39ff1332-33a5-55cf-979f-27214a1df108",
+                                 "assetCode":  "FA-050",
+                                 "tags":  [
+                                              "cold-start"
+                                          ]
+                             },
+                             {
+                                 "assetId":  "3b667d5b-9638-5d3f-bc0e-2207d21640f2",
+                                 "assetCode":  "EL-050",
+                                 "tags":  [
+                                              "cold-start"
+                                          ]
+                             },
+                             {
+                                 "assetId":  "84b14d99-4c97-5afc-8d30-a9b6aeb83cdc",
+                                 "assetCode":  "WDS-050",
+                                 "tags":  [
+                                              "cold-start"
+                                          ]
+                             }
+                         ],
+    "recordAnnotations":  [
+                              {
+                                  "inspectionId":  "267babd6-4e6d-5082-843a-6db5d9d3e5ae",
+                                  "inspectionSeedKey":  "inspection-fe-001-2025-05-15-1",
+                                  "expectedIssueKeys":  [
+                                                            "low_pressure"
+                                                        ],
+                                  "scenarioTags":  [
+                                                       "same-asset-history",
+                                                       "recurring-issue",
+                                                       "taglish",
+                                                       "lexicon-covered",
+                                                       "retrieval-relevant",
+                                                       "unresolved"
+                                                   ]
+                              },
+                              {
+                                  "inspectionId":  "334f4c25-2a02-50e7-b93e-79a01ebee7a7",
+                                  "inspectionSeedKey":  "inspection-fe-001-2025-08-15-2",
+                                  "expectedIssueKeys":  [
+                                                            "low_pressure"
+                                                        ],
+                                  "scenarioTags":  [
+                                                       "same-asset-history",
+                                                       "recurring-issue",
+                                                       "english",
+                                                       "lexicon-covered",
+                                                       "retrieval-relevant",
+                                                       "unresolved"
+                                                   ]
+                              },
+                              {
+                                  "inspectionId":  "1a069120-c57f-5249-bde9-cbe4538c70e2",
+                                  "inspectionSeedKey":  "inspection-fe-001-2025-11-15-3",
+                                  "expectedIssueKeys":  [
+                                                            "low_pressure"
+                                                        ],
+                                  "scenarioTags":  [
+                                                       "same-asset-history",
+                                                       "resolved",
+                                                       "english",
+                                                       "retrieval-relevant"
+                                                   ]
+                              },
+                              {
+                                  "inspectionId":  "924a832f-9dfa-5798-bf39-21ada836fa18",
+                                  "inspectionSeedKey":  "inspection-fe-002-2025-05-16-1",
+                                  "expectedIssueKeys":  [
+                                                            "low_pressure"
+                                                        ],
+                                  "scenarioTags":  [
+                                                       "similar-asset-fallback",
+                                                       "tagalog",
+                                                       "lexicon-covered",
+                                                       "retrieval-relevant",
+                                                       "same-building-context"
+                                                   ]
+                              },
+                              {
+                                  "inspectionId":  "03c117f8-1207-5a48-9564-2914844d6883",
+                                  "inspectionSeedKey":  "inspection-fe-002-2025-08-16-2",
+                                  "expectedIssueKeys":  [
+                                                            "low_pressure"
+                                                        ],
+                                  "scenarioTags":  [
+                                                       "similar-asset-fallback",
+                                                       "english",
+                                                       "semantic-paraphrase",
+                                                       "retrieval-relevant",
+                                                       "same-building-context"
+                                                   ]
+                              },
+                              {
+                                  "inspectionId":  "927b9511-3b89-5380-82cc-a38095fe6748",
+                                  "inspectionSeedKey":  "inspection-fe-003-2025-06-10-1",
+                                  "expectedIssueKeys":  [
+                                                            "expired_unit"
+                                                        ],
+                                  "scenarioTags":  [
+                                                       "english",
+                                                       "lexicon-covered",
+                                                       "retrieval-relevant"
+                                                   ]
+                              },
+                              {
+                                  "inspectionId":  "2c0cf8d1-6fab-50cf-a06b-384f9f628e0e",
+                                  "inspectionSeedKey":  "inspection-fe-003-2025-09-10-2",
+                                  "expectedIssueKeys":  [
+                                                            "missing_seal_or_pin"
+                                                        ],
+                                  "scenarioTags":  [
+                                                       "tagalog",
+                                                       "retrieval-relevant",
+                                                       "unresolved"
+                                                   ]
+                              },
+                              {
+                                  "inspectionId":  "ff3690b2-6887-5e99-a8e8-f3928266be27",
+                                  "inspectionSeedKey":  "inspection-fe-004-2025-05-20-1",
+                                  "expectedIssueKeys":  [
+                                                            "missing_label"
+                                                        ],
+                                  "scenarioTags":  [
+                                                       "distractor",
+                                                       "normal-operational",
+                                                       "english"
+                                                   ]
+                              },
+                              {
+                                  "inspectionId":  "58d70953-67cb-5cf1-90a6-791e78c2d5b2",
+                                  "inspectionSeedKey":  "inspection-fe-004-2025-08-20-2",
+                                  "expectedIssueKeys":  [
+
+                                                        ],
+                                  "scenarioTags":  [
+                                                       "distractor",
+                                                       "normal-operational",
+                                                       "english"
+                                                   ]
+                              },
+                              {
+                                  "inspectionId":  "db839e0d-f540-5bb7-ad16-71068a91ff87",
+                                  "inspectionSeedKey":  "inspection-fa-001-2024-06-18-1",
+                                  "expectedIssueKeys":  [
+                                                            "alarm_panel_fault"
+                                                        ],
+                                  "scenarioTags":  [
+                                                       "same-asset-history",
+                                                       "recurring-issue",
+                                                       "english",
+                                                       "lexicon-covered",
+                                                       "retrieval-relevant",
+                                                       "unresolved"
+                                                   ]
+                              },
+                              {
+                                  "inspectionId":  "651444ef-4b05-53c1-8df7-9b1d72607d4e",
+                                  "inspectionSeedKey":  "inspection-fa-001-2024-12-18-2",
+                                  "expectedIssueKeys":  [
+                                                            "alarm_panel_fault"
+                                                        ],
+                                  "scenarioTags":  [
+                                                       "same-asset-history",
+                                                       "recurring-issue",
+                                                       "taglish",
+                                                       "semantic-paraphrase",
+                                                       "retrieval-relevant",
+                                                       "unresolved"
+                                                   ]
+                              },
+                              {
+                                  "inspectionId":  "87f404ae-7662-5e5f-b577-424af2cd4bd9",
+                                  "inspectionSeedKey":  "inspection-fa-002-2024-06-19-1",
+                                  "expectedIssueKeys":  [
+                                                            "device_not_responding",
+                                                            "smoke_detector_issue"
+                                                        ],
+                                  "scenarioTags":  [
+                                                       "similar-asset-fallback",
+                                                       "tagalog",
+                                                       "lexicon-covered",
+                                                       "retrieval-relevant",
+                                                       "unresolved"
+                                                   ]
+                              },
+                              {
+                                  "inspectionId":  "cc805de9-166f-5f3e-a579-c6432503f55f",
+                                  "inspectionSeedKey":  "inspection-fa-002-2024-12-19-2",
+                                  "expectedIssueKeys":  [
+                                                            "device_not_responding"
+                                                        ],
+                                  "scenarioTags":  [
+                                                       "similar-asset-fallback",
+                                                       "english",
+                                                       "semantic-paraphrase",
+                                                       "retrieval-relevant",
+                                                       "unresolved"
+                                                   ]
+                              },
+                              {
+                                  "inspectionId":  "725c0c6a-6d5a-56c6-aa93-ee4d38ad8d10",
+                                  "inspectionSeedKey":  "inspection-fa-003-2025-06-20-1",
+                                  "expectedIssueKeys":  [
+                                                            "bell_or_strobe_issue",
+                                                            "manual_call_point_issue"
+                                                        ],
+                                  "scenarioTags":  [
+                                                       "english",
+                                                       "retrieval-relevant",
+                                                       "unresolved"
+                                                   ]
+                              },
+                              {
+                                  "inspectionId":  "12132427-f8f3-5902-8ac5-180213861399",
+                                  "inspectionSeedKey":  "inspection-fa-003-2025-12-20-2",
+                                  "expectedIssueKeys":  [
+                                                            "bell_or_strobe_issue"
+                                                        ],
+                                  "scenarioTags":  [
+                                                       "resolved",
+                                                       "english",
+                                                       "retrieval-relevant"
+                                                   ]
+                              },
+                              {
+                                  "inspectionId":  "b768b170-af71-54d3-8809-e023168d6641",
+                                  "inspectionSeedKey":  "inspection-fa-004-2025-06-21-1",
+                                  "expectedIssueKeys":  [
+
+                                                        ],
+                                  "scenarioTags":  [
+                                                       "distractor",
+                                                       "normal-operational",
+                                                       "english"
+                                                   ]
+                              },
+                              {
+                                  "inspectionId":  "7bf49237-b9c5-5ed6-99ea-f3aa38204559",
+                                  "inspectionSeedKey":  "inspection-el-001-2024-06-12-1",
+                                  "expectedIssueKeys":  [
+                                                            "not_lighting"
+                                                        ],
+                                  "scenarioTags":  [
+                                                       "same-asset-history",
+                                                       "recurring-issue",
+                                                       "tagalog",
+                                                       "lexicon-covered",
+                                                       "retrieval-relevant",
+                                                       "unresolved"
+                                                   ]
+                              },
+                              {
+                                  "inspectionId":  "d852f1d5-c1c3-565b-8cdd-a887015f031a",
+                                  "inspectionSeedKey":  "inspection-el-001-2024-12-12-2",
+                                  "expectedIssueKeys":  [
+                                                            "not_lighting",
+                                                            "battery_issue"
+                                                        ],
+                                  "scenarioTags":  [
+                                                       "same-asset-history",
+                                                       "recurring-issue",
+                                                       "english",
+                                                       "lexicon-covered",
+                                                       "retrieval-relevant",
+                                                       "unresolved"
+                                                   ]
+                              },
+                              {
+                                  "inspectionId":  "3ee28351-0d1d-5af2-871a-e6e2e0ffe1cd",
+                                  "inspectionSeedKey":  "inspection-el-001-2025-06-12-3",
+                                  "expectedIssueKeys":  [
+                                                            "not_lighting",
+                                                            "battery_issue"
+                                                        ],
+                                  "scenarioTags":  [
+                                                       "same-asset-history",
+                                                       "resolved",
+                                                       "english",
+                                                       "retrieval-relevant"
+                                                   ]
+                              },
+                              {
+                                  "inspectionId":  "e168c814-8c47-58b4-918a-9d44131a36d2",
+                                  "inspectionSeedKey":  "inspection-el-002-2024-06-13-1",
+                                  "expectedIssueKeys":  [
+                                                            "battery_issue",
+                                                            "not_lighting"
+                                                        ],
+                                  "scenarioTags":  [
+                                                       "similar-asset-fallback",
+                                                       "tagalog",
+                                                       "lexicon-covered",
+                                                       "retrieval-relevant",
+                                                       "same-building-context"
+                                                   ]
+                              },
+                              {
+                                  "inspectionId":  "a9be1357-744f-50b8-815a-9793a40d9a35",
+                                  "inspectionSeedKey":  "inspection-el-002-2024-12-13-2",
+                                  "expectedIssueKeys":  [
+                                                            "charging_issue"
+                                                        ],
+                                  "scenarioTags":  [
+                                                       "similar-asset-fallback",
+                                                       "english",
+                                                       "semantic-paraphrase",
+                                                       "retrieval-relevant",
+                                                       "same-building-context"
+                                                   ]
+                              },
+                              {
+                                  "inspectionId":  "f0f1b829-eb05-5504-8312-20abcf98890d",
+                                  "inspectionSeedKey":  "inspection-el-003-2025-06-14-1",
+                                  "expectedIssueKeys":  [
+                                                            "dim_light",
+                                                            "battery_issue"
+                                                        ],
+                                  "scenarioTags":  [
+                                                       "taglish",
+                                                       "retrieval-relevant",
+                                                       "unresolved"
+                                                   ]
+                              },
+                              {
+                                  "inspectionId":  "45582ca7-aa25-5155-bc22-04f0763bccef",
+                                  "inspectionSeedKey":  "inspection-el-004-2025-06-15-1",
+                                  "expectedIssueKeys":  [
+
+                                                        ],
+                                  "scenarioTags":  [
+                                                       "distractor",
+                                                       "normal-operational",
+                                                       "english"
+                                                   ]
+                              },
+                              {
+                                  "inspectionId":  "4a9714bf-4059-501b-85e0-03a00e1a6a2b",
+                                  "inspectionSeedKey":  "inspection-wds-001-2025-05-08-1",
+                                  "expectedIssueKeys":  [
+                                                            "clogged_filter",
+                                                            "weak_water_flow"
+                                                        ],
+                                  "scenarioTags":  [
+                                                       "same-asset-history",
+                                                       "recurring-issue",
+                                                       "tagalog",
+                                                       "lexicon-covered",
+                                                       "retrieval-relevant",
+                                                       "unresolved",
+                                                       "checklist-work-done"
+                                                   ]
+                              },
+                              {
+                                  "inspectionId":  "c89793f3-432b-50c1-9c18-07e21a6900c2",
+                                  "inspectionSeedKey":  "inspection-wds-001-2025-08-08-2",
+                                  "expectedIssueKeys":  [
+                                                            "clogged_filter",
+                                                            "weak_water_flow"
+                                                        ],
+                                  "scenarioTags":  [
+                                                       "same-asset-history",
+                                                       "recurring-issue",
+                                                       "english",
+                                                       "lexicon-covered",
+                                                       "retrieval-relevant",
+                                                       "resolved",
+                                                       "checklist-work-done"
+                                                   ]
+                              },
+                              {
+                                  "inspectionId":  "ad67c157-d11b-5486-8de0-801a706c0524",
+                                  "inspectionSeedKey":  "inspection-wds-001-2025-11-08-3",
+                                  "expectedIssueKeys":  [
+                                                            "weak_water_flow",
+                                                            "clogged_filter"
+                                                        ],
+                                  "scenarioTags":  [
+                                                       "same-asset-history",
+                                                       "english",
+                                                       "semantic-paraphrase",
+                                                       "retrieval-relevant"
+                                                   ]
+                              },
+                              {
+                                  "inspectionId":  "b65f8b77-bead-5b95-9533-bb4e2474d4bf",
+                                  "inspectionSeedKey":  "inspection-wds-002-2025-05-09-1",
+                                  "expectedIssueKeys":  [
+                                                            "leaking"
+                                                        ],
+                                  "scenarioTags":  [
+                                                       "similar-asset-fallback",
+                                                       "taglish",
+                                                       "lexicon-covered",
+                                                       "retrieval-relevant",
+                                                       "unresolved"
+                                                   ]
+                              },
+                              {
+                                  "inspectionId":  "293463e1-b69e-5fee-a7a0-c6650e0af24d",
+                                  "inspectionSeedKey":  "inspection-wds-002-2025-08-09-2",
+                                  "expectedIssueKeys":  [
+                                                            "leaking"
+                                                        ],
+                                  "scenarioTags":  [
+                                                       "similar-asset-fallback",
+                                                       "english",
+                                                       "semantic-paraphrase",
+                                                       "retrieval-relevant",
+                                                       "unresolved"
+                                                   ]
+                              },
+                              {
+                                  "inspectionId":  "fb1ae4d6-c444-580e-96b9-dd8172331c4a",
+                                  "inspectionSeedKey":  "inspection-wds-003-2025-05-10-1",
+                                  "expectedIssueKeys":  [
+                                                            "uv_light_issue"
+                                                        ],
+                                  "scenarioTags":  [
+                                                       "english",
+                                                       "lexicon-covered",
+                                                       "retrieval-relevant",
+                                                       "unresolved",
+                                                       "checklist-work-done"
+                                                   ]
+                              },
+                              {
+                                  "inspectionId":  "1ef1305e-abed-524b-8c09-c247a99ddf2a",
+                                  "inspectionSeedKey":  "inspection-wds-004-2025-05-11-1",
+                                  "expectedIssueKeys":  [
+                                                            "weak_water_flow"
+                                                        ],
+                                  "scenarioTags":  [
+                                                       "distractor",
+                                                       "different-category-distractor",
+                                                       "english",
+                                                       "normal-operational"
+                                                   ]
+                              }
+                          ],
+    "queries":  [
+
+                ]
+}
