@@ -32,8 +32,16 @@ builder.Services.AddScoped<SyntheticMaintenanceSeeder>();
 
 var app = builder.Build();
 
-if (TryGetSyntheticSeedCommand(args, out var seedCommand))
+var seedCommand = SyntheticMaintenanceCommandParser.Parse(args);
+if (seedCommand != SyntheticMaintenanceCommand.None)
 {
+    if (seedCommand == SyntheticMaintenanceCommand.Ambiguous)
+    {
+        await Console.Error.WriteLineAsync("Specify only one synthetic maintenance seed command.");
+        Environment.ExitCode = 1;
+        return;
+    }
+
     if (!app.Environment.IsDevelopment())
     {
         await Console.Error.WriteLineAsync("Synthetic maintenance seed commands are available only in Development.");
@@ -46,7 +54,7 @@ if (TryGetSyntheticSeedCommand(args, out var seedCommand))
         await using var scope = app.Services.CreateAsyncScope();
         var seeder = scope.ServiceProvider.GetRequiredService<SyntheticMaintenanceSeeder>();
 
-        if (seedCommand == "seed")
+        if (seedCommand == SyntheticMaintenanceCommand.Seed)
         {
             var result = await seeder.SeedAsync();
             await Console.Out.WriteLineAsync($"Seeded {result.Assets} assets, {result.Schedules} schedules, and {result.Inspections} inspections.");
@@ -91,24 +99,5 @@ app.MapHealthChecks("/health/ready", new HealthCheckOptions
 });
 
 app.Run();
-
-static bool TryGetSyntheticSeedCommand(string[] commandLineArguments, out string command)
-{
-    command = string.Empty;
-
-    if (commandLineArguments.Contains("--seed-synthetic", StringComparer.Ordinal))
-    {
-        command = "seed";
-        return true;
-    }
-
-    if (commandLineArguments.Contains("--reset-synthetic-seed", StringComparer.Ordinal))
-    {
-        command = "reset";
-        return true;
-    }
-
-    return false;
-}
 
 public partial class Program;
