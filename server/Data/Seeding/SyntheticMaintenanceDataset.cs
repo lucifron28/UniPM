@@ -1,7 +1,11 @@
+using System.Text.Json.Serialization;
+
 namespace UniPM.Api.Data.Seeding;
 
 public sealed class SyntheticMaintenanceDataset
 {
+    [JsonPropertyName("$schema")]
+    public string? Schema { get; set; }
     public string DatasetVersion { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace UniPM.Api.Data.Seeding;
 
@@ -8,7 +9,8 @@ public sealed class SyntheticMaintenanceDatasetLoader(
 {
     private static readonly JsonSerializerOptions SerializerOptions = new()
     {
-        PropertyNameCaseInsensitive = true
+        PropertyNameCaseInsensitive = true,
+        UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow
     };
 
     public async Task<SyntheticMaintenanceDataset> LoadAsync(CancellationToken cancellationToken = default)

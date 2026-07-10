@@ -66,6 +66,50 @@ public sealed class SyntheticMaintenanceDatasetTests
             Assert.DoesNotContain(dataset.Inspections, inspection => inspection.ScheduleId == schedule.Id));
     }
 
+    [Theory]
+    [InlineData("root")]
+    [InlineData("asset")]
+    [InlineData("inspection")]
+    [InlineData("expectedIssueKeys")]
+    [InlineData("scenarioTags")]
+    public async Task Loader_rejects_unmapped_fixture_properties(string propertyKind)
+    {
+        var fixturePath = await CreateModifiedFixtureAsync(root =>
+        {
+            switch (propertyKind)
+            {
+                case "root":
+                    root["unknownRootProperty"] = true;
+                    break;
+                case "asset":
+                    root["assets"]!.AsArray()[0]!.AsObject()["unknownAssetProperty"] = true;
+                    break;
+                case "inspection":
+                    root["inspections"]!.AsArray()[0]!.AsObject()["unknownInspectionProperty"] = true;
+                    break;
+                case "expectedIssueKeys":
+                    root["assets"]!.AsArray()[0]!.AsObject()["expectedIssueKeys"] = new JsonArray();
+                    break;
+                case "scenarioTags":
+                    root["inspections"]!.AsArray()[0]!.AsObject()["scenarioTags"] = new JsonArray();
+                    break;
+            }
+        });
+
+        try
+        {
+            var loader = new SyntheticMaintenanceDatasetLoader(
+                new SyntheticMaintenanceSeedOptions { DatasetPath = fixturePath },
+                new SyntheticMaintenanceDatasetValidator());
+
+            await Assert.ThrowsAsync<JsonException>(() => loader.LoadAsync());
+        }
+        finally
+        {
+            File.Delete(fixturePath);
+        }
+    }
+
     [Fact]
     public async Task Evaluation_manifest_is_complete_and_remains_test_only()
     {
@@ -123,5 +167,15 @@ public sealed class SyntheticMaintenanceDatasetTests
     private static async Task<JsonObject> LoadJsonObjectAsync(string path)
     {
         return JsonNode.Parse(await File.ReadAllTextAsync(path))!.AsObject();
+    }
+
+    private static async Task<string> CreateModifiedFixtureAsync(Action<JsonObject> mutate)
+    {
+        var root = JsonNode.Parse(await File.ReadAllTextAsync(SyntheticFixturePaths.OperationalFixture))!.AsObject();
+        mutate(root);
+
+        var path = Path.Combine(Path.GetTempPath(), $"unipm-synthetic-{Guid.NewGuid():N}.json");
+        await File.WriteAllTextAsync(path, root.ToJsonString());
+        return path;
     }
 }
