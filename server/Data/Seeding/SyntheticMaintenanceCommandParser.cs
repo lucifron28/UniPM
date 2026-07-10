@@ -5,6 +5,7 @@ internal enum SyntheticMaintenanceCommand
     None,
     Seed,
     Reset,
+    Rebuild,
     Ambiguous
 }
 
@@ -12,19 +13,29 @@ internal static class SyntheticMaintenanceCommandParser
 {
     public static SyntheticMaintenanceCommand Parse(IEnumerable<string> commandLineArguments)
     {
-        var seedRequested = commandLineArguments.Contains("--seed-synthetic", StringComparer.Ordinal);
-        var resetRequested = commandLineArguments.Contains("--reset-synthetic-seed", StringComparer.Ordinal);
+        var arguments = commandLineArguments.ToHashSet(StringComparer.Ordinal);
+        var requestedCommands = new List<SyntheticMaintenanceCommand>();
 
-        if (seedRequested && resetRequested)
+        if (arguments.Contains("--seed-synthetic"))
         {
-            return SyntheticMaintenanceCommand.Ambiguous;
+            requestedCommands.Add(SyntheticMaintenanceCommand.Seed);
         }
 
-        if (seedRequested)
+        if (arguments.Contains("--reset-synthetic-seed"))
         {
-            return SyntheticMaintenanceCommand.Seed;
+            requestedCommands.Add(SyntheticMaintenanceCommand.Reset);
         }
 
-        return resetRequested ? SyntheticMaintenanceCommand.Reset : SyntheticMaintenanceCommand.None;
+        if (arguments.Contains("--rebuild-maintenance-search-documents"))
+        {
+            requestedCommands.Add(SyntheticMaintenanceCommand.Rebuild);
+        }
+
+        return requestedCommands.Count switch
+        {
+            0 => SyntheticMaintenanceCommand.None,
+            1 => requestedCommands[0],
+            _ => SyntheticMaintenanceCommand.Ambiguous
+        };
     }
 }

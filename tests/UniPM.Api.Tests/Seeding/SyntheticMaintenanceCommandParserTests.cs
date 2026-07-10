@@ -21,13 +21,28 @@ public sealed class SyntheticMaintenanceCommandParserTests
         Assert.Equal(
             SyntheticMaintenanceCommand.Reset,
             SyntheticMaintenanceCommandParser.Parse(["--reset-synthetic-seed"]));
+        Assert.Equal(
+            SyntheticMaintenanceCommand.Rebuild,
+            SyntheticMaintenanceCommandParser.Parse(["--rebuild-maintenance-search-documents"]));
     }
 
     [Fact]
-    public void Parse_rejects_both_seed_flags()
+    public void Parse_rejects_multiple_maintenance_commands()
     {
         Assert.Equal(
             SyntheticMaintenanceCommand.Ambiguous,
             SyntheticMaintenanceCommandParser.Parse(["--seed-synthetic", "--reset-synthetic-seed"]));
+        Assert.Equal(
+            SyntheticMaintenanceCommand.Ambiguous,
+            SyntheticMaintenanceCommandParser.Parse(["--seed-synthetic", "--rebuild-maintenance-search-documents"]));
+        Assert.Equal(
+            SyntheticMaintenanceCommand.Ambiguous,
+            SyntheticMaintenanceCommandParser.Parse(["--reset-synthetic-seed", "--rebuild-maintenance-search-documents"]));
+        Assert.Equal(
+            SyntheticMaintenanceCommand.Ambiguous,
+            SyntheticMaintenanceCommandParser.Parse([
+                "--seed-synthetic",
+                "--reset-synthetic-seed",
+                "--rebuild-maintenance-search-documents"]));
     }
 }

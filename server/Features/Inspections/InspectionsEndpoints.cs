@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using UniPM.Api.Data;
 using UniPM.Api.Features;
+using UniPM.Api.Features.Retrieval;
 using UniPM.Api.Models;
 
 namespace UniPM.Api.Features.Inspections;
@@ -14,6 +15,7 @@ public static class InspectionsEndpoints
         group.MapPost("/", async (
             RecordInspectionDto dto,
             IDbContextFactory<ApplicationDbContext> factory,
+            MaintenanceSearchDocumentProjector projector,
             CancellationToken cancellationToken) =>
         {
             var validationErrors = dto.Validate();
@@ -29,6 +31,14 @@ public static class InspectionsEndpoints
             if (schedule is null)
             {
                 return ApiErrors.NotFound("Schedule not found.");
+            }
+
+            var asset = await context.Assets
+                .FirstOrDefaultAsync(candidate => candidate.Id == schedule.AssetId, cancellationToken);
+
+            if (asset is null)
+            {
+                return ApiErrors.NotFound("Asset not found.");
             }
 
             var scheduleAlreadyInspected = await context.InspectionRecords
@@ -60,6 +70,7 @@ public static class InspectionsEndpoints
             schedule.UpdatedAt = now;
 
             context.InspectionRecords.Add(inspection);
+            context.MaintenanceSearchDocuments.Add(projector.Build(inspection, asset));
             await context.SaveChangesAsync(cancellationToken);
 
             return Results.Created(

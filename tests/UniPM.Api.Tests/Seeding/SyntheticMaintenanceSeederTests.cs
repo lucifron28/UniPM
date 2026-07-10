@@ -2,6 +2,7 @@ using System.Text.Json.Nodes;
 using Microsoft.EntityFrameworkCore;
 using UniPM.Api.Data;
 using UniPM.Api.Data.Seeding;
+using UniPM.Api.Features.Retrieval;
 using UniPM.Api.Models;
 
 namespace UniPM.Api.Tests.Seeding;
@@ -24,6 +25,7 @@ public sealed class SyntheticMaintenanceSeederTests
         Assert.Equal(20, await context.Assets.CountAsync());
         Assert.Equal(34, await context.PreventiveMaintenanceSchedules.CountAsync());
         Assert.Equal(30, await context.InspectionRecords.CountAsync());
+        Assert.Equal(30, await context.MaintenanceSearchDocuments.CountAsync());
         Assert.Equal(30, await context.PreventiveMaintenanceSchedules.CountAsync(schedule => schedule.Status == "Completed"));
         Assert.Equal(4, await context.PreventiveMaintenanceSchedules.CountAsync(schedule => schedule.Status == "Due"));
     }
@@ -85,6 +87,7 @@ public sealed class SyntheticMaintenanceSeederTests
         Assert.NotNull(await verificationContext.Assets.FindAsync(unrelatedAssetId));
         Assert.Equal(0, await verificationContext.PreventiveMaintenanceSchedules.CountAsync());
         Assert.Equal(0, await verificationContext.InspectionRecords.CountAsync());
+        Assert.Equal(0, await verificationContext.MaintenanceSearchDocuments.CountAsync());
     }
 
     [Fact]
@@ -200,7 +203,11 @@ public sealed class SyntheticMaintenanceSeederTests
             new SyntheticMaintenanceSeedOptions { DatasetPath = datasetPath ?? SyntheticFixturePaths.OperationalFixture },
             validator);
 
-        return new SyntheticMaintenanceSeeder(factory, loader);
+        var lexiconLoader = new MaintenanceIssueLexiconLoader(new MaintenanceIssueLexiconOptions());
+        var issueNormalizer = new MaintenanceIssueNormalizer(lexiconLoader);
+        var projector = new MaintenanceSearchDocumentProjector(factory, issueNormalizer);
+
+        return new SyntheticMaintenanceSeeder(factory, loader, projector);
     }
 
     private static async Task<SyntheticMaintenanceDataset> LoadDatasetAsync()
