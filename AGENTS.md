@@ -151,14 +151,19 @@ Acceptable temporary/MVP work:
 Priority should move risk-first:
 
 1. Confirm the backend runs and tests pass.
-2. Add the synthetic fixture and development-only seeder.
-3. Complete read endpoints for existing entities.
-4. Implement the maintenance issue lexicon.
-5. Add a maintenance search-document projection.
-6. Implement lexical and semantic retrieval separately.
-7. Benchmark and fuse retrieval results.
-8. Add source-bounded summarization.
-9. Add authentication scaffolding.
+2. Complete inspection list/detail endpoints.
+3. Implement the maintenance issue lexicon.
+4. Add a maintenance search-document projection.
+5. Implement lexical and semantic retrieval separately.
+6. Benchmark and fuse retrieval results.
+7. Add source-bounded summarization.
+8. Add authentication scaffolding.
+
+The deterministic synthetic fixture, test-only retrieval evaluation manifest,
+Development-only seed/reset commands, reset dependency protection, and RRF
+placeholder removal are complete. The exact next backend branch is
+`feat/api-inspection-detail-endpoints`, followed by
+`feat/retrieval-maintenance-issue-lexicon`.
 
 Unblocked areas:
 

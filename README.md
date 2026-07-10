@@ -85,12 +85,26 @@ dotnet run --project server -- --reset-synthetic-seed
 
 `--seed-synthetic` deterministically upserts 20 fixture assets, 34 schedules,
 and 30 inspections. `--reset-synthetic-seed` removes only records whose IDs
-belong to the fixture, in inspection, schedule, then asset order. Neither
-command runs during normal API startup, and both fail outside Development.
+belong to the fixture, in inspection, schedule, then asset order. Reset refuses
+to continue if unrelated records depend on fixture-owned assets or schedules.
+Neither command runs during normal API startup, and both fail outside
+Development. Supplying both command flags is rejected without starting HTTP
+hosting or executing a seed operation.
 
 The fixture uses five deterministic synthetic actor IDs for assignee and
 inspector references. When development users are introduced later, reuse those
 IDs rather than creating a temporary production user table solely for seeding.
+
+The operational fixture is version `1.1.0`. The retrieval evaluation manifest
+is version `1.0.0`, is copied only to test output, and remains test-only: it is
+not loaded by the API, persisted, indexed, embedded, included in prompts, or
+returned by ordinary DTOs. Both files are fictional and based only on visible
+Page 1 blank-form fields; Page 2, completed samples, acknowledgement, and RMRF
+rules remain provisional.
+
+The next backend task is inspection list/detail endpoints. The maintenance issue
+lexicon follows those reads, then the search-document projection, separate
+lexical and semantic retrieval, benchmark, fusion, and source-bounded review.
 
 ## Project References
 

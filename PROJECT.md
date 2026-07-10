@@ -23,6 +23,9 @@
     and CI.
   - Fictional synthetic maintenance fixture, retrieval evaluation manifest, and
     Development-only seed/reset commands.
+  - Reset dependency protection, strict fixture-property loading, exact
+    evaluation correspondence tests, case-insensitive uniqueness checks, and
+    unambiguous seed-command handling.
 
 ## Synthetic Seed Commands
 
@@ -37,8 +40,9 @@ dotnet run --project server -- --reset-synthetic-seed
 
 Seeding deterministically upserts 20 synthetic assets, 34 schedules, and 30
 inspections. Reset removes only fixture-owned IDs and preserves unrelated
-records. The fixture is fictional, provisional, and based only on visible Page
-1 blank forms; it is not a production import contract.
+records, refusing to proceed when unrelated dependent records would block safe
+deletion. The fixture is fictional, provisional, and based only on visible
+Page 1 blank forms; it is not a production import contract.
 
 ## Retrieval Architecture Rule
 
@@ -51,12 +55,12 @@ LLM being available.
 
 ## Next Steps
 
-1. Add the synthetic fixture and development-only seeder.
-2. Complete inspection list/detail endpoints.
-3. Implement the maintenance issue lexicon.
-4. Add `MaintenanceSearchDocument` projection.
-5. Implement the SQL Server FTS retriever.
-6. Add a semantic retriever behind `IEmbeddingService`.
-7. Build the retrieval benchmark.
-8. Add result fusion.
-9. Add sanitizer and source-bounded maintenance review.
+1. Complete inspection list/detail endpoints (`feat/api-inspection-detail-endpoints`).
+2. Implement the maintenance issue lexicon.
+3. Add `MaintenanceSearchDocument` projection.
+4. Implement lexical retrieval with SQL Server FTS.
+5. Add a semantic retriever behind `IEmbeddingService`.
+6. Build the retrieval benchmark.
+7. Add result fusion.
+8. Add sanitizer and source-bounded maintenance review.
+9. Add authentication scaffolding.
