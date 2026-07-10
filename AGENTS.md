@@ -152,9 +152,9 @@ Priority should move risk-first:
 
 1. Confirm the backend runs and tests pass.
 2. Implement lexical and semantic retrieval separately.
-4. Benchmark and fuse retrieval results.
-5. Add source-bounded summarization.
-6. Add authentication scaffolding.
+3. Benchmark and fuse retrieval results.
+4. Add source-bounded summarization.
+5. Add authentication scaffolding.
 
 The deterministic synthetic fixture, test-only retrieval evaluation manifest,
 Development-only seed/reset commands, reset dependency protection, RRF

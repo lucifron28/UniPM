@@ -41,6 +41,35 @@ public sealed class MaintenanceSearchDocumentProjectorTests
     }
 
     [Fact]
+    public void Build_normalizes_line_endings_and_single_line_metadata()
+    {
+        var asset = CreateAsset();
+        asset.AssetCode = "FE\r\n001";
+        asset.Building = "Main\r\nBuilding";
+        asset.Department = "GSD\rServices";
+        asset.Location = "East\r\nHallway";
+        var inspection = CreateInspection(
+            remarks: "mahina\r\nang pressure\rfor refill",
+            actionsRecommendations: "Line one\r\nLine two\rLine three");
+
+        var document = CreateProjector().Build(inspection, asset);
+
+        Assert.Equal(
+            string.Join('\n',
+                "asset-code: FE 001",
+                "asset-category: fire-extinguisher",
+                "building: Main Building",
+                "department: GSD Services",
+                "location: East Hallway",
+                "date-inspected: 2025-05-15T08:00:00.0000000+08:00",
+                "operational-status: not operational",
+                "issue-keys: low_pressure",
+                "remarks: mahina\nang pressure\nfor refill",
+                "actions-recommendations: Line one\nLine two\nLine three"),
+            document.SearchText);
+    }
+
+    [Fact]
     public void Build_derives_issue_keys_from_remarks_and_keeps_recommendations_raw()
     {
         var inspection = CreateInspection(
@@ -87,6 +116,34 @@ public sealed class MaintenanceSearchDocumentProjectorTests
     }
 
     [Fact]
+    public void Build_with_empty_findings_produces_stable_metadata_only_text()
+    {
+        var asset = CreateAsset();
+        var nullDocument = CreateProjector().Build(
+            CreateInspection(remarks: null, actionsRecommendations: null),
+            asset);
+        var emptyDocument = CreateProjector().Build(
+            CreateInspection(remarks: string.Empty, actionsRecommendations: string.Empty),
+            asset);
+
+        Assert.Equal("[]", nullDocument.IssueKeysJson);
+        Assert.Equal(nullDocument.SearchText, emptyDocument.SearchText);
+        Assert.Equal(
+            string.Join('\n',
+                "asset-code: FE-001",
+                "asset-category: fire-extinguisher",
+                "building: Main Building",
+                "department: Administration",
+                "location: Ground Floor",
+                "date-inspected: 2025-05-15T08:00:00.0000000+08:00",
+                "operational-status: not operational",
+                "issue-keys: ",
+                "remarks: ",
+                "actions-recommendations: "),
+            nullDocument.SearchText);
+    }
+
+    [Fact]
     public async Task Rebuild_updates_stale_asset_metadata_and_asset_timestamp()
     {
         var factory = new TestContextFactory();
@@ -115,6 +172,41 @@ public sealed class MaintenanceSearchDocumentProjectorTests
         Assert.Equal("Second Floor Hallway", document.Location);
         Assert.Equal(updatedAt, document.AssetUpdatedAt);
         Assert.Contains("building: Annex Building", document.SearchText, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Rebuild_updates_edited_inspection_content_and_versions()
+    {
+        var factory = new TestContextFactory();
+        var asset = CreateAsset();
+        var inspection = CreateInspection();
+
+        await AddSourceRecordsAsync(factory, asset, inspection);
+        var projector = CreateProjector(factory);
+        await projector.RebuildAsync();
+
+        var updatedAt = AtManila(2025, 6, 2, 9);
+        await using (var context = factory.CreateDbContext())
+        {
+            var storedInspection = await context.InspectionRecords.SingleAsync(candidate => candidate.Id == inspection.Id);
+            storedInspection.Remarks = "expired unit";
+            storedInspection.UpdatedAt = updatedAt;
+
+            var storedDocument = await context.MaintenanceSearchDocuments.SingleAsync();
+            storedDocument.ProjectionVersion = "stale-projection";
+            storedDocument.LexiconVersion = "stale-lexicon";
+            await context.SaveChangesAsync();
+        }
+
+        Assert.Equal(new MaintenanceSearchDocumentRebuildResult(0, 1, 0, 1), await projector.RebuildAsync());
+
+        await using var verificationContext = factory.CreateDbContext();
+        var document = await verificationContext.MaintenanceSearchDocuments.SingleAsync();
+        Assert.Equal("[\"expired_unit\"]", document.IssueKeysJson);
+        Assert.Contains("remarks: expired unit", document.SearchText, StringComparison.Ordinal);
+        Assert.Equal(updatedAt, document.SourceUpdatedAt);
+        Assert.Equal(MaintenanceSearchDocumentProjector.ProjectionVersion, document.ProjectionVersion);
+        Assert.Equal(MaintenanceSearchDocumentProjector.LexiconVersion, document.LexiconVersion);
     }
 
     [Fact]

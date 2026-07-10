@@ -18,18 +18,18 @@
   - Initial `InitialDomainSchema` migration.
   - Asset create, list, detail, and QR lookup endpoints.
   - Schedule create, list, and detail endpoints.
-- Inspection submission, list, detail, and asset-history endpoints.
-- Versioned maintenance issue lexicon with deterministic multilingual
+  - Inspection submission, list, detail, and asset-history endpoints.
+  - Versioned maintenance issue lexicon with deterministic multilingual
     normalization and category-bounded matching.
-- Rebuildable `MaintenanceSearchDocument` projection with deterministic
-  normalized issue keys, source traceability, and explicit refresh commands.
+  - Rebuildable `MaintenanceSearchDocument` projection with deterministic
+    normalized issue keys, source traceability, and explicit refresh commands.
   - Reference-data categories, validation contracts, health checks, backend tests,
     and CI.
   - Fictional synthetic maintenance fixture, retrieval evaluation manifest, and
     Development-only seed/reset commands.
   - Reset dependency protection, strict fixture-property loading, exact
     evaluation correspondence tests, case-insensitive uniqueness checks, and
-    unambiguous seed-command handling.
+    unambiguous maintenance-command handling.
 
 ## Synthetic Seed Commands
 

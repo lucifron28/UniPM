@@ -82,7 +82,7 @@ if (maintenanceCommand != SyntheticMaintenanceCommand.None)
     }
     catch (Exception exception)
     {
-        app.Logger.LogError(exception, "Synthetic maintenance seed command failed.");
+        app.Logger.LogError(exception, "Maintenance command failed.");
         Environment.ExitCode = 1;
     }
 

@@ -20,9 +20,14 @@ public sealed class MaintenanceSearchDocumentProjector(
             throw new InvalidOperationException("The inspection and asset IDs must match before projection.");
         }
 
-        var remarks = inspection.Remarks?.Trim() ?? string.Empty;
-        var actionsRecommendations = inspection.ActionsRecommendations?.Trim() ?? string.Empty;
-        var matches = issueNormalizer.Normalize(remarks, asset.AssetCategory);
+        var assetCode = NormalizeSingleLineMetadata(asset.AssetCode);
+        var assetCategory = NormalizeSingleLineMetadata(asset.AssetCategory);
+        var building = NormalizeSingleLineMetadata(asset.Building);
+        var department = NormalizeSingleLineMetadata(asset.Department);
+        var location = NormalizeSingleLineMetadata(asset.Location);
+        var remarks = NormalizeSearchText(inspection.Remarks);
+        var actionsRecommendations = NormalizeSearchText(inspection.ActionsRecommendations);
+        var matches = issueNormalizer.Normalize(remarks, assetCategory);
         var issueKeys = matches.Select(match => match.IssueKey).ToArray();
 
         return new MaintenanceSearchDocument
@@ -30,11 +35,11 @@ public sealed class MaintenanceSearchDocumentProjector(
             InspectionId = inspection.Id,
             AssetId = asset.Id,
             ScheduleId = inspection.ScheduleId,
-            AssetCode = asset.AssetCode,
-            AssetCategory = asset.AssetCategory,
-            Building = asset.Building,
-            Department = asset.Department,
-            Location = asset.Location,
+            AssetCode = assetCode,
+            AssetCategory = assetCategory,
+            Building = building,
+            Department = department,
+            Location = location,
             DateInspected = inspection.DateInspected,
             IsOperational = inspection.IsOperational,
             SourceCreatedAt = inspection.CreatedAt,
@@ -44,8 +49,12 @@ public sealed class MaintenanceSearchDocumentProjector(
             LexiconVersion = LexiconVersion,
             IssueKeysJson = JsonSerializer.Serialize(issueKeys),
             SearchText = BuildSearchText(
-                asset,
                 inspection,
+                assetCode,
+                assetCategory,
+                building,
+                department,
+                location,
                 issueKeys,
                 remarks,
                 actionsRecommendations)
@@ -206,23 +215,47 @@ public sealed class MaintenanceSearchDocumentProjector(
     }
 
     private static string BuildSearchText(
-        Asset asset,
         InspectionRecord inspection,
+        string assetCode,
+        string assetCategory,
+        string building,
+        string department,
+        string location,
         IReadOnlyList<string> issueKeys,
         string remarks,
         string actionsRecommendations)
     {
         return string.Join('\n',
-            $"asset-code: {asset.AssetCode}",
-            $"asset-category: {asset.AssetCategory}",
-            $"building: {asset.Building ?? string.Empty}",
-            $"department: {asset.Department ?? string.Empty}",
-            $"location: {asset.Location ?? string.Empty}",
+            $"asset-code: {assetCode}",
+            $"asset-category: {assetCategory}",
+            $"building: {building}",
+            $"department: {department}",
+            $"location: {location}",
             $"date-inspected: {inspection.DateInspected:O}",
             $"operational-status: {(inspection.IsOperational ? "operational" : "not operational")}",
             $"issue-keys: {string.Join(", ", issueKeys)}",
             $"remarks: {remarks}",
             $"actions-recommendations: {actionsRecommendations}");
+    }
+
+    private static string NormalizeSearchText(string? value)
+    {
+        return NormalizeLineEndings(value).Trim();
+    }
+
+    private static string NormalizeSingleLineMetadata(string? value)
+    {
+        var normalized = NormalizeLineEndings(value).Trim();
+        return string.Join(
+            ' ',
+            normalized.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+    }
+
+    private static string NormalizeLineEndings(string? value)
+    {
+        return (value ?? string.Empty)
+            .Replace("\r\n", "\n", StringComparison.Ordinal)
+            .Replace('\r', '\n');
     }
 
     private static async Task<IDbContextTransaction?> BeginTransactionIfRelationalAsync(

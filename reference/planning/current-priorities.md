@@ -42,10 +42,10 @@ helps a human verify them.
 1. Confirm the backend baseline.
 2. Keep the synthetic fixture and Development-only seeder verified.
 3. Implement lexical and semantic retrieval separately.
-5. Benchmark retrieval channels.
-6. Add inspectable result fusion.
-7. Add sanitization and source-bounded summarization.
-8. Add authentication scaffolding.
+4. Benchmark retrieval channels.
+5. Add inspectable result fusion.
+6. Add sanitization and source-bounded summarization.
+7. Add authentication scaffolding.
 
 ## Task 0: Project Boot And Baseline Check
 
