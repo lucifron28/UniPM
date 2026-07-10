@@ -102,6 +102,12 @@ Not allowed:
 - frontend/mobile embedding calls
 - hardcoding one provider so it cannot be swapped later
 
+Semantic retrieval is a required target channel of the maintenance-history
+review feature, but it is operationally degradable. If embeddings are
+unavailable, maintenance review may use SQL, lexicon normalization, and FTS
+fallback while explicitly reporting lexical fallback. Core
+preventive-maintenance workflows must never depend on embeddings or an LLM.
+
 ## AI Provider Cost Controls
 
 This is a student-budget project. Avoid open-ended API usage.
@@ -145,11 +151,14 @@ Acceptable temporary/MVP work:
 Priority should move risk-first:
 
 1. Confirm the backend runs and tests pass.
-2. Seed realistic synthetic maintenance records for RAG and frontend development.
-3. Add list/GET endpoints for existing entities.
-4. Build the thin end-to-end RAG MVP using synthetic records and minimal sanitizer.
-5. Add authentication stub and role scaffolding.
-6. Add tests around retrieval, source records, sanitizer behavior, and auth basics.
+2. Add the synthetic fixture and development-only seeder.
+3. Complete read endpoints for existing entities.
+4. Implement the maintenance issue lexicon.
+5. Add a maintenance search-document projection.
+6. Implement lexical and semantic retrieval separately.
+7. Benchmark and fuse retrieval results.
+8. Add source-bounded summarization.
+9. Add authentication scaffolding.
 
 Unblocked areas:
 
