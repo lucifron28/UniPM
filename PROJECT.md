@@ -18,7 +18,7 @@
   - Initial `InitialDomainSchema` migration.
   - Asset create, list, detail, and QR lookup endpoints.
   - Schedule create, list, and detail endpoints.
-  - Inspection submission and asset-history endpoint.
+  - Inspection submission, list, detail, and asset-history endpoints.
   - Reference-data categories, validation contracts, health checks, backend tests,
     and CI.
   - Fictional synthetic maintenance fixture, retrieval evaluation manifest, and
@@ -55,12 +55,11 @@ LLM being available.
 
 ## Next Steps
 
-1. Complete inspection list/detail endpoints (`feat/api-inspection-detail-endpoints`).
-2. Implement the maintenance issue lexicon.
-3. Add `MaintenanceSearchDocument` projection.
-4. Implement lexical retrieval with SQL Server FTS.
-5. Add a semantic retriever behind `IEmbeddingService`.
-6. Build the retrieval benchmark.
-7. Add result fusion.
-8. Add sanitizer and source-bounded maintenance review.
-9. Add authentication scaffolding.
+1. Implement the maintenance issue lexicon (`feat/retrieval-maintenance-issue-lexicon`).
+2. Add `MaintenanceSearchDocument` projection.
+3. Implement lexical retrieval with SQL Server FTS.
+4. Add a semantic retriever behind `IEmbeddingService`.
+5. Build the retrieval benchmark.
+6. Add result fusion.
+7. Add sanitizer and source-bounded maintenance review.
+8. Add authentication scaffolding.

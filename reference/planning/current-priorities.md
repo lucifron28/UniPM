@@ -24,7 +24,7 @@ helps a human verify them.
 - Asset reads: done. Create, list, detail, and QR lookup are available.
 - Schedule reads: done. Create, list, and detail are available.
 - Inspection history: done.
-- Inspection list/detail: pending.
+- Inspection list/detail: done.
 - Operational synthetic fixture: completed at version `1.1.0`.
 - Development seed/reset commands: completed and Development-only.
 - Retrieval evaluation manifest: completed at version `1.0.0` and test-only.
@@ -41,14 +41,13 @@ helps a human verify them.
 
 1. Confirm the backend baseline.
 2. Keep the synthetic fixture and Development-only seeder verified.
-3. Complete inspection list/detail endpoints.
-4. Implement the maintenance issue lexicon.
-5. Add a `MaintenanceSearchDocument` projection.
-6. Implement lexical and semantic retrieval separately.
-7. Benchmark retrieval channels.
-8. Add inspectable result fusion.
-9. Add sanitization and source-bounded summarization.
-10. Add authentication scaffolding.
+3. Implement the maintenance issue lexicon.
+4. Add a `MaintenanceSearchDocument` projection.
+5. Implement lexical and semantic retrieval separately.
+6. Benchmark retrieval channels.
+7. Add inspectable result fusion.
+8. Add sanitization and source-bounded summarization.
+9. Add authentication scaffolding.
 
 ## Task 0: Project Boot And Baseline Check
 
@@ -130,7 +129,7 @@ as part of inspection list/detail reads.
 Goal: normalize maintenance language before retrieval work becomes provider- or
 model-dependent.
 
-After inspection list/detail is complete:
+With inspection list/detail complete:
 
 - define a small, versioned issue lexicon from the synthetic fixture and visible
   form vocabulary;
@@ -223,7 +222,6 @@ directly.
 
 ## Next Branches
 
-- `feat/api-inspection-detail-endpoints`
 - `feat/retrieval-maintenance-issue-lexicon`
 - `feat/retrieval-search-document`
 - `feat/retrieval-lexical-fts`

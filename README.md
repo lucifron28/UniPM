@@ -26,11 +26,10 @@ The backend currently provides:
 
 - asset creation, list, detail, and QR lookup;
 - schedule creation, list, and detail;
-- inspection submission and asset-history lookup;
+- inspection submission, list, detail, and asset-history lookup;
 - reference-data categories, validation/error contracts, health checks, tests,
   and backend CI.
 
-Inspection list and inspection detail endpoints are still pending.
 
 ## First Run
 
@@ -102,8 +101,8 @@ returned by ordinary DTOs. Both files are fictional and based only on visible
 Page 1 blank-form fields; Page 2, completed samples, acknowledgement, and RMRF
 rules remain provisional.
 
-The next backend task is inspection list/detail endpoints. The maintenance issue
-lexicon follows those reads, then the search-document projection, separate
+Inspection list/detail reads are complete. The next backend task is the
+maintenance issue lexicon, followed by the search-document projection, separate
 lexical and semantic retrieval, benchmark, fusion, and source-bounded review.
 
 ## Project References
