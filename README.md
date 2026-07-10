@@ -16,9 +16,10 @@ The local stack runs:
 SQL Server 2025 is used so the later bounded retrieval feature can use
 Full-Text Search plus semantic similarity. The database already contains the
 initial `Asset`, `PreventiveMaintenanceSchedule`, and `InspectionRecord`
-schema. It does not yet contain a maintenance issue lexicon,
-`MaintenanceSearchDocument`, FTS query logic, embeddings, semantic retrieval,
-result fusion/RRF, source-bounded summaries, or a maintenance-review endpoint.
+schema. The backend now contains a versioned deterministic maintenance issue
+lexicon. It does not yet contain `MaintenanceSearchDocument`, FTS query logic,
+embeddings, semantic retrieval, result fusion/RRF, source-bounded summaries, or
+a maintenance-review endpoint.
 
 ## Current API Surface
 
@@ -101,8 +102,8 @@ returned by ordinary DTOs. Both files are fictional and based only on visible
 Page 1 blank-form fields; Page 2, completed samples, acknowledgement, and RMRF
 rules remain provisional.
 
-Inspection list/detail reads are complete. The next backend task is the
-maintenance issue lexicon, followed by the search-document projection, separate
+Inspection list/detail reads and maintenance issue normalization are complete.
+The next backend task is the search-document projection, followed by separate
 lexical and semantic retrieval, benchmark, fusion, and source-bounded review.
 
 ## Project References
