@@ -204,6 +204,34 @@ public sealed class InspectionQueryEndpointsTests
         Assert.Equal(scenario.FirstInspection.Id, history[1].Id);
     }
 
+    [Fact]
+    public async Task Posting_an_inspection_creates_its_search_document()
+    {
+        await using var application = new TestApplicationFactory();
+        var client = application.CreateClient();
+        var asset = await CreateAssetAsync(client, "FE-102", "fire-extinguisher");
+        var schedule = await CreateScheduleAsync(
+            client,
+            asset.Id,
+            new DateTimeOffset(2026, 4, 10, 8, 0, 0, TimeSpan.FromHours(8)));
+        var inspection = await CreateInspectionAsync(
+            client,
+            schedule.Id,
+            new DateTimeOffset(2026, 4, 15, 8, 0, 0, TimeSpan.FromHours(8)),
+            false,
+            "mahina ang pressure");
+
+        await using var scope = application.Services.CreateAsyncScope();
+        var contextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
+        await using var context = await contextFactory.CreateDbContextAsync();
+        var document = await context.MaintenanceSearchDocuments.SingleAsync();
+
+        Assert.Equal(inspection.Id, document.InspectionId);
+        Assert.Equal(asset.Id, document.AssetId);
+        Assert.Equal("[\"low_pressure\"]", document.IssueKeysJson);
+        Assert.Contains("remarks: mahina ang pressure", document.SearchText, StringComparison.Ordinal);
+    }
+
     private static async Task<InspectionScenario> CreateScenarioAsync(HttpClient client)
     {
         var firstAsset = await CreateAssetAsync(client, "FE-101", "fire-extinguisher");
