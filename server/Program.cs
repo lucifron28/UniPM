@@ -33,20 +33,22 @@ builder.Services.AddScoped<SyntheticMaintenanceSeeder>();
 builder.Services.AddSingleton<MaintenanceIssueLexiconOptions>();
 builder.Services.AddSingleton<MaintenanceIssueLexiconLoader>();
 builder.Services.AddSingleton<MaintenanceIssueNormalizer>();
+builder.Services.AddScoped<MaintenanceSearchDocumentProjector>();
 
 var app = builder.Build();
 
-var seedCommand = SyntheticMaintenanceCommandParser.Parse(args);
-if (seedCommand != SyntheticMaintenanceCommand.None)
+var maintenanceCommand = SyntheticMaintenanceCommandParser.Parse(args);
+if (maintenanceCommand != SyntheticMaintenanceCommand.None)
 {
-    if (seedCommand == SyntheticMaintenanceCommand.Ambiguous)
+    if (maintenanceCommand == SyntheticMaintenanceCommand.Ambiguous)
     {
-        await Console.Error.WriteLineAsync("Specify only one synthetic maintenance seed command.");
+        await Console.Error.WriteLineAsync("Specify only one maintenance command.");
         Environment.ExitCode = 1;
         return;
     }
 
-    if (!app.Environment.IsDevelopment())
+    if (maintenanceCommand is (SyntheticMaintenanceCommand.Seed or SyntheticMaintenanceCommand.Reset)
+        && !app.Environment.IsDevelopment())
     {
         await Console.Error.WriteLineAsync("Synthetic maintenance seed commands are available only in Development.");
         Environment.ExitCode = 1;
@@ -56,22 +58,31 @@ if (seedCommand != SyntheticMaintenanceCommand.None)
     try
     {
         await using var scope = app.Services.CreateAsyncScope();
-        var seeder = scope.ServiceProvider.GetRequiredService<SyntheticMaintenanceSeeder>();
-
-        if (seedCommand == SyntheticMaintenanceCommand.Seed)
+        if (maintenanceCommand == SyntheticMaintenanceCommand.Rebuild)
         {
-            var result = await seeder.SeedAsync();
-            await Console.Out.WriteLineAsync($"Seeded {result.Assets} assets, {result.Schedules} schedules, and {result.Inspections} inspections.");
+            var projector = scope.ServiceProvider.GetRequiredService<MaintenanceSearchDocumentProjector>();
+            var result = await projector.RebuildAsync();
+            await Console.Out.WriteLineAsync(
+                $"Rebuilt {result.Total} maintenance search documents ({result.Created} created, {result.Updated} updated, {result.Removed} removed).");
         }
         else
         {
-            var result = await seeder.ResetAsync();
-            await Console.Out.WriteLineAsync($"Removed {result.AssetsRemoved} assets, {result.SchedulesRemoved} schedules, and {result.InspectionsRemoved} inspections.");
+            var seeder = scope.ServiceProvider.GetRequiredService<SyntheticMaintenanceSeeder>();
+            if (maintenanceCommand == SyntheticMaintenanceCommand.Seed)
+            {
+                var result = await seeder.SeedAsync();
+                await Console.Out.WriteLineAsync($"Seeded {result.Assets} assets, {result.Schedules} schedules, and {result.Inspections} inspections.");
+            }
+            else
+            {
+                var result = await seeder.ResetAsync();
+                await Console.Out.WriteLineAsync($"Removed {result.AssetsRemoved} assets, {result.SchedulesRemoved} schedules, and {result.InspectionsRemoved} inspections.");
+            }
         }
     }
     catch (Exception exception)
     {
-        app.Logger.LogError(exception, "Synthetic maintenance seed command failed.");
+        app.Logger.LogError(exception, "Maintenance command failed.");
         Environment.ExitCode = 1;
     }
 

@@ -21,23 +21,26 @@
   - Inspection submission, list, detail, and asset-history endpoints.
   - Versioned maintenance issue lexicon with deterministic multilingual
     normalization and category-bounded matching.
+  - Rebuildable `MaintenanceSearchDocument` projection with deterministic
+    normalized issue keys, source traceability, and explicit refresh commands.
   - Reference-data categories, validation contracts, health checks, backend tests,
     and CI.
   - Fictional synthetic maintenance fixture, retrieval evaluation manifest, and
     Development-only seed/reset commands.
   - Reset dependency protection, strict fixture-property loading, exact
     evaluation correspondence tests, case-insensitive uniqueness checks, and
-    unambiguous seed-command handling.
+    unambiguous maintenance-command handling.
 
 ## Synthetic Seed Commands
 
-Run these only with `ASPNETCORE_ENVIRONMENT=Development` and a configured,
-reachable database:
+Run seed/reset only with `ASPNETCORE_ENVIRONMENT=Development`; the rebuild
+command requires a configured, reachable database:
 
 ```powershell
 $env:ASPNETCORE_ENVIRONMENT = "Development"
 dotnet run --project server -- --seed-synthetic
 dotnet run --project server -- --reset-synthetic-seed
+dotnet run --project server -- --rebuild-maintenance-search-documents
 ```
 
 Seeding deterministically upserts 20 synthetic assets, 34 schedules, and 30
@@ -45,6 +48,10 @@ inspections. Reset removes only fixture-owned IDs and preserves unrelated
 records, refusing to proceed when unrelated dependent records would block safe
 deletion. The fixture is fictional, provisional, and based only on visible
 Page 1 blank forms; it is not a production import contract.
+
+The rebuild command refreshes one search document per persisted inspection from
+approved operational fields. It is explicit, transactional on SQL Server, and
+does not run during normal API startup.
 
 ## Retrieval Architecture Rule
 
@@ -57,10 +64,9 @@ LLM being available.
 
 ## Next Steps
 
-1. Add `MaintenanceSearchDocument` projection (`feat/retrieval-search-document`).
-2. Implement lexical retrieval with SQL Server FTS.
-3. Add a semantic retriever behind `IEmbeddingService`.
-4. Build the retrieval benchmark.
-5. Add result fusion.
-6. Add sanitizer and source-bounded maintenance review.
-7. Add authentication scaffolding.
+1. Implement lexical retrieval with SQL Server FTS.
+2. Add a semantic retriever behind `IEmbeddingService`.
+3. Build the retrieval benchmark.
+4. Add result fusion.
+5. Add sanitizer and source-bounded maintenance review.
+6. Add authentication scaffolding.

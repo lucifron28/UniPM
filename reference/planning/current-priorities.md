@@ -30,7 +30,7 @@ helps a human verify them.
 - Retrieval evaluation manifest: completed at version `1.0.0` and test-only.
 - RRF placeholder: removed; RRF is not implemented yet.
 - Maintenance issue lexicon: done at version `1.0.0`.
-- `MaintenanceSearchDocument`: pending.
+- `MaintenanceSearchDocument`: done as a persisted, rebuildable projection.
 - SQL Server FTS retrieval: pending.
 - Semantic retrieval: pending, but required as a target channel.
 - Retrieval benchmark and fusion: pending.
@@ -41,12 +41,11 @@ helps a human verify them.
 
 1. Confirm the backend baseline.
 2. Keep the synthetic fixture and Development-only seeder verified.
-3. Add a `MaintenanceSearchDocument` projection.
-4. Implement lexical and semantic retrieval separately.
-5. Benchmark retrieval channels.
-6. Add inspectable result fusion.
-7. Add sanitization and source-bounded summarization.
-8. Add authentication scaffolding.
+3. Implement lexical and semantic retrieval separately.
+4. Benchmark retrieval channels.
+5. Add inspectable result fusion.
+6. Add sanitization and source-bounded summarization.
+7. Add authentication scaffolding.
 
 ## Task 0: Project Boot And Baseline Check
 
@@ -135,9 +134,14 @@ fixture and visible form vocabulary, inspectable English/Tagalog/Taglish aliases
 required category-bounded matching, deterministic scoring, and narrow negation
 handling. Evaluation labels remain outside the resource and runtime code.
 
-Next, add a `MaintenanceSearchDocument` projection only for approved
-operational source fields. Keep evaluation labels outside the projection and
-all runtime search content.
+The projection uses only approved operational source fields. Evaluation labels
+remain outside the projection and all runtime search content.
+
+The projection is now persisted one-per-inspection, derives issue keys from
+remarks using lexicon v1.0, retains recommendations as raw searchable text,
+tracks source and asset timestamps, and supports explicit transactional rebuild.
+FTS, embeddings, retrieval endpoints, evaluation queries, fusion, and LLM work
+remain pending.
 
 Do not treat the lexicon as a diagnosis system or invent official GSD wording.
 
@@ -222,7 +226,6 @@ directly.
 
 ## Next Branches
 
-- `feat/retrieval-search-document`
 - `feat/retrieval-lexical-fts`
 - `feat/retrieval-semantic`
 - `test(rag): add retrieval benchmark`
