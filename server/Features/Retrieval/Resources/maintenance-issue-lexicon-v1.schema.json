@@ -68,7 +68,75 @@
             "minLength": 1
           }
         }
-      }
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "key": { "const": "alarm_panel_fault" },
+            "assetCategory": { "const": "fire-alarm" }
+          }
+        },
+        {
+          "properties": {
+            "key": { "const": "battery_issue" },
+            "assetCategory": { "const": "emergency-light" }
+          }
+        },
+        {
+          "properties": {
+            "key": { "const": "clogged_filter" },
+            "assetCategory": { "const": "water-drinking-station" }
+          }
+        },
+        {
+          "properties": {
+            "key": { "const": "device_not_responding" },
+            "assetCategory": { "const": "fire-alarm" }
+          }
+        },
+        {
+          "properties": {
+            "key": { "const": "expired_unit" },
+            "assetCategory": { "const": "fire-extinguisher" }
+          }
+        },
+        {
+          "properties": {
+            "key": { "const": "leaking" },
+            "assetCategory": { "const": "water-drinking-station" }
+          }
+        },
+        {
+          "properties": {
+            "key": { "const": "low_pressure" },
+            "assetCategory": { "const": "fire-extinguisher" }
+          }
+        },
+        {
+          "properties": {
+            "key": { "const": "not_lighting" },
+            "assetCategory": { "const": "emergency-light" }
+          }
+        },
+        {
+          "properties": {
+            "key": { "const": "smoke_detector_issue" },
+            "assetCategory": { "const": "fire-alarm" }
+          }
+        },
+        {
+          "properties": {
+            "key": { "const": "uv_light_issue" },
+            "assetCategory": { "const": "water-drinking-station" }
+          }
+        },
+        {
+          "properties": {
+            "key": { "const": "weak_water_flow" },
+            "assetCategory": { "const": "water-drinking-station" }
+          }
+        }
+      ]
     }
   }
 }

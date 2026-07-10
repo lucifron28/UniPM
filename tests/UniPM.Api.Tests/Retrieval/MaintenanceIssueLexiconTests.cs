@@ -178,6 +178,35 @@ public sealed class MaintenanceIssueLexiconTests
         }
     }
 
+    [Fact]
+    public async Task Loader_rejects_an_issue_with_the_wrong_supported_category()
+    {
+        var path = await CreateModifiedLexiconAsync(root =>
+        {
+            var lowPressureIssue = root["issues"]!
+                .AsArray()
+                .Single(issue => issue!["key"]!.GetValue<string>() == "low_pressure")!
+                .AsObject();
+            lowPressureIssue["assetCategory"] = "water-drinking-station";
+        });
+
+        try
+        {
+            var loader = new MaintenanceIssueLexiconLoader(new MaintenanceIssueLexiconOptions
+            {
+                LexiconPath = path
+            });
+
+            var exception = Assert.Throws<MaintenanceIssueLexiconException>(() => loader.Load());
+            Assert.Contains("low_pressure", exception.Message, StringComparison.Ordinal);
+            Assert.Contains("fire-extinguisher", exception.Message, StringComparison.Ordinal);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
     private static MaintenanceIssueLexiconDocument LoadDocument()
     {
         return new MaintenanceIssueLexiconLoader(new MaintenanceIssueLexiconOptions

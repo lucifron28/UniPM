@@ -13,18 +13,22 @@ public sealed class MaintenanceIssueLexiconOptions
         "Resources",
         LexiconFileName);
 
-    public static IReadOnlySet<string> SupportedIssueKeys { get; } = new HashSet<string>(StringComparer.Ordinal)
+    public static IReadOnlyDictionary<string, string> ApprovedIssueCategories { get; } =
+        new Dictionary<string, string>(StringComparer.Ordinal)
     {
-        "alarm_panel_fault",
-        "battery_issue",
-        "clogged_filter",
-        "device_not_responding",
-        "expired_unit",
-        "leaking",
-        "low_pressure",
-        "not_lighting",
-        "smoke_detector_issue",
-        "uv_light_issue",
-        "weak_water_flow"
+        ["alarm_panel_fault"] = "fire-alarm",
+        ["battery_issue"] = "emergency-light",
+        ["clogged_filter"] = "water-drinking-station",
+        ["device_not_responding"] = "fire-alarm",
+        ["expired_unit"] = "fire-extinguisher",
+        ["leaking"] = "water-drinking-station",
+        ["low_pressure"] = "fire-extinguisher",
+        ["not_lighting"] = "emergency-light",
+        ["smoke_detector_issue"] = "fire-alarm",
+        ["uv_light_issue"] = "water-drinking-station",
+        ["weak_water_flow"] = "water-drinking-station"
     };
+
+    public static IReadOnlySet<string> SupportedIssueKeys { get; } =
+        ApprovedIssueCategories.Keys.ToHashSet(StringComparer.Ordinal);
 }

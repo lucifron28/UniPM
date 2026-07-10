@@ -83,9 +83,17 @@ public sealed class MaintenanceIssueLexiconLoader(MaintenanceIssueLexiconOptions
                 errors.Add("The lexicon contains an unsupported or empty issue key.");
             }
 
-            if (!AssetCategoryCatalog.ContainsCode(issue.AssetCategory))
+            if (string.IsNullOrWhiteSpace(issue.AssetCategory)
+                || !AssetCategoryCatalog.ContainsCode(issue.AssetCategory))
             {
                 errors.Add($"Issue '{issue.Key}' uses an unsupported asset category.");
+            }
+
+            if (!string.IsNullOrWhiteSpace(issue.Key)
+                && MaintenanceIssueLexiconOptions.ApprovedIssueCategories.TryGetValue(issue.Key, out var expectedCategory)
+                && !string.Equals(issue.AssetCategory, expectedCategory, StringComparison.OrdinalIgnoreCase))
+            {
+                errors.Add($"Issue '{issue.Key}' must use asset category '{expectedCategory}'.");
             }
 
             if (issue.Aliases.Count == 0)
