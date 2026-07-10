@@ -70,11 +70,27 @@ dotnet test .\UniPM.slnx --no-build
 
 ## Synthetic Development Data
 
-The synthetic maintenance fixture and its development-only seed commands are
-documented after they are implemented. The fixture is fictional, represents no
-actual GSD maintenance history, and is not a final production import contract.
-It is based only on visible Page 1 blank forms and will be revised after Page 2
-forms and official completed samples become available.
+The fixture is entirely fictional, represents no actual GSD maintenance history,
+and is not a final production import contract. It is based only on visible Page
+1 blank forms and will be revised after Page 2 forms and official completed
+samples become available.
+
+With `ASPNETCORE_ENVIRONMENT=Development` and a reachable configured database:
+
+```powershell
+$env:ASPNETCORE_ENVIRONMENT = "Development"
+dotnet run --project server -- --seed-synthetic
+dotnet run --project server -- --reset-synthetic-seed
+```
+
+`--seed-synthetic` deterministically upserts 20 fixture assets, 34 schedules,
+and 30 inspections. `--reset-synthetic-seed` removes only records whose IDs
+belong to the fixture, in inspection, schedule, then asset order. Neither
+command runs during normal API startup, and both fail outside Development.
+
+The fixture uses five deterministic synthetic actor IDs for assignee and
+inspector references. When development users are introduced later, reuse those
+IDs rather than creating a temporary production user table solely for seeding.
 
 ## Project References
 

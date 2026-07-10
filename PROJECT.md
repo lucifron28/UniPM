@@ -21,6 +21,24 @@
   - Inspection submission and asset-history endpoint.
   - Reference-data categories, validation contracts, health checks, backend tests,
     and CI.
+  - Fictional synthetic maintenance fixture, retrieval evaluation manifest, and
+    Development-only seed/reset commands.
+
+## Synthetic Seed Commands
+
+Run these only with `ASPNETCORE_ENVIRONMENT=Development` and a configured,
+reachable database:
+
+```powershell
+$env:ASPNETCORE_ENVIRONMENT = "Development"
+dotnet run --project server -- --seed-synthetic
+dotnet run --project server -- --reset-synthetic-seed
+```
+
+Seeding deterministically upserts 20 synthetic assets, 34 schedules, and 30
+inspections. Reset removes only fixture-owned IDs and preserves unrelated
+records. The fixture is fictional, provisional, and based only on visible Page
+1 blank forms; it is not a production import contract.
 
 ## Retrieval Architecture Rule
 
