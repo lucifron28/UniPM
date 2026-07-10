@@ -110,6 +110,47 @@ public sealed class SyntheticMaintenanceDatasetTests
         }
     }
 
+    [Theory]
+    [InlineData("assetCode", "asset codes")]
+    [InlineData("qrCodeValue", "QR values")]
+    [InlineData("seedKey", "seed keys")]
+    public async Task Loader_rejects_case_insensitive_duplicate_strings(string propertyKind, string errorLabel)
+    {
+        var fixturePath = await CreateModifiedFixtureAsync(root =>
+        {
+            var assets = root["assets"]!.AsArray();
+            var firstAsset = assets[0]!.AsObject();
+            var secondAsset = assets[1]!.AsObject();
+
+            switch (propertyKind)
+            {
+                case "assetCode":
+                    secondAsset["assetCode"] = firstAsset["assetCode"]!.GetValue<string>().ToLowerInvariant();
+                    break;
+                case "qrCodeValue":
+                    secondAsset["qrCodeValue"] = firstAsset["qrCodeValue"]!.GetValue<string>().ToLowerInvariant();
+                    break;
+                case "seedKey":
+                    secondAsset["seedKey"] = firstAsset["seedKey"]!.GetValue<string>().ToUpperInvariant();
+                    break;
+            }
+        });
+
+        try
+        {
+            var loader = new SyntheticMaintenanceDatasetLoader(
+                new SyntheticMaintenanceSeedOptions { DatasetPath = fixturePath },
+                new SyntheticMaintenanceDatasetValidator());
+
+            var exception = await Assert.ThrowsAsync<SyntheticMaintenanceFixtureException>(() => loader.LoadAsync());
+            Assert.Contains(errorLabel, exception.Message);
+        }
+        finally
+        {
+            File.Delete(fixturePath);
+        }
+    }
+
     [Fact]
     public async Task Evaluation_manifest_is_complete_and_remains_test_only()
     {

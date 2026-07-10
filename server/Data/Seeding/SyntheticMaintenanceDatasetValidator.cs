@@ -216,21 +216,34 @@ public sealed class SyntheticMaintenanceDatasetValidator
         AddDuplicateError(dataset.Assets.Select(asset => asset.Id), "asset IDs", errors);
         AddDuplicateError(dataset.Schedules.Select(schedule => schedule.Id), "schedule IDs", errors);
         AddDuplicateError(dataset.Inspections.Select(inspection => inspection.Id), "inspection IDs", errors);
-        AddDuplicateError(dataset.Assets.Select(asset => asset.AssetCode), "asset codes", errors);
-        AddDuplicateError(dataset.Assets.Select(asset => asset.QrCodeValue), "QR values", errors);
+        AddDuplicateError(
+            dataset.Assets.Select(asset => asset.AssetCode),
+            "asset codes",
+            errors,
+            StringComparer.OrdinalIgnoreCase);
+        AddDuplicateError(
+            dataset.Assets.Select(asset => asset.QrCodeValue),
+            "QR values",
+            errors,
+            StringComparer.OrdinalIgnoreCase);
         AddDuplicateError(
             dataset.Actors.Select(actor => actor.SeedKey)
                 .Concat(dataset.Assets.Select(asset => asset.SeedKey))
                 .Concat(dataset.Schedules.Select(schedule => schedule.SeedKey))
                 .Concat(dataset.Inspections.Select(inspection => inspection.SeedKey)),
             "seed keys",
-            errors);
+            errors,
+            StringComparer.OrdinalIgnoreCase);
     }
 
-    private static void AddDuplicateError<T>(IEnumerable<T> values, string label, List<string> errors)
+    private static void AddDuplicateError<T>(
+        IEnumerable<T> values,
+        string label,
+        List<string> errors,
+        IEqualityComparer<T>? comparer = null)
         where T : notnull
     {
-        if (values.GroupBy(value => value).Any(group => group.Count() > 1))
+        if (values.GroupBy(value => value, comparer ?? EqualityComparer<T>.Default).Any(group => group.Count() > 1))
         {
             errors.Add($"Fixture contains duplicate {label}.");
         }
