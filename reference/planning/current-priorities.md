@@ -112,7 +112,7 @@ Completed:
 - schedule create, list, and detail;
 - inspection submission and asset-history lookup.
 
-Next implementation:
+Completed implementation:
 
 - `GET /api/v1/inspections`
 - `GET /api/v1/inspections/{id}`
@@ -222,7 +222,6 @@ directly.
 
 ## Next Branches
 
-- `feat/retrieval-search-document`
 - `feat/retrieval-search-document`
 - `feat/retrieval-lexical-fts`
 - `feat/retrieval-semantic`
