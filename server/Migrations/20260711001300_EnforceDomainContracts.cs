@@ -53,8 +53,8 @@ namespace UniPM.Api.Migrations
                        OR DATALENGTH(IssueKeysJson) / 2 > 1024)
                     THROW 51000, 'Domain-contract migration stopped: a search-document value exceeds its maximum length.', 1;
 
-                UPDATE dbo.Assets
-                SET AssetCode = UPPER(LTRIM(RTRIM(REPLACE(REPLACE(REPLACE(AssetCode, CHAR(13) + CHAR(10), ' '), CHAR(13), ' '), CHAR(10), ' ')))),
+                UPDATE assets
+                SET AssetCode = UPPER(COALESCE(assetCodeCanonical.CanonicalValue, N'')),
                     AssetCategory = LOWER(LTRIM(RTRIM(AssetCategory))),
                     Status = CASE UPPER(LTRIM(RTRIM(Status)))
                         WHEN 'ACTIVE' THEN 'Active'
@@ -66,9 +66,30 @@ namespace UniPM.Api.Migrations
                     Department = NULLIF(LTRIM(RTRIM(Department)), ''),
                     Location = NULLIF(LTRIM(RTRIM(Location)), ''),
                     QrCodeValue = CASE
-                        WHEN QrCodeValue IS NULL THEN NULL
-                        ELSE UPPER(LTRIM(RTRIM(REPLACE(REPLACE(REPLACE(QrCodeValue, CHAR(13) + CHAR(10), ' '), CHAR(13), ' '), CHAR(10), ' '))))
-                    END;
+                        WHEN qrCodeCanonical.CanonicalValue IS NULL THEN NULL
+                        ELSE UPPER(qrCodeCanonical.CanonicalValue)
+                    END
+                FROM dbo.Assets AS assets
+                CROSS APPLY
+                (
+                    SELECT STRING_AGG(CONVERT(nvarchar(max), TRIM(parts.value)), N' ')
+                        WITHIN GROUP (ORDER BY parts.ordinal) AS CanonicalValue
+                    FROM STRING_SPLIT(
+                        REPLACE(REPLACE(assets.AssetCode, NCHAR(13) + NCHAR(10), NCHAR(10)), NCHAR(13), NCHAR(10)),
+                        NCHAR(10),
+                        1) AS parts
+                    WHERE TRIM(parts.value) <> N''
+                ) AS assetCodeCanonical
+                CROSS APPLY
+                (
+                    SELECT STRING_AGG(CONVERT(nvarchar(max), TRIM(parts.value)), N' ')
+                        WITHIN GROUP (ORDER BY parts.ordinal) AS CanonicalValue
+                    FROM STRING_SPLIT(
+                        REPLACE(REPLACE(assets.QrCodeValue, NCHAR(13) + NCHAR(10), NCHAR(10)), NCHAR(13), NCHAR(10)),
+                        NCHAR(10),
+                        1) AS parts
+                    WHERE TRIM(parts.value) <> N''
+                ) AS qrCodeCanonical;
 
                 UPDATE dbo.PreventiveMaintenanceSchedules
                 SET PeriodType = CASE UPPER(LTRIM(RTRIM(PeriodType)))
@@ -99,17 +120,29 @@ namespace UniPM.Api.Migrations
                     END,
                     AcademicYear = NULLIF(LTRIM(RTRIM(AcademicYear)), '');
 
-                UPDATE dbo.MaintenanceSearchDocuments
-                SET AssetCode = UPPER(LTRIM(RTRIM(REPLACE(REPLACE(REPLACE(AssetCode, CHAR(13) + CHAR(10), ' '), CHAR(13), ' '), CHAR(10), ' ')))),
+                UPDATE documents
+                SET AssetCode = UPPER(COALESCE(assetCodeCanonical.CanonicalValue, N'')),
                     AssetCategory = LOWER(LTRIM(RTRIM(AssetCategory))),
                     Building = NULLIF(LTRIM(RTRIM(Building)), ''),
                     Department = NULLIF(LTRIM(RTRIM(Department)), ''),
-                    Location = NULLIF(LTRIM(RTRIM(Location)), '');
+                    Location = NULLIF(LTRIM(RTRIM(Location)), '')
+                FROM dbo.MaintenanceSearchDocuments AS documents
+                CROSS APPLY
+                (
+                    SELECT STRING_AGG(CONVERT(nvarchar(max), TRIM(parts.value)), N' ')
+                        WITHIN GROUP (ORDER BY parts.ordinal) AS CanonicalValue
+                    FROM STRING_SPLIT(
+                        REPLACE(REPLACE(documents.AssetCode, NCHAR(13) + NCHAR(10), NCHAR(10)), NCHAR(13), NCHAR(10)),
+                        NCHAR(10),
+                        1) AS parts
+                    WHERE TRIM(parts.value) <> N''
+                ) AS assetCodeCanonical;
 
                 IF EXISTS (
                     SELECT 1
                     FROM dbo.Assets
-                    WHERE AssetCategory NOT IN ('fire-extinguisher', 'fire-alarm', 'emergency-light', 'water-drinking-station')
+                    WHERE NULLIF(AssetCode, '') IS NULL
+                       OR AssetCategory NOT IN ('fire-extinguisher', 'fire-alarm', 'emergency-light', 'water-drinking-station')
                        OR Status NOT IN ('Active', 'Inactive', 'Retired'))
                     THROW 51000, 'Domain-contract migration stopped: an asset contains an unsupported code.', 1;
 

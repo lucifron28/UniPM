@@ -244,15 +244,18 @@
                                                                      },
                                                    "building":  {
                                                                     "type":  "string",
-                                                                    "minLength":  1
+                                                                    "minLength":  1,
+                                                                    "maxLength":  256
                                                                 },
                                                    "department":  {
                                                                       "type":  "string",
-                                                                      "minLength":  1
+                                                                      "minLength":  1,
+                                                                      "maxLength":  256
                                                                   },
                                                    "location":  {
                                                                     "type":  "string",
-                                                                    "minLength":  1
+                                                                    "minLength":  1,
+                                                                    "maxLength":  256
                                                                 },
                                                    "status":  {
                                                                   "type":  "string",

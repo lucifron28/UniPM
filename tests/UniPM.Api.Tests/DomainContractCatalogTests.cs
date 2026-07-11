@@ -71,6 +71,18 @@ public sealed class DomainContractCatalogTests
         Assert.False(ScheduleQuarterCatalog.TryNormalizeNullable("Q5", out _));
     }
 
+    [Theory]
+    [InlineData("FE\r\n\r\n001", "FE 001")]
+    [InlineData("fe\r001", "FE 001")]
+    [InlineData("QR\n\r\n001", "QR 001")]
+    public void Asset_code_and_qr_normalization_share_the_same_line_algorithm(
+        string value,
+        string expected)
+    {
+        Assert.Equal(expected, AssetCodeValue.Normalize(value));
+        Assert.Equal(expected, AssetCodeValue.NormalizeQrCode(value));
+    }
+
     private static JsonObject LoadFixtureSchema()
     {
         var root = FindRepositoryRoot();

@@ -106,6 +106,10 @@ public sealed class SyntheticMaintenanceDatasetValidator
                 errors.Add($"Asset '{asset.SeedKey}' asset code is not canonical.");
             }
 
+            ValidateMetadataLength(asset.Building, "building", asset.SeedKey, errors);
+            ValidateMetadataLength(asset.Department, "department", asset.SeedKey, errors);
+            ValidateMetadataLength(asset.Location, "location", asset.SeedKey, errors);
+
             var expectedQrCodeValue = AssetQrCodeValue.Create(asset.AssetCategory, asset.Id);
             if (!string.Equals(asset.QrCodeValue, expectedQrCodeValue, StringComparison.Ordinal))
             {
@@ -312,6 +316,19 @@ public sealed class SyntheticMaintenanceDatasetValidator
             errors.Add("Fixture contains an employee, student, or staff ID-like value.");
         }
 
+    }
+
+    private static void ValidateMetadataLength(
+        string? value,
+        string fieldName,
+        string seedKey,
+        List<string> errors)
+    {
+        if (value?.Length > AssetCodeValue.MetadataMaxLength)
+        {
+            errors.Add(
+                $"Asset '{seedKey}' {fieldName} must not exceed {AssetCodeValue.MetadataMaxLength} characters.");
+        }
     }
 }
 

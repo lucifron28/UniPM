@@ -235,9 +235,9 @@ public class CreateAssetDto
                 ["Asset category must be one of the selected UniPM study scope categories."]);
         }
 
-        ValidateOptionalLength(Building, nameof(Building), 256, errors);
-        ValidateOptionalLength(Department, nameof(Department), 256, errors);
-        ValidateOptionalLength(Location, nameof(Location), 256, errors);
+        ValidateOptionalLength(Building, nameof(Building), AssetCodeValue.MetadataMaxLength, errors);
+        ValidateOptionalLength(Department, nameof(Department), AssetCodeValue.MetadataMaxLength, errors);
+        ValidateOptionalLength(Location, nameof(Location), AssetCodeValue.MetadataMaxLength, errors);
 
         return errors;
     }

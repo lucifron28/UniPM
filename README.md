@@ -68,6 +68,24 @@ dotnet build .\UniPM.slnx
 dotnet test .\UniPM.slnx --no-build
 ```
 
+## Database Migration
+
+EF database commands use the configured `ConnectionStrings__DefaultConnection`
+value and fail when it is missing; they do not fall back to LocalDB:
+
+```powershell
+$env:ConnectionStrings__DefaultConnection = "Server=localhost,1433;Database=UniPMDb;User Id=sa;Password=<local-password>;Encrypt=True;TrustServerCertificate=True;"
+dotnet ef database update --project server
+```
+
+The domain-contract migration canonicalizes copied metadata in existing
+`MaintenanceSearchDocument` rows but does not regenerate `SearchText`. Run the
+explicit rebuild after applying migrations:
+
+```powershell
+dotnet run --project server -- --rebuild-maintenance-search-documents
+```
+
 ## Synthetic Development Data
 
 The fixture is entirely fictional, represents no actual GSD maintenance history,

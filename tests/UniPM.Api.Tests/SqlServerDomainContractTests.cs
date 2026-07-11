@@ -9,14 +9,10 @@ public sealed class SqlServerDomainContractTests
 {
     private const string PreviousMigration = "20260710170229_AddMaintenanceSearchDocuments";
 
-    [Fact]
+    [SqlServerFact]
     public async Task Migration_preflight_canonicalizes_existing_codes_before_constraints()
     {
-        var baseConnectionString = Environment.GetEnvironmentVariable("UNIPM_SQLSERVER_TEST_CONNECTION");
-        if (string.IsNullOrWhiteSpace(baseConnectionString))
-        {
-            return;
-        }
+        var baseConnectionString = RequireSqlServerConnection();
 
         await using var database = await SqlServerTestDatabase.CreateAsync(baseConnectionString);
         await using (var context = database.CreateContext())
@@ -64,14 +60,10 @@ public sealed class SqlServerDomainContractTests
         Assert.Equal("2025-2026", schedule.AcademicYear);
     }
 
-    [Fact]
+    [SqlServerFact]
     public async Task SqlServer_constraints_reject_invalid_codes_and_enforce_filtered_uniqueness()
     {
-        var baseConnectionString = Environment.GetEnvironmentVariable("UNIPM_SQLSERVER_TEST_CONNECTION");
-        if (string.IsNullOrWhiteSpace(baseConnectionString))
-        {
-            return;
-        }
+        var baseConnectionString = RequireSqlServerConnection();
 
         await using var database = await SqlServerTestDatabase.CreateAsync(baseConnectionString);
         await using (var context = database.CreateContext())
@@ -134,6 +126,54 @@ public sealed class SqlServerDomainContractTests
         await filteredIndexContext.SaveChangesAsync();
     }
 
+    [SqlServerFact]
+    public async Task Migration_preflight_rejects_unsupported_overlength_and_canonical_duplicates()
+    {
+        var baseConnectionString = RequireSqlServerConnection();
+
+        await AssertPreflightFailureAsync(
+            baseConnectionString,
+            context => context.Assets.Add(new Asset
+            {
+                Id = Guid.NewGuid(),
+                AssetCode = "DB-101",
+                AssetCategory = "unsupported-category",
+                Status = "Active"
+            }),
+            "unsupported code");
+
+        await AssertPreflightFailureAsync(
+            baseConnectionString,
+            context => context.Assets.Add(new Asset
+            {
+                Id = Guid.NewGuid(),
+                AssetCode = "DB-102",
+                AssetCategory = "fire-alarm",
+                Status = "Active",
+                Building = new string('x', 257)
+            }),
+            "exceeds its maximum length");
+
+        await AssertPreflightFailureAsync(
+            baseConnectionString,
+            context => context.Assets.AddRange(
+                new Asset
+                {
+                    Id = Guid.NewGuid(),
+                    AssetCode = "DB-103",
+                    AssetCategory = "fire-alarm",
+                    Status = "Active"
+                },
+                new Asset
+                {
+                    Id = Guid.NewGuid(),
+                    AssetCode = " db-103 ",
+                    AssetCategory = "fire-alarm",
+                    Status = "Active"
+                }),
+            "canonical asset codes are duplicated");
+    }
+
     private static async Task<Guid> GetFirstAssetIdAsync(SqlServerTestDatabase database)
     {
         await using var context = database.CreateContext();
@@ -147,6 +187,29 @@ public sealed class SqlServerDomainContractTests
         await using var context = database.CreateContext();
         context.Add(entity);
         await Assert.ThrowsAsync<DbUpdateException>(() => context.SaveChangesAsync());
+    }
+
+    private static async Task AssertPreflightFailureAsync(
+        string baseConnectionString,
+        Action<ApplicationDbContext> addRecords,
+        string expectedMessage)
+    {
+        await using var database = await SqlServerTestDatabase.CreateAsync(baseConnectionString);
+        await using var context = database.CreateContext();
+        await context.Database.MigrateAsync(PreviousMigration);
+        addRecords(context);
+        await context.SaveChangesAsync();
+
+        var exception = await Assert.ThrowsAnyAsync<Exception>(
+            () => context.Database.MigrateAsync());
+
+        Assert.Contains(expectedMessage, exception.ToString(), StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string RequireSqlServerConnection()
+    {
+        var connectionString = Environment.GetEnvironmentVariable("UNIPM_SQLSERVER_TEST_CONNECTION");
+        return connectionString!;
     }
 
     private sealed class SqlServerTestDatabase : IAsyncDisposable
@@ -203,6 +266,17 @@ public sealed class SqlServerDomainContractTests
             await using var command = connection.CreateCommand();
             command.CommandText = $"ALTER DATABASE [{databaseName}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [{databaseName}]";
             await command.ExecuteNonQueryAsync();
+        }
+    }
+}
+
+internal sealed class SqlServerFactAttribute : FactAttribute
+{
+    public SqlServerFactAttribute()
+    {
+        if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("UNIPM_SQLSERVER_TEST_CONNECTION")))
+        {
+            Skip = "Set UNIPM_SQLSERVER_TEST_CONNECTION to run SQL Server migration and constraint tests.";
         }
     }
 }

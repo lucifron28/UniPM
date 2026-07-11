@@ -3,6 +3,7 @@ namespace UniPM.Api.Features.Assets;
 internal static class AssetCodeValue
 {
     internal const int MaxLength = 64;
+    internal const int MetadataMaxLength = 256;
     internal const int QrCodeMaxLength = 128;
 
     internal static string Normalize(string value)
@@ -20,7 +21,6 @@ internal static class AssetCodeValue
 
     internal static string NormalizeQrCode(string value)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(value);
-        return value.Trim().ToUpperInvariant();
+        return Normalize(value);
     }
 }

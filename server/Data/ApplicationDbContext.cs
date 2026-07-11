@@ -24,11 +24,11 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
         asset.Property(entity => entity.AssetCategory)
             .HasMaxLength(64);
         asset.Property(entity => entity.Building)
-            .HasMaxLength(256);
+            .HasMaxLength(AssetCodeValue.MetadataMaxLength);
         asset.Property(entity => entity.Department)
-            .HasMaxLength(256);
+            .HasMaxLength(AssetCodeValue.MetadataMaxLength);
         asset.Property(entity => entity.Location)
-            .HasMaxLength(256);
+            .HasMaxLength(AssetCodeValue.MetadataMaxLength);
         asset.Property(entity => entity.QrCodeValue)
             .HasMaxLength(AssetCodeValue.QrCodeMaxLength);
         asset.Property(entity => entity.Status)
@@ -93,11 +93,11 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
         searchDocument.Property(document => document.AssetCategory)
             .HasMaxLength(64);
         searchDocument.Property(document => document.Building)
-            .HasMaxLength(256);
+            .HasMaxLength(AssetCodeValue.MetadataMaxLength);
         searchDocument.Property(document => document.Department)
-            .HasMaxLength(256);
+            .HasMaxLength(AssetCodeValue.MetadataMaxLength);
         searchDocument.Property(document => document.Location)
-            .HasMaxLength(256);
+            .HasMaxLength(AssetCodeValue.MetadataMaxLength);
         searchDocument.Property(document => document.IssueKeysJson)
             .HasMaxLength(1024);
 
