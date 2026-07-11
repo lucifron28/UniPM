@@ -8,7 +8,7 @@
 - **Start API**: `docker compose up -d unipm-api`
 - **Docker Down**: `docker compose down`
 - **Migration Add**: `dotnet ef migrations add <Name> --project server`
-- **Migration Update**: set `ConnectionStrings__DefaultConnection`, run `dotnet ef database update --project server`, then run `dotnet run --project server -- --rebuild-maintenance-search-documents` so existing search-document `SearchText` is regenerated after metadata canonicalization.
+- **Migration Update**: set `ConnectionStrings__DefaultConnection`, run `dotnet ef database update --project server`, then run `dotnet run --project server -- --rebuild-maintenance-search-documents` and, when embeddings are enabled, `dotnet run --project server -- --rebuild-maintenance-embeddings`.
 
 ## Active Context
 - **Architecture**: ASP.NET Core API + SQL Server 2025 (Docker local / IIS prod).
@@ -32,6 +32,10 @@
   - Internal SQL Server Full-Text Search over `MaintenanceSearchDocument.SearchText`
     with bounded prefix-query construction, controlled filters, and source-
     traceable lexical results. No public maintenance-review endpoint exists yet.
+  - Semantic retrieval over a one-to-one SQL Server embedding cache for
+    `MaintenanceSearchDocument`, with explicit batch rebuilds and bounded
+    application-layer cosine similarity. The embedding provider is optional and
+    degradable; query embeddings are never persisted.
   - Reset dependency protection, strict fixture-property loading, exact
     evaluation correspondence tests, case-insensitive uniqueness checks, and
     unambiguous maintenance-command handling.
@@ -46,6 +50,7 @@ $env:ASPNETCORE_ENVIRONMENT = "Development"
 dotnet run --project server -- --seed-synthetic
 dotnet run --project server -- --reset-synthetic-seed
 dotnet run --project server -- --rebuild-maintenance-search-documents
+dotnet run --project server -- --rebuild-maintenance-embeddings
 ```
 
 Seeding deterministically upserts 20 synthetic assets, 34 schedules, and 30
@@ -73,10 +78,18 @@ It does not search source entities independently and does not implement
 embeddings, benchmarks, fusion, summaries, or a public maintenance-review
 endpoint.
 
+Semantic retrieval is implemented as an internal channel required by the target
+maintenance-history review workflow. Document embeddings belong to
+`MaintenanceSearchDocumentEmbeddings`, are invalidated when `SearchText`
+changes, and are regenerated only by the explicit embedding rebuild command.
+Query vectors are generated transiently and are never stored. The current MVP
+uses application-layer cosine similarity and no separate vector database. The
+embedding provider is disabled by default and remote providers require an
+explicit configuration flag and privacy review.
+
 ## Next Steps
 
-1. Add a semantic retriever behind `IEmbeddingService`.
-2. Build the retrieval benchmark.
-3. Add result fusion.
-4. Add sanitizer and source-bounded maintenance review.
-5. Add authentication scaffolding.
+1. Build the retrieval benchmark.
+2. Add result fusion.
+3. Add sanitizer and source-bounded maintenance review.
+4. Add authentication scaffolding.

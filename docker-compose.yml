@@ -55,6 +55,17 @@ services:
       ASPNETCORE_ENVIRONMENT: "Development"
       ASPNETCORE_HTTP_PORTS: "8080"
       ConnectionStrings__DefaultConnection: "Server=unipm-db,1433;Database=${UNIPM_DB_NAME:-UniPMDb};User Id=sa;Password=${MSSQL_SA_PASSWORD:?Set MSSQL_SA_PASSWORD in .env};Encrypt=True;TrustServerCertificate=True;"
+      Embeddings__Enabled: "${UNIPM_EMBEDDINGS_ENABLED:-false}"
+      Embeddings__ProviderKey: "${UNIPM_EMBEDDINGS_PROVIDER_KEY:-}"
+      Embeddings__BaseAddress: "${UNIPM_EMBEDDINGS_BASE_ADDRESS:-}"
+      Embeddings__Path: "${UNIPM_EMBEDDINGS_PATH:-/v1/embeddings}"
+      Embeddings__Model: "${UNIPM_EMBEDDINGS_MODEL:-}"
+      Embeddings__ApiKey: "${UNIPM_EMBEDDINGS_API_KEY:-}"
+      Embeddings__Dimensions: "${UNIPM_EMBEDDINGS_DIMENSIONS:-}"
+      Embeddings__TimeoutSeconds: "${UNIPM_EMBEDDINGS_TIMEOUT_SECONDS:-30}"
+      Embeddings__MaxBatchSize: "${UNIPM_EMBEDDINGS_MAX_BATCH_SIZE:-16}"
+      Embeddings__MaxInputCharacters: "${UNIPM_EMBEDDINGS_MAX_INPUT_CHARACTERS:-4000}"
+      Embeddings__AllowRemoteProvider: "${UNIPM_EMBEDDINGS_ALLOW_REMOTE_PROVIDER:-false}"
     ports:
       - "${UNIPM_API_PORT:-5000}:8080"
     depends_on:

@@ -19,7 +19,10 @@ Search plus semantic similarity. The database contains the initial `Asset`,
 rebuildable `MaintenanceSearchDocument` projection. The backend contains a
 versioned deterministic maintenance issue lexicon and an internal lexical
 retriever that searches only `MaintenanceSearchDocument.SearchText` through
-SQL Server Full-Text Search. Embeddings, semantic retrieval, result fusion/RRF,
+SQL Server Full-Text Search. It also contains semantic retrieval
+channel using cached document embeddings and bounded application-layer cosine
+similarity. Semantic retrieval is a required UniPM retrieval channel, but its
+embedding provider is operationally optional and degradable. Result fusion/RRF,
 source-bounded summaries, and a maintenance-review endpoint remain separate
 future work.
 
@@ -89,6 +92,13 @@ changes source or projection data, rebuild the searchable projection:
 dotnet run --project server -- --rebuild-maintenance-search-documents
 ```
 
+When embeddings are explicitly enabled and configured, rebuild them after the
+search-document projection:
+
+```powershell
+dotnet run --project server -- --rebuild-maintenance-embeddings
+```
+
 The domain-contract migration canonicalizes copied metadata in existing
 `MaintenanceSearchDocument` rows but does not regenerate `SearchText`; use the
 rebuild command above after applying it.
@@ -135,8 +145,18 @@ rebuildable `MaintenanceSearchDocument.SearchText` projection and returns
 source-traceable inspection metadata; it has no public review endpoint. Domain-
 contract hardening is complete: stable persisted codes have feature-owned
 catalogs, canonical API/storage values, SQL Server constraints, and migration
-preflight checks. The next backend task is `feat/retrieval-semantic`, followed
-by separate benchmark, fusion, and source-bounded review branches.
+preflight checks. Semantic retrieval is now an internal channel required by the
+target maintenance-history review workflow: it stores only document embeddings,
+never query vectors, and does not affect core or lexical workflows when its
+provider is disabled. The next backend task is
+`feat/retrieval-benchmark`, followed by separate fusion and source-bounded
+review branches.
+
+Embeddings are disabled by default. Remote providers are rejected unless
+`Embeddings:AllowRemoteProvider` is explicitly enabled after a separate
+privacy review. The current semantic MVP uses a provider-neutral
+OpenAI-compatible adapter and application-layer cosine similarity; it does not
+introduce a separate vector database or claim model-quality results.
 
 ## Project References
 

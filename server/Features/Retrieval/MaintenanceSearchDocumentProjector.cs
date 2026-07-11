@@ -145,8 +145,25 @@ public sealed class MaintenanceSearchDocumentProjector(
                 continue;
             }
 
+            var searchTextChanged = !string.Equals(
+                sourceDocument.SearchText,
+                existingDocument.SearchText,
+                StringComparison.Ordinal);
+
             if (ApplyIfChanged(sourceDocument, existingDocument))
             {
+                if (searchTextChanged)
+                {
+                    var embedding = await context.MaintenanceSearchDocumentEmbeddings
+                        .SingleOrDefaultAsync(
+                            candidate => candidate.InspectionId == sourceDocument.InspectionId,
+                            cancellationToken);
+                    if (embedding is not null)
+                    {
+                        context.MaintenanceSearchDocumentEmbeddings.Remove(embedding);
+                    }
+                }
+
                 updated++;
             }
         }

@@ -13,6 +13,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     public DbSet<PreventiveMaintenanceSchedule> PreventiveMaintenanceSchedules => Set<PreventiveMaintenanceSchedule>();
     public DbSet<InspectionRecord> InspectionRecords => Set<InspectionRecord>();
     public DbSet<MaintenanceSearchDocument> MaintenanceSearchDocuments => Set<MaintenanceSearchDocument>();
+    public DbSet<MaintenanceSearchDocumentEmbedding> MaintenanceSearchDocumentEmbeddings => Set<MaintenanceSearchDocumentEmbedding>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -142,6 +143,44 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
 
         searchDocument
             .HasIndex(document => new { document.IsOperational, document.DateInspected });
+
+        var searchDocumentEmbedding = modelBuilder.Entity<MaintenanceSearchDocumentEmbedding>();
+        searchDocumentEmbedding
+            .HasKey(embedding => embedding.InspectionId);
+        searchDocumentEmbedding
+            .Property(embedding => embedding.ProviderKey)
+            .HasMaxLength(64);
+        searchDocumentEmbedding
+            .Property(embedding => embedding.ModelKey)
+            .HasMaxLength(256);
+        searchDocumentEmbedding
+            .Property(embedding => embedding.EmbeddingProfile)
+            .HasMaxLength(512);
+        searchDocumentEmbedding
+            .Property(embedding => embedding.Dimensions)
+            .IsRequired();
+        searchDocumentEmbedding
+            .Property(embedding => embedding.VectorJson)
+            .HasColumnType("nvarchar(max)");
+        searchDocumentEmbedding
+            .Property(embedding => embedding.SourceHash)
+            .HasMaxLength(64);
+        searchDocumentEmbedding
+            .HasIndex(embedding => new { embedding.EmbeddingProfile, embedding.SourceHash });
+        searchDocumentEmbedding
+            .HasOne(embedding => embedding.SearchDocument)
+            .WithOne(document => document.Embedding)
+            .HasForeignKey<MaintenanceSearchDocumentEmbedding>(embedding => embedding.InspectionId)
+            .OnDelete(DeleteBehavior.Cascade);
+        searchDocumentEmbedding.ToTable("MaintenanceSearchDocumentEmbeddings", table =>
+        {
+            table.HasCheckConstraint(
+                "CK_MaintenanceSearchDocumentEmbeddings_Dimensions",
+                "[Dimensions] BETWEEN 1 AND 4096");
+            table.HasCheckConstraint(
+                "CK_MaintenanceSearchDocumentEmbeddings_VectorJson",
+                "ISJSON([VectorJson]) = 1");
+        });
     }
 
     private static string SqlIn(IEnumerable<string> values)

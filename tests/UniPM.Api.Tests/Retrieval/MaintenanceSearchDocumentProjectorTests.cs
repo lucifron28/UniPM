@@ -224,6 +224,43 @@ public sealed class MaintenanceSearchDocumentProjectorTests
     }
 
     [Fact]
+    public async Task Rebuild_removes_embedding_when_search_text_changes()
+    {
+        var factory = new TestContextFactory();
+        var asset = CreateAsset();
+        var inspection = CreateInspection();
+
+        await AddSourceRecordsAsync(factory, asset, inspection);
+        var projector = CreateProjector(factory);
+        await projector.RebuildAsync();
+
+        await using (var context = factory.CreateDbContext())
+        {
+            context.MaintenanceSearchDocumentEmbeddings.Add(new MaintenanceSearchDocumentEmbedding
+            {
+                InspectionId = inspection.Id,
+                ProviderKey = "test-provider",
+                ModelKey = "test-model",
+                EmbeddingProfile = "test-profile",
+                Dimensions = 2,
+                VectorJson = "[1,0]",
+                SourceHash = MaintenanceEmbeddingInput.ComputeSourceHash("old"),
+                GeneratedAt = AtManila(2025, 5, 15, 8)
+            });
+            await context.SaveChangesAsync();
+
+            var storedInspection = await context.InspectionRecords.SingleAsync(item => item.Id == inspection.Id);
+            storedInspection.Remarks = "expired unit";
+            await context.SaveChangesAsync();
+
+            await projector.RebuildAsync(context, new HashSet<Guid> { inspection.Id });
+        }
+
+        await using var verificationContext = factory.CreateDbContext();
+        Assert.Equal(0, await verificationContext.MaintenanceSearchDocumentEmbeddings.CountAsync());
+    }
+
+    [Fact]
     public void Build_excludes_evaluation_labels_and_private_source_fields()
     {
         var document = CreateProjector().Build(
