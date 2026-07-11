@@ -200,7 +200,10 @@ public sealed class SqlServerLexicalMaintenanceRetrieverTests
             result => result.Any(item => item.InspectionId == document.InspectionId));
 
         Assert.Single(updated);
-        var stale = await retriever.SearchAsync(new LexicalMaintenanceSearchRequest("original finding"));
+        var stale = await WaitForResultAsync(
+            retriever,
+            new LexicalMaintenanceSearchRequest("original finding"),
+            result => !result.Any(item => item.InspectionId == document.InspectionId));
         Assert.DoesNotContain(stale, item => item.InspectionId == document.InspectionId);
     }
 
