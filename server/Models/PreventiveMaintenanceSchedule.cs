@@ -9,11 +9,30 @@ public class PreventiveMaintenanceSchedule
     public Asset? Asset { get; set; }
 
     public DateTimeOffset ScheduleDate { get; set; }
-    public string PeriodType { get; set; } = "Quarter"; // Quarter, Semester, Annual, Custom
-    public string Status { get; set; } = "Due"; // Due, Ongoing, Completed, Overdue, Cancelled
 
-    // Flexible fields
+    /// <summary>
+    /// Stores the canonical maintenance-period code normalized by SchedulePeriodTypeCatalog.
+    /// </summary>
+    public string PeriodType { get; set; } = "Quarter";
+
+    /// <summary>
+    /// Stores the canonical controlled status from ScheduleStatusCatalog.
+    /// Persisted statuses may be broader than values currently written by API commands;
+    /// allowed statuses do not imply implemented transition workflows.
+    /// </summary>
+    public string Status { get; set; } = "Due";
+
+    /// <summary>
+    /// Stores controlled quarter metadata normalized by ScheduleQuarterCatalog.
+    /// it does not finalize scheduling policy.
+    /// </summary>
     public string? Quarter { get; set; }
+
+    /// <summary>
+    /// Stores controlled semester metadata from ScheduleSemesterCatalog.
+    /// Persisted metadata may be broader than values currently written by API commands;
+    /// it does not finalize scheduling policy.
+    /// </summary>
     public string? Semester { get; set; }
     public int? Year { get; set; }
     public string? AcademicYear { get; set; }
