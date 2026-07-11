@@ -35,6 +35,10 @@ builder.Services.AddSingleton<MaintenanceIssueLexiconLoader>();
 builder.Services.AddSingleton<MaintenanceIssueNormalizer>();
 builder.Services.AddScoped<MaintenanceSearchDocumentProjector>();
 builder.Services.AddScoped<ILexicalMaintenanceRetriever, SqlServerLexicalMaintenanceRetriever>();
+builder.Services.Configure<EmbeddingOptions>(builder.Configuration.GetSection(EmbeddingOptions.SectionName));
+builder.Services.AddHttpClient<IEmbeddingService, OpenAiCompatibleEmbeddingService>();
+builder.Services.AddScoped<IMaintenanceSearchDocumentEmbeddingIndexer, MaintenanceSearchDocumentEmbeddingIndexer>();
+builder.Services.AddScoped<ISemanticMaintenanceRetriever, SqlServerSemanticMaintenanceRetriever>();
 
 var app = builder.Build();
 
@@ -65,6 +69,14 @@ if (maintenanceCommand != SyntheticMaintenanceCommand.None)
             var result = await projector.RebuildAsync();
             await Console.Out.WriteLineAsync(
                 $"Rebuilt {result.Total} maintenance search documents ({result.Created} created, {result.Updated} updated, {result.Removed} removed).");
+        }
+        else if (maintenanceCommand == SyntheticMaintenanceCommand.RebuildEmbeddings)
+        {
+            var indexer = scope.ServiceProvider
+                .GetRequiredService<IMaintenanceSearchDocumentEmbeddingIndexer>();
+            var result = await indexer.RebuildAsync();
+            await Console.Out.WriteLineAsync(
+                $"Rebuilt {result.Total} maintenance embeddings ({result.Created} created, {result.Updated} updated, {result.Skipped} skipped, {result.Failed} failed).");
         }
         else
         {
