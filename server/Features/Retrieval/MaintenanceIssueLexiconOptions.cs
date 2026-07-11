@@ -1,3 +1,5 @@
+using UniPM.Api.Features.ReferenceData;
+
 namespace UniPM.Api.Features.Retrieval;
 
 public sealed class MaintenanceIssueLexiconOptions
@@ -16,17 +18,17 @@ public sealed class MaintenanceIssueLexiconOptions
     public static IReadOnlyDictionary<string, string> ApprovedIssueCategories { get; } =
         new Dictionary<string, string>(StringComparer.Ordinal)
     {
-        ["alarm_panel_fault"] = "fire-alarm",
-        ["battery_issue"] = "emergency-light",
-        ["clogged_filter"] = "water-drinking-station",
-        ["device_not_responding"] = "fire-alarm",
-        ["expired_unit"] = "fire-extinguisher",
-        ["leaking"] = "water-drinking-station",
-        ["low_pressure"] = "fire-extinguisher",
-        ["not_lighting"] = "emergency-light",
-        ["smoke_detector_issue"] = "fire-alarm",
-        ["uv_light_issue"] = "water-drinking-station",
-        ["weak_water_flow"] = "water-drinking-station"
+        ["alarm_panel_fault"] = AssetCategoryCatalog.FireAlarm,
+        ["battery_issue"] = AssetCategoryCatalog.EmergencyLight,
+        ["clogged_filter"] = AssetCategoryCatalog.WaterDrinkingStation,
+        ["device_not_responding"] = AssetCategoryCatalog.FireAlarm,
+        ["expired_unit"] = AssetCategoryCatalog.FireExtinguisher,
+        ["leaking"] = AssetCategoryCatalog.WaterDrinkingStation,
+        ["low_pressure"] = AssetCategoryCatalog.FireExtinguisher,
+        ["not_lighting"] = AssetCategoryCatalog.EmergencyLight,
+        ["smoke_detector_issue"] = AssetCategoryCatalog.FireAlarm,
+        ["uv_light_issue"] = AssetCategoryCatalog.WaterDrinkingStation,
+        ["weak_water_flow"] = AssetCategoryCatalog.WaterDrinkingStation
     };
 
     public static IReadOnlySet<string> SupportedIssueKeys { get; } =
