@@ -25,8 +25,8 @@ public sealed class ScheduleQueryEndpointsTests
             client,
             fireExtinguisher.Id,
             new DateTimeOffset(2026, 1, 15, 8, 0, 0, TimeSpan.Zero),
-            "Quarter",
-            "Q1",
+            " quarter ",
+            " q1 ",
             2026);
 
         await CreateScheduleAsync(
@@ -49,6 +49,7 @@ public sealed class ScheduleQueryEndpointsTests
         var schedule = Assert.Single(schedules);
         Assert.Equal(targetSchedule.Id, schedule.Id);
         Assert.Equal(fireExtinguisher.Id, schedule.AssetId);
+        Assert.Equal("Quarter", schedule.PeriodType);
         Assert.Equal("Q1", schedule.Quarter);
         Assert.Equal(2026, schedule.Year);
     }
@@ -106,6 +107,19 @@ public sealed class ScheduleQueryEndpointsTests
         var problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>();
         Assert.NotNull(problem);
         Assert.Contains("from", problem.Errors.Keys);
+    }
+
+    [Fact]
+    public async Task List_schedules_rejects_unsupported_code_filters()
+    {
+        await using var application = new TestApplicationFactory();
+        var client = application.CreateClient();
+
+        var statusResponse = await client.GetAsync("/api/v1/schedules?status=Paused");
+        var quarterResponse = await client.GetAsync("/api/v1/schedules?quarter=Q5");
+
+        Assert.Equal(HttpStatusCode.BadRequest, statusResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, quarterResponse.StatusCode);
     }
 
     private static async Task<AssetResponse> CreateAssetAsync(

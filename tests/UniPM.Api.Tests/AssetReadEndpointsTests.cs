@@ -17,7 +17,7 @@ public sealed class AssetReadEndpointsTests
         await using var application = new TestApplicationFactory();
         var client = application.CreateClient();
 
-        await CreateAssetAsync(client, "FE-001", "fire-extinguisher", "Main", "CCMS", "Lobby");
+        await CreateAssetAsync(client, " fe-001 ", " FIRE-EXTINGUISHER ", "Main", "CCMS", "Lobby");
         await CreateAssetAsync(client, "EL-001", "emergency-light", "Main", "CCMS", "Stairs");
 
         var response = await client.GetAsync(
@@ -32,6 +32,35 @@ public sealed class AssetReadEndpointsTests
         Assert.Equal("fire-extinguisher", asset.AssetCategory);
         Assert.Equal("Main", asset.Building);
         Assert.Equal("CCMS", asset.Department);
+    }
+
+    [Fact]
+    public async Task List_assets_rejects_unsupported_code_filters()
+    {
+        await using var application = new TestApplicationFactory();
+        var client = application.CreateClient();
+
+        var categoryResponse = await client.GetAsync("/api/v1/assets?assetCategory=hvac");
+        var statusResponse = await client.GetAsync("/api/v1/assets?status=Paused");
+
+        Assert.Equal(HttpStatusCode.BadRequest, categoryResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, statusResponse.StatusCode);
+    }
+
+    [Fact]
+    public async Task Create_asset_returns_conflict_for_a_duplicate_canonical_code()
+    {
+        await using var application = new TestApplicationFactory();
+        var client = application.CreateClient();
+
+        await CreateAssetAsync(client, "FE-101", "fire-extinguisher", "Main", "GSD", "Lobby");
+        var response = await client.PostAsJsonAsync("/api/v1/assets/", new
+        {
+            assetCode = " fe-101 ",
+            assetCategory = "fire-extinguisher"
+        });
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
     }
 
     [Fact]
@@ -68,7 +97,7 @@ public sealed class AssetReadEndpointsTests
             "Cafeteria");
 
         Assert.Equal(
-            $"UNIPM-WATER-DRINKING-STATION-{created.Id.ToString()[..8]}",
+            $"UNIPM-WATER-DRINKING-STATION-{created.Id.ToString()[..8].ToUpperInvariant()}",
             created.QrCodeValue);
 
         var response = await client.GetAsync($"/api/v1/assets/by-qr/{created.QrCodeValue}");
