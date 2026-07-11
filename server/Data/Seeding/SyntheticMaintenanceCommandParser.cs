@@ -6,6 +6,7 @@ internal enum SyntheticMaintenanceCommand
     Seed,
     Reset,
     Rebuild,
+    RebuildEmbeddings,
     Ambiguous
 }
 
@@ -29,6 +30,11 @@ internal static class SyntheticMaintenanceCommandParser
         if (arguments.Contains("--rebuild-maintenance-search-documents"))
         {
             requestedCommands.Add(SyntheticMaintenanceCommand.Rebuild);
+        }
+
+        if (arguments.Contains("--rebuild-maintenance-embeddings"))
+        {
+            requestedCommands.Add(SyntheticMaintenanceCommand.RebuildEmbeddings);
         }
 
         return requestedCommands.Count switch
