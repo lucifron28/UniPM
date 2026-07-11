@@ -33,12 +33,12 @@ public partial class AddMaintenanceFullTextSearch : Migration
 
             CREATE FULLTEXT INDEX ON [dbo].[MaintenanceSearchDocuments]
             (
-                [SearchText] LANGUAGE 1033
+                [SearchText] LANGUAGE 0
             )
             KEY INDEX [PK_MaintenanceSearchDocuments]
             ON [{CatalogName}]
-            WITH CHANGE_TRACKING = AUTO;
-            """);
+            WITH CHANGE_TRACKING = AUTO, STOPLIST = OFF;
+            """, suppressTransaction: true);
     }
 
     protected override void Down(MigrationBuilder migrationBuilder)
@@ -60,6 +60,6 @@ public partial class AddMaintenanceFullTextSearch : Migration
                 FROM sys.fulltext_catalogs
                 WHERE name = N'{CatalogName}')
                 DROP FULLTEXT CATALOG [{CatalogName}];
-            """);
+            """, suppressTransaction: true);
     }
 }

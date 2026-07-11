@@ -90,12 +90,8 @@ dotnet run --project server -- --rebuild-maintenance-search-documents
 ```
 
 The domain-contract migration canonicalizes copied metadata in existing
-`MaintenanceSearchDocument` rows but does not regenerate `SearchText`. Run the
-explicit rebuild after applying migrations:
-
-```powershell
-dotnet run --project server -- --rebuild-maintenance-search-documents
-```
+`MaintenanceSearchDocument` rows but does not regenerate `SearchText`; use the
+rebuild command above after applying it.
 
 ## Synthetic Development Data
 

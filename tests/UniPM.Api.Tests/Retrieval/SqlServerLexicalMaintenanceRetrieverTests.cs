@@ -30,6 +30,13 @@ public sealed class SqlServerLexicalMaintenanceRetrieverTests
         }
 
         Assert.False(await database.HasFullTextSchemaAsync());
+
+        await using (var context = database.CreateContext())
+        {
+            await context.Database.MigrateAsync();
+        }
+
+        Assert.True(await database.HasFullTextSchemaAsync());
     }
 
     [SqlServerFact]
@@ -46,7 +53,7 @@ public sealed class SqlServerLexicalMaintenanceRetrieverTests
             isOperational: false,
             dateInspected: AtManila(2025, 5, 1),
             remarks: "low pressure",
-            searchText: "remarks: low pressure");
+            searchText: "remarks: low pressure pressure gauge\nremarks: mahina ang pressure");
         var emergencyLight = await AddDocumentAsync(
             database,
             assetCategory: "emergency-light",
@@ -67,6 +74,26 @@ public sealed class SqlServerLexicalMaintenanceRetrieverTests
             dateInspected: AtManila(2025, 7, 1),
             remarks: "alarm panel fault",
             searchText: "remarks: alarm panel fault");
+        var leaking = await AddDocumentAsync(
+            database,
+            assetCategory: "water-drinking-station",
+            building: "Annex",
+            department: "GSD",
+            location: "Water Station",
+            isOperational: false,
+            dateInspected: AtManila(2025, 8, 1),
+            remarks: "may tagas",
+            searchText: "remarks: may tagas");
+        var emergencyLightTaglishRecord = await AddDocumentAsync(
+            database,
+            assetCategory: "emergency-light",
+            building: "Annex",
+            department: "GSD",
+            location: "Stairwell",
+            isOperational: false,
+            dateInspected: AtManila(2025, 9, 1),
+            remarks: "ayaw mag on",
+            searchText: "remarks: ayaw mag on");
 
         await WaitForFullTextReadyAsync(database);
 
@@ -78,6 +105,18 @@ public sealed class SqlServerLexicalMaintenanceRetrieverTests
             retriever,
             new LexicalMaintenanceSearchRequest("hindi umiilaw"),
             result => result.Any(item => item.InspectionId == emergencyLight.InspectionId));
+        var tagalog = await WaitForResultAsync(
+            retriever,
+            new LexicalMaintenanceSearchRequest("mahina ang pressure"),
+            result => result.Any(item => item.InspectionId == lowPressure.InspectionId));
+        var leakingTagalog = await WaitForResultAsync(
+            retriever,
+            new LexicalMaintenanceSearchRequest("may tagas"),
+            result => result.Any(item => item.InspectionId == leaking.InspectionId));
+        var emergencyLightTaglishResults = await WaitForResultAsync(
+            retriever,
+            new LexicalMaintenanceSearchRequest("ayaw mag on"),
+            result => result.Any(item => item.InspectionId == emergencyLightTaglishRecord.InspectionId));
         var prefix = await WaitForResultAsync(
             retriever,
             new LexicalMaintenanceSearchRequest("press gaug"),
@@ -113,6 +152,9 @@ public sealed class SqlServerLexicalMaintenanceRetrieverTests
         Assert.True(result.RawLexicalRank > 0);
         Assert.Equal("lexical", result.RetrievalChannel);
         Assert.Single(taglish);
+        Assert.Single(tagalog);
+        Assert.Single(leakingTagalog);
+        Assert.Single(emergencyLightTaglishResults);
         Assert.Single(prefix);
         Assert.Single(categoryFiltered);
         Assert.Single(operationalFiltered);
