@@ -23,6 +23,8 @@
     normalization and category-bounded matching.
   - Rebuildable `MaintenanceSearchDocument` projection with deterministic
     normalized issue keys, source traceability, and explicit refresh commands.
+  - Domain-contract catalogs, canonical code storage, SQL Server constraints,
+    filtered QR uniqueness, and ordered migration preflight checks.
   - Reference-data categories, validation contracts, health checks, backend tests,
     and CI.
   - Fictional synthetic maintenance fixture, retrieval evaluation manifest, and

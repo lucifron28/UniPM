@@ -105,8 +105,10 @@ Page 1 blank-form fields; Page 2, completed samples, acknowledgement, and RMRF
 rules remain provisional.
 
 Inspection list/detail reads and maintenance issue normalization are complete.
-The next backend task is the search-document projection, followed by separate
-lexical and semantic retrieval, benchmark, fusion, and source-bounded review.
+Domain-contract hardening is complete: stable persisted codes have feature-owned
+catalogs, canonical API/storage values, SQL Server constraints, and migration
+preflight checks. The next backend task is lexical FTS, followed by separate
+semantic retrieval, benchmark, fusion, and source-bounded review.
 
 ## Project References
 
