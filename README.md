@@ -13,13 +13,15 @@ The local stack runs:
 - `unipm-db`: SQL Server 2025 Developer Edition with Full-Text Search
 - `unipm-db-init`: one-shot bootstrap that creates an empty `UniPMDb`
 
-SQL Server 2025 is used so the later bounded retrieval feature can use
-Full-Text Search plus semantic similarity. The database contains the initial
-`Asset`, `PreventiveMaintenanceSchedule`, and `InspectionRecord` schema plus
-the rebuildable `MaintenanceSearchDocument` projection. The backend now
-contains a versioned deterministic maintenance issue lexicon. It does not yet
-contain FTS query logic, embeddings, semantic retrieval, result fusion/RRF,
-source-bounded summaries, or a maintenance-review endpoint.
+SQL Server 2025 is used so the bounded retrieval feature can use Full-Text
+Search plus semantic similarity. The database contains the initial `Asset`,
+`PreventiveMaintenanceSchedule`, and `InspectionRecord` schema plus the
+rebuildable `MaintenanceSearchDocument` projection. The backend contains a
+versioned deterministic maintenance issue lexicon and an internal lexical
+retriever that searches only `MaintenanceSearchDocument.SearchText` through
+SQL Server Full-Text Search. Embeddings, semantic retrieval, result fusion/RRF,
+source-bounded summaries, and a maintenance-review endpoint remain separate
+future work.
 
 ## Current API Surface
 
@@ -78,6 +80,15 @@ $env:ConnectionStrings__DefaultConnection = "Server=localhost,1433;Database=UniP
 dotnet ef database update --project server
 ```
 
+The lexical retrieval migration creates the dedicated SQL Server Full-Text
+catalog and `SearchText` index. Full-Text Search must be installed; migration
+failure is explicit when it is unavailable. After applying a migration that
+changes source or projection data, rebuild the searchable projection:
+
+```powershell
+dotnet run --project server -- --rebuild-maintenance-search-documents
+```
+
 The domain-contract migration canonicalizes copied metadata in existing
 `MaintenanceSearchDocument` rows but does not regenerate `SearchText`. Run the
 explicit rebuild after applying migrations:
@@ -122,11 +133,14 @@ returned by ordinary DTOs. Both files are fictional and based only on visible
 Page 1 blank-form fields; Page 2, completed samples, acknowledgement, and RMRF
 rules remain provisional.
 
-Inspection list/detail reads and maintenance issue normalization are complete.
-Domain-contract hardening is complete: stable persisted codes have feature-owned
+Inspection list/detail reads, maintenance issue normalization, and internal
+lexical FTS retrieval are complete. Lexical retrieval searches only the
+rebuildable `MaintenanceSearchDocument.SearchText` projection and returns
+source-traceable inspection metadata; it has no public review endpoint. Domain-
+contract hardening is complete: stable persisted codes have feature-owned
 catalogs, canonical API/storage values, SQL Server constraints, and migration
-preflight checks. The next backend task is lexical FTS, followed by separate
-semantic retrieval, benchmark, fusion, and source-bounded review.
+preflight checks. The next backend task is `feat/retrieval-semantic`, followed
+by separate benchmark, fusion, and source-bounded review branches.
 
 ## Project References
 

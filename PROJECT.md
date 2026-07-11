@@ -29,6 +29,9 @@
     and CI.
   - Fictional synthetic maintenance fixture, retrieval evaluation manifest, and
     Development-only seed/reset commands.
+  - Internal SQL Server Full-Text Search over `MaintenanceSearchDocument.SearchText`
+    with bounded prefix-query construction, controlled filters, and source-
+    traceable lexical results. No public maintenance-review endpoint exists yet.
   - Reset dependency protection, strict fixture-property loading, exact
     evaluation correspondence tests, case-insensitive uniqueness checks, and
     unambiguous maintenance-command handling.
@@ -64,11 +67,16 @@ normalization, and FTS fallback while explicitly reporting lexical fallback.
 Core preventive-maintenance workflows must never depend on embeddings or an
 LLM being available.
 
+The lexical channel is implemented as an internal SQL Server Full-Text Search
+service over the persisted `MaintenanceSearchDocument.SearchText` projection.
+It does not search source entities independently and does not implement
+embeddings, benchmarks, fusion, summaries, or a public maintenance-review
+endpoint.
+
 ## Next Steps
 
-1. Implement lexical retrieval with SQL Server FTS.
-2. Add a semantic retriever behind `IEmbeddingService`.
-3. Build the retrieval benchmark.
-4. Add result fusion.
-5. Add sanitizer and source-bounded maintenance review.
-6. Add authentication scaffolding.
+1. Add a semantic retriever behind `IEmbeddingService`.
+2. Build the retrieval benchmark.
+3. Add result fusion.
+4. Add sanitizer and source-bounded maintenance review.
+5. Add authentication scaffolding.

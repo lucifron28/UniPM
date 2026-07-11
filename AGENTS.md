@@ -151,7 +151,7 @@ Acceptable temporary/MVP work:
 Priority should move risk-first:
 
 1. Confirm the backend runs and tests pass.
-2. Implement lexical and semantic retrieval separately.
+2. Implement semantic retrieval separately from the completed lexical channel.
 3. Benchmark and fuse retrieval results.
 4. Add source-bounded summarization.
 5. Add authentication scaffolding.
@@ -160,7 +160,7 @@ The deterministic synthetic fixture, test-only retrieval evaluation manifest,
 Development-only seed/reset commands, reset dependency protection, RRF
 placeholder removal, inspection list/detail reads, the v1.0 maintenance issue
 lexicon, and the rebuildable `MaintenanceSearchDocument` projection are
-complete. The exact next backend branch is `feat/retrieval-lexical-fts`.
+complete. The exact next backend branch is `feat/retrieval-semantic`.
 
 Unblocked areas:
 
