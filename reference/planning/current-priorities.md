@@ -33,7 +33,8 @@ helps a human verify them.
 - `MaintenanceSearchDocument`: done as a persisted, rebuildable projection.
 - Domain contracts: done for stable categories, statuses, schedule codes, and
   seed-only actor tokens, with canonical storage and SQL Server migration checks.
-- SQL Server FTS retrieval: pending.
+- SQL Server FTS retrieval: complete as an internal service over
+  `MaintenanceSearchDocument.SearchText`; no public review endpoint yet.
 - Semantic retrieval: pending, but required as a target channel.
 - Retrieval benchmark and fusion: pending.
 - Source-bounded maintenance review and summarization: pending.
@@ -43,7 +44,7 @@ helps a human verify them.
 
 1. Confirm the backend baseline.
 2. Keep the synthetic fixture and Development-only seeder verified.
-3. Implement lexical and semantic retrieval separately.
+3. Implement semantic retrieval separately from lexical FTS.
 4. Benchmark retrieval channels.
 5. Add inspectable result fusion.
 6. Add sanitization and source-bounded summarization.
@@ -142,8 +143,10 @@ remain outside the projection and all runtime search content.
 The projection is now persisted one-per-inspection, derives issue keys from
 remarks using lexicon v1.0, retains recommendations as raw searchable text,
 tracks source and asset timestamps, and supports explicit transactional rebuild.
-FTS, embeddings, retrieval endpoints, evaluation queries, fusion, and LLM work
-remain pending.
+Lexical SQL Server FTS now searches only this projection through an internal
+bounded retriever with controlled metadata filters and source-traceable results.
+Embeddings, semantic retrieval, retrieval endpoints, evaluation queries, fusion,
+and LLM work remain separate future work.
 
 Do not treat the lexicon as a diagnosis system or invent official GSD wording.
 
@@ -162,8 +165,10 @@ Do:
 - implement lexical retrieval separately from semantic retrieval;
 - keep embeddings behind `IEmbeddingService` and summaries behind
   `ISummaryService` or equivalent interfaces;
-- use SQL Server FTS when ready, with a clearly reported lexical fallback when
-  semantic embeddings are unavailable;
+- use the completed internal SQL Server FTS channel over
+  `MaintenanceSearchDocument.SearchText`;
+- add semantic retrieval separately, with a clearly reported lexical fallback
+  when semantic embeddings are unavailable;
 - return the source records used and limitations beside any summary;
 - keep source selection and prompt construction inspectable;
 - add sanitizer tests before any external provider call.
@@ -228,7 +233,6 @@ directly.
 
 ## Next Branches
 
-- `feat/retrieval-lexical-fts`
 - `feat/retrieval-semantic`
 - `test(rag): add retrieval benchmark`
 - `feat/rag: add inspectable result fusion`

@@ -34,6 +34,7 @@ builder.Services.AddSingleton<MaintenanceIssueLexiconOptions>();
 builder.Services.AddSingleton<MaintenanceIssueLexiconLoader>();
 builder.Services.AddSingleton<MaintenanceIssueNormalizer>();
 builder.Services.AddScoped<MaintenanceSearchDocumentProjector>();
+builder.Services.AddScoped<ILexicalMaintenanceRetriever, SqlServerLexicalMaintenanceRetriever>();
 
 var app = builder.Build();
 
