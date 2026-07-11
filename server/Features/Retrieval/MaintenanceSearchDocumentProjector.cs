@@ -2,6 +2,8 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using UniPM.Api.Data;
+using UniPM.Api.Features.Assets;
+using UniPM.Api.Features.ReferenceData;
 using UniPM.Api.Models;
 
 namespace UniPM.Api.Features.Retrieval;
@@ -20,8 +22,12 @@ public sealed class MaintenanceSearchDocumentProjector(
             throw new InvalidOperationException("The inspection and asset IDs must match before projection.");
         }
 
-        var assetCode = NormalizeSingleLineMetadata(asset.AssetCode);
-        var assetCategory = NormalizeSingleLineMetadata(asset.AssetCategory);
+        var assetCode = AssetCodeValue.Normalize(asset.AssetCode);
+        if (!AssetCategoryCatalog.TryNormalize(asset.AssetCategory, out var assetCategory))
+        {
+            throw new InvalidOperationException(
+                $"Asset '{asset.Id}' cannot be projected because its category is unsupported.");
+        }
         var building = NormalizeSingleLineMetadata(asset.Building);
         var department = NormalizeSingleLineMetadata(asset.Department);
         var location = NormalizeSingleLineMetadata(asset.Location);

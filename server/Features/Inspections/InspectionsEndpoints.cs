@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using UniPM.Api.Data;
 using UniPM.Api.Features;
 using UniPM.Api.Features.Retrieval;
+using UniPM.Api.Features.Schedules;
 using UniPM.Api.Models;
 
 namespace UniPM.Api.Features.Inspections;
@@ -65,7 +66,7 @@ public static class InspectionsEndpoints
                 UpdatedAt = now
             };
 
-            schedule.Status = "Completed";
+            schedule.Status = ScheduleStatusCatalog.Completed;
             schedule.CompletedAt = now;
             schedule.UpdatedAt = now;
 

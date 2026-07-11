@@ -36,10 +36,14 @@ public static class SchedulesEndpoints
                 Id = Guid.NewGuid(),
                 AssetId = dto.AssetId,
                 ScheduleDate = dto.ScheduleDate,
-                PeriodType = dto.PeriodType.Trim(),
-                Quarter = dto.Quarter?.Trim(),
+                PeriodType = SchedulePeriodTypeCatalog.TryNormalize(dto.PeriodType, out var periodType)
+                    ? periodType
+                    : throw new InvalidOperationException("Validated schedule period type was not canonicalizable."),
+                Quarter = ScheduleQuarterCatalog.TryNormalizeNullable(dto.Quarter, out var quarter)
+                    ? quarter
+                    : throw new InvalidOperationException("Validated schedule quarter was not canonicalizable."),
                 Year = dto.Year,
-                Status = "Due",
+                Status = ScheduleStatusCatalog.Due,
                 CreatedAt = now,
                 UpdatedAt = now
             };
@@ -78,8 +82,15 @@ public static class SchedulesEndpoints
 
             if (!string.IsNullOrWhiteSpace(status))
             {
-                var normalizedStatus = status.Trim().ToUpper();
-                query = query.Where(schedule => schedule.Status.ToUpper() == normalizedStatus);
+                if (!ScheduleStatusCatalog.TryNormalize(status, out var normalizedStatus))
+                {
+                    return ApiErrors.Validation(new Dictionary<string, string[]>
+                    {
+                        [nameof(status)] = ["Status must be a supported schedule status."]
+                    });
+                }
+
+                query = query.Where(schedule => schedule.Status == normalizedStatus);
             }
 
             if (from is not null)
@@ -94,8 +105,15 @@ public static class SchedulesEndpoints
 
             if (!string.IsNullOrWhiteSpace(quarter))
             {
-                var normalizedQuarter = quarter.Trim().ToUpper();
-                query = query.Where(schedule => schedule.Quarter != null && schedule.Quarter.ToUpper() == normalizedQuarter);
+                if (!ScheduleQuarterCatalog.TryNormalizeNullable(quarter, out var normalizedQuarter))
+                {
+                    return ApiErrors.Validation(new Dictionary<string, string[]>
+                    {
+                        [nameof(quarter)] = ["Quarter must be one of Q1, Q2, Q3, or Q4."]
+                    });
+                }
+
+                query = query.Where(schedule => schedule.Quarter == normalizedQuarter);
             }
 
             if (year is not null)
@@ -228,15 +246,31 @@ public class CreateScheduleDto
             errors.Add(nameof(ScheduleDate), ["Schedule date is required."]);
         }
 
+        var hasSupportedPeriodType = SchedulePeriodTypeCatalog.TryNormalize(PeriodType, out var normalizedPeriodType);
         if (string.IsNullOrWhiteSpace(PeriodType))
         {
             errors.Add(nameof(PeriodType), ["Period type is required."]);
         }
+        else if (!hasSupportedPeriodType)
+        {
+            errors.Add(nameof(PeriodType), ["Period type must be a supported maintenance period."]);
+        }
 
-        if (PeriodType.Contains("quarter", StringComparison.OrdinalIgnoreCase)
+        if (hasSupportedPeriodType
+            && string.Equals(normalizedPeriodType, SchedulePeriodTypeCatalog.Quarter, StringComparison.Ordinal)
             && string.IsNullOrWhiteSpace(Quarter))
         {
             errors.Add(nameof(Quarter), ["Quarter is required for quarterly schedules."]);
+        }
+
+        if (!ScheduleQuarterCatalog.TryNormalizeNullable(Quarter, out _))
+        {
+            errors.Add(nameof(Quarter), ["Quarter must be one of Q1, Q2, Q3, or Q4."]);
+        }
+
+        if (!string.IsNullOrWhiteSpace(PeriodType) && PeriodType.Trim().Length > 32)
+        {
+            errors.Add(nameof(PeriodType), ["Period type must not exceed 32 characters."]);
         }
 
         if (Year is not null)
