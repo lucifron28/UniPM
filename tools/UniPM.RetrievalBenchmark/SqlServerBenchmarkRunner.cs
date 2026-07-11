@@ -1,0 +1,366 @@
+using System.Diagnostics;
+using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using UniPM.Api.Data;
+using UniPM.Api.Data.Seeding;
+using UniPM.Api.Features.Retrieval;
+
+namespace UniPM.RetrievalBenchmark;
+
+public sealed class BenchmarkRunnerOptions
+{
+    public required IReadOnlyList<string> Channels { get; init; }
+    public required string OutputDirectory { get; init; }
+    public bool KeepDatabase { get; init; }
+    public EmbeddingOptions? Embeddings { get; init; }
+}
+
+public sealed record BenchmarkRunResult(
+    string JsonReportPath,
+    string MarkdownReportPath,
+    string? KeptDatabaseName);
+
+public sealed class SqlServerBenchmarkRunner
+{
+    public async Task<BenchmarkRunResult> RunAsync(
+        BenchmarkRunnerOptions options,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        var connectionString = RequireEnvironment("UNIPM_SQLSERVER_TEST_CONNECTION");
+        var repositoryRoot = FindRepositoryRoot();
+        var manifestPath = Path.Combine(
+            repositoryRoot,
+            "tests",
+            "UniPM.Api.Tests",
+            "Retrieval",
+            "Fixtures",
+            RetrievalBenchmarkVocabulary.ManifestFileName);
+        var datasetPath = Path.Combine(
+            repositoryRoot,
+            "server",
+            "Data",
+            "Seeding",
+            "Resources",
+            SyntheticMaintenanceSeedOptions.DatasetFileName);
+        var lexiconPath = Path.Combine(
+            repositoryRoot,
+            "server",
+            "Features",
+            "Retrieval",
+            "Resources",
+            MaintenanceIssueLexiconOptions.LexiconFileName);
+
+        await using var database = await TemporarySqlServerDatabase.CreateAsync(
+            connectionString,
+            options.KeepDatabase,
+            cancellationToken);
+        var contextFactory = new BenchmarkDbContextFactory(database.ConnectionString);
+
+        await using (var context = await contextFactory.CreateDbContextAsync(cancellationToken))
+        {
+            await context.Database.MigrateAsync(cancellationToken);
+        }
+
+        var datasetLoader = new SyntheticMaintenanceDatasetLoader(
+            new SyntheticMaintenanceSeedOptions { DatasetPath = datasetPath },
+            new SyntheticMaintenanceDatasetValidator());
+        var dataset = await datasetLoader.LoadAsync(cancellationToken);
+        var lexiconLoader = new MaintenanceIssueLexiconLoader(new MaintenanceIssueLexiconOptions
+        {
+            LexiconPath = lexiconPath
+        });
+        var issueNormalizer = new MaintenanceIssueNormalizer(lexiconLoader);
+        var projector = new MaintenanceSearchDocumentProjector(contextFactory, issueNormalizer);
+        var seeder = new SyntheticMaintenanceSeeder(contextFactory, datasetLoader, projector);
+        await seeder.SeedAsync(cancellationToken);
+        await projector.RebuildAsync(cancellationToken);
+
+        var manifest = await new RetrievalEvaluationManifestLoader(dataset)
+            .LoadAsync(manifestPath, cancellationToken);
+        var channels = new List<IBenchmarkRetrievalChannel>();
+
+        if (options.Channels.Contains("lexical", StringComparer.Ordinal))
+        {
+            await SqlServerBenchmarkReadiness.WaitForFullTextAsync(
+                database.ConnectionString,
+                cancellationToken);
+            var lexicalRetriever = new SqlServerLexicalMaintenanceRetriever(contextFactory);
+            channels.Add(new DelegateBenchmarkRetrievalChannel(
+                new BenchmarkChannelMetadata
+                {
+                    RetrievalChannel = "lexical",
+                    ResultLimit = BenchmarkEvaluationService.ResultLimit,
+                    FullTextSearchReady = true
+                },
+                async (request, token) =>
+                {
+                    var result = await lexicalRetriever.SearchAsync(
+                        ToLexicalRequest(request),
+                        token);
+                    return result
+                        .Select(item => new BenchmarkRetrievedResult(item.InspectionId, item.RawLexicalRank))
+                        .ToArray();
+                }));
+        }
+
+        if (options.Channels.Contains("semantic", StringComparer.Ordinal))
+        {
+            if (options.Embeddings is null)
+            {
+                throw new InvalidOperationException("Semantic benchmarking requires embedding configuration.");
+            }
+
+            var embeddingService = new OpenAiCompatibleEmbeddingService(
+                new HttpClient(),
+                Options.Create(options.Embeddings));
+            var indexer = new MaintenanceSearchDocumentEmbeddingIndexer(
+                contextFactory,
+                embeddingService,
+                Options.Create(options.Embeddings));
+            var indexResult = await indexer.RebuildAsync(cancellationToken);
+            if (indexResult.Failed > 0)
+            {
+                throw new InvalidOperationException(
+                    $"Semantic embedding rebuild failed for {indexResult.Failed} benchmark documents.");
+            }
+
+            var descriptor = embeddingService.Descriptor;
+            var semanticRetriever = new SqlServerSemanticMaintenanceRetriever(
+                contextFactory,
+                embeddingService,
+                issueNormalizer);
+            channels.Add(new DelegateBenchmarkRetrievalChannel(
+                new BenchmarkChannelMetadata
+                {
+                    RetrievalChannel = "semantic",
+                    ResultLimit = BenchmarkEvaluationService.ResultLimit,
+                    ProviderKey = descriptor.ProviderKey,
+                    ModelKey = descriptor.ModelKey,
+                    Dimensions = descriptor.Dimensions,
+                    EmbeddingProfile = descriptor.EmbeddingProfile
+                },
+                async (request, token) =>
+                {
+                    var result = await semanticRetriever.SearchAsync(
+                        ToSemanticRequest(request),
+                        token);
+                    return result
+                        .Select(item => new BenchmarkRetrievedResult(item.InspectionId, item.RawSemanticScore))
+                        .ToArray();
+                }));
+        }
+
+        var report = await new BenchmarkEvaluationService()
+            .RunAsync(manifest, channels, cancellationToken: cancellationToken);
+        var writer = new BenchmarkReportWriter();
+        await writer.WriteAsync(report, options.OutputDirectory, cancellationToken);
+
+        return new BenchmarkRunResult(
+            Path.Combine(options.OutputDirectory, "retrieval-benchmark.json"),
+            Path.Combine(options.OutputDirectory, "retrieval-benchmark.md"),
+            database.KeptDatabaseName);
+    }
+
+    private static LexicalMaintenanceSearchRequest ToLexicalRequest(BenchmarkChannelRequest request)
+    {
+        var filters = request.Filters;
+        return new LexicalMaintenanceSearchRequest(
+            request.QueryText,
+            request.Limit,
+            filters.AssetId,
+            filters.AssetCategory,
+            filters.Building,
+            filters.Department,
+            filters.Location,
+            filters.IsOperational,
+            filters.DateFrom,
+            filters.DateTo);
+    }
+
+    private static SemanticMaintenanceSearchRequest ToSemanticRequest(BenchmarkChannelRequest request)
+    {
+        var filters = request.Filters;
+        return new SemanticMaintenanceSearchRequest(
+            request.QueryText,
+            request.Limit,
+            filters.AssetId,
+            filters.AssetCategory,
+            filters.Building,
+            filters.Department,
+            filters.Location,
+            filters.IsOperational,
+            filters.DateFrom,
+            filters.DateTo);
+    }
+
+    private static string RequireEnvironment(string name)
+    {
+        var value = Environment.GetEnvironmentVariable(name);
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            throw new InvalidOperationException($"Environment variable '{name}' is required.");
+        }
+
+        return value;
+    }
+
+    private static string FindRepositoryRoot()
+    {
+        for (var directory = new DirectoryInfo(AppContext.BaseDirectory); directory is not null; directory = directory.Parent)
+        {
+            if (File.Exists(Path.Combine(directory.FullName, "UniPM.slnx")))
+            {
+                return directory.FullName;
+            }
+        }
+
+        throw new DirectoryNotFoundException("Unable to locate the UniPM repository root.");
+    }
+}
+
+internal sealed class BenchmarkDbContextFactory(string connectionString)
+    : IDbContextFactory<ApplicationDbContext>
+{
+    public ApplicationDbContext CreateDbContext()
+    {
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseSqlServer(connectionString)
+            .Options;
+        return new ApplicationDbContext(options);
+    }
+
+    public Task<ApplicationDbContext> CreateDbContextAsync(CancellationToken cancellationToken = default)
+        => Task.FromResult(CreateDbContext());
+}
+
+internal sealed class TemporarySqlServerDatabase : IAsyncDisposable
+{
+    private readonly string baseConnectionString;
+    private readonly bool keepDatabase;
+
+    private TemporarySqlServerDatabase(
+        string connectionString,
+        string databaseName,
+        string baseConnectionString,
+        bool keepDatabase)
+    {
+        ConnectionString = connectionString;
+        DatabaseName = databaseName;
+        this.baseConnectionString = baseConnectionString;
+        this.keepDatabase = keepDatabase;
+    }
+
+    public string ConnectionString { get; }
+    public string DatabaseName { get; }
+    public string? KeptDatabaseName => keepDatabase ? DatabaseName : null;
+
+    public static async Task<TemporarySqlServerDatabase> CreateAsync(
+        string baseConnectionString,
+        bool keepDatabase,
+        CancellationToken cancellationToken)
+    {
+        var databaseName = $"UniPMBenchmark_{Guid.NewGuid():N}";
+        var databaseBuilder = new SqlConnectionStringBuilder(baseConnectionString)
+        {
+            InitialCatalog = databaseName
+        };
+        var masterBuilder = new SqlConnectionStringBuilder(baseConnectionString)
+        {
+            InitialCatalog = "master"
+        };
+
+        await using var connection = new SqlConnection(masterBuilder.ConnectionString);
+        await connection.OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = $"CREATE DATABASE [{databaseName}]";
+        await command.ExecuteNonQueryAsync(cancellationToken);
+        return new TemporarySqlServerDatabase(
+            databaseBuilder.ConnectionString,
+            databaseName,
+            baseConnectionString,
+            keepDatabase);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (keepDatabase)
+        {
+            return;
+        }
+
+        var masterBuilder = new SqlConnectionStringBuilder(baseConnectionString)
+        {
+            InitialCatalog = "master"
+        };
+        await using var connection = new SqlConnection(masterBuilder.ConnectionString);
+        await connection.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = $"ALTER DATABASE [{DatabaseName}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [{DatabaseName}]";
+        await command.ExecuteNonQueryAsync();
+    }
+}
+
+internal static class SqlServerBenchmarkReadiness
+{
+    private const int MaxAttempts = 30;
+    private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(1);
+
+    public static async Task WaitForFullTextAsync(
+        string connectionString,
+        CancellationToken cancellationToken)
+    {
+        const string readinessSql = """
+            SELECT CONVERT(bit,
+                CASE
+                    WHEN ISNULL(TRY_CONVERT(int, SERVERPROPERTY('IsFullTextInstalled')), 0) <> 1 THEN 0
+                    WHEN ISNULL(FULLTEXTCATALOGPROPERTY(N'UniPMMaintenanceRetrieval', 'PopulateStatus'), -1) <> 0 THEN 0
+                    WHEN EXISTS (
+                        SELECT 1
+                        FROM sys.fulltext_indexes AS fullTextIndex
+                        INNER JOIN sys.tables AS tables
+                            ON tables.object_id = fullTextIndex.object_id
+                        INNER JOIN sys.schemas AS schemas
+                            ON schemas.schema_id = tables.schema_id
+                        INNER JOIN sys.fulltext_catalogs AS catalog
+                            ON catalog.fulltext_catalog_id = fullTextIndex.fulltext_catalog_id
+                        WHERE schemas.name = N'dbo'
+                          AND tables.name = N'MaintenanceSearchDocuments'
+                          AND catalog.name = N'UniPMMaintenanceRetrieval'
+                          AND fullTextIndex.is_enabled = 1) THEN 1
+                    ELSE 0
+                END);
+            """;
+
+        Exception? lastException = null;
+        for (var attempt = 0; attempt < MaxAttempts; attempt++)
+        {
+            try
+            {
+                await using var connection = new SqlConnection(connectionString);
+                await connection.OpenAsync(cancellationToken);
+                await using var command = connection.CreateCommand();
+                command.CommandText = readinessSql;
+                var value = await command.ExecuteScalarAsync(cancellationToken);
+                if (value is bool ready && ready)
+                {
+                    return;
+                }
+            }
+            catch (SqlException exception) when (!cancellationToken.IsCancellationRequested)
+            {
+                lastException = exception;
+            }
+
+            if (attempt < MaxAttempts - 1)
+            {
+                await Task.Delay(PollInterval, cancellationToken);
+            }
+        }
+
+        throw new InvalidOperationException(
+            "SQL Server Full-Text Search did not become ready for the benchmark database.",
+            lastException);
+    }
+}

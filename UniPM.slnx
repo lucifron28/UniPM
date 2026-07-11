@@ -2,5 +2,8 @@
   <Folder Name="/tests/">
     <Project Path="tests/UniPM.Api.Tests/UniPM.Api.Tests.csproj" />
   </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/UniPM.RetrievalBenchmark/UniPM.RetrievalBenchmark.csproj" />
+  </Folder>
   <Project Path="server/server.csproj" />
 </Solution>
