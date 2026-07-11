@@ -30,8 +30,12 @@ internal sealed record LexicalMaintenanceSearchResult(
     string? Location,
     DateTimeOffset DateInspected,
     bool IsOperational,
-    int RawLexicalRank,
-    string RetrievalChannel = "lexical");
+    int RawLexicalRank)
+{
+    public const string RetrievalChannelValue = "lexical";
+
+    public string RetrievalChannel => RetrievalChannelValue;
+}
 
 internal enum LexicalMaintenanceRetrievalFailureKind
 {
