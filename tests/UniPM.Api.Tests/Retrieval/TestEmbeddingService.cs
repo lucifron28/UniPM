@@ -4,15 +4,18 @@ namespace UniPM.Api.Tests.Retrieval;
 
 internal sealed class DeterministicEmbeddingService(
     Func<string, IReadOnlyList<double>> vectorFactory,
-    int dimensions = 2)
+    int dimensions = 2,
+    string providerKey = "test-provider",
+    string modelKey = "test-model",
+    string? profile = null)
     : IEmbeddingService
 {
     public EmbeddingServiceDescriptor Descriptor { get; } = new(
         true,
-        "test-provider",
-        "test-model",
+        providerKey,
+        modelKey,
         dimensions,
-        "test-provider:test-model:maintenance-search-document-embedding-v1:2");
+        profile ?? $"{providerKey}:{modelKey}:maintenance-search-document-embedding-v1:{dimensions}");
 
     public List<IReadOnlyList<string>> Batches { get; } = [];
     public bool FailExecution { get; set; }

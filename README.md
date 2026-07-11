@@ -19,10 +19,12 @@ Search plus semantic similarity. The database contains the initial `Asset`,
 rebuildable `MaintenanceSearchDocument` projection. The backend contains a
 versioned deterministic maintenance issue lexicon and an internal lexical
 retriever that searches only `MaintenanceSearchDocument.SearchText` through
-SQL Server Full-Text Search. It also contains an optional semantic retrieval
+SQL Server Full-Text Search. It also contains semantic retrieval
 channel using cached document embeddings and bounded application-layer cosine
-similarity. Result fusion/RRF, source-bounded summaries, and a maintenance-
-review endpoint remain separate future work.
+similarity. Semantic retrieval is a required UniPM retrieval channel, but its
+embedding provider is operationally optional and degradable. Result fusion/RRF,
+source-bounded summaries, and a maintenance-review endpoint remain separate
+future work.
 
 ## Current API Surface
 
@@ -143,9 +145,10 @@ rebuildable `MaintenanceSearchDocument.SearchText` projection and returns
 source-traceable inspection metadata; it has no public review endpoint. Domain-
 contract hardening is complete: stable persisted codes have feature-owned
 catalogs, canonical API/storage values, SQL Server constraints, and migration
-preflight checks. Semantic retrieval is now an optional internal channel: it
-stores only document embeddings, never query vectors, and does not affect core
-or lexical workflows when disabled. The next backend task is
+preflight checks. Semantic retrieval is now an internal channel required by the
+target maintenance-history review workflow: it stores only document embeddings,
+never query vectors, and does not affect core or lexical workflows when its
+provider is disabled. The next backend task is
 `feat/retrieval-benchmark`, followed by separate fusion and source-bounded
 review branches.
 

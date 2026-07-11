@@ -32,9 +32,10 @@
   - Internal SQL Server Full-Text Search over `MaintenanceSearchDocument.SearchText`
     with bounded prefix-query construction, controlled filters, and source-
     traceable lexical results. No public maintenance-review endpoint exists yet.
-  - Optional semantic retrieval over a one-to-one SQL Server embedding cache for
+  - Semantic retrieval over a one-to-one SQL Server embedding cache for
     `MaintenanceSearchDocument`, with explicit batch rebuilds and bounded
-    application-layer cosine similarity. Query embeddings are never persisted.
+    application-layer cosine similarity. The embedding provider is optional and
+    degradable; query embeddings are never persisted.
   - Reset dependency protection, strict fixture-property loading, exact
     evaluation correspondence tests, case-insensitive uniqueness checks, and
     unambiguous maintenance-command handling.
@@ -77,12 +78,13 @@ It does not search source entities independently and does not implement
 embeddings, benchmarks, fusion, summaries, or a public maintenance-review
 endpoint.
 
-Semantic retrieval is implemented as an optional internal channel. Document
-embeddings belong to `MaintenanceSearchDocumentEmbeddings`, are invalidated
-when `SearchText` changes, and are regenerated only by the explicit embedding
-rebuild command. Query vectors are generated transiently and are never stored.
-The current MVP uses application-layer cosine similarity and no separate vector
-database. Embeddings are disabled by default, and remote providers require an
+Semantic retrieval is implemented as an internal channel required by the target
+maintenance-history review workflow. Document embeddings belong to
+`MaintenanceSearchDocumentEmbeddings`, are invalidated when `SearchText`
+changes, and are regenerated only by the explicit embedding rebuild command.
+Query vectors are generated transiently and are never stored. The current MVP
+uses application-layer cosine similarity and no separate vector database. The
+embedding provider is disabled by default and remote providers require an
 explicit configuration flag and privacy review.
 
 ## Next Steps

@@ -38,6 +38,7 @@ public sealed class OpenAiCompatibleEmbeddingServiceTests
             new EmbeddingOptions
             {
                 Enabled = true,
+                ProviderKey = "local-provider",
                 BaseAddress = "http://localhost:8080",
                 Model = "local-model",
                 ApiKey = "test-key",
@@ -64,14 +65,39 @@ public sealed class OpenAiCompatibleEmbeddingServiceTests
             new EmbeddingOptions
             {
                 Enabled = true,
+                ProviderKey = "remote-provider",
                 BaseAddress = "https://remote.example.test",
-                Model = "remote-model"
+                Model = "remote-model",
+                Dimensions = 2
             });
 
         var exception = await Assert.ThrowsAsync<EmbeddingServiceAvailabilityException>(
             () => service.GenerateBatchAsync(["pressure"]));
 
         Assert.Contains("AllowRemoteProvider", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Absolute_path_cannot_override_a_local_base_address()
+    {
+        var handler = new RecordingHandler(_ => throw new InvalidOperationException("Network should not be called."));
+        var service = CreateService(
+            handler,
+            new EmbeddingOptions
+            {
+                Enabled = true,
+                ProviderKey = "local-provider",
+                BaseAddress = "http://localhost:8080",
+                Path = "https://remote.example.test/v1/embeddings",
+                Model = "local-model",
+                Dimensions = 2
+            });
+
+        var exception = await Assert.ThrowsAsync<EmbeddingServiceAvailabilityException>(
+            () => service.GenerateBatchAsync(["pressure"]));
+
+        Assert.Contains("relative", exception.Message, StringComparison.Ordinal);
+        Assert.Empty(handler.Requests);
     }
 
     [Fact]
@@ -82,8 +108,10 @@ public sealed class OpenAiCompatibleEmbeddingServiceTests
             new EmbeddingOptions
             {
                 Enabled = true,
+                ProviderKey = "local-provider",
                 BaseAddress = "http://localhost:8080",
                 Model = "local-model",
+                Dimensions = 2,
                 MaxBatchSize = 1,
                 MaxInputCharacters = 4
             });
@@ -102,8 +130,10 @@ public sealed class OpenAiCompatibleEmbeddingServiceTests
             new EmbeddingOptions
             {
                 Enabled = true,
+                ProviderKey = "local-provider",
                 BaseAddress = "http://localhost:8080",
-                Model = "local-model"
+                Model = "local-model",
+                Dimensions = 2
             });
         await Assert.ThrowsAsync<EmbeddingServiceExecutionException>(
             () => errorService.GenerateBatchAsync(["pressure"]));
@@ -116,8 +146,10 @@ public sealed class OpenAiCompatibleEmbeddingServiceTests
             new EmbeddingOptions
             {
                 Enabled = true,
+                ProviderKey = "local-provider",
                 BaseAddress = "http://localhost:8080",
-                Model = "local-model"
+                Model = "local-model",
+                Dimensions = 2
             });
         await Assert.ThrowsAsync<EmbeddingVectorValidationException>(
             () => invalidService.GenerateBatchAsync(["pressure"]));

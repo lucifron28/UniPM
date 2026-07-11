@@ -35,8 +35,9 @@ helps a human verify them.
   seed-only actor tokens, with canonical storage and SQL Server migration checks.
 - SQL Server FTS retrieval: complete as an internal service over
   `MaintenanceSearchDocument.SearchText`; no public review endpoint yet.
-- Semantic retrieval: complete as an optional internal channel over cached
-  `MaintenanceSearchDocument` embeddings; no public endpoint yet.
+- Semantic retrieval: complete as an internal channel over cached
+  `MaintenanceSearchDocument` embeddings; its provider is operationally
+  optional and degradable, with no public endpoint yet.
 - Retrieval benchmark and fusion: pending.
 - Source-bounded maintenance review and summarization: pending.
 - Authentication scaffolding: pending.
@@ -145,7 +146,7 @@ remarks using lexicon v1.0, retains recommendations as raw searchable text,
 tracks source and asset timestamps, and supports explicit transactional rebuild.
 Lexical SQL Server FTS now searches only this projection through an internal
 bounded retriever with controlled metadata filters and source-traceable results.
-An optional semantic channel now caches one normalized embedding per document,
+The semantic channel now caches one normalized embedding per document,
 invalidates stale rows, and ranks bounded SQL Server candidates with
 application-layer cosine similarity. Query embeddings are transient, and the
 evaluation manifest remains outside runtime code.
@@ -169,7 +170,7 @@ Do:
   `ISummaryService` or equivalent interfaces;
 - use the completed internal SQL Server FTS channel over
   `MaintenanceSearchDocument.SearchText`;
-- use the completed optional semantic channel separately, with a clearly
+- use the completed semantic channel separately, with a clearly
   reported lexical fallback handled only by a later orchestration branch;
 - return the source records used and limitations beside any summary;
 - keep source selection and prompt construction inspectable;

@@ -16,18 +16,20 @@ internal sealed class OpenAiCompatibleEmbeddingService(
     {
         get
         {
+            var providerKey = options.ProviderKey?.Trim() ?? string.Empty;
             var model = options.Model?.Trim() ?? string.Empty;
             var dimensions = options.Dimensions;
             var profile = string.Join(
                 ':',
-                EmbeddingOptions.ProviderKeyValue,
+                EmbeddingOptions.ProviderAdapterKey,
+                providerKey,
                 model,
                 MaintenanceEmbeddingInput.InputFormatVersion,
                 dimensions?.ToString() ?? "unknown");
 
             return new EmbeddingServiceDescriptor(
                 options.Enabled,
-                EmbeddingOptions.ProviderKeyValue,
+                providerKey,
                 model,
                 dimensions,
                 profile);
@@ -151,6 +153,13 @@ internal sealed class OpenAiCompatibleEmbeddingService(
                 "Embeddings:Model must be configured before semantic embedding operations run.");
         }
 
+        if (string.IsNullOrWhiteSpace(options.ProviderKey)
+            || options.ProviderKey.Length > 64)
+        {
+            throw new EmbeddingServiceAvailabilityException(
+                "Embeddings:ProviderKey must be configured as a non-secret value of 64 characters or fewer.");
+        }
+
         if (string.IsNullOrWhiteSpace(options.BaseAddress)
             || !Uri.TryCreate(options.BaseAddress, UriKind.Absolute, out var baseAddress)
             || baseAddress.Scheme is not ("http" or "https"))
@@ -159,16 +168,33 @@ internal sealed class OpenAiCompatibleEmbeddingService(
                 "Embeddings:BaseAddress must be an absolute HTTP or HTTPS endpoint.");
         }
 
-        if (!options.AllowRemoteProvider && !IsLocalEndpoint(baseAddress))
-        {
-            throw new EmbeddingServiceAvailabilityException(
-                "Remote embedding endpoints require Embeddings:AllowRemoteProvider=true and a separate privacy review.");
-        }
-
         if (string.IsNullOrWhiteSpace(options.Path))
         {
             throw new EmbeddingServiceAvailabilityException(
                 "Embeddings:Path must be configured before semantic embedding operations run.");
+        }
+
+        if (!Uri.TryCreate(options.Path, UriKind.Relative, out var relativePath)
+            || relativePath.IsAbsoluteUri
+            || options.Path.StartsWith("//", StringComparison.Ordinal))
+        {
+            throw new EmbeddingServiceAvailabilityException(
+                "Embeddings:Path must be a relative request path.");
+        }
+
+        var requestUri = new Uri(baseAddress, relativePath);
+        if (!string.Equals(requestUri.Scheme, baseAddress.Scheme, StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(requestUri.Host, baseAddress.Host, StringComparison.OrdinalIgnoreCase)
+            || requestUri.Port != baseAddress.Port)
+        {
+            throw new EmbeddingServiceAvailabilityException(
+                "Embeddings:Path must resolve to the configured base endpoint.");
+        }
+
+        if (!options.AllowRemoteProvider && !IsLocalEndpoint(requestUri))
+        {
+            throw new EmbeddingServiceAvailabilityException(
+                "Remote embedding endpoints require Embeddings:AllowRemoteProvider=true and a separate privacy review.");
         }
 
         if (options.TimeoutSeconds is < 1 or > 300
@@ -177,6 +203,12 @@ internal sealed class OpenAiCompatibleEmbeddingService(
         {
             throw new EmbeddingServiceAvailabilityException(
                 "Embedding timeout, batch, and input limits are outside the supported bounds.");
+        }
+
+        if (options.Dimensions is null)
+        {
+            throw new EmbeddingServiceAvailabilityException(
+                "Embeddings:Dimensions must be configured when semantic embeddings are enabled.");
         }
 
         if (options.Dimensions is < EmbeddingVectorCodec.MinDimensions or > EmbeddingVectorCodec.MaxDimensions)

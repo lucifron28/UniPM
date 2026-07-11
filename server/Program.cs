@@ -77,6 +77,10 @@ if (maintenanceCommand != SyntheticMaintenanceCommand.None)
             var result = await indexer.RebuildAsync();
             await Console.Out.WriteLineAsync(
                 $"Rebuilt {result.Total} maintenance embeddings ({result.Created} created, {result.Updated} updated, {result.Skipped} skipped, {result.Failed} failed).");
+            if (result.Failed > 0)
+            {
+                Environment.ExitCode = 1;
+            }
         }
         else
         {

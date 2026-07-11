@@ -151,7 +151,8 @@ Acceptable temporary/MVP work:
 Priority should move risk-first:
 
 1. Confirm the backend runs and tests pass.
-2. Benchmark the completed lexical and optional semantic channels separately.
+2. Benchmark the completed lexical and semantic channels separately; the
+   semantic provider remains operationally optional and degradable.
 3. Fuse retrieval results only after benchmark evidence exists.
 4. Add source-bounded summarization.
 5. Add authentication scaffolding.
@@ -160,8 +161,8 @@ The deterministic synthetic fixture, test-only retrieval evaluation manifest,
 Development-only seed/reset commands, reset dependency protection, RRF
 placeholder removal, inspection list/detail reads, the v1.0 maintenance issue
 lexicon, the rebuildable `MaintenanceSearchDocument` projection, and the
-optional semantic embedding channel are complete. The exact next backend
-branch is `feat/retrieval-benchmark`.
+semantic embedding channel are complete. The exact next backend branch is
+`feat/retrieval-benchmark`.
 
 Unblocked areas:
 

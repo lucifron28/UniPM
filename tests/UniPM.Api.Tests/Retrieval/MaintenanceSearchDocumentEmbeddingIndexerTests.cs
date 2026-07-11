@@ -61,6 +61,38 @@ public sealed class MaintenanceSearchDocumentEmbeddingIndexerTests
             () => indexer.RebuildAsync());
     }
 
+    [Fact]
+    public async Task Provider_model_profile_and_dimension_changes_regenerate_cached_embeddings()
+    {
+        var factory = new InMemoryContextFactory();
+        await AddDocumentsAsync(factory);
+
+        var initialService = new DeterministicEmbeddingService(_ => [1d, 0d]);
+        var initialIndexer = CreateIndexer(factory, initialService, maxBatchSize: 2);
+        await initialIndexer.RebuildAsync();
+
+        var changedService = new DeterministicEmbeddingService(
+            _ => [1d, 0d, 0d],
+            dimensions: 3,
+            providerKey: "changed-provider",
+            modelKey: "changed-model",
+            profile: "changed-profile");
+        var changedIndexer = CreateIndexer(factory, changedService, maxBatchSize: 2);
+
+        var result = await changedIndexer.RebuildAsync();
+
+        Assert.Equal(new MaintenanceEmbeddingIndexResult(3, 0, 3, 0, 0), result);
+        await using var context = factory.CreateDbContext();
+        var embeddings = await context.MaintenanceSearchDocumentEmbeddings.ToListAsync();
+        Assert.All(embeddings, embedding =>
+        {
+            Assert.Equal("changed-provider", embedding.ProviderKey);
+            Assert.Equal("changed-model", embedding.ModelKey);
+            Assert.Equal("changed-profile", embedding.EmbeddingProfile);
+            Assert.Equal(3, embedding.Dimensions);
+        });
+    }
+
     private static MaintenanceSearchDocumentEmbeddingIndexer CreateIndexer(
         InMemoryContextFactory factory,
         IEmbeddingService service,
@@ -72,6 +104,9 @@ public sealed class MaintenanceSearchDocumentEmbeddingIndexerTests
             Options.Create(new EmbeddingOptions
             {
                 Enabled = true,
+                ProviderKey = "test-provider",
+                Model = "test-model",
+                Dimensions = 2,
                 MaxBatchSize = maxBatchSize,
                 MaxInputCharacters = 4000
             }));

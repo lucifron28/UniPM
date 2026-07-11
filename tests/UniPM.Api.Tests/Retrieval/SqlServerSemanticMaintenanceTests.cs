@@ -256,6 +256,9 @@ public sealed class SqlServerSemanticMaintenanceTests
             Microsoft.Extensions.Options.Options.Create(new EmbeddingOptions
             {
                 Enabled = true,
+                ProviderKey = "test-provider",
+                Model = "test-model",
+                Dimensions = 2,
                 MaxBatchSize = 2,
                 MaxInputCharacters = 4000
             }));
@@ -282,6 +285,61 @@ public sealed class SqlServerSemanticMaintenanceTests
         Assert.Equal(
             MaintenanceEmbeddingInput.ComputeSourceHash("refreshed pressure"),
             embedding.SourceHash);
+    }
+
+    [SqlServerFact]
+    public async Task Older_valid_embeddings_are_not_hidden_by_newer_ineligible_documents()
+    {
+        await using var database = await CreateMigratedDatabaseAsync();
+        var older = await AddDocumentAsync(
+            database,
+            "fire-extinguisher",
+            "Main Building",
+            "Administration",
+            "Ground Floor",
+            false,
+            AtManila(2020, 1, 1),
+            "pressure",
+            [1d, 0d]);
+        await AddDistractorDocumentsAsync(database, 501, addWrongProfile: true);
+
+        var service = new DeterministicEmbeddingService(_ => [1d, 0d]);
+        var retriever = new SqlServerSemanticMaintenanceRetriever(
+            new TestContextFactory(database.ConnectionString),
+            service,
+            CreateIssueNormalizer());
+
+        var results = await retriever.SearchAsync(new SemanticMaintenanceSearchRequest("pressure"));
+
+        var result = Assert.Single(results);
+        Assert.Equal(older.InspectionId, result.InspectionId);
+    }
+
+    [SqlServerFact]
+    public async Task No_eligible_candidates_do_not_generate_a_query_embedding()
+    {
+        await using var database = await CreateMigratedDatabaseAsync();
+        await AddDocumentAsync(
+            database,
+            "fire-extinguisher",
+            "Main Building",
+            "Administration",
+            "Ground Floor",
+            false,
+            AtManila(2025, 1, 1),
+            "unembedded",
+            null);
+
+        var service = new DeterministicEmbeddingService(_ => [1d, 0d]);
+        var retriever = new SqlServerSemanticMaintenanceRetriever(
+            new TestContextFactory(database.ConnectionString),
+            service,
+            CreateIssueNormalizer());
+
+        var results = await retriever.SearchAsync(new SemanticMaintenanceSearchRequest("pressure"));
+
+        Assert.Empty(results);
+        Assert.Empty(service.Batches);
     }
 
     private const string TestProfile = "test-provider:test-model:maintenance-search-document-embedding-v1:2";
@@ -390,6 +448,95 @@ public sealed class SqlServerSemanticMaintenanceTests
 
         await context.SaveChangesAsync();
         return record;
+    }
+
+    private static async Task AddDistractorDocumentsAsync(
+        SqlServerTestDatabase database,
+        int count,
+        bool addWrongProfile)
+    {
+        await using var context = database.CreateContext();
+        for (var index = 0; index < count; index++)
+        {
+            var inspectedAt = AtManila(2025, 1, 1).AddMinutes(index);
+            var assetId = Guid.NewGuid();
+            var scheduleId = Guid.NewGuid();
+            var inspectionId = Guid.NewGuid();
+            var assetCode = $"DIST-{Guid.NewGuid():N}"[..12];
+            var searchText = $"distractor {index}";
+
+            context.Assets.Add(new Asset
+            {
+                Id = assetId,
+                AssetCode = assetCode,
+                AssetCategory = "fire-extinguisher",
+                Building = "Main Building",
+                Department = "Administration",
+                Location = "Ground Floor",
+                Status = "Active",
+                CreatedAt = inspectedAt,
+                UpdatedAt = inspectedAt
+            });
+            context.PreventiveMaintenanceSchedules.Add(new PreventiveMaintenanceSchedule
+            {
+                Id = scheduleId,
+                AssetId = assetId,
+                ScheduleDate = inspectedAt,
+                PeriodType = "Quarter",
+                Status = "Completed",
+                CreatedAt = inspectedAt,
+                UpdatedAt = inspectedAt
+            });
+            context.InspectionRecords.Add(new InspectionRecord
+            {
+                Id = inspectionId,
+                ScheduleId = scheduleId,
+                AssetId = assetId,
+                InspectorUserId = Guid.NewGuid(),
+                DateInspected = inspectedAt,
+                IsOperational = false,
+                Remarks = searchText,
+                CreatedAt = inspectedAt,
+                UpdatedAt = inspectedAt
+            });
+            context.MaintenanceSearchDocuments.Add(new MaintenanceSearchDocument
+            {
+                InspectionId = inspectionId,
+                AssetId = assetId,
+                ScheduleId = scheduleId,
+                AssetCode = assetCode,
+                AssetCategory = "fire-extinguisher",
+                Building = "Main Building",
+                Department = "Administration",
+                Location = "Ground Floor",
+                DateInspected = inspectedAt,
+                IsOperational = false,
+                SourceCreatedAt = inspectedAt,
+                SourceUpdatedAt = inspectedAt,
+                AssetUpdatedAt = inspectedAt,
+                ProjectionVersion = "1.0.0",
+                LexiconVersion = "1.0.0",
+                IssueKeysJson = "[]",
+                SearchText = searchText
+            });
+
+            if (addWrongProfile && index % 2 == 0)
+            {
+                context.MaintenanceSearchDocumentEmbeddings.Add(new MaintenanceSearchDocumentEmbedding
+                {
+                    InspectionId = inspectionId,
+                    ProviderKey = "other-provider",
+                    ModelKey = "other-model",
+                    EmbeddingProfile = "other-profile",
+                    Dimensions = 2,
+                    VectorJson = EmbeddingVectorCodec.Serialize([1d, 0d]),
+                    SourceHash = MaintenanceEmbeddingInput.ComputeSourceHash(searchText),
+                    GeneratedAt = DateTimeOffset.UtcNow
+                });
+            }
+        }
+
+        await context.SaveChangesAsync();
     }
 
     private static MaintenanceIssueNormalizer CreateIssueNormalizer()

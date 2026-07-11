@@ -3,9 +3,10 @@ namespace UniPM.Api.Features.Retrieval;
 public sealed class EmbeddingOptions
 {
     public const string SectionName = "Embeddings";
-    public const string ProviderKeyValue = "openai-compatible";
+    public const string ProviderAdapterKey = "openai-compatible";
 
     public bool Enabled { get; set; }
+    public string? ProviderKey { get; set; }
     public string? BaseAddress { get; set; }
     public string Path { get; set; } = "/v1/embeddings";
     public string? Model { get; set; }

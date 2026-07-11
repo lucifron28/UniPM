@@ -16,7 +16,7 @@ public sealed class SemanticMaintenanceRetrieverProviderTests
     }
 
     [Fact]
-    public async Task Provider_execution_failure_is_mapped_to_semantic_execution_failure()
+    public async Task Non_sql_server_provider_is_rejected_before_embedding_generation()
     {
         var service = new DeterministicEmbeddingService(_ => [1d, 0d])
         {
@@ -24,17 +24,9 @@ public sealed class SemanticMaintenanceRetrieverProviderTests
         };
         var retriever = CreateRetriever(service);
 
-        await Assert.ThrowsAsync<SemanticMaintenanceExecutionException>(
+        await Assert.ThrowsAsync<SemanticMaintenanceAvailabilityException>(
             () => retriever.SearchAsync(new SemanticMaintenanceSearchRequest("pressure")));
-    }
-
-    [Fact]
-    public async Task Provider_vector_failure_is_mapped_to_semantic_data_failure()
-    {
-        var retriever = CreateRetriever(new DeterministicEmbeddingService(_ => [0d, 0d]));
-
-        await Assert.ThrowsAsync<SemanticMaintenanceDataException>(
-            () => retriever.SearchAsync(new SemanticMaintenanceSearchRequest("pressure")));
+        Assert.Empty(service.Batches);
     }
 
     private static SqlServerSemanticMaintenanceRetriever CreateRetriever(IEmbeddingService service)

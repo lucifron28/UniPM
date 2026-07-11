@@ -29,6 +29,14 @@ internal sealed class MaintenanceSearchDocumentEmbeddingIndexer(
                 "Semantic embeddings are disabled by configuration.");
         }
 
+        if (string.IsNullOrWhiteSpace(descriptor.ProviderKey)
+            || string.IsNullOrWhiteSpace(descriptor.ModelKey)
+            || descriptor.Dimensions is null)
+        {
+            throw new EmbeddingServiceAvailabilityException(
+                "Semantic embedding provider, model, and dimensions must be configured before indexing.");
+        }
+
         if (options.MaxBatchSize is < 1 or > 128)
         {
             throw new EmbeddingServiceAvailabilityException(
@@ -120,6 +128,7 @@ internal sealed class MaintenanceSearchDocumentEmbeddingIndexer(
                     }
 
                     await context.SaveChangesAsync(cancellationToken);
+                    context.ChangeTracker.Clear();
                 }
                 catch (EmbeddingServiceException exception)
                     when (exception.Kind is EmbeddingFailureKind.Execution or EmbeddingFailureKind.Validation)
@@ -139,7 +148,7 @@ internal sealed class MaintenanceSearchDocumentEmbeddingIndexer(
     {
         return string.Equals(embedding.SourceHash, sourceHash, StringComparison.Ordinal)
             && string.Equals(embedding.EmbeddingProfile, descriptor.EmbeddingProfile, StringComparison.Ordinal)
-            && (descriptor.Dimensions is null || embedding.Dimensions == descriptor.Dimensions);
+            && embedding.Dimensions == descriptor.Dimensions;
     }
 
     private static MaintenanceSearchDocumentEmbedding CreateEmbedding(

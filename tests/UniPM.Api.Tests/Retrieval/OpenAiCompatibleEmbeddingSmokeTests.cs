@@ -13,10 +13,12 @@ public sealed class OpenAiCompatibleEmbeddingSmokeTests
             Options.Create(new EmbeddingOptions
             {
                 Enabled = true,
+                ProviderKey = "smoke-provider",
                 BaseAddress = Environment.GetEnvironmentVariable("UNIPM_EMBEDDING_TEST_ENDPOINT"),
                 Model = Environment.GetEnvironmentVariable("UNIPM_EMBEDDING_TEST_MODEL"),
                 ApiKey = Environment.GetEnvironmentVariable("UNIPM_EMBEDDING_TEST_API_KEY"),
                 AllowRemoteProvider = true,
+                Dimensions = 2,
                 MaxBatchSize = 2,
                 MaxInputCharacters = 4000
             }));

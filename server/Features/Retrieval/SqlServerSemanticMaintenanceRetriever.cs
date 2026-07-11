@@ -22,36 +22,12 @@ internal sealed class SqlServerSemanticMaintenanceRetriever(
                 "Semantic embeddings are disabled by configuration.");
         }
 
-        IReadOnlyList<EmbeddingVector> queryVectors;
-        try
-        {
-            queryVectors = await embeddingService.GenerateBatchAsync(
-                [query.EmbeddingInput],
-                cancellationToken);
-        }
-        catch (EmbeddingServiceAvailabilityException exception)
+        if (string.IsNullOrWhiteSpace(descriptor.ProviderKey)
+            || string.IsNullOrWhiteSpace(descriptor.ModelKey)
+            || descriptor.Dimensions is null)
         {
             throw new SemanticMaintenanceAvailabilityException(
-                "The configured embedding provider is unavailable for semantic retrieval.",
-                exception);
-        }
-        catch (EmbeddingServiceExecutionException exception)
-        {
-            throw new SemanticMaintenanceExecutionException(
-                "The embedding provider failed while generating the semantic query vector.",
-                exception);
-        }
-        catch (EmbeddingVectorValidationException exception)
-        {
-            throw new SemanticMaintenanceDataException(
-                "The embedding provider returned invalid semantic query vector data.",
-                exception);
-        }
-
-        if (queryVectors.Count != 1)
-        {
-            throw new SemanticMaintenanceDataException(
-                "The embedding provider returned an invalid query vector count.");
+                "Semantic embedding provider, model, and dimensions must be configured before retrieval.");
         }
 
         await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
@@ -63,72 +39,55 @@ internal sealed class SqlServerSemanticMaintenanceRetriever(
 
         try
         {
-            var candidatesQuery = context.MaintenanceSearchDocuments
-                .AsNoTracking()
-                .Include(document => document.Embedding)
-                .AsQueryable();
-
-            if (query.AssetId is not null)
+            var candidates = await LoadEligibleCandidatesAsync(
+                context,
+                query,
+                descriptor,
+                cancellationToken);
+            if (candidates.Count == 0)
             {
-                candidatesQuery = candidatesQuery.Where(document => document.AssetId == query.AssetId);
+                return [];
             }
 
-            if (query.AssetCategory is not null)
+            IReadOnlyList<EmbeddingVector> queryVectors;
+            try
             {
-                candidatesQuery = candidatesQuery.Where(
-                    document => document.AssetCategory == query.AssetCategory);
+                queryVectors = await embeddingService.GenerateBatchAsync(
+                    [query.EmbeddingInput],
+                    cancellationToken);
+            }
+            catch (EmbeddingServiceAvailabilityException exception)
+            {
+                throw new SemanticMaintenanceAvailabilityException(
+                    "The configured embedding provider is unavailable for semantic retrieval.",
+                    exception);
+            }
+            catch (EmbeddingServiceExecutionException exception)
+            {
+                throw new SemanticMaintenanceExecutionException(
+                    "The embedding provider failed while generating the semantic query vector.",
+                    exception);
+            }
+            catch (EmbeddingVectorValidationException exception)
+            {
+                throw new SemanticMaintenanceDataException(
+                    "The embedding provider returned invalid semantic query vector data.",
+                    exception);
             }
 
-            if (query.Building is not null)
+            if (queryVectors.Count != 1
+                || queryVectors[0].Dimensions != descriptor.Dimensions)
             {
-                candidatesQuery = candidatesQuery.Where(document => document.Building == query.Building);
+                throw new SemanticMaintenanceDataException(
+                    "The embedding provider returned an invalid query vector.");
             }
-
-            if (query.Department is not null)
-            {
-                candidatesQuery = candidatesQuery.Where(document => document.Department == query.Department);
-            }
-
-            if (query.Location is not null)
-            {
-                candidatesQuery = candidatesQuery.Where(document => document.Location == query.Location);
-            }
-
-            if (query.IsOperational is not null)
-            {
-                candidatesQuery = candidatesQuery.Where(
-                    document => document.IsOperational == query.IsOperational);
-            }
-
-            if (query.DateFrom is not null)
-            {
-                candidatesQuery = candidatesQuery.Where(
-                    document => document.DateInspected >= query.DateFrom);
-            }
-
-            if (query.DateTo is not null)
-            {
-                candidatesQuery = candidatesQuery.Where(
-                    document => document.DateInspected <= query.DateTo);
-            }
-
-            var candidates = await candidatesQuery
-                .OrderByDescending(document => document.DateInspected)
-                .ThenBy(document => document.InspectionId)
-                .Take(SemanticMaintenanceQueryBuilder.MaxCandidateCount)
-                .ToListAsync(cancellationToken);
 
             var queryVector = queryVectors[0].Values;
             var results = new List<SemanticMaintenanceSearchResult>(Math.Min(query.Limit, candidates.Count));
             foreach (var candidate in candidates)
             {
-                if (!TryReadCurrentVector(candidate, descriptor, queryVector.Count, out var vector))
-                {
-                    continue;
-                }
-
-                var score = EmbeddingVectorCodec.CosineSimilarity(queryVector, vector);
-                results.Add(ToResult(candidate, score));
+                var score = EmbeddingVectorCodec.CosineSimilarity(queryVector, candidate.Vector);
+                results.Add(ToResult(candidate.Document, score));
             }
 
             return results
@@ -148,6 +107,101 @@ internal sealed class SqlServerSemanticMaintenanceRetriever(
                 "SQL Server could not execute semantic maintenance retrieval.",
                 exception);
         }
+    }
+
+    private static async Task<IReadOnlyList<SemanticCandidate>> LoadEligibleCandidatesAsync(
+        ApplicationDbContext context,
+        SemanticMaintenanceQuery query,
+        EmbeddingServiceDescriptor descriptor,
+        CancellationToken cancellationToken)
+    {
+        var expectedDimensions = descriptor.Dimensions.GetValueOrDefault();
+        var candidatesQuery = context.MaintenanceSearchDocuments
+            .AsNoTracking()
+            .Include(document => document.Embedding)
+            .Where(document => document.Embedding != null
+                && document.Embedding.EmbeddingProfile == descriptor.EmbeddingProfile
+                && document.Embedding.Dimensions == expectedDimensions);
+
+        if (query.AssetId is not null)
+        {
+            candidatesQuery = candidatesQuery.Where(document => document.AssetId == query.AssetId);
+        }
+
+        if (query.AssetCategory is not null)
+        {
+            candidatesQuery = candidatesQuery.Where(
+                document => document.AssetCategory == query.AssetCategory);
+        }
+
+        if (query.Building is not null)
+        {
+            candidatesQuery = candidatesQuery.Where(document => document.Building == query.Building);
+        }
+
+        if (query.Department is not null)
+        {
+            candidatesQuery = candidatesQuery.Where(document => document.Department == query.Department);
+        }
+
+        if (query.Location is not null)
+        {
+            candidatesQuery = candidatesQuery.Where(document => document.Location == query.Location);
+        }
+
+        if (query.IsOperational is not null)
+        {
+            candidatesQuery = candidatesQuery.Where(
+                document => document.IsOperational == query.IsOperational);
+        }
+
+        if (query.DateFrom is not null)
+        {
+            candidatesQuery = candidatesQuery.Where(
+                document => document.DateInspected >= query.DateFrom);
+        }
+
+        if (query.DateTo is not null)
+        {
+            candidatesQuery = candidatesQuery.Where(
+                document => document.DateInspected <= query.DateTo);
+        }
+
+        var eligible = new List<SemanticCandidate>(SemanticMaintenanceQueryBuilder.MaxCandidateCount);
+        var offset = 0;
+        while (eligible.Count < SemanticMaintenanceQueryBuilder.MaxCandidateCount)
+        {
+            var page = await candidatesQuery
+                .OrderByDescending(document => document.DateInspected)
+                .ThenBy(document => document.InspectionId)
+                .Skip(offset)
+                .Take(SemanticMaintenanceQueryBuilder.MaxCandidateCount)
+                .ToListAsync(cancellationToken);
+
+            if (page.Count == 0)
+            {
+                break;
+            }
+
+            offset += page.Count;
+            foreach (var document in page)
+            {
+                if (TryReadCurrentVector(
+                        document,
+                        descriptor,
+                        expectedDimensions,
+                        out var vector))
+                {
+                    eligible.Add(new SemanticCandidate(document, vector));
+                    if (eligible.Count == SemanticMaintenanceQueryBuilder.MaxCandidateCount)
+                    {
+                        break;
+                    }
+                }
+            }
+        }
+
+        return eligible;
     }
 
     private static bool TryReadCurrentVector(
@@ -200,4 +254,8 @@ internal sealed class SqlServerSemanticMaintenanceRetriever(
             document.IsOperational,
             score);
     }
+
+    private sealed record SemanticCandidate(
+        MaintenanceSearchDocument Document,
+        double[] Vector);
 }
