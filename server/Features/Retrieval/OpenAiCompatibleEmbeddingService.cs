@@ -10,6 +10,8 @@ internal sealed class OpenAiCompatibleEmbeddingService(
     IOptions<EmbeddingOptions> optionsAccessor)
     : IEmbeddingService
 {
+    private const int MaxModelKeyLength = 256;
+    private const int MaxEmbeddingProfileLength = 512;
     private readonly EmbeddingOptions options = optionsAccessor.Value;
 
     public EmbeddingServiceDescriptor Descriptor
@@ -19,13 +21,7 @@ internal sealed class OpenAiCompatibleEmbeddingService(
             var providerKey = options.ProviderKey?.Trim() ?? string.Empty;
             var model = options.Model?.Trim() ?? string.Empty;
             var dimensions = options.Dimensions;
-            var profile = string.Join(
-                ':',
-                EmbeddingOptions.ProviderAdapterKey,
-                providerKey,
-                model,
-                MaintenanceEmbeddingInput.InputFormatVersion,
-                dimensions?.ToString() ?? "unknown");
+            var profile = BuildEmbeddingProfile(providerKey, model, dimensions);
 
             return new EmbeddingServiceDescriptor(
                 options.Enabled,
@@ -147,14 +143,22 @@ internal sealed class OpenAiCompatibleEmbeddingService(
                 "Semantic embeddings are disabled by configuration.");
         }
 
-        if (string.IsNullOrWhiteSpace(options.Model))
+        var model = options.Model?.Trim() ?? string.Empty;
+        if (model.Length == 0)
         {
             throw new EmbeddingServiceAvailabilityException(
                 "Embeddings:Model must be configured before semantic embedding operations run.");
         }
 
-        if (string.IsNullOrWhiteSpace(options.ProviderKey)
-            || options.ProviderKey.Length > 64)
+        if (model.Length > MaxModelKeyLength)
+        {
+            throw new EmbeddingServiceAvailabilityException(
+                $"Embeddings:Model cannot exceed {MaxModelKeyLength} characters.");
+        }
+
+        var providerKey = options.ProviderKey?.Trim() ?? string.Empty;
+        if (providerKey.Length == 0
+            || providerKey.Length > 64)
         {
             throw new EmbeddingServiceAvailabilityException(
                 "Embeddings:ProviderKey must be configured as a non-secret value of 64 characters or fewer.");
@@ -216,6 +220,27 @@ internal sealed class OpenAiCompatibleEmbeddingService(
             throw new EmbeddingServiceAvailabilityException(
                 "Embeddings:Dimensions is outside the supported vector dimension range.");
         }
+
+        var profile = BuildEmbeddingProfile(providerKey, model, options.Dimensions);
+        if (profile.Length > MaxEmbeddingProfileLength)
+        {
+            throw new EmbeddingServiceAvailabilityException(
+                $"The computed embedding profile cannot exceed {MaxEmbeddingProfileLength} characters.");
+        }
+    }
+
+    private static string BuildEmbeddingProfile(
+        string providerKey,
+        string model,
+        int? dimensions)
+    {
+        return string.Join(
+            ':',
+            EmbeddingOptions.ProviderAdapterKey,
+            providerKey,
+            model,
+            MaintenanceEmbeddingInput.InputFormatVersion,
+            dimensions?.ToString() ?? "unknown");
     }
 
     private Uri BuildRequestUri()

@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.Extensions.Options;
 using UniPM.Api.Features.Retrieval;
 
@@ -18,7 +19,7 @@ public sealed class OpenAiCompatibleEmbeddingSmokeTests
                 Model = Environment.GetEnvironmentVariable("UNIPM_EMBEDDING_TEST_MODEL"),
                 ApiKey = Environment.GetEnvironmentVariable("UNIPM_EMBEDDING_TEST_API_KEY"),
                 AllowRemoteProvider = true,
-                Dimensions = 2,
+                Dimensions = GetTestDimensions(),
                 MaxBatchSize = 2,
                 MaxInputCharacters = 4000
             }));
@@ -29,6 +30,22 @@ public sealed class OpenAiCompatibleEmbeddingSmokeTests
         Assert.InRange(vector.Dimensions, EmbeddingVectorCodec.MinDimensions, EmbeddingVectorCodec.MaxDimensions);
         Assert.All(vector.Values, value => Assert.True(double.IsFinite(value)));
     }
+
+    private static int GetTestDimensions()
+    {
+        if (!int.TryParse(
+                Environment.GetEnvironmentVariable("UNIPM_EMBEDDING_TEST_DIMENSIONS"),
+                NumberStyles.Integer,
+                CultureInfo.InvariantCulture,
+                out var dimensions)
+            || dimensions is < EmbeddingVectorCodec.MinDimensions or > EmbeddingVectorCodec.MaxDimensions)
+        {
+            throw new InvalidOperationException(
+                "UNIPM_EMBEDDING_TEST_DIMENSIONS must be a valid embedding dimension count.");
+        }
+
+        return dimensions;
+    }
 }
 
 internal sealed class EmbeddingSmokeFactAttribute : FactAttribute
@@ -37,9 +54,16 @@ internal sealed class EmbeddingSmokeFactAttribute : FactAttribute
     {
         if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("UNIPM_EMBEDDING_TEST_ENDPOINT"))
             || string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("UNIPM_EMBEDDING_TEST_MODEL"))
-            || string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("UNIPM_EMBEDDING_TEST_API_KEY")))
+            || string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("UNIPM_EMBEDDING_TEST_API_KEY"))
+            || !int.TryParse(
+                Environment.GetEnvironmentVariable("UNIPM_EMBEDDING_TEST_DIMENSIONS"),
+                NumberStyles.Integer,
+                CultureInfo.InvariantCulture,
+                out var dimensions)
+            || dimensions is < EmbeddingVectorCodec.MinDimensions or > EmbeddingVectorCodec.MaxDimensions)
         {
-            Skip = "Set UNIPM_EMBEDDING_TEST_ENDPOINT, UNIPM_EMBEDDING_TEST_MODEL, and UNIPM_EMBEDDING_TEST_API_KEY to run the optional embedding smoke test.";
+            Skip = "Set the embedding smoke endpoint, model, API key, and a valid UNIPM_EMBEDDING_TEST_DIMENSIONS value to run the optional embedding smoke test.";
         }
     }
+
 }

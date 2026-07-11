@@ -123,6 +123,28 @@ public sealed class OpenAiCompatibleEmbeddingServiceTests
     }
 
     [Fact]
+    public async Task Model_length_is_validated_before_network_access()
+    {
+        var handler = new RecordingHandler(_ => throw new InvalidOperationException("Network should not be called."));
+        var service = CreateService(
+            handler,
+            new EmbeddingOptions
+            {
+                Enabled = true,
+                ProviderKey = "local-provider",
+                BaseAddress = "http://localhost:8080",
+                Model = new string('m', 257),
+                Dimensions = 2
+            });
+
+        var exception = await Assert.ThrowsAsync<EmbeddingServiceAvailabilityException>(
+            () => service.GenerateBatchAsync(["pressure"]));
+
+        Assert.Contains("256", exception.Message, StringComparison.Ordinal);
+        Assert.Empty(handler.Requests);
+    }
+
+    [Fact]
     public async Task Provider_errors_and_invalid_responses_are_typed()
     {
         var errorService = CreateService(
