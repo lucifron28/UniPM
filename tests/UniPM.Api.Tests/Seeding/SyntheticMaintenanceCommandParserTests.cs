@@ -24,6 +24,9 @@ public sealed class SyntheticMaintenanceCommandParserTests
         Assert.Equal(
             SyntheticMaintenanceCommand.Rebuild,
             SyntheticMaintenanceCommandParser.Parse(["--rebuild-maintenance-search-documents"]));
+        Assert.Equal(
+            SyntheticMaintenanceCommand.RebuildEmbeddings,
+            SyntheticMaintenanceCommandParser.Parse(["--rebuild-maintenance-embeddings"]));
     }
 
     [Fact]
@@ -40,9 +43,13 @@ public sealed class SyntheticMaintenanceCommandParserTests
             SyntheticMaintenanceCommandParser.Parse(["--reset-synthetic-seed", "--rebuild-maintenance-search-documents"]));
         Assert.Equal(
             SyntheticMaintenanceCommand.Ambiguous,
+            SyntheticMaintenanceCommandParser.Parse(["--rebuild-maintenance-search-documents", "--rebuild-maintenance-embeddings"]));
+        Assert.Equal(
+            SyntheticMaintenanceCommand.Ambiguous,
             SyntheticMaintenanceCommandParser.Parse([
                 "--seed-synthetic",
                 "--reset-synthetic-seed",
-                "--rebuild-maintenance-search-documents"]));
+                "--rebuild-maintenance-search-documents",
+                "--rebuild-maintenance-embeddings"]));
     }
 }
