@@ -1,6 +1,6 @@
 ﻿{
     "$schema":  "retrieval-evaluation-v1.schema.json",
-    "evaluationVersion":  "1.0.0",
+    "evaluationVersion":  "1.1.0",
     "datasetVersion":  "1.1.0",
     "assetAnnotations":  [
                              {
@@ -452,6 +452,531 @@
                               }
                           ],
     "queries":  [
-
-                ]
+        {
+            "queryId": "Q001",
+            "queryText": "mahina ang pressure",
+            "language": "taglish",
+            "assetCategory": "fire-extinguisher",
+            "contextAssetId": "f6420fec-4fb8-5c78-8299-12767e924b1a",
+            "retrievalFilters": {
+                "assetId": "f6420fec-4fb8-5c78-8299-12767e924b1a",
+                "assetCategory": "fire-extinguisher"
+            },
+            "expectedRelevantInspectionIds": [
+                "267babd6-4e6d-5082-843a-6db5d9d3e5ae",
+                "334f4c25-2a02-50e7-b93e-79a01ebee7a7",
+                "1a069120-c57f-5249-bde9-cbe4538c70e2"
+            ],
+            "scenarioTags": [
+                "same-asset-history",
+                "lexicon-covered",
+                "cross-language",
+                "unresolved-history",
+                "resolved-history"
+            ],
+            "notes": "Recurring low-pressure history on FE-001, including a resolved follow-up."
+        },
+        {
+            "queryId": "Q002",
+            "queryText": "kulang ang pressure",
+            "language": "tagalog",
+            "assetCategory": "fire-extinguisher",
+            "retrievalFilters": {
+                "assetCategory": "fire-extinguisher",
+                "building": "Main Building"
+            },
+            "expectedRelevantInspectionIds": [
+                "267babd6-4e6d-5082-843a-6db5d9d3e5ae",
+                "334f4c25-2a02-50e7-b93e-79a01ebee7a7",
+                "924a832f-9dfa-5798-bf39-21ada836fa18",
+                "03c117f8-1207-5a48-9564-2914844d6883"
+            ],
+            "scenarioTags": [
+                "similar-asset-fallback",
+                "lexicon-covered",
+                "same-building-context",
+                "cross-language",
+                "unresolved-history"
+            ],
+            "notes": "Main Building pressure findings test similar-asset retrieval across FE-001 and FE-002."
+        },
+        {
+            "queryId": "Q003",
+            "queryText": "gauge near red zone",
+            "language": "english",
+            "assetCategory": "fire-extinguisher",
+            "retrievalFilters": {
+                "assetCategory": "fire-extinguisher",
+                "building": "Main Building",
+                "dateFrom": "2025-01-01T00:00:00+08:00",
+                "dateTo": "2025-12-31T23:59:59+08:00"
+            },
+            "expectedRelevantInspectionIds": [
+                "267babd6-4e6d-5082-843a-6db5d9d3e5ae",
+                "334f4c25-2a02-50e7-b93e-79a01ebee7a7",
+                "1a069120-c57f-5249-bde9-cbe4538c70e2",
+                "924a832f-9dfa-5798-bf39-21ada836fa18",
+                "03c117f8-1207-5a48-9564-2914844d6883"
+            ],
+            "scenarioTags": [
+                "similar-asset-fallback",
+                "semantic-paraphrase",
+                "distractor-resistance",
+                "same-building-context",
+                "resolved-history"
+            ],
+            "notes": "A paraphrase for pressure decline should resist the normal FE-004 distractors."
+        },
+        {
+            "queryId": "Q004",
+            "queryText": "kailangan mag refill",
+            "language": "tagalog",
+            "assetCategory": "fire-extinguisher",
+            "retrievalFilters": {
+                "assetCategory": "fire-extinguisher",
+                "isOperational": false
+            },
+            "expectedRelevantInspectionIds": [
+                "267babd6-4e6d-5082-843a-6db5d9d3e5ae",
+                "334f4c25-2a02-50e7-b93e-79a01ebee7a7",
+                "924a832f-9dfa-5798-bf39-21ada836fa18"
+            ],
+            "scenarioTags": [
+                "similar-asset-fallback",
+                "semantic-paraphrase",
+                "cross-language",
+                "unresolved-history"
+            ],
+            "notes": "The operational filter narrows the refill query to unresolved pressure inspections."
+        },
+        {
+            "queryId": "Q005",
+            "queryText": "missing safety pin",
+            "language": "english",
+            "assetCategory": "fire-extinguisher",
+            "retrievalFilters": {
+                "assetCategory": "fire-extinguisher",
+                "building": "Annex Building"
+            },
+            "expectedRelevantInspectionIds": [
+                "2c0cf8d1-6fab-50cf-a06b-384f9f628e0e"
+            ],
+            "scenarioTags": [
+                "semantic-paraphrase",
+                "unresolved-history"
+            ],
+            "notes": "The expected record is the Annex safety-seal and pin finding."
+        },
+        {
+            "queryId": "Q006",
+            "queryText": "gauge malapit sa red zone cold-start",
+            "language": "taglish",
+            "assetCategory": "fire-extinguisher",
+            "contextAssetId": "f83fc630-5a2e-582d-88da-b4e21f25191f",
+            "retrievalFilters": {
+                "assetCategory": "fire-extinguisher"
+            },
+            "expectedRelevantInspectionIds": [
+                "267babd6-4e6d-5082-843a-6db5d9d3e5ae",
+                "334f4c25-2a02-50e7-b93e-79a01ebee7a7",
+                "1a069120-c57f-5249-bde9-cbe4538c70e2",
+                "924a832f-9dfa-5798-bf39-21ada836fa18",
+                "03c117f8-1207-5a48-9564-2914844d6883"
+            ],
+            "scenarioTags": [
+                "cold-start",
+                "similar-asset-fallback",
+                "semantic-paraphrase",
+                "distractor-resistance",
+                "cross-language"
+            ],
+            "notes": "FE-050 has no history; pressure records from other extinguishers provide similar-asset context."
+        },
+        {
+            "queryId": "Q007",
+            "queryText": "alarm panel fault",
+            "language": "english",
+            "assetCategory": "fire-alarm",
+            "contextAssetId": "fd1e4eaa-6892-5911-b286-bb202b6fcbdb",
+            "retrievalFilters": {
+                "assetId": "fd1e4eaa-6892-5911-b286-bb202b6fcbdb",
+                "assetCategory": "fire-alarm"
+            },
+            "expectedRelevantInspectionIds": [
+                "db839e0d-f540-5bb7-ad16-71068a91ff87",
+                "651444ef-4b05-53c1-8df7-9b1d72607d4e"
+            ],
+            "scenarioTags": [
+                "same-asset-history",
+                "lexicon-covered",
+                "unresolved-history",
+                "semantic-paraphrase"
+            ],
+            "notes": "FA-001 contains two recurring alarm-panel fault inspections."
+        },
+        {
+            "queryId": "Q008",
+            "queryText": "hindi nagrerespond ang detector",
+            "language": "tagalog",
+            "assetCategory": "fire-alarm",
+            "retrievalFilters": {
+                "assetCategory": "fire-alarm",
+                "location": "Second Floor Laboratory Hallway"
+            },
+            "expectedRelevantInspectionIds": [
+                "87f404ae-7662-5e5f-b577-424af2cd4bd9",
+                "cc805de9-166f-5f3e-a579-c6432503f55f"
+            ],
+            "scenarioTags": [
+                "similar-asset-fallback",
+                "lexicon-covered",
+                "cross-language",
+                "same-building-context",
+                "unresolved-history"
+            ],
+            "notes": "The laboratory hallway filter isolates the FA-002 detector history."
+        },
+        {
+            "queryId": "Q009",
+            "queryText": "detector communication problem",
+            "language": "english",
+            "assetCategory": "fire-alarm",
+            "retrievalFilters": {
+                "assetCategory": "fire-alarm",
+                "location": "Second Floor Laboratory Hallway"
+            },
+            "expectedRelevantInspectionIds": [
+                "87f404ae-7662-5e5f-b577-424af2cd4bd9",
+                "cc805de9-166f-5f3e-a579-c6432503f55f"
+            ],
+            "scenarioTags": [
+                "similar-asset-fallback",
+                "semantic-paraphrase",
+                "same-building-context",
+                "unresolved-history"
+            ],
+            "notes": "A non-literal communication phrase tests semantic and lexical differences for detector faults."
+        },
+        {
+            "queryId": "Q010",
+            "queryText": "bell not sounding",
+            "language": "english",
+            "assetCategory": "fire-alarm",
+            "retrievalFilters": {
+                "assetCategory": "fire-alarm",
+                "building": "Library Building"
+            },
+            "expectedRelevantInspectionIds": [
+                "725c0c6a-6d5a-56c6-aa93-ee4d38ad8d10",
+                "12132427-f8f3-5902-8ac5-180213861399"
+            ],
+            "scenarioTags": [
+                "semantic-paraphrase",
+                "same-building-context",
+                "unresolved-history",
+                "resolved-history"
+            ],
+            "notes": "The Library Building result pair covers a strobe or bell output issue and its resolution."
+        },
+        {
+            "queryId": "Q011",
+            "queryText": "manual call point issue",
+            "language": "english",
+            "assetCategory": "fire-alarm",
+            "contextAssetId": "7bfa4436-d0f1-5997-9310-6dafbc8183fe",
+            "retrievalFilters": {
+                "assetId": "7bfa4436-d0f1-5997-9310-6dafbc8183fe",
+                "assetCategory": "fire-alarm"
+            },
+            "expectedRelevantInspectionIds": [
+                "725c0c6a-6d5a-56c6-aa93-ee4d38ad8d10",
+                "12132427-f8f3-5902-8ac5-180213861399"
+            ],
+            "scenarioTags": [
+                "same-asset-history",
+                "semantic-paraphrase",
+                "unresolved-history",
+                "resolved-history"
+            ],
+            "notes": "FA-003 provides same-asset history for a manual call point and restored strobe."
+        },
+        {
+            "queryId": "Q012",
+            "queryText": "hindi nagrerespond ang detector sa cold-start alarm",
+            "language": "taglish",
+            "assetCategory": "fire-alarm",
+            "contextAssetId": "39ff1332-33a5-55cf-979f-27214a1df108",
+            "retrievalFilters": {
+                "assetCategory": "fire-alarm"
+            },
+            "expectedRelevantInspectionIds": [
+                "87f404ae-7662-5e5f-b577-424af2cd4bd9",
+                "cc805de9-166f-5f3e-a579-c6432503f55f"
+            ],
+            "scenarioTags": [
+                "cold-start",
+                "similar-asset-fallback",
+                "semantic-paraphrase",
+                "distractor-resistance",
+                "cross-language"
+            ],
+            "notes": "FA-050 is a cold-start asset; FA-002 supplies the closest detector-history context."
+        },
+        {
+            "queryId": "Q013",
+            "queryText": "hindi umiilaw",
+            "language": "tagalog",
+            "assetCategory": "emergency-light",
+            "contextAssetId": "54c526f8-e644-50dd-bb13-a7893b822722",
+            "retrievalFilters": {
+                "assetId": "54c526f8-e644-50dd-bb13-a7893b822722",
+                "assetCategory": "emergency-light"
+            },
+            "expectedRelevantInspectionIds": [
+                "7bf49237-b9c5-5ed6-99ea-f3aa38204559",
+                "d852f1d5-c1c3-565b-8cdd-a887015f031a",
+                "3ee28351-0d1d-5af2-871a-e6e2e0ffe1cd"
+            ],
+            "scenarioTags": [
+                "same-asset-history",
+                "lexicon-covered",
+                "cross-language",
+                "unresolved-history",
+                "resolved-history"
+            ],
+            "notes": "EL-001 contains recurring non-lighting findings followed by a resolved inspection."
+        },
+        {
+            "queryId": "Q014",
+            "queryText": "ayaw mag on",
+            "language": "tagalog",
+            "assetCategory": "emergency-light",
+            "retrievalFilters": {
+                "assetCategory": "emergency-light",
+                "building": "Main Building"
+            },
+            "expectedRelevantInspectionIds": [
+                "7bf49237-b9c5-5ed6-99ea-f3aa38204559",
+                "d852f1d5-c1c3-565b-8cdd-a887015f031a",
+                "3ee28351-0d1d-5af2-871a-e6e2e0ffe1cd",
+                "e168c814-8c47-58b4-918a-9d44131a36d2",
+                "a9be1357-744f-50b8-815a-9793a40d9a35"
+            ],
+            "scenarioTags": [
+                "similar-asset-fallback",
+                "same-building-context",
+                "cross-language",
+                "unresolved-history",
+                "resolved-history"
+            ],
+            "notes": "Main Building emergency-light history spans EL-001 and EL-002."
+        },
+        {
+            "queryId": "Q015",
+            "queryText": "sira ang battery",
+            "language": "taglish",
+            "assetCategory": "emergency-light",
+            "retrievalFilters": {
+                "assetCategory": "emergency-light"
+            },
+            "expectedRelevantInspectionIds": [
+                "d852f1d5-c1c3-565b-8cdd-a887015f031a",
+                "3ee28351-0d1d-5af2-871a-e6e2e0ffe1cd",
+                "e168c814-8c47-58b4-918a-9d44131a36d2",
+                "f0f1b829-eb05-5504-8312-20abcf98890d"
+            ],
+            "scenarioTags": [
+                "similar-asset-fallback",
+                "lexicon-covered",
+                "cross-language",
+                "distractor-resistance",
+                "unresolved-history",
+                "resolved-history"
+            ],
+            "notes": "Battery-related records include EL-001, EL-002, and the dim EL-003 distractor context."
+        },
+        {
+            "queryId": "Q016",
+            "queryText": "dim during test",
+            "language": "english",
+            "assetCategory": "emergency-light",
+            "retrievalFilters": {
+                "assetCategory": "emergency-light",
+                "building": "Annex Building"
+            },
+            "expectedRelevantInspectionIds": [
+                "f0f1b829-eb05-5504-8312-20abcf98890d"
+            ],
+            "scenarioTags": [
+                "semantic-paraphrase",
+                "unresolved-history"
+            ],
+            "notes": "The Annex Building emergency-light query targets the dim-output inspection."
+        },
+        {
+            "queryId": "Q017",
+            "queryText": "charging problem",
+            "language": "english",
+            "assetCategory": "emergency-light",
+            "retrievalFilters": {
+                "assetCategory": "emergency-light"
+            },
+            "expectedRelevantInspectionIds": [
+                "a9be1357-744f-50b8-815a-9793a40d9a35"
+            ],
+            "scenarioTags": [
+                "semantic-paraphrase",
+                "unresolved-history"
+            ],
+            "notes": "The charging-indicator record is the only annotation for the charging issue."
+        },
+        {
+            "queryId": "Q018",
+            "queryText": "may charging problem sa cold-start emergency light",
+            "language": "taglish",
+            "assetCategory": "emergency-light",
+            "contextAssetId": "3b667d5b-9638-5d3f-bc0e-2207d21640f2",
+            "retrievalFilters": {
+                "assetCategory": "emergency-light"
+            },
+            "expectedRelevantInspectionIds": [
+                "a9be1357-744f-50b8-815a-9793a40d9a35"
+            ],
+            "scenarioTags": [
+                "cold-start",
+                "similar-asset-fallback",
+                "semantic-paraphrase",
+                "cross-language",
+                "unresolved-history"
+            ],
+            "notes": "EL-050 has no history; the EL-002 charging record is the nearest issue reference."
+        },
+        {
+            "queryId": "Q019",
+            "queryText": "barado ang filter",
+            "language": "tagalog",
+            "assetCategory": "water-drinking-station",
+            "contextAssetId": "40bccea3-c507-52b6-941d-a9051a6d4b2b",
+            "retrievalFilters": {
+                "assetId": "40bccea3-c507-52b6-941d-a9051a6d4b2b",
+                "assetCategory": "water-drinking-station"
+            },
+            "expectedRelevantInspectionIds": [
+                "4a9714bf-4059-501b-85e0-03a00e1a6a2b",
+                "c89793f3-432b-50c1-9c18-07e21a6900c2",
+                "ad67c157-d11b-5486-8de0-801a706c0524"
+            ],
+            "scenarioTags": [
+                "same-asset-history",
+                "lexicon-covered",
+                "cross-language",
+                "unresolved-history",
+                "resolved-history"
+            ],
+            "notes": "WDS-001 has repeated filter findings across three inspections."
+        },
+        {
+            "queryId": "Q020",
+            "queryText": "mahina ang daloy",
+            "language": "tagalog",
+            "assetCategory": "water-drinking-station",
+            "retrievalFilters": {
+                "assetCategory": "water-drinking-station",
+                "isOperational": true
+            },
+            "expectedRelevantInspectionIds": [
+                "c89793f3-432b-50c1-9c18-07e21a6900c2",
+                "ad67c157-d11b-5486-8de0-801a706c0524"
+            ],
+            "scenarioTags": [
+                "similar-asset-fallback",
+                "lexicon-covered",
+                "cross-language",
+                "distractor-resistance",
+                "resolved-history"
+            ],
+            "notes": "The operational filter excludes the unresolved finding and tests resistance to WDS-004 context."
+        },
+        {
+            "queryId": "Q021",
+            "queryText": "may tagas near the dispenser",
+            "language": "taglish",
+            "assetCategory": "water-drinking-station",
+            "retrievalFilters": {
+                "assetCategory": "water-drinking-station",
+                "location": "Ground Floor Lobby"
+            },
+            "expectedRelevantInspectionIds": [
+                "b65f8b77-bead-5b95-9533-bb4e2474d4bf",
+                "293463e1-b69e-5fee-a7a0-c6650e0af24d"
+            ],
+            "scenarioTags": [
+                "similar-asset-fallback",
+                "lexicon-covered",
+                "cross-language",
+                "unresolved-history"
+            ],
+            "notes": "The Ground Floor Lobby filter isolates the two WDS-002 leak records."
+        },
+        {
+            "queryId": "Q022",
+            "queryText": "leaking near dispenser connection",
+            "language": "english",
+            "assetCategory": "water-drinking-station",
+            "retrievalFilters": {
+                "assetCategory": "water-drinking-station",
+                "building": "Annex Building"
+            },
+            "expectedRelevantInspectionIds": [
+                "b65f8b77-bead-5b95-9533-bb4e2474d4bf",
+                "293463e1-b69e-5fee-a7a0-c6650e0af24d"
+            ],
+            "scenarioTags": [
+                "similar-asset-fallback",
+                "semantic-paraphrase",
+                "unresolved-history"
+            ],
+            "notes": "An English paraphrase targets the Annex WDS-002 leak history."
+        },
+        {
+            "queryId": "Q023",
+            "queryText": "UV light not working",
+            "language": "english",
+            "assetCategory": "water-drinking-station",
+            "retrievalFilters": {
+                "assetCategory": "water-drinking-station",
+                "department": "Library"
+            },
+            "expectedRelevantInspectionIds": [
+                "fb1ae4d6-c444-580e-96b9-dd8172331c4a"
+            ],
+            "scenarioTags": [
+                "lexicon-covered",
+                "semantic-paraphrase",
+                "unresolved-history"
+            ],
+            "notes": "The Library department UV-light inspection is the expected result."
+        },
+        {
+            "queryId": "Q024",
+            "queryText": "UV light not functioning sa cold-start water station",
+            "language": "taglish",
+            "assetCategory": "water-drinking-station",
+            "contextAssetId": "84b14d99-4c97-5afc-8d30-a9b6aeb83cdc",
+            "retrievalFilters": {
+                "assetCategory": "water-drinking-station"
+            },
+            "expectedRelevantInspectionIds": [
+                "fb1ae4d6-c444-580e-96b9-dd8172331c4a"
+            ],
+            "scenarioTags": [
+                "cold-start",
+                "similar-asset-fallback",
+                "semantic-paraphrase",
+                "cross-language",
+                "unresolved-history"
+            ],
+            "notes": "WDS-050 is cold-start; the WDS-003 UV-light record supplies similar-asset context."
+        }
+    ]
 }

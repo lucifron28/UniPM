@@ -159,9 +159,9 @@ public sealed class SyntheticMaintenanceDatasetTests
         var assetAnnotations = evaluation["assetAnnotations"]!.AsArray();
         var recordAnnotations = evaluation["recordAnnotations"]!.AsArray();
 
-        Assert.Equal("1.0.0", evaluation["evaluationVersion"]!.GetValue<string>());
+        Assert.Equal("1.1.0", evaluation["evaluationVersion"]!.GetValue<string>());
         Assert.Equal(dataset.DatasetVersion, evaluation["datasetVersion"]!.GetValue<string>());
-        Assert.Empty(evaluation["queries"]!.AsArray());
+        Assert.Equal(24, evaluation["queries"]!.AsArray().Count);
         Assert.Equal(4, assetAnnotations.Count);
         Assert.Equal(dataset.Inspections.Count, recordAnnotations.Count);
 
