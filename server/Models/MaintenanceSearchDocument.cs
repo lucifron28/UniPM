@@ -4,6 +4,7 @@ public sealed class MaintenanceSearchDocument
 {
     public Guid InspectionId { get; set; }
     public InspectionRecord? Inspection { get; set; }
+    public MaintenanceSearchDocumentEmbedding? Embedding { get; set; }
 
     public Guid AssetId { get; set; }
     public Guid ScheduleId { get; set; }
