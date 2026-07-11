@@ -27,7 +27,8 @@ helps a human verify them.
 - Inspection list/detail: done.
 - Operational synthetic fixture: completed at version `1.1.0`.
 - Development seed/reset commands: completed and Development-only.
-- Retrieval evaluation manifest: completed at version `1.0.0` and test-only.
+- Retrieval evaluation manifest: completed at version `1.1.0` and test-only,
+  with 24 bounded benchmark queries.
 - RRF placeholder: removed; RRF is not implemented yet.
 - Maintenance issue lexicon: done at version `1.0.0`.
 - `MaintenanceSearchDocument`: done as a persisted, rebuildable projection.
@@ -38,7 +39,8 @@ helps a human verify them.
 - Semantic retrieval: complete as an internal channel over cached
   `MaintenanceSearchDocument` embeddings; its provider is operationally
   optional and degradable, with no public endpoint yet.
-- Retrieval benchmark and fusion: pending.
+- Retrieval benchmark: complete as a standalone reproducible lexical/semantic
+  evaluation tool. Fusion remains pending.
 - Source-bounded maintenance review and summarization: pending.
 - Authentication scaffolding: pending.
 
@@ -46,7 +48,7 @@ helps a human verify them.
 
 1. Confirm the backend baseline.
 2. Keep the synthetic fixture and Development-only seeder verified.
-3. Benchmark lexical and semantic retrieval channels separately.
+3. Benchmark lexical and semantic retrieval channels separately. **Complete.**
 4. Add inspectable result fusion.
 5. Add sanitization and source-bounded summarization.
 6. Add authentication scaffolding.
@@ -189,17 +191,25 @@ about dates, causes, RMRF values, or personnel decisions.
 Goal: measure whether lexical, semantic, and hybrid retrieval improve on the
 fictional dataset.
 
-The test-only evaluation manifest currently contains four cold-start asset
-annotations and one exact annotation for every operational inspection. It keeps
-benchmark queries empty until the retrieval contract and lexicon are ready.
+Completed scope:
 
-When the retrieval channels exist:
+- versioned test-only manifest `1.1.0` with 24 bounded queries;
+- English, Tagalog, and Taglish coverage across all four asset categories;
+- expected relevant inspection IDs, filters, cold-start context, distractors,
+  and scenario slices;
+- strict loader validation against the operational `1.1.0` fixture;
+- standalone SQL Server runner with temporary database, migration, seed,
+  projection rebuild, Full-Text readiness polling, optional semantic indexing,
+  and deterministic JSON/Markdown reports;
+- Hit@1, Hit@5, Precision@5, Recall@5, Recall@10, reciprocal rank, first
+  relevant rank, macro averages, and language/category/scenario slices.
 
-- add 15-30 English, Tagalog, and mixed-language benchmark queries;
-- define expected relevant record IDs in test-only data;
-- compare lexical, semantic, and hybrid results;
-- report simple Hit@5, Recall@10, or MRR where useful;
-- keep cold-start assets due and clearly label similar-asset fallback context.
+Run lexical or semantic channels separately, or both together, with
+`tools/UniPM.RetrievalBenchmark`. Semantic execution requires the configured
+embedding provider; it is not replaced with fake production scores.
+
+Fusion, score normalization, thresholds, insufficient-evidence policy, and
+source-bounded summarization remain separate work.
 
 Do not claim synthetic benchmark performance proves production performance.
 
@@ -236,7 +246,6 @@ directly.
 
 ## Next Branches
 
-- `feat/retrieval-benchmark`
-- `feat/rag: add inspectable result fusion`
-- `feat/rag: add source-bounded maintenance review`
-- `feat/auth: scaffold development roles`
+- `feat/retrieval-fusion`
+- `feat/retrieval-review`
+- `feat/auth-scaffolding`

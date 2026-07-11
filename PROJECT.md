@@ -89,7 +89,6 @@ explicit configuration flag and privacy review.
 
 ## Next Steps
 
-1. Build the retrieval benchmark.
-2. Add result fusion.
+1. Add result fusion.
 3. Add sanitizer and source-bounded maintenance review.
 4. Add authentication scaffolding.

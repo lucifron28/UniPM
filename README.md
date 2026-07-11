@@ -133,7 +133,7 @@ inspector references. When development users are introduced later, reuse those
 IDs rather than creating a temporary production user table solely for seeding.
 
 The operational fixture is version `1.1.0`. The retrieval evaluation manifest
-is version `1.0.0`, is copied only to test output, and remains test-only: it is
+is version `1.1.0`, is copied only to test output, and remains test-only: it is
 not loaded by the API, persisted, indexed, embedded, included in prompts, or
 returned by ordinary DTOs. Both files are fictional and based only on visible
 Page 1 blank-form fields; Page 2, completed samples, acknowledgement, and RMRF
@@ -148,15 +148,46 @@ catalogs, canonical API/storage values, SQL Server constraints, and migration
 preflight checks. Semantic retrieval is now an internal channel required by the
 target maintenance-history review workflow: it stores only document embeddings,
 never query vectors, and does not affect core or lexical workflows when its
-provider is disabled. The next backend task is
-`feat/retrieval-benchmark`, followed by separate fusion and source-bounded
-review branches.
+provider is disabled. The retrieval benchmark is complete as a reproducible
+lexical/semantic evaluation tool; the next backend task is
+`feat/retrieval-fusion`.
 
 Embeddings are disabled by default. Remote providers are rejected unless
 `Embeddings:AllowRemoteProvider` is explicitly enabled after a separate
 privacy review. The current semantic MVP uses a provider-neutral
 OpenAI-compatible adapter and application-layer cosine similarity; it does not
 introduce a separate vector database or claim model-quality results.
+
+## Retrieval Benchmark
+
+The test-only evaluation manifest is version `1.1.0` and contains 24 bounded
+queries across the four synthetic asset categories, English, Tagalog, and
+Taglish. It includes cold-start asset context and expected inspection IDs, but
+it is never loaded by the API or included in operational seed, search,
+embedding, prompt, or DTO paths.
+
+Run the standalone benchmark against a reachable SQL Server using the required
+connection-string environment variable:
+
+```powershell
+$env:UNIPM_SQLSERVER_TEST_CONNECTION = "Server=localhost,1433;Database=master;User Id=sa;Password=<local-password>;Encrypt=True;TrustServerCertificate=True;"
+dotnet run --project .\tools\UniPM.RetrievalBenchmark -- --channels lexical
+dotnet run --project .\tools\UniPM.RetrievalBenchmark -- --channels semantic
+dotnet run --project .\tools\UniPM.RetrievalBenchmark -- --channels lexical,semantic --output artifacts\retrieval-benchmark
+```
+
+Each run creates a temporary database, applies migrations, loads the synthetic
+fixture, rebuilds the projection, waits for SQL Server Full-Text population,
+and writes deterministic JSON and Markdown reports. The temporary database is
+dropped by default. Set `UNIPM_BENCHMARK_KEEP_DATABASE=true` only for local
+inspection. Semantic runs additionally require the configured embedding
+environment contract; provider failures are reported as benchmark failures,
+not silently scored as empty retrieval.
+
+Reports include Hit@1, Hit@5, Precision@5, Recall@5, Recall@10, reciprocal
+rank, first relevant rank, macro averages, and language/category/scenario
+slices. The benchmark does not implement score fusion, RRF, thresholds,
+insufficient-evidence policy, summaries, or a public retrieval endpoint.
 
 ## Project References
 
