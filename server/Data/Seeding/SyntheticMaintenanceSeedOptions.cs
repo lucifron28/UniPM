@@ -12,12 +12,5 @@ public sealed class SyntheticMaintenanceSeedOptions
         "Resources",
         DatasetFileName);
 
-    public static IReadOnlySet<string> AllowedActorRoles { get; } = new HashSet<string>(StringComparer.Ordinal)
-    {
-        "GSD_FIRE_INSPECTOR",
-        "ELECTRICAL_ENGINEER",
-        "PLUMBER",
-        "PPF_SUPERVISOR",
-        "DEPARTMENT_HEAD"
-    };
+    public static IReadOnlySet<string> AllowedActorRoles => SyntheticActorRoleCatalog.SeedOnlyCodes;
 }
