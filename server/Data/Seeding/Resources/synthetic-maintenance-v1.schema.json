@@ -198,7 +198,13 @@
                                                           },
                                                    "roleToken":  {
                                                                      "type":  "string",
-                                                                     "pattern":  "^[A-Z0-9_]+$"
+                                                                     "enum":  [
+                                                                                  "GSD_FIRE_INSPECTOR",
+                                                                                  "ELECTRICAL_ENGINEER",
+                                                                                  "PLUMBER",
+                                                                                  "PPF_SUPERVISOR",
+                                                                                  "DEPARTMENT_HEAD"
+                                                                              ]
                                                                  },
                                                    "displayLabel":  {
                                                                         "type":  "string",
@@ -238,15 +244,18 @@
                                                                      },
                                                    "building":  {
                                                                     "type":  "string",
-                                                                    "minLength":  1
+                                                                    "minLength":  1,
+                                                                    "maxLength":  256
                                                                 },
                                                    "department":  {
                                                                       "type":  "string",
-                                                                      "minLength":  1
+                                                                      "minLength":  1,
+                                                                      "maxLength":  256
                                                                   },
                                                    "location":  {
                                                                     "type":  "string",
-                                                                    "minLength":  1
+                                                                    "minLength":  1,
+                                                                    "maxLength":  256
                                                                 },
                                                    "status":  {
                                                                   "type":  "string",
@@ -261,7 +270,7 @@
                                                                        },
                                                    "qrCodeValue":  {
                                                                        "type":  "string",
-                                                                       "pattern":  "^UNIPM-[A-Z-]+-[0-9a-f]{8}$"
+                                                                       "pattern":  "^UNIPM-[A-Z-]+-[0-9A-F]{8}$"
                                                                    }
                                                },
                                 "allOf":  [

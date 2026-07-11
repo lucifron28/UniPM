@@ -23,8 +23,7 @@ public sealed class MaintenanceIssueNormalizer
 
     public IReadOnlyList<MaintenanceIssueMatch> Normalize(string text, string assetCategory)
     {
-        if (string.IsNullOrWhiteSpace(assetCategory)
-            || !AssetCategoryCatalog.ContainsCode(assetCategory))
+        if (!AssetCategoryCatalog.TryNormalize(assetCategory, out var normalizedCategory))
         {
             throw new ArgumentException(
                 "A supported asset category is required for maintenance issue normalization.",
@@ -37,8 +36,6 @@ public sealed class MaintenanceIssueNormalizer
         }
 
         var normalizedText = MaintenanceIssueText.Normalize(text);
-        var normalizedCategory = assetCategory.Trim().ToLowerInvariant();
-
         return issues
             .Where(issue => string.Equals(issue.AssetCategory, normalizedCategory, StringComparison.Ordinal))
             .Select(issue =>

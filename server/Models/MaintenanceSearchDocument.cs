@@ -7,7 +7,17 @@ public sealed class MaintenanceSearchDocument
 
     public Guid AssetId { get; set; }
     public Guid ScheduleId { get; set; }
+
+    /// <summary>
+    /// Stores the canonical asset identifier copied from the source Asset during projection.
+    /// Rebuilding the projection refreshes this copied value.
+    /// </summary>
     public string AssetCode { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Stores the canonical category copied from the source Asset during projection.
+    /// Rebuilding the projection refreshes this copied value.
+    /// </summary>
     public string AssetCategory { get; set; } = string.Empty;
     public string? Building { get; set; }
     public string? Department { get; set; }

@@ -292,7 +292,7 @@ public sealed class MaintenanceSearchDocumentProjectorTests
             Building = "Main Building",
             Department = "Administration",
             Location = "Ground Floor",
-            QrCodeValue = "UNIPM-FIRE-EXTINGUISHER-f6420fec",
+            QrCodeValue = "UNIPM-FIRE-EXTINGUISHER-F6420FEC",
             Status = "Active",
             CreatedAt = createdAt,
             UpdatedAt = updatedAt ?? createdAt

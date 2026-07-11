@@ -8,7 +8,7 @@
 - **Start API**: `docker compose up -d unipm-api`
 - **Docker Down**: `docker compose down`
 - **Migration Add**: `dotnet ef migrations add <Name> --project server`
-- **Migration Update**: `$env:ConnectionStrings__DefaultConnection="<String>"; dotnet ef database update --project server`
+- **Migration Update**: set `ConnectionStrings__DefaultConnection`, run `dotnet ef database update --project server`, then run `dotnet run --project server -- --rebuild-maintenance-search-documents` so existing search-document `SearchText` is regenerated after metadata canonicalization.
 
 ## Active Context
 - **Architecture**: ASP.NET Core API + SQL Server 2025 (Docker local / IIS prod).
@@ -23,6 +23,8 @@
     normalization and category-bounded matching.
   - Rebuildable `MaintenanceSearchDocument` projection with deterministic
     normalized issue keys, source traceability, and explicit refresh commands.
+  - Domain-contract catalogs, canonical code storage, SQL Server constraints,
+    filtered QR uniqueness, and ordered migration preflight checks.
   - Reference-data categories, validation contracts, health checks, backend tests,
     and CI.
   - Fictional synthetic maintenance fixture, retrieval evaluation manifest, and

@@ -23,12 +23,12 @@ public static class AssetsEndpoints
                 return ApiErrors.Validation(validationErrors);
             }
 
-            var assetCode = dto.AssetCode.Trim();
-            var assetCategory = dto.AssetCategory.Trim().ToLowerInvariant();
+            var assetCode = AssetCodeValue.Normalize(dto.AssetCode);
+            AssetCategoryCatalog.TryNormalize(dto.AssetCategory, out var assetCategory);
 
             await using var context = await factory.CreateDbContextAsync(cancellationToken);
             var duplicateAssetCode = await context.Assets
-                .AnyAsync(asset => asset.AssetCode.ToUpper() == assetCode.ToUpper(), cancellationToken);
+                .AnyAsync(asset => asset.AssetCode == assetCode, cancellationToken);
 
             if (duplicateAssetCode)
             {
@@ -41,10 +41,10 @@ public static class AssetsEndpoints
                 Id = Guid.NewGuid(),
                 AssetCode = assetCode,
                 AssetCategory = assetCategory,
-                Building = dto.Building?.Trim(),
-                Department = dto.Department?.Trim(),
-                Location = dto.Location?.Trim(),
-                Status = "Active",
+                Building = NormalizeOptional(dto.Building),
+                Department = NormalizeOptional(dto.Department),
+                Location = NormalizeOptional(dto.Location),
+                Status = AssetStatusCatalog.Active,
                 CreatedAt = now,
                 UpdatedAt = now
             };
@@ -52,7 +52,14 @@ public static class AssetsEndpoints
             asset.QrCodeValue = AssetQrCodeValue.Create(asset.AssetCategory, asset.Id);
 
             context.Assets.Add(asset);
-            await context.SaveChangesAsync(cancellationToken);
+            try
+            {
+                await context.SaveChangesAsync(cancellationToken);
+            }
+            catch (DbUpdateException exception) when (DatabaseConstraintViolation.IsUniqueConstraint(exception))
+            {
+                return ApiErrors.Conflict("Asset code or QR code value already exists.");
+            }
 
             return Results.Created($"/api/v1/assets/{asset.Id}", asset);
         });
@@ -80,14 +87,28 @@ public static class AssetsEndpoints
 
             if (!string.IsNullOrWhiteSpace(assetCategory))
             {
-                var normalizedCategory = assetCategory.Trim().ToUpper();
-                query = query.Where(asset => asset.AssetCategory.ToUpper() == normalizedCategory);
+                if (!AssetCategoryCatalog.TryNormalize(assetCategory, out var normalizedCategory))
+                {
+                    return ApiErrors.Validation(new Dictionary<string, string[]>
+                    {
+                        [nameof(assetCategory)] = ["Asset category must be one of the selected UniPM study scope categories."]
+                    });
+                }
+
+                query = query.Where(asset => asset.AssetCategory == normalizedCategory);
             }
 
             if (!string.IsNullOrWhiteSpace(status))
             {
-                var normalizedStatus = status.Trim().ToUpper();
-                query = query.Where(asset => asset.Status.ToUpper() == normalizedStatus);
+                if (!AssetStatusCatalog.TryNormalize(status, out var normalizedStatus))
+                {
+                    return ApiErrors.Validation(new Dictionary<string, string[]>
+                    {
+                        [nameof(status)] = ["Status must be a supported asset status."]
+                    });
+                }
+
+                query = query.Where(asset => asset.Status == normalizedStatus);
             }
 
             if (!string.IsNullOrWhiteSpace(building))
@@ -133,19 +154,24 @@ public static class AssetsEndpoints
                 });
             }
 
-            var normalizedQrCodeValue = qrCodeValue.Trim().ToUpper();
+            var normalizedQrCodeValue = AssetCodeValue.NormalizeQrCode(qrCodeValue);
 
             await using var context = await factory.CreateDbContextAsync(cancellationToken);
             var asset = await context.Assets
                 .AsNoTracking()
                 .FirstOrDefaultAsync(
-                    asset => asset.QrCodeValue != null && asset.QrCodeValue.ToUpper() == normalizedQrCodeValue,
+                    asset => asset.QrCodeValue == normalizedQrCodeValue,
                     cancellationToken);
 
             return asset is not null ? Results.Ok(AssetResponse.FromAsset(asset)) : ApiErrors.NotFound("Asset not found.");
         });
 
         return endpoints;
+    }
+
+    private static string? NormalizeOptional(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }
 }
 
@@ -193,18 +219,38 @@ public class CreateAssetDto
         {
             errors.Add(nameof(AssetCode), ["Asset code is required."]);
         }
+        else if (AssetCodeValue.Normalize(AssetCode).Length > AssetCodeValue.MaxLength)
+        {
+            errors.Add(nameof(AssetCode), [$"Asset code must not exceed {AssetCodeValue.MaxLength} characters."]);
+        }
 
         if (string.IsNullOrWhiteSpace(AssetCategory))
         {
             errors.Add(nameof(AssetCategory), ["Asset category is required."]);
         }
-        else if (!AssetCategoryCatalog.ContainsCode(AssetCategory))
+        else if (!AssetCategoryCatalog.TryNormalize(AssetCategory, out _))
         {
             errors.Add(
                 nameof(AssetCategory),
                 ["Asset category must be one of the selected UniPM study scope categories."]);
         }
 
+        ValidateOptionalLength(Building, nameof(Building), AssetCodeValue.MetadataMaxLength, errors);
+        ValidateOptionalLength(Department, nameof(Department), AssetCodeValue.MetadataMaxLength, errors);
+        ValidateOptionalLength(Location, nameof(Location), AssetCodeValue.MetadataMaxLength, errors);
+
         return errors;
+    }
+
+    private static void ValidateOptionalLength(
+        string? value,
+        string fieldName,
+        int maxLength,
+        Dictionary<string, string[]> errors)
+    {
+        if (value?.Trim().Length > maxLength)
+        {
+            errors[fieldName] = [$"{fieldName} must not exceed {maxLength} characters."];
+        }
     }
 }

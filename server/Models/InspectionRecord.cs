@@ -15,12 +15,13 @@ public class InspectionRecord
     public DateTimeOffset DateInspected { get; set; }
     
     public bool IsOperational { get; set; }
-    
-    // These fields will be indexed for Full-Text Search and Vector Search
+
     public string? Remarks { get; set; }
     public string? ActionsRecommendations { get; set; }
 
-    // RAG vector embeddings
+    /// <summary>
+    /// Deferred retrieval field; embedding generation and storage are not part of the current contract.
+    /// </summary>
     public string? RemarksEmbedding { get; set; }
 
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;

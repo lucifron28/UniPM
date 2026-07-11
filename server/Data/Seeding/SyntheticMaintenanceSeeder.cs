@@ -1,5 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+using UniPM.Api.Features.Assets;
+using UniPM.Api.Features.ReferenceData;
+using UniPM.Api.Features.Schedules;
 using UniPM.Api.Features.Retrieval;
 using UniPM.Api.Models;
 
@@ -207,8 +210,12 @@ public sealed class SyntheticMaintenanceSeeder(
         SyntheticMaintenanceDataset dataset,
         CancellationToken cancellationToken)
     {
-        var assetCodes = dataset.Assets.Select(asset => asset.AssetCode).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var qrCodeValues = dataset.Assets.Select(asset => asset.QrCodeValue).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var assetCodes = dataset.Assets
+            .Select(asset => AssetCodeValue.Normalize(asset.AssetCode))
+            .ToHashSet(StringComparer.Ordinal);
+        var qrCodeValues = dataset.Assets
+            .Select(asset => AssetCodeValue.NormalizeQrCode(asset.QrCodeValue))
+            .ToHashSet(StringComparer.Ordinal);
         var fixtureAssetIds = dataset.Assets.Select(asset => asset.Id).ToHashSet();
 
         var conflictingAssets = await context.Assets
@@ -224,13 +231,15 @@ public sealed class SyntheticMaintenanceSeeder(
 
     private static void Apply(SyntheticAsset source, Asset target, DateTimeOffset timestamp)
     {
-        target.AssetCode = source.AssetCode;
-        target.AssetCategory = source.AssetCategory;
+        target.AssetCode = AssetCodeValue.Normalize(source.AssetCode);
+        AssetCategoryCatalog.TryNormalize(source.AssetCategory, out var normalizedCategory);
+        target.AssetCategory = normalizedCategory;
         target.Building = source.Building;
         target.Department = source.Department;
         target.Location = source.Location;
-        target.QrCodeValue = source.QrCodeValue;
-        target.Status = source.Status;
+        target.QrCodeValue = AssetCodeValue.NormalizeQrCode(source.QrCodeValue);
+        AssetStatusCatalog.TryNormalize(source.Status, out var normalizedStatus);
+        target.Status = normalizedStatus;
         target.CreatedAt = timestamp;
         target.UpdatedAt = timestamp;
     }
@@ -242,12 +251,15 @@ public sealed class SyntheticMaintenanceSeeder(
     {
         target.AssetId = source.AssetId;
         target.ScheduleDate = AtManilaMidnight(source.ScheduleDate);
-        target.PeriodType = source.PeriodType;
-        target.Quarter = source.Quarter;
+        SchedulePeriodTypeCatalog.TryNormalize(source.PeriodType, out var normalizedPeriodType);
+        target.PeriodType = normalizedPeriodType;
+        ScheduleQuarterCatalog.TryNormalizeNullable(source.Quarter, out var normalizedQuarter);
+        target.Quarter = normalizedQuarter;
         target.Semester = source.Semester;
         target.Year = source.Year;
         target.AcademicYear = source.AcademicYear;
-        target.Status = source.Status;
+        ScheduleStatusCatalog.TryNormalize(source.Status, out var normalizedStatus);
+        target.Status = normalizedStatus;
         target.AssignedToUserId = source.AssignedToUserId;
         target.CompletedAt = source.CompletedAt;
         target.CreatedAt = timestamp;

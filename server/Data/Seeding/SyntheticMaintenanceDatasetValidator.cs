@@ -1,19 +1,13 @@
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using UniPM.Api.Features.Assets;
+using UniPM.Api.Features.ReferenceData;
+using UniPM.Api.Features.Schedules;
 
 namespace UniPM.Api.Data.Seeding;
 
 public sealed class SyntheticMaintenanceDatasetValidator
 {
-    private static readonly IReadOnlySet<string> SupportedAssetCategories = new HashSet<string>(StringComparer.Ordinal)
-    {
-        "fire-extinguisher",
-        "fire-alarm",
-        "emergency-light",
-        "water-drinking-station"
-    };
-
     private static readonly Regex EmailPattern = new(
         @"[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
@@ -54,7 +48,7 @@ public sealed class SyntheticMaintenanceDatasetValidator
             .GroupBy(inspection => inspection.ScheduleId)
             .ToDictionary(group => group.Key, group => group.ToList());
 
-        if (!SupportedAssetCategories.SetEquals(dataset.Assets.Select(asset => asset.AssetCategory)))
+        if (!AssetCategoryCatalog.PersistedCodes.SetEquals(dataset.Assets.Select(asset => asset.AssetCategory)))
         {
             errors.Add("The fixture must contain all four supported asset categories.");
         }
@@ -66,7 +60,7 @@ public sealed class SyntheticMaintenanceDatasetValidator
                 errors.Add($"Actor '{actor.SeedKey}' has an empty ID.");
             }
 
-            if (!SyntheticMaintenanceSeedOptions.AllowedActorRoles.Contains(actor.RoleToken))
+            if (!SyntheticActorRoleCatalog.SeedOnlyCodes.Contains(actor.RoleToken))
             {
                 errors.Add($"Actor '{actor.SeedKey}' uses an unsupported role token.");
             }
@@ -84,6 +78,38 @@ public sealed class SyntheticMaintenanceDatasetValidator
                 errors.Add($"Asset '{asset.SeedKey}' has an empty ID.");
             }
 
+            if (!AssetCategoryCatalog.TryNormalize(asset.AssetCategory, out var normalizedCategory))
+            {
+                errors.Add($"Asset '{asset.SeedKey}' uses an unsupported asset category.");
+            }
+            else if (!string.Equals(asset.AssetCategory, normalizedCategory, StringComparison.Ordinal))
+            {
+                errors.Add($"Asset '{asset.SeedKey}' asset category is not canonical.");
+            }
+
+            if (!AssetStatusCatalog.TryNormalize(asset.Status, out var normalizedStatus))
+            {
+                errors.Add($"Asset '{asset.SeedKey}' uses an unsupported status.");
+            }
+            else if (!string.Equals(asset.Status, normalizedStatus, StringComparison.Ordinal))
+            {
+                errors.Add($"Asset '{asset.SeedKey}' status is not canonical.");
+            }
+
+            if (string.IsNullOrWhiteSpace(asset.AssetCode)
+                || asset.AssetCode.Length > AssetCodeValue.MaxLength)
+            {
+                errors.Add($"Asset '{asset.SeedKey}' has an invalid asset code length.");
+            }
+            else if (!string.Equals(asset.AssetCode, AssetCodeValue.Normalize(asset.AssetCode), StringComparison.Ordinal))
+            {
+                errors.Add($"Asset '{asset.SeedKey}' asset code is not canonical.");
+            }
+
+            ValidateMetadataLength(asset.Building, "building", asset.SeedKey, errors);
+            ValidateMetadataLength(asset.Department, "department", asset.SeedKey, errors);
+            ValidateMetadataLength(asset.Location, "location", asset.SeedKey, errors);
+
             var expectedQrCodeValue = AssetQrCodeValue.Create(asset.AssetCategory, asset.Id);
             if (!string.Equals(asset.QrCodeValue, expectedQrCodeValue, StringComparison.Ordinal))
             {
@@ -96,6 +122,39 @@ public sealed class SyntheticMaintenanceDatasetValidator
             if (schedule.Id == Guid.Empty)
             {
                 errors.Add($"Schedule '{schedule.SeedKey}' has an empty ID.");
+            }
+
+            if (!SchedulePeriodTypeCatalog.TryNormalize(schedule.PeriodType, out var normalizedPeriodType))
+            {
+                errors.Add($"Schedule '{schedule.SeedKey}' uses an unsupported period type.");
+            }
+            else if (!string.Equals(schedule.PeriodType, normalizedPeriodType, StringComparison.Ordinal))
+            {
+                errors.Add($"Schedule '{schedule.SeedKey}' period type is not canonical.");
+            }
+
+            if (!ScheduleQuarterCatalog.TryNormalizeNullable(schedule.Quarter, out var normalizedQuarter))
+            {
+                errors.Add($"Schedule '{schedule.SeedKey}' uses an unsupported quarter.");
+            }
+            else if (!string.Equals(schedule.Quarter, normalizedQuarter, StringComparison.Ordinal))
+            {
+                errors.Add($"Schedule '{schedule.SeedKey}' quarter is not canonical.");
+            }
+
+            if (schedule.Semester is not null
+                && !ScheduleSemesterCatalog.PersistedCodes.Contains(schedule.Semester))
+            {
+                errors.Add($"Schedule '{schedule.SeedKey}' uses an unsupported semester.");
+            }
+
+            if (!ScheduleStatusCatalog.TryNormalize(schedule.Status, out var normalizedScheduleStatus))
+            {
+                errors.Add($"Schedule '{schedule.SeedKey}' uses an unsupported status.");
+            }
+            else if (!string.Equals(schedule.Status, normalizedScheduleStatus, StringComparison.Ordinal))
+            {
+                errors.Add($"Schedule '{schedule.SeedKey}' status is not canonical.");
             }
 
             if (!assetsById.TryGetValue(schedule.AssetId, out var asset))
@@ -112,17 +171,17 @@ public sealed class SyntheticMaintenanceDatasetValidator
                 errors.Add($"Schedule '{schedule.SeedKey}' references an unknown assignee.");
             }
 
-            if (schedule.Status is not ("Completed" or "Due"))
+            if (schedule.Status is not (ScheduleStatusCatalog.Completed or ScheduleStatusCatalog.Due))
             {
                 errors.Add($"Schedule '{schedule.SeedKey}' has unsupported status '{schedule.Status}'.");
             }
 
-            if (schedule.Status == "Completed" && schedule.CompletedAt is null)
+            if (schedule.Status == ScheduleStatusCatalog.Completed && schedule.CompletedAt is null)
             {
                 errors.Add($"Completed schedule '{schedule.SeedKey}' must have a completion timestamp.");
             }
 
-            if (schedule.Status == "Due" && schedule.CompletedAt is not null)
+            if (schedule.Status == ScheduleStatusCatalog.Due && schedule.CompletedAt is not null)
             {
                 errors.Add($"Due schedule '{schedule.SeedKey}' must not have a completion timestamp.");
             }
@@ -171,12 +230,12 @@ public sealed class SyntheticMaintenanceDatasetValidator
                 ? inspections.Count
                 : 0;
 
-            if (schedule.Status == "Completed" && inspectionCount != 1)
+            if (schedule.Status == ScheduleStatusCatalog.Completed && inspectionCount != 1)
             {
                 errors.Add($"Completed schedule '{schedule.SeedKey}' must have exactly one inspection.");
             }
 
-            if (schedule.Status == "Due" && inspectionCount != 0)
+            if (schedule.Status == ScheduleStatusCatalog.Due && inspectionCount != 0)
             {
                 errors.Add($"Due schedule '{schedule.SeedKey}' must not have an inspection.");
             }
@@ -208,15 +267,13 @@ public sealed class SyntheticMaintenanceDatasetValidator
         AddDuplicateError(dataset.Schedules.Select(schedule => schedule.Id), "schedule IDs", errors);
         AddDuplicateError(dataset.Inspections.Select(inspection => inspection.Id), "inspection IDs", errors);
         AddDuplicateError(
-            dataset.Assets.Select(asset => asset.AssetCode),
+            dataset.Assets.Select(asset => AssetCodeValue.Normalize(asset.AssetCode)),
             "asset codes",
-            errors,
-            StringComparer.OrdinalIgnoreCase);
+            errors);
         AddDuplicateError(
-            dataset.Assets.Select(asset => asset.QrCodeValue),
+            dataset.Assets.Select(asset => AssetCodeValue.NormalizeQrCode(asset.QrCodeValue)),
             "QR values",
-            errors,
-            StringComparer.OrdinalIgnoreCase);
+            errors);
         AddDuplicateError(
             dataset.Actors.Select(actor => actor.SeedKey)
                 .Concat(dataset.Assets.Select(asset => asset.SeedKey))
@@ -259,6 +316,19 @@ public sealed class SyntheticMaintenanceDatasetValidator
             errors.Add("Fixture contains an employee, student, or staff ID-like value.");
         }
 
+    }
+
+    private static void ValidateMetadataLength(
+        string? value,
+        string fieldName,
+        string seedKey,
+        List<string> errors)
+    {
+        if (value?.Length > AssetCodeValue.MetadataMaxLength)
+        {
+            errors.Add(
+                $"Asset '{seedKey}' {fieldName} must not exceed {AssetCodeValue.MetadataMaxLength} characters.");
+        }
     }
 }
 

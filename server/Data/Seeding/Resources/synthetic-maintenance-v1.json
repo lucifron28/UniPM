@@ -100,7 +100,7 @@
                                                "capacity":  "10 lb",
                                                "expirationDate":  "2027-05-31"
                                            },
-                       "qrCodeValue":  "UNIPM-FIRE-EXTINGUISHER-f6420fec"
+                       "qrCodeValue":  "UNIPM-FIRE-EXTINGUISHER-F6420FEC"
                    },
                    {
                        "seedKey":  "asset-fe-002",
@@ -116,7 +116,7 @@
                                                "capacity":  "10 lb",
                                                "expirationDate":  "2027-08-31"
                                            },
-                       "qrCodeValue":  "UNIPM-FIRE-EXTINGUISHER-d9f9c2a0"
+                       "qrCodeValue":  "UNIPM-FIRE-EXTINGUISHER-D9F9C2A0"
                    },
                    {
                        "seedKey":  "asset-fe-003",
@@ -132,7 +132,7 @@
                                                "capacity":  "10 lb",
                                                "expirationDate":  "2026-11-30"
                                            },
-                       "qrCodeValue":  "UNIPM-FIRE-EXTINGUISHER-fff47bb5"
+                       "qrCodeValue":  "UNIPM-FIRE-EXTINGUISHER-FFF47BB5"
                    },
                    {
                        "seedKey":  "asset-fe-004",
@@ -148,7 +148,7 @@
                                                "capacity":  "15 lb",
                                                "expirationDate":  "2028-02-28"
                                            },
-                       "qrCodeValue":  "UNIPM-FIRE-EXTINGUISHER-0795fa54"
+                       "qrCodeValue":  "UNIPM-FIRE-EXTINGUISHER-0795FA54"
                    },
                    {
                        "seedKey":  "asset-fe-050",
@@ -164,7 +164,7 @@
                                                "capacity":  "10 lb",
                                                "expirationDate":  "2028-07-31"
                                            },
-                       "qrCodeValue":  "UNIPM-FIRE-EXTINGUISHER-f83fc630"
+                       "qrCodeValue":  "UNIPM-FIRE-EXTINGUISHER-F83FC630"
                    },
                    {
                        "seedKey":  "asset-fa-001",
@@ -179,7 +179,7 @@
                                                "deviceParticulars":  "Main fire alarm control panel",
                                                "deviceType":  "Control panel"
                                            },
-                       "qrCodeValue":  "UNIPM-FIRE-ALARM-fd1e4eaa"
+                       "qrCodeValue":  "UNIPM-FIRE-ALARM-FD1E4EAA"
                    },
                    {
                        "seedKey":  "asset-fa-002",
@@ -194,7 +194,7 @@
                                                "deviceParticulars":  "Smoke detector SD-02",
                                                "deviceType":  "Smoke detector"
                                            },
-                       "qrCodeValue":  "UNIPM-FIRE-ALARM-251074ae"
+                       "qrCodeValue":  "UNIPM-FIRE-ALARM-251074AE"
                    },
                    {
                        "seedKey":  "asset-fa-003",
@@ -209,7 +209,7 @@
                                                "deviceParticulars":  "Manual call point and strobe assembly",
                                                "deviceType":  "Manual call point"
                                            },
-                       "qrCodeValue":  "UNIPM-FIRE-ALARM-7bfa4436"
+                       "qrCodeValue":  "UNIPM-FIRE-ALARM-7BFA4436"
                    },
                    {
                        "seedKey":  "asset-fa-004",
@@ -224,7 +224,7 @@
                                                "deviceParticulars":  "Bell and strobe notification appliance",
                                                "deviceType":  "Bell/strobe"
                                            },
-                       "qrCodeValue":  "UNIPM-FIRE-ALARM-bbb98f04"
+                       "qrCodeValue":  "UNIPM-FIRE-ALARM-BBB98F04"
                    },
                    {
                        "seedKey":  "asset-fa-050",
@@ -239,7 +239,7 @@
                                                "deviceParticulars":  "Smoke detector SD-50",
                                                "deviceType":  "Smoke detector"
                                            },
-                       "qrCodeValue":  "UNIPM-FIRE-ALARM-39ff1332"
+                       "qrCodeValue":  "UNIPM-FIRE-ALARM-39FF1332"
                    },
                    {
                        "seedKey":  "asset-el-001",
@@ -254,7 +254,7 @@
                                                "dateInstalled":  "2022-07-15",
                                                "unitType":  "Twin-head LED emergency light"
                                            },
-                       "qrCodeValue":  "UNIPM-EMERGENCY-LIGHT-54c526f8"
+                       "qrCodeValue":  "UNIPM-EMERGENCY-LIGHT-54C526F8"
                    },
                    {
                        "seedKey":  "asset-el-002",
@@ -269,7 +269,7 @@
                                                "dateInstalled":  "2023-01-20",
                                                "unitType":  "Twin-head LED emergency light"
                                            },
-                       "qrCodeValue":  "UNIPM-EMERGENCY-LIGHT-9deca5e0"
+                       "qrCodeValue":  "UNIPM-EMERGENCY-LIGHT-9DECA5E0"
                    },
                    {
                        "seedKey":  "asset-el-003",
@@ -284,7 +284,7 @@
                                                "dateInstalled":  "2022-11-05",
                                                "unitType":  "LED emergency light"
                                            },
-                       "qrCodeValue":  "UNIPM-EMERGENCY-LIGHT-0a81c141"
+                       "qrCodeValue":  "UNIPM-EMERGENCY-LIGHT-0A81C141"
                    },
                    {
                        "seedKey":  "asset-el-004",
@@ -299,7 +299,7 @@
                                                "dateInstalled":  "2023-06-18",
                                                "unitType":  "Exit-integrated emergency light"
                                            },
-                       "qrCodeValue":  "UNIPM-EMERGENCY-LIGHT-150ba5b1"
+                       "qrCodeValue":  "UNIPM-EMERGENCY-LIGHT-150BA5B1"
                    },
                    {
                        "seedKey":  "asset-el-050",
@@ -314,7 +314,7 @@
                                                "dateInstalled":  "2024-02-12",
                                                "unitType":  "Twin-head LED emergency light"
                                            },
-                       "qrCodeValue":  "UNIPM-EMERGENCY-LIGHT-3b667d5b"
+                       "qrCodeValue":  "UNIPM-EMERGENCY-LIGHT-3B667D5B"
                    },
                    {
                        "seedKey":  "asset-wds-001",
@@ -333,7 +333,7 @@
                                                                        ],
                                                "hasUvLight":  true
                                            },
-                       "qrCodeValue":  "UNIPM-WATER-DRINKING-STATION-40bccea3"
+                       "qrCodeValue":  "UNIPM-WATER-DRINKING-STATION-40BCCEA3"
                    },
                    {
                        "seedKey":  "asset-wds-002",
@@ -352,7 +352,7 @@
                                                                        ],
                                                "hasUvLight":  true
                                            },
-                       "qrCodeValue":  "UNIPM-WATER-DRINKING-STATION-7716f6cf"
+                       "qrCodeValue":  "UNIPM-WATER-DRINKING-STATION-7716F6CF"
                    },
                    {
                        "seedKey":  "asset-wds-003",
@@ -371,7 +371,7 @@
                                                                        ],
                                                "hasUvLight":  true
                                            },
-                       "qrCodeValue":  "UNIPM-WATER-DRINKING-STATION-b0d5ddc9"
+                       "qrCodeValue":  "UNIPM-WATER-DRINKING-STATION-B0D5DDC9"
                    },
                    {
                        "seedKey":  "asset-wds-004",
@@ -390,7 +390,7 @@
                                                                        ],
                                                "hasUvLight":  false
                                            },
-                       "qrCodeValue":  "UNIPM-WATER-DRINKING-STATION-3fb831e9"
+                       "qrCodeValue":  "UNIPM-WATER-DRINKING-STATION-3FB831E9"
                    },
                    {
                        "seedKey":  "asset-wds-050",
@@ -409,7 +409,7 @@
                                                                        ],
                                                "hasUvLight":  true
                                            },
-                       "qrCodeValue":  "UNIPM-WATER-DRINKING-STATION-84b14d99"
+                       "qrCodeValue":  "UNIPM-WATER-DRINKING-STATION-84B14D99"
                    }
                ],
     "schedules":  [

@@ -2,6 +2,7 @@ using System.Text.Json.Nodes;
 using Microsoft.EntityFrameworkCore;
 using UniPM.Api.Data;
 using UniPM.Api.Data.Seeding;
+using UniPM.Api.Features.Assets;
 using UniPM.Api.Features.Retrieval;
 using UniPM.Api.Models;
 
@@ -164,6 +165,35 @@ public sealed class SyntheticMaintenanceSeederTests
             var seeder = CreateSeeder(factory, invalidPath);
 
             await Assert.ThrowsAsync<SyntheticMaintenanceFixtureException>(() => seeder.SeedAsync());
+
+            await using var context = factory.CreateDbContext();
+            Assert.Equal(0, await context.Assets.CountAsync());
+            Assert.Equal(0, await context.PreventiveMaintenanceSchedules.CountAsync());
+            Assert.Equal(0, await context.InspectionRecords.CountAsync());
+        }
+        finally
+        {
+            File.Delete(invalidPath);
+        }
+    }
+
+    [Fact]
+    public async Task Oversized_asset_metadata_fails_before_writes()
+    {
+        var invalidPath = await CreateModifiedFixtureAsync(root =>
+        {
+            root["assets"]!.AsArray()[0]!.AsObject()["building"] =
+                new string('x', AssetCodeValue.MetadataMaxLength + 1);
+        });
+
+        try
+        {
+            var factory = new TestContextFactory();
+            var seeder = CreateSeeder(factory, invalidPath);
+
+            var exception = await Assert.ThrowsAsync<SyntheticMaintenanceFixtureException>(
+                () => seeder.SeedAsync());
+            Assert.Contains("building", exception.Message, StringComparison.OrdinalIgnoreCase);
 
             await using var context = factory.CreateDbContext();
             Assert.Equal(0, await context.Assets.CountAsync());

@@ -31,6 +31,8 @@ helps a human verify them.
 - RRF placeholder: removed; RRF is not implemented yet.
 - Maintenance issue lexicon: done at version `1.0.0`.
 - `MaintenanceSearchDocument`: done as a persisted, rebuildable projection.
+- Domain contracts: done for stable categories, statuses, schedule codes, and
+  seed-only actor tokens, with canonical storage and SQL Server migration checks.
 - SQL Server FTS retrieval: pending.
 - Semantic retrieval: pending, but required as a target channel.
 - Retrieval benchmark and fusion: pending.
