@@ -47,7 +47,8 @@ retriever that searches only `MaintenanceSearchDocument.SearchText` through
 SQL Server Full-Text Search. It also contains semantic retrieval
 channel using cached document embeddings and bounded application-layer cosine
 similarity. Semantic retrieval is a required UniPM retrieval channel, but its
-embedding provider is operationally optional and degradable. Result fusion/RRF,
+embedding provider is operationally optional and degradable. Internal result
+fusion uses inspectable Reciprocal Rank Fusion; context scoring, thresholds,
 source-bounded summaries, and a maintenance-review endpoint remain separate
 future work.
 
@@ -173,10 +174,13 @@ catalogs, canonical API/storage values, SQL Server constraints, and migration
 preflight checks. Semantic retrieval is now an internal channel required by the
 target maintenance-history review workflow: it stores only document embeddings,
 never query vectors, and does not affect core or lexical workflows when its
-provider is disabled. The retrieval benchmark is complete as a reproducible
-lexical/semantic evaluation tool. Opt-in observability metrics and the local
+provider is disabled. Internal fused retrieval uses RRF with K=60, candidate
+depth 20, output limit 10, deterministic ordering, component-rank traceability,
+and explicit semantic degradation. The retrieval benchmark supports lexical,
+semantic, and fused channels, but real fused quality evidence remains pending
+a configured provider. Opt-in observability metrics and the local
 technical-health monitoring profile are complete; the next backend task is
-`feat/retrieval-fusion`.
+`feat/retrieval-review`.
 
 Embeddings are disabled by default. Remote providers are rejected unless
 `Embeddings:AllowRemoteProvider` is explicitly enabled after a separate
@@ -200,6 +204,7 @@ $env:UNIPM_SQLSERVER_TEST_CONNECTION = "Server=localhost,1433;Database=master;Us
 dotnet run --project .\tools\UniPM.RetrievalBenchmark -- --channels lexical
 dotnet run --project .\tools\UniPM.RetrievalBenchmark -- --channels semantic
 dotnet run --project .\tools\UniPM.RetrievalBenchmark -- --channels lexical,semantic --output artifacts\retrieval-benchmark
+dotnet run --project .\tools\UniPM.RetrievalBenchmark -- --channels fused --output artifacts\retrieval-benchmark-fused
 ```
 
 Each run creates a temporary database, applies migrations, loads the synthetic
@@ -212,8 +217,11 @@ not silently scored as empty retrieval.
 
 Reports include Hit@1, Hit@5, Precision@5, Recall@5, Recall@10, reciprocal
 rank, first relevant rank, macro averages, and language/category/scenario
-slices. The benchmark does not implement score fusion, RRF, thresholds,
-insufficient-evidence policy, summaries, or a public retrieval endpoint.
+slices. Fused reports preserve RRF metadata, FusionScore, and component ranks.
+Fused benchmarking requires both SQL Server Full-Text Search and real semantic
+provider configuration; degraded fused responses fail evaluation. No context
+scoring, thresholds, insufficient-evidence policy, source selection, summaries,
+or public retrieval endpoint is implemented.
 
 ## Local Observability
 
