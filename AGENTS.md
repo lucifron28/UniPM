@@ -108,6 +108,24 @@ unavailable, maintenance review may use SQL, lexicon normalization, and FTS
 fallback while explicitly reporting lexical fallback. Core
 preventive-maintenance workflows must never depend on embeddings or an LLM.
 
+## Engineering Evidence Rules
+
+For work that changes or verifies production behavior, architecture, database
+schema, retrieval, AI providers, security/privacy, infrastructure, tests,
+benchmarks, or deployment configuration, read
+`reference/evidence/README.md` first.
+
+- Keep raw command output in ignored `artifacts/`; commit only reviewed,
+  sanitized records under `reference/evidence/`.
+- Every executed record must identify the exact tested commit SHA. Source-
+  inspected history is not executed verification.
+- Distinguish real-provider evidence from deterministic fake-provider evidence;
+  fake embeddings prove orchestration only, not semantic model quality.
+- Treat approved experiments and baselines as immutable. Give new experiments
+  new IDs instead of overwriting earlier results.
+- State skipped or unavailable verification explicitly, and never copy secrets,
+  credentials, endpoints, or sensitive configuration into evidence.
+
 ## AI Provider Cost Controls
 
 This is a student-budget project. Avoid open-ended API usage.
