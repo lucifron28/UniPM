@@ -89,10 +89,9 @@ explicit configuration flag and privacy review.
 
 ## Next Steps
 
-1. Add observability metrics and verification.
-2. Add result fusion after observability evidence exists.
-3. Add sanitizer and source-bounded maintenance review.
-4. Add authentication scaffolding.
+1. Add result fusion after benchmark and observability evidence.
+2. Add sanitizer and source-bounded maintenance review.
+3. Add authentication scaffolding.
 
 ## Engineering Evidence
 
@@ -102,6 +101,9 @@ Historical implementation and architecture records are source-inspected, while
 fresh test-run records identify exact tested commits and retained artifact
 hashes. Retrieval baselines are preserved rather than overwritten. Synthetic
 benchmark results do not prove production GSD performance, and deterministic
-embedding providers prove orchestration only. Prometheus, Grafana, runtime
-metrics, and production logging changes are deferred to
-`feat/observability-metrics`.
+embedding providers prove orchestration only. This repository now includes
+opt-in OpenTelemetry metrics, an optional local Prometheus/Grafana profile, and
+TEST-002 evidence for the local technical-health path. Production monitoring,
+IIS restriction, tracing, centralized logs, alerting, and maintenance KPI
+dashboards remain out of scope. The exact next backend branch is
+`feat/retrieval-fusion`.

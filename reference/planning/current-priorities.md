@@ -43,6 +43,9 @@ helps a human verify them.
   benchmark orchestration is implemented and deterministically tested, while
   the real semantic model-quality baseline remains pending a configured
   provider. Fusion remains pending.
+- Observability metrics: complete with opt-in `/metrics`, bounded custom
+  instruments, optional local Prometheus/Grafana provisioning, and TEST-002
+  local Docker evidence. Production monitoring remains unclaimed.
 - Engineering-evidence workflow: complete with source-inspected chronology,
   architecture decisions, a fresh backend test record, and an executed lexical
   baseline.
@@ -56,7 +59,7 @@ helps a human verify them.
 3. Keep the synthetic fixture and Development-only seeder verified.
 4. Preserve the executed lexical baseline and keep semantic model-quality
    verification explicitly pending a configured real provider.
-5. Add observability metrics and verification.
+5. Preserve the completed observability evidence and its production limits.
 6. Add inspectable result fusion after observability evidence exists.
 7. Add sanitization and source-bounded summarization.
 8. Add authentication scaffolding.
@@ -233,14 +236,16 @@ Completed scope:
   embeddings;
 - Windows-first backend verification capture script with safe metadata, logs,
   TRX parsing, optional SQL/benchmark stages, summaries, and SHA-256 hashes;
-- current local TEST-001 baseline and executed EXP-001 lexical baseline;
+- current local TEST-001 baseline, executed EXP-001 lexical baseline, and
+  executed TEST-002 observability baseline;
+- source-inspected IMP-006 and ADR-003 records for optional local monitoring;
 - deterministic semantic orchestration tests are present, while a real semantic
   model-quality baseline remains pending a configured provider.
 
-The current record does not claim real semantic-provider execution, semantic
-model quality, independent lexicon accuracy, CI success, deployment success, or
-observability verification. New experiments receive new IDs and approved
-baselines are not overwritten.
+The current records do not claim real semantic-provider execution, semantic
+model quality, independent lexicon accuracy, CI success, IIS deployment,
+production monitoring, alert effectiveness, or long-term retention. New
+experiments receive new IDs and approved baselines are not overwritten.
 
 ## Task 6: Authentication And Client Contract Notes
 
@@ -275,7 +280,6 @@ directly.
 
 ## Next Branches
 
-- `feat/observability-metrics`
-- `feat/retrieval-fusion` (after observability)
+- `feat/retrieval-fusion`
 - `feat/retrieval-review`
 - `feat/auth-scaffolding`

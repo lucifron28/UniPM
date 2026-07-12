@@ -133,6 +133,19 @@ embedding endpoint, request body, or provider response body. SQL tests require
 existing real-provider configuration and never silently falls back to lexical
 or deterministic mode.
 
+For the optional local observability profile, use:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\evidence\Invoke-ObservabilityVerification.ps1
+```
+
+This process-scoped verification enables metrics without editing `.env`,
+requires a clean worktree, validates Compose, starts the `observability`
+profile, polls the API and Prometheus target, checks Grafana provisioning, and
+stops the stack in `finally`. Its raw artifacts are ignored. It does not prove
+IIS deployment, production monitoring, retention, alert delivery, or real user
+traffic.
+
 ## Index And Baselines
 
 `INDEX.md` is the entry point for committed records and pending evidence. A

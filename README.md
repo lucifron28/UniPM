@@ -174,9 +174,9 @@ preflight checks. Semantic retrieval is now an internal channel required by the
 target maintenance-history review workflow: it stores only document embeddings,
 never query vectors, and does not affect core or lexical workflows when its
 provider is disabled. The retrieval benchmark is complete as a reproducible
-lexical/semantic evaluation tool. The next backend task is
-`feat/observability-metrics`, with `feat/retrieval-fusion` following
-observability.
+lexical/semantic evaluation tool. Opt-in observability metrics and the local
+technical-health monitoring profile are complete; the next backend task is
+`feat/retrieval-fusion`.
 
 Embeddings are disabled by default. Remote providers are rejected unless
 `Embeddings:AllowRemoteProvider` is explicitly enabled after a separate
@@ -215,6 +215,39 @@ rank, first relevant rank, macro averages, and language/category/scenario
 slices. The benchmark does not implement score fusion, RRF, thresholds,
 insufficient-evidence policy, summaries, or a public retrieval endpoint.
 
+## Local Observability
+
+Metrics are disabled by default in committed configuration. The ordinary local
+stack remains available with:
+
+```powershell
+docker compose up --build -d
+```
+
+Enable the optional technical monitoring profile with:
+
+```powershell
+$env:UNIPM_METRICS_ENABLED = "true"
+docker compose --profile observability up --build -d
+```
+
+Then use:
+
+- API metrics: `http://localhost:5000/metrics`
+- Prometheus: `http://localhost:9090`
+- Grafana: `http://localhost:3000`
+
+Grafana provisions the `unipm-prometheus` datasource and the
+`unipm-system-health` dashboard automatically. The sample credentials in
+`.env.example` are for local development only and must be changed. The
+dashboard covers API/runtime, retrieval, projection, and embedding technical
+health; it is not the future React maintenance KPI dashboard.
+
+For IIS, enable `Observability__MetricsEnabled` only when network or
+reverse-proxy policy restricts access to `/metrics`. Prometheus and Grafana
+are optional and must not be required for API, health, migration, seed/reset,
+projection, or embedding operations.
+
 ## Engineering Evidence
 
 UniPM keeps raw local command output under ignored `artifacts/` and reviewed,
@@ -237,8 +270,16 @@ Run the Windows-first backend capture workflow with PowerShell:
 The script writes timestamped, ignored artifacts with safe environment metadata,
 logs, TRX results, a machine-readable summary, and SHA-256 hashes. SQL Server
 and real semantic-provider verification are opt-in and fail clearly when their
-configuration is unavailable. Prometheus, Grafana, and production observability
-are not implemented in this branch.
+configuration is unavailable. Run the local observability evidence capture
+with:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\evidence\Invoke-ObservabilityVerification.ps1
+```
+
+The reviewed local result is recorded in TEST-002. It does not claim IIS
+deployment, production uptime, alert effectiveness, long-term retention, real
+traffic, or retrieval-quality improvement.
 
 ## Project References
 
