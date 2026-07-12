@@ -22,7 +22,7 @@ monitoring, deployment, alerting, or retrieval-quality improvement.
 - Tested commit: `6691f048c9d034b97f5044212d1bc47f16523d50`
 - Branch: `feat/observability-metrics`
 - Worktree: clean before both verification runs.
-- Backend artifact directory: `artifacts/evidence/20260712-054633Z-3b2e742c8cf7`
+- Backend artifact directory: `artifacts/evidence/20260712-072005Z-6691f048c9d0`
 - Observability artifact directory: `artifacts/evidence/20260712-071114Z-6691f048c9d0-observability`
 - Execution environment: Windows, PowerShell 5.1, .NET SDK 10.0.300, Git 2.54.0, Docker 29.4.1.
 
@@ -114,12 +114,12 @@ were copied into this record.
 Backend artifact hashes:
 
 ```text
-27d85860f0f885314fe835d2f5cb4247c10aa643666aa35d4495b1668958f9a4  build.log
-beb7004c9ee523d2314500bf4af953c9f90ee88cf4b65f3734b8267ff46ce422  environment.json
-adc9b358b0e21b3acdc06b4664f232efe75aebe3d5fe44c8b5748c486bca6929  restore.log
-3c988f044429ea1a0fc00341fe42c27e0c01241d6cf61a5587d89c87c9f31215  test-results\backend-tests.trx
-aab4018f1525c8a7df3c0765f361dc2d06e6782cc1724f9fcc416cf7ba44846f  tests-console.log
-48bd972aa45ec29fd3bafa0c0885adeebb779354e96262249bf0e8b480c43906  verification-summary.json
+436dc4de7c2cd4cfb82e1d6845cdc1773e511c56aa414c53df5729f84149899d  build.log
+ffed055a5b05b012ea3b438bdc551e1ec35fb6f9999a72314612f0c65db38d83  environment.json
+428e88b2a9bd58e802cee6fa9894247364c976001a26b4a48af5c0d1a7bf4ac5  restore.log
+09e0576aee006b45247822b4e20e2fdbecfcbe0cfef485deaa7487ff7a13faec  test-results\backend-tests.trx
+4be5baca06666532feb29bc93c4489b81f53d0d47fba1b16cbc46b2ad18d11f3  tests-console.log
+42a5512e1f4ad3c2d4feac0d82dfc3beda0778cee5d0cccc9c61604d5e4ec73c  verification-summary.json
 ```
 
 Observability artifact hashes:
