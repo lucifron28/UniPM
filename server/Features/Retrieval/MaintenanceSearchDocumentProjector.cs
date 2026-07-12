@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
@@ -5,12 +6,14 @@ using UniPM.Api.Data;
 using UniPM.Api.Features.Assets;
 using UniPM.Api.Features.ReferenceData;
 using UniPM.Api.Models;
+using UniPM.Api.Observability;
 
 namespace UniPM.Api.Features.Retrieval;
 
 public sealed class MaintenanceSearchDocumentProjector(
     IDbContextFactory<ApplicationDbContext> contextFactory,
-    MaintenanceIssueNormalizer issueNormalizer)
+    MaintenanceIssueNormalizer issueNormalizer,
+    UniPMMetrics? metrics = null)
 {
     public const string ProjectionVersion = "1.0.0";
     public const string LexiconVersion = MaintenanceIssueLexiconOptions.SupportedLexiconVersion;
@@ -70,18 +73,43 @@ public sealed class MaintenanceSearchDocumentProjector(
     public async Task<MaintenanceSearchDocumentRebuildResult> RebuildAsync(
         CancellationToken cancellationToken = default)
     {
-        await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
-        await using var transaction = await BeginTransactionIfRelationalAsync(context, cancellationToken);
-
-        var result = await RebuildWithinContextAsync(context, inspectionIds: null, cancellationToken);
-        await context.SaveChangesAsync(cancellationToken);
-
-        if (transaction is not null)
+        var started = Stopwatch.GetTimestamp();
+        try
         {
-            await transaction.CommitAsync(cancellationToken);
-        }
+            await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
+            await using var transaction = await BeginTransactionIfRelationalAsync(context, cancellationToken);
 
-        return result;
+            var result = await RebuildWithinContextAsync(context, inspectionIds: null, cancellationToken);
+            await context.SaveChangesAsync(cancellationToken);
+
+            if (transaction is not null)
+            {
+                await transaction.CommitAsync(cancellationToken);
+            }
+
+            metrics?.RecordProjectionRebuild(
+                "success",
+                Stopwatch.GetElapsedTime(started).TotalSeconds,
+                result.Total,
+                result.Created,
+                result.Updated,
+                result.Removed);
+            return result;
+        }
+        catch (OperationCanceledException)
+        {
+            metrics?.RecordProjectionFailure(
+                "cancelled",
+                Stopwatch.GetElapsedTime(started).TotalSeconds);
+            throw;
+        }
+        catch
+        {
+            metrics?.RecordProjectionFailure(
+                "failure",
+                Stopwatch.GetElapsedTime(started).TotalSeconds);
+            throw;
+        }
     }
 
     public async Task<MaintenanceSearchDocumentRebuildResult> RebuildAsync(
@@ -89,9 +117,34 @@ public sealed class MaintenanceSearchDocumentProjector(
         IReadOnlySet<Guid> inspectionIds,
         CancellationToken cancellationToken = default)
     {
-        var result = await RebuildWithinContextAsync(context, inspectionIds, cancellationToken);
-        await context.SaveChangesAsync(cancellationToken);
-        return result;
+        var started = Stopwatch.GetTimestamp();
+        try
+        {
+            var result = await RebuildWithinContextAsync(context, inspectionIds, cancellationToken);
+            await context.SaveChangesAsync(cancellationToken);
+            metrics?.RecordProjectionRebuild(
+                "success",
+                Stopwatch.GetElapsedTime(started).TotalSeconds,
+                result.Total,
+                result.Created,
+                result.Updated,
+                result.Removed);
+            return result;
+        }
+        catch (OperationCanceledException)
+        {
+            metrics?.RecordProjectionFailure(
+                "cancelled",
+                Stopwatch.GetElapsedTime(started).TotalSeconds);
+            throw;
+        }
+        catch
+        {
+            metrics?.RecordProjectionFailure(
+                "failure",
+                Stopwatch.GetElapsedTime(started).TotalSeconds);
+            throw;
+        }
     }
 
     private async Task<MaintenanceSearchDocumentRebuildResult> RebuildWithinContextAsync(

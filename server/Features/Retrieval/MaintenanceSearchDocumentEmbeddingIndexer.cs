@@ -1,7 +1,9 @@
+using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using UniPM.Api.Data;
 using UniPM.Api.Models;
+using UniPM.Api.Observability;
 
 namespace UniPM.Api.Features.Retrieval;
 
@@ -14,13 +16,54 @@ internal interface IMaintenanceSearchDocumentEmbeddingIndexer
 internal sealed class MaintenanceSearchDocumentEmbeddingIndexer(
     IDbContextFactory<ApplicationDbContext> contextFactory,
     IEmbeddingService embeddingService,
-    IOptions<EmbeddingOptions> optionsAccessor)
+    IOptions<EmbeddingOptions> optionsAccessor,
+    UniPMMetrics? metrics = null)
     : IMaintenanceSearchDocumentEmbeddingIndexer
 {
     private readonly EmbeddingOptions options = optionsAccessor.Value;
 
     public async Task<MaintenanceEmbeddingIndexResult> RebuildAsync(
         CancellationToken cancellationToken = default)
+    {
+        var started = Stopwatch.GetTimestamp();
+        try
+        {
+            var result = await RebuildCoreAsync(cancellationToken);
+            metrics?.RecordEmbeddingRebuild(
+                result.Failed > 0 ? "partial_failure" : "success",
+                Stopwatch.GetElapsedTime(started).TotalSeconds,
+                result.Total,
+                result.Created,
+                result.Updated,
+                result.Skipped,
+                result.Failed);
+            return result;
+        }
+        catch (EmbeddingServiceAvailabilityException)
+        {
+            metrics?.RecordEmbeddingFailure(
+                "unavailable",
+                Stopwatch.GetElapsedTime(started).TotalSeconds);
+            throw;
+        }
+        catch (OperationCanceledException)
+        {
+            metrics?.RecordEmbeddingFailure(
+                "cancelled",
+                Stopwatch.GetElapsedTime(started).TotalSeconds);
+            throw;
+        }
+        catch
+        {
+            metrics?.RecordEmbeddingFailure(
+                "failure",
+                Stopwatch.GetElapsedTime(started).TotalSeconds);
+            throw;
+        }
+    }
+
+    private async Task<MaintenanceEmbeddingIndexResult> RebuildCoreAsync(
+        CancellationToken cancellationToken)
     {
         var descriptor = embeddingService.Descriptor;
         if (!descriptor.Enabled)
