@@ -559,4 +559,3 @@ internal sealed class MaintenanceReviewExecutionException(string message, Except
 
 internal sealed class MaintenanceReviewDataIntegrityException(string message, Exception? innerException = null)
     : MaintenanceReviewException(MaintenanceReviewFailureKind.Data, message, innerException);
-
