@@ -143,13 +143,19 @@ function Get-TrxCounters {
             return $null
         }
 
+        $results = @($trx.TestRun.Results.UnitTestResult)
+        $skippedResults = @($results | Where-Object {
+            $_.outcome -in @('NotExecuted', 'Skipped')
+        }).Count
+
         return [ordered]@{
             total = [int]$counters.total
             executed = [int]$counters.executed
             passed = [int]$counters.passed
             failed = [int]$counters.failed
             error = [int]$counters.error
-            skipped = [int]$counters.notExecuted
+            skipped = $skippedResults
+            notExecutedCounter = [int]$counters.notExecuted
             inconclusive = [int]$counters.inconclusive
         }
     }
