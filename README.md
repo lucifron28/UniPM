@@ -149,8 +149,9 @@ preflight checks. Semantic retrieval is now an internal channel required by the
 target maintenance-history review workflow: it stores only document embeddings,
 never query vectors, and does not affect core or lexical workflows when its
 provider is disabled. The retrieval benchmark is complete as a reproducible
-lexical/semantic evaluation tool; the next backend task is
-`feat/retrieval-fusion`.
+lexical/semantic evaluation tool. The next backend task is
+`feat/observability-metrics`, with `feat/retrieval-fusion` following
+observability.
 
 Embeddings are disabled by default. Remote providers are rejected unless
 `Embeddings:AllowRemoteProvider` is explicitly enabled after a separate
@@ -188,6 +189,31 @@ Reports include Hit@1, Hit@5, Precision@5, Recall@5, Recall@10, reciprocal
 rank, first relevant rank, macro averages, and language/category/scenario
 slices. The benchmark does not implement score fusion, RRF, thresholds,
 insufficient-evidence policy, summaries, or a public retrieval endpoint.
+
+## Engineering Evidence
+
+UniPM keeps raw local command output under ignored `artifacts/` and reviewed,
+sanitized, traceable records under `reference/evidence/`. Evidence records name
+the exact tested commit and distinguish source inspection, local execution,
+deterministic-provider orchestration, and real-provider execution. Synthetic
+benchmark results do not prove production GSD performance; deterministic
+embeddings prove pipeline behavior only. No lexicon precision/recall/F1 claim
+is made because an independent labeled lexicon evaluator does not exist.
+
+Run the Windows-first backend capture workflow with PowerShell:
+
+```powershell
+.\scripts\evidence\Invoke-BackendVerification.ps1
+.\scripts\evidence\Invoke-BackendVerification.ps1 -Configuration Release -RunSqlServerTests
+.\scripts\evidence\Invoke-BackendVerification.ps1 -RunSqlServerTests -BenchmarkChannels lexical
+.\scripts\evidence\Invoke-BackendVerification.ps1 -RunSqlServerTests -BenchmarkChannels lexical,semantic
+```
+
+The script writes timestamped, ignored artifacts with safe environment metadata,
+logs, TRX results, a machine-readable summary, and SHA-256 hashes. SQL Server
+and real semantic-provider verification are opt-in and fail clearly when their
+configuration is unavailable. Prometheus, Grafana, and production observability
+are not implemented in this branch.
 
 ## Project References
 

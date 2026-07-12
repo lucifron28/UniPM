@@ -39,19 +39,27 @@ helps a human verify them.
 - Semantic retrieval: complete as an internal channel over cached
   `MaintenanceSearchDocument` embeddings; its provider is operationally
   optional and degradable, with no public endpoint yet.
-- Retrieval benchmark: complete as a standalone reproducible lexical/semantic
-  evaluation tool. Fusion remains pending.
+- Retrieval benchmark: lexical baseline executed and preserved; semantic
+  benchmark orchestration is implemented and deterministically tested, while
+  the real semantic model-quality baseline remains pending a configured
+  provider. Fusion remains pending.
+- Engineering-evidence workflow: complete with source-inspected chronology,
+  architecture decisions, a fresh backend test record, and an executed lexical
+  baseline.
 - Source-bounded maintenance review and summarization: pending.
 - Authentication scaffolding: pending.
 
 ## Risk-First Order
 
 1. Confirm the backend baseline.
-2. Keep the synthetic fixture and Development-only seeder verified.
-3. Benchmark lexical and semantic retrieval channels separately. **Complete.**
-4. Add inspectable result fusion.
-5. Add sanitization and source-bounded summarization.
-6. Add authentication scaffolding.
+2. Preserve engineering evidence for implementation and verification.
+3. Keep the synthetic fixture and Development-only seeder verified.
+4. Preserve the executed lexical baseline and keep semantic model-quality
+   verification explicitly pending a configured real provider.
+5. Add observability metrics and verification.
+6. Add inspectable result fusion after observability evidence exists.
+7. Add sanitization and source-bounded summarization.
+8. Add authentication scaffolding.
 
 ## Task 0: Project Boot And Baseline Check
 
@@ -213,6 +221,27 @@ source-bounded summarization remain separate work.
 
 Do not claim synthetic benchmark performance proves production performance.
 
+## Engineering Evidence Workflow
+
+Completed scope:
+
+- root and nested evidence instructions;
+- handbook, stable record IDs, front matter, templates, and index;
+- source-inspected implementation chronology for the fixture, lexicon, lexical
+  retrieval, semantic retrieval, and benchmark;
+- source-inspected ADRs for SQL Server Full-Text Search and provider-neutral
+  embeddings;
+- Windows-first backend verification capture script with safe metadata, logs,
+  TRX parsing, optional SQL/benchmark stages, summaries, and SHA-256 hashes;
+- current local TEST-001 baseline and executed EXP-001 lexical baseline;
+- deterministic semantic orchestration tests are present, while a real semantic
+  model-quality baseline remains pending a configured provider.
+
+The current record does not claim real semantic-provider execution, semantic
+model quality, independent lexicon accuracy, CI success, deployment success, or
+observability verification. New experiments receive new IDs and approved
+baselines are not overwritten.
+
 ## Task 6: Authentication And Client Contract Notes
 
 Authentication follows the core inspection and retrieval read contracts:
@@ -246,6 +275,7 @@ directly.
 
 ## Next Branches
 
-- `feat/retrieval-fusion`
+- `feat/observability-metrics`
+- `feat/retrieval-fusion` (after observability)
 - `feat/retrieval-review`
 - `feat/auth-scaffolding`
