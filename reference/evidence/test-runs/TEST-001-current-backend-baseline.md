@@ -20,7 +20,7 @@ lexical benchmark evidence using the committed Windows-first script.
 
 - Tested commit: `899ea5e06c19c6604aacd5a05e64f855702eb913`
 - Branch: `chore/engineering-evidence`
-- UTC execution start: `2026-07-12T01:02:21.5763922+00:00`
+- UTC execution start: `2026-07-12T01:54:36.0528954+00:00`
 - Capture script: `scripts/evidence/Invoke-BackendVerification.ps1`
 - Configuration: `Release`
 - Script exit code: `0`
