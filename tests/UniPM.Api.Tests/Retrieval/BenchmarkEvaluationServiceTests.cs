@@ -1,4 +1,5 @@
 using UniPM.RetrievalBenchmark;
+using BenchmarkProgram = UniPM.RetrievalBenchmark.Program;
 
 namespace UniPM.Api.Tests.Retrieval;
 
@@ -88,6 +89,72 @@ public sealed class BenchmarkEvaluationServiceTests
         }
     }
 
+    [Fact]
+    public async Task Fused_report_preserves_rrf_metadata_component_ranks_and_limitations()
+    {
+        var manifest = CreateManifest();
+        var fused = new DelegateBenchmarkRetrievalChannel(
+            new BenchmarkChannelMetadata
+            {
+                RetrievalChannel = "fused",
+                ResultLimit = 10,
+                FusionMethod = "rrf",
+                ReciprocalRankConstant = 60,
+                CandidateLimit = 20,
+                SemanticDegradationPolicy = "lexical-only degraded fallback"
+            },
+            (_, _) => Task.FromResult<IReadOnlyList<BenchmarkRetrievedResult>>(
+            [
+                new(
+                    manifest.Queries[0].ExpectedRelevantInspectionIds[0],
+                    1d / 61d + 1d / 62d,
+                    LexicalRank: 1,
+                    SemanticRank: 2,
+                    FusionScore: 1d / 61d + 1d / 62d)
+            ]));
+
+        var report = await new BenchmarkEvaluationService()
+            .RunAsync(manifest, [fused], DateTimeOffset.UnixEpoch);
+        var query = report.Channels["fused"].PerQuery[0];
+
+        Assert.Equal("1.1.0", report.BenchmarkFormatVersion);
+        Assert.Equal(60, report.Channels["fused"].Metadata.ReciprocalRankConstant);
+        Assert.Equal(20, report.Channels["fused"].Metadata.CandidateLimit);
+        Assert.Equal(1, query.LexicalRanks.Values.Single());
+        Assert.Equal(2, query.SemanticRanks.Values.Single());
+        Assert.Contains(report.Limitations, limitation => limitation.Contains("RRF is applied", StringComparison.Ordinal));
+        Assert.DoesNotContain(report.Limitations, limitation => limitation.Contains("No fusion", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Lexical_only_cli_parsing_does_not_require_embedding_configuration()
+    {
+        using var environment = new EnvironmentScope();
+        environment.ClearEmbeddingConfiguration();
+
+        var options = BenchmarkProgram.ParseOptions(["--channels", "lexical"]);
+
+        Assert.Equal(["lexical"], options.Channels);
+        Assert.Null(options.Embeddings);
+    }
+
+    [Fact]
+    public void Fused_cli_parsing_accepts_valid_combinations_and_requires_embedding_configuration()
+    {
+        using var environment = new EnvironmentScope();
+        environment.ClearEmbeddingConfiguration();
+
+        Assert.Throws<InvalidOperationException>(
+            () => BenchmarkProgram.ParseOptions(["--channels", "fused"]));
+
+        environment.ConfigureEmbeddingConfiguration();
+        foreach (var value in new[] { "fused", "lexical,fused", "lexical,semantic,fused", "fused,semantic" })
+        {
+            var options = BenchmarkProgram.ParseOptions(["--channels", value]);
+            Assert.Contains("fused", options.Channels);
+        }
+    }
+
     private static DelegateBenchmarkRetrievalChannel CreateChannel(string name, Guid relevantId)
     {
         return new DelegateBenchmarkRetrievalChannel(
@@ -135,5 +202,42 @@ public sealed class BenchmarkEvaluationServiceTests
             ScenarioTags = ["semantic-paraphrase"],
             Notes = "test"
         };
+    }
+
+    private sealed class EnvironmentScope : IDisposable
+    {
+        private readonly Dictionary<string, string?> values = new(StringComparer.Ordinal)
+        {
+            ["UNIPM_EMBEDDINGS_ENABLED"] = Environment.GetEnvironmentVariable("UNIPM_EMBEDDINGS_ENABLED"),
+            ["UNIPM_EMBEDDINGS_PROVIDER_KEY"] = Environment.GetEnvironmentVariable("UNIPM_EMBEDDINGS_PROVIDER_KEY"),
+            ["UNIPM_EMBEDDINGS_BASE_ADDRESS"] = Environment.GetEnvironmentVariable("UNIPM_EMBEDDINGS_BASE_ADDRESS"),
+            ["UNIPM_EMBEDDINGS_MODEL"] = Environment.GetEnvironmentVariable("UNIPM_EMBEDDINGS_MODEL"),
+            ["UNIPM_EMBEDDINGS_DIMENSIONS"] = Environment.GetEnvironmentVariable("UNIPM_EMBEDDINGS_DIMENSIONS")
+        };
+
+        public void ClearEmbeddingConfiguration()
+        {
+            foreach (var name in values.Keys)
+            {
+                Environment.SetEnvironmentVariable(name, null);
+            }
+        }
+
+        public void ConfigureEmbeddingConfiguration()
+        {
+            Environment.SetEnvironmentVariable("UNIPM_EMBEDDINGS_ENABLED", "true");
+            Environment.SetEnvironmentVariable("UNIPM_EMBEDDINGS_PROVIDER_KEY", "test-provider");
+            Environment.SetEnvironmentVariable("UNIPM_EMBEDDINGS_BASE_ADDRESS", "http://localhost");
+            Environment.SetEnvironmentVariable("UNIPM_EMBEDDINGS_MODEL", "test-model");
+            Environment.SetEnvironmentVariable("UNIPM_EMBEDDINGS_DIMENSIONS", "2");
+        }
+
+        public void Dispose()
+        {
+            foreach (var pair in values)
+            {
+                Environment.SetEnvironmentVariable(pair.Key, pair.Value);
+            }
+        }
     }
 }
