@@ -85,6 +85,11 @@ builder.Services.AddScoped<ISemanticMaintenanceRetriever>(serviceProvider =>
     new MetricsSemanticMaintenanceRetriever(
         serviceProvider.GetRequiredService<SqlServerSemanticMaintenanceRetriever>(),
         serviceProvider.GetRequiredService<UniPMMetrics>()));
+builder.Services.AddScoped<FusedMaintenanceRetriever>();
+builder.Services.AddScoped<IFusedMaintenanceRetriever>(serviceProvider =>
+    new MetricsFusedMaintenanceRetriever(
+        serviceProvider.GetRequiredService<FusedMaintenanceRetriever>(),
+        serviceProvider.GetRequiredService<UniPMMetrics>()));
 
 var app = builder.Build();
 
