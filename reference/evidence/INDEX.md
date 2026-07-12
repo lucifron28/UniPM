@@ -29,7 +29,8 @@ record's evidence level and tested/source commit.
 | TEST-002 | test-run | Observability metrics and local monitoring baseline | executed | locally-executed | `6691f048c9d0` | [record](test-runs/TEST-002-observability-baseline.md) | Backend and local Compose observability proof with sanitized artifacts and hashes. |
 | IMP-007 | implementation | Internal reciprocal-rank fusion retrieval | reviewed | source-inspected | `58668f9` | [record](implementation/IMP-007-reciprocal-rank-fusion.md) | Bounded deterministic RRF orchestration with explicit semantic degradation. |
 | ADR-004 | decision | Use Reciprocal Rank Fusion for internal retrieval combination | reviewed | source-inspected | `58668f9` | [record](decisions/ADR-004-reciprocal-rank-fusion.md) | Avoids incompatible raw-score combination and keeps review-layer policy separate. |
-| TEST-003 | test-run | Retrieval fusion implementation baseline | executed | locally-executed | `58668f9` | [record](test-runs/TEST-003-retrieval-fusion-baseline.md) | Clean Release restore/build/tests and CI/evidence validation; SQL/provider/fused quality runs not executed. |
+| TEST-003 | test-run | Retrieval fusion implementation baseline | superseded | locally-executed | `58668f9` | [record](test-runs/TEST-003-retrieval-fusion-baseline.md) | Historical fusion baseline superseded by TEST-004 after the semantic failure and benchmark metadata correction. |
+| TEST-004 | test-run | Retrieval fusion correction verification | executed | locally-executed | `4dffb64` | [record](test-runs/TEST-004-retrieval-fusion-correction.md) | Corrected Release restore/build/tests and evidence capture; SQL/provider/fused quality runs not executed. |
 
 ## Pending Evidence
 

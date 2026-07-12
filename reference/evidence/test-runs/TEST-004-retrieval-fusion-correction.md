@@ -1,30 +1,32 @@
 ---
-id: TEST-003
+id: TEST-004
 type: test-run
-title: Retrieval fusion implementation baseline
-status: superseded
-supersededBy: TEST-004
-recordedAtUtc: 2026-07-12T10:34:23Z
-testedCommit: 58668f963b5cc3aa2b835e8d1f2f985bdf4a3581
+title: Retrieval fusion correction verification
+status: executed
+recordedAtUtc: 2026-07-12T11:28:24Z
+testedCommit: 4dffb641a89f140c3ae22f4c9bfd4e774eff54b0
 sourceBranch: feat/retrieval-fusion
 evidenceLevel: locally-executed
 ---
 
-# Retrieval Fusion Baseline
+# Retrieval Fusion Correction Verification
 
 ## Objective
 
-Verify the internal RRF implementation, fused benchmark contracts, CI/evidence
-configuration, and complete Release backend suite at one clean branch commit.
+Verify the focused fusion correction after review. The correction preserves
+degradation for known semantic availability, execution, and data failures;
+surfaces unexpected semantic failures as fused execution failures; records the
+embedding descriptor in fused benchmark metadata; and reports deterministic
+provider warnings with channel-aware quality limitations.
+
 This record does not claim real semantic or fused model-quality performance.
 
 ## Execution Identity
 
-- Base main commit: `9b975f1949237c615a5575758c0770e634de1d92`
-- Tested commit: `58668f963b5cc3aa2b835e8d1f2f985bdf4a3581`
+- Tested commit: `4dffb641a89f140c3ae22f4c9bfd4e774eff54b0`
 - Branch: `feat/retrieval-fusion`
 - Worktree: clean before verification.
-- Backend artifact directory: `artifacts/evidence/20260712-103416Z-58668f963b5c`
+- Backend artifact directory: `artifacts/evidence/20260712-112814Z-4dffb641a89f`
 - Environment: Windows 10.0.26200, PowerShell 5.1.26100.8655, .NET SDK
   10.0.300, Git 2.54.0, Docker 29.4.1.
 
@@ -39,16 +41,17 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\evidence\Invok
 ```
 
 - Restore: passed.
-- Release build: passed.
+- Release build: passed with zero warnings and zero errors.
 - Full Release test suite: passed.
 - Observability Compose configuration: passed.
 - Backend evidence capture: passed, exit code `0`.
+- TEST-003 is superseded for the current fusion branch by this corrected run.
 
 ## Test Counts
 
 | Total | Executed | Passed | Failed | Skipped |
 |---:|---:|---:|---:|---:|
-| 202 | 185 | 185 | 0 | 17 |
+| 207 | 190 | 190 | 0 | 17 |
 
 The skipped tests are the existing SQL Server integration tests, the fused
 SQL benchmark test, and the optional real-provider smoke test. They were not
@@ -56,6 +59,10 @@ represented as successful SQL or provider verification.
 
 ## Retrieval And Provider Scope
 
+- Committed tests cover known semantic degradation, unexpected semantic failure,
+  bounded fused failure metrics, and the fused benchmark descriptor/warning
+  assertions. The SQL benchmark test containing the descriptor and warning
+  assertions was not executed in this capture.
 - SQL Server tests: not executed; `UNIPM_SQLSERVER_TEST_CONNECTION` was absent.
 - Real embedding provider: not configured or executed.
 - Fused benchmark: not executed; the evidence capture selected
@@ -71,12 +78,12 @@ connection string, API key, provider endpoint, query vector, source text, or
 provider payload.
 
 ```text
-6a8ba86fdc8d61aae371d7f128f8c693ec5d75b137378c3296f8b94bf74c8bf1  build.log
-a2a4c365b6b374cad2fb7c6052a81ee94efefa8a10b3312bd872c2410c219632  environment.json
-f9cdf588ee17db04553498c9fc62778ea97054063c66b5ff2edcff28246adcb1  restore.log
-7243f7c480cf3c5e9a876763a6faf322bd03bdd5a30fa4f0b80e0ba10fe92c5d  test-results\backend-tests.trx
-c1d43457da988385a06e4bcfb779576d4a4050d95a70caefc8519a8b89dcb989  tests-console.log
-4b62af1cec7445e359d4cff56f9af876bad547f4558a1b4a9b940c90a6f8cc7e  verification-summary.json
+ec2ba45b8532286c1dbaf23c4c1724e2f54b37f62df9f7cfce048f97b3523fb3  build.log
+387cb5b6edc45f0f152c426908c5cd636cace1b50539ca4e564b95f2eee14943  environment.json
+ab7d22ee65f86b04662632deb3fb9faefd4f16be984b901b9a9feaba6d89d618  restore.log
+3261e75eb58dd1c0fbc92511e53db2a3048b9598950b9e0c1ed9d0cb0b0aacb9  test-results\backend-tests.trx
+ee0ed945d89536a7f2e6892d63f7954fe5c59e763cadc61a8e40d4e272cdb90e  tests-console.log
+9d803a559ddbabb12f3b730bd85e9d3fcaaa837d7468587778687e1cdd5590e6  verification-summary.json
 ```
 
 ## Limitations
