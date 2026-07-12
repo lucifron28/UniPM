@@ -7,7 +7,6 @@ param(
 
     [switch]$RunSqlServerTests,
 
-    [ValidateSet('none', 'lexical', 'semantic', 'lexical,semantic')]
     [string[]]$BenchmarkChannels = @('none'),
 
     [switch]$KeepBenchmarkDatabase
@@ -27,6 +26,10 @@ $normalizedChannels = @($BenchmarkChannels |
     Select-Object -Unique)
 if ($normalizedChannels.Count -eq 0) {
     throw 'At least one benchmark channel must be selected.'
+}
+$unsupportedChannels = @($normalizedChannels | Where-Object { $_ -notin @('none', 'lexical', 'semantic', 'fused') })
+if ($unsupportedChannels.Count -gt 0) {
+    throw "Unsupported benchmark channel(s): $($unsupportedChannels -join ', ')"
 }
 if ($normalizedChannels.Count -gt 1 -and $normalizedChannels -contains 'none') {
     throw 'BenchmarkChannels none cannot be combined with another channel.'
@@ -312,7 +315,7 @@ try {
     }
     else {
         $benchmarkConfigurationValid = $true
-        if ($BenchmarkChannels -contains 'semantic') {
+        if ($BenchmarkChannels -contains 'semantic' -or $BenchmarkChannels -contains 'fused') {
             try {
                 Assert-SemanticConfiguration
             }
