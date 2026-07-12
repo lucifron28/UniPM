@@ -31,6 +31,7 @@ internal sealed record SemanticMaintenanceSearchResult(
     DateTimeOffset DateInspected,
     bool IsOperational,
     double RawSemanticScore)
+    : IFusedMetadataResult
 {
     public const string RetrievalChannelValue = "semantic";
 
