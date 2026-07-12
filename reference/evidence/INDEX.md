@@ -39,4 +39,5 @@ record's evidence level and tested/source commit.
 - Lexicon normalization accuracy baseline: pending an independent labeled
   dataset and executable precision/recall/F1 evaluator.
 - Fused retrieval quality baseline: pending a configured real provider and an
-  executed fused benchmark; TEST-003 contains orchestration evidence only.
+  executed fused benchmark; TEST-004 contains the latest orchestration evidence
+  only.
