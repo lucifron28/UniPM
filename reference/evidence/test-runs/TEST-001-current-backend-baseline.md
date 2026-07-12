@@ -3,8 +3,8 @@ id: TEST-001
 type: test-run
 title: Current backend verification baseline
 status: executed
-recordedAtUtc: 2026-07-12T01:02:21.5763922+00:00
-testedCommit: 798278fc6d5cb0fd5ad7d19d92e694b8bee338a3
+recordedAtUtc: 2026-07-12T01:47:59.5094860+00:00
+testedCommit: 63f930008025a4214b4bc19f4fd69fbc6aa5e66c
 sourceBranch: chore/engineering-evidence
 evidenceLevel: locally-executed
 ---
@@ -18,12 +18,13 @@ lexical benchmark evidence using the committed Windows-first script.
 
 ## Execution Identity
 
-- Tested commit: `798278fc6d5cb0fd5ad7d19d92e694b8bee338a3`
+- Tested commit: `63f930008025a4214b4bc19f4fd69fbc6aa5e66c`
 - Branch: `chore/engineering-evidence`
 - UTC execution start: `2026-07-12T01:02:21.5763922+00:00`
 - Capture script: `scripts/evidence/Invoke-BackendVerification.ps1`
 - Configuration: `Release`
 - Script exit code: `0`
+- Worktree identity: clean before restore, build, and test execution.
 
 ## Environment
 
@@ -82,7 +83,7 @@ semantic model-quality evidence. No semantic benchmark was run.
 ## Generated Artifacts
 
 Artifact directory:
-`artifacts/evidence/20260712-010221Z-798278fc6d5c/`
+`artifacts/evidence/20260712-014759Z-63f930008025/`
 
 The directory is ignored by Git and contains environment metadata, restore,
 build, test, SQL test, and benchmark logs, TRX files, reports,
@@ -92,11 +93,11 @@ Selected SHA-256 values from `SHA256SUMS.txt`:
 
 | Artifact | SHA-256 |
 |---|---|
-| `benchmark/retrieval-benchmark.json` | `7a31f48c667f8b326124c955419fae89b3441323f9475136812c48e599bd7e0d` |
-| `benchmark/retrieval-benchmark.md` | `6d27e9ecb3039c66d591412c25641846ec0fa1f800689be691bd1ed30644646` |
-| `test-results/backend-tests.trx` | `2759273424dcd9d82969dd591b9afd895272a8a9001ed559df76d8161e71a3e1` |
-| `test-results/sqlserver-tests.trx` | `4594d61b1276ed7f95d99d57ec088472063bc08934110efd4c4cf3f74da729d2` |
-| `verification-summary.json` | `4f88f9a5b89a0131d0507877e4e568e45a48eab57fe34b6695d6cf698bde6a49` |
+| `benchmark/retrieval-benchmark.json` | `fa2e633e028dac327129503fc771abe47c99bc678ac180a6cf576924e4694aca` |
+| `benchmark/retrieval-benchmark.md` | `375a52ab5948fb2c7675c14bae6767ade2056927a18adc5d0e5bf88e745ab9cb` |
+| `test-results/backend-tests.trx` | `6626e75b16161be78049c498576b91706f53206b61ebaedad6ebb671aabfc17a` |
+| `test-results/sqlserver-tests.trx` | `10e9858da0825891a166d10de18f1bb0af2a1b46cad6b8d3bcd17d47da0ab7b3` |
+| `verification-summary.json` | `2382e7b3688da20e400ef449b907a013062f39a690df6a5bef31bb72c98e2bba` |
 
 ## Failures And Corrections
 
@@ -104,8 +105,9 @@ An earlier script attempt at commit `7975867` failed before artifact creation
 because repository detection called the wrong Git form. Commit `8608a49` fixed
 that. The next run exposed that the TRX counter reported zero `notExecuted`
 tests despite 16 `NotExecuted` result nodes. Commit `798278f` corrected the
-parser to count result outcomes directly. This record describes only the final
-successful run at `798278f`.
+parser to count result outcomes directly. Commit `63f9300` then added clean
+worktree identity, array-valued channel parsing, and dependent-stage gating.
+This record describes only the final successful run at `63f9300`.
 
 ## Skipped Verification
 

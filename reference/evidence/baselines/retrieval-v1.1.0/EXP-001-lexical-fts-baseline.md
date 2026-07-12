@@ -2,7 +2,7 @@
 
 - Evaluation manifest: `1.1.0`
 - Operational dataset: `1.1.0`
-- Generated at UTC: `2026-07-12T01:03:57.2001607+00:00`
+- Generated at UTC: `2026-07-12T01:49:40.6501807+00:00`
 - Queries: `24`
 - Channels: `lexical`
 

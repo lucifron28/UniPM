@@ -3,8 +3,8 @@ id: EXP-001
 type: experiment
 title: Lexical SQL Server Full-Text synthetic baseline
 status: reviewed
-recordedAtUtc: 2026-07-12T01:03:57.2001607+00:00
-testedCommit: 798278fc6d5cb0fd5ad7d19d92e694b8bee338a3
+recordedAtUtc: 2026-07-12T01:49:40.6501807+00:00
+testedCommit: 63f930008025a4214b4bc19f4fd69fbc6aa5e66c
 sourceBranch: chore/engineering-evidence
 evidenceLevel: locally-executed
 ---
@@ -24,7 +24,7 @@ readiness is polled before timed queries?
 
 ## Execution Identity
 
-- Tested commit: `798278fc6d5cb0fd5ad7d19d92e694b8bee338a3`
+- Tested commit: `63f930008025a4214b4bc19f4fd69fbc6aa5e66c`
 - Branch: `chore/engineering-evidence`
 - Channel: lexical only
 - Provider key, model key, dimensions, and embedding profile: not applicable
@@ -145,5 +145,5 @@ The sanitized copies are committed under
 
 | File | SHA-256 |
 |---|---|
-| `EXP-001-lexical-fts-baseline.json` | `7a31f48c667f8b326124c955419fae89b3441323f9475136812c48e599bd7e0d` |
-| `EXP-001-lexical-fts-baseline.md` | `6d27e9ecb3039c66d591412c25641846ec0fa1f800689be691bd1ed30644646` |
+| `EXP-001-lexical-fts-baseline.json` | `fa2e633e028dac327129503fc771abe47c99bc678ac180a6cf576924e4694aca` |
+| `EXP-001-lexical-fts-baseline.md` | `375a52ab5948fb2c7675c14bae6767ade2056927a18adc5d0e5bf88e745ab9cb` |
