@@ -75,8 +75,8 @@ LLM being available.
 The lexical channel is implemented as an internal SQL Server Full-Text Search
 service over the persisted `MaintenanceSearchDocument.SearchText` projection.
 It does not search source entities independently and does not implement
-embeddings, benchmarks, fusion, summaries, or a public maintenance-review
-endpoint.
+embeddings, benchmark orchestration, summaries, or a public maintenance-review
+endpoint; fusion consumes its ranked results separately.
 
 Semantic retrieval is implemented as an internal channel required by the target
 maintenance-history review workflow. Document embeddings belong to
@@ -87,11 +87,19 @@ uses application-layer cosine similarity and no separate vector database. The
 embedding provider is disabled by default and remote providers require an
 explicit configuration flag and privacy review.
 
+Internal fused retrieval combines the lexical and semantic ranked outputs with
+Reciprocal Rank Fusion using K=60. It preserves one-based component ranks and
+raw channel values, deduplicates by inspection ID, applies deterministic
+tie-breaking, and reports semantic degradation without exposing provider or
+query details. Fused retrieval is bounded to a default output of 10 and a
+default candidate depth of 20, with a maximum of 100. It has no public endpoint
+and does not implement context boosts, thresholds, source selection,
+sanitization, or summaries.
+
 ## Next Steps
 
-1. Add result fusion after benchmark and observability evidence.
-2. Add sanitizer and source-bounded maintenance review.
-3. Add authentication scaffolding.
+1. Add sanitizer and source-bounded maintenance review.
+2. Add authentication scaffolding.
 
 ## Engineering Evidence
 
@@ -106,4 +114,4 @@ opt-in OpenTelemetry metrics, an optional local Prometheus/Grafana profile, and
 TEST-002 evidence for the local technical-health path. Production monitoring,
 IIS restriction, tracing, centralized logs, alerting, and maintenance KPI
 dashboards remain out of scope. The exact next backend branch is
-`feat/retrieval-fusion`.
+`feat/retrieval-review`.

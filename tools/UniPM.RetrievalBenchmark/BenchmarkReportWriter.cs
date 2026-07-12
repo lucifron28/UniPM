@@ -51,6 +51,12 @@ public sealed class BenchmarkReportWriter
             builder.AppendLine($"## {channel.Key}");
             builder.AppendLine();
             builder.AppendLine($"Result limit: `{channel.Value.Metadata.ResultLimit}`; queries: `{channel.Value.Metadata.QueryCount}`");
+            if (channel.Value.Metadata.FusionMethod is not null)
+            {
+                builder.AppendLine(
+                    $"Fusion: `{channel.Value.Metadata.FusionMethod}`; RRF K: `{channel.Value.Metadata.ReciprocalRankConstant}`; candidate limit: `{channel.Value.Metadata.CandidateLimit}`");
+                builder.AppendLine($"Semantic degradation policy: {channel.Value.Metadata.SemanticDegradationPolicy}");
+            }
             builder.AppendLine();
             AppendMetricTable(builder, "Overall", new[] { ("overall", channel.Value.Overall) });
             AppendMetricTable(builder, "By language", channel.Value.ByLanguage);

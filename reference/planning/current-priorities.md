@@ -8,7 +8,7 @@ The current strategy is risk-first:
 1. keep the project runnable and tested
 2. keep realistic synthetic data available for development
 3. finish the read-side contracts needed by the clients
-4. prove retrieval channels separately before fusion
+4. prove retrieval channels separately before relying on fusion
 5. add the bounded maintenance-history review loop
 6. add authentication scaffolding after the core evidence path is stable
 
@@ -29,7 +29,8 @@ helps a human verify them.
 - Development seed/reset commands: completed and Development-only.
 - Retrieval evaluation manifest: completed at version `1.1.0` and test-only,
   with 24 bounded benchmark queries.
-- RRF placeholder: removed; RRF is not implemented yet.
+- Internal RRF fusion: complete as bounded, deterministic, inspectable
+  orchestration; real fused quality evidence remains pending.
 - Maintenance issue lexicon: done at version `1.0.0`.
 - `MaintenanceSearchDocument`: done as a persisted, rebuildable projection.
 - Domain contracts: done for stable categories, statuses, schedule codes, and
@@ -39,10 +40,9 @@ helps a human verify them.
 - Semantic retrieval: complete as an internal channel over cached
   `MaintenanceSearchDocument` embeddings; its provider is operationally
   optional and degradable, with no public endpoint yet.
-- Retrieval benchmark: lexical baseline executed and preserved; semantic
-  benchmark orchestration is implemented and deterministically tested, while
-  the real semantic model-quality baseline remains pending a configured
-  provider. Fusion remains pending.
+- Retrieval benchmark: lexical baseline executed and preserved; semantic and
+  fused orchestration are implemented and deterministically tested, while real
+  semantic/fused model-quality evidence remains pending a configured provider.
 - Observability metrics: complete with opt-in `/metrics`, bounded custom
   instruments, optional local Prometheus/Grafana provisioning, and TEST-002
   local Docker evidence. Production monitoring remains unclaimed.
@@ -60,7 +60,8 @@ helps a human verify them.
 4. Preserve the executed lexical baseline and keep semantic model-quality
    verification explicitly pending a configured real provider.
 5. Preserve the completed observability evidence and its production limits.
-6. Add inspectable result fusion after observability evidence exists.
+6. Preserve inspectable RRF fusion and keep real fused quality evidence pending
+   until a provider is configured.
 7. Add sanitization and source-bounded summarization.
 8. Add authentication scaffolding.
 
@@ -168,7 +169,7 @@ Do not treat the lexicon as a diagnosis system or invent official GSD wording.
 
 ## Task 4: Thin Retrieval MVP
 
-Goal: prove retrieval before investing in advanced fusion or UI polish.
+Goal: prove retrieval before investing in source selection, sanitization, or UI polish.
 
 Required shape:
 
@@ -183,8 +184,8 @@ Do:
   `ISummaryService` or equivalent interfaces;
 - use the completed internal SQL Server FTS channel over
   `MaintenanceSearchDocument.SearchText`;
-- use the completed semantic channel separately, with a clearly
-  reported lexical fallback handled only by a later orchestration branch;
+- use the completed semantic channel separately and through the completed
+  internal RRF orchestration, with semantic degradation reported explicitly;
 - return the source records used and limitations beside any summary;
 - keep source selection and prompt construction inspectable;
 - add sanitizer tests before any external provider call.
@@ -199,7 +200,7 @@ about dates, causes, RMRF values, or personnel decisions.
 
 ## Task 5: Retrieval Evaluation Benchmark
 
-Goal: measure whether lexical, semantic, and hybrid retrieval improve on the
+Goal: measure lexical, semantic, and fused retrieval on the
 fictional dataset.
 
 Completed scope:
@@ -215,12 +216,13 @@ Completed scope:
 - Hit@1, Hit@5, Precision@5, Recall@5, Recall@10, reciprocal rank, first
   relevant rank, macro averages, and language/category/scenario slices.
 
-Run lexical or semantic channels separately, or both together, with
-`tools/UniPM.RetrievalBenchmark`. Semantic execution requires the configured
-embedding provider; it is not replaced with fake production scores.
+Run lexical, semantic, fused, or valid channel combinations with
+`tools/UniPM.RetrievalBenchmark`. Semantic and fused execution require the
+configured embedding provider; it is not replaced with fake production scores.
 
-Fusion, score normalization, thresholds, insufficient-evidence policy, and
-source-bounded summarization remain separate work.
+Context scoring, thresholds, insufficient-evidence policy, source selection,
+sanitization, and source-bounded summarization remain separate work. RRF does
+not combine raw lexical and semantic scores.
 
 Do not claim synthetic benchmark performance proves production performance.
 
@@ -280,6 +282,5 @@ directly.
 
 ## Next Branches
 
-- `feat/retrieval-fusion`
 - `feat/retrieval-review`
 - `feat/auth-scaffolding`

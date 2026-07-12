@@ -172,18 +172,17 @@ Priority should move risk-first:
 2. Preserve engineering evidence for implementation and verification.
 3. Benchmark the completed lexical and semantic channels separately; the
    semantic provider remains operationally optional and degradable.
-4. Fuse retrieval results only after benchmark and observability evidence
-   exists.
+4. Fuse retrieval results with inspectable RRF and explicit degradation.
 5. Add source-bounded summarization.
 6. Add authentication scaffolding.
 
 The deterministic synthetic fixture, test-only retrieval evaluation manifest,
-Development-only seed/reset commands, reset dependency protection, RRF
-placeholder removal, inspection list/detail reads, the v1.0 maintenance issue
-lexicon, the rebuildable `MaintenanceSearchDocument` projection, the semantic
-embedding channel, the separate retrieval benchmark, and the committed
+Development-only seed/reset commands, reset dependency protection, inspection
+list/detail reads, the v1.0 maintenance issue lexicon, the rebuildable
+`MaintenanceSearchDocument` projection, lexical and semantic channels, the
+separate retrieval benchmark, internal RRF fusion, the committed
 engineering-evidence workflow, and opt-in observability metrics are complete.
-The exact next backend branch is `feat/retrieval-fusion`.
+The exact next backend branch is `feat/retrieval-review`.
 
 Observability remains bounded infrastructure: `Observability:MetricsEnabled`
 is false by default, `/metrics` is exposed only when explicitly enabled, and
@@ -191,6 +190,12 @@ the local Prometheus/Grafana services are available only through the Compose
 `observability` profile. The dashboard is technical system health, not a
 maintenance KPI dashboard. Do not add tracing, centralized logs, alerting, or
 production monitoring claims to this scope.
+
+Retrieval fusion is an internal RRF orchestration service using K=60, bounded
+candidate/result limits, deterministic component-rank traceability, and
+explicit semantic degradation. It does not add context scoring, thresholds,
+source selection, sanitization, summaries, an HTTP endpoint, or a fused
+quality claim without a real-provider benchmark.
 
 Unblocked areas:
 

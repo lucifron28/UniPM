@@ -85,14 +85,23 @@ public sealed class SqlServerBenchmarkRunner
 
         var manifest = await new RetrievalEvaluationManifestLoader(dataset)
             .LoadAsync(manifestPath, cancellationToken);
+        var selectedChannels = options.Channels.ToHashSet(StringComparer.Ordinal);
+        var needsLexical = selectedChannels.Contains("lexical") || selectedChannels.Contains("fused");
+        var needsSemantic = selectedChannels.Contains("semantic") || selectedChannels.Contains("fused");
+        var reportLexical = selectedChannels.Contains("lexical");
+        var reportSemantic = selectedChannels.Contains("semantic");
+        var reportFused = selectedChannels.Contains("fused");
         var channels = new List<IBenchmarkRetrievalChannel>();
+        SqlServerLexicalMaintenanceRetriever? lexicalRetriever = null;
+        SqlServerSemanticMaintenanceRetriever? semanticRetriever = null;
+        IEmbeddingService? embeddingService = null;
 
-        if (options.Channels.Contains("lexical", StringComparer.Ordinal))
+        if (needsLexical)
         {
             await SqlServerBenchmarkReadiness.WaitForFullTextAsync(
                 database.ConnectionString,
                 cancellationToken);
-            var lexicalRetriever = new SqlServerLexicalMaintenanceRetriever(contextFactory);
+            lexicalRetriever = new SqlServerLexicalMaintenanceRetriever(contextFactory);
             var probeInspection = dataset.Inspections
                 .FirstOrDefault(inspection => !string.IsNullOrWhiteSpace(inspection.Remarks))
                 ?? throw new InvalidOperationException("The operational fixture has no inspection remarks for the lexical readiness probe.");
@@ -109,32 +118,16 @@ public sealed class SqlServerBenchmarkRunner
                     AssetCategory: probeInspection.AssetCategory),
                 probeInspection.Id,
                 cancellationToken);
-            channels.Add(new DelegateBenchmarkRetrievalChannel(
-                new BenchmarkChannelMetadata
-                {
-                    RetrievalChannel = "lexical",
-                    ResultLimit = BenchmarkEvaluationService.ResultLimit,
-                    FullTextSearchReady = true
-                },
-                async (request, token) =>
-                {
-                    var result = await lexicalRetriever.SearchAsync(
-                        ToLexicalRequest(request),
-                        token);
-                    return result
-                        .Select(item => new BenchmarkRetrievedResult(item.InspectionId, item.RawLexicalRank))
-                        .ToArray();
-                }));
         }
 
-        if (options.Channels.Contains("semantic", StringComparer.Ordinal))
+        if (needsSemantic)
         {
             if (options.Embeddings is null)
             {
                 throw new InvalidOperationException("Semantic benchmarking requires embedding configuration.");
             }
 
-            var embeddingService = embeddingServiceOverride
+            embeddingService = embeddingServiceOverride
                 ?? new OpenAiCompatibleEmbeddingService(
                     new HttpClient(),
                     Options.Create(options.Embeddings));
@@ -161,11 +154,35 @@ public sealed class SqlServerBenchmarkRunner
                 }
             }
 
-            var descriptor = embeddingService.Descriptor;
-            var semanticRetriever = new SqlServerSemanticMaintenanceRetriever(
+            semanticRetriever = new SqlServerSemanticMaintenanceRetriever(
                 contextFactory,
                 embeddingService,
                 issueNormalizer);
+        }
+
+        if (reportLexical)
+        {
+            channels.Add(new DelegateBenchmarkRetrievalChannel(
+                new BenchmarkChannelMetadata
+                {
+                    RetrievalChannel = "lexical",
+                    ResultLimit = BenchmarkEvaluationService.ResultLimit,
+                    FullTextSearchReady = true
+                },
+                async (request, token) =>
+                {
+                    var result = await lexicalRetriever!.SearchAsync(
+                        ToLexicalRequest(request),
+                        token);
+                    return result
+                        .Select(item => new BenchmarkRetrievedResult(item.InspectionId, item.RawLexicalRank))
+                        .ToArray();
+                }));
+        }
+
+        if (reportSemantic)
+        {
+            var descriptor = embeddingService!.Descriptor;
             channels.Add(new DelegateBenchmarkRetrievalChannel(
                 new BenchmarkChannelMetadata
                 {
@@ -178,7 +195,7 @@ public sealed class SqlServerBenchmarkRunner
                 },
                 async (request, token) =>
                 {
-                    var result = await semanticRetriever.SearchAsync(
+                    var result = await semanticRetriever!.SearchAsync(
                         ToSemanticRequest(request),
                         token);
                     return result
@@ -187,12 +204,55 @@ public sealed class SqlServerBenchmarkRunner
                 }));
         }
 
+        if (reportFused)
+        {
+            var descriptor = embeddingService!.Descriptor;
+            var fusedRetriever = new FusedMaintenanceRetriever(lexicalRetriever!, semanticRetriever!);
+            channels.Add(new DelegateBenchmarkRetrievalChannel(
+                new BenchmarkChannelMetadata
+                {
+                    RetrievalChannel = FusedMaintenanceSearchResult.RetrievalChannelValue,
+                    ResultLimit = BenchmarkEvaluationService.ResultLimit,
+                    ProviderKey = descriptor.ProviderKey,
+                    ModelKey = descriptor.ModelKey,
+                    Dimensions = descriptor.Dimensions,
+                    EmbeddingProfile = descriptor.EmbeddingProfile,
+                    FusionMethod = ReciprocalRankFusion.Method,
+                    ReciprocalRankConstant = ReciprocalRankFusion.ReciprocalRankConstant,
+                    CandidateLimit = Math.Max(
+                        BenchmarkEvaluationService.ResultLimit,
+                        FusedMaintenanceQueryBuilder.DefaultCandidateDepth),
+                    SemanticDegradationPolicy = "Semantic unavailable or failed returns lexical-only results and marks the run degraded."
+                },
+                async (request, token) =>
+                {
+                    var response = await fusedRetriever.SearchAsync(ToFusedRequest(request), token);
+                    if (response.IsDegraded)
+                    {
+                        throw new InvalidOperationException(
+                            "The fused benchmark cannot score a degraded retrieval response.");
+                    }
+
+                    return response.Results
+                        .Select(item => new BenchmarkRetrievedResult(
+                            item.InspectionId,
+                            item.FusionScore,
+                            item.LexicalRank,
+                            item.SemanticRank,
+                            item.FusionScore))
+                        .ToArray();
+                }));
+        }
+
         var report = await new BenchmarkEvaluationService()
             .RunAsync(manifest, channels, cancellationToken: cancellationToken);
-        if (embeddingServiceOverride is not null)
+        if (embeddingServiceOverride is not null && (reportSemantic || reportFused))
         {
-            report.Warnings.Add(
-                "Semantic metrics use a deterministic injected embedding service for pipeline validation; they are not model-quality evidence.");
+            report.Warnings.Add(reportSemantic && reportFused
+                ? "Semantic and fused metrics that depend on the deterministic injected embedding service are pipeline-validation results only; they are not semantic-model or fused-retrieval quality evidence."
+                : reportFused
+                    ? "Fused metrics that depend on the deterministic injected embedding service are pipeline-validation results only; they are not fused-retrieval quality evidence."
+                    : "Semantic metrics that depend on the deterministic injected embedding service are pipeline-validation results only; they are not semantic-model quality evidence.");
         }
         var writer = new BenchmarkReportWriter();
         await writer.WriteAsync(report, options.OutputDirectory, cancellationToken);
@@ -223,6 +283,22 @@ public sealed class SqlServerBenchmarkRunner
     {
         var filters = request.Filters;
         return new SemanticMaintenanceSearchRequest(
+            request.QueryText,
+            request.Limit,
+            filters.AssetId,
+            filters.AssetCategory,
+            filters.Building,
+            filters.Department,
+            filters.Location,
+            filters.IsOperational,
+            filters.DateFrom,
+            filters.DateTo);
+    }
+
+    private static FusedMaintenanceSearchRequest ToFusedRequest(BenchmarkChannelRequest request)
+    {
+        var filters = request.Filters;
+        return new FusedMaintenanceSearchRequest(
             request.QueryText,
             request.Limit,
             filters.AssetId,

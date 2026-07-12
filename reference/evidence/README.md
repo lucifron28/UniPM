@@ -122,6 +122,7 @@ Use the Windows-first capture script:
 .\scripts\evidence\Invoke-BackendVerification.ps1 -Configuration Release -RunSqlServerTests
 .\scripts\evidence\Invoke-BackendVerification.ps1 -RunSqlServerTests -BenchmarkChannels lexical
 .\scripts\evidence\Invoke-BackendVerification.ps1 -RunSqlServerTests -BenchmarkChannels lexical,semantic
+.\scripts\evidence\Invoke-BackendVerification.ps1 -RunSqlServerTests -BenchmarkChannels fused
 ```
 
 The script writes raw logs and generated reports under ignored
@@ -131,7 +132,8 @@ generates `SHA256SUMS.txt`. It never records the SQL connection value, API key,
 embedding endpoint, request body, or provider response body. SQL tests require
 `UNIPM_SQLSERVER_TEST_CONNECTION`. Semantic benchmark execution requires the
 existing real-provider configuration and never silently falls back to lexical
-or deterministic mode.
+or deterministic mode. Fused benchmarking requires both channels and fails
+when semantic retrieval degrades.
 
 For the optional local observability profile, use:
 

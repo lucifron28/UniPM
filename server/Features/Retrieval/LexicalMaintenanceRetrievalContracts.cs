@@ -31,6 +31,7 @@ internal sealed record LexicalMaintenanceSearchResult(
     DateTimeOffset DateInspected,
     bool IsOperational,
     int RawLexicalRank)
+    : IFusedMetadataResult
 {
     public const string RetrievalChannelValue = "lexical";
 

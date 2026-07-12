@@ -3,7 +3,7 @@ using UniPM.Api.Features.Retrieval;
 
 namespace UniPM.RetrievalBenchmark;
 
-internal static class Program
+public static class Program
 {
     public static async Task<int> Main(string[] args)
     {
@@ -27,7 +27,7 @@ internal static class Program
         }
     }
 
-    private static BenchmarkRunnerOptions ParseOptions(string[] args)
+    public static BenchmarkRunnerOptions ParseOptions(string[] args)
     {
         var channels = new HashSet<string>(StringComparer.Ordinal);
         string? outputDirectory = null;
@@ -38,7 +38,7 @@ internal static class Program
                 case "--channels" when index + 1 < args.Length:
                     foreach (var channel in args[++index].Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
                     {
-                        if (channel is not ("lexical" or "semantic"))
+                        if (channel is not ("lexical" or "semantic" or "fused"))
                         {
                             throw new ArgumentException($"Unsupported benchmark channel '{channel}'.");
                         }
@@ -62,6 +62,7 @@ internal static class Program
         }
 
         var embeddingOptions = channels.Contains("semantic", StringComparer.Ordinal)
+            || channels.Contains("fused", StringComparer.Ordinal)
             ? ReadEmbeddingOptions()
             : null;
 

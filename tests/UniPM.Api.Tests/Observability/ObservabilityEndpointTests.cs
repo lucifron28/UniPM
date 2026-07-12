@@ -57,6 +57,7 @@ public sealed class ObservabilityEndpointTests : IClassFixture<WebApplicationFac
         var metrics = application.Services.GetRequiredService<UniPMMetrics>();
 
         metrics.RecordRetrieval("lexical", "success", 3, 0.25);
+        metrics.RecordRetrieval("fused", "degraded", 1, 0.5);
 
         var response = await client.GetAsync("/metrics");
         var content = await response.Content.ReadAsStringAsync();
@@ -64,6 +65,9 @@ public sealed class ObservabilityEndpointTests : IClassFixture<WebApplicationFac
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Matches(
             "(?m)^unipm_retrieval_requests_total\\{[^}]*channel=\"lexical\",outcome=\"success\"\\} 1$",
+            content);
+        Assert.Matches(
+            "(?m)^unipm_retrieval_requests_total\\{[^}]*channel=\"fused\",outcome=\"degraded\"\\} 1$",
             content);
         Assert.Matches(
             "(?m)^unipm_retrieval_duration_seconds_bucket\\{[^}]*channel=\"lexical\",le=\"0.25\"\\} 1$",

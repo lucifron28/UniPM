@@ -2,7 +2,7 @@ namespace UniPM.RetrievalBenchmark;
 
 public sealed class BenchmarkReport
 {
-    public string BenchmarkFormatVersion { get; set; } = "1.0.0";
+    public string BenchmarkFormatVersion { get; set; } = "1.1.0";
     public string EvaluationManifestVersion { get; set; } = string.Empty;
     public string OperationalDatasetVersion { get; set; } = string.Empty;
     public DateTimeOffset GeneratedAtUtc { get; set; }
@@ -33,6 +33,10 @@ public sealed record BenchmarkChannelMetadata
     public int? Dimensions { get; set; }
     public string? EmbeddingProfile { get; set; }
     public bool? FullTextSearchReady { get; set; }
+    public string? FusionMethod { get; set; }
+    public int? ReciprocalRankConstant { get; set; }
+    public int? CandidateLimit { get; set; }
+    public string? SemanticDegradationPolicy { get; set; }
 }
 
 public sealed class BenchmarkQueryReport
@@ -45,6 +49,9 @@ public sealed class BenchmarkQueryReport
     public List<Guid> RetrievedInspectionIds { get; set; } = [];
     public Dictionary<Guid, int> ExpectedInspectionRanks { get; set; } = new();
     public Dictionary<Guid, double> RawScores { get; set; } = new();
+    public Dictionary<Guid, double> FusionScores { get; set; } = new();
+    public Dictionary<Guid, int> LexicalRanks { get; set; } = new();
+    public Dictionary<Guid, int> SemanticRanks { get; set; } = new();
     public double DurationMilliseconds { get; set; }
 }
 
@@ -54,4 +61,7 @@ public sealed record BenchmarkChannelResult(
 
 public sealed record BenchmarkRetrievedResult(
     Guid InspectionId,
-    double RawScore);
+    double RawScore,
+    int? LexicalRank = null,
+    int? SemanticRank = null,
+    double? FusionScore = null);
