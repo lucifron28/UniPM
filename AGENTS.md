@@ -160,9 +160,9 @@ Priority should move risk-first:
 The deterministic synthetic fixture, test-only retrieval evaluation manifest,
 Development-only seed/reset commands, reset dependency protection, RRF
 placeholder removal, inspection list/detail reads, the v1.0 maintenance issue
-lexicon, the rebuildable `MaintenanceSearchDocument` projection, and the
-semantic embedding channel are complete. The exact next backend branch is
-`feat/retrieval-benchmark`.
+lexicon, the rebuildable `MaintenanceSearchDocument` projection, the semantic
+embedding channel, and the separate retrieval benchmark are complete. The exact
+next backend branch is `feat/retrieval-fusion`.
 
 Unblocked areas:
 

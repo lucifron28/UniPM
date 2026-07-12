@@ -25,6 +25,7 @@ docker-compose.*.override.yml
 TestResults/
 coverage/
 coverage.*
+artifacts/
 
 # Visual Studio / JetBrains / VS Code
 .vs/

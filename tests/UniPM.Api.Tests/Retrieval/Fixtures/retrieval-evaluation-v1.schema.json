@@ -17,7 +17,7 @@
       "const": "retrieval-evaluation-v1.schema.json"
     },
     "evaluationVersion": {
-      "const": "1.0.0"
+      "const": "1.1.0"
     },
     "datasetVersion": {
       "const": "1.1.0"
@@ -36,7 +36,11 @@
     },
     "queries": {
       "type": "array",
-      "maxItems": 0
+      "minItems": 20,
+      "maxItems": 24,
+      "items": {
+        "$ref": "#/$defs/query"
+      }
     }
   },
   "$defs": {
@@ -126,6 +130,126 @@
           "items": {
             "$ref": "#/$defs/scenarioTag"
           }
+        }
+      }
+    },
+    "query": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "queryId",
+        "queryText",
+        "language",
+        "assetCategory",
+        "retrievalFilters",
+        "expectedRelevantInspectionIds",
+        "scenarioTags",
+        "notes"
+      ],
+      "properties": {
+        "queryId": {
+          "type": "string",
+          "pattern": "^Q[0-9]{3}$"
+        },
+        "queryText": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "language": {
+          "type": "string",
+          "enum": [
+            "english",
+            "tagalog",
+            "taglish"
+          ]
+        },
+        "assetCategory": {
+          "type": "string",
+          "enum": [
+            "fire-extinguisher",
+            "fire-alarm",
+            "emergency-light",
+            "water-drinking-station"
+          ]
+        },
+        "contextAssetId": {
+          "$ref": "#/$defs/guid"
+        },
+        "retrievalFilters": {
+          "$ref": "#/$defs/retrievalFilters"
+        },
+        "expectedRelevantInspectionIds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/guid"
+          }
+        },
+        "scenarioTags": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "same-asset-history",
+              "similar-asset-fallback",
+              "cold-start",
+              "lexicon-covered",
+              "semantic-paraphrase",
+              "distractor-resistance",
+              "same-building-context",
+              "cross-language",
+              "resolved-history",
+              "unresolved-history"
+            ]
+          }
+        },
+        "notes": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "retrievalFilters": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "assetId": {
+          "$ref": "#/$defs/guid"
+        },
+        "assetCategory": {
+          "enum": [
+            "fire-extinguisher",
+            "fire-alarm",
+            "emergency-light",
+            "water-drinking-station"
+          ]
+        },
+        "building": {
+          "type": "string",
+          "maxLength": 256
+        },
+        "department": {
+          "type": "string",
+          "maxLength": 256
+        },
+        "location": {
+          "type": "string",
+          "maxLength": 256
+        },
+        "isOperational": {
+          "type": "boolean"
+        },
+        "dateFrom": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "dateTo": {
+          "type": "string",
+          "format": "date-time"
         }
       }
     }
