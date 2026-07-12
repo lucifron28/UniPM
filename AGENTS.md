@@ -179,8 +179,9 @@ The deterministic synthetic fixture, test-only retrieval evaluation manifest,
 Development-only seed/reset commands, reset dependency protection, RRF
 placeholder removal, inspection list/detail reads, the v1.0 maintenance issue
 lexicon, the rebuildable `MaintenanceSearchDocument` projection, the semantic
-embedding channel, and the separate retrieval benchmark are complete. The exact
-next backend branch is `feat/retrieval-fusion`.
+embedding channel, the separate retrieval benchmark, and the committed
+engineering-evidence workflow are complete. The exact next backend branch is
+`feat/observability-metrics`; `feat/retrieval-fusion` follows observability.
 
 Unblocked areas:
 

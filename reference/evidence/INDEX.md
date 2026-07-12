@@ -15,6 +15,13 @@ record's evidence level and tested/source commit.
 
 | ID | Type | Title | Status | Evidence level | Tested/source commit | Record | Note |
 |---|---|---|---|---|---|---|---|
+| IMP-001 | implementation | Synthetic maintenance dataset and Development seeder | reviewed | source-inspected | `00e5401` | [record](implementation/IMP-001-synthetic-maintenance-dataset.md) | Fictional deterministic fixture and scoped seed/reset behavior. |
+| IMP-002 | implementation | Versioned maintenance issue lexicon | reviewed | source-inspected | `00e5401` | [record](implementation/IMP-002-maintenance-issue-lexicon.md) | Deterministic category-bounded normalization; no accuracy baseline claimed. |
+| IMP-003 | implementation | SQL Server lexical Full-Text retrieval | reviewed | source-inspected | `00e5401` | [record](implementation/IMP-003-lexical-full-text-retrieval.md) | Internal SQL Server FTS channel over the rebuildable projection. |
+| IMP-004 | implementation | Provider-neutral semantic retrieval | reviewed | source-inspected | `00e5401` | [record](implementation/IMP-004-semantic-retrieval.md) | Provider abstraction and persisted document embeddings. |
+| IMP-005 | implementation | Reproducible retrieval benchmark | reviewed | source-inspected | `00e5401` | [record](implementation/IMP-005-retrieval-benchmark.md) | Test-only synthetic lexical/semantic evaluation tool. |
+| ADR-001 | decision | Use SQL Server Full-Text Search for lexical retrieval | reviewed | source-inspected | `00e5401` | [record](decisions/ADR-001-sql-server-full-text-retrieval.md) | Stack-constrained architecture decision. |
+| ADR-002 | decision | Keep semantic embeddings behind a provider-neutral service | reviewed | source-inspected | `00e5401` | [record](decisions/ADR-002-provider-neutral-embeddings.md) | Provider, privacy, cost, and degradation boundaries. |
 
 ## Pending Evidence
 
