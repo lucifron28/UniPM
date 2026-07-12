@@ -13,7 +13,9 @@ internal static class SummaryOutputValidator
         IReadOnlySet<string> includedSourceLabels,
         int maxOutputCharacters)
     {
-        if (string.IsNullOrWhiteSpace(output) || output.Length > maxOutputCharacters)
+        if (string.IsNullOrWhiteSpace(output)
+            || output.Length > maxOutputCharacters
+            || !output.Contains(MaintenanceReviewPromptBuilder.AssistiveDisclaimer, StringComparison.Ordinal))
         {
             throw new SummaryServiceDataException("The generated summary is outside the configured bounds.");
         }

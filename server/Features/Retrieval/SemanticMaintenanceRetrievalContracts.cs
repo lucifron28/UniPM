@@ -17,7 +17,8 @@ internal sealed record SemanticMaintenanceSearchRequest(
     string? Location = null,
     bool? IsOperational = null,
     DateTimeOffset? DateFrom = null,
-    DateTimeOffset? DateTo = null);
+    DateTimeOffset? DateTo = null,
+    IReadOnlyList<string>? IssueKeys = null);
 
 internal sealed record SemanticMaintenanceSearchResult(
     Guid InspectionId,

@@ -68,7 +68,12 @@ internal static class FusedMaintenanceQueryBuilder
             location,
             request.IsOperational,
             request.DateFrom,
-            request.DateTo);
+            request.DateTo,
+            request.IssueKeys?
+                .Where(key => !string.IsNullOrWhiteSpace(key))
+                .Distinct(StringComparer.Ordinal)
+                .OrderBy(key => key, StringComparer.Ordinal)
+                .ToArray());
     }
 
     private static string? NormalizeMetadataFilter(string? value, string fieldName)
@@ -129,4 +134,5 @@ internal sealed record FusedMaintenanceQuery(
     string? Location,
     bool? IsOperational,
     DateTimeOffset? DateFrom,
-    DateTimeOffset? DateTo);
+    DateTimeOffset? DateTo,
+    IReadOnlyList<string>? IssueKeys);

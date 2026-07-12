@@ -7,6 +7,7 @@ internal enum SyntheticMaintenanceCommand
     Reset,
     Rebuild,
     RebuildEmbeddings,
+    Migrate,
     Ambiguous
 }
 
@@ -35,6 +36,11 @@ internal static class SyntheticMaintenanceCommandParser
         if (arguments.Contains("--rebuild-maintenance-embeddings"))
         {
             requestedCommands.Add(SyntheticMaintenanceCommand.RebuildEmbeddings);
+        }
+
+        if (arguments.Contains("--migrate-database"))
+        {
+            requestedCommands.Add(SyntheticMaintenanceCommand.Migrate);
         }
 
         return requestedCommands.Count switch

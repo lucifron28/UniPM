@@ -35,6 +35,7 @@ internal sealed class MaintenanceReviewService(
     {
         ArgumentNullException.ThrowIfNull(request);
         var findingText = request.NormalizeFinding();
+        var sanitizationSession = sanitizer.CreateSession();
         Asset asset;
         try
         {
@@ -63,10 +64,13 @@ internal sealed class MaintenanceReviewService(
             .Normalize(findingText, asset.AssetCategory)
             .Select(match => match.IssueKey)
             .ToArray();
+        var retrievalQuery = MaintenanceReviewRetrievalQueryBuilder.Build(
+            sanitizationSession.Sanitize(findingText),
+            findingIssueKeys);
 
         var passResponses = new List<FusedMaintenanceSearchResponse>();
         passResponses.Add(await ExecuteFusedPassAsync(
-            findingText,
+            retrievalQuery,
             asset,
             includeAssetFilter: true,
             cancellationToken));
@@ -74,7 +78,7 @@ internal sealed class MaintenanceReviewService(
         if (passResponses[0].Results.Count < reviewOptions.MaxSourceRecords)
         {
             passResponses.Add(await ExecuteFusedPassAsync(
-                findingText,
+                retrievalQuery,
                 asset,
                 includeAssetFilter: false,
                 cancellationToken));
@@ -172,7 +176,6 @@ internal sealed class MaintenanceReviewService(
         string? summary = null;
         try
         {
-            var session = sanitizer.CreateSession();
             var prompt = promptBuilder.Build(
                 BuildPromptInput(
                     findingText,
@@ -181,10 +184,14 @@ internal sealed class MaintenanceReviewService(
                     recurring,
                     selections,
                     sourceResponses,
-                    session),
+                    sanitizationSession),
                 summaryOptions);
             var generated = await summaryService.GenerateAsync(
-                new SummaryGenerationRequest(prompt.Text, prompt.IncludedSourceLabels),
+                new SummaryGenerationRequest(
+                    prompt.SystemMessage,
+                    prompt.UserMessage,
+                    prompt.IncludedSourceLabels,
+                    prompt.TemplateVersion),
                 cancellationToken);
             summary = SummaryOutputValidator.Validate(
                 generated.Content,
@@ -235,7 +242,7 @@ internal sealed class MaintenanceReviewService(
     }
 
     private async Task<FusedMaintenanceSearchResponse> ExecuteFusedPassAsync(
-        string findingText,
+        MaintenanceReviewRetrievalQuery retrievalQuery,
         Asset asset,
         bool includeAssetFilter,
         CancellationToken cancellationToken)
@@ -244,10 +251,11 @@ internal sealed class MaintenanceReviewService(
         {
             return await fusedRetriever.SearchAsync(
                 new FusedMaintenanceSearchRequest(
-                    findingText,
+                    retrievalQuery.Text,
                     reviewOptions.RetrievalCandidateLimit,
                     includeAssetFilter ? asset.Id : null,
-                    asset.AssetCategory),
+                    asset.AssetCategory,
+                    IssueKeys: retrievalQuery.IssueKeys),
                 cancellationToken);
         }
         catch (FusedMaintenanceQueryValidationException exception)

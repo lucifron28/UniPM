@@ -1,7 +1,8 @@
 [CmdletBinding()]
 param(
     [string]$OutputRoot = (Join-Path (Get-Location) 'artifacts/evidence'),
-    [switch]$RemoveVolumes
+    [switch]$RemoveVolumes,
+    [switch]$FreshDatabase
 )
 
 $ErrorActionPreference = 'Stop'
@@ -116,6 +117,10 @@ try {
         if ($LASTEXITCODE -ne 0) { throw "Docker Compose config failed with exit code $LASTEXITCODE." }
     }
     Invoke-Stage 'stack-start' {
+        if ($FreshDatabase) {
+            docker compose down -v
+            if ($LASTEXITCODE -ne 0) { throw "Fresh database reset failed with exit code $LASTEXITCODE." }
+        }
         docker compose up --build -d unipm-api
         if ($LASTEXITCODE -ne 0) { throw "Docker Compose stack start failed with exit code $LASTEXITCODE." }
     }
@@ -135,8 +140,12 @@ try {
                 }
             }
             if (-not $ready) {
-                throw 'The API did not become live within the bounded polling window.'
+                throw 'The API did not become ready within the bounded polling window.'
             }
+        }
+        Invoke-Stage 'database-migrate' {
+            docker compose exec -T unipm-api dotnet UniPM.Api.dll --migrate-database
+            if ($LASTEXITCODE -ne 0) { throw "Database migration failed with exit code $LASTEXITCODE." }
         }
         Invoke-Stage 'seed' {
             docker compose exec -T unipm-api dotnet UniPM.Api.dll --seed-synthetic

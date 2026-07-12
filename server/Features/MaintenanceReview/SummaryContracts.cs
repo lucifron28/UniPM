@@ -15,8 +15,10 @@ internal sealed record SummaryServiceDescriptor(
     string ModelKey);
 
 internal sealed record SummaryGenerationRequest(
-    string Prompt,
-    IReadOnlySet<string> SourceLabels);
+    string SystemMessage,
+    string UserMessage,
+    IReadOnlySet<string> SourceLabels,
+    string TemplateVersion);
 
 internal sealed record SummaryGenerationResult(string Content);
 

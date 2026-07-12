@@ -33,8 +33,10 @@ internal sealed record MaintenanceReviewPromptInput(
     IReadOnlyList<MaintenanceReviewPromptSource> Sources);
 
 internal sealed record MaintenanceReviewPrompt(
-    string Text,
-    IReadOnlySet<string> IncludedSourceLabels);
+    string SystemMessage,
+    string UserMessage,
+    IReadOnlySet<string> IncludedSourceLabels,
+    string TemplateVersion);
 
 internal sealed class MaintenanceReviewPromptException(string message)
     : InvalidOperationException(message);
@@ -42,6 +44,7 @@ internal sealed class MaintenanceReviewPromptException(string message)
 public sealed class MaintenanceReviewPromptBuilder
 {
     public const string TemplateVersion = "maintenance-review-v1";
+    public const string AssistiveDisclaimer = "This summary is assistive only and must be verified by authorized personnel using the original inspection records.";
 
     private static readonly JsonSerializerOptions PromptJsonOptions = new()
     {
@@ -56,9 +59,8 @@ public sealed class MaintenanceReviewPromptBuilder
         causes, RMRF numbers, corrective actions, or personnel decisions. Do not
         claim recurring same-asset history unless the supplied boolean is true.
         Distinguish same-asset history from fallback context, state uncertainty
-        and weak evidence, cite source labels such as [SRC-1], and include this
-        exact disclaimer: This summary is assistive only and must be verified by
-        authorized personnel using the original inspection records.
+        and weak evidence, cite source labels such as [SRC-1], and include the
+        required server-controlled disclaimer.
         """;
 
     internal MaintenanceReviewPrompt Build(
@@ -72,10 +74,11 @@ public sealed class MaintenanceReviewPromptBuilder
             throw new MaintenanceReviewPromptException("Summary prompt limits are invalid.");
         }
 
-        var prefix = $"Template: {TemplateVersion}\nInstructions:\n{Instructions.Trim()}\n"
-            + "Quoted source data JSON:\n<quoted-data>\n";
+        var systemMessage = $"Template: {TemplateVersion}\nInstructions:\n{Instructions.Trim()}\n"
+            + $"Required disclaimer: {AssistiveDisclaimer}";
+        var userPrefix = "Quoted source data JSON:\n<quoted-data>\n";
 
-        if (prefix.Length >= options.MaxPromptCharacters)
+        if (systemMessage.Length + userPrefix.Length >= options.MaxPromptCharacters)
         {
             throw new MaintenanceReviewPromptException(
                 "The summary prompt cannot fit its required instructions and target finding.");
@@ -89,7 +92,7 @@ public sealed class MaintenanceReviewPromptBuilder
         foreach (var source in orderedSources)
         {
             var candidate = included.Append(source).ToArray();
-            if (BuildPromptText(prefix, input, candidate).Length > options.MaxPromptCharacters)
+            if (BuildPromptText(systemMessage, userPrefix, input, candidate).Length > options.MaxPromptCharacters)
             {
                 continue;
             }
@@ -103,18 +106,22 @@ public sealed class MaintenanceReviewPromptBuilder
                 "The summary prompt cannot fit at least one complete source record.");
         }
 
-        var text = BuildPromptText(prefix, input, included);
+        var userMessage = BuildUserMessage(userPrefix, input, included);
         return new MaintenanceReviewPrompt(
-            text,
+            systemMessage,
+            userMessage,
             included
                 .Select(source => source.SourceLabel)
-                .ToHashSet(StringComparer.Ordinal));
+                .ToHashSet(StringComparer.Ordinal),
+            TemplateVersion);
     }
 
     private static MaintenanceReviewPromptSourceJson ToPromptSource(
         MaintenanceReviewPromptSource source,
         int maxSourceTextCharacters)
     {
+        var remarks = Truncate(source.Remarks, maxSourceTextCharacters);
+        var remaining = maxSourceTextCharacters - remarks.Length;
         return new MaintenanceReviewPromptSourceJson(
             source.SourceLabel,
             source.ContextTier,
@@ -127,12 +134,21 @@ public sealed class MaintenanceReviewPromptBuilder
             source.InspectionDate,
             source.IsOperational,
             source.IssueKeys,
-            Truncate(source.Remarks, maxSourceTextCharacters),
-            Truncate(source.ActionsRecommendations, maxSourceTextCharacters));
+            remarks,
+            Truncate(source.ActionsRecommendations, Math.Max(0, remaining)));
     }
 
     private static string BuildPromptText(
-        string prefix,
+        string systemMessage,
+        string userPrefix,
+        MaintenanceReviewPromptInput input,
+        IReadOnlyList<MaintenanceReviewPromptSourceJson> sources)
+        => systemMessage
+            + "\n"
+            + BuildUserMessage(userPrefix, input, sources);
+
+    private static string BuildUserMessage(
+        string userPrefix,
         MaintenanceReviewPromptInput input,
         IReadOnlyList<MaintenanceReviewPromptSourceJson> sources)
     {
@@ -147,7 +163,7 @@ public sealed class MaintenanceReviewPromptBuilder
             input.EvidenceStatus,
             input.RecurringSameAssetPatternSupported,
             sources);
-        return prefix
+        return userPrefix
             + JsonSerializer.Serialize(data, PromptJsonOptions)
             + "\n</quoted-data>";
     }

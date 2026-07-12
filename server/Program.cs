@@ -142,7 +142,15 @@ if (maintenanceCommand != SyntheticMaintenanceCommand.None)
     try
     {
         await using var scope = app.Services.CreateAsyncScope();
-        if (maintenanceCommand == SyntheticMaintenanceCommand.Rebuild)
+        if (maintenanceCommand == SyntheticMaintenanceCommand.Migrate)
+        {
+            var contextFactory = scope.ServiceProvider
+                .GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
+            await using var context = await contextFactory.CreateDbContextAsync();
+            await context.Database.MigrateAsync();
+            await Console.Out.WriteLineAsync("Database migrations applied successfully.");
+        }
+        else if (maintenanceCommand == SyntheticMaintenanceCommand.Rebuild)
         {
             var projector = scope.ServiceProvider.GetRequiredService<MaintenanceSearchDocumentProjector>();
             var result = await projector.RebuildAsync();

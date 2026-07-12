@@ -2,7 +2,7 @@
 id: TEST-005
 type: test-run
 title: Maintenance review baseline
-status: executed
+status: superseded
 recordedAtUtc: 2026-07-12T13:24:30Z
 testedCommit: 079240dce614de247b65a43e730a0bc2fda8eeac
 sourceBranch: feat/retrieval-review

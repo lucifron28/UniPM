@@ -23,8 +23,11 @@ internal sealed class OpenAiCompatibleSummaryService(
         CancellationToken cancellationToken = default)
     {
         EnsureEnabledAndConfigured();
-        if (string.IsNullOrWhiteSpace(request.Prompt)
-            || request.Prompt.Length > options.MaxPromptCharacters)
+        var promptLength = request.SystemMessage.Length + request.UserMessage.Length;
+        if (string.IsNullOrWhiteSpace(request.SystemMessage)
+            || string.IsNullOrWhiteSpace(request.UserMessage)
+            || request.TemplateVersion != MaintenanceReviewPromptBuilder.TemplateVersion
+            || promptLength > options.MaxPromptCharacters)
         {
             throw new SummaryServiceDataException("The summary prompt is outside the configured bounds.");
         }
@@ -44,8 +47,8 @@ internal sealed class OpenAiCompatibleSummaryService(
                         max_tokens = Math.Max(1, options.MaxOutputCharacters / 4),
                         messages = new[]
                         {
-                            new { role = "system", content = "Return a bounded source-cited maintenance review." },
-                            new { role = "user", content = request.Prompt }
+                            new { role = "system", content = request.SystemMessage },
+                            new { role = "user", content = request.UserMessage }
                         }
                     },
                     JsonSerializerOptions.Web),

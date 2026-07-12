@@ -154,6 +154,7 @@ With a reachable configured database, run seed/reset only in Development:
 
 ```powershell
 $env:ASPNETCORE_ENVIRONMENT = "Development"
+dotnet run --project server -- --migrate-database
 dotnet run --project server -- --seed-synthetic
 dotnet run --project server -- --reset-synthetic-seed
 dotnet run --project server -- --rebuild-maintenance-search-documents
