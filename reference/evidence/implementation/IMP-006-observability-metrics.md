@@ -89,8 +89,8 @@ output, Compose configuration, and dashboard/datasource provisioning.
 ## Verification Status
 
 Source inspection is recorded here. Actual local execution is recorded in
-TEST-002 at the exact tested commit recorded there, which contains the
-source-inspected implementation listed here.
+TEST-002 at commit `6691f048c9d034b97f5044212d1bc47f16523d50`, which contains
+the source-inspected implementation listed here.
 
 ## Known Limitations
 

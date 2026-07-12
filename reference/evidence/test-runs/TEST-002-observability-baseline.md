@@ -3,8 +3,8 @@ id: TEST-002
 type: test-run
 title: Observability metrics and local monitoring baseline
 status: executed
-recordedAtUtc: 2026-07-12T05:47:19.6156783+00:00
-testedCommit: 3b2e742c8cf780c3dc8c68e4373fe750fee39a27
+recordedAtUtc: 2026-07-12T07:11:14.1855329+00:00
+testedCommit: 6691f048c9d034b97f5044212d1bc47f16523d50
 sourceBranch: feat/observability-metrics
 evidenceLevel: locally-executed
 ---
@@ -19,11 +19,11 @@ monitoring, deployment, alerting, or retrieval-quality improvement.
 
 ## Execution Identity
 
-- Tested commit: `3b2e742c8cf780c3dc8c68e4373fe750fee39a27`
+- Tested commit: `6691f048c9d034b97f5044212d1bc47f16523d50`
 - Branch: `feat/observability-metrics`
 - Worktree: clean before both verification runs.
 - Backend artifact directory: `artifacts/evidence/20260712-054633Z-3b2e742c8cf7`
-- Observability artifact directory: `artifacts/evidence/20260712-054719Z-3b2e742c8cf7-observability`
+- Observability artifact directory: `artifacts/evidence/20260712-071114Z-6691f048c9d0-observability`
 - Execution environment: Windows, PowerShell 5.1, .NET SDK 10.0.300, Git 2.54.0, Docker 29.4.1.
 
 ## Environment
@@ -69,6 +69,7 @@ then ran `docker compose --profile observability down`.
 - Compose observability profile startup: passed.
 - API root: HTTP `200`.
 - `/health/live`: HTTP `200`.
+- `/health/ready`: HTTP `200`.
 - `/metrics`: HTTP `200` with the Prometheus-compatible text response asserted
   by endpoint tests.
 - Prometheus readiness: HTTP `200`.
@@ -126,18 +127,19 @@ Observability artifact hashes:
 ```text
 0efaa888a5a508b0a4a9bc5cac8737915c35287602de7166d20a6fd685b97bed  api-liveness.json
 21d961a3bc9f82f7c95e92e2a2707e4a0f5df4dc4b293965411710342df213e1  api-metrics.json
-ca2fd9636ae5f3914231505e326c1dab01d0c2043b34a3b816ab9126b750aa3d  api-metrics-sample.txt
-a53dc01bc0366f2159a1f7f7137d4f270f4df7c7445e032a6b814c0aff2b5bd5  api-root.json
-e0e7c2d4f39d1cd18336fe1733eaa35d0776033873c2ec277e9dde26e56ff67e  compose-config.log
-3dddc225ce422198b47b5c92109dc8bac9e82e13aac1366e2403447a568979ed  compose-down.log
-fbe06f333cc2924ac6e17a1c079f03079c30d34b71a8c0275cafaf7e7ff0c791  compose-up.log
-aa3d29e6cb402b13c7a20f42f8bdac0a3feb1a401472a72684695756fd081f38  environment.json
-a1666f17dd605a5767ccd822b13b3b230fd68bed30b488342085ae387a002ff2  grafana-dashboard.json
+a7bf1b2cfec7513adc9119402f4b2128f08879066587e778b845164d382eea85  api-metrics-sample.txt
+929f57ed7d3a308c50873fe872961076d25c6279d364ef01d42bf759630ea705  api-readiness.json
+dfc57e459833706e41a7a2d64208c72858e0f7c3e318f867ff4db9f0a37258cb  api-root.json
+450ca3bb36dbbddf3fa8854111b8ea30d71310221de15c4e5b65917931bf1c93  compose-config.log
+057253d6dbff7a92067492e306341b2d2e9a923d123de60efec2965f92e7ecd5  compose-down.log
+5152ef1341b67631c98828879533c913ccdd7ee1ea629294ccf0849d5b7192a9  compose-up.log
+6bf41ffc3072aca25b285b1433fa35a9674b69428d6a3c54ba330734cb7e07bf  environment.json
+c82615a7601401e98b076e73fb3223b88d4bdddf1181b0ef1096e5418aaee80a  grafana-dashboard.json
 855dad2a279172b93ae0c508772ebeeccba215ec0b0679cd096b185e1cc03dea  grafana-datasource.json
 177781537caedca5bfb6b88fcfdc4e8b10c1b5a05d5c3136e8ca11bfc12216ae  grafana-health.json
 48941fcac516f5ca05a299602a02823b022e027c6deb6e4df5292b206b84e757  prometheus-ready.txt
 120734c4bc08156609179ec83e6e4ab8731e69907eccf1551c94d1915d83e6a6  prometheus-targets.json
-18f09e5a241767adbfbb4c6339ac99762002af73ad45417f8812b1369d3b7952  verification-summary.json
+be4f1f1382475a85d5e1ea8b21da178c99d40ae407bed0b0089cf0293d433a98  verification-summary.json
 ```
 
 ## Failures And Corrections
