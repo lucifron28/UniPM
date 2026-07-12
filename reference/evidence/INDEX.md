@@ -22,6 +22,7 @@ record's evidence level and tested/source commit.
 | IMP-005 | implementation | Reproducible retrieval benchmark | reviewed | source-inspected | `00e5401` | [record](implementation/IMP-005-retrieval-benchmark.md) | Test-only synthetic lexical/semantic evaluation tool. |
 | ADR-001 | decision | Use SQL Server Full-Text Search for lexical retrieval | reviewed | source-inspected | `00e5401` | [record](decisions/ADR-001-sql-server-full-text-retrieval.md) | Stack-constrained architecture decision. |
 | ADR-002 | decision | Keep semantic embeddings behind a provider-neutral service | reviewed | source-inspected | `00e5401` | [record](decisions/ADR-002-provider-neutral-embeddings.md) | Provider, privacy, cost, and degradation boundaries. |
+| TEST-001 | test-run | Current backend verification baseline | executed | locally-executed | `798278f` | [record](test-runs/TEST-001-current-backend-baseline.md) | Restore/build/full tests, SQL scope, and lexical benchmark executed. |
 
 ## Pending Evidence
 
