@@ -27,6 +27,9 @@ record's evidence level and tested/source commit.
 | IMP-006 | implementation | Optional OpenTelemetry metrics and local system-health monitoring | reviewed | source-inspected | `c4fc0df` | [record](implementation/IMP-006-observability-metrics.md) | Opt-in technical metrics and optional local Prometheus/Grafana infrastructure. |
 | ADR-003 | decision | Use optional OpenTelemetry, Prometheus, and Grafana for technical health metrics | reviewed | source-inspected | `c4fc0df` | [record](decisions/ADR-003-prometheus-grafana-observability.md) | Low-cardinality local monitoring boundary; tracing, logs, and alerting deferred. |
 | TEST-002 | test-run | Observability metrics and local monitoring baseline | executed | locally-executed | `6691f048c9d0` | [record](test-runs/TEST-002-observability-baseline.md) | Backend and local Compose observability proof with sanitized artifacts and hashes. |
+| IMP-007 | implementation | Internal reciprocal-rank fusion retrieval | reviewed | source-inspected | `58668f9` | [record](implementation/IMP-007-reciprocal-rank-fusion.md) | Bounded deterministic RRF orchestration with explicit semantic degradation. |
+| ADR-004 | decision | Use Reciprocal Rank Fusion for internal retrieval combination | reviewed | source-inspected | `58668f9` | [record](decisions/ADR-004-reciprocal-rank-fusion.md) | Avoids incompatible raw-score combination and keeps review-layer policy separate. |
+| TEST-003 | test-run | Retrieval fusion implementation baseline | executed | locally-executed | `58668f9` | [record](test-runs/TEST-003-retrieval-fusion-baseline.md) | Clean Release restore/build/tests and CI/evidence validation; SQL/provider/fused quality runs not executed. |
 
 ## Pending Evidence
 
@@ -34,5 +37,5 @@ record's evidence level and tested/source commit.
   a retained real-provider benchmark run.
 - Lexicon normalization accuracy baseline: pending an independent labeled
   dataset and executable precision/recall/F1 evaluator.
-- Fused retrieval baseline: pending retrieval fusion implementation and an
-  executed evaluation.
+- Fused retrieval quality baseline: pending a configured real provider and an
+  executed fused benchmark; TEST-003 contains orchestration evidence only.
