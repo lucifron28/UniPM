@@ -83,9 +83,10 @@ jobs:
       - name: Validate Prometheus configuration
         run: >
           docker run --rm
+          --entrypoint /bin/promtool
           -v "${{ github.workspace }}/observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro"
           prom/prometheus:v3.5.0
-          promtool check config /etc/prometheus/prometheus.yml
+          check config /etc/prometheus/prometheus.yml
 
       - name: Validate Grafana dashboard JSON
         run: python -m json.tool observability/grafana/dashboards/unipm-system-health.json > /dev/null
