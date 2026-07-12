@@ -65,7 +65,8 @@ function Invoke-CapturedStage {
 
     $exitCode = 1
     try {
-        & $FilePath @Arguments *>> $LogPath
+        & $FilePath @Arguments 2>&1 |
+            Out-File -LiteralPath $LogPath -Append -Encoding utf8
         $exitCode = $LASTEXITCODE
     }
     catch {
