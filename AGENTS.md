@@ -169,19 +169,28 @@ Acceptable temporary/MVP work:
 Priority should move risk-first:
 
 1. Confirm the backend runs and tests pass.
-2. Benchmark the completed lexical and semantic channels separately; the
+2. Preserve engineering evidence for implementation and verification.
+3. Benchmark the completed lexical and semantic channels separately; the
    semantic provider remains operationally optional and degradable.
-3. Fuse retrieval results only after benchmark evidence exists.
-4. Add source-bounded summarization.
-5. Add authentication scaffolding.
+4. Fuse retrieval results only after benchmark and observability evidence
+   exists.
+5. Add source-bounded summarization.
+6. Add authentication scaffolding.
 
 The deterministic synthetic fixture, test-only retrieval evaluation manifest,
 Development-only seed/reset commands, reset dependency protection, RRF
 placeholder removal, inspection list/detail reads, the v1.0 maintenance issue
 lexicon, the rebuildable `MaintenanceSearchDocument` projection, the semantic
 embedding channel, the separate retrieval benchmark, and the committed
-engineering-evidence workflow are complete. The exact next backend branch is
-`feat/observability-metrics`; `feat/retrieval-fusion` follows observability.
+engineering-evidence workflow, and opt-in observability metrics are complete.
+The exact next backend branch is `feat/retrieval-fusion`.
+
+Observability remains bounded infrastructure: `Observability:MetricsEnabled`
+is false by default, `/metrics` is exposed only when explicitly enabled, and
+the local Prometheus/Grafana services are available only through the Compose
+`observability` profile. The dashboard is technical system health, not a
+maintenance KPI dashboard. Do not add tracing, centralized logs, alerting, or
+production monitoring claims to this scope.
 
 Unblocked areas:
 

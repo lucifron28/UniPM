@@ -1,0 +1,11 @@
+apiVersion: 1
+
+providers:
+  - name: UniPM system health
+    orgId: 1
+    folder: UniPM
+    type: file
+    disableDeletion: true
+    updateIntervalSeconds: 30
+    options:
+      path: /var/lib/grafana/dashboards

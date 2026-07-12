@@ -66,6 +66,7 @@ services:
       Embeddings__MaxBatchSize: "${UNIPM_EMBEDDINGS_MAX_BATCH_SIZE:-16}"
       Embeddings__MaxInputCharacters: "${UNIPM_EMBEDDINGS_MAX_INPUT_CHARACTERS:-4000}"
       Embeddings__AllowRemoteProvider: "${UNIPM_EMBEDDINGS_ALLOW_REMOTE_PROVIDER:-false}"
+      Observability__MetricsEnabled: "${UNIPM_METRICS_ENABLED:-false}"
     ports:
       - "${UNIPM_API_PORT:-5000}:8080"
     depends_on:
@@ -76,8 +77,50 @@ services:
     networks:
       - unipm-network
 
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    container_name: unipm-prometheus
+    profiles:
+      - observability
+    ports:
+      - "${UNIPM_PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - unipm-prometheus-data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+    depends_on:
+      unipm-api:
+        condition: service_started
+    networks:
+      - unipm-network
+
+  grafana:
+    image: grafana/grafana:12.0.2
+    container_name: unipm-grafana
+    profiles:
+      - observability
+    environment:
+      GF_SECURITY_ADMIN_USER: "${UNIPM_GRAFANA_ADMIN_USER:-admin}"
+      GF_SECURITY_ADMIN_PASSWORD: "${UNIPM_GRAFANA_ADMIN_PASSWORD:-ChangeThisLocalGrafanaPassword123!}"
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    ports:
+      - "${UNIPM_GRAFANA_PORT:-3000}:3000"
+    volumes:
+      - unipm-grafana-data:/var/lib/grafana
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      prometheus:
+        condition: service_started
+    networks:
+      - unipm-network
+
 volumes:
   unipm-sqlserver-2025-data:
+  unipm-prometheus-data:
+  unipm-grafana-data:
 
 networks:
   unipm-network:

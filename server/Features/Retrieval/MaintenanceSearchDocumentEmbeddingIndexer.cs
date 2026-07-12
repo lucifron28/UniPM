@@ -19,8 +19,12 @@ internal sealed class MaintenanceSearchDocumentEmbeddingIndexer(
 {
     private readonly EmbeddingOptions options = optionsAccessor.Value;
 
-    public async Task<MaintenanceEmbeddingIndexResult> RebuildAsync(
+    public Task<MaintenanceEmbeddingIndexResult> RebuildAsync(
         CancellationToken cancellationToken = default)
+        => RebuildCoreAsync(cancellationToken);
+
+    private async Task<MaintenanceEmbeddingIndexResult> RebuildCoreAsync(
+        CancellationToken cancellationToken)
     {
         var descriptor = embeddingService.Descriptor;
         if (!descriptor.Enabled)

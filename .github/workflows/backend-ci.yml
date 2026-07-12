@@ -15,6 +15,9 @@ on:
       - "server/**"
       - "tests/**"
       - "database/**"
+      - "docker-compose.yml"
+      - "observability/**"
+      - ".env.example"
       - "global.json"
       - "UniPM.slnx"
   pull_request:
@@ -25,6 +28,9 @@ on:
       - "server/**"
       - "tests/**"
       - "database/**"
+      - "docker-compose.yml"
+      - "observability/**"
+      - ".env.example"
       - "global.json"
       - "UniPM.slnx"
 
@@ -68,3 +74,19 @@ jobs:
           --verbosity normal
           --logger "trx;LogFileName=backend-tests.trx"
           --blame-hang-timeout 5m
+
+      - name: Validate observability Compose configuration
+        env:
+          MSSQL_SA_PASSWORD: ChangeThisLocalPassword123!
+        run: docker compose --profile observability config --quiet
+
+      - name: Validate Prometheus configuration
+        run: >
+          docker run --rm
+          --entrypoint /bin/promtool
+          -v "${{ github.workspace }}/observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro"
+          prom/prometheus:v3.5.0
+          check config /etc/prometheus/prometheus.yml
+
+      - name: Validate Grafana dashboard JSON
+        run: python -m json.tool observability/grafana/dashboards/unipm-system-health.json > /dev/null
