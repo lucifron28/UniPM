@@ -66,8 +66,8 @@
       "gridPos": { "h": 7, "w": 8, "x": 16, "y": 7 },
       "id": 6,
       "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
-      "targets": [{ "expr": "dotnet_gc_heap_size_bytes", "refId": "A" }],
-      "title": "Runtime GC heap size",
+      "targets": [{ "expr": "dotnet_process_memory_working_set_bytes", "refId": "A" }],
+      "title": "Runtime process memory",
       "type": "timeseries"
     },
     {
@@ -131,6 +131,16 @@
       "options": { "legend": { "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
       "targets": [{ "expr": "sum by (outcome) (rate(unipm_embedding_rebuilds_total[5m]))", "refId": "A" }],
       "title": "Embedding rebuild outcomes",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "unipm-prometheus" },
+      "fieldConfig": { "defaults": { "unit": "cps" }, "overrides": [] },
+      "gridPos": { "h": 7, "w": 8, "x": 8, "y": 28 },
+      "id": 13,
+      "options": { "legend": { "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
+      "targets": [{ "expr": "sum by (gc_heap_generation) (rate(dotnet_gc_collections_total[5m]))", "refId": "A" }],
+      "title": "Garbage collection activity",
       "type": "timeseries"
     }
   ],

@@ -154,6 +154,32 @@ function Wait-ForHttp {
     throw "$Name did not return HTTP $ExpectedStatusCode after $MaxAttempts attempts."
 }
 
+function Wait-ForPrometheusTarget {
+    param(
+        [int]$MaxAttempts = 30,
+
+        [int]$DelayMilliseconds = 1000
+    )
+
+    for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
+        try {
+            $targets = Invoke-RestMethod -Uri 'http://localhost:9090/api/v1/targets'
+            $target = $targets.data.activeTargets |
+                Where-Object { $_.labels.job -eq 'unipm-api' } |
+                Select-Object -First 1
+            if ($target -and $target.health -eq 'up') {
+                return $target
+            }
+        }
+        catch {
+        }
+
+        Start-Sleep -Milliseconds $DelayMilliseconds
+    }
+
+    throw "The unipm-api Prometheus target did not become healthy after $MaxAttempts attempts."
+}
+
 function Get-SafeEnvironmentMetadata {
     $dockerVersion = $null
     try {
@@ -213,19 +239,16 @@ try {
         $metricsResponse = Invoke-WebRequest -Uri 'http://localhost:5000/metrics' -UseBasicParsing
         $metricsResponse.Content -split "`n" |
             Where-Object { $_ -match '^(# HELP|# TYPE|unipm_|http_server_request_duration|dotnet_)' } |
+            Sort-Object { if ($_ -match '^unipm_') { 0 } else { 1 } }, { $_ } |
             Select-Object -First 250 |
             Set-Content -LiteralPath (Join-Path $artifactRoot 'api-metrics-sample.txt') -Encoding utf8
 
         Wait-ForHttp -Name 'Prometheus readiness' -Uri 'http://localhost:9090/-/ready' | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $artifactRoot 'prometheus-ready.txt') -Encoding utf8
-        $targets = Invoke-RestMethod -Uri 'http://localhost:9090/api/v1/targets'
-        $targets.data.activeTargets |
-            Where-Object { $_.labels.job -eq 'unipm-api' } |
+        $target = Wait-ForPrometheusTarget
+        @($target) |
             Select-Object -Property labels, health, lastError |
             ConvertTo-Json -Depth 6 |
             Set-Content -LiteralPath (Join-Path $artifactRoot 'prometheus-targets.json') -Encoding utf8
-        if (-not ($targets.data.activeTargets | Where-Object { $_.labels.job -eq 'unipm-api' -and $_.health -eq 'up' })) {
-            throw 'The unipm-api Prometheus target is not up.'
-        }
 
         Wait-ForHttp -Name 'Grafana health' -Uri 'http://localhost:3000/api/health' | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $artifactRoot 'grafana-health.json') -Encoding utf8
 
