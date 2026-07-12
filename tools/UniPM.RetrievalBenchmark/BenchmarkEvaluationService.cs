@@ -84,6 +84,7 @@ public sealed class BenchmarkEvaluationService
                 queryReports.Add(new BenchmarkQueryReport
                 {
                     QueryId = query.QueryId,
+                    QueryText = query.QueryText,
                     Language = query.Language,
                     AssetCategory = query.AssetCategory,
                     Metrics = metrics,

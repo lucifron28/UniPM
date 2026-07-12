@@ -65,7 +65,7 @@ public sealed class BenchmarkReportWriter
                          .Take(5))
             {
                 builder.AppendLine(
-                    $"- `{query.QueryId}` ({query.AssetCategory}, {query.Language}): MRR `{Format(query.Metrics.ReciprocalRank)}`, Recall@5 `{Format(query.Metrics.RecallAt5)}`");
+                    $"- `{query.QueryId}` (`{FormatQueryText(query.QueryText)}`; {query.AssetCategory}, {query.Language}): MRR `{Format(query.Metrics.ReciprocalRank)}`, Recall@5 `{Format(query.Metrics.RecallAt5)}`");
             }
 
             builder.AppendLine();
@@ -139,7 +139,7 @@ public sealed class BenchmarkReportWriter
                      .Where(queryId => lexical[queryId].Metrics.ReciprocalRank > semantic[queryId].Metrics.ReciprocalRank)
                      .OrderBy(queryId => queryId, StringComparer.Ordinal))
         {
-            builder.AppendLine($"- `{queryId}`");
+            builder.AppendLine($"- `{queryId}` (`{FormatQueryText(lexical[queryId].QueryText)}`)");
         }
 
         builder.AppendLine();
@@ -149,7 +149,7 @@ public sealed class BenchmarkReportWriter
                      .Where(queryId => semantic[queryId].Metrics.ReciprocalRank > lexical[queryId].Metrics.ReciprocalRank)
                      .OrderBy(queryId => queryId, StringComparer.Ordinal))
         {
-            builder.AppendLine($"- `{queryId}`");
+            builder.AppendLine($"- `{queryId}` (`{FormatQueryText(semantic[queryId].QueryText)}`)");
         }
 
         builder.AppendLine();
@@ -160,7 +160,7 @@ public sealed class BenchmarkReportWriter
                          && semantic[queryId].Metrics.ReciprocalRank == 0d)
                      .OrderBy(queryId => queryId, StringComparer.Ordinal))
         {
-            builder.AppendLine($"- `{queryId}`");
+            builder.AppendLine($"- `{queryId}` (`{FormatQueryText(lexical[queryId].QueryText)}`)");
         }
 
         builder.AppendLine();
@@ -168,4 +168,7 @@ public sealed class BenchmarkReportWriter
 
     private static string Format(double value)
         => value.ToString("0.000", CultureInfo.InvariantCulture);
+
+    private static string FormatQueryText(string value)
+        => value.Replace("`", "'", StringComparison.Ordinal);
 }

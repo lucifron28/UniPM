@@ -569,7 +569,7 @@
         },
         {
             "queryId": "Q006",
-            "queryText": "gauge malapit sa red zone cold-start",
+            "queryText": "gauge malapit sa red zone",
             "language": "taglish",
             "assetCategory": "fire-extinguisher",
             "contextAssetId": "f83fc630-5a2e-582d-88da-b4e21f25191f",
@@ -702,7 +702,7 @@
         },
         {
             "queryId": "Q012",
-            "queryText": "hindi nagrerespond ang detector sa cold-start alarm",
+            "queryText": "hindi nagrerespond ang detector",
             "language": "taglish",
             "assetCategory": "fire-alarm",
             "contextAssetId": "39ff1332-33a5-55cf-979f-27214a1df108",
@@ -832,7 +832,7 @@
         },
         {
             "queryId": "Q018",
-            "queryText": "may charging problem sa cold-start emergency light",
+            "queryText": "may charging problem ang emergency light",
             "language": "taglish",
             "assetCategory": "emergency-light",
             "contextAssetId": "3b667d5b-9638-5d3f-bc0e-2207d21640f2",
@@ -959,7 +959,7 @@
         },
         {
             "queryId": "Q024",
-            "queryText": "UV light not functioning sa cold-start water station",
+            "queryText": "UV light not functioning sa water station",
             "language": "taglish",
             "assetCategory": "water-drinking-station",
             "contextAssetId": "84b14d99-4c97-5afc-8d30-a9b6aeb83cdc",

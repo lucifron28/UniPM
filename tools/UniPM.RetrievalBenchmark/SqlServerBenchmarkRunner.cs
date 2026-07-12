@@ -23,8 +23,14 @@ public sealed record BenchmarkRunResult(
 
 public sealed class SqlServerBenchmarkRunner
 {
-    public async Task<BenchmarkRunResult> RunAsync(
+    public Task<BenchmarkRunResult> RunAsync(
         BenchmarkRunnerOptions options,
+        CancellationToken cancellationToken = default)
+        => RunAsync(options, embeddingServiceOverride: null, cancellationToken);
+
+    internal async Task<BenchmarkRunResult> RunAsync(
+        BenchmarkRunnerOptions options,
+        IEmbeddingService? embeddingServiceOverride,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(options);
@@ -87,6 +93,22 @@ public sealed class SqlServerBenchmarkRunner
                 database.ConnectionString,
                 cancellationToken);
             var lexicalRetriever = new SqlServerLexicalMaintenanceRetriever(contextFactory);
+            var probeInspection = dataset.Inspections
+                .FirstOrDefault(inspection => !string.IsNullOrWhiteSpace(inspection.Remarks))
+                ?? throw new InvalidOperationException("The operational fixture has no inspection remarks for the lexical readiness probe.");
+            var probeTerm = probeInspection.Remarks
+                .Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)
+                .Select(term => term.Trim(' ', '\t', '\r', '\n', '.', ',', ';', ':', '!', '?', '(', ')', '[', ']', '{', '}', '"'))
+                .FirstOrDefault(term => term.Length >= 3)
+                ?? throw new InvalidOperationException("The operational fixture has no usable term for the lexical readiness probe.");
+            await SqlServerBenchmarkReadiness.WaitForLexicalContentAsync(
+                lexicalRetriever,
+                new LexicalMaintenanceSearchRequest(
+                    probeTerm,
+                    AssetId: probeInspection.AssetId,
+                    AssetCategory: probeInspection.AssetCategory),
+                probeInspection.Id,
+                cancellationToken);
             channels.Add(new DelegateBenchmarkRetrievalChannel(
                 new BenchmarkChannelMetadata
                 {
@@ -112,18 +134,31 @@ public sealed class SqlServerBenchmarkRunner
                 throw new InvalidOperationException("Semantic benchmarking requires embedding configuration.");
             }
 
-            var embeddingService = new OpenAiCompatibleEmbeddingService(
-                new HttpClient(),
-                Options.Create(options.Embeddings));
+            var embeddingService = embeddingServiceOverride
+                ?? new OpenAiCompatibleEmbeddingService(
+                    new HttpClient(),
+                    Options.Create(options.Embeddings));
             var indexer = new MaintenanceSearchDocumentEmbeddingIndexer(
                 contextFactory,
                 embeddingService,
                 Options.Create(options.Embeddings));
             var indexResult = await indexer.RebuildAsync(cancellationToken);
-            if (indexResult.Failed > 0)
+            if (indexResult.Failed > 0
+                || indexResult.Created + indexResult.Updated + indexResult.Skipped != indexResult.Total)
             {
                 throw new InvalidOperationException(
-                    $"Semantic embedding rebuild failed for {indexResult.Failed} benchmark documents.");
+                    $"Semantic embedding rebuild did not reconcile the benchmark documents: total={indexResult.Total}, created={indexResult.Created}, updated={indexResult.Updated}, skipped={indexResult.Skipped}, failed={indexResult.Failed}.");
+            }
+
+            await using (var verificationContext = await contextFactory.CreateDbContextAsync(cancellationToken))
+            {
+                var documentCount = await verificationContext.MaintenanceSearchDocuments.CountAsync(cancellationToken);
+                var embeddingCount = await verificationContext.MaintenanceSearchDocumentEmbeddings.CountAsync(cancellationToken);
+                if (embeddingCount != documentCount)
+                {
+                    throw new InvalidOperationException(
+                        $"Semantic embedding rebuild produced {embeddingCount} embeddings for {documentCount} search documents.");
+                }
             }
 
             var descriptor = embeddingService.Descriptor;
@@ -154,6 +189,11 @@ public sealed class SqlServerBenchmarkRunner
 
         var report = await new BenchmarkEvaluationService()
             .RunAsync(manifest, channels, cancellationToken: cancellationToken);
+        if (embeddingServiceOverride is not null)
+        {
+            report.Warnings.Add(
+                "Semantic metrics use a deterministic injected embedding service for pipeline validation; they are not model-quality evidence.");
+        }
         var writer = new BenchmarkReportWriter();
         await writer.WriteAsync(report, options.OutputDirectory, cancellationToken);
 
@@ -361,6 +401,40 @@ internal static class SqlServerBenchmarkReadiness
 
         throw new InvalidOperationException(
             "SQL Server Full-Text Search did not become ready for the benchmark database.",
+            lastException);
+    }
+
+    public static async Task WaitForLexicalContentAsync(
+        ILexicalMaintenanceRetriever retriever,
+        LexicalMaintenanceSearchRequest request,
+        Guid expectedInspectionId,
+        CancellationToken cancellationToken)
+    {
+        Exception? lastException = null;
+        for (var attempt = 0; attempt < MaxAttempts; attempt++)
+        {
+            try
+            {
+                var results = await retriever.SearchAsync(request, cancellationToken);
+                if (results.Any(result => result.InspectionId == expectedInspectionId))
+                {
+                    return;
+                }
+            }
+            catch (LexicalMaintenanceRetrievalException exception)
+                when (!cancellationToken.IsCancellationRequested)
+            {
+                lastException = exception;
+            }
+
+            if (attempt < MaxAttempts - 1)
+            {
+                await Task.Delay(PollInterval, cancellationToken);
+            }
+        }
+
+        throw new InvalidOperationException(
+            "SQL Server Full-Text Search did not expose the seeded probe document before the benchmark started.",
             lastException);
     }
 }

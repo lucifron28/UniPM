@@ -71,6 +71,26 @@ public sealed class RetrievalBenchmarkManifestTests
     }
 
     [Fact]
+    public async Task Loader_rejects_scenario_metadata_in_query_text()
+    {
+        var path = await CreateModifiedManifestAsync(root =>
+        {
+            root["queries"]!.AsArray()[0]!.AsObject()["queryText"] = "low pressure cold-start";
+        });
+
+        try
+        {
+            var exception = await Assert.ThrowsAsync<RetrievalEvaluationManifestException>(
+                () => LoadManifestAsync(path));
+            Assert.Contains("scenario metadata", exception.Message, StringComparison.OrdinalIgnoreCase);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
     public async Task Loader_rejects_duplicate_expected_ids_and_reversed_dates()
     {
         var path = await CreateModifiedManifestAsync(root =>

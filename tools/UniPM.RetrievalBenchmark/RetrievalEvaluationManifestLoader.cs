@@ -192,6 +192,14 @@ public sealed class RetrievalEvaluationManifestLoader(
                 errors.Add($"Query '{query.QueryId}' must contain bounded query text.");
             }
 
+            foreach (var scenarioTag in RetrievalBenchmarkVocabulary.QueryScenarioTags)
+            {
+                if (query.QueryText.Contains(scenarioTag, StringComparison.OrdinalIgnoreCase))
+                {
+                    errors.Add($"Query '{query.QueryId}' must not include scenario metadata '{scenarioTag}' in QueryText.");
+                }
+            }
+
             if (!RetrievalBenchmarkVocabulary.Languages.Contains(query.Language))
             {
                 errors.Add($"Query '{query.QueryId}' uses unsupported language '{query.Language}'.");
@@ -266,6 +274,26 @@ public sealed class RetrievalEvaluationManifestLoader(
                     errors.Add($"Query '{query.QueryId}' expects an inspection outside its category filter.");
                 }
 
+                if (assetsById.TryGetValue(inspection.AssetId, out var asset))
+                {
+                    var filters = query.RetrievalFilters;
+                    if (filters.AssetId is not null && filters.AssetId != inspection.AssetId)
+                    {
+                        errors.Add($"Query '{query.QueryId}' expects an inspection outside its AssetId filter.");
+                    }
+
+                    if (!MatchesOptionalFilter(filters.AssetCategory, inspection.AssetCategory)
+                        || !MatchesOptionalFilter(filters.Building, asset.Building)
+                        || !MatchesOptionalFilter(filters.Department, asset.Department)
+                        || !MatchesOptionalFilter(filters.Location, asset.Location)
+                        || (filters.IsOperational is not null && filters.IsOperational != inspection.IsOperational)
+                        || (filters.DateFrom is not null && inspection.DateInspected < filters.DateFrom.Value)
+                        || (filters.DateTo is not null && inspection.DateInspected > filters.DateTo.Value))
+                    {
+                        errors.Add($"Query '{query.QueryId}' expects an inspection outside one of its retrieval filters.");
+                    }
+                }
+
                 if (annotationsById.TryGetValue(inspectionId, out var annotation)
                     && annotation.ScenarioTags.Any(tag => string.Equals(tag, "distractor", StringComparison.Ordinal)
                         || string.Equals(tag, "different-category-distractor", StringComparison.Ordinal)))
@@ -305,7 +333,7 @@ public sealed class RetrievalEvaluationManifestLoader(
         IReadOnlyDictionary<Guid, SyntheticAsset> assetsById,
         List<string> errors)
     {
-        var filters = query.RetrievalFilters ?? new RetrievalFilters();
+        var filters = query.RetrievalFilters;
         if (filters.AssetId is not null && !assetsById.ContainsKey(filters.AssetId.Value))
         {
             errors.Add($"Query '{query.QueryId}' uses an unknown AssetId filter.");
@@ -350,4 +378,7 @@ public sealed class RetrievalEvaluationManifestLoader(
             errors.Add($"The evaluation manifest contains duplicate {label}.");
         }
     }
+
+    private static bool MatchesOptionalFilter(string? filter, string? value)
+        => filter is null || string.Equals(filter, value, StringComparison.Ordinal);
 }

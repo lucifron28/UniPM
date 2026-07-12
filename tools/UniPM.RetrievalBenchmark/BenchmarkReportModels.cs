@@ -38,6 +38,7 @@ public sealed record BenchmarkChannelMetadata
 public sealed class BenchmarkQueryReport
 {
     public string QueryId { get; set; } = string.Empty;
+    public string QueryText { get; set; } = string.Empty;
     public string Language { get; set; } = string.Empty;
     public string AssetCategory { get; set; } = string.Empty;
     public RetrievalMetrics Metrics { get; set; } = null!;
