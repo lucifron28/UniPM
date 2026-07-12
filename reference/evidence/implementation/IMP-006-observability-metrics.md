@@ -28,6 +28,7 @@ The implementation was developed on `feat/observability-metrics` from current
 - `9fc7d9d` - add CI validation and the observability evidence script;
 - `da6df8f`, `61ce84e`, `b4411f9`, `d948e1e`, and `6e5de8f` - correct and harden evidence-script execution and provisioning verification;
 - `a32e378` - declare the Prometheus `/metrics` scrape path explicitly;
+- `3b2e742` - enable metrics in the local environment example while retaining the disabled appsettings default;
 - `c4fc0df` - add direct custom-meter bounded-tag coverage.
 
 ## Implementation Summary

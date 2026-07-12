@@ -3,8 +3,8 @@ id: TEST-002
 type: test-run
 title: Observability metrics and local monitoring baseline
 status: executed
-recordedAtUtc: 2026-07-12T05:38:32.6252368+00:00
-testedCommit: 2766f1bcc18d7aa617ebdae12a9a381af6f1107b
+recordedAtUtc: 2026-07-12T05:47:19.6156783+00:00
+testedCommit: 3b2e742c8cf780c3dc8c68e4373fe750fee39a27
 sourceBranch: feat/observability-metrics
 evidenceLevel: locally-executed
 ---
@@ -19,11 +19,11 @@ monitoring, deployment, alerting, or retrieval-quality improvement.
 
 ## Execution Identity
 
-- Tested commit: `2766f1bcc18d7aa617ebdae12a9a381af6f1107b`
+- Tested commit: `3b2e742c8cf780c3dc8c68e4373fe750fee39a27`
 - Branch: `feat/observability-metrics`
 - Worktree: clean before both verification runs.
-- Backend artifact directory: `artifacts/evidence/20260712-053747Z-2766f1bcc18d`
-- Observability artifact directory: `artifacts/evidence/20260712-053832Z-2766f1bcc18d-observability`
+- Backend artifact directory: `artifacts/evidence/20260712-054633Z-3b2e742c8cf7`
+- Observability artifact directory: `artifacts/evidence/20260712-054719Z-3b2e742c8cf7-observability`
 - Execution environment: Windows, PowerShell 5.1, .NET SDK 10.0.300, Git 2.54.0, Docker 29.4.1.
 
 ## Environment
@@ -113,12 +113,12 @@ were copied into this record.
 Backend artifact hashes:
 
 ```text
-4338343974d99d5c238c80c4a0b7430018a572588b3d489e8488389e06772663  build.log
-46c90340c2ec612846839a783fdbf3855731cec2d53cdd5f3e694023f613bc80  environment.json
-7c1f32b54fe97ecd7b05fd3315b4896d1471ad042232cb122a1b5867e22e1363  restore.log
-6abe52499c2228b1c43794454eb050d2997b6296c68aa96efaff5763602e5446  test-results\backend-tests.trx
-a0944e0bbb947b27c21f02024f24460c412e36157ca71522bef30dd624d5c7ca  tests-console.log
-c42baf55e89f39daa49332c8ae27fec72eec441bd593d7539c7eefb6cd301e13  verification-summary.json
+27d85860f0f885314fe835d2f5cb4247c10aa643666aa35d4495b1668958f9a4  build.log
+beb7004c9ee523d2314500bf4af953c9f90ee88cf4b65f3734b8267ff46ce422  environment.json
+adc9b358b0e21b3acdc06b4664f232efe75aebe3d5fe44c8b5748c486bca6929  restore.log
+3c988f044429ea1a0fc00341fe42c27e0c01241d6cf61a5587d89c87c9f31215  test-results\backend-tests.trx
+aab4018f1525c8a7df3c0765f361dc2d06e6782cc1724f9fcc416cf7ba44846f  tests-console.log
+48bd972aa45ec29fd3bafa0c0885adeebb779354e96262249bf0e8b480c43906  verification-summary.json
 ```
 
 Observability artifact hashes:
@@ -126,18 +126,18 @@ Observability artifact hashes:
 ```text
 0efaa888a5a508b0a4a9bc5cac8737915c35287602de7166d20a6fd685b97bed  api-liveness.json
 21d961a3bc9f82f7c95e92e2a2707e4a0f5df4dc4b293965411710342df213e1  api-metrics.json
-0b828fd3997aad6c23688970c62619fa6df25c43a186baba9f186865fdc663d6  api-metrics-sample.txt
+ca2fd9636ae5f3914231505e326c1dab01d0c2043b34a3b816ab9126b750aa3d  api-metrics-sample.txt
 a53dc01bc0366f2159a1f7f7137d4f270f4df7c7445e032a6b814c0aff2b5bd5  api-root.json
-40f1b0e5beac41733d66c75e6cf8c008d90a9bd854831dd8482c88685eb6d208  compose-config.log
-1d8ae60d2af93af50c520b5559675d50f73f86fdb4129e5ef6474a4fe6633649  compose-down.log
-e3c89a43213655e6fae67d2478b9421a16e2c5f8f8c3dcfb77d1b656bf543fec  compose-up.log
-a01f6d9875172ad9c1ae931484e73d99b2015b52ef7d8b6eeaffcb19a39165c7  environment.json
+e0e7c2d4f39d1cd18336fe1733eaa35d0776033873c2ec277e9dde26e56ff67e  compose-config.log
+3dddc225ce422198b47b5c92109dc8bac9e82e13aac1366e2403447a568979ed  compose-down.log
+fbe06f333cc2924ac6e17a1c079f03079c30d34b71a8c0275cafaf7e7ff0c791  compose-up.log
+aa3d29e6cb402b13c7a20f42f8bdac0a3feb1a401472a72684695756fd081f38  environment.json
 a1666f17dd605a5767ccd822b13b3b230fd68bed30b488342085ae387a002ff2  grafana-dashboard.json
 855dad2a279172b93ae0c508772ebeeccba215ec0b0679cd096b185e1cc03dea  grafana-datasource.json
 177781537caedca5bfb6b88fcfdc4e8b10c1b5a05d5c3136e8ca11bfc12216ae  grafana-health.json
 48941fcac516f5ca05a299602a02823b022e027c6deb6e4df5292b206b84e757  prometheus-ready.txt
 120734c4bc08156609179ec83e6e4ab8731e69907eccf1551c94d1915d83e6a6  prometheus-targets.json
-6d5001c329ad4f0dc705c538c67997a1f89d8f31cadedd9ad26489798ef32d23  verification-summary.json
+18f09e5a241767adbfbb4c6339ac99762002af73ad45417f8812b1369d3b7952  verification-summary.json
 ```
 
 ## Failures And Corrections
