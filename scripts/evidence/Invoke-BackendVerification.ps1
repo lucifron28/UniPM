@@ -7,8 +7,8 @@ param(
 
     [switch]$RunSqlServerTests,
 
-    [ValidateSet('none', 'lexical', 'semantic', 'lexical,semantic')]
-    [string]$BenchmarkChannels = 'none',
+    [ValidateSet('none', 'lexical', 'semantic')]
+    [string[]]$BenchmarkChannels = @('none'),
 
     [switch]$KeepBenchmarkDatabase
 )
@@ -18,6 +18,18 @@ $artifactRoot = $null
 $stageRecords = [System.Collections.Generic.List[object]]::new()
 $scriptErrors = [System.Collections.Generic.List[string]]::new()
 $overallExitCode = 0
+$worktreeClean = $false
+$benchmarkChannelArgument = $null
+
+$normalizedChannels = @($BenchmarkChannels | ForEach-Object { $_.ToLowerInvariant() } | Select-Object -Unique)
+if ($normalizedChannels.Count -eq 0) {
+    throw 'At least one benchmark channel must be selected.'
+}
+if ($normalizedChannels.Count -gt 1 -and $normalizedChannels -contains 'none') {
+    throw 'BenchmarkChannels none cannot be combined with another channel.'
+}
+$BenchmarkChannels = $normalizedChannels
+$benchmarkChannelArgument = $BenchmarkChannels -join ','
 
 function Get-RepositoryValue {
     param([string[]]$Arguments)
@@ -204,6 +216,8 @@ try {
     New-Item -ItemType Directory -Force -Path $artifactRoot | Out-Null
     $testResultsRoot = Join-Path $artifactRoot 'test-results'
     New-Item -ItemType Directory -Force -Path $testResultsRoot | Out-Null
+    $worktreeEntries = @(& git status --porcelain --untracked-files=all 2>$null)
+    $worktreeClean = $worktreeEntries.Count -eq 0
 
     $dockerVersion = Get-OptionalCommandValue 'docker' @('version', '--format', '{{.Server.Version}}')
     $environment = [ordered]@{
@@ -221,22 +235,44 @@ try {
         embeddingProviderKey = $env:UNIPM_EMBEDDINGS_PROVIDER_KEY
         embeddingModelKey = $env:UNIPM_EMBEDDINGS_MODEL
         embeddingDimensions = $env:UNIPM_EMBEDDINGS_DIMENSIONS
-        selectedBenchmarkChannels = $BenchmarkChannels
+        selectedBenchmarkChannels = $benchmarkChannelArgument
+        worktreeClean = $worktreeClean
     }
     $environment | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $artifactRoot 'environment.json') -Encoding utf8
 
-    Invoke-Stage -Name 'restore' -FilePath 'dotnet' -Arguments @('restore', '.\UniPM.slnx') -LogPath (Join-Path $artifactRoot 'restore.log') -Description 'Restore solution dependencies' | Out-Null
-    Invoke-Stage -Name 'build' -FilePath 'dotnet' -Arguments @('build', '.\UniPM.slnx', '--configuration', $Configuration, '--no-restore') -LogPath (Join-Path $artifactRoot 'build.log') -Description 'Build the solution' | Out-Null
+    if (-not $worktreeClean) {
+        throw "The worktree is not clean; refusing to claim that HEAD was tested. Found $($worktreeEntries.Count) tracked or untracked entries."
+    }
 
-    $trxPath = Join-Path $testResultsRoot 'backend-tests.trx'
-    Invoke-Stage -Name 'tests' -FilePath 'dotnet' -Arguments @(
-        'test', '.\UniPM.slnx', '--configuration', $Configuration, '--no-build',
-        '--logger', 'trx;LogFileName=backend-tests.trx', '--results-directory', $testResultsRoot
-    ) -LogPath (Join-Path $artifactRoot 'tests-console.log') -Description 'Run the complete backend test suite' | Out-Null
-    $testCounters = Get-TrxCounters $trxPath
+    $restoreStage = Invoke-Stage -Name 'restore' -FilePath 'dotnet' -Arguments @('restore', '.\UniPM.slnx') -LogPath (Join-Path $artifactRoot 'restore.log') -Description 'Restore solution dependencies'
+    $restoreSucceeded = $restoreStage.exitCode -eq 0
+
+    if ($restoreSucceeded) {
+        $buildStage = Invoke-Stage -Name 'build' -FilePath 'dotnet' -Arguments @('build', '.\UniPM.slnx', '--configuration', $Configuration, '--no-restore') -LogPath (Join-Path $artifactRoot 'build.log') -Description 'Build the solution'
+        $buildSucceeded = $buildStage.exitCode -eq 0
+    }
+    else {
+        Add-SkippedStage -Name 'build' -Reason 'Restore did not complete successfully.'
+        $buildSucceeded = $false
+    }
+
+    if ($buildSucceeded) {
+        $trxPath = Join-Path $testResultsRoot 'backend-tests.trx'
+        Invoke-Stage -Name 'tests' -FilePath 'dotnet' -Arguments @(
+            'test', '.\UniPM.slnx', '--configuration', $Configuration, '--no-build',
+            '--logger', 'trx;LogFileName=backend-tests.trx', '--results-directory', $testResultsRoot
+        ) -LogPath (Join-Path $artifactRoot 'tests-console.log') -Description 'Run the complete backend test suite' | Out-Null
+        $testCounters = Get-TrxCounters $trxPath
+    }
+    else {
+        Add-SkippedStage -Name 'tests' -Reason 'Build did not complete successfully; running --no-build could use stale binaries.'
+    }
 
     if ($RunSqlServerTests) {
-        if ([string]::IsNullOrWhiteSpace($env:UNIPM_SQLSERVER_TEST_CONNECTION)) {
+        if (-not $buildSucceeded) {
+            Add-SkippedStage -Name 'sqlserver-tests' -Reason 'Build did not complete successfully; running --no-build could use stale binaries.'
+        }
+        elseif ([string]::IsNullOrWhiteSpace($env:UNIPM_SQLSERVER_TEST_CONNECTION)) {
             $script:overallExitCode = 1
             $stageRecords.Add([pscustomobject][ordered]@{
                 name = 'sqlserver-tests'
@@ -259,36 +295,55 @@ try {
         Add-SkippedStage -Name 'sqlserver-tests' -Reason 'Not requested.'
     }
 
-    if ($BenchmarkChannels -eq 'none') {
+    $benchmarkRequested = -not ($BenchmarkChannels.Count -eq 1 -and $BenchmarkChannels[0] -eq 'none')
+    if (-not $benchmarkRequested) {
         Add-SkippedStage -Name 'retrieval-benchmark' -Reason 'BenchmarkChannels was none.'
     }
+    elseif (-not $restoreSucceeded -or -not $buildSucceeded) {
+        $script:overallExitCode = 1
+        Add-SkippedStage -Name 'retrieval-benchmark' -Reason 'Restore or build did not complete successfully; running --no-build could use stale binaries.'
+    }
+    elseif ([string]::IsNullOrWhiteSpace($env:UNIPM_SQLSERVER_TEST_CONNECTION)) {
+        $script:overallExitCode = 1
+        Add-SkippedStage -Name 'retrieval-benchmark' -Reason 'UNIPM_SQLSERVER_TEST_CONNECTION is required for the retrieval benchmark.'
+    }
     else {
-        if ($BenchmarkChannels -like '*semantic*') {
-            Assert-SemanticConfiguration
+        $benchmarkConfigurationValid = $true
+        if ($BenchmarkChannels -contains 'semantic') {
+            try {
+                Assert-SemanticConfiguration
+            }
+            catch {
+                $benchmarkConfigurationValid = $false
+                $script:overallExitCode = 1
+                Add-SkippedStage -Name 'retrieval-benchmark' -Reason $_.Exception.Message
+            }
         }
 
-        $benchmarkRoot = Join-Path $artifactRoot 'benchmark'
-        New-Item -ItemType Directory -Force -Path $benchmarkRoot | Out-Null
-        $previousKeepDatabase = $env:UNIPM_BENCHMARK_KEEP_DATABASE
-        try {
-            if ($KeepBenchmarkDatabase) {
-                $env:UNIPM_BENCHMARK_KEEP_DATABASE = 'true'
-            }
-            else {
-                Remove-Item Env:UNIPM_BENCHMARK_KEEP_DATABASE -ErrorAction SilentlyContinue
-            }
+        if ($benchmarkConfigurationValid) {
+            $benchmarkRoot = Join-Path $artifactRoot 'benchmark'
+            New-Item -ItemType Directory -Force -Path $benchmarkRoot | Out-Null
+            $previousKeepDatabase = $env:UNIPM_BENCHMARK_KEEP_DATABASE
+            try {
+                if ($KeepBenchmarkDatabase) {
+                    $env:UNIPM_BENCHMARK_KEEP_DATABASE = 'true'
+                }
+                else {
+                    Remove-Item Env:UNIPM_BENCHMARK_KEEP_DATABASE -ErrorAction SilentlyContinue
+                }
 
-            Invoke-Stage -Name 'retrieval-benchmark' -FilePath 'dotnet' -Arguments @(
-                'run', '--project', '.\tools\UniPM.RetrievalBenchmark', '--configuration', $Configuration, '--no-build', '--',
-                '--channels', $BenchmarkChannels, '--output', $benchmarkRoot
-            ) -LogPath (Join-Path $artifactRoot 'benchmark.log') -Description 'Run the selected retrieval benchmark channel(s)' | Out-Null
-        }
-        finally {
-            if ($null -eq $previousKeepDatabase) {
-                Remove-Item Env:UNIPM_BENCHMARK_KEEP_DATABASE -ErrorAction SilentlyContinue
+                Invoke-Stage -Name 'retrieval-benchmark' -FilePath 'dotnet' -Arguments @(
+                    'run', '--project', '.\tools\UniPM.RetrievalBenchmark', '--configuration', $Configuration, '--no-build', '--',
+                    '--channels', $benchmarkChannelArgument, '--output', $benchmarkRoot
+                ) -LogPath (Join-Path $artifactRoot 'benchmark.log') -Description 'Run the selected retrieval benchmark channel(s)' | Out-Null
             }
-            else {
-                $env:UNIPM_BENCHMARK_KEEP_DATABASE = $previousKeepDatabase
+            finally {
+                if ($null -eq $previousKeepDatabase) {
+                    Remove-Item Env:UNIPM_BENCHMARK_KEEP_DATABASE -ErrorAction SilentlyContinue
+                }
+                else {
+                    $env:UNIPM_BENCHMARK_KEEP_DATABASE = $previousKeepDatabase
+                }
             }
         }
     }
@@ -304,6 +359,7 @@ finally {
             testedCommit = $testedCommit
             sourceBranch = $sourceBranch
             configuration = $Configuration
+            worktreeClean = $worktreeClean
             status = if ($overallExitCode -eq 0) { 'passed' } else { 'failed' }
             exitCode = $overallExitCode
             stages = $stageRecords
