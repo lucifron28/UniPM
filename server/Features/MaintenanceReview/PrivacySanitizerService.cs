@@ -16,7 +16,7 @@ public sealed class PrivacySanitizationSession
         @"(?<!\d)(?:(?:\+63|0063)[\s-]*|0)9(?:[\s-]?\d){9}(?!\d)",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
     private static readonly Regex LabeledIdPattern = new(
-        @"\b(?:employee|student|staff|personnel)\s*(?:id|number|no\.?){0,1}\s*[:#-]?\s*[A-Z0-9][A-Z0-9-]{2,}\b",
+        @"\b(?:employee|student|staff|personnel)\s+(?:id|number|no\.?)\s*[:#-]?\s*[A-Z0-9][A-Z0-9-]{2,}\b",
         RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
 
     private readonly Dictionary<string, string> tokens = new(StringComparer.OrdinalIgnoreCase);

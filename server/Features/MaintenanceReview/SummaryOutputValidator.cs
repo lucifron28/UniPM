@@ -5,7 +5,7 @@ namespace UniPM.Api.Features.MaintenanceReview;
 internal static class SummaryOutputValidator
 {
     private static readonly Regex CitationPattern = new(
-        @"\[SRC-[0-9]+\]",
+        @"\[(SRC-[0-9]+)\]",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     public static string Validate(
@@ -19,7 +19,7 @@ internal static class SummaryOutputValidator
         }
 
         var citations = CitationPattern.Matches(output)
-            .Select(match => match.Value)
+            .Select(match => match.Groups[1].Value)
             .Distinct(StringComparer.Ordinal)
             .ToArray();
         if (citations.Length == 0 || citations.Any(label => !includedSourceLabels.Contains(label)))
@@ -30,4 +30,3 @@ internal static class SummaryOutputValidator
         return output.Trim();
     }
 }
-

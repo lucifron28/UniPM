@@ -489,12 +489,20 @@ internal sealed class MaintenanceReviewService(
             .OrderByDescending(StatusStrength)
             .FirstOrDefault(FusedRetrievalChannelStatus.Empty);
         var latest = responses[0];
+        var lexicalStatus = responses.Any(response =>
+                response.Lexical.Status == FusedRetrievalChannelStatus.Success)
+            ? FusedRetrievalChannelStatus.Success
+            : responses.Any(response =>
+                response.Lexical.Status == FusedRetrievalChannelStatus.Failed)
+                ? FusedRetrievalChannelStatus.Failed
+                : responses.Any(response =>
+                    response.Lexical.Status == FusedRetrievalChannelStatus.Unavailable)
+                    ? FusedRetrievalChannelStatus.Unavailable
+                    : FusedRetrievalChannelStatus.Empty;
         return new MaintenanceReviewRetrievalStatusResponse(
             responses.Any(response => response.IsDegraded),
             responses.Count,
-            responses.Any(response => response.Lexical.Status == FusedRetrievalChannelStatus.Failed)
-                ? "failed"
-                : latest.Lexical.Status.ToString().ToLowerInvariant(),
+            lexicalStatus.ToString().ToLowerInvariant(),
             semanticStatus.ToString().ToLowerInvariant(),
             latest.FusionMethod,
             latest.ReciprocalRankConstant);

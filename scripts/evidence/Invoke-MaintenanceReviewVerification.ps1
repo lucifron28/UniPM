@@ -12,6 +12,32 @@ $worktreeClean = $false
 $testedCommit = $null
 $sourceBranch = $null
 
+Add-Type -AssemblyName System.Net.Http
+
+function Invoke-JsonPost {
+    param(
+        [Parameter(Mandatory)][string]$Uri,
+        [Parameter(Mandatory)][string]$Body
+    )
+
+    $client = New-Object System.Net.Http.HttpClient
+    $content = New-Object System.Net.Http.StringContent(
+        $Body,
+        [System.Text.Encoding]::UTF8,
+        'application/json')
+    try {
+        $response = $client.PostAsync($Uri, $content).GetAwaiter().GetResult()
+        [pscustomobject]@{
+            StatusCode = [int]$response.StatusCode
+            Content = $response.Content.ReadAsStringAsync().GetAwaiter().GetResult()
+        }
+    }
+    finally {
+        $content.Dispose()
+        $client.Dispose()
+    }
+}
+
 function Get-RepositoryValue {
     param([string[]]$Arguments)
     $value = & git @Arguments 2>$null
@@ -98,8 +124,8 @@ try {
             $ready = $false
             for ($attempt = 1; $attempt -le 30; $attempt++) {
                 try {
-                    $live = Invoke-RestMethod -Uri "$apiBase/health/live" -TimeoutSec 3
-                    if ($null -ne $live) {
+                    $readiness = Invoke-RestMethod -Uri "$apiBase/health/ready" -TimeoutSec 3
+                    if ($null -ne $readiness) {
                         $ready = $true
                         break
                     }
@@ -135,19 +161,37 @@ try {
             }
             $body = @{ assetId = $asset.id; findingText = $finding; generateSummary = $true } |
                 ConvertTo-Json -Compress
-            $response = Invoke-WebRequest -Uri "$apiBase/api/v1/maintenance-review" -Method Post -ContentType 'application/json' -Body $body
-            if ([int]$response.StatusCode -ne 200) {
-                throw "Maintenance review returned HTTP $($response.StatusCode)."
+            $response = $null
+            $payload = $null
+            for ($attempt = 1; $attempt -le 15; $attempt++) {
+                try {
+                    $candidateResponse = Invoke-JsonPost -Uri "$apiBase/api/v1/maintenance-review" -Body $body
+                    $candidatePayload = $candidateResponse.Content | ConvertFrom-Json
+                    if ([int]$candidateResponse.StatusCode -eq 200 -and @($candidatePayload.sourceRecords).Count -gt 0) {
+                        $response = $candidateResponse
+                        $payload = $candidatePayload
+                        break
+                    }
+                }
+                catch {
+                    if ($attempt -eq 15) {
+                        throw
+                    }
+                }
+
+                Start-Sleep -Seconds 2
             }
-            $payload = $response.Content | ConvertFrom-Json
+            if ($null -eq $response -or $null -eq $payload) {
+                throw 'Maintenance review did not return selected source records within the bounded Full-Text readiness retry window.'
+            }
             if ($payload.summaryStatus -ne 'disabled' -or $null -ne $payload.summary) {
                 throw 'Source-only review did not return the disabled summary contract.'
             }
             if (@($payload.sourceRecords).Count -eq 0) {
                 throw 'Source-only review returned no selected source records.'
             }
-            if ($null -eq $payload.retrievalStatus -or $null -eq $payload.retrievalStatus.isDegraded) {
-                throw 'Review response did not include retrieval degradation metadata.'
+            if ($null -eq $payload.retrievalStatus -or $payload.retrievalStatus.isDegraded -ne $true) {
+                throw 'Review response did not report the expected degraded retrieval metadata while embeddings were disabled.'
             }
             if ($response.Content -match '(?i)ApiKey|VectorJson|prompt|tokenMap|Authorization') {
                 throw 'Review response contained a forbidden provider or prompt field.'
