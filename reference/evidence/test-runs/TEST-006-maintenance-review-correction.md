@@ -2,12 +2,13 @@
 id: TEST-006
 type: test-run
 title: Maintenance review correction verification
-status: executed
+status: superseded
 recordedAtUtc: 2026-07-12T16:13:12Z
 testedCommit: 7cf06874349af81de885efbefc27978e112a726e
 sourceBranch: feat/retrieval-review
 evidenceLevel: locally-executed
 supersedes: TEST-005
+supersededBy: TEST-007
 ---
 
 # Maintenance Review Correction Verification
