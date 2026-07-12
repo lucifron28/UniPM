@@ -49,7 +49,9 @@ helps a human verify them.
 - Engineering-evidence workflow: complete with source-inspected chronology,
   architecture decisions, a fresh backend test record, and an executed lexical
   baseline.
-- Source-bounded maintenance review and summarization: pending.
+- Source-bounded maintenance review and summarization: complete as a
+  Development-only, source-returning, provider-neutral MVP; authenticated
+  production access remains pending.
 - Authentication scaffolding: pending.
 
 ## Risk-First Order
@@ -62,7 +64,7 @@ helps a human verify them.
 5. Preserve the completed observability evidence and its production limits.
 6. Preserve inspectable RRF fusion and keep real fused quality evidence pending
    until a provider is configured.
-7. Add sanitization and source-bounded summarization.
+7. Preserve the source-bounded review contract and its explicit limitations.
 8. Add authentication scaffolding.
 
 ## Task 0: Project Boot And Baseline Check
@@ -190,6 +192,12 @@ Do:
 - keep source selection and prompt construction inspectable;
 - add sanitizer tests before any external provider call.
 
+The `POST /api/v1/maintenance-review` endpoint now implements this bounded
+loop with a maximum of two fused passes, four deterministic context tiers,
+explicit evidence and summary statuses, request-scoped token masking, and
+source records returned for human verification. It remains disabled by default
+and Development-only before authentication.
+
 Semantic retrieval is a required target channel, not an excuse to block core
 maintenance workflows. Core workflows must work with AI disabled. No separate
 vector database may be introduced.
@@ -220,9 +228,9 @@ Run lexical, semantic, fused, or valid channel combinations with
 `tools/UniPM.RetrievalBenchmark`. Semantic and fused execution require the
 configured embedding provider; it is not replaced with fake production scores.
 
-Context scoring, thresholds, insufficient-evidence policy, source selection,
-sanitization, and source-bounded summarization remain separate work. RRF does
-not combine raw lexical and semantic scores.
+The benchmark remains separate from the maintenance-review context-selection,
+sanitization, and source-bounded summarization path. RRF does not combine raw
+lexical and semantic scores.
 
 Do not claim synthetic benchmark performance proves production performance.
 
@@ -282,5 +290,4 @@ directly.
 
 ## Next Branches
 
-- `feat/retrieval-review`
 - `feat/auth-scaffolding`
