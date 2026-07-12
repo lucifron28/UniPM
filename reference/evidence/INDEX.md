@@ -33,7 +33,8 @@ record's evidence level and tested/source commit.
 | TEST-004 | test-run | Retrieval fusion correction verification | executed | locally-executed | `4dffb64` | [record](test-runs/TEST-004-retrieval-fusion-correction.md) | Corrected Release restore/build/tests and evidence capture; SQL/provider/fused quality runs not executed. |
 | IMP-008 | implementation | Bounded maintenance review and source-returning summary path | reviewed | source-inspected | `079240d` | [record](implementation/IMP-008-bounded-maintenance-review.md) | Development-only two-pass review orchestration with deterministic source tiers, sanitization, optional summary, and no persistence. |
 | ADR-005 | decision | Use conservative source selection and summary degradation | reviewed | source-inspected | `079240d` | [record](decisions/ADR-005-source-selection-and-summary-degradation.md) | Separates evidence status from AI status and preserves source records when summary generation is unavailable. |
-| TEST-005 | test-run | Maintenance review baseline | executed | locally-executed | `079240d` | [record](test-runs/TEST-005-maintenance-review-baseline.md) | Release suite and Compose config passed; Docker endpoint verification was attempted but blocked by local Docker named-pipe permissions. |
+| TEST-005 | test-run | Maintenance review baseline | superseded | locally-executed | `079240d` | [record](test-runs/TEST-005-maintenance-review-baseline.md) | Historical baseline superseded by TEST-006 after the citation, cancellation, prompt-safety, and verification-harness corrections. |
+| TEST-006 | test-run | Maintenance review correction verification | executed | locally-executed | `7cf0687` | [record](test-runs/TEST-006-maintenance-review-correction.md) | Clean SQL Server-backed seed, rebuild, readiness, and source-only review endpoint verification; real summary and semantic quality remain unclaimed. |
 
 ## Pending Evidence
 
