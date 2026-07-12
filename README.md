@@ -5,6 +5,15 @@ General Services Department. The repository contains an ASP.NET Core API and
 the initial preventive-maintenance domain, with a bounded maintenance-history
 review feature planned for a later phase.
 
+## License
+
+This project is proprietary and all rights are reserved.
+
+Viewing this repository does not grant permission to use, copy, modify,
+redistribute, deploy, commercialize, or submit this software as another work.
+Academic review access, if granted, is for evaluation purposes only.
+See `LICENSE.md` for details.
+
 ## Local Foundation
 
 The local stack runs:
