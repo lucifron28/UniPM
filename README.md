@@ -7,12 +7,28 @@ review feature planned for a later phase.
 
 ## License
 
-This project is proprietary and all rights are reserved.
+UniPM is proprietary source-available software. All rights are reserved.
 
-Viewing this repository does not grant permission to use, copy, modify,
-redistribute, deploy, commercialize, or submit this software as another work.
-Academic review access, if granted, is for evaluation purposes only.
+This repository is public for portfolio visibility, academic review,
+demonstration, and assessment purposes only. Viewing or forking this repository
+on GitHub does not grant permission to use, copy, modify, redistribute, deploy,
+host, operate, commercialize, submit as another work, or create derivative works
+from this software.
+
+Academic submission, project defense, code review, repository viewing, or
+demonstration access does not transfer ownership of the code, architecture,
+database schema, documentation, retrieval pipeline, RAG workflow, benchmark
+tooling, evidence records, or related materials.
+
+Any production, institutional, departmental, administrative, internal
+operational, commercial, or real maintenance-management use by a school,
+university, office, department, employee, contractor, organization, company, or
+third party requires a separate written software license agreement or service
+contract with the copyright holder.
+
 See `LICENSE.md` for details.
+
+For operational licensing inquiries, contact the copyright holder.
 
 ## Local Foundation
 
