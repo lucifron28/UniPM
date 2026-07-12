@@ -87,9 +87,11 @@ try {
 
     Invoke-Stage 'compose-config' {
         docker compose --profile observability config --quiet
+        if ($LASTEXITCODE -ne 0) { throw "Docker Compose config failed with exit code $LASTEXITCODE." }
     }
     Invoke-Stage 'stack-start' {
         docker compose up --build -d unipm-api
+        if ($LASTEXITCODE -ne 0) { throw "Docker Compose stack start failed with exit code $LASTEXITCODE." }
     }
     try {
         Invoke-Stage 'health-poll' {
@@ -112,9 +114,11 @@ try {
         }
         Invoke-Stage 'seed' {
             docker compose exec -T unipm-api dotnet UniPM.Api.dll --seed-synthetic
+            if ($LASTEXITCODE -ne 0) { throw "Synthetic seed failed with exit code $LASTEXITCODE." }
         }
         Invoke-Stage 'rebuild-search-documents' {
             docker compose exec -T unipm-api dotnet UniPM.Api.dll --rebuild-maintenance-search-documents
+            if ($LASTEXITCODE -ne 0) { throw "Search-document rebuild failed with exit code $LASTEXITCODE." }
         }
         Invoke-Stage 'review-request' {
             $inspections = Invoke-RestMethod -Uri "$apiBase/api/v1/inspections" -Method Get
