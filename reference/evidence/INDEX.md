@@ -31,6 +31,9 @@ record's evidence level and tested/source commit.
 | ADR-004 | decision | Use Reciprocal Rank Fusion for internal retrieval combination | reviewed | source-inspected | `58668f9` | [record](decisions/ADR-004-reciprocal-rank-fusion.md) | Avoids incompatible raw-score combination and keeps review-layer policy separate. |
 | TEST-003 | test-run | Retrieval fusion implementation baseline | superseded | locally-executed | `58668f9` | [record](test-runs/TEST-003-retrieval-fusion-baseline.md) | Historical fusion baseline superseded by TEST-004 after the semantic failure and benchmark metadata correction. |
 | TEST-004 | test-run | Retrieval fusion correction verification | executed | locally-executed | `4dffb64` | [record](test-runs/TEST-004-retrieval-fusion-correction.md) | Corrected Release restore/build/tests and evidence capture; SQL/provider/fused quality runs not executed. |
+| IMP-008 | implementation | Bounded maintenance review and source-returning summary path | reviewed | source-inspected | `079240d` | [record](implementation/IMP-008-bounded-maintenance-review.md) | Development-only two-pass review orchestration with deterministic source tiers, sanitization, optional summary, and no persistence. |
+| ADR-005 | decision | Use conservative source selection and summary degradation | reviewed | source-inspected | `079240d` | [record](decisions/ADR-005-source-selection-and-summary-degradation.md) | Separates evidence status from AI status and preserves source records when summary generation is unavailable. |
+| TEST-005 | test-run | Maintenance review baseline | executed | locally-executed | `079240d` | [record](test-runs/TEST-005-maintenance-review-baseline.md) | Release suite and Compose config passed; Docker endpoint verification was attempted but blocked by local Docker named-pipe permissions. |
 
 ## Pending Evidence
 
@@ -41,3 +44,10 @@ record's evidence level and tested/source commit.
 - Fused retrieval quality baseline: pending a configured real provider and an
   executed fused benchmark; TEST-004 contains the latest orchestration evidence
   only.
+- Real summary-provider smoke evidence: pending an intentionally configured and
+  inspected sanitized provider run.
+- Independent generated-summary faithfulness evaluation: pending a labeled
+  evaluation set and review protocol.
+- Authenticated production review access: pending authentication scaffolding
+  and authorization decisions.
+- IIS deployment verification: pending a configured Windows Server deployment.
