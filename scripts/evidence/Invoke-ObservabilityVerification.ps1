@@ -64,13 +64,18 @@ function Invoke-CapturedStage {
     ) -Encoding utf8
 
     $exitCode = 1
+    $previousErrorActionPreference = $ErrorActionPreference
     try {
+        $ErrorActionPreference = 'Continue'
         & $FilePath @Arguments 2>&1 |
             Out-File -LiteralPath $LogPath -Append -Encoding utf8
         $exitCode = $LASTEXITCODE
     }
     catch {
         Add-Content -LiteralPath $LogPath -Value $_.Exception.ToString()
+    }
+    finally {
+        $ErrorActionPreference = $previousErrorActionPreference
     }
 
     $finished = [DateTimeOffset]::UtcNow
@@ -192,11 +197,11 @@ try {
 
     $composeConfigExitCode = Invoke-DockerCompose -Arguments @('--profile', 'observability', 'config', '--quiet') -LogPath (Join-Path $artifactRoot 'compose-config.log')
     if ($composeConfigExitCode -eq 0) {
+        $stackStarted = $true
         $composeUpExitCode = Invoke-DockerCompose -Arguments @('--profile', 'observability', 'up', '--build', '-d') -LogPath (Join-Path $artifactRoot 'compose-up.log')
         if ($composeUpExitCode -ne 0) {
             throw 'The observability Compose profile failed to start.'
         }
-        $stackStarted = $true
 
         Wait-ForHttp -Name 'API root' -Uri 'http://localhost:5000/' | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $artifactRoot 'api-root.json') -Encoding utf8
         Wait-ForHttp -Name 'API liveness' -Uri 'http://localhost:5000/health/live' | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $artifactRoot 'api-liveness.json') -Encoding utf8
