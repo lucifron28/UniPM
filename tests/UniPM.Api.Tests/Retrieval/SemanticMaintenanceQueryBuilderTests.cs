@@ -87,8 +87,9 @@ public sealed class SemanticMaintenanceQueryBuilderTests
         Assert.DoesNotContain("2024-001", semanticQuery.EmbeddingInput, StringComparison.Ordinal);
         Assert.DoesNotContain("0917-123-4567", semanticQuery.EmbeddingInput, StringComparison.Ordinal);
         Assert.DoesNotContain("ron@example.com", semanticQuery.EmbeddingInput, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("[EMPLOYEE_ID_1]", semanticQuery.EmbeddingInput, StringComparison.Ordinal);
-        Assert.Contains("[PHONE_1]", semanticQuery.EmbeddingInput, StringComparison.Ordinal);
+        Assert.DoesNotContain("[EMPLOYEE_ID_1]", semanticQuery.EmbeddingInput, StringComparison.Ordinal);
+        Assert.DoesNotContain("[PHONE_1]", semanticQuery.EmbeddingInput, StringComparison.Ordinal);
+        Assert.DoesNotContain("[EMAIL_1]", semanticQuery.EmbeddingInput, StringComparison.Ordinal);
         Assert.Contains("issue-context: low_pressure", semanticQuery.EmbeddingInput, StringComparison.Ordinal);
     }
 

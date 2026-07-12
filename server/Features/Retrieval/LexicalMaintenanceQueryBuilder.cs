@@ -38,7 +38,7 @@ internal static class LexicalMaintenanceQueryBuilder
                 $"The lexical query cannot exceed {MaxQueryLength} characters.");
         }
 
-        var tokens = Tokenize(normalizedQuery);
+        var tokens = TokenizeSearchableTerms(normalizedQuery);
         if (tokens.Count == 0)
         {
             throw new LexicalMaintenanceQueryValidationException(
@@ -98,7 +98,7 @@ internal static class LexicalMaintenanceQueryBuilder
             request.DateTo);
     }
 
-    private static IReadOnlyList<string> Tokenize(string value)
+    internal static IReadOnlyList<string> TokenizeSearchableTerms(string value)
     {
         var compatibilityNormalized = value.Normalize(NormalizationForm.FormKC).ToLowerInvariant();
         var tokens = new List<string>();

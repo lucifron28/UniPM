@@ -93,7 +93,9 @@ public sealed class MaintenanceReviewTests
     public void Summary_output_validator_rejects_citations_outside_the_prompt_source_set()
     {
         Assert.Throws<SummaryServiceDataException>(() => SummaryOutputValidator.Validate(
-            "Unsupported [SRC-2]", new HashSet<string> { "SRC-1" }, 4000));
+            $"Unsupported [SRC-2]. {MaintenanceReviewPromptBuilder.AssistiveDisclaimer}",
+            new HashSet<string> { "SRC-1" },
+            4000));
     }
 
     [Fact]
@@ -111,7 +113,7 @@ public sealed class MaintenanceReviewTests
     public void Summary_output_validator_rejects_mixed_known_and_unknown_citations()
     {
         Assert.Throws<SummaryServiceDataException>(() => SummaryOutputValidator.Validate(
-            "Evidence [SRC-1] and [SRC-2].",
+            $"Evidence [SRC-1] and [SRC-2]. {MaintenanceReviewPromptBuilder.AssistiveDisclaimer}",
             new HashSet<string> { "SRC-1" },
             4000));
     }
@@ -376,6 +378,52 @@ public sealed class MaintenanceReviewTests
             []);
 
         Assert.InRange(query.Text.Length, 1, MaintenanceReviewRetrievalQueryBuilder.MaxQueryLength);
+        _ = LexicalMaintenanceQueryBuilder.Build(new LexicalMaintenanceSearchRequest(query.Text));
+        _ = FusedMaintenanceQueryBuilder.Build(new FusedMaintenanceSearchRequest(query.Text));
+    }
+
+    [Fact]
+    public void Retrieval_query_builder_creates_lexical_safe_issue_first_terms()
+    {
+        var session = new PrivacySanitizerService().CreateSession();
+        var query = MaintenanceReviewRetrievalQueryBuilder.Build(
+            session.Sanitize(
+                "routine finding notes before the actual issue appears: low pressure Employee ID 2024-001 contact 0917-123-4567 email ron@example.com"),
+            ["low_pressure"]);
+        var lexicalQuery = LexicalMaintenanceQueryBuilder.Build(
+            new LexicalMaintenanceSearchRequest(query.Text));
+
+        Assert.StartsWith("low pressure", query.Text, StringComparison.Ordinal);
+        Assert.Contains("\"low*\" AND \"pressure*\"", lexicalQuery.SearchCondition, StringComparison.Ordinal);
+        Assert.DoesNotContain("employee", lexicalQuery.SearchCondition, StringComparison.Ordinal);
+        Assert.DoesNotContain("phone", lexicalQuery.SearchCondition, StringComparison.Ordinal);
+        Assert.DoesNotContain("email", lexicalQuery.SearchCondition, StringComparison.Ordinal);
+        Assert.DoesNotContain("[", query.Text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Source_only_review_accepts_a_long_finding_through_the_lexical_query_builder()
+    {
+        using var factory = new ReviewApplicationFactory(
+            enabled: true,
+            summaryEnabled: false,
+            maxSourceRecords: 1);
+        await factory.SeedAsync();
+        using var client = factory.CreateClient();
+        var finding = string.Join(' ', Enumerable.Repeat("routine", 100)) + " low pressure";
+
+        var response = await client.PostAsJsonAsync(
+            "/api/v1/maintenance-review",
+            new
+            {
+                assetId = ReviewApplicationFactory.AssetId,
+                findingText = finding,
+                generateSummary = false
+            });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Single(factory.FusedRequests);
+        Assert.StartsWith("low pressure", factory.FusedRequests[0].Query, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -742,6 +790,17 @@ public sealed class MaintenanceReviewTests
                 FusedMaintenanceSearchRequest request,
                 CancellationToken cancellationToken = default)
             {
+                _ = LexicalMaintenanceQueryBuilder.Build(new LexicalMaintenanceSearchRequest(
+                    request.Query,
+                    request.Limit,
+                    request.AssetId,
+                    request.AssetCategory,
+                    request.Building,
+                    request.Department,
+                    request.Location,
+                    request.IsOperational,
+                    request.DateFrom,
+                    request.DateTo));
                 requests.Add(request);
                 var index = Math.Min(
                     Interlocked.Increment(ref callCount) - 1,
