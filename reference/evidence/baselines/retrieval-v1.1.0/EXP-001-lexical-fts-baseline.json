@@ -2,7 +2,7 @@
   "benchmarkFormatVersion": "1.0.0",
   "evaluationManifestVersion": "1.1.0",
   "operationalDatasetVersion": "1.1.0",
-  "generatedAtUtc": "2026-07-12T01:49:40.6501807+00:00",
+  "generatedAtUtc": "2026-07-12T01:56:11.3476778+00:00",
   "selectedChannels": [
     "lexical"
   ],
@@ -267,7 +267,7 @@
           "rawScores": {
             "267babd6-4e6d-5082-843a-6db5d9d3e5ae": 6
           },
-          "durationMilliseconds": 18.4521
+          "durationMilliseconds": 13.6961
         },
         {
           "queryId": "Q002",
@@ -294,7 +294,7 @@
           "rawScores": {
             "924a832f-9dfa-5798-bf39-21ada836fa18": 12
           },
-          "durationMilliseconds": 20.2598
+          "durationMilliseconds": 16.6889
         },
         {
           "queryId": "Q003",
@@ -321,7 +321,7 @@
           "rawScores": {
             "924a832f-9dfa-5798-bf39-21ada836fa18": 8
           },
-          "durationMilliseconds": 18.8841
+          "durationMilliseconds": 14.3367
         },
         {
           "queryId": "Q004",
@@ -342,7 +342,7 @@
           "retrievedInspectionIds": [],
           "expectedInspectionRanks": {},
           "rawScores": {},
-          "durationMilliseconds": 11.5882
+          "durationMilliseconds": 10.6379
         },
         {
           "queryId": "Q005",
@@ -369,7 +369,7 @@
           "rawScores": {
             "2c0cf8d1-6fab-50cf-a06b-384f9f628e0e": 12
           },
-          "durationMilliseconds": 12.8922
+          "durationMilliseconds": 9.8261
         },
         {
           "queryId": "Q006",
@@ -390,7 +390,7 @@
           "retrievedInspectionIds": [],
           "expectedInspectionRanks": {},
           "rawScores": {},
-          "durationMilliseconds": 12.6882
+          "durationMilliseconds": 10.6729
         },
         {
           "queryId": "Q007",
@@ -420,7 +420,7 @@
             "651444ef-4b05-53c1-8df7-9b1d72607d4e": 16,
             "db839e0d-f540-5bb7-ad16-71068a91ff87": 16
           },
-          "durationMilliseconds": 12.8333
+          "durationMilliseconds": 15.3887
         },
         {
           "queryId": "Q008",
@@ -447,7 +447,7 @@
           "rawScores": {
             "87f404ae-7662-5e5f-b577-424af2cd4bd9": 6
           },
-          "durationMilliseconds": 18.14
+          "durationMilliseconds": 14.4011
         },
         {
           "queryId": "Q009",
@@ -468,7 +468,7 @@
           "retrievedInspectionIds": [],
           "expectedInspectionRanks": {},
           "rawScores": {},
-          "durationMilliseconds": 11.0756
+          "durationMilliseconds": 9.8277
         },
         {
           "queryId": "Q010",
@@ -489,7 +489,7 @@
           "retrievedInspectionIds": [],
           "expectedInspectionRanks": {},
           "rawScores": {},
-          "durationMilliseconds": 10.4403
+          "durationMilliseconds": 8.7133
         },
         {
           "queryId": "Q011",
@@ -516,7 +516,7 @@
           "rawScores": {
             "725c0c6a-6d5a-56c6-aa93-ee4d38ad8d10": 0
           },
-          "durationMilliseconds": 11.0947
+          "durationMilliseconds": 9.4961
         },
         {
           "queryId": "Q012",
@@ -543,7 +543,7 @@
           "rawScores": {
             "87f404ae-7662-5e5f-b577-424af2cd4bd9": 6
           },
-          "durationMilliseconds": 12.0821
+          "durationMilliseconds": 9.9099
         },
         {
           "queryId": "Q013",
@@ -570,7 +570,7 @@
           "rawScores": {
             "7bf49237-b9c5-5ed6-99ea-f3aa38204559": 10
           },
-          "durationMilliseconds": 11.8142
+          "durationMilliseconds": 9.5779
         },
         {
           "queryId": "Q014",
@@ -597,7 +597,7 @@
           "rawScores": {
             "e168c814-8c47-58b4-918a-9d44131a36d2": 10
           },
-          "durationMilliseconds": 13.5932
+          "durationMilliseconds": 10.0612
         },
         {
           "queryId": "Q015",
@@ -624,7 +624,7 @@
           "rawScores": {
             "e168c814-8c47-58b4-918a-9d44131a36d2": 6
           },
-          "durationMilliseconds": 17.6517
+          "durationMilliseconds": 9.8639
         },
         {
           "queryId": "Q016",
@@ -645,7 +645,7 @@
           "retrievedInspectionIds": [],
           "expectedInspectionRanks": {},
           "rawScores": {},
-          "durationMilliseconds": 17.9361
+          "durationMilliseconds": 10.8691
         },
         {
           "queryId": "Q017",
@@ -666,7 +666,7 @@
           "retrievedInspectionIds": [],
           "expectedInspectionRanks": {},
           "rawScores": {},
-          "durationMilliseconds": 11.6475
+          "durationMilliseconds": 10.16
         },
         {
           "queryId": "Q018",
@@ -687,7 +687,7 @@
           "retrievedInspectionIds": [],
           "expectedInspectionRanks": {},
           "rawScores": {},
-          "durationMilliseconds": 10.4417
+          "durationMilliseconds": 9.4356
         },
         {
           "queryId": "Q019",
@@ -714,7 +714,7 @@
           "rawScores": {
             "4a9714bf-4059-501b-85e0-03a00e1a6a2b": 12
           },
-          "durationMilliseconds": 9.69
+          "durationMilliseconds": 10.0196
         },
         {
           "queryId": "Q020",
@@ -735,7 +735,7 @@
           "retrievedInspectionIds": [],
           "expectedInspectionRanks": {},
           "rawScores": {},
-          "durationMilliseconds": 10.0383
+          "durationMilliseconds": 9.7023
         },
         {
           "queryId": "Q021",
@@ -762,7 +762,7 @@
           "rawScores": {
             "b65f8b77-bead-5b95-9533-bb4e2474d4bf": 6
           },
-          "durationMilliseconds": 10.4492
+          "durationMilliseconds": 9.6359
         },
         {
           "queryId": "Q022",
@@ -789,7 +789,7 @@
           "rawScores": {
             "b65f8b77-bead-5b95-9533-bb4e2474d4bf": 10
           },
-          "durationMilliseconds": 11.0192
+          "durationMilliseconds": 10.857
         },
         {
           "queryId": "Q023",
@@ -810,7 +810,7 @@
           "retrievedInspectionIds": [],
           "expectedInspectionRanks": {},
           "rawScores": {},
-          "durationMilliseconds": 16.751
+          "durationMilliseconds": 36.4117
         },
         {
           "queryId": "Q024",
@@ -831,7 +831,7 @@
           "retrievedInspectionIds": [],
           "expectedInspectionRanks": {},
           "rawScores": {},
-          "durationMilliseconds": 9.8711
+          "durationMilliseconds": 13.1891
         }
       ]
     }
