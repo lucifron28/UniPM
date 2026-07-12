@@ -179,7 +179,7 @@ function Assert-SemanticConfiguration {
 }
 
 try {
-    $repoRoot = Get-RepositoryValue @('--show-toplevel')
+    $repoRoot = Get-RepositoryValue @('rev-parse', '--show-toplevel')
     if (-not (Test-Path -LiteralPath (Join-Path $repoRoot 'UniPM.slnx')) -or
         -not (Test-Path -LiteralPath (Join-Path $repoRoot '.git'))) {
         throw 'The current directory is not the UniPM repository root.'
