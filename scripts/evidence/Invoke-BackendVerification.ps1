@@ -7,7 +7,7 @@ param(
 
     [switch]$RunSqlServerTests,
 
-    [ValidateSet('none', 'lexical', 'semantic')]
+    [ValidateSet('none', 'lexical', 'semantic', 'lexical,semantic')]
     [string[]]$BenchmarkChannels = @('none'),
 
     [switch]$KeepBenchmarkDatabase
@@ -21,7 +21,10 @@ $overallExitCode = 0
 $worktreeClean = $false
 $benchmarkChannelArgument = $null
 
-$normalizedChannels = @($BenchmarkChannels | ForEach-Object { $_.ToLowerInvariant() } | Select-Object -Unique)
+$normalizedChannels = @($BenchmarkChannels |
+    ForEach-Object { $_ -split ',' } |
+    ForEach-Object { $_.Trim().ToLowerInvariant() } |
+    Select-Object -Unique)
 if ($normalizedChannels.Count -eq 0) {
     throw 'At least one benchmark channel must be selected.'
 }
