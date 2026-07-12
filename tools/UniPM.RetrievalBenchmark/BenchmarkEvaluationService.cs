@@ -49,10 +49,19 @@ public sealed class BenchmarkEvaluationService
             Limitations =
             [
                 "Results are measured on fictional synthetic maintenance data and do not prove production GSD performance.",
-                "Timing is diagnostic only and is not a statistically valid performance comparison from one local run.",
-                "No fusion, RRF, score normalization, retrieval threshold, or insufficient-evidence policy is applied."
+                "Timing is diagnostic only and is not a statistically valid performance comparison from one local run."
             ]
         };
+
+        if (selectedChannels.Any(channel => channel.Metadata.RetrievalChannel == "fused"))
+        {
+            report.Limitations.Add("RRF is applied without maintenance-context boosts, thresholds, or an insufficient-evidence policy.");
+            report.Limitations.Add("Source selection and summary behavior are not evaluated.");
+        }
+        else
+        {
+            report.Limitations.Add("No fusion, RRF, score normalization, retrieval threshold, or insufficient-evidence policy is applied.");
+        }
 
         foreach (var channel in selectedChannels)
         {
@@ -70,11 +79,29 @@ public sealed class BenchmarkEvaluationService
                 var metrics = RetrievalMetricCalculator.Calculate(retrievedInspectionIds, expectedInspectionIds);
                 var expectedRanks = new Dictionary<Guid, int>();
                 var rawScores = new Dictionary<Guid, double>();
+                var fusionScores = new Dictionary<Guid, double>();
+                var lexicalRanks = new Dictionary<Guid, int>();
+                var semanticRanks = new Dictionary<Guid, int>();
 
                 for (var index = 0; index < results.Count; index++)
                 {
                     var result = results[index];
                     rawScores[result.InspectionId] = result.RawScore;
+                    if (result.FusionScore is not null)
+                    {
+                        fusionScores[result.InspectionId] = result.FusionScore.Value;
+                    }
+
+                    if (result.LexicalRank is not null)
+                    {
+                        lexicalRanks[result.InspectionId] = result.LexicalRank.Value;
+                    }
+
+                    if (result.SemanticRank is not null)
+                    {
+                        semanticRanks[result.InspectionId] = result.SemanticRank.Value;
+                    }
+
                     if (expectedInspectionIds.Contains(result.InspectionId))
                     {
                         expectedRanks[result.InspectionId] = index + 1;
@@ -91,6 +118,9 @@ public sealed class BenchmarkEvaluationService
                     RetrievedInspectionIds = retrievedInspectionIds.ToList(),
                     ExpectedInspectionRanks = expectedRanks,
                     RawScores = rawScores,
+                    FusionScores = fusionScores,
+                    LexicalRanks = lexicalRanks,
+                    SemanticRanks = semanticRanks,
                     DurationMilliseconds = stopwatch.Elapsed.TotalMilliseconds
                 });
             }
