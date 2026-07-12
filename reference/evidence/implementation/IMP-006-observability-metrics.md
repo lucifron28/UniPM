@@ -27,6 +27,7 @@ The implementation was developed on `feat/observability-metrics` from current
 - `c5376e3` - add metrics, endpoint, privacy, and provisioning tests;
 - `9fc7d9d` - add CI validation and the observability evidence script;
 - `da6df8f`, `61ce84e`, `b4411f9`, `d948e1e`, and `6e5de8f` - correct and harden evidence-script execution and provisioning verification;
+- `a32e378` - declare the Prometheus `/metrics` scrape path explicitly;
 - `c4fc0df` - add direct custom-meter bounded-tag coverage.
 
 ## Implementation Summary
