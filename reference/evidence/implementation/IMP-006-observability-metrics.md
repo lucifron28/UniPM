@@ -22,14 +22,16 @@ monitoring infrastructure a runtime dependency.
 The implementation was developed on `feat/observability-metrics` from current
 `main`. Relevant commits are:
 
-- `56e634b` - expose OpenTelemetry Prometheus metrics and bounded retrieval/rebuild instrumentation;
+- `56e634b` - expose OpenTelemetry Prometheus metrics and bounded retrieval instrumentation;
 - `b2ec945` - provision the optional Prometheus and Grafana Compose profile;
 - `c5376e3` - add metrics, endpoint, privacy, and provisioning tests;
 - `9fc7d9d` - add CI validation and the observability evidence script;
 - `da6df8f`, `61ce84e`, `b4411f9`, `d948e1e`, and `6e5de8f` - correct and harden evidence-script execution and provisioning verification;
 - `a32e378` - declare the Prometheus `/metrics` scrape path explicitly;
 - `3b2e742` - enable metrics in the local environment example while retaining the disabled appsettings default;
-- `c4fc0df` - add direct custom-meter bounded-tag coverage.
+- `c4fc0df` - add direct custom-meter bounded-tag coverage;
+- corrective changes - remove non-scrapeable CLI rebuild instruments, add hosted
+  Prometheus family coverage, and harden readiness and port verification.
 
 ## Implementation Summary
 
@@ -39,13 +41,12 @@ The implementation was developed on `feat/observability-metrics` from current
   OpenAPI.
 - OpenTelemetry collects the UniPM meter, ASP.NET Core hosting and Kestrel
   meters, and `System.Runtime`.
-- The custom meter is `UniPM.Api` with retrieval, embedding rebuild, and search
-  projection instruments.
+- The custom meter is `UniPM.Api` with hosted retrieval instruments only.
 - Retrieval decorators record channel, bounded outcome, duration, and result
   count while preserving the inner result and exception behavior.
-- Projection and embedding rebuild boundaries record aggregate outcomes and
-  document counts without query text, source IDs, payloads, vectors, or error
-  details.
+- Projection and embedding rebuild commands retain explicit command output and
+  evidence records; durable job telemetry is deferred because those processes
+  exit before a Prometheus scrape can observe them.
 - `/health/live`, `/health/ready`, and `/metrics` are excluded from HTTP
   request metrics.
 
@@ -55,11 +56,10 @@ The Prometheus ASP.NET Core exporter is pinned to prerelease
 `1.16.0-beta.1`; OpenTelemetry core and hosting packages are pinned to
 `1.16.0`. The prerelease limitation is documented in ADR-003.
 
-Allowed metric dimensions are limited to `channel`, `outcome`, and `result`.
+Allowed custom metric dimensions are limited to `channel` and `outcome`.
 Retrieval channels are `lexical` and `semantic`; retrieval outcomes are
 `success`, `empty`, `validation_error`, `unavailable`, `failure`, and
-`cancelled`. Rebuild result values are `created`, `updated`, `skipped`,
-`removed`, and `failed`.
+`cancelled`.
 
 ## Important Files
 
@@ -82,21 +82,24 @@ database metrics.
 ## Tests Present
 
 The repository contains tests for retrieval outcome mapping, exception and
-ordering preservation, duration/result recording, bounded tags, endpoint
-enablement, health behavior, privacy-safe output, Compose configuration, and
-dashboard/datasource provisioning.
+ordering preservation, duration/result recording, bounded tags, hosted
+Prometheus family names, endpoint enablement, health behavior, privacy-safe
+output, Compose configuration, and dashboard/datasource provisioning.
 
 ## Verification Status
 
 Source inspection is recorded here. Actual local execution is recorded in
-TEST-002 at the exact tested commit above.
+TEST-002 at the exact tested commit recorded there, which contains the
+source-inspected implementation listed here.
 
 ## Known Limitations
 
 The local Docker run is not production monitoring evidence. IIS deployment,
 long-term retention, alert delivery, real user traffic, and production network
-restriction were not verified. Rebuild and retrieval custom instruments have no
-data until those operations occur.
+restriction were not verified. Retrieval custom instruments have no data until
+the hosted maintenance-review workflow invokes the decorated retrievers.
+Projection and embedding rebuild outcomes remain command/evidence data until
+durable job telemetry is designed.
 
 ## Related Evidence
 

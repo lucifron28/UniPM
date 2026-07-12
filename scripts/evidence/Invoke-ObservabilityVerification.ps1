@@ -11,6 +11,10 @@ $stageRecords = [System.Collections.Generic.List[object]]::new()
 $scriptErrors = [System.Collections.Generic.List[string]]::new()
 $overallExitCode = 0
 $stackStarted = $false
+$worktreeClean = $false
+$apiPort = 5000
+$prometheusPort = 9090
+$grafanaPort = 3000
 
 function Get-RepositoryValue {
     param([string[]]$Arguments)
@@ -30,6 +34,28 @@ function Get-RepositoryRoot {
     }
 
     return $root
+}
+
+function Resolve-Port {
+    param(
+        [Parameter(Mandatory)]
+        [string]$EnvironmentVariable,
+
+        [Parameter(Mandatory)]
+        [int]$Default
+    )
+
+    $rawValue = [Environment]::GetEnvironmentVariable($EnvironmentVariable)
+    if ([string]::IsNullOrWhiteSpace($rawValue)) {
+        return $Default
+    }
+
+    $port = 0
+    if (-not [int]::TryParse($rawValue, [ref]$port) -or $port -lt 1 -or $port -gt 65535) {
+        throw "$EnvironmentVariable must be a TCP port between 1 and 65535."
+    }
+
+    return $port
 }
 
 function Get-ArtifactRelativePath {
@@ -156,6 +182,8 @@ function Wait-ForHttp {
 
 function Wait-ForPrometheusTarget {
     param(
+        [int]$PrometheusPort = 9090,
+
         [int]$MaxAttempts = 30,
 
         [int]$DelayMilliseconds = 1000
@@ -163,7 +191,7 @@ function Wait-ForPrometheusTarget {
 
     for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
         try {
-            $targets = Invoke-RestMethod -Uri 'http://localhost:9090/api/v1/targets'
+            $targets = Invoke-RestMethod -Uri "http://localhost:$PrometheusPort/api/v1/targets"
             $target = $targets.data.activeTargets |
                 Where-Object { $_.labels.job -eq 'unipm-api' } |
                 Select-Object -First 1
@@ -198,7 +226,10 @@ function Get-SafeEnvironmentMetadata {
         docker = $dockerVersion
         testedCommit = (Get-RepositoryValue @('rev-parse', 'HEAD'))
         sourceBranch = (Get-RepositoryValue @('branch', '--show-current'))
-        worktreeClean = (@(& git status --porcelain --untracked-files=all 2>$null).Count -eq 0)
+        worktreeClean = $worktreeClean
+        apiPort = $apiPort
+        prometheusPort = $prometheusPort
+        grafanaPort = $grafanaPort
         metricsEnabled = $true
         sqlServerConfigurationPresent = -not [string]::IsNullOrWhiteSpace($env:UNIPM_SQLSERVER_TEST_CONNECTION)
     }
@@ -208,21 +239,29 @@ try {
     $repositoryRoot = Get-RepositoryRoot
     Set-Location -LiteralPath $repositoryRoot
 
-    $worktreeEntries = @(& git status --porcelain --untracked-files=all 2>$null)
-    if ($worktreeEntries.Count -ne 0) {
-        throw 'The worktree must be clean before an observability verification run.'
-    }
-
-    # The verification run exercises the opt-in endpoint without modifying the user's .env file.
-    $env:UNIPM_METRICS_ENABLED = 'true'
-
     $shortSha = Get-RepositoryValue @('rev-parse', '--short=12', 'HEAD')
     $timestamp = [DateTimeOffset]::UtcNow.ToString('yyyyMMdd-HHmmssZ')
     $artifactRoot = Join-Path $OutputRoot "$timestamp-$shortSha-observability"
     New-Item -ItemType Directory -Path $artifactRoot -Force | Out-Null
 
+    $worktreeEntries = @(& git status --porcelain --untracked-files=all 2>$null)
+    $worktreeClean = $worktreeEntries.Count -eq 0
+    $apiPort = Resolve-Port -EnvironmentVariable 'UNIPM_API_PORT' -Default 5000
+    $prometheusPort = Resolve-Port -EnvironmentVariable 'UNIPM_PROMETHEUS_PORT' -Default 9090
+    $grafanaPort = Resolve-Port -EnvironmentVariable 'UNIPM_GRAFANA_PORT' -Default 3000
+
     $environment = Get-SafeEnvironmentMetadata
     $environment | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath (Join-Path $artifactRoot 'environment.json') -Encoding utf8
+
+    if (-not $worktreeClean) {
+        throw 'The worktree must be clean before an observability verification run.'
+    }
+
+    # The verification run exercises the opt-in endpoint without modifying the user's .env file.
+    $env:UNIPM_METRICS_ENABLED = 'true'
+    $env:UNIPM_API_PORT = "$apiPort"
+    $env:UNIPM_PROMETHEUS_PORT = "$prometheusPort"
+    $env:UNIPM_GRAFANA_PORT = "$grafanaPort"
 
     $composeConfigExitCode = Invoke-DockerCompose -Arguments @('--profile', 'observability', 'config', '--quiet') -LogPath (Join-Path $artifactRoot 'compose-config.log')
     if ($composeConfigExitCode -eq 0) {
@@ -232,32 +271,33 @@ try {
             throw 'The observability Compose profile failed to start.'
         }
 
-        Wait-ForHttp -Name 'API root' -Uri 'http://localhost:5000/' | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $artifactRoot 'api-root.json') -Encoding utf8
-        Wait-ForHttp -Name 'API liveness' -Uri 'http://localhost:5000/health/live' | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $artifactRoot 'api-liveness.json') -Encoding utf8
-        Wait-ForHttp -Name 'API metrics' -Uri 'http://localhost:5000/metrics' | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $artifactRoot 'api-metrics.json') -Encoding utf8
+        Wait-ForHttp -Name 'API root' -Uri "http://localhost:$apiPort/" | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $artifactRoot 'api-root.json') -Encoding utf8
+        Wait-ForHttp -Name 'API liveness' -Uri "http://localhost:$apiPort/health/live" | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $artifactRoot 'api-liveness.json') -Encoding utf8
+        Wait-ForHttp -Name 'API readiness' -Uri "http://localhost:$apiPort/health/ready" | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $artifactRoot 'api-readiness.json') -Encoding utf8
+        Wait-ForHttp -Name 'API metrics' -Uri "http://localhost:$apiPort/metrics" | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $artifactRoot 'api-metrics.json') -Encoding utf8
 
-        $metricsResponse = Invoke-WebRequest -Uri 'http://localhost:5000/metrics' -UseBasicParsing
+        $metricsResponse = Invoke-WebRequest -Uri "http://localhost:$apiPort/metrics" -UseBasicParsing
         $metricsResponse.Content -split "`n" |
             Where-Object { $_ -match '^(# HELP|# TYPE|unipm_|http_server_request_duration|dotnet_)' } |
             Sort-Object { if ($_ -match '^unipm_') { 0 } else { 1 } }, { $_ } |
             Select-Object -First 250 |
             Set-Content -LiteralPath (Join-Path $artifactRoot 'api-metrics-sample.txt') -Encoding utf8
 
-        Wait-ForHttp -Name 'Prometheus readiness' -Uri 'http://localhost:9090/-/ready' | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $artifactRoot 'prometheus-ready.txt') -Encoding utf8
-        $target = Wait-ForPrometheusTarget
+        Wait-ForHttp -Name 'Prometheus readiness' -Uri "http://localhost:$prometheusPort/-/ready" | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $artifactRoot 'prometheus-ready.txt') -Encoding utf8
+        $target = Wait-ForPrometheusTarget -PrometheusPort $prometheusPort
         @($target) |
             Select-Object -Property labels, health, lastError |
             ConvertTo-Json -Depth 6 |
             Set-Content -LiteralPath (Join-Path $artifactRoot 'prometheus-targets.json') -Encoding utf8
 
-        Wait-ForHttp -Name 'Grafana health' -Uri 'http://localhost:3000/api/health' | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $artifactRoot 'grafana-health.json') -Encoding utf8
+        Wait-ForHttp -Name 'Grafana health' -Uri "http://localhost:$grafanaPort/api/health" | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $artifactRoot 'grafana-health.json') -Encoding utf8
 
         $grafanaUser = if ([string]::IsNullOrWhiteSpace($env:UNIPM_GRAFANA_ADMIN_USER)) { 'admin' } else { $env:UNIPM_GRAFANA_ADMIN_USER }
         $grafanaPassword = if ([string]::IsNullOrWhiteSpace($env:UNIPM_GRAFANA_ADMIN_PASSWORD)) { 'ChangeThisLocalGrafanaPassword123!' } else { $env:UNIPM_GRAFANA_ADMIN_PASSWORD }
         $grafanaToken = [Convert]::ToBase64String(
             [System.Text.Encoding]::UTF8.GetBytes("$grafanaUser`:$grafanaPassword"))
         $grafanaHeaders = @{ Authorization = "Basic $grafanaToken" }
-        $dataSource = Invoke-RestMethod -Uri 'http://localhost:3000/api/datasources/uid/unipm-prometheus' -Headers $grafanaHeaders
+        $dataSource = Invoke-RestMethod -Uri "http://localhost:$grafanaPort/api/datasources/uid/unipm-prometheus" -Headers $grafanaHeaders
         [ordered]@{
             uid = $dataSource.uid
             name = $dataSource.name
@@ -265,7 +305,7 @@ try {
         } |
             ConvertTo-Json |
             Set-Content -LiteralPath (Join-Path $artifactRoot 'grafana-datasource.json') -Encoding utf8
-        $dashboard = Invoke-RestMethod -Uri 'http://localhost:3000/api/dashboards/uid/unipm-system-health' -Headers $grafanaHeaders
+        $dashboard = Invoke-RestMethod -Uri "http://localhost:$grafanaPort/api/dashboards/uid/unipm-system-health" -Headers $grafanaHeaders
         [ordered]@{
             uid = $dashboard.dashboard.uid
             title = $dashboard.dashboard.title
@@ -304,7 +344,7 @@ finally {
             exitCode = $overallExitCode
             testedCommit = (Get-RepositoryValue @('rev-parse', 'HEAD'))
             sourceBranch = (Get-RepositoryValue @('branch', '--show-current'))
-            worktreeClean = (@(& git status --porcelain --untracked-files=all 2>$null).Count -eq 0)
+            worktreeClean = $worktreeClean
             artifactDirectory = (Get-ArtifactRelativePath $artifactRoot)
             stages = $stageRecords
             errors = $scriptErrors

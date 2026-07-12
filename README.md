@@ -240,8 +240,10 @@ Then use:
 Grafana provisions the `unipm-prometheus` datasource and the
 `unipm-system-health` dashboard automatically. The sample credentials in
 `.env.example` are for local development only and must be changed. The
-dashboard covers API/runtime, retrieval, projection, and embedding technical
-health; it is not the future React maintenance KPI dashboard.
+dashboard covers API/runtime and retrieval technical health; it is not the
+future React maintenance KPI dashboard. Projection and embedding rebuild
+commands report their results through command output and evidence records until
+durable job telemetry is designed.
 
 For IIS, enable `Observability__MetricsEnabled` only when network or
 reverse-proxy policy restricts access to `/metrics`. Prometheus and Grafana

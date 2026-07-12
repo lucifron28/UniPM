@@ -141,8 +141,10 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\evidence\Invok
 
 This process-scoped verification enables metrics without editing `.env`,
 requires a clean worktree, validates Compose, starts the `observability`
-profile, polls the API and Prometheus target, checks Grafana provisioning, and
-stops the stack in `finally`. Its raw artifacts are ignored. It does not prove
+profile, polls API root, liveness, readiness, metrics, and the Prometheus
+target, checks Grafana provisioning, and stops the stack in `finally`. It
+resolves the API, Prometheus, and Grafana ports from `UNIPM_*_PORT` variables
+with the documented defaults. Its raw artifacts are ignored. It does not prove
 IIS deployment, production monitoring, retention, alert delivery, or real user
 traffic.
 

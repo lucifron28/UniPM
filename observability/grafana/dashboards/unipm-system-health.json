@@ -105,36 +105,6 @@
     },
     {
       "datasource": { "type": "prometheus", "uid": "unipm-prometheus" },
-      "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
-      "gridPos": { "h": 7, "w": 8, "x": 8, "y": 21 },
-      "id": 10,
-      "options": { "legend": { "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
-      "targets": [{ "expr": "sum by (outcome) (rate(unipm_search_projection_rebuilds_total[5m]))", "refId": "A" }],
-      "title": "Projection rebuild outcomes",
-      "type": "timeseries"
-    },
-    {
-      "datasource": { "type": "prometheus", "uid": "unipm-prometheus" },
-      "fieldConfig": { "defaults": { "unit": "docsps" }, "overrides": [] },
-      "gridPos": { "h": 7, "w": 8, "x": 16, "y": 21 },
-      "id": 11,
-      "options": { "legend": { "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
-      "targets": [{ "expr": "sum by (result) (rate(unipm_embedding_documents_total[5m]))", "refId": "A" }],
-      "title": "Embedding rebuild documents",
-      "type": "timeseries"
-    },
-    {
-      "datasource": { "type": "prometheus", "uid": "unipm-prometheus" },
-      "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
-      "gridPos": { "h": 7, "w": 8, "x": 0, "y": 28 },
-      "id": 12,
-      "options": { "legend": { "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
-      "targets": [{ "expr": "sum by (outcome) (rate(unipm_embedding_rebuilds_total[5m]))", "refId": "A" }],
-      "title": "Embedding rebuild outcomes",
-      "type": "timeseries"
-    },
-    {
-      "datasource": { "type": "prometheus", "uid": "unipm-prometheus" },
       "fieldConfig": { "defaults": { "unit": "cps" }, "overrides": [] },
       "gridPos": { "h": 7, "w": 8, "x": 8, "y": 28 },
       "id": 13,

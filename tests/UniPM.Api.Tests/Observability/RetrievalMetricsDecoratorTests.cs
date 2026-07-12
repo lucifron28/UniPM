@@ -141,39 +141,6 @@ public sealed class RetrievalMetricsDecoratorTests
         Assert.Equal("cancelled", recorder.Single(UniPMMetrics.RetrievalRequestsInstrumentName).Tags["outcome"]);
     }
 
-    [Fact]
-    public void Rebuild_metrics_use_only_bounded_tags_and_record_duration_once()
-    {
-        using var recorder = new MetricRecorder();
-
-        recorder.Metrics.RecordProjectionRebuild("success", 0.25, 5, 2, 1, 1);
-        recorder.Metrics.RecordEmbeddingRebuild("partial_failure", 0.5, 5, 2, 1, 1, 1);
-
-        Assert.Equal(1, recorder.Count(UniPMMetrics.SearchProjectionDurationInstrumentName));
-        Assert.Equal(1, recorder.Count(UniPMMetrics.EmbeddingDurationInstrumentName));
-        Assert.Equal(
-            5,
-            Assert.Single(
-                recorder.All,
-                measurement => measurement.InstrumentName == UniPMMetrics.SearchProjectionDocumentsInstrumentName
-                    && measurement.Tags.Count == 0).Value);
-        Assert.All(recorder.All, measurement =>
-        {
-            Assert.All(measurement.Tags, tag =>
-            {
-                Assert.Contains(tag.Key, new[] { "channel", "outcome", "result" });
-                if (tag.Key == "channel")
-                {
-                    Assert.Contains(tag.Value, new[] { "lexical", "semantic" });
-                }
-                else if (tag.Key == "result")
-                {
-                    Assert.Contains(tag.Value, new[] { "created", "updated", "skipped", "removed", "failed" });
-                }
-            });
-        });
-    }
-
     private static LexicalMaintenanceSearchResult CreateLexicalResult(int suffix)
         => new(
             Guid.Parse($"00000000-0000-0000-0000-00000000000{suffix}"),

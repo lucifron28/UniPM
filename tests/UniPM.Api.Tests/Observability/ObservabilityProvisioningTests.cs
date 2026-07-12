@@ -42,10 +42,11 @@ public sealed class ObservabilityProvisioningTests
         Assert.Equal("UniPM API System Health", root.GetProperty("title").GetString());
         Assert.Contains("Prometheus target status", titles);
         Assert.Contains("Retrieval requests by channel and outcome", titles);
-        Assert.Contains("Embedding rebuild outcomes", titles);
         var dashboardJson = root.GetRawText();
         Assert.Contains("dotnet_process_memory_working_set_bytes", dashboardJson, StringComparison.Ordinal);
         Assert.Contains("dotnet_gc_collections_total", dashboardJson, StringComparison.Ordinal);
+        Assert.DoesNotContain("unipm_embedding", dashboardJson, StringComparison.Ordinal);
+        Assert.DoesNotContain("unipm_search_projection", dashboardJson, StringComparison.Ordinal);
         Assert.DoesNotContain(titles, title => title!.Contains("overdue", StringComparison.OrdinalIgnoreCase));
         Assert.DoesNotContain(titles, title => title!.Contains("department performance", StringComparison.OrdinalIgnoreCase));
     }

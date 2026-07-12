@@ -33,10 +33,13 @@ Prometheus uses the pinned `prom/prometheus:v3.5.0` image and scrapes the stable
 `grafana/grafana:12.0.2` image, provisions datasource UID
 `unipm-prometheus`, and loads dashboard UID `unipm-system-health`.
 
-The API custom meter is `UniPM.Api`. Retrieval and rebuild instrumentation uses
-only low-cardinality dimensions. Query text, remarks, recommendations, asset
-and inspection identifiers, user data, exception details, provider settings,
-and vectors are excluded.
+The API custom meter is `UniPM.Api`. Hosted retrieval instrumentation uses only
+the low-cardinality `channel` and `outcome` dimensions. Query text, remarks,
+recommendations, asset and inspection identifiers, user data, exception
+details, provider settings, and vectors are excluded. Projection and embedding
+rebuild commands remain observable through command output and evidence records;
+they do not emit Prometheus metrics because those processes exit before a
+long-running scrape endpoint can observe them.
 
 ## Alternatives
 
@@ -75,9 +78,9 @@ data are emitted into metrics or committed provisioning files.
 When Prometheus and Grafana are absent, the API, health checks, migrations,
 seed/reset commands, projection rebuild, and embedding rebuild remain
 available. Failed monitoring services do not block preventive-maintenance
-operations. The local verification script uses bounded polling, captures
-sanitized responses and hashes, stops the stack in `finally`, and preserves
-volumes unless cleanup is explicitly requested.
+operations. The local verification script uses bounded polling, including the
+API readiness check, captures sanitized responses and hashes, stops the stack
+in `finally`, and preserves volumes unless cleanup is explicitly requested.
 
 ## Implementation References
 
