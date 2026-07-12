@@ -25,4 +25,20 @@ internal static class ApiErrors
             detail: detail,
             statusCode: StatusCodes.Status409Conflict);
     }
+
+    internal static IResult ServiceUnavailable(string detail)
+    {
+        return Results.Problem(
+            title: "Service unavailable",
+            detail: detail,
+            statusCode: StatusCodes.Status503ServiceUnavailable);
+    }
+
+    internal static IResult InternalFailure(string detail)
+    {
+        return Results.Problem(
+            title: "Request could not be completed",
+            detail: detail,
+            statusCode: StatusCodes.Status500InternalServerError);
+    }
 }

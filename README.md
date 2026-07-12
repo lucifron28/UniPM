@@ -48,9 +48,8 @@ SQL Server Full-Text Search. It also contains semantic retrieval
 channel using cached document embeddings and bounded application-layer cosine
 similarity. Semantic retrieval is a required UniPM retrieval channel, but its
 embedding provider is operationally optional and degradable. Internal result
-fusion uses inspectable Reciprocal Rank Fusion; context scoring, thresholds,
-source-bounded summaries, and a maintenance-review endpoint remain separate
-future work.
+fusion uses inspectable Reciprocal Rank Fusion, followed by deterministic source
+selection, prompt sanitization, and optional provider-neutral summarization.
 
 ## Current API Surface
 
@@ -59,6 +58,8 @@ The backend currently provides:
 - asset creation, list, detail, and QR lookup;
 - schedule creation, list, and detail;
 - inspection submission, list, detail, and asset-history lookup;
+- `POST /api/v1/maintenance-review` for Development-only, source-bounded
+  maintenance-history review;
 - reference-data categories, validation/error contracts, health checks, tests,
   and backend CI.
 
@@ -91,6 +92,19 @@ Stop containers while preserving the SQL Server volume:
 ```powershell
 docker compose down
 ```
+
+## Maintenance Review
+
+The maintenance-review endpoint is disabled in committed configuration and is
+available only in Development until authentication is implemented. For local
+source-only review, set `UNIPM_MAINTENANCE_REVIEW_ENABLED=true` and keep
+`UNIPM_SUMMARY_ENABLED=false`. The endpoint returns selected original source
+records when summaries are disabled, unavailable, or rejected by citation
+validation. It never persists prompts, summaries, or sanitizer token maps.
+
+See [`reference/api/maintenance-review-v0.1.md`](reference/api/maintenance-review-v0.1.md)
+for the request, response, evidence-status, summary-status, source-selection,
+and provider configuration contract.
 
 ## Build And Test
 
@@ -140,6 +154,7 @@ With a reachable configured database, run seed/reset only in Development:
 
 ```powershell
 $env:ASPNETCORE_ENVIRONMENT = "Development"
+dotnet run --project server -- --migrate-database
 dotnet run --project server -- --seed-synthetic
 dotnet run --project server -- --reset-synthetic-seed
 dotnet run --project server -- --rebuild-maintenance-search-documents
@@ -219,9 +234,9 @@ Reports include Hit@1, Hit@5, Precision@5, Recall@5, Recall@10, reciprocal
 rank, first relevant rank, macro averages, and language/category/scenario
 slices. Fused reports preserve RRF metadata, FusionScore, and component ranks.
 Fused benchmarking requires both SQL Server Full-Text Search and real semantic
-provider configuration; degraded fused responses fail evaluation. No context
-scoring, thresholds, insufficient-evidence policy, source selection, summaries,
-or public retrieval endpoint is implemented.
+provider configuration; degraded fused responses fail evaluation. Context
+selection, insufficient-evidence handling, sanitization, summaries, and the
+public review endpoint are implemented separately from benchmark scoring.
 
 ## Local Observability
 

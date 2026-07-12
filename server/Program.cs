@@ -5,12 +5,31 @@ using UniPM.Api.Data;
 using UniPM.Api.Data.Seeding;
 using UniPM.Api.Features;
 using UniPM.Api.Health;
+using UniPM.Api.Features.MaintenanceReview;
 using UniPM.Api.Features.Retrieval;
 using UniPM.Api.Observability;
 using OpenTelemetry.Metrics;
 using Microsoft.AspNetCore.Http.Features;
 
 var builder = WebApplication.CreateBuilder(args);
+
+var maintenanceReviewEnabled = builder.Configuration.GetValue<bool>(
+    $"{MaintenanceReviewOptions.SectionName}:Enabled");
+if (maintenanceReviewEnabled && !builder.Environment.IsDevelopment())
+{
+    throw new InvalidOperationException(
+        "MaintenanceReview:Enabled can only be true in Development until authentication is implemented.");
+}
+
+var maintenanceReviewConfiguration = builder.Configuration.GetSection(MaintenanceReviewOptions.SectionName);
+if (maintenanceReviewEnabled
+    && (maintenanceReviewConfiguration.GetValue<int>(nameof(MaintenanceReviewOptions.MaxSourceRecords)) is < 1 or > 100
+        || maintenanceReviewConfiguration.GetValue<int>(nameof(MaintenanceReviewOptions.RetrievalCandidateLimit)) is < 1 or > 100
+        || maintenanceReviewConfiguration.GetValue<int>(nameof(MaintenanceReviewOptions.MaxFindingCharacters)) is < 1 or > 2000))
+{
+    throw new InvalidOperationException(
+        "MaintenanceReview source, candidate, and finding limits must remain within the supported bounds.");
+}
 
 var metricsEnabled = builder.Configuration.GetValue<bool>(
     $"{ObservabilityOptions.SectionName}:MetricsEnabled");
@@ -90,6 +109,15 @@ builder.Services.AddScoped<IFusedMaintenanceRetriever>(serviceProvider =>
     new MetricsFusedMaintenanceRetriever(
         serviceProvider.GetRequiredService<FusedMaintenanceRetriever>(),
         serviceProvider.GetRequiredService<UniPMMetrics>()));
+builder.Services.Configure<MaintenanceReviewOptions>(
+    builder.Configuration.GetSection(MaintenanceReviewOptions.SectionName));
+builder.Services.Configure<SummaryOptions>(
+    builder.Configuration.GetSection(SummaryOptions.SectionName));
+builder.Services.AddScoped<PrivacySanitizerService>();
+builder.Services.AddSingleton<MaintenanceReviewSourceSelector>();
+builder.Services.AddSingleton<MaintenanceReviewPromptBuilder>();
+builder.Services.AddHttpClient<ISummaryService, OpenAiCompatibleSummaryService>();
+builder.Services.AddScoped<IMaintenanceReviewService, MaintenanceReviewService>();
 
 var app = builder.Build();
 
@@ -114,7 +142,15 @@ if (maintenanceCommand != SyntheticMaintenanceCommand.None)
     try
     {
         await using var scope = app.Services.CreateAsyncScope();
-        if (maintenanceCommand == SyntheticMaintenanceCommand.Rebuild)
+        if (maintenanceCommand == SyntheticMaintenanceCommand.Migrate)
+        {
+            var contextFactory = scope.ServiceProvider
+                .GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
+            await using var context = await contextFactory.CreateDbContextAsync();
+            await context.Database.MigrateAsync();
+            await Console.Out.WriteLineAsync("Database migrations applied successfully.");
+        }
+        else if (maintenanceCommand == SyntheticMaintenanceCommand.Rebuild)
         {
             var projector = scope.ServiceProvider.GetRequiredService<MaintenanceSearchDocumentProjector>();
             var result = await projector.RebuildAsync();

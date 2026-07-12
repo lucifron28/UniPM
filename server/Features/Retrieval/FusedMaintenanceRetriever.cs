@@ -67,7 +67,8 @@ internal sealed class FusedMaintenanceRetriever(
             query.Location,
             query.IsOperational,
             query.DateFrom,
-            query.DateTo);
+            query.DateTo,
+            query.IssueKeys);
 
         IReadOnlyList<SemanticMaintenanceSearchResult> semanticResults;
         try

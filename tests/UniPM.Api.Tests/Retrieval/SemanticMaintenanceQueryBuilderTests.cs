@@ -1,4 +1,5 @@
 using UniPM.Api.Features.Retrieval;
+using UniPM.Api.Features.MaintenanceReview;
 
 namespace UniPM.Api.Tests.Retrieval;
 
@@ -64,6 +65,32 @@ public sealed class SemanticMaintenanceQueryBuilderTests
 
         Assert.Equal(SemanticMaintenanceQueryBuilder.DefaultLimit, defaultQuery.Limit);
         Assert.Equal(SemanticMaintenanceQueryBuilder.MaxLimit, cappedQuery.Limit);
+    }
+
+    [Fact]
+    public void Sanitized_review_query_never_places_sensitive_finding_values_in_embedding_input()
+    {
+        const string rawFinding =
+            "Low pressure reported by Employee ID 2024-001, contact 0917-123-4567, email ron@example.com";
+        var session = new PrivacySanitizerService().CreateSession();
+        var reviewQuery = MaintenanceReviewRetrievalQueryBuilder.Build(
+            session.Sanitize(rawFinding),
+            ["low_pressure"]);
+
+        var semanticQuery = SemanticMaintenanceQueryBuilder.Build(
+            new SemanticMaintenanceSearchRequest(
+                reviewQuery.Text,
+                AssetCategory: "fire-extinguisher",
+                IssueKeys: reviewQuery.IssueKeys),
+            CreateIssueNormalizer());
+
+        Assert.DoesNotContain("2024-001", semanticQuery.EmbeddingInput, StringComparison.Ordinal);
+        Assert.DoesNotContain("0917-123-4567", semanticQuery.EmbeddingInput, StringComparison.Ordinal);
+        Assert.DoesNotContain("ron@example.com", semanticQuery.EmbeddingInput, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("[EMPLOYEE_ID_1]", semanticQuery.EmbeddingInput, StringComparison.Ordinal);
+        Assert.DoesNotContain("[PHONE_1]", semanticQuery.EmbeddingInput, StringComparison.Ordinal);
+        Assert.DoesNotContain("[EMAIL_1]", semanticQuery.EmbeddingInput, StringComparison.Ordinal);
+        Assert.Contains("issue-context: low_pressure", semanticQuery.EmbeddingInput, StringComparison.Ordinal);
     }
 
     private static MaintenanceIssueNormalizer CreateIssueNormalizer()

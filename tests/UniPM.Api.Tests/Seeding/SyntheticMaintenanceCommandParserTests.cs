@@ -27,6 +27,9 @@ public sealed class SyntheticMaintenanceCommandParserTests
         Assert.Equal(
             SyntheticMaintenanceCommand.RebuildEmbeddings,
             SyntheticMaintenanceCommandParser.Parse(["--rebuild-maintenance-embeddings"]));
+        Assert.Equal(
+            SyntheticMaintenanceCommand.Migrate,
+            SyntheticMaintenanceCommandParser.Parse(["--migrate-database"]));
     }
 
     [Fact]

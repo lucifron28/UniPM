@@ -51,10 +51,16 @@ internal static class SemanticMaintenanceQueryBuilder
                     $"Asset category '{request.AssetCategory}' is not supported.");
             }
 
-            issueKeys = issueNormalizer
-                .Normalize(normalizedQuery, assetCategory)
-                .Select(match => match.IssueKey)
-                .ToArray();
+            issueKeys = request.IssueKeys is not null
+                ? request.IssueKeys
+                    .Where(key => !string.IsNullOrWhiteSpace(key))
+                    .Distinct(StringComparer.Ordinal)
+                    .OrderBy(key => key, StringComparer.Ordinal)
+                    .ToArray()
+                : issueNormalizer
+                    .Normalize(normalizedQuery, assetCategory)
+                    .Select(match => match.IssueKey)
+                    .ToArray();
         }
 
         var building = NormalizeMetadataFilter(request.Building, nameof(request.Building));

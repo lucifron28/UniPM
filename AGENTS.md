@@ -173,7 +173,7 @@ Priority should move risk-first:
 3. Benchmark the completed lexical and semantic channels separately; the
    semantic provider remains operationally optional and degradable.
 4. Fuse retrieval results with inspectable RRF and explicit degradation.
-5. Add source-bounded summarization.
+5. Preserve the completed source-bounded maintenance-review path.
 6. Add authentication scaffolding.
 
 The deterministic synthetic fixture, test-only retrieval evaluation manifest,
@@ -182,7 +182,7 @@ list/detail reads, the v1.0 maintenance issue lexicon, the rebuildable
 `MaintenanceSearchDocument` projection, lexical and semantic channels, the
 separate retrieval benchmark, internal RRF fusion, the committed
 engineering-evidence workflow, and opt-in observability metrics are complete.
-The exact next backend branch is `feat/retrieval-review`.
+The exact next backend branch is `feat/auth-scaffolding`.
 
 Observability remains bounded infrastructure: `Observability:MetricsEnabled`
 is false by default, `/metrics` is exposed only when explicitly enabled, and
@@ -193,9 +193,11 @@ production monitoring claims to this scope.
 
 Retrieval fusion is an internal RRF orchestration service using K=60, bounded
 candidate/result limits, deterministic component-rank traceability, and
-explicit semantic degradation. It does not add context scoring, thresholds,
-source selection, sanitization, summaries, an HTTP endpoint, or a fused
-quality claim without a real-provider benchmark.
+explicit semantic degradation. The completed maintenance-review layer adds
+deterministic context tiers, request-scoped prompt sanitization, optional
+provider-neutral summaries, and source-returning evidence contracts. It remains
+Development-only until authentication exists and does not claim a real-provider
+quality baseline.
 
 Unblocked areas:
 

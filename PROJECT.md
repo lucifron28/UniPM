@@ -31,7 +31,7 @@
     Development-only seed/reset commands.
   - Internal SQL Server Full-Text Search over `MaintenanceSearchDocument.SearchText`
     with bounded prefix-query construction, controlled filters, and source-
-    traceable lexical results. No public maintenance-review endpoint exists yet.
+    traceable lexical results.
   - Semantic retrieval over a one-to-one SQL Server embedding cache for
     `MaintenanceSearchDocument`, with explicit batch rebuilds and bounded
     application-layer cosine similarity. The embedding provider is optional and
@@ -47,6 +47,7 @@ command requires a configured, reachable database:
 
 ```powershell
 $env:ASPNETCORE_ENVIRONMENT = "Development"
+dotnet run --project server -- --migrate-database
 dotnet run --project server -- --seed-synthetic
 dotnet run --project server -- --reset-synthetic-seed
 dotnet run --project server -- --rebuild-maintenance-search-documents
@@ -75,8 +76,8 @@ LLM being available.
 The lexical channel is implemented as an internal SQL Server Full-Text Search
 service over the persisted `MaintenanceSearchDocument.SearchText` projection.
 It does not search source entities independently and does not implement
-embeddings, benchmark orchestration, summaries, or a public maintenance-review
-endpoint; fusion consumes its ranked results separately.
+embeddings or benchmark orchestration; fusion and the maintenance-review layer
+consume its ranked results separately.
 
 Semantic retrieval is implemented as an internal channel required by the target
 maintenance-history review workflow. Document embeddings belong to
@@ -96,10 +97,18 @@ default candidate depth of 20, with a maximum of 100. It has no public endpoint
 and does not implement context boosts, thresholds, source selection,
 sanitization, or summaries.
 
+## Maintenance Review
+
+The source-bounded maintenance-review loop is implemented as a Development-only
+pre-authentication endpoint. It performs at most two fused retrieval passes,
+uses deterministic context tiers, sanitizes provider-bound text in a
+request-scoped session, and returns original source records beside every
+summary status. It does not persist review data, prompts, summaries, or token
+maps and does not make autonomous maintenance decisions.
+
 ## Next Steps
 
-1. Add sanitizer and source-bounded maintenance review.
-2. Add authentication scaffolding.
+1. Add authentication scaffolding.
 
 ## Engineering Evidence
 
@@ -114,4 +123,4 @@ opt-in OpenTelemetry metrics, an optional local Prometheus/Grafana profile, and
 TEST-002 evidence for the local technical-health path. Production monitoring,
 IIS restriction, tracing, centralized logs, alerting, and maintenance KPI
 dashboards remain out of scope. The exact next backend branch is
-`feat/retrieval-review`.
+`feat/auth-scaffolding`.
