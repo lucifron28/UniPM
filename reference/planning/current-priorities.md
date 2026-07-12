@@ -184,8 +184,8 @@ Do:
   `ISummaryService` or equivalent interfaces;
 - use the completed internal SQL Server FTS channel over
   `MaintenanceSearchDocument.SearchText`;
-- use the completed semantic channel separately, with a clearly
-  reported lexical fallback handled only by a later orchestration branch;
+- use the completed semantic channel separately and through the completed
+  internal RRF orchestration, with semantic degradation reported explicitly;
 - return the source records used and limitations beside any summary;
 - keep source selection and prompt construction inspectable;
 - add sanitizer tests before any external provider call.
@@ -200,7 +200,7 @@ about dates, causes, RMRF values, or personnel decisions.
 
 ## Task 5: Retrieval Evaluation Benchmark
 
-Goal: measure whether lexical, semantic, and hybrid retrieval improve on the
+Goal: measure lexical, semantic, and fused retrieval on the
 fictional dataset.
 
 Completed scope:
@@ -216,9 +216,9 @@ Completed scope:
 - Hit@1, Hit@5, Precision@5, Recall@5, Recall@10, reciprocal rank, first
   relevant rank, macro averages, and language/category/scenario slices.
 
-Run lexical or semantic channels separately, or both together, with
-`tools/UniPM.RetrievalBenchmark`. Semantic execution requires the configured
-embedding provider; it is not replaced with fake production scores.
+Run lexical, semantic, fused, or valid channel combinations with
+`tools/UniPM.RetrievalBenchmark`. Semantic and fused execution require the
+configured embedding provider; it is not replaced with fake production scores.
 
 Context scoring, thresholds, insufficient-evidence policy, source selection,
 sanitization, and source-bounded summarization remain separate work. RRF does
