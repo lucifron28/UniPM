@@ -1,0 +1,845 @@
+{
+  "benchmarkFormatVersion": "1.0.0",
+  "evaluationManifestVersion": "1.1.0",
+  "operationalDatasetVersion": "1.1.0",
+  "generatedAtUtc": "2026-07-12T01:03:57.2001607+00:00",
+  "selectedChannels": [
+    "lexical"
+  ],
+  "queryCount": 24,
+  "channels": {
+    "lexical": {
+      "metadata": {
+        "retrievalChannel": "lexical",
+        "resultLimit": 10,
+        "queryCount": 24,
+        "providerKey": null,
+        "modelKey": null,
+        "dimensions": null,
+        "embeddingProfile": null,
+        "fullTextSearchReady": true
+      },
+      "overall": {
+        "queryCount": 24,
+        "hitAt1": 0.5833333333333334,
+        "hitAt5": 0.5833333333333334,
+        "precisionAt5": 0.12500000000000003,
+        "recallAt5": 0.26666666666666666,
+        "recallAt10": 0.26666666666666666,
+        "meanReciprocalRank": 0.5833333333333334,
+        "meanFirstRelevantRank": 1,
+        "meanRetrievedRelevantCount": 0.625,
+        "meanExpectedRelevantCount": 2.4583333333333335
+      },
+      "byLanguage": {
+        "english": {
+          "queryCount": 10,
+          "hitAt1": 0.5,
+          "hitAt5": 0.5,
+          "precisionAt5": 0.12,
+          "recallAt5": 0.32,
+          "recallAt10": 0.32,
+          "meanReciprocalRank": 0.5,
+          "meanFirstRelevantRank": 1,
+          "meanRetrievedRelevantCount": 0.6,
+          "meanExpectedRelevantCount": 1.9
+        },
+        "tagalog": {
+          "queryCount": 7,
+          "hitAt1": 0.7142857142857143,
+          "hitAt5": 0.7142857142857143,
+          "precisionAt5": 0.14285714285714285,
+          "recallAt5": 0.23095238095238094,
+          "recallAt10": 0.23095238095238094,
+          "meanReciprocalRank": 0.7142857142857143,
+          "meanFirstRelevantRank": 1,
+          "meanRetrievedRelevantCount": 0.7142857142857143,
+          "meanExpectedRelevantCount": 3.142857142857143
+        },
+        "taglish": {
+          "queryCount": 7,
+          "hitAt1": 0.5714285714285714,
+          "hitAt5": 0.5714285714285714,
+          "precisionAt5": 0.1142857142857143,
+          "recallAt5": 0.2261904761904762,
+          "recallAt10": 0.2261904761904762,
+          "meanReciprocalRank": 0.5714285714285714,
+          "meanFirstRelevantRank": 1,
+          "meanRetrievedRelevantCount": 0.5714285714285714,
+          "meanExpectedRelevantCount": 2.5714285714285716
+        }
+      },
+      "byAssetCategory": {
+        "emergency-light": {
+          "queryCount": 6,
+          "hitAt1": 0.5,
+          "hitAt5": 0.5,
+          "precisionAt5": 0.10000000000000002,
+          "recallAt5": 0.13055555555555556,
+          "recallAt10": 0.13055555555555556,
+          "meanReciprocalRank": 0.5,
+          "meanFirstRelevantRank": 1,
+          "meanRetrievedRelevantCount": 0.5,
+          "meanExpectedRelevantCount": 2.5
+        },
+        "fire-alarm": {
+          "queryCount": 6,
+          "hitAt1": 0.6666666666666666,
+          "hitAt5": 0.6666666666666666,
+          "precisionAt5": 0.16666666666666666,
+          "recallAt5": 0.4166666666666667,
+          "recallAt10": 0.4166666666666667,
+          "meanReciprocalRank": 0.6666666666666666,
+          "meanFirstRelevantRank": 1,
+          "meanRetrievedRelevantCount": 0.8333333333333334,
+          "meanExpectedRelevantCount": 2
+        },
+        "fire-extinguisher": {
+          "queryCount": 6,
+          "hitAt1": 0.6666666666666666,
+          "hitAt5": 0.6666666666666666,
+          "precisionAt5": 0.13333333333333333,
+          "recallAt5": 0.2972222222222222,
+          "recallAt10": 0.2972222222222222,
+          "meanReciprocalRank": 0.6666666666666666,
+          "meanFirstRelevantRank": 1,
+          "meanRetrievedRelevantCount": 0.6666666666666666,
+          "meanExpectedRelevantCount": 3.5
+        },
+        "water-drinking-station": {
+          "queryCount": 6,
+          "hitAt1": 0.5,
+          "hitAt5": 0.5,
+          "precisionAt5": 0.10000000000000002,
+          "recallAt5": 0.2222222222222222,
+          "recallAt10": 0.2222222222222222,
+          "meanReciprocalRank": 0.5,
+          "meanFirstRelevantRank": 1,
+          "meanRetrievedRelevantCount": 0.5,
+          "meanExpectedRelevantCount": 1.8333333333333333
+        }
+      },
+      "byScenarioTag": {
+        "cold-start": {
+          "queryCount": 4,
+          "hitAt1": 0.25,
+          "hitAt5": 0.25,
+          "precisionAt5": 0.05,
+          "recallAt5": 0.125,
+          "recallAt10": 0.125,
+          "meanReciprocalRank": 0.25,
+          "meanFirstRelevantRank": 1,
+          "meanRetrievedRelevantCount": 0.25,
+          "meanExpectedRelevantCount": 2.25
+        },
+        "cross-language": {
+          "queryCount": 14,
+          "hitAt1": 0.6428571428571429,
+          "hitAt5": 0.6428571428571429,
+          "precisionAt5": 0.12857142857142856,
+          "recallAt5": 0.2285714285714286,
+          "recallAt10": 0.2285714285714286,
+          "meanReciprocalRank": 0.6428571428571429,
+          "meanFirstRelevantRank": 1,
+          "meanRetrievedRelevantCount": 0.6428571428571429,
+          "meanExpectedRelevantCount": 2.857142857142857
+        },
+        "distractor-resistance": {
+          "queryCount": 5,
+          "hitAt1": 0.6,
+          "hitAt5": 0.6,
+          "precisionAt5": 0.12000000000000002,
+          "recallAt5": 0.19,
+          "recallAt10": 0.19,
+          "meanReciprocalRank": 0.6,
+          "meanFirstRelevantRank": 1,
+          "meanRetrievedRelevantCount": 0.6,
+          "meanExpectedRelevantCount": 3.6
+        },
+        "lexicon-covered": {
+          "queryCount": 10,
+          "hitAt1": 0.8,
+          "hitAt5": 0.8,
+          "precisionAt5": 0.18,
+          "recallAt5": 0.35,
+          "recallAt10": 0.35,
+          "meanReciprocalRank": 0.8,
+          "meanFirstRelevantRank": 1,
+          "meanRetrievedRelevantCount": 0.9,
+          "meanExpectedRelevantCount": 2.6
+        },
+        "resolved-history": {
+          "queryCount": 9,
+          "hitAt1": 0.7777777777777778,
+          "hitAt5": 0.7777777777777778,
+          "precisionAt5": 0.15555555555555556,
+          "recallAt5": 0.23888888888888887,
+          "recallAt10": 0.23888888888888887,
+          "meanReciprocalRank": 0.7777777777777778,
+          "meanFirstRelevantRank": 1,
+          "meanRetrievedRelevantCount": 0.7777777777777778,
+          "meanExpectedRelevantCount": 3.2222222222222223
+        },
+        "same-asset-history": {
+          "queryCount": 5,
+          "hitAt1": 1,
+          "hitAt5": 1,
+          "precisionAt5": 0.24,
+          "recallAt5": 0.5,
+          "recallAt10": 0.5,
+          "meanReciprocalRank": 1,
+          "meanFirstRelevantRank": 1,
+          "meanRetrievedRelevantCount": 1.2,
+          "meanExpectedRelevantCount": 2.6
+        },
+        "same-building-context": {
+          "queryCount": 6,
+          "hitAt1": 0.6666666666666666,
+          "hitAt5": 0.6666666666666666,
+          "precisionAt5": 0.13333333333333333,
+          "recallAt5": 0.19166666666666665,
+          "recallAt10": 0.19166666666666665,
+          "meanReciprocalRank": 0.6666666666666666,
+          "meanFirstRelevantRank": 1,
+          "meanRetrievedRelevantCount": 0.6666666666666666,
+          "meanExpectedRelevantCount": 3.3333333333333335
+        },
+        "semantic-paraphrase": {
+          "queryCount": 15,
+          "hitAt1": 0.4,
+          "hitAt5": 0.4,
+          "precisionAt5": 0.09333333333333332,
+          "recallAt5": 0.24666666666666667,
+          "recallAt10": 0.24666666666666667,
+          "meanReciprocalRank": 0.4,
+          "meanFirstRelevantRank": 1,
+          "meanRetrievedRelevantCount": 0.4666666666666667,
+          "meanExpectedRelevantCount": 2.066666666666667
+        },
+        "similar-asset-fallback": {
+          "queryCount": 14,
+          "hitAt1": 0.5714285714285714,
+          "hitAt5": 0.5714285714285714,
+          "precisionAt5": 0.11428571428571428,
+          "recallAt5": 0.20714285714285713,
+          "recallAt10": 0.20714285714285713,
+          "meanReciprocalRank": 0.5714285714285714,
+          "meanFirstRelevantRank": 1,
+          "meanRetrievedRelevantCount": 0.5714285714285714,
+          "meanExpectedRelevantCount": 2.857142857142857
+        },
+        "unresolved-history": {
+          "queryCount": 20,
+          "hitAt1": 0.6,
+          "hitAt5": 0.6,
+          "precisionAt5": 0.13,
+          "recallAt5": 0.285,
+          "recallAt10": 0.285,
+          "meanReciprocalRank": 0.6,
+          "meanFirstRelevantRank": 1,
+          "meanRetrievedRelevantCount": 0.65,
+          "meanExpectedRelevantCount": 2.25
+        }
+      },
+      "perQuery": [
+        {
+          "queryId": "Q001",
+          "queryText": "mahina ang pressure",
+          "language": "taglish",
+          "assetCategory": "fire-extinguisher",
+          "metrics": {
+            "hitAt1": 1,
+            "hitAt5": 1,
+            "precisionAt5": 0.2,
+            "recallAt5": 0.3333333333333333,
+            "recallAt10": 0.3333333333333333,
+            "reciprocalRank": 1,
+            "firstRelevantRank": 1,
+            "retrievedRelevantCount": 1,
+            "expectedRelevantCount": 3
+          },
+          "retrievedInspectionIds": [
+            "267babd6-4e6d-5082-843a-6db5d9d3e5ae"
+          ],
+          "expectedInspectionRanks": {
+            "267babd6-4e6d-5082-843a-6db5d9d3e5ae": 1
+          },
+          "rawScores": {
+            "267babd6-4e6d-5082-843a-6db5d9d3e5ae": 6
+          },
+          "durationMilliseconds": 14.094
+        },
+        {
+          "queryId": "Q002",
+          "queryText": "kulang ang pressure",
+          "language": "tagalog",
+          "assetCategory": "fire-extinguisher",
+          "metrics": {
+            "hitAt1": 1,
+            "hitAt5": 1,
+            "precisionAt5": 0.2,
+            "recallAt5": 0.25,
+            "recallAt10": 0.25,
+            "reciprocalRank": 1,
+            "firstRelevantRank": 1,
+            "retrievedRelevantCount": 1,
+            "expectedRelevantCount": 4
+          },
+          "retrievedInspectionIds": [
+            "924a832f-9dfa-5798-bf39-21ada836fa18"
+          ],
+          "expectedInspectionRanks": {
+            "924a832f-9dfa-5798-bf39-21ada836fa18": 1
+          },
+          "rawScores": {
+            "924a832f-9dfa-5798-bf39-21ada836fa18": 12
+          },
+          "durationMilliseconds": 19.1391
+        },
+        {
+          "queryId": "Q003",
+          "queryText": "gauge near red zone",
+          "language": "english",
+          "assetCategory": "fire-extinguisher",
+          "metrics": {
+            "hitAt1": 1,
+            "hitAt5": 1,
+            "precisionAt5": 0.2,
+            "recallAt5": 0.2,
+            "recallAt10": 0.2,
+            "reciprocalRank": 1,
+            "firstRelevantRank": 1,
+            "retrievedRelevantCount": 1,
+            "expectedRelevantCount": 5
+          },
+          "retrievedInspectionIds": [
+            "924a832f-9dfa-5798-bf39-21ada836fa18"
+          ],
+          "expectedInspectionRanks": {
+            "924a832f-9dfa-5798-bf39-21ada836fa18": 1
+          },
+          "rawScores": {
+            "924a832f-9dfa-5798-bf39-21ada836fa18": 8
+          },
+          "durationMilliseconds": 17.2851
+        },
+        {
+          "queryId": "Q004",
+          "queryText": "kailangan mag refill",
+          "language": "tagalog",
+          "assetCategory": "fire-extinguisher",
+          "metrics": {
+            "hitAt1": 0,
+            "hitAt5": 0,
+            "precisionAt5": 0,
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "reciprocalRank": 0,
+            "firstRelevantRank": null,
+            "retrievedRelevantCount": 0,
+            "expectedRelevantCount": 3
+          },
+          "retrievedInspectionIds": [],
+          "expectedInspectionRanks": {},
+          "rawScores": {},
+          "durationMilliseconds": 13.1326
+        },
+        {
+          "queryId": "Q005",
+          "queryText": "missing safety pin",
+          "language": "english",
+          "assetCategory": "fire-extinguisher",
+          "metrics": {
+            "hitAt1": 1,
+            "hitAt5": 1,
+            "precisionAt5": 0.2,
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "reciprocalRank": 1,
+            "firstRelevantRank": 1,
+            "retrievedRelevantCount": 1,
+            "expectedRelevantCount": 1
+          },
+          "retrievedInspectionIds": [
+            "2c0cf8d1-6fab-50cf-a06b-384f9f628e0e"
+          ],
+          "expectedInspectionRanks": {
+            "2c0cf8d1-6fab-50cf-a06b-384f9f628e0e": 1
+          },
+          "rawScores": {
+            "2c0cf8d1-6fab-50cf-a06b-384f9f628e0e": 12
+          },
+          "durationMilliseconds": 12.8487
+        },
+        {
+          "queryId": "Q006",
+          "queryText": "gauge malapit sa red zone",
+          "language": "taglish",
+          "assetCategory": "fire-extinguisher",
+          "metrics": {
+            "hitAt1": 0,
+            "hitAt5": 0,
+            "precisionAt5": 0,
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "reciprocalRank": 0,
+            "firstRelevantRank": null,
+            "retrievedRelevantCount": 0,
+            "expectedRelevantCount": 5
+          },
+          "retrievedInspectionIds": [],
+          "expectedInspectionRanks": {},
+          "rawScores": {},
+          "durationMilliseconds": 13.2147
+        },
+        {
+          "queryId": "Q007",
+          "queryText": "alarm panel fault",
+          "language": "english",
+          "assetCategory": "fire-alarm",
+          "metrics": {
+            "hitAt1": 1,
+            "hitAt5": 1,
+            "precisionAt5": 0.4,
+            "recallAt5": 1,
+            "recallAt10": 1,
+            "reciprocalRank": 1,
+            "firstRelevantRank": 1,
+            "retrievedRelevantCount": 2,
+            "expectedRelevantCount": 2
+          },
+          "retrievedInspectionIds": [
+            "651444ef-4b05-53c1-8df7-9b1d72607d4e",
+            "db839e0d-f540-5bb7-ad16-71068a91ff87"
+          ],
+          "expectedInspectionRanks": {
+            "651444ef-4b05-53c1-8df7-9b1d72607d4e": 1,
+            "db839e0d-f540-5bb7-ad16-71068a91ff87": 2
+          },
+          "rawScores": {
+            "651444ef-4b05-53c1-8df7-9b1d72607d4e": 16,
+            "db839e0d-f540-5bb7-ad16-71068a91ff87": 16
+          },
+          "durationMilliseconds": 15.791
+        },
+        {
+          "queryId": "Q008",
+          "queryText": "hindi nagrerespond ang detector",
+          "language": "tagalog",
+          "assetCategory": "fire-alarm",
+          "metrics": {
+            "hitAt1": 1,
+            "hitAt5": 1,
+            "precisionAt5": 0.2,
+            "recallAt5": 0.5,
+            "recallAt10": 0.5,
+            "reciprocalRank": 1,
+            "firstRelevantRank": 1,
+            "retrievedRelevantCount": 1,
+            "expectedRelevantCount": 2
+          },
+          "retrievedInspectionIds": [
+            "87f404ae-7662-5e5f-b577-424af2cd4bd9"
+          ],
+          "expectedInspectionRanks": {
+            "87f404ae-7662-5e5f-b577-424af2cd4bd9": 1
+          },
+          "rawScores": {
+            "87f404ae-7662-5e5f-b577-424af2cd4bd9": 6
+          },
+          "durationMilliseconds": 18.1634
+        },
+        {
+          "queryId": "Q009",
+          "queryText": "detector communication problem",
+          "language": "english",
+          "assetCategory": "fire-alarm",
+          "metrics": {
+            "hitAt1": 0,
+            "hitAt5": 0,
+            "precisionAt5": 0,
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "reciprocalRank": 0,
+            "firstRelevantRank": null,
+            "retrievedRelevantCount": 0,
+            "expectedRelevantCount": 2
+          },
+          "retrievedInspectionIds": [],
+          "expectedInspectionRanks": {},
+          "rawScores": {},
+          "durationMilliseconds": 12.1469
+        },
+        {
+          "queryId": "Q010",
+          "queryText": "bell not sounding",
+          "language": "english",
+          "assetCategory": "fire-alarm",
+          "metrics": {
+            "hitAt1": 0,
+            "hitAt5": 0,
+            "precisionAt5": 0,
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "reciprocalRank": 0,
+            "firstRelevantRank": null,
+            "retrievedRelevantCount": 0,
+            "expectedRelevantCount": 2
+          },
+          "retrievedInspectionIds": [],
+          "expectedInspectionRanks": {},
+          "rawScores": {},
+          "durationMilliseconds": 11.0997
+        },
+        {
+          "queryId": "Q011",
+          "queryText": "manual call point issue",
+          "language": "english",
+          "assetCategory": "fire-alarm",
+          "metrics": {
+            "hitAt1": 1,
+            "hitAt5": 1,
+            "precisionAt5": 0.2,
+            "recallAt5": 0.5,
+            "recallAt10": 0.5,
+            "reciprocalRank": 1,
+            "firstRelevantRank": 1,
+            "retrievedRelevantCount": 1,
+            "expectedRelevantCount": 2
+          },
+          "retrievedInspectionIds": [
+            "725c0c6a-6d5a-56c6-aa93-ee4d38ad8d10"
+          ],
+          "expectedInspectionRanks": {
+            "725c0c6a-6d5a-56c6-aa93-ee4d38ad8d10": 1
+          },
+          "rawScores": {
+            "725c0c6a-6d5a-56c6-aa93-ee4d38ad8d10": 0
+          },
+          "durationMilliseconds": 12.4344
+        },
+        {
+          "queryId": "Q012",
+          "queryText": "hindi nagrerespond ang detector",
+          "language": "taglish",
+          "assetCategory": "fire-alarm",
+          "metrics": {
+            "hitAt1": 1,
+            "hitAt5": 1,
+            "precisionAt5": 0.2,
+            "recallAt5": 0.5,
+            "recallAt10": 0.5,
+            "reciprocalRank": 1,
+            "firstRelevantRank": 1,
+            "retrievedRelevantCount": 1,
+            "expectedRelevantCount": 2
+          },
+          "retrievedInspectionIds": [
+            "87f404ae-7662-5e5f-b577-424af2cd4bd9"
+          ],
+          "expectedInspectionRanks": {
+            "87f404ae-7662-5e5f-b577-424af2cd4bd9": 1
+          },
+          "rawScores": {
+            "87f404ae-7662-5e5f-b577-424af2cd4bd9": 6
+          },
+          "durationMilliseconds": 11.1895
+        },
+        {
+          "queryId": "Q013",
+          "queryText": "hindi umiilaw",
+          "language": "tagalog",
+          "assetCategory": "emergency-light",
+          "metrics": {
+            "hitAt1": 1,
+            "hitAt5": 1,
+            "precisionAt5": 0.2,
+            "recallAt5": 0.3333333333333333,
+            "recallAt10": 0.3333333333333333,
+            "reciprocalRank": 1,
+            "firstRelevantRank": 1,
+            "retrievedRelevantCount": 1,
+            "expectedRelevantCount": 3
+          },
+          "retrievedInspectionIds": [
+            "7bf49237-b9c5-5ed6-99ea-f3aa38204559"
+          ],
+          "expectedInspectionRanks": {
+            "7bf49237-b9c5-5ed6-99ea-f3aa38204559": 1
+          },
+          "rawScores": {
+            "7bf49237-b9c5-5ed6-99ea-f3aa38204559": 10
+          },
+          "durationMilliseconds": 11.3191
+        },
+        {
+          "queryId": "Q014",
+          "queryText": "ayaw mag on",
+          "language": "tagalog",
+          "assetCategory": "emergency-light",
+          "metrics": {
+            "hitAt1": 1,
+            "hitAt5": 1,
+            "precisionAt5": 0.2,
+            "recallAt5": 0.2,
+            "recallAt10": 0.2,
+            "reciprocalRank": 1,
+            "firstRelevantRank": 1,
+            "retrievedRelevantCount": 1,
+            "expectedRelevantCount": 5
+          },
+          "retrievedInspectionIds": [
+            "e168c814-8c47-58b4-918a-9d44131a36d2"
+          ],
+          "expectedInspectionRanks": {
+            "e168c814-8c47-58b4-918a-9d44131a36d2": 1
+          },
+          "rawScores": {
+            "e168c814-8c47-58b4-918a-9d44131a36d2": 10
+          },
+          "durationMilliseconds": 11.7738
+        },
+        {
+          "queryId": "Q015",
+          "queryText": "sira ang battery",
+          "language": "taglish",
+          "assetCategory": "emergency-light",
+          "metrics": {
+            "hitAt1": 1,
+            "hitAt5": 1,
+            "precisionAt5": 0.2,
+            "recallAt5": 0.25,
+            "recallAt10": 0.25,
+            "reciprocalRank": 1,
+            "firstRelevantRank": 1,
+            "retrievedRelevantCount": 1,
+            "expectedRelevantCount": 4
+          },
+          "retrievedInspectionIds": [
+            "e168c814-8c47-58b4-918a-9d44131a36d2"
+          ],
+          "expectedInspectionRanks": {
+            "e168c814-8c47-58b4-918a-9d44131a36d2": 1
+          },
+          "rawScores": {
+            "e168c814-8c47-58b4-918a-9d44131a36d2": 6
+          },
+          "durationMilliseconds": 11.5871
+        },
+        {
+          "queryId": "Q016",
+          "queryText": "dim during test",
+          "language": "english",
+          "assetCategory": "emergency-light",
+          "metrics": {
+            "hitAt1": 0,
+            "hitAt5": 0,
+            "precisionAt5": 0,
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "reciprocalRank": 0,
+            "firstRelevantRank": null,
+            "retrievedRelevantCount": 0,
+            "expectedRelevantCount": 1
+          },
+          "retrievedInspectionIds": [],
+          "expectedInspectionRanks": {},
+          "rawScores": {},
+          "durationMilliseconds": 16.3592
+        },
+        {
+          "queryId": "Q017",
+          "queryText": "charging problem",
+          "language": "english",
+          "assetCategory": "emergency-light",
+          "metrics": {
+            "hitAt1": 0,
+            "hitAt5": 0,
+            "precisionAt5": 0,
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "reciprocalRank": 0,
+            "firstRelevantRank": null,
+            "retrievedRelevantCount": 0,
+            "expectedRelevantCount": 1
+          },
+          "retrievedInspectionIds": [],
+          "expectedInspectionRanks": {},
+          "rawScores": {},
+          "durationMilliseconds": 15.2229
+        },
+        {
+          "queryId": "Q018",
+          "queryText": "may charging problem ang emergency light",
+          "language": "taglish",
+          "assetCategory": "emergency-light",
+          "metrics": {
+            "hitAt1": 0,
+            "hitAt5": 0,
+            "precisionAt5": 0,
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "reciprocalRank": 0,
+            "firstRelevantRank": null,
+            "retrievedRelevantCount": 0,
+            "expectedRelevantCount": 1
+          },
+          "retrievedInspectionIds": [],
+          "expectedInspectionRanks": {},
+          "rawScores": {},
+          "durationMilliseconds": 12.2332
+        },
+        {
+          "queryId": "Q019",
+          "queryText": "barado ang filter",
+          "language": "tagalog",
+          "assetCategory": "water-drinking-station",
+          "metrics": {
+            "hitAt1": 1,
+            "hitAt5": 1,
+            "precisionAt5": 0.2,
+            "recallAt5": 0.3333333333333333,
+            "recallAt10": 0.3333333333333333,
+            "reciprocalRank": 1,
+            "firstRelevantRank": 1,
+            "retrievedRelevantCount": 1,
+            "expectedRelevantCount": 3
+          },
+          "retrievedInspectionIds": [
+            "4a9714bf-4059-501b-85e0-03a00e1a6a2b"
+          ],
+          "expectedInspectionRanks": {
+            "4a9714bf-4059-501b-85e0-03a00e1a6a2b": 1
+          },
+          "rawScores": {
+            "4a9714bf-4059-501b-85e0-03a00e1a6a2b": 12
+          },
+          "durationMilliseconds": 11.3716
+        },
+        {
+          "queryId": "Q020",
+          "queryText": "mahina ang daloy",
+          "language": "tagalog",
+          "assetCategory": "water-drinking-station",
+          "metrics": {
+            "hitAt1": 0,
+            "hitAt5": 0,
+            "precisionAt5": 0,
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "reciprocalRank": 0,
+            "firstRelevantRank": null,
+            "retrievedRelevantCount": 0,
+            "expectedRelevantCount": 2
+          },
+          "retrievedInspectionIds": [],
+          "expectedInspectionRanks": {},
+          "rawScores": {},
+          "durationMilliseconds": 13.3389
+        },
+        {
+          "queryId": "Q021",
+          "queryText": "may tagas near the dispenser",
+          "language": "taglish",
+          "assetCategory": "water-drinking-station",
+          "metrics": {
+            "hitAt1": 1,
+            "hitAt5": 1,
+            "precisionAt5": 0.2,
+            "recallAt5": 0.5,
+            "recallAt10": 0.5,
+            "reciprocalRank": 1,
+            "firstRelevantRank": 1,
+            "retrievedRelevantCount": 1,
+            "expectedRelevantCount": 2
+          },
+          "retrievedInspectionIds": [
+            "b65f8b77-bead-5b95-9533-bb4e2474d4bf"
+          ],
+          "expectedInspectionRanks": {
+            "b65f8b77-bead-5b95-9533-bb4e2474d4bf": 1
+          },
+          "rawScores": {
+            "b65f8b77-bead-5b95-9533-bb4e2474d4bf": 6
+          },
+          "durationMilliseconds": 12.3385
+        },
+        {
+          "queryId": "Q022",
+          "queryText": "leaking near dispenser connection",
+          "language": "english",
+          "assetCategory": "water-drinking-station",
+          "metrics": {
+            "hitAt1": 1,
+            "hitAt5": 1,
+            "precisionAt5": 0.2,
+            "recallAt5": 0.5,
+            "recallAt10": 0.5,
+            "reciprocalRank": 1,
+            "firstRelevantRank": 1,
+            "retrievedRelevantCount": 1,
+            "expectedRelevantCount": 2
+          },
+          "retrievedInspectionIds": [
+            "b65f8b77-bead-5b95-9533-bb4e2474d4bf"
+          ],
+          "expectedInspectionRanks": {
+            "b65f8b77-bead-5b95-9533-bb4e2474d4bf": 1
+          },
+          "rawScores": {
+            "b65f8b77-bead-5b95-9533-bb4e2474d4bf": 10
+          },
+          "durationMilliseconds": 14.1774
+        },
+        {
+          "queryId": "Q023",
+          "queryText": "UV light not working",
+          "language": "english",
+          "assetCategory": "water-drinking-station",
+          "metrics": {
+            "hitAt1": 0,
+            "hitAt5": 0,
+            "precisionAt5": 0,
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "reciprocalRank": 0,
+            "firstRelevantRank": null,
+            "retrievedRelevantCount": 0,
+            "expectedRelevantCount": 1
+          },
+          "retrievedInspectionIds": [],
+          "expectedInspectionRanks": {},
+          "rawScores": {},
+          "durationMilliseconds": 38.5382
+        },
+        {
+          "queryId": "Q024",
+          "queryText": "UV light not functioning sa water station",
+          "language": "taglish",
+          "assetCategory": "water-drinking-station",
+          "metrics": {
+            "hitAt1": 0,
+            "hitAt5": 0,
+            "precisionAt5": 0,
+            "recallAt5": 0,
+            "recallAt10": 0,
+            "reciprocalRank": 0,
+            "firstRelevantRank": null,
+            "retrievedRelevantCount": 0,
+            "expectedRelevantCount": 1
+          },
+          "retrievedInspectionIds": [],
+          "expectedInspectionRanks": {},
+          "rawScores": {},
+          "durationMilliseconds": 11.9839
+        }
+      ]
+    }
+  },
+  "warnings": [],
+  "limitations": [
+    "Results are measured on fictional synthetic maintenance data and do not prove production GSD performance.",
+    "Timing is diagnostic only and is not a statistically valid performance comparison from one local run.",
+    "No fusion, RRF, score normalization, retrieval threshold, or insufficient-evidence policy is applied."
+  ]
+}

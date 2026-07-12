@@ -23,6 +23,7 @@ record's evidence level and tested/source commit.
 | ADR-001 | decision | Use SQL Server Full-Text Search for lexical retrieval | reviewed | source-inspected | `00e5401` | [record](decisions/ADR-001-sql-server-full-text-retrieval.md) | Stack-constrained architecture decision. |
 | ADR-002 | decision | Keep semantic embeddings behind a provider-neutral service | reviewed | source-inspected | `00e5401` | [record](decisions/ADR-002-provider-neutral-embeddings.md) | Provider, privacy, cost, and degradation boundaries. |
 | TEST-001 | test-run | Current backend verification baseline | executed | locally-executed | `798278f` | [record](test-runs/TEST-001-current-backend-baseline.md) | Restore/build/full tests, SQL scope, and lexical benchmark executed. |
+| EXP-001 | experiment | Lexical SQL Server Full-Text synthetic baseline | reviewed | locally-executed | `798278f` | [record](experiments/EXP-001-lexical-fts-baseline.md) | Immutable 24-query lexical baseline with sanitized reports. |
 
 ## Pending Evidence
 
