@@ -187,6 +187,9 @@ try {
         throw 'The worktree must be clean before an observability verification run.'
     }
 
+    # The verification run exercises the opt-in endpoint without modifying the user's .env file.
+    $env:UNIPM_METRICS_ENABLED = 'true'
+
     $shortSha = Get-RepositoryValue @('rev-parse', '--short=12', 'HEAD')
     $timestamp = [DateTimeOffset]::UtcNow.ToString('yyyyMMdd-HHmmssZ')
     $artifactRoot = Join-Path $OutputRoot "$timestamp-$shortSha-observability"
