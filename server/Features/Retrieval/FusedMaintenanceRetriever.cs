@@ -114,14 +114,9 @@ internal sealed class FusedMaintenanceRetriever(
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            return BuildDegradedResponse(
-                lexicalResults,
-                lexicalStatus,
-                new FusedRetrievalChannelExecution(
-                    SemanticMaintenanceSearchResult.RetrievalChannelValue,
-                    FusedRetrievalChannelStatus.Failed,
-                    0),
-                query);
+            throw new FusedMaintenanceExecutionException(
+                "Semantic retrieval failed unexpectedly during fused retrieval.",
+                exception);
         }
 
         var semanticStatus = new FusedRetrievalChannelExecution(

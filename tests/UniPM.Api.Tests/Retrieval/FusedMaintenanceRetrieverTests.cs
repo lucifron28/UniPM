@@ -117,6 +117,22 @@ public sealed class FusedMaintenanceRetrieverTests
             () => retriever.SearchAsync(new FusedMaintenanceSearchRequest("pressure")));
     }
 
+    [Fact]
+    public async Task Unexpected_semantic_failure_is_not_converted_to_degraded_success()
+    {
+        var retriever = new FusedMaintenanceRetriever(
+            new FakeLexical(_ => [Lexical(1)]),
+            new FakeSemantic(_ => throw new InvalidOperationException("unexpected internal failure")));
+
+        var exception = await Assert.ThrowsAsync<FusedMaintenanceExecutionException>(
+            () => retriever.SearchAsync(new FusedMaintenanceSearchRequest("pressure")));
+
+        Assert.Equal(
+            "Semantic retrieval failed unexpectedly during fused retrieval.",
+            exception.Message);
+        Assert.IsType<InvalidOperationException>(exception.InnerException);
+    }
+
     [Theory]
     [InlineData("validation")]
     [InlineData("availability")]

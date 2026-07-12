@@ -206,12 +206,17 @@ public sealed class SqlServerBenchmarkRunner
 
         if (reportFused)
         {
+            var descriptor = embeddingService!.Descriptor;
             var fusedRetriever = new FusedMaintenanceRetriever(lexicalRetriever!, semanticRetriever!);
             channels.Add(new DelegateBenchmarkRetrievalChannel(
                 new BenchmarkChannelMetadata
                 {
                     RetrievalChannel = FusedMaintenanceSearchResult.RetrievalChannelValue,
                     ResultLimit = BenchmarkEvaluationService.ResultLimit,
+                    ProviderKey = descriptor.ProviderKey,
+                    ModelKey = descriptor.ModelKey,
+                    Dimensions = descriptor.Dimensions,
+                    EmbeddingProfile = descriptor.EmbeddingProfile,
                     FusionMethod = ReciprocalRankFusion.Method,
                     ReciprocalRankConstant = ReciprocalRankFusion.ReciprocalRankConstant,
                     CandidateLimit = Math.Max(
@@ -241,10 +246,13 @@ public sealed class SqlServerBenchmarkRunner
 
         var report = await new BenchmarkEvaluationService()
             .RunAsync(manifest, channels, cancellationToken: cancellationToken);
-        if (embeddingServiceOverride is not null)
+        if (embeddingServiceOverride is not null && (reportSemantic || reportFused))
         {
-            report.Warnings.Add(
-                "Semantic metrics use a deterministic injected embedding service for pipeline validation; they are not model-quality evidence.");
+            report.Warnings.Add(reportSemantic && reportFused
+                ? "Semantic and fused metrics that depend on the deterministic injected embedding service are pipeline-validation results only; they are not semantic-model or fused-retrieval quality evidence."
+                : reportFused
+                    ? "Fused metrics that depend on the deterministic injected embedding service are pipeline-validation results only; they are not fused-retrieval quality evidence."
+                    : "Semantic metrics that depend on the deterministic injected embedding service are pipeline-validation results only; they are not semantic-model quality evidence.");
         }
         var writer = new BenchmarkReportWriter();
         await writer.WriteAsync(report, options.OutputDirectory, cancellationToken);

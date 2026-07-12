@@ -120,10 +120,19 @@ public sealed class RetrievalBenchmarkSqlServerTests
             Assert.Equal("1.1.0", report.RootElement.GetProperty("benchmarkFormatVersion").GetString());
             var fused = report.RootElement.GetProperty("channels").GetProperty("fused");
             Assert.Equal("rrf", fused.GetProperty("metadata").GetProperty("fusionMethod").GetString());
+            Assert.Equal(
+                "benchmark-test-provider",
+                fused.GetProperty("metadata").GetProperty("providerKey").GetString());
+            Assert.Equal(
+                "benchmark-test-model",
+                fused.GetProperty("metadata").GetProperty("modelKey").GetString());
+            Assert.Equal(2, fused.GetProperty("metadata").GetProperty("dimensions").GetInt32());
+            Assert.NotEmpty(
+                fused.GetProperty("metadata").GetProperty("embeddingProfile").GetString() ?? string.Empty);
             Assert.True(fused.GetProperty("perQuery")[0].GetProperty("lexicalRanks").EnumerateObject().Any());
             Assert.Contains(
                 report.RootElement.GetProperty("warnings").EnumerateArray().Select(value => value.GetString()),
-                warning => warning?.Contains("deterministic injected", StringComparison.OrdinalIgnoreCase) == true);
+                warning => warning?.Contains("fused-retrieval quality evidence", StringComparison.OrdinalIgnoreCase) == true);
         }
         finally
         {

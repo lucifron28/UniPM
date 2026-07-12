@@ -168,6 +168,44 @@ public sealed class RetrievalMetricsDecoratorTests
         });
     }
 
+    [Theory]
+    [InlineData("validation_error")]
+    [InlineData("unavailable")]
+    [InlineData("failure")]
+    [InlineData("cancelled")]
+    public async Task Fused_failures_record_bounded_outcomes_and_rethrow_original_exception(
+        string outcome)
+    {
+        Exception exception = outcome switch
+        {
+            "validation_error" => new FusedMaintenanceQueryValidationException("secret query validation"),
+            "unavailable" => new FusedMaintenanceAvailabilityException("secret provider failure"),
+            "cancelled" => new OperationCanceledException("secret cancellation"),
+            _ => new InvalidOperationException("secret unexpected failure")
+        };
+        using var recorder = new MetricRecorder();
+        var decorator = new MetricsFusedMaintenanceRetriever(
+            new FakeFusedRetriever((_, _) =>
+                Task.FromException<FusedMaintenanceSearchResponse>(exception)),
+            recorder.Metrics);
+
+        var actual = await Assert.ThrowsAnyAsync<Exception>(
+            () => decorator.SearchAsync(new FusedMaintenanceSearchRequest("private query text")));
+
+        Assert.Same(exception, actual);
+        Assert.Equal(1, recorder.Count(UniPMMetrics.RetrievalRequestsInstrumentName));
+        Assert.Equal(1, recorder.Count(UniPMMetrics.RetrievalDurationInstrumentName));
+        Assert.Equal(1, recorder.Count(UniPMMetrics.RetrievalResultsInstrumentName));
+        Assert.Equal("fused", recorder.Single(UniPMMetrics.RetrievalRequestsInstrumentName).Tags["channel"]);
+        Assert.Equal(outcome, recorder.Single(UniPMMetrics.RetrievalRequestsInstrumentName).Tags["outcome"]);
+        Assert.All(recorder.All, measurement =>
+        {
+            Assert.DoesNotContain("private query text", measurement.ToString(), StringComparison.Ordinal);
+            Assert.DoesNotContain("secret", measurement.ToString(), StringComparison.Ordinal);
+            Assert.All(measurement.Tags.Keys, key => Assert.Contains(key, new[] { "channel", "outcome" }));
+        });
+    }
+
     private static LexicalMaintenanceSearchResult CreateLexicalResult(int suffix)
         => new(
             Guid.Parse($"00000000-0000-0000-0000-00000000000{suffix}"),
