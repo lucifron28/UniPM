@@ -10,6 +10,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using UniPM.Api.Data;
 using UniPM.Api.Features.Auth;
 using UniPM.Api.Features.Inspections;
+using UniPM.Api.Models;
 
 namespace UniPM.Api.Tests;
 
@@ -20,7 +21,7 @@ public sealed class InspectionQueryEndpointsTests
     {
         await using var application = new TestApplicationFactory();
         var client = application.CreateClient();
-        var scenario = await CreateScenarioAsync(client);
+        var scenario = await CreateScenarioAsync(application, client);
 
         var response = await client.GetAsync("/api/v1/inspections");
 
@@ -37,7 +38,7 @@ public sealed class InspectionQueryEndpointsTests
     {
         await using var application = new TestApplicationFactory();
         var client = application.CreateClient();
-        var scenario = await CreateScenarioAsync(client);
+        var scenario = await CreateScenarioAsync(application, client);
 
         var response = await client.GetAsync($"/api/v1/inspections?assetId={scenario.FirstAsset.Id}");
 
@@ -54,7 +55,7 @@ public sealed class InspectionQueryEndpointsTests
     {
         await using var application = new TestApplicationFactory();
         var client = application.CreateClient();
-        var scenario = await CreateScenarioAsync(client);
+        var scenario = await CreateScenarioAsync(application, client);
 
         var response = await client.GetAsync($"/api/v1/inspections?scheduleId={scenario.SecondSchedule.Id}");
 
@@ -71,7 +72,7 @@ public sealed class InspectionQueryEndpointsTests
     {
         await using var application = new TestApplicationFactory();
         var client = application.CreateClient();
-        await CreateScenarioAsync(client);
+        await CreateScenarioAsync(application, client);
 
         var response = await client.GetAsync("/api/v1/inspections?isOperational=false");
 
@@ -88,7 +89,7 @@ public sealed class InspectionQueryEndpointsTests
     {
         await using var application = new TestApplicationFactory();
         var client = application.CreateClient();
-        var scenario = await CreateScenarioAsync(client);
+        var scenario = await CreateScenarioAsync(application, client);
         var dateFrom = Uri.EscapeDataString("2026-02-01T00:00:00+08:00");
 
         var response = await client.GetAsync($"/api/v1/inspections?dateFrom={dateFrom}");
@@ -106,7 +107,7 @@ public sealed class InspectionQueryEndpointsTests
     {
         await using var application = new TestApplicationFactory();
         var client = application.CreateClient();
-        var scenario = await CreateScenarioAsync(client);
+        var scenario = await CreateScenarioAsync(application, client);
         var dateTo = Uri.EscapeDataString("2026-02-28T23:59:59+08:00");
 
         var response = await client.GetAsync($"/api/v1/inspections?dateTo={dateTo}");
@@ -124,7 +125,7 @@ public sealed class InspectionQueryEndpointsTests
     {
         await using var application = new TestApplicationFactory();
         var client = application.CreateClient();
-        var scenario = await CreateScenarioAsync(client);
+        var scenario = await CreateScenarioAsync(application, client);
         var dateFrom = Uri.EscapeDataString("2026-02-01T00:00:00+08:00");
         var dateTo = Uri.EscapeDataString("2026-02-28T23:59:59+08:00");
 
@@ -161,7 +162,7 @@ public sealed class InspectionQueryEndpointsTests
     {
         await using var application = new TestApplicationFactory();
         var client = application.CreateClient();
-        var scenario = await CreateScenarioAsync(client);
+        var scenario = await CreateScenarioAsync(application, client);
 
         var response = await client.GetAsync($"/api/v1/inspections/{scenario.SecondInspection.Id}");
 
@@ -192,7 +193,7 @@ public sealed class InspectionQueryEndpointsTests
     {
         await using var application = new TestApplicationFactory();
         var client = application.CreateClient();
-        var scenario = await CreateScenarioAsync(client);
+        var scenario = await CreateScenarioAsync(application, client);
 
         var response = await client.GetAsync($"/api/v1/inspections/history/{scenario.FirstAsset.Id}");
 
@@ -210,6 +211,7 @@ public sealed class InspectionQueryEndpointsTests
     {
         await using var application = new TestApplicationFactory();
         var client = application.CreateClient();
+        await application.EnsureAuthenticatedUserAsync();
         var asset = await CreateAssetAsync(client, "FE-102", "fire-extinguisher");
         var schedule = await CreateScheduleAsync(
             client,
@@ -233,8 +235,11 @@ public sealed class InspectionQueryEndpointsTests
         Assert.Contains("remarks: mahina ang pressure", document.SearchText, StringComparison.Ordinal);
     }
 
-    private static async Task<InspectionScenario> CreateScenarioAsync(HttpClient client)
+    private static async Task<InspectionScenario> CreateScenarioAsync(
+        TestApplicationFactory application,
+        HttpClient client)
     {
+        await application.EnsureAuthenticatedUserAsync();
         var firstAsset = await CreateAssetAsync(client, "FE-101", "fire-extinguisher");
         var secondAsset = await CreateAssetAsync(client, "EL-101", "emergency-light");
         var firstSchedule = await CreateScheduleAsync(
@@ -330,7 +335,7 @@ public sealed class InspectionQueryEndpointsTests
         var response = await client.PostAsJsonAsync("/api/v1/inspections/", new
         {
             scheduleId,
-            inspectorUserId = Guid.NewGuid(),
+            inspectorUserId = TestAuthenticationHandler.UserId,
             dateInspected,
             isOperational,
             remarks
@@ -365,6 +370,30 @@ public sealed class InspectionQueryEndpointsTests
                 services.AddDbContextFactory<ApplicationDbContext>(options =>
                     options.UseInMemoryDatabase(_databaseName));
             });
+        }
+
+        public async Task EnsureAuthenticatedUserAsync()
+        {
+            await using var scope = Services.CreateAsyncScope();
+            var factory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
+            await using var context = await factory.CreateDbContextAsync();
+            if (await context.Users.AnyAsync(user => user.Id == TestAuthenticationHandler.UserId))
+            {
+                return;
+            }
+
+            context.Users.Add(new ApplicationUser
+            {
+                Id = TestAuthenticationHandler.UserId,
+                UserName = "test-user@unipm.local",
+                NormalizedUserName = "TEST-USER@UNIPM.LOCAL",
+                Email = "test-user@unipm.local",
+                NormalizedEmail = "TEST-USER@UNIPM.LOCAL",
+                EmailConfirmed = true,
+                DisplayName = "Test User",
+                IsActive = true
+            });
+            await context.SaveChangesAsync();
         }
     }
 

@@ -38,12 +38,13 @@ internal sealed class TestAuthenticationHandler(
     : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
 {
     public const string SchemeName = "UniPM-Test";
+    public static readonly Guid UserId = Guid.Parse("11111111-1111-1111-1111-111111111111");
 
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
         var claims = new List<Claim>
         {
-            new("sub", Guid.Parse("11111111-1111-1111-1111-111111111111").ToString()),
+            new("sub", UserId.ToString()),
             new("display_name", "Test User")
         };
         claims.AddRange(roles.Values.Select(role => new Claim("role", role)));

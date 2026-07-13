@@ -1,3 +1,5 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 using UniPM.Api.Data;
 using UniPM.Api.Features;
@@ -16,6 +18,7 @@ public static class InspectionsEndpoints
 
         group.MapPost("/", async (
             RecordInspectionDto dto,
+            ClaimsPrincipal principal,
             IDbContextFactory<ApplicationDbContext> factory,
             MaintenanceSearchDocumentProjector projector,
             CancellationToken cancellationToken) =>
@@ -26,7 +29,30 @@ public static class InspectionsEndpoints
                 return ApiErrors.Validation(validationErrors);
             }
 
+            var subject = principal.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+            if (!Guid.TryParse(subject, out var submittedByUserId))
+            {
+                return ApiErrors.Unauthorized("The authenticated user is unavailable.");
+            }
+
+            if (principal.IsInRole(AuthRoleCatalog.Inspector) &&
+                dto.InspectorUserId != submittedByUserId)
+            {
+                return Results.Forbid();
+            }
+
             await using var context = await factory.CreateDbContextAsync(cancellationToken);
+            var inspector = await context.Users
+                .AsNoTracking()
+                .SingleOrDefaultAsync(user => user.Id == dto.InspectorUserId, cancellationToken);
+            if (inspector is null || !inspector.IsActive)
+            {
+                return ApiErrors.Validation(new Dictionary<string, string[]>
+                {
+                    [nameof(dto.InspectorUserId)] = ["Inspector user is unavailable."]
+                });
+            }
+
             var schedule = await context.PreventiveMaintenanceSchedules
                 .FirstOrDefaultAsync(schedule => schedule.Id == dto.ScheduleId, cancellationToken);
 

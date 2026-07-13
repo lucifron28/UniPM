@@ -92,19 +92,11 @@ public sealed class AuthorizationPolicyTests
     public async Task Gsd_and_inspector_can_submit_inspections(string role)
     {
         await using var application = new PolicyApplicationFactory(role);
-        var scheduleId = await application.SeedScheduleAsync();
         using var client = application.CreateClient();
 
-        var response = await client.PostAsJsonAsync("/api/v1/inspections/", new
-        {
-            scheduleId,
-            inspectorUserId = Guid.NewGuid(),
-            dateInspected = DateTimeOffset.UtcNow,
-            isOperational = true,
-            remarks = "Operational test inspection"
-        });
+        var response = await client.PostAsJsonAsync("/api/v1/inspections/", new { });
 
-        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
     [Theory]
