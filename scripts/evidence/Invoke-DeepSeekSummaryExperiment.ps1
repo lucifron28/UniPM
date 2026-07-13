@@ -225,7 +225,7 @@ function Get-SummaryCaseResult {
     if ($summaryStatus -ne 'generated' -or [string]::IsNullOrWhiteSpace($summary)) {
         $failures.Add("Expected summaryStatus=generated, received $summaryStatus.")
     }
-    elseif (-not $summary.Contains($assistiveDisclaimer, [StringComparison]::Ordinal)) {
+    elseif ($summary.IndexOf($assistiveDisclaimer, [StringComparison]::Ordinal) -lt 0) {
         $failures.Add('The exact assistive disclaimer was omitted.')
     }
 
