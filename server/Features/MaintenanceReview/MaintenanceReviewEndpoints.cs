@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Options;
 using UniPM.Api.Features;
 using UniPM.Api.Features.Retrieval;
+using UniPM.Api.Features.Auth;
 
 namespace UniPM.Api.Features.MaintenanceReview;
 
@@ -14,7 +15,8 @@ public static class MaintenanceReviewEndpoints
             .WithTags("Maintenance Review");
 
         group.MapPost("", HandleAsync)
-        .WithName("CreateMaintenanceReview");
+            .RequireAuthorization(AuthPolicyCatalog.CanReviewMaintenanceHistory)
+            .WithName("CreateMaintenanceReview");
 
         return endpoints;
     }

@@ -2,14 +2,16 @@ using System.Net;
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.Hosting;
+using UniPM.Api.Features.Auth;
 
 namespace UniPM.Api.Tests;
 
-public sealed class ValidationEndpointsTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class ValidationEndpointsTests : IClassFixture<ValidationEndpointsTests.TestApplicationFactory>
 {
     private readonly HttpClient _client;
 
-    public ValidationEndpointsTests(WebApplicationFactory<Program> factory)
+    public ValidationEndpointsTests(TestApplicationFactory factory)
     {
         _client = factory.CreateClient();
     }
@@ -83,5 +85,14 @@ public sealed class ValidationEndpointsTests : IClassFixture<WebApplicationFacto
         Assert.Contains("ScheduleId", problem.Errors.Keys);
         Assert.Contains("InspectorUserId", problem.Errors.Keys);
         Assert.Contains("DateInspected", problem.Errors.Keys);
+    }
+
+    public sealed class TestApplicationFactory : WebApplicationFactory<Program>
+    {
+        protected override void ConfigureWebHost(IWebHostBuilder builder)
+        {
+            builder.ConfigureServices(services =>
+                services.AddTestAuthentication(AuthRoleCatalog.Gsd));
+        }
     }
 }

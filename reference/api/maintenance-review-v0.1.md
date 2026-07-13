@@ -3,10 +3,12 @@
 ## Safety Boundary
 
 `POST /api/v1/maintenance-review` is an assistive, source-bounded review path.
-It is disabled by default through `MaintenanceReview:Enabled=false` and may be
-enabled only in `Development` until authentication is implemented. No JWT,
-temporary API key, role authorization, review-history table, prompt storage,
-summary storage, or token-map storage is part of this contract.
+It is disabled by default through `MaintenanceReview:Enabled=false`. When
+enabled in any environment, JWT bearer authentication and the
+`CanReviewMaintenanceHistory` policy are required. The policy currently allows
+`GSD`, `Supervisor`, and `DepartmentHead`; `Admin` alone is not sufficient.
+No review-history table, prompt storage, summary storage, or token-map storage
+is part of this contract.
 
 ## Request
 
@@ -100,7 +102,7 @@ records through lexical fallback.
 
 ## Limitations
 
-This is a synthetic, provisional MVP. It does not authenticate clients, prove
-real provider quality, infer equipment equivalence, diagnose failures, finalize
+This is a synthetic, provisional MVP. It does not prove real provider quality,
+infer equipment equivalence, diagnose failures, finalize
 GSD acknowledgement/RMRF workflows, make corrective decisions, retrieve
 external reference documents, or provide chatbot/multi-turn behavior.

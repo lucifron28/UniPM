@@ -84,6 +84,9 @@ jobs:
       - name: Validate observability Compose configuration
         env:
           MSSQL_SA_PASSWORD: ChangeThisLocalPassword123!
+          UNIPM_JWT_ISSUER: UniPM.CI
+          UNIPM_JWT_AUDIENCE: UniPM.CI
+          UNIPM_JWT_SIGNING_KEY: CiComposeValidationSigningKey1234567890!
         run: docker compose --profile observability config --quiet
 
       - name: Validate Prometheus configuration

@@ -10,7 +10,8 @@ The current strategy is risk-first:
 3. finish the read-side contracts needed by the clients
 4. prove retrieval channels separately before relying on fusion
 5. add the bounded maintenance-history review loop
-6. add authentication scaffolding after the core evidence path is stable
+6. preserve the completed coarse authentication scaffold while final RBAC is
+   deferred
 
 The RAG feature is not a chatbot and not an autonomous diagnostic tool. It is a
 bounded maintenance-history review feature that retrieves source records and
@@ -49,10 +50,12 @@ helps a human verify them.
 - Engineering-evidence workflow: complete with source-inspected chronology,
   architecture decisions, a fresh backend test record, and an executed lexical
   baseline.
-- Source-bounded maintenance review and summarization: complete as a
-  Development-only, source-returning, provider-neutral MVP; authenticated
-  production access remains pending.
-- Authentication scaffolding: pending.
+- Source-bounded maintenance review and summarization: complete as an
+  authenticated, source-returning, provider-neutral MVP when explicitly
+  enabled.
+- Authentication scaffolding: complete with IdentityCore, JWT bearer access
+  tokens, five provisional roles, Development user seeding, and policy-
+  protected operational writes.
 
 ## Risk-First Order
 
@@ -65,7 +68,7 @@ helps a human verify them.
 6. Preserve inspectable RRF fusion and keep real fused quality evidence pending
    until a provider is configured.
 7. Preserve the source-bounded review contract and its explicit limitations.
-8. Add authentication scaffolding.
+8. Harden the backend MVP without expanding provisional role or workflow rules.
 
 ## Task 0: Project Boot And Baseline Check
 
@@ -196,7 +199,7 @@ The `POST /api/v1/maintenance-review` endpoint now implements this bounded
 loop with a maximum of two fused passes, four deterministic context tiers,
 explicit evidence and summary statuses, request-scoped token masking, and
 source records returned for human verification. It remains disabled by default
-and Development-only before authentication.
+and requires `CanReviewMaintenanceHistory` whenever enabled.
 
 Semantic retrieval is a required target channel, not an excuse to block core
 maintenance workflows. Core workflows must work with AI disabled. No separate
@@ -290,4 +293,4 @@ directly.
 
 ## Next Branches
 
-- `feat/auth-scaffolding`
+- `chore/backend-mvp-hardening`

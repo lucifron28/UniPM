@@ -37,6 +37,10 @@ record's evidence level and tested/source commit.
 | TEST-006 | test-run | Maintenance review correction verification | superseded | locally-executed | `7cf0687` | [record](test-runs/TEST-006-maintenance-review-correction.md) | Historical verification superseded by TEST-007 after sanitized retrieval, bounded prompts, explicit migration, and fresh-volume corrections. |
 | TEST-007 | test-run | Maintenance review fresh migration verification | superseded | locally-executed | `847495d` | [record](test-runs/TEST-007-maintenance-review-correction.md) | Historical fresh-volume verification superseded by TEST-008 after lexical-safe, issue-first review-query correction. |
 | TEST-008 | test-run | Maintenance review lexical query correction verification | executed | locally-executed | `bb8d307` | [record](test-runs/TEST-008-maintenance-review-lexical-query-correction.md) | Fresh SQL Server volume, explicit migration, seed, rebuild, and degraded source-only lexical review after the query correction; real summary and semantic quality remain unclaimed. |
+| IMP-009 | implementation | Identity, JWT, and coarse authorization scaffolding | reviewed | source-inspected | `42d7324` | [record](implementation/IMP-009-authentication-and-role-scaffolding.md) | Guid Identity persistence, JWT login/current user, Development accounts, and provisional write policies. |
+| ADR-006 | decision | Use IdentityCore, JWT, and coarse operational policies | reviewed | source-inspected | `42d7324` | [record](decisions/ADR-006-identity-jwt-and-coarse-authorization.md) | Keeps technical Admin separate from provisional maintenance authority and defers final RBAC. |
+| TEST-009 | test-run | Authentication and role-policy baseline | superseded | locally-executed | `205c1ac` | [record](test-runs/TEST-009-authentication-baseline.md) | Historical authentication baseline superseded by TEST-010 after Inspector identity-binding correction. |
+| TEST-010 | test-run | Authentication inspection identity-binding verification | executed | locally-executed | `37981a4` | [record](test-runs/TEST-010-authentication-identity-binding.md) | Fresh SQL Server migration, Development identities, real JWT policy checks, protected writes, and corrected Inspector identity binding. |
 
 ## Pending Evidence
 
@@ -51,6 +55,6 @@ record's evidence level and tested/source commit.
   inspected sanitized provider run.
 - Independent generated-summary faithfulness evaluation: pending a labeled
   evaluation set and review protocol.
-- Authenticated production review access: pending authentication scaffolding
-  and authorization decisions.
+- Production authentication deployment verification: pending configured IIS
+  hosting, institutional secret management, and final RBAC decisions.
 - IIS deployment verification: pending a configured Windows Server deployment.

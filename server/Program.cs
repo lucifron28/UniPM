@@ -10,16 +10,14 @@ using UniPM.Api.Features.Retrieval;
 using UniPM.Api.Observability;
 using OpenTelemetry.Metrics;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.OpenApi;
+using UniPM.Api.Features.Auth;
 
+var maintenanceCommand = SyntheticMaintenanceCommandParser.Parse(args);
 var builder = WebApplication.CreateBuilder(args);
 
 var maintenanceReviewEnabled = builder.Configuration.GetValue<bool>(
     $"{MaintenanceReviewOptions.SectionName}:Enabled");
-if (maintenanceReviewEnabled && !builder.Environment.IsDevelopment())
-{
-    throw new InvalidOperationException(
-        "MaintenanceReview:Enabled can only be true in Development until authentication is implemented.");
-}
 
 var maintenanceReviewConfiguration = builder.Configuration.GetSection(MaintenanceReviewOptions.SectionName);
 if (maintenanceReviewEnabled
@@ -33,6 +31,27 @@ if (maintenanceReviewEnabled
 
 var metricsEnabled = builder.Configuration.GetValue<bool>(
     $"{ObservabilityOptions.SectionName}:MetricsEnabled");
+
+var jwtEnvironmentOverrides = new Dictionary<string, string?>
+{
+    [$"{JwtOptions.SectionName}:{nameof(JwtOptions.Issuer)}"] =
+        builder.Configuration["UNIPM_JWT_ISSUER"],
+    [$"{JwtOptions.SectionName}:{nameof(JwtOptions.Audience)}"] =
+        builder.Configuration["UNIPM_JWT_AUDIENCE"],
+    [$"{JwtOptions.SectionName}:{nameof(JwtOptions.SigningKey)}"] =
+        builder.Configuration["UNIPM_JWT_SIGNING_KEY"],
+    [$"{JwtOptions.SectionName}:{nameof(JwtOptions.AccessTokenMinutes)}"] =
+        builder.Configuration["UNIPM_JWT_ACCESS_TOKEN_MINUTES"]
+};
+builder.Configuration.AddInMemoryCollection(
+    jwtEnvironmentOverrides.Where(pair => !string.IsNullOrWhiteSpace(pair.Value))!);
+
+var configuredJwtOptions = builder.Configuration
+    .GetSection(JwtOptions.SectionName)
+    .Get<JwtOptions>() ?? new JwtOptions();
+var jwtRuntimeConfiguration = maintenanceCommand == SyntheticMaintenanceCommand.None
+    ? JwtRuntimeConfiguration.Create(configuredJwtOptions, builder.Environment.IsDevelopment())
+    : JwtRuntimeConfiguration.CreateForMaintenanceCommand(configuredJwtOptions);
 
 builder.Services.Configure<ObservabilityOptions>(
     builder.Configuration.GetSection(ObservabilityOptions.SectionName));
@@ -66,7 +85,24 @@ if (metricsEnabled)
             }));
 }
 
-builder.Services.AddOpenApi();
+builder.Services.AddOpenApi(options =>
+{
+    options.AddDocumentTransformer((document, _, _) =>
+    {
+        document.Components ??= new OpenApiComponents();
+        document.Components.SecuritySchemes ??=
+            new Dictionary<string, IOpenApiSecurityScheme>();
+        document.Components.SecuritySchemes["Bearer"] = new OpenApiSecurityScheme
+        {
+            Type = SecuritySchemeType.Http,
+            Scheme = "bearer",
+            BearerFormat = "JWT",
+            In = ParameterLocation.Header,
+            Description = "Enter a UniPM JWT bearer access token."
+        };
+        return Task.CompletedTask;
+    });
+});
 builder.Services.AddDbContextFactory<ApplicationDbContext>((serviceProvider, options) =>
 {
     var configuration = serviceProvider.GetRequiredService<IConfiguration>();
@@ -77,6 +113,9 @@ builder.Services.AddDbContextFactory<ApplicationDbContext>((serviceProvider, opt
         options.UseSqlServer(connectionString);
     }
 });
+builder.Services.AddUniPmAuthentication(
+    builder.Configuration,
+    jwtRuntimeConfiguration);
 
 builder.Services
     .AddHealthChecks()
@@ -121,7 +160,6 @@ builder.Services.AddScoped<IMaintenanceReviewService, MaintenanceReviewService>(
 
 var app = builder.Build();
 
-var maintenanceCommand = SyntheticMaintenanceCommandParser.Parse(args);
 if (maintenanceCommand != SyntheticMaintenanceCommand.None)
 {
     if (maintenanceCommand == SyntheticMaintenanceCommand.Ambiguous)
@@ -131,10 +169,13 @@ if (maintenanceCommand != SyntheticMaintenanceCommand.None)
         return;
     }
 
-    if (maintenanceCommand is (SyntheticMaintenanceCommand.Seed or SyntheticMaintenanceCommand.Reset)
+    if (maintenanceCommand is (
+            SyntheticMaintenanceCommand.Seed
+            or SyntheticMaintenanceCommand.Reset
+            or SyntheticMaintenanceCommand.SeedDevelopmentUsers)
         && !app.Environment.IsDevelopment())
     {
-        await Console.Error.WriteLineAsync("Synthetic maintenance seed commands are available only in Development.");
+        await Console.Error.WriteLineAsync("Development seed commands are available only in Development.");
         Environment.ExitCode = 1;
         return;
     }
@@ -168,6 +209,13 @@ if (maintenanceCommand != SyntheticMaintenanceCommand.None)
             {
                 Environment.ExitCode = 1;
             }
+        }
+        else if (maintenanceCommand == SyntheticMaintenanceCommand.SeedDevelopmentUsers)
+        {
+            var seeder = scope.ServiceProvider.GetRequiredService<DevelopmentUserSeeder>();
+            var result = await seeder.SeedAsync();
+            await Console.Out.WriteLineAsync(
+                $"Development users ready ({result.RolesCreated} roles created, {result.UsersCreated} users created, {result.RoleAssignmentsRepaired} role assignments repaired, {result.UsersReactivated} users reactivated).");
         }
         else
         {
@@ -212,6 +260,9 @@ if (metricsEnabled)
     });
     app.UseOpenTelemetryPrometheusScrapingEndpoint();
 }
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapGet("/", () => Results.Ok(new
 {

@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using UniPM.Api.Features.Assets;
 using UniPM.Api.Features.ReferenceData;
@@ -7,7 +9,7 @@ using UniPM.Api.Models;
 namespace UniPM.Api.Data;
 
 public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
-    : DbContext(options)
+    : IdentityDbContext<ApplicationUser, IdentityRole<Guid>, Guid>(options)
 {
     public DbSet<Asset> Assets => Set<Asset>();
     public DbSet<PreventiveMaintenanceSchedule> PreventiveMaintenanceSchedules => Set<PreventiveMaintenanceSchedule>();
@@ -18,6 +20,12 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        var user = modelBuilder.Entity<ApplicationUser>();
+        user.Property(entity => entity.DisplayName)
+            .HasMaxLength(160);
+        user.Property(entity => entity.IsActive)
+            .HasDefaultValue(true);
         
         var asset = modelBuilder.Entity<Asset>();
         asset.Property(entity => entity.AssetCode)

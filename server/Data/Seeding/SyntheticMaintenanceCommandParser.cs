@@ -8,6 +8,7 @@ internal enum SyntheticMaintenanceCommand
     Rebuild,
     RebuildEmbeddings,
     Migrate,
+    SeedDevelopmentUsers,
     Ambiguous
 }
 
@@ -41,6 +42,11 @@ internal static class SyntheticMaintenanceCommandParser
         if (arguments.Contains("--migrate-database"))
         {
             requestedCommands.Add(SyntheticMaintenanceCommand.Migrate);
+        }
+
+        if (arguments.Contains("--seed-development-users"))
+        {
+            requestedCommands.Add(SyntheticMaintenanceCommand.SeedDevelopmentUsers);
         }
 
         return requestedCommands.Count switch

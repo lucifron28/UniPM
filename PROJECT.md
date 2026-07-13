@@ -39,6 +39,9 @@
   - Reset dependency protection, strict fixture-property loading, exact
     evaluation correspondence tests, case-insensitive uniqueness checks, and
     unambiguous maintenance-command handling.
+  - IdentityCore persistence with Guid users and roles, JWT login and
+    `/api/v1/auth/me`, Development user seeding, and provisional operational
+    authorization policies.
 
 ## Synthetic Seed Commands
 
@@ -49,6 +52,7 @@ command requires a configured, reachable database:
 $env:ASPNETCORE_ENVIRONMENT = "Development"
 dotnet run --project server -- --migrate-database
 dotnet run --project server -- --seed-synthetic
+dotnet run --project server -- --seed-development-users
 dotnet run --project server -- --reset-synthetic-seed
 dotnet run --project server -- --rebuild-maintenance-search-documents
 dotnet run --project server -- --rebuild-maintenance-embeddings
@@ -99,8 +103,8 @@ sanitization, or summaries.
 
 ## Maintenance Review
 
-The source-bounded maintenance-review loop is implemented as a Development-only
-pre-authentication endpoint. It performs at most two fused retrieval passes,
+The source-bounded maintenance-review loop is implemented as an explicitly
+enabled, authenticated endpoint. It performs at most two fused retrieval passes,
 uses deterministic context tiers, sanitizes provider-bound text in a
 request-scoped session, and returns original source records beside every
 summary status. It does not persist review data, prompts, summaries, or token
@@ -108,7 +112,8 @@ maps and does not make autonomous maintenance decisions.
 
 ## Next Steps
 
-1. Add authentication scaffolding.
+1. Harden the backend MVP around auth operations, deployment checks, and
+   remaining release-readiness gaps without finalizing deferred GSD workflows.
 
 ## Engineering Evidence
 
@@ -123,4 +128,4 @@ opt-in OpenTelemetry metrics, an optional local Prometheus/Grafana profile, and
 TEST-002 evidence for the local technical-health path. Production monitoring,
 IIS restriction, tracing, centralized logs, alerting, and maintenance KPI
 dashboards remain out of scope. The exact next backend branch is
-`feat/auth-scaffolding`.
+`chore/backend-mvp-hardening`.
