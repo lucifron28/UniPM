@@ -16,7 +16,7 @@ $stackTouched = $false
 $stageRecords = [System.Collections.Generic.List[object]]::new()
 $preflightRecords = [System.Collections.Generic.List[object]]::new()
 $caseRecords = [System.Collections.Generic.List[object]]::new()
-$accessToken = $null
+$script:accessToken = $null
 $savedEnvironment = @{}
 $environmentNames = @(
     'MSSQL_SA_PASSWORD',
@@ -427,8 +427,8 @@ try {
         } | ConvertTo-Json -Compress
         $login = Invoke-ApiRequest -Method POST -Uri "$apiBase/api/v1/auth/login" -Body $loginBody
         if ($login.StatusCode -ne 200) { throw "Authorized login returned HTTP $($login.StatusCode)." }
-        $accessToken = ($login.Content | ConvertFrom-Json).accessToken
-        if ([string]::IsNullOrWhiteSpace($accessToken)) { throw 'Authorized login returned no access token.' }
+        $script:accessToken = ($login.Content | ConvertFrom-Json).accessToken
+        if ([string]::IsNullOrWhiteSpace($script:accessToken)) { throw 'Authorized login returned no access token.' }
     }
     Invoke-Stage 'retrieval-preflight' {
         foreach ($case in @($manifest.cases)) {
@@ -442,7 +442,7 @@ try {
             $requestFailure = $null
             for ($attempt = 0; $attempt -lt 20; $attempt++) {
                 try {
-                    $candidate = Invoke-ApiRequest -Method POST -Uri "$apiBase/api/v1/maintenance-review" -Body $body -Token $accessToken
+                    $candidate = Invoke-ApiRequest -Method POST -Uri "$apiBase/api/v1/maintenance-review" -Body $body -Token $script:accessToken
                     $candidatePayload = $candidate.Content | ConvertFrom-Json
                     $response = $candidate
                     $payload = $candidatePayload
@@ -497,7 +497,7 @@ try {
             $payload = $null
             $requestFailure = $null
             try {
-                $response = Invoke-ApiRequest -Method POST -Uri "$apiBase/api/v1/maintenance-review" -Body $body -Token $accessToken
+                $response = Invoke-ApiRequest -Method POST -Uri "$apiBase/api/v1/maintenance-review" -Body $body -Token $script:accessToken
                 try {
                     $payload = $response.Content | ConvertFrom-Json
                 }
@@ -537,7 +537,7 @@ finally {
     foreach ($name in $environmentNames) {
         [Environment]::SetEnvironmentVariable($name, $savedEnvironment[$name], 'Process')
     }
-    $accessToken = $null
+    $script:accessToken = $null
 
     if ($null -ne $artifactRoot) {
         $latencies = @($caseRecords | ForEach-Object { [double]$_.latencyMilliseconds })
