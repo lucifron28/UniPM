@@ -100,11 +100,6 @@ builder.Services.AddOpenApi(options =>
             In = ParameterLocation.Header,
             Description = "Enter a UniPM JWT bearer access token."
         };
-        document.Security ??= [];
-        document.Security.Add(new OpenApiSecurityRequirement
-        {
-            [new OpenApiSecuritySchemeReference("Bearer", document)] = []
-        });
         return Task.CompletedTask;
     });
 });
