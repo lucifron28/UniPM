@@ -39,6 +39,7 @@ record's evidence level and tested/source commit.
 | TEST-008 | test-run | Maintenance review lexical query correction verification | executed | locally-executed | `bb8d307` | [record](test-runs/TEST-008-maintenance-review-lexical-query-correction.md) | Fresh SQL Server volume, explicit migration, seed, rebuild, and degraded source-only lexical review after the query correction; real summary and semantic quality remain unclaimed. |
 | IMP-009 | implementation | Identity, JWT, and coarse authorization scaffolding | reviewed | source-inspected | `42d7324` | [record](implementation/IMP-009-authentication-and-role-scaffolding.md) | Guid Identity persistence, JWT login/current user, Development accounts, and provisional write policies. |
 | ADR-006 | decision | Use IdentityCore, JWT, and coarse operational policies | reviewed | source-inspected | `42d7324` | [record](decisions/ADR-006-identity-jwt-and-coarse-authorization.md) | Keeps technical Admin separate from provisional maintenance authority and defers final RBAC. |
+| TEST-009 | test-run | Authentication and role-policy baseline | executed | locally-executed | `205c1ac` | [record](test-runs/TEST-009-authentication-baseline.md) | Fresh SQL Server migration, Development identities, real JWT login/current-user behavior, policy boundaries, protected writes, and source-returning review. |
 
 ## Pending Evidence
 
