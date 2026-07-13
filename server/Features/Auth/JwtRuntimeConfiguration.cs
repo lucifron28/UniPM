@@ -90,7 +90,7 @@ internal sealed class JwtRuntimeConfiguration
             RequireExpirationTime = true,
             RequireSignedTokens = true,
             ClockSkew = ClockSkew,
-            NameClaimType = System.Security.Claims.ClaimTypes.Name,
-            RoleClaimType = System.Security.Claims.ClaimTypes.Role
+            NameClaimType = AuthClaimNames.DisplayName,
+            RoleClaimType = AuthClaimNames.Role
         };
 }

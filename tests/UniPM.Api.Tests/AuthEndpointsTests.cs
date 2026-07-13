@@ -135,6 +135,29 @@ public sealed class AuthEndpointsTests
         Assert.Equal([AuthRoleCatalog.Gsd, AuthRoleCatalog.Supervisor], user.Roles);
     }
 
+    [Fact]
+    public async Task Jwt_role_claim_authorizes_the_matching_operational_policy()
+    {
+        await using var application = new AuthApplicationFactory();
+        await application.SeedUserAsync(Email, Password, true, false, AuthRoleCatalog.Gsd);
+        using var client = application.CreateClient();
+        var login = await (await LoginAsync(client, Email, Password))
+            .Content.ReadFromJsonAsync<LoginPayload>();
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", login!.AccessToken);
+
+        var response = await client.PostAsJsonAsync("/api/v1/assets/", new
+        {
+            assetCode = "JWT-GSD-001",
+            assetCategory = "fire-extinguisher",
+            building = "Test Building",
+            department = "GSD",
+            location = "Test Room"
+        });
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+    }
+
     [Theory]
     [InlineData(InvalidTokenKind.Issuer)]
     [InlineData(InvalidTokenKind.Audience)]
