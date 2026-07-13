@@ -1,31 +1,44 @@
 ---
-id: TEST-009
+id: TEST-010
 type: test-run
-title: Authentication and role-policy baseline
-status: superseded
-recordedAtUtc: 2026-07-13T00:48:03Z
-testedCommit: 205c1ac3a55a2f35c36dc100dab2bc42a5a14327
+title: Authentication inspection identity-binding verification
+status: executed
+recordedAtUtc: 2026-07-13T01:23:51Z
+testedCommit: 37981a4203e69db249e2eea00729b9e0d45b97bc
 sourceBranch: feat/auth-scaffolding
 evidenceLevel: locally-executed
-supersededBy: TEST-010
+supersedes: TEST-009
 ---
 
-# Authentication And Role-Policy Baseline
+# Authentication Inspection Identity-Binding Verification
 
 ## Commands And Results
 
 ```powershell
-dotnet restore .\UniPM.slnx
 dotnet build .\UniPM.slnx --configuration Release --no-restore
 dotnet test .\UniPM.slnx --configuration Release --no-build
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\evidence\Invoke-AuthVerification.ps1
 ```
 
-- Restore: passed.
 - Release build: passed with zero warnings and zero errors.
-- Full Release suite: 249 passed, 0 failed, and 17 skipped.
+- Full Release suite: 254 passed, 0 failed, and 17 skipped.
 - The fresh-volume authentication harness completed with exit code `0` and
   recorded `worktreeClean: true`.
+
+## Corrected Inspection Authorization Behavior
+
+- An Inspector can submit an inspection only when `InspectorUserId` matches
+  the authenticated JWT subject.
+- An Inspector attempting to submit another user's ID receives HTTP 403.
+- A nonexistent or inactive referenced inspection user is rejected before any
+  inspection or schedule write.
+- GSD retains the provisional on-behalf submission path only for an active
+  referenced user. A separate submitter audit field remains deferred pending
+  the planned backend-hardening contract work.
+
+These cases are covered by real-JWT endpoint tests in the executed Release
+suite; the Docker harness confirms the seeded Inspector submission succeeds
+against a fresh SQL Server database.
 
 ## Fresh SQL Server And Authentication Verification
 
@@ -49,12 +62,12 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\evidence\Invok
 The ignored artifact capture is retained under:
 
 ```text
-artifacts/evidence/20260713-004730Z-205c1ac3a55a-authentication
+artifacts/evidence/20260713-012307Z-37981a4203e6-authentication
 ```
 
 ```text
-468e1b0d842490824b9a8d29e2f072dfffbe63636b87dae259295a8b99b9a21a  auth-verification.json
-d97d75d38aa1eb45c28d42fbffba1e2ea36b3f285efe0c0a5d741304fe8241c8  verification-summary.json
+d39d4d37dd634c70754f123c2e32ba0d8041ae63f59e60925f22797e67939209  auth-verification.json
+692c17db81adf0bd0bc3cff406124dc6091599e65ffba5ef3d06171df36da93e  verification-summary.json
 ```
 
 The reviewed artifacts contain bounded role, status, expiry, short token-
