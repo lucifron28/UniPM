@@ -22,7 +22,7 @@ internal sealed class OpenAiCompatibleSummaryService(
         SummaryGenerationRequest request,
         CancellationToken cancellationToken = default)
     {
-        EnsureEnabledAndConfigured();
+        var thinkingMode = EnsureEnabledAndConfigured();
         var promptLength = request.SystemMessage.Length + request.UserMessage.Length;
         if (string.IsNullOrWhiteSpace(request.SystemMessage)
             || string.IsNullOrWhiteSpace(request.UserMessage)
@@ -36,22 +36,26 @@ internal sealed class OpenAiCompatibleSummaryService(
         using var linkedCancellation = CancellationTokenSource.CreateLinkedTokenSource(
             cancellationToken,
             timeout.Token);
+        var payload = new Dictionary<string, object?>
+        {
+            ["model"] = options.Model,
+            ["temperature"] = 0,
+            ["max_tokens"] = Math.Max(1, options.MaxOutputCharacters / 4),
+            ["messages"] = new[]
+            {
+                new { role = "system", content = request.SystemMessage },
+                new { role = "user", content = request.UserMessage }
+            }
+        };
+        if (thinkingMode.Length > 0)
+        {
+            payload["thinking"] = new { type = thinkingMode };
+        }
+
         using var httpRequest = new HttpRequestMessage(HttpMethod.Post, BuildRequestUri())
         {
             Content = new StringContent(
-                JsonSerializer.Serialize(
-                    new
-                    {
-                        model = options.Model,
-                        temperature = 0,
-                        max_tokens = Math.Max(1, options.MaxOutputCharacters / 4),
-                        messages = new[]
-                        {
-                            new { role = "system", content = request.SystemMessage },
-                            new { role = "user", content = request.UserMessage }
-                        }
-                    },
-                    JsonSerializerOptions.Web),
+                JsonSerializer.Serialize(payload, JsonSerializerOptions.Web),
                 Encoding.UTF8,
                 "application/json")
         };
@@ -126,7 +130,7 @@ internal sealed class OpenAiCompatibleSummaryService(
         }
     }
 
-    private void EnsureEnabledAndConfigured()
+    private string EnsureEnabledAndConfigured()
     {
         if (!options.Enabled)
         {
@@ -179,6 +183,15 @@ internal sealed class OpenAiCompatibleSummaryService(
         {
             throw new SummaryServiceAvailabilityException("Summary timeout and size limits are outside the supported bounds.");
         }
+
+        var thinkingMode = options.ThinkingMode?.Trim().ToLowerInvariant() ?? string.Empty;
+        if (thinkingMode is not ("" or "enabled" or "disabled"))
+        {
+            throw new SummaryServiceAvailabilityException(
+                "Summary:ThinkingMode must be empty, enabled, or disabled.");
+        }
+
+        return thinkingMode;
     }
 
     private Uri BuildRequestUri()
