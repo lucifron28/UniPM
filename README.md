@@ -58,8 +58,11 @@ The backend currently provides:
 - asset creation, list, detail, and QR lookup;
 - schedule creation, list, and detail;
 - inspection submission, list, detail, and asset-history lookup;
-- `POST /api/v1/maintenance-review` for Development-only, source-bounded
-  maintenance-history review;
+- JWT login and current-user routes at `/api/v1/auth/login` and
+  `/api/v1/auth/me`;
+- policy-protected asset, schedule, inspection, and maintenance-review writes;
+- `POST /api/v1/maintenance-review` for authenticated, source-bounded
+  maintenance-history review when explicitly enabled;
 - reference-data categories, validation/error contracts, health checks, tests,
   and backend CI.
 
@@ -72,7 +75,8 @@ Create a local environment file:
 Copy-Item .env.example .env
 ```
 
-Update the local password in `.env`, then start the stack:
+Update the local SQL, JWT, Development-user, and Grafana passwords in `.env`,
+then start the stack:
 
 ```powershell
 docker compose up --build -d
@@ -96,8 +100,10 @@ docker compose down
 ## Maintenance Review
 
 The maintenance-review endpoint is disabled in committed configuration and is
-available only in Development until authentication is implemented. For local
-source-only review, set `UNIPM_MAINTENANCE_REVIEW_ENABLED=true` and keep
+available in any environment only when explicitly enabled. It requires the
+`CanReviewMaintenanceHistory` policy (`GSD`, `Supervisor`, or
+`DepartmentHead`). For local source-only review, set
+`UNIPM_MAINTENANCE_REVIEW_ENABLED=true` and keep
 `UNIPM_SUMMARY_ENABLED=false`. The endpoint returns selected original source
 records when summaries are disabled, unavailable, or rejected by citation
 validation. It never persists prompts, summaries, or sanitizer token maps.
@@ -105,6 +111,28 @@ validation. It never persists prompts, summaries, or sanitizer token maps.
 See [`reference/api/maintenance-review-v0.1.md`](reference/api/maintenance-review-v0.1.md)
 for the request, response, evidence-status, summary-status, source-selection,
 and provider configuration contract.
+
+## Authentication
+
+UniPM uses ASP.NET Core IdentityCore with Guid keys and JWT bearer access
+tokens. Configure `UNIPM_JWT_ISSUER`, `UNIPM_JWT_AUDIENCE`,
+`UNIPM_JWT_SIGNING_KEY`, and `UNIPM_JWT_ACCESS_TOKEN_MINUTES`. HTTP startup
+outside Development fails when this configuration is missing or invalid.
+
+Create or repair the five fictional local users only through the explicit
+Development command:
+
+```powershell
+$env:ASPNETCORE_ENVIRONMENT = "Development"
+$env:UNIPM_DEV_USER_PASSWORD = "<local-development-password>"
+dotnet run --project server -- --seed-development-users
+```
+
+The provisional roles are `Admin`, `GSD`, `Inspector`, `Supervisor`, and
+`DepartmentHead`. `Admin` is a technical role and is intentionally excluded
+from preventive-maintenance operational policies. See
+[`reference/api/auth-v0.1.md`](reference/api/auth-v0.1.md) for the endpoint and
+policy contract.
 
 ## Build And Test
 
@@ -156,6 +184,7 @@ With a reachable configured database, run seed/reset only in Development:
 $env:ASPNETCORE_ENVIRONMENT = "Development"
 dotnet run --project server -- --migrate-database
 dotnet run --project server -- --seed-synthetic
+dotnet run --project server -- --seed-development-users
 dotnet run --project server -- --reset-synthetic-seed
 dotnet run --project server -- --rebuild-maintenance-search-documents
 ```
@@ -194,8 +223,8 @@ depth 20, output limit 10, deterministic ordering, component-rank traceability,
 and explicit semantic degradation. The retrieval benchmark supports lexical,
 semantic, and fused channels, but real fused quality evidence remains pending
 a configured provider. Opt-in observability metrics and the local
-technical-health monitoring profile are complete; the next backend task is
-`feat/retrieval-review`.
+technical-health monitoring profile and coarse authentication scaffold are
+complete; the next backend task is `chore/backend-mvp-hardening`.
 
 Embeddings are disabled by default. Remote providers are rejected unless
 `Embeddings:AllowRemoteProvider` is explicitly enabled after a separate

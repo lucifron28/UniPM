@@ -174,7 +174,8 @@ Priority should move risk-first:
    semantic provider remains operationally optional and degradable.
 4. Fuse retrieval results with inspectable RRF and explicit degradation.
 5. Preserve the completed source-bounded maintenance-review path.
-6. Add authentication scaffolding.
+6. Preserve coarse authentication and authorization while final RBAC remains
+   provisional.
 
 The deterministic synthetic fixture, test-only retrieval evaluation manifest,
 Development-only seed/reset commands, reset dependency protection, inspection
@@ -182,7 +183,9 @@ list/detail reads, the v1.0 maintenance issue lexicon, the rebuildable
 `MaintenanceSearchDocument` projection, lexical and semantic channels, the
 separate retrieval benchmark, internal RRF fusion, the committed
 engineering-evidence workflow, and opt-in observability metrics are complete.
-The exact next backend branch is `feat/auth-scaffolding`.
+IdentityCore persistence, JWT login/current-user routes, Development user
+seeding, and coarse policy protection are also complete. The exact next backend
+branch is `chore/backend-mvp-hardening`.
 
 Observability remains bounded infrastructure: `Observability:MetricsEnabled`
 is false by default, `/metrics` is exposed only when explicitly enabled, and
@@ -196,12 +199,16 @@ candidate/result limits, deterministic component-rank traceability, and
 explicit semantic degradation. The completed maintenance-review layer adds
 deterministic context tiers, request-scoped prompt sanitization, optional
 provider-neutral summaries, and source-returning evidence contracts. It remains
-Development-only until authentication exists and does not claim a real-provider
-quality baseline.
+authenticated whenever enabled and does not claim a real-provider quality
+baseline.
+
+Admin is a technical system-administration role, not an operational super-role.
+Operational policies use GSD, Inspector, Supervisor, and DepartmentHead as
+documented; final institutional RBAC remains deferred.
 
 Unblocked areas:
 
-- Authentication stub and role scaffolding:
+- Authentication roles currently scaffolded:
   - Admin
   - GSD
   - Inspector
