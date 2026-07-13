@@ -49,7 +49,7 @@
       "caseId": "DSV4-TL-001",
       "language": "tagalog",
       "assetId": "54c526f8-e644-50dd-bb13-a7893b822722",
-      "findingText": "Emergency light interruption test",
+      "findingText": "not lighting",
       "expectedEvidenceCondition": "same_asset_history_found",
       "recurrenceMayBeStated": true,
       "forbiddenUnsupportedClaims": ["tiyak na sira ang charging circuit", "bagong purchase approval", "opisyal na desisyon sa pagpapalit"],
@@ -61,9 +61,9 @@
       "assetId": "7716f6cf-bd56-5646-a143-883f4c5d5dc7",
       "findingText": "Water drinking station connection",
       "expectedEvidenceCondition": "same_asset_history_found",
-      "recurrenceMayBeStated": true,
+      "recurrenceMayBeStated": false,
       "forbiddenUnsupportedClaims": ["tiyak na hose ang sanhi", "nakumpletong kapalit na fitting ngayon", "aprubadong shutdown"],
-      "manualReviewNotes": "Dalawang source record ang sumusuporta sa muling paglitaw ng moisture o tagas; huwag magdagdag ng bagong sanhi."
+      "manualReviewNotes": "May parehong asset history ngunit walang normalized same-issue match; huwag mag-claim ng recurrence o magdagdag ng bagong sanhi."
     },
     {
       "caseId": "DSV4-TL-003",
@@ -99,7 +99,7 @@
       "caseId": "DSV4-TG-002",
       "language": "taglish",
       "assetId": "40bccea3-c507-52b6-941d-a9051a6d4b2b",
-      "findingText": "Water drinking station filter",
+      "findingText": "clogged filter",
       "expectedEvidenceCondition": "same_asset_history_found",
       "recurrenceMayBeStated": true,
       "forbiddenUnsupportedClaims": ["confirmed UV-light failure", "a newly completed filter replacement", "permission to keep serving water"],
