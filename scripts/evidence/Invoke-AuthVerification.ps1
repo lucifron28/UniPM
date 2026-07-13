@@ -299,11 +299,9 @@ try {
         $inspection = Invoke-ApiRequest -Method POST -Uri 'http://localhost:5000/api/v1/inspections/' -Body $inspectionBody -AccessToken $tokens['Inspector']
         Add-Check -Name 'inspection-submit' -Role 'Inspector' -ActualStatus $inspection.StatusCode -ExpectedStatus 201
 
-        $assets = Invoke-ApiRequest -Method GET -Uri 'http://localhost:5000/api/v1/assets/?assetCategory=fire-alarm'
-        $target = @($assets.Content | ConvertFrom-Json) | Where-Object assetCode -eq 'FA-003' | Select-Object -First 1
-        if ($null -eq $target) { throw 'Synthetic maintenance-review target FA-003 was not found.' }
+        # Deterministic fictional FA-003 fixture ID, never a production record.
         $reviewBody = @{
-            assetId = $target.id
+            assetId = '7bfa4436-d0f1-5997-9310-6dafbc8183fe'
             findingText = 'hindi nagrerespond ang smoke detector'
             generateSummary = $false
         } | ConvertTo-Json -Compress
