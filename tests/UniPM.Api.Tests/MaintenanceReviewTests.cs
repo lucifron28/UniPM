@@ -480,17 +480,6 @@ public sealed class MaintenanceReviewTests
     }
 
     [Fact]
-    public void Retrieval_query_builder_creates_canonical_issue_only_fallback()
-    {
-        var query = MaintenanceReviewRetrievalQueryBuilder.BuildCanonicalIssueQuery(
-            ["weak_water_flow", "clogged_filter"]);
-
-        Assert.NotNull(query);
-        Assert.Equal("clogged filter weak water flow", query.Text);
-        Assert.Equal(["clogged_filter", "weak_water_flow"], query.IssueKeys);
-    }
-
-    [Fact]
     public async Task Source_only_review_accepts_a_long_finding_through_the_lexical_query_builder()
     {
         using var factory = new ReviewApplicationFactory(
@@ -603,9 +592,7 @@ public sealed class MaintenanceReviewTests
         var payload = await response.Content.ReadFromJsonAsync<ReviewResponse>();
         Assert.NotNull(payload);
         Assert.Equal("empty", payload.RetrievalStatus.LexicalStatus);
-        Assert.Equal(4, payload.RetrievalStatus.PassesExecuted);
-        Assert.Equal("low pressure", factory.FusedRequests[2].Query);
-        Assert.Equal("low pressure", factory.FusedRequests[3].Query);
+        Assert.Equal(2, payload.RetrievalStatus.PassesExecuted);
     }
 
     [Fact]

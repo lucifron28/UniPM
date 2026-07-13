@@ -84,28 +84,6 @@ internal sealed class MaintenanceReviewService(
                 cancellationToken));
         }
 
-        // SQL FTS combines ordinary query terms with AND. When a multilingual
-        // finding yields no candidates, retry only the already-normalized issue terms.
-        var canonicalIssueQuery = MaintenanceReviewRetrievalQueryBuilder
-            .BuildCanonicalIssueQuery(findingIssueKeys);
-        if (canonicalIssueQuery is not null && passResponses.All(response => response.Results.Count == 0))
-        {
-            passResponses.Add(await ExecuteFusedPassAsync(
-                canonicalIssueQuery,
-                asset,
-                includeAssetFilter: true,
-                cancellationToken));
-
-            if (passResponses[^1].Results.Count == 0)
-            {
-                passResponses.Add(await ExecuteFusedPassAsync(
-                    canonicalIssueQuery,
-                    asset,
-                    includeAssetFilter: false,
-                    cancellationToken));
-            }
-        }
-
         var fusedCandidates = passResponses
             .SelectMany(response => response.Results)
             .GroupBy(result => result.InspectionId)
