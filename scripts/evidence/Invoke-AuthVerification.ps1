@@ -225,6 +225,10 @@ try {
         docker compose exec -T unipm-api dotnet UniPM.Api.dll --seed-development-users
         if ($LASTEXITCODE -ne 0) { throw "Development user seed failed with exit code $LASTEXITCODE." }
     }
+    Invoke-Stage 'rebuild-search-documents' {
+        docker compose exec -T unipm-api dotnet UniPM.Api.dll --rebuild-maintenance-search-documents
+        if ($LASTEXITCODE -ne 0) { throw "Search-document rebuild failed with exit code $LASTEXITCODE." }
+    }
     Invoke-Stage 'login-and-me' {
         $password = [Environment]::GetEnvironmentVariable('UNIPM_DEV_USER_PASSWORD', 'Process')
         $definitions = @(
@@ -305,8 +309,16 @@ try {
             findingText = 'hindi nagrerespond ang smoke detector'
             generateSummary = $false
         } | ConvertTo-Json -Compress
-        $review = Invoke-ApiRequest -Method POST -Uri 'http://localhost:5000/api/v1/maintenance-review' -Body $reviewBody -AccessToken $tokens['DepartmentHead']
-        $reviewPayload = $review.Content | ConvertFrom-Json
+        $review = $null
+        $reviewPayload = $null
+        for ($attempt = 0; $attempt -lt 15; $attempt++) {
+            $review = Invoke-ApiRequest -Method POST -Uri 'http://localhost:5000/api/v1/maintenance-review' -Body $reviewBody -AccessToken $tokens['DepartmentHead']
+            $reviewPayload = $review.Content | ConvertFrom-Json
+            if ($review.StatusCode -eq 200 -and @($reviewPayload.sourceRecords).Count -gt 0) {
+                break
+            }
+            Start-Sleep -Seconds 1
+        }
         Add-Check -Name 'maintenance-review' -Role 'DepartmentHead' -ActualStatus $review.StatusCode -ExpectedStatus 200 -Facts @{
             sourceCount = @($reviewPayload.sourceRecords).Count
             evidenceStatus = $reviewPayload.evidenceStatus
