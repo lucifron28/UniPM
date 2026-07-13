@@ -20,11 +20,7 @@ internal static class MaintenanceReviewRetrievalQueryBuilder
         ArgumentNullException.ThrowIfNull(issueKeys);
 
         var normalizedFinding = MaintenanceReviewText.Normalize(findingText);
-        var normalizedIssueKeys = issueKeys
-            .Where(key => !string.IsNullOrWhiteSpace(key))
-            .Distinct(StringComparer.Ordinal)
-            .OrderBy(key => key, StringComparer.Ordinal)
-            .ToArray();
+        var normalizedIssueKeys = NormalizeIssueKeys(issueKeys);
         var terms = new List<string>(MaxTermCount);
         var seenTerms = new HashSet<string>(StringComparer.Ordinal);
         foreach (var issueKey in normalizedIssueKeys)
@@ -42,6 +38,36 @@ internal static class MaintenanceReviewRetrievalQueryBuilder
 
         return new MaintenanceReviewRetrievalQuery(query, normalizedIssueKeys);
     }
+
+    public static MaintenanceReviewRetrievalQuery? BuildCanonicalIssueQuery(
+        IReadOnlyList<string> issueKeys)
+    {
+        ArgumentNullException.ThrowIfNull(issueKeys);
+
+        var normalizedIssueKeys = NormalizeIssueKeys(issueKeys);
+        if (normalizedIssueKeys.Length == 0)
+        {
+            return null;
+        }
+
+        var terms = new List<string>(MaxTermCount);
+        var seenTerms = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var issueKey in normalizedIssueKeys)
+        {
+            AddTerms(issueKey.Replace('_', ' '), terms, seenTerms);
+        }
+
+        return new MaintenanceReviewRetrievalQuery(
+            BuildBoundedQuery(terms),
+            normalizedIssueKeys);
+    }
+
+    private static string[] NormalizeIssueKeys(IReadOnlyList<string> issueKeys)
+        => issueKeys
+            .Where(key => !string.IsNullOrWhiteSpace(key))
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(key => key, StringComparer.Ordinal)
+            .ToArray();
 
     private static void AddTerms(string value, ICollection<string> terms, ISet<string> seenTerms)
     {
