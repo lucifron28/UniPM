@@ -41,7 +41,7 @@ record's evidence level and tested/source commit.
 | ADR-006 | decision | Use IdentityCore, JWT, and coarse operational policies | reviewed | source-inspected | `42d7324` | [record](decisions/ADR-006-identity-jwt-and-coarse-authorization.md) | Keeps technical Admin separate from provisional maintenance authority and defers final RBAC. |
 | TEST-009 | test-run | Authentication and role-policy baseline | superseded | locally-executed | `205c1ac` | [record](test-runs/TEST-009-authentication-baseline.md) | Historical authentication baseline superseded by TEST-010 after Inspector identity-binding correction. |
 | TEST-010 | test-run | Authentication inspection identity-binding verification | executed | locally-executed | `37981a4` | [record](test-runs/TEST-010-authentication-identity-binding.md) | Fresh SQL Server migration, Development identities, real JWT policy checks, protected writes, and corrected Inspector identity binding. |
-| EXP-002 | experiment | DeepSeek V4 source-bounded summary baseline | pending | locally-executed | `31c24e5` | [record](experiments/EXP-002-deepseek-v4-summary-baseline.md) | Automated provider-contract and failure validation passed; real DeepSeek execution and human ratings remain pending an intentionally supplied API key. |
+| EXP-002 | experiment | DeepSeek V4 source-bounded summary baseline | pending | real-provider-executed | `929d99f` | [record](experiments/EXP-002-deepseek-v4-summary-baseline.md) | Fresh fictional 12-case DeepSeek run completed; retained output awaits human source-faithfulness review. |
 
 ## Pending Evidence
 
@@ -52,8 +52,9 @@ record's evidence level and tested/source commit.
 - Fused retrieval quality baseline: pending a configured real provider and an
   executed fused benchmark; TEST-004 contains the latest orchestration evidence
   only.
-- Real summary-provider smoke evidence: EXP-002 remains pending an intentionally
-  configured DeepSeek run and human source-faithfulness review.
+- Real summary-provider source-faithfulness review: EXP-002 has an executed
+  fictional DeepSeek run with retained rejected output; human review remains
+  pending.
 - Independent generated-summary faithfulness evaluation: pending a labeled
   evaluation set and review protocol.
 - Production authentication deployment verification: pending configured IIS

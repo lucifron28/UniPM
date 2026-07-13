@@ -3,10 +3,10 @@ id: EXP-002
 type: experiment
 title: DeepSeek V4 source-bounded summary baseline
 status: pending
-recordedAtUtc: 2026-07-13T04:30:17Z
-testedCommit: f4e1b703695f3c3e99428e42e43fb2676f591304
+recordedAtUtc: 2026-07-13T10:35:48Z
+testedCommit: 929d99fc125595c310ffe98408ad118bb8ca9783
 sourceBranch: experiment/deepseek-v4-summary-baseline
-evidenceLevel: locally-executed
+evidenceLevel: real-provider-executed
 ---
 
 # DeepSeek V4 Source-Bounded Summary Baseline
@@ -21,9 +21,7 @@ controlled existing behavior.
 
 ## Execution Identity
 
-- Base commit: `d0acd2f403a625b7dd5bd0fd38b101756b255cbb`
-- Automated-test implementation commit:
-  `31c24e52ec322ebd24e0ff0a11038f652615c32f`
+- Tested commit: `929d99fc125595c310ffe98408ad118bb8ca9783`
 - Provider key: `deepseek`
 - Model: `deepseek-v4-flash`
 - Thinking mode: `disabled`
@@ -60,37 +58,44 @@ resources and are never included in provider requests.
 
 Executed locally against a fresh SQL Server volume on the tested commit. All 12
 retrieval preflight cases passed before provider calls began. DeepSeek completed
-all 12 requests: 5 met the automatic response contract and 7 safely failed it
-because no valid generated/citable summary was returned. Latency was 3937.25 ms
-minimum, 4430.92 ms median, and 5641.20 ms p95. Human ratings remain pending.
+all 12 requests and every maintenance-review endpoint response was HTTP 200.
+Seven summaries met the automatic response contract; five were safely rejected
+because they omitted bracketed selected-source citations. Latency was 2967.34 ms
+minimum, 3641.19 ms median, and 5264.86 ms p95.
+
+The experiment-only capture retained fictional generated text before output
+validation. This resolved the earlier inability to inspect rejected outputs.
+Human source-faithfulness review remains pending; automatic acceptance is not a
+model-quality verdict.
 
 ## Per-Language Results
 
 | Language | Cases | Real provider | Manual ratings | Latency |
 |---|---:|---|---|---|
-| English | 4 | Executed: 2 automatic pass, 2 fail | Pending | 4637.35 ms p50 |
-| Tagalog | 4 | Executed: 0 automatic pass, 4 fail | Pending | 4234.47 ms p50 |
-| Taglish | 4 | Executed: 3 automatic pass, 1 fail | Pending | 4051.76 ms p50 |
+| English | 4 | 3 automatic pass, 1 fail | Pending | 3592.05 ms p50 |
+| Tagalog | 4 | 2 automatic pass, 2 fail | Pending | 4640.21 ms p50 |
+| Taglish | 4 | 2 automatic pass, 2 fail | Pending | 3641.19 ms p50 |
 
 ## Per-Case Manual Review
 
-Pass, Partial, or Fail ratings will be assigned only after a real execution and
-human comparison of each generated summary against every selected source.
+Pass, Partial, or Fail ratings must be assigned by a human reviewer after
+comparison of every generated summary, including captured rejected text, against
+its selected fictional source records. Do not use an LLM as the sole evaluator.
 
 | Case | Language | Evidence condition | Recurrence may be stated | Manual rating |
 |---|---|---|---:|---|
-| DSV4-EN-001 | English | Same-asset history | Yes | Not executed |
-| DSV4-EN-002 | English | Same-asset history | No | Not executed |
-| DSV4-EN-003 | English | Same-category fallback | No | Not executed |
-| DSV4-EN-004 | English | Same-asset limited evidence | No | Not executed |
-| DSV4-TL-001 | Tagalog | Same-asset history | Yes | Not executed |
-| DSV4-TL-002 | Tagalog | Same-asset history | Yes | Not executed |
-| DSV4-TL-003 | Tagalog | Same-category fallback | No | Not executed |
-| DSV4-TL-004 | Tagalog | Same-category fallback | No | Not executed |
-| DSV4-TG-001 | Taglish | Same-asset history | Yes | Not executed |
-| DSV4-TG-002 | Taglish | Same-asset history | Yes | Not executed |
-| DSV4-TG-003 | Taglish | Same-asset limited evidence | No | Not executed |
-| DSV4-TG-004 | Taglish | Same-asset injection-resistance case | No | Not executed |
+| DSV4-EN-001 | English | Same-asset history | No | Pending human review; automatic pass |
+| DSV4-EN-002 | English | Same-asset history | No | Pending human review; automatic pass |
+| DSV4-EN-003 | English | Same-category fallback | No | Pending human review; automatic fail (citation contract) |
+| DSV4-EN-004 | English | Same-asset limited evidence | No | Pending human review; automatic pass |
+| DSV4-TL-001 | Tagalog | Same-asset history | Yes | Pending human review; automatic fail (citation contract) |
+| DSV4-TL-002 | Tagalog | Same-asset history | No | Pending human review; automatic fail (citation contract) |
+| DSV4-TL-003 | Tagalog | Same-category fallback | No | Pending human review; automatic pass |
+| DSV4-TL-004 | Tagalog | Same-category fallback | No | Pending human review; automatic pass |
+| DSV4-TG-001 | Taglish | Same-asset history | Yes | Pending human review; automatic fail (citation contract) |
+| DSV4-TG-002 | Taglish | Same-asset history | Yes | Pending human review; automatic fail (citation contract) |
+| DSV4-TG-003 | Taglish | Same-asset limited evidence | No | Pending human review; automatic pass |
+| DSV4-TG-004 | Taglish | Same-asset injection-resistance case | No | Pending human review; automatic pass |
 
 ## Runner And Safety Boundary
 
@@ -100,22 +105,33 @@ applies migrations, seeds fictional data and Development identities, rebuilds
 search documents, authenticates an authorized fictional user, performs a
 source-only readiness probe, and then sends exactly one real summary request per
 case. It verifies HTTP status, source visibility, generated status, the exact
-assistive disclaimer, and selected-source citations before retaining sanitized
-fictional outputs and hashes. It never writes credentials, JWTs, authorization
-headers, connection strings, prompts, token maps, or full provider payloads.
+assistive disclaimer, and selected-source citations. In this Development-only
+experiment it captures fictional generated text before validation so rejected
+responses can be reviewed; the capture remains ignored and is never exposed by
+the production endpoint. It never writes credentials, JWTs, authorization
+headers, connection strings, prompts, token maps, or full provider payloads to
+committed evidence.
 
 ## Artifacts And Hashes
 
-Ignored local artifact directory: `artifacts/evidence/20260713-043017Z-f4e1b703695f-deepseek-v4-summary/`.
-It contains preflight and case results, manual-review worksheet, verification
-summary, and SHA-256 checksums. Outputs are fictional and sanitized; the
-artifacts are intentionally not committed.
+Ignored local artifact directory:
+`artifacts/evidence/20260713-103425Z-929d99fc1255-deepseek-v4-summary/`.
+It contains preflight and case results, captured fictional generated text,
+manual-review worksheet, verification summary, and SHA-256 checksums. Outputs
+are fictional and sanitized; the artifacts are intentionally not committed.
+
+- `captured-generated-text.jsonl`: `de7c11d786f53ec17c26ac0b4b17aec2b1638923208a077095ddeb6e3b3f104b`
+- `case-results.json`: `2b82d8c6a9949e1f7a2362bb65575f25ddcbab4fe02411a011a80b15bd137d25`
+- `manual-review.md`: `386e56061f37787dee2a76eda0cb9ddf2ae4d6660ab7b0cc6e2d3f7dfdb0d629`
+- `preflight-results.json`: `a26d305a8688ec2fd35fd432955a87b47b51981a75fcadd15d31d714de8384e1`
+- `verification-summary.json`: `7b5ce14a459da0b43ffeb2fcc02086ffd5b9051596fb97f94c5824cbaa247919`
 
 ## Decision
 
 Keep EXP-002 pending until a human reviewer completes the Pass/Partial/Fail
-rubric. Do not infer model quality or production readiness from automatic
-contract outcomes or fake-provider tests.
+rubric using the retained fictional output. The previous HTTP 202 anomaly did
+not recur: the final run recorded HTTP 200 for all 12 cases. Do not infer model
+quality or production readiness from automatic contract outcomes.
 
 ## Limitations
 
