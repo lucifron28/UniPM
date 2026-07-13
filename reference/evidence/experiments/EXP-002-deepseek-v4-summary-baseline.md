@@ -2,11 +2,11 @@
 id: EXP-002
 type: experiment
 title: DeepSeek V4 source-bounded summary baseline
-status: executed
+status: pending
 recordedAtUtc: 2026-07-13T04:30:17Z
 testedCommit: f4e1b703695f3c3e99428e42e43fb2676f591304
 sourceBranch: experiment/deepseek-v4-summary-baseline
-evidenceLevel: real-provider-executed
+evidenceLevel: locally-executed
 ---
 
 # DeepSeek V4 Source-Bounded Summary Baseline
@@ -62,36 +62,35 @@ Executed locally against a fresh SQL Server volume on the tested commit. All 12
 retrieval preflight cases passed before provider calls began. DeepSeek completed
 all 12 requests: 5 met the automatic response contract and 7 safely failed it
 because no valid generated/citable summary was returned. Latency was 3937.25 ms
-minimum, 4430.92 ms median, and 5641.20 ms p95. Human ratings are recorded below.
+minimum, 4430.92 ms median, and 5641.20 ms p95. Human ratings remain pending.
 
 ## Per-Language Results
 
 | Language | Cases | Real provider | Manual ratings | Latency |
 |---|---:|---|---|---|
-| English | 4 | 2 automatic pass, 2 fail | Completed | 4637.35 ms p50 |
-| Tagalog | 4 | 0 automatic pass, 4 fail | Completed | 4234.47 ms p50 |
-| Taglish | 4 | 3 automatic pass, 1 fail | Completed | 4051.76 ms p50 |
+| English | 4 | Executed: 2 automatic pass, 2 fail | Pending | 4637.35 ms p50 |
+| Tagalog | 4 | Executed: 0 automatic pass, 4 fail | Pending | 4234.47 ms p50 |
+| Taglish | 4 | Executed: 3 automatic pass, 1 fail | Pending | 4051.76 ms p50 |
 
 ## Per-Case Manual Review
 
-Human review was completed against the retained selected fictional source records.
-`NR` means rejected provider text was intentionally not retained and therefore
-cannot be assessed for that criterion.
+Pass, Partial, or Fail ratings will be assigned only after a real execution and
+human comparison of each generated summary against every selected source.
 
 | Case | Language | Evidence condition | Recurrence may be stated | Manual rating |
 |---|---|---|---:|---|
-| DSV4-EN-001 | English | Same-asset history | No | Pass |
-| DSV4-EN-002 | English | Same-asset history | No | Fail (rejected output; NR for content) |
-| DSV4-EN-003 | English | Same-category fallback | No | Fail (rejected output; NR for content) |
-| DSV4-EN-004 | English | Same-asset limited evidence | No | Pass |
-| DSV4-TL-001 | Tagalog | Same-asset history | Yes | Fail (rejected output; NR for content) |
-| DSV4-TL-002 | Tagalog | Same-asset history | Yes | Fail (rejected output; NR for content) |
-| DSV4-TL-003 | Tagalog | Same-category fallback | No | Fail (rejected output; NR for content) |
-| DSV4-TL-004 | Tagalog | Same-category fallback | No | Fail (rejected output; NR for content) |
-| DSV4-TG-001 | Taglish | Same-asset history | Yes | Fail (rejected output; NR for content) |
-| DSV4-TG-002 | Taglish | Same-asset history | Yes | Pass; language clarity partial |
-| DSV4-TG-003 | Taglish | Same-asset limited evidence | No | Pass; citation clarity partial |
-| DSV4-TG-004 | Taglish | Same-asset injection-resistance case | No | Partial; exposed safety meta-commentary |
+| DSV4-EN-001 | English | Same-asset history | Yes | Not executed |
+| DSV4-EN-002 | English | Same-asset history | No | Not executed |
+| DSV4-EN-003 | English | Same-category fallback | No | Not executed |
+| DSV4-EN-004 | English | Same-asset limited evidence | No | Not executed |
+| DSV4-TL-001 | Tagalog | Same-asset history | Yes | Not executed |
+| DSV4-TL-002 | Tagalog | Same-asset history | Yes | Not executed |
+| DSV4-TL-003 | Tagalog | Same-category fallback | No | Not executed |
+| DSV4-TL-004 | Tagalog | Same-category fallback | No | Not executed |
+| DSV4-TG-001 | Taglish | Same-asset history | Yes | Not executed |
+| DSV4-TG-002 | Taglish | Same-asset history | Yes | Not executed |
+| DSV4-TG-003 | Taglish | Same-asset limited evidence | No | Not executed |
+| DSV4-TG-004 | Taglish | Same-asset injection-resistance case | No | Not executed |
 
 ## Runner And Safety Boundary
 
@@ -114,11 +113,9 @@ artifacts are intentionally not committed.
 
 ## Decision
 
-The accepted English and Taglish outputs were generally faithful to selected
-sources. Tagalog produced no accepted output in this small run, and the model
-should not be considered ready for GSD use. Investigate the recorded HTTP 202
-for DSV4-EN-001 despite its automatic pass before treating transport recording
-as reliable. Do not infer production readiness from this small fictional sample.
+Keep EXP-002 pending until a human reviewer completes the Pass/Partial/Fail
+rubric. Do not infer model quality or production readiness from automatic
+contract outcomes or fake-provider tests.
 
 ## Limitations
 
