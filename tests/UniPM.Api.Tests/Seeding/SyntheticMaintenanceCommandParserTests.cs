@@ -30,6 +30,9 @@ public sealed class SyntheticMaintenanceCommandParserTests
         Assert.Equal(
             SyntheticMaintenanceCommand.Migrate,
             SyntheticMaintenanceCommandParser.Parse(["--migrate-database"]));
+        Assert.Equal(
+            SyntheticMaintenanceCommand.SeedDevelopmentUsers,
+            SyntheticMaintenanceCommandParser.Parse(["--seed-development-users"]));
     }
 
     [Fact]
@@ -47,6 +50,9 @@ public sealed class SyntheticMaintenanceCommandParserTests
         Assert.Equal(
             SyntheticMaintenanceCommand.Ambiguous,
             SyntheticMaintenanceCommandParser.Parse(["--rebuild-maintenance-search-documents", "--rebuild-maintenance-embeddings"]));
+        Assert.Equal(
+            SyntheticMaintenanceCommand.Ambiguous,
+            SyntheticMaintenanceCommandParser.Parse(["--seed-development-users", "--seed-synthetic"]));
         Assert.Equal(
             SyntheticMaintenanceCommand.Ambiguous,
             SyntheticMaintenanceCommandParser.Parse([

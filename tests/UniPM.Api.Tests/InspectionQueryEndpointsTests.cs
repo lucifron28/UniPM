@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using UniPM.Api.Data;
+using UniPM.Api.Features.Auth;
 using UniPM.Api.Features.Inspections;
 
 namespace UniPM.Api.Tests;
@@ -357,6 +358,7 @@ public sealed class InspectionQueryEndpointsTests
         {
             builder.ConfigureServices(services =>
             {
+                services.AddTestAuthentication(AuthRoleCatalog.Gsd);
                 services.RemoveAll<IDbContextFactory<ApplicationDbContext>>();
                 services.RemoveAll<DbContextOptions<ApplicationDbContext>>();
 
