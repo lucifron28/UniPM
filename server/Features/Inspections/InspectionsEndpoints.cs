@@ -4,6 +4,7 @@ using UniPM.Api.Features;
 using UniPM.Api.Features.Retrieval;
 using UniPM.Api.Features.Schedules;
 using UniPM.Api.Models;
+using UniPM.Api.Features.Auth;
 
 namespace UniPM.Api.Features.Inspections;
 
@@ -77,7 +78,7 @@ public static class InspectionsEndpoints
             return Results.Created(
                 $"/api/v1/inspections/{inspection.Id}",
                 InspectionResponse.FromInspection(inspection));
-        });
+        }).RequireAuthorization(AuthPolicyCatalog.CanSubmitInspections);
 
         group.MapGet("/history/{assetId}", async (
             Guid assetId,

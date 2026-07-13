@@ -3,6 +3,7 @@ using UniPM.Api.Data;
 using UniPM.Api.Features;
 using UniPM.Api.Features.ReferenceData;
 using UniPM.Api.Models;
+using UniPM.Api.Features.Auth;
 
 namespace UniPM.Api.Features.Assets;
 
@@ -62,7 +63,7 @@ public static class AssetsEndpoints
             }
 
             return Results.Created($"/api/v1/assets/{asset.Id}", asset);
-        });
+        }).RequireAuthorization(AuthPolicyCatalog.CanManageAssets);
 
         group.MapGet("/{id}", async (
             Guid id,

@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using UniPM.Api.Data;
 using UniPM.Api.Features;
 using UniPM.Api.Models;
+using UniPM.Api.Features.Auth;
 
 namespace UniPM.Api.Features.Schedules;
 
@@ -52,7 +53,7 @@ public static class SchedulesEndpoints
             await context.SaveChangesAsync(cancellationToken);
 
             return Results.Created($"/api/v1/schedules/{schedule.Id}", ScheduleResponse.FromSchedule(schedule));
-        });
+        }).RequireAuthorization(AuthPolicyCatalog.CanManageSchedules);
 
         group.MapGet("/", async (
             Guid? assetId,
