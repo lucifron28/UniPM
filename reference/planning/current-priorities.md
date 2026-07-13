@@ -201,6 +201,12 @@ explicit evidence and summary statuses, request-scoped token masking, and
 source records returned for human verification. It remains disabled by default
 and requires `CanReviewMaintenanceHistory` whenever enabled.
 
+Optional provider thinking mode and a strict 12-case DeepSeek V4 summary
+experiment manifest are implemented. Automated fake-provider validation covers
+thinking-mode serialization and safe failure degradation. EXP-002 remains
+pending because the real API key, real generated outputs, human
+Pass/Partial/Fail review, and latency evidence were unavailable.
+
 Semantic retrieval is a required target channel, not an excuse to block core
 maintenance workflows. Core workflows must work with AI disabled. No separate
 vector database may be introduced.
@@ -293,4 +299,4 @@ directly.
 
 ## Next Branches
 
-- `chore/backend-mvp-hardening`
+- `experiment/multilingual-embedding-baseline`

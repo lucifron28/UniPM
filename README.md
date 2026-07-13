@@ -108,6 +108,12 @@ available in any environment only when explicitly enabled. It requires the
 records when summaries are disabled, unavailable, or rejected by citation
 validation. It never persists prompts, summaries, or sanitizer token maps.
 
+The provider-neutral summary adapter supports an optional `ThinkingMode` value:
+empty omits the provider field, while `enabled` or `disabled` sends the
+corresponding structured provider option. DeepSeek V4 experiment configuration
+uses `deepseek-v4-flash` with `UNIPM_SUMMARY_THINKING_MODE=disabled`; committed
+summary configuration remains disabled and no API key belongs in the repo.
+
 See [`reference/api/maintenance-review-v0.1.md`](reference/api/maintenance-review-v0.1.md)
 for the request, response, evidence-status, summary-status, source-selection,
 and provider configuration contract.
@@ -224,7 +230,10 @@ and explicit semantic degradation. The retrieval benchmark supports lexical,
 semantic, and fused channels, but real fused quality evidence remains pending
 a configured provider. Opt-in observability metrics and the local
 technical-health monitoring profile and coarse authentication scaffold are
-complete; the next backend task is `chore/backend-mvp-hardening`.
+complete. The DeepSeek V4 summary experiment harness and 12-case multilingual
+manifest are available, while the real-provider run remains pending an
+intentionally supplied API key. The next branch is
+`experiment/multilingual-embedding-baseline`.
 
 Embeddings are disabled by default. Remote providers are rejected unless
 `Embeddings:AllowRemoteProvider` is explicitly enabled after a separate
@@ -334,6 +343,20 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\evidence\Invok
 The reviewed local result is recorded in TEST-002. It does not claim IIS
 deployment, production uptime, alert effectiveness, long-term retention, real
 traffic, or retrieval-quality improvement.
+
+Run the DeepSeek summary experiment only from a clean implementation commit with
+the API key supplied through the process environment:
+
+```powershell
+$env:UNIPM_SUMMARY_API_KEY = "<secret>"
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\evidence\Invoke-DeepSeekSummaryExperiment.ps1
+```
+
+The runner fixes the provider to `deepseek`, model to `deepseek-v4-flash`, and
+thinking mode to `disabled`, uses only fictional seeded data, and never retains
+the API key, JWT, authorization header, connection string, raw prompt, token
+map, or complete provider payload. EXP-002 is pending until this run and a human
+Pass/Partial/Fail source-faithfulness review are completed.
 
 ## Project References
 
