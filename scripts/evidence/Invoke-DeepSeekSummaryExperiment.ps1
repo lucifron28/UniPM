@@ -14,6 +14,7 @@ $sourceBranch = $null
 $worktreeClean = $false
 $stackTouched = $false
 $stageRecords = [System.Collections.Generic.List[object]]::new()
+$preflightRecords = [System.Collections.Generic.List[object]]::new()
 $caseRecords = [System.Collections.Generic.List[object]]::new()
 $accessToken = $null
 $savedEnvironment = @{}
@@ -142,37 +143,36 @@ function Get-Percentile {
     return [math]::Round($ordered[[math]::Max(0, $index)], 2)
 }
 
-function Test-CaseResponse {
+function Get-PreflightCaseResult {
     param(
         [Parameter(Mandatory)]$Case,
         [Parameter(Mandatory)]$Response,
         [Parameter(Mandatory)]$Payload
     )
 
+    $failures = [System.Collections.Generic.List[string]]::new()
     if ($Response.StatusCode -ne 200) {
-        throw "$($Case.caseId) returned HTTP $($Response.StatusCode); expected 200."
+        $failures.Add("HTTP $($Response.StatusCode); expected 200.")
     }
     if (@($Payload.sourceRecords).Count -eq 0) {
-        throw "$($Case.caseId) returned no selected source records."
+        $failures.Add('No selected source records were returned.')
     }
-    if ($Payload.summaryStatus -ne 'generated' -or [string]::IsNullOrWhiteSpace($Payload.summary)) {
-        throw "$($Case.caseId) did not return summaryStatus=generated."
+    if ($Payload.summaryStatus -ne 'not_requested') {
+        $failures.Add("Expected summaryStatus=not_requested, received $($Payload.summaryStatus).")
     }
-    if (-not $Payload.summary.Contains($assistiveDisclaimer, [StringComparison]::Ordinal)) {
-        throw "$($Case.caseId) omitted the exact assistive disclaimer."
+    if ($Payload.evidenceStatus -ne $Case.expectedEvidenceCondition) {
+        $failures.Add("Evidence status $($Payload.evidenceStatus) did not match $($Case.expectedEvidenceCondition).")
     }
-
-    $sourceLabels = @($Payload.sourceRecords | ForEach-Object { $_.sourceLabel })
-    $citations = @([regex]::Matches($Payload.summary, '\[(SRC-[0-9]+)\]') |
-        ForEach-Object { $_.Groups[1].Value } |
-        Select-Object -Unique)
-    if ($citations.Count -eq 0) {
-        throw "$($Case.caseId) returned no selected-source citation."
+    if ([bool]$Payload.recurringSameAssetPatternSupported -ne [bool]$Case.recurrenceMayBeStated) {
+        $failures.Add("Recurrence flag $($Payload.recurringSameAssetPatternSupported) did not match $($Case.recurrenceMayBeStated).")
     }
-    foreach ($citation in $citations) {
-        if ($citation -notin $sourceLabels) {
-            throw "$($Case.caseId) cited unknown source $citation."
-        }
+    $isLexicalOnly = (
+        $null -ne $Payload.retrievalStatus -and
+        $Payload.retrievalStatus.lexicalStatus -eq 'success' -and
+        $Payload.retrievalStatus.semanticStatus -eq 'unavailable' -and
+        $Payload.retrievalStatus.isDegraded -eq $true)
+    if (-not $isLexicalOnly) {
+        $failures.Add('Retrieval was not in the intended lexical-only state.')
     }
 
     return [ordered]@{
@@ -184,30 +184,125 @@ function Test-CaseResponse {
         latencyMilliseconds = $Response.LatencyMilliseconds
         expectedEvidenceCondition = $Case.expectedEvidenceCondition
         evidenceStatus = $Payload.evidenceStatus
-        evidenceConditionMatched = $Payload.evidenceStatus -eq $Case.expectedEvidenceCondition
         recurrenceMayBeStated = $Case.recurrenceMayBeStated
         recurringSameAssetPatternSupported = $Payload.recurringSameAssetPatternSupported
         summaryStatus = $Payload.summaryStatus
-        summary = $Payload.summary
-        citations = $citations
         retrievalStatus = $Payload.retrievalStatus
         sourceRecords = $Payload.sourceRecords
-        limitations = $Payload.limitations
+        automaticResult = if ($failures.Count -eq 0) { 'pass' } else { 'fail' }
+        validationFailures = @($failures)
     }
 }
 
+function Get-SummaryCaseResult {
+    param(
+        [Parameter(Mandatory)]$Case,
+        $Response,
+        $Payload,
+        [string]$RequestFailure
+    )
+
+    $failures = [System.Collections.Generic.List[string]]::new()
+    if (-not [string]::IsNullOrWhiteSpace($RequestFailure)) {
+        $failures.Add($RequestFailure)
+    }
+    if ($null -eq $Response) {
+        $failures.Add('No HTTP response was received from the maintenance-review endpoint.')
+    }
+    elseif ($Response.StatusCode -ne 200) {
+        $failures.Add("HTTP $($Response.StatusCode); expected 200.")
+    }
+    if ($null -eq $Payload) {
+        $failures.Add('The maintenance-review response was not valid JSON.')
+    }
+
+    $sourceRecords = if ($null -eq $Payload) { @() } else { @($Payload.sourceRecords) }
+    if ($sourceRecords.Count -eq 0) {
+        $failures.Add('No selected source records were returned.')
+    }
+    $summary = if ($null -eq $Payload) { $null } else { $Payload.summary }
+    $summaryStatus = if ($null -eq $Payload) { $null } else { $Payload.summaryStatus }
+    if ($summaryStatus -ne 'generated' -or [string]::IsNullOrWhiteSpace($summary)) {
+        $failures.Add("Expected summaryStatus=generated, received $summaryStatus.")
+    }
+    elseif (-not $summary.Contains($assistiveDisclaimer, [StringComparison]::Ordinal)) {
+        $failures.Add('The exact assistive disclaimer was omitted.')
+    }
+
+    $sourceLabels = @($sourceRecords | ForEach-Object { $_.sourceLabel })
+    $citations = if ([string]::IsNullOrWhiteSpace($summary)) { @() } else { @([regex]::Matches($summary, '\[(SRC-[0-9]+)\]') |
+        ForEach-Object { $_.Groups[1].Value } |
+        Select-Object -Unique) }
+    if ($citations.Count -eq 0) {
+        $failures.Add('No selected-source citation was found.')
+    }
+    foreach ($citation in $citations) {
+        if ($citation -notin $sourceLabels) {
+            $failures.Add("Unknown citation $citation was returned.")
+        }
+    }
+
+    return [ordered]@{
+        caseId = $Case.caseId
+        language = $Case.language
+        assetId = $Case.assetId
+        findingText = $Case.findingText
+        httpStatus = if ($null -eq $Response) { $null } else { $Response.StatusCode }
+        latencyMilliseconds = if ($null -eq $Response) { $null } else { $Response.LatencyMilliseconds }
+        expectedEvidenceCondition = $Case.expectedEvidenceCondition
+        evidenceStatus = if ($null -eq $Payload) { $null } else { $Payload.evidenceStatus }
+        recurrenceMayBeStated = $Case.recurrenceMayBeStated
+        recurringSameAssetPatternSupported = if ($null -eq $Payload) { $null } else { $Payload.recurringSameAssetPatternSupported }
+        summaryStatus = $summaryStatus
+        summary = $summary
+        citations = $citations
+        retrievalStatus = if ($null -eq $Payload) { $null } else { $Payload.retrievalStatus }
+        sourceRecords = $sourceRecords
+        limitations = if ($null -eq $Payload) { @() } else { $Payload.limitations }
+        automaticResult = if ($failures.Count -eq 0) { 'pass' } else { 'fail' }
+        validationFailures = @($failures)
+    }
+}
+
+function Write-CaseResults {
+    param(
+        [Parameter(Mandatory)]$Manifest,
+        [Parameter(Mandatory)]$Records,
+        [Parameter(Mandatory)][string]$Phase
+    )
+
+    [ordered]@{
+        manifestVersion = $Manifest.manifestVersion
+        datasetVersion = $Manifest.datasetVersion
+        providerKey = 'deepseek'
+        modelKey = 'deepseek-v4-flash'
+        thinkingMode = 'disabled'
+        testedCommit = $testedCommit
+        sourceBranch = $sourceBranch
+        worktreeClean = $worktreeClean
+        phase = $Phase
+        cases = $Records
+    } | ConvertTo-Json -Depth 20 |
+        Set-Content -LiteralPath (Join-Path $artifactRoot "$Phase-results.json") -Encoding utf8
+}
+
 function Write-ManualReviewTemplate {
-    param([Parameter(Mandatory)]$Cases)
+    param(
+        [Parameter(Mandatory)]$Cases,
+        [Parameter(Mandatory)]$Results
+    )
 
     $lines = [System.Collections.Generic.List[string]]::new()
     $lines.Add('# DeepSeek V4 Summary Manual Review')
     $lines.Add('')
     $lines.Add('Complete each rating with Pass, Partial, or Fail after comparing the generated summary with every selected source record. Do not use an LLM as the sole evaluator.')
     $lines.Add('')
-    $lines.Add('| Case | Language | Source faithfulness | Citation correctness | Unsupported claims | Recurrence handling | Language clarity | Uncertainty | Avoids diagnosis/decisions | Reviewer usefulness | Reviewer notes |')
-    $lines.Add('|---|---|---|---|---|---|---|---|---|---|---|')
+    $lines.Add('| Case | Language | Automatic result | Source faithfulness | Citation correctness | Unsupported claims | Recurrence handling | Language clarity | Uncertainty | Avoids diagnosis/decisions | Reviewer usefulness | Reviewer notes |')
+    $lines.Add('|---|---|---|---|---|---|---|---|---|---|---|---|')
     foreach ($case in $Cases) {
-        $lines.Add("| $($case.caseId) | $($case.language) |  |  |  |  |  |  |  |  |  |")
+        $result = @($Results | Where-Object caseId -eq $case.caseId | Select-Object -First 1)
+        $automaticResult = if ($result.Count -eq 1) { $result[0].automaticResult } else { 'not-recorded' }
+        $lines.Add("| $($case.caseId) | $($case.language) | $automaticResult |  |  |  |  |  |  |  |  |  |")
     }
     $lines.Add('')
     $lines.Add('A source-faithfulness rating is Fail when the summary introduces any material fact not supported by the selected source records.')
@@ -333,23 +428,61 @@ try {
         $accessToken = ($login.Content | ConvertFrom-Json).accessToken
         if ([string]::IsNullOrWhiteSpace($accessToken)) { throw 'Authorized login returned no access token.' }
     }
-    Invoke-Stage 'full-text-readiness' {
-        $probeCase = @($manifest.cases)[0]
-        $probeBody = @{
-            assetId = $probeCase.assetId
-            findingText = $probeCase.findingText
-            generateSummary = $false
-        } | ConvertTo-Json -Compress
-        $searchable = $false
-        for ($attempt = 0; $attempt -lt 20; $attempt++) {
-            $probe = Invoke-ApiRequest -Method POST -Uri "$apiBase/api/v1/maintenance-review" -Body $probeBody -Token $accessToken
-            if ($probe.StatusCode -eq 200 -and @(($probe.Content | ConvertFrom-Json).sourceRecords).Count -gt 0) {
-                $searchable = $true
-                break
+    Invoke-Stage 'retrieval-preflight' {
+        foreach ($case in @($manifest.cases)) {
+            $body = @{
+                assetId = $case.assetId
+                findingText = $case.findingText
+                generateSummary = $false
+            } | ConvertTo-Json -Compress
+            $response = $null
+            $payload = $null
+            $requestFailure = $null
+            for ($attempt = 0; $attempt -lt 20; $attempt++) {
+                try {
+                    $candidate = Invoke-ApiRequest -Method POST -Uri "$apiBase/api/v1/maintenance-review" -Body $body -Token $accessToken
+                    $candidatePayload = $candidate.Content | ConvertFrom-Json
+                    $response = $candidate
+                    $payload = $candidatePayload
+                    if ($candidate.StatusCode -eq 200 -and @($candidatePayload.sourceRecords).Count -gt 0) {
+                        break
+                    }
+                }
+                catch {
+                    $requestFailure = $_.Exception.Message
+                    if ($attempt -eq 19) { break }
+                }
+                Start-Sleep -Seconds 1
             }
-            Start-Sleep -Seconds 1
+            if ($null -eq $response -or $null -eq $payload) {
+                $preflightRecords.Add([ordered]@{
+                    caseId = $case.caseId
+                    language = $case.language
+                    assetId = $case.assetId
+                    findingText = $case.findingText
+                    httpStatus = if ($null -eq $response) { $null } else { $response.StatusCode }
+                    latencyMilliseconds = if ($null -eq $response) { $null } else { $response.LatencyMilliseconds }
+                    expectedEvidenceCondition = $case.expectedEvidenceCondition
+                    evidenceStatus = $null
+                    recurrenceMayBeStated = $case.recurrenceMayBeStated
+                    recurringSameAssetPatternSupported = $null
+                    summaryStatus = $null
+                    retrievalStatus = $null
+                    sourceRecords = @()
+                    automaticResult = 'fail'
+                    validationFailures = @("Preflight response was unavailable or invalid JSON. $requestFailure".Trim())
+                })
+            }
+            else {
+                $preflightRecords.Add((Get-PreflightCaseResult -Case $case -Response $response -Payload $payload))
+            }
         }
-        if (-not $searchable) { throw 'Full-Text retrieval did not return source records for the readiness probe.' }
+
+        Write-CaseResults -Manifest $manifest -Records $preflightRecords -Phase 'preflight'
+        $failedPreflight = @($preflightRecords | Where-Object automaticResult -eq 'fail')
+        if ($failedPreflight.Count -gt 0) {
+            throw "Retrieval preflight failed for $($failedPreflight.Count) case(s); no DeepSeek provider calls were made."
+        }
     }
     Invoke-Stage 'deepseek-summary-cases' {
         foreach ($case in @($manifest.cases)) {
@@ -358,26 +491,27 @@ try {
                 findingText = $case.findingText
                 generateSummary = $true
             } | ConvertTo-Json -Compress
-            $response = Invoke-ApiRequest -Method POST -Uri "$apiBase/api/v1/maintenance-review" -Body $body -Token $accessToken
-            $payload = $response.Content | ConvertFrom-Json
-            $record = Test-CaseResponse -Case $case -Response $response -Payload $payload
+            $response = $null
+            $payload = $null
+            $requestFailure = $null
+            try {
+                $response = Invoke-ApiRequest -Method POST -Uri "$apiBase/api/v1/maintenance-review" -Body $body -Token $accessToken
+                try {
+                    $payload = $response.Content | ConvertFrom-Json
+                }
+                catch {
+                    $requestFailure = "Response JSON was malformed: $($_.Exception.Message)"
+                }
+            }
+            catch {
+                $requestFailure = "Endpoint request failed: $($_.Exception.Message)"
+            }
+            $record = Get-SummaryCaseResult -Case $case -Response $response -Payload $payload -RequestFailure $requestFailure
             $caseRecords.Add($record)
+            Write-CaseResults -Manifest $manifest -Records $caseRecords -Phase 'case'
         }
     }
-
-    [ordered]@{
-        manifestVersion = $manifest.manifestVersion
-        datasetVersion = $manifest.datasetVersion
-        providerKey = 'deepseek'
-        modelKey = 'deepseek-v4-flash'
-        thinkingMode = 'disabled'
-        testedCommit = $testedCommit
-        sourceBranch = $sourceBranch
-        worktreeClean = $worktreeClean
-        cases = $caseRecords
-    } | ConvertTo-Json -Depth 20 |
-        Set-Content -LiteralPath (Join-Path $artifactRoot 'case-results.json') -Encoding utf8
-    Write-ManualReviewTemplate -Cases @($manifest.cases)
+    Write-ManualReviewTemplate -Cases @($manifest.cases) -Results $caseRecords
 }
 catch {
     $overallExitCode = 1
