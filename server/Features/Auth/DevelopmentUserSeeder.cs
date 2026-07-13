@@ -12,7 +12,8 @@ internal sealed record DevelopmentUserSeedResult(
 internal sealed class DevelopmentUserSeeder(
     RoleManager<IdentityRole<Guid>> roleManager,
     UserManager<ApplicationUser> userManager,
-    IConfiguration configuration)
+    IConfiguration configuration,
+    IHostEnvironment environment)
 {
     private static readonly DevelopmentUserDefinition[] Users =
     [
@@ -25,6 +26,12 @@ internal sealed class DevelopmentUserSeeder(
 
     public async Task<DevelopmentUserSeedResult> SeedAsync()
     {
+        if (!environment.IsDevelopment())
+        {
+            throw new InvalidOperationException(
+                "Development user seeding is available only in Development.");
+        }
+
         var password = configuration["UNIPM_DEV_USER_PASSWORD"];
         if (string.IsNullOrWhiteSpace(password))
         {
