@@ -22,6 +22,7 @@ internal sealed class MaintenanceReviewService(
     PrivacySanitizerService sanitizer,
     MaintenanceReviewPromptBuilder promptBuilder,
     ISummaryService summaryService,
+    ISummaryExperimentCapture experimentCapture,
     IOptions<MaintenanceReviewOptions> reviewOptionsAccessor,
     IOptions<SummaryOptions> summaryOptionsAccessor)
     : IMaintenanceReviewService
@@ -193,6 +194,7 @@ internal sealed class MaintenanceReviewService(
                     prompt.IncludedSourceLabels,
                     prompt.TemplateVersion),
                 cancellationToken);
+            experimentCapture.Capture(generated.Content);
             summary = SummaryOutputValidator.Validate(
                 generated.Content,
                 prompt.IncludedSourceLabels,

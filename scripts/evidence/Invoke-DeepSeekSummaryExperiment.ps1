@@ -36,6 +36,8 @@ $environmentNames = @(
     'UNIPM_SUMMARY_THINKING_MODE',
     'UNIPM_SUMMARY_TIMEOUT_SECONDS',
     'UNIPM_SUMMARY_ALLOW_REMOTE_PROVIDER',
+    'UNIPM_SUMMARY_EXPERIMENT_CAPTURE_GENERATED_TEXT',
+    'UNIPM_SUMMARY_EXPERIMENT_CAPTURE_PATH',
     'UNIPM_EMBEDDINGS_ENABLED')
 
 $assistiveDisclaimer = 'This summary is assistive only and must be verified by authorized personnel using the original inspection records.'
@@ -255,6 +257,7 @@ function Get-SummaryCaseResult {
         recurringSameAssetPatternSupported = if ($null -eq $Payload) { $null } else { $Payload.recurringSameAssetPatternSupported }
         summaryStatus = $summaryStatus
         summary = $summary
+        capturedGeneratedText = $null
         citations = $citations
         retrievalStatus = if ($null -eq $Payload) { $null } else { $Payload.retrievalStatus }
         sourceRecords = $sourceRecords
@@ -295,7 +298,7 @@ function Write-ManualReviewTemplate {
     $lines = [System.Collections.Generic.List[string]]::new()
     $lines.Add('# DeepSeek V4 Summary Manual Review')
     $lines.Add('')
-    $lines.Add('Complete each rating with Pass, Partial, or Fail after comparing the generated summary with every selected source record. Do not use an LLM as the sole evaluator.')
+    $lines.Add('Complete each rating with Pass, Partial, or Fail after comparing the generated summary with every selected source record. Rejected provider text is retained only in the ignored case-results artifact as capturedGeneratedText; use NR only when no text was captured. Do not use an LLM as the sole evaluator.')
     $lines.Add('')
     $lines.Add('| Case | Language | Automatic result | Source faithfulness | Citation correctness | Unsupported claims | Recurrence handling | Language clarity | Uncertainty | Avoids diagnosis/decisions | Reviewer usefulness | Reviewer notes |')
     $lines.Add('|---|---|---|---|---|---|---|---|---|---|---|---|')
@@ -307,6 +310,29 @@ function Write-ManualReviewTemplate {
     $lines.Add('')
     $lines.Add('A source-faithfulness rating is Fail when the summary introduces any material fact not supported by the selected source records.')
     Set-Content -LiteralPath (Join-Path $artifactRoot 'manual-review.md') -Value $lines -Encoding utf8
+}
+
+function Add-CapturedGeneratedText {
+    param([Parameter(Mandatory)]$Records)
+
+    $containerCapturePath = '/tmp/unipm-summary-experiment-capture.jsonl'
+    $artifactCapturePath = Join-Path $artifactRoot 'captured-generated-text.jsonl'
+    docker cp "unipm-api:$containerCapturePath" $artifactCapturePath
+    if ($LASTEXITCODE -ne 0) {
+        throw "Could not copy the experiment-only generated-text capture from the API container."
+    }
+
+    $captured = @(
+        Get-Content -LiteralPath $artifactCapturePath |
+            Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
+            ForEach-Object { $_ | ConvertFrom-Json })
+    if ($captured.Count -ne $Records.Count) {
+        throw "Expected $($Records.Count) generated-text capture record(s), found $($captured.Count)."
+    }
+
+    for ($index = 0; $index -lt $Records.Count; $index++) {
+        $Records[$index]['capturedGeneratedText'] = $captured[$index].generatedText
+    }
 }
 
 try {
@@ -367,6 +393,8 @@ try {
     [Environment]::SetEnvironmentVariable('UNIPM_SUMMARY_THINKING_MODE', 'disabled', 'Process')
     [Environment]::SetEnvironmentVariable('UNIPM_SUMMARY_TIMEOUT_SECONDS', '120', 'Process')
     [Environment]::SetEnvironmentVariable('UNIPM_SUMMARY_ALLOW_REMOTE_PROVIDER', 'true', 'Process')
+    [Environment]::SetEnvironmentVariable('UNIPM_SUMMARY_EXPERIMENT_CAPTURE_GENERATED_TEXT', 'true', 'Process')
+    [Environment]::SetEnvironmentVariable('UNIPM_SUMMARY_EXPERIMENT_CAPTURE_PATH', '/tmp/unipm-summary-experiment-capture.jsonl', 'Process')
     [Environment]::SetEnvironmentVariable('UNIPM_EMBEDDINGS_ENABLED', 'false', 'Process')
 
     $apiPort = if ([string]::IsNullOrWhiteSpace($env:UNIPM_API_PORT)) { '5000' } else { $env:UNIPM_API_PORT }
@@ -512,6 +540,8 @@ try {
             $caseRecords.Add($record)
             Write-CaseResults -Manifest $manifest -Records $caseRecords -Phase 'case'
         }
+        Add-CapturedGeneratedText -Records $caseRecords
+        Write-CaseResults -Manifest $manifest -Records $caseRecords -Phase 'case'
     }
     Write-ManualReviewTemplate -Cases @($manifest.cases) -Results $caseRecords
 }

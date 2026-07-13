@@ -88,6 +88,8 @@ services:
       Summary__MaxOutputCharacters: "${UNIPM_SUMMARY_MAX_OUTPUT_CHARACTERS:-4000}"
       Summary__MaxSourceTextCharacters: "${UNIPM_SUMMARY_MAX_SOURCE_TEXT_CHARACTERS:-1500}"
       Summary__AllowRemoteProvider: "${UNIPM_SUMMARY_ALLOW_REMOTE_PROVIDER:-false}"
+      SummaryExperiment__CaptureGeneratedText: "${UNIPM_SUMMARY_EXPERIMENT_CAPTURE_GENERATED_TEXT:-false}"
+      SummaryExperiment__CapturePath: "${UNIPM_SUMMARY_EXPERIMENT_CAPTURE_PATH:-}"
     ports:
       - "${UNIPM_API_PORT:-5000}:8080"
     depends_on:
