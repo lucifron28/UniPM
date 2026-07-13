@@ -26,6 +26,14 @@ internal static class ApiErrors
             statusCode: StatusCodes.Status409Conflict);
     }
 
+    internal static IResult Unauthorized(string detail)
+    {
+        return Results.Problem(
+            title: "Authentication failed",
+            detail: detail,
+            statusCode: StatusCodes.Status401Unauthorized);
+    }
+
     internal static IResult ServiceUnavailable(string detail)
     {
         return Results.Problem(
