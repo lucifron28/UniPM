@@ -3,8 +3,8 @@ id: EXP-002
 type: experiment
 title: DeepSeek V4 source-bounded summary baseline
 status: pending
-recordedAtUtc: 2026-07-13T02:10:36Z
-testedCommit: 31c24e52ec322ebd24e0ff0a11038f652615c32f
+recordedAtUtc: 2026-07-13T04:30:17Z
+testedCommit: f4e1b703695f3c3e99428e42e43fb2676f591304
 sourceBranch: experiment/deepseek-v4-summary-baseline
 evidenceLevel: locally-executed
 ---
@@ -58,18 +58,19 @@ resources and are never included in provider requests.
 
 ## Real-Provider Execution Status
 
-Not executed. `UNIPM_SUMMARY_API_KEY` was unavailable in the process environment
-at the clean implementation commit. The experiment runner was therefore not
-started, and no provider call, generated summary, latency measurement, manual
-source-faithfulness review, baseline artifact, or artifact hash is claimed.
+Executed locally against a fresh SQL Server volume on the tested commit. All 12
+retrieval preflight cases passed before provider calls began. DeepSeek completed
+all 12 requests: 5 met the automatic response contract and 7 safely failed it
+because no valid generated/citable summary was returned. Latency was 3937.25 ms
+minimum, 4430.92 ms median, and 5641.20 ms p95. Human ratings remain pending.
 
 ## Per-Language Results
 
 | Language | Cases | Real provider | Manual ratings | Latency |
 |---|---:|---|---|---|
-| English | 4 | Not executed | Not assigned | Not measured |
-| Tagalog | 4 | Not executed | Not assigned | Not measured |
-| Taglish | 4 | Not executed | Not assigned | Not measured |
+| English | 4 | Executed: 2 automatic pass, 2 fail | Pending | 4637.35 ms p50 |
+| Tagalog | 4 | Executed: 0 automatic pass, 4 fail | Pending | 4234.47 ms p50 |
+| Taglish | 4 | Executed: 3 automatic pass, 1 fail | Pending | 4051.76 ms p50 |
 
 ## Per-Case Manual Review
 
@@ -105,14 +106,16 @@ headers, connection strings, prompts, token maps, or full provider payloads.
 
 ## Artifacts And Hashes
 
-None. The real-provider experiment was not executed.
+Ignored local artifact directory: `artifacts/evidence/20260713-043017Z-f4e1b703695f-deepseek-v4-summary/`.
+It contains preflight and case results, manual-review worksheet, verification
+summary, and SHA-256 checksums. Outputs are fictional and sanitized; the
+artifacts are intentionally not committed.
 
 ## Decision
 
-Keep EXP-002 pending until a developer intentionally supplies the DeepSeek API
-key, runs the clean implementation commit, and a human reviewer completes the
-Pass/Partial/Fail rubric. Do not infer model quality or production readiness
-from the automated fake-provider tests.
+Keep EXP-002 pending until a human reviewer completes the Pass/Partial/Fail
+rubric. Do not infer model quality or production readiness from automatic
+contract outcomes or fake-provider tests.
 
 ## Limitations
 
