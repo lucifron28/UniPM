@@ -202,10 +202,11 @@ source records returned for human verification. It remains disabled by default
 and requires `CanReviewMaintenanceHistory` whenever enabled.
 
 Optional provider thinking mode and a strict 12-case DeepSeek V4 summary
-experiment manifest are implemented. Automated fake-provider validation covers
-thinking-mode serialization and safe failure degradation. EXP-002 remains
-pending because the real API key, real generated outputs, human
-Pass/Partial/Fail review, and latency evidence were unavailable.
+experiment manifest are implemented. EXP-002 is executed with a real-provider
+run, retained fictional outputs, developer-approved human ratings, and latency
+evidence. The result does not establish production readiness; Tagalog and
+Taglish language fit remained weak, and five outputs violated the citation
+contract.
 
 Semantic retrieval is a required target channel, not an excuse to block core
 maintenance workflows. Core workflows must work with AI disabled. No separate

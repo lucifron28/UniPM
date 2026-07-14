@@ -65,8 +65,9 @@ minimum, 3641.19 ms median, and 5264.86 ms p95.
 
 The experiment-only capture retained fictional generated text before output
 validation. This resolved the earlier inability to inspect rejected outputs.
-Human source-faithfulness review remains pending; automatic acceptance is not a
-model-quality verdict.
+Human source-faithfulness review was completed by the developer using the
+retained fictional generated text and selected source records. Automatic
+acceptance remains separate from the human model-quality assessment.
 
 ## Per-Language Results
 
