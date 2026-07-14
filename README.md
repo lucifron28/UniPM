@@ -1,9 +1,10 @@
 # UniPM
 
 UniPM is a web and mobile preventive-maintenance system for the university
-General Services Department. The repository contains an ASP.NET Core API and
-the initial preventive-maintenance domain, with a bounded maintenance-history
-review feature planned for a later phase.
+General Services Department. The repository contains an ASP.NET Core API, the
+initial preventive-maintenance domain, and an implemented bounded maintenance-
+history review MVP. The review endpoint is available only when explicitly
+enabled and is disabled in committed configuration.
 
 ## License
 
@@ -102,7 +103,8 @@ docker compose down
 The maintenance-review endpoint is disabled in committed configuration and is
 available in any environment only when explicitly enabled. It requires the
 `CanReviewMaintenanceHistory` policy (`GSD`, `Supervisor`, or
-`DepartmentHead`). For local source-only review, set
+`DepartmentHead`) and performs at most two fused retrieval passes. For local
+source-only review, set
 `UNIPM_MAINTENANCE_REVIEW_ENABLED=true` and keep
 `UNIPM_SUMMARY_ENABLED=false`. The endpoint returns selected original source
 records when summaries are disabled, unavailable, or rejected by citation
@@ -205,8 +207,8 @@ idempotent, and does not start HTTP hosting. Supplying more than one
 maintenance command flag is rejected without executing an operation.
 
 The fixture uses five deterministic synthetic actor IDs for assignee and
-inspector references. When development users are introduced later, reuse those
-IDs rather than creating a temporary production user table solely for seeding.
+inspector references. Development user seeding reuses those IDs so the fixture
+and authentication scaffold remain aligned.
 
 The operational fixture is version `1.1.0`. The retrieval evaluation manifest
 is version `1.1.0`, is copied only to test output, and remains test-only: it is
@@ -218,8 +220,10 @@ rules remain provisional.
 Inspection list/detail reads, maintenance issue normalization, and internal
 lexical FTS retrieval are complete. Lexical retrieval searches only the
 rebuildable `MaintenanceSearchDocument.SearchText` projection and returns
-source-traceable inspection metadata; it has no public review endpoint. Domain-
-contract hardening is complete: stable persisted codes have feature-owned
+source-traceable inspection metadata. It is an internal retriever, not a
+standalone public search endpoint; fused retrieval feeds the authenticated
+`POST /api/v1/maintenance-review` endpoint. Domain-contract hardening is
+complete: stable persisted codes have feature-owned
 catalogs, canonical API/storage values, SQL Server constraints, and migration
 preflight checks. Semantic retrieval is now an internal channel required by the
 target maintenance-history review workflow: it stores only document embeddings,
@@ -227,13 +231,15 @@ never query vectors, and does not affect core or lexical workflows when its
 provider is disabled. Internal fused retrieval uses RRF with K=60, candidate
 depth 20, output limit 10, deterministic ordering, component-rank traceability,
 and explicit semantic degradation. The retrieval benchmark supports lexical,
-semantic, and fused channels, but real fused quality evidence remains pending
-a configured provider. Opt-in observability metrics and the local
+semantic, and fused channels, but real semantic and fused model-quality evidence
+remain pending a configured provider. Opt-in observability metrics and the local
 technical-health monitoring profile and coarse authentication scaffold are
-complete. The DeepSeek V4 summary experiment harness and 12-case multilingual
-manifest are available, while the real-provider run remains pending an
-intentionally supplied API key. The next branch is
-`experiment/multilingual-embedding-baseline`.
+complete. EXP-002 executed the DeepSeek V4 summary experiment on fictional data
+with developer-reviewed ratings; it did not establish production readiness.
+Tagalog and Taglish language fit was weak, and five outputs violated the citation
+contract. Immediate work proceeds with inspection-submission integrity,
+retrieval/test layout organization, and explicit free-text-name sanitizer
+limitation documentation before the multilingual embedding baseline.
 
 Embeddings are disabled by default. Remote providers are rejected unless
 `Embeddings:AllowRemoteProvider` is explicitly enabled after a separate
@@ -355,8 +361,9 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\evidence\Invok
 The runner fixes the provider to `deepseek`, model to `deepseek-v4-flash`, and
 thinking mode to `disabled`, uses only fictional seeded data, and never retains
 the API key, JWT, authorization header, connection string, raw prompt, token
-map, or complete provider payload. EXP-002 is pending until this run and a human
-Pass/Partial/Fail source-faithfulness review are completed.
+map, or complete provider payload. EXP-002 is executed with retained fictional
+outputs and developer-reviewed ratings; it remains an experimental baseline, not
+a production-readiness result.
 
 ## Project References
 

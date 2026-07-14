@@ -5,13 +5,14 @@ and retrieval-safety rules.
 
 The current strategy is risk-first:
 
-1. keep the project runnable and tested
-2. keep realistic synthetic data available for development
-3. finish the read-side contracts needed by the clients
-4. prove retrieval channels separately before relying on fusion
-5. add the bounded maintenance-history review loop
-6. preserve the completed coarse authentication scaffold while final RBAC is
-   deferred
+1. keep the project runnable and tested;
+2. preserve reproducible synthetic data and evidence;
+3. harden inspection submission integrity;
+4. reorganize retrieval and test code without changing behavior;
+5. document known sanitizer limitations;
+6. evaluate real multilingual embedding models;
+7. preserve the bounded maintenance-history review contract;
+8. keep final RBAC and institutional workflow rules deferred.
 
 The RAG feature is not a chatbot and not an autonomous diagnostic tool. It is a
 bounded maintenance-history review feature that retrieves source records and
@@ -37,10 +38,12 @@ helps a human verify them.
 - Domain contracts: done for stable categories, statuses, schedule codes, and
   seed-only actor tokens, with canonical storage and SQL Server migration checks.
 - SQL Server FTS retrieval: complete as an internal service over
-  `MaintenanceSearchDocument.SearchText`; no public review endpoint yet.
+  `MaintenanceSearchDocument.SearchText`. It does not expose a standalone public
+  search endpoint; fused retrieval feeds the bounded maintenance-review endpoint.
 - Semantic retrieval: complete as an internal channel over cached
   `MaintenanceSearchDocument` embeddings; its provider is operationally
-  optional and degradable, with no public endpoint yet.
+  optional and degradable. It remains internal while the authenticated review
+  endpoint consumes fused retrieval when enabled.
 - Retrieval benchmark: lexical baseline executed and preserved; semantic and
   fused orchestration are implemented and deterministically tested, while real
   semantic/fused model-quality evidence remains pending a configured provider.
@@ -56,6 +59,17 @@ helps a human verify them.
 - Authentication scaffolding: complete with IdentityCore, JWT bearer access
   tokens, five provisional roles, Development user seeding, and policy-
   protected operational writes.
+
+## Immediate Task Order
+
+1. `fix/inspection-submission-integrity`
+2. Retrieval and test folder organization refactor.
+3. Explicit documentation of the MVP sanitizer's free-text-name limitation.
+4. `experiment/multilingual-embedding-baseline`
+
+The maintenance-review endpoint remains disabled by default and requires
+authorization when enabled. Real semantic and fused model-quality evidence
+remain pending; EXP-002 does not change those limits.
 
 ## Risk-First Order
 
@@ -174,7 +188,9 @@ Do not treat the lexicon as a diagnosis system or invent official GSD wording.
 
 ## Task 4: Thin Retrieval MVP
 
-Goal: prove retrieval before investing in source selection, sanitization, or UI polish.
+Goal: preserve and validate the implemented bounded retrieval and maintenance-
+review pipeline while improving integrity, organization, and multilingual
+model-quality evidence.
 
 Required shape:
 
@@ -271,11 +287,14 @@ experiments receive new IDs and approved baselines are not overwritten.
 
 Authentication follows the core inspection and retrieval read contracts:
 
-- scaffold the five approved development roles: Admin, GSD, Inspector,
+- the five approved development roles are scaffolded: Admin, GSD, Inspector,
   DepartmentHead, and Supervisor;
 - keep JWT secrets out of committed configuration;
-- protect writes first and keep reads usable for authenticated development;
-- add tests for login, rejected unauthenticated writes, and allowed writes.
+- policy-protect operational writes and keep the implemented read contracts
+  usable for authenticated development;
+- preserve tests for login, rejected unauthenticated writes, and allowed writes.
+
+Final institutional RBAC decisions and client integration remain deferred.
 
 Document only implemented routes in tracked API contract notes. Web handles
 administration, monitoring, reporting, review, and source verification. Mobile
@@ -300,4 +319,7 @@ directly.
 
 ## Next Branches
 
-- `experiment/multilingual-embedding-baseline`
+1. `fix/inspection-submission-integrity`
+2. Retrieval and test folder organization refactor.
+3. Explicit documentation of the MVP sanitizer's free-text-name limitation.
+4. `experiment/multilingual-embedding-baseline`
