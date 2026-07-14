@@ -185,7 +185,10 @@ separate retrieval benchmark, internal RRF fusion, the committed
 engineering-evidence workflow, and opt-in observability metrics are complete.
 IdentityCore persistence, JWT login/current-user routes, Development user
 seeding, and coarse policy protection are also complete. The exact next backend
-branch is `chore/backend-mvp-hardening`.
+branch is `fix/inspection-submission-integrity`. Follow it with retrieval/test
+folder organization and explicit documentation of the MVP sanitizer's free-text-
+name limitation. The multilingual embedding baseline remains a later research
+experiment.
 
 Observability remains bounded infrastructure: `Observability:MetricsEnabled`
 is false by default, `/metrics` is exposed only when explicitly enabled, and
@@ -199,8 +202,9 @@ candidate/result limits, deterministic component-rank traceability, and
 explicit semantic degradation. The completed maintenance-review layer adds
 deterministic context tiers, request-scoped prompt sanitization, optional
 provider-neutral summaries, and source-returning evidence contracts. It remains
-authenticated whenever enabled and does not claim a real-provider quality
-baseline.
+authenticated whenever enabled. EXP-002 provides a fictional, developer-reviewed
+summary-provider baseline only; it does not establish production readiness or
+real semantic/fused model quality.
 
 Admin is a technical system-administration role, not an operational super-role.
 Operational policies use GSD, Inspector, Supervisor, and DepartmentHead as

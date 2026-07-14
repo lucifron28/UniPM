@@ -37,10 +37,12 @@ helps a human verify them.
 - Domain contracts: done for stable categories, statuses, schedule codes, and
   seed-only actor tokens, with canonical storage and SQL Server migration checks.
 - SQL Server FTS retrieval: complete as an internal service over
-  `MaintenanceSearchDocument.SearchText`; no public review endpoint yet.
+  `MaintenanceSearchDocument.SearchText`. It does not expose a standalone public
+  search endpoint; fused retrieval feeds the bounded maintenance-review endpoint.
 - Semantic retrieval: complete as an internal channel over cached
   `MaintenanceSearchDocument` embeddings; its provider is operationally
-  optional and degradable, with no public endpoint yet.
+  optional and degradable. It remains internal while the authenticated review
+  endpoint consumes fused retrieval when enabled.
 - Retrieval benchmark: lexical baseline executed and preserved; semantic and
   fused orchestration are implemented and deterministically tested, while real
   semantic/fused model-quality evidence remains pending a configured provider.
@@ -56,6 +58,17 @@ helps a human verify them.
 - Authentication scaffolding: complete with IdentityCore, JWT bearer access
   tokens, five provisional roles, Development user seeding, and policy-
   protected operational writes.
+
+## Immediate Task Order
+
+1. `fix/inspection-submission-integrity`
+2. Retrieval and test folder organization refactor.
+3. Explicit documentation of the MVP sanitizer's free-text-name limitation.
+4. `experiment/multilingual-embedding-baseline`
+
+The maintenance-review endpoint remains disabled by default and requires
+authorization when enabled. Real semantic and fused model-quality evidence
+remain pending; EXP-002 does not change those limits.
 
 ## Risk-First Order
 
@@ -300,4 +313,7 @@ directly.
 
 ## Next Branches
 
-- `experiment/multilingual-embedding-baseline`
+1. `fix/inspection-submission-integrity`
+2. Retrieval and test folder organization refactor.
+3. Explicit documentation of the MVP sanitizer's free-text-name limitation.
+4. `experiment/multilingual-embedding-baseline`

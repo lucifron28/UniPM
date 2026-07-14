@@ -113,13 +113,18 @@ maps and does not make autonomous maintenance decisions.
 The provider-neutral adapter now supports an optional thinking-mode field. A
 test-only 12-case English, Tagalog, and Taglish manifest and a secret-safe fresh-
 stack runner exist for `deepseek-v4-flash` with thinking disabled. Automated
-provider-contract and failure tests pass; the real provider experiment and
-human source-faithfulness ratings remain pending because no API key was
-available during implementation verification.
+provider-contract and failure tests pass. EXP-002 executed a real-provider run
+using fictional data, retained fictional generated text, and developer-reviewed
+ratings. It is experimental only: it does not establish production readiness,
+and real multilingual embedding model-quality evidence remains pending.
 
 ## Next Steps
 
-1. Run the multilingual embedding baseline without changing the established
+1. Fix inspection-submission integrity without expanding provisional role or
+   workflow rules.
+2. Refactor retrieval and test folder organization without changing behavior.
+3. Document the MVP sanitizer's free-text-name limitation explicitly.
+4. Run the multilingual embedding baseline without changing the established
    retrieval, review, authorization, or maintenance workflow contracts.
 
 ## Engineering Evidence
@@ -135,4 +140,5 @@ opt-in OpenTelemetry metrics, an optional local Prometheus/Grafana profile, and
 TEST-002 evidence for the local technical-health path. Production monitoring,
 IIS restriction, tracing, centralized logs, alerting, and maintenance KPI
 dashboards remain out of scope. The exact next branch is
-`experiment/multilingual-embedding-baseline`.
+`fix/inspection-submission-integrity`; multilingual embedding baseline research
+follows the integrity and organization work.
