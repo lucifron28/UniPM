@@ -82,11 +82,14 @@ services:
       Summary__Path: "${UNIPM_SUMMARY_PATH:-/v1/chat/completions}"
       Summary__Model: "${UNIPM_SUMMARY_MODEL:-}"
       Summary__ApiKey: "${UNIPM_SUMMARY_API_KEY:-}"
+      Summary__ThinkingMode: "${UNIPM_SUMMARY_THINKING_MODE:-}"
       Summary__TimeoutSeconds: "${UNIPM_SUMMARY_TIMEOUT_SECONDS:-30}"
       Summary__MaxPromptCharacters: "${UNIPM_SUMMARY_MAX_PROMPT_CHARACTERS:-12000}"
       Summary__MaxOutputCharacters: "${UNIPM_SUMMARY_MAX_OUTPUT_CHARACTERS:-4000}"
       Summary__MaxSourceTextCharacters: "${UNIPM_SUMMARY_MAX_SOURCE_TEXT_CHARACTERS:-1500}"
       Summary__AllowRemoteProvider: "${UNIPM_SUMMARY_ALLOW_REMOTE_PROVIDER:-false}"
+      SummaryExperiment__CaptureGeneratedText: "${UNIPM_SUMMARY_EXPERIMENT_CAPTURE_GENERATED_TEXT:-false}"
+      SummaryExperiment__CapturePath: "${UNIPM_SUMMARY_EXPERIMENT_CAPTURE_PATH:-}"
     ports:
       - "${UNIPM_API_PORT:-5000}:8080"
     depends_on:

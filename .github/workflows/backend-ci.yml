@@ -10,6 +10,7 @@ on:
       - "ci/**"
       - "chore/**"
       - "test/**"
+      - "experiment/**"
     paths:
       - ".github/workflows/backend-ci.yml"
       - "server/**"

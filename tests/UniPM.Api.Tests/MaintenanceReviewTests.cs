@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text;
+using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
@@ -232,8 +233,49 @@ public sealed class MaintenanceReviewTests
         Assert.Single(handler.Requests);
         Assert.Contains("\"model\":\"local-model\"", handler.Requests[0].Body, StringComparison.Ordinal);
         Assert.Contains("\"temperature\":0", handler.Requests[0].Body, StringComparison.Ordinal);
+        Assert.DoesNotContain("\"thinking\"", handler.Requests[0].Body, StringComparison.Ordinal);
         Assert.Equal("Bearer", handler.Requests[0].AuthorizationScheme);
         Assert.DoesNotContain("secret-key", handler.Requests[0].Body, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("enabled")]
+    [InlineData("disabled")]
+    public async Task Summary_adapter_serializes_configured_thinking_mode(string thinkingMode)
+    {
+        var handler = SuccessfulSummaryHandler();
+        var service = CreateSummaryService(handler, thinkingMode);
+
+        await service.GenerateAsync(SummaryRequest());
+
+        using var body = JsonDocument.Parse(Assert.Single(handler.Requests).Body);
+        Assert.Equal(
+            thinkingMode,
+            body.RootElement.GetProperty("thinking").GetProperty("type").GetString());
+    }
+
+    [Fact]
+    public async Task Summary_adapter_omits_thinking_when_mode_is_empty()
+    {
+        var handler = SuccessfulSummaryHandler();
+        var service = CreateSummaryService(handler, "  ");
+
+        await service.GenerateAsync(SummaryRequest());
+
+        using var body = JsonDocument.Parse(Assert.Single(handler.Requests).Body);
+        Assert.False(body.RootElement.TryGetProperty("thinking", out _));
+    }
+
+    [Fact]
+    public async Task Summary_adapter_rejects_invalid_thinking_mode_before_provider_request()
+    {
+        var handler = SuccessfulSummaryHandler();
+        var service = CreateSummaryService(handler, "automatic");
+
+        await Assert.ThrowsAsync<SummaryServiceAvailabilityException>(() =>
+            service.GenerateAsync(SummaryRequest()));
+
+        Assert.Empty(handler.Requests);
     }
 
     [Fact]
@@ -314,6 +356,41 @@ public sealed class MaintenanceReviewTests
         var payload = await response.Content.ReadFromJsonAsync<ReviewResponse>();
         Assert.NotNull(payload);
         Assert.Equal("provider_unavailable", payload.SummaryStatus);
+        Assert.Null(payload.Summary);
+        Assert.NotEmpty(payload.SourceRecords);
+    }
+
+    [Theory]
+    [InlineData(SummaryFailureScenario.Timeout, "provider_unavailable")]
+    [InlineData(SummaryFailureScenario.NonSuccessStatus, "provider_unavailable")]
+    [InlineData(SummaryFailureScenario.MalformedJson, "failed")]
+    [InlineData(SummaryFailureScenario.EmptyContent, "failed")]
+    [InlineData(SummaryFailureScenario.InvalidCitation, "failed")]
+    [InlineData(SummaryFailureScenario.MissingDisclaimer, "failed")]
+    public async Task Summary_provider_failures_preserve_selected_sources(
+        SummaryFailureScenario scenario,
+        string expectedStatus)
+    {
+        using var factory = new ReviewApplicationFactory(
+            enabled: true,
+            summaryEnabled: true,
+            summaryHandler: CreateFailureHandler(scenario));
+        await factory.SeedAsync();
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync(
+            "/api/v1/maintenance-review",
+            new
+            {
+                assetId = ReviewApplicationFactory.AssetId,
+                findingText = "mahina ang pressure",
+                generateSummary = true
+            });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var payload = await response.Content.ReadFromJsonAsync<ReviewResponse>();
+        Assert.NotNull(payload);
+        Assert.Equal(expectedStatus, payload.SummaryStatus);
         Assert.Null(payload.Summary);
         Assert.NotEmpty(payload.SourceRecords);
     }
@@ -607,6 +684,64 @@ public sealed class MaintenanceReviewTests
     private static Guid Id(int suffix)
         => Guid.Parse($"00000000-0000-0000-0000-0000000000{suffix:00}");
 
+    private static RecordingSummaryHandler SuccessfulSummaryHandler()
+        => new(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(
+                $"{{\"choices\":[{{\"message\":{{\"content\":\"Evidence [SRC-1]. {MaintenanceReviewPromptBuilder.AssistiveDisclaimer}\"}}}}]}}",
+                Encoding.UTF8,
+                "application/json")
+        });
+
+    private static OpenAiCompatibleSummaryService CreateSummaryService(
+        RecordingSummaryHandler handler,
+        string? thinkingMode)
+        => new(
+            new HttpClient(handler),
+            Options.Create(new SummaryOptions
+            {
+                Enabled = true,
+                ProviderKey = "test-summary",
+                BaseAddress = "http://localhost:8080",
+                Model = "test-model",
+                ThinkingMode = thinkingMode
+            }));
+
+    private static SummaryGenerationRequest SummaryRequest()
+        => new(
+            "system",
+            "prompt [SRC-1]",
+            new HashSet<string> { "SRC-1" },
+            MaintenanceReviewPromptBuilder.TemplateVersion);
+
+    private static HttpMessageHandler CreateFailureHandler(SummaryFailureScenario scenario)
+        => new AsyncSummaryHandler(async (_, cancellationToken) =>
+        {
+            if (scenario == SummaryFailureScenario.Timeout)
+            {
+                await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+            }
+
+            return scenario switch
+            {
+                SummaryFailureScenario.NonSuccessStatus => new HttpResponseMessage(HttpStatusCode.ServiceUnavailable),
+                SummaryFailureScenario.MalformedJson => JsonResponse("{not-json"),
+                SummaryFailureScenario.EmptyContent => JsonResponse(
+                    "{\"choices\":[{\"message\":{\"content\":\"\"}}]}"),
+                SummaryFailureScenario.InvalidCitation => JsonResponse(
+                    $"{{\"choices\":[{{\"message\":{{\"content\":\"Evidence [SRC-999]. {MaintenanceReviewPromptBuilder.AssistiveDisclaimer}\"}}}}]}}"),
+                SummaryFailureScenario.MissingDisclaimer => JsonResponse(
+                    "{\"choices\":[{\"message\":{\"content\":\"Evidence [SRC-1].\"}}]}"),
+                _ => throw new InvalidOperationException("Unsupported summary failure scenario.")
+            };
+        });
+
+    private static HttpResponseMessage JsonResponse(string content)
+        => new(HttpStatusCode.OK)
+        {
+            Content = new StringContent(content, Encoding.UTF8, "application/json")
+        };
+
     private sealed class RecordingSummaryHandler(
         Func<HttpRequestMessage, HttpResponseMessage> responder)
         : HttpMessageHandler
@@ -628,6 +763,26 @@ public sealed class MaintenanceReviewTests
 
     private sealed record RecordedSummaryRequest(string Body, string? AuthorizationScheme);
 
+    private sealed class AsyncSummaryHandler(
+        Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> responder)
+        : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+            => responder(request, cancellationToken);
+    }
+
+    public enum SummaryFailureScenario
+    {
+        Timeout,
+        NonSuccessStatus,
+        MalformedJson,
+        EmptyContent,
+        InvalidCitation,
+        MissingDisclaimer
+    }
+
     private sealed record ReviewResponse(
         string EvidenceStatus,
         string SummaryStatus,
@@ -648,7 +803,8 @@ public sealed class MaintenanceReviewTests
         bool summaryEnabled,
         IReadOnlyList<FusedMaintenanceSearchResponse>? responses = null,
         string? summaryContent = null,
-        int maxSourceRecords = 5)
+        int maxSourceRecords = 5,
+        HttpMessageHandler? summaryHandler = null)
         : WebApplicationFactory<Program>
     {
         public static readonly Guid AssetId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
@@ -668,7 +824,8 @@ public sealed class MaintenanceReviewTests
                     ["Summary:Enabled"] = summaryEnabled.ToString(),
                     ["Summary:ProviderKey"] = "test-summary",
                     ["Summary:BaseAddress"] = "http://localhost:8080",
-                    ["Summary:Model"] = "test-model"
+                    ["Summary:Model"] = "test-model",
+                    ["Summary:TimeoutSeconds"] = "1"
                 }));
             builder.ConfigureServices(services =>
             {
@@ -687,6 +844,12 @@ public sealed class MaintenanceReviewTests
                 {
                     services.RemoveAll<ISummaryService>();
                     services.AddSingleton<ISummaryService>(new FakeSummaryService(summaryContent));
+                }
+                else if (summaryHandler is not null)
+                {
+                    services.RemoveAll<ISummaryService>();
+                    services.AddHttpClient<ISummaryService, OpenAiCompatibleSummaryService>()
+                        .ConfigurePrimaryHttpMessageHandler(() => summaryHandler);
                 }
 
             });

@@ -152,10 +152,23 @@ builder.Services.Configure<MaintenanceReviewOptions>(
     builder.Configuration.GetSection(MaintenanceReviewOptions.SectionName));
 builder.Services.Configure<SummaryOptions>(
     builder.Configuration.GetSection(SummaryOptions.SectionName));
+builder.Services.Configure<SummaryExperimentOptions>(
+    builder.Configuration.GetSection(SummaryExperimentOptions.SectionName));
 builder.Services.AddScoped<PrivacySanitizerService>();
 builder.Services.AddSingleton<MaintenanceReviewSourceSelector>();
 builder.Services.AddSingleton<MaintenanceReviewPromptBuilder>();
 builder.Services.AddHttpClient<ISummaryService, OpenAiCompatibleSummaryService>();
+var summaryExperimentCaptureEnabled = builder.Environment.IsDevelopment()
+    && builder.Configuration.GetValue<bool>(
+        $"{SummaryExperimentOptions.SectionName}:{nameof(SummaryExperimentOptions.CaptureGeneratedText)}");
+if (summaryExperimentCaptureEnabled)
+{
+    builder.Services.AddSingleton<ISummaryExperimentCapture, FileSummaryExperimentCapture>();
+}
+else
+{
+    builder.Services.AddSingleton<ISummaryExperimentCapture, NullSummaryExperimentCapture>();
+}
 builder.Services.AddScoped<IMaintenanceReviewService, MaintenanceReviewService>();
 
 var app = builder.Build();

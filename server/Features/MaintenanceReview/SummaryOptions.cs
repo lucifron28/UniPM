@@ -10,6 +10,7 @@ public sealed class SummaryOptions
     public string Path { get; set; } = "/v1/chat/completions";
     public string? Model { get; set; }
     public string? ApiKey { get; set; }
+    public string? ThinkingMode { get; set; }
     public int TimeoutSeconds { get; set; } = 30;
     public int MaxPromptCharacters { get; set; } = 12000;
     public int MaxOutputCharacters { get; set; } = 4000;

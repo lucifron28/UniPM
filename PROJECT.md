@@ -110,10 +110,17 @@ request-scoped session, and returns original source records beside every
 summary status. It does not persist review data, prompts, summaries, or token
 maps and does not make autonomous maintenance decisions.
 
+The provider-neutral adapter now supports an optional thinking-mode field. A
+test-only 12-case English, Tagalog, and Taglish manifest and a secret-safe fresh-
+stack runner exist for `deepseek-v4-flash` with thinking disabled. Automated
+provider-contract and failure tests pass; the real provider experiment and
+human source-faithfulness ratings remain pending because no API key was
+available during implementation verification.
+
 ## Next Steps
 
-1. Harden the backend MVP around auth operations, deployment checks, and
-   remaining release-readiness gaps without finalizing deferred GSD workflows.
+1. Run the multilingual embedding baseline without changing the established
+   retrieval, review, authorization, or maintenance workflow contracts.
 
 ## Engineering Evidence
 
@@ -127,5 +134,5 @@ embedding providers prove orchestration only. This repository now includes
 opt-in OpenTelemetry metrics, an optional local Prometheus/Grafana profile, and
 TEST-002 evidence for the local technical-health path. Production monitoring,
 IIS restriction, tracing, centralized logs, alerting, and maintenance KPI
-dashboards remain out of scope. The exact next backend branch is
-`chore/backend-mvp-hardening`.
+dashboards remain out of scope. The exact next branch is
+`experiment/multilingual-embedding-baseline`.
