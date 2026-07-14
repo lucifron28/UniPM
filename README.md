@@ -207,8 +207,8 @@ idempotent, and does not start HTTP hosting. Supplying more than one
 maintenance command flag is rejected without executing an operation.
 
 The fixture uses five deterministic synthetic actor IDs for assignee and
-inspector references. When development users are introduced later, reuse those
-IDs rather than creating a temporary production user table solely for seeding.
+inspector references. Development user seeding reuses those IDs so the fixture
+and authentication scaffold remain aligned.
 
 The operational fixture is version `1.1.0`. The retrieval evaluation manifest
 is version `1.1.0`, is copied only to test output, and remains test-only: it is
