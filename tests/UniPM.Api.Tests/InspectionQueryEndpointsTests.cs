@@ -278,6 +278,25 @@ public sealed class InspectionQueryEndpointsTests
         Assert.Equal(1, await context.MaintenanceSearchDocuments.CountAsync());
     }
 
+    [Fact]
+    public async Task Posting_an_inspection_for_an_unknown_schedule_returns_not_found()
+    {
+        await using var application = new TestApplicationFactory();
+        var client = application.CreateClient();
+        await application.EnsureAuthenticatedUserAsync();
+
+        var response = await client.PostAsJsonAsync("/api/v1/inspections/", new
+        {
+            scheduleId = Guid.NewGuid(),
+            inspectorUserId = TestAuthenticationHandler.UserId,
+            dateInspected = DateTimeOffset.UtcNow,
+            isOperational = true,
+            remarks = "Unknown schedule"
+        });
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
     private static async Task<InspectionScenario> CreateScenarioAsync(
         TestApplicationFactory application,
         HttpClient client)
