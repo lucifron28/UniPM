@@ -95,6 +95,8 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             .HasMaxLength(2000);
         inspection.Property(entity => entity.ActionsRecommendations)
             .HasMaxLength(2000);
+        inspection.HasIndex(entity => entity.ScheduleId)
+            .IsUnique();
 
         var searchDocument = modelBuilder.Entity<MaintenanceSearchDocument>();
         searchDocument.Property(document => document.AssetCode)
