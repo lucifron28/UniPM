@@ -99,7 +99,14 @@ public static class InspectionsEndpoints
 
             context.InspectionRecords.Add(inspection);
             context.MaintenanceSearchDocuments.Add(projector.Build(inspection, asset));
-            await context.SaveChangesAsync(cancellationToken);
+            try
+            {
+                await context.SaveChangesAsync(cancellationToken);
+            }
+            catch (DbUpdateException exception) when (DatabaseConstraintViolation.IsUniqueConstraint(exception))
+            {
+                return ApiErrors.Conflict("Schedule already has a recorded inspection.");
+            }
 
             return Results.Created(
                 $"/api/v1/inspections/{inspection.Id}",
