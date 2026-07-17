@@ -19,7 +19,7 @@ friendly duplicate pre-check.
 
 ## Source Identity
 
-- Relevant commits: `dd6a853`, `6518a2d`
+- Relevant commits: `dd6a853`, `6518a2d`, `6e8d4b8`
 - Source paths: `server/Data/ApplicationDbContext.cs`,
   `server/Features/Inspections/InspectionsEndpoints.cs`, and migration
   `20260717044115_EnforceOneInspectionPerSchedule`
@@ -49,6 +49,7 @@ non-unique index with the same name.
 
 - Sequential endpoint duplicate conflict and no additional inspection/search
   document.
+- Unknown schedule submission returns HTTP 404.
 - Successful submission persistence, schedule completion, and search-document
   assertions.
 - SQL Server migration-preflight rejection for existing duplicate inspections.
