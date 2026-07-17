@@ -11,14 +11,12 @@ public sealed class MaintenanceIssueLexiconTests
     private static readonly string LexiconPath = Path.Combine(
         RepositoryRoot,
         "server",
-        "Features",
         "Retrieval",
         "Resources",
         MaintenanceIssueLexiconOptions.LexiconFileName);
     private static readonly string SchemaPath = Path.Combine(
         RepositoryRoot,
         "server",
-        "Features",
         "Retrieval",
         "Resources",
         MaintenanceIssueLexiconOptions.SchemaFileName);

@@ -48,7 +48,6 @@ public sealed class SemanticMaintenanceRetrieverProviderTests
             LexiconPath = Path.Combine(
                 root,
                 "server",
-                "Features",
                 "Retrieval",
                 "Resources",
                 MaintenanceIssueLexiconOptions.LexiconFileName)

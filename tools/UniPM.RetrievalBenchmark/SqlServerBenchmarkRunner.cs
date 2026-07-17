@@ -53,7 +53,6 @@ public sealed class SqlServerBenchmarkRunner
         var lexiconPath = Path.Combine(
             repositoryRoot,
             "server",
-            "Features",
             "Retrieval",
             "Resources",
             MaintenanceIssueLexiconOptions.LexiconFileName);

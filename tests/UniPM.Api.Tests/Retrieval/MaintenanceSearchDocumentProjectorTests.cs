@@ -284,7 +284,6 @@ public sealed class MaintenanceSearchDocumentProjectorTests
         var lexiconPath = Path.Combine(
             root,
             "server",
-            "Features",
             "Retrieval",
             "Resources",
             MaintenanceIssueLexiconOptions.LexiconFileName);

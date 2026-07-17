@@ -10,7 +10,6 @@ public sealed class MaintenanceIssueLexiconOptions
 
     public string LexiconPath { get; init; } = Path.Combine(
         AppContext.BaseDirectory,
-        "Features",
         "Retrieval",
         "Resources",
         LexiconFileName);

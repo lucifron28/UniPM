@@ -101,7 +101,6 @@ public sealed class SemanticMaintenanceQueryBuilderTests
             LexiconPath = Path.Combine(
                 root,
                 "server",
-                "Features",
                 "Retrieval",
                 "Resources",
                 MaintenanceIssueLexiconOptions.LexiconFileName)
