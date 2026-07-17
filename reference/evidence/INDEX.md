@@ -46,6 +46,7 @@ record's evidence level and tested/source commit.
 | TEST-011 | test-run | Inspection submission integrity baseline | executed | locally-executed | `6518a2d` | [record](test-runs/TEST-011-inspection-submission-integrity.md) | Release restore/build/tests passed; SQL Server integrity tests were skipped because no test connection was configured. |
 | TEST-012 | test-run | Inspection submission integrity final verification | executed | locally-executed | `6e8d4b8` | [record](test-runs/TEST-012-inspection-submission-integrity-final.md) | Final non-SQL Release build/tests passed with explicit unknown-schedule coverage. |
 | TEST-013 | test-run | Inspection submission integrity SQL Server verification | executed | locally-executed | `6e8d4b8` | [record](test-runs/TEST-013-inspection-submission-integrity-sql-server.md) | Focused SQL Server migration, unique-index, and concurrent endpoint tests passed; a separate existing benchmark assertion blocks the SQL-enabled full suite. |
+| TEST-014 | test-run | SQL Server retrieval benchmark warning assertion verification | executed | locally-executed | `795bc3f` | [record](test-runs/TEST-014-retrieval-benchmark-warning-assertion.md) | Test-only assertion correction; direct and complete SQL-enabled suites passed without changing benchmark behavior. |
 
 ## Pending Evidence
 
