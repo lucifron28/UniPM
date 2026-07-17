@@ -83,7 +83,7 @@ does not change the evidence status.
 
 Before any external summary call, the current finding and provider-bound source
 text pass through request-scoped prompt sanitization, token masking, and
-pseudonymization for emails, supported Philippine phone/mobile numbers, and
+pseudonymization for emails, supported Philippine mobile number formats, and
 labeled employee/student/staff/personnel IDs. Tokens are in-memory only and
 discarded after the request. This is pattern-based masking, not anonymization:
 it does not identify arbitrary free-text personal names and does not guarantee
