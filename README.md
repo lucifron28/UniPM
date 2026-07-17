@@ -110,6 +110,13 @@ source-only review, set
 records when summaries are disabled, unavailable, or rejected by citation
 validation. It never persists prompts, summaries, or sanitizer token maps.
 
+Its MVP prompt sanitizer is limited to pattern-based masking of email,
+supported Philippine mobile numbers, and labeled employee/student/staff/personnel
+IDs. It does not generally detect free-text personal names. Keep external
+provider use to fictional or separately reviewed, pre-sanitized data; see the
+[maintenance-review API contract](reference/api/maintenance-review-v0.1.md) for
+the provider and source-record boundary.
+
 The provider-neutral summary adapter supports an optional `ThinkingMode` value:
 empty omits the provider field, while `enabled` or `disabled` sends the
 corresponding structured provider option. DeepSeek V4 experiment configuration
@@ -237,9 +244,9 @@ technical-health monitoring profile and coarse authentication scaffold are
 complete. EXP-002 executed the DeepSeek V4 summary experiment on fictional data
 with developer-reviewed ratings; it did not establish production readiness.
 Tagalog and Taglish language fit was weak, and five outputs violated the citation
-contract. Immediate work proceeds with inspection-submission integrity,
-retrieval/test layout organization, and explicit free-text-name sanitizer
-limitation documentation before the multilingual embedding baseline.
+contract. Inspection-submission integrity, retrieval/test layout organization,
+and explicit free-text-name sanitizer limitation documentation are complete;
+the next research branch is the multilingual embedding baseline.
 
 Embeddings are disabled by default. Remote providers are rejected unless
 `Embeddings:AllowRemoteProvider` is explicitly enabled after a separate

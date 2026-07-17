@@ -83,9 +83,18 @@ does not change the evidence status.
 
 Before any external summary call, the current finding and provider-bound source
 text pass through request-scoped prompt sanitization, token masking, and
-pseudonymization for emails, Philippine phone/mobile numbers, and labeled
-employee/student/staff/personnel IDs. Tokens are in-memory only and discarded
-after the request. This is not full anonymization.
+pseudonymization for emails, supported Philippine phone/mobile numbers, and
+labeled employee/student/staff/personnel IDs. Tokens are in-memory only and
+discarded after the request. This is pattern-based masking, not anonymization:
+it does not identify arbitrary free-text personal names and does not guarantee
+that every identifier is masked.
+
+The response returns original authorized source records for human verification.
+Those records are not a public or anonymized response, and authorization does
+not anonymize their contents. This v0.1 contract does not guarantee runtime
+prevention of unsafe provider configuration. Remote-provider use with real or
+unscreened institutional text requires a separately approved privacy process or
+a stronger sanitizer.
 
 `maintenance-review-v1` is the stable prompt template. The prompt treats source
 records as quoted data, requires source labels, forbids invented dates, causes,
@@ -106,3 +115,7 @@ This is a synthetic, provisional MVP. It does not prove real provider quality,
 infer equipment equivalence, diagnose failures, finalize
 GSD acknowledgement/RMRF workflows, make corrective decisions, retrieve
 external reference documents, or provide chatbot/multi-turn behavior.
+
+Prompt sanitization is limited to the documented pattern coverage. Free-text
+personal names can remain in provider-bound input, so synthetic names and
+fictional fixtures must not be treated as evidence of real-name protection.
