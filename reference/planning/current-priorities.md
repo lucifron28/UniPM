@@ -7,9 +7,9 @@ The current strategy is risk-first:
 
 1. keep the project runnable and tested;
 2. preserve reproducible synthetic data and evidence;
-3. harden inspection submission integrity;
-4. reorganize retrieval and test code without changing behavior;
-5. document known sanitizer limitations;
+3. preserve inspection-submission integrity;
+4. preserve the organized retrieval and test layout without changing behavior;
+5. preserve explicit documentation of known sanitizer limitations;
 6. evaluate real multilingual embedding models;
 7. preserve the bounded maintenance-history review contract;
 8. keep final RBAC and institutional workflow rules deferred.
@@ -59,13 +59,19 @@ helps a human verify them.
 - Authentication scaffolding: complete with IdentityCore, JWT bearer access
   tokens, five provisional roles, Development user seeding, and policy-
   protected operational writes.
+- Inspection-submission integrity: complete with schedule-level SQL Server
+  uniqueness and conflict handling.
+- Retrieval and API test layout: complete without behavior changes.
+- MVP sanitizer free-text-name limitation: explicitly documented; pattern-based
+  masking does not generally identify personal names in free text.
 
 ## Immediate Task Order
 
-1. `fix/inspection-submission-integrity`
-2. Retrieval and test folder organization refactor.
-3. Explicit documentation of the MVP sanitizer's free-text-name limitation.
-4. `experiment/multilingual-embedding-baseline`
+1. Completed: `fix/inspection-submission-integrity`.
+2. Completed: retrieval and test folder organization refactor.
+3. Completed: explicit documentation of the MVP sanitizer's free-text-name
+   limitation.
+4. Next: `experiment/multilingual-embedding-baseline`.
 
 The maintenance-review endpoint remains disabled by default and requires
 authorization when enabled. Real semantic and fused model-quality evidence
@@ -319,7 +325,8 @@ directly.
 
 ## Next Branches
 
-1. `fix/inspection-submission-integrity`
-2. Retrieval and test folder organization refactor.
-3. Explicit documentation of the MVP sanitizer's free-text-name limitation.
-4. `experiment/multilingual-embedding-baseline`
+1. Completed: `fix/inspection-submission-integrity`.
+2. Completed: retrieval and test folder organization refactor.
+3. Completed: explicit documentation of the MVP sanitizer's free-text-name
+   limitation.
+4. Next: `experiment/multilingual-embedding-baseline`.

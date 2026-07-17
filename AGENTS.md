@@ -73,7 +73,14 @@ For the thin RAG MVP, implement or use a `PrivacySanitizerService` with at least
 - no token-map persistence
 - no full AI provider payload logging
 
-Full privacy masking later may include:
+The current sanitizer is pattern-based token masking and pseudonymization, not
+anonymization. It does not identify or mask arbitrary free-text personal names;
+synthetic names in fixture data do not demonstrate protection for real names.
+Do not send real or unscreened institutional text to a remote summary provider
+under this MVP boundary. Stronger name handling requires a separate privacy
+design and review.
+
+Stronger privacy handling later may include:
 
 - role-based token replacement
 - known personnel-name matching from the database
@@ -81,7 +88,8 @@ Full privacy masking later may include:
 - source rehydration if approved
 - more complete audit metadata
 
-Use the terms token masking, pseudonymization, and prompt sanitization. Do not call the MVP sanitizer "full anonymization."
+Use the terms token masking, pseudonymization, and prompt sanitization. Do not
+describe the MVP sanitizer as anonymization.
 
 ## Vector Search MVP Rule
 
@@ -184,11 +192,10 @@ list/detail reads, the v1.0 maintenance issue lexicon, the rebuildable
 separate retrieval benchmark, internal RRF fusion, the committed
 engineering-evidence workflow, and opt-in observability metrics are complete.
 IdentityCore persistence, JWT login/current-user routes, Development user
-seeding, and coarse policy protection are also complete. The exact next backend
-branch is `fix/inspection-submission-integrity`. Follow it with retrieval/test
-folder organization and explicit documentation of the MVP sanitizer's free-text-
-name limitation. The multilingual embedding baseline remains a later research
-experiment.
+seeding, and coarse policy protection are also complete. Inspection-submission
+integrity, retrieval/test folder organization, and explicit documentation of
+the MVP sanitizer's free-text-name limitation are also complete. The exact next
+branch is `experiment/multilingual-embedding-baseline`.
 
 Observability remains bounded infrastructure: `Observability:MetricsEnabled`
 is false by default, `/metrics` is exposed only when explicitly enabled, and
