@@ -23,7 +23,8 @@ internal sealed class TrustedWebOriginValidator(AuthSessionRuntimeConfiguration 
     private static bool TryNormalize(string value, out string normalized)
     {
         normalized = string.Empty;
-        if (!Uri.TryCreate(value, UriKind.Absolute, out var uri)
+        if (value.Contains('*', StringComparison.Ordinal)
+            || !Uri.TryCreate(value, UriKind.Absolute, out var uri)
             || uri.Scheme is not ("http" or "https")
             || string.IsNullOrEmpty(uri.Host)
             || !string.IsNullOrEmpty(uri.UserInfo)

@@ -240,6 +240,7 @@ public sealed class AuthEndpointsTests
         var sessions = await application.GetRefreshSessionsAsync();
         Assert.Equal(2, sessions.Count);
         Assert.Single(sessions, session => session.RevokedAtUtc is null);
+        Assert.Equal(sessions[0].ExpiresAtUtc, sessions[1].ExpiresAtUtc);
 
         client.DefaultRequestHeaders.Remove("Cookie");
         client.DefaultRequestHeaders.Add("Cookie", $"{RefreshCookieService.CookieName}={firstToken}");
@@ -262,6 +263,68 @@ public sealed class AuthEndpointsTests
         Assert.Equal(HttpStatusCode.NoContent, (await client.PostAsync("/api/v1/auth/logout", null)).StatusCode);
         Assert.All(await application.GetRefreshSessionsAsync(), session => Assert.NotNull(session.RevokedAtUtc));
         Assert.Equal(HttpStatusCode.NoContent, (await client.PostAsync("/api/v1/auth/logout", null)).StatusCode);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("malformed")]
+    [InlineData("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")]
+    public async Task Refresh_rejections_are_generic_and_clear_the_cookie(string? token)
+    {
+        await using var application = new AuthApplicationFactory();
+        using var client = application.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = false });
+        if (token is not null)
+        {
+            client.DefaultRequestHeaders.Add("Cookie", $"{RefreshCookieService.CookieName}={token}");
+        }
+
+        var response = await client.PostAsync("/api/v1/auth/refresh", null);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal("The session could not be refreshed.", (await response.Content.ReadFromJsonAsync<ProblemDetails>())?.Detail);
+        Assert.Contains("expires=", response.Headers.GetValues("Set-Cookie").Single(), StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Security_stamp_change_rejects_refresh_with_the_generic_contract()
+    {
+        await using var application = new AuthApplicationFactory();
+        await application.SeedUserAsync(Email, Password, true, false, AuthRoleCatalog.Gsd);
+        using var client = application.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = false });
+        var login = await LoginAsync(client, Email, Password);
+        await application.UpdateSecurityStampAsync(Email);
+        client.DefaultRequestHeaders.Add("Cookie", $"{RefreshCookieService.CookieName}={ExtractRefreshCookie(login)}");
+
+        var response = await client.PostAsync("/api/v1/auth/refresh", null);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal("The session could not be refreshed.", (await response.Content.ReadFromJsonAsync<ProblemDetails>())?.Detail);
+    }
+
+    [Fact]
+    public async Task Logout_of_one_login_family_leaves_a_second_login_family_refreshable()
+    {
+        await using var application = new AuthApplicationFactory();
+        await application.SeedUserAsync(Email, Password, true, false, AuthRoleCatalog.Gsd);
+        using var client = application.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = false });
+        var first = ExtractRefreshCookie(await LoginAsync(client, Email, Password));
+        var second = ExtractRefreshCookie(await LoginAsync(client, Email, Password));
+        Assert.Equal(2, (await application.GetRefreshSessionsAsync()).Select(item => item.TokenFamilyId).Distinct().Count());
+
+        client.DefaultRequestHeaders.Add("Cookie", $"{RefreshCookieService.CookieName}={first}");
+        Assert.Equal(HttpStatusCode.NoContent, (await client.PostAsync("/api/v1/auth/logout", null)).StatusCode);
+        client.DefaultRequestHeaders.Remove("Cookie");
+        client.DefaultRequestHeaders.Add("Cookie", $"{RefreshCookieService.CookieName}={second}");
+
+        Assert.Equal(HttpStatusCode.OK, (await client.PostAsync("/api/v1/auth/refresh", null)).StatusCode);
+    }
+
+    [Theory]
+    [InlineData("http://*")]
+    [InlineData("https://*.example.edu")]
+    public void Wildcard_web_origins_are_rejected_at_startup_validation(string origin)
+    {
+        Assert.Throws<InvalidOperationException>(() => TrustedWebOriginValidator.Normalize(origin));
     }
 
     [Fact]
@@ -556,6 +619,14 @@ public sealed class AuthEndpointsTests
             var factory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
             await using var context = await factory.CreateDbContextAsync();
             return await context.RefreshSessions.OrderBy(session => session.CreatedAtUtc).ToListAsync();
+        }
+
+        public async Task UpdateSecurityStampAsync(string email)
+        {
+            await using var scope = Services.CreateAsyncScope();
+            var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+            var user = Assert.IsType<ApplicationUser>(await userManager.FindByEmailAsync(email));
+            Assert.True((await userManager.UpdateSecurityStampAsync(user)).Succeeded);
         }
 
         public async Task<Guid> SeedScheduleAsync()

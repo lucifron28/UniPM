@@ -1,4 +1,6 @@
+using System.Data;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using UniPM.Api.Data;
 using UniPM.Api.Models;
@@ -32,12 +34,22 @@ internal sealed class RefreshSessionService(
         }
 
         await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
+        await using var transaction = context.Database.IsRelational()
+            ? await context.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken)
+            : null;
         var tokenHash = tokenGenerator.Hash(rawToken!);
-        var session = await context.RefreshSessions
+        var sessions = context.Database.IsRelational()
+            ? context.RefreshSessions.FromSqlInterpolated($"SELECT * FROM [RefreshSessions] WITH (UPDLOCK, HOLDLOCK) WHERE [TokenHash] = {tokenHash}")
+            : context.RefreshSessions.Where(item => item.TokenHash == tokenHash);
+        var session = await sessions
             .Include(item => item.User)
-            .SingleOrDefaultAsync(item => item.TokenHash == tokenHash, cancellationToken);
+            .SingleOrDefaultAsync(cancellationToken);
         if (session is null)
         {
+            if (transaction is not null)
+            {
+                await transaction.CommitAsync(cancellationToken);
+            }
             return new RefreshSessionRotationResult(null, null);
         }
 
@@ -45,6 +57,10 @@ internal sealed class RefreshSessionService(
         if (session.RevokedAtUtc is not null || session.ReplacedBySessionId is not null)
         {
             await RevokeFamilyAsync(context, session.TokenFamilyId, now, "Replay detected", cancellationToken);
+            if (transaction is not null)
+            {
+                await transaction.CommitAsync(cancellationToken);
+            }
             return new RefreshSessionRotationResult(null, null);
         }
 
@@ -54,6 +70,10 @@ internal sealed class RefreshSessionService(
             || !tokenGenerator.HashesMatch(session.SecurityStampHash, tokenGenerator.Hash(session.User.SecurityStamp ?? string.Empty)))
         {
             await RevokeFamilyAsync(context, session.TokenFamilyId, now, "Session invalid", cancellationToken);
+            if (transaction is not null)
+            {
+                await transaction.CommitAsync(cancellationToken);
+            }
             return new RefreshSessionRotationResult(null, null);
         }
 
@@ -67,11 +87,24 @@ internal sealed class RefreshSessionService(
         try
         {
             await context.SaveChangesAsync(cancellationToken);
+            if (transaction is not null)
+            {
+                await transaction.CommitAsync(cancellationToken);
+            }
             return new RefreshSessionRotationResult(session.User, new IssuedRefreshSession(replacement.Token, session.ExpiresAtUtc));
         }
         catch (DbUpdateConcurrencyException)
         {
-            context.ChangeTracker.Clear();
+            await RevokeFamilyByIdAsync(session.TokenFamilyId, now, cancellationToken);
+            return new RefreshSessionRotationResult(null, null);
+        }
+        catch (DbUpdateException)
+        {
+            await RevokeFamilyByIdAsync(session.TokenFamilyId, now, cancellationToken);
+            return new RefreshSessionRotationResult(null, null);
+        }
+        catch (SqlException)
+        {
             await RevokeFamilyByIdAsync(session.TokenFamilyId, now, cancellationToken);
             return new RefreshSessionRotationResult(null, null);
         }
@@ -85,14 +118,23 @@ internal sealed class RefreshSessionService(
         }
 
         await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
+        await using var transaction = context.Database.IsRelational()
+            ? await context.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken)
+            : null;
         var tokenHash = tokenGenerator.Hash(rawToken!);
-        var familyId = await context.RefreshSessions
-            .Where(item => item.TokenHash == tokenHash)
+        var sessions = context.Database.IsRelational()
+            ? context.RefreshSessions.FromSqlInterpolated($"SELECT * FROM [RefreshSessions] WITH (UPDLOCK, HOLDLOCK) WHERE [TokenHash] = {tokenHash}")
+            : context.RefreshSessions.Where(item => item.TokenHash == tokenHash);
+        var familyId = await sessions
             .Select(item => (Guid?)item.TokenFamilyId)
             .SingleOrDefaultAsync(cancellationToken);
         if (familyId is not null)
         {
             await RevokeFamilyAsync(context, familyId.Value, timeProvider.GetUtcNow(), "Logged out", cancellationToken);
+        }
+        if (transaction is not null)
+        {
+            await transaction.CommitAsync(cancellationToken);
         }
     }
 
@@ -122,6 +164,16 @@ internal sealed class RefreshSessionService(
 
     private static async Task RevokeFamilyAsync(ApplicationDbContext context, Guid familyId, DateTimeOffset now, string reason, CancellationToken cancellationToken)
     {
+        if (context.Database.IsRelational())
+        {
+            await context.RefreshSessions
+                .Where(session => session.TokenFamilyId == familyId && session.RevokedAtUtc == null)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(session => session.RevokedAtUtc, now)
+                    .SetProperty(session => session.RevocationReason, reason), cancellationToken);
+            return;
+        }
+
         foreach (var item in await context.RefreshSessions
                      .Where(session => session.TokenFamilyId == familyId && session.RevokedAtUtc == null)
                      .ToListAsync(cancellationToken))
@@ -135,6 +187,13 @@ internal sealed class RefreshSessionService(
     private async Task RevokeFamilyByIdAsync(Guid familyId, DateTimeOffset now, CancellationToken cancellationToken)
     {
         await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
+        await using var transaction = context.Database.IsRelational()
+            ? await context.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken)
+            : null;
         await RevokeFamilyAsync(context, familyId, now, "Replay detected", cancellationToken);
+        if (transaction is not null)
+        {
+            await transaction.CommitAsync(cancellationToken);
+        }
     }
 }

@@ -17,6 +17,7 @@ public static class AuthEndpoints
             .AllowAnonymous()
             .WithName("Login")
             .Produces<LoginResponse>()
+            .ProducesValidationProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status401Unauthorized)
             .ProducesProblem(StatusCodes.Status403Forbidden);
         group.MapPost("/refresh", RefreshAsync)

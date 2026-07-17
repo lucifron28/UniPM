@@ -64,9 +64,10 @@ helps a human verify them.
 - Retrieval and API test layout: complete without behavior changes.
 - MVP sanitizer free-text-name limitation: explicitly documented; pattern-based
   masking does not generally identify personal names in free text.
-- Browser-ready refresh-session contract: complete with short-lived JWT access
-  tokens, rotating hash-only refresh sessions, exact-origin credentialed CORS,
-  and bounded logout behavior. Web integration remains deferred.
+- Browser-ready refresh-session contract: implemented with short-lived JWT
+  access tokens, rotating hash-only refresh sessions, exact-origin credentialed
+  CORS, and bounded logout behavior; SQL Server verification is pending. Web
+  integration remains deferred.
 
 ## Immediate Task Order
 
