@@ -1,0 +1,57 @@
+name: Sync GitHub work to Notion
+
+on:
+  workflow_dispatch:
+    inputs:
+      full_reconcile:
+        description: Reconcile every GitHub issue and linked pull request
+        required: false
+        default: true
+        type: boolean
+  issues:
+    types: [opened, edited, labeled, unlabeled, assigned, unassigned, milestoned, demilestoned, closed, reopened]
+  pull_request_target:
+    types: [opened, edited, synchronize, reopened, converted_to_draft, ready_for_review, closed]
+  schedule:
+    - cron: "27 17 * * *"
+
+permissions:
+  contents: read
+  issues: read
+  pull-requests: read
+
+concurrency:
+  group: notion-sync-${{ github.repository }}-${{ github.event_name }}-${{ github.event.issue.number || github.event.pull_request.number || 'reconcile' }}
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: Update UniPM Notion tasks
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+
+      - name: Validate required secrets
+        shell: bash
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          NOTION_TASKS_DATA_SOURCE_ID: ${{ secrets.NOTION_TASKS_DATA_SOURCE_ID }}
+        run: |
+          test -n "$NOTION_TOKEN" || { echo "Missing NOTION_TOKEN repository secret"; exit 1; }
+          test -n "$NOTION_TASKS_DATA_SOURCE_ID" || { echo "Missing NOTION_TASKS_DATA_SOURCE_ID repository secret"; exit 1; }
+
+      - name: Synchronize GitHub work to Notion
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          NOTION_TASKS_DATA_SOURCE_ID: ${{ secrets.NOTION_TASKS_DATA_SOURCE_ID }}
+          NOTION_USER_MAP_JSON: ${{ secrets.NOTION_USER_MAP_JSON }}
+          FULL_RECONCILE: ${{ (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.full_reconcile)) && 'true' || 'false' }}
+        run: node scripts/integrations/sync-notion.mjs
