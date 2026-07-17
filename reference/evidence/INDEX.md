@@ -44,7 +44,8 @@ record's evidence level and tested/source commit.
 | EXP-002 | experiment | DeepSeek V4 source-bounded summary baseline | executed | real-provider-executed | `929d99f` | [record](experiments/EXP-002-deepseek-v4-summary-baseline.md) | Fictional 12-case DeepSeek run with developer-approved source-faithfulness ratings; not production-ready. |
 | IMP-010 | implementation | Database-enforced inspection submission integrity | reviewed | source-inspected | `6518a2d` | [record](implementation/IMP-010-inspection-submission-integrity.md) | Unique schedule inspection index, duplicate-data migration preflight, and narrow conflict handling. |
 | TEST-011 | test-run | Inspection submission integrity baseline | executed | locally-executed | `6518a2d` | [record](test-runs/TEST-011-inspection-submission-integrity.md) | Release restore/build/tests passed; SQL Server integrity tests were skipped because no test connection was configured. |
-| TEST-012 | test-run | Inspection submission integrity final verification | executed | locally-executed | `6e8d4b8` | [record](test-runs/TEST-012-inspection-submission-integrity-final.md) | Final Release build/tests passed with explicit unknown-schedule coverage; SQL Server integrity tests remain unexecuted. |
+| TEST-012 | test-run | Inspection submission integrity final verification | executed | locally-executed | `6e8d4b8` | [record](test-runs/TEST-012-inspection-submission-integrity-final.md) | Final non-SQL Release build/tests passed with explicit unknown-schedule coverage. |
+| TEST-013 | test-run | Inspection submission integrity SQL Server verification | executed | locally-executed | `6e8d4b8` | [record](test-runs/TEST-013-inspection-submission-integrity-sql-server.md) | Focused SQL Server migration, unique-index, and concurrent endpoint tests passed; a separate existing benchmark assertion blocks the SQL-enabled full suite. |
 
 ## Pending Evidence
 

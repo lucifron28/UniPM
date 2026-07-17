@@ -59,13 +59,12 @@ non-unique index with the same name.
 
 ## Verification Status
 
-The migration SQL was generated and inspected locally. TEST-011 records the
-Release restore, build, and full test run. SQL Server-specific tests were not
-executed because no `UNIPM_SQLSERVER_TEST_CONNECTION` was configured and the
-local Docker daemon was unavailable.
+The migration SQL was generated and inspected locally. TEST-011 and TEST-012
+record the non-SQL Release runs. TEST-013 records successful local SQL Server
+migration-preflight, unique-index, and concurrent endpoint execution.
 
 ## Known Limitations
 
-This source-inspected record does not claim that the SQL Server migration
-preflight, unique index, or concurrent endpoint behavior executed successfully
-in this environment. Those tests remain gated on a reachable SQL Server.
+The focused SQL Server integrity tests passed. The separate SQL-enabled full
+suite remains blocked by a pre-existing retrieval-benchmark assertion mismatch
+outside this branch's scope.

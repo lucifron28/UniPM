@@ -3,7 +3,7 @@ id: TEST-012
 type: test-run
 title: Inspection submission integrity final verification
 status: executed
-recordedAtUtc: 2026-07-17T04:46:33Z
+recordedAtUtc: 2026-07-17T05:19:17Z
 testedCommit: 6e8d4b8
 sourceBranch: fix/inspection-submission-integrity
 evidenceLevel: locally-executed
@@ -45,7 +45,6 @@ execution or their persisted-state assertions.
 
 ## Limitations
 
-TEST-011 remains the earlier local baseline for commit `6518a2d`. This record
-supersedes it for final branch-head test counts only; neither record proves the
-SQL Server concurrency behavior until a reachable SQL Server test connection is
-configured.
+TEST-011 remains the earlier local baseline for commit `6518a2d`. TEST-013
+records the later SQL Server execution. Neither record establishes production
+deployment or institutional workflow validation.
