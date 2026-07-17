@@ -547,7 +547,6 @@ public sealed class SqlServerSemanticMaintenanceTests
             LexiconPath = Path.Combine(
                 root,
                 "server",
-                "Features",
                 "Retrieval",
                 "Resources",
                 MaintenanceIssueLexiconOptions.LexiconFileName)
