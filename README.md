@@ -129,10 +129,20 @@ and provider configuration contract.
 
 ## Authentication
 
-UniPM uses ASP.NET Core IdentityCore with Guid keys and JWT bearer access
-tokens. Configure `UNIPM_JWT_ISSUER`, `UNIPM_JWT_AUDIENCE`,
-`UNIPM_JWT_SIGNING_KEY`, and `UNIPM_JWT_ACCESS_TOKEN_MINUTES`. HTTP startup
-outside Development fails when this configuration is missing or invalid.
+UniPM uses ASP.NET Core IdentityCore with Guid keys, 15-minute configurable JWT
+access tokens returned in JSON, and opaque rotating refresh tokens held only in
+an HttpOnly `SameSite=Lax` cookie. Configure `UNIPM_JWT_ISSUER`,
+`UNIPM_JWT_AUDIENCE`, `UNIPM_JWT_SIGNING_KEY`,
+`UNIPM_JWT_ACCESS_TOKEN_MINUTES`, `UNIPM_AUTH_REFRESH_TOKEN_DAYS`, and the one
+exact credentialed-CORS origin `UNIPM_WEB_ORIGIN`. HTTP startup outside
+Development fails when JWT configuration is missing or invalid.
+
+Refresh sessions have a non-sliding seven-day default absolute lifetime. Logout
+revokes future refresh capability for its browser family but does not denylist
+an already issued access token; clients must discard their in-memory token.
+The React client and mobile refresh-token contracts remain deferred. See
+[`reference/api/auth-v0.1.md`](reference/api/auth-v0.1.md) for cookie, replay,
+origin, and limitation details.
 
 Create or repair the five fictional local users only through the explicit
 Development command:

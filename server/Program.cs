@@ -43,8 +43,17 @@ var jwtEnvironmentOverrides = new Dictionary<string, string?>
     [$"{JwtOptions.SectionName}:{nameof(JwtOptions.AccessTokenMinutes)}"] =
         builder.Configuration["UNIPM_JWT_ACCESS_TOKEN_MINUTES"]
 };
+var authSessionEnvironmentOverrides = new Dictionary<string, string?>
+{
+    [$"{AuthSessionOptions.SectionName}:{nameof(AuthSessionOptions.RefreshTokenDays)}"] =
+        builder.Configuration["UNIPM_AUTH_REFRESH_TOKEN_DAYS"],
+    [$"{AuthSessionOptions.SectionName}:{nameof(AuthSessionOptions.WebOrigin)}"] =
+        builder.Configuration["UNIPM_WEB_ORIGIN"]
+};
 builder.Configuration.AddInMemoryCollection(
-    jwtEnvironmentOverrides.Where(pair => !string.IsNullOrWhiteSpace(pair.Value))!);
+    jwtEnvironmentOverrides
+        .Concat(authSessionEnvironmentOverrides)
+        .Where(pair => !string.IsNullOrWhiteSpace(pair.Value))!);
 
 var configuredJwtOptions = builder.Configuration
     .GetSection(JwtOptions.SectionName)
@@ -52,6 +61,9 @@ var configuredJwtOptions = builder.Configuration
 var jwtRuntimeConfiguration = maintenanceCommand == SyntheticMaintenanceCommand.None
     ? JwtRuntimeConfiguration.Create(configuredJwtOptions, builder.Environment.IsDevelopment())
     : JwtRuntimeConfiguration.CreateForMaintenanceCommand(configuredJwtOptions);
+var authSessionRuntimeConfiguration = AuthSessionRuntimeConfiguration.Create(
+    builder.Configuration.GetSection(AuthSessionOptions.SectionName).Get<AuthSessionOptions>()
+    ?? new AuthSessionOptions());
 
 builder.Services.Configure<ObservabilityOptions>(
     builder.Configuration.GetSection(ObservabilityOptions.SectionName));
@@ -115,7 +127,13 @@ builder.Services.AddDbContextFactory<ApplicationDbContext>((serviceProvider, opt
 });
 builder.Services.AddUniPmAuthentication(
     builder.Configuration,
-    jwtRuntimeConfiguration);
+    jwtRuntimeConfiguration,
+    authSessionRuntimeConfiguration);
+builder.Services.AddCors(options => options.AddPolicy("UniPMWeb", policy => policy
+    .WithOrigins(authSessionRuntimeConfiguration.WebOrigin)
+    .AllowCredentials()
+    .AllowAnyHeader()
+    .AllowAnyMethod()));
 
 builder.Services
     .AddHealthChecks()
@@ -274,6 +292,7 @@ if (metricsEnabled)
     app.UseOpenTelemetryPrometheusScrapingEndpoint();
 }
 
+app.UseCors("UniPMWeb");
 app.UseAuthentication();
 app.UseAuthorization();
 

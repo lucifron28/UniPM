@@ -200,6 +200,98 @@ public sealed class AuthEndpointsTests
     }
 
     [Fact]
+    public async Task Login_sets_an_opaque_http_only_refresh_cookie_and_persists_only_its_hash()
+    {
+        await using var application = new AuthApplicationFactory();
+        await application.SeedUserAsync(Email, Password, true, false, AuthRoleCatalog.Gsd);
+        using var client = application.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = false });
+
+        var response = await LoginAsync(client, Email, Password);
+
+        response.EnsureSuccessStatusCode();
+        Assert.Equal("no-store", response.Headers.CacheControl?.ToString());
+        Assert.Contains("no-cache", response.Headers.Pragma.ToString(), StringComparison.OrdinalIgnoreCase);
+        var token = ExtractRefreshCookie(response);
+        var cookie = response.Headers.GetValues("Set-Cookie").Single();
+        Assert.Contains("httponly", cookie, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("samesite=lax", cookie, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("path=/api/v1/auth", cookie, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(token, await response.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+        var session = Assert.Single(await application.GetRefreshSessionsAsync());
+        Assert.NotEqual(token, session.TokenHash);
+        Assert.Equal(64, session.TokenHash.Length);
+    }
+
+    [Fact]
+    public async Task Refresh_rotates_the_cookie_and_replay_revokes_only_its_family()
+    {
+        await using var application = new AuthApplicationFactory();
+        await application.SeedUserAsync(Email, Password, true, false, AuthRoleCatalog.Gsd);
+        using var client = application.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = false });
+        var firstLogin = await LoginAsync(client, Email, Password);
+        var firstToken = ExtractRefreshCookie(firstLogin);
+        client.DefaultRequestHeaders.Add("Cookie", $"{RefreshCookieService.CookieName}={firstToken}");
+
+        var refresh = await client.PostAsync("/api/v1/auth/refresh", content: null);
+
+        refresh.EnsureSuccessStatusCode();
+        var replacementToken = ExtractRefreshCookie(refresh);
+        Assert.NotEqual(firstToken, replacementToken);
+        var sessions = await application.GetRefreshSessionsAsync();
+        Assert.Equal(2, sessions.Count);
+        Assert.Single(sessions, session => session.RevokedAtUtc is null);
+
+        client.DefaultRequestHeaders.Remove("Cookie");
+        client.DefaultRequestHeaders.Add("Cookie", $"{RefreshCookieService.CookieName}={firstToken}");
+        var replay = await client.PostAsync("/api/v1/auth/refresh", content: null);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, replay.StatusCode);
+        Assert.Equal("The session could not be refreshed.", (await replay.Content.ReadFromJsonAsync<ProblemDetails>())?.Detail);
+        Assert.All(await application.GetRefreshSessionsAsync(), session => Assert.NotNull(session.RevokedAtUtc));
+    }
+
+    [Fact]
+    public async Task Logout_revokes_its_family_and_is_idempotent()
+    {
+        await using var application = new AuthApplicationFactory();
+        await application.SeedUserAsync(Email, Password, true, false, AuthRoleCatalog.Gsd);
+        using var client = application.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = false });
+        var login = await LoginAsync(client, Email, Password);
+        client.DefaultRequestHeaders.Add("Cookie", $"{RefreshCookieService.CookieName}={ExtractRefreshCookie(login)}");
+
+        Assert.Equal(HttpStatusCode.NoContent, (await client.PostAsync("/api/v1/auth/logout", null)).StatusCode);
+        Assert.All(await application.GetRefreshSessionsAsync(), session => Assert.NotNull(session.RevokedAtUtc));
+        Assert.Equal(HttpStatusCode.NoContent, (await client.PostAsync("/api/v1/auth/logout", null)).StatusCode);
+    }
+
+    [Fact]
+    public async Task Browser_origin_is_exact_and_credentialed()
+    {
+        await using var application = new AuthApplicationFactory();
+        await application.SeedUserAsync(Email, Password, true, false, AuthRoleCatalog.Gsd);
+        using var client = application.CreateClient();
+        using var request = new HttpRequestMessage(HttpMethod.Options, "/api/v1/auth/refresh");
+        request.Headers.Add("Origin", "http://localhost:5173");
+        request.Headers.Add("Access-Control-Request-Method", "POST");
+
+        var preflight = await client.SendAsync(request);
+        Assert.Equal(HttpStatusCode.NoContent, preflight.StatusCode);
+        Assert.Equal("http://localhost:5173", preflight.Headers.GetValues("Access-Control-Allow-Origin").Single());
+        Assert.Contains("true", preflight.Headers.GetValues("Access-Control-Allow-Credentials").Single(), StringComparison.OrdinalIgnoreCase);
+
+        using var untrusted = new HttpRequestMessage(HttpMethod.Post, "/api/v1/auth/login")
+        {
+            Content = JsonContent.Create(new { email = Email, password = Password })
+        };
+        untrusted.Headers.Add("Origin", "https://untrusted.example");
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.SendAsync(untrusted)).StatusCode);
+
+        using var malformed = new HttpRequestMessage(HttpMethod.Post, "/api/v1/auth/logout");
+        malformed.Headers.Add("Origin", "not-an-origin");
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.SendAsync(malformed)).StatusCode);
+    }
+
+    [Fact]
     public async Task Inspector_can_submit_an_inspection_for_their_authenticated_identity()
     {
         await using var application = new AuthApplicationFactory();
@@ -328,6 +420,13 @@ public sealed class AuthEndpointsTests
         string password)
         => client.PostAsJsonAsync("/api/v1/auth/login", new { email, password });
 
+    private static string ExtractRefreshCookie(HttpResponseMessage response)
+    {
+        var header = response.Headers.GetValues("Set-Cookie")
+            .Single(value => value.StartsWith($"{RefreshCookieService.CookieName}=", StringComparison.Ordinal));
+        return header.Split(';', 2)[0].Split('=', 2)[1];
+    }
+
     private static object InspectionRequest(Guid scheduleId, Guid inspectorUserId) => new
     {
         scheduleId,
@@ -379,6 +478,8 @@ public sealed class AuthEndpointsTests
                     ["Jwt:Audience"] = Audience,
                     ["Jwt:SigningKey"] = SigningKey,
                     ["Jwt:AccessTokenMinutes"] = "15",
+                    ["AuthSession:RefreshTokenDays"] = "7",
+                    ["AuthSession:WebOrigin"] = "http://localhost:5173",
                     ["UNIPM_DEV_USER_PASSWORD"] = Password
                 }));
             builder.ConfigureServices(services =>
@@ -447,6 +548,14 @@ public sealed class AuthEndpointsTests
             var user = Assert.IsType<ApplicationUser>(await userManager.FindByEmailAsync(email));
             user.IsActive = isActive;
             Assert.True((await userManager.UpdateAsync(user)).Succeeded);
+        }
+
+        public async Task<IReadOnlyList<RefreshSession>> GetRefreshSessionsAsync()
+        {
+            await using var scope = Services.CreateAsyncScope();
+            var factory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
+            await using var context = await factory.CreateDbContextAsync();
+            return await context.RefreshSessions.OrderBy(session => session.CreatedAtUtc).ToListAsync();
         }
 
         public async Task<Guid> SeedScheduleAsync()

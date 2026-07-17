@@ -3,7 +3,7 @@ namespace UniPM.Api.Features.Auth;
 public sealed class JwtOptions
 {
     public const string SectionName = "Jwt";
-    public const int DefaultAccessTokenMinutes = 60;
+    public const int DefaultAccessTokenMinutes = 15;
     public const int MinimumSigningKeyBytes = 32;
 
     public string Issuer { get; set; } = string.Empty;

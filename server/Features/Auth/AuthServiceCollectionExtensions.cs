@@ -11,9 +11,11 @@ internal static class AuthServiceCollectionExtensions
     public static IServiceCollection AddUniPmAuthentication(
         this IServiceCollection services,
         IConfiguration configuration,
-        JwtRuntimeConfiguration runtimeConfiguration)
+        JwtRuntimeConfiguration runtimeConfiguration,
+        AuthSessionRuntimeConfiguration sessionRuntimeConfiguration)
     {
         services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.SectionName));
+        services.Configure<AuthSessionOptions>(configuration.GetSection(AuthSessionOptions.SectionName));
         services
             .AddIdentityCore<ApplicationUser>(options =>
             {
@@ -32,7 +34,13 @@ internal static class AuthServiceCollectionExtensions
             .AddEntityFrameworkStores<ApplicationDbContext>();
 
         services.AddSingleton(runtimeConfiguration);
+        services.AddSingleton(sessionRuntimeConfiguration);
+        services.AddSingleton<TimeProvider>(TimeProvider.System);
         services.AddScoped<JwtTokenService>();
+        services.AddScoped<RefreshTokenGenerator>();
+        services.AddScoped<RefreshSessionService>();
+        services.AddScoped<RefreshCookieService>();
+        services.AddScoped<TrustedWebOriginValidator>();
         services.AddScoped<DevelopmentUserSeeder>();
 
         services

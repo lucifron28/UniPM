@@ -64,6 +64,9 @@ helps a human verify them.
 - Retrieval and API test layout: complete without behavior changes.
 - MVP sanitizer free-text-name limitation: explicitly documented; pattern-based
   masking does not generally identify personal names in free text.
+- Browser-ready refresh-session contract: complete with short-lived JWT access
+  tokens, rotating hash-only refresh sessions, exact-origin credentialed CORS,
+  and bounded logout behavior. Web integration remains deferred.
 
 ## Immediate Task Order
 
@@ -71,7 +74,11 @@ helps a human verify them.
 2. Completed: retrieval and test folder organization refactor.
 3. Completed: explicit documentation of the MVP sanitizer's free-text-name
    limitation.
-4. Next: `experiment/multilingual-embedding-baseline`.
+4. Completed: `feat/auth-refresh-sessions`.
+5. Next: `feat/web-foundation`.
+
+The multilingual embedding baseline remains deferred pending a configured real
+provider.
 
 The maintenance-review endpoint remains disabled by default and requires
 authorization when enabled. Real semantic and fused model-quality evidence
@@ -329,4 +336,8 @@ directly.
 2. Completed: retrieval and test folder organization refactor.
 3. Completed: explicit documentation of the MVP sanitizer's free-text-name
    limitation.
-4. Next: `experiment/multilingual-embedding-baseline`.
+4. Completed: `feat/auth-refresh-sessions`.
+5. Next: `feat/web-foundation`.
+
+The multilingual embedding baseline remains deferred pending a configured real
+provider.

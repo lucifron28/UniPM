@@ -16,6 +16,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     public DbSet<InspectionRecord> InspectionRecords => Set<InspectionRecord>();
     public DbSet<MaintenanceSearchDocument> MaintenanceSearchDocuments => Set<MaintenanceSearchDocument>();
     public DbSet<MaintenanceSearchDocumentEmbedding> MaintenanceSearchDocumentEmbeddings => Set<MaintenanceSearchDocumentEmbedding>();
+    public DbSet<RefreshSession> RefreshSessions => Set<RefreshSession>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -26,6 +27,24 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             .HasMaxLength(160);
         user.Property(entity => entity.IsActive)
             .HasDefaultValue(true);
+
+        var refreshSession = modelBuilder.Entity<RefreshSession>();
+        refreshSession.ToTable("RefreshSessions");
+        refreshSession.Property(entity => entity.TokenHash).HasMaxLength(64);
+        refreshSession.Property(entity => entity.SecurityStampHash).HasMaxLength(64);
+        refreshSession.Property(entity => entity.RevocationReason).HasMaxLength(64);
+        refreshSession.Property(entity => entity.RowVersion).IsRowVersion();
+        refreshSession.HasIndex(entity => entity.TokenHash).IsUnique();
+        refreshSession.HasIndex(entity => new { entity.UserId, entity.TokenFamilyId });
+        refreshSession.HasIndex(entity => new { entity.TokenFamilyId, entity.ExpiresAtUtc });
+        refreshSession.HasOne(entity => entity.User)
+            .WithMany()
+            .HasForeignKey(entity => entity.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+        refreshSession.HasOne(entity => entity.ReplacedBySession)
+            .WithMany()
+            .HasForeignKey(entity => entity.ReplacedBySessionId)
+            .OnDelete(DeleteBehavior.NoAction);
         
         var asset = modelBuilder.Entity<Asset>();
         asset.Property(entity => entity.AssetCode)

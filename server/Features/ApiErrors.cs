@@ -34,6 +34,14 @@ internal static class ApiErrors
             statusCode: StatusCodes.Status401Unauthorized);
     }
 
+    internal static IResult Forbidden(string detail)
+    {
+        return Results.Problem(
+            title: "Request forbidden",
+            detail: detail,
+            statusCode: StatusCodes.Status403Forbidden);
+    }
+
     internal static IResult ServiceUnavailable(string detail)
     {
         return Results.Problem(
