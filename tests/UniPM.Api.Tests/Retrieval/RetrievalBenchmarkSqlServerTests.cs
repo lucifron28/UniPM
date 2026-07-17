@@ -76,7 +76,8 @@ public sealed class RetrievalBenchmarkSqlServerTests
             Assert.Equal("benchmark-test-provider", semantic.GetProperty("metadata").GetProperty("providerKey").GetString());
             Assert.Contains(
                 report.RootElement.GetProperty("warnings").EnumerateArray().Select(value => value.GetString()),
-                warning => warning?.Contains("pipeline validation", StringComparison.OrdinalIgnoreCase) == true);
+                warning => warning?.Contains("pipeline-validation", StringComparison.OrdinalIgnoreCase) == true
+                    && warning.Contains("not semantic-model quality evidence", StringComparison.OrdinalIgnoreCase));
         }
         finally
         {
