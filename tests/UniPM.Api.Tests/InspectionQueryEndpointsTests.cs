@@ -233,6 +233,49 @@ public sealed class InspectionQueryEndpointsTests
         Assert.Equal(asset.Id, document.AssetId);
         Assert.Equal("[\"low_pressure\"]", document.IssueKeysJson);
         Assert.Contains("remarks: mahina ang pressure", document.SearchText, StringComparison.Ordinal);
+
+        var persistedInspection = await context.InspectionRecords.SingleAsync();
+        var persistedSchedule = await context.PreventiveMaintenanceSchedules.SingleAsync();
+        Assert.Equal(schedule.Id, persistedInspection.ScheduleId);
+        Assert.Equal(asset.Id, persistedInspection.AssetId);
+        Assert.Equal("Completed", persistedSchedule.Status);
+        Assert.NotNull(persistedSchedule.CompletedAt);
+    }
+
+    [Fact]
+    public async Task Posting_a_second_inspection_for_the_same_schedule_returns_conflict_without_extra_records()
+    {
+        await using var application = new TestApplicationFactory();
+        var client = application.CreateClient();
+        await application.EnsureAuthenticatedUserAsync();
+        var asset = await CreateAssetAsync(client, "FE-103", "fire-extinguisher");
+        var schedule = await CreateScheduleAsync(
+            client,
+            asset.Id,
+            new DateTimeOffset(2026, 5, 10, 8, 0, 0, TimeSpan.FromHours(8)));
+        await CreateInspectionAsync(
+            client,
+            schedule.Id,
+            new DateTimeOffset(2026, 5, 15, 8, 0, 0, TimeSpan.FromHours(8)),
+            true,
+            "Operational");
+
+        var response = await client.PostAsJsonAsync("/api/v1/inspections/", new
+        {
+            scheduleId = schedule.Id,
+            inspectorUserId = TestAuthenticationHandler.UserId,
+            dateInspected = new DateTimeOffset(2026, 5, 16, 8, 0, 0, TimeSpan.FromHours(8)),
+            isOperational = true,
+            remarks = "Repeated submission"
+        });
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+
+        await using var scope = application.Services.CreateAsyncScope();
+        var contextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
+        await using var context = await contextFactory.CreateDbContextAsync();
+        Assert.Equal(1, await context.InspectionRecords.CountAsync());
+        Assert.Equal(1, await context.MaintenanceSearchDocuments.CountAsync());
     }
 
     private static async Task<InspectionScenario> CreateScenarioAsync(
