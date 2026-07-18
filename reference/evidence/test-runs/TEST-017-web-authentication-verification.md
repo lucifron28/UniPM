@@ -3,8 +3,8 @@ id: TEST-017
 type: test-run
 title: React browser authentication verification
 status: executed
-recordedAtUtc: 2026-07-18T16:20:39Z
-testedCommit: 4ffbdf8140b263c36a4cb053c89c21389b2ac575
+recordedAtUtc: 2026-07-18T16:30:07Z
+testedCommit: aaad0b881882ea6ffa3fc2798109d16f09556c6c
 sourceBranch: feat/web-auth-integration
 evidenceLevel: locally-executed
 ---
@@ -16,13 +16,16 @@ evidenceLevel: locally-executed
 Verify the browser login, refresh-cookie restoration, current-user state,
 single-flight refresh, bounded request replay, logout, protected routes, and
 race controls at implementation commit
-`4ffbdf8140b263c36a4cb053c89c21389b2ac575`.
+`aaad0b881882ea6ffa3fc2798109d16f09556c6c`.
 
 ## Environment
 
 - Local runtime: Node `v24.15.0`, npm `11.12.1` on Windows.
-- The project declares Node 22; `npm ci` reported the expected local engine
-  warning, then completed with 469 packages and zero reported vulnerabilities.
+- The project declares Node 22; local npm 11 reported the expected engine
+  warning, then completed the clean install.
+- npm `10.9.2` also completed a clean install from the committed lockfile with
+  470 packages and zero reported vulnerabilities, covering the Node 22 CI lock
+  interpretation that differs from local npm 11.
 - Browser: Playwright Chromium.
 - No backend, SQL Server, Docker, credential, or external network dependency
   was used by Vitest, API generation, the production web build, or Playwright.
@@ -32,6 +35,7 @@ race controls at implementation commit
 ```powershell
 cd .\web
 npm ci
+npx npm@10.9.2 ci
 npm run format:check
 npm run lint
 npm run typecheck
@@ -54,8 +58,8 @@ git diff --name-only
 
 ## Results
 
-- Prettier, ESLint, TypeScript, and the offline OpenAPI authentication contract
-  gate passed.
+- npm 11 and npm 10 clean installs, Prettier, ESLint, TypeScript, and the
+  offline OpenAPI authentication contract gate passed.
 - `api:check` regenerated the client from the committed snapshot and found no
   tracked, deleted, or untracked generated-client drift.
 - Vitest: 9 files passed; 58 tests passed; 0 failed.
