@@ -3,8 +3,8 @@ id: TEST-016
 type: test-run
 title: React web foundation verification
 status: executed
-recordedAtUtc: 2026-07-18T04:30:00Z
-testedCommit: f805bd442bc86ec95f333b0d242e36e4de9c1012
+recordedAtUtc: 2026-07-18T10:05:00Z
+testedCommit: f5bcc23e891523beb083bc7e5364e9ea4744e088
 sourceBranch: feat/web-foundation
 evidenceLevel: locally-executed
 ---
@@ -13,11 +13,11 @@ evidenceLevel: locally-executed
 
 ## Objective
 
-Verify the initial React/Vite browser foundation: typed OpenAPI client
-generation, environment parsing, shared Axios transport, safe error handling,
-in-memory access-token state, route guards, and build tooling. No operational
-workflow screen, real login submission, refresh orchestration, or API contract
-change is claimed by this record.
+Verify the React/Vite browser foundation correction: current authentication
+OpenAPI generation, environment parsing, shared Axios transport, safe error
+handling, in-memory access-token state, route guards, redirect safety, and
+build tooling. No operational workflow screen, real login submission, or
+refresh orchestration is claimed by this record.
 
 ## Commands
 
@@ -30,6 +30,8 @@ npm run typecheck
 npm run test:coverage
 npm run api:check
 npm run build
+npx playwright install chromium
+npm run e2e
 git diff --check
 ```
 
@@ -37,19 +39,25 @@ git diff --check
 
 - Formatting, ESLint, TypeScript, generated-client reproducibility, and the
   production Vite build passed.
-- Vitest: 4 files, 20 tests passed, 0 failed.
-- Playwright: 1 Chromium route-smoke test passed, 0 failed.
+- Vitest: 6 files, 31 tests passed, 0 failed.
+- Playwright: 5 Chromium route-smoke tests passed, 0 failed.
 - V8 coverage: 95.83% statements, 97.77% branches, 88.23% functions, and
   95.45% lines across the currently executable transport/error modules.
+- The current Development API snapshot passed the required login, refresh,
+  logout, and current-user contract sanity check; login/refresh generate typed
+  session responses and current-user generates a typed user response.
 - The committed OpenAPI snapshot generated the committed Orval output without
-  a source diff.
+  tracked, deleted, or untracked generated-client drift.
 
 ## Verification Boundary
 
-The route-smoke test covers public rendering, direct navigation to a protected
-route, and the not-found boundary. The committed Web CI workflow also installs
-Chromium before running it. This record does not claim production deployment,
-real-auth flow, backend behavior, or accessibility conformance.
+The route-smoke suite covers public rendering, direct login rendering,
+unauthenticated protected navigation, the not-found boundary, and keyboard
+focus progression between real navigation links. Unit coverage additionally
+exercises authenticated access and access reevaluation after in-memory session
+clearing. The committed Web CI workflow installs Chromium before running the
+same browser suite. This record does not claim production deployment, real-auth
+flow, backend behavior, or accessibility conformance.
 
 ## Privacy And Security Boundary
 
