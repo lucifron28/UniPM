@@ -3,8 +3,8 @@ id: TEST-015
 type: test-run
 title: Refresh-session ordinary verification
 status: executed
-recordedAtUtc: 2026-07-17T15:45:19Z
-testedCommit: b4db9cfae3ffed1f2235c467285a15df2fc3f699
+recordedAtUtc: 2026-07-18T01:10:00Z
+testedCommit: fa75e162067e8dd4adbf9e53e28931a9080f6d01
 sourceBranch: feat/auth-refresh-sessions
 evidenceLevel: locally-executed
 ---
@@ -21,11 +21,20 @@ dotnet test .\tests\UniPM.Api.Tests\UniPM.Api.Tests.csproj -c Release --no-build
 git diff --check
 ```
 
+The SQL Server test connection was supplied only through the local process
+environment; its value is intentionally not recorded:
+
+```powershell
+$env:UNIPM_SQLSERVER_TEST_CONNECTION = "<local SQL Server test connection>"
+dotnet test .\tests\UniPM.Api.Tests\UniPM.Api.Tests.csproj -c Release --no-build --filter "FullyQualifiedName~SqlServerRefreshSessionTests"
+Remove-Item Env:UNIPM_SQLSERVER_TEST_CONNECTION
+```
+
 ## Results
 
 - Restore: passed.
 - Release build: passed with 0 warnings and 0 errors.
-- Full ordinary Release suite: 280 passed, 0 failed, 23 skipped.
+- Full ordinary Release suite: 280 passed, 0 failed, 24 skipped.
 - Focused authentication suite: 30 passed, 0 failed, 0 skipped.
 - Focused coverage includes login cookie attributes, hash-only persistence,
   refresh rotation/replay family revocation, idempotent logout, and exact-origin
@@ -35,10 +44,11 @@ git diff --check
 
 Executed against the local Docker SQL Server with a non-default ignored `.env`
 password and a process-only test connection. The focused SQL Server refresh
-suite passed 3 tests covering fresh and forward migration, token-hash
-uniqueness, rowversion concurrency, simultaneous refresh, and refresh versus
-logout. These races returned no HTTP 500 and left no more than the allowed
-active session state.
+suite passed 4 tests covering fresh and forward migration, token-hash
+uniqueness, rowversion concurrency, simultaneous refresh, refresh versus
+logout, and a forced rotation-write failure. The forced failure verified that
+the failed transaction was released before fallback family revocation, which
+returned the generic refresh rejection and left no active refresh token.
 
 ## Limitations
 
