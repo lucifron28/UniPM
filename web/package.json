@@ -14,8 +14,9 @@
     "test": "vitest",
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "api:pull": "node ./scripts/pull-openapi.mjs && node ./scripts/check-openapi-contract.mjs",
-    "api:generate": "orval --config ./orval.config.ts && prettier --write ./src/api/generated",
+    "api:contract:check": "node ./scripts/check-openapi-contract.mjs",
+    "api:pull": "node ./scripts/pull-openapi.mjs && npm run api:contract:check",
+    "api:generate": "npm run api:contract:check && orval --config ./orval.config.ts && prettier --write ./src/api/generated",
     "api:refresh": "npm run api:pull && npm run api:generate",
     "api:check": "npm run api:generate && node ./scripts/check-generated.mjs",
     "e2e": "playwright test"
