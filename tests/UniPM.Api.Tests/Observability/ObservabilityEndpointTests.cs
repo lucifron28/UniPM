@@ -56,11 +56,17 @@ public sealed class ObservabilityEndpointTests : IClassFixture<WebApplicationFac
         using var client = application.CreateClient();
         var metrics = application.Services.GetRequiredService<UniPMMetrics>();
 
+        // The Prometheus exporter subscribes when its endpoint is first requested.
+        // Prime it so the measurements below cannot be lost to test-order timing.
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/metrics")).StatusCode);
+
         metrics.RecordRetrieval("lexical", "success", 3, 0.25);
         metrics.RecordRetrieval("fused", "degraded", 1, 0.5);
 
-        var response = await client.GetAsync("/metrics");
-        var content = await response.Content.ReadAsStringAsync();
+        var (response, content) = await GetMetricsContainingAsync(
+            client,
+            "unipm_retrieval_requests_total{",
+            CancellationToken.None);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Matches(
@@ -79,6 +85,30 @@ public sealed class ObservabilityEndpointTests : IClassFixture<WebApplicationFac
         Assert.DoesNotContain("unipm_embedding", content, StringComparison.Ordinal);
         Assert.DoesNotContain("unipm_search_projection", content, StringComparison.Ordinal);
         Assert.DoesNotContain("private-maintenance-query", content, StringComparison.Ordinal);
+    }
+
+    private static async Task<(HttpResponseMessage Response, string Content)> GetMetricsContainingAsync(
+        HttpClient client,
+        string expectedFragment,
+        CancellationToken cancellationToken)
+    {
+        HttpResponseMessage? latestResponse = null;
+        string latestContent = string.Empty;
+
+        for (var attempt = 0; attempt < 10; attempt++)
+        {
+            latestResponse?.Dispose();
+            latestResponse = await client.GetAsync("/metrics", cancellationToken);
+            latestContent = await latestResponse.Content.ReadAsStringAsync(cancellationToken);
+            if (latestContent.Contains(expectedFragment, StringComparison.Ordinal))
+            {
+                return (latestResponse, latestContent);
+            }
+
+            await Task.Delay(TimeSpan.FromMilliseconds(50), cancellationToken);
+        }
+
+        return (latestResponse!, latestContent);
     }
 
     private sealed class MetricsEnabledApplicationFactory : WebApplicationFactory<Program>

@@ -15,7 +15,22 @@ public static class AuthEndpoints
 
         group.MapPost("/login", LoginAsync)
             .AllowAnonymous()
-            .WithName("Login");
+            .WithName("Login")
+            .Produces<LoginResponse>()
+            .ProducesValidationProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status403Forbidden);
+        group.MapPost("/refresh", RefreshAsync)
+            .AllowAnonymous()
+            .WithName("RefreshSession")
+            .Produces<LoginResponse>()
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status403Forbidden);
+        group.MapPost("/logout", LogoutAsync)
+            .AllowAnonymous()
+            .WithName("Logout")
+            .Produces(StatusCodes.Status204NoContent)
+            .ProducesProblem(StatusCodes.Status403Forbidden);
         group.MapGet("/me", GetCurrentUserAsync)
             .RequireAuthorization()
             .WithName("GetCurrentUser");
@@ -27,8 +42,17 @@ public static class AuthEndpoints
         LoginRequest request,
         UserManager<ApplicationUser> userManager,
         SignInManager<ApplicationUser> signInManager,
-        JwtTokenService tokenService)
+        JwtTokenService tokenService,
+        RefreshSessionService refreshSessions,
+        RefreshCookieService cookieService,
+        TrustedWebOriginValidator originValidator,
+        HttpContext httpContext)
     {
+        if (!originValidator.IsTrusted(httpContext.Request))
+        {
+            return ApiErrors.Forbidden("The request origin is not allowed.");
+        }
+
         var validationErrors = request.Validate();
         if (validationErrors.Count > 0)
         {
@@ -54,10 +78,67 @@ public static class AuthEndpoints
             .OrderBy(role => role, StringComparer.Ordinal)
             .ToArray();
         var issued = tokenService.Issue(user, roles);
+        var refresh = await refreshSessions.IssueAsync(user, httpContext.RequestAborted);
+        cookieService.Write(httpContext.Response, refresh.Token, refresh.ExpiresAtUtc);
+        SetNoStore(httpContext.Response);
         return Results.Ok(new LoginResponse(
             issued.Value,
             issued.ExpiresAtUtc,
             ToUserResponse(user, roles)));
+    }
+
+    private static async Task<IResult> RefreshAsync(
+        HttpContext httpContext,
+        UserManager<ApplicationUser> userManager,
+        JwtTokenService tokenService,
+        RefreshSessionService refreshSessions,
+        RefreshCookieService cookieService,
+        TrustedWebOriginValidator originValidator)
+    {
+        if (!originValidator.IsTrusted(httpContext.Request))
+        {
+            return ApiErrors.Forbidden("The request origin is not allowed.");
+        }
+
+        var result = await refreshSessions.RotateAsync(
+            httpContext.Request.Cookies[RefreshCookieService.CookieName],
+            httpContext.RequestAborted);
+        if (!result.Succeeded)
+        {
+            cookieService.Clear(httpContext.Response);
+            SetNoStore(httpContext.Response);
+            return ApiErrors.Unauthorized("The session could not be refreshed.");
+        }
+
+        var roles = (await userManager.GetRolesAsync(result.User!))
+            .OrderBy(role => role, StringComparer.Ordinal)
+            .ToArray();
+        var issued = tokenService.Issue(result.User!, roles);
+        cookieService.Write(httpContext.Response, result.Replacement!.Token, result.Replacement.ExpiresAtUtc);
+        SetNoStore(httpContext.Response);
+        return Results.Ok(new LoginResponse(
+            issued.Value,
+            issued.ExpiresAtUtc,
+            ToUserResponse(result.User!, roles)));
+    }
+
+    private static async Task<IResult> LogoutAsync(
+        HttpContext httpContext,
+        RefreshSessionService refreshSessions,
+        RefreshCookieService cookieService,
+        TrustedWebOriginValidator originValidator)
+    {
+        if (!originValidator.IsTrusted(httpContext.Request))
+        {
+            return ApiErrors.Forbidden("The request origin is not allowed.");
+        }
+
+        await refreshSessions.RevokeFamilyForTokenAsync(
+            httpContext.Request.Cookies[RefreshCookieService.CookieName],
+            httpContext.RequestAborted);
+        cookieService.Clear(httpContext.Response);
+        SetNoStore(httpContext.Response);
+        return Results.NoContent();
     }
 
     private static async Task<IResult> GetCurrentUserAsync(
@@ -90,6 +171,12 @@ public static class AuthEndpoints
             user.Email ?? string.Empty,
             user.DisplayName,
             roles);
+
+    private static void SetNoStore(HttpResponse response)
+    {
+        response.Headers.CacheControl = "no-store";
+        response.Headers.Pragma = "no-cache";
+    }
 }
 
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
