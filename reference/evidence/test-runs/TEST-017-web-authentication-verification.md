@@ -3,8 +3,8 @@ id: TEST-017
 type: test-run
 title: React browser authentication verification
 status: executed
-recordedAtUtc: 2026-07-18T16:30:07Z
-testedCommit: aaad0b881882ea6ffa3fc2798109d16f09556c6c
+recordedAtUtc: 2026-07-18T17:57:08Z
+testedCommit: 8b2f1436fa6c15962f3db04dc66ba4dd8aa266b1
 sourceBranch: feat/web-auth-integration
 evidenceLevel: locally-executed
 ---
@@ -15,17 +15,14 @@ evidenceLevel: locally-executed
 
 Verify the browser login, refresh-cookie restoration, current-user state,
 single-flight refresh, bounded request replay, logout, protected routes, and
-race controls at implementation commit
-`aaad0b881882ea6ffa3fc2798109d16f09556c6c`.
+generation-bound refresh and cookie-writer race controls at implementation
+commit `8b2f1436fa6c15962f3db04dc66ba4dd8aa266b1`.
 
 ## Environment
 
 - Local runtime: Node `v24.15.0`, npm `11.12.1` on Windows.
 - The project declares Node 22; local npm 11 reported the expected engine
   warning, then completed the clean install.
-- npm `10.9.2` also completed a clean install from the committed lockfile with
-  470 packages and zero reported vulnerabilities, covering the Node 22 CI lock
-  interpretation that differs from local npm 11.
 - Browser: Playwright Chromium.
 - No backend, SQL Server, Docker, credential, or external network dependency
   was used by Vitest, API generation, the production web build, or Playwright.
@@ -35,7 +32,6 @@ race controls at implementation commit
 ```powershell
 cd .\web
 npm ci
-npx npm@10.9.2 ci
 npm run format:check
 npm run lint
 npm run typecheck
@@ -58,28 +54,36 @@ git diff --name-only
 
 ## Results
 
-- npm 11 and npm 10 clean installs, Prettier, ESLint, TypeScript, and the
-  offline OpenAPI authentication contract gate passed.
+- npm 11 clean install, Prettier, ESLint, TypeScript, and the offline OpenAPI
+  authentication contract gate passed. The local Node 24 engine warning remains
+  expected because the project and CI target Node 22.
 - `api:check` regenerated the client from the committed snapshot and found no
   tracked, deleted, or untracked generated-client drift.
-- Vitest: 9 files passed; 58 tests passed; 0 failed.
-- V8 coverage: 91.41% statements, 78.74% branches, 89.58% functions, and
-  92.14% lines.
+- Vitest: 9 files passed; 59 tests passed; 0 failed.
+- V8 coverage: 91.06% statements, 77.16% branches, 90.38% functions, and
+  92.18% lines.
 - Production Vite build: passed; 2,144 modules transformed.
-- Playwright: 10 Chromium tests passed; 0 failed.
+- Playwright: 11 Chromium tests passed; 0 failed.
 - Backend Release build: passed with 0 warnings and 0 errors.
 - Backend Release tests: 280 passed, 0 failed, 24 skipped, 304 total.
 - The worktree and implementation diff checks were clean after verification.
 
 Unit and integration coverage includes bootstrap single-flight behavior,
-refresh single-flight behavior for concurrent 401 responses, one bounded
-replay, preserved request configuration, aborted-waiter handling, refresh
-promise cleanup, malformed login/refresh/current-user responses, safe login
-errors, complete Query clearing, late refresh after logout, stale bootstrap
-after login, and stale failure after a newer authenticated session. Browser
-coverage includes keyboard login, validation, generic failure, real fictional
-identity rendering, direct protected restoration, anonymous redirect, logout,
-storage inspection, unsafe redirect rejection, and the not-found boundary.
+refresh single-flight behavior for concurrent 401 responses in one generation,
+one bounded replay, preserved request configuration, aborted-waiter handling,
+refresh-flight cleanup, malformed login/refresh/current-user responses, safe
+login errors, complete Query clearing, late refresh after logout, stale
+bootstrap after login, stale failure after a newer authenticated session, and
+generation-crossing cookie-mutation ordering. Browser coverage includes
+keyboard login, validation, generic failure, real fictional identity rendering,
+direct protected restoration, anonymous redirect, logout, storage inspection,
+unsafe redirect rejection, and the not-found boundary.
+
+The browser race regression starts a delayed Session A refresh, initiates logout
+and Session B login, then releases the stale response. It verifies the actual
+HttpOnly cookie remains Session B's cookie, verifies Session B remains locally
+authenticated, and proves a later Session B 401 starts a new refresh rather
+than reusing Session A's flight.
 
 ## Verification Boundary
 
