@@ -77,7 +77,8 @@ helps a human verify them.
    limitation.
 4. Completed: `feat/auth-refresh-sessions`.
 5. Completed: `feat/web-foundation`.
-6. Next: `feat/web-auth-integration`.
+6. Completed: `feat/web-auth-integration`.
+7. Next: `feat/web-assets`.
 
 The multilingual embedding baseline remains deferred pending a configured real
 provider.
@@ -300,16 +301,20 @@ experiments receive new IDs and approved baselines are not overwritten.
 
 ## Task 6: Authentication And Client Contract Notes
 
-Authentication follows the core inspection and retrieval read contracts:
+Authentication and the initial browser client contract are implemented:
 
 - the five approved development roles are scaffolded: Admin, GSD, Inspector,
   DepartmentHead, and Supervisor;
 - keep JWT secrets out of committed configuration;
 - policy-protect operational writes and keep the implemented read contracts
   usable for authenticated development;
-- preserve tests for login, rejected unauthenticated writes, and allowed writes.
+- preserve tests for login, refresh rotation, protected routes, rejected
+  unauthenticated writes, and allowed writes;
+- keep browser access tokens in memory, restore sessions through the backend's
+  HttpOnly refresh cookie, and keep current-user server state in TanStack Query.
 
-Final institutional RBAC decisions and client integration remain deferred.
+Final institutional RBAC decisions, MFA, SSO, registration, password recovery,
+and operational client modules remain deferred.
 
 Document only implemented routes in tracked API contract notes. Web handles
 administration, monitoring, reporting, review, and source verification. Mobile
@@ -340,7 +345,8 @@ directly.
    limitation.
 4. Completed: `feat/auth-refresh-sessions`.
 5. Completed: `feat/web-foundation`.
-6. Next: `feat/web-auth-integration`.
+6. Completed: `feat/web-auth-integration`.
+7. Next: `feat/web-assets`.
 
 The multilingual embedding baseline remains deferred pending a configured real
 provider.

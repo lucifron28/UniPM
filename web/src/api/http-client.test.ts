@@ -1,92 +1,223 @@
 import { http, HttpResponse } from 'msw'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import {
   configureApiRuntime,
   customInstance,
   httpClient,
 } from '@/api/http-client'
 import { ApiError } from '@/api/problem-details'
+import {
+  clearLocalSession,
+  getSessionGeneration,
+  refreshAccessToken,
+} from '@/features/auth/auth-session-service'
+import { useAuthStore } from '@/stores/auth-store'
 import { server } from '@/test/server'
 
-const resetRuntime = () =>
+const baseUrl = 'http://localhost:5000'
+const refreshUrl = `${baseUrl}/api/v1/auth/refresh`
+const session = {
+  accessToken: 'synthetic-refreshed-token',
+  expiresAtUtc: '2026-07-18T12:00:00Z',
+  user: {
+    id: '11111111-1111-4111-8111-111111111111',
+    email: 'fictional.user@example.test',
+    displayName: 'Fictional User',
+    roles: ['Inspector'],
+  },
+}
+
+function configureRuntime(
+  overrides: Partial<Parameters<typeof configureApiRuntime>[0]> = {},
+) {
   configureApiRuntime({
     getAccessToken: () => null,
-    onUnauthorized: () => undefined,
+    getSessionGeneration: () => 0,
+    refreshAccessToken: async () => null,
+    onTerminalUnauthorized: () => undefined,
+    ...overrides,
   })
-
-afterEach(resetRuntime)
+}
 
 describe('HTTP client', () => {
   it('uses the configured API base URL and credentialed requests', () => {
-    expect(httpClient.defaults.baseURL).toBe('http://localhost:5000')
+    expect(httpClient.defaults.baseURL).toBe(baseUrl)
     expect(httpClient.defaults.withCredentials).toBe(true)
   })
 
-  it('does not attach an Authorization header without an in-memory token', async () => {
+  it('attaches only the current in-memory bearer token to ordinary requests', async () => {
+    configureRuntime({ getAccessToken: () => 'synthetic-access-token' })
     server.use(
-      http.get('http://localhost:5000/public', ({ request }) => {
-        expect(request.headers.get('authorization')).toBeNull()
+      http.get(`${baseUrl}/protected`, ({ request }) => {
+        expect(request.headers.get('authorization')).toBe(
+          'Bearer synthetic-access-token',
+        )
         return HttpResponse.json({ ok: true })
+      }),
+      http.post(`${baseUrl}/api/v1/auth/login`, ({ request }) => {
+        expect(request.headers.get('authorization')).toBeNull()
+        return HttpResponse.json(session)
       }),
     )
 
-    await expect(
-      customInstance<{ ok: boolean }>({ url: '/public' }),
-    ).resolves.toEqual({
+    await expect(customInstance({ url: '/protected' })).resolves.toEqual({
       ok: true,
     })
+    await customInstance({ url: '/api/v1/auth/login', method: 'POST' })
   })
 
-  it('attaches the current in-memory bearer token', async () => {
-    configureApiRuntime({
-      getAccessToken: () => 'access-token',
-      onUnauthorized: () => undefined,
+  it('refreshes and replays an ordinary request once with its request data intact', async () => {
+    let requestCount = 0
+    const onTerminalUnauthorized = vi.fn()
+    configureRuntime({
+      getAccessToken: () =>
+        requestCount === 0
+          ? 'synthetic-expired-token'
+          : 'synthetic-refreshed-token',
+      refreshAccessToken: async () => 'synthetic-refreshed-token',
+      onTerminalUnauthorized,
     })
     server.use(
-      http.get('http://localhost:5000/protected', ({ request }) => {
-        expect(request.headers.get('authorization')).toBe('Bearer access-token')
+      http.post(`${baseUrl}/protected`, async ({ request }) => {
+        requestCount += 1
+        expect(new URL(request.url).searchParams.get('page')).toBe('2')
+        expect(request.headers.get('x-request-purpose')).toBe('test')
+        expect(await request.json()).toEqual({ finding: 'fictional' })
+        if (requestCount === 1) {
+          expect(request.headers.get('authorization')).toBe(
+            'Bearer synthetic-expired-token',
+          )
+          return HttpResponse.json({ title: 'Unauthorized' }, { status: 401 })
+        }
+        expect(request.headers.get('authorization')).toBe(
+          'Bearer synthetic-refreshed-token',
+        )
         return HttpResponse.json({ ok: true })
       }),
     )
 
     await expect(
-      customInstance<{ ok: boolean }>({ url: '/protected' }),
+      customInstance({
+        url: '/protected',
+        method: 'POST',
+        params: { page: 2 },
+        headers: { 'X-Request-Purpose': 'test' },
+        data: { finding: 'fictional' },
+      }),
     ).resolves.toEqual({ ok: true })
+    expect(requestCount).toBe(2)
+    expect(onTerminalUnauthorized).not.toHaveBeenCalled()
   })
 
-  it('normalizes a terminal unauthorized response and invokes session cleanup', async () => {
-    const onUnauthorized = vi.fn()
+  it('uses the coordinator single flight for concurrent unauthorized requests', async () => {
+    let refreshCount = 0
+    let protectedCount = 0
+    useAuthStore.getState().establishSession('synthetic-expired-token')
     configureApiRuntime({
-      getAccessToken: () => 'access-token',
-      onUnauthorized,
+      getAccessToken: () => useAuthStore.getState().accessToken,
+      getSessionGeneration,
+      refreshAccessToken,
+      onTerminalUnauthorized: clearLocalSession,
     })
     server.use(
-      http.get('http://localhost:5000/unauthorized', () =>
-        HttpResponse.json(
-          { title: 'Unauthorized', status: 401 },
-          { status: 401 },
-        ),
+      http.post(refreshUrl, () => {
+        refreshCount += 1
+        return HttpResponse.json(session)
+      }),
+      http.get(`${baseUrl}/protected/:id`, ({ request }) => {
+        protectedCount += 1
+        return request.headers.get('authorization') ===
+          'Bearer synthetic-refreshed-token'
+          ? HttpResponse.json({ ok: true })
+          : HttpResponse.json({ title: 'Unauthorized' }, { status: 401 })
+      }),
+    )
+
+    await expect(
+      Promise.all([
+        customInstance({ url: '/protected/one' }),
+        customInstance({ url: '/protected/two' }),
+      ]),
+    ).resolves.toEqual([{ ok: true }, { ok: true }])
+    expect(refreshCount).toBe(1)
+    expect(protectedCount).toBe(4)
+  })
+
+  it('does not loop when the replay also returns unauthorized', async () => {
+    const refresh = vi.fn(async () => 'synthetic-refreshed-token')
+    const terminal = vi.fn()
+    configureRuntime({
+      getAccessToken: () => 'synthetic-expired-token',
+      refreshAccessToken: refresh,
+      onTerminalUnauthorized: terminal,
+    })
+    let requests = 0
+    server.use(
+      http.get(`${baseUrl}/protected`, () => {
+        requests += 1
+        return HttpResponse.json({ title: 'Unauthorized' }, { status: 401 })
+      }),
+    )
+
+    await expect(customInstance({ url: '/protected' })).rejects.toMatchObject({
+      status: 401,
+    })
+    expect(refresh).toHaveBeenCalledOnce()
+    expect(terminal).toHaveBeenCalledOnce()
+    expect(requests).toBe(2)
+  })
+
+  it.each([
+    ['/api/v1/auth/login', 'POST'],
+    ['/api/v1/auth/refresh', 'POST'],
+    ['/api/v1/auth/logout', 'POST'],
+  ])('never refreshes an authentication endpoint: %s', async (url, method) => {
+    const refresh = vi.fn()
+    configureRuntime({ refreshAccessToken: refresh })
+    server.use(
+      http.post(`${baseUrl}${url}`, () =>
+        HttpResponse.json({ title: 'Unauthorized' }, { status: 401 }),
       ),
     )
 
-    await expect(
-      customInstance({ url: '/unauthorized' }),
-    ).rejects.toMatchObject({
+    await expect(customInstance({ url, method })).rejects.toMatchObject({
       status: 401,
-      problem: { title: 'Unauthorized' },
-    } satisfies Partial<Pick<ApiError, 'status' | 'problem'>>)
-    expect(onUnauthorized).toHaveBeenCalledOnce()
+    })
+    expect(refresh).not.toHaveBeenCalled()
   })
 
-  it('forwards an AbortSignal to generated requests', async () => {
+  it.each([403, 500])(
+    'does not refresh an HTTP %s response',
+    async (status) => {
+      const refresh = vi.fn()
+      configureRuntime({ refreshAccessToken: refresh })
+      server.use(
+        http.get(`${baseUrl}/failure`, () =>
+          HttpResponse.json({ title: 'Failure' }, { status }),
+        ),
+      )
+
+      await expect(customInstance({ url: '/failure' })).rejects.toMatchObject({
+        status,
+      })
+      expect(refresh).not.toHaveBeenCalled()
+    },
+  )
+
+  it('does not replay an aborted request after the shared refresh completes', async () => {
+    let releaseRefresh!: (token: string) => void
+    const refresh = new Promise<string>((resolve) => {
+      releaseRefresh = resolve
+    })
+    configureRuntime({
+      getAccessToken: () => 'synthetic-expired-token',
+      refreshAccessToken: () => refresh,
+    })
+    let requests = 0
     server.use(
-      http.get('http://localhost:5000/abortable', async ({ request }) => {
-        await new Promise<void>((resolve) =>
-          request.signal.addEventListener('abort', () => resolve(), {
-            once: true,
-          }),
-        )
-        return new HttpResponse(null, { status: 499 })
+      http.get(`${baseUrl}/abortable`, () => {
+        requests += 1
+        return HttpResponse.json({ title: 'Unauthorized' }, { status: 401 })
       }),
     )
     const controller = new AbortController()
@@ -94,8 +225,30 @@ describe('HTTP client', () => {
       url: '/abortable',
       signal: controller.signal,
     })
+    await vi.waitFor(() => expect(requests).toBe(1))
     controller.abort()
+    releaseRefresh('synthetic-refreshed-token')
 
-    await expect(request).rejects.toBeInstanceOf(ApiError)
+    await expect(request).rejects.toMatchObject({
+      classification: 'cancelled',
+    } satisfies Partial<ApiError>)
+    expect(requests).toBe(1)
+  })
+
+  it('keeps safe ProblemDetails for a terminal response', async () => {
+    configureRuntime()
+    server.use(
+      http.get(`${baseUrl}/invalid`, () =>
+        HttpResponse.json(
+          { title: 'Validation failed', status: 400 },
+          { status: 400 },
+        ),
+      ),
+    )
+
+    await expect(customInstance({ url: '/invalid' })).rejects.toMatchObject({
+      status: 400,
+      problem: { title: 'Validation failed' },
+    })
   })
 })

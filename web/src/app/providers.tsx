@@ -5,10 +5,12 @@ import { RouterProvider } from '@tanstack/react-router'
 import { Toaster } from 'sonner'
 import { queryClient } from '@/app/query-client'
 import { router } from '@/app/router'
+import { SessionInitializer } from '@/features/auth/session-initializer'
 
 export function AppProviders() {
   return (
     <QueryClientProvider client={queryClient}>
+      <SessionInitializer />
       <RouterProvider router={router} />
       <Toaster richColors />
       {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />}

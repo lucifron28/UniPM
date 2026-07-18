@@ -2,17 +2,43 @@
 
 :root {
   font-family: Inter, ui-sans-serif, system-ui, sans-serif;
-  color: #0f172a;
-  background: #f8fafc;
+  color: #191c1d;
+  background: #f8f9fa;
+  font-synthesis: none;
+
+  --primary: #570000;
+  --primary-active: #7f1d1d;
+  --primary-strong: #800000;
+  --page-background: #f8f9fa;
+  --sidebar-background: #fafaf9;
+  --surface-muted: #f3f4f5;
+  --input-surface: #e1e3e4;
+  --text-primary: #191c1d;
+  --text-secondary: #5a413d;
+  --text-neutral: #57534e;
+  --border-soft: #e7e5e4;
+  --success: #15803d;
+  --warning: #b45309;
+  --error: #ba1a1a;
+  --information: #1d4ed8;
 }
+
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  background: var(--page-background);
 }
+
 * {
   box-sizing: border-box;
 }
+
 a {
   color: inherit;
+}
+
+button,
+input {
+  font: inherit;
 }

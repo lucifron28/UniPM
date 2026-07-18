@@ -1,14 +1,61 @@
-import axios, { type AxiosRequestConfig } from 'axios'
+import axios, {
+  AxiosHeaders,
+  CanceledError,
+  type AxiosRequestConfig,
+} from 'axios'
 import { environment } from '../config/env'
 import { normalizeApiError } from './problem-details'
 
 type ApiRuntime = {
   getAccessToken: () => string | null
-  onUnauthorized: () => void
+  getSessionGeneration: () => number
+  refreshAccessToken: () => Promise<string | null>
+  onTerminalUnauthorized: (requestGeneration?: number) => void
 }
+
 let runtime: ApiRuntime = {
   getAccessToken: () => null,
-  onUnauthorized: () => undefined,
+  getSessionGeneration: () => 0,
+  refreshAccessToken: async () => null,
+  onTerminalUnauthorized: () => undefined,
+}
+
+export function resetApiRuntimeForTests() {
+  runtime = {
+    getAccessToken: () => null,
+    getSessionGeneration: () => 0,
+    refreshAccessToken: async () => null,
+    onTerminalUnauthorized: () => undefined,
+  }
+}
+
+declare module 'axios' {
+  interface AxiosRequestConfig {
+    skipAuthRefresh?: boolean
+    authRetryAttempted?: boolean
+    authSessionGeneration?: number
+  }
+}
+
+const authPaths = new Set([
+  '/api/v1/auth/login',
+  '/api/v1/auth/refresh',
+  '/api/v1/auth/logout',
+])
+
+function requestPath(config: AxiosRequestConfig) {
+  try {
+    return new URL(
+      config.url ?? '',
+      config.baseURL ?? environment.apiBaseUrl,
+    ).pathname.replace(/\/+$/, '')
+  } catch {
+    return ''
+  }
+}
+
+function isAuthEndpoint(config: AxiosRequestConfig) {
+  return authPaths.has(requestPath(config))
 }
 
 export function configureApiRuntime(next: ApiRuntime) {
@@ -22,17 +69,49 @@ export const httpClient = axios.create({
 })
 
 httpClient.interceptors.request.use((config) => {
+  config.authSessionGeneration ??= runtime.getSessionGeneration()
   const token = runtime.getAccessToken()
-  if (token) config.headers.Authorization = `Bearer ${token}`
+  if (token && !isAuthEndpoint(config)) {
+    config.headers.set('Authorization', `Bearer ${token}`)
+  }
   return config
 })
 
 httpClient.interceptors.response.use(
   (response) => response,
-  (error: unknown) => {
+  async (error: unknown) => {
     const normalized = normalizeApiError(error)
-    if (normalized.status === 401) runtime.onUnauthorized()
-    return Promise.reject(normalized)
+    if (!axios.isAxiosError(error) || normalized.status !== 401) {
+      return Promise.reject(normalized)
+    }
+
+    const config = error.config
+    if (!config || config.skipAuthRefresh || isAuthEndpoint(config)) {
+      return Promise.reject(normalized)
+    }
+
+    if (config.authRetryAttempted) {
+      runtime.onTerminalUnauthorized(config.authSessionGeneration)
+      return Promise.reject(normalized)
+    }
+
+    config.authRetryAttempted = true
+    try {
+      const token = await runtime.refreshAccessToken()
+      if (config.signal?.aborted) {
+        return Promise.reject(normalizeApiError(new CanceledError()))
+      }
+      if (!token) return Promise.reject(normalized)
+
+      const replayConfig = {
+        ...config,
+        headers: AxiosHeaders.from(config.headers),
+      }
+      replayConfig.headers.set('Authorization', `Bearer ${token}`)
+      return httpClient.request(replayConfig)
+    } catch (refreshError) {
+      return Promise.reject(normalizeApiError(refreshError))
+    }
   },
 )
 

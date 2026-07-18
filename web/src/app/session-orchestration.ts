@@ -1,15 +1,21 @@
 import { configureApiRuntime } from '@/api/http-client'
-import { queryClient } from '@/app/query-client'
 import { router } from '@/app/router'
+import {
+  clearLocalSession,
+  configureAuthSessionRuntime,
+  getSessionGeneration,
+  refreshAccessToken,
+} from '@/features/auth/auth-session-service'
 import { useAuthStore } from '@/stores/auth-store'
 
 export function configureSessionOrchestration() {
+  configureAuthSessionRuntime({
+    invalidateRoutes: () => void router.invalidate(),
+  })
   configureApiRuntime({
     getAccessToken: () => useAuthStore.getState().accessToken,
-    onUnauthorized: () => {
-      useAuthStore.getState().clearSession()
-      queryClient.clear()
-      void router.invalidate()
-    },
+    getSessionGeneration,
+    refreshAccessToken,
+    onTerminalUnauthorized: clearLocalSession,
   })
 }
