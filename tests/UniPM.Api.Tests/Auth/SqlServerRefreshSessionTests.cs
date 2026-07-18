@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -99,6 +100,24 @@ public sealed class SqlServerRefreshSessionTests
         Assert.InRange(await application.ActiveSessionCountAsync(), 0, 1);
     }
 
+    [SqlServerFact]
+    public async Task Failed_rotation_releases_its_transaction_before_revoking_the_family()
+    {
+        await using var database = await SqlServerRefreshDatabase.CreateAsync(RequireSqlServerConnection());
+        await using var application = new SqlRefreshApplicationFactory(database.ConnectionString, failFirstRotation: true);
+        await application.SeedUserAsync();
+        using var loginClient = application.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = false });
+        var login = await loginClient.PostAsJsonAsync("/api/v1/auth/login", new { email = Email, password = Password });
+        var token = ExtractRefreshCookie(login);
+        using var refreshClient = application.CreateClient(new WebApplicationFactoryClientOptions { HandleCookies = false });
+        refreshClient.DefaultRequestHeaders.Add("Cookie", $"{RefreshCookieService.CookieName}={token}");
+
+        var response = await refreshClient.PostAsync("/api/v1/auth/refresh", null);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal(0, await application.ActiveSessionCountAsync());
+    }
+
     private static string RequireSqlServerConnection()
         => Environment.GetEnvironmentVariable("UNIPM_SQLSERVER_TEST_CONNECTION")!;
 
@@ -129,7 +148,7 @@ public sealed class SqlServerRefreshSessionTests
         => response.Headers.GetValues("Set-Cookie").Single(value => value.StartsWith($"{RefreshCookieService.CookieName}=", StringComparison.Ordinal))
             .Split(';', 2)[0].Split('=', 2)[1];
 
-    private sealed class SqlRefreshApplicationFactory(string connectionString)
+    private sealed class SqlRefreshApplicationFactory(string connectionString, bool failFirstRotation = false)
         : WebApplicationFactory<Program>
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -148,7 +167,14 @@ public sealed class SqlServerRefreshSessionTests
             {
                 services.RemoveAll<IDbContextFactory<ApplicationDbContext>>();
                 services.RemoveAll<DbContextOptions<ApplicationDbContext>>();
-                services.AddDbContextFactory<ApplicationDbContext>(options => options.UseSqlServer(connectionString));
+                services.AddDbContextFactory<ApplicationDbContext>(options =>
+                {
+                    options.UseSqlServer(connectionString);
+                    if (failFirstRotation)
+                    {
+                        options.AddInterceptors(new FailFirstRotationSaveInterceptor());
+                    }
+                });
             });
         }
 
@@ -173,6 +199,41 @@ public sealed class SqlServerRefreshSessionTests
             var factory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
             await using var context = await factory.CreateDbContextAsync();
             return await context.RefreshSessions.CountAsync(session => session.RevokedAtUtc == null);
+        }
+    }
+
+    private sealed class FailFirstRotationSaveInterceptor : SaveChangesInterceptor
+    {
+        private int hasFailed;
+
+        public override InterceptionResult<int> SavingChanges(
+            DbContextEventData eventData,
+            InterceptionResult<int> result)
+        {
+            ThrowForRotation(eventData.Context);
+            return result;
+        }
+
+        public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
+            DbContextEventData eventData,
+            InterceptionResult<int> result,
+            CancellationToken cancellationToken = default)
+        {
+            ThrowForRotation(eventData.Context);
+            return ValueTask.FromResult(result);
+        }
+
+        private void ThrowForRotation(DbContext? context)
+        {
+            if (context is null
+                || !context.ChangeTracker.Entries<RefreshSession>()
+                    .Any(entry => entry.Entity.RevocationReason == "Rotated")
+                || Interlocked.Exchange(ref hasFailed, 1) != 0)
+            {
+                return;
+            }
+
+            throw new DbUpdateConcurrencyException("Forced refresh rotation failure.");
         }
     }
 

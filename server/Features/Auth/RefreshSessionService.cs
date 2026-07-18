@@ -33,81 +33,94 @@ internal sealed class RefreshSessionService(
             return new RefreshSessionRotationResult(null, null);
         }
 
-        await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
-        await using var transaction = context.Database.IsRelational()
-            ? await context.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken)
-            : null;
-        var tokenHash = tokenGenerator.Hash(rawToken!);
-        var sessions = context.Database.IsRelational()
-            ? context.RefreshSessions.FromSqlInterpolated($"SELECT * FROM [RefreshSessions] WITH (UPDLOCK, HOLDLOCK) WHERE [TokenHash] = {tokenHash}")
-            : context.RefreshSessions.Where(item => item.TokenHash == tokenHash);
-        var session = await sessions
-            .Include(item => item.User)
-            .SingleOrDefaultAsync(cancellationToken);
-        if (session is null)
-        {
-            if (transaction is not null)
-            {
-                await transaction.CommitAsync(cancellationToken);
-            }
-            return new RefreshSessionRotationResult(null, null);
-        }
-
+        Guid? failedFamilyId = null;
         var now = timeProvider.GetUtcNow();
-        if (session.RevokedAtUtc is not null || session.ReplacedBySessionId is not null)
+
+        await using (var context = await contextFactory.CreateDbContextAsync(cancellationToken))
+        await using (var transaction = context.Database.IsRelational()
+                         ? await context.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken)
+                         : null)
         {
-            await RevokeFamilyAsync(context, session.TokenFamilyId, now, "Replay detected", cancellationToken);
+            var tokenHash = tokenGenerator.Hash(rawToken!);
+            var sessions = context.Database.IsRelational()
+                ? context.RefreshSessions.FromSqlInterpolated($"SELECT * FROM [RefreshSessions] WITH (UPDLOCK, HOLDLOCK) WHERE [TokenHash] = {tokenHash}")
+                : context.RefreshSessions.Where(item => item.TokenHash == tokenHash);
+            var session = await sessions
+                .Include(item => item.User)
+                .SingleOrDefaultAsync(cancellationToken);
+            if (session is null)
+            {
+                if (transaction is not null)
+                {
+                    await transaction.CommitAsync(cancellationToken);
+                }
+                return new RefreshSessionRotationResult(null, null);
+            }
+
+            if (session.RevokedAtUtc is not null || session.ReplacedBySessionId is not null)
+            {
+                await RevokeFamilyAsync(context, session.TokenFamilyId, now, "Replay detected", cancellationToken);
+                if (transaction is not null)
+                {
+                    await transaction.CommitAsync(cancellationToken);
+                }
+                return new RefreshSessionRotationResult(null, null);
+            }
+
+            if (session.ExpiresAtUtc <= now
+                || !session.User.IsActive
+                || await userManager.IsLockedOutAsync(session.User)
+                || !tokenGenerator.HashesMatch(session.SecurityStampHash, tokenGenerator.Hash(session.User.SecurityStamp ?? string.Empty)))
+            {
+                await RevokeFamilyAsync(context, session.TokenFamilyId, now, "Session invalid", cancellationToken);
+                if (transaction is not null)
+                {
+                    await transaction.CommitAsync(cancellationToken);
+                }
+                return new RefreshSessionRotationResult(null, null);
+            }
+
+            var replacement = NewSession(session.User, session.TokenFamilyId, session.ExpiresAtUtc, now);
+            session.RevokedAtUtc = now;
+            session.LastUsedAtUtc = now;
+            session.RevocationReason = "Rotated";
+            session.ReplacedBySessionId = replacement.Session.Id;
+            context.RefreshSessions.Add(replacement.Session);
+
+            try
+            {
+                await context.SaveChangesAsync(cancellationToken);
+                if (transaction is not null)
+                {
+                    await transaction.CommitAsync(cancellationToken);
+                }
+                return new RefreshSessionRotationResult(session.User, new IssuedRefreshSession(replacement.Token, session.ExpiresAtUtc));
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                failedFamilyId = session.TokenFamilyId;
+            }
+            catch (DbUpdateException)
+            {
+                failedFamilyId = session.TokenFamilyId;
+            }
+            catch (SqlException)
+            {
+                failedFamilyId = session.TokenFamilyId;
+            }
+
             if (transaction is not null)
             {
-                await transaction.CommitAsync(cancellationToken);
+                await transaction.RollbackAsync(cancellationToken);
             }
-            return new RefreshSessionRotationResult(null, null);
         }
 
-        if (session.ExpiresAtUtc <= now
-            || !session.User.IsActive
-            || await userManager.IsLockedOutAsync(session.User)
-            || !tokenGenerator.HashesMatch(session.SecurityStampHash, tokenGenerator.Hash(session.User.SecurityStamp ?? string.Empty)))
+        if (failedFamilyId is not null)
         {
-            await RevokeFamilyAsync(context, session.TokenFamilyId, now, "Session invalid", cancellationToken);
-            if (transaction is not null)
-            {
-                await transaction.CommitAsync(cancellationToken);
-            }
-            return new RefreshSessionRotationResult(null, null);
+            await RevokeFamilyByIdAsync(failedFamilyId.Value, now, cancellationToken);
         }
 
-        var replacement = NewSession(session.User, session.TokenFamilyId, session.ExpiresAtUtc, now);
-        session.RevokedAtUtc = now;
-        session.LastUsedAtUtc = now;
-        session.RevocationReason = "Rotated";
-        session.ReplacedBySessionId = replacement.Session.Id;
-        context.RefreshSessions.Add(replacement.Session);
-
-        try
-        {
-            await context.SaveChangesAsync(cancellationToken);
-            if (transaction is not null)
-            {
-                await transaction.CommitAsync(cancellationToken);
-            }
-            return new RefreshSessionRotationResult(session.User, new IssuedRefreshSession(replacement.Token, session.ExpiresAtUtc));
-        }
-        catch (DbUpdateConcurrencyException)
-        {
-            await RevokeFamilyByIdAsync(session.TokenFamilyId, now, cancellationToken);
-            return new RefreshSessionRotationResult(null, null);
-        }
-        catch (DbUpdateException)
-        {
-            await RevokeFamilyByIdAsync(session.TokenFamilyId, now, cancellationToken);
-            return new RefreshSessionRotationResult(null, null);
-        }
-        catch (SqlException)
-        {
-            await RevokeFamilyByIdAsync(session.TokenFamilyId, now, cancellationToken);
-            return new RefreshSessionRotationResult(null, null);
-        }
+        return new RefreshSessionRotationResult(null, null);
     }
 
     public async Task RevokeFamilyForTokenAsync(string? rawToken, CancellationToken cancellationToken = default)

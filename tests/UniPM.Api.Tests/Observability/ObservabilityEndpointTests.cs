@@ -56,6 +56,10 @@ public sealed class ObservabilityEndpointTests : IClassFixture<WebApplicationFac
         using var client = application.CreateClient();
         var metrics = application.Services.GetRequiredService<UniPMMetrics>();
 
+        // The Prometheus exporter subscribes when its endpoint is first requested.
+        // Prime it so the measurements below cannot be lost to test-order timing.
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/metrics")).StatusCode);
+
         metrics.RecordRetrieval("lexical", "success", 3, 0.25);
         metrics.RecordRetrieval("fused", "degraded", 1, 0.5);
 
