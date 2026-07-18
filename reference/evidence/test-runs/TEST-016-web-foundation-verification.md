@@ -4,7 +4,7 @@ type: test-run
 title: React web foundation verification
 status: executed
 recordedAtUtc: 2026-07-18T10:05:00Z
-testedCommit: f5bcc23e891523beb083bc7e5364e9ea4744e088
+testedCommit: 0b9a35d4415269e2e5c6730e711fbb23f00883cd
 sourceBranch: feat/web-foundation
 evidenceLevel: locally-executed
 ---
@@ -41,8 +41,8 @@ git diff --check
   production Vite build passed.
 - Vitest: 6 files, 31 tests passed, 0 failed.
 - Playwright: 5 Chromium route-smoke tests passed, 0 failed.
-- V8 coverage: 95.83% statements, 97.77% branches, 88.23% functions, and
-  95.45% lines across the currently executable transport/error modules.
+- V8 coverage: 96.42% statements, 96.55% branches, 90% functions, and 96.07%
+  lines across the currently executable transport/error modules.
 - The current Development API snapshot passed the required login, refresh,
   logout, and current-user contract sanity check; login/refresh generate typed
   session responses and current-user generates a typed user response.
@@ -55,9 +55,10 @@ The route-smoke suite covers public rendering, direct login rendering,
 unauthenticated protected navigation, the not-found boundary, and keyboard
 focus progression between real navigation links. Unit coverage additionally
 exercises authenticated access and access reevaluation after in-memory session
-clearing. The committed Web CI workflow installs Chromium before running the
-same browser suite. This record does not claim production deployment, real-auth
-flow, backend behavior, or accessibility conformance.
+clearing. Web CI run `29640073441` executed its pinned Node 22 `npm ci`,
+generated-client check, Chromium installation, and the same browser suite
+successfully. This record does not claim production deployment, real-auth flow,
+backend behavior, or accessibility conformance.
 
 ## Privacy And Security Boundary
 
