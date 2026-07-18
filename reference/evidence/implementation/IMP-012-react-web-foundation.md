@@ -24,11 +24,13 @@ and not-found routes; an in-memory-only access-token store; a single
 credentialed Axios client; safe RFC 7807 normalization; shared query defaults;
 and terminal-401 session clearing.
 
-The committed OpenAPI snapshot is generated from the Development API. Orval
-produces the typed client, and repository checks reject either tracked or
-untracked generated-client drift. The snapshot gate requires login, refresh,
-logout, and current-user operations, with typed JSON success responses where
-the API returns data.
+The committed OpenAPI snapshot is generated from the Development API. The
+offline `api:contract:check` gate requires login, refresh, logout, and
+current-user operations, with typed JSON success responses where the API
+returns data. Both client generation and generated-client drift verification
+run this gate, so CI cannot accept a stale but internally matching auth
+snapshot/client pair. Repository checks reject tracked, deleted, and untracked
+generated-client drift.
 
 ## Boundaries
 

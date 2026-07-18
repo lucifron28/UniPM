@@ -16,7 +16,8 @@ screens and browser authentication integration begin.
 
 ## Decision
 
-Commit a sanitized OpenAPI snapshot, generate React Query client code through
+Commit a sanitized OpenAPI snapshot, validate its required authentication
+contract offline before generation, generate React Query client code through
 Orval, and fail verification whenever generation creates a tracked change,
 deletion, or untracked model. Keep one Axios transport with credentials enabled
 for the backend refresh-cookie contract, while holding the JWT access token only
