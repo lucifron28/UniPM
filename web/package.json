@@ -14,10 +14,10 @@
     "test": "vitest",
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "api:pull": "node ./scripts/pull-openapi.mjs",
-    "api:generate": "orval --config ./orval.config.ts",
+    "api:pull": "node ./scripts/pull-openapi.mjs && node ./scripts/check-openapi-contract.mjs",
+    "api:generate": "orval --config ./orval.config.ts && prettier --write ./src/api/generated",
     "api:refresh": "npm run api:pull && npm run api:generate",
-    "api:check": "npm run api:generate && git diff --exit-code -- src/api/generated",
+    "api:check": "npm run api:generate && node ./scripts/check-generated.mjs",
     "e2e": "playwright test"
   },
   "engines": {

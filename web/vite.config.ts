@@ -7,7 +7,12 @@ import tsconfigPaths from 'vite-tsconfig-paths'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
-    tanstackRouter({ target: 'react', autoCodeSplitting: true }),
+    tanstackRouter({
+      target: 'react',
+      autoCodeSplitting: true,
+      routeFileIgnorePattern:
+        '(\\.test\\.ts$|guard\\.ts$|login-redirect\\.ts$)',
+    }),
     react(),
     tailwindcss(),
     tsconfigPaths(),

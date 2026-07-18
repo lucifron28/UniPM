@@ -6,12 +6,12 @@
  */
 
 export interface RecordInspectionDto {
-  scheduleId?: string;
-  inspectorUserId?: string;
-  dateInspected?: string;
-  isOperational?: boolean;
+  scheduleId?: string
+  inspectorUserId?: string
+  dateInspected?: string
+  isOperational?: boolean
   /** @nullable */
-  remarks?: string | null;
+  remarks?: string | null
   /** @nullable */
-  actionsRecommendations?: string | null;
+  actionsRecommendations?: string | null
 }

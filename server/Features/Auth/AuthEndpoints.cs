@@ -33,7 +33,9 @@ public static class AuthEndpoints
             .ProducesProblem(StatusCodes.Status403Forbidden);
         group.MapGet("/me", GetCurrentUserAsync)
             .RequireAuthorization()
-            .WithName("GetCurrentUser");
+            .WithName("GetCurrentUser")
+            .Produces<AuthUserResponse>()
+            .ProducesProblem(StatusCodes.Status401Unauthorized);
 
         return endpoints;
     }

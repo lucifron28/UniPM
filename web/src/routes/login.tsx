@@ -1,7 +1,11 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { z } from 'zod'
 import { Card } from '@/components/ui/card'
-const search = z.object({ redirect: z.string().startsWith('/').optional() })
+import { isInternalAppRedirect } from '@/routes/login-redirect'
+
+const search = z.object({
+  redirect: z.string().refine(isInternalAppRedirect).optional(),
+})
 export const Route = createFileRoute('/login')({
   validateSearch: search,
   component: LoginPlaceholder,

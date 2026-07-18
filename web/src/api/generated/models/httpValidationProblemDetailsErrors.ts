@@ -5,8 +5,4 @@
  * OpenAPI spec version: 1.0.0
  */
 
-export interface MaintenanceReviewRequest {
-  assetId?: string
-  findingText?: string
-  generateSummary?: boolean
-}
+export type HttpValidationProblemDetailsErrors = { [key: string]: string[] }

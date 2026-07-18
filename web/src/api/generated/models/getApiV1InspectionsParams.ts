@@ -6,9 +6,9 @@
  */
 
 export type GetApiV1InspectionsParams = {
-assetId?: string;
-scheduleId?: string;
-isOperational?: boolean;
-dateFrom?: string;
-dateTo?: string;
-};
+  assetId?: string
+  scheduleId?: string
+  isOperational?: boolean
+  dateFrom?: string
+  dateTo?: string
+}

@@ -6,13 +6,13 @@
  */
 
 export type GetApiV1SchedulesParams = {
-assetId?: string;
-status?: string;
-from?: string;
-to?: string;
-quarter?: string;
-/**
- * @pattern ^-?(?:0|[1-9]\d*)$
- */
-year?: number | string;
-};
+  assetId?: string
+  status?: string
+  from?: string
+  to?: string
+  quarter?: string
+  /**
+   * @pattern ^-?(?:0|[1-9]\d*)$
+   */
+  year?: number | string
+}

@@ -6,12 +6,12 @@
  */
 
 export interface CreateAssetDto {
-  assetCode?: string;
-  assetCategory?: string;
+  assetCode?: string
+  assetCategory?: string
   /** @nullable */
-  building?: string | null;
+  building?: string | null
   /** @nullable */
-  department?: string | null;
+  department?: string | null
   /** @nullable */
-  location?: string | null;
+  location?: string | null
 }

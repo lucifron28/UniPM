@@ -6,6 +6,6 @@
  */
 
 export interface AssetCategoryResponse {
-  code: string;
-  displayName: string;
+  code: string
+  displayName: string
 }

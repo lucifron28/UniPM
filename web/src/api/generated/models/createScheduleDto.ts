@@ -6,14 +6,14 @@
  */
 
 export interface CreateScheduleDto {
-  assetId?: string;
-  scheduleDate?: string;
-  periodType?: string;
+  assetId?: string
+  scheduleDate?: string
+  periodType?: string
   /** @nullable */
-  quarter?: string | null;
+  quarter?: string | null
   /**
-     * @nullable
-     * @pattern ^-?(?:0|[1-9]\d*)$
-     */
-  year?: number | string | null;
+   * @nullable
+   * @pattern ^-?(?:0|[1-9]\d*)$
+   */
+  year?: number | string | null
 }

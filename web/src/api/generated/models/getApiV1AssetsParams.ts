@@ -6,8 +6,8 @@
  */
 
 export type GetApiV1AssetsParams = {
-assetCategory?: string;
-status?: string;
-building?: string;
-department?: string;
-};
+  assetCategory?: string
+  status?: string
+  building?: string
+  department?: string
+}
