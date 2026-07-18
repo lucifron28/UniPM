@@ -67,6 +67,21 @@ The backend currently provides:
 - reference-data categories, validation/error contracts, health checks, tests,
   and backend CI.
 
+## Web Foundation
+
+The `web/` React + TypeScript + Vite application provides the initial route,
+API-client, test, and CI foundation. Run it with Node 22:
+
+```powershell
+cd web
+npm ci
+npm run dev
+```
+
+See [web/README.md](web/README.md) for the committed OpenAPI generation flow.
+Real browser authentication integration and all operational web modules remain
+deferred.
+
 
 ## First Run
 
@@ -256,7 +271,9 @@ with developer-reviewed ratings; it did not establish production readiness.
 Tagalog and Taglish language fit was weak, and five outputs violated the citation
 contract. Inspection-submission integrity, retrieval/test layout organization,
 and explicit free-text-name sanitizer limitation documentation are complete;
-the next research branch is the multilingual embedding baseline.
+the web foundation is implemented; real web authentication integration and
+operational modules remain deferred. The multilingual embedding baseline remains
+pending a configured real provider.
 
 Embeddings are disabled by default. Remote providers are rejected unless
 `Embeddings:AllowRemoteProvider` is explicitly enabled after a separate

@@ -50,6 +50,9 @@ record's evidence level and tested/source commit.
 | IMP-011 | implementation | Rotating browser refresh sessions | reviewed | source-inspected | `fa75e16` | [record](implementation/IMP-011-rotating-refresh-sessions.md) | Short-lived JWTs, opaque rotating refresh families, and exact-origin browser boundary. |
 | ADR-007 | decision | Use rotating opaque refresh sessions for the browser MVP | reviewed | source-inspected | `fa75e16` | [record](decisions/ADR-007-browser-refresh-session-boundary.md) | Hash-only persistence, same-site cookies, family rotation, and no separate auth server. |
 | TEST-015 | test-run | Refresh-session ordinary verification | executed | locally-executed | `fa75e16` | [record](test-runs/TEST-015-refresh-session-verification.md) | Release and focused SQL verification passed, including forced rotation-failure cleanup. |
+| IMP-012 | implementation | React web foundation | reviewed | source-inspected | `6d1fd52` | [record](implementation/IMP-012-react-web-foundation.md) | Offline auth-contract gate plus generated-client drift protection. |
+| ADR-008 | decision | Use a generated API client and in-memory browser token boundary | reviewed | source-inspected | `6d1fd52` | [record](decisions/ADR-008-browser-foundation-api-boundary.md) | Offline auth contract validation with no browser-readable refresh token. |
+| TEST-016 | test-run | React web foundation verification | executed | locally-executed | `6d1fd52` | [record](test-runs/TEST-016-web-foundation-verification.md) | Offline auth-contract gate, 31 unit tests, and 5 Playwright route-smoke tests passed. |
 
 ## Pending Evidence
 
