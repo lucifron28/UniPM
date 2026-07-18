@@ -76,7 +76,8 @@ helps a human verify them.
 3. Completed: explicit documentation of the MVP sanitizer's free-text-name
    limitation.
 4. Completed: `feat/auth-refresh-sessions`.
-5. Next: `feat/web-foundation`.
+5. Completed: `feat/web-foundation`.
+6. Next: `feat/web-auth-integration`.
 
 The multilingual embedding baseline remains deferred pending a configured real
 provider.
@@ -338,7 +339,8 @@ directly.
 3. Completed: explicit documentation of the MVP sanitizer's free-text-name
    limitation.
 4. Completed: `feat/auth-refresh-sessions`.
-5. Next: `feat/web-foundation`.
+5. Completed: `feat/web-foundation`.
+6. Next: `feat/web-auth-integration`.
 
 The multilingual embedding baseline remains deferred pending a configured real
 provider.

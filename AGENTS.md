@@ -193,9 +193,10 @@ separate retrieval benchmark, internal RRF fusion, the committed
 engineering-evidence workflow, and opt-in observability metrics are complete.
 IdentityCore persistence, JWT login/current-user routes, Development user
 seeding, and coarse policy protection are also complete. Inspection-submission
-integrity, retrieval/test folder organization, and explicit documentation of
-the MVP sanitizer's free-text-name limitation are also complete. The exact next
-branch is `experiment/multilingual-embedding-baseline`.
+integrity, retrieval/test folder organization, explicit documentation of the
+MVP sanitizer's free-text-name limitation, and the React web foundation are
+also complete. The exact next branch is `feat/web-auth-integration`; the
+multilingual embedding baseline remains pending a configured real provider.
 
 Observability remains bounded infrastructure: `Observability:MetricsEnabled`
 is false by default, `/metrics` is exposed only when explicitly enabled, and
