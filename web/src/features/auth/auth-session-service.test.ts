@@ -136,11 +136,12 @@ describe('authentication session coordinator', () => {
     )
 
     const bootstrap = ensureSessionInitialized()
-    await authenticate({
+    const loginResult = authenticate({
       email: 'fictional.inspector@example.test',
       password: 'synthetic-password',
     })
     releaseRefresh.resolve()
+    await loginResult
     await bootstrap
 
     expect(useAuthStore.getState().accessToken).toBe('new-login-token')
@@ -161,10 +162,15 @@ describe('authentication session coordinator', () => {
     useAuthStore.getState().establishSession('expired-synthetic-token')
 
     const refresh = refreshAccessToken()
-    await logout()
+    const logoutResult = logout()
+    expect(useAuthStore.getState()).toMatchObject({
+      status: 'anonymous',
+      accessToken: null,
+    })
     releaseRefresh.resolve()
 
     await expect(refresh).resolves.toBeNull()
+    await expect(logoutResult).resolves.toBe(true)
     expect(useAuthStore.getState()).toMatchObject({
       status: 'anonymous',
       accessToken: null,
@@ -185,17 +191,94 @@ describe('authentication session coordinator', () => {
     useAuthStore.getState().establishSession('expired-synthetic-token')
 
     const refresh = refreshAccessToken()
-    await authenticate({
+    const loginResult = authenticate({
       email: 'fictional.inspector@example.test',
       password: 'synthetic-password',
     })
     releaseRefresh.resolve()
 
-    await expect(refresh).rejects.toMatchObject({ status: 401 })
+    await expect(refresh).resolves.toBeNull()
+    await loginResult
     expect(useAuthStore.getState()).toMatchObject({
       status: 'authenticated',
       accessToken: 'new-login-token',
     })
+  })
+
+  it('settles an old refresh before logout and login write the new session cookie', async () => {
+    const refreshAStarted = deferred()
+    const releaseRefreshA = deferred()
+    const events: string[] = []
+    let refreshCount = 0
+
+    server.use(
+      http.post(`${apiBase}/refresh`, async () => {
+        refreshCount += 1
+        if (refreshCount === 1) {
+          events.push('refresh-a-started')
+          refreshAStarted.resolve()
+          await releaseRefreshA.promise
+          return HttpResponse.json({
+            ...session,
+            accessToken: 'stale-session-a-token',
+          })
+        }
+
+        events.push('refresh-b-started')
+        return HttpResponse.json({
+          ...session,
+          accessToken: 'refreshed-session-b-token',
+        })
+      }),
+      http.post(`${apiBase}/logout`, () => {
+        events.push('logout')
+        return new HttpResponse(null, { status: 204 })
+      }),
+      http.post(`${apiBase}/login`, () => {
+        events.push('login-b')
+        return HttpResponse.json({
+          ...session,
+          accessToken: 'session-b-token',
+        })
+      }),
+    )
+    useAuthStore.getState().establishSession('session-a-token')
+
+    const staleRefresh = refreshAccessToken().then((value) => {
+      events.push('refresh-a-settled')
+      return value
+    })
+    await refreshAStarted.promise
+    const logoutResult = logout()
+    expect(useAuthStore.getState()).toMatchObject({
+      status: 'anonymous',
+      accessToken: null,
+    })
+    const loginB = authenticate({
+      email: 'fictional.inspector@example.test',
+      password: 'synthetic-password',
+    })
+    releaseRefreshA.resolve()
+
+    await expect(staleRefresh).resolves.toBeNull()
+    await expect(logoutResult).resolves.toBe(true)
+    await loginB
+    expect(useAuthStore.getState()).toMatchObject({
+      status: 'authenticated',
+      accessToken: 'session-b-token',
+    })
+
+    await expect(refreshAccessToken()).resolves.toBe(
+      'refreshed-session-b-token',
+    )
+    expect(refreshCount).toBe(2)
+    expect(events).toEqual([
+      'refresh-a-started',
+      'refresh-a-settled',
+      'logout',
+      'login-b',
+      'refresh-b-started',
+    ])
   })
 
   it('clears shared refresh state after both failure and success', async () => {

@@ -187,6 +187,151 @@ test('unsafe redirect input falls back to the dashboard', async ({ page }) => {
   await expect(page).toHaveURL(/\/app\/dashboard$/)
 })
 
+test('a stale refresh cannot overwrite the cookie from a later logout and login', async ({
+  context,
+  page,
+}) => {
+  let loginCount = 0
+  let refreshCount = 0
+  let releaseStaleRefresh!: () => void
+  let markStaleRefreshStarted!: () => void
+  let markStaleResponseHandled!: () => void
+  const staleRefreshGate = new Promise<void>((resolve) => {
+    releaseStaleRefresh = resolve
+  })
+  const staleRefreshStarted = new Promise<void>((resolve) => {
+    markStaleRefreshStarted = resolve
+  })
+  const staleResponseHandled = new Promise<void>((resolve) => {
+    markStaleResponseHandled = resolve
+  })
+
+  await page.route(`${apiPattern}/login`, (route) => {
+    loginCount += 1
+    const suffix = loginCount === 1 ? 'a' : 'b'
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      headers: {
+        'set-cookie': `unipm_refresh=session-${suffix}; Path=/; HttpOnly; SameSite=Lax`,
+      },
+      body: JSON.stringify({
+        ...fictionalSession,
+        accessToken: `synthetic-session-${suffix}-access-token`,
+      }),
+    })
+  })
+  await page.route(`${apiPattern}/logout`, (route) => {
+    expect(route.request().headers().cookie).toContain(
+      'unipm_refresh=stale-session-a',
+    )
+    return route.fulfill({
+      status: 204,
+      headers: {
+        'set-cookie':
+          'unipm_refresh=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0',
+      },
+    })
+  })
+  await page.route(`${apiPattern}/refresh`, async (route) => {
+    refreshCount += 1
+    if (refreshCount === 1) {
+      return route.fulfill({
+        status: 401,
+        contentType: 'application/problem+json',
+        body: JSON.stringify({ title: 'Unauthorized', status: 401 }),
+      })
+    }
+
+    if (refreshCount === 2) {
+      expect(route.request().headers().cookie).toContain(
+        'unipm_refresh=session-a',
+      )
+      markStaleRefreshStarted()
+      await staleRefreshGate
+      try {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          headers: {
+            'set-cookie':
+              'unipm_refresh=stale-session-a; Path=/; HttpOnly; SameSite=Lax',
+          },
+          body: JSON.stringify({
+            ...fictionalSession,
+            accessToken: 'stale-session-a-access-token',
+          }),
+        })
+      } catch {
+        // The page may close before a delayed intercepted response is fulfilled.
+      } finally {
+        markStaleResponseHandled()
+      }
+      return
+    }
+
+    expect(route.request().headers().cookie).toContain(
+      'unipm_refresh=session-b',
+    )
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      headers: {
+        'set-cookie':
+          'unipm_refresh=session-b-refreshed; Path=/; HttpOnly; SameSite=Lax',
+      },
+      body: JSON.stringify({
+        ...fictionalSession,
+        accessToken: 'refreshed-session-b-access-token',
+      }),
+    })
+  })
+
+  await page.goto('/login')
+  await completeLogin(page)
+  await expect(page).toHaveURL(/\/app\/dashboard$/)
+
+  await page.evaluate(() => {
+    window.eval(
+      "window.__staleRefresh = import('/src/features/auth/auth-session-service.ts').then((module) => module.refreshAccessToken()).catch(() => null)",
+    )
+  })
+  await staleRefreshStarted
+  await page.evaluate(() =>
+    window.eval(`import('/src/features/auth/auth-session-service.ts').then((module) => {
+      window.__logoutDuringRefresh = module.logout()
+      window.__loginAfterLogout = module.authenticate({
+        email: 'fictional.inspector@example.test',
+        password: 'Synthetic Browser Password'
+      })
+      return true
+    })`),
+  )
+  releaseStaleRefresh()
+  await staleResponseHandled
+  await page.evaluate(() =>
+    window.eval(
+      'Promise.all([window.__staleRefresh, window.__logoutDuringRefresh, window.__loginAfterLogout])',
+    ),
+  )
+
+  let refreshCookie = (await context.cookies()).find(
+    (cookie) => cookie.name === 'unipm_refresh',
+  )
+  expect(refreshCookie?.value).toBe('session-b')
+
+  await page.evaluate(() =>
+    window.eval(
+      "import('/src/features/auth/auth-session-service.ts').then((module) => module.refreshAccessToken())",
+    ),
+  )
+  refreshCookie = (await context.cookies()).find(
+    (cookie) => cookie.name === 'unipm_refresh',
+  )
+  expect(refreshCookie?.value).toBe('session-b-refreshed')
+  expect(refreshCount).toBe(3)
+})
+
 test('unknown routes keep the safe not-found boundary', async ({ page }) => {
   await mockAnonymousRefresh(page)
   await page.goto('/unknown')

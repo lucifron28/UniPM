@@ -21,10 +21,20 @@ type SessionRuntime = {
   invalidateRoutes: () => void
 }
 
+type RefreshPurpose = 'initialization' | 'access'
+
+type RefreshFlight = {
+  generation: number
+  controller: AbortController
+  promise: Promise<string | null>
+}
+
 let runtime: SessionRuntime = { invalidateRoutes: () => undefined }
 let sessionGeneration = 0
 let initializationPromise: Promise<void> | null = null
-let refreshPromise: Promise<string | null> | null = null
+let refreshFlight: RefreshFlight | null = null
+let cookieMutationGeneration: number | null = null
+let cookieMutationTail: Promise<void> = Promise.resolve()
 
 export class AuthSessionResponseError extends Error {
   constructor() {
@@ -93,32 +103,101 @@ export function clearLocalSession(expectedGeneration?: number) {
   return true
 }
 
+async function settleRefresh(flight: RefreshFlight | null) {
+  if (!flight) return
+
+  try {
+    await flight.promise
+  } catch {
+    // Login or logout remains the next and final cookie writer after failure.
+  }
+}
+
+function enqueueCookieMutation<T>(operation: () => Promise<T>): Promise<T> {
+  const previous = cookieMutationTail
+  let release!: () => void
+  cookieMutationTail = new Promise<void>((resolve) => {
+    release = resolve
+  })
+
+  return (async () => {
+    await previous
+    try {
+      return await operation()
+    } finally {
+      release()
+    }
+  })()
+}
+
+function createRefreshFlight(
+  generation: number,
+  purpose: RefreshPurpose,
+): RefreshFlight {
+  const controller = new AbortController()
+  const flight: RefreshFlight = {
+    generation,
+    controller,
+    promise: Promise.resolve(null),
+  }
+  flight.promise = (async () => {
+    try {
+      const response = await refreshSession(controller.signal)
+      return establishSession(response, generation)?.accessToken ?? null
+    } catch (error) {
+      if (generation !== sessionGeneration) return null
+
+      if (purpose === 'initialization') {
+        if (error instanceof ApiError && error.status === 401) {
+          clearSessionForGeneration(generation)
+          return null
+        }
+
+        if (error instanceof ApiError && error.status === 403) {
+          clearSessionForGeneration(generation, RESTORATION_ORIGIN_ERROR)
+          return null
+        }
+
+        if (error instanceof AuthSessionResponseError) return null
+
+        clearSessionForGeneration(generation, RESTORATION_NETWORK_ERROR)
+        return null
+      }
+
+      clearSessionForGeneration(generation)
+      throw error
+    }
+  })().finally(() => {
+    if (refreshFlight === flight) refreshFlight = null
+  })
+
+  refreshFlight = flight
+  return flight
+}
+
+async function refreshForGeneration(
+  generation: number,
+  purpose: RefreshPurpose,
+): Promise<string | null> {
+  while (refreshFlight) {
+    if (refreshFlight.generation === generation) return refreshFlight.promise
+
+    const staleFlight = refreshFlight
+    await settleRefresh(staleFlight)
+    if (generation !== sessionGeneration) return null
+  }
+
+  if (cookieMutationGeneration !== null) return null
+  return createRefreshFlight(generation, purpose).promise
+}
+
 export async function ensureSessionInitialized(): Promise<void> {
   if (useAuthStore.getState().status !== 'checking') return
   if (initializationPromise) return initializationPromise
 
   const generation = sessionGeneration
   initializationPromise = (async () => {
-    try {
-      const response = await refreshSession()
-      establishSession(response, generation)
-    } catch (error) {
-      if (generation !== sessionGeneration) return
-
-      if (error instanceof ApiError && error.status === 401) {
-        clearSessionForGeneration(generation)
-        return
-      }
-
-      if (error instanceof ApiError && error.status === 403) {
-        clearSessionForGeneration(generation, RESTORATION_ORIGIN_ERROR)
-        return
-      }
-
-      if (error instanceof AuthSessionResponseError) return
-
-      clearSessionForGeneration(generation, RESTORATION_NETWORK_ERROR)
-    }
+    await refreshForGeneration(generation, 'initialization')
   })().finally(() => {
     initializationPromise = null
   })
@@ -129,49 +208,60 @@ export async function ensureSessionInitialized(): Promise<void> {
 export async function authenticate(
   credentials: Required<Pick<LoginRequest, 'email' | 'password'>>,
 ): Promise<AuthUserResponse> {
+  const staleFlight = refreshFlight
   sessionGeneration += 1
   const generation = sessionGeneration
+  cookieMutationGeneration = generation
   useAuthStore.getState().markAnonymous()
-  const response = await login(credentials)
-  const session = establishSession(response, generation)
-  if (!session) throw new AuthSessionResponseError()
-  return session.user
+  try {
+    return await enqueueCookieMutation(async () => {
+      await settleRefresh(staleFlight)
+      const response = await login(credentials)
+      const session = establishSession(response, generation)
+      if (!session) throw new AuthSessionResponseError()
+      return session.user
+    })
+  } finally {
+    if (cookieMutationGeneration === generation) {
+      cookieMutationGeneration = null
+    }
+  }
 }
 
 export async function refreshAccessToken(): Promise<string | null> {
-  if (refreshPromise) return refreshPromise
-
   const generation = sessionGeneration
-  refreshPromise = (async () => {
-    try {
-      const response = await refreshSession()
-      return establishSession(response, generation)?.accessToken ?? null
-    } catch (error) {
-      if (generation === sessionGeneration)
-        clearSessionForGeneration(generation)
-      throw error
-    }
-  })().finally(() => {
-    refreshPromise = null
-  })
-
-  return refreshPromise
+  return refreshForGeneration(generation, 'access')
 }
 
 export async function logout(): Promise<boolean> {
+  const staleFlight = refreshFlight
   clearLocalSession()
+  const generation = sessionGeneration
+  cookieMutationGeneration = generation
   try {
-    await requestLogout()
-    return true
-  } catch {
-    return false
+    return await enqueueCookieMutation(async () => {
+      await settleRefresh(staleFlight)
+      try {
+        await requestLogout()
+        return true
+      } catch {
+        return false
+      }
+    })
+  } finally {
+    if (cookieMutationGeneration === generation) {
+      cookieMutationGeneration = null
+    }
   }
 }
 
 export function resetAuthSessionForTests() {
+  refreshFlight?.controller.abort()
   sessionGeneration = 0
   initializationPromise = null
-  refreshPromise = null
+  refreshFlight = null
+  cookieMutationGeneration = null
+  cookieMutationTail = Promise.resolve()
   runtime = { invalidateRoutes: () => undefined }
   queryClient.clear()
   useAuthStore.setState({
