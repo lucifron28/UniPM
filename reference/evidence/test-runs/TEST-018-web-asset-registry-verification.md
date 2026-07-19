@@ -4,7 +4,7 @@ type: test-run
 title: Web asset registry verification
 status: executed
 recordedAtUtc: 2026-07-19T07:05:00Z
-testedCommit: 300859ce00821caf8ff074a2cf3691b3e5f1957b
+testedCommit: 34ff8561b1fcad7f933dfe520b9de67075333684
 sourceBranch: feat/web-assets
 evidenceLevel: locally-executed
 ---
@@ -24,7 +24,7 @@ evidenceLevel: locally-executed
 - Backend test suite: 282 passed, 0 failed, 24 skipped, 306 total. Skips were SQL Server and configured-provider dependent.
 - Vitest: 10 files and 66 tests passed. Coverage: 91.23% statements, 79.03% branches, 89.09% functions, and 91.98% lines.
 - Playwright: 12 Chromium tests passed using fictional intercepted sessions and asset records.
-- Offline contract check and generated-client drift check passed; generation did not require the running backend.
+- Offline contract check and generated-client drift check passed; generation did not require the running backend. The committed lockfile now installs on the Node 22 CI toolchain.
 
 ## Negative And Visual Checks
 

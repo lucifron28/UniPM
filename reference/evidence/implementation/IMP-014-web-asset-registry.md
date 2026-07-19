@@ -16,7 +16,7 @@ Add the first source-backed operational web module without extending the provisi
 
 ## Source Identity
 
-- Implementation commit: `300859ce00821caf8ff074a2cf3691b3e5f1957b`
+- Implementation commits: `300859ce00821caf8ff074a2cf3691b3e5f1957b` and the Node 22 CI lockfile correction `34ff8561b1fcad7f933dfe520b9de67075333684`
 - Source paths: asset endpoints and tests, generated web client, and `web/src/features/assets/`.
 
 ## Implementation Summary
