@@ -9,7 +9,7 @@ import { normalizeApiError } from './problem-details'
 type ApiRuntime = {
   getAccessToken: () => string | null
   getSessionGeneration: () => number
-  refreshAccessToken: () => Promise<string | null>
+  refreshAccessToken: (expectedGeneration: number) => Promise<string | null>
   onTerminalUnauthorized: (requestGeneration?: number) => void
 }
 
@@ -90,18 +90,28 @@ httpClient.interceptors.response.use(
       return Promise.reject(normalized)
     }
 
+    const requestGeneration = config.authSessionGeneration
+    if (
+      requestGeneration === undefined ||
+      requestGeneration !== runtime.getSessionGeneration()
+    ) {
+      return Promise.reject(normalized)
+    }
+
     if (config.authRetryAttempted) {
-      runtime.onTerminalUnauthorized(config.authSessionGeneration)
+      runtime.onTerminalUnauthorized(requestGeneration)
       return Promise.reject(normalized)
     }
 
     config.authRetryAttempted = true
     try {
-      const token = await runtime.refreshAccessToken()
+      const token = await runtime.refreshAccessToken(requestGeneration)
       if (config.signal?.aborted) {
         return Promise.reject(normalizeApiError(new CanceledError()))
       }
-      if (!token) return Promise.reject(normalized)
+      if (!token || requestGeneration !== runtime.getSessionGeneration()) {
+        return Promise.reject(normalized)
+      }
 
       const replayConfig = {
         ...config,

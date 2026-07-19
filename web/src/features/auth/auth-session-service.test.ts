@@ -4,8 +4,10 @@ import { queryClient } from '@/app/query-client'
 import { currentUserQueryKey } from '@/features/auth/current-user'
 import {
   authenticate,
+  clearLocalSession,
   configureAuthSessionRuntime,
   ensureSessionInitialized,
+  getSessionGeneration,
   logout,
   refreshAccessToken,
 } from '@/features/auth/auth-session-service'
@@ -161,7 +163,7 @@ describe('authentication session coordinator', () => {
     )
     useAuthStore.getState().establishSession('expired-synthetic-token')
 
-    const refresh = refreshAccessToken()
+    const refresh = refreshAccessToken(getSessionGeneration())
     const logoutResult = logout()
     expect(useAuthStore.getState()).toMatchObject({
       status: 'anonymous',
@@ -190,7 +192,7 @@ describe('authentication session coordinator', () => {
     )
     useAuthStore.getState().establishSession('expired-synthetic-token')
 
-    const refresh = refreshAccessToken()
+    const refresh = refreshAccessToken(getSessionGeneration())
     const loginResult = authenticate({
       email: 'fictional.inspector@example.test',
       password: 'synthetic-password',
@@ -244,10 +246,12 @@ describe('authentication session coordinator', () => {
     )
     useAuthStore.getState().establishSession('session-a-token')
 
-    const staleRefresh = refreshAccessToken().then((value) => {
-      events.push('refresh-a-settled')
-      return value
-    })
+    const staleRefresh = refreshAccessToken(getSessionGeneration()).then(
+      (value) => {
+        events.push('refresh-a-settled')
+        return value
+      },
+    )
     await refreshAStarted.promise
     const logoutResult = logout()
     expect(useAuthStore.getState()).toMatchObject({
@@ -268,7 +272,7 @@ describe('authentication session coordinator', () => {
       accessToken: 'session-b-token',
     })
 
-    await expect(refreshAccessToken()).resolves.toBe(
+    await expect(refreshAccessToken(getSessionGeneration())).resolves.toBe(
       'refreshed-session-b-token',
     )
     expect(refreshCount).toBe(2)
@@ -293,10 +297,31 @@ describe('authentication session coordinator', () => {
     )
     useAuthStore.getState().establishSession('expired-synthetic-token')
 
-    await expect(refreshAccessToken()).rejects.toMatchObject({ status: 401 })
+    await expect(
+      refreshAccessToken(getSessionGeneration()),
+    ).rejects.toMatchObject({ status: 401 })
     useAuthStore.getState().establishSession('another-expired-token')
-    await expect(refreshAccessToken()).resolves.toBe(session.accessToken)
+    await expect(refreshAccessToken(getSessionGeneration())).resolves.toBe(
+      session.accessToken,
+    )
     expect(attempt).toBe(2)
+  })
+
+  it('does not start a refresh for an older expected generation', async () => {
+    let refreshCount = 0
+    server.use(
+      http.post(`${apiBase}/refresh`, () => {
+        refreshCount += 1
+        return HttpResponse.json(session)
+      }),
+    )
+    const sessionAGeneration = getSessionGeneration()
+    clearLocalSession(sessionAGeneration)
+    useAuthStore.getState().establishSession('session-b-token')
+
+    await expect(refreshAccessToken(sessionAGeneration)).resolves.toBeNull()
+    expect(refreshCount).toBe(0)
+    expect(useAuthStore.getState().accessToken).toBe('session-b-token')
   })
 
   it('clears all query data and remains locally signed out when logout fails', async () => {

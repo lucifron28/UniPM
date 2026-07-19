@@ -293,7 +293,7 @@ test('a stale refresh cannot overwrite the cookie from a later logout and login'
 
   await page.evaluate(() => {
     window.eval(
-      "window.__staleRefresh = import('/src/features/auth/auth-session-service.ts').then((module) => module.refreshAccessToken()).catch(() => null)",
+      "window.__staleRefresh = import('/src/features/auth/auth-session-service.ts').then((module) => module.refreshAccessToken(module.getSessionGeneration())).catch(() => null)",
     )
   })
   await staleRefreshStarted
@@ -322,7 +322,7 @@ test('a stale refresh cannot overwrite the cookie from a later logout and login'
 
   await page.evaluate(() =>
     window.eval(
-      "import('/src/features/auth/auth-session-service.ts').then((module) => module.refreshAccessToken())",
+      "import('/src/features/auth/auth-session-service.ts').then((module) => module.refreshAccessToken(module.getSessionGeneration()))",
     ),
   )
   refreshCookie = (await context.cookies()).find(

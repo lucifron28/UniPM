@@ -179,6 +179,8 @@ async function refreshForGeneration(
   generation: number,
   purpose: RefreshPurpose,
 ): Promise<string | null> {
+  if (generation !== sessionGeneration) return null
+
   while (refreshFlight) {
     if (refreshFlight.generation === generation) return refreshFlight.promise
 
@@ -228,9 +230,10 @@ export async function authenticate(
   }
 }
 
-export async function refreshAccessToken(): Promise<string | null> {
-  const generation = sessionGeneration
-  return refreshForGeneration(generation, 'access')
+export async function refreshAccessToken(
+  expectedGeneration: number,
+): Promise<string | null> {
+  return refreshForGeneration(expectedGeneration, 'access')
 }
 
 export async function logout(): Promise<boolean> {

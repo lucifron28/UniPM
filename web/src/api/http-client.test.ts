@@ -143,6 +143,67 @@ describe('HTTP client', () => {
     expect(protectedCount).toBe(4)
   })
 
+  it('does not refresh or replay a request from an older session generation', async () => {
+    let generation = 1
+    let releaseUnauthorized!: () => void
+    const unauthorizedGate = new Promise<void>((resolve) => {
+      releaseUnauthorized = resolve
+    })
+    const refresh = vi.fn(async () => 'session-b-refreshed-token')
+    configureRuntime({
+      getAccessToken: () =>
+        generation === 1 ? 'session-a-token' : 'session-b-token',
+      getSessionGeneration: () => generation,
+      refreshAccessToken: refresh,
+    })
+    let requests = 0
+    server.use(
+      http.get(`${baseUrl}/session-bound`, async () => {
+        requests += 1
+        await unauthorizedGate
+        return HttpResponse.json({ title: 'Unauthorized' }, { status: 401 })
+      }),
+    )
+
+    const sessionARequest = customInstance({ url: '/session-bound' })
+    await vi.waitFor(() => expect(requests).toBe(1))
+    generation = 2
+    releaseUnauthorized()
+
+    await expect(sessionARequest).rejects.toMatchObject({ status: 401 })
+    expect(refresh).not.toHaveBeenCalled()
+    expect(requests).toBe(1)
+  })
+
+  it('does not replay when the session generation changes during refresh', async () => {
+    let generation = 1
+    let releaseRefresh!: (token: string) => void
+    const refreshResult = new Promise<string>((resolve) => {
+      releaseRefresh = resolve
+    })
+    const refresh = vi.fn(() => refreshResult)
+    configureRuntime({
+      getAccessToken: () => 'session-a-token',
+      getSessionGeneration: () => generation,
+      refreshAccessToken: refresh,
+    })
+    let requests = 0
+    server.use(
+      http.get(`${baseUrl}/generation-change`, () => {
+        requests += 1
+        return HttpResponse.json({ title: 'Unauthorized' }, { status: 401 })
+      }),
+    )
+
+    const sessionARequest = customInstance({ url: '/generation-change' })
+    await vi.waitFor(() => expect(refresh).toHaveBeenCalledWith(1))
+    generation = 2
+    releaseRefresh('session-a-refreshed-token')
+
+    await expect(sessionARequest).rejects.toMatchObject({ status: 401 })
+    expect(requests).toBe(1)
+  })
+
   it('does not loop when the replay also returns unauthorized', async () => {
     const refresh = vi.fn(async () => 'synthetic-refreshed-token')
     const terminal = vi.fn()
