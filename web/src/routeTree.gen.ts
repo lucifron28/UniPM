@@ -14,6 +14,9 @@ import { Route as AppRouteRouteImport } from './routes/app/route'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppIndexRouteImport } from './routes/app/index'
 import { Route as AppDashboardRouteImport } from './routes/app/dashboard'
+import { Route as AppAssetsIndexRouteImport } from './routes/app/assets/index'
+import { Route as AppAssetsAssetIdRouteImport } from './routes/app/assets/$assetId'
+import { Route as AppAssetsNewRouteImport } from './routes/app/assets/new'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -40,6 +43,21 @@ const AppDashboardRoute = AppDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AppRouteRoute,
 } as any)
+const AppAssetsIndexRoute = AppAssetsIndexRouteImport.update({
+  id: '/assets/',
+  path: '/assets/',
+  getParentRoute: () => AppRouteRoute,
+} as any)
+const AppAssetsAssetIdRoute = AppAssetsAssetIdRouteImport.update({
+  id: '/assets/$assetId',
+  path: '/assets/$assetId',
+  getParentRoute: () => AppRouteRoute,
+} as any)
+const AppAssetsNewRoute = AppAssetsNewRouteImport.update({
+  id: '/assets/new',
+  path: '/assets/new',
+  getParentRoute: () => AppRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -47,12 +65,18 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/app/dashboard': typeof AppDashboardRoute
   '/app/': typeof AppIndexRoute
+  '/app/assets/$assetId': typeof AppAssetsAssetIdRoute
+  '/app/assets/new': typeof AppAssetsNewRoute
+  '/app/assets/': typeof AppAssetsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/app/dashboard': typeof AppDashboardRoute
   '/app': typeof AppIndexRoute
+  '/app/assets/$assetId': typeof AppAssetsAssetIdRoute
+  '/app/assets/new': typeof AppAssetsNewRoute
+  '/app/assets': typeof AppAssetsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -61,13 +85,40 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/app/dashboard': typeof AppDashboardRoute
   '/app/': typeof AppIndexRoute
+  '/app/assets/$assetId': typeof AppAssetsAssetIdRoute
+  '/app/assets/new': typeof AppAssetsNewRoute
+  '/app/assets/': typeof AppAssetsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/app' | '/login' | '/app/dashboard' | '/app/'
+  fullPaths:
+    | '/'
+    | '/app'
+    | '/login'
+    | '/app/dashboard'
+    | '/app/'
+    | '/app/assets/$assetId'
+    | '/app/assets/new'
+    | '/app/assets/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/app/dashboard' | '/app'
-  id: '__root__' | '/' | '/app' | '/login' | '/app/dashboard' | '/app/'
+  to:
+    | '/'
+    | '/login'
+    | '/app/dashboard'
+    | '/app'
+    | '/app/assets/$assetId'
+    | '/app/assets/new'
+    | '/app/assets'
+  id:
+    | '__root__'
+    | '/'
+    | '/app'
+    | '/login'
+    | '/app/dashboard'
+    | '/app/'
+    | '/app/assets/$assetId'
+    | '/app/assets/new'
+    | '/app/assets/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -113,17 +164,44 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppDashboardRouteImport
       parentRoute: typeof AppRouteRoute
     }
+    '/app/assets/': {
+      id: '/app/assets/'
+      path: '/assets'
+      fullPath: '/app/assets/'
+      preLoaderRoute: typeof AppAssetsIndexRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
+    '/app/assets/$assetId': {
+      id: '/app/assets/$assetId'
+      path: '/assets/$assetId'
+      fullPath: '/app/assets/$assetId'
+      preLoaderRoute: typeof AppAssetsAssetIdRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
+    '/app/assets/new': {
+      id: '/app/assets/new'
+      path: '/assets/new'
+      fullPath: '/app/assets/new'
+      preLoaderRoute: typeof AppAssetsNewRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
   }
 }
 
 interface AppRouteRouteChildren {
   AppDashboardRoute: typeof AppDashboardRoute
   AppIndexRoute: typeof AppIndexRoute
+  AppAssetsAssetIdRoute: typeof AppAssetsAssetIdRoute
+  AppAssetsNewRoute: typeof AppAssetsNewRoute
+  AppAssetsIndexRoute: typeof AppAssetsIndexRoute
 }
 
 const AppRouteRouteChildren: AppRouteRouteChildren = {
   AppDashboardRoute: AppDashboardRoute,
   AppIndexRoute: AppIndexRoute,
+  AppAssetsAssetIdRoute: AppAssetsAssetIdRoute,
+  AppAssetsNewRoute: AppAssetsNewRoute,
+  AppAssetsIndexRoute: AppAssetsIndexRoute,
 }
 
 const AppRouteRouteWithChildren = AppRouteRoute._addFileChildren(

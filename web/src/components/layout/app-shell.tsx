@@ -1,5 +1,5 @@
 import { Link, Outlet } from '@tanstack/react-router'
-import { LayoutDashboard } from 'lucide-react'
+import { Boxes, LayoutDashboard } from 'lucide-react'
 import { Alert } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { BrandMark } from '@/components/brand-mark'
@@ -83,11 +83,33 @@ export function AppShell() {
         <nav aria-label="Primary" className="flex-1 p-4">
           <Link
             to="/app/dashboard"
-            activeProps={{ 'aria-current': 'page' }}
-            className="flex items-center gap-3 rounded-lg bg-[var(--primary-active)] px-4 py-3 text-sm font-semibold text-white shadow-sm"
+            activeProps={{
+              'aria-current': 'page',
+              className:
+                'flex items-center gap-3 rounded-lg bg-[var(--primary-active)] px-4 py-3 text-sm font-semibold text-white shadow-sm',
+            }}
+            inactiveProps={{
+              className:
+                'flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-semibold text-[var(--text-secondary)] hover:bg-[var(--page-background)]',
+            }}
           >
             <LayoutDashboard aria-hidden="true" className="size-5" />
             Dashboard
+          </Link>
+          <Link
+            to="/app/assets"
+            activeProps={{
+              'aria-current': 'page',
+              className:
+                'mt-1 flex items-center gap-3 rounded-lg bg-[var(--primary-active)] px-4 py-3 text-sm font-semibold text-white shadow-sm',
+            }}
+            inactiveProps={{
+              className:
+                'mt-1 flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-semibold text-[var(--text-secondary)] hover:bg-[var(--page-background)]',
+            }}
+          >
+            <Boxes aria-hidden="true" className="size-5" />
+            Assets
           </Link>
         </nav>
         <div className="space-y-4 border-t border-[var(--border-soft)] p-4">

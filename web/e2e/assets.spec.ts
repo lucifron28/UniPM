@@ -1,0 +1,97 @@
+import { expect, test, type Page } from '@playwright/test'
+
+const gsdSession = {
+  accessToken: 'fictional-gsd-asset-token',
+  expiresAtUtc: '2026-07-19T12:00:00Z',
+  user: {
+    id: '22222222-2222-4222-8222-222222222222',
+    email: 'fictional.gsd@example.test',
+    displayName: 'Fictional GSD User',
+    roles: ['GSD'],
+  },
+}
+
+const assets = [
+  {
+    id: '11111111-1111-4111-8111-111111111111',
+    assetCode: 'FE-001',
+    assetCategory: 'fire-extinguisher',
+    building: 'Main Building',
+    department: 'GSD',
+    location: 'Lobby',
+    qrCodeValue: 'UNIPM-FIREEXTINGUISHER-11111111',
+    status: 'Active',
+    createdAt: '2026-07-19T00:00:00+00:00',
+    updatedAt: '2026-07-19T00:00:00+00:00',
+  },
+  {
+    id: '33333333-3333-4333-8333-333333333333',
+    assetCode: 'FA-001',
+    assetCategory: 'fire-alarm',
+    building: 'Science Building',
+    department: 'Chemistry',
+    location: 'Second floor',
+    qrCodeValue: 'UNIPM-FIREALARM-33333333',
+    status: 'Inactive',
+    createdAt: '2026-07-19T00:00:00+00:00',
+    updatedAt: '2026-07-19T00:00:00+00:00',
+  },
+]
+
+async function mockAssetRegistry(page: Page) {
+  await page.route('**/api/v1/auth/refresh', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(gsdSession),
+    }),
+  )
+  await page.route('**/api/v1/auth/me', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(gsdSession.user),
+    }),
+  )
+  await page.route('**/api/v1/reference-data/asset-categories', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([
+        { code: 'fire-extinguisher', displayName: 'Fire extinguishers' },
+        { code: 'fire-alarm', displayName: 'Fire alarm systems' },
+        { code: 'emergency-light', displayName: 'Emergency lights' },
+        {
+          code: 'water-drinking-station',
+          displayName: 'Water drinking stations',
+        },
+      ]),
+    }),
+  )
+  await page.route('**/api/v1/assets**', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(assets),
+    }),
+  )
+  await page.route(`**/api/v1/assets/${assets[0].id}`, (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(assets[0]),
+    }),
+  )
+}
+
+test('authenticated GSD users can browse and filter fictional assets', async ({
+  page,
+}) => {
+  await mockAssetRegistry(page)
+  await page.goto('/app/assets')
+  await expect(page.getByRole('heading', { name: 'Assets' })).toBeVisible()
+  await expect(page.getByText('FE-001').first()).toBeVisible()
+  await page.getByLabel('Asset category').selectOption('fire-alarm')
+  await expect(page).toHaveURL(/assetCategory=fire-alarm/)
+  await expect(page.getByText('FA-001').first()).toBeVisible()
+})

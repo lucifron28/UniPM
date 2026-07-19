@@ -6,7 +6,7 @@
   },
   "servers": [
     {
-      "url": "http://localhost:5254/"
+      "url": "http://localhost:5000/"
     }
   ],
   "paths": {
@@ -191,6 +191,8 @@
     "/api/v1/assets": {
       "post": {
         "tags": ["Assets"],
+        "summary": "Creates an asset in the current UniPM study scope",
+        "operationId": "CreateAsset",
         "requestBody": {
           "content": {
             "application/json": {
@@ -202,13 +204,62 @@
           "required": true
         },
         "responses": {
-          "200": {
-            "description": "OK"
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         }
       },
       "get": {
         "tags": ["Assets"],
+        "summary": "Lists assets using supported category, status, building, and department filters",
+        "operationId": "ListAssets",
         "parameters": [
           {
             "name": "assetCategory",
@@ -241,7 +292,27 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AssetResponse"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
           }
         }
       }
@@ -249,6 +320,8 @@
     "/api/v1/assets/{id}": {
       "get": {
         "tags": ["Assets"],
+        "summary": "Gets an asset by its identifier",
+        "operationId": "GetAsset",
         "parameters": [
           {
             "name": "id",
@@ -262,7 +335,24 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         }
       }
@@ -270,6 +360,8 @@
     "/api/v1/assets/by-qr/{qrCodeValue}": {
       "get": {
         "tags": ["Assets"],
+        "summary": "Gets an asset by its QR identifier",
+        "operationId": "GetAssetByQr",
         "parameters": [
           {
             "name": "qrCodeValue",
@@ -282,7 +374,34 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         }
       }
@@ -532,6 +651,56 @@
           }
         }
       },
+      "AssetResponse": {
+        "required": [
+          "id",
+          "assetCode",
+          "assetCategory",
+          "building",
+          "department",
+          "location",
+          "qrCodeValue",
+          "status",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "assetCode": {
+            "type": "string"
+          },
+          "assetCategory": {
+            "type": "string"
+          },
+          "building": {
+            "type": ["null", "string"]
+          },
+          "department": {
+            "type": ["null", "string"]
+          },
+          "location": {
+            "type": ["null", "string"]
+          },
+          "qrCodeValue": {
+            "type": ["null", "string"]
+          },
+          "status": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
       "AuthUserResponse": {
         "required": ["id", "email", "displayName", "roles"],
         "type": "object",
@@ -718,6 +887,37 @@
           },
           "actionsRecommendations": {
             "type": ["null", "string"]
+          }
+        }
+      },
+      "ValidationProblemDetails": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": ["null", "string"]
+          },
+          "title": {
+            "type": ["null", "string"]
+          },
+          "status": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["null", "integer", "string"],
+            "format": "int32"
+          },
+          "detail": {
+            "type": ["null", "string"]
+          },
+          "instance": {
+            "type": ["null", "string"]
+          },
+          "errors": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
           }
         }
       }

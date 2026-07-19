@@ -5,7 +5,7 @@
  * OpenAPI spec version: 1.0.0
  */
 
-export type GetApiV1AssetsParams = {
+export type ListAssetsParams = {
   assetCategory?: string
   status?: string
   building?: string

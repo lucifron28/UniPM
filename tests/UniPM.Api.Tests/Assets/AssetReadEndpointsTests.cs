@@ -65,6 +65,32 @@ public sealed class AssetReadEndpointsTests
     }
 
     [Fact]
+    public async Task Create_asset_returns_the_public_asset_response_and_location_header()
+    {
+        await using var application = new TestApplicationFactory();
+        var client = application.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/api/v1/assets/", new
+        {
+            assetCode = "FE-OPENAPI-001",
+            assetCategory = "fire-extinguisher",
+            building = "Main",
+            department = "GSD",
+            location = "Lobby"
+        });
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        Assert.NotNull(response.Headers.Location);
+        var document = System.Text.Json.JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var root = document.RootElement;
+        Assert.True(root.TryGetProperty("id", out var id));
+        Assert.Equal(System.Text.Json.JsonValueKind.String, id.ValueKind);
+        Assert.Equal("FE-OPENAPI-001", root.GetProperty("assetCode").GetString());
+        Assert.Equal("fire-extinguisher", root.GetProperty("assetCategory").GetString());
+        Assert.False(root.TryGetProperty("descriptionEmbedding", out _));
+    }
+
+    [Fact]
     public async Task Get_asset_by_id_returns_asset_response()
     {
         await using var application = new TestApplicationFactory();

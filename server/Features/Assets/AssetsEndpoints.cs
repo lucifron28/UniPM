@@ -62,8 +62,18 @@ public static class AssetsEndpoints
                 return ApiErrors.Conflict("Asset code or QR code value already exists.");
             }
 
-            return Results.Created($"/api/v1/assets/{asset.Id}", asset);
-        }).RequireAuthorization(AuthPolicyCatalog.CanManageAssets);
+            return Results.Created(
+                $"/api/v1/assets/{asset.Id}",
+                AssetResponse.FromAsset(asset));
+        })
+        .WithName("CreateAsset")
+        .WithSummary("Creates an asset in the current UniPM study scope")
+        .Produces<AssetResponse>(StatusCodes.Status201Created)
+        .Produces<Microsoft.AspNetCore.Mvc.ValidationProblemDetails>(StatusCodes.Status400BadRequest)
+        .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status401Unauthorized)
+        .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status403Forbidden)
+        .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status409Conflict)
+        .RequireAuthorization(AuthPolicyCatalog.CanManageAssets);
 
         group.MapGet("/{id}", async (
             Guid id,
@@ -73,7 +83,11 @@ public static class AssetsEndpoints
             await using var context = await factory.CreateDbContextAsync(cancellationToken);
             var asset = await context.Assets.FirstOrDefaultAsync(asset => asset.Id == id, cancellationToken);
             return asset is not null ? Results.Ok(AssetResponse.FromAsset(asset)) : ApiErrors.NotFound("Asset not found.");
-        });
+        })
+        .WithName("GetAsset")
+        .WithSummary("Gets an asset by its identifier")
+        .Produces<AssetResponse>(StatusCodes.Status200OK)
+        .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status404NotFound);
 
         group.MapGet("/", async (
             string? assetCategory,
@@ -140,7 +154,11 @@ public static class AssetsEndpoints
                 .ToListAsync(cancellationToken);
 
             return Results.Ok(assets);
-        });
+        })
+        .WithName("ListAssets")
+        .WithSummary("Lists assets using supported category, status, building, and department filters")
+        .Produces<IReadOnlyList<AssetResponse>>(StatusCodes.Status200OK)
+        .Produces<Microsoft.AspNetCore.Mvc.ValidationProblemDetails>(StatusCodes.Status400BadRequest);
 
         group.MapGet("/by-qr/{qrCodeValue}", async (
             string qrCodeValue,
@@ -165,7 +183,12 @@ public static class AssetsEndpoints
                     cancellationToken);
 
             return asset is not null ? Results.Ok(AssetResponse.FromAsset(asset)) : ApiErrors.NotFound("Asset not found.");
-        });
+        })
+        .WithName("GetAssetByQr")
+        .WithSummary("Gets an asset by its QR identifier")
+        .Produces<AssetResponse>(StatusCodes.Status200OK)
+        .Produces<Microsoft.AspNetCore.Mvc.ValidationProblemDetails>(StatusCodes.Status400BadRequest)
+        .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status404NotFound);
 
         return endpoints;
     }

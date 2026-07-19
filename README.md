@@ -82,8 +82,11 @@ npm run dev
 
 See [web/README.md](web/README.md) for the authentication boundary, local setup,
 committed OpenAPI generation flow, and source-inspected Figma alignment.
-Operational web modules remain deferred.
-
+The first operational web module is the authenticated asset registry. It offers
+asset list/detail views, GSD-only provisional creation, QR-value copying, and
+reference-data category labels. Its search and pagination are client-side over
+the backend-filtered list; it does not create QR images or add unsupported PM,
+audit, condition, or device-specification fields.
 
 ## First Run
 
