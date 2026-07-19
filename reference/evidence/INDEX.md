@@ -56,6 +56,9 @@ record's evidence level and tested/source commit.
 | IMP-013 | implementation | React browser authentication integration | reviewed | source-inspected | `c3bb6ba` | [record](implementation/IMP-013-web-browser-authentication.md) | Memory-only access token, generation-bound request retries and refresh, serialized cookie transitions, and protected routes. |
 | ADR-009 | decision | Coordinate memory-only browser sessions with bounded refresh replay | reviewed | source-inspected | `c3bb6ba` | [record](decisions/ADR-009-browser-session-restoration-and-refresh-retry.md) | Request-generation binding, one refresh flight per generation, ordered cookie writers, one replay, and complete Query clearing. |
 | TEST-017 | test-run | React browser authentication verification | executed | locally-executed | `c3bb6ba` | [record](test-runs/TEST-017-web-authentication-verification.md) | npm clean install, 62 Vitest tests, 11 Chromium tests, stale-request and actual-cookie ordering coverage, and the 280-pass backend baseline passed. |
+| IMP-014 | implementation | React web asset registry | reviewed | source-inspected | `300859c` | [record](implementation/IMP-014-web-asset-registry.md) | Typed asset contract, runtime validation, registry/detail/create routes, and provisional GSD creation UI. |
+| ADR-010 | decision | Keep asset client state and contract boundaries explicit | reviewed | source-inspected | `300859c` | [record](decisions/ADR-010-asset-client-contract-and-state-boundaries.md) | Query, router, generated-client, validation, and backend-authority boundaries. |
+| TEST-018 | test-run | Web asset registry verification | executed | locally-executed | `300859c` | [record](test-runs/TEST-018-web-asset-registry-verification.md) | Release/API/web/browser verification with skipped SQL/provider checks and a pre-existing formatter baseline. |
 
 ## Pending Evidence
 
