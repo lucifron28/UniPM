@@ -3,9 +3,9 @@ id: IMP-013
 type: implementation
 title: React browser authentication integration
 status: reviewed
-recordedAtUtc: 2026-07-18T17:57:08Z
+recordedAtUtc: 2026-07-19T02:17:28Z
 sourceBranch: feat/web-auth-integration
-sourceCommit: 8b2f1436fa6c15962f3db04dc66ba4dd8aa266b1
+sourceCommit: c3bb6baefad62dacbe655102534b0aca38d2269c
 evidenceLevel: source-inspected
 ---
 
@@ -32,6 +32,12 @@ attaches the current Bearer token only to non-auth API requests and permits one
 replay after an ordinary 401. It preserves request configuration and does not
 replay an aborted request. Login, refresh, and logout are excluded from
 automatic refresh.
+
+Each ordinary request records the session generation that supplied its token.
+The 401 boundary rejects responses from an older generation before refresh,
+passes the recorded generation into the coordinator, and rechecks it before
+replay. A Session A request therefore cannot refresh or replay with Session B's
+credentials.
 
 A monotonic session generation prevents late bootstrap or refresh results from
 overwriting a newer login or restoring a session after logout. Cookie-mutating
@@ -62,6 +68,10 @@ and that a later Session B 401 creates a new refresh flight. It also covers
 login, protected restoration, logout, redirect safety, keyboard submission,
 and the no-browser-storage token boundary without ASP.NET, SQL Server, Docker,
 secrets, or real accounts.
+
+Focused interceptor tests additionally delay a Session A unauthorized response
+until Session B exists and change generations while refresh is pending. They
+verify that neither path refreshes or replays against the newer session.
 
 ## Boundaries
 

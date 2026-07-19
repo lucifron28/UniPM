@@ -3,8 +3,8 @@ id: ADR-009
 type: decision
 title: Coordinate memory-only browser sessions with bounded refresh replay
 status: reviewed
-recordedAtUtc: 2026-07-18T17:57:08Z
-sourceCommit: 8b2f1436fa6c15962f3db04dc66ba4dd8aa266b1
+recordedAtUtc: 2026-07-19T02:17:28Z
+sourceCommit: c3bb6baefad62dacbe655102534b0aca38d2269c
 evidenceLevel: source-inspected
 ---
 
@@ -40,6 +40,10 @@ identity and roles come from validated backend responses. Do not add token
 persistence, cookie reading, a general authentication framework, or a competing
 state store.
 
+Bind each ordinary request and any resulting refresh to the generation that
+supplied its access token. Reject an unauthorized response when that generation
+is no longer current, and recheck the generation after refresh before replay.
+
 ## Consequences
 
 A reload requires a successful backend refresh-cookie exchange before the
@@ -50,6 +54,9 @@ dispatched refresh response before sending its own cookie mutation; this avoids
 a stale response becoming the final browser cookie writer. Logout still removes
 prior-user server data from memory immediately, but an unconfirmed network
 logout may leave the server refresh family usable on a later full reload.
+
+An old request fails with its original unauthorized result rather than crossing
+the session boundary or clearing the newer session.
 
 The shell may display roles as returned identity information, but role-aware
 navigation and final institutional RBAC remain deferred. Registration,

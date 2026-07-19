@@ -3,8 +3,8 @@ id: TEST-017
 type: test-run
 title: React browser authentication verification
 status: executed
-recordedAtUtc: 2026-07-18T17:57:08Z
-testedCommit: 8b2f1436fa6c15962f3db04dc66ba4dd8aa266b1
+recordedAtUtc: 2026-07-19T02:17:28Z
+testedCommit: c3bb6baefad62dacbe655102534b0aca38d2269c
 sourceBranch: feat/web-auth-integration
 evidenceLevel: locally-executed
 ---
@@ -15,8 +15,8 @@ evidenceLevel: locally-executed
 
 Verify the browser login, refresh-cookie restoration, current-user state,
 single-flight refresh, bounded request replay, logout, protected routes, and
-generation-bound refresh and cookie-writer race controls at implementation
-commit `8b2f1436fa6c15962f3db04dc66ba4dd8aa266b1`.
+generation-bound request retry, refresh, and cookie-writer race controls at
+implementation commit `c3bb6baefad62dacbe655102534b0aca38d2269c`.
 
 ## Environment
 
@@ -59,9 +59,9 @@ git diff --name-only
   expected because the project and CI target Node 22.
 - `api:check` regenerated the client from the committed snapshot and found no
   tracked, deleted, or untracked generated-client drift.
-- Vitest: 9 files passed; 59 tests passed; 0 failed.
-- V8 coverage: 91.06% statements, 77.16% branches, 90.38% functions, and
-  92.18% lines.
+- Vitest: 9 files passed; 62 tests passed; 0 failed.
+- V8 coverage: 91.45% statements, 78.85% branches, 90.38% functions, and
+  92.28% lines.
 - Production Vite build: passed; 2,144 modules transformed.
 - Playwright: 11 Chromium tests passed; 0 failed.
 - Backend Release build: passed with 0 warnings and 0 errors.
@@ -78,6 +78,12 @@ generation-crossing cookie-mutation ordering. Browser coverage includes
 keyboard login, validation, generic failure, real fictional identity rendering,
 direct protected restoration, anonymous redirect, logout, storage inspection,
 unsafe redirect rejection, and the not-found boundary.
+
+Three focused regressions cover the remaining request-generation boundary: an
+old Session A 401 cannot start a refresh after Session B becomes current; a
+generation change while refresh is pending prevents replay; and a stale
+expected generation cannot dispatch the generated refresh operation. The old
+request retains its 401 and never receives Session B's token.
 
 The browser race regression starts a delayed Session A refresh, initiates logout
 and Session B login, then releases the stale response. It verifies the actual
