@@ -1,10 +1,12 @@
 import { redirect } from '@tanstack/react-router'
+import {
+  ensureSessionInitialized,
+  hasAuthenticatedSession,
+} from '@/features/auth/auth-session-service'
 
-export function requireAppAccess(
-  getAccessToken: () => string | null,
-  pathname: string,
-) {
-  if (getAccessToken()) return
+export async function requireAppAccess(pathname: string) {
+  await ensureSessionInitialized()
+  if (hasAuthenticatedSession()) return
 
   throw redirect({
     to: '/login',

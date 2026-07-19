@@ -13,8 +13,12 @@ type RouterContext = {
 export const Route = createRootRouteWithContext<RouterContext>()({
   component: () => <Outlet />,
   pendingComponent: () => (
-    <main className="mx-auto max-w-5xl p-6" aria-live="polite">
-      Loading page...
+    <main
+      className="flex min-h-screen items-center justify-center p-6"
+      aria-live="polite"
+      role="status"
+    >
+      Restoring your session...
     </main>
   ),
   errorComponent: ({ reset }) => (

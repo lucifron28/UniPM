@@ -7,7 +7,7 @@ export const Alert = ({
   <div
     role="alert"
     className={cn(
-      'rounded-md border border-slate-300 bg-slate-50 p-4 text-sm text-slate-700',
+      'rounded-lg border border-[var(--border-soft)] bg-[var(--surface-muted)] p-4 text-sm text-[var(--text-neutral)]',
       className,
     )}
     {...props}

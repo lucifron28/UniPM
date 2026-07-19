@@ -11,7 +11,7 @@ export function Button({
   return (
     <Component
       className={cn(
-        'inline-flex min-h-10 items-center justify-center rounded-md bg-slate-900 px-4 text-sm font-medium text-white outline-none hover:bg-slate-700 focus-visible:ring-2 focus-visible:ring-slate-500 disabled:opacity-50',
+        'inline-flex min-h-10 items-center justify-center rounded-lg bg-[var(--primary)] px-4 text-sm font-semibold text-white transition outline-none hover:bg-[var(--primary-strong)] focus-visible:ring-2 focus-visible:ring-[var(--primary-active)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
         className,
       )}
       {...props}

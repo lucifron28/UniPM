@@ -39,9 +39,12 @@
   - Reset dependency protection, strict fixture-property loading, exact
     evaluation correspondence tests, case-insensitive uniqueness checks, and
     unambiguous maintenance-command handling.
-  - IdentityCore persistence with Guid users and roles, JWT login and
-    `/api/v1/auth/me`, Development user seeding, and provisional operational
-    authorization policies.
+  - IdentityCore persistence with Guid users and roles, JWT access tokens,
+    refresh-session rotation, Development user seeding, and provisional
+    operational authorization policies.
+  - React web foundation and browser authentication with memory-only access
+    tokens, refresh-cookie restoration, protected routes, current-user display,
+    and logout.
 
 ## Synthetic Seed Commands
 
@@ -129,14 +132,11 @@ and real multilingual embedding model-quality evidence remains pending.
 
 ## Next Steps
 
-1. Completed: inspection-submission integrity without expanding provisional
+1. Completed: browser authentication integration without expanding provisional
    role or workflow rules.
-2. Completed: retrieval and test folder organization without changing behavior.
-3. Completed: explicit documentation of the MVP sanitizer's free-text-name
-   limitation.
-4. Next: run the multilingual embedding baseline without changing the
-   established retrieval, review, authorization, or maintenance workflow
-   contracts.
+2. Next: add the asset-management web module against the existing API contract.
+3. Deferred: run the multilingual embedding baseline when a configured real
+   provider is available, without changing established retrieval behavior.
 
 ## Engineering Evidence
 
@@ -151,5 +151,6 @@ opt-in OpenTelemetry metrics, an optional local Prometheus/Grafana profile, and
 TEST-002 evidence for the local technical-health path. Production monitoring,
 IIS restriction, tracing, centralized logs, alerting, and maintenance KPI
 dashboards remain out of scope. Inspection integrity, retrieval/test
-organization, and sanitizer-boundary documentation are complete. The exact next
-branch is `experiment/multilingual-embedding-baseline`.
+organization, sanitizer-boundary documentation, the web foundation, and browser
+authentication integration are complete. The exact next branch is
+`feat/web-assets`.

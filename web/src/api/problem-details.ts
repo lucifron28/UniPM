@@ -13,13 +13,13 @@ export type ApiProblemDetails = {
 export class ApiError extends Error {
   readonly status: number | undefined
   readonly problem: ApiProblemDetails | undefined
-  readonly classification: 'problem' | 'network' | 'unknown'
+  readonly classification: 'problem' | 'network' | 'cancelled' | 'unknown'
 
   constructor(
     message: string,
     status?: number,
     problem?: ApiProblemDetails,
-    classification: 'problem' | 'network' | 'unknown' = 'unknown',
+    classification: 'problem' | 'network' | 'cancelled' | 'unknown' = 'unknown',
   ) {
     super(message)
     this.status = status
@@ -35,6 +35,13 @@ function strings(value: unknown): string[] | undefined {
 }
 
 export function normalizeApiError(error: unknown): ApiError {
+  if (axios.isCancel(error))
+    return new ApiError(
+      'The request was cancelled.',
+      undefined,
+      undefined,
+      'cancelled',
+    )
   if (!axios.isAxiosError(error))
     return new ApiError('Something went wrong. Please try again.')
   if (!error.response)

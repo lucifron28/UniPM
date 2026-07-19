@@ -59,18 +59,20 @@ The backend currently provides:
 - asset creation, list, detail, and QR lookup;
 - schedule creation, list, and detail;
 - inspection submission, list, detail, and asset-history lookup;
-- JWT login and current-user routes at `/api/v1/auth/login` and
-  `/api/v1/auth/me`;
+- JWT login, refresh, logout, and current-user routes under `/api/v1/auth`;
 - policy-protected asset, schedule, inspection, and maintenance-review writes;
 - `POST /api/v1/maintenance-review` for authenticated, source-bounded
   maintenance-history review when explicitly enabled;
 - reference-data categories, validation/error contracts, health checks, tests,
   and backend CI.
 
-## Web Foundation
+## Web Application
 
-The `web/` React + TypeScript + Vite application provides the initial route,
-API-client, test, and CI foundation. Run it with Node 22:
+The `web/` React + TypeScript + Vite application provides browser login,
+HttpOnly refresh-cookie session restoration, protected routes, current-user
+display, and logout on top of the generated API client. Access tokens remain
+memory-only and ordinary 401 responses receive at most one replay after a
+single-flight refresh. Run it with Node 22:
 
 ```powershell
 cd web
@@ -78,9 +80,9 @@ npm ci
 npm run dev
 ```
 
-See [web/README.md](web/README.md) for the committed OpenAPI generation flow.
-Real browser authentication integration and all operational web modules remain
-deferred.
+See [web/README.md](web/README.md) for the authentication boundary, local setup,
+committed OpenAPI generation flow, and source-inspected Figma alignment.
+Operational web modules remain deferred.
 
 
 ## First Run
@@ -155,7 +157,8 @@ Development fails when JWT configuration is missing or invalid.
 Refresh sessions have a non-sliding seven-day default absolute lifetime. Logout
 revokes future refresh capability for its browser family but does not denylist
 an already issued access token; clients must discard their in-memory token.
-The React client and mobile refresh-token contracts remain deferred. See
+The React client implements this memory-only access-token and refresh-cookie
+contract; the mobile refresh-token contract remains deferred. See
 [`reference/api/auth-v0.1.md`](reference/api/auth-v0.1.md) for cookie, replay,
 origin, and limitation details.
 
@@ -270,10 +273,10 @@ complete. EXP-002 executed the DeepSeek V4 summary experiment on fictional data
 with developer-reviewed ratings; it did not establish production readiness.
 Tagalog and Taglish language fit was weak, and five outputs violated the citation
 contract. Inspection-submission integrity, retrieval/test layout organization,
-and explicit free-text-name sanitizer limitation documentation are complete;
-the web foundation is implemented; real web authentication integration and
-operational modules remain deferred. The multilingual embedding baseline remains
-pending a configured real provider.
+and explicit free-text-name sanitizer limitation documentation are complete.
+The web foundation and browser authentication integration are implemented;
+operational web modules remain deferred. The multilingual embedding baseline
+remains pending a configured real provider.
 
 Embeddings are disabled by default. Remote providers are rejected unless
 `Embeddings:AllowRemoteProvider` is explicitly enabled after a separate
