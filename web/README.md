@@ -65,8 +65,23 @@ Only the provisional `GSD` role sees and may use `/app/assets/new`; the backend
 policy remains authoritative. The form accepts only the current create contract
 fields. Category labels come from reference data, responses are runtime-checked
 with Zod, and QR values are shown/copied without generating an image or label.
-No real institutional asset data, final RBAC, editing, PM, inspection, audit,
+No real institutional asset data, final RBAC, asset editing, inspection, audit,
 condition, work-order, or device-specification workflow is implemented.
+
+## Preventive Maintenance Schedules
+
+Authenticated users can browse `/app/schedules`, apply the supported asset,
+status, date, quarter, and year filters through URL state, and open direct
+schedule detail routes. Ten-row pagination is client-side over the filtered API
+response. Summary cards count only statuses actually returned by the unfiltered
+API; the client does not infer overdue status.
+
+Only provisional `GSD` and `Supervisor` roles see and may use
+`/app/schedules/new`; the backend policy remains authoritative. Creation sends
+only asset, schedule date, period type, optional quarter, and year. Quarter is
+required and visible only for quarterly schedules. Recurrence generation,
+editing, deletion, assignment, status commands, acknowledgement, RMRF, and
+corrective handoff remain outside this module.
 
 Registration, password recovery, MFA, SSO, and final institutional RBAC remain
 deferred. The authenticated shell intentionally avoids invented maintenance

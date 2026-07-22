@@ -6,7 +6,7 @@
   },
   "servers": [
     {
-      "url": "http://localhost:5000/"
+      "url": "http://localhost/"
     }
   ],
   "paths": {
@@ -35,6 +35,72 @@
                   "type": "array",
                   "items": {
                     "$ref": "#/components/schemas/AssetCategoryResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reference-data/schedule-statuses": {
+      "get": {
+        "tags": ["Reference Data"],
+        "summary": "Lists persisted preventive maintenance schedule statuses",
+        "operationId": "ListScheduleStatuses",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ScheduleReferenceResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reference-data/schedule-period-types": {
+      "get": {
+        "tags": ["Reference Data"],
+        "summary": "Lists schedule period types accepted by the current API",
+        "operationId": "ListSchedulePeriodTypes",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ScheduleReferenceResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reference-data/schedule-quarters": {
+      "get": {
+        "tags": ["Reference Data"],
+        "summary": "Lists controlled quarter metadata accepted by the current API",
+        "operationId": "ListScheduleQuarters",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ScheduleReferenceResponse"
                   }
                 }
               }
@@ -409,6 +475,8 @@
     "/api/v1/schedules": {
       "post": {
         "tags": ["Schedules"],
+        "summary": "Creates a preventive maintenance schedule for an existing asset",
+        "operationId": "CreateSchedule",
         "requestBody": {
           "content": {
             "application/json": {
@@ -420,13 +488,62 @@
           "required": true
         },
         "responses": {
-          "200": {
-            "description": "OK"
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         }
       },
       "get": {
         "tags": ["Schedules"],
+        "summary": "Lists preventive maintenance schedules using supported filters",
+        "operationId": "ListSchedules",
         "parameters": [
           {
             "name": "assetId",
@@ -478,7 +595,27 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ScheduleResponse"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
           }
         }
       }
@@ -486,6 +623,8 @@
     "/api/v1/schedules/{id}": {
       "get": {
         "tags": ["Schedules"],
+        "summary": "Gets a preventive maintenance schedule by its identifier",
+        "operationId": "GetSchedule",
         "parameters": [
           {
             "name": "id",
@@ -499,7 +638,24 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         }
       }
@@ -887,6 +1043,129 @@
           },
           "actionsRecommendations": {
             "type": ["null", "string"]
+          }
+        }
+      },
+      "ScheduleAssetResponse": {
+        "required": [
+          "id",
+          "assetCode",
+          "assetCategory",
+          "building",
+          "department",
+          "location"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "assetCode": {
+            "type": "string"
+          },
+          "assetCategory": {
+            "type": "string"
+          },
+          "building": {
+            "type": ["null", "string"]
+          },
+          "department": {
+            "type": ["null", "string"]
+          },
+          "location": {
+            "type": ["null", "string"]
+          }
+        }
+      },
+      "ScheduleReferenceResponse": {
+        "required": ["code", "displayName"],
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          }
+        }
+      },
+      "ScheduleResponse": {
+        "required": [
+          "id",
+          "assetId",
+          "scheduleDate",
+          "periodType",
+          "status",
+          "quarter",
+          "semester",
+          "year",
+          "academicYear",
+          "assignedToUserId",
+          "completedAt",
+          "createdAt",
+          "updatedAt",
+          "asset"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "assetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "scheduleDate": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "periodType": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "quarter": {
+            "type": ["null", "string"]
+          },
+          "semester": {
+            "type": ["null", "string"]
+          },
+          "year": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["null", "integer", "string"],
+            "format": "int32"
+          },
+          "academicYear": {
+            "type": ["null", "string"]
+          },
+          "assignedToUserId": {
+            "type": ["null", "string"],
+            "format": "uuid"
+          },
+          "completedAt": {
+            "type": ["null", "string"],
+            "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "asset": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ScheduleAssetResponse"
+              }
+            ]
           }
         }
       },

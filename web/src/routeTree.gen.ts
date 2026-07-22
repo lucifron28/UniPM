@@ -17,6 +17,9 @@ import { Route as AppDashboardRouteImport } from './routes/app/dashboard'
 import { Route as AppAssetsIndexRouteImport } from './routes/app/assets/index'
 import { Route as AppAssetsAssetIdRouteImport } from './routes/app/assets/$assetId'
 import { Route as AppAssetsNewRouteImport } from './routes/app/assets/new'
+import { Route as AppSchedulesIndexRouteImport } from './routes/app/schedules/index'
+import { Route as AppSchedulesScheduleIdRouteImport } from './routes/app/schedules/$scheduleId'
+import { Route as AppSchedulesNewRouteImport } from './routes/app/schedules/new'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -58,6 +61,21 @@ const AppAssetsNewRoute = AppAssetsNewRouteImport.update({
   path: '/assets/new',
   getParentRoute: () => AppRouteRoute,
 } as any)
+const AppSchedulesIndexRoute = AppSchedulesIndexRouteImport.update({
+  id: '/schedules/',
+  path: '/schedules/',
+  getParentRoute: () => AppRouteRoute,
+} as any)
+const AppSchedulesScheduleIdRoute = AppSchedulesScheduleIdRouteImport.update({
+  id: '/schedules/$scheduleId',
+  path: '/schedules/$scheduleId',
+  getParentRoute: () => AppRouteRoute,
+} as any)
+const AppSchedulesNewRoute = AppSchedulesNewRouteImport.update({
+  id: '/schedules/new',
+  path: '/schedules/new',
+  getParentRoute: () => AppRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -67,7 +85,10 @@ export interface FileRoutesByFullPath {
   '/app/': typeof AppIndexRoute
   '/app/assets/$assetId': typeof AppAssetsAssetIdRoute
   '/app/assets/new': typeof AppAssetsNewRoute
+  '/app/schedules/$scheduleId': typeof AppSchedulesScheduleIdRoute
+  '/app/schedules/new': typeof AppSchedulesNewRoute
   '/app/assets/': typeof AppAssetsIndexRoute
+  '/app/schedules/': typeof AppSchedulesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -76,7 +97,10 @@ export interface FileRoutesByTo {
   '/app': typeof AppIndexRoute
   '/app/assets/$assetId': typeof AppAssetsAssetIdRoute
   '/app/assets/new': typeof AppAssetsNewRoute
+  '/app/schedules/$scheduleId': typeof AppSchedulesScheduleIdRoute
+  '/app/schedules/new': typeof AppSchedulesNewRoute
   '/app/assets': typeof AppAssetsIndexRoute
+  '/app/schedules': typeof AppSchedulesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -87,7 +111,10 @@ export interface FileRoutesById {
   '/app/': typeof AppIndexRoute
   '/app/assets/$assetId': typeof AppAssetsAssetIdRoute
   '/app/assets/new': typeof AppAssetsNewRoute
+  '/app/schedules/$scheduleId': typeof AppSchedulesScheduleIdRoute
+  '/app/schedules/new': typeof AppSchedulesNewRoute
   '/app/assets/': typeof AppAssetsIndexRoute
+  '/app/schedules/': typeof AppSchedulesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -99,7 +126,10 @@ export interface FileRouteTypes {
     | '/app/'
     | '/app/assets/$assetId'
     | '/app/assets/new'
+    | '/app/schedules/$scheduleId'
+    | '/app/schedules/new'
     | '/app/assets/'
+    | '/app/schedules/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -108,7 +138,10 @@ export interface FileRouteTypes {
     | '/app'
     | '/app/assets/$assetId'
     | '/app/assets/new'
+    | '/app/schedules/$scheduleId'
+    | '/app/schedules/new'
     | '/app/assets'
+    | '/app/schedules'
   id:
     | '__root__'
     | '/'
@@ -118,7 +151,10 @@ export interface FileRouteTypes {
     | '/app/'
     | '/app/assets/$assetId'
     | '/app/assets/new'
+    | '/app/schedules/$scheduleId'
+    | '/app/schedules/new'
     | '/app/assets/'
+    | '/app/schedules/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -185,6 +221,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAssetsNewRouteImport
       parentRoute: typeof AppRouteRoute
     }
+    '/app/schedules/': {
+      id: '/app/schedules/'
+      path: '/schedules'
+      fullPath: '/app/schedules/'
+      preLoaderRoute: typeof AppSchedulesIndexRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
+    '/app/schedules/$scheduleId': {
+      id: '/app/schedules/$scheduleId'
+      path: '/schedules/$scheduleId'
+      fullPath: '/app/schedules/$scheduleId'
+      preLoaderRoute: typeof AppSchedulesScheduleIdRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
+    '/app/schedules/new': {
+      id: '/app/schedules/new'
+      path: '/schedules/new'
+      fullPath: '/app/schedules/new'
+      preLoaderRoute: typeof AppSchedulesNewRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
   }
 }
 
@@ -193,7 +250,10 @@ interface AppRouteRouteChildren {
   AppIndexRoute: typeof AppIndexRoute
   AppAssetsAssetIdRoute: typeof AppAssetsAssetIdRoute
   AppAssetsNewRoute: typeof AppAssetsNewRoute
+  AppSchedulesScheduleIdRoute: typeof AppSchedulesScheduleIdRoute
+  AppSchedulesNewRoute: typeof AppSchedulesNewRoute
   AppAssetsIndexRoute: typeof AppAssetsIndexRoute
+  AppSchedulesIndexRoute: typeof AppSchedulesIndexRoute
 }
 
 const AppRouteRouteChildren: AppRouteRouteChildren = {
@@ -201,7 +261,10 @@ const AppRouteRouteChildren: AppRouteRouteChildren = {
   AppIndexRoute: AppIndexRoute,
   AppAssetsAssetIdRoute: AppAssetsAssetIdRoute,
   AppAssetsNewRoute: AppAssetsNewRoute,
+  AppSchedulesScheduleIdRoute: AppSchedulesScheduleIdRoute,
+  AppSchedulesNewRoute: AppSchedulesNewRoute,
   AppAssetsIndexRoute: AppAssetsIndexRoute,
+  AppSchedulesIndexRoute: AppSchedulesIndexRoute,
 }
 
 const AppRouteRouteWithChildren = AppRouteRoute._addFileChildren(

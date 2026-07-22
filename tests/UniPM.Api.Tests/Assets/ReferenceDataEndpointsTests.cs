@@ -35,5 +35,24 @@ public sealed class ReferenceDataEndpointsTests : IClassFixture<WebApplicationFa
                 category));
     }
 
+    [Fact]
+    public async Task Schedule_reference_data_returns_controlled_codes_and_labels()
+    {
+        var statuses = await _client.GetFromJsonAsync<List<ScheduleReferenceResponse>>(
+            "/api/v1/reference-data/schedule-statuses");
+        var periodTypes = await _client.GetFromJsonAsync<List<ScheduleReferenceResponse>>(
+            "/api/v1/reference-data/schedule-period-types");
+        var quarters = await _client.GetFromJsonAsync<List<ScheduleReferenceResponse>>(
+            "/api/v1/reference-data/schedule-quarters");
+
+        Assert.Equal(["Due", "Ongoing", "Completed", "Overdue", "Cancelled"], statuses?.Select(value => value.Code));
+        Assert.Equal(["Quarter", "Semester", "Annual", "Custom"], periodTypes?.Select(value => value.Code));
+        Assert.Equal(["Q1", "Q2", "Q3", "Q4"], quarters?.Select(value => value.Code));
+        Assert.All(statuses!, value => Assert.False(string.IsNullOrWhiteSpace(value.DisplayName)));
+        Assert.All(periodTypes!, value => Assert.False(string.IsNullOrWhiteSpace(value.DisplayName)));
+        Assert.All(quarters!, value => Assert.False(string.IsNullOrWhiteSpace(value.DisplayName)));
+    }
+
     private sealed record AssetCategoryResponse(string Code, string DisplayName);
+    private sealed record ScheduleReferenceResponse(string Code, string DisplayName);
 }

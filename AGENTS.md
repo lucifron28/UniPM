@@ -194,10 +194,11 @@ engineering-evidence workflow, and opt-in observability metrics are complete.
 IdentityCore persistence, JWT login/current-user routes, Development user
 seeding, and coarse policy protection are also complete. Inspection-submission
 integrity, retrieval/test folder organization, explicit documentation of the
-MVP sanitizer's free-text-name limitation, the React web foundation, and browser
-authentication integration are also complete. The exact next branch is
-`feat/web-schedules`; the multilingual embedding baseline remains pending a
-configured real provider.
+MVP sanitizer's free-text-name limitation, the React web foundation, browser
+authentication integration, asset registry, and preventive maintenance
+schedule workflows are also complete. The next candidate is
+`feat/web-inspections` only after explicit approval; the multilingual embedding
+baseline remains pending a configured real provider.
 
 Observability remains bounded infrastructure: `Observability:MetricsEnabled`
 is false by default, `/metrics` is exposed only when explicitly enabled, and
