@@ -32,7 +32,12 @@ function AssetsPage() {
   return (
     <AssetRegistry
       search={search}
-      onSearchChange={(next) => void navigate({ search: next })}
+      onSearchChange={(next, options) =>
+        void navigate({
+          search: next,
+          ...(options?.replace ? { replace: true } : {}),
+        })
+      }
     />
   )
 }

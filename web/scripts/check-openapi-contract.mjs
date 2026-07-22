@@ -1,7 +1,16 @@
 import { readFile } from 'node:fs/promises'
+import { resolve } from 'node:path'
+
+const snapshotPath =
+  process.env.OPENAPI_SNAPSHOT_PATH ||
+  process.argv[2] ||
+  new URL('../openapi/unipm-v1.json', import.meta.url)
 
 const snapshot = JSON.parse(
-  await readFile(new URL('../openapi/unipm-v1.json', import.meta.url), 'utf8'),
+  await readFile(
+    typeof snapshotPath === 'string' ? resolve(snapshotPath) : snapshotPath,
+    'utf8',
+  ),
 )
 const requiredOperations = [
   ['/api/v1/auth/login', 'post', 'Login', true],

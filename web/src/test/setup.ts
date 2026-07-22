@@ -1,9 +1,10 @@
-import '@testing-library/jest-dom/vitest'
+import './polyfill'
+import '@testing-library/jest-dom'
 import { cleanup } from '@testing-library/react'
-import { afterAll, afterEach, beforeAll } from 'vitest'
 import { server } from '@/test/server'
 import { resetApiRuntimeForTests } from '@/api/http-client'
 import { resetAuthSessionForTests } from '@/features/auth/auth-session-service'
+
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
 afterEach(() => {
   cleanup()

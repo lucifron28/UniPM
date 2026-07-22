@@ -84,14 +84,102 @@ async function mockAssetRegistry(page: Page) {
   )
 }
 
-test('authenticated GSD users can browse and filter fictional assets', async ({
-  page,
-}) => {
-  await mockAssetRegistry(page)
-  await page.goto('/app/assets')
-  await expect(page.getByRole('heading', { name: 'Assets' })).toBeVisible()
-  await expect(page.getByText('FE-001').first()).toBeVisible()
-  await page.getByLabel('Asset category').selectOption('fire-alarm')
-  await expect(page).toHaveURL(/assetCategory=fire-alarm/)
-  await expect(page.getByText('FA-001').first()).toBeVisible()
+test.describe('Asset Registry E2E Specs', () => {
+  test('authenticated GSD users can browse and filter fictional assets', async ({
+    page,
+  }) => {
+    await mockAssetRegistry(page)
+    await page.goto('/app/assets')
+    await expect(page.getByRole('heading', { name: 'Assets' })).toBeVisible()
+    await expect(page.getByText('FE-001').first()).toBeVisible()
+    await page.getByLabel('Asset category').selectOption('fire-alarm')
+    await expect(page).toHaveURL(/assetCategory=fire-alarm/)
+    await expect(page.getByText('FA-001').first()).toBeVisible()
+  })
+
+  test('renders primary navigation landmark in mobile viewport', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 375, height: 667 })
+    await mockAssetRegistry(page)
+    await page.goto('/app/assets')
+
+    const nav = page.locator('nav[aria-label="Primary"]')
+    await expect(nav).toBeVisible()
+    await expect(nav.getByRole('link', { name: 'Assets' })).toBeVisible()
+  })
+
+  test('handles asset creation validation, focus management, and backend 400 mapping', async ({
+    page,
+  }) => {
+    await mockAssetRegistry(page)
+    await page.route('**/api/v1/assets', async (route) => {
+      if (route.request().method() === 'POST') {
+        await route.fulfill({
+          status: 400,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            title: 'Validation Failed',
+            errors: {
+              assetCode: ['That asset code is invalid.'],
+            },
+          }),
+        })
+      } else {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify(assets),
+        })
+      }
+    })
+
+    await page.goto('/app/assets/new')
+    await expect(page.getByRole('heading', { name: 'Add asset' })).toBeVisible()
+
+    await page.getByLabel('Asset code').fill('FE-001')
+    await page.getByLabel('Category').selectOption('fire-extinguisher')
+    await page.getByRole('button', { name: 'Create asset' }).click()
+
+    const alert = page.getByRole('alert')
+    await expect(alert).toContainText(
+      'Please correct the highlighted validation errors.',
+    )
+    await expect(page.getByText('That asset code is invalid.')).toBeVisible()
+  })
+
+  test('handles invalid asset UUID without making an API request', async ({
+    page,
+  }) => {
+    let apiCalled = false
+    await mockAssetRegistry(page)
+    await page.route('**/api/v1/assets/invalid-uuid', () => {
+      apiCalled = true
+    })
+
+    await page.goto('/app/assets/invalid-uuid')
+    await expect(
+      page.getByRole('heading', { name: 'Asset not found' }),
+    ).toBeVisible()
+    await expect(
+      page.getByText(
+        'The asset link is invalid. No registry request was made.',
+      ),
+    ).toBeVisible()
+    expect(apiCalled).toBe(false)
+  })
+
+  test('shows label-specific copy toast feedback on asset detail', async ({
+    page,
+    context,
+  }) => {
+    await context.grantPermissions(['clipboard-read', 'clipboard-write'])
+    await mockAssetRegistry(page)
+
+    await page.goto(`/app/assets/${assets[0].id}`)
+    await expect(page.getByRole('heading', { name: 'FE-001' })).toBeVisible()
+
+    await page.getByRole('button', { name: 'Copy Asset Code' }).click()
+    await expect(page.getByText('Asset Code copied.')).toBeVisible()
+  })
 })

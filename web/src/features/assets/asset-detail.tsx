@@ -2,6 +2,8 @@ import { useEffect, useRef } from 'react'
 import { Link } from '@tanstack/react-router'
 import { Copy, Pencil, QrCode } from 'lucide-react'
 import { toast } from 'sonner'
+import { ZodError } from 'zod'
+import { ApiError } from '@/api/problem-details'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -34,10 +36,21 @@ export function AssetDetail({ assetId }: { assetId: string }) {
     if (asset.data) heading.current?.focus()
   }, [asset.data])
 
-  if (!isValidId)
+  const copy = async (value: string, label: string) => {
+    try {
+      await navigator.clipboard.writeText(value)
+      toast.success(`${label} copied.`)
+    } catch {
+      toast.error(`${label} could not be copied.`)
+    }
+  }
+
+  if (!isValidId) {
     return (
-      <Card role="alert">
-        <h1 className="text-xl font-bold">Asset not found</h1>
+      <Card role="alert" className="p-6 shadow-none">
+        <h1 className="text-xl font-bold text-[var(--text-primary)]">
+          Asset not found
+        </h1>
         <p className="mt-2 text-sm text-[var(--text-secondary)]">
           The asset link is invalid. No registry request was made.
         </p>
@@ -46,38 +59,122 @@ export function AssetDetail({ assetId }: { assetId: string }) {
         </Button>
       </Card>
     )
-  if (asset.isPending)
+  }
+
+  if (asset.isPending) {
     return (
-      <div className="space-y-4">
+      <div
+        className="space-y-4"
+        role="status"
+        aria-label="Loading asset detail"
+      >
+        <span className="sr-only">Loading asset detail...</span>
         <Skeleton className="h-9 w-56" />
         <Skeleton className="h-64 w-full" />
       </div>
     )
-  if (asset.isError || !asset.data)
+  }
+
+  if (asset.isError || !asset.data) {
+    const error = asset.error
+
+    if (error instanceof ZodError) {
+      return (
+        <Card
+          role="alert"
+          className="border-[var(--error)] p-6 text-[var(--error)] shadow-none"
+        >
+          <h1 className="text-xl font-bold">Asset record error</h1>
+          <p className="mt-2 text-sm text-[var(--text-secondary)]">
+            This asset record could not be loaded due to a data integrity issue.
+          </p>
+          <div className="mt-5 flex gap-3">
+            <Button type="button" onClick={() => void asset.refetch()}>
+              Retry
+            </Button>
+            <Button
+              asChild
+              className="bg-white text-[var(--text-primary)] hover:bg-[var(--page-background)]"
+            >
+              <Link to="/app/assets">Return to assets</Link>
+            </Button>
+          </div>
+        </Card>
+      )
+    }
+
+    if (error instanceof ApiError) {
+      if (error.status === 404) {
+        return (
+          <Card role="alert" className="p-6 shadow-none">
+            <h1 className="text-xl font-bold text-[var(--text-primary)]">
+              Asset not found
+            </h1>
+            <p className="mt-2 text-sm text-[var(--text-secondary)]">
+              This record may no longer be available.
+            </p>
+            <Button asChild className="mt-5">
+              <Link to="/app/assets">Return to assets</Link>
+            </Button>
+          </Card>
+        )
+      }
+
+      if (error.classification === 'network') {
+        return (
+          <Card
+            role="alert"
+            className="border-[var(--error)] p-6 text-[var(--error)] shadow-none"
+          >
+            <h1 className="text-xl font-bold">Service unavailable</h1>
+            <p className="mt-2 text-sm text-[var(--text-secondary)]">
+              The service could not be reached. Please check your network
+              connection and try again.
+            </p>
+            <div className="mt-5 flex gap-3">
+              <Button type="button" onClick={() => void asset.refetch()}>
+                Retry
+              </Button>
+              <Button
+                asChild
+                className="bg-white text-[var(--text-primary)] hover:bg-[var(--page-background)]"
+              >
+                <Link to="/app/assets">Return to assets</Link>
+              </Button>
+            </div>
+          </Card>
+        )
+      }
+    }
+
     return (
-      <Card role="alert">
-        <h1 className="text-xl font-bold">Asset not found</h1>
+      <Card
+        role="alert"
+        className="border-[var(--error)] p-6 text-[var(--error)] shadow-none"
+      >
+        <h1 className="text-xl font-bold">Asset details unavailable</h1>
         <p className="mt-2 text-sm text-[var(--text-secondary)]">
-          This record may no longer be available.
+          The asset record could not be loaded. Please try again.
         </p>
-        <Button asChild className="mt-5">
-          <Link to="/app/assets">Return to assets</Link>
-        </Button>
+        <div className="mt-5 flex gap-3">
+          <Button type="button" onClick={() => void asset.refetch()}>
+            Retry
+          </Button>
+          <Button
+            asChild
+            className="bg-white text-[var(--text-primary)] hover:bg-[var(--page-background)]"
+          >
+            <Link to="/app/assets">Return to assets</Link>
+          </Button>
+        </div>
       </Card>
     )
+  }
 
   const record = asset.data
   const category = categories.data?.find(
     (item) => item.code === record.assetCategory,
   )
-  const copy = async (value: string, label: string) => {
-    try {
-      await navigator.clipboard.writeText(value)
-      toast.success(`${label} copied.`)
-    } catch {
-      toast.error('QR value could not be copied.')
-    }
-  }
 
   return (
     <section

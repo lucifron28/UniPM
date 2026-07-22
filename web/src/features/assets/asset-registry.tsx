@@ -95,7 +95,7 @@ export function AssetRegistry({
   onSearchChange,
 }: {
   search: AssetSearch
-  onSearchChange: (next: AssetSearch) => void
+  onSearchChange: (next: AssetSearch, options?: { replace?: boolean }) => void
 }) {
   const currentUser = useCurrentUser()
   const categories = useAssetCategories()
@@ -121,14 +121,36 @@ export function AssetRegistry({
       new Map(categories.data?.map((category) => [category.code, category])),
     [categories.data],
   )
-  const records = filteredAssets.data ?? []
-  const textFiltered = records.filter((asset) =>
-    assetSearchText(asset).includes(text.trim().toLocaleLowerCase()),
-  )
+
+  const committedText = (search.text ?? '').trim().toLocaleLowerCase()
+  const textFiltered = useMemo(() => {
+    const records = filteredAssets.data ?? []
+    return records.filter((asset) =>
+      assetSearchText(asset).includes(committedText),
+    )
+  }, [filteredAssets.data, committedText])
+
   const pageSize = 10
   const pageCount = Math.max(1, Math.ceil(textFiltered.length / pageSize))
-  const page = Math.min(Math.max(search.page ?? 1, 1), pageCount)
-  const pageData = textFiltered.slice((page - 1) * pageSize, page * pageSize)
+  const requestedPage = search.page ?? 1
+  const page = Math.min(Math.max(requestedPage, 1), pageCount)
+  const pageData = useMemo(
+    () => textFiltered.slice((page - 1) * pageSize, page * pageSize),
+    [textFiltered, page, pageSize],
+  )
+
+  useEffect(() => {
+    if (filteredAssets.isSuccess && search.page && search.page > pageCount) {
+      onSearchChange(
+        {
+          ...search,
+          page: pageCount > 1 ? pageCount : undefined,
+        },
+        { replace: true },
+      )
+    }
+  }, [filteredAssets.isSuccess, search, pageCount, onSearchChange])
+
   // TanStack Table intentionally exposes mutable table methods to the renderer.
   // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
@@ -140,25 +162,34 @@ export function AssetRegistry({
     getCoreRowModel: getCoreRowModel(),
   })
 
-  const buildings = [
-    ...new Set(
-      (allAssets.data ?? [])
-        .map((asset) => asset.building)
-        .filter((value): value is string => Boolean(value)),
-    ),
-  ].sort()
-  const departments = [
-    ...new Set(
-      (allAssets.data ?? [])
-        .map((asset) => asset.department)
-        .filter((value): value is string => Boolean(value)),
-    ),
-  ].sort()
+  const buildings = useMemo(
+    () =>
+      [
+        ...new Set(
+          (allAssets.data ?? [])
+            .map((asset) => asset.building)
+            .filter((value): value is string => Boolean(value)),
+        ),
+      ].sort(),
+    [allAssets.data],
+  )
+
+  const departments = useMemo(
+    () =>
+      [
+        ...new Set(
+          (allAssets.data ?? [])
+            .map((asset) => asset.department)
+            .filter((value): value is string => Boolean(value)),
+        ),
+      ].sort(),
+    [allAssets.data],
+  )
 
   const apply = () =>
     onSearchChange({
       ...search,
-      text: text || undefined,
+      text: text.trim() || undefined,
       building: building || undefined,
       department: department || undefined,
       page: 1,
@@ -193,30 +224,61 @@ export function AssetRegistry({
         )}
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-        <SummaryCard label="All assets" count={allAssets.data?.length ?? 0} />
-        {assetStatusCodes.map((status) => (
-          <SummaryCard
-            key={status}
-            label={status}
-            count={
-              (allAssets.data ?? []).filter((asset) => asset.status === status)
-                .length
-            }
-          />
-        ))}
-        {(categories.data ?? []).map((category) => (
-          <SummaryCard
-            key={category.code}
-            label={category.displayName}
-            count={
-              (allAssets.data ?? []).filter(
-                (asset) => asset.assetCategory === category.code,
-              ).length
-            }
-          />
-        ))}
-      </div>
+      {allAssets.isPending || categories.isPending ? (
+        <div
+          className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5"
+          role="status"
+          aria-label="Loading summary statistics"
+        >
+          <span className="sr-only">Loading summary statistics...</span>
+          {Array.from({ length: 5 }, (_, i) => (
+            <Card key={i} className="p-4 shadow-none">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="mt-2 h-8 w-12" />
+            </Card>
+          ))}
+        </div>
+      ) : allAssets.isError ? (
+        <Card
+          role="alert"
+          className="border-[var(--error)] p-4 text-[var(--error)] shadow-none"
+        >
+          <p className="font-semibold">
+            Summary statistics are currently unavailable.
+          </p>
+          <Button
+            type="button"
+            className="mt-3 text-xs"
+            onClick={() => void allAssets.refetch()}
+          >
+            Retry summary
+          </Button>
+        </Card>
+      ) : (
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+          <SummaryCard label="All assets" count={allAssets.data.length} />
+          {assetStatusCodes.map((status) => (
+            <SummaryCard
+              key={status}
+              label={status}
+              count={
+                allAssets.data.filter((asset) => asset.status === status).length
+              }
+            />
+          ))}
+          {(categories.data ?? []).map((category) => (
+            <SummaryCard
+              key={category.code}
+              label={category.displayName}
+              count={
+                allAssets.data.filter(
+                  (asset) => asset.assetCategory === category.code,
+                ).length
+              }
+            />
+          ))}
+        </div>
+      )}
 
       <Card className="p-4 shadow-none">
         <form
@@ -344,7 +406,8 @@ export function AssetRegistry({
       </Card>
 
       {filteredAssets.isPending ? (
-        <div className="space-y-3">
+        <div className="space-y-3" role="status" aria-label="Loading assets">
+          <span className="sr-only">Loading asset records...</span>
           {Array.from({ length: 5 }, (_, index) => (
             <Skeleton key={index} className="h-16 w-full" />
           ))}
@@ -352,20 +415,33 @@ export function AssetRegistry({
       ) : filteredAssets.isError ? (
         <Card
           role="alert"
-          className="border-[var(--error)] text-[var(--error)]"
+          className="border-[var(--error)] p-4 text-[var(--error)] shadow-none"
         >
-          <p>Assets could not be loaded. Please try again.</p>
+          <p className="font-semibold">
+            Assets could not be loaded. Please try again.
+          </p>
           <Button
             type="button"
-            className="mt-4"
+            className="mt-3 text-xs"
             onClick={() => void filteredAssets.refetch()}
           >
             Retry
           </Button>
         </Card>
+      ) : allAssets.isSuccess && allAssets.data.length === 0 ? (
+        <Card className="p-6 text-center shadow-none">
+          <h2 className="text-lg font-semibold text-[var(--text-primary)]">
+            No assets are registered yet.
+          </h2>
+          <p className="mt-1 text-sm text-[var(--text-secondary)]">
+            There are currently no assets registered in the system repository.
+          </p>
+        </Card>
       ) : textFiltered.length === 0 ? (
-        <Card>
-          <h2 className="font-semibold">No assets match these filters.</h2>
+        <Card className="p-6 text-center shadow-none">
+          <h2 className="text-lg font-semibold text-[var(--text-primary)]">
+            No assets match the current filters.
+          </h2>
           <p className="mt-1 text-sm text-[var(--text-secondary)]">
             Adjust the filters or clear them to return to the full registry.
           </p>

@@ -52,9 +52,21 @@ export const createAssetSchema = z.object({
   assetCategory: z.enum(assetCategoryCodes, {
     message: 'Choose an asset category.',
   }),
-  building: z.string().trim().max(256).optional(),
-  department: z.string().trim().max(256).optional(),
-  location: z.string().trim().max(256).optional(),
+  building: z
+    .string()
+    .trim()
+    .max(256, 'Building must not exceed 256 characters.')
+    .optional(),
+  department: z
+    .string()
+    .trim()
+    .max(256, 'Department must not exceed 256 characters.')
+    .optional(),
+  location: z
+    .string()
+    .trim()
+    .max(256, 'Location must not exceed 256 characters.')
+    .optional(),
 })
 
 export type CreateAssetValues = z.input<typeof createAssetSchema>

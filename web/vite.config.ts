@@ -1,8 +1,9 @@
+/// <reference types="vitest/config" />
 import { tanstackRouter } from '@tanstack/router-plugin/vite'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
-import { defineConfig } from 'vitest/config'
-import tsconfigPaths from 'vite-tsconfig-paths'
+import { defineConfig } from 'vite'
+import path from 'node:path'
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -11,21 +12,26 @@ export default defineConfig({
       target: 'react',
       autoCodeSplitting: true,
       routeFileIgnorePattern:
-        '(\\.test\\.ts$|guard\\.ts$|login-redirect\\.ts$)',
+        '(\\.test\\.[jt]sx?$|guard\\.ts$|login-redirect\\.ts$)',
     }),
     react(),
     tailwindcss(),
-    tsconfigPaths(),
   ],
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+    },
+  },
   server: {
     port: 5173,
     strictPort: true,
   },
   test: {
+    pool: 'vmThreads',
     exclude: ['e2e/**', 'node_modules/**'],
     environment: 'jsdom',
     globals: true,
-    setupFiles: ['./src/test/setup.ts'],
+    setupFiles: ['./src/test/polyfill.ts', './src/test/setup.ts'],
     restoreMocks: true,
     coverage: {
       provider: 'v8',
