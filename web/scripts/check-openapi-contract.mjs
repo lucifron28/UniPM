@@ -59,6 +59,37 @@ const scheduleOperations = [
   ],
 ]
 
+const inspectionOperations = [
+  [
+    '/api/v1/inspections',
+    'post',
+    'RecordInspection',
+    '201',
+    'InspectionResponse',
+  ],
+  [
+    '/api/v1/inspections',
+    'get',
+    'ListInspections',
+    '200',
+    'InspectionResponse',
+  ],
+  [
+    '/api/v1/inspections/{id}',
+    'get',
+    'GetInspection',
+    '200',
+    'InspectionResponse',
+  ],
+  [
+    '/api/v1/inspections/history/{assetId}',
+    'get',
+    'GetInspectionHistory',
+    '200',
+    'InspectionHistoryResponse',
+  ],
+]
+
 for (const [path, method, operationId, requiresSchema] of requiredOperations) {
   const operation = snapshot.paths?.[path]?.[method]
   if (operation?.operationId !== operationId) {
@@ -110,6 +141,42 @@ for (const [
         `Required schedule operation ${operationId} must return ${schemaName}.`,
       )
     }
+  }
+}
+
+for (const [
+  path,
+  method,
+  operationId,
+  status,
+  schemaName,
+] of inspectionOperations) {
+  const operation = snapshot.paths?.[path]?.[method]
+  if (operation?.operationId !== operationId) {
+    throw new Error(`Missing required inspection operation: ${operationId}.`)
+  }
+
+  const schema =
+    operation.responses?.[status]?.content?.['application/json']?.schema
+  if (!schema) {
+    throw new Error(
+      `Required inspection operation ${operationId} is missing its JSON success schema.`,
+    )
+  }
+
+  if (operationId === 'RecordInspection' || operationId === 'GetInspection') {
+    if (schema.$ref !== `#/components/schemas/${schemaName}`) {
+      throw new Error(
+        `Required inspection operation ${operationId} must return ${schemaName}.`,
+      )
+    }
+  } else if (
+    schema.type !== 'array' ||
+    schema.items?.$ref !== `#/components/schemas/${schemaName}`
+  ) {
+    throw new Error(
+      `Required inspection operation ${operationId} must return ${schemaName}[].`,
+    )
   }
 }
 
@@ -208,4 +275,27 @@ if (
   )
 }
 
-console.log('OpenAPI auth, asset, and schedule contract sanity check passed.')
+const inspectionFields = [
+  'id',
+  'scheduleId',
+  'assetId',
+  'inspectorUserId',
+  'dateInspected',
+  'isOperational',
+  'remarks',
+  'actionsRecommendations',
+]
+const inspectionProperties =
+  snapshot.components?.schemas?.InspectionResponse?.properties
+if (
+  !inspectionProperties ||
+  inspectionFields.some((field) => !inspectionProperties[field])
+) {
+  throw new Error(
+    'InspectionResponse is missing one or more required public fields.',
+  )
+}
+
+console.log(
+  'OpenAPI auth, asset, schedule, and inspection contract sanity check passed.',
+)

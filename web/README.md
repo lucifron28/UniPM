@@ -68,6 +68,15 @@ with Zod, and QR values are shown/copied without generating an image or label.
 No real institutional asset data, final RBAC, asset editing, inspection, audit,
 condition, work-order, or device-specification workflow is implemented.
 
+## Inspection Review
+
+Authenticated users can browse `/app/inspections`, apply the existing asset,
+schedule, recorded-result, and inspected-date filters, and open immutable
+source-record details. Asset details include a compact recent inspection-history
+panel. The web client does not submit inspections or expose acknowledgement,
+corrective-handoff, RMRF, approval, or reporting workflows; field submission is
+deferred to the planned mobile application.
+
 ## Preventive Maintenance Schedules
 
 Authenticated users can browse `/app/schedules`, apply the supported asset,

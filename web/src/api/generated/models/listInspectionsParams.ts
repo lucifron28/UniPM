@@ -5,7 +5,7 @@
  * OpenAPI spec version: 1.0.0
  */
 
-export type GetApiV1InspectionsParams = {
+export type ListInspectionsParams = {
   assetId?: string
   scheduleId?: string
   isOperational?: boolean

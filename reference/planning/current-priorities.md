@@ -80,7 +80,8 @@ helps a human verify them.
 6. Completed: `feat/web-auth-integration`.
 7. Completed: `feat/web-assets`.
 8. Completed: `feat/web-schedules`.
-9. Planned after explicit approval: `feat/web-inspections`.
+9. Completed: `feat/web-inspections` read-only inspection review.
+10. The next web capability requires explicit approval.
 
 The multilingual embedding baseline remains deferred pending a configured real
 provider.
@@ -350,7 +351,8 @@ directly.
 6. Completed: `feat/web-auth-integration`.
 7. Completed: `feat/web-assets`.
 8. Completed: `feat/web-schedules`.
-9. Planned after explicit approval: `feat/web-inspections`.
+9. Completed: `feat/web-inspections` read-only inspection review.
+10. The next web capability requires explicit approval.
 
 The multilingual embedding baseline remains deferred pending a configured real
 provider.

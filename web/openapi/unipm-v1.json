@@ -6,7 +6,7 @@
   },
   "servers": [
     {
-      "url": "http://localhost/"
+      "url": "http://localhost:5254/"
     }
   ],
   "paths": {
@@ -663,6 +663,8 @@
     "/api/v1/inspections": {
       "post": {
         "tags": ["Inspections"],
+        "summary": "Records a completed field inspection for a schedule",
+        "operationId": "RecordInspection",
         "requestBody": {
           "content": {
             "application/json": {
@@ -674,13 +676,58 @@
           "required": true
         },
         "responses": {
-          "200": {
-            "description": "OK"
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InspectionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         }
       },
       "get": {
         "tags": ["Inspections"],
+        "summary": "Lists inspection records using supported metadata filters",
+        "operationId": "ListInspections",
         "parameters": [
           {
             "name": "assetId",
@@ -724,7 +771,27 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/InspectionResponse"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
           }
         }
       }
@@ -732,6 +799,8 @@
     "/api/v1/inspections/history/{assetId}": {
       "get": {
         "tags": ["Inspections"],
+        "summary": "Gets inspection history for an asset",
+        "operationId": "GetInspectionHistory",
         "parameters": [
           {
             "name": "assetId",
@@ -745,7 +814,17 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/InspectionHistoryResponse"
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -753,6 +832,8 @@
     "/api/v1/inspections/{id}": {
       "get": {
         "tags": ["Inspections"],
+        "summary": "Gets an inspection record by its identifier",
+        "operationId": "GetInspection",
         "parameters": [
           {
             "name": "id",
@@ -766,7 +847,24 @@
         ],
         "responses": {
           "200": {
-            "description": "OK"
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InspectionResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         }
       }
@@ -951,6 +1049,89 @@
                 "type": "string"
               }
             }
+          }
+        }
+      },
+      "InspectionHistoryResponse": {
+        "required": [
+          "id",
+          "dateInspected",
+          "isOperational",
+          "remarks",
+          "actionsRecommendations"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "dateInspected": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "isOperational": {
+            "type": "boolean"
+          },
+          "remarks": {
+            "type": ["null", "string"]
+          },
+          "actionsRecommendations": {
+            "type": ["null", "string"]
+          }
+        }
+      },
+      "InspectionResponse": {
+        "required": [
+          "id",
+          "scheduleId",
+          "assetId",
+          "inspectorUserId",
+          "dateInspected",
+          "isOperational",
+          "remarks",
+          "actionsRecommendations",
+          "createdAt",
+          "updatedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "scheduleId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "assetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "inspectorUserId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "dateInspected": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "isOperational": {
+            "type": "boolean"
+          },
+          "remarks": {
+            "type": ["null", "string"]
+          },
+          "actionsRecommendations": {
+            "type": ["null", "string"]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       },

@@ -111,7 +111,16 @@ public static class InspectionsEndpoints
             return Results.Created(
                 $"/api/v1/inspections/{inspection.Id}",
                 InspectionResponse.FromInspection(inspection));
-        }).RequireAuthorization(AuthPolicyCatalog.CanSubmitInspections);
+        })
+        .RequireAuthorization(AuthPolicyCatalog.CanSubmitInspections)
+        .WithName("RecordInspection")
+        .WithSummary("Records a completed field inspection for a schedule")
+        .Produces<InspectionResponse>(StatusCodes.Status201Created)
+        .Produces<Microsoft.AspNetCore.Mvc.ValidationProblemDetails>(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status404NotFound)
+        .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status409Conflict);
 
         group.MapGet("/history/{assetId}", async (
             Guid assetId,
@@ -122,18 +131,19 @@ public static class InspectionsEndpoints
             var history = await context.InspectionRecords
                 .Where(i => i.AssetId == assetId)
                 .OrderByDescending(i => i.DateInspected)
-                .Select(i => new
-                {
+                .Select(i => new InspectionHistoryResponse(
                     i.Id,
                     i.DateInspected,
                     i.IsOperational,
                     i.Remarks,
-                    i.ActionsRecommendations
-                })
+                    i.ActionsRecommendations))
                 .ToListAsync(cancellationToken);
 
             return Results.Ok(history);
-        });
+        })
+        .WithName("GetInspectionHistory")
+        .WithSummary("Gets inspection history for an asset")
+        .Produces<List<InspectionHistoryResponse>>(StatusCodes.Status200OK);
 
         group.MapGet("/", async (
             Guid? assetId,
@@ -199,7 +209,11 @@ public static class InspectionsEndpoints
                 .ToListAsync(cancellationToken);
 
             return Results.Ok(inspections);
-        });
+        })
+        .WithName("ListInspections")
+        .WithSummary("Lists inspection records using supported metadata filters")
+        .Produces<List<InspectionResponse>>(StatusCodes.Status200OK)
+        .Produces<Microsoft.AspNetCore.Mvc.ValidationProblemDetails>(StatusCodes.Status400BadRequest);
 
         group.MapGet("/{id}", async (
             Guid id,
@@ -214,7 +228,11 @@ public static class InspectionsEndpoints
             return inspection is not null
                 ? Results.Ok(InspectionResponse.FromInspection(inspection))
                 : ApiErrors.NotFound("Inspection not found.");
-        });
+        })
+        .WithName("GetInspection")
+        .WithSummary("Gets an inspection record by its identifier")
+        .Produces<InspectionResponse>(StatusCodes.Status200OK)
+        .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status404NotFound);
 
         return endpoints;
     }
@@ -247,6 +265,13 @@ public sealed record InspectionResponse(
             inspection.UpdatedAt);
     }
 }
+
+public sealed record InspectionHistoryResponse(
+    Guid Id,
+    DateTimeOffset DateInspected,
+    bool IsOperational,
+    string? Remarks,
+    string? ActionsRecommendations);
 
 public class RecordInspectionDto
 {

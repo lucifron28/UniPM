@@ -195,10 +195,10 @@ IdentityCore persistence, JWT login/current-user routes, Development user
 seeding, and coarse policy protection are also complete. Inspection-submission
 integrity, retrieval/test folder organization, explicit documentation of the
 MVP sanitizer's free-text-name limitation, the React web foundation, browser
-authentication integration, asset registry, and preventive maintenance
-schedule workflows are also complete. The next candidate is
-`feat/web-inspections` only after explicit approval; the multilingual embedding
-baseline remains pending a configured real provider.
+authentication integration, asset registry, preventive maintenance schedule
+workflows, and read-only inspection review are also complete. The next web
+capability requires explicit approval; the multilingual embedding baseline
+remains pending a configured real provider.
 
 Observability remains bounded infrastructure: `Observability:MetricsEnabled`
 is false by default, `/metrics` is exposed only when explicitly enabled, and
