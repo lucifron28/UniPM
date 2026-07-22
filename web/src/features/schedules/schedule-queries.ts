@@ -11,10 +11,15 @@ import {
   listScheduleStatuses,
   listSchedules,
 } from '@/api/generated/endpoints'
-import type { ListSchedulesParams } from '@/api/generated/models'
+import type {
+  ListSchedulesParams,
+  ScheduleReferenceResponse,
+} from '@/api/generated/models'
 import {
+  parseSchedulePeriodTypes,
+  parseScheduleQuarters,
+  parseScheduleStatuses,
   parseSchedule,
-  parseScheduleReferences,
   parseSchedules,
 } from '@/features/schedules/schedule-contract'
 
@@ -37,32 +42,38 @@ export function useSchedule(scheduleId: string, enabled = true) {
   })
 }
 
-function useReferences(
+function useReferences<T>(
   queryKey: readonly string[],
   load: (signal?: AbortSignal) => Promise<unknown>,
+  parse: (value: ScheduleReferenceResponse[]) => T,
 ) {
-  return useQuery({
+  return useQuery<T>({
     queryKey,
     queryFn: ({ signal }) =>
-      load(signal).then((value) =>
-        parseScheduleReferences(
-          value as Parameters<typeof parseScheduleReferences>[0],
-        ),
-      ),
+      load(signal).then((value) => parse(value as ScheduleReferenceResponse[])),
   })
 }
 
 export function useScheduleStatuses() {
-  return useReferences(getListScheduleStatusesQueryKey(), listScheduleStatuses)
+  return useReferences(
+    getListScheduleStatusesQueryKey(),
+    listScheduleStatuses,
+    parseScheduleStatuses,
+  )
 }
 
 export function useSchedulePeriodTypes() {
   return useReferences(
     getListSchedulePeriodTypesQueryKey(),
     listSchedulePeriodTypes,
+    parseSchedulePeriodTypes,
   )
 }
 
 export function useScheduleQuarters() {
-  return useReferences(getListScheduleQuartersQueryKey(), listScheduleQuarters)
+  return useReferences(
+    getListScheduleQuartersQueryKey(),
+    listScheduleQuarters,
+    parseScheduleQuarters,
+  )
 }

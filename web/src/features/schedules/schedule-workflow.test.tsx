@@ -154,6 +154,32 @@ describe('schedule workflows', () => {
     ).toBe(true)
   })
 
+  it('disables failed reference selectors and retries the affected data', async () => {
+    let assetAttempts = 0
+    server.use(
+      http.get(`${base}/assets`, () => {
+        assetAttempts++
+        return assetAttempts === 1
+          ? HttpResponse.json(null, { status: 500 })
+          : HttpResponse.json([asset])
+      }),
+      http.get(`${base}/schedules`, () => HttpResponse.json([schedule])),
+    )
+
+    renderWithProviders(
+      <ScheduleRegistry search={{ page: 1 }} onSearchChange={vi.fn()} />,
+    )
+
+    await screen.findByRole('button', { name: 'Retry asset options' })
+    const assetSelect = screen.getByLabelText('Asset')
+    expect(assetSelect).toBeDisabled()
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: 'Retry asset options' }))
+    await vi.waitFor(() => expect(assetSelect).not.toBeDisabled())
+    expect(screen.getByRole('option', { name: 'FE-001' })).toBeInTheDocument()
+  })
+
   it('rejects an invalid detail UUID without making a schedule request', async () => {
     let called = false
     server.use(

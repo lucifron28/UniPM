@@ -3,6 +3,9 @@ import { ZodError } from 'zod'
 import {
   createScheduleSchema,
   parseSchedule,
+  parseSchedulePeriodTypes,
+  parseScheduleQuarters,
+  parseScheduleStatuses,
   toCreateScheduleDto,
 } from '@/features/schedules/schedule-contract'
 
@@ -69,4 +72,30 @@ describe('schedule contracts', () => {
     })
     expect(dto.quarter).toBeNull()
   })
+
+  it.each([
+    [
+      'statuses',
+      parseScheduleStatuses,
+      [{ code: 'Unknown', displayName: 'Unknown' }],
+    ],
+    [
+      'period types',
+      parseSchedulePeriodTypes,
+      [
+        { code: 'Quarter', displayName: 'Quarterly' },
+        { code: 'Quarter', displayName: 'Duplicate quarterly' },
+      ],
+    ],
+    [
+      'quarters',
+      parseScheduleQuarters,
+      [{ code: 'Q5', displayName: 'Quarter five' }],
+    ],
+  ])(
+    'rejects unsupported or duplicate %s reference entries',
+    (_kind, parse, value) => {
+      expect(() => parse(value as never)).toThrow(ZodError)
+    },
+  )
 })

@@ -251,6 +251,7 @@ export function ScheduleCreate() {
                 <select
                   id="assetId"
                   value={field.state.value}
+                  aria-invalid={fieldErrors.assetId ? true : undefined}
                   aria-describedby={
                     fieldErrors.assetId ? 'assetId-error' : undefined
                   }
@@ -285,13 +286,22 @@ export function ScheduleCreate() {
                     id="scheduleDate"
                     type="date"
                     value={field.state.value}
+                    aria-invalid={fieldErrors.scheduleDate ? true : undefined}
+                    aria-describedby={
+                      fieldErrors.scheduleDate
+                        ? 'scheduleDate-error'
+                        : undefined
+                    }
                     onChange={(event) => {
                       field.handleChange(event.target.value)
                       clearFieldError('scheduleDate')
                     }}
                   />
                   {fieldErrors.scheduleDate && (
-                    <p className="text-sm text-[var(--error)]">
+                    <p
+                      id="scheduleDate-error"
+                      className="text-sm text-[var(--error)]"
+                    >
                       {fieldErrors.scheduleDate}
                     </p>
                   )}
@@ -308,13 +318,17 @@ export function ScheduleCreate() {
                     min="2000"
                     max={new Date().getUTCFullYear() + 5}
                     value={field.state.value}
+                    aria-invalid={fieldErrors.year ? true : undefined}
+                    aria-describedby={
+                      fieldErrors.year ? 'year-error' : undefined
+                    }
                     onChange={(event) => {
                       field.handleChange(event.target.value)
                       clearFieldError('year')
                     }}
                   />
                   {fieldErrors.year && (
-                    <p className="text-sm text-[var(--error)]">
+                    <p id="year-error" className="text-sm text-[var(--error)]">
                       {fieldErrors.year}
                     </p>
                   )}
@@ -331,6 +345,10 @@ export function ScheduleCreate() {
                   <select
                     id="periodType"
                     value={field.state.value}
+                    aria-invalid={fieldErrors.periodType ? true : undefined}
+                    aria-describedby={
+                      fieldErrors.periodType ? 'periodType-error' : undefined
+                    }
                     onChange={(event) => {
                       const next = event.target
                         .value as CreateScheduleValues['periodType']
@@ -350,7 +368,10 @@ export function ScheduleCreate() {
                     ))}
                   </select>
                   {fieldErrors.periodType && (
-                    <p className="text-sm text-[var(--error)]">
+                    <p
+                      id="periodType-error"
+                      className="text-sm text-[var(--error)]"
+                    >
                       {fieldErrors.periodType}
                     </p>
                   )}
@@ -368,6 +389,10 @@ export function ScheduleCreate() {
                         <select
                           id="quarter"
                           value={field.state.value ?? ''}
+                          aria-invalid={fieldErrors.quarter ? true : undefined}
+                          aria-describedby={
+                            fieldErrors.quarter ? 'quarter-error' : undefined
+                          }
                           onChange={(event) => {
                             field.handleChange(
                               (event.target.value || undefined) as
@@ -385,7 +410,10 @@ export function ScheduleCreate() {
                           ))}
                         </select>
                         {fieldErrors.quarter && (
-                          <p className="text-sm text-[var(--error)]">
+                          <p
+                            id="quarter-error"
+                            className="text-sm text-[var(--error)]"
+                          >
                             {fieldErrors.quarter}
                           </p>
                         )}

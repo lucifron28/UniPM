@@ -212,6 +212,16 @@ export function ScheduleRegistry({
           <p className="font-semibold text-[var(--error)]">
             Schedule summary is currently unavailable.
           </p>
+          <Button
+            type="button"
+            className="mt-3"
+            onClick={() => {
+              void allSchedules.refetch()
+              void statuses.refetch()
+            }}
+          >
+            Retry summary
+          </Button>
         </Card>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -235,6 +245,7 @@ export function ScheduleRegistry({
           <select
             aria-label="Asset"
             value={search.assetId ?? ''}
+            disabled={assets.isError}
             onChange={(event) =>
               setFilter({ assetId: event.target.value || undefined })
             }
@@ -250,6 +261,7 @@ export function ScheduleRegistry({
           <select
             aria-label="Schedule status"
             value={search.status ?? ''}
+            disabled={statuses.isError}
             onChange={(event) =>
               setFilter({
                 status: (event.target.value || undefined) as
@@ -290,6 +302,7 @@ export function ScheduleRegistry({
           <select
             aria-label="Quarter"
             value={search.quarter ?? ''}
+            disabled={quarters.isError}
             onChange={(event) =>
               setFilter({
                 quarter: (event.target.value || undefined) as
@@ -332,6 +345,28 @@ export function ScheduleRegistry({
             </Button>
           </div>
         </div>
+        {(assets.isError || statuses.isError || quarters.isError) && (
+          <div
+            className="mt-3 flex flex-wrap gap-3 text-sm text-[var(--error)]"
+            role="alert"
+          >
+            {assets.isError && (
+              <Button type="button" onClick={() => void assets.refetch()}>
+                Retry asset options
+              </Button>
+            )}
+            {statuses.isError && (
+              <Button type="button" onClick={() => void statuses.refetch()}>
+                Retry status options
+              </Button>
+            )}
+            {quarters.isError && (
+              <Button type="button" onClick={() => void quarters.refetch()}>
+                Retry quarter options
+              </Button>
+            )}
+          </div>
+        )}
       </Card>
 
       {filteredSchedules.isPending ? (

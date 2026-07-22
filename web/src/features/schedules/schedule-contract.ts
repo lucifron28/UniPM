@@ -57,14 +57,64 @@ export const scheduleSchema = z
 
 export type Schedule = z.infer<typeof scheduleSchema>
 
-const scheduleReferenceSchema = z
+function rejectDuplicateReferenceCodes(
+  references: ReadonlyArray<{ code: string }>,
+  context: z.RefinementCtx,
+) {
+  const seenCodes = new Set<string>()
+
+  references.forEach((reference, index) => {
+    if (seenCodes.has(reference.code)) {
+      context.addIssue({
+        code: 'custom',
+        path: [index, 'code'],
+        message: 'Reference codes must be unique.',
+      })
+      return
+    }
+
+    seenCodes.add(reference.code)
+  })
+}
+
+const scheduleStatusReferenceSchema = z
   .object({
-    code: z.string().trim().min(1).max(32),
+    code: z.enum(scheduleStatusCodes),
+    displayName: z.string().trim().min(1).max(128),
+  })
+  .strict()
+const schedulePeriodTypeReferenceSchema = z
+  .object({
+    code: z.enum(schedulePeriodTypeCodes),
+    displayName: z.string().trim().min(1).max(128),
+  })
+  .strict()
+const scheduleQuarterReferenceSchema = z
+  .object({
+    code: z.enum(scheduleQuarterCodes),
     displayName: z.string().trim().min(1).max(128),
   })
   .strict()
 
-export type ScheduleReference = z.infer<typeof scheduleReferenceSchema>
+const scheduleStatusReferencesSchema = z
+  .array(scheduleStatusReferenceSchema)
+  .superRefine(rejectDuplicateReferenceCodes)
+const schedulePeriodTypeReferencesSchema = z
+  .array(schedulePeriodTypeReferenceSchema)
+  .superRefine(rejectDuplicateReferenceCodes)
+const scheduleQuarterReferencesSchema = z
+  .array(scheduleQuarterReferenceSchema)
+  .superRefine(rejectDuplicateReferenceCodes)
+
+export type ScheduleStatusReference = z.infer<
+  typeof scheduleStatusReferenceSchema
+>
+export type SchedulePeriodTypeReference = z.infer<
+  typeof schedulePeriodTypeReferenceSchema
+>
+export type ScheduleQuarterReference = z.infer<
+  typeof scheduleQuarterReferenceSchema
+>
 
 export const createScheduleSchema = z
   .object({
@@ -113,10 +163,22 @@ export function parseSchedules(values: ScheduleResponse[]): Schedule[] {
   return z.array(scheduleSchema).parse(values)
 }
 
-export function parseScheduleReferences(
+export function parseScheduleStatuses(
   values: ScheduleReferenceResponse[],
-): ScheduleReference[] {
-  return z.array(scheduleReferenceSchema).parse(values)
+): ScheduleStatusReference[] {
+  return scheduleStatusReferencesSchema.parse(values)
+}
+
+export function parseSchedulePeriodTypes(
+  values: ScheduleReferenceResponse[],
+): SchedulePeriodTypeReference[] {
+  return schedulePeriodTypeReferencesSchema.parse(values)
+}
+
+export function parseScheduleQuarters(
+  values: ScheduleReferenceResponse[],
+): ScheduleQuarterReference[] {
+  return scheduleQuarterReferencesSchema.parse(values)
 }
 
 export function toCreateScheduleDto(
