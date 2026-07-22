@@ -27,14 +27,16 @@ import type {
   CreateAssetDto,
   CreateScheduleDto,
   GetApiV1InspectionsParams,
-  GetApiV1SchedulesParams,
   HttpValidationProblemDetails,
   ListAssetsParams,
+  ListSchedulesParams,
   LoginRequest,
   LoginResponse,
   MaintenanceReviewRequest,
   ProblemDetails,
   RecordInspectionDto,
+  ScheduleReferenceResponse,
+  ScheduleResponse,
   ValidationProblemDetails,
 } from './models'
 
@@ -309,6 +311,442 @@ export function useListAssetCategories<
   queryKey: DataTag<QueryKey, TData, TError>
 } {
   const queryOptions = getListAssetCategoriesQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+
+  return withQueryKey(query, queryOptions.queryKey)
+}
+
+/**
+ * @summary Lists persisted preventive maintenance schedule statuses
+ */
+export const listScheduleStatuses = (signal?: AbortSignal) => {
+  return customInstance<ScheduleReferenceResponse[]>({
+    url: `/api/v1/reference-data/schedule-statuses`,
+    method: 'GET',
+    signal,
+  })
+}
+
+export const getListScheduleStatusesQueryKey = () => {
+  return [`/api/v1/reference-data/schedule-statuses`] as const
+}
+
+export const getListScheduleStatusesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listScheduleStatuses>>,
+  TError = unknown,
+>(options?: {
+  query?: Partial<
+    UseQueryOptions<
+      Awaited<ReturnType<typeof listScheduleStatuses>>,
+      TError,
+      TData
+    >
+  >
+}) => {
+  const { query: queryOptions } = options ?? {}
+
+  const queryKey = queryOptions?.queryKey ?? getListScheduleStatusesQueryKey()
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listScheduleStatuses>>
+  > = ({ signal }) => listScheduleStatuses(signal)
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listScheduleStatuses>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListScheduleStatusesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listScheduleStatuses>>
+>
+export type ListScheduleStatusesQueryError = unknown
+
+export function useListScheduleStatuses<
+  TData = Awaited<ReturnType<typeof listScheduleStatuses>>,
+  TError = unknown,
+>(
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listScheduleStatuses>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listScheduleStatuses>>,
+          TError,
+          Awaited<ReturnType<typeof listScheduleStatuses>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useListScheduleStatuses<
+  TData = Awaited<ReturnType<typeof listScheduleStatuses>>,
+  TError = unknown,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listScheduleStatuses>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listScheduleStatuses>>,
+          TError,
+          Awaited<ReturnType<typeof listScheduleStatuses>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useListScheduleStatuses<
+  TData = Awaited<ReturnType<typeof listScheduleStatuses>>,
+  TError = unknown,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listScheduleStatuses>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+/**
+ * @summary Lists persisted preventive maintenance schedule statuses
+ */
+
+export function useListScheduleStatuses<
+  TData = Awaited<ReturnType<typeof listScheduleStatuses>>,
+  TError = unknown,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listScheduleStatuses>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+} {
+  const queryOptions = getListScheduleStatusesQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+
+  return withQueryKey(query, queryOptions.queryKey)
+}
+
+/**
+ * @summary Lists schedule period types accepted by the current API
+ */
+export const listSchedulePeriodTypes = (signal?: AbortSignal) => {
+  return customInstance<ScheduleReferenceResponse[]>({
+    url: `/api/v1/reference-data/schedule-period-types`,
+    method: 'GET',
+    signal,
+  })
+}
+
+export const getListSchedulePeriodTypesQueryKey = () => {
+  return [`/api/v1/reference-data/schedule-period-types`] as const
+}
+
+export const getListSchedulePeriodTypesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listSchedulePeriodTypes>>,
+  TError = unknown,
+>(options?: {
+  query?: Partial<
+    UseQueryOptions<
+      Awaited<ReturnType<typeof listSchedulePeriodTypes>>,
+      TError,
+      TData
+    >
+  >
+}) => {
+  const { query: queryOptions } = options ?? {}
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListSchedulePeriodTypesQueryKey()
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listSchedulePeriodTypes>>
+  > = ({ signal }) => listSchedulePeriodTypes(signal)
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listSchedulePeriodTypes>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListSchedulePeriodTypesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listSchedulePeriodTypes>>
+>
+export type ListSchedulePeriodTypesQueryError = unknown
+
+export function useListSchedulePeriodTypes<
+  TData = Awaited<ReturnType<typeof listSchedulePeriodTypes>>,
+  TError = unknown,
+>(
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listSchedulePeriodTypes>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listSchedulePeriodTypes>>,
+          TError,
+          Awaited<ReturnType<typeof listSchedulePeriodTypes>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useListSchedulePeriodTypes<
+  TData = Awaited<ReturnType<typeof listSchedulePeriodTypes>>,
+  TError = unknown,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listSchedulePeriodTypes>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listSchedulePeriodTypes>>,
+          TError,
+          Awaited<ReturnType<typeof listSchedulePeriodTypes>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useListSchedulePeriodTypes<
+  TData = Awaited<ReturnType<typeof listSchedulePeriodTypes>>,
+  TError = unknown,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listSchedulePeriodTypes>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+/**
+ * @summary Lists schedule period types accepted by the current API
+ */
+
+export function useListSchedulePeriodTypes<
+  TData = Awaited<ReturnType<typeof listSchedulePeriodTypes>>,
+  TError = unknown,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listSchedulePeriodTypes>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+} {
+  const queryOptions = getListSchedulePeriodTypesQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+
+  return withQueryKey(query, queryOptions.queryKey)
+}
+
+/**
+ * @summary Lists controlled quarter metadata accepted by the current API
+ */
+export const listScheduleQuarters = (signal?: AbortSignal) => {
+  return customInstance<ScheduleReferenceResponse[]>({
+    url: `/api/v1/reference-data/schedule-quarters`,
+    method: 'GET',
+    signal,
+  })
+}
+
+export const getListScheduleQuartersQueryKey = () => {
+  return [`/api/v1/reference-data/schedule-quarters`] as const
+}
+
+export const getListScheduleQuartersQueryOptions = <
+  TData = Awaited<ReturnType<typeof listScheduleQuarters>>,
+  TError = unknown,
+>(options?: {
+  query?: Partial<
+    UseQueryOptions<
+      Awaited<ReturnType<typeof listScheduleQuarters>>,
+      TError,
+      TData
+    >
+  >
+}) => {
+  const { query: queryOptions } = options ?? {}
+
+  const queryKey = queryOptions?.queryKey ?? getListScheduleQuartersQueryKey()
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listScheduleQuarters>>
+  > = ({ signal }) => listScheduleQuarters(signal)
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listScheduleQuarters>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListScheduleQuartersQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listScheduleQuarters>>
+>
+export type ListScheduleQuartersQueryError = unknown
+
+export function useListScheduleQuarters<
+  TData = Awaited<ReturnType<typeof listScheduleQuarters>>,
+  TError = unknown,
+>(
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listScheduleQuarters>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listScheduleQuarters>>,
+          TError,
+          Awaited<ReturnType<typeof listScheduleQuarters>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useListScheduleQuarters<
+  TData = Awaited<ReturnType<typeof listScheduleQuarters>>,
+  TError = unknown,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listScheduleQuarters>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listScheduleQuarters>>,
+          TError,
+          Awaited<ReturnType<typeof listScheduleQuarters>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useListScheduleQuarters<
+  TData = Awaited<ReturnType<typeof listScheduleQuarters>>,
+  TError = unknown,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listScheduleQuarters>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+/**
+ * @summary Lists controlled quarter metadata accepted by the current API
+ */
+
+export function useListScheduleQuarters<
+  TData = Awaited<ReturnType<typeof listScheduleQuarters>>,
+  TError = unknown,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listScheduleQuarters>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+} {
+  const queryOptions = getListScheduleQuartersQueryOptions(options)
 
   const query = useQuery(queryOptions, queryClient) as UseQueryResult<
     TData,
@@ -1136,11 +1574,14 @@ export function useGetAssetByQr<
   return withQueryKey(query, queryOptions.queryKey)
 }
 
-export const postApiV1Schedules = (
+/**
+ * @summary Creates a preventive maintenance schedule for an existing asset
+ */
+export const createSchedule = (
   createScheduleDto: CreateScheduleDto,
   signal?: AbortSignal,
 ) => {
-  return customInstance<void>({
+  return customInstance<ScheduleResponse>({
     url: `/api/v1/schedules`,
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -1149,23 +1590,23 @@ export const postApiV1Schedules = (
   })
 }
 
-export const getPostApiV1SchedulesMutationOptions = <
-  TError = unknown,
+export const getCreateScheduleMutationOptions = <
+  TError = ValidationProblemDetails | ProblemDetails,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof postApiV1Schedules>>,
+    Awaited<ReturnType<typeof createSchedule>>,
     TError,
     { data: CreateScheduleDto },
     TContext
   >
 }): UseMutationOptions<
-  Awaited<ReturnType<typeof postApiV1Schedules>>,
+  Awaited<ReturnType<typeof createSchedule>>,
   TError,
   { data: CreateScheduleDto },
   TContext
 > => {
-  const mutationKey = ['postApiV1Schedules']
+  const mutationKey = ['createSchedule']
   const { mutation: mutationOptions } = options
     ? options.mutation &&
       'mutationKey' in options.mutation &&
@@ -1175,27 +1616,34 @@ export const getPostApiV1SchedulesMutationOptions = <
     : { mutation: { mutationKey } }
 
   const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof postApiV1Schedules>>,
+    Awaited<ReturnType<typeof createSchedule>>,
     { data: CreateScheduleDto }
   > = (props) => {
     const { data } = props ?? {}
 
-    return postApiV1Schedules(data)
+    return createSchedule(data)
   }
 
   return { mutationFn, ...mutationOptions }
 }
 
-export type PostApiV1SchedulesMutationResult = NonNullable<
-  Awaited<ReturnType<typeof postApiV1Schedules>>
+export type CreateScheduleMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createSchedule>>
 >
-export type PostApiV1SchedulesMutationBody = CreateScheduleDto
-export type PostApiV1SchedulesMutationError = unknown
+export type CreateScheduleMutationBody = CreateScheduleDto
+export type CreateScheduleMutationError =
+  ValidationProblemDetails | ProblemDetails
 
-export const usePostApiV1Schedules = <TError = unknown, TContext = unknown>(
+/**
+ * @summary Creates a preventive maintenance schedule for an existing asset
+ */
+export const useCreateSchedule = <
+  TError = ValidationProblemDetails | ProblemDetails,
+  TContext = unknown,
+>(
   options?: {
     mutation?: UseMutationOptions<
-      Awaited<ReturnType<typeof postApiV1Schedules>>,
+      Awaited<ReturnType<typeof createSchedule>>,
       TError,
       { data: CreateScheduleDto },
       TContext
@@ -1203,19 +1651,22 @@ export const usePostApiV1Schedules = <TError = unknown, TContext = unknown>(
   },
   queryClient?: QueryClient,
 ): UseMutationResult<
-  Awaited<ReturnType<typeof postApiV1Schedules>>,
+  Awaited<ReturnType<typeof createSchedule>>,
   TError,
   { data: CreateScheduleDto },
   TContext
 > => {
-  return useMutation(getPostApiV1SchedulesMutationOptions(options), queryClient)
+  return useMutation(getCreateScheduleMutationOptions(options), queryClient)
 }
 
-export const getApiV1Schedules = (
-  params?: GetApiV1SchedulesParams,
+/**
+ * @summary Lists preventive maintenance schedules using supported filters
+ */
+export const listSchedules = (
+  params?: ListSchedulesParams,
   signal?: AbortSignal,
 ) => {
-  return customInstance<void>({
+  return customInstance<ScheduleResponse[]>({
     url: `/api/v1/schedules`,
     method: 'GET',
     params,
@@ -1223,66 +1674,55 @@ export const getApiV1Schedules = (
   })
 }
 
-export const getGetApiV1SchedulesQueryKey = (
-  params?: GetApiV1SchedulesParams,
-) => {
+export const getListSchedulesQueryKey = (params?: ListSchedulesParams) => {
   return [`/api/v1/schedules`, ...(params ? [params] : [])] as const
 }
 
-export const getGetApiV1SchedulesQueryOptions = <
-  TData = Awaited<ReturnType<typeof getApiV1Schedules>>,
-  TError = unknown,
+export const getListSchedulesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listSchedules>>,
+  TError = ValidationProblemDetails,
 >(
-  params?: GetApiV1SchedulesParams,
+  params?: ListSchedulesParams,
   options?: {
     query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof getApiV1Schedules>>,
-        TError,
-        TData
-      >
+      UseQueryOptions<Awaited<ReturnType<typeof listSchedules>>, TError, TData>
     >
   },
 ) => {
   const { query: queryOptions } = options ?? {}
 
-  const queryKey =
-    queryOptions?.queryKey ?? getGetApiV1SchedulesQueryKey(params)
+  const queryKey = queryOptions?.queryKey ?? getListSchedulesQueryKey(params)
 
-  const queryFn: QueryFunction<
-    Awaited<ReturnType<typeof getApiV1Schedules>>
-  > = ({ signal }) => getApiV1Schedules(params, signal)
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listSchedules>>> = ({
+    signal,
+  }) => listSchedules(params, signal)
 
   return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
-    Awaited<ReturnType<typeof getApiV1Schedules>>,
+    Awaited<ReturnType<typeof listSchedules>>,
     TError,
     TData
   > & { queryKey: DataTag<QueryKey, TData, TError> }
 }
 
-export type GetApiV1SchedulesQueryResult = NonNullable<
-  Awaited<ReturnType<typeof getApiV1Schedules>>
+export type ListSchedulesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listSchedules>>
 >
-export type GetApiV1SchedulesQueryError = unknown
+export type ListSchedulesQueryError = ValidationProblemDetails
 
-export function useGetApiV1Schedules<
-  TData = Awaited<ReturnType<typeof getApiV1Schedules>>,
-  TError = unknown,
+export function useListSchedules<
+  TData = Awaited<ReturnType<typeof listSchedules>>,
+  TError = ValidationProblemDetails,
 >(
-  params: undefined | GetApiV1SchedulesParams,
+  params: undefined | ListSchedulesParams,
   options: {
     query: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof getApiV1Schedules>>,
-        TError,
-        TData
-      >
+      UseQueryOptions<Awaited<ReturnType<typeof listSchedules>>, TError, TData>
     > &
       Pick<
         DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getApiV1Schedules>>,
+          Awaited<ReturnType<typeof listSchedules>>,
           TError,
-          Awaited<ReturnType<typeof getApiV1Schedules>>
+          Awaited<ReturnType<typeof listSchedules>>
         >,
         'initialData'
       >
@@ -1291,24 +1731,20 @@ export function useGetApiV1Schedules<
 ): DefinedUseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>
 }
-export function useGetApiV1Schedules<
-  TData = Awaited<ReturnType<typeof getApiV1Schedules>>,
-  TError = unknown,
+export function useListSchedules<
+  TData = Awaited<ReturnType<typeof listSchedules>>,
+  TError = ValidationProblemDetails,
 >(
-  params?: GetApiV1SchedulesParams,
+  params?: ListSchedulesParams,
   options?: {
     query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof getApiV1Schedules>>,
-        TError,
-        TData
-      >
+      UseQueryOptions<Awaited<ReturnType<typeof listSchedules>>, TError, TData>
     > &
       Pick<
         UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getApiV1Schedules>>,
+          Awaited<ReturnType<typeof listSchedules>>,
           TError,
-          Awaited<ReturnType<typeof getApiV1Schedules>>
+          Awaited<ReturnType<typeof listSchedules>>
         >,
         'initialData'
       >
@@ -1317,44 +1753,39 @@ export function useGetApiV1Schedules<
 ): UseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>
 }
-export function useGetApiV1Schedules<
-  TData = Awaited<ReturnType<typeof getApiV1Schedules>>,
-  TError = unknown,
+export function useListSchedules<
+  TData = Awaited<ReturnType<typeof listSchedules>>,
+  TError = ValidationProblemDetails,
 >(
-  params?: GetApiV1SchedulesParams,
+  params?: ListSchedulesParams,
   options?: {
     query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof getApiV1Schedules>>,
-        TError,
-        TData
-      >
+      UseQueryOptions<Awaited<ReturnType<typeof listSchedules>>, TError, TData>
     >
   },
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>
 }
+/**
+ * @summary Lists preventive maintenance schedules using supported filters
+ */
 
-export function useGetApiV1Schedules<
-  TData = Awaited<ReturnType<typeof getApiV1Schedules>>,
-  TError = unknown,
+export function useListSchedules<
+  TData = Awaited<ReturnType<typeof listSchedules>>,
+  TError = ValidationProblemDetails,
 >(
-  params?: GetApiV1SchedulesParams,
+  params?: ListSchedulesParams,
   options?: {
     query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof getApiV1Schedules>>,
-        TError,
-        TData
-      >
+      UseQueryOptions<Awaited<ReturnType<typeof listSchedules>>, TError, TData>
     >
   },
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>
 } {
-  const queryOptions = getGetApiV1SchedulesQueryOptions(params, options)
+  const queryOptions = getListSchedulesQueryOptions(params, options)
 
   const query = useQuery(queryOptions, queryClient) as UseQueryResult<
     TData,
@@ -1364,40 +1795,39 @@ export function useGetApiV1Schedules<
   return withQueryKey(query, queryOptions.queryKey)
 }
 
-export const getApiV1SchedulesId = (id: string, signal?: AbortSignal) => {
-  return customInstance<void>({
+/**
+ * @summary Gets a preventive maintenance schedule by its identifier
+ */
+export const getSchedule = (id: string, signal?: AbortSignal) => {
+  return customInstance<ScheduleResponse>({
     url: `/api/v1/schedules/${id}`,
     method: 'GET',
     signal,
   })
 }
 
-export const getGetApiV1SchedulesIdQueryKey = (id: string) => {
+export const getGetScheduleQueryKey = (id: string) => {
   return [`/api/v1/schedules/${id}`] as const
 }
 
-export const getGetApiV1SchedulesIdQueryOptions = <
-  TData = Awaited<ReturnType<typeof getApiV1SchedulesId>>,
-  TError = unknown,
+export const getGetScheduleQueryOptions = <
+  TData = Awaited<ReturnType<typeof getSchedule>>,
+  TError = ProblemDetails,
 >(
   id: string,
   options?: {
     query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof getApiV1SchedulesId>>,
-        TError,
-        TData
-      >
+      UseQueryOptions<Awaited<ReturnType<typeof getSchedule>>, TError, TData>
     >
   },
 ) => {
   const { query: queryOptions } = options ?? {}
 
-  const queryKey = queryOptions?.queryKey ?? getGetApiV1SchedulesIdQueryKey(id)
+  const queryKey = queryOptions?.queryKey ?? getGetScheduleQueryKey(id)
 
-  const queryFn: QueryFunction<
-    Awaited<ReturnType<typeof getApiV1SchedulesId>>
-  > = ({ signal }) => getApiV1SchedulesId(id, signal)
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getSchedule>>> = ({
+    signal,
+  }) => getSchedule(id, signal)
 
   return {
     queryKey,
@@ -1405,35 +1835,31 @@ export const getGetApiV1SchedulesIdQueryOptions = <
     enabled: id !== null && id !== undefined,
     ...queryOptions,
   } as UseQueryOptions<
-    Awaited<ReturnType<typeof getApiV1SchedulesId>>,
+    Awaited<ReturnType<typeof getSchedule>>,
     TError,
     TData
   > & { queryKey: DataTag<QueryKey, TData, TError> }
 }
 
-export type GetApiV1SchedulesIdQueryResult = NonNullable<
-  Awaited<ReturnType<typeof getApiV1SchedulesId>>
+export type GetScheduleQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getSchedule>>
 >
-export type GetApiV1SchedulesIdQueryError = unknown
+export type GetScheduleQueryError = ProblemDetails
 
-export function useGetApiV1SchedulesId<
-  TData = Awaited<ReturnType<typeof getApiV1SchedulesId>>,
-  TError = unknown,
+export function useGetSchedule<
+  TData = Awaited<ReturnType<typeof getSchedule>>,
+  TError = ProblemDetails,
 >(
   id: string,
   options: {
     query: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof getApiV1SchedulesId>>,
-        TError,
-        TData
-      >
+      UseQueryOptions<Awaited<ReturnType<typeof getSchedule>>, TError, TData>
     > &
       Pick<
         DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getApiV1SchedulesId>>,
+          Awaited<ReturnType<typeof getSchedule>>,
           TError,
-          Awaited<ReturnType<typeof getApiV1SchedulesId>>
+          Awaited<ReturnType<typeof getSchedule>>
         >,
         'initialData'
       >
@@ -1442,24 +1868,20 @@ export function useGetApiV1SchedulesId<
 ): DefinedUseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>
 }
-export function useGetApiV1SchedulesId<
-  TData = Awaited<ReturnType<typeof getApiV1SchedulesId>>,
-  TError = unknown,
+export function useGetSchedule<
+  TData = Awaited<ReturnType<typeof getSchedule>>,
+  TError = ProblemDetails,
 >(
   id: string,
   options?: {
     query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof getApiV1SchedulesId>>,
-        TError,
-        TData
-      >
+      UseQueryOptions<Awaited<ReturnType<typeof getSchedule>>, TError, TData>
     > &
       Pick<
         UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getApiV1SchedulesId>>,
+          Awaited<ReturnType<typeof getSchedule>>,
           TError,
-          Awaited<ReturnType<typeof getApiV1SchedulesId>>
+          Awaited<ReturnType<typeof getSchedule>>
         >,
         'initialData'
       >
@@ -1468,44 +1890,39 @@ export function useGetApiV1SchedulesId<
 ): UseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>
 }
-export function useGetApiV1SchedulesId<
-  TData = Awaited<ReturnType<typeof getApiV1SchedulesId>>,
-  TError = unknown,
+export function useGetSchedule<
+  TData = Awaited<ReturnType<typeof getSchedule>>,
+  TError = ProblemDetails,
 >(
   id: string,
   options?: {
     query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof getApiV1SchedulesId>>,
-        TError,
-        TData
-      >
+      UseQueryOptions<Awaited<ReturnType<typeof getSchedule>>, TError, TData>
     >
   },
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>
 }
+/**
+ * @summary Gets a preventive maintenance schedule by its identifier
+ */
 
-export function useGetApiV1SchedulesId<
-  TData = Awaited<ReturnType<typeof getApiV1SchedulesId>>,
-  TError = unknown,
+export function useGetSchedule<
+  TData = Awaited<ReturnType<typeof getSchedule>>,
+  TError = ProblemDetails,
 >(
   id: string,
   options?: {
     query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof getApiV1SchedulesId>>,
-        TError,
-        TData
-      >
+      UseQueryOptions<Awaited<ReturnType<typeof getSchedule>>, TError, TData>
     >
   },
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>
 } {
-  const queryOptions = getGetApiV1SchedulesIdQueryOptions(id, options)
+  const queryOptions = getGetScheduleQueryOptions(id, options)
 
   const query = useQuery(queryOptions, queryClient) as UseQueryResult<
     TData,

@@ -53,6 +53,8 @@ public sealed class ScheduleQueryEndpointsTests
         Assert.Equal("Quarter", schedule.PeriodType);
         Assert.Equal("Q1", schedule.Quarter);
         Assert.Equal(2026, schedule.Year);
+        Assert.NotNull(targetSchedule.Asset);
+        Assert.Equal("FE-010", targetSchedule.Asset.AssetCode);
     }
 
     [Fact]

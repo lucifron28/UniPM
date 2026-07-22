@@ -36,6 +36,7 @@ public static class SchedulesEndpoints
             {
                 Id = Guid.NewGuid(),
                 AssetId = dto.AssetId,
+                Asset = asset,
                 ScheduleDate = dto.ScheduleDate,
                 PeriodType = SchedulePeriodTypeCatalog.TryNormalize(dto.PeriodType, out var periodType)
                     ? periodType
@@ -53,7 +54,15 @@ public static class SchedulesEndpoints
             await context.SaveChangesAsync(cancellationToken);
 
             return Results.Created($"/api/v1/schedules/{schedule.Id}", ScheduleResponse.FromSchedule(schedule));
-        }).RequireAuthorization(AuthPolicyCatalog.CanManageSchedules);
+        })
+        .WithName("CreateSchedule")
+        .WithSummary("Creates a preventive maintenance schedule for an existing asset")
+        .Produces<ScheduleResponse>(StatusCodes.Status201Created)
+        .Produces<Microsoft.AspNetCore.Mvc.ValidationProblemDetails>(StatusCodes.Status400BadRequest)
+        .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status401Unauthorized)
+        .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status403Forbidden)
+        .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status404NotFound)
+        .RequireAuthorization(AuthPolicyCatalog.CanManageSchedules);
 
         group.MapGet("/", async (
             Guid? assetId,
@@ -151,7 +160,11 @@ public static class SchedulesEndpoints
                 .ToListAsync(cancellationToken);
 
             return Results.Ok(schedules);
-        });
+        })
+        .WithName("ListSchedules")
+        .WithSummary("Lists preventive maintenance schedules using supported filters")
+        .Produces<IReadOnlyList<ScheduleResponse>>(StatusCodes.Status200OK)
+        .Produces<Microsoft.AspNetCore.Mvc.ValidationProblemDetails>(StatusCodes.Status400BadRequest);
 
         group.MapGet("/{id}", async (
             Guid id,
@@ -167,7 +180,11 @@ public static class SchedulesEndpoints
             return schedule is not null
                 ? Results.Ok(ScheduleResponse.FromSchedule(schedule))
                 : ApiErrors.NotFound("Schedule not found.");
-        });
+        })
+        .WithName("GetSchedule")
+        .WithSummary("Gets a preventive maintenance schedule by its identifier")
+        .Produces<ScheduleResponse>(StatusCodes.Status200OK)
+        .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status404NotFound);
 
         return endpoints;
     }

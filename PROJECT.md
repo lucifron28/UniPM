@@ -45,6 +45,9 @@
   - React web foundation and browser authentication with memory-only access
     tokens, refresh-cookie restoration, protected routes, current-user display,
     and logout.
+  - Authenticated asset registry and preventive maintenance schedule modules
+    with route-backed list/detail/create workflows, generated API contracts,
+    runtime response validation, and backend-authoritative role policies.
 
 ## Synthetic Seed Commands
 
@@ -132,9 +135,10 @@ and real multilingual embedding model-quality evidence remains pending.
 
 ## Next Steps
 
-1. Completed: browser authentication integration without expanding provisional
-   role or workflow rules.
-2. Next: add the asset-management web module against the existing API contract.
+1. Completed: browser authentication, asset registry, and preventive maintenance
+   schedule workflows without expanding provisional role or workflow rules.
+2. Planned after explicit approval: add the inspection web module against the
+   existing API contract without finalizing unresolved GSD workflows.
 3. Deferred: run the multilingual embedding baseline when a configured real
    provider is available, without changing established retrieval behavior.
 
@@ -151,6 +155,6 @@ opt-in OpenTelemetry metrics, an optional local Prometheus/Grafana profile, and
 TEST-002 evidence for the local technical-health path. Production monitoring,
 IIS restriction, tracing, centralized logs, alerting, and maintenance KPI
 dashboards remain out of scope. Inspection integrity, retrieval/test
-organization, sanitizer-boundary documentation, the web foundation, and browser
-authentication integration are complete. The exact next branch is
-`feat/web-assets`.
+organization, sanitizer-boundary documentation, the web foundation, browser
+authentication, asset registry, and schedule workflows are complete. The next
+candidate is `feat/web-inspections` only after explicit approval.

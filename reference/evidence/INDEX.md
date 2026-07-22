@@ -59,6 +59,9 @@ record's evidence level and tested/source commit.
 | IMP-014 | implementation | React web asset registry | reviewed | source-inspected | `34ff856` | [record](implementation/IMP-014-web-asset-registry.md) | Typed asset contract, runtime validation, registry/detail/create routes, and provisional GSD creation UI. |
 | ADR-010 | decision | Keep asset client state and contract boundaries explicit | reviewed | source-inspected | `34ff856` | [record](decisions/ADR-010-asset-client-contract-and-state-boundaries.md) | Query, router, generated-client, validation, and backend-authority boundaries. |
 | TEST-018 | test-run | Web asset registry verification | executed | locally-executed | `39be84c` | [record](test-runs/TEST-018-web-asset-registry-verification.md) | Clean Node 22/npm 10 install; Release/API/web/browser verification with skipped SQL/provider checks. |
+| IMP-015 | implementation | React web preventive-maintenance schedules | reviewed | source-inspected | `6f4a1ae` | [record](implementation/IMP-015-react-web-preventive-maintenance-schedules.md) | Typed list/detail/create workflow with strict catalog references, retryable query failures, and no recurrence or automatic status behavior. |
+| ADR-011 | decision | Keep schedule monitoring record-based and non-generative | reviewed | source-inspected | `6f4a1ae` | [record](decisions/ADR-011-record-based-schedule-monitoring.md) | Router/Query/catalog ownership with recorded-status, strict references, retryable failures, and provisional authority boundaries. |
+| TEST-019 | test-run | Web schedule workflow verification | executed | locally-executed | `6f4a1ae` | [record](test-runs/TEST-019-web-schedule-workflow-verification.md) | Release backend, offline API contract, 107 Vitest, coverage, and 30 Chromium tests passed; SQL/provider tests not executed. |
 
 ## Pending Evidence
 

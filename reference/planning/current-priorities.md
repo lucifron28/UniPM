@@ -79,7 +79,8 @@ helps a human verify them.
 5. Completed: `feat/web-foundation`.
 6. Completed: `feat/web-auth-integration`.
 7. Completed: `feat/web-assets`.
-8. Next: `feat/web-schedules`.
+8. Completed: `feat/web-schedules`.
+9. Planned after explicit approval: `feat/web-inspections`.
 
 The multilingual embedding baseline remains deferred pending a configured real
 provider.
@@ -348,7 +349,8 @@ directly.
 5. Completed: `feat/web-foundation`.
 6. Completed: `feat/web-auth-integration`.
 7. Completed: `feat/web-assets`.
-8. Next: `feat/web-schedules`.
+8. Completed: `feat/web-schedules`.
+9. Planned after explicit approval: `feat/web-inspections`.
 
 The multilingual embedding baseline remains deferred pending a configured real
 provider.
