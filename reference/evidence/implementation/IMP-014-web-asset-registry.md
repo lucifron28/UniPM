@@ -3,7 +3,7 @@ id: IMP-014
 type: implementation
 title: React web asset registry
 status: reviewed
-recordedAtUtc: 2026-07-19T07:05:00Z
+recordedAtUtc: 2026-07-22T10:47:00Z
 sourceBranch: feat/web-assets
 evidenceLevel: source-inspected
 ---
@@ -16,14 +16,16 @@ Add the first source-backed operational web module without extending the provisi
 
 ## Source Identity
 
-- Implementation commits: `300859ce00821caf8ff074a2cf3691b3e5f1957b` and the Node 22 CI lockfile correction `34ff8561b1fcad7f933dfe520b9de67075333684`
+- Implementation commits: `3b00844ad4b4463c984c1ec2930ed037fffdb6b3`
 - Source paths: asset endpoints and tests, generated web client, and `web/src/features/assets/`.
 
 ## Implementation Summary
 
 - Adds explicit OpenAPI metadata and public `AssetResponse` output for asset create, list, detail, and QR lookup.
-- Commits the regenerated typed client and an offline asset-contract gate.
-- Adds runtime Zod validation, Query-backed asset/reference-data queries, and authenticated list, detail, and provisional GSD create routes.
+- Commits the regenerated typed client, an offline asset-contract gate, and a repeatable negative OpenAPI mutation test suite (`api:contract:test`).
+- Adds runtime Zod validation, TanStack Query-backed asset/reference-data queries, and authenticated list, detail, and provisional GSD create routes.
+- Resolves all draft PR #32 review findings: authoritative search route state, mobile `<nav aria-label="Primary">` landmark, loading/error summary cards with retry button, empty vs filter no-match states, Zod schema create-form validation with error alert focus management and backend 400 error key mapping, invalid UUID route detection skipping API calls, and label-specific copy toast feedback.
+- Restores TypeScript 6 (`~6.0.2`), Node 24 web stream polyfilling for JSDOM/MSW (`src/test/polyfill.ts`), and `pool: 'vmThreads'` in `vite.config.ts`.
 - Keeps supported server filters server-side; text search and ten-row pagination are browser-side over the returned filtered list.
 - Derives summary counts from returned data, uses category display labels from reference data, supports responsive table/cards, and copies identifiers without producing QR graphics.
 
