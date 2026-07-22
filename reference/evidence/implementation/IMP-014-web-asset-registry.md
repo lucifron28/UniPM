@@ -3,7 +3,7 @@ id: IMP-014
 type: implementation
 title: React web asset registry
 status: reviewed
-recordedAtUtc: 2026-07-22T10:47:00Z
+recordedAtUtc: 2026-07-22T11:53:00Z
 sourceBranch: feat/web-assets
 evidenceLevel: source-inspected
 ---
@@ -16,7 +16,7 @@ Add the first source-backed operational web module without extending the provisi
 
 ## Source Identity
 
-- Implementation commits: `3b00844ad4b4463c984c1ec2930ed037fffdb6b3`
+- Implementation commits: `f01c231c9321ce02ed8c876d39bb681da9acfd5e`
 - Source paths: asset endpoints and tests, generated web client, and `web/src/features/assets/`.
 
 ## Implementation Summary
