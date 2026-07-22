@@ -244,6 +244,12 @@ describe('AssetCreate feature component', () => {
     expect(
       (await screen.findAllByText('That asset code already exists.')).length,
     ).toBeGreaterThan(0)
+
+    await actor.type(screen.getByLabelText('Asset code'), '-UPDATED')
+
+    expect(
+      screen.queryByText('That asset code already exists.'),
+    ).not.toBeInTheDocument()
   })
 
   it('strips DTO property prefixes when mapping backend 400 error keys to form fields', async () => {

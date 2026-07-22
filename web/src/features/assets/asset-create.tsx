@@ -139,6 +139,17 @@ export function AssetCreate() {
     },
   })
 
+  const clearBackendFieldError = (key: keyof CreateAssetValues) => {
+    setSubmitError(null)
+    form.setFieldMeta(key, (prev) => ({
+      ...prev,
+      errorMap: {
+        ...prev.errorMap,
+        onSubmit: undefined,
+      },
+    }))
+  }
+
   const mutation = useMutation({
     mutationFn: async (values: CreateAssetValues) => {
       const rawResponse = await createAsset(toCreateAssetDto(values))
@@ -331,6 +342,7 @@ export function AssetCreate() {
                     value={field.state.value}
                     onBlur={field.handleBlur}
                     onChange={(event) => {
+                      clearBackendFieldError('assetCode')
                       field.handleChange(event.target.value)
                     }}
                     aria-invalid={Boolean(err)}
@@ -369,6 +381,7 @@ export function AssetCreate() {
                     value={field.state.value}
                     onBlur={field.handleBlur}
                     onChange={(event) => {
+                      clearBackendFieldError('assetCategory')
                       field.handleChange(
                         event.target
                           .value as CreateAssetValues['assetCategory'],
@@ -424,6 +437,7 @@ export function AssetCreate() {
                       value={field.state.value ?? ''}
                       onBlur={field.handleBlur}
                       onChange={(event) => {
+                        clearBackendFieldError(name)
                         field.handleChange(event.target.value)
                       }}
                       aria-invalid={Boolean(err)}

@@ -62,7 +62,18 @@ const createdAsset = {
   updatedAt: '2026-07-22T00:00:00+00:00',
 }
 
-async function mockAssetRegistry(page: Page, session = gsdSession) {
+const pagedAssets = Array.from({ length: 12 }, (_, index) => ({
+  ...assets[0],
+  id: `00000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
+  assetCode: `FE-${String(index + 1).padStart(3, '0')}`,
+  location: `Floor ${index + 1}`,
+}))
+
+async function mockAssetRegistry(
+  page: Page,
+  session = gsdSession,
+  assetList = assets,
+) {
   await page.route('**/api/v1/auth/refresh', (route) =>
     route.fulfill({
       status: 200,
@@ -96,7 +107,7 @@ async function mockAssetRegistry(page: Page, session = gsdSession) {
     route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify(assets),
+      body: JSON.stringify(assetList),
     }),
   )
   await page.route(`**/api/v1/assets/${assets[0].id}`, (route) =>
@@ -119,6 +130,28 @@ test.describe('Asset Registry E2E Specs', () => {
     await page.getByLabel('Asset category').selectOption('fire-alarm')
     await expect(page).toHaveURL(/assetCategory=fire-alarm/)
     await expect(page.getByText('FA-001').first()).toBeVisible()
+  })
+
+  test('restores text-search URL state through the route', async ({ page }) => {
+    await mockAssetRegistry(page)
+    await page.goto('/app/assets?text=FA-001')
+
+    const search = page.getByLabel('Search assets')
+    await expect(search).toHaveValue('FA-001')
+    await expect(page).toHaveURL(/text=FA-001/)
+    await expect(page.getByText('FA-001').first()).toBeVisible()
+  })
+
+  test('updates pagination URLs and replaces an out-of-range page', async ({
+    page,
+  }) => {
+    await mockAssetRegistry(page, gsdSession, pagedAssets)
+    await page.goto('/app/assets?page=2')
+    await expect(page.getByText('FE-011').first()).toBeVisible()
+
+    await page.goto('/app/assets?page=99')
+    await expect(page).toHaveURL(/page=2/)
+    await expect(page.getByText('FE-011').first()).toBeVisible()
   })
 
   test('renders primary navigation landmark in mobile viewport', async ({
@@ -186,6 +219,27 @@ test.describe('Asset Registry E2E Specs', () => {
     ).toBeVisible()
   })
 
+  test('does not send a create request when a non-GSD user opens the create route', async ({
+    page,
+  }) => {
+    let postCount = 0
+    await mockAssetRegistry(page, nonGsdSession)
+    page.on('request', (request) => {
+      if (
+        request.method() === 'POST' &&
+        request.url().endsWith('/api/v1/assets')
+      ) {
+        postCount += 1
+      }
+    })
+
+    await page.goto('/app/assets/new')
+    await expect(
+      page.getByRole('heading', { name: 'GSD access required' }),
+    ).toBeVisible()
+    expect(postCount).toBe(0)
+  })
+
   test('handles asset creation validation, focus management, and backend 400 mapping', async ({
     page,
   }) => {
@@ -223,6 +277,86 @@ test.describe('Asset Registry E2E Specs', () => {
       'Please correct the highlighted validation errors.',
     )
     await expect(page.getByText('That asset code is invalid.')).toBeVisible()
+  })
+
+  test('shows a duplicate-code conflict and clears its field error after editing', async ({
+    page,
+  }) => {
+    await mockAssetRegistry(page)
+    await page.route('**/api/v1/assets', (route) => {
+      if (route.request().method() === 'POST') {
+        return route.fulfill({
+          status: 409,
+          contentType: 'application/problem+json',
+          body: JSON.stringify({ title: 'Conflict' }),
+        })
+      }
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(assets),
+      })
+    })
+
+    await page.goto('/app/assets/new')
+    await page.getByLabel('Asset code').fill('FE-001')
+    await page.getByLabel('Category').selectOption('fire-extinguisher')
+    await page.getByRole('button', { name: 'Create asset' }).click()
+    await expect(page.locator('#assetCode-error')).toHaveText(
+      'That asset code already exists.',
+    )
+
+    await page.getByLabel('Asset code').fill('FE-002')
+    await expect(page.locator('#assetCode-error')).toHaveCount(0)
+  })
+
+  test('shows category-reference failure without rendering a writable form', async ({
+    page,
+  }) => {
+    await mockAssetRegistry(page)
+    await page.route('**/api/v1/reference-data/asset-categories', (route) =>
+      route.fulfill({ status: 500 }),
+    )
+
+    await page.goto('/app/assets/new')
+    await expect(
+      page.getByRole('heading', { name: 'Asset categories unavailable' }),
+    ).toBeVisible()
+    await expect(
+      page.getByRole('button', { name: 'Create asset' }),
+    ).toHaveCount(0)
+  })
+
+  test('handles a malformed success response without navigating away from creation', async ({
+    page,
+  }) => {
+    await mockAssetRegistry(page)
+    await page.route('**/api/v1/assets', (route) => {
+      if (route.request().method() === 'POST') {
+        return route.fulfill({
+          status: 201,
+          contentType: 'application/json',
+          body: JSON.stringify({ unexpected: true }),
+        })
+      }
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(assets),
+      })
+    })
+
+    await page.goto('/app/assets/new')
+    await page.getByLabel('Asset code').fill('FE-998')
+    await page.getByLabel('Category').selectOption('fire-extinguisher')
+    await page.getByRole('button', { name: 'Create asset' }).click()
+
+    await expect(
+      page.getByText(
+        'The server returned an invalid response, so the creation result could not be verified. Check the registry before trying again.',
+      ),
+    ).toBeVisible()
+    await expect(page).toHaveURL(/\/app\/assets\/new$/)
   })
 
   test('handles invalid asset UUID without making an API request', async ({
@@ -272,6 +406,26 @@ test.describe('Asset Registry E2E Specs', () => {
     await expect(page.getByRole('heading', { name: 'FE-001' })).toBeVisible()
   })
 
+  test('restores a direct asset detail URL and shows not-found responses', async ({
+    page,
+  }) => {
+    await mockAssetRegistry(page)
+    await page.goto(`/app/assets/${assets[0].id}`)
+    await expect(page.getByRole('heading', { name: 'FE-001' })).toBeVisible()
+
+    await page.route(`**/api/v1/assets/${assets[1].id}`, (route) =>
+      route.fulfill({
+        status: 404,
+        contentType: 'application/problem+json',
+        body: JSON.stringify({ title: 'Not found' }),
+      }),
+    )
+    await page.goto(`/app/assets/${assets[1].id}`)
+    await expect(
+      page.getByRole('heading', { name: 'Asset not found' }),
+    ).toBeVisible()
+  })
+
   test('shows label-specific copy toast feedback on asset detail', async ({
     page,
     context,
@@ -284,5 +438,35 @@ test.describe('Asset Registry E2E Specs', () => {
 
     await page.getByRole('button', { name: 'Copy Asset Code' }).click()
     await expect(page.getByText('Asset Code copied.')).toBeVisible()
+  })
+
+  test('shows copy failure feedback and keeps browser storage empty', async ({
+    page,
+  }) => {
+    await mockAssetRegistry(page)
+    await page.addInitScript(() => {
+      Object.assign(navigator, {
+        clipboard: { writeText: () => Promise.reject(new Error('blocked')) },
+      })
+    })
+
+    await page.goto(`/app/assets/${assets[0].id}`)
+    await page.getByRole('button', { name: 'Copy Asset Code' }).click()
+    await expect(
+      page.getByText('Asset Code could not be copied.'),
+    ).toBeVisible()
+    await expect(
+      page.locator(
+        'text=Preventive maintenance, Audit log, Work orders, Condition score',
+      ),
+    ).toHaveCount(0)
+    await expect
+      .poll(() =>
+        page.evaluate(() => ({
+          local: Object.keys(localStorage),
+          session: Object.keys(sessionStorage),
+        })),
+      )
+      .toEqual({ local: [], session: [] })
   })
 })
