@@ -3,7 +3,7 @@ id: ADR-011
 type: decision
 title: Keep schedule monitoring record-based and non-generative
 status: reviewed
-recordedAtUtc: 2026-07-22T06:05:10Z
+recordedAtUtc: 2026-07-22T07:21:56Z
 evidenceLevel: source-inspected
 ---
 
@@ -21,7 +21,9 @@ transition commands.
 TanStack Router owns committed filters and page. TanStack Query owns schedule,
 asset, and reference-data server state. Backend catalogs own controlled status,
 period-type, and quarter codes, while strict Zod contracts reject malformed or
-unknown runtime records before display or caching.
+unknown or duplicate runtime records before display or caching. Failed
+reference queries leave only their affected controls disabled and retryable;
+they are never represented as valid empty option sets.
 
 Status summaries count recorded values only; the web client does not recalculate
 or mutate status from the current date. Create visibility mirrors the

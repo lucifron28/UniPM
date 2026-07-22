@@ -3,8 +3,8 @@ id: TEST-019
 type: test-run
 title: Web schedule workflow verification
 status: executed
-recordedAtUtc: 2026-07-22T06:05:10Z
-testedCommit: f6eadd288b5795154c099050a943154d38a8225e
+recordedAtUtc: 2026-07-22T07:21:56Z
+testedCommit: 6f4a1ae7188fe57d91c99831f45474bd2a026a19
 sourceBranch: feat/web-schedules
 evidenceLevel: locally-executed
 ---
@@ -13,7 +13,7 @@ evidenceLevel: locally-executed
 
 ## Execution Identity
 
-- Tested implementation: `f6eadd288b5795154c099050a943154d38a8225e`
+- Tested implementation: `6f4a1ae7188fe57d91c99831f45474bd2a026a19`
 - Starting main: `96785892f3c64356f7a45dc6263db33a328afb01`
 - Environment: Windows, .NET SDK 10.0.300, Node 24.15.0, npm 11.12.1,
   Chromium through Playwright.
@@ -45,7 +45,7 @@ From `web/`:
 - `npm run test:coverage`
 - `npm run build`
 - `npx playwright install chromium`
-- `npm run e2e`
+- `$env:CI='true'; npm run e2e`
 
 ## Results
 
@@ -58,12 +58,15 @@ From `web/`:
 - Offline OpenAPI contract gate and generated-client drift check: passed.
 - Negative OpenAPI checks: all five passed, including exactly two schedule
   mutations for missing list schema and missing `scheduleDate`.
-- Vitest: 15 files and 103 tests passed, 0 failed.
-- Coverage: 84.48% statements, 69.43% branches, 83.98% functions, and 84.97%
+- Vitest: 15 files and 107 tests passed, 0 failed.
+- Coverage: 84.46% statements, 70.71% branches, 83.43% functions, and 84.81%
   lines. Coverage is supporting information, not the acceptance target.
 - Playwright: 30 Chromium tests passed, 0 failed. The three schedule journeys
   cover URL-owned filtering and detail restoration, authorized creation with
   the exact payload boundary, and Admin-only denial with no POST.
+- Focused schedule checks rejected unsupported and duplicate reference codes,
+  verified failed asset selector retry behavior, and preserved the existing
+  three browser journeys rather than expanding the test matrix.
 - Final scope audit found no migration, schedule entity change, `.env`, token
   storage, update/delete/status command, recurrence engine, or date-derived
   status mutation.
@@ -86,4 +89,6 @@ planning, and unsupported workflow behavior were not copied.
 This record does not claim Node 22 local execution, SQL Server execution,
 production deployment, real institutional data, final RBAC, final scheduling
 authority, recurrence behavior, automated overdue status, or production
-readiness. Backend and Web CI results are recorded separately after push.
+readiness. The CI-mode browser invocation avoids local development-server reuse
+and does not change browser behavior. Backend and Web CI results are recorded
+separately after push.

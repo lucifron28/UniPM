@@ -3,7 +3,7 @@ id: IMP-015
 type: implementation
 title: React web preventive-maintenance schedules
 status: reviewed
-recordedAtUtc: 2026-07-22T06:05:10Z
+recordedAtUtc: 2026-07-22T07:21:56Z
 sourceBranch: feat/web-schedules
 evidenceLevel: source-inspected
 ---
@@ -18,7 +18,7 @@ status engine.
 
 ## Source Identity
 
-- Implementation commit: `f6eadd288b5795154c099050a943154d38a8225e`
+- Implementation commit: `6f4a1ae7188fe57d91c99831f45474bd2a026a19`
 - Starting main commit: `96785892f3c64356f7a45dc6263db33a328afb01`
 - Source paths: schedule/reference endpoints and tests, generated web client,
   `web/src/features/schedules/`, and schedule routes.
@@ -40,6 +40,12 @@ status engine.
   inferred from a schedule date.
 - Uses strict Zod response contracts, TanStack Query server state, TanStack
   Table desktop rows, responsive cards, and TanStack Form creation fields.
+- Validates status, period-type, and quarter reference codes against their
+  respective controlled catalogs and rejects duplicate entries before caching.
+- Keeps failed summary and selector data visibly unavailable with compact
+  retry actions rather than presenting empty controls as valid choices.
+- Associates client and backend field errors with every create input through
+  stable error IDs and ARIA validation metadata.
 - Mirrors provisional GSD/Supervisor create visibility while retaining backend
   authorization as the authority; Admin alone is not treated as operational
   schedule authority.
