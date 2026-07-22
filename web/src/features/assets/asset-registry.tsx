@@ -255,28 +255,50 @@ export function AssetRegistry({
           </Button>
         </Card>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-          <SummaryCard label="All assets" count={allAssets.data.length} />
-          {assetStatusCodes.map((status) => (
-            <SummaryCard
-              key={status}
-              label={status}
-              count={
-                allAssets.data.filter((asset) => asset.status === status).length
-              }
-            />
-          ))}
-          {(categories.data ?? []).map((category) => (
-            <SummaryCard
-              key={category.code}
-              label={category.displayName}
-              count={
-                allAssets.data.filter(
-                  (asset) => asset.assetCategory === category.code,
-                ).length
-              }
-            />
-          ))}
+        <div className="space-y-3">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+            <SummaryCard label="All assets" count={allAssets.data.length} />
+            {assetStatusCodes.map((status) => (
+              <SummaryCard
+                key={status}
+                label={status}
+                count={
+                  allAssets.data.filter((asset) => asset.status === status)
+                    .length
+                }
+              />
+            ))}
+            {(categories.data ?? []).map((category) => (
+              <SummaryCard
+                key={category.code}
+                label={category.displayName}
+                count={
+                  allAssets.data.filter(
+                    (asset) => asset.assetCategory === category.code,
+                  ).length
+                }
+              />
+            ))}
+          </div>
+          {categories.isError && (
+            <Card
+              role="alert"
+              className="border-[var(--error)] p-3 text-[var(--error)] shadow-none"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs font-semibold">
+                  Category statistics are currently unavailable.
+                </p>
+                <Button
+                  type="button"
+                  className="text-xs"
+                  onClick={() => void categories.refetch()}
+                >
+                  Retry categories
+                </Button>
+              </div>
+            </Card>
+          )}
         </div>
       )}
 
@@ -304,26 +326,45 @@ export function AssetRegistry({
               className="pl-9"
             />
           </div>
-          <select
-            aria-label="Asset category"
-            value={search.assetCategory ?? ''}
-            onChange={(event) =>
-              onSearchChange({
-                ...search,
-                assetCategory: (event.target.value || undefined) as
-                  Asset['assetCategory'] | undefined,
-                page: 1,
-              })
-            }
-            className="min-h-10 rounded-lg border border-[var(--border-soft)] bg-white px-3 text-sm"
-          >
-            <option value="">All categories</option>
-            {(categories.data ?? []).map((category) => (
-              <option key={category.code} value={category.code}>
-                {category.displayName}
-              </option>
-            ))}
-          </select>
+          {categories.isError ? (
+            <div className="flex flex-col gap-1">
+              <select
+                disabled
+                aria-label="Asset category"
+                className="min-h-10 rounded-lg border border-[var(--error)] bg-white px-3 text-sm opacity-60"
+              >
+                <option value="">Categories unavailable</option>
+              </select>
+              <button
+                type="button"
+                className="text-left text-xs font-semibold text-[var(--error)] underline"
+                onClick={() => void categories.refetch()}
+              >
+                Retry categories
+              </button>
+            </div>
+          ) : (
+            <select
+              aria-label="Asset category"
+              value={search.assetCategory ?? ''}
+              onChange={(event) =>
+                onSearchChange({
+                  ...search,
+                  assetCategory: (event.target.value || undefined) as
+                    Asset['assetCategory'] | undefined,
+                  page: 1,
+                })
+              }
+              className="min-h-10 rounded-lg border border-[var(--border-soft)] bg-white px-3 text-sm"
+            >
+              <option value="">All categories</option>
+              {(categories.data ?? []).map((category) => (
+                <option key={category.code} value={category.code}>
+                  {category.displayName}
+                </option>
+              ))}
+            </select>
+          )}
           <select
             aria-label="Asset status"
             value={search.status ?? ''}

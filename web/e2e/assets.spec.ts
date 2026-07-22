@@ -11,6 +11,17 @@ const gsdSession = {
   },
 }
 
+const nonGsdSession = {
+  accessToken: 'fictional-inspector-asset-token',
+  expiresAtUtc: '2026-07-19T12:00:00Z',
+  user: {
+    id: '44444444-4444-4444-8444-444444444444',
+    email: 'fictional.inspector@example.test',
+    displayName: 'Fictional Inspector',
+    roles: ['Inspector'],
+  },
+}
+
 const assets = [
   {
     id: '11111111-1111-4111-8111-111111111111',
@@ -38,19 +49,32 @@ const assets = [
   },
 ]
 
-async function mockAssetRegistry(page: Page) {
+const createdAsset = {
+  id: '55555555-5555-4555-8555-555555555555',
+  assetCode: 'FE-999',
+  assetCategory: 'fire-extinguisher',
+  building: 'Library',
+  department: 'GSD',
+  location: '3rd Floor',
+  qrCodeValue: 'UNIPM-FE-999',
+  status: 'Active',
+  createdAt: '2026-07-22T00:00:00+00:00',
+  updatedAt: '2026-07-22T00:00:00+00:00',
+}
+
+async function mockAssetRegistry(page: Page, session = gsdSession) {
   await page.route('**/api/v1/auth/refresh', (route) =>
     route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify(gsdSession),
+      body: JSON.stringify(session),
     }),
   )
   await page.route('**/api/v1/auth/me', (route) =>
     route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify(gsdSession.user),
+      body: JSON.stringify(session.user),
     }),
   )
   await page.route('**/api/v1/reference-data/asset-categories', (route) =>
@@ -104,9 +128,62 @@ test.describe('Asset Registry E2E Specs', () => {
     await mockAssetRegistry(page)
     await page.goto('/app/assets')
 
-    const nav = page.locator('nav[aria-label="Primary"]')
+    const nav = page
+      .locator('nav[aria-label="Primary"]')
+      .filter({ has: page.getByRole('link', { name: 'Assets' }) })
+      .first()
     await expect(nav).toBeVisible()
     await expect(nav.getByRole('link', { name: 'Assets' })).toBeVisible()
+  })
+
+  test('handles successful asset creation and navigates to asset detail', async ({
+    page,
+  }) => {
+    await mockAssetRegistry(page)
+    await page.route('**/api/v1/assets', async (route) => {
+      if (route.request().method() === 'POST') {
+        await route.fulfill({
+          status: 201,
+          contentType: 'application/json',
+          body: JSON.stringify(createdAsset),
+        })
+      } else {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify(assets),
+        })
+      }
+    })
+    await page.route(`**/api/v1/assets/${createdAsset.id}`, (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(createdAsset),
+      }),
+    )
+
+    await page.goto('/app/assets/new')
+    await expect(page.getByRole('heading', { name: 'Add asset' })).toBeVisible()
+
+    await page.getByLabel('Asset code').fill('FE-999')
+    await page.getByLabel('Category').selectOption('fire-extinguisher')
+    await page.getByLabel('Building (optional)').fill('Library')
+    await page.getByRole('button', { name: 'Create asset' }).click()
+
+    await expect(page).toHaveURL(new RegExp(`/app/assets/${createdAsset.id}`))
+    await expect(page.getByRole('heading', { name: 'FE-999' })).toBeVisible()
+  })
+
+  test('blocks non-GSD users from accessing create asset route', async ({
+    page,
+  }) => {
+    await mockAssetRegistry(page, nonGsdSession)
+    await page.goto('/app/assets/new')
+
+    await expect(
+      page.getByRole('heading', { name: 'GSD access required' }),
+    ).toBeVisible()
   })
 
   test('handles asset creation validation, focus management, and backend 400 mapping', async ({
@@ -167,6 +244,32 @@ test.describe('Asset Registry E2E Specs', () => {
       ),
     ).toBeVisible()
     expect(apiCalled).toBe(false)
+  })
+
+  test('shows network error and handles retry interaction on asset detail', async ({
+    page,
+  }) => {
+    let isRetrying = false
+    await mockAssetRegistry(page)
+    await page.route(`**/api/v1/assets/${assets[0].id}`, (route) => {
+      if (!isRetrying) {
+        return route.abort('failed')
+      }
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(assets[0]),
+      })
+    })
+
+    await page.goto(`/app/assets/${assets[0].id}`)
+    await expect(
+      page.getByRole('heading', { name: 'Service unavailable' }),
+    ).toBeVisible()
+
+    isRetrying = true
+    await page.getByRole('button', { name: 'Retry' }).click()
+    await expect(page.getByRole('heading', { name: 'FE-001' })).toBeVisible()
   })
 
   test('shows label-specific copy toast feedback on asset detail', async ({

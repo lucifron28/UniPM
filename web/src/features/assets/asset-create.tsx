@@ -21,8 +21,15 @@ import {
 import { useAssetCategories } from '@/features/assets/asset-queries'
 import { useCurrentUser } from '@/features/auth/current-user'
 
-function fieldErrorText(errors: unknown[]): string | undefined {
-  const first = errors[0]
+function fieldErrorText(meta: {
+  errors: unknown[]
+  errorMap: Record<string, unknown>
+}): string | undefined {
+  const allErrors = [
+    ...meta.errors,
+    ...Object.values(meta.errorMap || {}).filter(Boolean),
+  ]
+  const first = allErrors[0]
   if (typeof first === 'string') return first
   if (first && typeof first === 'object' && 'message' in first) {
     return String((first as { message: unknown }).message)
@@ -30,7 +37,7 @@ function fieldErrorText(errors: unknown[]): string | undefined {
   return undefined
 }
 
-const ALLOWED_FIELD_KEYS = new Set([
+const ALLOWED_FIELD_KEYS = new Set<keyof CreateAssetValues>([
   'assetCode',
   'assetCategory',
   'building',
@@ -38,7 +45,16 @@ const ALLOWED_FIELD_KEYS = new Set([
   'location',
 ])
 
-type FieldErrors = Partial<Record<keyof CreateAssetValues, string | undefined>>
+function cleanBackendErrorKey(rawKey: string): keyof CreateAssetValues | null {
+  const parts = rawKey.split(/[.[]/)
+  const lastSegment = (parts[parts.length - 1] ?? '').replace(/\]$/, '')
+  const cleaned = (lastSegment.charAt(0).toLowerCase() +
+    lastSegment.slice(1)) as keyof CreateAssetValues
+  if (ALLOWED_FIELD_KEYS.has(cleaned)) {
+    return cleaned
+  }
+  return null
+}
 
 export function AssetCreate() {
   const navigate = useNavigate()
@@ -46,7 +62,6 @@ export function AssetCreate() {
   const categories = useAssetCategories()
   const currentUser = useCurrentUser()
   const [submitError, setSubmitError] = useState<string | null>(null)
-  const [serverFieldErrors, setServerFieldErrors] = useState<FieldErrors>({})
   const summaryRef = useRef<HTMLDivElement>(null)
 
   const canCreate = currentUser.data?.roles.includes('GSD') ?? false
@@ -59,15 +74,67 @@ export function AssetCreate() {
       department: '',
       location: '',
     },
+    onSubmitInvalid: () => {
+      setSubmitError('Please review and correct the required fields.')
+      const firstInvalidField = [
+        'assetCode',
+        'assetCategory',
+        'building',
+        'department',
+        'location',
+      ].find((key) => {
+        const meta = form.getFieldMeta(key as keyof CreateAssetValues)
+        return meta && (meta.errors.length > 0 || meta.errorMap.onChange)
+      })
+      if (firstInvalidField) {
+        document.getElementById(firstInvalidField)?.focus()
+      } else {
+        summaryRef.current?.focus()
+      }
+    },
     onSubmit: ({ value }) => {
       setSubmitError(null)
-      setServerFieldErrors({})
+
+      ALLOWED_FIELD_KEYS.forEach((key) => {
+        form.setFieldMeta(key, (prev) => ({
+          ...prev,
+          errorMap: {
+            ...prev.errorMap,
+            onSubmit: undefined,
+          },
+        }))
+      })
+
       const parsed = createAssetSchema.safeParse(value)
       if (!parsed.success) {
+        let firstInvalidField: string | null = null
+        parsed.error.issues.forEach((issue) => {
+          const fieldName = issue.path[0] as keyof CreateAssetValues
+          if (fieldName && ALLOWED_FIELD_KEYS.has(fieldName)) {
+            if (!firstInvalidField) firstInvalidField = fieldName
+            form.setFieldMeta(fieldName, (prev) => ({
+              ...prev,
+              errorMap: {
+                ...prev.errorMap,
+                onSubmit: issue.message,
+              },
+            }))
+          }
+        })
+
         setSubmitError('Please review and correct the required fields.')
+
+        if (firstInvalidField) {
+          const el = document.getElementById(firstInvalidField)
+          if (el) {
+            el.focus()
+            return
+          }
+        }
         summaryRef.current?.focus()
         return
       }
+
       mutation.mutate(value)
     },
   })
@@ -79,8 +146,8 @@ export function AssetCreate() {
     },
     onSuccess: async (asset) => {
       queryClient.setQueryData(getGetAssetQueryKey(asset.id), asset)
-      await queryClient.invalidateQueries({ queryKey: ['/api/v1/assets'] })
       toast.success('Asset created.')
+      await queryClient.invalidateQueries({ queryKey: ['/api/v1/assets'] })
       void navigate({
         to: '/app/assets/$assetId',
         params: { assetId: asset.id },
@@ -89,7 +156,7 @@ export function AssetCreate() {
     onError: (error) => {
       if (error instanceof ZodError) {
         setSubmitError(
-          'The server returned an invalid response format. The asset was not created.',
+          'The server returned an invalid response, so the creation result could not be verified. Check the registry before trying again.',
         )
         summaryRef.current?.focus()
         return
@@ -106,29 +173,36 @@ export function AssetCreate() {
 
         if (error.status === 409) {
           setSubmitError('That asset code already exists.')
-          setServerFieldErrors({ assetCode: 'That asset code already exists.' })
+          form.setFieldMeta('assetCode', (prev) => ({
+            ...prev,
+            errorMap: {
+              ...prev.errorMap,
+              onSubmit: 'That asset code already exists.',
+            },
+          }))
           summaryRef.current?.focus()
           return
         }
 
         if (error.status === 400 && error.problem?.errors) {
-          const newErrors: FieldErrors = {}
+          let hasMapped = false
           Object.entries(error.problem.errors).forEach(([rawKey, msgs]) => {
-            const key = (rawKey.charAt(0).toLowerCase() +
-              rawKey.slice(1)) as keyof CreateAssetValues
-            if (
-              ALLOWED_FIELD_KEYS.has(key) &&
-              Array.isArray(msgs) &&
-              msgs.length > 0
-            ) {
+            const key = cleanBackendErrorKey(rawKey)
+            if (key && Array.isArray(msgs) && msgs.length > 0) {
               const cleanMsg =
                 typeof msgs[0] === 'string' ? msgs[0] : 'Invalid value.'
-              newErrors[key] = cleanMsg
+              form.setFieldMeta(key, (prev) => ({
+                ...prev,
+                errorMap: {
+                  ...prev.errorMap,
+                  onSubmit: cleanMsg,
+                },
+              }))
+              hasMapped = true
             }
           })
-          setServerFieldErrors(newErrors)
           setSubmitError(
-            Object.keys(newErrors).length > 0
+            hasMapped
               ? 'Please correct the highlighted validation errors.'
               : 'The asset details are invalid. Please check your entries.',
           )
@@ -241,16 +315,14 @@ export function AssetCreate() {
           <form.Field
             name="assetCode"
             validators={{
-              onBlur: ({ value }) => {
+              onChange: ({ value }) => {
                 const res = createAssetSchema.shape.assetCode.safeParse(value)
                 return res.success ? undefined : res.error.issues[0]?.message
               },
             }}
           >
             {(field) => {
-              const err =
-                serverFieldErrors.assetCode ??
-                fieldErrorText(field.state.meta.errors)
+              const err = fieldErrorText(field.state.meta)
               return (
                 <div className="space-y-2">
                   <Label htmlFor="assetCode">Asset code</Label>
@@ -259,10 +331,6 @@ export function AssetCreate() {
                     value={field.state.value}
                     onBlur={field.handleBlur}
                     onChange={(event) => {
-                      setServerFieldErrors((prev) => ({
-                        ...prev,
-                        assetCode: undefined,
-                      }))
                       field.handleChange(event.target.value)
                     }}
                     aria-invalid={Boolean(err)}
@@ -284,7 +352,7 @@ export function AssetCreate() {
           <form.Field
             name="assetCategory"
             validators={{
-              onBlur: ({ value }) => {
+              onChange: ({ value }) => {
                 const res =
                   createAssetSchema.shape.assetCategory.safeParse(value)
                 return res.success ? undefined : res.error.issues[0]?.message
@@ -292,9 +360,7 @@ export function AssetCreate() {
             }}
           >
             {(field) => {
-              const err =
-                serverFieldErrors.assetCategory ??
-                fieldErrorText(field.state.meta.errors)
+              const err = fieldErrorText(field.state.meta)
               return (
                 <div className="space-y-2">
                   <Label htmlFor="assetCategory">Category</Label>
@@ -303,10 +369,6 @@ export function AssetCreate() {
                     value={field.state.value}
                     onBlur={field.handleBlur}
                     onChange={(event) => {
-                      setServerFieldErrors((prev) => ({
-                        ...prev,
-                        assetCategory: undefined,
-                      }))
                       field.handleChange(
                         event.target
                           .value as CreateAssetValues['assetCategory'],
@@ -341,16 +403,14 @@ export function AssetCreate() {
               key={name}
               name={name}
               validators={{
-                onBlur: ({ value }) => {
+                onChange: ({ value }) => {
                   const res = createAssetSchema.shape[name].safeParse(value)
                   return res.success ? undefined : res.error.issues[0]?.message
                 },
               }}
             >
               {(field) => {
-                const err =
-                  serverFieldErrors[name] ??
-                  fieldErrorText(field.state.meta.errors)
+                const err = fieldErrorText(field.state.meta)
                 return (
                   <div className="space-y-2">
                     <Label htmlFor={name}>
@@ -364,10 +424,6 @@ export function AssetCreate() {
                       value={field.state.value ?? ''}
                       onBlur={field.handleBlur}
                       onChange={(event) => {
-                        setServerFieldErrors((prev) => ({
-                          ...prev,
-                          [name]: undefined,
-                        }))
                         field.handleChange(event.target.value)
                       }}
                       aria-invalid={Boolean(err)}
