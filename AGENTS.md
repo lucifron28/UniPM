@@ -196,7 +196,7 @@ seeding, and coarse policy protection are also complete. Inspection-submission
 integrity, retrieval/test folder organization, explicit documentation of the
 MVP sanitizer's free-text-name limitation, the React web foundation, and browser
 authentication integration are also complete. The exact next branch is
-`feat/web-assets`; the multilingual embedding baseline remains pending a
+`feat/web-schedules`; the multilingual embedding baseline remains pending a
 configured real provider.
 
 Observability remains bounded infrastructure: `Observability:MetricsEnabled`

@@ -22,6 +22,7 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true,
     "noUncheckedIndexedAccess": true,
+    "strictNullChecks": true,
     "exactOptionalPropertyTypes": true,
     "paths": {
       "@/*": ["./src/*"]

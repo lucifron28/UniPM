@@ -78,7 +78,8 @@ helps a human verify them.
 4. Completed: `feat/auth-refresh-sessions`.
 5. Completed: `feat/web-foundation`.
 6. Completed: `feat/web-auth-integration`.
-7. Next: `feat/web-assets`.
+7. Completed: `feat/web-assets`.
+8. Next: `feat/web-schedules`.
 
 The multilingual embedding baseline remains deferred pending a configured real
 provider.
@@ -346,7 +347,8 @@ directly.
 4. Completed: `feat/auth-refresh-sessions`.
 5. Completed: `feat/web-foundation`.
 6. Completed: `feat/web-auth-integration`.
-7. Next: `feat/web-assets`.
+7. Completed: `feat/web-assets`.
+8. Next: `feat/web-schedules`.
 
 The multilingual embedding baseline remains deferred pending a configured real
 provider.

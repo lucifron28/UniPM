@@ -336,4 +336,35 @@ describe('authentication session coordinator', () => {
     expect(useAuthStore.getState().status).toBe('anonymous')
     expect(invalidateRoutes).toHaveBeenCalled()
   })
+
+  it('clears query cache and re-seeds current user data when switching between users', async () => {
+    queryClient.setQueryData(['user-cached-assets'], [{ id: 'user1-asset' }])
+    useAuthStore.getState().establishSession('user1-token')
+
+    const user2 = {
+      ...user,
+      id: '22222222-2222-4222-8222-222222222222',
+      email: 'user2@example.test',
+    }
+    server.use(
+      http.post(`${apiBase}/login`, () =>
+        HttpResponse.json({
+          accessToken: 'user2-token',
+          expiresAtUtc: '2026-07-19T00:00:00Z',
+          user: user2,
+        }),
+      ),
+      http.post(
+        `${apiBase}/logout`,
+        () => new HttpResponse(null, { status: 204 }),
+      ),
+    )
+
+    await logout()
+    expect(queryClient.getQueryData(['user-cached-assets'])).toBeUndefined()
+
+    await authenticate({ email: 'user2@example.test', password: 'password' })
+    expect(useAuthStore.getState().accessToken).toBe('user2-token')
+    expect(queryClient.getQueryData(currentUserQueryKey)).toEqual(user2)
+  })
 })

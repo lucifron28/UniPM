@@ -52,7 +52,22 @@ uses the approved maroon, neutral, and status tokens plus a local exported logo.
 This is implementation alignment, not a pixel-perfect or final institutional
 design certification.
 
-Registration, password recovery, MFA, SSO, final institutional RBAC, and
-operational web modules remain deferred. The authenticated shell intentionally
-contains only real identity data, logout, and a dashboard placeholder; it does
-not invent maintenance records, metrics, or workflows.
+## Asset Registry
+
+Authenticated users can browse `/app/assets`, view a route-backed asset detail,
+and copy the returned asset code or QR identifier. The registry sends only the
+supported category, status, building, and department filters to the API. Text
+search and ten-row pagination run client-side over that returned filtered list
+and are reflected in the URL. Summary cards derive only from the unfiltered
+asset response and reference-data categories.
+
+Only the provisional `GSD` role sees and may use `/app/assets/new`; the backend
+policy remains authoritative. The form accepts only the current create contract
+fields. Category labels come from reference data, responses are runtime-checked
+with Zod, and QR values are shown/copied without generating an image or label.
+No real institutional asset data, final RBAC, editing, PM, inspection, audit,
+condition, work-order, or device-specification workflow is implemented.
+
+Registration, password recovery, MFA, SSO, and final institutional RBAC remain
+deferred. The authenticated shell intentionally avoids invented maintenance
+records, metrics, or workflows.

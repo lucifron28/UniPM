@@ -1,5 +1,5 @@
 import { Link, Outlet } from '@tanstack/react-router'
-import { LayoutDashboard } from 'lucide-react'
+import { Boxes, LayoutDashboard } from 'lucide-react'
 import { Alert } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { BrandMark } from '@/components/brand-mark'
@@ -83,11 +83,33 @@ export function AppShell() {
         <nav aria-label="Primary" className="flex-1 p-4">
           <Link
             to="/app/dashboard"
-            activeProps={{ 'aria-current': 'page' }}
-            className="flex items-center gap-3 rounded-lg bg-[var(--primary-active)] px-4 py-3 text-sm font-semibold text-white shadow-sm"
+            activeProps={{
+              'aria-current': 'page',
+              className:
+                'flex items-center gap-3 rounded-lg bg-[var(--primary-active)] px-4 py-3 text-sm font-semibold text-white shadow-sm',
+            }}
+            inactiveProps={{
+              className:
+                'flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-semibold text-[var(--text-secondary)] hover:bg-[var(--page-background)]',
+            }}
           >
             <LayoutDashboard aria-hidden="true" className="size-5" />
             Dashboard
+          </Link>
+          <Link
+            to="/app/assets"
+            activeProps={{
+              'aria-current': 'page',
+              className:
+                'mt-1 flex items-center gap-3 rounded-lg bg-[var(--primary-active)] px-4 py-3 text-sm font-semibold text-white shadow-sm',
+            }}
+            inactiveProps={{
+              className:
+                'mt-1 flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-semibold text-[var(--text-secondary)] hover:bg-[var(--page-background)]',
+            }}
+          >
+            <Boxes aria-hidden="true" className="size-5" />
+            Assets
           </Link>
         </nav>
         <div className="space-y-4 border-t border-[var(--border-soft)] p-4">
@@ -113,6 +135,40 @@ export function AppShell() {
             <LogoutButton />
           </div>
         </header>
+        <div className="border-b border-[var(--border-soft)] bg-white px-4 py-2.5 lg:hidden">
+          <nav aria-label="Primary" className="flex items-center gap-2">
+            <Link
+              to="/app/dashboard"
+              activeProps={{
+                'aria-current': 'page',
+                className:
+                  'flex items-center gap-2 rounded-lg bg-[var(--primary-active)] px-3 py-2 text-xs font-semibold text-white shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]',
+              }}
+              inactiveProps={{
+                className:
+                  'flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--page-background)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]',
+              }}
+            >
+              <LayoutDashboard aria-hidden="true" className="size-4" />
+              Dashboard
+            </Link>
+            <Link
+              to="/app/assets"
+              activeProps={{
+                'aria-current': 'page',
+                className:
+                  'flex items-center gap-2 rounded-lg bg-[var(--primary-active)] px-3 py-2 text-xs font-semibold text-white shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]',
+              }}
+              inactiveProps={{
+                className:
+                  'flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--page-background)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]',
+              }}
+            >
+              <Boxes aria-hidden="true" className="size-4" />
+              Assets
+            </Link>
+          </nav>
+        </div>
 
         <div className="border-b border-[var(--border-soft)] bg-white px-4 py-4 lg:hidden">
           <UserIdentity />

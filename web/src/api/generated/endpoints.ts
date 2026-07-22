@@ -22,18 +22,20 @@ import type {
 
 import type {
   AssetCategoryResponse,
+  AssetResponse,
   AuthUserResponse,
   CreateAssetDto,
   CreateScheduleDto,
-  GetApiV1AssetsParams,
   GetApiV1InspectionsParams,
   GetApiV1SchedulesParams,
   HttpValidationProblemDetails,
+  ListAssetsParams,
   LoginRequest,
   LoginResponse,
   MaintenanceReviewRequest,
   ProblemDetails,
   RecordInspectionDto,
+  ValidationProblemDetails,
 } from './models'
 
 import { customInstance } from '../http-client'
@@ -644,11 +646,14 @@ export function useGetCurrentUser<
   return withQueryKey(query, queryOptions.queryKey)
 }
 
-export const postApiV1Assets = (
+/**
+ * @summary Creates an asset in the current UniPM study scope
+ */
+export const createAsset = (
   createAssetDto: CreateAssetDto,
   signal?: AbortSignal,
 ) => {
-  return customInstance<void>({
+  return customInstance<AssetResponse>({
     url: `/api/v1/assets`,
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -657,23 +662,23 @@ export const postApiV1Assets = (
   })
 }
 
-export const getPostApiV1AssetsMutationOptions = <
-  TError = unknown,
+export const getCreateAssetMutationOptions = <
+  TError = ValidationProblemDetails | ProblemDetails,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof postApiV1Assets>>,
+    Awaited<ReturnType<typeof createAsset>>,
     TError,
     { data: CreateAssetDto },
     TContext
   >
 }): UseMutationOptions<
-  Awaited<ReturnType<typeof postApiV1Assets>>,
+  Awaited<ReturnType<typeof createAsset>>,
   TError,
   { data: CreateAssetDto },
   TContext
 > => {
-  const mutationKey = ['postApiV1Assets']
+  const mutationKey = ['createAsset']
   const { mutation: mutationOptions } = options
     ? options.mutation &&
       'mutationKey' in options.mutation &&
@@ -683,27 +688,33 @@ export const getPostApiV1AssetsMutationOptions = <
     : { mutation: { mutationKey } }
 
   const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof postApiV1Assets>>,
+    Awaited<ReturnType<typeof createAsset>>,
     { data: CreateAssetDto }
   > = (props) => {
     const { data } = props ?? {}
 
-    return postApiV1Assets(data)
+    return createAsset(data)
   }
 
   return { mutationFn, ...mutationOptions }
 }
 
-export type PostApiV1AssetsMutationResult = NonNullable<
-  Awaited<ReturnType<typeof postApiV1Assets>>
+export type CreateAssetMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createAsset>>
 >
-export type PostApiV1AssetsMutationBody = CreateAssetDto
-export type PostApiV1AssetsMutationError = unknown
+export type CreateAssetMutationBody = CreateAssetDto
+export type CreateAssetMutationError = ValidationProblemDetails | ProblemDetails
 
-export const usePostApiV1Assets = <TError = unknown, TContext = unknown>(
+/**
+ * @summary Creates an asset in the current UniPM study scope
+ */
+export const useCreateAsset = <
+  TError = ValidationProblemDetails | ProblemDetails,
+  TContext = unknown,
+>(
   options?: {
     mutation?: UseMutationOptions<
-      Awaited<ReturnType<typeof postApiV1Assets>>,
+      Awaited<ReturnType<typeof createAsset>>,
       TError,
       { data: CreateAssetDto },
       TContext
@@ -711,19 +722,19 @@ export const usePostApiV1Assets = <TError = unknown, TContext = unknown>(
   },
   queryClient?: QueryClient,
 ): UseMutationResult<
-  Awaited<ReturnType<typeof postApiV1Assets>>,
+  Awaited<ReturnType<typeof createAsset>>,
   TError,
   { data: CreateAssetDto },
   TContext
 > => {
-  return useMutation(getPostApiV1AssetsMutationOptions(options), queryClient)
+  return useMutation(getCreateAssetMutationOptions(options), queryClient)
 }
 
-export const getApiV1Assets = (
-  params?: GetApiV1AssetsParams,
-  signal?: AbortSignal,
-) => {
-  return customInstance<void>({
+/**
+ * @summary Lists assets using supported category, status, building, and department filters
+ */
+export const listAssets = (params?: ListAssetsParams, signal?: AbortSignal) => {
+  return customInstance<AssetResponse[]>({
     url: `/api/v1/assets`,
     method: 'GET',
     params,
@@ -731,55 +742,55 @@ export const getApiV1Assets = (
   })
 }
 
-export const getGetApiV1AssetsQueryKey = (params?: GetApiV1AssetsParams) => {
+export const getListAssetsQueryKey = (params?: ListAssetsParams) => {
   return [`/api/v1/assets`, ...(params ? [params] : [])] as const
 }
 
-export const getGetApiV1AssetsQueryOptions = <
-  TData = Awaited<ReturnType<typeof getApiV1Assets>>,
-  TError = unknown,
+export const getListAssetsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listAssets>>,
+  TError = ValidationProblemDetails,
 >(
-  params?: GetApiV1AssetsParams,
+  params?: ListAssetsParams,
   options?: {
     query?: Partial<
-      UseQueryOptions<Awaited<ReturnType<typeof getApiV1Assets>>, TError, TData>
+      UseQueryOptions<Awaited<ReturnType<typeof listAssets>>, TError, TData>
     >
   },
 ) => {
   const { query: queryOptions } = options ?? {}
 
-  const queryKey = queryOptions?.queryKey ?? getGetApiV1AssetsQueryKey(params)
+  const queryKey = queryOptions?.queryKey ?? getListAssetsQueryKey(params)
 
-  const queryFn: QueryFunction<Awaited<ReturnType<typeof getApiV1Assets>>> = ({
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listAssets>>> = ({
     signal,
-  }) => getApiV1Assets(params, signal)
+  }) => listAssets(params, signal)
 
   return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
-    Awaited<ReturnType<typeof getApiV1Assets>>,
+    Awaited<ReturnType<typeof listAssets>>,
     TError,
     TData
   > & { queryKey: DataTag<QueryKey, TData, TError> }
 }
 
-export type GetApiV1AssetsQueryResult = NonNullable<
-  Awaited<ReturnType<typeof getApiV1Assets>>
+export type ListAssetsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listAssets>>
 >
-export type GetApiV1AssetsQueryError = unknown
+export type ListAssetsQueryError = ValidationProblemDetails
 
-export function useGetApiV1Assets<
-  TData = Awaited<ReturnType<typeof getApiV1Assets>>,
-  TError = unknown,
+export function useListAssets<
+  TData = Awaited<ReturnType<typeof listAssets>>,
+  TError = ValidationProblemDetails,
 >(
-  params: undefined | GetApiV1AssetsParams,
+  params: undefined | ListAssetsParams,
   options: {
     query: Partial<
-      UseQueryOptions<Awaited<ReturnType<typeof getApiV1Assets>>, TError, TData>
+      UseQueryOptions<Awaited<ReturnType<typeof listAssets>>, TError, TData>
     > &
       Pick<
         DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getApiV1Assets>>,
+          Awaited<ReturnType<typeof listAssets>>,
           TError,
-          Awaited<ReturnType<typeof getApiV1Assets>>
+          Awaited<ReturnType<typeof listAssets>>
         >,
         'initialData'
       >
@@ -788,20 +799,20 @@ export function useGetApiV1Assets<
 ): DefinedUseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>
 }
-export function useGetApiV1Assets<
-  TData = Awaited<ReturnType<typeof getApiV1Assets>>,
-  TError = unknown,
+export function useListAssets<
+  TData = Awaited<ReturnType<typeof listAssets>>,
+  TError = ValidationProblemDetails,
 >(
-  params?: GetApiV1AssetsParams,
+  params?: ListAssetsParams,
   options?: {
     query?: Partial<
-      UseQueryOptions<Awaited<ReturnType<typeof getApiV1Assets>>, TError, TData>
+      UseQueryOptions<Awaited<ReturnType<typeof listAssets>>, TError, TData>
     > &
       Pick<
         UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getApiV1Assets>>,
+          Awaited<ReturnType<typeof listAssets>>,
           TError,
-          Awaited<ReturnType<typeof getApiV1Assets>>
+          Awaited<ReturnType<typeof listAssets>>
         >,
         'initialData'
       >
@@ -810,36 +821,39 @@ export function useGetApiV1Assets<
 ): UseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>
 }
-export function useGetApiV1Assets<
-  TData = Awaited<ReturnType<typeof getApiV1Assets>>,
-  TError = unknown,
+export function useListAssets<
+  TData = Awaited<ReturnType<typeof listAssets>>,
+  TError = ValidationProblemDetails,
 >(
-  params?: GetApiV1AssetsParams,
+  params?: ListAssetsParams,
   options?: {
     query?: Partial<
-      UseQueryOptions<Awaited<ReturnType<typeof getApiV1Assets>>, TError, TData>
+      UseQueryOptions<Awaited<ReturnType<typeof listAssets>>, TError, TData>
     >
   },
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>
 }
+/**
+ * @summary Lists assets using supported category, status, building, and department filters
+ */
 
-export function useGetApiV1Assets<
-  TData = Awaited<ReturnType<typeof getApiV1Assets>>,
-  TError = unknown,
+export function useListAssets<
+  TData = Awaited<ReturnType<typeof listAssets>>,
+  TError = ValidationProblemDetails,
 >(
-  params?: GetApiV1AssetsParams,
+  params?: ListAssetsParams,
   options?: {
     query?: Partial<
-      UseQueryOptions<Awaited<ReturnType<typeof getApiV1Assets>>, TError, TData>
+      UseQueryOptions<Awaited<ReturnType<typeof listAssets>>, TError, TData>
     >
   },
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>
 } {
-  const queryOptions = getGetApiV1AssetsQueryOptions(params, options)
+  const queryOptions = getListAssetsQueryOptions(params, options)
 
   const query = useQuery(queryOptions, queryClient) as UseQueryResult<
     TData,
@@ -849,76 +863,69 @@ export function useGetApiV1Assets<
   return withQueryKey(query, queryOptions.queryKey)
 }
 
-export const getApiV1AssetsId = (id: string, signal?: AbortSignal) => {
-  return customInstance<void>({
+/**
+ * @summary Gets an asset by its identifier
+ */
+export const getAsset = (id: string, signal?: AbortSignal) => {
+  return customInstance<AssetResponse>({
     url: `/api/v1/assets/${id}`,
     method: 'GET',
     signal,
   })
 }
 
-export const getGetApiV1AssetsIdQueryKey = (id: string) => {
+export const getGetAssetQueryKey = (id: string) => {
   return [`/api/v1/assets/${id}`] as const
 }
 
-export const getGetApiV1AssetsIdQueryOptions = <
-  TData = Awaited<ReturnType<typeof getApiV1AssetsId>>,
-  TError = unknown,
+export const getGetAssetQueryOptions = <
+  TData = Awaited<ReturnType<typeof getAsset>>,
+  TError = ProblemDetails,
 >(
   id: string,
   options?: {
     query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof getApiV1AssetsId>>,
-        TError,
-        TData
-      >
+      UseQueryOptions<Awaited<ReturnType<typeof getAsset>>, TError, TData>
     >
   },
 ) => {
   const { query: queryOptions } = options ?? {}
 
-  const queryKey = queryOptions?.queryKey ?? getGetApiV1AssetsIdQueryKey(id)
+  const queryKey = queryOptions?.queryKey ?? getGetAssetQueryKey(id)
 
-  const queryFn: QueryFunction<
-    Awaited<ReturnType<typeof getApiV1AssetsId>>
-  > = ({ signal }) => getApiV1AssetsId(id, signal)
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getAsset>>> = ({
+    signal,
+  }) => getAsset(id, signal)
 
   return {
     queryKey,
     queryFn,
     enabled: id !== null && id !== undefined,
     ...queryOptions,
-  } as UseQueryOptions<
-    Awaited<ReturnType<typeof getApiV1AssetsId>>,
-    TError,
-    TData
-  > & { queryKey: DataTag<QueryKey, TData, TError> }
+  } as UseQueryOptions<Awaited<ReturnType<typeof getAsset>>, TError, TData> & {
+    queryKey: DataTag<QueryKey, TData, TError>
+  }
 }
 
-export type GetApiV1AssetsIdQueryResult = NonNullable<
-  Awaited<ReturnType<typeof getApiV1AssetsId>>
+export type GetAssetQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getAsset>>
 >
-export type GetApiV1AssetsIdQueryError = unknown
+export type GetAssetQueryError = ProblemDetails
 
-export function useGetApiV1AssetsId<
-  TData = Awaited<ReturnType<typeof getApiV1AssetsId>>,
-  TError = unknown,
+export function useGetAsset<
+  TData = Awaited<ReturnType<typeof getAsset>>,
+  TError = ProblemDetails,
 >(
   id: string,
   options: {
     query: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof getApiV1AssetsId>>,
-        TError,
-        TData
-      >
+      UseQueryOptions<Awaited<ReturnType<typeof getAsset>>, TError, TData>
     > &
       Pick<
         DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getApiV1AssetsId>>,
+          Awaited<ReturnType<typeof getAsset>>,
           TError,
-          Awaited<ReturnType<typeof getApiV1AssetsId>>
+          Awaited<ReturnType<typeof getAsset>>
         >,
         'initialData'
       >
@@ -927,24 +934,20 @@ export function useGetApiV1AssetsId<
 ): DefinedUseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>
 }
-export function useGetApiV1AssetsId<
-  TData = Awaited<ReturnType<typeof getApiV1AssetsId>>,
-  TError = unknown,
+export function useGetAsset<
+  TData = Awaited<ReturnType<typeof getAsset>>,
+  TError = ProblemDetails,
 >(
   id: string,
   options?: {
     query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof getApiV1AssetsId>>,
-        TError,
-        TData
-      >
+      UseQueryOptions<Awaited<ReturnType<typeof getAsset>>, TError, TData>
     > &
       Pick<
         UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getApiV1AssetsId>>,
+          Awaited<ReturnType<typeof getAsset>>,
           TError,
-          Awaited<ReturnType<typeof getApiV1AssetsId>>
+          Awaited<ReturnType<typeof getAsset>>
         >,
         'initialData'
       >
@@ -953,44 +956,39 @@ export function useGetApiV1AssetsId<
 ): UseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>
 }
-export function useGetApiV1AssetsId<
-  TData = Awaited<ReturnType<typeof getApiV1AssetsId>>,
-  TError = unknown,
+export function useGetAsset<
+  TData = Awaited<ReturnType<typeof getAsset>>,
+  TError = ProblemDetails,
 >(
   id: string,
   options?: {
     query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof getApiV1AssetsId>>,
-        TError,
-        TData
-      >
+      UseQueryOptions<Awaited<ReturnType<typeof getAsset>>, TError, TData>
     >
   },
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>
 }
+/**
+ * @summary Gets an asset by its identifier
+ */
 
-export function useGetApiV1AssetsId<
-  TData = Awaited<ReturnType<typeof getApiV1AssetsId>>,
-  TError = unknown,
+export function useGetAsset<
+  TData = Awaited<ReturnType<typeof getAsset>>,
+  TError = ProblemDetails,
 >(
   id: string,
   options?: {
     query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof getApiV1AssetsId>>,
-        TError,
-        TData
-      >
+      UseQueryOptions<Awaited<ReturnType<typeof getAsset>>, TError, TData>
     >
   },
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>
 } {
-  const queryOptions = getGetApiV1AssetsIdQueryOptions(id, options)
+  const queryOptions = getGetAssetQueryOptions(id, options)
 
   const query = useQuery(queryOptions, queryClient) as UseQueryResult<
     TData,
@@ -1000,47 +998,40 @@ export function useGetApiV1AssetsId<
   return withQueryKey(query, queryOptions.queryKey)
 }
 
-export const getApiV1AssetsByQrQrCodeValue = (
-  qrCodeValue: string,
-  signal?: AbortSignal,
-) => {
-  return customInstance<void>({
+/**
+ * @summary Gets an asset by its QR identifier
+ */
+export const getAssetByQr = (qrCodeValue: string, signal?: AbortSignal) => {
+  return customInstance<AssetResponse>({
     url: `/api/v1/assets/by-qr/${qrCodeValue}`,
     method: 'GET',
     signal,
   })
 }
 
-export const getGetApiV1AssetsByQrQrCodeValueQueryKey = (
-  qrCodeValue: string,
-) => {
+export const getGetAssetByQrQueryKey = (qrCodeValue: string) => {
   return [`/api/v1/assets/by-qr/${qrCodeValue}`] as const
 }
 
-export const getGetApiV1AssetsByQrQrCodeValueQueryOptions = <
-  TData = Awaited<ReturnType<typeof getApiV1AssetsByQrQrCodeValue>>,
-  TError = unknown,
+export const getGetAssetByQrQueryOptions = <
+  TData = Awaited<ReturnType<typeof getAssetByQr>>,
+  TError = ValidationProblemDetails | ProblemDetails,
 >(
   qrCodeValue: string,
   options?: {
     query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof getApiV1AssetsByQrQrCodeValue>>,
-        TError,
-        TData
-      >
+      UseQueryOptions<Awaited<ReturnType<typeof getAssetByQr>>, TError, TData>
     >
   },
 ) => {
   const { query: queryOptions } = options ?? {}
 
   const queryKey =
-    queryOptions?.queryKey ??
-    getGetApiV1AssetsByQrQrCodeValueQueryKey(qrCodeValue)
+    queryOptions?.queryKey ?? getGetAssetByQrQueryKey(qrCodeValue)
 
-  const queryFn: QueryFunction<
-    Awaited<ReturnType<typeof getApiV1AssetsByQrQrCodeValue>>
-  > = ({ signal }) => getApiV1AssetsByQrQrCodeValue(qrCodeValue, signal)
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getAssetByQr>>> = ({
+    signal,
+  }) => getAssetByQr(qrCodeValue, signal)
 
   return {
     queryKey,
@@ -1048,35 +1039,31 @@ export const getGetApiV1AssetsByQrQrCodeValueQueryOptions = <
     enabled: qrCodeValue !== null && qrCodeValue !== undefined,
     ...queryOptions,
   } as UseQueryOptions<
-    Awaited<ReturnType<typeof getApiV1AssetsByQrQrCodeValue>>,
+    Awaited<ReturnType<typeof getAssetByQr>>,
     TError,
     TData
   > & { queryKey: DataTag<QueryKey, TData, TError> }
 }
 
-export type GetApiV1AssetsByQrQrCodeValueQueryResult = NonNullable<
-  Awaited<ReturnType<typeof getApiV1AssetsByQrQrCodeValue>>
+export type GetAssetByQrQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getAssetByQr>>
 >
-export type GetApiV1AssetsByQrQrCodeValueQueryError = unknown
+export type GetAssetByQrQueryError = ValidationProblemDetails | ProblemDetails
 
-export function useGetApiV1AssetsByQrQrCodeValue<
-  TData = Awaited<ReturnType<typeof getApiV1AssetsByQrQrCodeValue>>,
-  TError = unknown,
+export function useGetAssetByQr<
+  TData = Awaited<ReturnType<typeof getAssetByQr>>,
+  TError = ValidationProblemDetails | ProblemDetails,
 >(
   qrCodeValue: string,
   options: {
     query: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof getApiV1AssetsByQrQrCodeValue>>,
-        TError,
-        TData
-      >
+      UseQueryOptions<Awaited<ReturnType<typeof getAssetByQr>>, TError, TData>
     > &
       Pick<
         DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getApiV1AssetsByQrQrCodeValue>>,
+          Awaited<ReturnType<typeof getAssetByQr>>,
           TError,
-          Awaited<ReturnType<typeof getApiV1AssetsByQrQrCodeValue>>
+          Awaited<ReturnType<typeof getAssetByQr>>
         >,
         'initialData'
       >
@@ -1085,24 +1072,20 @@ export function useGetApiV1AssetsByQrQrCodeValue<
 ): DefinedUseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>
 }
-export function useGetApiV1AssetsByQrQrCodeValue<
-  TData = Awaited<ReturnType<typeof getApiV1AssetsByQrQrCodeValue>>,
-  TError = unknown,
+export function useGetAssetByQr<
+  TData = Awaited<ReturnType<typeof getAssetByQr>>,
+  TError = ValidationProblemDetails | ProblemDetails,
 >(
   qrCodeValue: string,
   options?: {
     query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof getApiV1AssetsByQrQrCodeValue>>,
-        TError,
-        TData
-      >
+      UseQueryOptions<Awaited<ReturnType<typeof getAssetByQr>>, TError, TData>
     > &
       Pick<
         UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getApiV1AssetsByQrQrCodeValue>>,
+          Awaited<ReturnType<typeof getAssetByQr>>,
           TError,
-          Awaited<ReturnType<typeof getApiV1AssetsByQrQrCodeValue>>
+          Awaited<ReturnType<typeof getAssetByQr>>
         >,
         'initialData'
       >
@@ -1111,47 +1094,39 @@ export function useGetApiV1AssetsByQrQrCodeValue<
 ): UseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>
 }
-export function useGetApiV1AssetsByQrQrCodeValue<
-  TData = Awaited<ReturnType<typeof getApiV1AssetsByQrQrCodeValue>>,
-  TError = unknown,
+export function useGetAssetByQr<
+  TData = Awaited<ReturnType<typeof getAssetByQr>>,
+  TError = ValidationProblemDetails | ProblemDetails,
 >(
   qrCodeValue: string,
   options?: {
     query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof getApiV1AssetsByQrQrCodeValue>>,
-        TError,
-        TData
-      >
+      UseQueryOptions<Awaited<ReturnType<typeof getAssetByQr>>, TError, TData>
     >
   },
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>
 }
+/**
+ * @summary Gets an asset by its QR identifier
+ */
 
-export function useGetApiV1AssetsByQrQrCodeValue<
-  TData = Awaited<ReturnType<typeof getApiV1AssetsByQrQrCodeValue>>,
-  TError = unknown,
+export function useGetAssetByQr<
+  TData = Awaited<ReturnType<typeof getAssetByQr>>,
+  TError = ValidationProblemDetails | ProblemDetails,
 >(
   qrCodeValue: string,
   options?: {
     query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof getApiV1AssetsByQrQrCodeValue>>,
-        TError,
-        TData
-      >
+      UseQueryOptions<Awaited<ReturnType<typeof getAssetByQr>>, TError, TData>
     >
   },
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>
 } {
-  const queryOptions = getGetApiV1AssetsByQrQrCodeValueQueryOptions(
-    qrCodeValue,
-    options,
-  )
+  const queryOptions = getGetAssetByQrQueryOptions(qrCodeValue, options)
 
   const query = useQuery(queryOptions, queryClient) as UseQueryResult<
     TData,
