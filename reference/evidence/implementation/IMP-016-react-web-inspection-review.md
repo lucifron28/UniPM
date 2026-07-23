@@ -3,7 +3,7 @@ id: IMP-016
 type: implementation
 title: React web inspection review
 status: reviewed
-recordedAtUtc: 2026-07-22T15:02:35Z
+recordedAtUtc: 2026-07-23T15:59:43Z
 sourceBranch: feat/web-inspections
 evidenceLevel: source-inspected
 ---
@@ -18,7 +18,7 @@ workflow.
 
 ## Source Identity
 
-- Implementation commit: `b78c407a0d99a592779b6b66a64aad7712cecd4d`
+- Implementation commit: `f963496d06bc4749d160189dc964160a3ea8d056`
 - Starting main commit: `76876560fd9977e4d6e4f0dad7df67484b4e1471`
 - Source paths: inspection endpoints and OpenAPI contract test, generated web
   client, `web/src/features/inspections/`, inspection routes, asset detail,
@@ -42,6 +42,9 @@ workflow.
   states for list, summary, and contextual data failures.
 - Adds a compact latest-five inspection history panel to asset detail with a
   route-backed registry link and immutable source-record links.
+- Keeps filter changes on page one while pagination preserves current filters
+  and the requested page. Route parsing accepts only literal boolean values or
+  the strings `"true"` and `"false"` for the recorded-result filter.
 - Keeps raw returned remarks and recommendations as source text. No search,
   AI, review generation, acknowledgement, RMRF, corrective-handoff, or
   submission UI is introduced.

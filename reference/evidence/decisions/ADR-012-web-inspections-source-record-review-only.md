@@ -3,7 +3,7 @@ id: ADR-012
 type: decision
 title: Keep web inspections source-record review only
 status: reviewed
-recordedAtUtc: 2026-07-22T15:02:35Z
+recordedAtUtc: 2026-07-23T15:59:43Z
 evidenceLevel: source-inspected
 ---
 
@@ -21,7 +21,9 @@ pending GSD clarification.
 The web module reads only the existing inspection endpoints. Router search
 state owns the supported filters and client-only page, TanStack Query owns
 server state, strict Zod schemas validate public responses, and the generated
-client remains the API transport boundary. Summary cards count only returned
+client remains the API transport boundary. The recorded-result search value is
+limited to explicit boolean values, so an arbitrary URL string is discarded
+rather than silently changing the filter. Summary cards count only returned
 records; the client does not infer conditions or mutate inspection status.
 
 Inspection detail displays the returned source record, links to its asset and

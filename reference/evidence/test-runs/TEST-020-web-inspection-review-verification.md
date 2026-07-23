@@ -3,8 +3,8 @@ id: TEST-020
 type: test-run
 title: Web inspection review verification
 status: executed
-recordedAtUtc: 2026-07-22T15:02:35Z
-testedCommit: b78c407a0d99a592779b6b66a64aad7712cecd4d
+recordedAtUtc: 2026-07-23T15:59:43Z
+testedCommit: f963496d06bc4749d160189dc964160a3ea8d056
 sourceBranch: feat/web-inspections
 evidenceLevel: locally-executed
 ---
@@ -13,7 +13,7 @@ evidenceLevel: locally-executed
 
 ## Execution Identity
 
-- Tested implementation: `b78c407a0d99a592779b6b66a64aad7712cecd4d`
+- Tested implementation: `f963496d06bc4749d160189dc964160a3ea8d056`
 - Starting main: `76876560fd9977e4d6e4f0dad7df67484b4e1471`
 - Environment: Windows, .NET SDK 10.0.300, Node 24.15.0, npm 11.12.1, and
   Chromium through Playwright.
@@ -60,15 +60,16 @@ From `web/`:
 - Negative OpenAPI checks: all seven passed, including the two inspection
   mutations for a missing list response schema and missing
   `InspectionResponse.scheduleId`.
-- Vitest: 17 files and 111 tests passed, 0 failed.
-- Coverage: 83.45% statements, 67.16% branches, 81.38% functions, and 83.89%
+- Vitest: 18 files and 118 tests passed, 0 failed.
+- Coverage: 83.64% statements, 67.88% branches, 81.93% functions, and 84.08%
   lines. Coverage is supporting information, not the acceptance target.
 - Playwright: 32 Chromium tests passed, 0 failed. The two inspection journeys
   cover URL-owned filtering with immutable source detail and asset-history
   navigation to a source record.
 - Focused inspection tests cover strict response parsing, supported filter
-  transport, safe source-text rendering, linked asset/schedule context, and
-  unavailable asset history.
+  transport, page-two pagination with retained filters, strict operational
+  query parsing, safe source-text rendering, linked asset/schedule context,
+  and unavailable asset history.
 - Final scope audit found no migration, entity change, inspection POST usage in
   web feature code, inspection creation route, acknowledgement, RMRF,
   corrective-handoff, AI call, token storage, or real institutional record.
