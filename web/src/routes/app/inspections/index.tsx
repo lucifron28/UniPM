@@ -6,11 +6,18 @@ import {
 } from '@/features/inspections/inspection-registry'
 
 const dateTime = z.string().datetime({ offset: true })
-const searchSchema = z
+const operationalResult = z.union([
+  z.literal(true),
+  z.literal(false),
+  z.literal('true').transform(() => true),
+  z.literal('false').transform(() => false),
+])
+
+export const inspectionSearchSchema = z
   .object({
     assetId: z.string().uuid().optional(),
     scheduleId: z.string().uuid().optional(),
-    isOperational: z.coerce.boolean().optional(),
+    isOperational: operationalResult.optional(),
     dateFrom: dateTime.optional(),
     dateTo: dateTime.optional(),
     page: z.coerce.number().int().positive().max(10000).optional(),
@@ -20,11 +27,13 @@ const searchSchema = z
       !value.dateFrom || !value.dateTo || value.dateFrom <= value.dateTo,
   )
 
+export function parseInspectionSearch(search: unknown): InspectionSearch {
+  const parsed = inspectionSearchSchema.safeParse(search)
+  return parsed.success ? parsed.data : {}
+}
+
 export const Route = createFileRoute('/app/inspections/')({
-  validateSearch: (search): InspectionSearch => {
-    const parsed = searchSchema.safeParse(search)
-    return parsed.success ? parsed.data : {}
-  },
+  validateSearch: parseInspectionSearch,
   component: InspectionsPage,
 })
 

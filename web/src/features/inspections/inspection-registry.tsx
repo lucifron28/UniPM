@@ -471,14 +471,14 @@ export function InspectionRegistry({
                 <Button
                   type="button"
                   disabled={page === 1}
-                  onClick={() => setFilter({ page: page - 1 })}
+                  onClick={() => onSearchChange({ ...search, page: page - 1 })}
                 >
                   Previous
                 </Button>
                 <Button
                   type="button"
                   disabled={page === pageCount}
-                  onClick={() => setFilter({ page: page + 1 })}
+                  onClick={() => onSearchChange({ ...search, page: page + 1 })}
                 >
                   Next
                 </Button>

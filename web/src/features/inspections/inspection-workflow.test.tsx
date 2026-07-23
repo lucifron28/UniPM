@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import {
   createMemoryHistory,
@@ -151,6 +152,44 @@ describe('inspection review workflows', () => {
     )
     expect(filtered?.searchParams.get('page')).toBeNull()
     expect(filtered?.searchParams.get('building')).toBeNull()
+  })
+
+  it('moves to the second client-side page without resetting the filters', async () => {
+    mockInspectionApi()
+    const records = Array.from({ length: 11 }, (_, index) => ({
+      ...inspection,
+      id: `10000000-0000-4000-8000-${(index + 1).toString().padStart(12, '0')}`,
+      remarks: `Inspection record ${index + 1}`,
+    }))
+    server.use(
+      http.get(`${base}/inspections`, () => HttpResponse.json(records)),
+    )
+    const onSearchChange = vi.fn()
+    const view = renderWithProviders(
+      <InspectionRegistry
+        search={{ assetId, isOperational: false, page: 1 }}
+        onSearchChange={onSearchChange}
+      />,
+    )
+
+    await screen.findAllByText('Inspection record 1')
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Next' }))
+    expect(onSearchChange).toHaveBeenCalledWith({
+      assetId,
+      isOperational: false,
+      page: 2,
+    })
+
+    view.unmount()
+    renderWithProviders(
+      <InspectionRegistry
+        search={{ assetId, isOperational: false, page: 2 }}
+        onSearchChange={onSearchChange}
+      />,
+    )
+    expect(await screen.findAllByText('Inspection record 11')).not.toHaveLength(
+      0,
+    )
   })
 
   it('renders source text safely with linked asset and schedule context', async () => {
