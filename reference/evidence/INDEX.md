@@ -66,7 +66,7 @@ record's evidence level and tested/source commit.
 | ADR-012 | decision | Keep web inspections source-record review only | reviewed | source-inspected | `f963496` | [record](decisions/ADR-012-web-inspections-source-record-review-only.md) | Existing inspection reads support verification; write and institutional workflows remain deferred. |
 | TEST-020 | test-run | Web inspection review verification | executed | locally-executed | `f963496` | [record](test-runs/TEST-020-web-inspection-review-verification.md) | Release backend, offline API contract, 118 Vitest, coverage, and 32 Chromium tests passed; SQL/provider tests not executed. |
 | TEST-021 | test-run | SQL Server 2019 compatibility spike preparation | executed | locally-executed | `cfe2e65` | [record](test-runs/TEST-021-sql-server-2019-compatibility-spike.md) | Blocked/inconclusive: isolated 2019 stack and migration path prepared, but the local image pull/build stalled; no support claim is made. |
-| TEST-022 | test-run | Native SQL Server 2019 compatibility verification | executed | locally-executed | `085fcf6` | [record](test-runs/TEST-022-native-sql-server-2019-compatibility.md) | Native major-version 15, compatibility-level 150, Full-Text catalog/index, migration, seed, rebuild, and 310-pass SQL-enabled suite evidence; real provider and production claims remain excluded. |
+| TEST-022 | test-run | Native SQL Server 2019 compatibility verification | executed | locally-executed | `fe06015` | [record](test-runs/TEST-022-native-sql-server-2019-compatibility.md) | Dedicated major-version-15 gate, compatibility-level 150, Full-Text catalog/index, migration, seed, rebuild, and 310-pass SQL-enabled suite evidence; real provider and production claims remain excluded. |
 
 ## Pending Evidence
 

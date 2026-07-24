@@ -3,8 +3,8 @@ id: TEST-022
 type: test-run
 title: Native SQL Server 2019 compatibility verification
 status: executed
-recordedAtUtc: 2026-07-24T15:37:10Z
-testedCommit: 085fcf61087fb80a1273f9e152ddf81eda32d1bc
+recordedAtUtc: 2026-07-24T15:52:23Z
+testedCommit: fe06015670ad9a0bcb26b6ee337cfee40c11f42b
 sourceBranch: spike/sqlserver-2019-compatibility
 evidenceLevel: locally-executed
 ---
@@ -20,7 +20,7 @@ historical blocked Docker attempt.
 
 ## Execution Identity
 
-- Tested commit: `085fcf61087fb80a1273f9e152ddf81eda32d1bc`
+- Tested commit: `fe06015670ad9a0bcb26b6ee337cfee40c11f42b`
 - Branch: `spike/sqlserver-2019-compatibility`
 - Execution date: 2026-07-24 UTC
 - SQL Server configuration: supplied only through the process environment.
@@ -31,7 +31,7 @@ historical blocked Docker attempt.
 
 ```powershell
 $env:ConnectionStrings__DefaultConnection = "<process-only native SQL Server 2019 application database>"
-$env:UNIPM_SQLSERVER_TEST_CONNECTION = "<process-only native SQL Server 2019 test connection>"
+$env:UNIPM_SQLSERVER2019_TEST_CONNECTION = "<process-only native SQL Server 2019 test connection>"
 $env:UNIPM_DEV_USER_PASSWORD = "<process-only generated password>"
 
 powershell.exe -NoProfile -ExecutionPolicy Bypass `
@@ -41,6 +41,12 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass `
 The runner executed `dotnet restore`, the Release build, database migration,
 synthetic seeding, Development user seeding, maintenance-search-document
 rebuild, and `dotnet test .\UniPM.slnx -c Release --no-build`.
+
+The SQL Server 2019 readiness test uses only
+`UNIPM_SQLSERVER2019_TEST_CONNECTION`. The runner maps that dedicated
+connection to `UNIPM_SQLSERVER_TEST_CONNECTION` only for the existing general
+SQL integration suite. This keeps ordinary SQL Server 2025 test runs from
+executing the major-version-15 assertion.
 
 ## Results
 
@@ -82,7 +88,7 @@ do not establish semantic-model, fused-retrieval, or production quality.
 ## Generated Artifacts
 
 Reviewed local artifacts remain ignored under
-`artifacts/evidence/sqlserver2019-20260724-233648/`. The reviewed
+`artifacts/evidence/sqlserver2019-20260724-235159/`. The reviewed
 `sql-server-probes.json` contains only version, compatibility, Full-Text, and
 object-count facts; it contains no connection information or secrets.
 
