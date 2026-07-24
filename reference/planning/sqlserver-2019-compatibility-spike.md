@@ -8,17 +8,15 @@ volume. It does not retarget the production baseline.
 
 ## Environment
 
-`docker-compose.sqlserver2019.yml` defines the isolated services:
+The Linux Full-Text Search container experiment was removed from this proposed
+baseline after its APT package-install layer stalled locally. It remains
+documented in TEST-021 as a blocked environment experiment; it is not the
+deployment or acceptance path.
 
-- `unipm-db-2019` on host port `14339` by default;
-- `unipm-db-2019-init` to create `UniPMDb` and set compatibility level `150`;
-- `unipm-sqlserver-2019-data`, separate from the 2025 data volume;
-- `unipm-sqlserver-2019-network`, separate from the default network.
-
-The 2019 Dockerfile uses the official `2019-latest` image and the Microsoft
-Ubuntu 20.04 SQL Server 2019 repository to install `mssql-server-fts`. The
-image build verifies that package installation and the service health check
-requires `SERVERPROPERTY('IsFullTextInstalled') = 1`.
+The acceptance path is a native Windows SQL Server 2019 Developer instance
+with Database Engine Services and Full-Text and Semantic Extractions for Search
+installed. The explicit runner accepts only process-scoped connection strings
+and does not modify the SQL Server 2025 Docker environment.
 
 ## EF And Migration Boundary
 
@@ -59,6 +57,6 @@ stale-embedding rejection, app-layer cosine, and degradation orchestration.
 
 ## Current Result
 
-**BLOCKED / INCONCLUSIVE** pending a successful local pull/build of the
-official SQL Server 2019 image. This document does not claim SQL Server 2019
-support. The default SQL Server 2025 stack remains the project baseline.
+**BLOCKED / INCONCLUSIVE** pending a native Windows SQL Server 2019 instance
+with Full-Text Search. This document does not claim SQL Server 2019 support.
+The default SQL Server 2025 stack remains the project baseline.
