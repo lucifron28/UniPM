@@ -65,7 +65,7 @@ record's evidence level and tested/source commit.
 | IMP-016 | implementation | React web inspection review | reviewed | source-inspected | `f963496` | [record](implementation/IMP-016-react-web-inspection-review.md) | Read-only inspection list/detail and compact asset history; no web submission flow. |
 | ADR-012 | decision | Keep web inspections source-record review only | reviewed | source-inspected | `f963496` | [record](decisions/ADR-012-web-inspections-source-record-review-only.md) | Existing inspection reads support verification; write and institutional workflows remain deferred. |
 | TEST-020 | test-run | Web inspection review verification | executed | locally-executed | `f963496` | [record](test-runs/TEST-020-web-inspection-review-verification.md) | Release backend, offline API contract, 118 Vitest, coverage, and 32 Chromium tests passed; SQL/provider tests not executed. |
-| TEST-021 | test-run | SQL Server 2019 compatibility spike preparation | executed | locally-executed | `136cd50` | [record](test-runs/TEST-021-sql-server-2019-compatibility-spike.md) | Isolated 2019 stack and SQL 2019 migration path prepared; local image pull/build stalled, so no SQL Server 2019 support claim is made. |
+| TEST-021 | test-run | SQL Server 2019 compatibility spike preparation | executed | locally-executed | `cfe2e65` | [record](test-runs/TEST-021-sql-server-2019-compatibility-spike.md) | Blocked/inconclusive: isolated 2019 stack and migration path prepared, but the local image pull/build stalled; no support claim is made. |
 
 ## Pending Evidence
 

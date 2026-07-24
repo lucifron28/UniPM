@@ -27,10 +27,9 @@ contexts use `SqlServerCompatibility.UseUniPmSqlServer`. It explicitly selects
 EF SQL Server compatibility level `150`.
 
 The historical domain-contract migration no longer uses the SQL Server 2022
-three-argument `STRING_SPLIT`. It normalizes CRLF and CR to LF, serializes
-fragments as XML nodes in their source order, trims nonempty nodes, and joins
-them with one space using ordered `STRING_AGG`. `FOR XML` escapes source text,
-so the ordered transformation remains safe for ordinary identifier content.
+three-argument `STRING_SPLIT`. It normalizes CRLF and CR to LF, uses a bounded
+SQL tally set to locate each line start in source order, trims nonempty
+fragments, and joins them with one space using ordered `STRING_AGG`.
 
 The remaining SQL-specific surface uses SQL Server 2019-supported features:
 `STRING_AGG`, Full-Text catalog/index DDL, and `CONTAINSTABLE`. No other SQL
@@ -60,6 +59,6 @@ stale-embedding rejection, app-layer cosine, and degradation orchestration.
 
 ## Current Result
 
-Blocked pending a successful local pull/build of the official SQL Server 2019
-image. This document does not claim SQL Server 2019 support. The default
-SQL Server 2025 stack remains the project baseline.
+**BLOCKED / INCONCLUSIVE** pending a successful local pull/build of the
+official SQL Server 2019 image. This document does not claim SQL Server 2019
+support. The default SQL Server 2025 stack remains the project baseline.

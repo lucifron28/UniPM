@@ -4,7 +4,7 @@ type: test-run
 title: SQL Server 2019 compatibility spike preparation
 status: executed
 recordedAtUtc: 2026-07-24T10:37:56Z
-testedCommit: 136cd502ef86f7ba28f013792efc31b461cfa7ac
+testedCommit: cfe2e651210f842211e642cde4660f709cf1a833
 sourceBranch: spike/sqlserver-2019-compatibility
 evidenceLevel: locally-executed
 ---
@@ -18,8 +18,8 @@ verify the shared EF compatibility boundary and SQL 2019-safe migration change.
 
 ## Execution Identity
 
-The implementation commits tested were `0459957`, `b487e78`, and
-`136cd502ef86f7ba28f013792efc31b461cfa7ac`. This record identifies the final
+The implementation commits tested were `0459957`, `b487e78`, `136cd50`, and
+`cfe2e651210f842211e642cde4660f709cf1a833`. This record identifies the final
 implementation commit before evidence documentation.
 
 ## Environment
@@ -69,9 +69,9 @@ benchmark could not be verified against major version 15.
 
 The source review found one proven SQL Server 2022-only migration dependency:
 the three-argument `STRING_SPLIT` ordinal form. The implementation replaces it
-with an order-preserving XML-node technique and adds SQL integration coverage
-for mixed CRLF/CR canonicalization. Source inspection is not a substitute for
-the blocked SQL Server 2019 execution.
+with a bounded, order-preserving SQL tally technique and adds SQL integration
+coverage for mixed CRLF/CR canonicalization. Source inspection is not a
+substitute for the blocked SQL Server 2019 execution.
 
 ## AI-Provider Verification
 
@@ -97,6 +97,7 @@ validated successfully with `docker compose ... config --quiet`.
 
 ## Limitations
 
-Outcome: **FAIL (environment unavailable)**. SQL Server 2019 support is not
-claimed. The project must retain SQL Server 2025 as its default until the
-isolated 2019 image builds and all required SQL-specific verification passes.
+Outcome: **BLOCKED / INCONCLUSIVE (environment unavailable)**. SQL Server 2019
+support is not claimed. The project must retain SQL Server 2025 as its default
+until the isolated 2019 image builds and all required SQL-specific verification
+passes.
