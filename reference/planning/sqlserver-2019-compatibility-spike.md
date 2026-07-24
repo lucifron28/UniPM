@@ -57,6 +57,12 @@ stale-embedding rejection, app-layer cosine, and degradation orchestration.
 
 ## Current Result
 
-**BLOCKED / INCONCLUSIVE** pending a native Windows SQL Server 2019 instance
-with Full-Text Search. This document does not claim SQL Server 2019 support.
-The default SQL Server 2025 stack remains the project baseline.
+**EXECUTED (development compatibility evidence)** on a native Windows SQL
+Server 2019 Developer instance with Full-Text Search. Major version 15,
+compatibility level 150, migration, seed, projection rebuild, Full-Text
+catalog/index, `CONTAINSTABLE`, and the 310-pass SQL-enabled solution suite
+completed successfully. See TEST-022 for the exact tested commit and bounded
+claims.
+
+This does not retarget production, establish workload fitness, or replace SQL
+Server 2025 as the project baseline.
