@@ -53,6 +53,8 @@ namespace UniPM.Api.Migrations
                        OR DATALENGTH(IssueKeysJson) / 2 > 1024)
                     THROW 51000, 'Domain-contract migration stopped: a search-document value exceeds its maximum length.', 1;
 
+                -- SQL Server 2019 has no STRING_SPLIT ordinal parameter. XML nodes
+                -- preserve normalized line order while FOR XML escapes source text.
                 UPDATE assets
                 SET AssetCode = UPPER(COALESCE(assetCodeCanonical.CanonicalValue, N'')),
                     AssetCategory = LOWER(LTRIM(RTRIM(AssetCategory))),
@@ -72,23 +74,29 @@ namespace UniPM.Api.Migrations
                 FROM dbo.Assets AS assets
                 CROSS APPLY
                 (
-                    SELECT STRING_AGG(CONVERT(nvarchar(max), TRIM(parts.value)), N' ')
-                        WITHIN GROUP (ORDER BY parts.ordinal) AS CanonicalValue
-                    FROM STRING_SPLIT(
-                        REPLACE(REPLACE(assets.AssetCode, NCHAR(13) + NCHAR(10), NCHAR(10)), NCHAR(13), NCHAR(10)),
-                        NCHAR(10),
-                        1) AS parts
-                    WHERE TRIM(parts.value) <> N''
+                    SELECT TRY_CONVERT(xml, N'<r><v>' + REPLACE(
+                        (SELECT REPLACE(REPLACE(assets.AssetCode, NCHAR(13) + NCHAR(10), NCHAR(10)), NCHAR(13), NCHAR(10)) AS [text()] FOR XML PATH('')),
+                        NCHAR(10), N'</v><v>') + N'</v></r>') AS PartsXml
+                ) AS assetCodeSource
+                CROSS APPLY
+                (
+                    SELECT STRING_AGG(CONVERT(nvarchar(max), TRIM(parts.Node.value('(text())[1]', 'nvarchar(max)'))), N' ')
+                        WITHIN GROUP (ORDER BY parts.Node.value('count(preceding-sibling::v)', 'int')) AS CanonicalValue
+                    FROM assetCodeSource.PartsXml.nodes('/r/v') AS parts(Node)
+                    WHERE TRIM(parts.Node.value('(text())[1]', 'nvarchar(max)')) <> N''
                 ) AS assetCodeCanonical
                 CROSS APPLY
                 (
-                    SELECT STRING_AGG(CONVERT(nvarchar(max), TRIM(parts.value)), N' ')
-                        WITHIN GROUP (ORDER BY parts.ordinal) AS CanonicalValue
-                    FROM STRING_SPLIT(
-                        REPLACE(REPLACE(assets.QrCodeValue, NCHAR(13) + NCHAR(10), NCHAR(10)), NCHAR(13), NCHAR(10)),
-                        NCHAR(10),
-                        1) AS parts
-                    WHERE TRIM(parts.value) <> N''
+                    SELECT TRY_CONVERT(xml, N'<r><v>' + REPLACE(
+                        (SELECT REPLACE(REPLACE(assets.QrCodeValue, NCHAR(13) + NCHAR(10), NCHAR(10)), NCHAR(13), NCHAR(10)) AS [text()] FOR XML PATH('')),
+                        NCHAR(10), N'</v><v>') + N'</v></r>') AS PartsXml
+                ) AS qrCodeSource
+                CROSS APPLY
+                (
+                    SELECT STRING_AGG(CONVERT(nvarchar(max), TRIM(parts.Node.value('(text())[1]', 'nvarchar(max)'))), N' ')
+                        WITHIN GROUP (ORDER BY parts.Node.value('count(preceding-sibling::v)', 'int')) AS CanonicalValue
+                    FROM qrCodeSource.PartsXml.nodes('/r/v') AS parts(Node)
+                    WHERE TRIM(parts.Node.value('(text())[1]', 'nvarchar(max)')) <> N''
                 ) AS qrCodeCanonical;
 
                 UPDATE dbo.PreventiveMaintenanceSchedules
@@ -129,13 +137,16 @@ namespace UniPM.Api.Migrations
                 FROM dbo.MaintenanceSearchDocuments AS documents
                 CROSS APPLY
                 (
-                    SELECT STRING_AGG(CONVERT(nvarchar(max), TRIM(parts.value)), N' ')
-                        WITHIN GROUP (ORDER BY parts.ordinal) AS CanonicalValue
-                    FROM STRING_SPLIT(
-                        REPLACE(REPLACE(documents.AssetCode, NCHAR(13) + NCHAR(10), NCHAR(10)), NCHAR(13), NCHAR(10)),
-                        NCHAR(10),
-                        1) AS parts
-                    WHERE TRIM(parts.value) <> N''
+                    SELECT TRY_CONVERT(xml, N'<r><v>' + REPLACE(
+                        (SELECT REPLACE(REPLACE(documents.AssetCode, NCHAR(13) + NCHAR(10), NCHAR(10)), NCHAR(13), NCHAR(10)) AS [text()] FOR XML PATH('')),
+                        NCHAR(10), N'</v><v>') + N'</v></r>') AS PartsXml
+                ) AS assetCodeSource
+                CROSS APPLY
+                (
+                    SELECT STRING_AGG(CONVERT(nvarchar(max), TRIM(parts.Node.value('(text())[1]', 'nvarchar(max)'))), N' ')
+                        WITHIN GROUP (ORDER BY parts.Node.value('count(preceding-sibling::v)', 'int')) AS CanonicalValue
+                    FROM assetCodeSource.PartsXml.nodes('/r/v') AS parts(Node)
+                    WHERE TRIM(parts.Node.value('(text())[1]', 'nvarchar(max)')) <> N''
                 ) AS assetCodeCanonical;
 
                 IF EXISTS (
