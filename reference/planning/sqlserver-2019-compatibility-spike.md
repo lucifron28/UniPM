@@ -35,8 +35,8 @@ Server 2022/2025-only T-SQL syntax was found in migrations.
 
 ## Required Verification
 
-Run only after the isolated image has built and the bootstrap service has
-completed:
+Run only after a native Windows SQL Server 2019 instance with Database Engine
+Services and Full-Text Search is available:
 
 ```powershell
 $env:UNIPM_SQLSERVER_TEST_CONNECTION = "<local SQL Server 2019 connection>"

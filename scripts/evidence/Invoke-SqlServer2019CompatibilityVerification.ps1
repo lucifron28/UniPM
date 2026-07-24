@@ -1,13 +1,13 @@
 [CmdletBinding()]
 param(
     [string]$ApplicationConnectionString = $env:ConnectionStrings__DefaultConnection,
-    [string]$TestConnectionString = $env:UNIPM_SQLSERVER_TEST_CONNECTION
+    [string]$TestConnectionString = $env:UNIPM_SQLSERVER2019_TEST_CONNECTION
 )
 
 $ErrorActionPreference = 'Stop'
 
 if ([string]::IsNullOrWhiteSpace($ApplicationConnectionString) -or [string]::IsNullOrWhiteSpace($TestConnectionString)) {
-    throw 'Set ConnectionStrings__DefaultConnection and UNIPM_SQLSERVER_TEST_CONNECTION before running native SQL Server 2019 verification.'
+    throw 'Set ConnectionStrings__DefaultConnection and UNIPM_SQLSERVER2019_TEST_CONNECTION before running native SQL Server 2019 verification.'
 }
 
 $repositoryRoot = Split-Path -Parent $PSScriptRoot | Split-Path -Parent
@@ -42,6 +42,7 @@ try {
     $env:ASPNETCORE_ENVIRONMENT = 'Development'
     $env:ConnectionStrings__DefaultConnection = $ApplicationConnectionString
     $env:UNIPM_SQLSERVER_TEST_CONNECTION = $TestConnectionString
+    $env:UNIPM_SQLSERVER2019_TEST_CONNECTION = $TestConnectionString
 
     & dotnet restore .\UniPM.slnx *> (Join-Path $artifactDirectory 'restore.log')
     if ($LASTEXITCODE -ne 0) { throw 'dotnet restore failed.' }

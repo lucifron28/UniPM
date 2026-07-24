@@ -60,10 +60,10 @@ public sealed class SqlServerDomainContractTests
         Assert.Equal("2025-2026", schedule.AcademicYear);
     }
 
-    [SqlServerFact]
+    [SqlServer2019Fact]
     public async Task Sql_Server_2019_with_full_text_search_applies_migrations_and_executes_containstable()
     {
-        var baseConnectionString = RequireSqlServerConnection();
+        var baseConnectionString = RequireSqlServer2019Connection();
         await using (var server = new SqlConnection(baseConnectionString))
         {
             await server.OpenAsync();
@@ -300,6 +300,12 @@ public sealed class SqlServerDomainContractTests
         return connectionString!;
     }
 
+    private static string RequireSqlServer2019Connection()
+    {
+        var connectionString = Environment.GetEnvironmentVariable("UNIPM_SQLSERVER2019_TEST_CONNECTION");
+        return connectionString!;
+    }
+
     private sealed class SqlServerTestDatabase : IAsyncDisposable
     {
         private readonly string databaseName;
@@ -366,6 +372,17 @@ internal sealed class SqlServerFactAttribute : FactAttribute
         if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("UNIPM_SQLSERVER_TEST_CONNECTION")))
         {
             Skip = "Set UNIPM_SQLSERVER_TEST_CONNECTION to run SQL Server migration and constraint tests.";
+        }
+    }
+}
+
+internal sealed class SqlServer2019FactAttribute : FactAttribute
+{
+    public SqlServer2019FactAttribute()
+    {
+        if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("UNIPM_SQLSERVER2019_TEST_CONNECTION")))
+        {
+            Skip = "Set UNIPM_SQLSERVER2019_TEST_CONNECTION to run the SQL Server 2019 Full-Text compatibility test.";
         }
     }
 }
