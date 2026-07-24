@@ -60,6 +60,94 @@ public sealed class SqlServerDomainContractTests
         Assert.Equal("2025-2026", schedule.AcademicYear);
     }
 
+    [SqlServer2019Fact]
+    public async Task Sql_Server_2019_with_full_text_search_applies_migrations_and_executes_containstable()
+    {
+        var baseConnectionString = RequireSqlServer2019Connection();
+        await using (var server = new SqlConnection(baseConnectionString))
+        {
+            await server.OpenAsync();
+            await using var command = server.CreateCommand();
+            command.CommandText = "SELECT CONVERT(int, SERVERPROPERTY('ProductMajorVersion')), CONVERT(int, SERVERPROPERTY('IsFullTextInstalled'));";
+            await using var reader = await command.ExecuteReaderAsync();
+            Assert.True(await reader.ReadAsync());
+            Assert.Equal(15, reader.GetInt32(0));
+            Assert.Equal(1, reader.GetInt32(1));
+        }
+
+        await using var database = await SqlServerTestDatabase.CreateAsync(baseConnectionString);
+        await using (var master = new SqlConnection(new SqlConnectionStringBuilder(database.ConnectionString) { InitialCatalog = "master" }.ConnectionString))
+        {
+            await master.OpenAsync();
+            await using var command = master.CreateCommand();
+            command.CommandText = $"ALTER DATABASE [{database.DatabaseName}] SET COMPATIBILITY_LEVEL = 150;";
+            await command.ExecuteNonQueryAsync();
+        }
+
+        await using (var context = database.CreateContext())
+        {
+            await context.Database.MigrateAsync();
+        }
+
+        await using var verification = new SqlConnection(database.ConnectionString);
+        await verification.OpenAsync();
+        await using var verificationCommand = verification.CreateCommand();
+        verificationCommand.CommandText = """
+            SELECT CONVERT(int, compatibility_level)
+            FROM sys.databases
+            WHERE name = DB_NAME();
+            SELECT COUNT(*)
+            FROM sys.fulltext_catalogs
+            WHERE name = N'UniPMMaintenanceRetrieval';
+            SELECT COUNT(*)
+            FROM sys.fulltext_indexes AS indexTable
+            INNER JOIN sys.tables AS tableInfo ON tableInfo.object_id = indexTable.object_id
+            WHERE tableInfo.name = N'MaintenanceSearchDocuments' AND indexTable.is_enabled = 1;
+            SELECT COUNT(*)
+            FROM CONTAINSTABLE(dbo.MaintenanceSearchDocuments, SearchText, N'pressure');
+            """;
+        await using var verificationReader = await verificationCommand.ExecuteReaderAsync();
+        Assert.True(await verificationReader.ReadAsync());
+        Assert.Equal(150, verificationReader.GetInt32(0));
+        Assert.True(await verificationReader.NextResultAsync());
+        Assert.True(await verificationReader.ReadAsync());
+        Assert.Equal(1, verificationReader.GetInt32(0));
+        Assert.True(await verificationReader.NextResultAsync());
+        Assert.True(await verificationReader.ReadAsync());
+        Assert.Equal(1, verificationReader.GetInt32(0));
+        Assert.True(await verificationReader.NextResultAsync());
+        await verificationReader.ReadAsync();
+    }
+
+    [SqlServerFact]
+    public async Task Migration_preflight_preserves_line_order_when_canonicalizing_mixed_line_endings()
+    {
+        await using var database = await SqlServerTestDatabase.CreateAsync(RequireSqlServerConnection());
+        await using (var context = database.CreateContext())
+        {
+            await context.Database.MigrateAsync(PreviousMigration);
+            context.Assets.Add(new Asset
+            {
+                Id = Guid.NewGuid(),
+                AssetCode = " fe\r\n\r\n001 ",
+                AssetCategory = "fire-alarm",
+                QrCodeValue = " qr\r0001 ",
+                Status = "Active"
+            });
+            await context.SaveChangesAsync();
+        }
+
+        await using (var context = database.CreateContext())
+        {
+            await context.Database.MigrateAsync();
+        }
+
+        await using var verificationContext = database.CreateContext();
+        var asset = await verificationContext.Assets.SingleAsync();
+        Assert.Equal("FE 001", asset.AssetCode);
+        Assert.Equal("QR 0001", asset.QrCodeValue);
+    }
+
     [SqlServerFact]
     public async Task SqlServer_constraints_reject_invalid_codes_and_enforce_filtered_uniqueness()
     {
@@ -212,6 +300,12 @@ public sealed class SqlServerDomainContractTests
         return connectionString!;
     }
 
+    private static string RequireSqlServer2019Connection()
+    {
+        var connectionString = Environment.GetEnvironmentVariable("UNIPM_SQLSERVER2019_TEST_CONNECTION");
+        return connectionString!;
+    }
+
     private sealed class SqlServerTestDatabase : IAsyncDisposable
     {
         private readonly string databaseName;
@@ -222,7 +316,8 @@ public sealed class SqlServerDomainContractTests
             this.databaseName = databaseName;
         }
 
-        private string ConnectionString { get; }
+        public string ConnectionString { get; }
+        public string DatabaseName => databaseName;
 
         public static async Task<SqlServerTestDatabase> CreateAsync(string baseConnectionString)
         {
@@ -248,7 +343,7 @@ public sealed class SqlServerDomainContractTests
         public ApplicationDbContext CreateContext()
         {
             var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-                .UseSqlServer(ConnectionString)
+                .UseUniPmSqlServer(ConnectionString)
                 .Options;
 
             return new ApplicationDbContext(options);
@@ -277,6 +372,17 @@ internal sealed class SqlServerFactAttribute : FactAttribute
         if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("UNIPM_SQLSERVER_TEST_CONNECTION")))
         {
             Skip = "Set UNIPM_SQLSERVER_TEST_CONNECTION to run SQL Server migration and constraint tests.";
+        }
+    }
+}
+
+internal sealed class SqlServer2019FactAttribute : FactAttribute
+{
+    public SqlServer2019FactAttribute()
+    {
+        if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("UNIPM_SQLSERVER2019_TEST_CONNECTION")))
+        {
+            Skip = "Set UNIPM_SQLSERVER2019_TEST_CONNECTION to run the SQL Server 2019 Full-Text compatibility test.";
         }
     }
 }

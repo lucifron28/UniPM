@@ -53,6 +53,24 @@ namespace UniPM.Api.Migrations
                        OR DATALENGTH(IssueKeysJson) / 2 > 1024)
                     THROW 51000, 'Domain-contract migration stopped: a search-document value exceeds its maximum length.', 1;
 
+                -- SQL Server 2019 has no STRING_SPLIT ordinal parameter. The
+                -- preceding length audit bounds identifiers at 128 characters, so
+                -- this tally set preserves normalized line order without XQuery.
+                -- DATALENGTH retains trailing spaces until each fragment is trimmed.
+                -- The sentinel run keeps SUBSTRING lengths valid even if SQL Server
+                -- evaluates the tally expression before applying its WHERE filter.
+                ;WITH Digits(Value) AS
+                (
+                    SELECT Value FROM (VALUES (0), (1), (2), (3), (4), (5), (6), (7), (8), (9)) AS valuesTable(Value)
+                ),
+                Tally AS
+                (
+                    SELECT TOP (256)
+                        CONVERT(int, ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) - 1) AS Number
+                    FROM Digits AS hundreds
+                    CROSS JOIN Digits AS tens
+                    CROSS JOIN Digits AS ones
+                )
                 UPDATE assets
                 SET AssetCode = UPPER(COALESCE(assetCodeCanonical.CanonicalValue, N'')),
                     AssetCategory = LOWER(LTRIM(RTRIM(AssetCategory))),
@@ -72,23 +90,41 @@ namespace UniPM.Api.Migrations
                 FROM dbo.Assets AS assets
                 CROSS APPLY
                 (
-                    SELECT STRING_AGG(CONVERT(nvarchar(max), TRIM(parts.value)), N' ')
-                        WITHIN GROUP (ORDER BY parts.ordinal) AS CanonicalValue
-                    FROM STRING_SPLIT(
-                        REPLACE(REPLACE(assets.AssetCode, NCHAR(13) + NCHAR(10), NCHAR(10)), NCHAR(13), NCHAR(10)),
-                        NCHAR(10),
-                        1) AS parts
-                    WHERE TRIM(parts.value) <> N''
+                    VALUES (REPLACE(REPLACE(COALESCE(assets.AssetCode, N''), NCHAR(13) + NCHAR(10), NCHAR(10)), NCHAR(13), NCHAR(10)))
+                ) AS assetCodeSource(NormalizedValue)
+                CROSS APPLY
+                (
+                    SELECT STRING_AGG(CONVERT(nvarchar(max), TRIM(fragments.Fragment)), N' ')
+                        WITHIN GROUP (ORDER BY fragments.Ordinal) AS CanonicalValue
+                    FROM
+                    (
+                        SELECT tally.Number AS Ordinal,
+                            SUBSTRING(assetCodeSource.NormalizedValue, tally.Number + 1,
+                                CHARINDEX(NCHAR(10), assetCodeSource.NormalizedValue + REPLICATE(NCHAR(10), 256), tally.Number + 1) - tally.Number - 1) AS Fragment
+                        FROM Tally AS tally
+                        WHERE tally.Number < DATALENGTH(assetCodeSource.NormalizedValue) / 2
+                          AND (tally.Number = 0 OR SUBSTRING(assetCodeSource.NormalizedValue, tally.Number, 1) = NCHAR(10))
+                    ) AS fragments
+                    WHERE TRIM(fragments.Fragment) <> N''
                 ) AS assetCodeCanonical
                 CROSS APPLY
                 (
-                    SELECT STRING_AGG(CONVERT(nvarchar(max), TRIM(parts.value)), N' ')
-                        WITHIN GROUP (ORDER BY parts.ordinal) AS CanonicalValue
-                    FROM STRING_SPLIT(
-                        REPLACE(REPLACE(assets.QrCodeValue, NCHAR(13) + NCHAR(10), NCHAR(10)), NCHAR(13), NCHAR(10)),
-                        NCHAR(10),
-                        1) AS parts
-                    WHERE TRIM(parts.value) <> N''
+                    VALUES (REPLACE(REPLACE(COALESCE(assets.QrCodeValue, N''), NCHAR(13) + NCHAR(10), NCHAR(10)), NCHAR(13), NCHAR(10)))
+                ) AS qrCodeSource(NormalizedValue)
+                CROSS APPLY
+                (
+                    SELECT STRING_AGG(CONVERT(nvarchar(max), TRIM(fragments.Fragment)), N' ')
+                        WITHIN GROUP (ORDER BY fragments.Ordinal) AS CanonicalValue
+                    FROM
+                    (
+                        SELECT tally.Number AS Ordinal,
+                            SUBSTRING(qrCodeSource.NormalizedValue, tally.Number + 1,
+                                CHARINDEX(NCHAR(10), qrCodeSource.NormalizedValue + REPLICATE(NCHAR(10), 256), tally.Number + 1) - tally.Number - 1) AS Fragment
+                        FROM Tally AS tally
+                        WHERE tally.Number < DATALENGTH(qrCodeSource.NormalizedValue) / 2
+                          AND (tally.Number = 0 OR SUBSTRING(qrCodeSource.NormalizedValue, tally.Number, 1) = NCHAR(10))
+                    ) AS fragments
+                    WHERE TRIM(fragments.Fragment) <> N''
                 ) AS qrCodeCanonical;
 
                 UPDATE dbo.PreventiveMaintenanceSchedules
@@ -120,6 +156,18 @@ namespace UniPM.Api.Migrations
                     END,
                     AcademicYear = NULLIF(LTRIM(RTRIM(AcademicYear)), '');
 
+                ;WITH Digits(Value) AS
+                (
+                    SELECT Value FROM (VALUES (0), (1), (2), (3), (4), (5), (6), (7), (8), (9)) AS valuesTable(Value)
+                ),
+                Tally AS
+                (
+                    SELECT TOP (256)
+                        CONVERT(int, ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) - 1) AS Number
+                    FROM Digits AS hundreds
+                    CROSS JOIN Digits AS tens
+                    CROSS JOIN Digits AS ones
+                )
                 UPDATE documents
                 SET AssetCode = UPPER(COALESCE(assetCodeCanonical.CanonicalValue, N'')),
                     AssetCategory = LOWER(LTRIM(RTRIM(AssetCategory))),
@@ -129,13 +177,22 @@ namespace UniPM.Api.Migrations
                 FROM dbo.MaintenanceSearchDocuments AS documents
                 CROSS APPLY
                 (
-                    SELECT STRING_AGG(CONVERT(nvarchar(max), TRIM(parts.value)), N' ')
-                        WITHIN GROUP (ORDER BY parts.ordinal) AS CanonicalValue
-                    FROM STRING_SPLIT(
-                        REPLACE(REPLACE(documents.AssetCode, NCHAR(13) + NCHAR(10), NCHAR(10)), NCHAR(13), NCHAR(10)),
-                        NCHAR(10),
-                        1) AS parts
-                    WHERE TRIM(parts.value) <> N''
+                    VALUES (REPLACE(REPLACE(COALESCE(documents.AssetCode, N''), NCHAR(13) + NCHAR(10), NCHAR(10)), NCHAR(13), NCHAR(10)))
+                ) AS assetCodeSource(NormalizedValue)
+                CROSS APPLY
+                (
+                    SELECT STRING_AGG(CONVERT(nvarchar(max), TRIM(fragments.Fragment)), N' ')
+                        WITHIN GROUP (ORDER BY fragments.Ordinal) AS CanonicalValue
+                    FROM
+                    (
+                        SELECT tally.Number AS Ordinal,
+                            SUBSTRING(assetCodeSource.NormalizedValue, tally.Number + 1,
+                                CHARINDEX(NCHAR(10), assetCodeSource.NormalizedValue + REPLICATE(NCHAR(10), 256), tally.Number + 1) - tally.Number - 1) AS Fragment
+                        FROM Tally AS tally
+                        WHERE tally.Number < DATALENGTH(assetCodeSource.NormalizedValue) / 2
+                          AND (tally.Number = 0 OR SUBSTRING(assetCodeSource.NormalizedValue, tally.Number, 1) = NCHAR(10))
+                    ) AS fragments
+                    WHERE TRIM(fragments.Fragment) <> N''
                 ) AS assetCodeCanonical;
 
                 IF EXISTS (

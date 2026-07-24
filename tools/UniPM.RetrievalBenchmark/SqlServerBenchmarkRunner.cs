@@ -341,7 +341,7 @@ internal sealed class BenchmarkDbContextFactory(string connectionString)
     public ApplicationDbContext CreateDbContext()
     {
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseSqlServer(connectionString)
+            .UseUniPmSqlServer(connectionString)
             .Options;
         return new ApplicationDbContext(options);
     }

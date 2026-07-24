@@ -425,7 +425,7 @@ public sealed class SqlServerLexicalMaintenanceRetrieverTests
         public ApplicationDbContext CreateDbContext()
         {
             var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-                .UseSqlServer(connectionString)
+                .UseUniPmSqlServer(connectionString)
                 .Options;
             return new ApplicationDbContext(options);
         }
@@ -482,7 +482,7 @@ public sealed class SqlServerLexicalMaintenanceRetrieverTests
         public ApplicationDbContext CreateContext()
         {
             var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-                .UseSqlServer(ConnectionString)
+                .UseUniPmSqlServer(ConnectionString)
                 .Options;
             return new ApplicationDbContext(options);
         }
