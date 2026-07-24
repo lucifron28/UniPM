@@ -39,16 +39,18 @@ Run only after a native Windows SQL Server 2019 instance with Database Engine
 Services and Full-Text Search is available:
 
 ```powershell
-$env:UNIPM_SQLSERVER_TEST_CONNECTION = "<local SQL Server 2019 connection>"
-$env:ConnectionStrings__DefaultConnection = "<local SQL Server 2019 connection to UniPMDb>"
-$env:ASPNETCORE_ENVIRONMENT = "Development"
+$env:ConnectionStrings__DefaultConnection =
+  "<native SQL Server 2019 application database>"
 
-dotnet run --project server -- --migrate-database
-dotnet run --project server -- --seed-synthetic
-dotnet run --project server -- --seed-development-users
-dotnet run --project server -- --rebuild-maintenance-search-documents
-dotnet test .\UniPM.slnx -c Release --no-build
+$env:UNIPM_SQLSERVER2019_TEST_CONNECTION =
+  "<native SQL Server 2019 master/test connection>"
+
+.\scripts\evidence\Invoke-SqlServer2019CompatibilityVerification.ps1
 ```
+
+The runner maps the dedicated 2019 connection to the general SQL integration
+variable only while it executes the complete suite. Do not substitute
+`UNIPM_SQLSERVER_TEST_CONNECTION` for the dedicated readiness-test variable.
 
 Then confirm major version 15, compatibility level 150, Full-Text installation,
 the `UniPMMaintenanceRetrieval` catalog, and the enabled search-document index.
