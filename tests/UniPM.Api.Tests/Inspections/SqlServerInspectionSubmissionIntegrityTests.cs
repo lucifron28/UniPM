@@ -167,7 +167,7 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
                 services.AddTestAuthentication(AuthRoleCatalog.Inspector);
                 services.RemoveAll<IDbContextFactory<ApplicationDbContext>>();
                 services.RemoveAll<DbContextOptions<ApplicationDbContext>>();
-                services.AddDbContextFactory<ApplicationDbContext>(options => options.UseSqlServer(connectionString));
+                services.AddDbContextFactory<ApplicationDbContext>(options => options.UseUniPmSqlServer(connectionString));
             });
         }
 
@@ -229,7 +229,7 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
         public ApplicationDbContext CreateContext()
         {
             var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-                .UseSqlServer(ConnectionString)
+                .UseUniPmSqlServer(ConnectionString)
                 .Options;
             return new ApplicationDbContext(options);
         }

@@ -61,6 +61,35 @@ public sealed class SqlServerDomainContractTests
     }
 
     [SqlServerFact]
+    public async Task Migration_preflight_preserves_line_order_when_canonicalizing_mixed_line_endings()
+    {
+        await using var database = await SqlServerTestDatabase.CreateAsync(RequireSqlServerConnection());
+        await using (var context = database.CreateContext())
+        {
+            await context.Database.MigrateAsync(PreviousMigration);
+            context.Assets.Add(new Asset
+            {
+                Id = Guid.NewGuid(),
+                AssetCode = " fe\r\n\r\n001 ",
+                AssetCategory = "fire-alarm",
+                QrCodeValue = " qr\r0001 ",
+                Status = "Active"
+            });
+            await context.SaveChangesAsync();
+        }
+
+        await using (var context = database.CreateContext())
+        {
+            await context.Database.MigrateAsync();
+        }
+
+        await using var verificationContext = database.CreateContext();
+        var asset = await verificationContext.Assets.SingleAsync();
+        Assert.Equal("FE 001", asset.AssetCode);
+        Assert.Equal("QR 0001", asset.QrCodeValue);
+    }
+
+    [SqlServerFact]
     public async Task SqlServer_constraints_reject_invalid_codes_and_enforce_filtered_uniqueness()
     {
         var baseConnectionString = RequireSqlServerConnection();
@@ -248,7 +277,7 @@ public sealed class SqlServerDomainContractTests
         public ApplicationDbContext CreateContext()
         {
             var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-                .UseSqlServer(ConnectionString)
+                .UseUniPmSqlServer(ConnectionString)
                 .Options;
 
             return new ApplicationDbContext(options);

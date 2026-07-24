@@ -579,7 +579,7 @@ public sealed class SqlServerSemanticMaintenanceTests
         public ApplicationDbContext CreateDbContext()
         {
             var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-                .UseSqlServer(connectionString)
+                .UseUniPmSqlServer(connectionString)
                 .Options;
             return new ApplicationDbContext(options);
         }
@@ -630,7 +630,7 @@ public sealed class SqlServerSemanticMaintenanceTests
         public ApplicationDbContext CreateContext()
         {
             var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-                .UseSqlServer(ConnectionString)
+                .UseUniPmSqlServer(ConnectionString)
                 .Options;
             return new ApplicationDbContext(options);
         }

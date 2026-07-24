@@ -169,7 +169,7 @@ public sealed class SqlServerRefreshSessionTests
                 services.RemoveAll<DbContextOptions<ApplicationDbContext>>();
                 services.AddDbContextFactory<ApplicationDbContext>(options =>
                 {
-                    options.UseSqlServer(connectionString);
+                    options.UseUniPmSqlServer(connectionString);
                     if (failFirstRotation)
                     {
                         options.AddInterceptors(new FailFirstRotationSaveInterceptor());
@@ -254,7 +254,7 @@ public sealed class SqlServerRefreshSessionTests
             await command.ExecuteNonQueryAsync();
             return new SqlServerRefreshDatabase(database.ConnectionString, databaseName);
         }
-        public ApplicationDbContext CreateContext() => new(new DbContextOptionsBuilder<ApplicationDbContext>().UseSqlServer(ConnectionString).Options);
+        public ApplicationDbContext CreateContext() => new(new DbContextOptionsBuilder<ApplicationDbContext>().UseUniPmSqlServer(ConnectionString).Options);
         public async ValueTask DisposeAsync()
         {
             var master = new SqlConnectionStringBuilder(ConnectionString) { InitialCatalog = "master" };

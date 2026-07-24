@@ -24,7 +24,7 @@ internal sealed class DesignTimeApplicationDbContextFactory
         }
 
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseSqlServer(connectionString)
+            .UseUniPmSqlServer(connectionString)
             .Options;
 
         return new ApplicationDbContext(options);

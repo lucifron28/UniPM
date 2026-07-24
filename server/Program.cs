@@ -122,7 +122,7 @@ builder.Services.AddDbContextFactory<ApplicationDbContext>((serviceProvider, opt
 
     if (!string.IsNullOrWhiteSpace(connectionString))
     {
-        options.UseSqlServer(connectionString);
+        options.UseUniPmSqlServer(connectionString);
     }
 });
 builder.Services.AddUniPmAuthentication(
