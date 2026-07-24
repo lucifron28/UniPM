@@ -56,6 +56,9 @@ namespace UniPM.Api.Migrations
                 -- SQL Server 2019 has no STRING_SPLIT ordinal parameter. The
                 -- preceding length audit bounds identifiers at 128 characters, so
                 -- this tally set preserves normalized line order without XQuery.
+                -- DATALENGTH retains trailing spaces until each fragment is trimmed.
+                -- The sentinel run keeps SUBSTRING lengths valid even if SQL Server
+                -- evaluates the tally expression before applying its WHERE filter.
                 ;WITH Digits(Value) AS
                 (
                     SELECT Value FROM (VALUES (0), (1), (2), (3), (4), (5), (6), (7), (8), (9)) AS valuesTable(Value)
@@ -97,9 +100,9 @@ namespace UniPM.Api.Migrations
                     (
                         SELECT tally.Number AS Ordinal,
                             SUBSTRING(assetCodeSource.NormalizedValue, tally.Number + 1,
-                                CHARINDEX(NCHAR(10), assetCodeSource.NormalizedValue + NCHAR(10), tally.Number + 1) - tally.Number - 1) AS Fragment
+                                CHARINDEX(NCHAR(10), assetCodeSource.NormalizedValue + REPLICATE(NCHAR(10), 256), tally.Number + 1) - tally.Number - 1) AS Fragment
                         FROM Tally AS tally
-                        WHERE tally.Number <= LEN(assetCodeSource.NormalizedValue)
+                        WHERE tally.Number < DATALENGTH(assetCodeSource.NormalizedValue) / 2
                           AND (tally.Number = 0 OR SUBSTRING(assetCodeSource.NormalizedValue, tally.Number, 1) = NCHAR(10))
                     ) AS fragments
                     WHERE TRIM(fragments.Fragment) <> N''
@@ -116,9 +119,9 @@ namespace UniPM.Api.Migrations
                     (
                         SELECT tally.Number AS Ordinal,
                             SUBSTRING(qrCodeSource.NormalizedValue, tally.Number + 1,
-                                CHARINDEX(NCHAR(10), qrCodeSource.NormalizedValue + NCHAR(10), tally.Number + 1) - tally.Number - 1) AS Fragment
+                                CHARINDEX(NCHAR(10), qrCodeSource.NormalizedValue + REPLICATE(NCHAR(10), 256), tally.Number + 1) - tally.Number - 1) AS Fragment
                         FROM Tally AS tally
-                        WHERE tally.Number <= LEN(qrCodeSource.NormalizedValue)
+                        WHERE tally.Number < DATALENGTH(qrCodeSource.NormalizedValue) / 2
                           AND (tally.Number = 0 OR SUBSTRING(qrCodeSource.NormalizedValue, tally.Number, 1) = NCHAR(10))
                     ) AS fragments
                     WHERE TRIM(fragments.Fragment) <> N''
@@ -184,9 +187,9 @@ namespace UniPM.Api.Migrations
                     (
                         SELECT tally.Number AS Ordinal,
                             SUBSTRING(assetCodeSource.NormalizedValue, tally.Number + 1,
-                                CHARINDEX(NCHAR(10), assetCodeSource.NormalizedValue + NCHAR(10), tally.Number + 1) - tally.Number - 1) AS Fragment
+                                CHARINDEX(NCHAR(10), assetCodeSource.NormalizedValue + REPLICATE(NCHAR(10), 256), tally.Number + 1) - tally.Number - 1) AS Fragment
                         FROM Tally AS tally
-                        WHERE tally.Number <= LEN(assetCodeSource.NormalizedValue)
+                        WHERE tally.Number < DATALENGTH(assetCodeSource.NormalizedValue) / 2
                           AND (tally.Number = 0 OR SUBSTRING(assetCodeSource.NormalizedValue, tally.Number, 1) = NCHAR(10))
                     ) AS fragments
                     WHERE TRIM(fragments.Fragment) <> N''

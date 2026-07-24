@@ -61,6 +61,65 @@ public sealed class SqlServerDomainContractTests
     }
 
     [SqlServerFact]
+    public async Task Sql_Server_2019_with_full_text_search_applies_migrations_and_executes_containstable()
+    {
+        var baseConnectionString = RequireSqlServerConnection();
+        await using (var server = new SqlConnection(baseConnectionString))
+        {
+            await server.OpenAsync();
+            await using var command = server.CreateCommand();
+            command.CommandText = "SELECT CONVERT(int, SERVERPROPERTY('ProductMajorVersion')), CONVERT(int, SERVERPROPERTY('IsFullTextInstalled'));";
+            await using var reader = await command.ExecuteReaderAsync();
+            Assert.True(await reader.ReadAsync());
+            Assert.Equal(15, reader.GetInt32(0));
+            Assert.Equal(1, reader.GetInt32(1));
+        }
+
+        await using var database = await SqlServerTestDatabase.CreateAsync(baseConnectionString);
+        await using (var master = new SqlConnection(new SqlConnectionStringBuilder(database.ConnectionString) { InitialCatalog = "master" }.ConnectionString))
+        {
+            await master.OpenAsync();
+            await using var command = master.CreateCommand();
+            command.CommandText = $"ALTER DATABASE [{database.DatabaseName}] SET COMPATIBILITY_LEVEL = 150;";
+            await command.ExecuteNonQueryAsync();
+        }
+
+        await using (var context = database.CreateContext())
+        {
+            await context.Database.MigrateAsync();
+        }
+
+        await using var verification = new SqlConnection(database.ConnectionString);
+        await verification.OpenAsync();
+        await using var verificationCommand = verification.CreateCommand();
+        verificationCommand.CommandText = """
+            SELECT CONVERT(int, compatibility_level)
+            FROM sys.databases
+            WHERE name = DB_NAME();
+            SELECT COUNT(*)
+            FROM sys.fulltext_catalogs
+            WHERE name = N'UniPMMaintenanceRetrieval';
+            SELECT COUNT(*)
+            FROM sys.fulltext_indexes AS indexTable
+            INNER JOIN sys.tables AS tableInfo ON tableInfo.object_id = indexTable.object_id
+            WHERE tableInfo.name = N'MaintenanceSearchDocuments' AND indexTable.is_enabled = 1;
+            SELECT COUNT(*)
+            FROM CONTAINSTABLE(dbo.MaintenanceSearchDocuments, SearchText, N'pressure');
+            """;
+        await using var verificationReader = await verificationCommand.ExecuteReaderAsync();
+        Assert.True(await verificationReader.ReadAsync());
+        Assert.Equal(150, verificationReader.GetInt32(0));
+        Assert.True(await verificationReader.NextResultAsync());
+        Assert.True(await verificationReader.ReadAsync());
+        Assert.Equal(1, verificationReader.GetInt32(0));
+        Assert.True(await verificationReader.NextResultAsync());
+        Assert.True(await verificationReader.ReadAsync());
+        Assert.Equal(1, verificationReader.GetInt32(0));
+        Assert.True(await verificationReader.NextResultAsync());
+        await verificationReader.ReadAsync();
+    }
+
+    [SqlServerFact]
     public async Task Migration_preflight_preserves_line_order_when_canonicalizing_mixed_line_endings()
     {
         await using var database = await SqlServerTestDatabase.CreateAsync(RequireSqlServerConnection());
@@ -251,7 +310,8 @@ public sealed class SqlServerDomainContractTests
             this.databaseName = databaseName;
         }
 
-        private string ConnectionString { get; }
+        public string ConnectionString { get; }
+        public string DatabaseName => databaseName;
 
         public static async Task<SqlServerTestDatabase> CreateAsync(string baseConnectionString)
         {
