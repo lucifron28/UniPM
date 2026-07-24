@@ -26,9 +26,11 @@ import type {
   AuthUserResponse,
   CreateAssetDto,
   CreateScheduleDto,
-  GetApiV1InspectionsParams,
   HttpValidationProblemDetails,
+  InspectionHistoryResponse,
+  InspectionResponse,
   ListAssetsParams,
+  ListInspectionsParams,
   ListSchedulesParams,
   LoginRequest,
   LoginResponse,
@@ -1932,11 +1934,14 @@ export function useGetSchedule<
   return withQueryKey(query, queryOptions.queryKey)
 }
 
-export const postApiV1Inspections = (
+/**
+ * @summary Records a completed field inspection for a schedule
+ */
+export const recordInspection = (
   recordInspectionDto: RecordInspectionDto,
   signal?: AbortSignal,
 ) => {
-  return customInstance<void>({
+  return customInstance<InspectionResponse>({
     url: `/api/v1/inspections`,
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -1945,23 +1950,23 @@ export const postApiV1Inspections = (
   })
 }
 
-export const getPostApiV1InspectionsMutationOptions = <
-  TError = unknown,
+export const getRecordInspectionMutationOptions = <
+  TError = ValidationProblemDetails | void | ProblemDetails,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof postApiV1Inspections>>,
+    Awaited<ReturnType<typeof recordInspection>>,
     TError,
     { data: RecordInspectionDto },
     TContext
   >
 }): UseMutationOptions<
-  Awaited<ReturnType<typeof postApiV1Inspections>>,
+  Awaited<ReturnType<typeof recordInspection>>,
   TError,
   { data: RecordInspectionDto },
   TContext
 > => {
-  const mutationKey = ['postApiV1Inspections']
+  const mutationKey = ['recordInspection']
   const { mutation: mutationOptions } = options
     ? options.mutation &&
       'mutationKey' in options.mutation &&
@@ -1971,27 +1976,34 @@ export const getPostApiV1InspectionsMutationOptions = <
     : { mutation: { mutationKey } }
 
   const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof postApiV1Inspections>>,
+    Awaited<ReturnType<typeof recordInspection>>,
     { data: RecordInspectionDto }
   > = (props) => {
     const { data } = props ?? {}
 
-    return postApiV1Inspections(data)
+    return recordInspection(data)
   }
 
   return { mutationFn, ...mutationOptions }
 }
 
-export type PostApiV1InspectionsMutationResult = NonNullable<
-  Awaited<ReturnType<typeof postApiV1Inspections>>
+export type RecordInspectionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof recordInspection>>
 >
-export type PostApiV1InspectionsMutationBody = RecordInspectionDto
-export type PostApiV1InspectionsMutationError = unknown
+export type RecordInspectionMutationBody = RecordInspectionDto
+export type RecordInspectionMutationError =
+  ValidationProblemDetails | void | ProblemDetails
 
-export const usePostApiV1Inspections = <TError = unknown, TContext = unknown>(
+/**
+ * @summary Records a completed field inspection for a schedule
+ */
+export const useRecordInspection = <
+  TError = ValidationProblemDetails | void | ProblemDetails,
+  TContext = unknown,
+>(
   options?: {
     mutation?: UseMutationOptions<
-      Awaited<ReturnType<typeof postApiV1Inspections>>,
+      Awaited<ReturnType<typeof recordInspection>>,
       TError,
       { data: RecordInspectionDto },
       TContext
@@ -1999,22 +2011,22 @@ export const usePostApiV1Inspections = <TError = unknown, TContext = unknown>(
   },
   queryClient?: QueryClient,
 ): UseMutationResult<
-  Awaited<ReturnType<typeof postApiV1Inspections>>,
+  Awaited<ReturnType<typeof recordInspection>>,
   TError,
   { data: RecordInspectionDto },
   TContext
 > => {
-  return useMutation(
-    getPostApiV1InspectionsMutationOptions(options),
-    queryClient,
-  )
+  return useMutation(getRecordInspectionMutationOptions(options), queryClient)
 }
 
-export const getApiV1Inspections = (
-  params?: GetApiV1InspectionsParams,
+/**
+ * @summary Lists inspection records using supported metadata filters
+ */
+export const listInspections = (
+  params?: ListInspectionsParams,
   signal?: AbortSignal,
 ) => {
-  return customInstance<void>({
+  return customInstance<InspectionResponse[]>({
     url: `/api/v1/inspections`,
     method: 'GET',
     params,
@@ -2022,21 +2034,19 @@ export const getApiV1Inspections = (
   })
 }
 
-export const getGetApiV1InspectionsQueryKey = (
-  params?: GetApiV1InspectionsParams,
-) => {
+export const getListInspectionsQueryKey = (params?: ListInspectionsParams) => {
   return [`/api/v1/inspections`, ...(params ? [params] : [])] as const
 }
 
-export const getGetApiV1InspectionsQueryOptions = <
-  TData = Awaited<ReturnType<typeof getApiV1Inspections>>,
-  TError = unknown,
+export const getListInspectionsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listInspections>>,
+  TError = ValidationProblemDetails,
 >(
-  params?: GetApiV1InspectionsParams,
+  params?: ListInspectionsParams,
   options?: {
     query?: Partial<
       UseQueryOptions<
-        Awaited<ReturnType<typeof getApiV1Inspections>>,
+        Awaited<ReturnType<typeof listInspections>>,
         TError,
         TData
       >
@@ -2045,43 +2055,42 @@ export const getGetApiV1InspectionsQueryOptions = <
 ) => {
   const { query: queryOptions } = options ?? {}
 
-  const queryKey =
-    queryOptions?.queryKey ?? getGetApiV1InspectionsQueryKey(params)
+  const queryKey = queryOptions?.queryKey ?? getListInspectionsQueryKey(params)
 
-  const queryFn: QueryFunction<
-    Awaited<ReturnType<typeof getApiV1Inspections>>
-  > = ({ signal }) => getApiV1Inspections(params, signal)
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listInspections>>> = ({
+    signal,
+  }) => listInspections(params, signal)
 
   return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
-    Awaited<ReturnType<typeof getApiV1Inspections>>,
+    Awaited<ReturnType<typeof listInspections>>,
     TError,
     TData
   > & { queryKey: DataTag<QueryKey, TData, TError> }
 }
 
-export type GetApiV1InspectionsQueryResult = NonNullable<
-  Awaited<ReturnType<typeof getApiV1Inspections>>
+export type ListInspectionsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listInspections>>
 >
-export type GetApiV1InspectionsQueryError = unknown
+export type ListInspectionsQueryError = ValidationProblemDetails
 
-export function useGetApiV1Inspections<
-  TData = Awaited<ReturnType<typeof getApiV1Inspections>>,
-  TError = unknown,
+export function useListInspections<
+  TData = Awaited<ReturnType<typeof listInspections>>,
+  TError = ValidationProblemDetails,
 >(
-  params: undefined | GetApiV1InspectionsParams,
+  params: undefined | ListInspectionsParams,
   options: {
     query: Partial<
       UseQueryOptions<
-        Awaited<ReturnType<typeof getApiV1Inspections>>,
+        Awaited<ReturnType<typeof listInspections>>,
         TError,
         TData
       >
     > &
       Pick<
         DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getApiV1Inspections>>,
+          Awaited<ReturnType<typeof listInspections>>,
           TError,
-          Awaited<ReturnType<typeof getApiV1Inspections>>
+          Awaited<ReturnType<typeof listInspections>>
         >,
         'initialData'
       >
@@ -2090,24 +2099,24 @@ export function useGetApiV1Inspections<
 ): DefinedUseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>
 }
-export function useGetApiV1Inspections<
-  TData = Awaited<ReturnType<typeof getApiV1Inspections>>,
-  TError = unknown,
+export function useListInspections<
+  TData = Awaited<ReturnType<typeof listInspections>>,
+  TError = ValidationProblemDetails,
 >(
-  params?: GetApiV1InspectionsParams,
+  params?: ListInspectionsParams,
   options?: {
     query?: Partial<
       UseQueryOptions<
-        Awaited<ReturnType<typeof getApiV1Inspections>>,
+        Awaited<ReturnType<typeof listInspections>>,
         TError,
         TData
       >
     > &
       Pick<
         UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getApiV1Inspections>>,
+          Awaited<ReturnType<typeof listInspections>>,
           TError,
-          Awaited<ReturnType<typeof getApiV1Inspections>>
+          Awaited<ReturnType<typeof listInspections>>
         >,
         'initialData'
       >
@@ -2116,15 +2125,15 @@ export function useGetApiV1Inspections<
 ): UseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>
 }
-export function useGetApiV1Inspections<
-  TData = Awaited<ReturnType<typeof getApiV1Inspections>>,
-  TError = unknown,
+export function useListInspections<
+  TData = Awaited<ReturnType<typeof listInspections>>,
+  TError = ValidationProblemDetails,
 >(
-  params?: GetApiV1InspectionsParams,
+  params?: ListInspectionsParams,
   options?: {
     query?: Partial<
       UseQueryOptions<
-        Awaited<ReturnType<typeof getApiV1Inspections>>,
+        Awaited<ReturnType<typeof listInspections>>,
         TError,
         TData
       >
@@ -2134,16 +2143,19 @@ export function useGetApiV1Inspections<
 ): UseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>
 }
+/**
+ * @summary Lists inspection records using supported metadata filters
+ */
 
-export function useGetApiV1Inspections<
-  TData = Awaited<ReturnType<typeof getApiV1Inspections>>,
-  TError = unknown,
+export function useListInspections<
+  TData = Awaited<ReturnType<typeof listInspections>>,
+  TError = ValidationProblemDetails,
 >(
-  params?: GetApiV1InspectionsParams,
+  params?: ListInspectionsParams,
   options?: {
     query?: Partial<
       UseQueryOptions<
-        Awaited<ReturnType<typeof getApiV1Inspections>>,
+        Awaited<ReturnType<typeof listInspections>>,
         TError,
         TData
       >
@@ -2153,7 +2165,7 @@ export function useGetApiV1Inspections<
 ): UseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>
 } {
-  const queryOptions = getGetApiV1InspectionsQueryOptions(params, options)
+  const queryOptions = getListInspectionsQueryOptions(params, options)
 
   const query = useQuery(queryOptions, queryClient) as UseQueryResult<
     TData,
@@ -2163,32 +2175,30 @@ export function useGetApiV1Inspections<
   return withQueryKey(query, queryOptions.queryKey)
 }
 
-export const getApiV1InspectionsHistoryAssetId = (
-  assetId: string,
-  signal?: AbortSignal,
-) => {
-  return customInstance<void>({
+/**
+ * @summary Gets inspection history for an asset
+ */
+export const getInspectionHistory = (assetId: string, signal?: AbortSignal) => {
+  return customInstance<InspectionHistoryResponse[]>({
     url: `/api/v1/inspections/history/${assetId}`,
     method: 'GET',
     signal,
   })
 }
 
-export const getGetApiV1InspectionsHistoryAssetIdQueryKey = (
-  assetId: string,
-) => {
+export const getGetInspectionHistoryQueryKey = (assetId: string) => {
   return [`/api/v1/inspections/history/${assetId}`] as const
 }
 
-export const getGetApiV1InspectionsHistoryAssetIdQueryOptions = <
-  TData = Awaited<ReturnType<typeof getApiV1InspectionsHistoryAssetId>>,
+export const getGetInspectionHistoryQueryOptions = <
+  TData = Awaited<ReturnType<typeof getInspectionHistory>>,
   TError = unknown,
 >(
   assetId: string,
   options?: {
     query?: Partial<
       UseQueryOptions<
-        Awaited<ReturnType<typeof getApiV1InspectionsHistoryAssetId>>,
+        Awaited<ReturnType<typeof getInspectionHistory>>,
         TError,
         TData
       >
@@ -2198,12 +2208,11 @@ export const getGetApiV1InspectionsHistoryAssetIdQueryOptions = <
   const { query: queryOptions } = options ?? {}
 
   const queryKey =
-    queryOptions?.queryKey ??
-    getGetApiV1InspectionsHistoryAssetIdQueryKey(assetId)
+    queryOptions?.queryKey ?? getGetInspectionHistoryQueryKey(assetId)
 
   const queryFn: QueryFunction<
-    Awaited<ReturnType<typeof getApiV1InspectionsHistoryAssetId>>
-  > = ({ signal }) => getApiV1InspectionsHistoryAssetId(assetId, signal)
+    Awaited<ReturnType<typeof getInspectionHistory>>
+  > = ({ signal }) => getInspectionHistory(assetId, signal)
 
   return {
     queryKey,
@@ -2211,35 +2220,35 @@ export const getGetApiV1InspectionsHistoryAssetIdQueryOptions = <
     enabled: assetId !== null && assetId !== undefined,
     ...queryOptions,
   } as UseQueryOptions<
-    Awaited<ReturnType<typeof getApiV1InspectionsHistoryAssetId>>,
+    Awaited<ReturnType<typeof getInspectionHistory>>,
     TError,
     TData
   > & { queryKey: DataTag<QueryKey, TData, TError> }
 }
 
-export type GetApiV1InspectionsHistoryAssetIdQueryResult = NonNullable<
-  Awaited<ReturnType<typeof getApiV1InspectionsHistoryAssetId>>
+export type GetInspectionHistoryQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getInspectionHistory>>
 >
-export type GetApiV1InspectionsHistoryAssetIdQueryError = unknown
+export type GetInspectionHistoryQueryError = unknown
 
-export function useGetApiV1InspectionsHistoryAssetId<
-  TData = Awaited<ReturnType<typeof getApiV1InspectionsHistoryAssetId>>,
+export function useGetInspectionHistory<
+  TData = Awaited<ReturnType<typeof getInspectionHistory>>,
   TError = unknown,
 >(
   assetId: string,
   options: {
     query: Partial<
       UseQueryOptions<
-        Awaited<ReturnType<typeof getApiV1InspectionsHistoryAssetId>>,
+        Awaited<ReturnType<typeof getInspectionHistory>>,
         TError,
         TData
       >
     > &
       Pick<
         DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getApiV1InspectionsHistoryAssetId>>,
+          Awaited<ReturnType<typeof getInspectionHistory>>,
           TError,
-          Awaited<ReturnType<typeof getApiV1InspectionsHistoryAssetId>>
+          Awaited<ReturnType<typeof getInspectionHistory>>
         >,
         'initialData'
       >
@@ -2248,24 +2257,24 @@ export function useGetApiV1InspectionsHistoryAssetId<
 ): DefinedUseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>
 }
-export function useGetApiV1InspectionsHistoryAssetId<
-  TData = Awaited<ReturnType<typeof getApiV1InspectionsHistoryAssetId>>,
+export function useGetInspectionHistory<
+  TData = Awaited<ReturnType<typeof getInspectionHistory>>,
   TError = unknown,
 >(
   assetId: string,
   options?: {
     query?: Partial<
       UseQueryOptions<
-        Awaited<ReturnType<typeof getApiV1InspectionsHistoryAssetId>>,
+        Awaited<ReturnType<typeof getInspectionHistory>>,
         TError,
         TData
       >
     > &
       Pick<
         UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getApiV1InspectionsHistoryAssetId>>,
+          Awaited<ReturnType<typeof getInspectionHistory>>,
           TError,
-          Awaited<ReturnType<typeof getApiV1InspectionsHistoryAssetId>>
+          Awaited<ReturnType<typeof getInspectionHistory>>
         >,
         'initialData'
       >
@@ -2274,15 +2283,15 @@ export function useGetApiV1InspectionsHistoryAssetId<
 ): UseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>
 }
-export function useGetApiV1InspectionsHistoryAssetId<
-  TData = Awaited<ReturnType<typeof getApiV1InspectionsHistoryAssetId>>,
+export function useGetInspectionHistory<
+  TData = Awaited<ReturnType<typeof getInspectionHistory>>,
   TError = unknown,
 >(
   assetId: string,
   options?: {
     query?: Partial<
       UseQueryOptions<
-        Awaited<ReturnType<typeof getApiV1InspectionsHistoryAssetId>>,
+        Awaited<ReturnType<typeof getInspectionHistory>>,
         TError,
         TData
       >
@@ -2292,16 +2301,19 @@ export function useGetApiV1InspectionsHistoryAssetId<
 ): UseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>
 }
+/**
+ * @summary Gets inspection history for an asset
+ */
 
-export function useGetApiV1InspectionsHistoryAssetId<
-  TData = Awaited<ReturnType<typeof getApiV1InspectionsHistoryAssetId>>,
+export function useGetInspectionHistory<
+  TData = Awaited<ReturnType<typeof getInspectionHistory>>,
   TError = unknown,
 >(
   assetId: string,
   options?: {
     query?: Partial<
       UseQueryOptions<
-        Awaited<ReturnType<typeof getApiV1InspectionsHistoryAssetId>>,
+        Awaited<ReturnType<typeof getInspectionHistory>>,
         TError,
         TData
       >
@@ -2311,10 +2323,7 @@ export function useGetApiV1InspectionsHistoryAssetId<
 ): UseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>
 } {
-  const queryOptions = getGetApiV1InspectionsHistoryAssetIdQueryOptions(
-    assetId,
-    options,
-  )
+  const queryOptions = getGetInspectionHistoryQueryOptions(assetId, options)
 
   const query = useQuery(queryOptions, queryClient) as UseQueryResult<
     TData,
@@ -2324,41 +2333,39 @@ export function useGetApiV1InspectionsHistoryAssetId<
   return withQueryKey(query, queryOptions.queryKey)
 }
 
-export const getApiV1InspectionsId = (id: string, signal?: AbortSignal) => {
-  return customInstance<void>({
+/**
+ * @summary Gets an inspection record by its identifier
+ */
+export const getInspection = (id: string, signal?: AbortSignal) => {
+  return customInstance<InspectionResponse>({
     url: `/api/v1/inspections/${id}`,
     method: 'GET',
     signal,
   })
 }
 
-export const getGetApiV1InspectionsIdQueryKey = (id: string) => {
+export const getGetInspectionQueryKey = (id: string) => {
   return [`/api/v1/inspections/${id}`] as const
 }
 
-export const getGetApiV1InspectionsIdQueryOptions = <
-  TData = Awaited<ReturnType<typeof getApiV1InspectionsId>>,
-  TError = unknown,
+export const getGetInspectionQueryOptions = <
+  TData = Awaited<ReturnType<typeof getInspection>>,
+  TError = ProblemDetails,
 >(
   id: string,
   options?: {
     query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof getApiV1InspectionsId>>,
-        TError,
-        TData
-      >
+      UseQueryOptions<Awaited<ReturnType<typeof getInspection>>, TError, TData>
     >
   },
 ) => {
   const { query: queryOptions } = options ?? {}
 
-  const queryKey =
-    queryOptions?.queryKey ?? getGetApiV1InspectionsIdQueryKey(id)
+  const queryKey = queryOptions?.queryKey ?? getGetInspectionQueryKey(id)
 
-  const queryFn: QueryFunction<
-    Awaited<ReturnType<typeof getApiV1InspectionsId>>
-  > = ({ signal }) => getApiV1InspectionsId(id, signal)
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getInspection>>> = ({
+    signal,
+  }) => getInspection(id, signal)
 
   return {
     queryKey,
@@ -2366,35 +2373,31 @@ export const getGetApiV1InspectionsIdQueryOptions = <
     enabled: id !== null && id !== undefined,
     ...queryOptions,
   } as UseQueryOptions<
-    Awaited<ReturnType<typeof getApiV1InspectionsId>>,
+    Awaited<ReturnType<typeof getInspection>>,
     TError,
     TData
   > & { queryKey: DataTag<QueryKey, TData, TError> }
 }
 
-export type GetApiV1InspectionsIdQueryResult = NonNullable<
-  Awaited<ReturnType<typeof getApiV1InspectionsId>>
+export type GetInspectionQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getInspection>>
 >
-export type GetApiV1InspectionsIdQueryError = unknown
+export type GetInspectionQueryError = ProblemDetails
 
-export function useGetApiV1InspectionsId<
-  TData = Awaited<ReturnType<typeof getApiV1InspectionsId>>,
-  TError = unknown,
+export function useGetInspection<
+  TData = Awaited<ReturnType<typeof getInspection>>,
+  TError = ProblemDetails,
 >(
   id: string,
   options: {
     query: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof getApiV1InspectionsId>>,
-        TError,
-        TData
-      >
+      UseQueryOptions<Awaited<ReturnType<typeof getInspection>>, TError, TData>
     > &
       Pick<
         DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getApiV1InspectionsId>>,
+          Awaited<ReturnType<typeof getInspection>>,
           TError,
-          Awaited<ReturnType<typeof getApiV1InspectionsId>>
+          Awaited<ReturnType<typeof getInspection>>
         >,
         'initialData'
       >
@@ -2403,24 +2406,20 @@ export function useGetApiV1InspectionsId<
 ): DefinedUseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>
 }
-export function useGetApiV1InspectionsId<
-  TData = Awaited<ReturnType<typeof getApiV1InspectionsId>>,
-  TError = unknown,
+export function useGetInspection<
+  TData = Awaited<ReturnType<typeof getInspection>>,
+  TError = ProblemDetails,
 >(
   id: string,
   options?: {
     query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof getApiV1InspectionsId>>,
-        TError,
-        TData
-      >
+      UseQueryOptions<Awaited<ReturnType<typeof getInspection>>, TError, TData>
     > &
       Pick<
         UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getApiV1InspectionsId>>,
+          Awaited<ReturnType<typeof getInspection>>,
           TError,
-          Awaited<ReturnType<typeof getApiV1InspectionsId>>
+          Awaited<ReturnType<typeof getInspection>>
         >,
         'initialData'
       >
@@ -2429,44 +2428,39 @@ export function useGetApiV1InspectionsId<
 ): UseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>
 }
-export function useGetApiV1InspectionsId<
-  TData = Awaited<ReturnType<typeof getApiV1InspectionsId>>,
-  TError = unknown,
+export function useGetInspection<
+  TData = Awaited<ReturnType<typeof getInspection>>,
+  TError = ProblemDetails,
 >(
   id: string,
   options?: {
     query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof getApiV1InspectionsId>>,
-        TError,
-        TData
-      >
+      UseQueryOptions<Awaited<ReturnType<typeof getInspection>>, TError, TData>
     >
   },
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>
 }
+/**
+ * @summary Gets an inspection record by its identifier
+ */
 
-export function useGetApiV1InspectionsId<
-  TData = Awaited<ReturnType<typeof getApiV1InspectionsId>>,
-  TError = unknown,
+export function useGetInspection<
+  TData = Awaited<ReturnType<typeof getInspection>>,
+  TError = ProblemDetails,
 >(
   id: string,
   options?: {
     query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof getApiV1InspectionsId>>,
-        TError,
-        TData
-      >
+      UseQueryOptions<Awaited<ReturnType<typeof getInspection>>, TError, TData>
     >
   },
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>
 } {
-  const queryOptions = getGetApiV1InspectionsIdQueryOptions(id, options)
+  const queryOptions = getGetInspectionQueryOptions(id, options)
 
   const query = useQuery(queryOptions, queryClient) as UseQueryResult<
     TData,

@@ -41,6 +41,18 @@ const cases = [
       delete data.components.schemas.ScheduleResponse.properties.scheduleDate
     },
   },
+  {
+    name: 'inspection list success schema removed',
+    mutate: (data) => {
+      delete data.paths['/api/v1/inspections'].get.responses['200'].content
+    },
+  },
+  {
+    name: 'InspectionResponse.scheduleId removed',
+    mutate: (data) => {
+      delete data.components.schemas.InspectionResponse.properties.scheduleId
+    },
+  },
 ]
 
 let passedCases = 0

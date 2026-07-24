@@ -9,6 +9,7 @@ import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAssetCategories, useAsset } from '@/features/assets/asset-queries'
 import { categoryLabel, formatDate } from '@/features/assets/asset-presentation'
+import { InspectionHistory } from '@/features/inspections/inspection-history'
 
 function DetailItem({ label, value }: { label: string; value: string | null }) {
   return (
@@ -260,6 +261,7 @@ export function AssetDetail({ assetId }: { assetId: string }) {
           </Button>
         </div>
       </Card>
+      <InspectionHistory assetId={record.id} />
       <Card className="border-dashed shadow-none">
         <div className="flex gap-3">
           <Pencil

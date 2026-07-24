@@ -1,5 +1,10 @@
 import { Link, Outlet } from '@tanstack/react-router'
-import { Boxes, CalendarDays, LayoutDashboard } from 'lucide-react'
+import {
+  Boxes,
+  CalendarDays,
+  ClipboardCheck,
+  LayoutDashboard,
+} from 'lucide-react'
 import { Alert } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { BrandMark } from '@/components/brand-mark'
@@ -126,6 +131,21 @@ export function AppShell() {
             <CalendarDays aria-hidden="true" className="size-5" />
             Schedules
           </Link>
+          <Link
+            to="/app/inspections"
+            activeProps={{
+              'aria-current': 'page',
+              className:
+                'mt-1 flex items-center gap-3 rounded-lg bg-[var(--primary-active)] px-4 py-3 text-sm font-semibold text-white shadow-sm',
+            }}
+            inactiveProps={{
+              className:
+                'mt-1 flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-semibold text-[var(--text-secondary)] hover:bg-[var(--page-background)]',
+            }}
+          >
+            <ClipboardCheck aria-hidden="true" className="size-5" />
+            Inspections
+          </Link>
         </nav>
         <div className="space-y-4 border-t border-[var(--border-soft)] p-4">
           <UserIdentity />
@@ -196,6 +216,21 @@ export function AppShell() {
             >
               <CalendarDays aria-hidden="true" className="size-4" />
               Schedules
+            </Link>
+            <Link
+              to="/app/inspections"
+              activeProps={{
+                'aria-current': 'page',
+                className:
+                  'flex items-center gap-2 rounded-lg bg-[var(--primary-active)] px-3 py-2 text-xs font-semibold text-white shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]',
+              }}
+              inactiveProps={{
+                className:
+                  'flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--page-background)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]',
+              }}
+            >
+              <ClipboardCheck aria-hidden="true" className="size-4" />
+              Inspections
             </Link>
           </nav>
         </div>

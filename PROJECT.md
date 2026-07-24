@@ -135,10 +135,11 @@ and real multilingual embedding model-quality evidence remains pending.
 
 ## Next Steps
 
-1. Completed: browser authentication, asset registry, and preventive maintenance
-   schedule workflows without expanding provisional role or workflow rules.
-2. Planned after explicit approval: add the inspection web module against the
-   existing API contract without finalizing unresolved GSD workflows.
+1. Completed: browser authentication plus asset, schedule, and read-only
+   inspection review workflows without expanding provisional role or workflow
+   rules.
+2. The next web capability requires explicit approval and must not finalize
+   unresolved GSD workflows.
 3. Deferred: run the multilingual embedding baseline when a configured real
    provider is available, without changing established retrieval behavior.
 
@@ -156,5 +157,5 @@ TEST-002 evidence for the local technical-health path. Production monitoring,
 IIS restriction, tracing, centralized logs, alerting, and maintenance KPI
 dashboards remain out of scope. Inspection integrity, retrieval/test
 organization, sanitizer-boundary documentation, the web foundation, browser
-authentication, asset registry, and schedule workflows are complete. The next
-candidate is `feat/web-inspections` only after explicit approval.
+authentication, asset registry, schedule workflows, and read-only inspection
+review are complete. The next web candidate requires explicit approval.

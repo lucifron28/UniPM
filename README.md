@@ -82,13 +82,15 @@ npm run dev
 
 See [web/README.md](web/README.md) for the authentication boundary, local setup,
 committed OpenAPI generation flow, and source-inspected Figma alignment.
-The authenticated web application now includes the asset registry and
-preventive maintenance schedules. Assets provide list/detail views, GSD-only
+The authenticated web application now includes asset, schedule, and inspection
+review modules. Assets provide list/detail views, GSD-only
 provisional creation, QR-value copying, and reference-data category labels.
 Schedules provide URL-owned filters, recorded-status summaries, detail views,
 and GSD/Supervisor creation using only the current backend contract. Neither
 module invents editing, recurrence, status transitions, assignment, audit,
-condition, work-order, or device-specification workflows.
+condition, work-order, or device-specification workflows. Inspections provide
+read-only list/detail review and compact asset history; web inspection
+submission remains deferred to the planned mobile workflow.
 
 ## First Run
 
