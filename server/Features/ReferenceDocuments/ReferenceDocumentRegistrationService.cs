@@ -46,17 +46,7 @@ internal sealed class ReferenceDocumentRegistrationService(
         CancellationToken cancellationToken = default)
     {
         Validate(registration);
-        ReferenceDocumentSourceTypeCatalog.TryNormalize(registration.SourceType, out var sourceType);
-        ReferenceDocumentLifecycleCatalog.TryNormalize(registration.LifecycleStatus, out var lifecycleStatus);
-        registration = registration with
-        {
-            SourceType = sourceType,
-            LifecycleStatus = lifecycleStatus,
-            SourceKey = registration.SourceKey.Trim(),
-            Title = registration.Title.Trim(),
-            PublisherAuthority = registration.PublisherAuthority.Trim(),
-            Revision = registration.Revision.Trim()
-        };
+        registration = Normalize(registration);
 
         await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
         await using var transaction = context.Database.IsRelational()
@@ -80,26 +70,53 @@ internal sealed class ReferenceDocumentRegistrationService(
                 "A reference document with the same source type, source key, and revision already exists.");
         }
 
-        if (registration.SupersededByDocumentId is { } supersededBy
-            && !await context.ReferenceDocuments.AnyAsync(document => document.Id == supersededBy, cancellationToken))
-        {
-            throw new ReferenceDocumentRegistrationException("The superseding reference document does not exist.");
-        }
-
         var now = DateTimeOffset.UtcNow;
         var checksum = ComputeDocumentChecksum(registration);
         if (existing is null)
         {
+            await ValidateSupersessionAsync(context, null, registration, cancellationToken);
             existing = new ReferenceDocument { Id = registration.Id, ImportedAt = now };
             context.ReferenceDocuments.Add(existing);
         }
-        else if (existing.LifecycleStatus == ReferenceDocumentLifecycleCatalog.Active
-                 && !string.Equals(existing.ContentChecksum, checksum, StringComparison.Ordinal)
-                 && existing.SourceKey == registration.SourceKey
-                 && existing.Revision == registration.Revision)
+        else
         {
-            throw new ReferenceDocumentRegistrationException(
-                "An active reference revision cannot be silently replaced; register a new revision and link supersession explicitly.");
+            if (!string.Equals(existing.SourceType, registration.SourceType, StringComparison.Ordinal)
+                || !string.Equals(existing.SourceKey, registration.SourceKey, StringComparison.Ordinal)
+                || !string.Equals(existing.Revision, registration.Revision, StringComparison.Ordinal))
+            {
+                throw new ReferenceDocumentRegistrationException(
+                    "Reference document source type, source key, and revision are immutable for an existing document ID.");
+            }
+
+            if (!string.Equals(existing.ContentChecksum, checksum, StringComparison.Ordinal)
+                || existing.IsSynthetic != registration.IsSynthetic
+                || !string.Equals(existing.SyntheticFixtureKey, registration.SyntheticFixtureKey, StringComparison.Ordinal))
+            {
+                throw new ReferenceDocumentRegistrationException(
+                    "Reference document material and provenance are immutable; register a new document ID and revision for changes.");
+            }
+
+            var isSuperseding = existing.LifecycleStatus == ReferenceDocumentLifecycleCatalog.Active
+                && registration.LifecycleStatus == ReferenceDocumentLifecycleCatalog.Superseded;
+            if (!string.Equals(existing.LifecycleStatus, registration.LifecycleStatus, StringComparison.Ordinal)
+                && !isSuperseding)
+            {
+                throw new ReferenceDocumentRegistrationException(
+                    "Only an explicit Active-to-Superseded lifecycle transition is permitted for an existing reference document.");
+            }
+
+            if (!isSuperseding
+                && existing.SupersededByDocumentId != registration.SupersededByDocumentId)
+            {
+                throw new ReferenceDocumentRegistrationException(
+                    "Supersession links are immutable except during an Active-to-Superseded transition.");
+            }
+
+            await ValidateSupersessionAsync(context, existing, registration, cancellationToken);
+            if (!isSuperseding)
+            {
+                return;
+            }
         }
 
         existing.SourceType = registration.SourceType;
@@ -114,53 +131,37 @@ internal sealed class ReferenceDocumentRegistrationService(
         existing.IsSynthetic = registration.IsSynthetic;
         existing.SyntheticFixtureKey = registration.SyntheticFixtureKey;
 
-        var existingApplicabilities = existing.Applicabilities.ToList();
-        for (var index = 0; index < registration.Applicabilities.Count; index++)
+        if (existing.Applicabilities.Count == 0 && existing.Sections.Count == 0)
         {
-            var item = registration.Applicabilities[index];
-            var applicability = index < existingApplicabilities.Count
-                ? existingApplicabilities[index]
-                : new ReferenceDocumentApplicability { Id = Guid.NewGuid() };
-            if (index >= existingApplicabilities.Count)
+            foreach (var item in registration.Applicabilities)
             {
-                existing.Applicabilities.Add(applicability);
+                existing.Applicabilities.Add(new ReferenceDocumentApplicability
+                {
+                    Id = Guid.NewGuid(),
+                    AssetCategory = item.AssetCategory,
+                    Manufacturer = item.Manufacturer,
+                    ModelSeries = item.ModelSeries,
+                    EquipmentFamily = item.EquipmentFamily,
+                    ScopeLabel = item.ScopeLabel
+                });
             }
 
-            applicability.AssetCategory = item.AssetCategory;
-            applicability.Manufacturer = item.Manufacturer;
-            applicability.ModelSeries = item.ModelSeries;
-            applicability.EquipmentFamily = item.EquipmentFamily;
-            applicability.ScopeLabel = item.ScopeLabel;
-        }
-
-        foreach (var obsolete in existingApplicabilities.Skip(registration.Applicabilities.Count))
-        {
-            context.ReferenceDocumentApplicabilities.Remove(obsolete);
-        }
-
-        var sectionsById = existing.Sections.ToDictionary(section => section.Id);
-        var registrationIds = registration.Sections.Select(section => section.Id).ToHashSet();
-        foreach (var obsolete in existing.Sections.Where(section => !registrationIds.Contains(section.Id)).ToList())
-        {
-            context.ReferenceDocumentSections.Remove(obsolete);
-        }
-
-        foreach (var item in registration.Sections)
-        {
-            if (!sectionsById.TryGetValue(item.Id, out var section))
+            foreach (var item in registration.Sections)
             {
-                section = new ReferenceDocumentSection { Id = item.Id, CreatedAt = now };
-                existing.Sections.Add(section);
+                existing.Sections.Add(new ReferenceDocumentSection
+                {
+                    Id = item.Id,
+                    Sequence = item.Sequence,
+                    Heading = item.Heading,
+                    SourceLocator = item.SourceLocator,
+                    PageStart = item.PageStart,
+                    PageEnd = item.PageEnd,
+                    SectionText = item.SectionText,
+                    SectionHash = ComputeSectionHash(item),
+                    CreatedAt = now,
+                    UpdatedAt = now
+                });
             }
-
-            section.Sequence = item.Sequence;
-            section.Heading = item.Heading.Trim();
-            section.SourceLocator = item.SourceLocator.Trim();
-            section.PageStart = item.PageStart;
-            section.PageEnd = item.PageEnd;
-            section.SectionText = NormalizeText(item.SectionText);
-            section.SectionHash = ComputeSectionHash(section.Heading, section.SourceLocator, section.SectionText);
-            section.UpdatedAt = now;
         }
 
         await context.SaveChangesAsync(cancellationToken);
@@ -170,21 +171,117 @@ internal sealed class ReferenceDocumentRegistrationService(
         }
     }
 
-    internal static string ComputeSectionHash(string heading, string sourceLocator, string sectionText)
-        => ComputeHash($"{heading.Trim()}\n{sourceLocator.Trim()}\n{NormalizeText(sectionText)}");
+    internal static string ComputeSectionHash(ReferenceDocumentSectionRegistration section)
+        => ComputeHash($"{section.Sequence}\n{section.Heading}\n{section.SourceLocator}\n{section.PageStart}\n{section.PageEnd}\n{section.SectionText}");
 
     private static string ComputeDocumentChecksum(ReferenceDocumentRegistration registration)
-        => ComputeHash(string.Join(
-            "\n",
+    {
+        var parts = new List<string>
+        {
             registration.SourceType,
-            registration.SourceKey.Trim(),
-            registration.Revision.Trim(),
-            registration.Title.Trim(),
-            registration.Sections.OrderBy(section => section.Sequence).Select(section =>
-                ComputeSectionHash(section.Heading, section.SourceLocator, section.SectionText))));
+            registration.SourceKey,
+            registration.Revision,
+            registration.Title,
+            registration.PublisherAuthority,
+            registration.EffectiveDate?.ToString("O") ?? string.Empty
+        };
+        parts.AddRange(registration.Applicabilities.Select(applicability => string.Join(
+            "|",
+            applicability.AssetCategory,
+            applicability.Manufacturer,
+            applicability.ModelSeries,
+            applicability.EquipmentFamily,
+            applicability.ScopeLabel)));
+        parts.AddRange(registration.Sections.OrderBy(section => section.Sequence).Select(ComputeSectionHash));
+        return ComputeHash(string.Join("\n", parts));
+    }
 
     private static string ComputeHash(string value)
         => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value)));
+
+    private static async Task ValidateSupersessionAsync(
+        ApplicationDbContext context,
+        ReferenceDocument? existing,
+        ReferenceDocumentRegistration registration,
+        CancellationToken cancellationToken)
+    {
+        if (registration.SupersededByDocumentId is not { } supersededByDocumentId)
+        {
+            if (registration.LifecycleStatus == ReferenceDocumentLifecycleCatalog.Superseded)
+            {
+                throw new ReferenceDocumentRegistrationException(
+                    "A superseded reference document must identify its active superseding revision.");
+            }
+
+            return;
+        }
+
+        if (supersededByDocumentId == registration.Id)
+        {
+            throw new ReferenceDocumentRegistrationException("A reference document cannot supersede itself.");
+        }
+
+        var supersedingDocument = await context.ReferenceDocuments.SingleOrDefaultAsync(
+            document => document.Id == supersededByDocumentId,
+            cancellationToken);
+        if (supersedingDocument is null
+            || supersedingDocument.LifecycleStatus != ReferenceDocumentLifecycleCatalog.Active
+            || !string.Equals(supersedingDocument.SourceType, registration.SourceType, StringComparison.Ordinal)
+            || !string.Equals(supersedingDocument.SourceKey, registration.SourceKey, StringComparison.Ordinal))
+        {
+            throw new ReferenceDocumentRegistrationException(
+                "A supersession link must target an active revision of the same reference source.");
+        }
+
+        if (existing is not null && registration.LifecycleStatus != ReferenceDocumentLifecycleCatalog.Superseded)
+        {
+            throw new ReferenceDocumentRegistrationException(
+                "Only a superseded reference document may carry a supersession link.");
+        }
+    }
+
+    private static ReferenceDocumentRegistration Normalize(ReferenceDocumentRegistration registration)
+    {
+        ReferenceDocumentSourceTypeCatalog.TryNormalize(registration.SourceType, out var sourceType);
+        ReferenceDocumentLifecycleCatalog.TryNormalize(registration.LifecycleStatus, out var lifecycleStatus);
+        return registration with
+        {
+            SourceType = sourceType,
+            LifecycleStatus = lifecycleStatus,
+            SourceKey = registration.SourceKey.Trim(),
+            Title = registration.Title.Trim(),
+            PublisherAuthority = registration.PublisherAuthority.Trim(),
+            Revision = registration.Revision.Trim(),
+            Applicabilities = registration.Applicabilities.Select(NormalizeApplicability).ToArray(),
+            Sections = registration.Sections.Select(section => section with
+            {
+                Heading = section.Heading.Trim(),
+                SourceLocator = section.SourceLocator.Trim(),
+                SectionText = NormalizeText(section.SectionText)
+            }).ToArray()
+        };
+    }
+
+    private static ReferenceDocumentApplicabilityRegistration NormalizeApplicability(
+        ReferenceDocumentApplicabilityRegistration applicability)
+    {
+        var assetCategory = applicability.AssetCategory is null
+            ? null
+            : AssetCategoryCatalog.TryNormalize(applicability.AssetCategory, out var normalizedCategory)
+                ? normalizedCategory
+                : applicability.AssetCategory.Trim();
+        return applicability with
+        {
+            AssetCategory = assetCategory,
+            Manufacturer = TrimToNull(applicability.Manufacturer),
+            ModelSeries = TrimToNull(applicability.ModelSeries),
+            EquipmentFamily = TrimToNull(applicability.EquipmentFamily),
+            ScopeLabel = TrimToNull(applicability.ScopeLabel)
+        };
+    }
+
+    private static string? TrimToNull(string? value)
+        => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     private static string NormalizeText(string value)
         => value.Replace("\r\n", "\n", StringComparison.Ordinal)
@@ -216,6 +313,11 @@ internal sealed class ReferenceDocumentRegistrationService(
         if (registration.Sections.Count == 0)
         {
             errors.Add("At least one reference document section is required.");
+        }
+
+        if (registration.Applicabilities.Count == 0)
+        {
+            errors.Add("At least one reference document applicability row is required.");
         }
 
         if (registration.Sections.GroupBy(section => section.Sequence).Any(group => group.Count() > 1))
@@ -251,6 +353,25 @@ internal sealed class ReferenceDocumentRegistrationService(
             {
                 errors.Add("Reference document applicability uses an unsupported asset category.");
             }
+
+            if (AllBlank(applicability))
+            {
+                errors.Add("Reference document applicability must contain at least one applicability value.");
+            }
+
+            ValidateOptionalLength(applicability.Manufacturer, "manufacturer", 128, errors);
+            ValidateOptionalLength(applicability.ModelSeries, "model or series", 128, errors);
+            ValidateOptionalLength(applicability.EquipmentFamily, "equipment family", 128, errors);
+            ValidateOptionalLength(applicability.ScopeLabel, "scope label", 256, errors);
+
+            if (string.Equals(registration.SourceType.Trim(), ReferenceDocumentSourceTypeCatalog.Oem, StringComparison.OrdinalIgnoreCase)
+                && string.IsNullOrWhiteSpace(applicability.Manufacturer)
+                && string.IsNullOrWhiteSpace(applicability.ModelSeries)
+                && string.IsNullOrWhiteSpace(applicability.EquipmentFamily)
+                && string.IsNullOrWhiteSpace(applicability.ScopeLabel))
+            {
+                errors.Add("OEM reference applicability requires manufacturer, model or series, equipment family, or scope metadata.");
+            }
         }
 
         if (errors.Count > 0)
@@ -264,6 +385,21 @@ internal sealed class ReferenceDocumentRegistrationService(
         if (string.IsNullOrWhiteSpace(value) || value.Trim().Length > maximumLength)
         {
             errors.Add($"Reference document {label} is required and must not exceed {maximumLength} characters.");
+        }
+    }
+
+    private static bool AllBlank(ReferenceDocumentApplicabilityRegistration applicability)
+        => string.IsNullOrWhiteSpace(applicability.AssetCategory)
+            && string.IsNullOrWhiteSpace(applicability.Manufacturer)
+            && string.IsNullOrWhiteSpace(applicability.ModelSeries)
+            && string.IsNullOrWhiteSpace(applicability.EquipmentFamily)
+            && string.IsNullOrWhiteSpace(applicability.ScopeLabel);
+
+    private static void ValidateOptionalLength(string? value, string label, int maximumLength, List<string> errors)
+    {
+        if (value?.Trim().Length > maximumLength)
+        {
+            errors.Add($"Reference document applicability {label} must not exceed {maximumLength} characters.");
         }
     }
 }

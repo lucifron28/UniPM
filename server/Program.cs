@@ -267,7 +267,7 @@ if (maintenanceCommand != SyntheticMaintenanceCommand.None)
             {
                 var result = await seeder.ResetAsync();
                 await Console.Out.WriteLineAsync(
-                    $"Removed {result.DocumentsRemoved} synthetic reference documents and {result.SectionsRemoved} sections.");
+                    $"Removed {result.DocumentsRemoved} fixture-owned reference documents and {result.SectionsRemoved} sections.");
             }
         }
         else

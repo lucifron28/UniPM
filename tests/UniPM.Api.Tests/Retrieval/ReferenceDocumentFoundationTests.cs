@@ -32,10 +32,10 @@ public sealed class ReferenceDocumentFoundationTests
         var section = Assert.Single(document.Sections);
         Assert.Equal("Line one\nLine two", section.SectionText);
         Assert.Equal(
-            ReferenceDocumentRegistrationService.ComputeSectionHash(
-                "Scope",
-                "FIC-001 R1, page 1",
-                "Line one\nLine two"),
+            ReferenceDocumentRegistrationService.ComputeSectionHash(registration.Sections[0] with
+            {
+                SectionText = "Line one\nLine two"
+            }),
             section.SectionHash);
     }
 
@@ -57,6 +57,25 @@ public sealed class ReferenceDocumentFoundationTests
         await service.RegisterOrUpdateAsync(registration);
         await Assert.ThrowsAsync<ReferenceDocumentRegistrationException>(() => service.RegisterOrUpdateAsync(
             registration with { Title = "Changed fictional title" }));
+        await Assert.ThrowsAsync<ReferenceDocumentRegistrationException>(() => service.RegisterOrUpdateAsync(
+            registration with { Revision = "R2" }));
+        await Assert.ThrowsAsync<ReferenceDocumentRegistrationException>(() => service.RegisterOrUpdateAsync(
+            registration with { SourceKey = "FIC-002" }));
+        await Assert.ThrowsAsync<ReferenceDocumentRegistrationException>(() => service.RegisterOrUpdateAsync(
+            registration with { PublisherAuthority = "Changed fictional authority" }));
+        await Assert.ThrowsAsync<ReferenceDocumentRegistrationException>(() => service.RegisterOrUpdateAsync(
+            registration with
+            {
+                Applicabilities = [new ReferenceDocumentApplicabilityRegistration("fire-extinguisher", "Fictional Maker", "Model X", null, null)]
+            }));
+        await Assert.ThrowsAsync<ReferenceDocumentRegistrationException>(() => service.RegisterOrUpdateAsync(
+            registration with { Sections = [registration.Sections[0] with { PageEnd = 2 }] }));
+        await Assert.ThrowsAsync<ReferenceDocumentRegistrationException>(() => service.RegisterOrUpdateAsync(
+            registration with
+            {
+                LifecycleStatus = "Superseded",
+                SupersededByDocumentId = registration.Id
+            }));
     }
 
     [Fact]
@@ -102,14 +121,15 @@ public sealed class ReferenceDocumentFoundationTests
             {
                 Id = Guid.NewGuid(),
                 SourceType = "Institutional",
-                SourceKey = "NON-SYNTHETIC",
+                SourceKey = "OTHER-FIXTURE",
                 Title = "Fictional nonfixture record",
                 PublisherAuthority = "Fictional authority",
                 Revision = "R1",
                 LifecycleStatus = "Archived",
                 ImportedAt = DateTimeOffset.UtcNow,
                 ContentChecksum = "ABC",
-                IsSynthetic = false
+                IsSynthetic = true,
+                SyntheticFixtureKey = "another-fixture"
             });
             await context.SaveChangesAsync();
         }
@@ -118,7 +138,77 @@ public sealed class ReferenceDocumentFoundationTests
 
         await using var verification = factory.CreateDbContext();
         Assert.Single(await verification.ReferenceDocuments.ToListAsync());
-        Assert.False((await verification.ReferenceDocuments.SingleAsync()).IsSynthetic);
+        var survivor = await verification.ReferenceDocuments.SingleAsync();
+        Assert.True(survivor.IsSynthetic);
+        Assert.Equal("another-fixture", survivor.SyntheticFixtureKey);
+    }
+
+    [Fact]
+    public async Task Registration_normalizes_applicability_before_hashing_and_persistence()
+    {
+        var factory = new TestContextFactory($"reference-documents-{Guid.NewGuid():N}");
+        var service = new ReferenceDocumentRegistrationService(factory);
+        var registration = CreateRegistration() with
+        {
+            Applicabilities = [new ReferenceDocumentApplicabilityRegistration(
+                " FIRE-EXTINGUISHER ",
+                " Fictional Maker ",
+                " Series 100 ",
+                " Equipment Family ",
+                " Campus scope ")]
+        };
+
+        await service.RegisterOrUpdateAsync(registration);
+
+        await using var context = factory.CreateDbContext();
+        var applicability = await context.ReferenceDocumentApplicabilities.SingleAsync();
+        Assert.Equal("fire-extinguisher", applicability.AssetCategory);
+        Assert.Equal("Fictional Maker", applicability.Manufacturer);
+        Assert.Equal("Series 100", applicability.ModelSeries);
+        Assert.Equal("Equipment Family", applicability.EquipmentFamily);
+        Assert.Equal("Campus scope", applicability.ScopeLabel);
+    }
+
+    [Fact]
+    public async Task Active_revision_can_be_explicitly_superseded_only_by_a_related_active_revision()
+    {
+        var factory = new TestContextFactory($"reference-documents-{Guid.NewGuid():N}");
+        var service = new ReferenceDocumentRegistrationService(factory);
+        var original = CreateRegistration();
+        var relatedRevisionId = Guid.NewGuid();
+        var unrelatedRevisionId = Guid.NewGuid();
+        await service.RegisterOrUpdateAsync(original);
+        await service.RegisterOrUpdateAsync(CreateRegistration() with
+        {
+            Id = relatedRevisionId,
+            Revision = "R2",
+            Sections = [CreateRegistration().Sections[0] with { Id = Guid.NewGuid(), SourceLocator = "FIC-001 R2, page 1" }]
+        });
+        await service.RegisterOrUpdateAsync(CreateRegistration() with
+        {
+            Id = unrelatedRevisionId,
+            SourceKey = "OTHER-REFERENCE",
+            Revision = "R2",
+            Sections = [CreateRegistration().Sections[0] with { Id = Guid.NewGuid(), SourceLocator = "OTHER-REFERENCE R2, page 1" }]
+        });
+
+        await Assert.ThrowsAsync<ReferenceDocumentRegistrationException>(() => service.RegisterOrUpdateAsync(
+            original with
+            {
+                LifecycleStatus = "Superseded",
+                SupersededByDocumentId = unrelatedRevisionId
+            }));
+
+        await service.RegisterOrUpdateAsync(original with
+        {
+            LifecycleStatus = "Superseded",
+            SupersededByDocumentId = relatedRevisionId
+        });
+
+        await using var context = factory.CreateDbContext();
+        var stored = await context.ReferenceDocuments.SingleAsync(document => document.Id == original.Id);
+        Assert.Equal("Superseded", stored.LifecycleStatus);
+        Assert.Equal(relatedRevisionId, stored.SupersededByDocumentId);
     }
 
     private static ReferenceDocumentRegistration CreateRegistration()

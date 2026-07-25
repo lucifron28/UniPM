@@ -61,12 +61,19 @@ internal sealed class SyntheticReferenceDocumentSeeder(
 
     public async Task<SyntheticReferenceDocumentResetResult> ResetAsync(CancellationToken cancellationToken = default)
     {
+        var dataset = await LoadAsync(cancellationToken);
+        ValidateDataset(dataset);
+        var fixtureKeysById = dataset.Documents.ToDictionary(document => document.Id, document => document.SeedKey);
         await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
-        var documents = await context.ReferenceDocuments
-            .Where(document => document.IsSynthetic)
+        var candidates = await context.ReferenceDocuments
+            .Where(document => document.IsSynthetic && fixtureKeysById.Keys.Contains(document.Id))
             .Include(document => document.Sections)
             .Include(document => document.Applicabilities)
             .ToListAsync(cancellationToken);
+        var documents = candidates
+            .Where(document => fixtureKeysById.TryGetValue(document.Id, out var fixtureKey)
+                && string.Equals(document.SyntheticFixtureKey, fixtureKey, StringComparison.Ordinal))
+            .ToList();
         var sections = documents.SelectMany(document => document.Sections).ToList();
         var embeddings = await context.ReferenceDocumentSectionEmbeddings
             .Where(embedding => sections.Select(section => section.Id).Contains(embedding.ReferenceDocumentSectionId))
