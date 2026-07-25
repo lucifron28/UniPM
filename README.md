@@ -45,9 +45,12 @@ projection. SQL Server Full-Text Search retrieves lexical candidates from
 `MaintenanceSearchDocument.SearchText`. Versioned serialized embedding vectors
 are stored with relational document metadata; the backend filters a bounded SQL
 candidate set and calculates cosine similarity in application memory. Semantic
-retrieval is operationally optional and degradable, and inspectable Reciprocal
-Rank Fusion combines eligible lexical and semantic results. Native SQL Server
-vector features and a separate vector database are not required.
+retrieval is a required UniPM retrieval channel, while its embedding provider is
+operationally optional. When embeddings are unavailable, the system explicitly
+reports degradation and uses the lexical channel without labeling the result as
+hybrid. Inspectable Reciprocal Rank Fusion combines eligible lexical and
+semantic results. Native SQL Server vector features and a separate vector
+database are not required.
 
 ## Current API Surface
 
