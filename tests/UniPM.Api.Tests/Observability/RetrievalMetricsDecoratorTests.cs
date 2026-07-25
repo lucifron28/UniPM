@@ -5,6 +5,7 @@ using UniPM.Api.Observability;
 
 namespace UniPM.Api.Tests.Observability;
 
+[Collection(ObservabilityMetricsCollection.Name)]
 public sealed class RetrievalMetricsDecoratorTests
 {
     [Fact]
