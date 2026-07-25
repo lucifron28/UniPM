@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
     [string]$OutputRoot = (Join-Path (Get-Location) 'artifacts/evidence'),
+    [string]$ComposeEnvironmentFile = '.env.sqlserver2025',
     [switch]$RemoveVolumes,
     [switch]$FreshDatabase
 )
@@ -91,6 +92,16 @@ try {
         throw 'The current directory is not the UniPM repository root.'
     }
     Set-Location -LiteralPath $repoRoot
+    $composeEnvironmentPath = if ([System.IO.Path]::IsPathRooted($ComposeEnvironmentFile)) {
+        $ComposeEnvironmentFile
+    }
+    else {
+        Join-Path $repoRoot $ComposeEnvironmentFile
+    }
+    if (-not (Test-Path -LiteralPath $composeEnvironmentPath -PathType Leaf)) {
+        throw "Optional Compose environment file was not found: $composeEnvironmentPath. Copy .env.sqlserver2025.example to .env.sqlserver2025 or pass -ComposeEnvironmentFile <path>."
+    }
+    $composeFilePath = Join-Path $repoRoot 'docker-compose.sqlserver2025.yml'
     $testedCommit = Get-RepositoryValue @('rev-parse', 'HEAD')
     $sourceBranch = Get-RepositoryValue @('branch', '--show-current')
     $worktreeClean = @(& git status --porcelain --untracked-files=all 2>$null).Count -eq 0
@@ -113,15 +124,15 @@ try {
     $apiBase = "http://localhost:$apiPort"
 
     Invoke-Stage 'compose-config' {
-        docker compose -f docker-compose.sqlserver2025.yml --profile observability config --quiet
+        docker compose --env-file $composeEnvironmentPath -f $composeFilePath --profile observability config --quiet
         if ($LASTEXITCODE -ne 0) { throw "Docker Compose config failed with exit code $LASTEXITCODE." }
     }
     Invoke-Stage 'stack-start' {
         if ($FreshDatabase) {
-            docker compose -f docker-compose.sqlserver2025.yml down -v
+            docker compose --env-file $composeEnvironmentPath -f $composeFilePath down -v
             if ($LASTEXITCODE -ne 0) { throw "Fresh database reset failed with exit code $LASTEXITCODE." }
         }
-        docker compose -f docker-compose.sqlserver2025.yml up --build -d unipm-api
+        docker compose --env-file $composeEnvironmentPath -f $composeFilePath up --build -d unipm-api
         if ($LASTEXITCODE -ne 0) { throw "Docker Compose stack start failed with exit code $LASTEXITCODE." }
     }
     try {
@@ -144,15 +155,15 @@ try {
             }
         }
         Invoke-Stage 'database-migrate' {
-            docker compose -f docker-compose.sqlserver2025.yml exec -T unipm-api dotnet UniPM.Api.dll --migrate-database
+            docker compose --env-file $composeEnvironmentPath -f $composeFilePath exec -T unipm-api dotnet UniPM.Api.dll --migrate-database
             if ($LASTEXITCODE -ne 0) { throw "Database migration failed with exit code $LASTEXITCODE." }
         }
         Invoke-Stage 'seed' {
-            docker compose -f docker-compose.sqlserver2025.yml exec -T unipm-api dotnet UniPM.Api.dll --seed-synthetic
+            docker compose --env-file $composeEnvironmentPath -f $composeFilePath exec -T unipm-api dotnet UniPM.Api.dll --seed-synthetic
             if ($LASTEXITCODE -ne 0) { throw "Synthetic seed failed with exit code $LASTEXITCODE." }
         }
         Invoke-Stage 'rebuild-search-documents' {
-            docker compose -f docker-compose.sqlserver2025.yml exec -T unipm-api dotnet UniPM.Api.dll --rebuild-maintenance-search-documents
+            docker compose --env-file $composeEnvironmentPath -f $composeFilePath exec -T unipm-api dotnet UniPM.Api.dll --rebuild-maintenance-search-documents
             if ($LASTEXITCODE -ne 0) { throw "Search-document rebuild failed with exit code $LASTEXITCODE." }
         }
         Invoke-Stage 'review-request' {
@@ -210,14 +221,15 @@ try {
     }
     finally {
         if ($RemoveVolumes) {
-            docker compose -f docker-compose.sqlserver2025.yml down -v
+            docker compose --env-file $composeEnvironmentPath -f $composeFilePath down -v
         }
         else {
-            docker compose -f docker-compose.sqlserver2025.yml down
+            docker compose --env-file $composeEnvironmentPath -f $composeFilePath down
         }
     }
 }
 catch {
+    Write-Error -ErrorAction Continue -Message $_.Exception.Message
     $overallExitCode = 1
     if ($null -eq $artifactRoot) {
         $artifactRoot = Join-Path ([System.IO.Path]::GetFullPath($OutputRoot)) 'maintenance-review-failed'

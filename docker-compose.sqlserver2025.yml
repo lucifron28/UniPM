@@ -12,7 +12,7 @@ services:
     environment:
       ACCEPT_EULA: "Y"
       MSSQL_PID: "Developer"
-      MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD:?Set MSSQL_SA_PASSWORD in .env}"
+      MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD:?Set MSSQL_SA_PASSWORD through the process environment or the selected Compose environment file.}"
       TZ: "Asia/Manila"
     ports:
       - "${UNIPM_DB_PORT:-1433}:1433"
@@ -35,7 +35,7 @@ services:
     image: unipm-sqlserver:2025-fts
     container_name: unipm-db-init
     environment:
-      MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD:?Set MSSQL_SA_PASSWORD in .env}"
+      MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD:?Set MSSQL_SA_PASSWORD through the process environment or the selected Compose environment file.}"
     command:
       [
         "/bin/bash",
@@ -58,10 +58,10 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: "Development"
       ASPNETCORE_HTTP_PORTS: "8080"
-      ConnectionStrings__DefaultConnection: "Server=unipm-db,1433;Database=${UNIPM_DB_NAME:-UniPMDb};User Id=sa;Password=${MSSQL_SA_PASSWORD:?Set MSSQL_SA_PASSWORD in .env};Encrypt=True;TrustServerCertificate=True;"
-      Jwt__Issuer: "${UNIPM_JWT_ISSUER:?Set UNIPM_JWT_ISSUER in .env}"
-      Jwt__Audience: "${UNIPM_JWT_AUDIENCE:?Set UNIPM_JWT_AUDIENCE in .env}"
-      Jwt__SigningKey: "${UNIPM_JWT_SIGNING_KEY:?Set UNIPM_JWT_SIGNING_KEY in .env}"
+      ConnectionStrings__DefaultConnection: "Server=unipm-db,1433;Database=${UNIPM_DB_NAME:-UniPMDb};User Id=sa;Password=${MSSQL_SA_PASSWORD:?Set MSSQL_SA_PASSWORD through the process environment or the selected Compose environment file.};Encrypt=True;TrustServerCertificate=True;"
+      Jwt__Issuer: "${UNIPM_JWT_ISSUER:?Set UNIPM_JWT_ISSUER through the process environment or the selected Compose environment file.}"
+      Jwt__Audience: "${UNIPM_JWT_AUDIENCE:?Set UNIPM_JWT_AUDIENCE through the process environment or the selected Compose environment file.}"
+      Jwt__SigningKey: "${UNIPM_JWT_SIGNING_KEY:?Set UNIPM_JWT_SIGNING_KEY through the process environment or the selected Compose environment file.}"
       Jwt__AccessTokenMinutes: "${UNIPM_JWT_ACCESS_TOKEN_MINUTES:-15}"
       AuthSession__RefreshTokenDays: "${UNIPM_AUTH_REFRESH_TOKEN_DAYS:-7}"
       AuthSession__WebOrigin: "${UNIPM_WEB_ORIGIN:-http://localhost:5173}"
