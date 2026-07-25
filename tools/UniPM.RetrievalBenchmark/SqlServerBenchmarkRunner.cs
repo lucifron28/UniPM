@@ -113,6 +113,7 @@ public sealed class SqlServerBenchmarkRunner
         var channels = new List<IBenchmarkRetrievalChannel>();
         SqlServerLexicalMaintenanceRetriever? lexicalRetriever = null;
         SqlServerSemanticMaintenanceRetriever? semanticRetriever = null;
+        SemanticMaintenanceRetrievalDiagnostics? semanticDiagnostics = null;
         IEmbeddingService? embeddingService = null;
         BenchmarkEmbeddingExecutionTracker? embeddingExecution = null;
 
@@ -195,10 +196,12 @@ public sealed class SqlServerBenchmarkRunner
                 }
             }
 
+            semanticDiagnostics = new SemanticMaintenanceRetrievalDiagnostics();
             semanticRetriever = new SqlServerSemanticMaintenanceRetriever(
                 contextFactory,
                 embeddingService,
-                issueNormalizer);
+                issueNormalizer,
+                semanticDiagnostics);
         }
 
         if (reportLexical)
@@ -215,9 +218,8 @@ public sealed class SqlServerBenchmarkRunner
                     var result = await lexicalRetriever!.SearchAsync(
                         ToLexicalRequest(request),
                         token);
-                    return result
-                        .Select(item => new BenchmarkRetrievedResult(item.InspectionId, item.RawLexicalRank))
-                        .ToArray();
+                    return new BenchmarkChannelSearchResult(
+                        result.Select(item => new BenchmarkRetrievedResult(item.InspectionId, item.RawLexicalRank)).ToArray());
                 }));
         }
 
@@ -239,9 +241,11 @@ public sealed class SqlServerBenchmarkRunner
                     var result = await semanticRetriever!.SearchAsync(
                         ToSemanticRequest(request),
                         token);
-                    return result
-                        .Select(item => new BenchmarkRetrievedResult(item.InspectionId, item.RawSemanticScore))
-                        .ToArray();
+                    var diagnostics = semanticDiagnostics!.Consume();
+                    return new BenchmarkChannelSearchResult(
+                        result.Select(item => new BenchmarkRetrievedResult(item.InspectionId, item.RawSemanticScore)).ToArray(),
+                        diagnostics.CandidateCount,
+                        diagnostics.CandidateCapReached);
                 }));
         }
 
@@ -274,14 +278,16 @@ public sealed class SqlServerBenchmarkRunner
                             "The fused benchmark cannot score a degraded retrieval response.");
                     }
 
-                    return response.Results
-                        .Select(item => new BenchmarkRetrievedResult(
+                    var diagnostics = semanticDiagnostics!.Consume();
+                    return new BenchmarkChannelSearchResult(
+                        response.Results.Select(item => new BenchmarkRetrievedResult(
                             item.InspectionId,
                             item.FusionScore,
                             item.LexicalRank,
                             item.SemanticRank,
-                            item.FusionScore))
-                        .ToArray();
+                            item.FusionScore)).ToArray(),
+                        diagnostics.CandidateCount,
+                        diagnostics.CandidateCapReached);
                 }));
         }
 

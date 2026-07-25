@@ -71,6 +71,7 @@ public sealed class BenchmarkReportWriter
             }
             builder.AppendLine();
             AppendMetricTable(builder, "Overall", new[] { ("overall", channel.Value.Overall) });
+            AppendExecutionTable(builder, channel.Value);
             AppendMetricTable(builder, "By language", channel.Value.ByLanguage);
             AppendMetricTable(builder, "By asset category", channel.Value.ByAssetCategory);
             AppendMetricTable(builder, "By scenario tag", channel.Value.ByScenarioTag);
@@ -109,6 +110,24 @@ public sealed class BenchmarkReportWriter
         }
 
         return builder.ToString();
+    }
+
+    private static void AppendExecutionTable(StringBuilder builder, BenchmarkChannelReport channel)
+    {
+        builder.AppendLine("### Execution");
+        builder.AppendLine();
+        builder.AppendLine("| Median latency (ms) | P95 latency (ms) | Zero results | Failed queries |");
+        builder.AppendLine("|---:|---:|---:|---:|");
+        builder.AppendLine(
+            $"| {Format(channel.Latency.MedianMilliseconds)} | {Format(channel.Latency.P95Milliseconds)} | {channel.Latency.ZeroResultCount} | {channel.Latency.FailedQueryCount} |");
+        if (channel.SemanticCandidates is not null)
+        {
+            builder.AppendLine();
+            builder.AppendLine(
+                $"Semantic candidates: `{channel.SemanticCandidates.TotalCandidateCount}` across `{channel.SemanticCandidates.QueryCount}` queries; candidate-cap hits: `{channel.SemanticCandidates.CandidateCapHitCount}`.");
+        }
+
+        builder.AppendLine();
     }
 
     private static void AppendMetricTable(

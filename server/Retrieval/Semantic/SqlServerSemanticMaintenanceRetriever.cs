@@ -7,13 +7,15 @@ namespace UniPM.Api.Features.Retrieval;
 internal sealed class SqlServerSemanticMaintenanceRetriever(
     IDbContextFactory<ApplicationDbContext> contextFactory,
     IEmbeddingService embeddingService,
-    MaintenanceIssueNormalizer issueNormalizer)
+    MaintenanceIssueNormalizer issueNormalizer,
+    SemanticMaintenanceRetrievalDiagnostics? diagnostics = null)
     : ISemanticMaintenanceRetriever
 {
     public async Task<IReadOnlyList<SemanticMaintenanceSearchResult>> SearchAsync(
         SemanticMaintenanceSearchRequest request,
         CancellationToken cancellationToken = default)
     {
+        diagnostics?.Clear();
         var query = SemanticMaintenanceQueryBuilder.Build(request, issueNormalizer);
         var descriptor = embeddingService.Descriptor;
         if (!descriptor.Enabled)
@@ -44,6 +46,9 @@ internal sealed class SqlServerSemanticMaintenanceRetriever(
                 query,
                 descriptor,
                 cancellationToken);
+            diagnostics?.Record(
+                candidates.Count,
+                candidates.Count == SemanticMaintenanceQueryBuilder.MaxCandidateCount);
             if (candidates.Count == 0)
             {
                 return [];
