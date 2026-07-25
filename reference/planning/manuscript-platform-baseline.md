@@ -45,6 +45,11 @@ Server, embedding providers, or summary providers directly.
 - Reciprocal Rank Fusion combines lexical and eligible semantic rankings.
 - UniPM does not require native SQL Server vector features or a separate vector
   database.
+- Future institutional and OEM references are stored separately from
+  maintenance-history records with revision, lifecycle, applicability, locator,
+  checksum, and source-provenance metadata. Their retrieval and synthesis
+  behavior remain future work; this foundation does not claim that manuals or
+  procedures are currently ingested.
 
 ## Software Requirements And Development Tools
 

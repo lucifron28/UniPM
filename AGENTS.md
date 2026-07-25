@@ -171,6 +171,16 @@ Deferred pending GSD/adviser clarifications:
 
 Do not invent final schema or business logic for these unless explicitly told the clarification arrived. If a task seems to require finalizing any deferred item, stop and flag it.
 
+## Reference-Document Foundation
+
+Institutional procedures and OEM material are a separate future evidence corpus,
+not maintenance history. The current foundation may preserve fictional source
+metadata, revision/lifecycle, applicability, ordered sections, locators,
+checksums, synthetic provenance, deferred section embeddings, and SQL Server
+Full-Text indexing. Do not ingest real documents, add upload/OCR/extraction,
+or expose reference retrieval, combined evidence, conflict handling, or
+generated synthesis until the corresponding source-specific work is approved.
+
 Acceptable temporary/MVP work:
 
 - scaffold interfaces and placeholders

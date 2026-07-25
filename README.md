@@ -292,6 +292,8 @@ $env:ASPNETCORE_ENVIRONMENT = "Development"
 dotnet run --project server -- --migrate-database
 dotnet run --project server -- --seed-synthetic
 dotnet run --project server -- --seed-development-users
+dotnet run --project server -- --seed-reference-documents
+dotnet run --project server -- --reset-reference-documents
 dotnet run --project server -- --reset-synthetic-seed
 dotnet run --project server -- --rebuild-maintenance-search-documents
 ```
@@ -304,6 +306,17 @@ Seed/reset neither runs during normal API startup nor succeeds outside
 Development. The rebuild command is explicit, transactional on SQL Server,
 idempotent, and does not start HTTP hosting. Supplying more than one
 maintenance command flag is rejected without executing an operation.
+
+`--seed-reference-documents` creates a separate, fictional development corpus
+for future institutional and OEM evidence retrieval. It upserts only synthetic
+reference-document metadata, applicability records, and ordered sections;
+`--reset-reference-documents` removes only fixture-owned synthetic corpus
+records. It does not
+load real university procedures, OEM manuals, PDFs, OCR text, or source files,
+and it does not change maintenance-history retrieval or the review endpoint.
+The reference foundation has its own SQL Server Full-Text catalog and preserves
+document revision, lifecycle, locator, checksum, and synthetic provenance for
+later source-traceable retrieval work.
 
 The fixture uses five deterministic synthetic actor IDs for assignee and
 inspector references. Development user seeding reuses those IDs so the fixture

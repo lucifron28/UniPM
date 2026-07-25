@@ -11,8 +11,10 @@ The current strategy is risk-first:
 4. preserve the organized retrieval and test layout without changing behavior;
 5. preserve explicit documentation of known sanitizer limitations;
 6. evaluate real multilingual embedding models;
-7. preserve the bounded maintenance-history review contract;
-8. keep final RBAC and institutional workflow rules deferred.
+7. establish a provenance-preserving reference-document corpus before adding
+   institutional or OEM retrieval;
+8. preserve the bounded maintenance-history review contract;
+9. keep final RBAC and institutional workflow rules deferred.
 
 The RAG feature is not a chatbot and not an autonomous diagnostic tool. It is a
 bounded maintenance-history review feature that retrieves source records and
@@ -72,6 +74,9 @@ helps a human verify them.
   Search and compatibility level `150` is the minimum supported platform.
   SQL Server 2025 Docker tooling is optional and historical development support
   only; IIS deployment readiness remains unverified.
+- Reference-document foundation: in progress. The future institutional and OEM
+  corpus is separate from maintenance history and begins with fictional,
+  source-traceable metadata and sections only.
 
 ## Immediate Task Order
 
@@ -86,6 +91,17 @@ helps a human verify them.
 8. Completed: `feat/web-schedules`.
 9. Completed: `feat/web-inspections` read-only inspection review.
 10. The next web capability requires explicit approval.
+
+## Reference Evidence Roadmap
+
+1. Reference-document persistence, applicability, sectioning, lifecycle, and
+   provenance.
+2. Institutional lexical and semantic retrieval.
+3. OEM lexical and semantic retrieval.
+4. Evidence-review modes that keep source groups explicit.
+5. Source fusion and combined evidence only after independent channel review.
+6. Grounded synthesis and conflict handling after source behavior is verified.
+7. Web review UI after backend evidence contracts are stable.
 
 The multilingual embedding baseline remains deferred pending a configured real
 provider.

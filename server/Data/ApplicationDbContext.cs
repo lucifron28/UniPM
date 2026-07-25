@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using UniPM.Api.Features.Assets;
+using UniPM.Api.Features.ReferenceDocuments;
 using UniPM.Api.Features.ReferenceData;
 using UniPM.Api.Features.Schedules;
 using UniPM.Api.Models;
@@ -16,6 +17,10 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     public DbSet<InspectionRecord> InspectionRecords => Set<InspectionRecord>();
     public DbSet<MaintenanceSearchDocument> MaintenanceSearchDocuments => Set<MaintenanceSearchDocument>();
     public DbSet<MaintenanceSearchDocumentEmbedding> MaintenanceSearchDocumentEmbeddings => Set<MaintenanceSearchDocumentEmbedding>();
+    public DbSet<ReferenceDocument> ReferenceDocuments => Set<ReferenceDocument>();
+    public DbSet<ReferenceDocumentApplicability> ReferenceDocumentApplicabilities => Set<ReferenceDocumentApplicability>();
+    public DbSet<ReferenceDocumentSection> ReferenceDocumentSections => Set<ReferenceDocumentSection>();
+    public DbSet<ReferenceDocumentSectionEmbedding> ReferenceDocumentSectionEmbeddings => Set<ReferenceDocumentSectionEmbedding>();
     public DbSet<RefreshSession> RefreshSessions => Set<RefreshSession>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -208,6 +213,94 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
                 "[Dimensions] BETWEEN 1 AND 4096");
             table.HasCheckConstraint(
                 "CK_MaintenanceSearchDocumentEmbeddings_VectorJson",
+                "ISJSON([VectorJson]) = 1");
+        });
+
+        var referenceDocument = modelBuilder.Entity<ReferenceDocument>();
+        referenceDocument.Property(document => document.SourceType).HasMaxLength(32);
+        referenceDocument.Property(document => document.SourceKey).HasMaxLength(128);
+        referenceDocument.Property(document => document.Title).HasMaxLength(512);
+        referenceDocument.Property(document => document.PublisherAuthority).HasMaxLength(256);
+        referenceDocument.Property(document => document.Revision).HasMaxLength(128);
+        referenceDocument.Property(document => document.LifecycleStatus).HasMaxLength(32);
+        referenceDocument.Property(document => document.ContentChecksum).HasMaxLength(64);
+        referenceDocument.Property(document => document.SyntheticFixtureKey).HasMaxLength(128);
+        referenceDocument.HasIndex(document => new { document.SourceType, document.SourceKey, document.Revision }).IsUnique();
+        referenceDocument.HasIndex(document => new { document.LifecycleStatus, document.SourceType });
+        referenceDocument.HasOne(document => document.SupersededByDocument)
+            .WithMany()
+            .HasForeignKey(document => document.SupersededByDocumentId)
+            .OnDelete(DeleteBehavior.Restrict);
+        referenceDocument.ToTable("ReferenceDocuments", table =>
+        {
+            table.HasCheckConstraint(
+                "CK_ReferenceDocuments_SourceType_Allowed",
+                $"[SourceType] IN ({SqlIn(ReferenceDocumentSourceTypeCatalog.PersistedValues)})");
+            table.HasCheckConstraint(
+                "CK_ReferenceDocuments_LifecycleStatus_Allowed",
+                $"[LifecycleStatus] IN ({SqlIn(ReferenceDocumentLifecycleCatalog.PersistedValues)})");
+            table.HasCheckConstraint(
+                "CK_ReferenceDocuments_SupersessionLifecycle",
+                "([LifecycleStatus] = 'Superseded' AND [SupersededByDocumentId] IS NOT NULL) OR ([LifecycleStatus] <> 'Superseded' AND [SupersededByDocumentId] IS NULL)");
+            table.HasCheckConstraint(
+                "CK_ReferenceDocuments_NoSelfSupersession",
+                "[SupersededByDocumentId] IS NULL OR [SupersededByDocumentId] <> [Id]");
+        });
+
+        var applicability = modelBuilder.Entity<ReferenceDocumentApplicability>();
+        applicability.Property(item => item.AssetCategory).HasMaxLength(64);
+        applicability.Property(item => item.Manufacturer).HasMaxLength(128);
+        applicability.Property(item => item.ModelSeries).HasMaxLength(128);
+        applicability.Property(item => item.EquipmentFamily).HasMaxLength(128);
+        applicability.Property(item => item.ScopeLabel).HasMaxLength(256);
+        applicability.HasIndex(item => new { item.ReferenceDocumentId, item.AssetCategory });
+        applicability.HasOne(item => item.ReferenceDocument)
+            .WithMany(document => document.Applicabilities)
+            .HasForeignKey(item => item.ReferenceDocumentId)
+            .OnDelete(DeleteBehavior.Restrict);
+        applicability.ToTable("ReferenceDocumentApplicabilities", table => table.HasCheckConstraint(
+            "CK_ReferenceDocumentApplicabilities_AssetCategory_Allowed",
+            $"[AssetCategory] IS NULL OR [AssetCategory] IN ({SqlIn(AssetCategoryCatalog.PersistedValues)})"));
+
+        var referenceSection = modelBuilder.Entity<ReferenceDocumentSection>();
+        referenceSection.Property(section => section.Heading).HasMaxLength(512);
+        referenceSection.Property(section => section.SourceLocator).HasMaxLength(512);
+        referenceSection.Property(section => section.SectionText).HasColumnType("nvarchar(max)");
+        referenceSection.Property(section => section.SectionHash).HasMaxLength(64);
+        referenceSection.HasIndex(section => new { section.ReferenceDocumentId, section.Sequence }).IsUnique();
+        referenceSection.HasOne(section => section.ReferenceDocument)
+            .WithMany(document => document.Sections)
+            .HasForeignKey(section => section.ReferenceDocumentId)
+            .OnDelete(DeleteBehavior.Restrict);
+        referenceSection.ToTable("ReferenceDocumentSections", table =>
+        {
+            table.HasCheckConstraint("CK_ReferenceDocumentSections_Sequence", "[Sequence] >= 0");
+            table.HasCheckConstraint("CK_ReferenceDocumentSections_PageStart", "[PageStart] IS NULL OR [PageStart] >= 1");
+            table.HasCheckConstraint("CK_ReferenceDocumentSections_PageEnd", "[PageEnd] IS NULL OR [PageEnd] >= 1");
+            table.HasCheckConstraint(
+                "CK_ReferenceDocumentSections_PageRange",
+                "[PageStart] IS NULL OR [PageEnd] IS NULL OR [PageEnd] >= [PageStart]");
+        });
+
+        var referenceEmbedding = modelBuilder.Entity<ReferenceDocumentSectionEmbedding>();
+        referenceEmbedding.HasKey(embedding => embedding.ReferenceDocumentSectionId);
+        referenceEmbedding.Property(embedding => embedding.ProviderKey).HasMaxLength(64);
+        referenceEmbedding.Property(embedding => embedding.ModelKey).HasMaxLength(256);
+        referenceEmbedding.Property(embedding => embedding.EmbeddingProfile).HasMaxLength(512);
+        referenceEmbedding.Property(embedding => embedding.VectorJson).HasColumnType("nvarchar(max)");
+        referenceEmbedding.Property(embedding => embedding.SectionHash).HasMaxLength(64);
+        referenceEmbedding.HasIndex(embedding => new { embedding.EmbeddingProfile, embedding.SectionHash });
+        referenceEmbedding.HasOne(embedding => embedding.ReferenceDocumentSection)
+            .WithOne(section => section.Embedding)
+            .HasForeignKey<ReferenceDocumentSectionEmbedding>(embedding => embedding.ReferenceDocumentSectionId)
+            .OnDelete(DeleteBehavior.Cascade);
+        referenceEmbedding.ToTable("ReferenceDocumentSectionEmbeddings", table =>
+        {
+            table.HasCheckConstraint(
+                "CK_ReferenceDocumentSectionEmbeddings_Dimensions",
+                "[Dimensions] BETWEEN 1 AND 4096");
+            table.HasCheckConstraint(
+                "CK_ReferenceDocumentSectionEmbeddings_VectorJson",
                 "ISJSON([VectorJson]) = 1");
         });
     }
