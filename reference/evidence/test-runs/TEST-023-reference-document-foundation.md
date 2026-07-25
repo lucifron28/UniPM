@@ -3,8 +3,8 @@ id: TEST-023
 type: test-run
 title: Reference-document foundation verification
 status: executed
-recordedAtUtc: 2026-07-25T05:45:03Z
-testedCommit: 14ec87d4e585e137db1c25b672941d134a131de6
+recordedAtUtc: 2026-07-25T06:30:10Z
+testedCommit: a5709fb3118489529518ea398e1c7c6df48bfedf
 sourceBranch: feat/reference-document-foundation
 evidenceLevel: locally-executed
 ---
@@ -14,7 +14,8 @@ evidenceLevel: locally-executed
 ## Scope
 
 Verified the separate fictional reference-document persistence foundation,
-including ordered sections, section embedding constraints, Development-only
+including fixture-scoped reset, immutable source provenance, normalized
+applicability, ordered sections, section embedding constraints, Development-only
 seed/reset commands, and a separate SQL Server Full-Text catalog. No real
 institutional/OEM source, provider call, retrieval endpoint, synthesis, or
 production deployment claim is included.
@@ -36,15 +37,17 @@ dotnet test .\UniPM.slnx -c Release --no-build
 ## Results
 
 - Restore and Release build: passed with zero warnings.
-- Ordinary suite: 289 passed, 27 skipped, 0 failed. SQL-gated tests and the
+- Ordinary suite: 291 passed, 31 skipped, 0 failed. SQL-gated tests and the
   optional real-provider smoke test were intentionally skipped without their
   process environment configuration.
-- SQL-enabled suite: 315 passed, 1 skipped, 0 failed.
+- SQL-enabled suite: 321 passed, 1 skipped, 0 failed.
 - The only SQL-enabled skip was the optional real-provider embedding smoke
   test; no provider configuration was supplied.
 - Native SQL Server 2019 was selected through process-only connection settings.
-  The dedicated major-version-15 gate and reference Full-Text migration test
-  executed successfully.
+  The dedicated major-version-15 gate, reference fixture seed, normalized
+  applicability persistence, `CONTAINSTABLE` query, physical uniqueness/check
+  constraints, section-to-embedding cascade, scoped synthetic reset, and
+  active/superseded revision checks executed successfully.
 
 ## Limitations
 

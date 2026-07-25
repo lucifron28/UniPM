@@ -6,7 +6,7 @@ status: reviewed
 recordedAtUtc: 2026-07-25T05:30:00Z
 sourceBranch: feat/reference-document-foundation
 evidenceLevel: source-inspected
-sourceCommit: 14ec87d4e585e137db1c25b672941d134a131de6
+sourceCommit: a5709fb3118489529518ea398e1c7c6df48bfedf
 ---
 
 # Reference-Document Evidence Foundation
@@ -26,7 +26,7 @@ heading and text.
 
 ## Source Identity
 
-- Relevant commit: `14ec87d4e585e137db1c25b672941d134a131de6`
+- Relevant commit: `a5709fb3118489529518ea398e1c7c6df48bfedf`
 - Migration: `20260725041647_AddReferenceDocumentFoundation`
 - Important paths: `server/Features/ReferenceDocuments/`,
   `server/Data/Seeding/SyntheticReferenceDocumentSeeder.cs`, and the migration
@@ -34,8 +34,9 @@ heading and text.
 
 ## Tests Present
 
-- Registration, provenance, lifecycle, ordering, hash, embedding, idempotent
-  fixture, reset-scope, and command-parser tests.
+- Registration, immutable provenance, valid supersession, normalized
+  applicability, ordering, hash, embedding, idempotent fixture, fixture-scoped
+  reset, and command-parser tests.
 - A dedicated native SQL Server 2019 migration test verifies the separate
   reference Full-Text catalog.
 

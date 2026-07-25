@@ -310,7 +310,8 @@ maintenance command flag is rejected without executing an operation.
 `--seed-reference-documents` creates a separate, fictional development corpus
 for future institutional and OEM evidence retrieval. It upserts only synthetic
 reference-document metadata, applicability records, and ordered sections;
-`--reset-reference-documents` removes only that synthetic corpus. It does not
+`--reset-reference-documents` removes only fixture-owned synthetic corpus
+records. It does not
 load real university procedures, OEM manuals, PDFs, OCR text, or source files,
 and it does not change maintenance-history retrieval or the review endpoint.
 The reference foundation has its own SQL Server Full-Text catalog and preserves
