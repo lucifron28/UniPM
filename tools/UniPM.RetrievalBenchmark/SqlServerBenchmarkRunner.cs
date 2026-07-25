@@ -162,7 +162,10 @@ public sealed class SqlServerBenchmarkRunner
                 configuredEmbeddingService.Descriptor.Dimensions,
                 plannedDocumentCount,
                 options.Embeddings.MaxBatchSize,
-                manifest.Queries.Count);
+                manifest.Queries
+                    .Select(query => query.Query)
+                    .Distinct(StringComparer.Ordinal)
+                    .Count());
             Console.WriteLine(executionPlan.ToSafeSummary());
 
             embeddingExecution = new BenchmarkEmbeddingExecutionTracker(executionPlan);
