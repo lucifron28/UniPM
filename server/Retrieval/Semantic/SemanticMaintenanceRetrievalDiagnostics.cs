@@ -2,20 +2,35 @@ namespace UniPM.Api.Features.Retrieval;
 
 internal sealed class SemanticMaintenanceRetrievalDiagnostics
 {
-    private readonly AsyncLocal<SemanticMaintenanceCandidateDiagnostics?> current = new();
+    private readonly object gate = new();
+    private SemanticMaintenanceCandidateDiagnostics? current;
 
-    public void Clear() => current.Value = null;
+    public void Clear()
+    {
+        lock (gate)
+        {
+            current = null;
+        }
+    }
 
     public void Record(int candidateCount, bool candidateCapReached)
-        => current.Value = new SemanticMaintenanceCandidateDiagnostics(
-            candidateCount,
-            candidateCapReached);
+    {
+        lock (gate)
+        {
+            current = new SemanticMaintenanceCandidateDiagnostics(
+                candidateCount,
+                candidateCapReached);
+        }
+    }
 
     public SemanticMaintenanceCandidateDiagnostics Consume()
     {
-        var value = current.Value ?? new SemanticMaintenanceCandidateDiagnostics(0, false);
-        current.Value = null;
-        return value;
+        lock (gate)
+        {
+            var value = current ?? new SemanticMaintenanceCandidateDiagnostics(0, false);
+            current = null;
+            return value;
+        }
     }
 }
 

@@ -180,6 +180,17 @@ public sealed class BenchmarkEvaluationServiceTests
     }
 
     [Fact]
+    public void Semantic_candidate_diagnostics_retains_one_synchronized_snapshot()
+    {
+        var diagnostics = new SemanticMaintenanceRetrievalDiagnostics();
+
+        diagnostics.Record(17, false);
+
+        Assert.Equal(new SemanticMaintenanceCandidateDiagnostics(17, false), diagnostics.Consume());
+        Assert.Equal(new SemanticMaintenanceCandidateDiagnostics(0, false), diagnostics.Consume());
+    }
+
+    [Fact]
     public async Task Remote_embedding_execution_refuses_to_run_without_paid_approval()
     {
         var options = new BenchmarkRunnerOptions
