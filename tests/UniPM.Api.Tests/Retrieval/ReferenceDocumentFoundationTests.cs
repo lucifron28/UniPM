@@ -76,6 +76,15 @@ public sealed class ReferenceDocumentFoundationTests
                 LifecycleStatus = "Superseded",
                 SupersededByDocumentId = registration.Id
             }));
+
+        var nextRevisionId = Guid.NewGuid();
+        await service.RegisterOrUpdateAsync(NewRevision(registration, nextRevisionId, "R2", "Active", null));
+        await Assert.ThrowsAsync<ReferenceDocumentRegistrationException>(() => service.RegisterOrUpdateAsync(
+            NewRevision(registration, Guid.NewGuid(), "R3", "Active", nextRevisionId)));
+        await Assert.ThrowsAsync<ReferenceDocumentRegistrationException>(() => service.RegisterOrUpdateAsync(
+            NewRevision(registration, Guid.NewGuid(), "R4", "Archived", nextRevisionId)));
+        await Assert.ThrowsAsync<ReferenceDocumentRegistrationException>(() => service.RegisterOrUpdateAsync(
+            NewRevision(registration, Guid.NewGuid(), "R5", "Superseded", null)));
     }
 
     [Fact]
@@ -233,6 +242,25 @@ public sealed class ReferenceDocumentFoundationTests
                 1,
                 1,
                 "Line one\r\nLine two")]);
+
+    private static ReferenceDocumentRegistration NewRevision(
+        ReferenceDocumentRegistration original,
+        Guid id,
+        string revision,
+        string lifecycleStatus,
+        Guid? supersededByDocumentId)
+        => original with
+        {
+            Id = id,
+            Revision = revision,
+            LifecycleStatus = lifecycleStatus,
+            SupersededByDocumentId = supersededByDocumentId,
+            Sections = [original.Sections[0] with
+            {
+                Id = Guid.NewGuid(),
+                SourceLocator = $"FIC-001 {revision}, page 1"
+            }]
+        };
 
     private sealed class TestContextFactory(string databaseName) : IDbContextFactory<ApplicationDbContext>
     {

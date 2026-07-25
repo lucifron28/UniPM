@@ -239,6 +239,12 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             table.HasCheckConstraint(
                 "CK_ReferenceDocuments_LifecycleStatus_Allowed",
                 $"[LifecycleStatus] IN ({SqlIn(ReferenceDocumentLifecycleCatalog.PersistedValues)})");
+            table.HasCheckConstraint(
+                "CK_ReferenceDocuments_SupersessionLifecycle",
+                "([LifecycleStatus] = 'Superseded' AND [SupersededByDocumentId] IS NOT NULL) OR ([LifecycleStatus] <> 'Superseded' AND [SupersededByDocumentId] IS NULL)");
+            table.HasCheckConstraint(
+                "CK_ReferenceDocuments_NoSelfSupersession",
+                "[SupersededByDocumentId] IS NULL OR [SupersededByDocumentId] <> [Id]");
         });
 
         var applicability = modelBuilder.Entity<ReferenceDocumentApplicability>();

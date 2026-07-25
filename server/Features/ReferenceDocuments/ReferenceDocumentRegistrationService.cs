@@ -233,7 +233,7 @@ internal sealed class ReferenceDocumentRegistrationService(
                 "A supersession link must target an active revision of the same reference source.");
         }
 
-        if (existing is not null && registration.LifecycleStatus != ReferenceDocumentLifecycleCatalog.Superseded)
+        if (registration.LifecycleStatus != ReferenceDocumentLifecycleCatalog.Superseded)
         {
             throw new ReferenceDocumentRegistrationException(
                 "Only a superseded reference document may carry a supersession link.");

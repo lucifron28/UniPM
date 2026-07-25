@@ -608,7 +608,11 @@ namespace UniPM.Api.Migrations
                         {
                             t.HasCheckConstraint("CK_ReferenceDocuments_LifecycleStatus_Allowed", "[LifecycleStatus] IN ('Active', 'Superseded', 'Archived')");
 
+                            t.HasCheckConstraint("CK_ReferenceDocuments_NoSelfSupersession", "[SupersededByDocumentId] IS NULL OR [SupersededByDocumentId] <> [Id]");
+
                             t.HasCheckConstraint("CK_ReferenceDocuments_SourceType_Allowed", "[SourceType] IN ('Institutional', 'Oem')");
+
+                            t.HasCheckConstraint("CK_ReferenceDocuments_SupersessionLifecycle", "([LifecycleStatus] = 'Superseded' AND [SupersededByDocumentId] IS NOT NULL) OR ([LifecycleStatus] <> 'Superseded' AND [SupersededByDocumentId] IS NULL)");
                         });
                 });
 

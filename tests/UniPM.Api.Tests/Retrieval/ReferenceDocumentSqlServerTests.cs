@@ -132,6 +132,35 @@ public sealed class ReferenceDocumentSqlServerTests
         Assert.Empty(await verification.ReferenceDocumentSectionEmbeddings.ToListAsync());
     }
 
+    [SqlServer2019Fact]
+    public async Task Sql_constraints_reject_invalid_supersession_lifecycle_combinations()
+    {
+        await using var database = await SqlServerTestDatabase.CreateAsync(RequireSqlServer2019Connection());
+        var factory = new TestContextFactory(database.ConnectionString);
+        await using (var context = factory.CreateDbContext())
+        {
+            await context.Database.MigrateAsync();
+            context.ReferenceDocuments.Add(NewDocument(Guid.NewGuid(), "FIC-SQL-LINK", "R2", "target"));
+            await context.SaveChangesAsync();
+        }
+
+        Guid targetId;
+        await using (var context = factory.CreateDbContext())
+        {
+            targetId = await context.ReferenceDocuments.Select(document => document.Id).SingleAsync();
+        }
+
+        await AssertInvalidSupersessionAsync(factory, WithSupersession(
+            NewDocument(Guid.NewGuid(), "FIC-SQL-LINK", "R1", "active-link"), targetId));
+        await AssertInvalidSupersessionAsync(factory, WithSupersession(
+            NewDocument(Guid.NewGuid(), "FIC-SQL-LINK", "R3", "archived-link", "Archived"), targetId));
+        await AssertInvalidSupersessionAsync(factory, NewDocument(Guid.NewGuid(), "FIC-SQL-LINK", "R4", "missing-link", "Superseded"));
+
+        var selfId = Guid.NewGuid();
+        await AssertInvalidSupersessionAsync(factory, WithSupersession(
+            NewDocument(selfId, "FIC-SQL-LINK", "R5", "self-link", "Superseded"), selfId));
+    }
+
     private static async Task AssertInvalidEmbeddingAsync(
         TestContextFactory factory,
         Guid sectionId,
@@ -141,6 +170,15 @@ public sealed class ReferenceDocumentSqlServerTests
         await using var context = factory.CreateDbContext();
         var section = await context.ReferenceDocumentSections.SingleAsync();
         context.ReferenceDocumentSectionEmbeddings.Add(NewEmbedding(sectionId, section.SectionHash, dimensions, vectorJson));
+        await Assert.ThrowsAsync<DbUpdateException>(() => context.SaveChangesAsync());
+    }
+
+    private static async Task AssertInvalidSupersessionAsync(
+        TestContextFactory factory,
+        ReferenceDocument document)
+    {
+        await using var context = factory.CreateDbContext();
+        context.ReferenceDocuments.Add(document);
         await Assert.ThrowsAsync<DbUpdateException>(() => context.SaveChangesAsync());
     }
 
@@ -206,6 +244,12 @@ public sealed class ReferenceDocumentSqlServerTests
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow
         };
+
+    private static ReferenceDocument WithSupersession(ReferenceDocument document, Guid supersededByDocumentId)
+    {
+        document.SupersededByDocumentId = supersededByDocumentId;
+        return document;
+    }
 
     private static ReferenceDocumentSectionEmbedding NewEmbedding(
         Guid sectionId,

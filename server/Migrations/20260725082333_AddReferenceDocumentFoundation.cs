@@ -33,7 +33,9 @@ namespace UniPM.Api.Migrations
                 {
                     table.PrimaryKey("PK_ReferenceDocuments", x => x.Id);
                     table.CheckConstraint("CK_ReferenceDocuments_LifecycleStatus_Allowed", "[LifecycleStatus] IN ('Active', 'Superseded', 'Archived')");
+                    table.CheckConstraint("CK_ReferenceDocuments_NoSelfSupersession", "[SupersededByDocumentId] IS NULL OR [SupersededByDocumentId] <> [Id]");
                     table.CheckConstraint("CK_ReferenceDocuments_SourceType_Allowed", "[SourceType] IN ('Institutional', 'Oem')");
+                    table.CheckConstraint("CK_ReferenceDocuments_SupersessionLifecycle", "([LifecycleStatus] = 'Superseded' AND [SupersededByDocumentId] IS NOT NULL) OR ([LifecycleStatus] <> 'Superseded' AND [SupersededByDocumentId] IS NULL)");
                     table.ForeignKey(
                         name: "FK_ReferenceDocuments_ReferenceDocuments_SupersededByDocumentId",
                         column: x => x.SupersededByDocumentId,
