@@ -2,9 +2,10 @@
 
 ## Scope
 
-This spike evaluates a side-by-side SQL Server 2019 (major version 15)
-environment without changing the default SQL Server 2025 Compose stack or its
-volume. It does not retarget the production baseline.
+This spike evaluated a side-by-side SQL Server 2019 (major version 15)
+environment without changing the then-default SQL Server 2025 Compose stack or
+its volume. The subsequent platform decision is recorded in ADR-013; this file
+preserves the spike's original scope and compatibility findings.
 
 ## Environment
 
@@ -16,7 +17,7 @@ deployment or acceptance path.
 The acceptance path is a native Windows SQL Server 2019 Developer instance
 with Database Engine Services and Full-Text and Semantic Extractions for Search
 installed. The explicit runner accepts only process-scoped connection strings
-and does not modify the SQL Server 2025 Docker environment.
+and does not modify the retained optional SQL Server 2025 Docker environment.
 
 ## EF And Migration Boundary
 
@@ -66,5 +67,5 @@ catalog/index, `CONTAINSTABLE`, and the 310-pass SQL-enabled solution suite
 completed successfully. See TEST-022 for the exact tested commit and bounded
 claims.
 
-This does not retarget production, establish workload fitness, or replace SQL
-Server 2025 as the project baseline.
+This result does not establish workload fitness or IIS production readiness.
+ADR-013 separately adopts SQL Server 2019 as the minimum supported platform.
