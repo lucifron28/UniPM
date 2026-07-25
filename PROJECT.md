@@ -138,13 +138,17 @@ and real multilingual embedding model-quality evidence remains pending.
 
 ## Next Steps
 
-1. Completed: browser authentication plus asset, schedule, and read-only
-   inspection review workflows without expanding provisional role or workflow
-   rules.
-2. The next web capability requires explicit approval and must not finalize
-   unresolved GSD workflows.
-3. Deferred: run the multilingual embedding baseline when a configured real
-   provider is available, without changing established retrieval behavior.
+1. Reference-document persistence and sectioning: establish fictional,
+   provenance-preserving institutional/OEM source foundations separately from
+   maintenance history.
+2. Add institutional lexical/semantic retrieval, then OEM lexical/semantic
+   retrieval, without changing the existing maintenance-history channel.
+3. Add explicit evidence-review modes, source fusion, and combined evidence
+   only after each source channel is independently inspectable.
+4. Defer grounded synthesis, conflict handling, and source-review UI until the
+   corpus and source-specific retrieval contracts are verified.
+5. The next web capability still requires explicit approval and must not
+   finalize unresolved GSD workflows.
 
 ## Engineering Evidence
 
