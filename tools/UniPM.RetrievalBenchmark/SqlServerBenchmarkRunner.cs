@@ -14,6 +14,7 @@ public sealed class BenchmarkRunnerOptions
     public required string OutputDirectory { get; init; }
     public bool KeepDatabase { get; init; }
     public bool ApprovePaidProviderRun { get; init; }
+    public bool ApproveLocalModelRun { get; init; }
     public EmbeddingOptions? Embeddings { get; init; }
 }
 
@@ -43,6 +44,13 @@ public sealed class SqlServerBenchmarkRunner
         {
             throw new InvalidOperationException(
                 "Remote embedding execution requires --approve-paid-provider-run.");
+        }
+        if (requestsSemantic
+            && string.Equals(options.Embeddings?.ProviderKey, "granite-local", StringComparison.Ordinal)
+            && !options.ApproveLocalModelRun)
+        {
+            throw new InvalidOperationException(
+                "Local Granite embedding execution requires --approve-local-model-run.");
         }
 
         var connectionString = RequireEnvironment("UNIPM_SQLSERVER_TEST_CONNECTION");
