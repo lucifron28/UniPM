@@ -22,9 +22,24 @@ public static class Program
         }
         catch (Exception exception)
         {
-            Console.Error.WriteLine($"Retrieval benchmark failed: {exception.Message}");
+            Console.Error.WriteLine($"Retrieval benchmark failed: {FormatFailure(exception)}");
             return 1;
         }
+    }
+
+    private static string FormatFailure(Exception exception)
+    {
+        var messages = new List<string>();
+        for (Exception? current = exception; current is not null; current = current.InnerException)
+        {
+            if (!string.IsNullOrWhiteSpace(current.Message)
+                && !messages.Contains(current.Message, StringComparer.Ordinal))
+            {
+                messages.Add(current.Message);
+            }
+        }
+
+        return string.Join(" Cause: ", messages);
     }
 
     public static BenchmarkRunnerOptions ParseOptions(string[] args)
