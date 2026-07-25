@@ -42,6 +42,7 @@ record's evidence level and tested/source commit.
 | TEST-009 | test-run | Authentication and role-policy baseline | superseded | locally-executed | `205c1ac` | [record](test-runs/TEST-009-authentication-baseline.md) | Historical authentication baseline superseded by TEST-010 after Inspector identity-binding correction. |
 | TEST-010 | test-run | Authentication inspection identity-binding verification | executed | locally-executed | `37981a4` | [record](test-runs/TEST-010-authentication-identity-binding.md) | Fresh SQL Server migration, Development identities, real JWT policy checks, protected writes, and corrected Inspector identity binding. |
 | EXP-002 | experiment | DeepSeek V4 source-bounded summary baseline | executed | real-provider-executed | `929d99f` | [record](experiments/EXP-002-deepseek-v4-summary-baseline.md) | Fictional 12-case DeepSeek run with developer-approved source-faithfulness ratings; not production-ready. |
+| EXP-003 | experiment | Granite multilingual maintenance retrieval baseline | executed | locally-executed | `6d9be35` | [record](experiments/EXP-003-granite-multilingual-retrieval-baseline.md) | Local offline Granite baseline over the fictional 24-query fixture; conditional pass, not production evidence. |
 | IMP-010 | implementation | Database-enforced inspection submission integrity | reviewed | source-inspected | `6518a2d` | [record](implementation/IMP-010-inspection-submission-integrity.md) | Unique schedule inspection index, duplicate-data migration preflight, and narrow conflict handling. |
 | TEST-011 | test-run | Inspection submission integrity baseline | executed | locally-executed | `6518a2d` | [record](test-runs/TEST-011-inspection-submission-integrity.md) | Release restore/build/tests passed; SQL Server integrity tests were skipped because no test connection was configured. |
 | TEST-012 | test-run | Inspection submission integrity final verification | executed | locally-executed | `6e8d4b8` | [record](test-runs/TEST-012-inspection-submission-integrity-final.md) | Final non-SQL Release build/tests passed with explicit unknown-schedule coverage. |
@@ -74,8 +75,8 @@ record's evidence level and tested/source commit.
 
 ## Pending Evidence
 
-- Real semantic model-quality baseline: pending a configured real provider and
-  a retained real-provider benchmark run.
+- Independent semantic model-quality baseline on real institutional records:
+  pending approved data, a labeled evaluation set, and review protocol.
 - Lexicon normalization accuracy baseline: pending an independent labeled
   dataset and executable precision/recall/F1 evaluator.
 - Fused retrieval quality baseline: pending a configured real provider and an

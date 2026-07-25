@@ -134,7 +134,10 @@ stack runner exist for `deepseek-v4-flash` with thinking disabled. Automated
 provider-contract and failure tests pass. EXP-002 executed a real-provider run
 using fictional data, retained fictional generated text, and developer-reviewed
 ratings. It is experimental only: it does not establish production readiness,
-and real multilingual embedding model-quality evidence remains pending.
+and does not establish real institutional multilingual embedding quality.
+EXP-003 executed a local offline Granite baseline against the fictional
+maintenance retrieval fixture; it is controlled development evidence only and
+does not make Granite a required deployment dependency.
 
 ## Next Steps
 

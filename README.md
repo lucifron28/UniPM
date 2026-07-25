@@ -352,8 +352,10 @@ Tagalog and Taglish language fit was weak, and five outputs violated the citatio
 contract. Inspection-submission integrity, retrieval/test layout organization,
 and explicit free-text-name sanitizer limitation documentation are complete.
 The web foundation and browser authentication integration are implemented;
-operational web modules remain deferred. The multilingual embedding baseline
-remains pending a configured real provider.
+operational web modules remain deferred. EXP-003 executed a local offline
+Granite multilingual embedding baseline on the fictional maintenance fixture;
+it is controlled development evidence only and does not make Granite a
+deployment dependency or establish real institutional performance.
 
 Embeddings are disabled by default. Remote providers are rejected unless
 `Embeddings:AllowRemoteProvider` is explicitly enabled after a separate

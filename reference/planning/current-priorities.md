@@ -103,8 +103,10 @@ helps a human verify them.
 6. Grounded synthesis and conflict handling after source behavior is verified.
 7. Web review UI after backend evidence contracts are stable.
 
-The multilingual embedding baseline remains deferred pending a configured real
-provider.
+EXP-003 executed a local offline Granite multilingual embedding baseline on
+the fictional 24-query maintenance fixture. It is controlled development
+evidence only; it does not establish real institutional performance or make
+Granite a required deployment dependency.
 
 The maintenance-review endpoint remains disabled by default and requires
 authorization when enabled. Real semantic and fused model-quality evidence
@@ -377,5 +379,6 @@ directly.
 9. Completed: `feat/web-inspections` read-only inspection review.
 10. The next web capability requires explicit approval.
 
-The multilingual embedding baseline remains deferred pending a configured real
-provider.
+EXP-003 completed a local offline Granite multilingual embedding baseline on
+the fictional maintenance fixture. Its conditional result is development
+evidence only and does not establish real institutional performance.
