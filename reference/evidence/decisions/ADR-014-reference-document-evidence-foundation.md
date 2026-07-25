@@ -5,7 +5,7 @@ title: Separate reference-document evidence from maintenance history
 status: reviewed
 recordedAtUtc: 2026-07-25T05:30:00Z
 evidenceLevel: source-inspected
-sourceCommit: a5709fb3118489529518ea398e1c7c6df48bfedf
+sourceCommit: 6f04c6557497ffb686ba6c807f69d57bd2c39726
 ---
 
 # Separate Reference-Document Evidence From Maintenance History
@@ -39,4 +39,4 @@ future retrieval defaults.
 
 - TEST-022 establishes the SQL Server 2019 and Full-Text compatibility basis.
 - IMP-017 records the source-inspected implementation foundation at
-  `a5709fb3118489529518ea398e1c7c6df48bfedf`.
+  `6f04c6557497ffb686ba6c807f69d57bd2c39726`.

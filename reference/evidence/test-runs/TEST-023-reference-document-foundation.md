@@ -3,8 +3,8 @@ id: TEST-023
 type: test-run
 title: Reference-document foundation verification
 status: executed
-recordedAtUtc: 2026-07-25T06:30:10Z
-testedCommit: a5709fb3118489529518ea398e1c7c6df48bfedf
+recordedAtUtc: 2026-07-25T08:27:34Z
+testedCommit: 6f04c6557497ffb686ba6c807f69d57bd2c39726
 sourceBranch: feat/reference-document-foundation
 evidenceLevel: locally-executed
 ---
@@ -15,8 +15,9 @@ evidenceLevel: locally-executed
 
 Verified the separate fictional reference-document persistence foundation,
 including fixture-scoped reset, immutable source provenance, normalized
-applicability, ordered sections, section embedding constraints, Development-only
-seed/reset commands, and a separate SQL Server Full-Text catalog. No real
+applicability, lifecycle/supersession database invariants, ordered sections,
+section embedding constraints, Development-only seed/reset commands, and a
+separate SQL Server Full-Text catalog. No real
 institutional/OEM source, provider call, retrieval endpoint, synthesis, or
 production deployment claim is included.
 
@@ -37,17 +38,19 @@ dotnet test .\UniPM.slnx -c Release --no-build
 ## Results
 
 - Restore and Release build: passed with zero warnings.
-- Ordinary suite: 291 passed, 31 skipped, 0 failed. SQL-gated tests and the
+- Ordinary suite: 291 passed, 32 skipped, 0 failed. SQL-gated tests and the
   optional real-provider smoke test were intentionally skipped without their
   process environment configuration.
-- SQL-enabled suite: 321 passed, 1 skipped, 0 failed.
+- SQL-enabled suite: 322 passed, 1 skipped, 0 failed.
 - The only SQL-enabled skip was the optional real-provider embedding smoke
   test; no provider configuration was supplied.
 - Native SQL Server 2019 was selected through process-only connection settings.
   The dedicated major-version-15 gate, reference fixture seed, normalized
   applicability persistence, `CONTAINSTABLE` query, physical uniqueness/check
   constraints, section-to-embedding cascade, scoped synthetic reset, and
-  active/superseded revision checks executed successfully.
+  active/superseded revision checks executed successfully. Direct SQL checks
+  reject Active/Archived documents carrying a supersession link, Superseded
+  documents without one, and self-supersession.
 
 ## Limitations
 
