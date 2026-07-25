@@ -7,6 +7,7 @@ using UniPM.Api.Features;
 using UniPM.Api.Health;
 using UniPM.Api.Features.MaintenanceReview;
 using UniPM.Api.Features.Retrieval;
+using UniPM.Api.Features.ReferenceDocuments;
 using UniPM.Api.Observability;
 using OpenTelemetry.Metrics;
 using Microsoft.AspNetCore.Http.Features;
@@ -144,6 +145,8 @@ builder.Services.AddSingleton<SyntheticMaintenanceSeedOptions>();
 builder.Services.AddSingleton<SyntheticMaintenanceDatasetValidator>();
 builder.Services.AddSingleton<SyntheticMaintenanceDatasetLoader>();
 builder.Services.AddScoped<SyntheticMaintenanceSeeder>();
+builder.Services.AddScoped<ReferenceDocumentRegistrationService>();
+builder.Services.AddScoped<SyntheticReferenceDocumentSeeder>();
 builder.Services.AddSingleton<MaintenanceIssueLexiconOptions>();
 builder.Services.AddSingleton<MaintenanceIssueLexiconLoader>();
 builder.Services.AddSingleton<MaintenanceIssueNormalizer>();
@@ -203,7 +206,9 @@ if (maintenanceCommand != SyntheticMaintenanceCommand.None)
     if (maintenanceCommand is (
             SyntheticMaintenanceCommand.Seed
             or SyntheticMaintenanceCommand.Reset
-            or SyntheticMaintenanceCommand.SeedDevelopmentUsers)
+            or SyntheticMaintenanceCommand.SeedDevelopmentUsers
+            or SyntheticMaintenanceCommand.SeedReferenceDocuments
+            or SyntheticMaintenanceCommand.ResetReferenceDocuments)
         && !app.Environment.IsDevelopment())
     {
         await Console.Error.WriteLineAsync("Development seed commands are available only in Development.");
@@ -247,6 +252,23 @@ if (maintenanceCommand != SyntheticMaintenanceCommand.None)
             var result = await seeder.SeedAsync();
             await Console.Out.WriteLineAsync(
                 $"Development users ready ({result.RolesCreated} roles created, {result.UsersCreated} users created, {result.RoleAssignmentsRepaired} role assignments repaired, {result.UsersReactivated} users reactivated).");
+        }
+        else if (maintenanceCommand is SyntheticMaintenanceCommand.SeedReferenceDocuments
+                 or SyntheticMaintenanceCommand.ResetReferenceDocuments)
+        {
+            var seeder = scope.ServiceProvider.GetRequiredService<SyntheticReferenceDocumentSeeder>();
+            if (maintenanceCommand == SyntheticMaintenanceCommand.SeedReferenceDocuments)
+            {
+                var result = await seeder.SeedAsync();
+                await Console.Out.WriteLineAsync(
+                    $"Seeded {result.Documents} fictional reference documents and {result.Sections} sections.");
+            }
+            else
+            {
+                var result = await seeder.ResetAsync();
+                await Console.Out.WriteLineAsync(
+                    $"Removed {result.DocumentsRemoved} synthetic reference documents and {result.SectionsRemoved} sections.");
+            }
         }
         else
         {

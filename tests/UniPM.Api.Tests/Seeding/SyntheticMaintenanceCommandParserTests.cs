@@ -33,6 +33,12 @@ public sealed class SyntheticMaintenanceCommandParserTests
         Assert.Equal(
             SyntheticMaintenanceCommand.SeedDevelopmentUsers,
             SyntheticMaintenanceCommandParser.Parse(["--seed-development-users"]));
+        Assert.Equal(
+            SyntheticMaintenanceCommand.SeedReferenceDocuments,
+            SyntheticMaintenanceCommandParser.Parse(["--seed-reference-documents"]));
+        Assert.Equal(
+            SyntheticMaintenanceCommand.ResetReferenceDocuments,
+            SyntheticMaintenanceCommandParser.Parse(["--reset-reference-documents"]));
     }
 
     [Fact]
@@ -60,5 +66,8 @@ public sealed class SyntheticMaintenanceCommandParserTests
                 "--reset-synthetic-seed",
                 "--rebuild-maintenance-search-documents",
                 "--rebuild-maintenance-embeddings"]));
+        Assert.Equal(
+            SyntheticMaintenanceCommand.Ambiguous,
+            SyntheticMaintenanceCommandParser.Parse(["--seed-reference-documents", "--seed-synthetic"]));
     }
 }

@@ -119,6 +119,31 @@ public sealed class SqlServerDomainContractTests
         await verificationReader.ReadAsync();
     }
 
+    [SqlServer2019Fact]
+    public async Task Sql_Server_2019_creates_the_separate_reference_full_text_catalog()
+    {
+        await using var database = await SqlServerTestDatabase.CreateAsync(RequireSqlServer2019Connection());
+        await using (var context = database.CreateContext())
+        {
+            await context.Database.MigrateAsync();
+        }
+
+        await using var connection = new SqlConnection(database.ConnectionString);
+        await connection.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT CONVERT(int, CASE WHEN EXISTS (
+                SELECT 1
+                FROM sys.fulltext_indexes AS fullTextIndex
+                INNER JOIN sys.tables AS tables ON tables.object_id = fullTextIndex.object_id
+                INNER JOIN sys.fulltext_catalogs AS catalog ON catalog.fulltext_catalog_id = fullTextIndex.fulltext_catalog_id
+                WHERE tables.name = N'ReferenceDocumentSections'
+                  AND catalog.name = N'UniPMReferenceRetrieval') THEN 1 ELSE 0 END);
+            """;
+
+        Assert.Equal(1, Convert.ToInt32(await command.ExecuteScalarAsync()));
+    }
+
     [SqlServerFact]
     public async Task Migration_preflight_preserves_line_order_when_canonicalizing_mixed_line_endings()
     {

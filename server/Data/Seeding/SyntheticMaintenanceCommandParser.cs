@@ -9,6 +9,8 @@ internal enum SyntheticMaintenanceCommand
     RebuildEmbeddings,
     Migrate,
     SeedDevelopmentUsers,
+    SeedReferenceDocuments,
+    ResetReferenceDocuments,
     Ambiguous
 }
 
@@ -47,6 +49,16 @@ internal static class SyntheticMaintenanceCommandParser
         if (arguments.Contains("--seed-development-users"))
         {
             requestedCommands.Add(SyntheticMaintenanceCommand.SeedDevelopmentUsers);
+        }
+
+        if (arguments.Contains("--seed-reference-documents"))
+        {
+            requestedCommands.Add(SyntheticMaintenanceCommand.SeedReferenceDocuments);
+        }
+
+        if (arguments.Contains("--reset-reference-documents"))
+        {
+            requestedCommands.Add(SyntheticMaintenanceCommand.ResetReferenceDocuments);
         }
 
         return requestedCommands.Count switch
