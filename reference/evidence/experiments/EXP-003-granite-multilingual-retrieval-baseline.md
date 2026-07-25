@@ -3,8 +3,8 @@ id: EXP-003
 type: experiment
 title: Granite multilingual maintenance retrieval baseline
 status: executed
-recordedAtUtc: 2026-07-25T13:50:42.0864594+00:00
-testedCommit: 6d9be35cbb1ee0d3b7a73c513eaa2c3f724fd722
+recordedAtUtc: 2026-07-25T15:31:33.7837853+00:00
+testedCommit: 8f91e04a1ada74e26ecef79d41a44e2b7c4f5b76
 sourceBranch: experiment/granite-multilingual-retrieval-baseline
 evidenceLevel: locally-executed
 ---
@@ -19,7 +19,7 @@ only UniPM's fictional maintenance fixture and test-only evaluation manifest.
 
 ## Execution Identity
 
-- Tested commit: `6d9be35cbb1ee0d3b7a73c513eaa2c3f724fd722`
+- Tested commit: `8f91e04a1ada74e26ecef79d41a44e2b7c4f5b76`
 - Dataset and manifest versions: `1.1.0`; 30 search documents and 24 queries
 - Database: isolated native SQL Server 2019 database, compatibility level 150,
   with Full-Text Search ready; the temporary database was removed after the run.
@@ -42,7 +42,7 @@ and document prompts, so no task prefix was added. Maximum model context is
 tokenization. Inference used `model.eval()` and `torch.inference_mode()`.
 
 The service returned ordered, finite, normalized 384-dimensional vectors. The
-contract tests passed (3), and the existing adapter smoke test passed (1) with
+handler-level contract tests passed (6), and the existing adapter smoke test passed (1) with
 the local endpoint, full model identity, and 384 configured dimensions. The
 runtime was CPU-only with Python `3.14`, Torch `2.13.0+cpu`, Transformers
 `5.14.1`, and tokenizers `0.22.2`; no device name, username, endpoint, or
@@ -95,17 +95,20 @@ tables are retained in the reviewed Markdown baseline.
 
 - `dotnet restore .\UniPM.slnx`: passed.
 - `dotnet build .\UniPM.slnx -c Release --no-restore`: passed.
-- Ordinary Release suite: 293 passed, 32 skipped.
-- SQL-enabled Release suite with native SQL Server 2019 variables: 324 passed,
+- Ordinary Release suite: 294 passed, 32 skipped.
+- SQL-enabled Release suite with native SQL Server 2019 variables: 325 passed,
   1 optional external-provider smoke test skipped.
-- Local Python contract suite: 3 passed.
+- Local Python contract suite: 6 passed.
 - Local OpenAI-compatible smoke test: 1 passed, 0 skipped.
 
-The previously observed cross-suite observability failure did not recur in the
-ordinary full-suite baseline; no observability code was changed for this
-experiment. Benchmark timing was diagnostic only: provider duration was
-1,382.802 ms. The current report does not retain per-query latency percentiles
-or candidate-cap frequency, so neither is claimed.
+The previously observed cross-suite observability failure was reproduced and
+resolved by serializing only the two test classes that create the shared
+`UniPMMetrics` meter; runtime observability code was unchanged. Benchmark timing
+is diagnostic only: provider duration was 1,904.229 ms. Per-query end-to-end
+latency is retained: lexical median/p95 was 13.800/36.212 ms, semantic
+5.854/12.298 ms, and fused 79.663/207.522 ms. Semantic and fused retrieval each
+scored 93 eligible candidates across 24 queries; the 500-candidate cap was not
+reached.
 
 ## Result And Limitations
 
@@ -122,5 +125,5 @@ external provider payloads were retained.
 
 | File | SHA-256 |
 |---|---|
-| `baselines/granite-multilingual-v1/retrieval-benchmark.json` | `7ce2d30b4b5e0a93ed596bd3b416e52ae720a570b560ccc721bc3fbf3e1afde0` |
-| `baselines/granite-multilingual-v1/retrieval-benchmark.md` | `d6891423ea4c0381d6be7ffcf85477a2d31924962d70068da186a598fbac5522` |
+| `baselines/granite-multilingual-v1/retrieval-benchmark.json` | `35ff1c99220605dfc9aeaf4f671b5f4777ec487bd72fa671296eb2f736991cb4` |
+| `baselines/granite-multilingual-v1/retrieval-benchmark.md` | `8b19b434cdbe02e6f055e4733ef90ddc583506babd781a5355edc2bed912b234` |

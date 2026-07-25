@@ -2,7 +2,7 @@
 
 - Evaluation manifest: `1.1.0`
 - Operational dataset: `1.1.0`
-- Generated at UTC: `2026-07-25T13:50:42.0864594+00:00`
+- Generated at UTC: `2026-07-25T15:33:28.0926345+00:00`
 - Queries: `24`
 - Channels: `fused, lexical, semantic`
 
@@ -12,7 +12,7 @@
 
 | Provider | Model | Dimensions | Documents | Batches | Query embeddings | Expected requests | Actual requests | Query cache hits | Provider duration (ms) |
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|
-| `granite-local` | `ibm-granite/granite-embedding-97m-multilingual-r2` | 384 | 30 | 2 | 23 | 25 | 25 | 25 | 1382.802 |
+| `granite-local` | `ibm-granite/granite-embedding-97m-multilingual-r2` | 384 | 30 | 2 | 23 | 25 | 25 | 25 | 1904.229 |
 
 ## fused
 
@@ -25,6 +25,14 @@ Semantic degradation policy: Semantic unavailable or failed returns lexical-only
 | Slice | Hit@1 | Hit@5 | Precision@5 | Recall@5 | Recall@10 | MRR |
 |---|---:|---:|---:|---:|---:|---:|
 | `overall` | 1.000 | 1.000 | 0.458 | 0.965 | 1.000 | 1.000 |
+
+### Execution
+
+| Median latency (ms) | P95 latency (ms) | Zero results | Failed queries |
+|---:|---:|---:|---:|
+| 79.663 | 207.522 | 0 | 0 |
+
+Semantic candidates: `93` across `24` queries; candidate-cap hits: `0`.
 
 ### By language
 
@@ -76,6 +84,12 @@ Result limit: `10`; queries: `24`
 |---|---:|---:|---:|---:|---:|---:|
 | `overall` | 0.583 | 0.583 | 0.125 | 0.267 | 0.267 | 0.583 |
 
+### Execution
+
+| Median latency (ms) | P95 latency (ms) | Zero results | Failed queries |
+|---:|---:|---:|---:|
+| 13.800 | 36.212 | 10 | 0 |
+
 ### By language
 
 | Slice | Hit@1 | Hit@5 | Precision@5 | Recall@5 | Recall@10 | MRR |
@@ -125,6 +139,14 @@ Result limit: `10`; queries: `24`
 | Slice | Hit@1 | Hit@5 | Precision@5 | Recall@5 | Recall@10 | MRR |
 |---|---:|---:|---:|---:|---:|---:|
 | `overall` | 1.000 | 1.000 | 0.458 | 0.965 | 1.000 | 1.000 |
+
+### Execution
+
+| Median latency (ms) | P95 latency (ms) | Zero results | Failed queries |
+|---:|---:|---:|---:|
+| 5.854 | 12.298 | 0 | 0 |
+
+Semantic candidates: `93` across `24` queries; candidate-cap hits: `0`.
 
 ### By language
 

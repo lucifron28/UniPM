@@ -2,7 +2,7 @@
   "benchmarkFormatVersion": "1.1.0",
   "evaluationManifestVersion": "1.1.0",
   "operationalDatasetVersion": "1.1.0",
-  "generatedAtUtc": "2026-07-25T13:50:42.0864594+00:00",
+  "generatedAtUtc": "2026-07-25T15:33:28.0926345+00:00",
   "selectedChannels": [
     "fused",
     "lexical",
@@ -247,6 +247,18 @@
           "meanExpectedRelevantCount": 2.25
         }
       },
+      "latency": {
+        "queryCount": 24,
+        "medianMilliseconds": 79.6628,
+        "p95Milliseconds": 207.522,
+        "zeroResultCount": 0,
+        "failedQueryCount": 0
+      },
+      "semanticCandidates": {
+        "queryCount": 24,
+        "totalCandidateCount": 93,
+        "candidateCapHitCount": 0
+      },
       "perQuery": [
         {
           "queryId": "Q001",
@@ -292,7 +304,9 @@
             "334f4c25-2a02-50e7-b93e-79a01ebee7a7": 2,
             "1a069120-c57f-5249-bde9-cbe4538c70e2": 3
           },
-          "durationMilliseconds": 191.1029
+          "durationMilliseconds": 224.4482,
+          "semanticCandidateCount": 3,
+          "semanticCandidateCapReached": false
         },
         {
           "queryId": "Q002",
@@ -347,7 +361,9 @@
             "334f4c25-2a02-50e7-b93e-79a01ebee7a7": 4,
             "1a069120-c57f-5249-bde9-cbe4538c70e2": 5
           },
-          "durationMilliseconds": 229.0479
+          "durationMilliseconds": 162.9232,
+          "semanticCandidateCount": 5,
+          "semanticCandidateCapReached": false
         },
         {
           "queryId": "Q003",
@@ -403,7 +419,9 @@
             "03c117f8-1207-5a48-9564-2914844d6883": 4,
             "267babd6-4e6d-5082-843a-6db5d9d3e5ae": 5
           },
-          "durationMilliseconds": 85.1622
+          "durationMilliseconds": 193.4127,
+          "semanticCandidateCount": 5,
+          "semanticCandidateCapReached": false
         },
         {
           "queryId": "Q004",
@@ -451,7 +469,9 @@
             "2c0cf8d1-6fab-50cf-a06b-384f9f628e0e": 3,
             "924a832f-9dfa-5798-bf39-21ada836fa18": 4
           },
-          "durationMilliseconds": 50.964
+          "durationMilliseconds": 207.522,
+          "semanticCandidateCount": 4,
+          "semanticCandidateCapReached": false
         },
         {
           "queryId": "Q005",
@@ -491,7 +511,9 @@
             "2c0cf8d1-6fab-50cf-a06b-384f9f628e0e": 1,
             "927b9511-3b89-5380-82cc-a38095fe6748": 2
           },
-          "durationMilliseconds": 77.7395
+          "durationMilliseconds": 45.5126,
+          "semanticCandidateCount": 2,
+          "semanticCandidateCapReached": false
         },
         {
           "queryId": "Q006",
@@ -561,7 +583,9 @@
             "03c117f8-1207-5a48-9564-2914844d6883": 8,
             "267babd6-4e6d-5082-843a-6db5d9d3e5ae": 9
           },
-          "durationMilliseconds": 112.6847
+          "durationMilliseconds": 97.3456,
+          "semanticCandidateCount": 9,
+          "semanticCandidateCapReached": false
         },
         {
           "queryId": "Q007",
@@ -603,7 +627,9 @@
             "651444ef-4b05-53c1-8df7-9b1d72607d4e": 1,
             "db839e0d-f540-5bb7-ad16-71068a91ff87": 2
           },
-          "durationMilliseconds": 50.009
+          "durationMilliseconds": 104.7192,
+          "semanticCandidateCount": 2,
+          "semanticCandidateCapReached": false
         },
         {
           "queryId": "Q008",
@@ -644,7 +670,9 @@
             "87f404ae-7662-5e5f-b577-424af2cd4bd9": 2,
             "cc805de9-166f-5f3e-a579-c6432503f55f": 1
           },
-          "durationMilliseconds": 123.2643
+          "durationMilliseconds": 71.7092,
+          "semanticCandidateCount": 2,
+          "semanticCandidateCapReached": false
         },
         {
           "queryId": "Q009",
@@ -683,7 +711,9 @@
             "cc805de9-166f-5f3e-a579-c6432503f55f": 1,
             "87f404ae-7662-5e5f-b577-424af2cd4bd9": 2
           },
-          "durationMilliseconds": 86.8077
+          "durationMilliseconds": 74.1346,
+          "semanticCandidateCount": 2,
+          "semanticCandidateCapReached": false
         },
         {
           "queryId": "Q010",
@@ -722,7 +752,9 @@
             "725c0c6a-6d5a-56c6-aa93-ee4d38ad8d10": 1,
             "12132427-f8f3-5902-8ac5-180213861399": 2
           },
-          "durationMilliseconds": 34.1322
+          "durationMilliseconds": 111.8531,
+          "semanticCandidateCount": 2,
+          "semanticCandidateCapReached": false
         },
         {
           "queryId": "Q011",
@@ -763,7 +795,9 @@
             "725c0c6a-6d5a-56c6-aa93-ee4d38ad8d10": 1,
             "12132427-f8f3-5902-8ac5-180213861399": 2
           },
-          "durationMilliseconds": 83.5282
+          "durationMilliseconds": 49.8935,
+          "semanticCandidateCount": 2,
+          "semanticCandidateCapReached": false
         },
         {
           "queryId": "Q012",
@@ -824,7 +858,9 @@
             "651444ef-4b05-53c1-8df7-9b1d72607d4e": 6,
             "12132427-f8f3-5902-8ac5-180213861399": 7
           },
-          "durationMilliseconds": 80.9758
+          "durationMilliseconds": 67.9042,
+          "semanticCandidateCount": 7,
+          "semanticCandidateCapReached": false
         },
         {
           "queryId": "Q013",
@@ -870,7 +906,9 @@
             "d852f1d5-c1c3-565b-8cdd-a887015f031a": 2,
             "3ee28351-0d1d-5af2-871a-e6e2e0ffe1cd": 3
           },
-          "durationMilliseconds": 48.1831
+          "durationMilliseconds": 86.7572,
+          "semanticCandidateCount": 3,
+          "semanticCandidateCapReached": false
         },
         {
           "queryId": "Q014",
@@ -926,7 +964,9 @@
             "7bf49237-b9c5-5ed6-99ea-f3aa38204559": 4,
             "3ee28351-0d1d-5af2-871a-e6e2e0ffe1cd": 5
           },
-          "durationMilliseconds": 38.6216
+          "durationMilliseconds": 59.8868,
+          "semanticCandidateCount": 5,
+          "semanticCandidateCapReached": false
         },
         {
           "queryId": "Q015",
@@ -989,7 +1029,9 @@
             "f0f1b829-eb05-5504-8312-20abcf98890d": 6,
             "45582ca7-aa25-5155-bc22-04f0763bccef": 7
           },
-          "durationMilliseconds": 71.4252
+          "durationMilliseconds": 58.2951,
+          "semanticCandidateCount": 7,
+          "semanticCandidateCapReached": false
         },
         {
           "queryId": "Q016",
@@ -1023,7 +1065,9 @@
           "semanticRanks": {
             "f0f1b829-eb05-5504-8312-20abcf98890d": 1
           },
-          "durationMilliseconds": 112.8538
+          "durationMilliseconds": 79.6628,
+          "semanticCandidateCount": 1,
+          "semanticCandidateCapReached": false
         },
         {
           "queryId": "Q017",
@@ -1081,7 +1125,9 @@
             "3ee28351-0d1d-5af2-871a-e6e2e0ffe1cd": 6,
             "f0f1b829-eb05-5504-8312-20abcf98890d": 7
           },
-          "durationMilliseconds": 37.78
+          "durationMilliseconds": 100.5336,
+          "semanticCandidateCount": 7,
+          "semanticCandidateCapReached": false
         },
         {
           "queryId": "Q018",
@@ -1139,7 +1185,9 @@
             "3ee28351-0d1d-5af2-871a-e6e2e0ffe1cd": 6,
             "f0f1b829-eb05-5504-8312-20abcf98890d": 7
           },
-          "durationMilliseconds": 38.6188
+          "durationMilliseconds": 53.7602,
+          "semanticCandidateCount": 7,
+          "semanticCandidateCapReached": false
         },
         {
           "queryId": "Q019",
@@ -1185,7 +1233,9 @@
             "c89793f3-432b-50c1-9c18-07e21a6900c2": 2,
             "ad67c157-d11b-5486-8de0-801a706c0524": 3
           },
-          "durationMilliseconds": 80.1826
+          "durationMilliseconds": 82.9287,
+          "semanticCandidateCount": 3,
+          "semanticCandidateCapReached": false
         },
         {
           "queryId": "Q020",
@@ -1228,7 +1278,9 @@
             "c89793f3-432b-50c1-9c18-07e21a6900c2": 2,
             "1ef1305e-abed-524b-8c09-c247a99ddf2a": 3
           },
-          "durationMilliseconds": 107.9658
+          "durationMilliseconds": 98.5208,
+          "semanticCandidateCount": 3,
+          "semanticCandidateCapReached": false
         },
         {
           "queryId": "Q021",
@@ -1269,7 +1321,9 @@
             "b65f8b77-bead-5b95-9533-bb4e2474d4bf": 1,
             "293463e1-b69e-5fee-a7a0-c6650e0af24d": 2
           },
-          "durationMilliseconds": 42.0557
+          "durationMilliseconds": 49.0199,
+          "semanticCandidateCount": 2,
+          "semanticCandidateCapReached": false
         },
         {
           "queryId": "Q022",
@@ -1310,7 +1364,9 @@
             "b65f8b77-bead-5b95-9533-bb4e2474d4bf": 1,
             "293463e1-b69e-5fee-a7a0-c6650e0af24d": 2
           },
-          "durationMilliseconds": 47.0635
+          "durationMilliseconds": 73.8226,
+          "semanticCandidateCount": 2,
+          "semanticCandidateCapReached": false
         },
         {
           "queryId": "Q023",
@@ -1344,7 +1400,9 @@
           "semanticRanks": {
             "fb1ae4d6-c444-580e-96b9-dd8172331c4a": 1
           },
-          "durationMilliseconds": 113.4209
+          "durationMilliseconds": 128.2229,
+          "semanticCandidateCount": 1,
+          "semanticCandidateCapReached": false
         },
         {
           "queryId": "Q024",
@@ -1402,7 +1460,9 @@
             "ad67c157-d11b-5486-8de0-801a706c0524": 6,
             "4a9714bf-4059-501b-85e0-03a00e1a6a2b": 7
           },
-          "durationMilliseconds": 59.4352
+          "durationMilliseconds": 59.5843,
+          "semanticCandidateCount": 7,
+          "semanticCandidateCapReached": false
         }
       ]
     },
@@ -1643,6 +1703,14 @@
           "meanExpectedRelevantCount": 2.25
         }
       },
+      "latency": {
+        "queryCount": 24,
+        "medianMilliseconds": 13.7996,
+        "p95Milliseconds": 36.2123,
+        "zeroResultCount": 10,
+        "failedQueryCount": 0
+      },
+      "semanticCandidates": null,
       "perQuery": [
         {
           "queryId": "Q001",
@@ -1672,7 +1740,9 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 17.6175
+          "durationMilliseconds": 36.2123,
+          "semanticCandidateCount": null,
+          "semanticCandidateCapReached": null
         },
         {
           "queryId": "Q002",
@@ -1702,7 +1772,9 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 10.0075
+          "durationMilliseconds": 32.1093,
+          "semanticCandidateCount": null,
+          "semanticCandidateCapReached": null
         },
         {
           "queryId": "Q003",
@@ -1732,7 +1804,9 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 33.5665
+          "durationMilliseconds": 44.398,
+          "semanticCandidateCount": null,
+          "semanticCandidateCapReached": null
         },
         {
           "queryId": "Q004",
@@ -1756,7 +1830,9 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 42.2688
+          "durationMilliseconds": 28.5863,
+          "semanticCandidateCount": null,
+          "semanticCandidateCapReached": null
         },
         {
           "queryId": "Q005",
@@ -1786,7 +1862,9 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 53.1002
+          "durationMilliseconds": 9.4248,
+          "semanticCandidateCount": null,
+          "semanticCandidateCapReached": null
         },
         {
           "queryId": "Q006",
@@ -1810,7 +1888,9 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 29.2412
+          "durationMilliseconds": 8.5995,
+          "semanticCandidateCount": null,
+          "semanticCandidateCapReached": null
         },
         {
           "queryId": "Q007",
@@ -1843,7 +1923,9 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 12.2031
+          "durationMilliseconds": 10.5933,
+          "semanticCandidateCount": null,
+          "semanticCandidateCapReached": null
         },
         {
           "queryId": "Q008",
@@ -1873,7 +1955,9 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 9.3868
+          "durationMilliseconds": 14.2618,
+          "semanticCandidateCount": null,
+          "semanticCandidateCapReached": null
         },
         {
           "queryId": "Q009",
@@ -1897,7 +1981,9 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 9.177
+          "durationMilliseconds": 15.3899,
+          "semanticCandidateCount": null,
+          "semanticCandidateCapReached": null
         },
         {
           "queryId": "Q010",
@@ -1921,7 +2007,9 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 8.3126
+          "durationMilliseconds": 12.1342,
+          "semanticCandidateCount": null,
+          "semanticCandidateCapReached": null
         },
         {
           "queryId": "Q011",
@@ -1951,7 +2039,9 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 8.6653
+          "durationMilliseconds": 11.6685,
+          "semanticCandidateCount": null,
+          "semanticCandidateCapReached": null
         },
         {
           "queryId": "Q012",
@@ -1981,7 +2071,9 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 8.234
+          "durationMilliseconds": 13.5012,
+          "semanticCandidateCount": null,
+          "semanticCandidateCapReached": null
         },
         {
           "queryId": "Q013",
@@ -2011,7 +2103,9 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 8.5372
+          "durationMilliseconds": 15.8069,
+          "semanticCandidateCount": null,
+          "semanticCandidateCapReached": null
         },
         {
           "queryId": "Q014",
@@ -2041,7 +2135,9 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 8.9601
+          "durationMilliseconds": 20.0511,
+          "semanticCandidateCount": null,
+          "semanticCandidateCapReached": null
         },
         {
           "queryId": "Q015",
@@ -2071,7 +2167,9 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 8.364
+          "durationMilliseconds": 16.2983,
+          "semanticCandidateCount": null,
+          "semanticCandidateCapReached": null
         },
         {
           "queryId": "Q016",
@@ -2095,7 +2193,9 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 8.5849
+          "durationMilliseconds": 15.7721,
+          "semanticCandidateCount": null,
+          "semanticCandidateCapReached": null
         },
         {
           "queryId": "Q017",
@@ -2119,7 +2219,9 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 14.1695
+          "durationMilliseconds": 13.4175,
+          "semanticCandidateCount": null,
+          "semanticCandidateCapReached": null
         },
         {
           "queryId": "Q018",
@@ -2143,7 +2245,9 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 15.4934
+          "durationMilliseconds": 13.317,
+          "semanticCandidateCount": null,
+          "semanticCandidateCapReached": null
         },
         {
           "queryId": "Q019",
@@ -2173,7 +2277,9 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 16.1823
+          "durationMilliseconds": 15.056,
+          "semanticCandidateCount": null,
+          "semanticCandidateCapReached": null
         },
         {
           "queryId": "Q020",
@@ -2197,7 +2303,9 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 11.1971
+          "durationMilliseconds": 13.7996,
+          "semanticCandidateCount": null,
+          "semanticCandidateCapReached": null
         },
         {
           "queryId": "Q021",
@@ -2227,7 +2335,9 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 9.5631
+          "durationMilliseconds": 14.9133,
+          "semanticCandidateCount": null,
+          "semanticCandidateCapReached": null
         },
         {
           "queryId": "Q022",
@@ -2257,7 +2367,9 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 9.8033
+          "durationMilliseconds": 11.134,
+          "semanticCandidateCount": null,
+          "semanticCandidateCapReached": null
         },
         {
           "queryId": "Q023",
@@ -2281,7 +2393,9 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 8.6628
+          "durationMilliseconds": 13.4371,
+          "semanticCandidateCount": null,
+          "semanticCandidateCapReached": null
         },
         {
           "queryId": "Q024",
@@ -2305,7 +2419,9 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 10.6904
+          "durationMilliseconds": 11.3496,
+          "semanticCandidateCount": null,
+          "semanticCandidateCapReached": null
         }
       ]
     },
@@ -2546,6 +2662,18 @@
           "meanExpectedRelevantCount": 2.25
         }
       },
+      "latency": {
+        "queryCount": 24,
+        "medianMilliseconds": 5.854,
+        "p95Milliseconds": 12.2984,
+        "zeroResultCount": 0,
+        "failedQueryCount": 0
+      },
+      "semanticCandidates": {
+        "queryCount": 24,
+        "totalCandidateCount": 93,
+        "candidateCapHitCount": 0
+      },
       "perQuery": [
         {
           "queryId": "Q001",
@@ -2581,7 +2709,9 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 10.2331
+          "durationMilliseconds": 11.8087,
+          "semanticCandidateCount": 3,
+          "semanticCandidateCapReached": false
         },
         {
           "queryId": "Q002",
@@ -2622,7 +2752,9 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 8.6482
+          "durationMilliseconds": 10.619,
+          "semanticCandidateCount": 5,
+          "semanticCandidateCapReached": false
         },
         {
           "queryId": "Q003",
@@ -2664,7 +2796,9 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 7.861
+          "durationMilliseconds": 11.4995,
+          "semanticCandidateCount": 5,
+          "semanticCandidateCapReached": false
         },
         {
           "queryId": "Q004",
@@ -2702,7 +2836,9 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 7.2109
+          "durationMilliseconds": 9.3244,
+          "semanticCandidateCount": 4,
+          "semanticCandidateCapReached": false
         },
         {
           "queryId": "Q005",
@@ -2734,7 +2870,9 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 6.7813
+          "durationMilliseconds": 3.7498,
+          "semanticCandidateCount": 2,
+          "semanticCandidateCapReached": false
         },
         {
           "queryId": "Q006",
@@ -2784,7 +2922,9 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 11.1237
+          "durationMilliseconds": 11.5833,
+          "semanticCandidateCount": 9,
+          "semanticCandidateCapReached": false
         },
         {
           "queryId": "Q007",
@@ -2817,7 +2957,9 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 7.5666
+          "durationMilliseconds": 3.2217,
+          "semanticCandidateCount": 2,
+          "semanticCandidateCapReached": false
         },
         {
           "queryId": "Q008",
@@ -2850,7 +2992,9 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 10.998
+          "durationMilliseconds": 9.1116,
+          "semanticCandidateCount": 2,
+          "semanticCandidateCapReached": false
         },
         {
           "queryId": "Q009",
@@ -2883,7 +3027,9 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 3.2167
+          "durationMilliseconds": 4.1527,
+          "semanticCandidateCount": 2,
+          "semanticCandidateCapReached": false
         },
         {
           "queryId": "Q010",
@@ -2916,7 +3062,9 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 2.7888
+          "durationMilliseconds": 5.6099,
+          "semanticCandidateCount": 2,
+          "semanticCandidateCapReached": false
         },
         {
           "queryId": "Q011",
@@ -2949,7 +3097,9 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 3.0244
+          "durationMilliseconds": 3.3502,
+          "semanticCandidateCount": 2,
+          "semanticCandidateCapReached": false
         },
         {
           "queryId": "Q012",
@@ -2992,7 +3142,9 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 8.4394
+          "durationMilliseconds": 11.7926,
+          "semanticCandidateCount": 7,
+          "semanticCandidateCapReached": false
         },
         {
           "queryId": "Q013",
@@ -3028,7 +3180,9 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 2.9807
+          "durationMilliseconds": 6.5449,
+          "semanticCandidateCount": 3,
+          "semanticCandidateCapReached": false
         },
         {
           "queryId": "Q014",
@@ -3070,7 +3224,9 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 3.294
+          "durationMilliseconds": 5.7688,
+          "semanticCandidateCount": 5,
+          "semanticCandidateCapReached": false
         },
         {
           "queryId": "Q015",
@@ -3115,7 +3271,9 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 3.4161
+          "durationMilliseconds": 9.6401,
+          "semanticCandidateCount": 7,
+          "semanticCandidateCapReached": false
         },
         {
           "queryId": "Q016",
@@ -3145,7 +3303,9 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 2.1779
+          "durationMilliseconds": 2.8232,
+          "semanticCandidateCount": 1,
+          "semanticCandidateCapReached": false
         },
         {
           "queryId": "Q017",
@@ -3187,7 +3347,9 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 3.9773
+          "durationMilliseconds": 4.5376,
+          "semanticCandidateCount": 7,
+          "semanticCandidateCapReached": false
         },
         {
           "queryId": "Q018",
@@ -3229,7 +3391,9 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 3.768
+          "durationMilliseconds": 5.5983,
+          "semanticCandidateCount": 7,
+          "semanticCandidateCapReached": false
         },
         {
           "queryId": "Q019",
@@ -3265,7 +3429,9 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 2.6361
+          "durationMilliseconds": 5.854,
+          "semanticCandidateCount": 3,
+          "semanticCandidateCapReached": false
         },
         {
           "queryId": "Q020",
@@ -3300,7 +3466,9 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 7.2879
+          "durationMilliseconds": 12.2984,
+          "semanticCandidateCount": 3,
+          "semanticCandidateCapReached": false
         },
         {
           "queryId": "Q021",
@@ -3333,7 +3501,9 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 6.3041
+          "durationMilliseconds": 24.9067,
+          "semanticCandidateCount": 2,
+          "semanticCandidateCapReached": false
         },
         {
           "queryId": "Q022",
@@ -3366,7 +3536,9 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 3.0427
+          "durationMilliseconds": 4.1218,
+          "semanticCandidateCount": 2,
+          "semanticCandidateCapReached": false
         },
         {
           "queryId": "Q023",
@@ -3396,7 +3568,9 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 7.0347
+          "durationMilliseconds": 8.127,
+          "semanticCandidateCount": 1,
+          "semanticCandidateCapReached": false
         },
         {
           "queryId": "Q024",
@@ -3438,7 +3612,9 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 4.3945
+          "durationMilliseconds": 5.2465,
+          "semanticCandidateCount": 7,
+          "semanticCandidateCapReached": false
         }
       ]
     }
@@ -3455,7 +3631,7 @@
     "actualProviderRequestCount": 25,
     "actualEmbeddedInputCount": 53,
     "queryCacheHitCount": 25,
-    "providerDurationMilliseconds": 1382.8021999999999
+    "providerDurationMilliseconds": 1904.2292000000004
   },
   "warnings": [],
   "limitations": [
