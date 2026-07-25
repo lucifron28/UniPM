@@ -9,8 +9,25 @@ public sealed class BenchmarkReport
     public List<string> SelectedChannels { get; set; } = [];
     public int QueryCount { get; set; }
     public Dictionary<string, BenchmarkChannelReport> Channels { get; set; } = new(StringComparer.Ordinal);
+    public BenchmarkEmbeddingExecutionReport? EmbeddingExecution { get; set; }
     public List<string> Warnings { get; set; } = [];
     public List<string> Limitations { get; set; } = [];
+}
+
+public sealed class BenchmarkEmbeddingExecutionReport
+{
+    public string ProviderKey { get; set; } = string.Empty;
+    public string ModelKey { get; set; } = string.Empty;
+    public int? Dimensions { get; set; }
+    public int DocumentCount { get; set; }
+    public int BatchSize { get; set; }
+    public int DocumentBatchCount { get; set; }
+    public int QueryEmbeddingCount { get; set; }
+    public int ExpectedProviderRequestCount { get; set; }
+    public int ActualProviderRequestCount { get; set; }
+    public int ActualEmbeddedInputCount { get; set; }
+    public int QueryCacheHitCount { get; set; }
+    public double ProviderDurationMilliseconds { get; set; }
 }
 
 public sealed class BenchmarkChannelReport

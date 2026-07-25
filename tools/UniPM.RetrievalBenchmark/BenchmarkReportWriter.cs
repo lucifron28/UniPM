@@ -46,6 +46,18 @@ public sealed class BenchmarkReportWriter
         builder.AppendLine("> Synthetic benchmark results are pipeline evidence only and do not prove production GSD performance.");
         builder.AppendLine();
 
+        if (report.EmbeddingExecution is not null)
+        {
+            var execution = report.EmbeddingExecution;
+            builder.AppendLine("## Embedding execution");
+            builder.AppendLine();
+            builder.AppendLine("| Provider | Model | Dimensions | Documents | Batches | Query embeddings | Expected requests | Actual requests | Query cache hits | Provider duration (ms) |");
+            builder.AppendLine("|---|---|---:|---:|---:|---:|---:|---:|---:|---:|");
+            builder.AppendLine(
+                $"| `{execution.ProviderKey}` | `{execution.ModelKey}` | {execution.Dimensions} | {execution.DocumentCount} | {execution.DocumentBatchCount} | {execution.QueryEmbeddingCount} | {execution.ExpectedProviderRequestCount} | {execution.ActualProviderRequestCount} | {execution.QueryCacheHitCount} | {Format(execution.ProviderDurationMilliseconds)} |");
+            builder.AppendLine();
+        }
+
         foreach (var channel in report.Channels.OrderBy(channel => channel.Key, StringComparer.Ordinal))
         {
             builder.AppendLine($"## {channel.Key}");
