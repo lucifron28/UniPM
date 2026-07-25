@@ -47,6 +47,7 @@ public static class Program
         var channels = new HashSet<string>(StringComparer.Ordinal);
         string? outputDirectory = null;
         var approvePaidProviderRun = false;
+        var approveLocalModelRun = false;
         for (var index = 0; index < args.Length; index++)
         {
             switch (args[index])
@@ -68,6 +69,9 @@ public static class Program
                     break;
                 case "--approve-paid-provider-run":
                     approvePaidProviderRun = true;
+                    break;
+                case "--approve-local-model-run":
+                    approveLocalModelRun = true;
                     break;
                 default:
                     throw new ArgumentException($"Unknown or incomplete benchmark argument '{args[index]}'.");
@@ -92,6 +96,7 @@ public static class Program
                 ?? Path.GetFullPath(Path.Combine("artifacts", "retrieval-benchmark")),
             KeepDatabase = ReadBoolean("UNIPM_BENCHMARK_KEEP_DATABASE"),
             ApprovePaidProviderRun = approvePaidProviderRun,
+            ApproveLocalModelRun = approveLocalModelRun,
             Embeddings = embeddingOptions
         };
     }

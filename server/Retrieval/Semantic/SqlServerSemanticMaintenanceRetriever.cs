@@ -7,13 +7,15 @@ namespace UniPM.Api.Features.Retrieval;
 internal sealed class SqlServerSemanticMaintenanceRetriever(
     IDbContextFactory<ApplicationDbContext> contextFactory,
     IEmbeddingService embeddingService,
-    MaintenanceIssueNormalizer issueNormalizer)
+    MaintenanceIssueNormalizer issueNormalizer,
+    SemanticMaintenanceRetrievalDiagnostics? diagnostics = null)
     : ISemanticMaintenanceRetriever
 {
     public async Task<IReadOnlyList<SemanticMaintenanceSearchResult>> SearchAsync(
         SemanticMaintenanceSearchRequest request,
         CancellationToken cancellationToken = default)
     {
+        diagnostics?.Clear();
         var query = SemanticMaintenanceQueryBuilder.Build(request, issueNormalizer);
         var descriptor = embeddingService.Descriptor;
         if (!descriptor.Enabled)
@@ -39,11 +41,15 @@ internal sealed class SqlServerSemanticMaintenanceRetriever(
 
         try
         {
-            var candidates = await LoadEligibleCandidatesAsync(
+            var candidateLoad = await LoadEligibleCandidatesAsync(
                 context,
                 query,
                 descriptor,
                 cancellationToken);
+            var candidates = candidateLoad.Candidates;
+            diagnostics?.Record(
+                candidates.Count,
+                candidateLoad.CandidateCapReached);
             if (candidates.Count == 0)
             {
                 return [];
@@ -109,7 +115,7 @@ internal sealed class SqlServerSemanticMaintenanceRetriever(
         }
     }
 
-    private static async Task<IReadOnlyList<SemanticCandidate>> LoadEligibleCandidatesAsync(
+    private static async Task<SemanticCandidateLoadResult> LoadEligibleCandidatesAsync(
         ApplicationDbContext context,
         SemanticMaintenanceQuery query,
         EmbeddingServiceDescriptor descriptor,
@@ -167,9 +173,10 @@ internal sealed class SqlServerSemanticMaintenanceRetriever(
                 document => document.DateInspected <= query.DateTo);
         }
 
-        var eligible = new List<SemanticCandidate>(SemanticMaintenanceQueryBuilder.MaxCandidateCount);
+        var maximumCollected = SemanticMaintenanceQueryBuilder.MaxCandidateCount + 1;
+        var eligible = new List<SemanticCandidate>(maximumCollected);
         var offset = 0;
-        while (eligible.Count < SemanticMaintenanceQueryBuilder.MaxCandidateCount)
+        while (eligible.Count < maximumCollected)
         {
             var page = await candidatesQuery
                 .OrderByDescending(document => document.DateInspected)
@@ -193,7 +200,7 @@ internal sealed class SqlServerSemanticMaintenanceRetriever(
                         out var vector))
                 {
                     eligible.Add(new SemanticCandidate(document, vector));
-                    if (eligible.Count == SemanticMaintenanceQueryBuilder.MaxCandidateCount)
+                    if (eligible.Count == maximumCollected)
                     {
                         break;
                     }
@@ -201,7 +208,12 @@ internal sealed class SqlServerSemanticMaintenanceRetriever(
             }
         }
 
-        return eligible;
+        var candidateCapReached = eligible.Count > SemanticMaintenanceQueryBuilder.MaxCandidateCount;
+        return new SemanticCandidateLoadResult(
+            candidateCapReached
+                ? eligible.Take(SemanticMaintenanceQueryBuilder.MaxCandidateCount).ToArray()
+                : eligible,
+            candidateCapReached);
     }
 
     private static bool TryReadCurrentVector(
@@ -258,4 +270,8 @@ internal sealed class SqlServerSemanticMaintenanceRetriever(
     private sealed record SemanticCandidate(
         MaintenanceSearchDocument Document,
         double[] Vector);
+
+    private sealed record SemanticCandidateLoadResult(
+        IReadOnlyList<SemanticCandidate> Candidates,
+        bool CandidateCapReached);
 }

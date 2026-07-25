@@ -11,7 +11,7 @@ public interface IBenchmarkRetrievalChannel
 {
     BenchmarkChannelMetadata Metadata { get; }
 
-    Task<IReadOnlyList<BenchmarkRetrievedResult>> SearchAsync(
+    Task<BenchmarkChannelSearchResult> SearchAsync(
         BenchmarkChannelRequest request,
         CancellationToken cancellationToken = default);
 }
@@ -69,10 +69,11 @@ public sealed class BenchmarkEvaluationService
             foreach (var query in manifest.Queries.OrderBy(query => query.QueryId, StringComparer.Ordinal))
             {
                 var stopwatch = Stopwatch.StartNew();
-                var results = await channel.SearchAsync(
+                var response = await channel.SearchAsync(
                     new BenchmarkChannelRequest(query.QueryText, query.RetrievalFilters, ResultLimit),
                     cancellationToken);
                 stopwatch.Stop();
+                var results = response.Results;
 
                 var retrievedInspectionIds = results.Select(result => result.InspectionId).ToArray();
                 var expectedInspectionIds = query.ExpectedRelevantInspectionIds.ToHashSet();
@@ -121,7 +122,9 @@ public sealed class BenchmarkEvaluationService
                     FusionScores = fusionScores,
                     LexicalRanks = lexicalRanks,
                     SemanticRanks = semanticRanks,
-                    DurationMilliseconds = stopwatch.Elapsed.TotalMilliseconds
+                    DurationMilliseconds = stopwatch.Elapsed.TotalMilliseconds,
+                    SemanticCandidateCount = response.SemanticCandidateCount,
+                    SemanticCandidateCapReached = response.SemanticCandidateCapReached
                 });
             }
 
@@ -137,6 +140,8 @@ public sealed class BenchmarkEvaluationService
                     queryReports,
                     query => query.AssetCategory),
                 ByScenarioTag = AggregateScenarioSlices(queryReports, queryLookup),
+                Latency = BuildLatencySummary(queryReports),
+                SemanticCandidates = BuildCandidateSummary(queryReports),
                 PerQuery = queryReports
             };
 
@@ -144,6 +149,53 @@ public sealed class BenchmarkEvaluationService
         }
 
         return report;
+    }
+
+    private static BenchmarkLatencySummary BuildLatencySummary(
+        IReadOnlyList<BenchmarkQueryReport> queryReports)
+    {
+        var durations = queryReports
+            .Select(query => query.DurationMilliseconds)
+            .OrderBy(value => value)
+            .ToArray();
+        return new BenchmarkLatencySummary
+        {
+            QueryCount = queryReports.Count,
+            MedianMilliseconds = Percentile(durations, 0.5),
+            P95Milliseconds = Percentile(durations, 0.95),
+            ZeroResultCount = queryReports.Count(query => query.RetrievedInspectionIds.Count == 0),
+            FailedQueryCount = 0
+        };
+    }
+
+    private static BenchmarkCandidateSummary? BuildCandidateSummary(
+        IReadOnlyList<BenchmarkQueryReport> queryReports)
+    {
+        var measured = queryReports
+            .Where(query => query.SemanticCandidateCount is not null)
+            .ToArray();
+        if (measured.Length == 0)
+        {
+            return null;
+        }
+
+        return new BenchmarkCandidateSummary
+        {
+            QueryCount = measured.Length,
+            TotalCandidateCount = measured.Sum(query => query.SemanticCandidateCount!.Value),
+            CandidateCapHitCount = measured.Count(query => query.SemanticCandidateCapReached == true)
+        };
+    }
+
+    private static double Percentile(IReadOnlyList<double> sortedValues, double percentile)
+    {
+        if (sortedValues.Count == 0)
+        {
+            return 0;
+        }
+
+        var index = Math.Clamp((int)Math.Ceiling(sortedValues.Count * percentile) - 1, 0, sortedValues.Count - 1);
+        return sortedValues[index];
     }
 
     private static Dictionary<string, AggregateRetrievalMetrics> AggregateSlices(
@@ -176,13 +228,18 @@ public sealed class BenchmarkEvaluationService
 
 public sealed class DelegateBenchmarkRetrievalChannel(
     BenchmarkChannelMetadata metadata,
-    Func<BenchmarkChannelRequest, CancellationToken, Task<IReadOnlyList<BenchmarkRetrievedResult>>> search)
+    Func<BenchmarkChannelRequest, CancellationToken, Task<BenchmarkChannelSearchResult>> search)
     : IBenchmarkRetrievalChannel
 {
     public BenchmarkChannelMetadata Metadata { get; } = metadata;
 
-    public Task<IReadOnlyList<BenchmarkRetrievedResult>> SearchAsync(
+    public Task<BenchmarkChannelSearchResult> SearchAsync(
         BenchmarkChannelRequest request,
         CancellationToken cancellationToken = default)
         => search(request, cancellationToken);
 }
+
+public sealed record BenchmarkChannelSearchResult(
+    IReadOnlyList<BenchmarkRetrievedResult> Results,
+    int? SemanticCandidateCount = null,
+    bool? SemanticCandidateCapReached = null);

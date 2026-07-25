@@ -7,6 +7,7 @@ using UniPM.Api.Observability;
 
 namespace UniPM.Api.Tests.Observability;
 
+[Collection(ObservabilityMetricsCollection.Name)]
 public sealed class ObservabilityEndpointTests : IClassFixture<WebApplicationFactory<Program>>
 {
     private readonly WebApplicationFactory<Program> defaultApplication;

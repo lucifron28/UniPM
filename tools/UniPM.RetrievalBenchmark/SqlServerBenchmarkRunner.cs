@@ -14,6 +14,7 @@ public sealed class BenchmarkRunnerOptions
     public required string OutputDirectory { get; init; }
     public bool KeepDatabase { get; init; }
     public bool ApprovePaidProviderRun { get; init; }
+    public bool ApproveLocalModelRun { get; init; }
     public EmbeddingOptions? Embeddings { get; init; }
 }
 
@@ -43,6 +44,13 @@ public sealed class SqlServerBenchmarkRunner
         {
             throw new InvalidOperationException(
                 "Remote embedding execution requires --approve-paid-provider-run.");
+        }
+        if (requestsSemantic
+            && string.Equals(options.Embeddings?.ProviderKey, "granite-local", StringComparison.Ordinal)
+            && !options.ApproveLocalModelRun)
+        {
+            throw new InvalidOperationException(
+                "Local Granite embedding execution requires --approve-local-model-run.");
         }
 
         var connectionString = RequireEnvironment("UNIPM_SQLSERVER_TEST_CONNECTION");
@@ -105,6 +113,7 @@ public sealed class SqlServerBenchmarkRunner
         var channels = new List<IBenchmarkRetrievalChannel>();
         SqlServerLexicalMaintenanceRetriever? lexicalRetriever = null;
         SqlServerSemanticMaintenanceRetriever? semanticRetriever = null;
+        SemanticMaintenanceRetrievalDiagnostics? semanticDiagnostics = null;
         IEmbeddingService? embeddingService = null;
         BenchmarkEmbeddingExecutionTracker? embeddingExecution = null;
 
@@ -154,7 +163,10 @@ public sealed class SqlServerBenchmarkRunner
                 configuredEmbeddingService.Descriptor.Dimensions,
                 plannedDocumentCount,
                 options.Embeddings.MaxBatchSize,
-                manifest.Queries.Count);
+                manifest.Queries
+                    .Select(query => query.QueryText)
+                    .Distinct(StringComparer.Ordinal)
+                    .Count());
             Console.WriteLine(executionPlan.ToSafeSummary());
 
             embeddingExecution = new BenchmarkEmbeddingExecutionTracker(executionPlan);
@@ -184,10 +196,12 @@ public sealed class SqlServerBenchmarkRunner
                 }
             }
 
+            semanticDiagnostics = new SemanticMaintenanceRetrievalDiagnostics();
             semanticRetriever = new SqlServerSemanticMaintenanceRetriever(
                 contextFactory,
                 embeddingService,
-                issueNormalizer);
+                issueNormalizer,
+                semanticDiagnostics);
         }
 
         if (reportLexical)
@@ -204,9 +218,8 @@ public sealed class SqlServerBenchmarkRunner
                     var result = await lexicalRetriever!.SearchAsync(
                         ToLexicalRequest(request),
                         token);
-                    return result
-                        .Select(item => new BenchmarkRetrievedResult(item.InspectionId, item.RawLexicalRank))
-                        .ToArray();
+                    return new BenchmarkChannelSearchResult(
+                        result.Select(item => new BenchmarkRetrievedResult(item.InspectionId, item.RawLexicalRank)).ToArray());
                 }));
         }
 
@@ -228,9 +241,11 @@ public sealed class SqlServerBenchmarkRunner
                     var result = await semanticRetriever!.SearchAsync(
                         ToSemanticRequest(request),
                         token);
-                    return result
-                        .Select(item => new BenchmarkRetrievedResult(item.InspectionId, item.RawSemanticScore))
-                        .ToArray();
+                    var diagnostics = semanticDiagnostics!.Consume();
+                    return new BenchmarkChannelSearchResult(
+                        result.Select(item => new BenchmarkRetrievedResult(item.InspectionId, item.RawSemanticScore)).ToArray(),
+                        diagnostics.CandidateCount,
+                        diagnostics.CandidateCapReached);
                 }));
         }
 
@@ -263,14 +278,16 @@ public sealed class SqlServerBenchmarkRunner
                             "The fused benchmark cannot score a degraded retrieval response.");
                     }
 
-                    return response.Results
-                        .Select(item => new BenchmarkRetrievedResult(
+                    var diagnostics = semanticDiagnostics!.Consume();
+                    return new BenchmarkChannelSearchResult(
+                        response.Results.Select(item => new BenchmarkRetrievedResult(
                             item.InspectionId,
                             item.FusionScore,
                             item.LexicalRank,
                             item.SemanticRank,
-                            item.FusionScore))
-                        .ToArray();
+                            item.FusionScore)).ToArray(),
+                        diagnostics.CandidateCount,
+                        diagnostics.CandidateCapReached);
                 }));
         }
 

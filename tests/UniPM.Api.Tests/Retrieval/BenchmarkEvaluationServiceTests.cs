@@ -33,8 +33,8 @@ public sealed class BenchmarkEvaluationServiceTests
             (request, _) =>
             {
                 received.Add(request);
-                return Task.FromResult<IReadOnlyList<BenchmarkRetrievedResult>>(
-                    [new BenchmarkRetrievedResult(manifest.Queries[0].ExpectedRelevantInspectionIds[0], 1)]);
+                return Task.FromResult(new BenchmarkChannelSearchResult(
+                    [new BenchmarkRetrievedResult(manifest.Queries[0].ExpectedRelevantInspectionIds[0], 1)]));
             });
 
         await new BenchmarkEvaluationService().RunAsync(manifest, [channel], DateTimeOffset.UnixEpoch);
@@ -54,11 +54,11 @@ public sealed class BenchmarkEvaluationServiceTests
             (_, _) => throw new InvalidOperationException("provider unavailable"));
         var duplicate = new DelegateBenchmarkRetrievalChannel(
             new BenchmarkChannelMetadata { RetrievalChannel = "lexical", ResultLimit = 10 },
-            (request, _) => Task.FromResult<IReadOnlyList<BenchmarkRetrievedResult>>(
+            (request, _) => Task.FromResult(new BenchmarkChannelSearchResult(
             [
                 new(manifest.Queries[0].ExpectedRelevantInspectionIds[0], 1),
                 new(manifest.Queries[0].ExpectedRelevantInspectionIds[0], 1)
-            ]));
+            ])));
 
         await Assert.ThrowsAsync<InvalidOperationException>(
             () => new BenchmarkEvaluationService().RunAsync(manifest, [failing], DateTimeOffset.UnixEpoch));
@@ -104,7 +104,7 @@ public sealed class BenchmarkEvaluationServiceTests
                 CandidateLimit = 20,
                 SemanticDegradationPolicy = "lexical-only degraded fallback"
             },
-            (_, _) => Task.FromResult<IReadOnlyList<BenchmarkRetrievedResult>>(
+            (_, _) => Task.FromResult(new BenchmarkChannelSearchResult(
             [
                 new(
                     manifest.Queries[0].ExpectedRelevantInspectionIds[0],
@@ -112,7 +112,7 @@ public sealed class BenchmarkEvaluationServiceTests
                     LexicalRank: 1,
                     SemanticRank: 2,
                     FusionScore: 1d / 61d + 1d / 62d)
-            ]));
+            ], SemanticCandidateCount: 500, SemanticCandidateCapReached: true)));
 
         var report = await new BenchmarkEvaluationService()
             .RunAsync(manifest, [fused], DateTimeOffset.UnixEpoch);
@@ -123,6 +123,12 @@ public sealed class BenchmarkEvaluationServiceTests
         Assert.Equal(20, report.Channels["fused"].Metadata.CandidateLimit);
         Assert.Equal(1, query.LexicalRanks.Values.Single());
         Assert.Equal(2, query.SemanticRanks.Values.Single());
+        Assert.Equal(500, query.SemanticCandidateCount);
+        Assert.True(query.SemanticCandidateCapReached);
+        Assert.Equal(1000, report.Channels["fused"].SemanticCandidates!.TotalCandidateCount);
+        Assert.Equal(2, report.Channels["fused"].SemanticCandidates!.CandidateCapHitCount);
+        Assert.Equal(2, report.Channels["fused"].Latency.QueryCount);
+        Assert.True(report.Channels["fused"].Latency.MedianMilliseconds >= 0);
         Assert.Contains(report.Limitations, limitation => limitation.Contains("RRF is applied", StringComparison.Ordinal));
         Assert.DoesNotContain(report.Limitations, limitation => limitation.Contains("No fusion", StringComparison.Ordinal));
     }
@@ -174,6 +180,17 @@ public sealed class BenchmarkEvaluationServiceTests
     }
 
     [Fact]
+    public void Semantic_candidate_diagnostics_retains_one_synchronized_snapshot()
+    {
+        var diagnostics = new SemanticMaintenanceRetrievalDiagnostics();
+
+        diagnostics.Record(17, false);
+
+        Assert.Equal(new SemanticMaintenanceCandidateDiagnostics(17, false), diagnostics.Consume());
+        Assert.Equal(new SemanticMaintenanceCandidateDiagnostics(0, false), diagnostics.Consume());
+    }
+
+    [Fact]
     public async Task Remote_embedding_execution_refuses_to_run_without_paid_approval()
     {
         var options = new BenchmarkRunnerOptions
@@ -210,8 +227,8 @@ public sealed class BenchmarkEvaluationServiceTests
                 EmbeddingProfile = name == "semantic" ? "fake-profile" : null,
                 FullTextSearchReady = name == "lexical" ? true : null
             },
-            (_, _) => Task.FromResult<IReadOnlyList<BenchmarkRetrievedResult>>(
-                [new BenchmarkRetrievedResult(relevantId, 1)]));
+            (_, _) => Task.FromResult(new BenchmarkChannelSearchResult(
+                [new BenchmarkRetrievedResult(relevantId, 1)])));
     }
 
     private static RetrievalEvaluationManifest CreateManifest()

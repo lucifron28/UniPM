@@ -37,7 +37,25 @@ public sealed class BenchmarkChannelReport
     public Dictionary<string, AggregateRetrievalMetrics> ByLanguage { get; set; } = new(StringComparer.Ordinal);
     public Dictionary<string, AggregateRetrievalMetrics> ByAssetCategory { get; set; } = new(StringComparer.Ordinal);
     public Dictionary<string, AggregateRetrievalMetrics> ByScenarioTag { get; set; } = new(StringComparer.Ordinal);
+    public BenchmarkLatencySummary Latency { get; set; } = new();
+    public BenchmarkCandidateSummary? SemanticCandidates { get; set; }
     public List<BenchmarkQueryReport> PerQuery { get; set; } = [];
+}
+
+public sealed class BenchmarkLatencySummary
+{
+    public int QueryCount { get; set; }
+    public double MedianMilliseconds { get; set; }
+    public double P95Milliseconds { get; set; }
+    public int ZeroResultCount { get; set; }
+    public int FailedQueryCount { get; set; }
+}
+
+public sealed class BenchmarkCandidateSummary
+{
+    public int QueryCount { get; set; }
+    public int TotalCandidateCount { get; set; }
+    public int CandidateCapHitCount { get; set; }
 }
 
 public sealed record BenchmarkChannelMetadata
@@ -70,6 +88,8 @@ public sealed class BenchmarkQueryReport
     public Dictionary<Guid, int> LexicalRanks { get; set; } = new();
     public Dictionary<Guid, int> SemanticRanks { get; set; } = new();
     public double DurationMilliseconds { get; set; }
+    public int? SemanticCandidateCount { get; set; }
+    public bool? SemanticCandidateCapReached { get; set; }
 }
 
 public sealed record BenchmarkChannelResult(

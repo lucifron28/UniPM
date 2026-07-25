@@ -342,6 +342,37 @@ public sealed class SqlServerSemanticMaintenanceTests
         Assert.Empty(service.Batches);
     }
 
+    [SqlServerFact]
+    public async Task Candidate_cap_diagnostics_require_an_extra_eligible_document()
+    {
+        foreach (var (eligibleCount, expectedCapReached) in new[]
+                 {
+                     (499, false),
+                     (500, false),
+                     (501, true)
+                 })
+        {
+            await using var database = await CreateMigratedDatabaseAsync();
+            await AddDistractorDocumentsAsync(
+                database,
+                eligibleCount,
+                addWrongProfile: false,
+                addEligibleEmbeddings: true);
+            var diagnostics = new SemanticMaintenanceRetrievalDiagnostics();
+            var retriever = new SqlServerSemanticMaintenanceRetriever(
+                new TestContextFactory(database.ConnectionString),
+                new DeterministicEmbeddingService(_ => [1d, 0d]),
+                CreateIssueNormalizer(),
+                diagnostics);
+
+            await retriever.SearchAsync(new SemanticMaintenanceSearchRequest("pressure"));
+
+            var actual = diagnostics.Consume();
+            Assert.Equal(Math.Min(eligibleCount, SemanticMaintenanceQueryBuilder.MaxCandidateCount), actual.CandidateCount);
+            Assert.Equal(expectedCapReached, actual.CandidateCapReached);
+        }
+    }
+
     private const string TestProfile = "test-provider:test-model:maintenance-search-document-embedding-v1:2";
 
     private static async Task<SqlServerTestDatabase> CreateMigratedDatabaseAsync()
@@ -453,7 +484,8 @@ public sealed class SqlServerSemanticMaintenanceTests
     private static async Task AddDistractorDocumentsAsync(
         SqlServerTestDatabase database,
         int count,
-        bool addWrongProfile)
+        bool addWrongProfile,
+        bool addEligibleEmbeddings = false)
     {
         await using var context = database.CreateContext();
         for (var index = 0; index < count; index++)
@@ -528,6 +560,20 @@ public sealed class SqlServerSemanticMaintenanceTests
                     ProviderKey = "other-provider",
                     ModelKey = "other-model",
                     EmbeddingProfile = "other-profile",
+                    Dimensions = 2,
+                    VectorJson = EmbeddingVectorCodec.Serialize([1d, 0d]),
+                    SourceHash = MaintenanceEmbeddingInput.ComputeSourceHash(searchText),
+                    GeneratedAt = DateTimeOffset.UtcNow
+                });
+            }
+            else if (addEligibleEmbeddings)
+            {
+                context.MaintenanceSearchDocumentEmbeddings.Add(new MaintenanceSearchDocumentEmbedding
+                {
+                    InspectionId = inspectionId,
+                    ProviderKey = "test-provider",
+                    ModelKey = "test-model",
+                    EmbeddingProfile = TestProfile,
                     Dimensions = 2,
                     VectorJson = EmbeddingVectorCodec.Serialize([1d, 0d]),
                     SourceHash = MaintenanceEmbeddingInput.ComputeSourceHash(searchText),
