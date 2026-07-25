@@ -163,7 +163,7 @@ public sealed class SqlServerBenchmarkRunner
                 plannedDocumentCount,
                 options.Embeddings.MaxBatchSize,
                 manifest.Queries
-                    .Select(query => query.Query)
+                    .Select(query => query.QueryText)
                     .Distinct(StringComparer.Ordinal)
                     .Count());
             Console.WriteLine(executionPlan.ToSafeSummary());
