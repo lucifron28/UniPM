@@ -18,10 +18,13 @@ The main product identity remains:
 Do not change the stack without discussion.
 
 - Backend: ASP.NET Core Web API (C#)
-- Database: SQL Server 2025 Developer Edition
-  - Chosen for relational records, Full-Text Search, and future/native vector-search support.
-  - Do not introduce a separate vector database.
-- Local dev: Docker Compose (`unipm-api`, `unipm-db`, `unipm-db-init`)
+- Database: native Windows SQL Server 2019 (minimum supported platform)
+  - Requires database compatibility level 150 and Full-Text Search.
+  - Stores serialized embedding vectors; the backend calculates bounded cosine
+    similarity in application memory. Do not introduce a separate vector
+    database or require native SQL vector features.
+- Local dev: native SQL Server 2019 is the default path. The retained SQL
+  Server 2025 Docker Compose stack is optional development tooling only.
 - Target production: IIS on Windows Server, not Docker
   - Avoid Docker-only assumptions in application code.
 - Web frontend: React + TypeScript + Vite
@@ -93,9 +96,13 @@ describe the MVP sanitizer as anonymization.
 
 ## Vector Search MVP Rule
 
-SQL Server 2025 is the target database and no separate vector database should be introduced.
+SQL Server 2019 is the minimum supported target database and no separate vector
+database should be introduced.
 
-For the first RAG MVP, app-layer cosine similarity over embeddings stored in SQL Server or in a reproducible local fixture is allowed if SQL Server native vector search slows down setup. Native SQL Server vector search can be added after the end-to-end loop works.
+For the RAG MVP, embeddings are stored as versioned serialized values alongside
+relational search-document metadata. The backend filters a bounded candidate set
+in SQL Server and calculates cosine similarity in application memory. Native
+SQL Server vector features are not required for UniPM.
 
 Allowed for MVP:
 

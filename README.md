@@ -31,26 +31,23 @@ See `LICENSE.md` for details.
 
 For operational licensing inquiries, contact the copyright holder.
 
-## Local Foundation
+## Database Baseline
 
-The local stack runs:
+UniPM's minimum supported and default local database platform is native Windows
+SQL Server 2019 with Full-Text Search installed and database compatibility level
+`150`. The intended deployment architecture is ASP.NET Core hosted through IIS
+with a native Windows SQL Server instance; Docker is optional development
+tooling and is not required for deployment.
 
-- `unipm-api`: ASP.NET Core API on `http://localhost:5000`
-- `unipm-db`: SQL Server 2025 Developer Edition with Full-Text Search
-- `unipm-db-init`: one-shot bootstrap that creates an empty `UniPMDb`
-
-SQL Server 2025 is used so the bounded retrieval feature can use Full-Text
-Search plus semantic similarity. The database contains the initial `Asset`,
-`PreventiveMaintenanceSchedule`, and `InspectionRecord` schema plus the
-rebuildable `MaintenanceSearchDocument` projection. The backend contains a
-versioned deterministic maintenance issue lexicon and an internal lexical
-retriever that searches only `MaintenanceSearchDocument.SearchText` through
-SQL Server Full-Text Search. It also contains semantic retrieval
-channel using cached document embeddings and bounded application-layer cosine
-similarity. Semantic retrieval is a required UniPM retrieval channel, but its
-embedding provider is operationally optional and degradable. Internal result
-fusion uses inspectable Reciprocal Rank Fusion, followed by deterministic source
-selection, prompt sanitization, and optional provider-neutral summarization.
+The database contains the initial `Asset`, `PreventiveMaintenanceSchedule`, and
+`InspectionRecord` schema plus the rebuildable `MaintenanceSearchDocument`
+projection. SQL Server Full-Text Search retrieves lexical candidates from
+`MaintenanceSearchDocument.SearchText`. Versioned serialized embedding vectors
+are stored with relational document metadata; the backend filters a bounded SQL
+candidate set and calculates cosine similarity in application memory. Semantic
+retrieval is operationally optional and degradable, and inspectable Reciprocal
+Rank Fusion combines eligible lexical and semantic results. Native SQL Server
+vector features and a separate vector database are not required.
 
 ## Current API Surface
 
@@ -94,17 +91,51 @@ submission remains deferred to the planned mobile workflow.
 
 ## First Run
 
-Create a local environment file:
+Install native Windows SQL Server 2019 with Database Engine Services and
+Full-Text Search. Use Windows Authentication for local development and keep all
+connection strings and passwords in the process environment, never in a
+committed `.env` file:
 
 ```powershell
-Copy-Item .env.example .env
+$env:ConnectionStrings__DefaultConnection =
+  "Server=.;Database=UniPMDb;Integrated Security=True;Encrypt=True;TrustServerCertificate=True;"
+
+$env:ASPNETCORE_ENVIRONMENT = "Development"
+$env:UNIPM_DEV_USER_PASSWORD = "<temporary-development-password>"
+
+dotnet ef database update --project server
+dotnet run --project server -- --seed-synthetic
+dotnet run --project server -- --seed-development-users
+dotnet run --project server -- --rebuild-maintenance-search-documents
 ```
 
-Update the local SQL, JWT, Development-user, and Grafana passwords in `.env`,
-then start the stack:
+For a named SQL Server instance, replace `Server=.` with
+`Server=localhost\INSTANCE_NAME`. Rebuild embeddings only when they are
+explicitly enabled and configured:
 
 ```powershell
-docker compose up --build -d
+dotnet run --project server -- --rebuild-maintenance-embeddings
+```
+
+Verify the database installation and compatibility level:
+
+```sql
+SELECT
+    SERVERPROPERTY('ProductMajorVersion') AS ProductMajorVersion,
+    SERVERPROPERTY('IsFullTextInstalled') AS IsFullTextInstalled;
+
+SELECT compatibility_level
+FROM sys.databases
+WHERE name = N'UniPMDb';
+```
+
+The expected development baseline is major version `15`,
+`IsFullTextInstalled = 1`, and compatibility level `150`.
+
+Start the API after the database setup:
+
+```powershell
+dotnet run --project server
 ```
 
 Check the API:
@@ -116,11 +147,10 @@ Invoke-WebRequest -UseBasicParsing http://localhost:5000/health/ready
 Invoke-WebRequest -UseBasicParsing http://localhost:5000/openapi/v1.json
 ```
 
-Stop containers while preserving the SQL Server volume:
-
-```powershell
-docker compose down
-```
+The optional legacy SQL Server 2025 Docker Compose experiment is documented in
+[`docker-compose.sqlserver2025.yml`](docker-compose.sqlserver2025.yml). It is
+not the local baseline, is not required for IIS deployment, and must not reuse a
+SQL Server 2019 data volume.
 
 ## Maintenance Review
 
@@ -197,7 +227,8 @@ EF database commands use the configured `ConnectionStrings__DefaultConnection`
 value and fail when it is missing; they do not fall back to LocalDB:
 
 ```powershell
-$env:ConnectionStrings__DefaultConnection = "Server=localhost,1433;Database=UniPMDb;User Id=sa;Password=<local-password>;Encrypt=True;TrustServerCertificate=True;"
+$env:ConnectionStrings__DefaultConnection =
+  "Server=.;Database=UniPMDb;Integrated Security=True;Encrypt=True;TrustServerCertificate=True;"
 dotnet ef database update --project server
 ```
 
@@ -220,6 +251,29 @@ dotnet run --project server -- --rebuild-maintenance-embeddings
 The domain-contract migration canonicalizes copied metadata in existing
 `MaintenanceSearchDocument` rows but does not regenerate `SearchText`; use the
 rebuild command above after applying it.
+
+## SQL Server 2019 Compatibility Verification
+
+The native compatibility runner is an explicit development verification step.
+It uses only process-scoped settings and does not record connection strings,
+passwords, or provider credentials:
+
+```powershell
+$env:ConnectionStrings__DefaultConnection =
+  "<native SQL Server 2019 application database>"
+$env:UNIPM_SQLSERVER2019_TEST_CONNECTION =
+  "<native SQL Server 2019 master/test connection>"
+$env:UNIPM_DEV_USER_PASSWORD = "<temporary-generated-development-password>"
+
+powershell.exe -NoProfile -ExecutionPolicy Bypass `
+  -File .\scripts\evidence\Invoke-SqlServer2019CompatibilityVerification.ps1
+```
+
+The runner checks SQL Server major version `15`, compatibility level `150`,
+Full-Text Search, migrations, synthetic and Development-user seeding,
+projection rebuild, Full-Text catalog/index readiness, `CONTAINSTABLE`, and the
+SQL-enabled backend suite. An optional real-provider smoke test may remain
+skipped when no provider configuration is supplied.
 
 ## Synthetic Development Data
 
@@ -303,7 +357,8 @@ Run the standalone benchmark against a reachable SQL Server using the required
 connection-string environment variable:
 
 ```powershell
-$env:UNIPM_SQLSERVER_TEST_CONNECTION = "Server=localhost,1433;Database=master;User Id=sa;Password=<local-password>;Encrypt=True;TrustServerCertificate=True;"
+$env:UNIPM_SQLSERVER_TEST_CONNECTION =
+  "Server=.;Database=master;Integrated Security=True;Encrypt=True;TrustServerCertificate=True;"
 dotnet run --project .\tools\UniPM.RetrievalBenchmark -- --channels lexical
 dotnet run --project .\tools\UniPM.RetrievalBenchmark -- --channels semantic
 dotnet run --project .\tools\UniPM.RetrievalBenchmark -- --channels lexical,semantic --output artifacts\retrieval-benchmark
@@ -326,20 +381,30 @@ provider configuration; degraded fused responses fail evaluation. Context
 selection, insufficient-evidence handling, sanitization, summaries, and the
 public review endpoint are implemented separately from benchmark scoring.
 
-## Local Observability
+## Optional Docker Development Tooling
 
-Metrics are disabled by default in committed configuration. The ordinary local
-stack remains available with:
+The retained SQL Server 2025 Compose stack is a legacy development experiment,
+not the verified platform baseline or a deployment requirement. It retains its
+existing named volume and must be invoked explicitly:
 
 ```powershell
-docker compose up --build -d
+Copy-Item .env.sqlserver2025.example .env.sqlserver2025
+docker compose --env-file .env.sqlserver2025 -f docker-compose.sqlserver2025.yml up --build -d
 ```
 
-Enable the optional technical monitoring profile with:
+Do not start, remove, or reuse that SQL Server 2025 volume for a SQL Server 2019
+instance. Stop it with the same explicit file and environment arguments.
+
+## Local Observability
+
+Metrics are disabled by default in committed configuration. The optional legacy
+Docker profile can provide local Prometheus and Grafana only when intentionally
+using the retained SQL Server 2025 experiment:
 
 ```powershell
 $env:UNIPM_METRICS_ENABLED = "true"
-docker compose --profile observability up --build -d
+docker compose --env-file .env.sqlserver2025 -f docker-compose.sqlserver2025.yml `
+  --profile observability up --build -d
 ```
 
 Then use:
@@ -350,9 +415,9 @@ Then use:
 
 Grafana provisions the `unipm-prometheus` datasource and the
 `unipm-system-health` dashboard automatically. The sample credentials in
-`.env.example` are for local development only and must be changed. The
-dashboard covers API/runtime and retrieval technical health; it is not the
-future React maintenance KPI dashboard. Projection and embedding rebuild
+`.env.sqlserver2025.example` are local-development placeholders and must be
+changed. The dashboard covers API/runtime and retrieval technical health; it is
+not the future React maintenance KPI dashboard. Projection and embedding rebuild
 commands report their results through command output and evidence records until
 durable job telemetry is designed.
 
