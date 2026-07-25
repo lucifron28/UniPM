@@ -1,3 +1,4 @@
+using UniPM.Api.Features.Retrieval;
 using UniPM.RetrievalBenchmark;
 using BenchmarkProgram = UniPM.RetrievalBenchmark.Program;
 
@@ -155,6 +156,47 @@ public sealed class BenchmarkEvaluationServiceTests
         }
     }
 
+    [Fact]
+    public void Remote_embedding_configuration_requires_an_explicit_paid_run_approval()
+    {
+        using var environment = new EnvironmentScope();
+        environment.ConfigureRemoteEmbeddingConfiguration();
+
+        var unapproved = BenchmarkProgram.ParseOptions(["--channels", "semantic"]);
+        var approved = BenchmarkProgram.ParseOptions([
+            "--channels", "semantic",
+            "--approve-paid-provider-run"
+        ]);
+
+        Assert.False(unapproved.ApprovePaidProviderRun);
+        Assert.True(approved.ApprovePaidProviderRun);
+        Assert.True(approved.Embeddings!.AllowRemoteProvider);
+    }
+
+    [Fact]
+    public async Task Remote_embedding_execution_refuses_to_run_without_paid_approval()
+    {
+        var options = new BenchmarkRunnerOptions
+        {
+            Channels = ["semantic"],
+            OutputDirectory = Path.GetTempPath(),
+            Embeddings = new EmbeddingOptions
+            {
+                Enabled = true,
+                ProviderKey = "voyage",
+                BaseAddress = "https://api.voyageai.com/",
+                Model = "voyage-4",
+                Dimensions = 1024,
+                AllowRemoteProvider = true
+            }
+        };
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => new SqlServerBenchmarkRunner().RunAsync(options));
+
+        Assert.Contains("--approve-paid-provider-run", exception.Message, StringComparison.Ordinal);
+    }
+
     private static DelegateBenchmarkRetrievalChannel CreateChannel(string name, Guid relevantId)
     {
         return new DelegateBenchmarkRetrievalChannel(
@@ -212,7 +254,9 @@ public sealed class BenchmarkEvaluationServiceTests
             ["UNIPM_EMBEDDINGS_PROVIDER_KEY"] = Environment.GetEnvironmentVariable("UNIPM_EMBEDDINGS_PROVIDER_KEY"),
             ["UNIPM_EMBEDDINGS_BASE_ADDRESS"] = Environment.GetEnvironmentVariable("UNIPM_EMBEDDINGS_BASE_ADDRESS"),
             ["UNIPM_EMBEDDINGS_MODEL"] = Environment.GetEnvironmentVariable("UNIPM_EMBEDDINGS_MODEL"),
-            ["UNIPM_EMBEDDINGS_DIMENSIONS"] = Environment.GetEnvironmentVariable("UNIPM_EMBEDDINGS_DIMENSIONS")
+            ["UNIPM_EMBEDDINGS_DIMENSIONS"] = Environment.GetEnvironmentVariable("UNIPM_EMBEDDINGS_DIMENSIONS"),
+            ["UNIPM_EMBEDDINGS_API_KEY"] = Environment.GetEnvironmentVariable("UNIPM_EMBEDDINGS_API_KEY"),
+            ["UNIPM_EMBEDDINGS_ALLOW_REMOTE_PROVIDER"] = Environment.GetEnvironmentVariable("UNIPM_EMBEDDINGS_ALLOW_REMOTE_PROVIDER")
         };
 
         public void ClearEmbeddingConfiguration()
@@ -230,6 +274,13 @@ public sealed class BenchmarkEvaluationServiceTests
             Environment.SetEnvironmentVariable("UNIPM_EMBEDDINGS_BASE_ADDRESS", "http://localhost");
             Environment.SetEnvironmentVariable("UNIPM_EMBEDDINGS_MODEL", "test-model");
             Environment.SetEnvironmentVariable("UNIPM_EMBEDDINGS_DIMENSIONS", "2");
+        }
+
+        public void ConfigureRemoteEmbeddingConfiguration()
+        {
+            ConfigureEmbeddingConfiguration();
+            Environment.SetEnvironmentVariable("UNIPM_EMBEDDINGS_API_KEY", "test-key");
+            Environment.SetEnvironmentVariable("UNIPM_EMBEDDINGS_ALLOW_REMOTE_PROVIDER", "true");
         }
 
         public void Dispose()

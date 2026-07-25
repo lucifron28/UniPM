@@ -13,6 +13,7 @@ public sealed class BenchmarkRunnerOptions
     public required IReadOnlyList<string> Channels { get; init; }
     public required string OutputDirectory { get; init; }
     public bool KeepDatabase { get; init; }
+    public bool ApprovePaidProviderRun { get; init; }
     public EmbeddingOptions? Embeddings { get; init; }
 }
 
@@ -34,6 +35,16 @@ public sealed class SqlServerBenchmarkRunner
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(options);
+        var requestsSemantic = options.Channels.Contains("semantic", StringComparer.Ordinal)
+            || options.Channels.Contains("fused", StringComparer.Ordinal);
+        if (requestsSemantic
+            && options.Embeddings?.AllowRemoteProvider == true
+            && !options.ApprovePaidProviderRun)
+        {
+            throw new InvalidOperationException(
+                "Remote embedding execution requires --approve-paid-provider-run.");
+        }
+
         var connectionString = RequireEnvironment("UNIPM_SQLSERVER_TEST_CONNECTION");
         var repositoryRoot = FindRepositoryRoot();
         var manifestPath = Path.Combine(
@@ -90,10 +101,12 @@ public sealed class SqlServerBenchmarkRunner
         var reportLexical = selectedChannels.Contains("lexical");
         var reportSemantic = selectedChannels.Contains("semantic");
         var reportFused = selectedChannels.Contains("fused");
+
         var channels = new List<IBenchmarkRetrievalChannel>();
         SqlServerLexicalMaintenanceRetriever? lexicalRetriever = null;
         SqlServerSemanticMaintenanceRetriever? semanticRetriever = null;
         IEmbeddingService? embeddingService = null;
+        BenchmarkEmbeddingExecutionTracker? embeddingExecution = null;
 
         if (needsLexical)
         {
@@ -126,10 +139,28 @@ public sealed class SqlServerBenchmarkRunner
                 throw new InvalidOperationException("Semantic benchmarking requires embedding configuration.");
             }
 
-            embeddingService = embeddingServiceOverride
+            var configuredEmbeddingService = embeddingServiceOverride
                 ?? new OpenAiCompatibleEmbeddingService(
                     new HttpClient(),
                     Options.Create(options.Embeddings));
+            int plannedDocumentCount;
+            await using (var executionContext = await contextFactory.CreateDbContextAsync(cancellationToken))
+            {
+                plannedDocumentCount = await executionContext.MaintenanceSearchDocuments.CountAsync(cancellationToken);
+            }
+            var executionPlan = new BenchmarkEmbeddingExecutionPlan(
+                configuredEmbeddingService.Descriptor.ProviderKey,
+                configuredEmbeddingService.Descriptor.ModelKey,
+                configuredEmbeddingService.Descriptor.Dimensions,
+                plannedDocumentCount,
+                options.Embeddings.MaxBatchSize,
+                manifest.Queries.Count);
+            Console.WriteLine(executionPlan.ToSafeSummary());
+
+            embeddingExecution = new BenchmarkEmbeddingExecutionTracker(executionPlan);
+            embeddingService = new BenchmarkCachingEmbeddingService(
+                configuredEmbeddingService,
+                embeddingExecution);
             var indexer = new MaintenanceSearchDocumentEmbeddingIndexer(
                 contextFactory,
                 embeddingService,
@@ -245,6 +276,10 @@ public sealed class SqlServerBenchmarkRunner
 
         var report = await new BenchmarkEvaluationService()
             .RunAsync(manifest, channels, cancellationToken: cancellationToken);
+        if (embeddingExecution is not null)
+        {
+            report.EmbeddingExecution = embeddingExecution.CreateReport();
+        }
         if (embeddingServiceOverride is not null && (reportSemantic || reportFused))
         {
             report.Warnings.Add(reportSemantic && reportFused

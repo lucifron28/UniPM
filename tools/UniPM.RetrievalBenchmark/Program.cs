@@ -22,15 +22,31 @@ public static class Program
         }
         catch (Exception exception)
         {
-            Console.Error.WriteLine($"Retrieval benchmark failed: {exception.Message}");
+            Console.Error.WriteLine($"Retrieval benchmark failed: {FormatFailure(exception)}");
             return 1;
         }
+    }
+
+    private static string FormatFailure(Exception exception)
+    {
+        var messages = new List<string>();
+        for (Exception? current = exception; current is not null; current = current.InnerException)
+        {
+            if (!string.IsNullOrWhiteSpace(current.Message)
+                && !messages.Contains(current.Message, StringComparer.Ordinal))
+            {
+                messages.Add(current.Message);
+            }
+        }
+
+        return string.Join(" Cause: ", messages);
     }
 
     public static BenchmarkRunnerOptions ParseOptions(string[] args)
     {
         var channels = new HashSet<string>(StringComparer.Ordinal);
         string? outputDirectory = null;
+        var approvePaidProviderRun = false;
         for (var index = 0; index < args.Length; index++)
         {
             switch (args[index])
@@ -49,6 +65,9 @@ public static class Program
                     break;
                 case "--output" when index + 1 < args.Length:
                     outputDirectory = Path.GetFullPath(args[++index]);
+                    break;
+                case "--approve-paid-provider-run":
+                    approvePaidProviderRun = true;
                     break;
                 default:
                     throw new ArgumentException($"Unknown or incomplete benchmark argument '{args[index]}'.");
@@ -72,6 +91,7 @@ public static class Program
             OutputDirectory = outputDirectory
                 ?? Path.GetFullPath(Path.Combine("artifacts", "retrieval-benchmark")),
             KeepDatabase = ReadBoolean("UNIPM_BENCHMARK_KEEP_DATABASE"),
+            ApprovePaidProviderRun = approvePaidProviderRun,
             Embeddings = embeddingOptions
         };
     }
@@ -90,6 +110,14 @@ public static class Program
             throw new InvalidOperationException("UNIPM_EMBEDDINGS_DIMENSIONS must be an invariant integer.");
         }
 
+        var allowRemoteProvider = ReadBoolean("UNIPM_EMBEDDINGS_ALLOW_REMOTE_PROVIDER");
+        var apiKey = Environment.GetEnvironmentVariable("UNIPM_EMBEDDINGS_API_KEY");
+        if (allowRemoteProvider && string.IsNullOrWhiteSpace(apiKey))
+        {
+            throw new InvalidOperationException(
+                "UNIPM_EMBEDDINGS_API_KEY is required when remote embedding providers are enabled.");
+        }
+
         return new EmbeddingOptions
         {
             Enabled = true,
@@ -97,12 +125,12 @@ public static class Program
             BaseAddress = RequiredEnvironment("UNIPM_EMBEDDINGS_BASE_ADDRESS"),
             Path = Environment.GetEnvironmentVariable("UNIPM_EMBEDDINGS_PATH") ?? "/v1/embeddings",
             Model = RequiredEnvironment("UNIPM_EMBEDDINGS_MODEL"),
-            ApiKey = Environment.GetEnvironmentVariable("UNIPM_EMBEDDINGS_API_KEY"),
+            ApiKey = apiKey,
             Dimensions = dimensions,
             TimeoutSeconds = ReadInteger("UNIPM_EMBEDDINGS_TIMEOUT_SECONDS", 30),
             MaxBatchSize = ReadInteger("UNIPM_EMBEDDINGS_MAX_BATCH_SIZE", 16),
             MaxInputCharacters = ReadInteger("UNIPM_EMBEDDINGS_MAX_INPUT_CHARACTERS", 4000),
-            AllowRemoteProvider = ReadBoolean("UNIPM_EMBEDDINGS_ALLOW_REMOTE_PROVIDER")
+            AllowRemoteProvider = allowRemoteProvider
         };
     }
 
