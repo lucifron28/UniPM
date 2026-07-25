@@ -3,8 +3,8 @@ id: EXP-003
 type: experiment
 title: Granite multilingual maintenance retrieval baseline
 status: executed
-recordedAtUtc: 2026-07-25T15:31:33.7837853+00:00
-testedCommit: 8f91e04a1ada74e26ecef79d41a44e2b7c4f5b76
+recordedAtUtc: 2026-07-25T16:14:14.2693335+00:00
+testedCommit: e79b0f5b4a9ecb9c64776eed9f1e48574f75ae0d
 sourceBranch: experiment/granite-multilingual-retrieval-baseline
 evidenceLevel: locally-executed
 ---
@@ -19,7 +19,7 @@ only UniPM's fictional maintenance fixture and test-only evaluation manifest.
 
 ## Execution Identity
 
-- Tested commit: `8f91e04a1ada74e26ecef79d41a44e2b7c4f5b76`
+- Tested commit: `e79b0f5b4a9ecb9c64776eed9f1e48574f75ae0d`
 - Dataset and manifest versions: `1.1.0`; 30 search documents and 24 queries
 - Database: isolated native SQL Server 2019 database, compatibility level 150,
   with Full-Text Search ready; the temporary database was removed after the run.
@@ -27,9 +27,28 @@ only UniPM's fictional maintenance fixture and test-only evaluation manifest.
 - Model: `ibm-granite/granite-embedding-97m-multilingual-r2`
 - Dimensions and profile: `384`; provider key, full model key, current
   maintenance input profile, and dimensions form the embedding profile.
-- Artifact SHA-256: `f3ea88b230492811046145513710e76b4cc8c2ad49e8708da0e7247e548903be`
-- Model revision: not retained in the locally cached model metadata; the
-  artifact hash above identifies the model material actually used.
+- Model repository revision: `835ad14087e140460703cf0fae09f97d469d65c2`
+- Encoding package fingerprint (SHA-256): `model.safetensors`
+  `f3ea88b230492811046145513710e76b4cc8c2ad49e8708da0e7247e548903be`;
+  `config.json`
+  `933b3105f0a4688d762a2742d3aa103335fd08d8888bc74d52a28aef35494337`;
+  `modules.json`
+  `e7989e94b5b809d895a9521b708312c1ccd333e183effebaf3838908da2acd53`;
+  `1_Pooling/config.json`
+  `2d0a5053a404b23e265843108c7013580890de5af4cb0b3933b06468d535052f`;
+  `config_sentence_transformers.json`
+  `b04e4fb97cb5aa034c609b3d44afba4c1cb73c40ebfc00591d7b4bdf400d7d8c`;
+  `sentence_bert_config.json`
+  `3852ff8b21e5e81fc6f4da316bde4f54a91e5891d7372d694b6c3ceaa2a3e6d7`;
+  `tokenizer.json`
+  `4f2842d568e2724370aec203652a42ac783c7937f8347a1a2cc7506d71f1582f`;
+  `tokenizer_config.json`
+  `99173f13b1b372bcd5656c7a47d7b7ba7cc5701a6ad7a7b13da945da5385680f`;
+  and `special_tokens_map.json`
+  `5da6758d4a4d592669c66160a0b843715c37e6ed17800be46739a5e33535195a`.
+  Together, the revision and package fingerprint identify the CLS-pooling,
+  32,768-position, tokenizer, and Sentence Transformers configuration used
+  with the retained weights.
 
 ## Encoding And Local Service
 
@@ -95,8 +114,8 @@ tables are retained in the reviewed Markdown baseline.
 
 - `dotnet restore .\UniPM.slnx`: passed.
 - `dotnet build .\UniPM.slnx -c Release --no-restore`: passed.
-- Ordinary Release suite: 294 passed, 32 skipped.
-- SQL-enabled Release suite with native SQL Server 2019 variables: 325 passed,
+- Ordinary Release suite: 294 passed, 33 skipped.
+- SQL-enabled Release suite with native SQL Server 2019 variables: 326 passed,
   1 optional external-provider smoke test skipped.
 - Local Python contract suite: 6 passed.
 - Local OpenAI-compatible smoke test: 1 passed, 0 skipped.
@@ -104,9 +123,9 @@ tables are retained in the reviewed Markdown baseline.
 The previously observed cross-suite observability failure was reproduced and
 resolved by serializing only the two test classes that create the shared
 `UniPMMetrics` meter; runtime observability code was unchanged. Benchmark timing
-is diagnostic only: provider duration was 1,904.229 ms. Per-query end-to-end
-latency is retained: lexical median/p95 was 13.800/36.212 ms, semantic
-5.854/12.298 ms, and fused 79.663/207.522 ms. Semantic and fused retrieval each
+is diagnostic only: provider duration was 2,267.131 ms. Per-query end-to-end
+latency is retained: lexical median/p95 was 7.196/26.683 ms, semantic
+6.085/14.374 ms, and fused 133.630/247.830 ms. Semantic and fused retrieval each
 scored 93 eligible candidates across 24 queries; the 500-candidate cap was not
 reached.
 
@@ -125,5 +144,5 @@ external provider payloads were retained.
 
 | File | SHA-256 |
 |---|---|
-| `baselines/granite-multilingual-v1/retrieval-benchmark.json` | `35ff1c99220605dfc9aeaf4f671b5f4777ec487bd72fa671296eb2f736991cb4` |
-| `baselines/granite-multilingual-v1/retrieval-benchmark.md` | `8b19b434cdbe02e6f055e4733ef90ddc583506babd781a5355edc2bed912b234` |
+| `baselines/granite-multilingual-v1/retrieval-benchmark.json` | `b1ffe7532ac10c93e3a39e8a20547ad09b501216dde0ec8238be9fa540f627da` |
+| `baselines/granite-multilingual-v1/retrieval-benchmark.md` | `ff66b68adbce55d81061911b853e040042bd23e6932edb50a035890f444e5f1b` |

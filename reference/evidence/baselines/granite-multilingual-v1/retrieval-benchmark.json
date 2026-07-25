@@ -2,7 +2,7 @@
   "benchmarkFormatVersion": "1.1.0",
   "evaluationManifestVersion": "1.1.0",
   "operationalDatasetVersion": "1.1.0",
-  "generatedAtUtc": "2026-07-25T15:33:28.0926345+00:00",
+  "generatedAtUtc": "2026-07-25T16:14:14.2693335+00:00",
   "selectedChannels": [
     "fused",
     "lexical",
@@ -249,8 +249,8 @@
       },
       "latency": {
         "queryCount": 24,
-        "medianMilliseconds": 79.6628,
-        "p95Milliseconds": 207.522,
+        "medianMilliseconds": 133.6304,
+        "p95Milliseconds": 247.8299,
         "zeroResultCount": 0,
         "failedQueryCount": 0
       },
@@ -304,7 +304,7 @@
             "334f4c25-2a02-50e7-b93e-79a01ebee7a7": 2,
             "1a069120-c57f-5249-bde9-cbe4538c70e2": 3
           },
-          "durationMilliseconds": 224.4482,
+          "durationMilliseconds": 290.1428,
           "semanticCandidateCount": 3,
           "semanticCandidateCapReached": false
         },
@@ -361,7 +361,7 @@
             "334f4c25-2a02-50e7-b93e-79a01ebee7a7": 4,
             "1a069120-c57f-5249-bde9-cbe4538c70e2": 5
           },
-          "durationMilliseconds": 162.9232,
+          "durationMilliseconds": 247.8299,
           "semanticCandidateCount": 5,
           "semanticCandidateCapReached": false
         },
@@ -419,7 +419,7 @@
             "03c117f8-1207-5a48-9564-2914844d6883": 4,
             "267babd6-4e6d-5082-843a-6db5d9d3e5ae": 5
           },
-          "durationMilliseconds": 193.4127,
+          "durationMilliseconds": 225.7409,
           "semanticCandidateCount": 5,
           "semanticCandidateCapReached": false
         },
@@ -469,7 +469,7 @@
             "2c0cf8d1-6fab-50cf-a06b-384f9f628e0e": 3,
             "924a832f-9dfa-5798-bf39-21ada836fa18": 4
           },
-          "durationMilliseconds": 207.522,
+          "durationMilliseconds": 157.5351,
           "semanticCandidateCount": 4,
           "semanticCandidateCapReached": false
         },
@@ -511,7 +511,7 @@
             "2c0cf8d1-6fab-50cf-a06b-384f9f628e0e": 1,
             "927b9511-3b89-5380-82cc-a38095fe6748": 2
           },
-          "durationMilliseconds": 45.5126,
+          "durationMilliseconds": 45.6883,
           "semanticCandidateCount": 2,
           "semanticCandidateCapReached": false
         },
@@ -583,7 +583,7 @@
             "03c117f8-1207-5a48-9564-2914844d6883": 8,
             "267babd6-4e6d-5082-843a-6db5d9d3e5ae": 9
           },
-          "durationMilliseconds": 97.3456,
+          "durationMilliseconds": 209.0054,
           "semanticCandidateCount": 9,
           "semanticCandidateCapReached": false
         },
@@ -627,7 +627,7 @@
             "651444ef-4b05-53c1-8df7-9b1d72607d4e": 1,
             "db839e0d-f540-5bb7-ad16-71068a91ff87": 2
           },
-          "durationMilliseconds": 104.7192,
+          "durationMilliseconds": 179.7118,
           "semanticCandidateCount": 2,
           "semanticCandidateCapReached": false
         },
@@ -670,7 +670,7 @@
             "87f404ae-7662-5e5f-b577-424af2cd4bd9": 2,
             "cc805de9-166f-5f3e-a579-c6432503f55f": 1
           },
-          "durationMilliseconds": 71.7092,
+          "durationMilliseconds": 124.7372,
           "semanticCandidateCount": 2,
           "semanticCandidateCapReached": false
         },
@@ -711,7 +711,7 @@
             "cc805de9-166f-5f3e-a579-c6432503f55f": 1,
             "87f404ae-7662-5e5f-b577-424af2cd4bd9": 2
           },
-          "durationMilliseconds": 74.1346,
+          "durationMilliseconds": 117.2454,
           "semanticCandidateCount": 2,
           "semanticCandidateCapReached": false
         },
@@ -752,7 +752,7 @@
             "725c0c6a-6d5a-56c6-aa93-ee4d38ad8d10": 1,
             "12132427-f8f3-5902-8ac5-180213861399": 2
           },
-          "durationMilliseconds": 111.8531,
+          "durationMilliseconds": 156.016,
           "semanticCandidateCount": 2,
           "semanticCandidateCapReached": false
         },
@@ -795,7 +795,7 @@
             "725c0c6a-6d5a-56c6-aa93-ee4d38ad8d10": 1,
             "12132427-f8f3-5902-8ac5-180213861399": 2
           },
-          "durationMilliseconds": 49.8935,
+          "durationMilliseconds": 187.4799,
           "semanticCandidateCount": 2,
           "semanticCandidateCapReached": false
         },
@@ -858,7 +858,7 @@
             "651444ef-4b05-53c1-8df7-9b1d72607d4e": 6,
             "12132427-f8f3-5902-8ac5-180213861399": 7
           },
-          "durationMilliseconds": 67.9042,
+          "durationMilliseconds": 169.022,
           "semanticCandidateCount": 7,
           "semanticCandidateCapReached": false
         },
@@ -906,7 +906,7 @@
             "d852f1d5-c1c3-565b-8cdd-a887015f031a": 2,
             "3ee28351-0d1d-5af2-871a-e6e2e0ffe1cd": 3
           },
-          "durationMilliseconds": 86.7572,
+          "durationMilliseconds": 169.8272,
           "semanticCandidateCount": 3,
           "semanticCandidateCapReached": false
         },
@@ -964,7 +964,7 @@
             "7bf49237-b9c5-5ed6-99ea-f3aa38204559": 4,
             "3ee28351-0d1d-5af2-871a-e6e2e0ffe1cd": 5
           },
-          "durationMilliseconds": 59.8868,
+          "durationMilliseconds": 95.0299,
           "semanticCandidateCount": 5,
           "semanticCandidateCapReached": false
         },
@@ -1029,7 +1029,7 @@
             "f0f1b829-eb05-5504-8312-20abcf98890d": 6,
             "45582ca7-aa25-5155-bc22-04f0763bccef": 7
           },
-          "durationMilliseconds": 58.2951,
+          "durationMilliseconds": 133.6304,
           "semanticCandidateCount": 7,
           "semanticCandidateCapReached": false
         },
@@ -1065,7 +1065,7 @@
           "semanticRanks": {
             "f0f1b829-eb05-5504-8312-20abcf98890d": 1
           },
-          "durationMilliseconds": 79.6628,
+          "durationMilliseconds": 49.6821,
           "semanticCandidateCount": 1,
           "semanticCandidateCapReached": false
         },
@@ -1125,7 +1125,7 @@
             "3ee28351-0d1d-5af2-871a-e6e2e0ffe1cd": 6,
             "f0f1b829-eb05-5504-8312-20abcf98890d": 7
           },
-          "durationMilliseconds": 100.5336,
+          "durationMilliseconds": 115.702,
           "semanticCandidateCount": 7,
           "semanticCandidateCapReached": false
         },
@@ -1185,7 +1185,7 @@
             "3ee28351-0d1d-5af2-871a-e6e2e0ffe1cd": 6,
             "f0f1b829-eb05-5504-8312-20abcf98890d": 7
           },
-          "durationMilliseconds": 53.7602,
+          "durationMilliseconds": 113.2292,
           "semanticCandidateCount": 7,
           "semanticCandidateCapReached": false
         },
@@ -1233,7 +1233,7 @@
             "c89793f3-432b-50c1-9c18-07e21a6900c2": 2,
             "ad67c157-d11b-5486-8de0-801a706c0524": 3
           },
-          "durationMilliseconds": 82.9287,
+          "durationMilliseconds": 91.959,
           "semanticCandidateCount": 3,
           "semanticCandidateCapReached": false
         },
@@ -1278,7 +1278,7 @@
             "c89793f3-432b-50c1-9c18-07e21a6900c2": 2,
             "1ef1305e-abed-524b-8c09-c247a99ddf2a": 3
           },
-          "durationMilliseconds": 98.5208,
+          "durationMilliseconds": 142.0786,
           "semanticCandidateCount": 3,
           "semanticCandidateCapReached": false
         },
@@ -1321,7 +1321,7 @@
             "b65f8b77-bead-5b95-9533-bb4e2474d4bf": 1,
             "293463e1-b69e-5fee-a7a0-c6650e0af24d": 2
           },
-          "durationMilliseconds": 49.0199,
+          "durationMilliseconds": 38.8206,
           "semanticCandidateCount": 2,
           "semanticCandidateCapReached": false
         },
@@ -1364,7 +1364,7 @@
             "b65f8b77-bead-5b95-9533-bb4e2474d4bf": 1,
             "293463e1-b69e-5fee-a7a0-c6650e0af24d": 2
           },
-          "durationMilliseconds": 73.8226,
+          "durationMilliseconds": 84.3828,
           "semanticCandidateCount": 2,
           "semanticCandidateCapReached": false
         },
@@ -1400,7 +1400,7 @@
           "semanticRanks": {
             "fb1ae4d6-c444-580e-96b9-dd8172331c4a": 1
           },
-          "durationMilliseconds": 128.2229,
+          "durationMilliseconds": 168.3689,
           "semanticCandidateCount": 1,
           "semanticCandidateCapReached": false
         },
@@ -1460,7 +1460,7 @@
             "ad67c157-d11b-5486-8de0-801a706c0524": 6,
             "4a9714bf-4059-501b-85e0-03a00e1a6a2b": 7
           },
-          "durationMilliseconds": 59.5843,
+          "durationMilliseconds": 93.7326,
           "semanticCandidateCount": 7,
           "semanticCandidateCapReached": false
         }
@@ -1705,8 +1705,8 @@
       },
       "latency": {
         "queryCount": 24,
-        "medianMilliseconds": 13.7996,
-        "p95Milliseconds": 36.2123,
+        "medianMilliseconds": 7.1959,
+        "p95Milliseconds": 26.6832,
         "zeroResultCount": 10,
         "failedQueryCount": 0
       },
@@ -1740,7 +1740,7 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 36.2123,
+          "durationMilliseconds": 95.0339,
           "semanticCandidateCount": null,
           "semanticCandidateCapReached": null
         },
@@ -1772,7 +1772,7 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 32.1093,
+          "durationMilliseconds": 6.911,
           "semanticCandidateCount": null,
           "semanticCandidateCapReached": null
         },
@@ -1804,7 +1804,7 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 44.398,
+          "durationMilliseconds": 6.1158,
           "semanticCandidateCount": null,
           "semanticCandidateCapReached": null
         },
@@ -1830,7 +1830,7 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 28.5863,
+          "durationMilliseconds": 5.8739,
           "semanticCandidateCount": null,
           "semanticCandidateCapReached": null
         },
@@ -1862,7 +1862,7 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 9.4248,
+          "durationMilliseconds": 5.7117,
           "semanticCandidateCount": null,
           "semanticCandidateCapReached": null
         },
@@ -1888,7 +1888,7 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 8.5995,
+          "durationMilliseconds": 5.4276,
           "semanticCandidateCount": null,
           "semanticCandidateCapReached": null
         },
@@ -1923,7 +1923,7 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 10.5933,
+          "durationMilliseconds": 6.8708,
           "semanticCandidateCount": null,
           "semanticCandidateCapReached": null
         },
@@ -1955,7 +1955,7 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 14.2618,
+          "durationMilliseconds": 6.511,
           "semanticCandidateCount": null,
           "semanticCandidateCapReached": null
         },
@@ -1981,7 +1981,7 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 15.3899,
+          "durationMilliseconds": 16.8408,
           "semanticCandidateCount": null,
           "semanticCandidateCapReached": null
         },
@@ -2007,7 +2007,7 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 12.1342,
+          "durationMilliseconds": 26.6832,
           "semanticCandidateCount": null,
           "semanticCandidateCapReached": null
         },
@@ -2039,7 +2039,7 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 11.6685,
+          "durationMilliseconds": 16.4302,
           "semanticCandidateCount": null,
           "semanticCandidateCapReached": null
         },
@@ -2071,7 +2071,7 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 13.5012,
+          "durationMilliseconds": 17.4235,
           "semanticCandidateCount": null,
           "semanticCandidateCapReached": null
         },
@@ -2103,7 +2103,7 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 15.8069,
+          "durationMilliseconds": 16.9565,
           "semanticCandidateCount": null,
           "semanticCandidateCapReached": null
         },
@@ -2135,7 +2135,7 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 20.0511,
+          "durationMilliseconds": 15.8951,
           "semanticCandidateCount": null,
           "semanticCandidateCapReached": null
         },
@@ -2167,7 +2167,7 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 16.2983,
+          "durationMilliseconds": 17.2718,
           "semanticCandidateCount": null,
           "semanticCandidateCapReached": null
         },
@@ -2193,7 +2193,7 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 15.7721,
+          "durationMilliseconds": 19.7615,
           "semanticCandidateCount": null,
           "semanticCandidateCapReached": null
         },
@@ -2219,7 +2219,7 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 13.4175,
+          "durationMilliseconds": 17.0074,
           "semanticCandidateCount": null,
           "semanticCandidateCapReached": null
         },
@@ -2245,7 +2245,7 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 13.317,
+          "durationMilliseconds": 15.2452,
           "semanticCandidateCount": null,
           "semanticCandidateCapReached": null
         },
@@ -2277,7 +2277,7 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 15.056,
+          "durationMilliseconds": 6.9893,
           "semanticCandidateCount": null,
           "semanticCandidateCapReached": null
         },
@@ -2303,7 +2303,7 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 13.7996,
+          "durationMilliseconds": 6.4469,
           "semanticCandidateCount": null,
           "semanticCandidateCapReached": null
         },
@@ -2335,7 +2335,7 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 14.9133,
+          "durationMilliseconds": 6.7947,
           "semanticCandidateCount": null,
           "semanticCandidateCapReached": null
         },
@@ -2367,7 +2367,7 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 11.134,
+          "durationMilliseconds": 7.1205,
           "semanticCandidateCount": null,
           "semanticCandidateCapReached": null
         },
@@ -2393,7 +2393,7 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 13.4371,
+          "durationMilliseconds": 8.5668,
           "semanticCandidateCount": null,
           "semanticCandidateCapReached": null
         },
@@ -2419,7 +2419,7 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 11.3496,
+          "durationMilliseconds": 7.1959,
           "semanticCandidateCount": null,
           "semanticCandidateCapReached": null
         }
@@ -2664,8 +2664,8 @@
       },
       "latency": {
         "queryCount": 24,
-        "medianMilliseconds": 5.854,
-        "p95Milliseconds": 12.2984,
+        "medianMilliseconds": 6.0848,
+        "p95Milliseconds": 14.3737,
         "zeroResultCount": 0,
         "failedQueryCount": 0
       },
@@ -2709,7 +2709,7 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 11.8087,
+          "durationMilliseconds": 12.4768,
           "semanticCandidateCount": 3,
           "semanticCandidateCapReached": false
         },
@@ -2752,7 +2752,7 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 10.619,
+          "durationMilliseconds": 12.62,
           "semanticCandidateCount": 5,
           "semanticCandidateCapReached": false
         },
@@ -2796,7 +2796,7 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 11.4995,
+          "durationMilliseconds": 12.5436,
           "semanticCandidateCount": 5,
           "semanticCandidateCapReached": false
         },
@@ -2836,7 +2836,7 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 9.3244,
+          "durationMilliseconds": 12.8834,
           "semanticCandidateCount": 4,
           "semanticCandidateCapReached": false
         },
@@ -2870,7 +2870,7 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 3.7498,
+          "durationMilliseconds": 3.8774,
           "semanticCandidateCount": 2,
           "semanticCandidateCapReached": false
         },
@@ -2922,7 +2922,7 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 11.5833,
+          "durationMilliseconds": 14.3737,
           "semanticCandidateCount": 9,
           "semanticCandidateCapReached": false
         },
@@ -2957,7 +2957,7 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 3.2217,
+          "durationMilliseconds": 5.601,
           "semanticCandidateCount": 2,
           "semanticCandidateCapReached": false
         },
@@ -2992,7 +2992,7 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 9.1116,
+          "durationMilliseconds": 10.4537,
           "semanticCandidateCount": 2,
           "semanticCandidateCapReached": false
         },
@@ -3027,7 +3027,7 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 4.1527,
+          "durationMilliseconds": 4.149,
           "semanticCandidateCount": 2,
           "semanticCandidateCapReached": false
         },
@@ -3062,7 +3062,7 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 5.6099,
+          "durationMilliseconds": 3.8326,
           "semanticCandidateCount": 2,
           "semanticCandidateCapReached": false
         },
@@ -3097,7 +3097,7 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 3.3502,
+          "durationMilliseconds": 3.8502,
           "semanticCandidateCount": 2,
           "semanticCandidateCapReached": false
         },
@@ -3142,7 +3142,7 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 11.7926,
+          "durationMilliseconds": 17.2037,
           "semanticCandidateCount": 7,
           "semanticCandidateCapReached": false
         },
@@ -3180,7 +3180,7 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 6.5449,
+          "durationMilliseconds": 4.4521,
           "semanticCandidateCount": 3,
           "semanticCandidateCapReached": false
         },
@@ -3224,7 +3224,7 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 5.7688,
+          "durationMilliseconds": 4.8468,
           "semanticCandidateCount": 5,
           "semanticCandidateCapReached": false
         },
@@ -3271,7 +3271,7 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 9.6401,
+          "durationMilliseconds": 12.777,
           "semanticCandidateCount": 7,
           "semanticCandidateCapReached": false
         },
@@ -3303,7 +3303,7 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 2.8232,
+          "durationMilliseconds": 4.3955,
           "semanticCandidateCount": 1,
           "semanticCandidateCapReached": false
         },
@@ -3347,7 +3347,7 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 4.5376,
+          "durationMilliseconds": 6.2477,
           "semanticCandidateCount": 7,
           "semanticCandidateCapReached": false
         },
@@ -3391,7 +3391,7 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 5.5983,
+          "durationMilliseconds": 4.3818,
           "semanticCandidateCount": 7,
           "semanticCandidateCapReached": false
         },
@@ -3429,7 +3429,7 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 5.854,
+          "durationMilliseconds": 3.7367,
           "semanticCandidateCount": 3,
           "semanticCandidateCapReached": false
         },
@@ -3466,7 +3466,7 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 12.2984,
+          "durationMilliseconds": 10.9599,
           "semanticCandidateCount": 3,
           "semanticCandidateCapReached": false
         },
@@ -3501,7 +3501,7 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 24.9067,
+          "durationMilliseconds": 12.4786,
           "semanticCandidateCount": 2,
           "semanticCandidateCapReached": false
         },
@@ -3536,7 +3536,7 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 4.1218,
+          "durationMilliseconds": 5.1513,
           "semanticCandidateCount": 2,
           "semanticCandidateCapReached": false
         },
@@ -3568,7 +3568,7 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 8.127,
+          "durationMilliseconds": 11.3228,
           "semanticCandidateCount": 1,
           "semanticCandidateCapReached": false
         },
@@ -3612,7 +3612,7 @@
           "fusionScores": {},
           "lexicalRanks": {},
           "semanticRanks": {},
-          "durationMilliseconds": 5.2465,
+          "durationMilliseconds": 6.0848,
           "semanticCandidateCount": 7,
           "semanticCandidateCapReached": false
         }
@@ -3631,7 +3631,7 @@
     "actualProviderRequestCount": 25,
     "actualEmbeddedInputCount": 53,
     "queryCacheHitCount": 25,
-    "providerDurationMilliseconds": 1904.2292000000004
+    "providerDurationMilliseconds": 2267.1307999999995
   },
   "warnings": [],
   "limitations": [

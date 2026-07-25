@@ -2,7 +2,7 @@
 
 - Evaluation manifest: `1.1.0`
 - Operational dataset: `1.1.0`
-- Generated at UTC: `2026-07-25T15:33:28.0926345+00:00`
+- Generated at UTC: `2026-07-25T16:14:14.2693335+00:00`
 - Queries: `24`
 - Channels: `fused, lexical, semantic`
 
@@ -12,7 +12,7 @@
 
 | Provider | Model | Dimensions | Documents | Batches | Query embeddings | Expected requests | Actual requests | Query cache hits | Provider duration (ms) |
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|
-| `granite-local` | `ibm-granite/granite-embedding-97m-multilingual-r2` | 384 | 30 | 2 | 23 | 25 | 25 | 25 | 1904.229 |
+| `granite-local` | `ibm-granite/granite-embedding-97m-multilingual-r2` | 384 | 30 | 2 | 23 | 25 | 25 | 25 | 2267.131 |
 
 ## fused
 
@@ -30,7 +30,7 @@ Semantic degradation policy: Semantic unavailable or failed returns lexical-only
 
 | Median latency (ms) | P95 latency (ms) | Zero results | Failed queries |
 |---:|---:|---:|---:|
-| 79.663 | 207.522 | 0 | 0 |
+| 133.630 | 247.830 | 0 | 0 |
 
 Semantic candidates: `93` across `24` queries; candidate-cap hits: `0`.
 
@@ -88,7 +88,7 @@ Result limit: `10`; queries: `24`
 
 | Median latency (ms) | P95 latency (ms) | Zero results | Failed queries |
 |---:|---:|---:|---:|
-| 13.800 | 36.212 | 10 | 0 |
+| 7.196 | 26.683 | 10 | 0 |
 
 ### By language
 
@@ -144,7 +144,7 @@ Result limit: `10`; queries: `24`
 
 | Median latency (ms) | P95 latency (ms) | Zero results | Failed queries |
 |---:|---:|---:|---:|
-| 5.854 | 12.298 | 0 | 0 |
+| 6.085 | 14.374 | 0 | 0 |
 
 Semantic candidates: `93` across `24` queries; candidate-cap hits: `0`.
 
