@@ -113,15 +113,15 @@ try {
     $apiBase = "http://localhost:$apiPort"
 
     Invoke-Stage 'compose-config' {
-        docker compose --profile observability config --quiet
+        docker compose -f docker-compose.sqlserver2025.yml --profile observability config --quiet
         if ($LASTEXITCODE -ne 0) { throw "Docker Compose config failed with exit code $LASTEXITCODE." }
     }
     Invoke-Stage 'stack-start' {
         if ($FreshDatabase) {
-            docker compose down -v
+            docker compose -f docker-compose.sqlserver2025.yml down -v
             if ($LASTEXITCODE -ne 0) { throw "Fresh database reset failed with exit code $LASTEXITCODE." }
         }
-        docker compose up --build -d unipm-api
+        docker compose -f docker-compose.sqlserver2025.yml up --build -d unipm-api
         if ($LASTEXITCODE -ne 0) { throw "Docker Compose stack start failed with exit code $LASTEXITCODE." }
     }
     try {
@@ -144,15 +144,15 @@ try {
             }
         }
         Invoke-Stage 'database-migrate' {
-            docker compose exec -T unipm-api dotnet UniPM.Api.dll --migrate-database
+            docker compose -f docker-compose.sqlserver2025.yml exec -T unipm-api dotnet UniPM.Api.dll --migrate-database
             if ($LASTEXITCODE -ne 0) { throw "Database migration failed with exit code $LASTEXITCODE." }
         }
         Invoke-Stage 'seed' {
-            docker compose exec -T unipm-api dotnet UniPM.Api.dll --seed-synthetic
+            docker compose -f docker-compose.sqlserver2025.yml exec -T unipm-api dotnet UniPM.Api.dll --seed-synthetic
             if ($LASTEXITCODE -ne 0) { throw "Synthetic seed failed with exit code $LASTEXITCODE." }
         }
         Invoke-Stage 'rebuild-search-documents' {
-            docker compose exec -T unipm-api dotnet UniPM.Api.dll --rebuild-maintenance-search-documents
+            docker compose -f docker-compose.sqlserver2025.yml exec -T unipm-api dotnet UniPM.Api.dll --rebuild-maintenance-search-documents
             if ($LASTEXITCODE -ne 0) { throw "Search-document rebuild failed with exit code $LASTEXITCODE." }
         }
         Invoke-Stage 'review-request' {
@@ -210,10 +210,10 @@ try {
     }
     finally {
         if ($RemoveVolumes) {
-            docker compose down -v
+            docker compose -f docker-compose.sqlserver2025.yml down -v
         }
         else {
-            docker compose down
+            docker compose -f docker-compose.sqlserver2025.yml down
         }
     }
 }

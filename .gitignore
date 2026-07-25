@@ -2,6 +2,7 @@
 .env
 .env.*
 !.env.example
+!.env.sqlserver2025.example
 *.usersecrets
 secrets.json
 

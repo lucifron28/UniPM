@@ -187,13 +187,13 @@ try {
     [Environment]::SetEnvironmentVariable('UNIPM_EMBEDDINGS_ENABLED', 'false', 'Process')
 
     Invoke-Stage 'compose-config' {
-        docker compose config --quiet
+        docker compose -f docker-compose.sqlserver2025.yml config --quiet
         if ($LASTEXITCODE -ne 0) { throw "Compose validation failed with exit code $LASTEXITCODE." }
     }
     Invoke-Stage 'stack-start' {
-        docker compose down -v
+        docker compose -f docker-compose.sqlserver2025.yml down -v
         if ($LASTEXITCODE -ne 0) { throw "Fresh-volume reset failed with exit code $LASTEXITCODE." }
-        docker compose up --build -d
+        docker compose -f docker-compose.sqlserver2025.yml up --build -d
         if ($LASTEXITCODE -ne 0) { throw "Stack startup failed with exit code $LASTEXITCODE." }
     }
     Invoke-Stage 'health-ready' {
@@ -214,19 +214,19 @@ try {
         if (-not $ready) { throw 'API readiness did not become healthy.' }
     }
     Invoke-Stage 'database-migrate' {
-        docker compose exec -T unipm-api dotnet UniPM.Api.dll --migrate-database
+        docker compose -f docker-compose.sqlserver2025.yml exec -T unipm-api dotnet UniPM.Api.dll --migrate-database
         if ($LASTEXITCODE -ne 0) { throw "Database migration failed with exit code $LASTEXITCODE." }
     }
     Invoke-Stage 'synthetic-seed' {
-        docker compose exec -T unipm-api dotnet UniPM.Api.dll --seed-synthetic
+        docker compose -f docker-compose.sqlserver2025.yml exec -T unipm-api dotnet UniPM.Api.dll --seed-synthetic
         if ($LASTEXITCODE -ne 0) { throw "Synthetic seed failed with exit code $LASTEXITCODE." }
     }
     Invoke-Stage 'development-user-seed' {
-        docker compose exec -T unipm-api dotnet UniPM.Api.dll --seed-development-users
+        docker compose -f docker-compose.sqlserver2025.yml exec -T unipm-api dotnet UniPM.Api.dll --seed-development-users
         if ($LASTEXITCODE -ne 0) { throw "Development user seed failed with exit code $LASTEXITCODE." }
     }
     Invoke-Stage 'rebuild-search-documents' {
-        docker compose exec -T unipm-api dotnet UniPM.Api.dll --rebuild-maintenance-search-documents
+        docker compose -f docker-compose.sqlserver2025.yml exec -T unipm-api dotnet UniPM.Api.dll --rebuild-maintenance-search-documents
         if ($LASTEXITCODE -ne 0) { throw "Search-document rebuild failed with exit code $LASTEXITCODE." }
     }
     Invoke-Stage 'login-and-me' {
@@ -347,7 +347,7 @@ catch {
 }
 finally {
     try {
-        docker compose down -v
+        docker compose -f docker-compose.sqlserver2025.yml down -v
         if ($LASTEXITCODE -ne 0) { $overallExitCode = 1 }
     }
     catch {

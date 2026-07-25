@@ -131,7 +131,7 @@ function Invoke-DockerCompose {
         [string]$LogPath
     )
 
-    return Invoke-CapturedStage -Name ($Arguments -join ' ') -FilePath 'docker' -Arguments (@('compose') + $Arguments) -LogPath $LogPath
+    return Invoke-CapturedStage -Name ($Arguments -join ' ') -FilePath 'docker' -Arguments (@('compose', '-f', 'docker-compose.sqlserver2025.yml') + $Arguments) -LogPath $LogPath
 }
 
 function Wait-ForHttp {

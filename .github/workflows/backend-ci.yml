@@ -16,12 +16,13 @@ on:
       - "server/**"
       - "tests/**"
       - "database/**"
-      - "docker-compose.yml"
+      - "docker-compose.sqlserver2025.yml"
       - "observability/**"
       - "tools/**"
       - "scripts/evidence/**"
       - "reference/evidence/**"
       - ".env.example"
+      - ".env.sqlserver2025.example"
       - "global.json"
       - "UniPM.slnx"
   pull_request:
@@ -32,12 +33,13 @@ on:
       - "server/**"
       - "tests/**"
       - "database/**"
-      - "docker-compose.yml"
+      - "docker-compose.sqlserver2025.yml"
       - "observability/**"
       - "tools/**"
       - "scripts/evidence/**"
       - "reference/evidence/**"
       - ".env.example"
+      - ".env.sqlserver2025.example"
       - "global.json"
       - "UniPM.slnx"
 
@@ -88,7 +90,7 @@ jobs:
           UNIPM_JWT_ISSUER: UniPM.CI
           UNIPM_JWT_AUDIENCE: UniPM.CI
           UNIPM_JWT_SIGNING_KEY: CiComposeValidationSigningKey1234567890!
-        run: docker compose --profile observability config --quiet
+        run: docker compose --env-file .env.sqlserver2025.example -f docker-compose.sqlserver2025.yml --profile observability config --quiet
 
       - name: Validate Prometheus configuration
         run: >

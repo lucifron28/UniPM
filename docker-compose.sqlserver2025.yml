@@ -1,8 +1,12 @@
+# Optional legacy SQL Server 2025 development experiment.
+# UniPM's minimum supported and documented baseline is native Windows SQL
+# Server 2019 with Full-Text Search and compatibility level 150. Do not use
+# this Compose file for IIS deployment or with SQL Server 2019 data volumes.
 services:
   unipm-db:
     build:
       context: .
-      dockerfile: database/Dockerfile
+      dockerfile: database/Dockerfile.sqlserver2025
     image: unipm-sqlserver:2025-fts
     container_name: unipm-db
     environment:
