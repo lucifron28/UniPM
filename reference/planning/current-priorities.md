@@ -68,6 +68,10 @@ helps a human verify them.
   tokens, rotating hash-only refresh sessions, exact-origin credentialed CORS,
   bounded logout behavior, and focused SQL Server verification. Web integration
   remains deferred.
+- Database platform baseline: native Windows SQL Server 2019 with Full-Text
+  Search and compatibility level `150` is the minimum supported platform.
+  SQL Server 2025 Docker tooling is optional and historical development support
+  only; IIS deployment readiness remains unverified.
 
 ## Immediate Task Order
 
@@ -335,8 +339,11 @@ directly.
 - Evaluation annotations are test-only and never runtime operational data.
 - Semantic retrieval is required but may degrade to an explicitly reported
   lexical fallback when embeddings are unavailable.
-- SQL Server remains the relational, FTS, and future vector-search store. Do not
-  introduce Pinecone, Qdrant, Weaviate, Chroma, Milvus, or another vector DB.
+- SQL Server 2019 remains the relational and FTS store. Versioned serialized
+  embeddings are stored with relational metadata, bounded candidates are
+  filtered in SQL, and cosine similarity is calculated by the backend. Do not
+  introduce Pinecone, Qdrant, Weaviate, Chroma, Milvus, another vector DB, or a
+  native SQL vector-feature requirement.
 - No LLM output may approve, diagnose, change status, create a handoff, or make
   an official maintenance decision.
 

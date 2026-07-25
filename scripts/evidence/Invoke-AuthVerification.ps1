@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
-    [string]$OutputRoot = (Join-Path (Get-Location) 'artifacts/evidence')
+    [string]$OutputRoot = (Join-Path (Get-Location) 'artifacts/evidence'),
+    [string]$ComposeEnvironmentFile = '.env.sqlserver2025'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -15,6 +16,8 @@ $stageRecords = [System.Collections.Generic.List[object]]::new()
 $checkRecords = [System.Collections.Generic.List[object]]::new()
 $tokens = @{}
 $savedEnvironment = @{}
+$composeEnvironmentPath = $null
+$composeFilePath = $null
 $environmentNames = @(
     'MSSQL_SA_PASSWORD',
     'UNIPM_JWT_ISSUER',
@@ -153,6 +156,18 @@ try {
     }
 
     $testedCommit = Invoke-GitValue @('rev-parse', 'HEAD')
+    $repoRoot = Invoke-GitValue @('rev-parse', '--show-toplevel')
+    Set-Location -LiteralPath $repoRoot
+    $composeEnvironmentPath = if ([System.IO.Path]::IsPathRooted($ComposeEnvironmentFile)) {
+        $ComposeEnvironmentFile
+    }
+    else {
+        Join-Path $repoRoot $ComposeEnvironmentFile
+    }
+    if (-not (Test-Path -LiteralPath $composeEnvironmentPath -PathType Leaf)) {
+        throw "Optional Compose environment file was not found: $composeEnvironmentPath. Copy .env.sqlserver2025.example to .env.sqlserver2025 or pass -ComposeEnvironmentFile <path>."
+    }
+    $composeFilePath = Join-Path $repoRoot 'docker-compose.sqlserver2025.yml'
     $shortCommit = Invoke-GitValue @('rev-parse', '--short=12', 'HEAD')
     $sourceBranch = Invoke-GitValue @('branch', '--show-current')
     $status = Invoke-GitValue @('status', '--porcelain=v1', '--untracked-files=all')
@@ -187,13 +202,13 @@ try {
     [Environment]::SetEnvironmentVariable('UNIPM_EMBEDDINGS_ENABLED', 'false', 'Process')
 
     Invoke-Stage 'compose-config' {
-        docker compose config --quiet
+        docker compose --env-file $composeEnvironmentPath -f $composeFilePath config --quiet
         if ($LASTEXITCODE -ne 0) { throw "Compose validation failed with exit code $LASTEXITCODE." }
     }
     Invoke-Stage 'stack-start' {
-        docker compose down -v
+        docker compose --env-file $composeEnvironmentPath -f $composeFilePath down -v
         if ($LASTEXITCODE -ne 0) { throw "Fresh-volume reset failed with exit code $LASTEXITCODE." }
-        docker compose up --build -d
+        docker compose --env-file $composeEnvironmentPath -f $composeFilePath up --build -d
         if ($LASTEXITCODE -ne 0) { throw "Stack startup failed with exit code $LASTEXITCODE." }
     }
     Invoke-Stage 'health-ready' {
@@ -214,19 +229,19 @@ try {
         if (-not $ready) { throw 'API readiness did not become healthy.' }
     }
     Invoke-Stage 'database-migrate' {
-        docker compose exec -T unipm-api dotnet UniPM.Api.dll --migrate-database
+        docker compose --env-file $composeEnvironmentPath -f $composeFilePath exec -T unipm-api dotnet UniPM.Api.dll --migrate-database
         if ($LASTEXITCODE -ne 0) { throw "Database migration failed with exit code $LASTEXITCODE." }
     }
     Invoke-Stage 'synthetic-seed' {
-        docker compose exec -T unipm-api dotnet UniPM.Api.dll --seed-synthetic
+        docker compose --env-file $composeEnvironmentPath -f $composeFilePath exec -T unipm-api dotnet UniPM.Api.dll --seed-synthetic
         if ($LASTEXITCODE -ne 0) { throw "Synthetic seed failed with exit code $LASTEXITCODE." }
     }
     Invoke-Stage 'development-user-seed' {
-        docker compose exec -T unipm-api dotnet UniPM.Api.dll --seed-development-users
+        docker compose --env-file $composeEnvironmentPath -f $composeFilePath exec -T unipm-api dotnet UniPM.Api.dll --seed-development-users
         if ($LASTEXITCODE -ne 0) { throw "Development user seed failed with exit code $LASTEXITCODE." }
     }
     Invoke-Stage 'rebuild-search-documents' {
-        docker compose exec -T unipm-api dotnet UniPM.Api.dll --rebuild-maintenance-search-documents
+        docker compose --env-file $composeEnvironmentPath -f $composeFilePath exec -T unipm-api dotnet UniPM.Api.dll --rebuild-maintenance-search-documents
         if ($LASTEXITCODE -ne 0) { throw "Search-document rebuild failed with exit code $LASTEXITCODE." }
     }
     Invoke-Stage 'login-and-me' {
@@ -338,6 +353,7 @@ try {
         Set-Content -LiteralPath (Join-Path $artifactRoot 'auth-verification.json') -Encoding utf8
 }
 catch {
+    Write-Error -ErrorAction Continue -Message $_.Exception.Message
     $overallExitCode = 1
     if ($null -eq $artifactRoot) {
         $artifactRoot = Join-Path ([System.IO.Path]::GetFullPath($OutputRoot)) 'authentication-failed'
@@ -346,12 +362,14 @@ catch {
     Set-Content -LiteralPath (Join-Path $artifactRoot 'error.txt') -Value $_.Exception.Message -Encoding utf8
 }
 finally {
-    try {
-        docker compose down -v
-        if ($LASTEXITCODE -ne 0) { $overallExitCode = 1 }
-    }
-    catch {
-        $overallExitCode = 1
+    if ($null -ne $composeEnvironmentPath -and $null -ne $composeFilePath) {
+        try {
+            docker compose --env-file $composeEnvironmentPath -f $composeFilePath down -v
+            if ($LASTEXITCODE -ne 0) { $overallExitCode = 1 }
+        }
+        catch {
+            $overallExitCode = 1
+        }
     }
 
     foreach ($name in $environmentNames) {

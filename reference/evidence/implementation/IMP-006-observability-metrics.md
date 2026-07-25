@@ -67,7 +67,7 @@ Retrieval channels are `lexical` and `semantic`; retrieval outcomes are
 - `server/Observability/UniPMMetrics.cs`
 - `server/Features/Retrieval/RetrievalMetricsDecorators.cs`
 - `server/Program.cs`
-- `docker-compose.yml`
+- `docker-compose.sqlserver2025.yml`
 - `observability/prometheus/prometheus.yml`
 - `observability/grafana/provisioning/`
 - `observability/grafana/dashboards/unipm-system-health.json`

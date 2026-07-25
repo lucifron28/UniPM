@@ -1,8 +1,11 @@
 [CmdletBinding()]
 param(
     [string]$OutputRoot = (Join-Path (Get-Location) 'artifacts/evidence'),
+    [string]$ComposeEnvironmentFile = '.env.sqlserver2025',
 
-    [switch]$CleanupVolumes
+    [switch]$CleanupVolumes,
+
+    [switch]$ValidateComposeOnly
 )
 
 $ErrorActionPreference = 'Stop'
@@ -15,6 +18,8 @@ $worktreeClean = $false
 $apiPort = 5000
 $prometheusPort = 9090
 $grafanaPort = 3000
+$script:composeEnvironmentPath = $null
+$script:composeFilePath = $null
 
 function Get-RepositoryValue {
     param([string[]]$Arguments)
@@ -131,7 +136,7 @@ function Invoke-DockerCompose {
         [string]$LogPath
     )
 
-    return Invoke-CapturedStage -Name ($Arguments -join ' ') -FilePath 'docker' -Arguments (@('compose') + $Arguments) -LogPath $LogPath
+    return Invoke-CapturedStage -Name ($Arguments -join ' ') -FilePath 'docker' -Arguments (@('compose', '--env-file', $script:composeEnvironmentPath, '-f', $script:composeFilePath) + $Arguments) -LogPath $LogPath
 }
 
 function Wait-ForHttp {
@@ -238,6 +243,16 @@ function Get-SafeEnvironmentMetadata {
 try {
     $repositoryRoot = Get-RepositoryRoot
     Set-Location -LiteralPath $repositoryRoot
+    $script:composeEnvironmentPath = if ([System.IO.Path]::IsPathRooted($ComposeEnvironmentFile)) {
+        $ComposeEnvironmentFile
+    }
+    else {
+        Join-Path $repositoryRoot $ComposeEnvironmentFile
+    }
+    if (-not (Test-Path -LiteralPath $script:composeEnvironmentPath -PathType Leaf)) {
+        throw "Optional Compose environment file was not found: $script:composeEnvironmentPath. Copy .env.sqlserver2025.example to .env.sqlserver2025 or pass -ComposeEnvironmentFile <path>."
+    }
+    $script:composeFilePath = Join-Path $repositoryRoot 'docker-compose.sqlserver2025.yml'
 
     $shortSha = Get-RepositoryValue @('rev-parse', '--short=12', 'HEAD')
     $timestamp = [DateTimeOffset]::UtcNow.ToString('yyyyMMdd-HHmmssZ')
@@ -257,14 +272,21 @@ try {
         throw 'The worktree must be clean before an observability verification run.'
     }
 
-    # The verification run exercises the opt-in endpoint without modifying the user's .env file.
+    # The verification run exercises the opt-in endpoint without modifying the selected Compose environment file.
     $env:UNIPM_METRICS_ENABLED = 'true'
     $env:UNIPM_API_PORT = "$apiPort"
     $env:UNIPM_PROMETHEUS_PORT = "$prometheusPort"
     $env:UNIPM_GRAFANA_PORT = "$grafanaPort"
 
     $composeConfigExitCode = Invoke-DockerCompose -Arguments @('--profile', 'observability', 'config', '--quiet') -LogPath (Join-Path $artifactRoot 'compose-config.log')
-    if ($composeConfigExitCode -eq 0) {
+    if ($composeConfigExitCode -ne 0) {
+        throw 'Docker Compose configuration validation failed.'
+    }
+
+    if ($ValidateComposeOnly) {
+        $stageRecords.Add([pscustomobject][ordered]@{ name = 'compose-validation-only'; status = 'passed' })
+    }
+    else {
         $stackStarted = $true
         $composeUpExitCode = Invoke-DockerCompose -Arguments @('--profile', 'observability', 'up', '--build', '-d') -LogPath (Join-Path $artifactRoot 'compose-up.log')
         if ($composeUpExitCode -ne 0) {
@@ -315,11 +337,9 @@ try {
             Set-Content -LiteralPath (Join-Path $artifactRoot 'grafana-dashboard.json') -Encoding utf8
         $stageRecords.Add([pscustomobject][ordered]@{ name = 'stack-verification'; status = 'passed' })
     }
-    else {
-        throw 'Docker Compose configuration validation failed.'
-    }
 }
 catch {
+    Write-Error -ErrorAction Continue -Message $_.Exception.Message
     $overallExitCode = 1
     $scriptErrors.Add($_.Exception.Message)
 }

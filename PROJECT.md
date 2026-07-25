@@ -3,18 +3,19 @@
 ## Commands
 - **Build**: `dotnet build .\UniPM.slnx`
 - **Test**: `dotnet test .\UniPM.slnx --no-build` (or `dotnet test`)
-- **Docker Up**: `docker compose up --build -d`
-- **Start Database**: `docker compose up -d unipm-db`
-- **Start API**: `docker compose up -d unipm-api`
-- **Docker Down**: `docker compose down`
-- **Migration Add**: `dotnet ef migrations add <Name> --project server`
-- **Migration Update**: set `ConnectionStrings__DefaultConnection`, run `dotnet ef database update --project server`, then run `dotnet run --project server -- --rebuild-maintenance-search-documents` and, when embeddings are enabled, `dotnet run --project server -- --rebuild-maintenance-embeddings`.
+- **Native database baseline**: SQL Server 2019, Full-Text Search, compatibility level `150`.
+- **Migration Update**: set a process-only Windows Authentication
+  `ConnectionStrings__DefaultConnection`, run `dotnet ef database update --project server`, then run `dotnet run --project server -- --rebuild-maintenance-search-documents` and, when embeddings are enabled, `dotnet run --project server -- --rebuild-maintenance-embeddings`.
+- **Optional legacy Docker 2025 experiment**: `docker compose --env-file .env.sqlserver2025 -f docker-compose.sqlserver2025.yml up --build -d`
+- **Optional legacy Docker stop**: `docker compose --env-file .env.sqlserver2025 -f docker-compose.sqlserver2025.yml down`
 
 ## Active Context
-- **Architecture**: ASP.NET Core API + SQL Server 2025 (Docker local / IIS prod).
+- **Architecture**: ASP.NET Core API hosted on IIS + native Windows SQL Server
+  2019 with Full-Text Search. Docker is optional development tooling only.
 - **Core Entities**: `Asset`, `PreventiveMaintenanceSchedule`, and `InspectionRecord` are migrated.
 - **Completed**:
-  - Docker environment with SQL Server 2025 + Full-Text Search.
+  - Native SQL Server 2019 compatibility verification with Full-Text Search and
+    compatibility level `150`; see TEST-022.
   - Initial `InitialDomainSchema` migration.
   - Asset create, list, detail, and QR lookup endpoints.
   - Schedule create, list, and detail endpoints.
@@ -94,8 +95,10 @@ maintenance-history review workflow. Document embeddings belong to
 `MaintenanceSearchDocumentEmbeddings`, are invalidated when `SearchText`
 changes, and are regenerated only by the explicit embedding rebuild command.
 Query vectors are generated transiently and are never stored. The current MVP
-uses application-layer cosine similarity and no separate vector database. The
-embedding provider is disabled by default and remote providers require an
+stores versioned serialized embeddings alongside relational document metadata,
+filters a bounded SQL candidate set, and uses application-layer cosine
+similarity. It requires neither native SQL Server vector features nor a separate
+vector database. The embedding provider is disabled by default and remote providers require an
 explicit configuration flag and privacy review.
 
 Internal fused retrieval combines the lexical and semantic ranked outputs with
@@ -159,3 +162,11 @@ dashboards remain out of scope. Inspection integrity, retrieval/test
 organization, sanitizer-boundary documentation, the web foundation, browser
 authentication, asset registry, schedule workflows, and read-only inspection
 review are complete. The next web candidate requires explicit approval.
+
+## Manuscript Platform Guidance
+
+Use the repository-controlled wording in
+[`reference/planning/manuscript-platform-baseline.md`](reference/planning/manuscript-platform-baseline.md)
+when updating the capstone manuscript. It records the accepted SQL Server 2019,
+Full-Text Search, serialized-embedding, IIS deployment, and optional-Docker
+boundary without claiming IIS production readiness.

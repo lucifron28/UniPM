@@ -1,3 +1,5 @@
+# Optional legacy development image. UniPM's verified baseline is native
+# Windows SQL Server 2019 with Full-Text Search, not this Docker image.
 FROM mcr.microsoft.com/mssql/server:2025-latest
 
 USER root

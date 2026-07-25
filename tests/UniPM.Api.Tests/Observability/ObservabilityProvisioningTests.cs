@@ -54,7 +54,7 @@ public sealed class ObservabilityProvisioningTests
     [Fact]
     public void Compose_profile_keeps_monitoring_optional_and_images_pinned()
     {
-        var compose = ReadRepositoryFile("docker-compose.yml");
+        var compose = ReadRepositoryFile("docker-compose.sqlserver2025.yml");
 
         Assert.Contains("prometheus:", compose, StringComparison.Ordinal);
         Assert.Contains("grafana:", compose, StringComparison.Ordinal);
