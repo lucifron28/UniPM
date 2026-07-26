@@ -12,6 +12,60 @@ namespace UniPM.Api.Tests.Retrieval;
 public sealed class ReferenceDocumentSqlServerTests
 {
     [SqlServer2019Fact]
+    public async Task Institutional_semantic_retrieval_uses_current_section_embeddings_without_persisting_the_query()
+    {
+        await using var database = await SqlServerTestDatabase.CreateAsync(RequireSqlServer2019Connection());
+        var factory = new TestContextFactory(database.ConnectionString);
+        await using (var context = factory.CreateDbContext())
+        {
+            await context.Database.MigrateAsync();
+        }
+
+        var seeder = new SyntheticReferenceDocumentSeeder(factory, new ReferenceDocumentRegistrationService(factory));
+        await seeder.SeedAsync();
+        var embeddingService = new DeterministicEmbeddingService(_ => [1d, 0d]);
+        var descriptor = embeddingService.Descriptor;
+        var profile = InstitutionalReferenceEmbeddingInput.BuildProfile(descriptor);
+        await using (var context = factory.CreateDbContext())
+        {
+            var sections = await context.ReferenceDocumentSections
+                .Include(section => section.ReferenceDocument)
+                .ToListAsync();
+            foreach (var section in sections)
+            {
+                context.ReferenceDocumentSectionEmbeddings.Add(new ReferenceDocumentSectionEmbedding
+                {
+                    ReferenceDocumentSectionId = section.Id,
+                    ProviderKey = descriptor.ProviderKey,
+                    ModelKey = descriptor.ModelKey,
+                    EmbeddingProfile = profile,
+                    Dimensions = 2,
+                    VectorJson = "[1,0]",
+                    SectionHash = InstitutionalReferenceEmbeddingInput.ComputeSectionSourceHash(
+                        section,
+                        section.ReferenceDocument!),
+                    GeneratedAt = DateTimeOffset.UtcNow
+                });
+            }
+
+            await context.SaveChangesAsync();
+        }
+
+        var retriever = new SqlServerSemanticInstitutionalReferenceRetriever(factory, embeddingService);
+        var results = await retriever.SearchAsync(new InstitutionalReferenceSearchRequest(
+            "panel",
+            "fire-alarm",
+            new DateOnly(2026, 1, 1)));
+
+        Assert.NotEmpty(results);
+        Assert.All(results, result => Assert.Equal("InstitutionalReference", result.EvidenceSourceGroup));
+        Assert.DoesNotContain(results, result => result.SourceKey == "FIC-ALM-FUT");
+        Assert.Single(embeddingService.Batches);
+        await using var verification = factory.CreateDbContext();
+        Assert.Equal(9, await verification.ReferenceDocumentSectionEmbeddings.CountAsync());
+    }
+
+    [SqlServer2019Fact]
     public async Task Institutional_lexical_retrieval_returns_only_active_applicable_source_locatable_sections()
     {
         await using var database = await SqlServerTestDatabase.CreateAsync(RequireSqlServer2019Connection());
