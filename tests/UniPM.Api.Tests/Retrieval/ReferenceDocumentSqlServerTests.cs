@@ -4,12 +4,42 @@ using Microsoft.EntityFrameworkCore;
 using UniPM.Api.Data;
 using UniPM.Api.Data.Seeding;
 using UniPM.Api.Features.ReferenceDocuments;
+using UniPM.Api.Features.Retrieval;
 using UniPM.Api.Models;
 
 namespace UniPM.Api.Tests.Retrieval;
 
 public sealed class ReferenceDocumentSqlServerTests
 {
+    [SqlServer2019Fact]
+    public async Task Institutional_lexical_retrieval_returns_only_active_applicable_source_locatable_sections()
+    {
+        await using var database = await SqlServerTestDatabase.CreateAsync(RequireSqlServer2019Connection());
+        var factory = new TestContextFactory(database.ConnectionString);
+        await using (var context = factory.CreateDbContext())
+        {
+            await context.Database.MigrateAsync();
+        }
+
+        var seeder = new SyntheticReferenceDocumentSeeder(factory, new ReferenceDocumentRegistrationService(factory));
+        await seeder.SeedAsync();
+        Assert.True(await WaitForContainsAsync(database.ConnectionString, "panel"));
+
+        var retriever = new SqlServerLexicalInstitutionalReferenceRetriever(factory);
+        var results = await retriever.SearchAsync(new InstitutionalReferenceSearchRequest(
+            "panel",
+            "fire-alarm",
+            new DateOnly(2026, 1, 1)));
+
+        var result = Assert.Single(results);
+        Assert.Equal("InstitutionalReference", result.EvidenceSourceGroup);
+        Assert.Equal("FIC-SAF-001", result.SourceKey);
+        Assert.Equal("R2", result.Revision);
+        Assert.NotEmpty(result.SourceLocator);
+        Assert.NotNull(result.PageStart);
+        Assert.DoesNotContain(results, item => item.SourceKey == "FIC-ALM-FUT");
+    }
+
     [SqlServer2019Fact]
     public async Task Fixture_seed_preserves_unrelated_synthetic_records_and_reference_sections_are_full_text_searchable()
     {

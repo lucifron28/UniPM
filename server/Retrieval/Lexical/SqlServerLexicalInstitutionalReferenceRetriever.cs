@@ -76,7 +76,8 @@ internal sealed class SqlServerLexicalInstitutionalReferenceRetriever(
                               ON columns.object_id = indexColumn.object_id
                              AND columns.column_id = indexColumn.column_id
                           WHERE indexColumn.object_id = fullTextIndex.object_id
-                            AND columns.name IN (N'Heading', N'SectionText')) THEN 0
+                            AND columns.name IN (N'Heading', N'SectionText'))
+                ) THEN 0
                 ELSE 1
             END);
         """;
