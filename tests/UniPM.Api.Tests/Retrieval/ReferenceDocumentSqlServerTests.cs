@@ -23,7 +23,7 @@ public sealed class ReferenceDocumentSqlServerTests
         var service = new ReferenceDocumentRegistrationService(factory);
         var seeder = new SyntheticReferenceDocumentSeeder(factory, service);
         var seeded = await seeder.SeedAsync();
-        Assert.Equal(3, seeded.Documents);
+        Assert.Equal(7, seeded.Documents);
 
         await using (var context = factory.CreateDbContext())
         {

@@ -7,6 +7,7 @@ internal enum SyntheticMaintenanceCommand
     Reset,
     Rebuild,
     RebuildEmbeddings,
+    RebuildInstitutionalReferenceEmbeddings,
     Migrate,
     SeedDevelopmentUsers,
     SeedReferenceDocuments,
@@ -39,6 +40,11 @@ internal static class SyntheticMaintenanceCommandParser
         if (arguments.Contains("--rebuild-maintenance-embeddings"))
         {
             requestedCommands.Add(SyntheticMaintenanceCommand.RebuildEmbeddings);
+        }
+
+        if (arguments.Contains("--rebuild-institutional-reference-embeddings"))
+        {
+            requestedCommands.Add(SyntheticMaintenanceCommand.RebuildInstitutionalReferenceEmbeddings);
         }
 
         if (arguments.Contains("--migrate-database"))

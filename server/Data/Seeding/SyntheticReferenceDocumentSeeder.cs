@@ -97,7 +97,7 @@ internal sealed class SyntheticReferenceDocumentSeeder(
 
     private static void ValidateDataset(SyntheticReferenceDocumentDataset dataset)
     {
-        if (!string.Equals(dataset.DatasetVersion, "1.0.0", StringComparison.Ordinal)
+        if (!string.Equals(dataset.DatasetVersion, "1.1.0", StringComparison.Ordinal)
             || dataset.Documents.Count == 0
             || dataset.Documents.Any(document => document.Id == Guid.Empty
                 || !document.Title.StartsWith("Fictional", StringComparison.Ordinal)
