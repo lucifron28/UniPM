@@ -17,6 +17,7 @@ internal sealed class SqlServerSemanticInstitutionalReferenceRetriever(
         InstitutionalReferenceSearchRequest request,
         CancellationToken cancellationToken = default)
     {
+        diagnostics?.Clear();
         var query = InstitutionalReferenceQueryBuilder.Build(request);
         var descriptor = embeddingService.Descriptor;
         if (!descriptor.Enabled || string.IsNullOrWhiteSpace(descriptor.ProviderKey)
@@ -201,7 +202,7 @@ internal sealed class SqlServerSemanticInstitutionalReferenceRetriever(
         var applicability = document.Applicabilities
             .Where(item => item.AssetCategory == category || item.AssetCategory is null)
             .OrderBy(item => item.AssetCategory is null)
-            .ThenBy(item => item.Id)
+            .ThenBy(item => item.ScopeLabel ?? string.Empty, StringComparer.Ordinal)
             .First();
         return new(
             document.Id,

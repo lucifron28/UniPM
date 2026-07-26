@@ -5,6 +5,14 @@ internal sealed class InstitutionalReferenceRetrievalDiagnostics
     private readonly object gate = new();
     private InstitutionalReferenceCandidateDiagnostics latest = new(0, false, 0);
 
+    public void Clear()
+    {
+        lock (gate)
+        {
+            latest = new InstitutionalReferenceCandidateDiagnostics(0, false, 0);
+        }
+    }
+
     public void Record(int candidateCount, bool candidateCapReached, int invalidVectorCount)
     {
         lock (gate)
@@ -17,7 +25,9 @@ internal sealed class InstitutionalReferenceRetrievalDiagnostics
     {
         lock (gate)
         {
-            return latest;
+            var current = latest;
+            latest = new InstitutionalReferenceCandidateDiagnostics(0, false, 0);
+            return current;
         }
     }
 }

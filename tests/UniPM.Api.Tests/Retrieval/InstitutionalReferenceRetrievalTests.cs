@@ -70,4 +70,24 @@ public sealed class InstitutionalReferenceRetrievalTests
 
         Assert.Equal("InstitutionalReference", result.EvidenceSourceGroup);
     }
+
+    [Fact]
+    public async Task Semantic_diagnostics_are_cleared_before_validation_and_consumed_once()
+    {
+        var diagnostics = new InstitutionalReferenceRetrievalDiagnostics();
+        diagnostics.Record(500, true, 2);
+        var retriever = new SqlServerSemanticInstitutionalReferenceRetriever(
+            null!,
+            new DeterministicEmbeddingService(_ => [1d, 0d]),
+            diagnostics);
+
+        await Assert.ThrowsAsync<InstitutionalReferenceQueryValidationException>(() =>
+            retriever.SearchAsync(new InstitutionalReferenceSearchRequest(
+                " ",
+                "fire-alarm",
+                new DateOnly(2026, 1, 1))));
+
+        Assert.Equal(new InstitutionalReferenceCandidateDiagnostics(0, false, 0), diagnostics.Consume());
+        Assert.Equal(new InstitutionalReferenceCandidateDiagnostics(0, false, 0), diagnostics.Consume());
+    }
 }

@@ -131,12 +131,26 @@ internal sealed class InstitutionalReferenceEmbeddingIndexer(
         string sourceHash,
         EmbeddingServiceDescriptor descriptor,
         string profile)
-        => embedding is not null
-            && string.Equals(embedding.SectionHash, sourceHash, StringComparison.Ordinal)
-            && string.Equals(embedding.ProviderKey, descriptor.ProviderKey, StringComparison.Ordinal)
-            && string.Equals(embedding.ModelKey, descriptor.ModelKey, StringComparison.Ordinal)
-            && string.Equals(embedding.EmbeddingProfile, profile, StringComparison.Ordinal)
-            && embedding.Dimensions == descriptor.Dimensions;
+    {
+        if (embedding is null
+            || !string.Equals(embedding.SectionHash, sourceHash, StringComparison.Ordinal)
+            || !string.Equals(embedding.ProviderKey, descriptor.ProviderKey, StringComparison.Ordinal)
+            || !string.Equals(embedding.ModelKey, descriptor.ModelKey, StringComparison.Ordinal)
+            || !string.Equals(embedding.EmbeddingProfile, profile, StringComparison.Ordinal)
+            || embedding.Dimensions != descriptor.Dimensions)
+        {
+            return false;
+        }
+
+        try
+        {
+            return EmbeddingVectorCodec.Parse(embedding.VectorJson, embedding.Dimensions).Length == descriptor.Dimensions;
+        }
+        catch (EmbeddingVectorValidationException)
+        {
+            return false;
+        }
+    }
 
     private sealed record Pending(
         ReferenceDocumentSection Section,

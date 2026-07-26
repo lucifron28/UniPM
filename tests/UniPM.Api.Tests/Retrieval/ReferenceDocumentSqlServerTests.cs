@@ -1,6 +1,7 @@
 using System.Data;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using UniPM.Api.Data;
 using UniPM.Api.Data.Seeding;
 using UniPM.Api.Features.ReferenceDocuments;
@@ -12,7 +13,7 @@ namespace UniPM.Api.Tests.Retrieval;
 public sealed class ReferenceDocumentSqlServerTests
 {
     [SqlServer2019Fact]
-    public async Task Institutional_semantic_retrieval_uses_current_section_embeddings_without_persisting_the_query()
+    public async Task Institutional_embedding_rebuild_indexes_future_sections_and_refreshes_stale_vectors()
     {
         await using var database = await SqlServerTestDatabase.CreateAsync(RequireSqlServer2019Connection());
         var factory = new TestContextFactory(database.ConnectionString);
@@ -24,32 +25,40 @@ public sealed class ReferenceDocumentSqlServerTests
         var seeder = new SyntheticReferenceDocumentSeeder(factory, new ReferenceDocumentRegistrationService(factory));
         await seeder.SeedAsync();
         var embeddingService = new DeterministicEmbeddingService(_ => [1d, 0d]);
-        var descriptor = embeddingService.Descriptor;
-        var profile = InstitutionalReferenceEmbeddingInput.BuildProfile(descriptor);
+        var indexer = new InstitutionalReferenceEmbeddingIndexer(
+            factory,
+            embeddingService,
+            Options.Create(new EmbeddingOptions { MaxBatchSize = 4 }));
+        var initial = await indexer.RebuildAsync();
+        Assert.Equal(5, initial.Total);
+        Assert.Equal(5, initial.Created);
+        Assert.Equal(0, initial.Updated);
+        Assert.Equal(0, initial.Skipped);
+        Assert.Equal(0, initial.Failed);
+
+        var current = await indexer.RebuildAsync();
+        Assert.Equal(5, current.Total);
+        Assert.Equal(0, current.Created);
+        Assert.Equal(0, current.Updated);
+        Assert.Equal(5, current.Skipped);
+        Assert.Equal(0, current.Failed);
+
         await using (var context = factory.CreateDbContext())
         {
-            var sections = await context.ReferenceDocumentSections
-                .Include(section => section.ReferenceDocument)
-                .ToListAsync();
-            foreach (var section in sections)
-            {
-                context.ReferenceDocumentSectionEmbeddings.Add(new ReferenceDocumentSectionEmbedding
-                {
-                    ReferenceDocumentSectionId = section.Id,
-                    ProviderKey = descriptor.ProviderKey,
-                    ModelKey = descriptor.ModelKey,
-                    EmbeddingProfile = profile,
-                    Dimensions = 2,
-                    VectorJson = "[1,0]",
-                    SectionHash = InstitutionalReferenceEmbeddingInput.ComputeSectionSourceHash(
-                        section,
-                        section.ReferenceDocument!),
-                    GeneratedAt = DateTimeOffset.UtcNow
-                });
-            }
-
+            var stale = await context.ReferenceDocumentSectionEmbeddings
+                .OrderBy(embedding => embedding.ReferenceDocumentSectionId)
+                .FirstAsync();
+            stale.EmbeddingProfile = "stale-profile";
+            stale.Dimensions = 3;
             await context.SaveChangesAsync();
         }
+
+        var refreshed = await indexer.RebuildAsync();
+        Assert.Equal(5, refreshed.Total);
+        Assert.Equal(0, refreshed.Created);
+        Assert.Equal(1, refreshed.Updated);
+        Assert.Equal(4, refreshed.Skipped);
+        Assert.Equal(0, refreshed.Failed);
 
         var retriever = new SqlServerSemanticInstitutionalReferenceRetriever(factory, embeddingService);
         var results = await retriever.SearchAsync(new InstitutionalReferenceSearchRequest(
@@ -60,9 +69,54 @@ public sealed class ReferenceDocumentSqlServerTests
         Assert.NotEmpty(results);
         Assert.All(results, result => Assert.Equal("InstitutionalReference", result.EvidenceSourceGroup));
         Assert.DoesNotContain(results, result => result.SourceKey == "FIC-ALM-FUT");
-        Assert.Single(embeddingService.Batches);
+        Assert.Equal(5, embeddingService.Batches.Count);
         await using var verification = factory.CreateDbContext();
-        Assert.Equal(9, await verification.ReferenceDocumentSectionEmbeddings.CountAsync());
+        Assert.Equal(5, await verification.ReferenceDocumentSectionEmbeddings.CountAsync());
+        Assert.NotNull(await verification.ReferenceDocumentSectionEmbeddings
+            .Include(embedding => embedding.ReferenceDocumentSection)
+            .ThenInclude(section => section!.ReferenceDocument)
+            .SingleOrDefaultAsync(embedding => embedding.ReferenceDocumentSection!.ReferenceDocument!.SourceKey == "FIC-ALM-FUT"));
+    }
+
+    [SqlServer2019Fact]
+    public Task Institutional_semantic_candidate_cap_is_false_for_499_eligible_candidates()
+        => AssertInstitutionalCandidateCapAsync(499, false);
+
+    [SqlServer2019Fact]
+    public Task Institutional_semantic_candidate_cap_is_false_for_exactly_500_eligible_candidates()
+        => AssertInstitutionalCandidateCapAsync(500, false);
+
+    [SqlServer2019Fact]
+    public Task Institutional_semantic_candidate_cap_is_true_for_501_eligible_candidates()
+        => AssertInstitutionalCandidateCapAsync(501, true);
+
+    private static async Task AssertInstitutionalCandidateCapAsync(
+        int sectionCount,
+        bool expectedCapReached)
+    {
+        await using var database = await SqlServerTestDatabase.CreateAsync(RequireSqlServer2019Connection());
+        var factory = new TestContextFactory(database.ConnectionString);
+        await using (var context = factory.CreateDbContext())
+        {
+            await context.Database.MigrateAsync();
+        }
+
+        var embeddingService = new DeterministicEmbeddingService(_ => [1d, 0d]);
+        await SeedSemanticCandidatesAsync(factory, sectionCount, embeddingService.Descriptor);
+        var diagnostics = new InstitutionalReferenceRetrievalDiagnostics();
+        var retriever = new SqlServerSemanticInstitutionalReferenceRetriever(factory, embeddingService, diagnostics);
+
+        var results = await retriever.SearchAsync(new InstitutionalReferenceSearchRequest(
+            "panel",
+            "fire-alarm",
+            new DateOnly(2026, 1, 1)));
+
+        Assert.NotEmpty(results);
+        var recorded = diagnostics.Consume();
+        Assert.Equal(Math.Min(sectionCount, SqlServerSemanticInstitutionalReferenceRetriever.MaxCandidateCount),
+            recorded.CandidateCount);
+        Assert.Equal(expectedCapReached, recorded.CandidateCapReached);
+        Assert.Equal(0, recorded.InvalidVectorCount);
     }
 
     [SqlServer2019Fact]
@@ -100,6 +154,7 @@ public sealed class ReferenceDocumentSqlServerTests
         Assert.Contains(categoryWide, item =>
             item.ApplicabilityMatch == InstitutionalReferenceApplicabilityMatch.CategoryWide
             && !string.IsNullOrWhiteSpace(item.MatchedScopeLabel));
+        Assert.Equal("Category-wide fictional observation recording", categoryWide[0].MatchedScopeLabel);
     }
 
     [SqlServer2019Fact]
@@ -263,6 +318,72 @@ public sealed class ReferenceDocumentSqlServerTests
         var section = await context.ReferenceDocumentSections.SingleAsync();
         context.ReferenceDocumentSectionEmbeddings.Add(NewEmbedding(sectionId, section.SectionHash, dimensions, vectorJson));
         await Assert.ThrowsAsync<DbUpdateException>(() => context.SaveChangesAsync());
+    }
+
+    private static async Task SeedSemanticCandidatesAsync(
+        TestContextFactory factory,
+        int sectionCount,
+        EmbeddingServiceDescriptor descriptor)
+    {
+        var document = new ReferenceDocument
+        {
+            Id = Guid.NewGuid(),
+            SourceType = ReferenceDocumentSourceTypeCatalog.Institutional,
+            SourceKey = "FIC-CAP-001",
+            Title = "Fictional semantic candidate cap document",
+            PublisherAuthority = "Fictional University General Services Office",
+            Revision = "R1",
+            LifecycleStatus = ReferenceDocumentLifecycleCatalog.Active,
+            EffectiveDate = new DateOnly(2025, 1, 1),
+            ImportedAt = DateTimeOffset.UtcNow,
+            ContentChecksum = "FICCAP001",
+            IsSynthetic = true,
+            SyntheticFixtureKey = "semantic-candidate-cap"
+        };
+        document.Applicabilities.Add(new ReferenceDocumentApplicability
+        {
+            Id = Guid.NewGuid(),
+            ReferenceDocumentId = document.Id,
+            AssetCategory = "fire-alarm",
+            ScopeLabel = "Fictional fire alarm cap scope"
+        });
+        for (var index = 0; index < sectionCount; index++)
+        {
+            document.Sections.Add(new ReferenceDocumentSection
+            {
+                Id = Guid.NewGuid(),
+                ReferenceDocumentId = document.Id,
+                Sequence = index,
+                Heading = $"Fictional panel observation {index}",
+                SourceLocator = $"FIC-CAP-001 R1, section {index + 1}",
+                SectionText = "Fictional alarm panel observation for semantic candidate-cap verification.",
+                SectionHash = $"FICCAP{index:D4}",
+                CreatedAt = DateTimeOffset.UtcNow,
+                UpdatedAt = DateTimeOffset.UtcNow
+            });
+        }
+
+        await using var context = factory.CreateDbContext();
+        context.ReferenceDocuments.Add(document);
+        await context.SaveChangesAsync();
+
+        var profile = InstitutionalReferenceEmbeddingInput.BuildProfile(descriptor);
+        foreach (var section in document.Sections)
+        {
+            context.ReferenceDocumentSectionEmbeddings.Add(new ReferenceDocumentSectionEmbedding
+            {
+                ReferenceDocumentSectionId = section.Id,
+                ProviderKey = descriptor.ProviderKey,
+                ModelKey = descriptor.ModelKey,
+                EmbeddingProfile = profile,
+                Dimensions = descriptor.Dimensions!.Value,
+                VectorJson = "[1,0]",
+                SectionHash = InstitutionalReferenceEmbeddingInput.ComputeSectionSourceHash(section, document),
+                GeneratedAt = DateTimeOffset.UtcNow
+            });
+        }
+
+        await context.SaveChangesAsync();
     }
 
     private static async Task AssertInvalidSupersessionAsync(

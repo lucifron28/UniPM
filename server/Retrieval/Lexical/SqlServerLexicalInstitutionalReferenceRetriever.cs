@@ -45,7 +45,7 @@ internal sealed class SqlServerLexicalInstitutionalReferenceRetriever(
             WHERE applicability.ReferenceDocumentId = document.Id
               AND (applicability.AssetCategory = @assetCategory OR applicability.AssetCategory IS NULL)
             ORDER BY CASE WHEN applicability.AssetCategory = @assetCategory THEN 0 ELSE 1 END,
-                     applicability.Id
+                     COALESCE(applicability.ScopeLabel, N'') ASC
         ) AS match
         WHERE document.SourceType = N'Institutional'
           AND document.LifecycleStatus = N'Active'
