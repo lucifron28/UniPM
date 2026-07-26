@@ -43,7 +43,8 @@ internal abstract record InstitutionalReferenceSearchResult(
     string SourceLocator,
     int? PageStart,
     int? PageEnd,
-    string ApplicableAssetCategory)
+    InstitutionalReferenceApplicabilityMatch ApplicabilityMatch,
+    string? MatchedScopeLabel)
 {
     public string EvidenceSourceGroup => EvidenceSourceGroupCatalog.InstitutionalReference;
 }
@@ -62,7 +63,8 @@ internal sealed record InstitutionalReferenceLexicalSearchResult(
     string SourceLocator,
     int? PageStart,
     int? PageEnd,
-    string ApplicableAssetCategory,
+    InstitutionalReferenceApplicabilityMatch ApplicabilityMatch,
+    string? MatchedScopeLabel,
     int RawLexicalRank)
     : InstitutionalReferenceSearchResult(
         DocumentId,
@@ -78,7 +80,8 @@ internal sealed record InstitutionalReferenceLexicalSearchResult(
         SourceLocator,
         PageStart,
         PageEnd,
-        ApplicableAssetCategory);
+        ApplicabilityMatch,
+        MatchedScopeLabel);
 
 internal sealed record InstitutionalReferenceSemanticSearchResult(
     Guid DocumentId,
@@ -94,7 +97,8 @@ internal sealed record InstitutionalReferenceSemanticSearchResult(
     string SourceLocator,
     int? PageStart,
     int? PageEnd,
-    string ApplicableAssetCategory,
+    InstitutionalReferenceApplicabilityMatch ApplicabilityMatch,
+    string? MatchedScopeLabel,
     double RawSemanticScore)
     : InstitutionalReferenceSearchResult(
         DocumentId,
@@ -110,7 +114,14 @@ internal sealed record InstitutionalReferenceSemanticSearchResult(
         SourceLocator,
         PageStart,
         PageEnd,
-        ApplicableAssetCategory);
+        ApplicabilityMatch,
+        MatchedScopeLabel);
+
+internal enum InstitutionalReferenceApplicabilityMatch
+{
+    CategorySpecific,
+    CategoryWide
+}
 
 internal enum InstitutionalReferenceRetrievalFailureKind
 {

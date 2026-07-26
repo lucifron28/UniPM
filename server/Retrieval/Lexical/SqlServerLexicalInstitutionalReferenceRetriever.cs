@@ -28,6 +28,8 @@ internal sealed class SqlServerLexicalInstitutionalReferenceRetriever(
             section.SourceLocator,
             section.PageStart,
             section.PageEnd,
+            match.AssetCategory,
+            match.ScopeLabel,
             CONVERT(int, matches.[RANK]) AS RawLexicalRank
         FROM CONTAINSTABLE(
             [dbo].[ReferenceDocumentSections],
@@ -37,6 +39,14 @@ internal sealed class SqlServerLexicalInstitutionalReferenceRetriever(
             ON section.Id = matches.[KEY]
         INNER JOIN [dbo].[ReferenceDocuments] AS document
             ON document.Id = section.ReferenceDocumentId
+        CROSS APPLY (
+            SELECT TOP (1) applicability.AssetCategory, applicability.ScopeLabel
+            FROM [dbo].[ReferenceDocumentApplicabilities] AS applicability
+            WHERE applicability.ReferenceDocumentId = document.Id
+              AND (applicability.AssetCategory = @assetCategory OR applicability.AssetCategory IS NULL)
+            ORDER BY CASE WHEN applicability.AssetCategory = @assetCategory THEN 0 ELSE 1 END,
+                     applicability.Id
+        ) AS match
         WHERE document.SourceType = N'Institutional'
           AND document.LifecycleStatus = N'Active'
           AND (document.EffectiveDate IS NULL OR document.EffectiveDate <= @asOfDate)
@@ -76,7 +86,15 @@ internal sealed class SqlServerLexicalInstitutionalReferenceRetriever(
                               ON columns.object_id = indexColumn.object_id
                              AND columns.column_id = indexColumn.column_id
                           WHERE indexColumn.object_id = fullTextIndex.object_id
-                            AND columns.name IN (N'Heading', N'SectionText'))
+                            AND columns.name = N'Heading')
+                      AND EXISTS (
+                          SELECT 1
+                          FROM sys.fulltext_index_columns AS indexColumn
+                          INNER JOIN sys.columns AS columns
+                              ON columns.object_id = indexColumn.object_id
+                             AND columns.column_id = indexColumn.column_id
+                          WHERE indexColumn.object_id = fullTextIndex.object_id
+                            AND columns.name = N'SectionText')
                 ) THEN 0
                 ELSE 1
             END);
@@ -126,8 +144,11 @@ internal sealed class SqlServerLexicalInstitutionalReferenceRetriever(
                     reader.GetString(10),
                     reader.IsDBNull(11) ? null : reader.GetInt32(11),
                     reader.IsDBNull(12) ? null : reader.GetInt32(12),
-                    query.AssetCategory,
-                    reader.GetInt32(13)));
+                    reader.IsDBNull(13)
+                        ? InstitutionalReferenceApplicabilityMatch.CategoryWide
+                        : InstitutionalReferenceApplicabilityMatch.CategorySpecific,
+                    reader.IsDBNull(14) ? null : reader.GetString(14),
+                    reader.GetInt32(15)));
             }
 
             return results;

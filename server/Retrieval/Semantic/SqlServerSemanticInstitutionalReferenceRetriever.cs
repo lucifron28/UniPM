@@ -103,6 +103,7 @@ internal sealed class SqlServerSemanticInstitutionalReferenceRetriever(
         var candidatesQuery = context.ReferenceDocumentSections
             .AsNoTracking()
             .Include(section => section.ReferenceDocument)
+            .ThenInclude(document => document!.Applicabilities)
             .Include(section => section.Embedding)
             .Where(section => section.ReferenceDocument != null
                 && section.ReferenceDocument.SourceType == ReferenceDocumentSourceTypeCatalog.Institutional
@@ -196,7 +197,13 @@ internal sealed class SqlServerSemanticInstitutionalReferenceRetriever(
         ReferenceDocument document,
         string category,
         double score)
-        => new(
+    {
+        var applicability = document.Applicabilities
+            .Where(item => item.AssetCategory == category || item.AssetCategory is null)
+            .OrderBy(item => item.AssetCategory is null)
+            .ThenBy(item => item.Id)
+            .First();
+        return new(
             document.Id,
             section.Id,
             document.SourceKey,
@@ -210,8 +217,12 @@ internal sealed class SqlServerSemanticInstitutionalReferenceRetriever(
             section.SourceLocator,
             section.PageStart,
             section.PageEnd,
-            category,
+            applicability.AssetCategory is null
+                ? InstitutionalReferenceApplicabilityMatch.CategoryWide
+                : InstitutionalReferenceApplicabilityMatch.CategorySpecific,
+            applicability.ScopeLabel,
             score);
+    }
 
     private sealed record Candidate(ReferenceDocumentSection Section, ReferenceDocument Document, double[] Vector);
     private sealed record CandidateLoad(

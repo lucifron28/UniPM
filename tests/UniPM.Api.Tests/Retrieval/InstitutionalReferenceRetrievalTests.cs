@@ -65,7 +65,8 @@ public sealed class InstitutionalReferenceRetrievalTests
     {
         InstitutionalReferenceSearchResult result = new InstitutionalReferenceLexicalSearchResult(
             Guid.NewGuid(), Guid.NewGuid(), "FIC-001", "R1", "Fictional", "Fictional Authority",
-            null, 0, "Heading", "Text", "Locator", 1, 1, "fire-alarm", 100);
+            null, 0, "Heading", "Text", "Locator", 1, 1,
+            InstitutionalReferenceApplicabilityMatch.CategorySpecific, "Fictional scope", 100);
 
         Assert.Equal("InstitutionalReference", result.EvidenceSourceGroup);
     }

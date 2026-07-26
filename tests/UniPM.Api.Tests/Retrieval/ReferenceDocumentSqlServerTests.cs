@@ -92,6 +92,14 @@ public sealed class ReferenceDocumentSqlServerTests
         Assert.NotEmpty(result.SourceLocator);
         Assert.NotNull(result.PageStart);
         Assert.DoesNotContain(results, item => item.SourceKey == "FIC-ALM-FUT");
+
+        var categoryWide = await retriever.SearchAsync(new InstitutionalReferenceSearchRequest(
+            "authorized personnel",
+            "water-drinking-station",
+            new DateOnly(2026, 1, 1)));
+        Assert.Contains(categoryWide, item =>
+            item.ApplicabilityMatch == InstitutionalReferenceApplicabilityMatch.CategoryWide
+            && !string.IsNullOrWhiteSpace(item.MatchedScopeLabel));
     }
 
     [SqlServer2019Fact]

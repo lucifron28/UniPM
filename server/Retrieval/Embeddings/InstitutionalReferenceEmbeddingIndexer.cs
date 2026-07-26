@@ -39,7 +39,6 @@ internal sealed class InstitutionalReferenceEmbeddingIndexer(
         }
 
         var profile = InstitutionalReferenceEmbeddingInput.BuildProfile(descriptor);
-        var asOfDate = DateOnly.FromDateTime(DateTime.UtcNow);
         await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
         var query = context.ReferenceDocumentSections
             .Include(section => section.ReferenceDocument)
@@ -47,7 +46,6 @@ internal sealed class InstitutionalReferenceEmbeddingIndexer(
             .Where(section => section.ReferenceDocument != null
                 && section.ReferenceDocument.SourceType == ReferenceDocumentSourceTypeCatalog.Institutional
                 && section.ReferenceDocument.LifecycleStatus == ReferenceDocumentLifecycleCatalog.Active
-                && (section.ReferenceDocument.EffectiveDate == null || section.ReferenceDocument.EffectiveDate <= asOfDate)
                 && section.ReferenceDocument.Applicabilities.Any());
 
         var total = await query.CountAsync(cancellationToken);
