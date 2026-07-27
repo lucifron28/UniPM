@@ -2,8 +2,9 @@ namespace UniPM.Api.Models;
 
 /// <summary>
 /// Stores the acknowledgement record associated with one preventive-maintenance form.
-/// Signature data is optional so an authenticated acknowledgement can remain distinct
-/// from a future signature-capture workflow.
+/// The acknowledgement is captured through the skilled worker's authenticated mobile
+/// session; the signatory is recorded as form data and is not the authenticated user.
+/// Signature fields remain nullable at this persistence-foundation stage.
 /// </summary>
 public sealed class PreventiveMaintenanceAcknowledgement
 {

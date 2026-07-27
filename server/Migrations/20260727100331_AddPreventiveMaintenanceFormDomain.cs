@@ -46,6 +46,7 @@ namespace UniPM.Api.Migrations
                     table.CheckConstraint("CK_PreventiveMaintenanceForms_PeriodType_Allowed", "[PeriodType] IN ('Quarter', 'Semester', 'Annual', 'Custom')");
                     table.CheckConstraint("CK_PreventiveMaintenanceForms_Quarter_Allowed", "[Quarter] IS NULL OR [Quarter] IN ('Q1', 'Q2', 'Q3', 'Q4')");
                     table.CheckConstraint("CK_PreventiveMaintenanceForms_Semester_Allowed", "[Semester] IS NULL OR [Semester] IN ('First', 'Second', 'Summer')");
+                    table.CheckConstraint("CK_PreventiveMaintenanceForms_AcademicYear_Format", "[AcademicYear] IS NULL OR [AcademicYear] LIKE '[0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9]'");
                     table.CheckConstraint("CK_PreventiveMaintenanceForms_Status_Allowed", "[Status] IN ('Draft', 'Submitted', 'Acknowledged')");
                 });
 

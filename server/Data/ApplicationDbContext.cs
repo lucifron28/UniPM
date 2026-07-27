@@ -171,6 +171,9 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
                 "CK_PreventiveMaintenanceForms_Semester_Allowed",
                 $"[Semester] IS NULL OR [Semester] IN ({SqlIn(ScheduleSemesterCatalog.PersistedValues)})");
             table.HasCheckConstraint(
+                "CK_PreventiveMaintenanceForms_AcademicYear_Format",
+                "[AcademicYear] IS NULL OR [AcademicYear] LIKE '[0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9]'");
+            table.HasCheckConstraint(
                 "CK_PreventiveMaintenanceForms_Status_Allowed",
                 $"[Status] IN ({SqlIn(PreventiveMaintenanceFormStatusCatalog.PersistedValues)})");
         });

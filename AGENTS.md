@@ -161,7 +161,7 @@ This is a student-budget project. Avoid open-ended API usage.
 
 Deferred pending GSD/adviser clarifications:
 
-- final acknowledgement workflow rules
+- acknowledgement command and signature-capture validation implementation
 - final corrective-maintenance handoff/RMRF business process
 - official building/department/location list
 - who has authority to adjust schedules
@@ -256,7 +256,7 @@ Unblocked areas:
   - Water drinking stations
 - Thin end-to-end RAG MVP:
   - Use synthetic `InspectionRecord` data.
-  - No dependency on final GSD handoff/acknowledgement clarification.
+  - No dependency on final GSD handoff/RMRF command implementation or acknowledgement endpoint validation.
   - Do not build chatbot behavior.
   - Return source records with the summary.
 

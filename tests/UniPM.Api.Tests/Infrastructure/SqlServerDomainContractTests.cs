@@ -175,6 +175,10 @@ public sealed class SqlServerDomainContractTests
             Guid.NewGuid(), "PMF-001", PreventiveMaintenanceFormStatusCatalog.Draft));
         await AssertConstraintFailureAsync(database, NewPreventiveForm(
             Guid.NewGuid(), "PMF-003", "Completed"));
+        var invalidAcademicYear = NewPreventiveForm(
+            Guid.NewGuid(), "PMF-004", PreventiveMaintenanceFormStatusCatalog.Draft);
+        invalidAcademicYear.AcademicYear = "2026/2027";
+        await AssertConstraintFailureAsync(database, invalidAcademicYear);
 
         await using var acknowledgementContext = database.CreateContext();
         acknowledgementContext.PreventiveMaintenanceAcknowledgements.Add(new PreventiveMaintenanceAcknowledgement

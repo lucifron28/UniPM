@@ -611,6 +611,8 @@ namespace UniPM.Api.Migrations
 
                             t.HasCheckConstraint("CK_PreventiveMaintenanceForms_Semester_Allowed", "[Semester] IS NULL OR [Semester] IN ('First', 'Second', 'Summer')");
 
+                            t.HasCheckConstraint("CK_PreventiveMaintenanceForms_AcademicYear_Format", "[AcademicYear] IS NULL OR [AcademicYear] LIKE '[0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9]'");
+
                             t.HasCheckConstraint("CK_PreventiveMaintenanceForms_Status_Allowed", "[Status] IN ('Draft', 'Submitted', 'Acknowledged')");
                         });
                 });
