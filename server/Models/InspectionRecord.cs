@@ -7,6 +7,9 @@ public class InspectionRecord
     public Guid Id { get; set; }
     public Guid ScheduleId { get; set; }
     public PreventiveMaintenanceSchedule? Schedule { get; set; }
+
+    public Guid? PreventiveMaintenanceFormId { get; set; }
+    public PreventiveMaintenanceForm? PreventiveMaintenanceForm { get; set; }
     
     public Guid AssetId { get; set; }
     public Asset? Asset { get; set; }

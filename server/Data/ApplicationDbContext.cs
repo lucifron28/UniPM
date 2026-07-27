@@ -5,6 +5,7 @@ using UniPM.Api.Features.Assets;
 using UniPM.Api.Features.ReferenceDocuments;
 using UniPM.Api.Features.ReferenceData;
 using UniPM.Api.Features.Schedules;
+using UniPM.Api.Features.PreventiveMaintenanceForms;
 using UniPM.Api.Models;
 
 namespace UniPM.Api.Data;
@@ -15,6 +16,8 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     public DbSet<Asset> Assets => Set<Asset>();
     public DbSet<PreventiveMaintenanceSchedule> PreventiveMaintenanceSchedules => Set<PreventiveMaintenanceSchedule>();
     public DbSet<InspectionRecord> InspectionRecords => Set<InspectionRecord>();
+    public DbSet<PreventiveMaintenanceForm> PreventiveMaintenanceForms => Set<PreventiveMaintenanceForm>();
+    public DbSet<PreventiveMaintenanceAcknowledgement> PreventiveMaintenanceAcknowledgements => Set<PreventiveMaintenanceAcknowledgement>();
     public DbSet<MaintenanceSearchDocument> MaintenanceSearchDocuments => Set<MaintenanceSearchDocument>();
     public DbSet<MaintenanceSearchDocumentEmbedding> MaintenanceSearchDocumentEmbeddings => Set<MaintenanceSearchDocumentEmbedding>();
     public DbSet<ReferenceDocument> ReferenceDocuments => Set<ReferenceDocument>();
@@ -121,6 +124,84 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             .HasMaxLength(2000);
         inspection.HasIndex(entity => entity.ScheduleId)
             .IsUnique();
+
+        inspection
+            .HasOne(entity => entity.PreventiveMaintenanceForm)
+            .WithMany(form => form.Inspections)
+            .HasForeignKey(entity => entity.PreventiveMaintenanceFormId)
+            .OnDelete(DeleteBehavior.NoAction);
+
+        var preventiveMaintenanceForm = modelBuilder.Entity<PreventiveMaintenanceForm>();
+        preventiveMaintenanceForm.Property(form => form.FileNumber)
+            .HasMaxLength(64);
+        preventiveMaintenanceForm.Property(form => form.AssetCategory)
+            .HasMaxLength(64);
+        preventiveMaintenanceForm.Property(form => form.Building)
+            .HasMaxLength(AssetCodeValue.MetadataMaxLength);
+        preventiveMaintenanceForm.Property(form => form.Department)
+            .HasMaxLength(AssetCodeValue.MetadataMaxLength);
+        preventiveMaintenanceForm.Property(form => form.PeriodType)
+            .HasMaxLength(32);
+        preventiveMaintenanceForm.Property(form => form.Quarter)
+            .HasMaxLength(8);
+        preventiveMaintenanceForm.Property(form => form.Semester)
+            .HasMaxLength(16);
+        preventiveMaintenanceForm.Property(form => form.AcademicYear)
+            .HasMaxLength(16);
+        preventiveMaintenanceForm.Property(form => form.Status)
+            .HasMaxLength(32);
+        preventiveMaintenanceForm.Property(form => form.RowVersion)
+            .IsRowVersion();
+        preventiveMaintenanceForm.HasIndex(form => form.FileNumber)
+            .IsUnique()
+            .HasFilter("[FileNumber] IS NOT NULL");
+        preventiveMaintenanceForm.HasIndex(form => new { form.AssetCategory, form.Status });
+        preventiveMaintenanceForm.ToTable("PreventiveMaintenanceForms", table =>
+        {
+            table.HasCheckConstraint(
+                "CK_PreventiveMaintenanceForms_AssetCategory_Allowed",
+                $"[AssetCategory] IN ({SqlIn(AssetCategoryCatalog.PersistedValues)})");
+            table.HasCheckConstraint(
+                "CK_PreventiveMaintenanceForms_PeriodType_Allowed",
+                $"[PeriodType] IN ({SqlIn(SchedulePeriodTypeCatalog.PersistedValues)})");
+            table.HasCheckConstraint(
+                "CK_PreventiveMaintenanceForms_Quarter_Allowed",
+                $"[Quarter] IS NULL OR [Quarter] IN ({SqlIn(ScheduleQuarterCatalog.PersistedValues)})");
+            table.HasCheckConstraint(
+                "CK_PreventiveMaintenanceForms_Semester_Allowed",
+                $"[Semester] IS NULL OR [Semester] IN ({SqlIn(ScheduleSemesterCatalog.PersistedValues)})");
+            table.HasCheckConstraint(
+                "CK_PreventiveMaintenanceForms_Status_Allowed",
+                $"[Status] IN ({SqlIn(PreventiveMaintenanceFormStatusCatalog.PersistedValues)})");
+        });
+
+        var acknowledgement = modelBuilder.Entity<PreventiveMaintenanceAcknowledgement>();
+        acknowledgement.Property(record => record.SignatoryName)
+            .HasMaxLength(160);
+        acknowledgement.Property(record => record.SignatoryPosition)
+            .HasMaxLength(160);
+        acknowledgement.Property(record => record.SignatureData)
+            .HasMaxLength(262144);
+        acknowledgement.Property(record => record.SignatureContentType)
+            .HasMaxLength(128);
+        acknowledgement.Property(record => record.SignatureChecksum)
+            .HasMaxLength(64);
+        acknowledgement.HasIndex(record => record.FormId)
+            .IsUnique();
+        acknowledgement.ToTable("PreventiveMaintenanceAcknowledgements", table =>
+        {
+            table.HasCheckConstraint(
+                "CK_PreventiveMaintenanceAcknowledgements_SignatureMetadata",
+                "([SignatureData] IS NULL AND [SignatureContentType] IS NULL AND [SignatureChecksum] IS NULL) OR ([SignatureData] IS NOT NULL AND [SignatureContentType] IS NOT NULL AND [SignatureChecksum] IS NOT NULL)");
+            table.HasCheckConstraint(
+                "CK_PreventiveMaintenanceAcknowledgements_SignatureSize",
+                "[SignatureData] IS NULL OR DATALENGTH([SignatureData]) <= 524288");
+        });
+        acknowledgement
+            .HasOne(record => record.Form)
+            .WithOne(form => form.Acknowledgement)
+            .HasForeignKey<PreventiveMaintenanceAcknowledgement>(record => record.FormId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         var searchDocument = modelBuilder.Entity<MaintenanceSearchDocument>();
         searchDocument.Property(document => document.AssetCode)
