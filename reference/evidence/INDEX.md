@@ -73,6 +73,7 @@ record's evidence level and tested/source commit.
 | IMP-018 | implementation | Preventive-maintenance form domain foundation | reviewed | source-inspected | `5152c04` | [record](implementation/IMP-018-preventive-maintenance-form-domain.md) | Form header, multiple inspection-row link, one-to-one acknowledgement foundation, bounded fields, and native SQL Server 2019 migration/constraint verification. |
 | ADR-014 | decision | Separate reference-document evidence from maintenance history | reviewed | source-inspected | `6f04c65` | [record](decisions/ADR-014-reference-document-evidence-foundation.md) | Keeps future reference sources explicit and separate from operational history. |
 | TEST-023 | test-run | Reference-document foundation verification | executed | locally-executed | `6f04c65` | [record](test-runs/TEST-023-reference-document-foundation.md) | Release and native SQL Server 2019 verification of fictional reference persistence, lifecycle constraints, scoped reset, and an end-to-end FTS query; production and provider claims excluded. |
+| TEST-024 | test-run | Preventive-maintenance form domain verification | executed | locally-executed | `5152c04` | [record](test-runs/TEST-024-preventive-maintenance-form-domain-verification.md) | Native SQL Server 2019 verification of form constraints and inspection migration preservation; 341 passed, 0 failed, 1 optional provider skip. |
 
 ## Pending Evidence
 
