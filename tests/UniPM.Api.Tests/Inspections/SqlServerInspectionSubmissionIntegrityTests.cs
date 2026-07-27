@@ -24,10 +24,20 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
         await context.Database.MigrateAsync(PreviousMigration);
 
         var schedule = AddAssetAndSchedule(context);
-        context.InspectionRecords.AddRange(
-            CreateInspection(schedule),
-            CreateInspection(schedule));
         await context.SaveChangesAsync();
+        var first = CreateInspection(schedule);
+        var second = CreateInspection(schedule);
+        await context.Database.ExecuteSqlInterpolatedAsync($"""
+            INSERT INTO [InspectionRecords]
+                ([Id], [ScheduleId], [AssetId], [InspectorUserId], [DateInspected], [IsOperational], [CreatedAt], [UpdatedAt])
+            VALUES
+                ({first.Id}, {first.ScheduleId}, {first.AssetId}, {first.InspectorUserId}, {first.DateInspected}, {first.IsOperational}, {first.CreatedAt}, {first.UpdatedAt});
+
+            INSERT INTO [InspectionRecords]
+                ([Id], [ScheduleId], [AssetId], [InspectorUserId], [DateInspected], [IsOperational], [CreatedAt], [UpdatedAt])
+            VALUES
+                ({second.Id}, {second.ScheduleId}, {second.AssetId}, {second.InspectorUserId}, {second.DateInspected}, {second.IsOperational}, {second.CreatedAt}, {second.UpdatedAt});
+            """);
 
         var exception = await Assert.ThrowsAnyAsync<Exception>(() => context.Database.MigrateAsync());
 
