@@ -28,6 +28,9 @@ public sealed class SyntheticMaintenanceCommandParserTests
             SyntheticMaintenanceCommand.RebuildEmbeddings,
             SyntheticMaintenanceCommandParser.Parse(["--rebuild-maintenance-embeddings"]));
         Assert.Equal(
+            SyntheticMaintenanceCommand.RebuildInstitutionalReferenceEmbeddings,
+            SyntheticMaintenanceCommandParser.Parse(["--rebuild-institutional-reference-embeddings"]));
+        Assert.Equal(
             SyntheticMaintenanceCommand.Migrate,
             SyntheticMaintenanceCommandParser.Parse(["--migrate-database"]));
         Assert.Equal(
@@ -69,5 +72,10 @@ public sealed class SyntheticMaintenanceCommandParserTests
         Assert.Equal(
             SyntheticMaintenanceCommand.Ambiguous,
             SyntheticMaintenanceCommandParser.Parse(["--seed-reference-documents", "--seed-synthetic"]));
+        Assert.Equal(
+            SyntheticMaintenanceCommand.Ambiguous,
+            SyntheticMaintenanceCommandParser.Parse([
+                "--rebuild-institutional-reference-embeddings",
+                "--rebuild-maintenance-embeddings"]));
     }
 }

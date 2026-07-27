@@ -1,5 +1,5 @@
 {
-  "datasetVersion": "1.0.0",
+  "datasetVersion": "1.1.0",
   "title": "Fictional UniPM reference-document fixture",
   "description": "Fictional development-only institutional and OEM-style source material. It is not an approved university procedure, OEM manual, or operational instruction.",
   "createdAt": "2026-07-25T00:00:00+08:00",
@@ -98,6 +98,107 @@
           "pageStart": 18,
           "pageEnd": 18,
           "sectionText": "Fictional note for retrieval tests only: mahina ang water flow and may tagas are observations to document, not automated repair instructions."
+        }
+      ]
+    },
+    {
+      "seedKey": "institutional-water-hygiene-r1",
+      "id": "10000000-0000-0000-0000-000000000004",
+      "sourceType": "Institutional",
+      "sourceKey": "FIC-WAT-001",
+      "title": "Fictional Water Station Observation Guide",
+      "publisherAuthority": "Fictional University General Services Office",
+      "revision": "R1",
+      "lifecycleStatus": "Active",
+      "effectiveDate": "2025-01-01",
+      "applicabilities": [
+        { "assetCategory": "water-drinking-station", "scopeLabel": "Fictional campus water stations" }
+      ],
+      "sections": [
+        {
+          "id": "11000000-0000-0000-0000-000000000006",
+          "sequence": 0,
+          "heading": "Flow and leakage observation",
+          "sourceLocator": "FIC-WAT-001 R1, section 3, page 5",
+          "pageStart": 5,
+          "pageEnd": 5,
+          "sectionText": "Fictional institutional guidance: document weak water flow, barado ang filter, or may tagas without authorizing repair decisions."
+        }
+      ]
+    },
+    {
+      "seedKey": "institutional-category-wide-r1",
+      "id": "10000000-0000-0000-0000-000000000005",
+      "sourceType": "Institutional",
+      "sourceKey": "FIC-REC-001",
+      "title": "Fictional Campus Observation Recording Standard",
+      "publisherAuthority": "Fictional University General Services Office",
+      "revision": "R1",
+      "lifecycleStatus": "Active",
+      "effectiveDate": "2025-01-01",
+      "applicabilities": [
+        { "scopeLabel": "Category-wide fictional observation recording" },
+        { "scopeLabel": "Category-wide fictional observation recording duplicate" }
+      ],
+      "sections": [
+        {
+          "id": "11000000-0000-0000-0000-000000000007",
+          "sequence": 0,
+          "heading": "Source and escalation boundary",
+          "sourceLocator": "FIC-REC-001 R1, section 1, page 2",
+          "pageStart": 2,
+          "pageEnd": 2,
+          "sectionText": "Fictional standard: retain observable inspection evidence and route maintenance decisions to authorized personnel."
+        }
+      ]
+    },
+    {
+      "seedKey": "institutional-archived-light-r1",
+      "id": "10000000-0000-0000-0000-000000000006",
+      "sourceType": "Institutional",
+      "sourceKey": "FIC-LGT-OLD",
+      "title": "Fictional Archived Lighting Note",
+      "publisherAuthority": "Fictional University General Services Office",
+      "revision": "R1",
+      "lifecycleStatus": "Archived",
+      "effectiveDate": "2024-01-01",
+      "applicabilities": [
+        { "assetCategory": "emergency-light", "scopeLabel": "Archived fictional lighting scope" }
+      ],
+      "sections": [
+        {
+          "id": "11000000-0000-0000-0000-000000000008",
+          "sequence": 0,
+          "heading": "Archived lighting distractor",
+          "sourceLocator": "FIC-LGT-OLD R1, page 1",
+          "pageStart": 1,
+          "pageEnd": 1,
+          "sectionText": "Fictional archived guidance for emergency light testing; retrieval must exclude this section."
+        }
+      ]
+    },
+    {
+      "seedKey": "institutional-future-alarm-r1",
+      "id": "10000000-0000-0000-0000-000000000007",
+      "sourceType": "Institutional",
+      "sourceKey": "FIC-ALM-FUT",
+      "title": "Fictional Future Alarm Procedure",
+      "publisherAuthority": "Fictional University General Services Office",
+      "revision": "R1",
+      "lifecycleStatus": "Active",
+      "effectiveDate": "2030-01-01",
+      "applicabilities": [
+        { "assetCategory": "fire-alarm", "scopeLabel": "Future fictional alarm scope" }
+      ],
+      "sections": [
+        {
+          "id": "11000000-0000-0000-0000-000000000009",
+          "sequence": 0,
+          "heading": "Future panel observation",
+          "sourceLocator": "FIC-ALM-FUT R1, page 1",
+          "pageStart": 1,
+          "pageEnd": 1,
+          "sectionText": "Fictional future guidance: record alarm panel observations after its future effective date."
         }
       ]
     }

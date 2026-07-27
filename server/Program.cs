@@ -159,11 +159,14 @@ builder.Services.AddScoped<ILexicalMaintenanceRetriever>(serviceProvider =>
 builder.Services.Configure<EmbeddingOptions>(builder.Configuration.GetSection(EmbeddingOptions.SectionName));
 builder.Services.AddHttpClient<IEmbeddingService, OpenAiCompatibleEmbeddingService>();
 builder.Services.AddScoped<IMaintenanceSearchDocumentEmbeddingIndexer, MaintenanceSearchDocumentEmbeddingIndexer>();
+builder.Services.AddScoped<IInstitutionalReferenceEmbeddingIndexer, InstitutionalReferenceEmbeddingIndexer>();
 builder.Services.AddScoped<SqlServerSemanticMaintenanceRetriever>();
 builder.Services.AddScoped<ISemanticMaintenanceRetriever>(serviceProvider =>
     new MetricsSemanticMaintenanceRetriever(
         serviceProvider.GetRequiredService<SqlServerSemanticMaintenanceRetriever>(),
         serviceProvider.GetRequiredService<UniPMMetrics>()));
+builder.Services.AddScoped<ILexicalInstitutionalReferenceRetriever, SqlServerLexicalInstitutionalReferenceRetriever>();
+builder.Services.AddScoped<ISemanticInstitutionalReferenceRetriever, SqlServerSemanticInstitutionalReferenceRetriever>();
 builder.Services.AddScoped<FusedMaintenanceRetriever>();
 builder.Services.AddScoped<IFusedMaintenanceRetriever>(serviceProvider =>
     new MetricsFusedMaintenanceRetriever(
@@ -241,6 +244,18 @@ if (maintenanceCommand != SyntheticMaintenanceCommand.None)
             var result = await indexer.RebuildAsync();
             await Console.Out.WriteLineAsync(
                 $"Rebuilt {result.Total} maintenance embeddings ({result.Created} created, {result.Updated} updated, {result.Skipped} skipped, {result.Failed} failed).");
+            if (result.Failed > 0)
+            {
+                Environment.ExitCode = 1;
+            }
+        }
+        else if (maintenanceCommand == SyntheticMaintenanceCommand.RebuildInstitutionalReferenceEmbeddings)
+        {
+            var indexer = scope.ServiceProvider
+                .GetRequiredService<IInstitutionalReferenceEmbeddingIndexer>();
+            var result = await indexer.RebuildAsync();
+            await Console.Out.WriteLineAsync(
+                $"Rebuilt {result.Total} institutional reference embeddings ({result.Created} created, {result.Updated} updated, {result.Skipped} skipped, {result.Failed} failed).");
             if (result.Failed > 0)
             {
                 Environment.ExitCode = 1;

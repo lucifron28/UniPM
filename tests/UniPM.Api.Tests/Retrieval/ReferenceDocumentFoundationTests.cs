@@ -123,7 +123,7 @@ public sealed class ReferenceDocumentFoundationTests
         var second = await seeder.SeedAsync();
 
         Assert.Equal(first, second);
-        Assert.Equal(3, first.Documents);
+        Assert.Equal(7, first.Documents);
         await using (var context = factory.CreateDbContext())
         {
             context.ReferenceDocuments.Add(new ReferenceDocument
