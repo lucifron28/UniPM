@@ -223,20 +223,23 @@ public sealed class SqlServerDomainContractTests
                 CreatedAt = now,
                 UpdatedAt = now
             };
-            context.Assets.Add(asset);
-            context.PreventiveMaintenanceSchedules.Add(schedule);
-            context.InspectionRecords.Add(new InspectionRecord
-            {
-                Id = inspectionId,
-                ScheduleId = schedule.Id,
-                AssetId = asset.Id,
-                InspectorUserId = Guid.NewGuid(),
-                DateInspected = now,
-                IsOperational = true,
-                CreatedAt = now,
-                UpdatedAt = now
-            });
-            await context.SaveChangesAsync();
+            var inspectorUserId = Guid.NewGuid();
+            var dateInspected = now;
+            await context.Database.ExecuteSqlInterpolatedAsync($"""
+                INSERT INTO [Assets] ([Id], [AssetCode], [AssetCategory], [Status], [CreatedAt], [UpdatedAt])
+                VALUES ({asset.Id}, {asset.AssetCode}, {asset.AssetCategory}, {asset.Status}, {asset.CreatedAt}, {asset.UpdatedAt});
+
+                INSERT INTO [PreventiveMaintenanceSchedules]
+                    ([Id], [AssetId], [ScheduleDate], [PeriodType], [Status], [Semester], [AcademicYear], [CreatedAt], [UpdatedAt])
+                VALUES
+                    ({schedule.Id}, {schedule.AssetId}, {schedule.ScheduleDate}, {schedule.PeriodType}, {schedule.Status},
+                     {schedule.Semester}, {schedule.AcademicYear}, {schedule.CreatedAt}, {schedule.UpdatedAt});
+
+                INSERT INTO [InspectionRecords]
+                    ([Id], [ScheduleId], [AssetId], [InspectorUserId], [DateInspected], [IsOperational], [CreatedAt], [UpdatedAt])
+                VALUES
+                    ({inspectionId}, {schedule.Id}, {asset.Id}, {inspectorUserId}, {dateInspected}, {true}, {now}, {now});
+                """);
             await context.Database.MigrateAsync();
         }
 
