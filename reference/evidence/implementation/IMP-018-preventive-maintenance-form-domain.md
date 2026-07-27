@@ -3,10 +3,10 @@ id: IMP-018
 type: implementation
 title: Preventive-maintenance form domain foundation
 status: reviewed
-recordedAtUtc: 2026-07-27T10:10:24Z
+recordedAtUtc: 2026-07-27T10:37:10Z
 sourceBranch: refactor/preventive-maintenance-form-domain
 evidenceLevel: source-inspected
-sourceCommit: b6ddd87dd5f2ed6cc0d977220430be76e8f47aed
+sourceCommit: 5152c04
 ---
 
 # Preventive-Maintenance Form Domain Foundation
@@ -44,14 +44,15 @@ protect the three supported form statuses and the configured domain catalogs.
 
 ## Verification Status
 
-The Release build completed with 0 warnings and 0 errors. The full solution
-test run passed 302 tests with 0 failures and skipped 40 optional SQL Server,
-provider, and integration tests because the required process-scoped test
-connections/provider configuration were unavailable.
+The final Release build completed with 0 warnings and 0 errors. With the
+process-scoped native SQL Server 2019 connection configured, the full solution
+test run passed 341 tests with 0 failures and 1 skipped optional provider smoke
+test. The form constraint and migration-preservation tests executed and
+passed, including preservation of existing inspections with a null form link.
 
-The SQL Server 2019 tests for form constraints and migration preservation are
-present but were not executed in this run. This record therefore does not
-claim SQL migration execution or production readiness.
+This record does not claim production readiness. SQL Server verification used
+the local native development instance and did not include real institutional
+data.
 
 ## Boundaries
 
