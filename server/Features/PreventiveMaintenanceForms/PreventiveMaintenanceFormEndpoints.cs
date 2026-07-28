@@ -1,5 +1,6 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
@@ -7,6 +8,7 @@ using UniPM.Api.Data;
 using UniPM.Api.Features;
 using UniPM.Api.Features.Auth;
 using UniPM.Api.Features.ReferenceData;
+using UniPM.Api.Features.Retrieval;
 using UniPM.Api.Features.Schedules;
 using UniPM.Api.Models;
 
@@ -204,6 +206,120 @@ public static class PreventiveMaintenanceFormEndpoints
         .WithName("SubmitPreventiveMaintenanceForm")
         .WithSummary("Submits a completed preventive-maintenance form using a provisional file number")
         .Produces<PreventiveMaintenanceFormResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status404NotFound)
+        .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status409Conflict);
+
+        group.MapPost("/{id}/acknowledge", async (
+            Guid id,
+            AcknowledgePreventiveMaintenanceFormDto dto,
+            ClaimsPrincipal principal,
+            IDbContextFactory<ApplicationDbContext> factory,
+            MaintenanceSearchDocumentProjector projector,
+            CancellationToken cancellationToken) =>
+        {
+            var errors = dto.Validate(out var signatureBytes);
+            if (errors.Count > 0)
+            {
+                return ApiErrors.Validation(errors);
+            }
+
+            if (!TryGetAuthenticatedUserId(principal, out var capturedByUserId))
+            {
+                return ApiErrors.Unauthorized("The authenticated user is unavailable.");
+            }
+
+            await using var context = await factory.CreateDbContextAsync(cancellationToken);
+            await using var transaction = await BeginTransactionIfRelationalAsync(context, cancellationToken);
+            var form = await context.PreventiveMaintenanceForms
+                .Include(candidate => candidate.Acknowledgement)
+                .Include(candidate => candidate.Inspections)
+                    .ThenInclude(inspection => inspection.Schedule)
+                .SingleOrDefaultAsync(candidate => candidate.Id == id, cancellationToken);
+            if (form is null)
+            {
+                return ApiErrors.NotFound("Preventive-maintenance form not found.");
+            }
+
+            if (form.Acknowledgement is not null)
+            {
+                return ApiErrors.Conflict("The preventive-maintenance form has already been acknowledged.");
+            }
+
+            if (!string.Equals(
+                    form.Status,
+                    PreventiveMaintenanceFormStatusCatalog.Submitted,
+                    StringComparison.Ordinal))
+            {
+                return ApiErrors.Conflict("Only submitted forms can be acknowledged.");
+            }
+
+            if (principal.IsInRole(AuthRoleCatalog.Inspector)
+                && (form.CreatedByUserId != capturedByUserId
+                    || form.Inspections.Any(inspection => inspection.InspectorUserId != capturedByUserId)))
+            {
+                return Results.Forbid();
+            }
+
+            if (form.Inspections.Any(inspection => inspection.Schedule is null))
+            {
+                return ApiErrors.Conflict("Every form row must reference an available schedule before acknowledgement.");
+            }
+
+            var now = DateTimeOffset.UtcNow;
+            var acknowledgement = new PreventiveMaintenanceAcknowledgement
+            {
+                Id = Guid.NewGuid(),
+                FormId = form.Id,
+                SignatoryName = dto.SignatoryName.Trim(),
+                SignatoryPosition = dto.SignatoryPosition.Trim(),
+                SignatureData = Convert.ToBase64String(signatureBytes),
+                SignatureContentType = AcknowledgePreventiveMaintenanceFormDto.PngContentType,
+                SignatureChecksum = Convert.ToHexString(SHA256.HashData(signatureBytes)),
+                CapturedByUserId = capturedByUserId,
+                AcknowledgedAt = now
+            };
+
+            context.PreventiveMaintenanceAcknowledgements.Add(acknowledgement);
+            form.Status = PreventiveMaintenanceFormStatusCatalog.Acknowledged;
+            form.UpdatedAt = now;
+            foreach (var inspection in form.Inspections)
+            {
+                inspection.Schedule!.Status = ScheduleStatusCatalog.Completed;
+                inspection.Schedule.CompletedAt = now;
+                inspection.Schedule.UpdatedAt = now;
+            }
+
+            try
+            {
+                await context.SaveChangesAsync(cancellationToken);
+                await projector.RebuildAsync(
+                    context,
+                    form.Inspections.Select(inspection => inspection.Id).ToHashSet(),
+                    cancellationToken);
+
+                if (transaction is not null)
+                {
+                    await transaction.CommitAsync(cancellationToken);
+                }
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                return ApiErrors.Conflict("The preventive-maintenance form acknowledgement changed concurrently.");
+            }
+            catch (Exception exception) when (DatabaseConstraintViolation.IsUniqueConstraint(exception))
+            {
+                return ApiErrors.Conflict("The preventive-maintenance form has already been acknowledged.");
+            }
+
+            return Results.Ok(PreventiveMaintenanceAcknowledgementResponse.FromAcknowledgement(acknowledgement));
+        })
+        .RequireAuthorization(AuthPolicyCatalog.CanManagePreventiveMaintenanceForms)
+        .WithName("AcknowledgePreventiveMaintenanceForm")
+        .WithSummary("Acknowledges one submitted preventive-maintenance form")
+        .Produces<PreventiveMaintenanceAcknowledgementResponse>(StatusCodes.Status200OK)
+        .Produces<Microsoft.AspNetCore.Mvc.ValidationProblemDetails>(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden)
         .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status404NotFound)
@@ -518,6 +634,131 @@ public static class PreventiveMaintenanceFormEndpoints
         return context.Database.IsRelational()
             ? await context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken)
             : null;
+    }
+
+    private static async Task<IDbContextTransaction?> BeginTransactionIfRelationalAsync(
+        ApplicationDbContext context,
+        CancellationToken cancellationToken)
+    {
+        return context.Database.IsRelational()
+            ? await context.Database.BeginTransactionAsync(cancellationToken)
+            : null;
+    }
+}
+
+public sealed class AcknowledgePreventiveMaintenanceFormDto
+{
+    internal const string PngContentType = "image/png";
+    private const int SignatoryMaxLength = 160;
+    private const int SignatureDataMaxLength = 262_144;
+    private const int SignatureContentTypeMaxLength = 128;
+    private const int DecodedSignatureMaxBytes = 196_608;
+    private static readonly byte[] PngHeader = [137, 80, 78, 71, 13, 10, 26, 10];
+
+    public string SignatoryName { get; set; } = string.Empty;
+    public string SignatoryPosition { get; set; } = string.Empty;
+    public string SignatureData { get; set; } = string.Empty;
+    public string SignatureContentType { get; set; } = string.Empty;
+
+    internal Dictionary<string, string[]> Validate(out byte[] signatureBytes)
+    {
+        var errors = new Dictionary<string, string[]>();
+        signatureBytes = [];
+        AddRequiredLengthError(SignatoryName, nameof(SignatoryName), "Signatory name", errors);
+        AddRequiredLengthError(SignatoryPosition, nameof(SignatoryPosition), "Signatory position", errors);
+
+        var normalizedContentType = SignatureContentType?.Trim() ?? string.Empty;
+        if (normalizedContentType.Length == 0)
+        {
+            errors.Add(nameof(SignatureContentType), ["Signature content type is required."]);
+        }
+        else if (normalizedContentType.Length > SignatureContentTypeMaxLength)
+        {
+            errors.Add(nameof(SignatureContentType),
+                [$"Signature content type must not exceed {SignatureContentTypeMaxLength} characters."]);
+        }
+        else if (!string.Equals(normalizedContentType, PngContentType, StringComparison.OrdinalIgnoreCase))
+        {
+            errors.Add(nameof(SignatureContentType), ["Signature content type must be image/png."]);
+        }
+
+        var normalizedSignature = SignatureData?.Trim() ?? string.Empty;
+        if (normalizedSignature.Length == 0)
+        {
+            errors.Add(nameof(SignatureData), ["Signature data is required."]);
+            return errors;
+        }
+
+        if (normalizedSignature.Length > SignatureDataMaxLength)
+        {
+            errors.Add(nameof(SignatureData),
+                [$"Signature data must not exceed {SignatureDataMaxLength} base64 characters."]);
+            return errors;
+        }
+
+        try
+        {
+            signatureBytes = Convert.FromBase64String(normalizedSignature);
+        }
+        catch (FormatException)
+        {
+            errors.Add(nameof(SignatureData), ["Signature data must be valid base64."]);
+            return errors;
+        }
+
+        if (signatureBytes.Length > DecodedSignatureMaxBytes)
+        {
+            errors.Add(nameof(SignatureData),
+                [$"Decoded signature data must not exceed {DecodedSignatureMaxBytes} bytes."]);
+        }
+        else if (!signatureBytes.AsSpan().StartsWith(PngHeader))
+        {
+            errors.Add(nameof(SignatureData), ["Signature data must contain a PNG image."]);
+        }
+
+        return errors;
+    }
+
+    private static void AddRequiredLengthError(
+        string? value,
+        string propertyName,
+        string label,
+        Dictionary<string, string[]> errors)
+    {
+        var normalized = value?.Trim() ?? string.Empty;
+        if (normalized.Length == 0)
+        {
+            errors.Add(propertyName, [$"{label} is required."]);
+        }
+        else if (normalized.Length > SignatoryMaxLength)
+        {
+            errors.Add(propertyName, [$"{label} must not exceed {SignatoryMaxLength} characters."]);
+        }
+    }
+}
+
+public sealed record PreventiveMaintenanceAcknowledgementResponse(
+    Guid Id,
+    Guid FormId,
+    string SignatoryName,
+    string SignatoryPosition,
+    string SignatureContentType,
+    string SignatureChecksum,
+    Guid CapturedByUserId,
+    DateTimeOffset AcknowledgedAt)
+{
+    internal static PreventiveMaintenanceAcknowledgementResponse FromAcknowledgement(
+        PreventiveMaintenanceAcknowledgement acknowledgement)
+    {
+        return new PreventiveMaintenanceAcknowledgementResponse(
+            acknowledgement.Id,
+            acknowledgement.FormId,
+            acknowledgement.SignatoryName,
+            acknowledgement.SignatoryPosition,
+            acknowledgement.SignatureContentType!,
+            acknowledgement.SignatureChecksum!,
+            acknowledgement.CapturedByUserId,
+            acknowledgement.AcknowledgedAt);
     }
 }
 

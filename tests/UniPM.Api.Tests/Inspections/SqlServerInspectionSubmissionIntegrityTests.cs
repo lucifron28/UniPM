@@ -9,6 +9,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using UniPM.Api.Data;
 using UniPM.Api.Features.Auth;
 using UniPM.Api.Features.PreventiveMaintenanceForms;
+using UniPM.Api.Features.Schedules;
 using UniPM.Api.Models;
 
 namespace UniPM.Api.Tests;
@@ -16,6 +17,8 @@ namespace UniPM.Api.Tests;
 public sealed class SqlServerInspectionSubmissionIntegrityTests
 {
     private const string PreviousMigration = "20260713001356_AddIdentityAuthentication";
+    private const string TestPngSignatureBase64 =
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl2lD8AAAAASUVORK5CYII=";
 
     [SqlServerFact]
     public async Task Migration_preflight_rejects_duplicate_inspections_for_one_schedule()
@@ -140,6 +143,63 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
             Assert.Equal(PreventiveMaintenanceFormStatusCatalog.Submitted, form.Status);
             Assert.NotNull(form.FileNumber);
         });
+    }
+
+    [SqlServerFact]
+    public async Task Acknowledging_submitted_form_completes_schedules_and_projects_search_documents()
+    {
+        await using var database = await SqlServerTestDatabase.CreateAsync(RequireSqlServerConnection());
+        await using var application = new SqlServerInspectionApplicationFactory(
+            database.ConnectionString,
+            AuthRoleCatalog.Gsd);
+        var formId = await application.SeedSubmittedFormAsync();
+        using var client = application.CreateClient();
+
+        var response = await client.PostAsJsonAsync(
+            $"/api/v1/preventive-maintenance-forms/{formId}/acknowledge",
+            new
+            {
+                signatoryName = "Fictional Department Head",
+                signatoryPosition = "Department Head",
+                signatureData = TestPngSignatureBase64,
+                signatureContentType = "image/png"
+            });
+
+        response.EnsureSuccessStatusCode();
+
+        await using var context = database.CreateContext();
+        var form = await context.PreventiveMaintenanceForms
+            .Include(candidate => candidate.Acknowledgement)
+            .SingleAsync(candidate => candidate.Id == formId);
+        var inspectionIds = await context.InspectionRecords
+            .Where(record => record.PreventiveMaintenanceFormId == formId)
+            .Select(record => record.Id)
+            .ToListAsync();
+        var scheduleIds = await context.InspectionRecords
+            .Where(record => record.PreventiveMaintenanceFormId == formId)
+            .Select(record => record.ScheduleId)
+            .ToListAsync();
+        var schedules = await context.PreventiveMaintenanceSchedules
+            .Where(schedule => scheduleIds.Contains(schedule.Id))
+            .ToListAsync();
+        var projectedInspectionIds = await context.MaintenanceSearchDocuments
+            .Where(document => inspectionIds.Contains(document.InspectionId))
+            .Select(document => document.InspectionId)
+            .ToListAsync();
+
+        Assert.NotNull(form.Acknowledgement);
+        Assert.Equal(PreventiveMaintenanceFormStatusCatalog.Acknowledged, form.Status);
+        Assert.Equal(2, inspectionIds.Count);
+        Assert.Equal(2, schedules.Count);
+        Assert.All(schedules, schedule =>
+        {
+            Assert.Equal(ScheduleStatusCatalog.Completed, schedule.Status);
+            Assert.NotNull(schedule.CompletedAt);
+        });
+        Assert.Equivalent(
+            inspectionIds.OrderBy(inspectionId => inspectionId),
+            projectedInspectionIds.OrderBy(inspectionId => inspectionId));
+        Assert.Empty(await context.MaintenanceSearchDocumentEmbeddings.ToListAsync());
     }
 
     private static object CreateRequest(Guid scheduleId, DateTimeOffset dateInspected) => new
@@ -280,7 +340,70 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
             await context.SaveChangesAsync();
             return forms.Select(form => form.Id).ToArray();
         }
+
+        public async Task<Guid> SeedSubmittedFormAsync()
+        {
+            await using var scope = Services.CreateAsyncScope();
+            var contextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
+            await using var context = await contextFactory.CreateDbContextAsync();
+            await context.Database.MigrateAsync();
+            context.Users.Add(new ApplicationUser
+            {
+                Id = TestAuthenticationHandler.UserId,
+                UserName = "sql-form-acknowledger@unipm.local",
+                NormalizedUserName = "SQL-FORM-ACKNOWLEDGER@UNIPM.LOCAL",
+                Email = "sql-form-acknowledger@unipm.local",
+                NormalizedEmail = "SQL-FORM-ACKNOWLEDGER@UNIPM.LOCAL",
+                EmailConfirmed = true,
+                DisplayName = "SQL Form Acknowledger",
+                IsActive = true
+            });
+            var firstSchedule = AddAssetAndSchedule(context);
+            var secondSchedule = AddAssetAndSchedule(context);
+            var now = DateTimeOffset.UtcNow;
+            var form = new PreventiveMaintenanceForm
+            {
+                Id = Guid.NewGuid(),
+                AssetCategory = "fire-extinguisher",
+                Building = "Test Building",
+                Department = "GSD",
+                PeriodType = "Quarter",
+                Quarter = "Q1",
+                Year = 2026,
+                Status = PreventiveMaintenanceFormStatusCatalog.Submitted,
+                CreatedByUserId = TestAuthenticationHandler.UserId,
+                SubmittedByUserId = TestAuthenticationHandler.UserId,
+                SubmittedAt = now,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+
+            context.PreventiveMaintenanceForms.Add(form);
+            context.InspectionRecords.AddRange(
+                CreateFormInspection(form, firstSchedule, now),
+                CreateFormInspection(form, secondSchedule, now));
+            await context.SaveChangesAsync();
+            return form.Id;
+        }
     }
+
+    private static InspectionRecord CreateFormInspection(
+        PreventiveMaintenanceForm form,
+        PreventiveMaintenanceSchedule schedule,
+        DateTimeOffset now)
+        => new()
+        {
+            Id = Guid.NewGuid(),
+            ScheduleId = schedule.Id,
+            PreventiveMaintenanceFormId = form.Id,
+            AssetId = schedule.AssetId,
+            InspectorUserId = TestAuthenticationHandler.UserId,
+            DateInspected = now,
+            IsOperational = true,
+            Remarks = "Native SQL acknowledgement test row",
+            CreatedAt = now,
+            UpdatedAt = now
+        };
 
     private static PreventiveMaintenanceForm CreateDraftForm(
         PreventiveMaintenanceSchedule schedule,
