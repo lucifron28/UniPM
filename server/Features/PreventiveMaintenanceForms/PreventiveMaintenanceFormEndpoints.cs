@@ -61,7 +61,7 @@ public static class PreventiveMaintenanceFormEndpoints
                 $"/api/v1/preventive-maintenance-forms/{form.Id}",
                 PreventiveMaintenanceFormResponse.FromForm(form));
         })
-        .RequireAuthorization(AuthPolicyCatalog.CanManageSchedules)
+        .RequireAuthorization(AuthPolicyCatalog.CanManagePreventiveMaintenanceForms)
         .WithName("CreatePreventiveMaintenanceFormDraft")
         .WithSummary("Creates a preventive-maintenance form draft")
         .Produces<PreventiveMaintenanceFormResponse>(StatusCodes.Status201Created)
@@ -85,7 +85,8 @@ public static class PreventiveMaintenanceFormEndpoints
         })
         .WithName("ListPreventiveMaintenanceForms")
         .WithSummary("Lists preventive-maintenance forms")
-        .Produces<List<PreventiveMaintenanceFormResponse>>(StatusCodes.Status200OK);
+        .Produces<List<PreventiveMaintenanceFormResponse>>(StatusCodes.Status200OK)
+        .RequireAuthorization();
 
         group.MapGet("/{id}", async (
             Guid id,
@@ -105,11 +106,13 @@ public static class PreventiveMaintenanceFormEndpoints
         .WithName("GetPreventiveMaintenanceForm")
         .WithSummary("Gets a preventive-maintenance form")
         .Produces<PreventiveMaintenanceFormResponse>(StatusCodes.Status200OK)
-        .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status404NotFound);
+        .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status404NotFound)
+        .RequireAuthorization();
 
         group.MapPost("/{id}/inspections", async (
             Guid id,
             DraftInspectionRowDto dto,
+            ClaimsPrincipal principal,
             IDbContextFactory<ApplicationDbContext> factory,
             CancellationToken cancellationToken) =>
         {
@@ -117,6 +120,11 @@ public static class PreventiveMaintenanceFormEndpoints
             if (errors.Count > 0)
             {
                 return ApiErrors.Validation(errors);
+            }
+
+            if (!CanUseInspectorUserId(principal, dto.InspectorUserId))
+            {
+                return Results.Forbid();
             }
 
             await using var context = await factory.CreateDbContextAsync(cancellationToken);
@@ -189,7 +197,7 @@ public static class PreventiveMaintenanceFormEndpoints
                 $"/api/v1/preventive-maintenance-forms/{form.Id}/inspections/{inspection.Id}",
                 DraftInspectionRowResponse.FromInspection(inspection));
         })
-        .RequireAuthorization(AuthPolicyCatalog.CanManageSchedules)
+        .RequireAuthorization(AuthPolicyCatalog.CanManagePreventiveMaintenanceForms)
         .WithName("AddPreventiveMaintenanceFormDraftInspection")
         .WithSummary("Adds an inspection row to a preventive-maintenance form draft")
         .Produces<DraftInspectionRowResponse>(StatusCodes.Status201Created)
@@ -202,7 +210,8 @@ public static class PreventiveMaintenanceFormEndpoints
         group.MapPut("/{id}/inspections/{inspectionId}", async (
             Guid id,
             Guid inspectionId,
-            DraftInspectionRowDto dto,
+            UpdateDraftInspectionRowDto dto,
+            ClaimsPrincipal principal,
             IDbContextFactory<ApplicationDbContext> factory,
             CancellationToken cancellationToken) =>
         {
@@ -210,6 +219,11 @@ public static class PreventiveMaintenanceFormEndpoints
             if (errors.Count > 0)
             {
                 return ApiErrors.Validation(errors);
+            }
+
+            if (!CanUseInspectorUserId(principal, dto.InspectorUserId))
+            {
+                return Results.Forbid();
             }
 
             await using var context = await factory.CreateDbContextAsync(cancellationToken);
@@ -256,7 +270,7 @@ public static class PreventiveMaintenanceFormEndpoints
 
             return Results.Ok(DraftInspectionRowResponse.FromInspection(inspection));
         })
-        .RequireAuthorization(AuthPolicyCatalog.CanManageSchedules)
+        .RequireAuthorization(AuthPolicyCatalog.CanManagePreventiveMaintenanceForms)
         .WithName("UpdatePreventiveMaintenanceFormDraftInspection")
         .WithSummary("Updates an inspection row in a preventive-maintenance form draft")
         .Produces<DraftInspectionRowResponse>(StatusCodes.Status200OK)
@@ -300,7 +314,7 @@ public static class PreventiveMaintenanceFormEndpoints
 
             return Results.NoContent();
         })
-        .RequireAuthorization(AuthPolicyCatalog.CanManageSchedules)
+        .RequireAuthorization(AuthPolicyCatalog.CanManagePreventiveMaintenanceForms)
         .WithName("DeletePreventiveMaintenanceFormDraftInspection")
         .WithSummary("Removes an inspection row from a preventive-maintenance form draft")
         .Produces(StatusCodes.Status204NoContent)
@@ -342,6 +356,13 @@ public static class PreventiveMaintenanceFormEndpoints
     private static bool TryGetAuthenticatedUserId(ClaimsPrincipal principal, out Guid userId)
     {
         return Guid.TryParse(principal.FindFirst(JwtRegisteredClaimNames.Sub)?.Value, out userId);
+    }
+
+    private static bool CanUseInspectorUserId(ClaimsPrincipal principal, Guid inspectorUserId)
+    {
+        return !principal.IsInRole(AuthRoleCatalog.Inspector)
+            || TryGetAuthenticatedUserId(principal, out var authenticatedUserId)
+            && authenticatedUserId == inspectorUserId;
     }
 
     private static string NormalizeAssetCategory(string value)
@@ -483,37 +504,69 @@ public sealed class DraftInspectionRowDto
 
     internal Dictionary<string, string[]> Validate()
     {
-        var errors = new Dictionary<string, string[]>();
+        var errors = ValidateInspectionDetails(
+            InspectorUserId,
+            DateInspected,
+            Remarks,
+            ActionsRecommendations);
         if (ScheduleId == Guid.Empty)
         {
             errors.Add(nameof(ScheduleId), ["Schedule ID is required."]);
         }
 
-        if (InspectorUserId == Guid.Empty)
+        return errors;
+    }
+
+    internal static Dictionary<string, string[]> ValidateInspectionDetails(
+        Guid inspectorUserId,
+        DateTimeOffset dateInspected,
+        string? remarks,
+        string? actionsRecommendations)
+    {
+        var errors = new Dictionary<string, string[]>();
+        if (inspectorUserId == Guid.Empty)
         {
             errors.Add(nameof(InspectorUserId), ["Inspector user ID is required."]);
         }
 
-        if (DateInspected == default)
+        if (dateInspected == default)
         {
             errors.Add(nameof(DateInspected), ["Date inspected is required."]);
         }
-        else if (DateInspected > DateTimeOffset.UtcNow.AddDays(1))
+        else if (dateInspected > DateTimeOffset.UtcNow.AddDays(1))
         {
             errors.Add(nameof(DateInspected), ["Date inspected cannot be more than one day in the future."]);
         }
 
-        if (Remarks?.Length > 2_000)
+        if (remarks?.Length > 2_000)
         {
             errors.Add(nameof(Remarks), ["Remarks must be 2,000 characters or fewer."]);
         }
 
-        if (ActionsRecommendations?.Length > 2_000)
+        if (actionsRecommendations?.Length > 2_000)
         {
             errors.Add(nameof(ActionsRecommendations), ["Actions and recommendations must be 2,000 characters or fewer."]);
         }
 
         return errors;
+    }
+}
+
+public sealed class UpdateDraftInspectionRowDto
+{
+    public Guid InspectorUserId { get; set; }
+    public DateTimeOffset DateInspected { get; set; }
+    public bool IsOperational { get; set; }
+    public string? Remarks { get; set; }
+    public string? ActionsRecommendations { get; set; }
+
+    internal Dictionary<string, string[]> Validate()
+    {
+        return DraftInspectionRowDto.ValidateInspectionDetails(
+            InspectorUserId,
+            DateInspected,
+            Remarks,
+            ActionsRecommendations);
     }
 }
 

@@ -39,7 +39,9 @@ public sealed class PreventiveMaintenanceFormDraftEndpointsTests
         Assert.NotNull(persisted);
         Assert.Equal("Draft", persisted.Status);
         Assert.Equal(2, persisted.Inspections.Count);
-        Assert.Equal([firstSchedule.Id, secondSchedule.Id], persisted.Inspections.Select(row => row.ScheduleId).ToArray());
+        Assert.Equivalent(
+            new[] { firstSchedule.Id, secondSchedule.Id },
+            persisted.Inspections.Select(row => row.ScheduleId));
     }
 
     [Fact]
@@ -82,7 +84,7 @@ public sealed class PreventiveMaintenanceFormDraftEndpointsTests
 
         var update = await client.PutAsJsonAsync(
             $"/api/v1/preventive-maintenance-forms/{form.Id}/inspections/{row.Id}",
-            DraftInspectionRequest(schedule.Id, "Updated draft row"));
+            UpdateDraftInspectionRequest("Updated draft row"));
         var delete = await client.DeleteAsync(
             $"/api/v1/preventive-maintenance-forms/{form.Id}/inspections/{row.Id}");
 
@@ -115,6 +117,89 @@ public sealed class PreventiveMaintenanceFormDraftEndpointsTests
         Assert.Equal(HttpStatusCode.NotFound, detail.StatusCode);
         Assert.Equal(0, rebuild.Total);
         Assert.Empty(await context.MaintenanceSearchDocuments.ToListAsync());
+    }
+
+    [Theory]
+    [InlineData(AuthRoleCatalog.Gsd)]
+    [InlineData(AuthRoleCatalog.Inspector)]
+    public async Task Form_routes_require_authentication_and_allow_gsd_or_inspector_roles(string role)
+    {
+        await using var unauthenticatedApplication = new UnauthenticatedTestApplicationFactory();
+        using var unauthenticatedClient = unauthenticatedApplication.CreateClient();
+        Assert.Equal(
+            HttpStatusCode.Unauthorized,
+            (await unauthenticatedClient.GetAsync("/api/v1/preventive-maintenance-forms")).StatusCode);
+
+        await using var application = new TestApplicationFactory(role);
+        using var client = application.CreateClient();
+        await application.EnsureAuthenticatedUserAsync();
+        var schedule = await application.SeedScheduleAsync("fire-extinguisher");
+        var form = await CreateFormAsync(client, "fire-extinguisher");
+
+        var list = await client.GetAsync("/api/v1/preventive-maintenance-forms");
+        var detail = await client.GetAsync($"/api/v1/preventive-maintenance-forms/{form.Id}");
+        var ownRow = await client.PostAsJsonAsync(
+            $"/api/v1/preventive-maintenance-forms/{form.Id}/inspections",
+            DraftInspectionRequest(schedule.Id, "Own inspector row"));
+
+        list.EnsureSuccessStatusCode();
+        detail.EnsureSuccessStatusCode();
+        Assert.Equal(HttpStatusCode.Created, ownRow.StatusCode);
+
+        if (role == AuthRoleCatalog.Inspector)
+        {
+            var otherSchedule = await application.SeedScheduleAsync("fire-extinguisher");
+            var mismatchedInspector = await client.PostAsJsonAsync(
+                $"/api/v1/preventive-maintenance-forms/{form.Id}/inspections",
+                new
+                {
+                    scheduleId = otherSchedule.Id,
+                    inspectorUserId = Guid.NewGuid(),
+                    dateInspected = new DateTimeOffset(2026, 1, 15, 8, 0, 0, TimeSpan.FromHours(8)),
+                    isOperational = false,
+                    remarks = "Mismatched inspector"
+                });
+
+            Assert.Equal(HttpStatusCode.Forbidden, mismatchedInspector.StatusCode);
+        }
+    }
+
+    [Fact]
+    public async Task Submitted_rows_are_hidden_while_acknowledged_rows_are_official_and_projected()
+    {
+        await using var application = new TestApplicationFactory();
+        using var client = application.CreateClient();
+        await application.EnsureAuthenticatedUserAsync();
+        var asset = await CreateAssetAsync(client, "FE-FORM-004", "fire-extinguisher");
+        var submittedSchedule = await CreateScheduleAsync(client, asset.Id, 1);
+        var acknowledgedSchedule = await CreateScheduleAsync(client, asset.Id, 2);
+        var submittedForm = await CreateFormAsync(client, asset.AssetCategory);
+        var acknowledgedForm = await CreateFormAsync(client, asset.AssetCategory);
+        var submittedRow = await AddInspectionRowAsync(client, submittedForm.Id, submittedSchedule.Id, "Submitted only");
+        var acknowledgedRow = await AddInspectionRowAsync(client, acknowledgedForm.Id, acknowledgedSchedule.Id, "Acknowledged official row");
+        await application.SetFormStatusAsync(submittedForm.Id, PreventiveMaintenanceFormStatusCatalog.Submitted);
+        await application.SetFormStatusAsync(acknowledgedForm.Id, PreventiveMaintenanceFormStatusCatalog.Acknowledged);
+
+        var history = await client.GetAsync($"/api/v1/inspections/history/{asset.Id}");
+        var list = await client.GetAsync("/api/v1/inspections");
+        var submittedDetail = await client.GetAsync($"/api/v1/inspections/{submittedRow.Id}");
+        var acknowledgedDetail = await client.GetAsync($"/api/v1/inspections/{acknowledgedRow.Id}");
+        await using var scope = application.Services.CreateAsyncScope();
+        var projector = scope.ServiceProvider.GetRequiredService<MaintenanceSearchDocumentProjector>();
+        var rebuild = await projector.RebuildAsync();
+        var contextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
+        await using var context = await contextFactory.CreateDbContextAsync();
+
+        var historyRows = await history.Content.ReadFromJsonAsync<List<InspectionHistoryResponse>>();
+        var inspectionRows = await list.Content.ReadFromJsonAsync<List<InspectionResponse>>();
+        Assert.Equal([acknowledgedRow.Id], historyRows!.Select(row => row.Id).ToArray());
+        Assert.Equal([acknowledgedRow.Id], inspectionRows!.Select(row => row.Id).ToArray());
+        Assert.Equal(HttpStatusCode.NotFound, submittedDetail.StatusCode);
+        acknowledgedDetail.EnsureSuccessStatusCode();
+        Assert.Equal(1, rebuild.Total);
+        Assert.Equal([acknowledgedRow.Id], (await context.MaintenanceSearchDocuments
+            .Select(document => document.InspectionId)
+            .ToListAsync()).ToArray());
     }
 
     private static async Task<AssetResponse> CreateAssetAsync(HttpClient client, string assetCode, string assetCategory)
@@ -190,15 +275,33 @@ public sealed class PreventiveMaintenanceFormDraftEndpointsTests
         };
     }
 
+    private static object UpdateDraftInspectionRequest(string remarks)
+    {
+        return new
+        {
+            inspectorUserId = TestAuthenticationHandler.UserId,
+            dateInspected = new DateTimeOffset(2026, 1, 15, 8, 0, 0, TimeSpan.FromHours(8)),
+            isOperational = false,
+            remarks,
+            actionsRecommendations = "Inspect during final submission."
+        };
+    }
+
     private sealed class TestApplicationFactory : WebApplicationFactory<Program>
     {
         private readonly string databaseName = $"unipm-form-drafts-{Guid.NewGuid()}";
+        private readonly string[] roles;
+
+        public TestApplicationFactory(params string[] roles)
+        {
+            this.roles = roles.Length == 0 ? [AuthRoleCatalog.Gsd] : roles;
+        }
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.ConfigureServices(services =>
             {
-                services.AddTestAuthentication(AuthRoleCatalog.Gsd);
+                services.AddTestAuthentication(roles);
                 services.RemoveAll<IDbContextFactory<ApplicationDbContext>>();
                 services.RemoveAll<DbContextOptions<ApplicationDbContext>>();
                 services.AddDbContextFactory<ApplicationDbContext>(options => options.UseInMemoryDatabase(databaseName));
@@ -237,6 +340,58 @@ public sealed class PreventiveMaintenanceFormDraftEndpointsTests
             var form = await context.PreventiveMaintenanceForms.SingleAsync(candidate => candidate.Id == formId);
             form.Status = status;
             await context.SaveChangesAsync();
+        }
+
+        public async Task<ScheduleResponse> SeedScheduleAsync(string assetCategory)
+        {
+            await using var scope = Services.CreateAsyncScope();
+            var contextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
+            await using var context = await contextFactory.CreateDbContextAsync();
+            var now = DateTimeOffset.UtcNow;
+            var asset = new Asset
+            {
+                Id = Guid.NewGuid(),
+                AssetCode = $"FORM-ROLE-{Guid.NewGuid():N}"[..24],
+                AssetCategory = assetCategory,
+                Building = "Main Building",
+                Department = "GSD",
+                Location = "Test Area",
+                Status = "Active",
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+            var schedule = new PreventiveMaintenanceSchedule
+            {
+                Id = Guid.NewGuid(),
+                AssetId = asset.Id,
+                ScheduleDate = new DateTimeOffset(2026, 1, 10, 8, 0, 0, TimeSpan.FromHours(8)),
+                PeriodType = "Quarter",
+                Quarter = "Q1",
+                Year = 2026,
+                Status = "Due",
+                AssignedToUserId = TestAuthenticationHandler.UserId,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+            context.Assets.Add(asset);
+            context.PreventiveMaintenanceSchedules.Add(schedule);
+            await context.SaveChangesAsync();
+            return new ScheduleResponse(schedule.Id);
+        }
+    }
+
+    private sealed class UnauthenticatedTestApplicationFactory : WebApplicationFactory<Program>
+    {
+        private readonly string databaseName = $"unipm-form-drafts-unauthenticated-{Guid.NewGuid()}";
+
+        protected override void ConfigureWebHost(IWebHostBuilder builder)
+        {
+            builder.ConfigureServices(services =>
+            {
+                services.RemoveAll<IDbContextFactory<ApplicationDbContext>>();
+                services.RemoveAll<DbContextOptions<ApplicationDbContext>>();
+                services.AddDbContextFactory<ApplicationDbContext>(options => options.UseInMemoryDatabase(databaseName));
+            });
         }
     }
 

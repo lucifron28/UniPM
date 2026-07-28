@@ -104,7 +104,7 @@ public sealed class MaintenanceSearchDocumentProjector(
             .AsNoTracking()
             .Include(inspection => inspection.Asset)
             .Where(inspection => inspection.PreventiveMaintenanceFormId == null
-                || inspection.PreventiveMaintenanceForm!.Status != PreventiveMaintenanceFormStatusCatalog.Draft)
+                || inspection.PreventiveMaintenanceForm!.Status == PreventiveMaintenanceFormStatusCatalog.Acknowledged)
             .AsQueryable();
 
         if (inspectionIds is not null)

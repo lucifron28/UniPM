@@ -132,7 +132,7 @@ public static class InspectionsEndpoints
             var history = await context.InspectionRecords
                 .Where(i => i.AssetId == assetId
                     && (i.PreventiveMaintenanceFormId == null
-                        || i.PreventiveMaintenanceForm!.Status != PreventiveMaintenanceFormStatusCatalog.Draft))
+                        || i.PreventiveMaintenanceForm!.Status == PreventiveMaintenanceFormStatusCatalog.Acknowledged))
                 .OrderByDescending(i => i.DateInspected)
                 .Select(i => new InspectionHistoryResponse(
                     i.Id,
@@ -169,7 +169,7 @@ public static class InspectionsEndpoints
             var query = context.InspectionRecords
                 .AsNoTracking()
                 .Where(inspection => inspection.PreventiveMaintenanceFormId == null
-                    || inspection.PreventiveMaintenanceForm!.Status != PreventiveMaintenanceFormStatusCatalog.Draft)
+                    || inspection.PreventiveMaintenanceForm!.Status == PreventiveMaintenanceFormStatusCatalog.Acknowledged)
                 .AsQueryable();
 
             if (assetId is not null)
@@ -230,7 +230,7 @@ public static class InspectionsEndpoints
                 .AsNoTracking()
                 .FirstOrDefaultAsync(candidate => candidate.Id == id
                     && (candidate.PreventiveMaintenanceFormId == null
-                        || candidate.PreventiveMaintenanceForm!.Status != PreventiveMaintenanceFormStatusCatalog.Draft),
+                        || candidate.PreventiveMaintenanceForm!.Status == PreventiveMaintenanceFormStatusCatalog.Acknowledged),
                     cancellationToken);
 
             return inspection is not null
