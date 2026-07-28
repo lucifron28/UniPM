@@ -1,0 +1,50 @@
+import { useQuery } from '@tanstack/react-query'
+import {
+  getCorrectiveMaintenanceHandoff,
+  getGetCorrectiveMaintenanceHandoffQueryKey,
+  getGetPreventiveMaintenanceFormQueryKey,
+  getListPreventiveMaintenanceFormsQueryKey,
+  getPreventiveMaintenanceForm,
+  listPreventiveMaintenanceForms,
+} from '@/api/generated/endpoints'
+import {
+  parseCorrectiveMaintenanceHandoff,
+  parsePreventiveMaintenanceForm,
+  parsePreventiveMaintenanceForms,
+} from '@/features/preventive-maintenance-forms/form-contract'
+
+export function usePreventiveMaintenanceForms(enabled = true) {
+  return useQuery({
+    queryKey: getListPreventiveMaintenanceFormsQueryKey(),
+    queryFn: ({ signal }) =>
+      listPreventiveMaintenanceForms(signal).then(
+        parsePreventiveMaintenanceForms,
+      ),
+    enabled,
+  })
+}
+
+export function usePreventiveMaintenanceForm(formId: string, enabled = true) {
+  return useQuery({
+    queryKey: getGetPreventiveMaintenanceFormQueryKey(formId),
+    queryFn: ({ signal }) =>
+      getPreventiveMaintenanceForm(formId, signal).then(
+        parsePreventiveMaintenanceForm,
+      ),
+    enabled,
+  })
+}
+
+export function useCorrectiveMaintenanceHandoff(
+  formId: string,
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: getGetCorrectiveMaintenanceHandoffQueryKey(formId),
+    queryFn: ({ signal }) =>
+      getCorrectiveMaintenanceHandoff(formId, signal).then(
+        parseCorrectiveMaintenanceHandoff,
+      ),
+    enabled,
+  })
+}
