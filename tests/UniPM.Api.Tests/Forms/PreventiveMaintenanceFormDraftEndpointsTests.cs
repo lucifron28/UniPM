@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Security.Cryptography;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
@@ -18,6 +19,9 @@ namespace UniPM.Api.Tests;
 
 public sealed class PreventiveMaintenanceFormDraftEndpointsTests
 {
+    private const string TestPngSignatureBase64 =
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl2lD8AAAAASUVORK5CYII=";
+
     [Fact]
     public async Task Create_draft_form_can_contain_multiple_inspection_rows()
     {
@@ -288,6 +292,119 @@ public sealed class PreventiveMaintenanceFormDraftEndpointsTests
         Assert.Equal(HttpStatusCode.Forbidden, unauthorizedSubmission.StatusCode);
     }
 
+    [Fact]
+    public async Task Acknowledgement_completes_schedules_and_publishes_history_and_projection()
+    {
+        await using var application = new TestApplicationFactory();
+        using var client = application.CreateClient();
+        await application.EnsureAuthenticatedUserAsync();
+        var asset = await CreateAssetAsync(client, "FE-FORM-ACK-001", "fire-extinguisher");
+        var firstSchedule = await CreateScheduleAsync(client, asset.Id, 1);
+        var secondSchedule = await CreateScheduleAsync(client, asset.Id, 2);
+        var form = await CreateFormAsync(client, asset.AssetCategory);
+        var firstRow = await AddInspectionRowAsync(client, form.Id, firstSchedule.Id, "First acknowledged row");
+        var secondRow = await AddInspectionRowAsync(client, form.Id, secondSchedule.Id, "Second acknowledged row");
+        (await client.PostAsync($"/api/v1/preventive-maintenance-forms/{form.Id}/submit", content: null))
+            .EnsureSuccessStatusCode();
+
+        var response = await client.PostAsJsonAsync(
+            $"/api/v1/preventive-maintenance-forms/{form.Id}/acknowledge",
+            AcknowledgementRequest());
+
+        response.EnsureSuccessStatusCode();
+        var acknowledgement = await response.Content
+            .ReadFromJsonAsync<PreventiveMaintenanceAcknowledgementResponse>();
+        Assert.NotNull(acknowledgement);
+        Assert.Equal(form.Id, acknowledgement.FormId);
+        Assert.Equal("Department Head", acknowledgement.SignatoryPosition);
+        Assert.Equal("image/png", acknowledgement.SignatureContentType);
+        Assert.Equal(TestAuthenticationHandler.UserId, acknowledgement.CapturedByUserId);
+        Assert.Equal(
+            Convert.ToHexString(SHA256.HashData(Convert.FromBase64String(TestPngSignatureBase64))),
+            acknowledgement.SignatureChecksum);
+
+        var history = await client.GetFromJsonAsync<List<InspectionHistoryResponse>>(
+            $"/api/v1/inspections/history/{asset.Id}");
+        Assert.Equivalent(
+            new[] { firstRow.Id, secondRow.Id },
+            history!.Select(row => row.Id));
+
+        await using var scope = application.Services.CreateAsyncScope();
+        var contextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
+        await using var context = await contextFactory.CreateDbContextAsync();
+        var persistedForm = await context.PreventiveMaintenanceForms
+            .Include(candidate => candidate.Acknowledgement)
+            .SingleAsync(candidate => candidate.Id == form.Id);
+        var schedules = await context.PreventiveMaintenanceSchedules
+            .Where(schedule => schedule.Id == firstSchedule.Id || schedule.Id == secondSchedule.Id)
+            .ToListAsync();
+        var projectedInspectionIds = await context.MaintenanceSearchDocuments
+            .Where(document => document.InspectionId == firstRow.Id || document.InspectionId == secondRow.Id)
+            .Select(document => document.InspectionId)
+            .ToListAsync();
+
+        Assert.Equal(PreventiveMaintenanceFormStatusCatalog.Acknowledged, persistedForm.Status);
+        Assert.NotNull(persistedForm.Acknowledgement);
+        Assert.All(schedules, schedule =>
+        {
+            Assert.Equal(ScheduleStatusCatalog.Completed, schedule.Status);
+            Assert.Equal(acknowledgement.AcknowledgedAt, schedule.CompletedAt);
+        });
+        Assert.Equivalent(new[] { firstRow.Id, secondRow.Id }, projectedInspectionIds);
+        Assert.Empty(await context.MaintenanceSearchDocumentEmbeddings.ToListAsync());
+    }
+
+    [Fact]
+    public async Task Acknowledgement_rejects_invalid_repeated_wrong_status_or_unauthorized_requests()
+    {
+        await using var gsdApplication = new TestApplicationFactory();
+        using var gsdClient = gsdApplication.CreateClient();
+        await gsdApplication.EnsureAuthenticatedUserAsync();
+        var asset = await CreateAssetAsync(gsdClient, "FE-FORM-ACK-002", "fire-extinguisher");
+        var schedule = await CreateScheduleAsync(gsdClient, asset.Id, 1);
+        var submittedForm = await CreateFormAsync(gsdClient, asset.AssetCategory);
+        await AddInspectionRowAsync(gsdClient, submittedForm.Id, schedule.Id, "Acknowledgement rejection row");
+        (await gsdClient.PostAsync(
+            $"/api/v1/preventive-maintenance-forms/{submittedForm.Id}/submit",
+            content: null)).EnsureSuccessStatusCode();
+
+        var invalid = await gsdClient.PostAsJsonAsync(
+            $"/api/v1/preventive-maintenance-forms/{submittedForm.Id}/acknowledge",
+            AcknowledgementRequest("not-base64"));
+        var accepted = await gsdClient.PostAsJsonAsync(
+            $"/api/v1/preventive-maintenance-forms/{submittedForm.Id}/acknowledge",
+            AcknowledgementRequest());
+        var repeated = await gsdClient.PostAsJsonAsync(
+            $"/api/v1/preventive-maintenance-forms/{submittedForm.Id}/acknowledge",
+            AcknowledgementRequest());
+
+        var draftForm = await CreateFormAsync(gsdClient, asset.AssetCategory);
+        var wrongStatus = await gsdClient.PostAsJsonAsync(
+            $"/api/v1/preventive-maintenance-forms/{draftForm.Id}/acknowledge",
+            AcknowledgementRequest());
+
+        await using var inspectorApplication = new TestApplicationFactory(AuthRoleCatalog.Inspector);
+        using var inspectorClient = inspectorApplication.CreateClient();
+        await inspectorApplication.EnsureAuthenticatedUserAsync();
+        var inspectorSchedule = await inspectorApplication.SeedScheduleAsync("fire-extinguisher");
+        var otherCreatorForm = await inspectorApplication.SeedDraftFormAsync(
+            inspectorSchedule.Id,
+            Guid.NewGuid(),
+            TestAuthenticationHandler.UserId);
+        await inspectorApplication.SetFormStatusAsync(
+            otherCreatorForm.Id,
+            PreventiveMaintenanceFormStatusCatalog.Submitted);
+        var unauthorized = await inspectorClient.PostAsJsonAsync(
+            $"/api/v1/preventive-maintenance-forms/{otherCreatorForm.Id}/acknowledge",
+            AcknowledgementRequest());
+
+        Assert.Equal(HttpStatusCode.BadRequest, invalid.StatusCode);
+        accepted.EnsureSuccessStatusCode();
+        Assert.Equal(HttpStatusCode.Conflict, repeated.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, wrongStatus.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, unauthorized.StatusCode);
+    }
+
     private static async Task<AssetResponse> CreateAssetAsync(HttpClient client, string assetCode, string assetCategory)
     {
         var response = await client.PostAsJsonAsync("/api/v1/assets/", new
@@ -370,6 +487,17 @@ public sealed class PreventiveMaintenanceFormDraftEndpointsTests
             isOperational = false,
             remarks,
             actionsRecommendations = "Inspect during final submission."
+        };
+    }
+
+    private static object AcknowledgementRequest(string signatureData = TestPngSignatureBase64)
+    {
+        return new
+        {
+            signatoryName = "Fictional Department Head",
+            signatoryPosition = "Department Head",
+            signatureData,
+            signatureContentType = "image/png"
         };
     }
 
