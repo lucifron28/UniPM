@@ -248,6 +248,11 @@ public static class PreventiveMaintenanceFormEndpoints
                 return ApiErrors.NotFound("Draft inspection row not found.");
             }
 
+            if (!CanUseInspectorUserId(principal, inspection.InspectorUserId))
+            {
+                return Results.Forbid();
+            }
+
             var inspector = await context.Users
                 .AsNoTracking()
                 .SingleOrDefaultAsync(user => user.Id == dto.InspectorUserId, cancellationToken);

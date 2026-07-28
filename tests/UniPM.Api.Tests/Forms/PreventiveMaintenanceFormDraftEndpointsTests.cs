@@ -169,8 +169,12 @@ public sealed class PreventiveMaintenanceFormDraftEndpointsTests
                 Guid.NewGuid());
             var deleteOtherInspectorRow = await client.DeleteAsync(
                 $"/api/v1/preventive-maintenance-forms/{form.Id}/inspections/{otherInspectorRow.Id}");
+            var updateOtherInspectorRow = await client.PutAsJsonAsync(
+                $"/api/v1/preventive-maintenance-forms/{form.Id}/inspections/{otherInspectorRow.Id}",
+                UpdateDraftInspectionRequest("Attempted ownership bypass"));
 
             Assert.Equal(HttpStatusCode.Forbidden, deleteOtherInspectorRow.StatusCode);
+            Assert.Equal(HttpStatusCode.Forbidden, updateOtherInspectorRow.StatusCode);
         }
     }
 
