@@ -5,6 +5,7 @@ using UniPM.Api.Data;
 using UniPM.Api.Features;
 using UniPM.Api.Features.Retrieval;
 using UniPM.Api.Features.Schedules;
+using UniPM.Api.Features.PreventiveMaintenanceForms;
 using UniPM.Api.Models;
 using UniPM.Api.Features.Auth;
 
@@ -129,7 +130,9 @@ public static class InspectionsEndpoints
         {
             await using var context = await factory.CreateDbContextAsync(cancellationToken);
             var history = await context.InspectionRecords
-                .Where(i => i.AssetId == assetId)
+                .Where(i => i.AssetId == assetId
+                    && (i.PreventiveMaintenanceFormId == null
+                        || i.PreventiveMaintenanceForm!.Status != PreventiveMaintenanceFormStatusCatalog.Draft))
                 .OrderByDescending(i => i.DateInspected)
                 .Select(i => new InspectionHistoryResponse(
                     i.Id,
@@ -165,6 +168,8 @@ public static class InspectionsEndpoints
             await using var context = await factory.CreateDbContextAsync(cancellationToken);
             var query = context.InspectionRecords
                 .AsNoTracking()
+                .Where(inspection => inspection.PreventiveMaintenanceFormId == null
+                    || inspection.PreventiveMaintenanceForm!.Status != PreventiveMaintenanceFormStatusCatalog.Draft)
                 .AsQueryable();
 
             if (assetId is not null)
@@ -223,7 +228,10 @@ public static class InspectionsEndpoints
             await using var context = await factory.CreateDbContextAsync(cancellationToken);
             var inspection = await context.InspectionRecords
                 .AsNoTracking()
-                .FirstOrDefaultAsync(candidate => candidate.Id == id, cancellationToken);
+                .FirstOrDefaultAsync(candidate => candidate.Id == id
+                    && (candidate.PreventiveMaintenanceFormId == null
+                        || candidate.PreventiveMaintenanceForm!.Status != PreventiveMaintenanceFormStatusCatalog.Draft),
+                    cancellationToken);
 
             return inspection is not null
                 ? Results.Ok(InspectionResponse.FromInspection(inspection))

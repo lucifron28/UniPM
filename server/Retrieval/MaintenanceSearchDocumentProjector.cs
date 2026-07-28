@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using UniPM.Api.Data;
 using UniPM.Api.Features.Assets;
+using UniPM.Api.Features.PreventiveMaintenanceForms;
 using UniPM.Api.Features.ReferenceData;
 using UniPM.Api.Models;
 
@@ -102,6 +103,8 @@ public sealed class MaintenanceSearchDocumentProjector(
         var inspectionsQuery = context.InspectionRecords
             .AsNoTracking()
             .Include(inspection => inspection.Asset)
+            .Where(inspection => inspection.PreventiveMaintenanceFormId == null
+                || inspection.PreventiveMaintenanceForm!.Status != PreventiveMaintenanceFormStatusCatalog.Draft)
             .AsQueryable();
 
         if (inspectionIds is not null)
