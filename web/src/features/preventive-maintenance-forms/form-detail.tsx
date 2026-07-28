@@ -9,7 +9,6 @@ import {
   canReviewPreventiveMaintenanceForms,
   isGsdRole,
   type CorrectiveMaintenanceHandoff,
-  type PreventiveMaintenanceForm,
   type PreventiveMaintenanceInspectionRow,
 } from '@/features/preventive-maintenance-forms/form-contract'
 import {
