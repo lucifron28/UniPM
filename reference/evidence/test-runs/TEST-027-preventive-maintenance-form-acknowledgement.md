@@ -3,7 +3,7 @@ id: TEST-027
 type: test-run
 title: Preventive-maintenance form acknowledgement verification
 status: executed
-recordedAtUtc: 2026-07-28T13:10:20Z
+recordedAtUtc: 2026-07-28T14:07:23Z
 testedCommit: 65d2432d77f4219b973144b6f49df8722bbd8027
 sourceBranch: feat/preventive-maintenance-form-acknowledgement
 evidenceLevel: locally-executed
@@ -36,24 +36,39 @@ dotnet test .\tests\UniPM.Api.Tests\UniPM.Api.Tests.csproj `
 
 ## Results
 
-The native SQL Server acknowledgement test compiled and started, but it did
-not reach the application endpoint. The local SQL Server connection failed
-during the encryption handshake:
+The native SQL Server acknowledgement test compiled and started, but neither
+attempt reached the application endpoint.
+
+The first process-scoped connection attempt failed during the encryption
+handshake:
 
 ```text
 The instance of SQL Server you attempted to connect to requires encryption but
 this machine does not support it.
 ```
 
-The failure occurred while the temporary SQL Server test database was being
-created. It does not establish a defect in acknowledgement persistence,
-schedule completion, or search-document projection.
+The requested rerun used the documented native form-test connection settings:
+
+```text
+Server=.;Database=master;Integrated Security=True;Encrypt=False;
+TrustServerCertificate=True;
+```
+
+It instead failed during Windows Authentication with:
+
+```text
+The target principal name is incorrect. Cannot generate SSPI context.
+```
+
+Both failures occurred while creating the temporary SQL Server test database.
+They do not establish a defect in acknowledgement persistence, schedule
+completion, or search-document projection.
 
 ## Test Counts
 
 | Scope | Passed | Failed | Skipped | Total |
 |---|---:|---:|---:|---:|
-| Native SQL acknowledgement test | 0 | 1 | 0 | 1 |
+| Native SQL acknowledgement rerun | 0 | 1 | 0 | 1 |
 
 ## Behavior Covered
 
@@ -69,9 +84,10 @@ schedule completion, or search-document projection.
 ## SQL Server Verification
 
 `UNIPM_SQLSERVER_TEST_CONNECTION` was configured only in the test process
-using Windows Authentication. Its encryption settings were incompatible with
-the local SQL Server client handshake. No connection string, account, or other
-credential has been retained.
+using Windows Authentication. The first connection was blocked by encryption
+negotiation; the requested rerun with the documented native form-test settings
+was blocked by the local SSPI principal context. No account or credential has
+been retained.
 
 ## AI-Provider Verification
 
@@ -86,7 +102,7 @@ signature payload, secret, connection string, prompt, or vector was recorded.
 ## Skipped Verification
 
 The complete Release suite and native SQL Server 2019 suite were not run. The
-requested native SQL acknowledgement test was run once and was not retried.
+requested rerun was executed once and was not retried after the SSPI failure.
 
 ## Limitations
 
