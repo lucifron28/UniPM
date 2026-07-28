@@ -3,8 +3,8 @@ id: TEST-028
 type: test-run
 title: Corrective-action handoff read model verification
 status: executed
-recordedAtUtc: 2026-07-28T15:13:43Z
-testedCommit: d1383dd15e4c621208916e896da03332dd78a930
+recordedAtUtc: 2026-07-28T15:44:36Z
+testedCommit: fb26a0b23b9b8ec1d6f2f3fe4d42353be25605cd
 sourceBranch: feat/corrective-action-handoff-read-model
 evidenceLevel: locally-executed
 ---
@@ -19,16 +19,11 @@ handling.
 
 ## Execution Identity
 
-- Tested source commit: `d1383dd15e4c621208916e896da03332dd78a930`
+- Tested source commit: `fb26a0b23b9b8ec1d6f2f3fe4d42353be25605cd`
 - Source branch: `feat/corrective-action-handoff-read-model`
 - Execution date: 2026-07-28 UTC
 
-## Commands
-
-The first targeted run reached compilation and exposed an in-scope test DTO
-assertion mismatch. The assertion was corrected in commit `80f449b`, and the
-instruction-policy update was committed in `d1383dd`. The permitted targeted
-rerun was then executed against the tested commit:
+## Command
 
 ```powershell
 dotnet test .\tests\UniPM.Api.Tests\UniPM.Api.Tests.csproj `
@@ -39,7 +34,7 @@ dotnet test .\tests\UniPM.Api.Tests\UniPM.Api.Tests.csproj `
 
 ## Results
 
-The permitted rerun passed both focused tests. The test host built the API,
+The targeted run passed both focused tests. The test host built the API,
 retrieval benchmark, and API test assemblies as part of the targeted command.
 
 ## Test Counts
@@ -53,6 +48,8 @@ retrieval benchmark, and API test assemblies as part of the targeted command.
 - An acknowledged form returns its file number, acknowledgement date,
   metadata, source inspection fields, asset values, operational result,
   recommendation, and skilled-worker identity.
+- `AssetCode` remains available while `AssetDeviceNumber` is returned as
+  `null` until an institutional source or mapping is confirmed.
 - Rows without a recommended corrective action are excluded.
 - Signature data and signature checksum names are absent from the response
   JSON.

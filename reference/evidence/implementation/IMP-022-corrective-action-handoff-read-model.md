@@ -3,10 +3,10 @@ id: IMP-022
 type: implementation
 title: Corrective-action handoff preparation read model
 status: reviewed
-recordedAtUtc: 2026-07-28T15:13:43Z
+recordedAtUtc: 2026-07-28T15:44:36Z
 sourceBranch: feat/corrective-action-handoff-read-model
 evidenceLevel: source-inspected
-testedCommit: d1383dd15e4c621208916e896da03332dd78a930
+testedCommit: fb26a0b23b9b8ec1d6f2f3fe4d42353be25605cd
 ---
 
 # Corrective-Action Handoff Preparation Read Model
@@ -42,8 +42,9 @@ track a handoff record.
 - Reports `HasCorrectiveActionRows` for the acknowledged form.
 - Reads acknowledgement date only; signature data and checksum are never
   returned.
-- Uses the existing `AssetCode` as both asset code and device-number value
-  because the current asset domain has no separate device-number field.
+- Keeps `AssetCode` unchanged and returns a nullable `AssetDeviceNumber`.
+  `AssetDeviceNumber` is `null` until an actual institutional device-number
+  source or approved mapping is confirmed.
 
 ## Boundary
 
@@ -54,7 +55,8 @@ create, process, approve, or monitor one.
 
 ## Verification Status
 
-TEST-028 records the two focused endpoint tests passing on the tested commit.
+TEST-028 records the two focused endpoint tests passing on the tested commit
+and verifies the unresolved device-number value is nullable.
 Native SQL Server 2019 verification was not run for this phase.
 
 ## Known Limitations
