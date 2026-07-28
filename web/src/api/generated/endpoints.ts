@@ -21,11 +21,16 @@ import type {
 } from '@tanstack/react-query'
 
 import type {
+  AcknowledgePreventiveMaintenanceFormDto,
   AssetCategoryResponse,
   AssetResponse,
   AuthUserResponse,
+  CorrectiveMaintenanceHandoffResponse,
   CreateAssetDto,
+  CreatePreventiveMaintenanceFormDto,
   CreateScheduleDto,
+  DraftInspectionRowDto,
+  DraftInspectionRowResponse,
   HttpValidationProblemDetails,
   InspectionHistoryResponse,
   InspectionResponse,
@@ -35,10 +40,13 @@ import type {
   LoginRequest,
   LoginResponse,
   MaintenanceReviewRequest,
+  PreventiveMaintenanceAcknowledgementResponse,
+  PreventiveMaintenanceFormResponse,
   ProblemDetails,
   RecordInspectionDto,
   ScheduleReferenceResponse,
   ScheduleResponse,
+  UpdateDraftInspectionRowDto,
   ValidationProblemDetails,
 } from './models'
 
@@ -2468,6 +2476,1029 @@ export function useGetInspection<
   > & { queryKey: DataTag<QueryKey, TData, TError> }
 
   return withQueryKey(query, queryOptions.queryKey)
+}
+
+/**
+ * @summary Creates a preventive-maintenance form draft
+ */
+export const createPreventiveMaintenanceFormDraft = (
+  createPreventiveMaintenanceFormDto: CreatePreventiveMaintenanceFormDto,
+  signal?: AbortSignal,
+) => {
+  return customInstance<PreventiveMaintenanceFormResponse>({
+    url: `/api/v1/preventive-maintenance-forms`,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    data: createPreventiveMaintenanceFormDto,
+    signal,
+  })
+}
+
+export const getCreatePreventiveMaintenanceFormDraftMutationOptions = <
+  TError = ValidationProblemDetails | void,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createPreventiveMaintenanceFormDraft>>,
+    TError,
+    { data: CreatePreventiveMaintenanceFormDto },
+    TContext
+  >
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createPreventiveMaintenanceFormDraft>>,
+  TError,
+  { data: CreatePreventiveMaintenanceFormDto },
+  TContext
+> => {
+  const mutationKey = ['createPreventiveMaintenanceFormDraft']
+  const { mutation: mutationOptions } = options
+    ? options.mutation &&
+      'mutationKey' in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey } }
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createPreventiveMaintenanceFormDraft>>,
+    { data: CreatePreventiveMaintenanceFormDto }
+  > = (props) => {
+    const { data } = props ?? {}
+
+    return createPreventiveMaintenanceFormDraft(data)
+  }
+
+  return { mutationFn, ...mutationOptions }
+}
+
+export type CreatePreventiveMaintenanceFormDraftMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createPreventiveMaintenanceFormDraft>>
+>
+export type CreatePreventiveMaintenanceFormDraftMutationBody =
+  CreatePreventiveMaintenanceFormDto
+export type CreatePreventiveMaintenanceFormDraftMutationError =
+  ValidationProblemDetails | void
+
+/**
+ * @summary Creates a preventive-maintenance form draft
+ */
+export const useCreatePreventiveMaintenanceFormDraft = <
+  TError = ValidationProblemDetails | void,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof createPreventiveMaintenanceFormDraft>>,
+      TError,
+      { data: CreatePreventiveMaintenanceFormDto },
+      TContext
+    >
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof createPreventiveMaintenanceFormDraft>>,
+  TError,
+  { data: CreatePreventiveMaintenanceFormDto },
+  TContext
+> => {
+  return useMutation(
+    getCreatePreventiveMaintenanceFormDraftMutationOptions(options),
+    queryClient,
+  )
+}
+
+/**
+ * @summary Lists preventive-maintenance forms
+ */
+export const listPreventiveMaintenanceForms = (signal?: AbortSignal) => {
+  return customInstance<PreventiveMaintenanceFormResponse[]>({
+    url: `/api/v1/preventive-maintenance-forms`,
+    method: 'GET',
+    signal,
+  })
+}
+
+export const getListPreventiveMaintenanceFormsQueryKey = () => {
+  return [`/api/v1/preventive-maintenance-forms`] as const
+}
+
+export const getListPreventiveMaintenanceFormsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listPreventiveMaintenanceForms>>,
+  TError = unknown,
+>(options?: {
+  query?: Partial<
+    UseQueryOptions<
+      Awaited<ReturnType<typeof listPreventiveMaintenanceForms>>,
+      TError,
+      TData
+    >
+  >
+}) => {
+  const { query: queryOptions } = options ?? {}
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListPreventiveMaintenanceFormsQueryKey()
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listPreventiveMaintenanceForms>>
+  > = ({ signal }) => listPreventiveMaintenanceForms(signal)
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listPreventiveMaintenanceForms>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListPreventiveMaintenanceFormsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listPreventiveMaintenanceForms>>
+>
+export type ListPreventiveMaintenanceFormsQueryError = unknown
+
+export function useListPreventiveMaintenanceForms<
+  TData = Awaited<ReturnType<typeof listPreventiveMaintenanceForms>>,
+  TError = unknown,
+>(
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listPreventiveMaintenanceForms>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listPreventiveMaintenanceForms>>,
+          TError,
+          Awaited<ReturnType<typeof listPreventiveMaintenanceForms>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useListPreventiveMaintenanceForms<
+  TData = Awaited<ReturnType<typeof listPreventiveMaintenanceForms>>,
+  TError = unknown,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listPreventiveMaintenanceForms>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listPreventiveMaintenanceForms>>,
+          TError,
+          Awaited<ReturnType<typeof listPreventiveMaintenanceForms>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useListPreventiveMaintenanceForms<
+  TData = Awaited<ReturnType<typeof listPreventiveMaintenanceForms>>,
+  TError = unknown,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listPreventiveMaintenanceForms>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+/**
+ * @summary Lists preventive-maintenance forms
+ */
+
+export function useListPreventiveMaintenanceForms<
+  TData = Awaited<ReturnType<typeof listPreventiveMaintenanceForms>>,
+  TError = unknown,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listPreventiveMaintenanceForms>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+} {
+  const queryOptions = getListPreventiveMaintenanceFormsQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+
+  return withQueryKey(query, queryOptions.queryKey)
+}
+
+/**
+ * @summary Gets a preventive-maintenance form
+ */
+export const getPreventiveMaintenanceForm = (
+  id: string,
+  signal?: AbortSignal,
+) => {
+  return customInstance<PreventiveMaintenanceFormResponse>({
+    url: `/api/v1/preventive-maintenance-forms/${id}`,
+    method: 'GET',
+    signal,
+  })
+}
+
+export const getGetPreventiveMaintenanceFormQueryKey = (id: string) => {
+  return [`/api/v1/preventive-maintenance-forms/${id}`] as const
+}
+
+export const getGetPreventiveMaintenanceFormQueryOptions = <
+  TData = Awaited<ReturnType<typeof getPreventiveMaintenanceForm>>,
+  TError = ProblemDetails,
+>(
+  id: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getPreventiveMaintenanceForm>>,
+        TError,
+        TData
+      >
+    >
+  },
+) => {
+  const { query: queryOptions } = options ?? {}
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetPreventiveMaintenanceFormQueryKey(id)
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getPreventiveMaintenanceForm>>
+  > = ({ signal }) => getPreventiveMaintenanceForm(id, signal)
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: id !== null && id !== undefined,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getPreventiveMaintenanceForm>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetPreventiveMaintenanceFormQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getPreventiveMaintenanceForm>>
+>
+export type GetPreventiveMaintenanceFormQueryError = ProblemDetails
+
+export function useGetPreventiveMaintenanceForm<
+  TData = Awaited<ReturnType<typeof getPreventiveMaintenanceForm>>,
+  TError = ProblemDetails,
+>(
+  id: string,
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getPreventiveMaintenanceForm>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getPreventiveMaintenanceForm>>,
+          TError,
+          Awaited<ReturnType<typeof getPreventiveMaintenanceForm>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useGetPreventiveMaintenanceForm<
+  TData = Awaited<ReturnType<typeof getPreventiveMaintenanceForm>>,
+  TError = ProblemDetails,
+>(
+  id: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getPreventiveMaintenanceForm>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getPreventiveMaintenanceForm>>,
+          TError,
+          Awaited<ReturnType<typeof getPreventiveMaintenanceForm>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useGetPreventiveMaintenanceForm<
+  TData = Awaited<ReturnType<typeof getPreventiveMaintenanceForm>>,
+  TError = ProblemDetails,
+>(
+  id: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getPreventiveMaintenanceForm>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+/**
+ * @summary Gets a preventive-maintenance form
+ */
+
+export function useGetPreventiveMaintenanceForm<
+  TData = Awaited<ReturnType<typeof getPreventiveMaintenanceForm>>,
+  TError = ProblemDetails,
+>(
+  id: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getPreventiveMaintenanceForm>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+} {
+  const queryOptions = getGetPreventiveMaintenanceFormQueryOptions(id, options)
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+
+  return withQueryKey(query, queryOptions.queryKey)
+}
+
+/**
+ * @summary Submits a completed preventive-maintenance form using a provisional file number
+ */
+export const submitPreventiveMaintenanceForm = (
+  id: string,
+  signal?: AbortSignal,
+) => {
+  return customInstance<PreventiveMaintenanceFormResponse>({
+    url: `/api/v1/preventive-maintenance-forms/${id}/submit`,
+    method: 'POST',
+    signal,
+  })
+}
+
+export const getSubmitPreventiveMaintenanceFormMutationOptions = <
+  TError = void | ProblemDetails,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof submitPreventiveMaintenanceForm>>,
+    TError,
+    { id: string },
+    TContext
+  >
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof submitPreventiveMaintenanceForm>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ['submitPreventiveMaintenanceForm']
+  const { mutation: mutationOptions } = options
+    ? options.mutation &&
+      'mutationKey' in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey } }
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof submitPreventiveMaintenanceForm>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {}
+
+    return submitPreventiveMaintenanceForm(id)
+  }
+
+  return { mutationFn, ...mutationOptions }
+}
+
+export type SubmitPreventiveMaintenanceFormMutationResult = NonNullable<
+  Awaited<ReturnType<typeof submitPreventiveMaintenanceForm>>
+>
+
+export type SubmitPreventiveMaintenanceFormMutationError = void | ProblemDetails
+
+/**
+ * @summary Submits a completed preventive-maintenance form using a provisional file number
+ */
+export const useSubmitPreventiveMaintenanceForm = <
+  TError = void | ProblemDetails,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof submitPreventiveMaintenanceForm>>,
+      TError,
+      { id: string },
+      TContext
+    >
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof submitPreventiveMaintenanceForm>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(
+    getSubmitPreventiveMaintenanceFormMutationOptions(options),
+    queryClient,
+  )
+}
+
+/**
+ * @summary Acknowledges one submitted preventive-maintenance form
+ */
+export const acknowledgePreventiveMaintenanceForm = (
+  id: string,
+  acknowledgePreventiveMaintenanceFormDto: AcknowledgePreventiveMaintenanceFormDto,
+  signal?: AbortSignal,
+) => {
+  return customInstance<PreventiveMaintenanceAcknowledgementResponse>({
+    url: `/api/v1/preventive-maintenance-forms/${id}/acknowledge`,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    data: acknowledgePreventiveMaintenanceFormDto,
+    signal,
+  })
+}
+
+export const getAcknowledgePreventiveMaintenanceFormMutationOptions = <
+  TError = ValidationProblemDetails | void | ProblemDetails,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof acknowledgePreventiveMaintenanceForm>>,
+    TError,
+    { id: string; data: AcknowledgePreventiveMaintenanceFormDto },
+    TContext
+  >
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof acknowledgePreventiveMaintenanceForm>>,
+  TError,
+  { id: string; data: AcknowledgePreventiveMaintenanceFormDto },
+  TContext
+> => {
+  const mutationKey = ['acknowledgePreventiveMaintenanceForm']
+  const { mutation: mutationOptions } = options
+    ? options.mutation &&
+      'mutationKey' in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey } }
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof acknowledgePreventiveMaintenanceForm>>,
+    { id: string; data: AcknowledgePreventiveMaintenanceFormDto }
+  > = (props) => {
+    const { id, data } = props ?? {}
+
+    return acknowledgePreventiveMaintenanceForm(id, data)
+  }
+
+  return { mutationFn, ...mutationOptions }
+}
+
+export type AcknowledgePreventiveMaintenanceFormMutationResult = NonNullable<
+  Awaited<ReturnType<typeof acknowledgePreventiveMaintenanceForm>>
+>
+export type AcknowledgePreventiveMaintenanceFormMutationBody =
+  AcknowledgePreventiveMaintenanceFormDto
+export type AcknowledgePreventiveMaintenanceFormMutationError =
+  ValidationProblemDetails | void | ProblemDetails
+
+/**
+ * @summary Acknowledges one submitted preventive-maintenance form
+ */
+export const useAcknowledgePreventiveMaintenanceForm = <
+  TError = ValidationProblemDetails | void | ProblemDetails,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof acknowledgePreventiveMaintenanceForm>>,
+      TError,
+      { id: string; data: AcknowledgePreventiveMaintenanceFormDto },
+      TContext
+    >
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof acknowledgePreventiveMaintenanceForm>>,
+  TError,
+  { id: string; data: AcknowledgePreventiveMaintenanceFormDto },
+  TContext
+> => {
+  return useMutation(
+    getAcknowledgePreventiveMaintenanceFormMutationOptions(options),
+    queryClient,
+  )
+}
+
+/**
+ * @summary Prepares acknowledged preventive-maintenance findings for corrective follow-up
+ */
+export const getCorrectiveMaintenanceHandoff = (
+  id: string,
+  signal?: AbortSignal,
+) => {
+  return customInstance<CorrectiveMaintenanceHandoffResponse>({
+    url: `/api/v1/preventive-maintenance-forms/${id}/corrective-handoff`,
+    method: 'GET',
+    signal,
+  })
+}
+
+export const getGetCorrectiveMaintenanceHandoffQueryKey = (id: string) => {
+  return [
+    `/api/v1/preventive-maintenance-forms/${id}/corrective-handoff`,
+  ] as const
+}
+
+export const getGetCorrectiveMaintenanceHandoffQueryOptions = <
+  TData = Awaited<ReturnType<typeof getCorrectiveMaintenanceHandoff>>,
+  TError = void | ProblemDetails,
+>(
+  id: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getCorrectiveMaintenanceHandoff>>,
+        TError,
+        TData
+      >
+    >
+  },
+) => {
+  const { query: queryOptions } = options ?? {}
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetCorrectiveMaintenanceHandoffQueryKey(id)
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getCorrectiveMaintenanceHandoff>>
+  > = ({ signal }) => getCorrectiveMaintenanceHandoff(id, signal)
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: id !== null && id !== undefined,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getCorrectiveMaintenanceHandoff>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetCorrectiveMaintenanceHandoffQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getCorrectiveMaintenanceHandoff>>
+>
+export type GetCorrectiveMaintenanceHandoffQueryError = void | ProblemDetails
+
+export function useGetCorrectiveMaintenanceHandoff<
+  TData = Awaited<ReturnType<typeof getCorrectiveMaintenanceHandoff>>,
+  TError = void | ProblemDetails,
+>(
+  id: string,
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getCorrectiveMaintenanceHandoff>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getCorrectiveMaintenanceHandoff>>,
+          TError,
+          Awaited<ReturnType<typeof getCorrectiveMaintenanceHandoff>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useGetCorrectiveMaintenanceHandoff<
+  TData = Awaited<ReturnType<typeof getCorrectiveMaintenanceHandoff>>,
+  TError = void | ProblemDetails,
+>(
+  id: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getCorrectiveMaintenanceHandoff>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getCorrectiveMaintenanceHandoff>>,
+          TError,
+          Awaited<ReturnType<typeof getCorrectiveMaintenanceHandoff>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useGetCorrectiveMaintenanceHandoff<
+  TData = Awaited<ReturnType<typeof getCorrectiveMaintenanceHandoff>>,
+  TError = void | ProblemDetails,
+>(
+  id: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getCorrectiveMaintenanceHandoff>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+/**
+ * @summary Prepares acknowledged preventive-maintenance findings for corrective follow-up
+ */
+
+export function useGetCorrectiveMaintenanceHandoff<
+  TData = Awaited<ReturnType<typeof getCorrectiveMaintenanceHandoff>>,
+  TError = void | ProblemDetails,
+>(
+  id: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getCorrectiveMaintenanceHandoff>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+} {
+  const queryOptions = getGetCorrectiveMaintenanceHandoffQueryOptions(
+    id,
+    options,
+  )
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+
+  return withQueryKey(query, queryOptions.queryKey)
+}
+
+/**
+ * @summary Adds an inspection row to a preventive-maintenance form draft
+ */
+export const addPreventiveMaintenanceFormDraftInspection = (
+  id: string,
+  draftInspectionRowDto: DraftInspectionRowDto,
+  signal?: AbortSignal,
+) => {
+  return customInstance<DraftInspectionRowResponse>({
+    url: `/api/v1/preventive-maintenance-forms/${id}/inspections`,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    data: draftInspectionRowDto,
+    signal,
+  })
+}
+
+export const getAddPreventiveMaintenanceFormDraftInspectionMutationOptions = <
+  TError = ValidationProblemDetails | void | ProblemDetails,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof addPreventiveMaintenanceFormDraftInspection>>,
+    TError,
+    { id: string; data: DraftInspectionRowDto },
+    TContext
+  >
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof addPreventiveMaintenanceFormDraftInspection>>,
+  TError,
+  { id: string; data: DraftInspectionRowDto },
+  TContext
+> => {
+  const mutationKey = ['addPreventiveMaintenanceFormDraftInspection']
+  const { mutation: mutationOptions } = options
+    ? options.mutation &&
+      'mutationKey' in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey } }
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof addPreventiveMaintenanceFormDraftInspection>>,
+    { id: string; data: DraftInspectionRowDto }
+  > = (props) => {
+    const { id, data } = props ?? {}
+
+    return addPreventiveMaintenanceFormDraftInspection(id, data)
+  }
+
+  return { mutationFn, ...mutationOptions }
+}
+
+export type AddPreventiveMaintenanceFormDraftInspectionMutationResult =
+  NonNullable<
+    Awaited<ReturnType<typeof addPreventiveMaintenanceFormDraftInspection>>
+  >
+export type AddPreventiveMaintenanceFormDraftInspectionMutationBody =
+  DraftInspectionRowDto
+export type AddPreventiveMaintenanceFormDraftInspectionMutationError =
+  ValidationProblemDetails | void | ProblemDetails
+
+/**
+ * @summary Adds an inspection row to a preventive-maintenance form draft
+ */
+export const useAddPreventiveMaintenanceFormDraftInspection = <
+  TError = ValidationProblemDetails | void | ProblemDetails,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof addPreventiveMaintenanceFormDraftInspection>>,
+      TError,
+      { id: string; data: DraftInspectionRowDto },
+      TContext
+    >
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof addPreventiveMaintenanceFormDraftInspection>>,
+  TError,
+  { id: string; data: DraftInspectionRowDto },
+  TContext
+> => {
+  return useMutation(
+    getAddPreventiveMaintenanceFormDraftInspectionMutationOptions(options),
+    queryClient,
+  )
+}
+
+/**
+ * @summary Updates an inspection row in a preventive-maintenance form draft
+ */
+export const updatePreventiveMaintenanceFormDraftInspection = (
+  id: string,
+  inspectionId: string,
+  updateDraftInspectionRowDto: UpdateDraftInspectionRowDto,
+  signal?: AbortSignal,
+) => {
+  return customInstance<DraftInspectionRowResponse>({
+    url: `/api/v1/preventive-maintenance-forms/${id}/inspections/${inspectionId}`,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    data: updateDraftInspectionRowDto,
+    signal,
+  })
+}
+
+export const getUpdatePreventiveMaintenanceFormDraftInspectionMutationOptions =
+  <
+    TError = ValidationProblemDetails | void | ProblemDetails,
+    TContext = unknown,
+  >(options?: {
+    mutation?: UseMutationOptions<
+      Awaited<
+        ReturnType<typeof updatePreventiveMaintenanceFormDraftInspection>
+      >,
+      TError,
+      { id: string; inspectionId: string; data: UpdateDraftInspectionRowDto },
+      TContext
+    >
+  }): UseMutationOptions<
+    Awaited<ReturnType<typeof updatePreventiveMaintenanceFormDraftInspection>>,
+    TError,
+    { id: string; inspectionId: string; data: UpdateDraftInspectionRowDto },
+    TContext
+  > => {
+    const mutationKey = ['updatePreventiveMaintenanceFormDraftInspection']
+    const { mutation: mutationOptions } = options
+      ? options.mutation &&
+        'mutationKey' in options.mutation &&
+        options.mutation.mutationKey
+        ? options
+        : { ...options, mutation: { ...options.mutation, mutationKey } }
+      : { mutation: { mutationKey } }
+
+    const mutationFn: MutationFunction<
+      Awaited<
+        ReturnType<typeof updatePreventiveMaintenanceFormDraftInspection>
+      >,
+      { id: string; inspectionId: string; data: UpdateDraftInspectionRowDto }
+    > = (props) => {
+      const { id, inspectionId, data } = props ?? {}
+
+      return updatePreventiveMaintenanceFormDraftInspection(
+        id,
+        inspectionId,
+        data,
+      )
+    }
+
+    return { mutationFn, ...mutationOptions }
+  }
+
+export type UpdatePreventiveMaintenanceFormDraftInspectionMutationResult =
+  NonNullable<
+    Awaited<ReturnType<typeof updatePreventiveMaintenanceFormDraftInspection>>
+  >
+export type UpdatePreventiveMaintenanceFormDraftInspectionMutationBody =
+  UpdateDraftInspectionRowDto
+export type UpdatePreventiveMaintenanceFormDraftInspectionMutationError =
+  ValidationProblemDetails | void | ProblemDetails
+
+/**
+ * @summary Updates an inspection row in a preventive-maintenance form draft
+ */
+export const useUpdatePreventiveMaintenanceFormDraftInspection = <
+  TError = ValidationProblemDetails | void | ProblemDetails,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<
+        ReturnType<typeof updatePreventiveMaintenanceFormDraftInspection>
+      >,
+      TError,
+      { id: string; inspectionId: string; data: UpdateDraftInspectionRowDto },
+      TContext
+    >
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof updatePreventiveMaintenanceFormDraftInspection>>,
+  TError,
+  { id: string; inspectionId: string; data: UpdateDraftInspectionRowDto },
+  TContext
+> => {
+  return useMutation(
+    getUpdatePreventiveMaintenanceFormDraftInspectionMutationOptions(options),
+    queryClient,
+  )
+}
+
+/**
+ * @summary Removes an inspection row from a preventive-maintenance form draft
+ */
+export const deletePreventiveMaintenanceFormDraftInspection = (
+  id: string,
+  inspectionId: string,
+  signal?: AbortSignal,
+) => {
+  return customInstance<void>({
+    url: `/api/v1/preventive-maintenance-forms/${id}/inspections/${inspectionId}`,
+    method: 'DELETE',
+    signal,
+  })
+}
+
+export const getDeletePreventiveMaintenanceFormDraftInspectionMutationOptions =
+  <TError = void | ProblemDetails, TContext = unknown>(options?: {
+    mutation?: UseMutationOptions<
+      Awaited<
+        ReturnType<typeof deletePreventiveMaintenanceFormDraftInspection>
+      >,
+      TError,
+      { id: string; inspectionId: string },
+      TContext
+    >
+  }): UseMutationOptions<
+    Awaited<ReturnType<typeof deletePreventiveMaintenanceFormDraftInspection>>,
+    TError,
+    { id: string; inspectionId: string },
+    TContext
+  > => {
+    const mutationKey = ['deletePreventiveMaintenanceFormDraftInspection']
+    const { mutation: mutationOptions } = options
+      ? options.mutation &&
+        'mutationKey' in options.mutation &&
+        options.mutation.mutationKey
+        ? options
+        : { ...options, mutation: { ...options.mutation, mutationKey } }
+      : { mutation: { mutationKey } }
+
+    const mutationFn: MutationFunction<
+      Awaited<
+        ReturnType<typeof deletePreventiveMaintenanceFormDraftInspection>
+      >,
+      { id: string; inspectionId: string }
+    > = (props) => {
+      const { id, inspectionId } = props ?? {}
+
+      return deletePreventiveMaintenanceFormDraftInspection(id, inspectionId)
+    }
+
+    return { mutationFn, ...mutationOptions }
+  }
+
+export type DeletePreventiveMaintenanceFormDraftInspectionMutationResult =
+  NonNullable<
+    Awaited<ReturnType<typeof deletePreventiveMaintenanceFormDraftInspection>>
+  >
+
+export type DeletePreventiveMaintenanceFormDraftInspectionMutationError =
+  void | ProblemDetails
+
+/**
+ * @summary Removes an inspection row from a preventive-maintenance form draft
+ */
+export const useDeletePreventiveMaintenanceFormDraftInspection = <
+  TError = void | ProblemDetails,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<
+        ReturnType<typeof deletePreventiveMaintenanceFormDraftInspection>
+      >,
+      TError,
+      { id: string; inspectionId: string },
+      TContext
+    >
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof deletePreventiveMaintenanceFormDraftInspection>>,
+  TError,
+  { id: string; inspectionId: string },
+  TContext
+> => {
+  return useMutation(
+    getDeletePreventiveMaintenanceFormDraftInspectionMutationOptions(options),
+    queryClient,
+  )
 }
 
 export const createMaintenanceReview = (
