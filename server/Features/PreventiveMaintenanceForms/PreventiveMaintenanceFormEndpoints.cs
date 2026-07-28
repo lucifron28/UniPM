@@ -367,7 +367,7 @@ public static class PreventiveMaintenanceFormEndpoints
                 .Select(inspection => new CorrectiveMaintenanceHandoffSourceRow(
                     inspection.Id,
                     inspection.DateInspected,
-                    inspection.Asset!.AssetCode,
+                    null,
                     inspection.Asset.AssetCode,
                     inspection.Asset.Location,
                     inspection.Remarks,
@@ -1114,7 +1114,7 @@ public sealed record CorrectiveMaintenanceHandoffResponse(
 public sealed record CorrectiveMaintenanceHandoffRowResponse(
     Guid InspectionId,
     DateTimeOffset InspectionDate,
-    string AssetDeviceNumber,
+    string? AssetDeviceNumber,
     string AssetCode,
     string? Location,
     string? FindingOrRemarks,
@@ -1126,7 +1126,7 @@ public sealed record CorrectiveMaintenanceHandoffRowResponse(
 internal sealed record CorrectiveMaintenanceHandoffSourceRow(
     Guid InspectionId,
     DateTimeOffset InspectionDate,
-    string AssetDeviceNumber,
+    string? AssetDeviceNumber,
     string AssetCode,
     string? Location,
     string? FindingOrRemarks,
