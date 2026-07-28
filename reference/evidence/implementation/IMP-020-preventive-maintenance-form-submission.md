@@ -22,6 +22,7 @@ completing schedules.
   - `dcae3117feaecbdc1b07a04e5a0ce78b4af49161`
   - `62f10e68c4b94d0b3b3e043fc7f1e7ee26e3add8`
   - `8fd4791b08d3ad4d8bc19a0712cdf07ffcc698dd`
+  - `773f23e073420edd60a5bdbe804c367b34ee7f10`
 - Source paths:
   - `server/Features/PreventiveMaintenanceForms/PreventiveMaintenanceFormEndpoints.cs`
   - `server/Features/PreventiveMaintenanceForms/PreventiveMaintenanceFormSubmissionOptions.cs`
@@ -74,10 +75,8 @@ submissions and distinct provisional file numbers.
 
 ## Verification Status
 
-TEST-026 records the final native SQL Server test invocation for commit
-`8fd4791b08d3ad4d8bc19a0712cdf07ffcc698dd`; the environment variable required
-to execute the test was unavailable, so the native concurrency assertion
-remains pending.
+TEST-026 records the successful native SQL Server concurrency execution for
+commit `773f23e073420edd60a5bdbe804c367b34ee7f10`.
 
 ## Known Limitations
 
