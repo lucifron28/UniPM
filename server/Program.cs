@@ -157,6 +157,9 @@ builder.Services.AddScoped<ILexicalMaintenanceRetriever>(serviceProvider =>
         serviceProvider.GetRequiredService<SqlServerLexicalMaintenanceRetriever>(),
         serviceProvider.GetRequiredService<UniPMMetrics>()));
 builder.Services.Configure<EmbeddingOptions>(builder.Configuration.GetSection(EmbeddingOptions.SectionName));
+builder.Services.Configure<PreventiveMaintenanceFormSubmissionOptions>(
+    builder.Configuration.GetSection(PreventiveMaintenanceFormSubmissionOptions.SectionName));
+builder.Services.AddSingleton<PreventiveMaintenanceFileNumberGenerator>();
 builder.Services.AddHttpClient<IEmbeddingService, OpenAiCompatibleEmbeddingService>();
 builder.Services.AddScoped<IMaintenanceSearchDocumentEmbeddingIndexer, MaintenanceSearchDocumentEmbeddingIndexer>();
 builder.Services.AddScoped<IInstitutionalReferenceEmbeddingIndexer, InstitutionalReferenceEmbeddingIndexer>();

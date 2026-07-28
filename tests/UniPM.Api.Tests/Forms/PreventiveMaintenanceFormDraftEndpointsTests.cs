@@ -216,6 +216,78 @@ public sealed class PreventiveMaintenanceFormDraftEndpointsTests
             .ToListAsync()).ToArray());
     }
 
+    [Fact]
+    public async Task Submitting_a_draft_form_assigns_provisional_file_number_and_metadata()
+    {
+        await using var application = new TestApplicationFactory();
+        using var client = application.CreateClient();
+        await application.EnsureAuthenticatedUserAsync();
+        var asset = await CreateAssetAsync(client, "FE-FORM-SUBMIT-001", "fire-extinguisher");
+        var schedule = await CreateScheduleAsync(client, asset.Id, 1);
+        var form = await CreateFormAsync(client, asset.AssetCategory);
+        await AddInspectionRowAsync(client, form.Id, schedule.Id, "Draft submission row");
+
+        var response = await client.PostAsync(
+            $"/api/v1/preventive-maintenance-forms/{form.Id}/submit",
+            content: null);
+
+        response.EnsureSuccessStatusCode();
+        var submitted = await response.Content.ReadFromJsonAsync<PreventiveMaintenanceFormResponse>();
+        Assert.NotNull(submitted);
+        Assert.Equal(PreventiveMaintenanceFormStatusCatalog.Submitted, submitted.Status);
+        Assert.Matches("^PMF-[0-9]{4}-[0-9]{4}$", submitted.FileNumber);
+        Assert.Equal(TestAuthenticationHandler.UserId, submitted.SubmittedByUserId);
+        Assert.NotNull(submitted.SubmittedAt);
+
+        await using var scope = application.Services.CreateAsyncScope();
+        var contextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
+        await using var context = await contextFactory.CreateDbContextAsync();
+        var persistedSchedule = await context.PreventiveMaintenanceSchedules.SingleAsync(candidate => candidate.Id == schedule.Id);
+        Assert.Equal(ScheduleStatusCatalog.Due, persistedSchedule.Status);
+        Assert.Null(persistedSchedule.CompletedAt);
+        Assert.Empty(await context.MaintenanceSearchDocuments.ToListAsync());
+    }
+
+    [Fact]
+    public async Task Submission_rejects_empty_repeated_or_unauthorized_forms()
+    {
+        await using var gsdApplication = new TestApplicationFactory();
+        using var gsdClient = gsdApplication.CreateClient();
+        await gsdApplication.EnsureAuthenticatedUserAsync();
+        var asset = await CreateAssetAsync(gsdClient, "FE-FORM-SUBMIT-002", "fire-extinguisher");
+        var emptyForm = await CreateFormAsync(gsdClient, asset.AssetCategory);
+        var emptySubmission = await gsdClient.PostAsync(
+            $"/api/v1/preventive-maintenance-forms/{emptyForm.Id}/submit",
+            content: null);
+
+        var schedule = await CreateScheduleAsync(gsdClient, asset.Id, 1);
+        var completedForm = await CreateFormAsync(gsdClient, asset.AssetCategory);
+        await AddInspectionRowAsync(gsdClient, completedForm.Id, schedule.Id, "Ready to submit");
+        var firstSubmission = await gsdClient.PostAsync(
+            $"/api/v1/preventive-maintenance-forms/{completedForm.Id}/submit",
+            content: null);
+        var repeatedSubmission = await gsdClient.PostAsync(
+            $"/api/v1/preventive-maintenance-forms/{completedForm.Id}/submit",
+            content: null);
+
+        await using var inspectorApplication = new TestApplicationFactory(AuthRoleCatalog.Inspector);
+        using var inspectorClient = inspectorApplication.CreateClient();
+        await inspectorApplication.EnsureAuthenticatedUserAsync();
+        var inspectorSchedule = await inspectorApplication.SeedScheduleAsync("fire-extinguisher");
+        var otherCreatorForm = await inspectorApplication.SeedDraftFormAsync(
+            inspectorSchedule.Id,
+            Guid.NewGuid(),
+            TestAuthenticationHandler.UserId);
+        var unauthorizedSubmission = await inspectorClient.PostAsync(
+            $"/api/v1/preventive-maintenance-forms/{otherCreatorForm.Id}/submit",
+            content: null);
+
+        Assert.Equal(HttpStatusCode.Conflict, emptySubmission.StatusCode);
+        firstSubmission.EnsureSuccessStatusCode();
+        Assert.Equal(HttpStatusCode.Conflict, repeatedSubmission.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, unauthorizedSubmission.StatusCode);
+    }
+
     private static async Task<AssetResponse> CreateAssetAsync(HttpClient client, string assetCode, string assetCategory)
     {
         var response = await client.PostAsJsonAsync("/api/v1/assets/", new
@@ -420,6 +492,52 @@ public sealed class PreventiveMaintenanceFormDraftEndpointsTests
             context.InspectionRecords.Add(inspection);
             await context.SaveChangesAsync();
             return DraftInspectionRowResponse.FromInspection(inspection);
+        }
+
+        public async Task<PreventiveMaintenanceFormResponse> SeedDraftFormAsync(
+            Guid scheduleId,
+            Guid createdByUserId,
+            Guid inspectorUserId)
+        {
+            await using var scope = Services.CreateAsyncScope();
+            var contextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
+            await using var context = await contextFactory.CreateDbContextAsync();
+            var schedule = await context.PreventiveMaintenanceSchedules
+                .Include(candidate => candidate.Asset)
+                .SingleAsync(candidate => candidate.Id == scheduleId);
+            var now = DateTimeOffset.UtcNow;
+            var form = new PreventiveMaintenanceForm
+            {
+                Id = Guid.NewGuid(),
+                AssetCategory = schedule.Asset!.AssetCategory,
+                Building = "Main Building",
+                Department = "GSD",
+                PeriodType = "Quarter",
+                Quarter = "Q1",
+                Year = 2026,
+                Status = PreventiveMaintenanceFormStatusCatalog.Draft,
+                CreatedByUserId = createdByUserId,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+            var inspection = new InspectionRecord
+            {
+                Id = Guid.NewGuid(),
+                ScheduleId = schedule.Id,
+                PreventiveMaintenanceFormId = form.Id,
+                AssetId = schedule.AssetId,
+                InspectorUserId = inspectorUserId,
+                DateInspected = now,
+                IsOperational = false,
+                Remarks = "Inspector-owned draft row",
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+
+            context.PreventiveMaintenanceForms.Add(form);
+            context.InspectionRecords.Add(inspection);
+            await context.SaveChangesAsync();
+            return PreventiveMaintenanceFormResponse.FromForm(form);
         }
     }
 

@@ -2,6 +2,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using UniPM.Api.Data;
 using UniPM.Api.Features;
 using UniPM.Api.Features.Auth;
@@ -108,6 +109,95 @@ public static class PreventiveMaintenanceFormEndpoints
         .Produces<PreventiveMaintenanceFormResponse>(StatusCodes.Status200OK)
         .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status404NotFound)
         .RequireAuthorization();
+
+        group.MapPost("/{id}/submit", async (
+            Guid id,
+            ClaimsPrincipal principal,
+            IDbContextFactory<ApplicationDbContext> factory,
+            PreventiveMaintenanceFileNumberGenerator fileNumberGenerator,
+            CancellationToken cancellationToken) =>
+        {
+            if (!TryGetAuthenticatedUserId(principal, out var submittedByUserId))
+            {
+                return ApiErrors.Unauthorized("The authenticated user is unavailable.");
+            }
+
+            for (var attempt = 0; attempt < 3; attempt++)
+            {
+                await using var context = await factory.CreateDbContextAsync(cancellationToken);
+                await using var transaction = await BeginSerializableTransactionIfRelationalAsync(context, cancellationToken);
+                var form = await context.PreventiveMaintenanceForms
+                    .Include(candidate => candidate.Inspections)
+                    .SingleOrDefaultAsync(candidate => candidate.Id == id, cancellationToken);
+                if (form is null)
+                {
+                    return ApiErrors.NotFound("Preventive-maintenance form not found.");
+                }
+
+                if (!IsDraft(form))
+                {
+                    return ApiErrors.Conflict("Only draft forms can be submitted.");
+                }
+
+                if (form.Inspections.Count == 0)
+                {
+                    return ApiErrors.Conflict("A preventive-maintenance form requires at least one inspection row before submission.");
+                }
+
+                if (principal.IsInRole(AuthRoleCatalog.Inspector)
+                    && (form.CreatedByUserId != submittedByUserId
+                        || form.Inspections.Any(inspection => inspection.InspectorUserId != submittedByUserId)))
+                {
+                    return Results.Forbid();
+                }
+
+                var now = DateTimeOffset.UtcNow;
+                var seriesPrefix = fileNumberGenerator.CreateSeriesPrefix(now);
+                var existingFileNumbers = await context.PreventiveMaintenanceForms
+                    .AsNoTracking()
+                    .Where(candidate => candidate.FileNumber != null
+                        && candidate.FileNumber.StartsWith(seriesPrefix))
+                    .Select(candidate => candidate.FileNumber!)
+                    .ToListAsync(cancellationToken);
+
+                form.FileNumber = fileNumberGenerator.CreateNext(seriesPrefix, existingFileNumbers);
+                form.SubmittedByUserId = submittedByUserId;
+                form.SubmittedAt = now;
+                form.Status = PreventiveMaintenanceFormStatusCatalog.Submitted;
+                form.UpdatedAt = now;
+
+                try
+                {
+                    await context.SaveChangesAsync(cancellationToken);
+                    if (transaction is not null)
+                    {
+                        await transaction.CommitAsync(cancellationToken);
+                    }
+
+                    return Results.Ok(PreventiveMaintenanceFormResponse.FromForm(form));
+                }
+                catch (DbUpdateException exception)
+                    when (DatabaseConstraintViolation.IsUniqueConstraint(exception))
+                {
+                    if (attempt == 2)
+                    {
+                        break;
+                    }
+
+                    // A concurrent submission claimed the candidate number. Retry with a new context.
+                }
+            }
+
+            return ApiErrors.Conflict("A unique provisional file number could not be assigned. Please retry the submission.");
+        })
+        .RequireAuthorization(AuthPolicyCatalog.CanManagePreventiveMaintenanceForms)
+        .WithName("SubmitPreventiveMaintenanceForm")
+        .WithSummary("Submits a completed preventive-maintenance form using a provisional file number")
+        .Produces<PreventiveMaintenanceFormResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status404NotFound)
+        .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status409Conflict);
 
         group.MapPost("/{id}/inspections", async (
             Guid id,
@@ -409,6 +499,15 @@ public static class PreventiveMaintenanceFormEndpoints
     private static string? NormalizeOptional(string? value)
     {
         return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    }
+
+    private static async Task<IDbContextTransaction?> BeginSerializableTransactionIfRelationalAsync(
+        ApplicationDbContext context,
+        CancellationToken cancellationToken)
+    {
+        return context.Database.IsRelational()
+            ? await context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken)
+            : null;
     }
 }
 
