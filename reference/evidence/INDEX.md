@@ -76,6 +76,8 @@ record's evidence level and tested/source commit.
 | TEST-024 | test-run | Preventive-maintenance form domain verification | executed | locally-executed | `5152c04` | [record](test-runs/TEST-024-preventive-maintenance-form-domain-verification.md) | Native SQL Server 2019 verification of form constraints and inspection migration preservation; 341 passed, 0 failed, 1 optional provider skip. |
 | IMP-019 | implementation | Preventive-maintenance form draft workflows | reviewed | source-inspected | `ea003c3` | [record](implementation/IMP-019-preventive-maintenance-form-drafts.md) | Authenticated draft-only form routes with Inspector ownership across create/update/delete; Draft and Submitted rows are excluded from official reads and maintenance-search projection. |
 | TEST-025 | test-run | Preventive-maintenance form draft workflow verification | executed | locally-executed | `ea003c3` | [record](test-runs/TEST-025-preventive-maintenance-form-drafts.md) | Focused draft-form endpoint tests passed 8/8; SQL Server and full-suite verification were not run. |
+| IMP-020 | implementation | Preventive-maintenance form submission | reviewed | source-inspected | `62f10e6` | [record](implementation/IMP-020-preventive-maintenance-form-submission.md) | Draft-to-Submitted transition with a provisional configurable file number; schedules and official history remain unchanged. |
+| TEST-026 | test-run | Preventive-maintenance form submission verification | executed | locally-executed | `62f10e6` | [record](test-runs/TEST-026-preventive-maintenance-form-submission.md) | Focused form endpoint tests passed 10/10; SQL Server and full-suite verification were not run. |
 
 ## Pending Evidence
 
