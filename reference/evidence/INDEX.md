@@ -80,6 +80,8 @@ record's evidence level and tested/source commit.
 | TEST-026 | test-run | Preventive-maintenance form submission verification | executed | locally-executed | `773f23e` | [record](test-runs/TEST-026-preventive-maintenance-form-submission.md) | Focused native SQL concurrency test passed 1/1 with distinct provisional file numbers; full-suite verification was not run. |
 | IMP-021 | implementation | Preventive-maintenance form acknowledgement | reviewed | source-inspected | `65d2432` | [record](implementation/IMP-021-preventive-maintenance-form-acknowledgement.md) | Submitted-to-Acknowledged transition with signature checksum, schedule completion, maintenance-history publication, and native SQL endpoint coverage. |
 | TEST-027 | test-run | Preventive-maintenance form acknowledgement verification | executed | locally-executed | `65d2432` | [record](test-runs/TEST-027-preventive-maintenance-form-acknowledgement.md) | Focused native SQL acknowledgement test passed 1/1; full-suite verification was not run. |
+| IMP-022 | implementation | Corrective-action handoff preparation read model | reviewed | source-inspected | `d1383dd` | [record](implementation/IMP-022-corrective-action-handoff-read-model.md) | GSD-only, acknowledged-form, read-only preparation response; no handoff persistence or external workflow integration. |
+| TEST-028 | test-run | Corrective-action handoff read model verification | executed | locally-executed | `d1383dd` | [record](test-runs/TEST-028-corrective-action-handoff-read-model.md) | Two focused endpoint tests passed; native SQL Server 2019 and full-suite verification were not run. |
 
 ## Pending Evidence
 
