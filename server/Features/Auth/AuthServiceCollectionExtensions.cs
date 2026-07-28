@@ -83,6 +83,9 @@ internal static class AuthServiceCollectionExtensions
                 AuthPolicyCatalog.CanManagePreventiveMaintenanceForms,
                 policy => policy.RequireRole(AuthRoleCatalog.Gsd, AuthRoleCatalog.Inspector));
             options.AddPolicy(
+                AuthPolicyCatalog.CanAccessCorrectiveMaintenanceHandoff,
+                policy => policy.RequireRole(AuthRoleCatalog.Gsd));
+            options.AddPolicy(
                 AuthPolicyCatalog.CanSubmitInspections,
                 policy => policy.RequireRole(AuthRoleCatalog.Gsd, AuthRoleCatalog.Inspector));
             options.AddPolicy(
