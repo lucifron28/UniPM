@@ -447,7 +447,7 @@ public sealed class PreventiveMaintenanceFormDraftEndpointsTests
         Assert.True(handoff.HasCorrectiveActionRows);
         var row = Assert.Single(handoff.Rows);
         Assert.Equal(actionableRow.Id, row.InspectionId);
-        Assert.Equal("FE-HANDOFF-001", row.AssetDeviceNumber);
+        Assert.Null(row.AssetDeviceNumber);
         Assert.Equal("FE-HANDOFF-001", row.AssetCode);
         Assert.Equal("Test Area", row.Location);
         Assert.Equal("Low pressure finding", row.FindingOrRemarks);
