@@ -79,7 +79,7 @@ record's evidence level and tested/source commit.
 | IMP-020 | implementation | Preventive-maintenance form submission | reviewed | source-inspected | `773f23e` | [record](implementation/IMP-020-preventive-maintenance-form-submission.md) | Draft-to-Submitted transition with a bounded provisional configurable file number and SQL deadlock retry; schedules and official history remain unchanged. |
 | TEST-026 | test-run | Preventive-maintenance form submission verification | executed | locally-executed | `773f23e` | [record](test-runs/TEST-026-preventive-maintenance-form-submission.md) | Focused native SQL concurrency test passed 1/1 with distinct provisional file numbers; full-suite verification was not run. |
 | IMP-021 | implementation | Preventive-maintenance form acknowledgement | reviewed | source-inspected | `65d2432` | [record](implementation/IMP-021-preventive-maintenance-form-acknowledgement.md) | Submitted-to-Acknowledged transition with signature checksum, schedule completion, maintenance-history publication, and native SQL endpoint coverage. |
-| TEST-027 | test-run | Preventive-maintenance form acknowledgement verification | executed | locally-executed | `65d2432` | [record](test-runs/TEST-027-preventive-maintenance-form-acknowledgement.md) | Native SQL acknowledgement test was blocked by the local encryption handshake before assertions; no behavior claim is made. |
+| TEST-027 | test-run | Preventive-maintenance form acknowledgement verification | executed | locally-executed | `65d2432` | [record](test-runs/TEST-027-preventive-maintenance-form-acknowledgement.md) | Focused native SQL acknowledgement test passed 1/1; full-suite verification was not run. |
 
 ## Pending Evidence
 

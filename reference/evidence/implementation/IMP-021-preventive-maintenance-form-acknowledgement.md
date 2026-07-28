@@ -71,16 +71,14 @@ embedding creation.
 
 ## Verification Status
 
-TEST-027 records the native SQL test attempt for commit
-`65d2432d77f4219b973144b6f49df8722bbd8027`. The local connection failed at
-its encryption handshake before the endpoint assertions executed.
+TEST-027 records the successful native SQL acknowledgement test for commit
+`65d2432d77f4219b973144b6f49df8722bbd8027`.
 
 ## Known Limitations
 
 This phase does not implement corrective-action handoff, RMRF processing, OEM
 retrieval, frontend acknowledgement, embedding generation, or generated
-summaries. Native SQL Server acknowledgement execution is blocked by the local
-connection encryption configuration, and the complete test suite was not run.
+summaries. The complete test suite was not run.
 
 ## Related Evidence
 
