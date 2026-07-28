@@ -55,9 +55,10 @@ internal sealed class PreventiveMaintenanceFileNumberGenerator(
             largestSequence = Math.Max(largestSequence, sequence);
         }
 
-        if (largestSequence == int.MaxValue)
+        var maximumSequence = (int)Math.Pow(10, options.ProvisionalFileNumberSequenceDigits) - 1;
+        if (largestSequence >= maximumSequence)
         {
-            throw new InvalidOperationException("The provisional file-number sequence is exhausted.");
+            throw new PreventiveMaintenanceFileNumberSequenceExhaustedException();
         }
 
         var nextSequence = largestSequence + 1;
@@ -82,5 +83,13 @@ internal sealed class PreventiveMaintenanceFileNumberGenerator(
             NumberStyles.None,
             CultureInfo.InvariantCulture,
             out sequence);
+    }
+}
+
+internal sealed class PreventiveMaintenanceFileNumberSequenceExhaustedException : Exception
+{
+    internal PreventiveMaintenanceFileNumberSequenceExhaustedException()
+        : base("The provisional file-number sequence is exhausted for the current year.")
+    {
     }
 }

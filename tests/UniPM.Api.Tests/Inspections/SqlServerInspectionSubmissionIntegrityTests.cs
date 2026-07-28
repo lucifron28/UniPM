@@ -8,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using UniPM.Api.Data;
 using UniPM.Api.Features.Auth;
+using UniPM.Api.Features.PreventiveMaintenanceForms;
 using UniPM.Api.Models;
 
 namespace UniPM.Api.Tests;
@@ -103,6 +104,40 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
         Assert.NotNull(schedule.CompletedAt);
     }
 
+    [SqlServerFact]
+    public async Task Concurrent_form_submissions_assign_distinct_provisional_file_numbers()
+    {
+        await using var database = await SqlServerTestDatabase.CreateAsync(RequireSqlServerConnection());
+        await using var application = new SqlServerInspectionApplicationFactory(
+            database.ConnectionString,
+            AuthRoleCatalog.Gsd);
+        var formIds = await application.SeedDraftFormsAsync();
+        using var firstClient = application.CreateClient();
+        using var secondClient = application.CreateClient();
+
+        var responses = await Task.WhenAll(
+            firstClient.PostAsync($"/api/v1/preventive-maintenance-forms/{formIds[0]}/submit", content: null),
+            secondClient.PostAsync($"/api/v1/preventive-maintenance-forms/{formIds[1]}/submit", content: null));
+
+        Assert.All(responses, response => response.EnsureSuccessStatusCode());
+        var submitted = await Task.WhenAll(responses.Select(response =>
+            response.Content.ReadFromJsonAsync<PreventiveMaintenanceFormResponse>()));
+        Assert.All(submitted, form => Assert.NotNull(form));
+        var fileNumbers = submitted.Select(form => form!.FileNumber!).ToArray();
+        Assert.All(fileNumbers, fileNumber => Assert.Matches("^PMF-[0-9]{4}-[0-9]{4}$", fileNumber));
+        Assert.Equal(2, fileNumbers.Distinct(StringComparer.Ordinal).Count());
+
+        await using var context = database.CreateContext();
+        var storedForms = await context.PreventiveMaintenanceForms
+            .Where(form => formIds.Contains(form.Id))
+            .ToListAsync();
+        Assert.All(storedForms, form =>
+        {
+            Assert.Equal(PreventiveMaintenanceFormStatusCatalog.Submitted, form.Status);
+            Assert.NotNull(form.FileNumber);
+        });
+    }
+
     private static object CreateRequest(Guid scheduleId, DateTimeOffset dateInspected) => new
     {
         scheduleId,
@@ -166,15 +201,23 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
         return Environment.GetEnvironmentVariable("UNIPM_SQLSERVER_TEST_CONNECTION")!;
     }
 
-    private sealed class SqlServerInspectionApplicationFactory(string connectionString)
-        : WebApplicationFactory<Program>
+    private sealed class SqlServerInspectionApplicationFactory : WebApplicationFactory<Program>
     {
+        private readonly string connectionString;
+        private readonly string[] roles;
+
+        public SqlServerInspectionApplicationFactory(string connectionString, params string[] roles)
+        {
+            this.connectionString = connectionString;
+            this.roles = roles.Length == 0 ? [AuthRoleCatalog.Inspector] : roles;
+        }
+
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseEnvironment("Development");
             builder.ConfigureServices(services =>
             {
-                services.AddTestAuthentication(AuthRoleCatalog.Inspector);
+                services.AddTestAuthentication(roles);
                 services.RemoveAll<IDbContextFactory<ApplicationDbContext>>();
                 services.RemoveAll<DbContextOptions<ApplicationDbContext>>();
                 services.AddDbContextFactory<ApplicationDbContext>(options => options.UseUniPmSqlServer(connectionString));
@@ -202,6 +245,70 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
             await context.SaveChangesAsync();
             return schedule.Id;
         }
+
+        public async Task<Guid[]> SeedDraftFormsAsync()
+        {
+            await using var scope = Services.CreateAsyncScope();
+            var contextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
+            await using var context = await contextFactory.CreateDbContextAsync();
+            await context.Database.MigrateAsync();
+            context.Users.Add(new ApplicationUser
+            {
+                Id = TestAuthenticationHandler.UserId,
+                UserName = "sql-form-submitter@unipm.local",
+                NormalizedUserName = "SQL-FORM-SUBMITTER@UNIPM.LOCAL",
+                Email = "sql-form-submitter@unipm.local",
+                NormalizedEmail = "SQL-FORM-SUBMITTER@UNIPM.LOCAL",
+                EmailConfirmed = true,
+                DisplayName = "SQL Form Submitter",
+                IsActive = true
+            });
+            var firstSchedule = AddAssetAndSchedule(context);
+            var secondSchedule = AddAssetAndSchedule(context);
+            var now = DateTimeOffset.UtcNow;
+            var forms = new[]
+            {
+                CreateDraftForm(firstSchedule, now),
+                CreateDraftForm(secondSchedule, now)
+            };
+
+            context.PreventiveMaintenanceForms.AddRange(forms);
+            await context.SaveChangesAsync();
+            return forms.Select(form => form.Id).ToArray();
+        }
+    }
+
+    private static PreventiveMaintenanceForm CreateDraftForm(
+        PreventiveMaintenanceSchedule schedule,
+        DateTimeOffset now)
+    {
+        var form = new PreventiveMaintenanceForm
+        {
+            Id = Guid.NewGuid(),
+            AssetCategory = "fire-extinguisher",
+            Building = "Test Building",
+            Department = "GSD",
+            PeriodType = "Quarter",
+            Quarter = "Q1",
+            Year = 2026,
+            Status = PreventiveMaintenanceFormStatusCatalog.Draft,
+            CreatedByUserId = TestAuthenticationHandler.UserId,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        form.Inspections.Add(new InspectionRecord
+        {
+            Id = Guid.NewGuid(),
+            ScheduleId = schedule.Id,
+            PreventiveMaintenanceFormId = form.Id,
+            AssetId = schedule.AssetId,
+            InspectorUserId = TestAuthenticationHandler.UserId,
+            DateInspected = now,
+            IsOperational = true,
+            CreatedAt = now,
+            UpdatedAt = now
+        });
+        return form;
     }
 
     private sealed class SqlServerTestDatabase : IAsyncDisposable

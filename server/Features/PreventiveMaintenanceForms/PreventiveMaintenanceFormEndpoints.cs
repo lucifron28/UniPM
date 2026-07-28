@@ -160,7 +160,16 @@ public static class PreventiveMaintenanceFormEndpoints
                     .Select(candidate => candidate.FileNumber!)
                     .ToListAsync(cancellationToken);
 
-                form.FileNumber = fileNumberGenerator.CreateNext(seriesPrefix, existingFileNumbers);
+                try
+                {
+                    form.FileNumber = fileNumberGenerator.CreateNext(seriesPrefix, existingFileNumbers);
+                }
+                catch (PreventiveMaintenanceFileNumberSequenceExhaustedException)
+                {
+                    return ApiErrors.Conflict(
+                        "The provisional file-number sequence is exhausted for the current year.");
+                }
+
                 form.SubmittedByUserId = submittedByUserId;
                 form.SubmittedAt = now;
                 form.Status = PreventiveMaintenanceFormStatusCatalog.Submitted;
