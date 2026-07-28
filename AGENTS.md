@@ -164,14 +164,20 @@ Optimize for minimal agent usage.
 - Make the smallest change that satisfies the request.
 - Do not create or modify tests unless explicitly requested.
 - Run only the single most relevant targeted test.
-- Run that test at most once after editing.
+- Run that test once after the initial implementation. If it exposes an
+  actionable compile or test defect within the requested scope, make one
+  focused correction and rerun the same targeted test once.
 - Never run the complete test suite unless explicitly requested.
 - Never repeatedly fix and rerun tests automatically.
-- If a test fails, report the failure and stop.
+- If the targeted test fails because of an actionable in-scope defect, fix it
+  once and rerun it. If the rerun fails, or the failure is external,
+  environment-related, unrelated, ambiguous, or requires a broader change,
+  report the blocker and stop.
 - Do not run lint, formatting, type checking, builds, and tests together.
 - Do not use subagents or parallel agents.
 - Do not perform unrelated refactoring.
-- After completing the requested edit, summarize the changes and stop.
+- After the requested change and its permitted verification pass are
+  complete, summarize the changes and stop.
 
 ## Scope Boundaries
 

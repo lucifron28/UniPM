@@ -405,6 +405,90 @@ public sealed class PreventiveMaintenanceFormDraftEndpointsTests
         Assert.Equal(HttpStatusCode.Forbidden, unauthorized.StatusCode);
     }
 
+    [Fact]
+    public async Task Acknowledged_form_returns_corrective_handoff_rows_with_recommended_actions_only()
+    {
+        await using var application = new TestApplicationFactory();
+        using var client = application.CreateClient();
+        await application.EnsureAuthenticatedUserAsync();
+        var asset = await CreateAssetAsync(client, "FE-HANDOFF-001", "fire-extinguisher");
+        var firstSchedule = await CreateScheduleAsync(client, asset.Id, 3);
+        var secondSchedule = await CreateScheduleAsync(client, asset.Id, 4);
+        var form = await CreateFormAsync(client, asset.AssetCategory);
+        var actionableRow = await AddInspectionRowAsync(
+            client,
+            form.Id,
+            firstSchedule.Id,
+            "Low pressure finding",
+            "Replace the pressure gauge.");
+        await AddInspectionRowAsync(
+            client,
+            form.Id,
+            secondSchedule.Id,
+            "Operational finding",
+            null);
+        (await client.PostAsync($"/api/v1/preventive-maintenance-forms/{form.Id}/submit", content: null))
+            .EnsureSuccessStatusCode();
+        (await client.PostAsJsonAsync(
+            $"/api/v1/preventive-maintenance-forms/{form.Id}/acknowledge",
+            AcknowledgementRequest())).EnsureSuccessStatusCode();
+
+        var response = await client.GetAsync(
+            $"/api/v1/preventive-maintenance-forms/{form.Id}/corrective-handoff");
+
+        response.EnsureSuccessStatusCode();
+        var handoff = await response.Content.ReadFromJsonAsync<CorrectiveMaintenanceHandoffResponse>();
+        Assert.NotNull(handoff);
+        Assert.Equal(form.Id, handoff.FormId);
+        Assert.NotNull(handoff.FileNumber);
+        Assert.Equal("GSD", handoff.Department);
+        Assert.Equal("Main Building", handoff.Building);
+        Assert.Equal(asset.AssetCategory, handoff.AssetCategory);
+        Assert.True(handoff.HasCorrectiveActionRows);
+        var row = Assert.Single(handoff.Rows);
+        Assert.Equal(actionableRow.Id, row.InspectionId);
+        Assert.Null(row.AssetDeviceNumber);
+        Assert.Equal("FE-HANDOFF-001", row.AssetCode);
+        Assert.Equal("Test Area", row.Location);
+        Assert.Equal("Low pressure finding", row.FindingOrRemarks);
+        Assert.False(row.IsOperational);
+        Assert.Equal("Replace the pressure gauge.", row.RecommendedCorrectiveAction);
+        Assert.Equal(TestAuthenticationHandler.UserId, row.SkilledWorkerUserId);
+        Assert.Equal("Form Drafts User", row.SkilledWorkerIdentity);
+        var responseJson = await response.Content.ReadAsStringAsync();
+        Assert.DoesNotContain("signatureData", responseJson, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("signatureChecksum", responseJson, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Corrective_handoff_rejects_draft_submitted_unauthorized_and_missing_forms()
+    {
+        await using var application = new TestApplicationFactory();
+        using var client = application.CreateClient();
+        await application.EnsureAuthenticatedUserAsync();
+        var draft = await CreateFormAsync(client, "fire-extinguisher");
+        var submitted = await CreateFormAsync(client, "fire-extinguisher");
+        await application.SetFormStatusAsync(submitted.Id, PreventiveMaintenanceFormStatusCatalog.Submitted);
+
+        var draftResponse = await client.GetAsync(
+            $"/api/v1/preventive-maintenance-forms/{draft.Id}/corrective-handoff");
+        var submittedResponse = await client.GetAsync(
+            $"/api/v1/preventive-maintenance-forms/{submitted.Id}/corrective-handoff");
+        var missingResponse = await client.GetAsync(
+            $"/api/v1/preventive-maintenance-forms/{Guid.NewGuid()}/corrective-handoff");
+
+        await using var inspectorApplication = new TestApplicationFactory(AuthRoleCatalog.Inspector);
+        using var inspectorClient = inspectorApplication.CreateClient();
+        await inspectorApplication.EnsureAuthenticatedUserAsync();
+        var unauthorizedResponse = await inspectorClient.GetAsync(
+            $"/api/v1/preventive-maintenance-forms/{Guid.NewGuid()}/corrective-handoff");
+
+        Assert.Equal(HttpStatusCode.Conflict, draftResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, submittedResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, missingResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, unauthorizedResponse.StatusCode);
+    }
+
     private static async Task<AssetResponse> CreateAssetAsync(HttpClient client, string assetCode, string assetCategory)
     {
         var response = await client.PostAsJsonAsync("/api/v1/assets/", new
@@ -455,17 +539,21 @@ public sealed class PreventiveMaintenanceFormDraftEndpointsTests
         HttpClient client,
         Guid formId,
         Guid scheduleId,
-        string remarks)
+        string remarks,
+        string? actionsRecommendations = "Inspect during final submission.")
     {
         var response = await client.PostAsJsonAsync(
             $"/api/v1/preventive-maintenance-forms/{formId}/inspections",
-            DraftInspectionRequest(scheduleId, remarks));
+            DraftInspectionRequest(scheduleId, remarks, actionsRecommendations));
 
         response.EnsureSuccessStatusCode();
         return (await response.Content.ReadFromJsonAsync<DraftInspectionRowResponse>())!;
     }
 
-    private static object DraftInspectionRequest(Guid scheduleId, string remarks)
+    private static object DraftInspectionRequest(
+        Guid scheduleId,
+        string remarks,
+        string? actionsRecommendations = "Inspect during final submission.")
     {
         return new
         {
@@ -474,7 +562,7 @@ public sealed class PreventiveMaintenanceFormDraftEndpointsTests
             dateInspected = new DateTimeOffset(2026, 1, 15, 8, 0, 0, TimeSpan.FromHours(8)),
             isOperational = false,
             remarks,
-            actionsRecommendations = "Inspect during final submission."
+            actionsRecommendations
         };
     }
 

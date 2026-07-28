@@ -325,6 +325,102 @@ public static class PreventiveMaintenanceFormEndpoints
         .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status404NotFound)
         .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status409Conflict);
 
+        group.MapGet("/{id}/corrective-handoff", async (
+            Guid id,
+            IDbContextFactory<ApplicationDbContext> factory,
+            CancellationToken cancellationToken) =>
+        {
+            await using var context = await factory.CreateDbContextAsync(cancellationToken);
+            var form = await context.PreventiveMaintenanceForms
+                .AsNoTracking()
+                .SingleOrDefaultAsync(candidate => candidate.Id == id, cancellationToken);
+            if (form is null)
+            {
+                return ApiErrors.NotFound("Preventive-maintenance form not found.");
+            }
+
+            if (!string.Equals(
+                    form.Status,
+                    PreventiveMaintenanceFormStatusCatalog.Acknowledged,
+                    StringComparison.Ordinal))
+            {
+                return ApiErrors.Conflict("Only acknowledged forms can produce a corrective-maintenance handoff.");
+            }
+
+            var acknowledgedAt = await context.PreventiveMaintenanceAcknowledgements
+                .AsNoTracking()
+                .Where(acknowledgement => acknowledgement.FormId == form.Id)
+                .Select(acknowledgement => (DateTimeOffset?)acknowledgement.AcknowledgedAt)
+                .SingleOrDefaultAsync(cancellationToken);
+            if (acknowledgedAt is null)
+            {
+                return ApiErrors.Conflict("Acknowledgement metadata is unavailable for this form.");
+            }
+
+            var sourceRows = await context.InspectionRecords
+                .AsNoTracking()
+                .Where(inspection => inspection.PreventiveMaintenanceFormId == form.Id
+                    && inspection.ActionsRecommendations != null
+                    && inspection.ActionsRecommendations != "")
+                .OrderBy(inspection => inspection.DateInspected)
+                .ThenBy(inspection => inspection.Id)
+                .Select(inspection => new CorrectiveMaintenanceHandoffSourceRow(
+                    inspection.Id,
+                    inspection.DateInspected,
+                    null,
+                    inspection.Asset.AssetCode,
+                    inspection.Asset.Location,
+                    inspection.Remarks,
+                    inspection.IsOperational,
+                    inspection.ActionsRecommendations!,
+                    inspection.InspectorUserId))
+                .ToListAsync(cancellationToken);
+
+            var inspectorIds = sourceRows
+                .Select(row => row.InspectorUserId)
+                .Distinct()
+                .ToArray();
+            var users = await context.Users
+                .AsNoTracking()
+                .Where(user => inspectorIds.Contains(user.Id))
+                .ToDictionaryAsync(
+                    user => user.Id,
+                    user => string.IsNullOrWhiteSpace(user.DisplayName) ? user.UserName : user.DisplayName,
+                    cancellationToken);
+
+            var rows = sourceRows
+                .Select(row => new CorrectiveMaintenanceHandoffRowResponse(
+                    row.InspectionId,
+                    row.InspectionDate,
+                    row.AssetDeviceNumber,
+                    row.AssetCode,
+                    row.Location,
+                    row.FindingOrRemarks,
+                    row.IsOperational,
+                    row.RecommendedCorrectiveAction,
+                    row.InspectorUserId,
+                    users.GetValueOrDefault(row.InspectorUserId)))
+                .ToList();
+
+            return Results.Ok(new CorrectiveMaintenanceHandoffResponse(
+                form.Id,
+                form.FileNumber,
+                acknowledgedAt.Value,
+                form.Department,
+                form.Building,
+                form.AssetCategory,
+                rows.Count > 0,
+                rows));
+        })
+        .RequireAuthorization(AuthPolicyCatalog.CanAccessCorrectiveMaintenanceHandoff)
+        .WithName("GetCorrectiveMaintenanceHandoff")
+        .WithSummary("Prepares acknowledged preventive-maintenance findings for corrective follow-up")
+        .Produces<CorrectiveMaintenanceHandoffResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status404NotFound)
+        .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status409Conflict);
+
         group.MapPost("/{id}/inspections", async (
             Guid id,
             DraftInspectionRowDto dto,
@@ -1004,6 +1100,39 @@ public sealed record DraftInspectionRowResponse(
             inspection.UpdatedAt);
     }
 }
+
+public sealed record CorrectiveMaintenanceHandoffResponse(
+    Guid FormId,
+    string? FileNumber,
+    DateTimeOffset AcknowledgedAt,
+    string? Department,
+    string? Building,
+    string AssetCategory,
+    bool HasCorrectiveActionRows,
+    IReadOnlyList<CorrectiveMaintenanceHandoffRowResponse> Rows);
+
+public sealed record CorrectiveMaintenanceHandoffRowResponse(
+    Guid InspectionId,
+    DateTimeOffset InspectionDate,
+    string? AssetDeviceNumber,
+    string AssetCode,
+    string? Location,
+    string? FindingOrRemarks,
+    bool IsOperational,
+    string RecommendedCorrectiveAction,
+    Guid SkilledWorkerUserId,
+    string? SkilledWorkerIdentity);
+
+internal sealed record CorrectiveMaintenanceHandoffSourceRow(
+    Guid InspectionId,
+    DateTimeOffset InspectionDate,
+    string? AssetDeviceNumber,
+    string AssetCode,
+    string? Location,
+    string? FindingOrRemarks,
+    bool IsOperational,
+    string RecommendedCorrectiveAction,
+    Guid InspectorUserId);
 
 internal static class PreventiveMaintenanceFormEndpointsAcademicYear
 {
