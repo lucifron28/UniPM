@@ -119,7 +119,11 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
             firstClient.PostAsync($"/api/v1/preventive-maintenance-forms/{formIds[0]}/submit", content: null),
             secondClient.PostAsync($"/api/v1/preventive-maintenance-forms/{formIds[1]}/submit", content: null));
 
-        Assert.All(responses, response => response.EnsureSuccessStatusCode());
+        var failedResponses = await Task.WhenAll(responses
+            .Where(response => !response.IsSuccessStatusCode)
+            .Select(async response =>
+                $"{(int)response.StatusCode}: {await response.Content.ReadAsStringAsync()}"));
+        Assert.True(failedResponses.Length == 0, string.Join(Environment.NewLine, failedResponses));
         var submitted = await Task.WhenAll(responses.Select(response =>
             response.Content.ReadFromJsonAsync<PreventiveMaintenanceFormResponse>()));
         Assert.All(submitted, form => Assert.NotNull(form));

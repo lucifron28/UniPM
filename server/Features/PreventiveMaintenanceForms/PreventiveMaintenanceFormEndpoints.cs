@@ -185,7 +185,7 @@ public static class PreventiveMaintenanceFormEndpoints
 
                     return Results.Ok(PreventiveMaintenanceFormResponse.FromForm(form));
                 }
-                catch (DbUpdateException exception)
+                catch (Exception exception)
                     when (DatabaseConstraintViolation.IsUniqueConstraint(exception)
                         || DatabaseConstraintViolation.IsDeadlock(exception))
                 {
