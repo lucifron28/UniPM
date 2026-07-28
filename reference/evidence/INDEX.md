@@ -74,6 +74,8 @@ record's evidence level and tested/source commit.
 | ADR-014 | decision | Separate reference-document evidence from maintenance history | reviewed | source-inspected | `6f04c65` | [record](decisions/ADR-014-reference-document-evidence-foundation.md) | Keeps future reference sources explicit and separate from operational history. |
 | TEST-023 | test-run | Reference-document foundation verification | executed | locally-executed | `6f04c65` | [record](test-runs/TEST-023-reference-document-foundation.md) | Release and native SQL Server 2019 verification of fictional reference persistence, lifecycle constraints, scoped reset, and an end-to-end FTS query; production and provider claims excluded. |
 | TEST-024 | test-run | Preventive-maintenance form domain verification | executed | locally-executed | `5152c04` | [record](test-runs/TEST-024-preventive-maintenance-form-domain-verification.md) | Native SQL Server 2019 verification of form constraints and inspection migration preservation; 341 passed, 0 failed, 1 optional provider skip. |
+| IMP-019 | implementation | Preventive-maintenance form draft workflows | reviewed | source-inspected | `ea003c3` | [record](implementation/IMP-019-preventive-maintenance-form-drafts.md) | Authenticated draft-only form routes with Inspector ownership across create/update/delete; Draft and Submitted rows are excluded from official reads and maintenance-search projection. |
+| TEST-025 | test-run | Preventive-maintenance form draft workflow verification | executed | locally-executed | `ea003c3` | [record](test-runs/TEST-025-preventive-maintenance-form-drafts.md) | Focused draft-form endpoint tests passed 8/8; SQL Server and full-suite verification were not run. |
 
 ## Pending Evidence
 

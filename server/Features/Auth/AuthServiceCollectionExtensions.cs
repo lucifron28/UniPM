@@ -80,6 +80,9 @@ internal static class AuthServiceCollectionExtensions
                 AuthPolicyCatalog.CanManageSchedules,
                 policy => policy.RequireRole(AuthRoleCatalog.Gsd, AuthRoleCatalog.Supervisor));
             options.AddPolicy(
+                AuthPolicyCatalog.CanManagePreventiveMaintenanceForms,
+                policy => policy.RequireRole(AuthRoleCatalog.Gsd, AuthRoleCatalog.Inspector));
+            options.AddPolicy(
                 AuthPolicyCatalog.CanSubmitInspections,
                 policy => policy.RequireRole(AuthRoleCatalog.Gsd, AuthRoleCatalog.Inspector));
             options.AddPolicy(

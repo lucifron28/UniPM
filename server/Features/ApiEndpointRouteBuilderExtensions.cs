@@ -2,6 +2,7 @@ using UniPM.Api.Features.Assets;
 using UniPM.Api.Features.Auth;
 using UniPM.Api.Features.Inspections;
 using UniPM.Api.Features.MaintenanceReview;
+using UniPM.Api.Features.PreventiveMaintenanceForms;
 using UniPM.Api.Features.ReferenceData;
 using UniPM.Api.Features.Schedules;
 
@@ -18,6 +19,7 @@ public static class ApiEndpointRouteBuilderExtensions
         api.MapAssetsEndpoints();
         api.MapSchedulesEndpoints();
         api.MapInspectionsEndpoints();
+        api.MapPreventiveMaintenanceFormEndpoints();
         api.MapMaintenanceReviewEndpoints();
 
         return endpoints;

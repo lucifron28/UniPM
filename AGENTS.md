@@ -157,6 +157,22 @@ This is a student-budget project. Avoid open-ended API usage.
   - daily/dev environment switches to disable AI calls
 - Core preventive-maintenance workflows must still work if AI is disabled or unavailable.
 
+## Cost and execution limits
+
+Optimize for minimal agent usage.
+
+- Make the smallest change that satisfies the request.
+- Do not create or modify tests unless explicitly requested.
+- Run only the single most relevant targeted test.
+- Run that test at most once after editing.
+- Never run the complete test suite unless explicitly requested.
+- Never repeatedly fix and rerun tests automatically.
+- If a test fails, report the failure and stop.
+- Do not run lint, formatting, type checking, builds, and tests together.
+- Do not use subagents or parallel agents.
+- Do not perform unrelated refactoring.
+- After completing the requested edit, summarize the changes and stop.
+
 ## Scope Boundaries
 
 Deferred pending GSD/adviser clarifications:
