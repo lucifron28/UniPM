@@ -161,6 +161,16 @@ public sealed class PreventiveMaintenanceFormDraftEndpointsTests
                 });
 
             Assert.Equal(HttpStatusCode.Forbidden, mismatchedInspector.StatusCode);
+
+            var anotherSchedule = await application.SeedScheduleAsync("fire-extinguisher");
+            var otherInspectorRow = await application.AddDraftRowAsync(
+                form.Id,
+                anotherSchedule.Id,
+                Guid.NewGuid());
+            var deleteOtherInspectorRow = await client.DeleteAsync(
+                $"/api/v1/preventive-maintenance-forms/{form.Id}/inspections/{otherInspectorRow.Id}");
+
+            Assert.Equal(HttpStatusCode.Forbidden, deleteOtherInspectorRow.StatusCode);
         }
     }
 
@@ -377,6 +387,35 @@ public sealed class PreventiveMaintenanceFormDraftEndpointsTests
             context.PreventiveMaintenanceSchedules.Add(schedule);
             await context.SaveChangesAsync();
             return new ScheduleResponse(schedule.Id);
+        }
+
+        public async Task<DraftInspectionRowResponse> AddDraftRowAsync(
+            Guid formId,
+            Guid scheduleId,
+            Guid inspectorUserId)
+        {
+            await using var scope = Services.CreateAsyncScope();
+            var contextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
+            await using var context = await contextFactory.CreateDbContextAsync();
+            var schedule = await context.PreventiveMaintenanceSchedules
+                .SingleAsync(candidate => candidate.Id == scheduleId);
+            var now = DateTimeOffset.UtcNow;
+            var inspection = new InspectionRecord
+            {
+                Id = Guid.NewGuid(),
+                ScheduleId = schedule.Id,
+                PreventiveMaintenanceFormId = formId,
+                AssetId = schedule.AssetId,
+                InspectorUserId = inspectorUserId,
+                DateInspected = now,
+                IsOperational = false,
+                Remarks = "Other inspector draft row",
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+            context.InspectionRecords.Add(inspection);
+            await context.SaveChangesAsync();
+            return DraftInspectionRowResponse.FromInspection(inspection);
         }
     }
 

@@ -283,6 +283,7 @@ public static class PreventiveMaintenanceFormEndpoints
         group.MapDelete("/{id}/inspections/{inspectionId}", async (
             Guid id,
             Guid inspectionId,
+            ClaimsPrincipal principal,
             IDbContextFactory<ApplicationDbContext> factory,
             CancellationToken cancellationToken) =>
         {
@@ -306,6 +307,11 @@ public static class PreventiveMaintenanceFormEndpoints
             if (inspection is null)
             {
                 return ApiErrors.NotFound("Draft inspection row not found.");
+            }
+
+            if (!CanUseInspectorUserId(principal, inspection.InspectorUserId))
+            {
+                return Results.Forbid();
             }
 
             context.InspectionRecords.Remove(inspection);
