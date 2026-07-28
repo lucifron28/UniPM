@@ -3,6 +3,7 @@ import {
   Boxes,
   CalendarDays,
   ClipboardCheck,
+  ClipboardList,
   LayoutDashboard,
 } from 'lucide-react'
 import { Alert } from '@/components/ui/alert'
@@ -79,6 +80,12 @@ export function UserIdentity() {
 }
 
 export function AppShell() {
+  const currentUser = useCurrentUser()
+  const canReviewForms =
+    currentUser.data?.roles.some(
+      (role) => role === 'GSD' || role === 'Inspector',
+    ) ?? false
+
   return (
     <div className="min-h-screen bg-[var(--page-background)] lg:grid lg:grid-cols-[15.5rem_1fr]">
       <aside className="hidden border-r border-[var(--border-soft)] bg-[var(--sidebar-background)] lg:flex lg:min-h-screen lg:flex-col">
@@ -146,6 +153,23 @@ export function AppShell() {
             <ClipboardCheck aria-hidden="true" className="size-5" />
             Inspections
           </Link>
+          {canReviewForms && (
+            <Link
+              to="/app/preventive-maintenance-forms"
+              activeProps={{
+                'aria-current': 'page',
+                className:
+                  'mt-1 flex items-center gap-3 rounded-lg bg-[var(--primary-active)] px-4 py-3 text-sm font-semibold text-white shadow-sm',
+              }}
+              inactiveProps={{
+                className:
+                  'mt-1 flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-semibold text-[var(--text-secondary)] hover:bg-[var(--page-background)]',
+              }}
+            >
+              <ClipboardList aria-hidden="true" className="size-5" />
+              Form review
+            </Link>
+          )}
         </nav>
         <div className="space-y-4 border-t border-[var(--border-soft)] p-4">
           <UserIdentity />
@@ -232,6 +256,23 @@ export function AppShell() {
               <ClipboardCheck aria-hidden="true" className="size-4" />
               Inspections
             </Link>
+            {canReviewForms && (
+              <Link
+                to="/app/preventive-maintenance-forms"
+                activeProps={{
+                  'aria-current': 'page',
+                  className:
+                    'flex items-center gap-2 rounded-lg bg-[var(--primary-active)] px-3 py-2 text-xs font-semibold text-white shadow-sm',
+                }}
+                inactiveProps={{
+                  className:
+                    'flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--page-background)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]',
+                }}
+              >
+                <ClipboardList aria-hidden="true" className="size-4" />
+                Forms
+              </Link>
+            )}
           </nav>
         </div>
 
