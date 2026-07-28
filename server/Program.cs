@@ -6,6 +6,7 @@ using UniPM.Api.Data.Seeding;
 using UniPM.Api.Features;
 using UniPM.Api.Health;
 using UniPM.Api.Features.MaintenanceReview;
+using UniPM.Api.Features.PreventiveMaintenanceForms;
 using UniPM.Api.Features.Retrieval;
 using UniPM.Api.Features.ReferenceDocuments;
 using UniPM.Api.Observability;
@@ -157,6 +158,9 @@ builder.Services.AddScoped<ILexicalMaintenanceRetriever>(serviceProvider =>
         serviceProvider.GetRequiredService<SqlServerLexicalMaintenanceRetriever>(),
         serviceProvider.GetRequiredService<UniPMMetrics>()));
 builder.Services.Configure<EmbeddingOptions>(builder.Configuration.GetSection(EmbeddingOptions.SectionName));
+builder.Services.Configure<PreventiveMaintenanceFormSubmissionOptions>(
+    builder.Configuration.GetSection(PreventiveMaintenanceFormSubmissionOptions.SectionName));
+builder.Services.AddSingleton<PreventiveMaintenanceFileNumberGenerator>();
 builder.Services.AddHttpClient<IEmbeddingService, OpenAiCompatibleEmbeddingService>();
 builder.Services.AddScoped<IMaintenanceSearchDocumentEmbeddingIndexer, MaintenanceSearchDocumentEmbeddingIndexer>();
 builder.Services.AddScoped<IInstitutionalReferenceEmbeddingIndexer, InstitutionalReferenceEmbeddingIndexer>();
