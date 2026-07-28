@@ -161,13 +161,15 @@ This is a student-budget project. Avoid open-ended API usage.
 
 Deferred pending GSD/adviser clarifications:
 
-- final acknowledgement workflow rules
-- final corrective-maintenance handoff/RMRF business process
+- acknowledgement command and signature-capture validation implementation
+- corrective-action handoff preparation is confirmed; UniPM does not create,
+  process, or monitor RMRFs or the external WMS lifecycle
 - official building/department/location list
 - who has authority to adjust schedules
 - final audit-log persistence rules
 - final full privacy masking/token-map implementation
-- approved CPMP/checklist/SOP/OEM reference knowledge base
+- approved institutional CPMP/checklist/SOP sources remain pending
+- OEM retrieval is excluded from the evaluated MVP
 
 Do not invent final schema or business logic for these unless explicitly told the clarification arrived. If a task seems to require finalizing any deferred item, stop and flag it.
 
@@ -256,7 +258,7 @@ Unblocked areas:
   - Water drinking stations
 - Thin end-to-end RAG MVP:
   - Use synthetic `InspectionRecord` data.
-  - No dependency on final GSD handoff/acknowledgement clarification.
+  - No dependency on final GSD handoff/RMRF command implementation or acknowledgement endpoint validation.
   - Do not build chatbot behavior.
   - Return source records with the summary.
 

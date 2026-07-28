@@ -1,6 +1,7 @@
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using UniPM.Api.Data;
+using UniPM.Api.Features.PreventiveMaintenanceForms;
 using UniPM.Api.Models;
 
 namespace UniPM.Api.Tests;
@@ -142,6 +143,111 @@ public sealed class SqlServerDomainContractTests
             """;
 
         Assert.Equal(1, Convert.ToInt32(await command.ExecuteScalarAsync()));
+    }
+
+    [SqlServer2019Fact]
+    public async Task Preventive_form_status_file_number_and_acknowledgement_constraints_are_enforced()
+    {
+        await using var database = await SqlServerTestDatabase.CreateAsync(RequireSqlServer2019Connection());
+        var formId = Guid.NewGuid();
+        await using (var context = database.CreateContext())
+        {
+            await context.Database.MigrateAsync();
+            context.PreventiveMaintenanceForms.AddRange(
+                NewPreventiveForm(formId, "PMF-001", PreventiveMaintenanceFormStatusCatalog.Draft),
+                NewPreventiveForm(Guid.NewGuid(), "PMF-002", PreventiveMaintenanceFormStatusCatalog.Submitted),
+                NewPreventiveForm(Guid.NewGuid(), null, PreventiveMaintenanceFormStatusCatalog.Acknowledged));
+            await context.SaveChangesAsync();
+
+            context.PreventiveMaintenanceAcknowledgements.Add(new PreventiveMaintenanceAcknowledgement
+            {
+                Id = Guid.NewGuid(),
+                FormId = formId,
+                SignatoryName = "Fictional Signatory",
+                SignatoryPosition = "Department Head",
+                CapturedByUserId = Guid.NewGuid(),
+                AcknowledgedAt = DateTimeOffset.UtcNow
+            });
+            await context.SaveChangesAsync();
+        }
+
+        await AssertConstraintFailureAsync(database, NewPreventiveForm(
+            Guid.NewGuid(), "PMF-001", PreventiveMaintenanceFormStatusCatalog.Draft));
+        await AssertConstraintFailureAsync(database, NewPreventiveForm(
+            Guid.NewGuid(), "PMF-003", "Completed"));
+        var invalidAcademicYear = NewPreventiveForm(
+            Guid.NewGuid(), "PMF-004", PreventiveMaintenanceFormStatusCatalog.Draft);
+        invalidAcademicYear.AcademicYear = "2026/2027";
+        await AssertConstraintFailureAsync(database, invalidAcademicYear);
+
+        await using var acknowledgementContext = database.CreateContext();
+        acknowledgementContext.PreventiveMaintenanceAcknowledgements.Add(new PreventiveMaintenanceAcknowledgement
+        {
+            Id = Guid.NewGuid(),
+            FormId = formId,
+            SignatoryName = "Another Fictional Signatory",
+            SignatoryPosition = "Department Head",
+            CapturedByUserId = Guid.NewGuid(),
+            AcknowledgedAt = DateTimeOffset.UtcNow
+        });
+        await Assert.ThrowsAsync<DbUpdateException>(() => acknowledgementContext.SaveChangesAsync());
+    }
+
+    [SqlServer2019Fact]
+    public async Task Form_migration_preserves_existing_inspections_and_leaves_form_link_null()
+    {
+        await using var database = await SqlServerTestDatabase.CreateAsync(RequireSqlServer2019Connection());
+        var inspectionId = Guid.NewGuid();
+        await using (var context = database.CreateContext())
+        {
+            await context.Database.MigrateAsync("20260725082333_AddReferenceDocumentFoundation");
+            var now = DateTimeOffset.UtcNow;
+            var asset = new Asset
+            {
+                Id = Guid.NewGuid(),
+                AssetCode = "FORM-MIG-001",
+                AssetCategory = "fire-alarm",
+                Status = "Active",
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+            var schedule = new PreventiveMaintenanceSchedule
+            {
+                Id = Guid.NewGuid(),
+                AssetId = asset.Id,
+                ScheduleDate = now,
+                PeriodType = "Semester",
+                Status = "Due",
+                Semester = "First",
+                AcademicYear = "2026-2027",
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+            var inspectorUserId = Guid.NewGuid();
+            var dateInspected = now;
+            await context.Database.ExecuteSqlInterpolatedAsync($"""
+                INSERT INTO [Assets] ([Id], [AssetCode], [AssetCategory], [Status], [CreatedAt], [UpdatedAt])
+                VALUES ({asset.Id}, {asset.AssetCode}, {asset.AssetCategory}, {asset.Status}, {asset.CreatedAt}, {asset.UpdatedAt});
+
+                INSERT INTO [PreventiveMaintenanceSchedules]
+                    ([Id], [AssetId], [ScheduleDate], [PeriodType], [Status], [Semester], [AcademicYear], [CreatedAt], [UpdatedAt])
+                VALUES
+                    ({schedule.Id}, {schedule.AssetId}, {schedule.ScheduleDate}, {schedule.PeriodType}, {schedule.Status},
+                     {schedule.Semester}, {schedule.AcademicYear}, {schedule.CreatedAt}, {schedule.UpdatedAt});
+
+                INSERT INTO [InspectionRecords]
+                    ([Id], [ScheduleId], [AssetId], [InspectorUserId], [DateInspected], [IsOperational], [CreatedAt], [UpdatedAt])
+                VALUES
+                    ({inspectionId}, {schedule.Id}, {asset.Id}, {inspectorUserId}, {dateInspected}, {true}, {now}, {now});
+                """);
+            await context.Database.MigrateAsync();
+        }
+
+        await using var verification = database.CreateContext();
+        var inspection = await verification.InspectionRecords.SingleAsync(item => item.Id == inspectionId);
+        Assert.Null(inspection.PreventiveMaintenanceFormId);
+        Assert.Equal(inspectionId, inspection.Id);
+        Assert.Equal(1, await verification.InspectionRecords.CountAsync());
     }
 
     [SqlServerFact]
@@ -286,6 +392,19 @@ public sealed class SqlServerDomainContractTests
                 }),
             "canonical asset codes are duplicated");
     }
+
+    private static PreventiveMaintenanceForm NewPreventiveForm(Guid id, string? fileNumber, string status)
+        => new()
+        {
+            Id = id,
+            FileNumber = fileNumber,
+            AssetCategory = "fire-alarm",
+            PeriodType = "Semester",
+            Semester = "First",
+            AcademicYear = "2026-2027",
+            Status = status,
+            CreatedByUserId = Guid.NewGuid()
+        };
 
     private static async Task<Guid> GetFirstAssetIdAsync(SqlServerTestDatabase database)
     {

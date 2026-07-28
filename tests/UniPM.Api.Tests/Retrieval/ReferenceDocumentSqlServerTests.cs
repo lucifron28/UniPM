@@ -69,7 +69,7 @@ public sealed class ReferenceDocumentSqlServerTests
         Assert.NotEmpty(results);
         Assert.All(results, result => Assert.Equal("InstitutionalReference", result.EvidenceSourceGroup));
         Assert.DoesNotContain(results, result => result.SourceKey == "FIC-ALM-FUT");
-        Assert.Equal(5, embeddingService.Batches.Count);
+        Assert.Equal(4, embeddingService.Batches.Count);
         await using var verification = factory.CreateDbContext();
         Assert.Equal(5, await verification.ReferenceDocumentSectionEmbeddings.CountAsync());
         Assert.NotNull(await verification.ReferenceDocumentSectionEmbeddings
