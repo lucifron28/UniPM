@@ -4,7 +4,7 @@ type: test-run
 title: Preventive-maintenance form submission verification
 status: executed
 recordedAtUtc: 2026-07-28T00:00:00Z
-testedCommit: 62f10e68c4b94d0b3b3e043fc7f1e7ee26e3add8
+testedCommit: 8fd4791b08d3ad4d8bc19a0712cdf07ffcc698dd
 sourceBranch: feat/preventive-maintenance-form-submission
 evidenceLevel: locally-executed
 ---
@@ -18,7 +18,7 @@ form drafts, including provisional file-number assignment and ownership rules.
 
 ## Execution Identity
 
-- Tested commit: `62f10e68c4b94d0b3b3e043fc7f1e7ee26e3add8`
+- Tested commit: `8fd4791b08d3ad4d8bc19a0712cdf07ffcc698dd`
 - Source branch: `feat/preventive-maintenance-form-submission`
 - Execution date: 2026-07-28 UTC
 
@@ -27,23 +27,27 @@ form drafts, including provisional file-number assignment and ownership rules.
 ```powershell
 dotnet test .\tests\UniPM.Api.Tests\UniPM.Api.Tests.csproj `
   -c Release `
-  --filter "FullyQualifiedName~PreventiveMaintenanceFormDraftEndpointsTests"
+  --filter "FullyQualifiedName~Concurrent_form_submissions_assign_distinct_provisional_file_numbers"
 ```
 
 ## Results
 
-- Focused preventive-maintenance form endpoint tests: passed.
+- The focused native SQL Server concurrency test was invoked.
+- It skipped because `UNIPM_SQLSERVER_TEST_CONNECTION` was not configured in
+  the process environment.
 
 ## Test Counts
 
 | Scope | Passed | Failed | Skipped | Total |
 |---|---:|---:|---:|---:|
-| `PreventiveMaintenanceFormDraftEndpointsTests` | 10 | 0 | 0 | 10 |
+| `Concurrent_form_submissions_assign_distinct_provisional_file_numbers` | 0 | 0 | 1 | 1 |
 
 ## SQL Server Verification
 
-Not executed for this focused endpoint change. The existing form-domain
-migration and constraint verification remains recorded in TEST-024.
+The final commit's SQL Server concurrency test did not execute because the
+required process-scoped connection variable was unavailable. The test remains
+an explicit native SQL Server gate; TEST-024 records earlier form-domain
+migration and constraint verification.
 
 ## AI-Provider Verification
 
@@ -58,8 +62,10 @@ secrets, connection strings, prompts, or vectors were recorded.
 ## Skipped Verification
 
 The complete Release test suite and native SQL Server 2019 suite were not run.
-This focused record does not claim production, deployment, acknowledgement, or
-final workflow readiness.
+The earlier focused endpoint suite passed 10/10 on
+`62f10e68c4b94d0b3b3e043fc7f1e7ee26e3add8`, before this final sequence-bound
+correction. This record does not claim final native SQL verification,
+production, deployment, acknowledgement, or final workflow readiness.
 
 ## Limitations
 

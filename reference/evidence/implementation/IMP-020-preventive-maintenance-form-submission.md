@@ -21,12 +21,14 @@ completing schedules.
 - Relevant commits:
   - `dcae3117feaecbdc1b07a04e5a0ce78b4af49161`
   - `62f10e68c4b94d0b3b3e043fc7f1e7ee26e3add8`
+  - `8fd4791b08d3ad4d8bc19a0712cdf07ffcc698dd`
 - Source paths:
   - `server/Features/PreventiveMaintenanceForms/PreventiveMaintenanceFormEndpoints.cs`
   - `server/Features/PreventiveMaintenanceForms/PreventiveMaintenanceFormSubmissionOptions.cs`
   - `server/Program.cs`
   - `server/appsettings.json`
   - `tests/UniPM.Api.Tests/Forms/PreventiveMaintenanceFormDraftEndpointsTests.cs`
+  - `tests/UniPM.Api.Tests/Inspections/SqlServerInspectionSubmissionIntegrityTests.cs`
 
 ## Implementation Summary
 
@@ -43,6 +45,9 @@ completing schedules.
 - Makes the provisional prefix and sequence width configurable through
   `PreventiveMaintenanceForms:Submission`. The final institutional file-number
   policy remains deferred.
+- Caps the yearly provisional sequence at the configured width. For example, a
+  four-digit sequence stops at `9999` and returns a controlled conflict rather
+  than generating a five-digit value.
 
 ## Preserved Boundaries
 
@@ -64,12 +69,15 @@ file-number index introduced by IMP-018.
 
 The focused form endpoint tests cover successful submission metadata and file
 number assignment, plus empty-form, repeated-submission, and unauthorized
-Inspector rejection.
+Inspector rejection. A native SQL Server test covers concurrent eligible form
+submissions and distinct provisional file numbers.
 
 ## Verification Status
 
-TEST-026 records the focused local execution for commit
-`62f10e68c4b94d0b3b3e043fc7f1e7ee26e3add8`.
+TEST-026 records the final native SQL Server test invocation for commit
+`8fd4791b08d3ad4d8bc19a0712cdf07ffcc698dd`; the environment variable required
+to execute the test was unavailable, so the native concurrency assertion
+remains pending.
 
 ## Known Limitations
 
