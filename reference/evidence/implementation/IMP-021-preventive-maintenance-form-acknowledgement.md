@@ -21,9 +21,11 @@ schedules.
 - Relevant commits:
   - `e8ca645e7a72c1c668516724948c19ba03d6d3af`
   - `f1aaf27604a8dbe25a7e70dc8c2174d139e39a1b`
+  - `65d2432d77f4219b973144b6f49df8722bbd8027`
 - Source paths:
   - `server/Features/PreventiveMaintenanceForms/PreventiveMaintenanceFormEndpoints.cs`
   - `tests/UniPM.Api.Tests/Forms/PreventiveMaintenanceFormDraftEndpointsTests.cs`
+  - `tests/UniPM.Api.Tests/Inspections/SqlServerInspectionSubmissionIntegrityTests.cs`
 
 ## Implementation Summary
 
@@ -63,17 +65,22 @@ Two focused endpoint tests cover:
 - invalid signature input, repeated acknowledgement, wrong form status, and
   unauthorized Inspector rejection.
 
+One native SQL Server endpoint test covers acknowledgement persistence, form
+status, completion of both linked schedules, projection creation, and no
+embedding creation.
+
 ## Verification Status
 
-TEST-027 records the focused test execution for commit
-`f1aaf27604a8dbe25a7e70dc8c2174d139e39a1b`.
+TEST-027 records the native SQL test attempt for commit
+`65d2432d77f4219b973144b6f49df8722bbd8027`. The local connection failed at
+its encryption handshake before the endpoint assertions executed.
 
 ## Known Limitations
 
 This phase does not implement corrective-action handoff, RMRF processing, OEM
 retrieval, frontend acknowledgement, embedding generation, or generated
-summaries. Native SQL Server acknowledgement execution and the complete test
-suite were not run in this focused change.
+summaries. Native SQL Server acknowledgement execution is blocked by the local
+connection encryption configuration, and the complete test suite was not run.
 
 ## Related Evidence
 
