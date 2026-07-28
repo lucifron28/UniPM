@@ -7,6 +7,7 @@ import 'api_exception.dart';
 
 typedef AccessTokenProvider = String? Function();
 typedef RefreshHandler = Future<String?> Function();
+typedef TerminalAuthFailureHandler = Future<void> Function();
 
 class ApiClient {
   ApiClient({
@@ -20,13 +21,16 @@ class ApiClient {
   final http.Client _httpClient;
   AccessTokenProvider _accessTokenProvider = () => null;
   RefreshHandler? _refreshHandler;
+  TerminalAuthFailureHandler? _terminalAuthFailureHandler;
 
   void configureSession({
     required AccessTokenProvider accessTokenProvider,
     required RefreshHandler refreshHandler,
+    required TerminalAuthFailureHandler terminalAuthFailureHandler,
   }) {
     _accessTokenProvider = accessTokenProvider;
     _refreshHandler = refreshHandler;
+    _terminalAuthFailureHandler = terminalAuthFailureHandler;
   }
 
   Future<Map<String, dynamic>> getJson(String path) async {
@@ -56,7 +60,7 @@ class ApiClient {
     if (response.statusCode == 401 &&
         allowRefresh &&
         _refreshHandler != null &&
-        !_isAuthPath(path)) {
+        !_isCookieOnlyAuthPath(path)) {
       try {
         final token = await _refreshHandler!();
         if (token == null) {
@@ -66,6 +70,9 @@ class ApiClient {
           );
         }
         final replay = await _send(method, path, body: body);
+        if (replay.statusCode == 401) {
+          await _terminalAuthFailureHandler?.call();
+        }
         _throwForStatus(replay);
         return replay;
       } on ApiException {
@@ -99,7 +106,7 @@ class ApiClient {
     }
 
     final accessToken = _accessTokenProvider();
-    if (accessToken != null && !_isAuthPath(path)) {
+    if (accessToken != null && !_isCookieOnlyAuthPath(path)) {
       request.headers['Authorization'] = 'Bearer $accessToken';
     }
 
@@ -126,7 +133,10 @@ class ApiClient {
     return baseUrl!.resolve(relativePath);
   }
 
-  static bool _isAuthPath(String path) => path.startsWith('/api/v1/auth/');
+  static bool _isCookieOnlyAuthPath(String path) =>
+      path == '/api/v1/auth/login' ||
+      path == '/api/v1/auth/refresh' ||
+      path == '/api/v1/auth/logout';
 
   Future<void> _captureRefreshCookie(http.Response response) async {
     final raw = response.headers['set-cookie'];

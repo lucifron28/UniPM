@@ -20,6 +20,8 @@ void main() {
   apiClient.configureSession(
     accessTokenProvider: () => sessionController.accessToken,
     refreshHandler: sessionController.refreshForRequest,
+    terminalAuthFailureHandler:
+        sessionController.handleTerminalAuthenticationFailure,
   );
 
   runApp(

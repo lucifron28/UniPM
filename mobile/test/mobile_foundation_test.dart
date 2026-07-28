@@ -1,6 +1,11 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 
+import 'package:mobile/api/api_client.dart';
 import 'package:mobile/api/api_exception.dart';
 import 'package:mobile/auth/auth_models.dart';
 import 'package:mobile/auth/auth_repository.dart';
@@ -31,6 +36,7 @@ class FakeAuthGateway implements AuthGateway {
   AuthUser user;
   bool loginSucceeds = true;
   bool logoutCalled = false;
+  int refreshCalls = 0;
 
   @override
   Future<LoginResult> login(String email, String password) async {
@@ -44,8 +50,10 @@ class FakeAuthGateway implements AuthGateway {
   }
 
   @override
-  Future<LoginResult> refresh() async =>
-      LoginResult(accessToken: 'refreshed-memory-token', user: user);
+  Future<LoginResult> refresh() async {
+    refreshCalls++;
+    return LoginResult(accessToken: 'refreshed-memory-token', user: user);
+  }
 
   @override
   Future<AuthUser> currentUser() async => user;
@@ -136,5 +144,115 @@ void main() {
     );
     expect(result.controller.accessToken, isNull);
     expect(result.store.cookie, isNull);
+  });
+
+  test('auth/me sends the in-memory bearer access token', () async {
+    final store = FakeSessionCookieStore();
+    String? memoryToken = 'memory-token';
+    http.Request? capturedRequest;
+    final client = ApiClient(
+      baseUrl: Uri.parse('http://localhost:5000/'),
+      cookieStore: store,
+      httpClient: MockClient((request) async {
+        capturedRequest = request;
+        return http.Response(
+          jsonEncode({
+            'id': testUser().id,
+            'email': testUser().email,
+            'displayName': testUser().displayName,
+            'roles': testUser().roles,
+          }),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      }),
+    );
+    client.configureSession(
+      accessTokenProvider: () => memoryToken,
+      refreshHandler: () async => memoryToken,
+      terminalAuthFailureHandler: () async {},
+    );
+
+    await AuthRepository(client).currentUser();
+
+    expect(capturedRequest?.url.path, '/api/v1/auth/me');
+    expect(
+      capturedRequest?.headers['authorization'],
+      'Bearer memory-token',
+    );
+    client.dispose();
+  });
+
+  test('a protected 401 performs one refresh and one replay', () async {
+    final store = FakeSessionCookieStore();
+    var memoryToken = 'old-token';
+    var refreshCalls = 0;
+    final requests = <http.Request>[];
+    final client = ApiClient(
+      baseUrl: Uri.parse('http://localhost:5000/'),
+      cookieStore: store,
+      httpClient: MockClient((request) async {
+        requests.add(request);
+        if (requests.length == 1) return http.Response('', 401);
+        return http.Response(
+          jsonEncode({'ok': true}),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      }),
+    );
+    client.configureSession(
+      accessTokenProvider: () => memoryToken,
+      refreshHandler: () async {
+        refreshCalls++;
+        memoryToken = 'new-token';
+        return memoryToken;
+      },
+      terminalAuthFailureHandler: () async {},
+    );
+
+    await client.getJson('/api/v1/auth/me');
+
+    expect(refreshCalls, 1);
+    expect(requests, hasLength(2));
+    expect(requests[0].headers['authorization'], 'Bearer old-token');
+    expect(requests[1].headers['authorization'], 'Bearer new-token');
+    client.dispose();
+  });
+
+  test('a replayed 401 clears memory and secure session material', () async {
+    final store = FakeSessionCookieStore()..cookie = 'unipm_refresh=old';
+    final gateway = FakeAuthGateway(user: testUser());
+    final controller = SessionController(gateway, store);
+    await controller.login('inspector@example.test', 'fictional-password');
+
+    final requests = <http.Request>[];
+    final client = ApiClient(
+      baseUrl: Uri.parse('http://localhost:5000/'),
+      cookieStore: store,
+      httpClient: MockClient((request) async {
+        requests.add(request);
+        return http.Response('', 401);
+      }),
+    );
+    client.configureSession(
+      accessTokenProvider: () => controller.accessToken,
+      refreshHandler: controller.refreshForRequest,
+      terminalAuthFailureHandler:
+          controller.handleTerminalAuthenticationFailure,
+    );
+
+    await expectLater(
+      client.getJson('/api/v1/auth/me'),
+      throwsA(isA<ApiException>()),
+    );
+
+    expect(requests, hasLength(2));
+    expect(gateway.refreshCalls, 1);
+    expect(controller.accessToken, isNull);
+    expect(controller.status, SessionStatus.signedOut);
+    expect(store.cookie, isNull);
+    expect(store.clearCalls, greaterThan(0));
+    client.dispose();
   });
 }

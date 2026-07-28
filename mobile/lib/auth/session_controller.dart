@@ -107,6 +107,11 @@ class SessionController extends ChangeNotifier {
     }
   }
 
+  Future<void> handleTerminalAuthenticationFailure() async {
+    await _clearSession();
+    _setSignedOut();
+  }
+
   Future<String?> _refreshSession() async {
     final result = await _gateway.refresh();
     _accessToken = result.accessToken;
