@@ -3,10 +3,10 @@ id: IMP-025
 type: implementation
 title: Flutter mobile authentication foundation
 status: reviewed
-recordedAtUtc: 2026-07-28T17:53:29Z
+recordedAtUtc: 2026-07-28T18:08:50Z
 sourceBranch: feat/mobile-foundation
 evidenceLevel: source-inspected
-testedCommit: 9a5fe548c50a8e0dd5f1eac1d3f872e20f1879a3
+testedCommit: 6e729061bb5eb58b9c91c874a0dd90b86ad001ee
 ---
 
 # Flutter Mobile Authentication Foundation
@@ -19,7 +19,7 @@ field access without implementing preventive-maintenance workflows.
 ## Source Identity
 
 - Tested implementation commit:
-  `9a5fe548c50a8e0dd5f1eac1d3f872e20f1879a3`
+  `6e729061bb5eb58b9c91c874a0dd90b86ad001ee`
 - Source branch: `feat/mobile-foundation`
 - Starting main commit after PR #47:
   `4085fc27c4865551a90162ba6f41dbbe3bb8adfc`
@@ -33,8 +33,11 @@ field access without implementing preventive-maintenance workflows.
 - Uses the existing login, current-user, refresh, and logout contracts.
 - Keeps access tokens in memory and stores only refresh-cookie session material
   through `flutter_secure_storage`.
+- Sends the in-memory bearer token to `/api/v1/auth/me` while keeping login,
+  refresh, and logout as cookie/session endpoints.
 - Adds one bounded refresh and replay for ordinary 401 responses, followed by
-  local session clearing after terminal failure or logout.
+  local access-token and secure-session clearing after a replayed terminal 401
+  or logout.
 - Adds startup restoration, login, authenticated home shell, logout, and clear
   unsupported-role states.
 - Allows only Inspector and GSD roles through the client navigation boundary.
@@ -54,6 +57,5 @@ OpenAPI, or web behavior was added.
 
 ## Verification Scope
 
-TEST-031 records the final Flutter analyzer and focused widget-test results. No
-emulator integration test was run.
-
+TEST-031 records the final Flutter analyzer and focused transport/widget-test
+results. No emulator integration test was run.
