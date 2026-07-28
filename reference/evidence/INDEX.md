@@ -78,6 +78,8 @@ record's evidence level and tested/source commit.
 | TEST-025 | test-run | Preventive-maintenance form draft workflow verification | executed | locally-executed | `ea003c3` | [record](test-runs/TEST-025-preventive-maintenance-form-drafts.md) | Focused draft-form endpoint tests passed 8/8; SQL Server and full-suite verification were not run. |
 | IMP-020 | implementation | Preventive-maintenance form submission | reviewed | source-inspected | `773f23e` | [record](implementation/IMP-020-preventive-maintenance-form-submission.md) | Draft-to-Submitted transition with a bounded provisional configurable file number and SQL deadlock retry; schedules and official history remain unchanged. |
 | TEST-026 | test-run | Preventive-maintenance form submission verification | executed | locally-executed | `773f23e` | [record](test-runs/TEST-026-preventive-maintenance-form-submission.md) | Focused native SQL concurrency test passed 1/1 with distinct provisional file numbers; full-suite verification was not run. |
+| IMP-021 | implementation | Preventive-maintenance form acknowledgement | reviewed | source-inspected | `f1aaf27` | [record](implementation/IMP-021-preventive-maintenance-form-acknowledgement.md) | Submitted-to-Acknowledged transition with signature checksum, schedule completion, and maintenance-history publication. |
+| TEST-027 | test-run | Preventive-maintenance form acknowledgement verification | executed | locally-executed | `f1aaf27` | [record](test-runs/TEST-027-preventive-maintenance-form-acknowledgement.md) | Focused acknowledgement tests passed 2/2; one existing optional SQL Server constraint test was skipped. |
 
 ## Pending Evidence
 
