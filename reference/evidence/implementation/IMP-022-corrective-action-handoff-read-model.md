@@ -20,7 +20,7 @@ track a handoff record.
 ## Source Identity
 
 - Tested implementation commit:
-  `d1383dd15e4c621208916e896da03332dd78a930`
+  `fb26a0b23b9b8ec1d6f2f3fe4d42353be25605cd`
 - Source branch: `feat/corrective-action-handoff-read-model`
 - Source paths:
   - `server/Features/Auth/AuthPolicyCatalog.cs`
