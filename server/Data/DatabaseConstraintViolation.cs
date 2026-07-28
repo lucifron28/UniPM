@@ -10,4 +10,10 @@ internal static class DatabaseConstraintViolation
         var sqlException = exception.GetBaseException() as SqlException;
         return sqlException?.Number is 2601 or 2627;
     }
+
+    internal static bool IsDeadlock(DbUpdateException exception)
+    {
+        var sqlException = exception.GetBaseException() as SqlException;
+        return sqlException?.Number == 1205;
+    }
 }
