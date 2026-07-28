@@ -3,7 +3,7 @@ id: IMP-019
 type: implementation
 title: Preventive-maintenance form draft workflows
 status: reviewed
-recordedAtUtc: 2026-07-28T10:48:56Z
+recordedAtUtc: 2026-07-28T10:53:34Z
 sourceBranch: feat/preventive-maintenance-form-drafts
 evidenceLevel: source-inspected
 ---
@@ -22,6 +22,7 @@ remove their inspection rows while the form remains `Draft`.
   - `463d38c235d9b74833fcd9f0b679453b62d5fe9a`
   - `01e3370508496eeb7cd3963c5ba2ee5aa24b7fd5`
   - `51ac33ac9019c5a8b8f657e860aae5c865dc1fa8`
+  - `ea003c3cf2e64d17913a2f45cc38f8fcbe6ce1df`
 - Implementation date: 2026-07-28 UTC
 - Source paths:
   - `server/Features/PreventiveMaintenanceForms/PreventiveMaintenanceFormEndpoints.cs`
@@ -44,7 +45,8 @@ remove their inspection rows while the form remains `Draft`.
   `PreventiveMaintenanceFormId` link.
 - Form creation and draft-row mutations require the dedicated GSD/Inspector
   policy; form reads require authentication. Inspector callers may only create,
-  update, or delete rows assigned to their authenticated identity.
+  update, or delete rows assigned to their authenticated identity; GSD may
+  manage any draft row.
 - Draft edits do not complete schedules and do not create maintenance search
   documents.
 - Official inspection history/list/detail reads include only legacy rows or
