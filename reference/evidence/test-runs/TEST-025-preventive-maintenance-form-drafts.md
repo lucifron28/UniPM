@@ -3,8 +3,8 @@ id: TEST-025
 type: test-run
 title: Preventive-maintenance form draft workflow verification
 status: executed
-recordedAtUtc: 2026-07-28T08:07:11Z
-testedCommit: 463d38c235d9b74833fcd9f0b679453b62d5fe9a
+recordedAtUtc: 2026-07-28T10:48:56Z
+testedCommit: 51ac33ac9019c5a8b8f657e860aae5c865dc1fa8
 sourceBranch: feat/preventive-maintenance-form-drafts
 evidenceLevel: locally-executed
 ---
@@ -18,7 +18,7 @@ inspection history and maintenance-search projection behavior.
 
 ## Execution Identity
 
-- Tested commit: `463d38c235d9b74833fcd9f0b679453b62d5fe9a`
+- Tested commit: `51ac33ac9019c5a8b8f657e860aae5c865dc1fa8`
 - Source branch: `feat/preventive-maintenance-form-drafts`
 - Execution date: 2026-07-28 UTC
 
@@ -42,7 +42,7 @@ dotnet test .\tests\UniPM.Api.Tests\UniPM.Api.Tests.csproj `
 
 | Scope | Passed | Failed | Skipped | Total |
 |---|---:|---:|---:|---:|
-| `PreventiveMaintenanceFormDraftEndpointsTests` | 5 | 0 | 0 | 5 |
+| `PreventiveMaintenanceFormDraftEndpointsTests` | 8 | 0 | 0 | 8 |
 
 ## SQL Server Verification
 

@@ -3,7 +3,7 @@ id: IMP-019
 type: implementation
 title: Preventive-maintenance form draft workflows
 status: reviewed
-recordedAtUtc: 2026-07-28T08:07:11Z
+recordedAtUtc: 2026-07-28T10:48:56Z
 sourceBranch: feat/preventive-maintenance-form-drafts
 evidenceLevel: source-inspected
 ---
@@ -18,7 +18,10 @@ remove their inspection rows while the form remains `Draft`.
 
 ## Source Identity
 
-- Relevant commit: `463d38c235d9b74833fcd9f0b679453b62d5fe9a`
+- Relevant commits:
+  - `463d38c235d9b74833fcd9f0b679453b62d5fe9a`
+  - `01e3370508496eeb7cd3963c5ba2ee5aa24b7fd5`
+  - `51ac33ac9019c5a8b8f657e860aae5c865dc1fa8`
 - Implementation date: 2026-07-28 UTC
 - Source paths:
   - `server/Features/PreventiveMaintenanceForms/PreventiveMaintenanceFormEndpoints.cs`
@@ -39,12 +42,16 @@ remove their inspection rows while the form remains `Draft`.
 
 - Draft rows use the existing `InspectionRecord` entity through its nullable
   `PreventiveMaintenanceFormId` link.
+- Form creation and draft-row mutations require the dedicated GSD/Inspector
+  policy; form reads require authentication. Inspector callers may only create,
+  update, or delete rows assigned to their authenticated identity.
 - Draft edits do not complete schedules and do not create maintenance search
   documents.
-- Official inspection history/list/detail reads exclude rows whose linked form
-  remains `Draft`.
-- The maintenance-search projection rebuild likewise excludes draft rows, so a
-  rebuild cannot turn a draft finding into RAG evidence.
+- Official inspection history/list/detail reads include only legacy rows or
+  rows whose linked form is `Acknowledged`; `Draft` and `Submitted` rows remain
+  hidden.
+- The maintenance-search projection rebuild follows the same rule, so a
+  rebuild cannot turn Draft or Submitted findings into RAG evidence.
 - The routes do not implement submission, file-number generation,
   acknowledgement, signature validation, schedule completion, handoff, RMRF,
   OEM retrieval, or frontend behavior.
@@ -57,8 +64,8 @@ and one-inspection-per-schedule constraint introduced by IMP-018.
 ## Tests Present
 
 The focused endpoint tests cover multiple draft rows, duplicate and category
-mismatch rejection, submitted/acknowledged immutability, and official-history
-plus search-projection exclusion.
+mismatch rejection, submitted/acknowledged immutability, GSD/Inspector access
+and Inspector ownership, and official-history plus search-projection exclusion.
 
 ## Verification Status
 
