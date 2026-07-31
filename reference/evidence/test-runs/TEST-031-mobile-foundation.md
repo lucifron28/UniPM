@@ -3,8 +3,8 @@ id: TEST-031
 type: test-run
 title: Flutter mobile foundation verification
 status: blocked
-recordedAtUtc: 2026-07-31T13:17:14Z
-testedCommit: 354f32e08235fb14798c97c1597195e832f5dd16
+recordedAtUtc: 2026-07-31T13:31:17Z
+testedCommit: 1d5c178f63cf2d210fda711420b876e745cb3f71
 sourceBranch: feat/mobile-foundation
 evidenceLevel: locally-executed
 buildVerificationStatus: not-run
@@ -21,10 +21,10 @@ used.
 ## Execution Identity
 
 - Tested source commit:
-  `354f32e08235fb14798c97c1597195e832f5dd16`
+  `1d5c178f63cf2d210fda711420b876e745cb3f71`
 - Source branch: `feat/mobile-foundation`
 - Starting main commit: `4085fc27c4865551a90162ba6f41dbbe3bb8adfc`
-- Execution date: 2026-07-31 Asia/Manila (`2026-07-31T13:17:14Z`)
+- Execution date: 2026-07-31 Asia/Manila (`2026-07-31T13:31:17Z`)
 
 ## Commands
 
@@ -33,9 +33,9 @@ cd mobile
 flutter test test/mobile_foundation_test.dart
 ```
 
-The test command timed out on its initial run. After a focused test-server
-response-lifecycle correction in commit `354f32e08235fb14798c97c1597195e832f5dd16`,
-the same command was rerun once and timed out again.
+The test command timed out on its initial run. After focused loopback response
+and server-listener lifecycle corrections, the same command was rerun once and
+timed out again.
 
 The requested debug build was not run after the failed test rerun:
 
