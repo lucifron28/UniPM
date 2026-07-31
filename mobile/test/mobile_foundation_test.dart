@@ -64,7 +64,7 @@ class LocalAuthServer {
           HttpHeaders.setCookieHeader,
           'unipm_refresh=server-only-value; Path=/api/v1/auth',
         );
-        _writeJson(request, 200, <String, dynamic>{
+        await _writeJson(request, 200, <String, dynamic>{
           'accessToken': 'memory-only-access-token',
           'expiresAtUtc': '2026-08-01T00:00:00Z',
           'user': _userJson(),
@@ -74,7 +74,7 @@ class LocalAuthServer {
 
       if (path == '/api/v1/auth/me') {
         if (currentUserStatus == 200) {
-          _writeJson(request, 200, _userJson());
+          await _writeJson(request, 200, _userJson());
         } else {
           request.response.statusCode = currentUserStatus;
           await request.response.close();
