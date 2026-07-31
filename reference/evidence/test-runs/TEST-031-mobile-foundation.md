@@ -2,59 +2,73 @@
 id: TEST-031
 type: test-run
 title: Flutter mobile foundation verification
-status: blocked
-recordedAtUtc: 2026-07-31T13:31:17Z
-testedCommit: 1d5c178f63cf2d210fda711420b876e745cb3f71
+status: executed
+recordedAtUtc: 2026-07-31T14:54:46Z
+testedCommit: b93eb9b48d7235c337d1854240615a0290534934
 sourceBranch: feat/mobile-foundation
 evidenceLevel: locally-executed
-buildVerificationStatus: not-run
+buildTestedCommit: b93eb9b48d7235c337d1854240615a0290534934
+buildVerificationStatus: passed
 ---
 
 # Flutter Mobile Foundation Verification
 
 ## Objective
 
-Verify the memory-only mobile authentication transport with fictional users,
-fake gateway responses, and a local loopback HTTP server. No live backend was
-used.
+Verify memory-only mobile authentication with fictional users, deterministic
+injected HTTP clients, and no live backend.
 
 ## Execution Identity
 
 - Tested source commit:
-  `1d5c178f63cf2d210fda711420b876e745cb3f71`
+  `b93eb9b48d7235c337d1854240615a0290534934`
 - Source branch: `feat/mobile-foundation`
 - Starting main commit: `4085fc27c4865551a90162ba6f41dbbe3bb8adfc`
-- Execution date: 2026-07-31 Asia/Manila (`2026-07-31T13:31:17Z`)
+- Execution date: 2026-07-31 Asia/Manila (`2026-07-31T14:54:46Z`)
 
 ## Commands
 
 ```powershell
 cd mobile
 flutter test test/mobile_foundation_test.dart
-```
-
-The test command timed out on its initial run. After focused loopback response
-and server-listener lifecycle corrections, the same command was rerun once and
-timed out again.
-
-The requested debug build was not run after the failed test rerun:
-
-```powershell
 flutter build apk --debug --dart-define=UNIPM_API_BASE_URL=http://10.0.2.2:5000/
 ```
 
 ## Results
 
-| Scope | Passed | Failed | Skipped | Result |
-|---|---:|---:|---:|---|
-| Corrected focused mobile authentication test run | 0 | 0 | 0 | Blocked by timeout |
-| Debug Android APK build | 0 | 0 | 0 | Not run |
+- `flutter test test/mobile_foundation_test.dart`: passed all eight focused
+  authentication tests.
+- `flutter build apk --debug --dart-define=UNIPM_API_BASE_URL=http://10.0.2.2:5000/`:
+  passed and produced `build/app/outputs/flutter-apk/app-debug.apk`.
 
-No test total is claimed for the timed-out process, and no emulator
-connectivity, live-backend, release-build, or production-deployment result is
-claimed.
+| Scope | Passed | Failed | Skipped | Total |
+|---|---:|---:|---:|---:|
+| Focused mobile authentication tests | 8 | 0 | 0 | 8 |
+| Debug Android APK build | 1 | 0 | 0 | 1 |
+
+## Behavior Covered
+
+- Successful login renders the authenticated shell.
+- App startup begins signed out.
+- Direct login 401 displays `Invalid email or password.`.
+- Unsupported roles remain bounded.
+- Logout clears the memory-only session.
+- A login `Set-Cookie` is isolated to its client instance; fresh clients for
+  `/auth/me` and logout receive no Cookie header.
+- `/api/v1/auth/me` receives the in-memory bearer token.
+- Redirect following is disabled for API requests.
+- A post-login `/auth/me` 401 clears the session and displays the expired
+  message without refresh or replay.
+- An authenticated protected-request 401 signs out without replay.
+
+## Verification Scope
+
+Tests use deterministic fake gateway/HTTP responses and fictional users. No
+live backend, emulator connectivity, emulator integration test, release build,
+full repository suite, or production deployment verification was run.
 
 ## Generated Artifacts
 
 No credentials, secrets, tokens, cookies, logs, or real institutional records
-were recorded.
+were recorded. The debug APK is a local build artifact and is not committed as
+evidence.
