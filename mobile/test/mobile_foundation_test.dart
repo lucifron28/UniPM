@@ -1,9 +1,8 @@
 import 'dart:convert';
-import 'dart:async';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
 
 import 'package:mobile/api/api_client.dart';
 import 'package:mobile/api/api_exception.dart';
@@ -37,67 +36,73 @@ class FakeAuthGateway implements AuthGateway {
   Future<void> logout() async => logoutCalled = true;
 }
 
-class LocalAuthServer {
-  LocalAuthServer({required this.currentUserStatus});
+class CookieCapableFakeClient extends http.BaseClient {
+  CookieCapableFakeClient(this.responseFactory);
+
+  final http.Response Function(http.BaseRequest request) responseFactory;
+  final requests = <http.BaseRequest>[];
+  String? cookie;
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    if (cookie != null) request.headers['cookie'] = cookie!;
+    requests.add(request);
+    final response = responseFactory(request);
+    final setCookie = response.headers['set-cookie'];
+    if (setCookie != null) cookie = setCookie.split(';').first;
+    return http.StreamedResponse(
+      Stream.value(utf8.encode(response.body)),
+      response.statusCode,
+      headers: response.headers,
+      request: request,
+    );
+  }
+}
+
+class FakeAuthTransport {
+  FakeAuthTransport({this.currentUserStatus = 200, this.protectedStatus = 401});
 
   final int currentUserStatus;
-  final paths = <String>[];
-  final authorizationHeaders = <String?>[];
-  final cookieHeaders = <String?>[];
-  bool loginSetCookie = false;
-  HttpServer? _server;
-  StreamSubscription<HttpRequest>? _subscription;
+  final int protectedStatus;
+  final clients = <CookieCapableFakeClient>[];
 
-  Uri get baseUrl => Uri.parse('http://127.0.0.1:${_server!.port}/');
+  HttpClientFactory get factory => () {
+        final client = CookieCapableFakeClient(_responseFor);
+        clients.add(client);
+        return client;
+      };
 
-  Future<void> start() async {
-    _server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
-    _subscription = _server!.listen((request) async {
-      final path = request.uri.path;
-      paths.add(path);
-      authorizationHeaders.add(
-        request.headers.value(HttpHeaders.authorizationHeader),
-      );
-      cookieHeaders.add(request.headers.value(HttpHeaders.cookieHeader));
+  Iterable<http.BaseRequest> get requests =>
+      clients.expand((client) => client.requests);
 
-      if (path == '/api/v1/auth/login') {
-        loginSetCookie = true;
-        request.response.headers.add(
-          HttpHeaders.setCookieHeader,
-          'unipm_refresh=server-only-value; Path=/api/v1/auth',
+  http.Response _responseFor(http.BaseRequest request) {
+    switch (request.url.path) {
+      case '/api/v1/auth/login':
+        return http.Response(
+          jsonEncode({
+            'accessToken': 'memory-only-access-token',
+            'expiresAtUtc': '2026-08-01T00:00:00Z',
+            'user': _userJson(),
+          }),
+          200,
+          headers: {
+            'content-type': 'application/json',
+            'set-cookie': 'unipm_refresh=server-only-value; Path=/api/v1/auth',
+          },
         );
-        await _writeJson(request, 200, <String, dynamic>{
-          'accessToken': 'memory-only-access-token',
-          'expiresAtUtc': '2026-08-01T00:00:00Z',
-          'user': _userJson(),
-        });
-        return;
-      }
-
-      if (path == '/api/v1/auth/me') {
-        if (currentUserStatus == 200) {
-          await _writeJson(request, 200, _userJson());
-        } else {
-          request.response.statusCode = currentUserStatus;
-          await request.response.close();
-        }
-        return;
-      }
-
-      if (path == '/api/v1/auth/logout') {
-        request.response.statusCode = 204;
-        await request.response.close();
-        return;
-      }
-
-      request.response.statusCode = 404;
-      await request.response.close();
-    });
-  }
-
-  Future<void> close() async {
-    await _subscription?.cancel();
-    await _server?.close(force: true);
+      case '/api/v1/auth/me':
+        return currentUserStatus == 200
+            ? http.Response(
+                jsonEncode(_userJson()),
+                200,
+                headers: {'content-type': 'application/json'},
+              )
+            : http.Response('', currentUserStatus);
+      case '/api/v1/auth/logout':
+        return http.Response('', 204);
+      default:
+        return http.Response('', protectedStatus);
+    }
   }
 
   Map<String, dynamic> _userJson() => <String, dynamic>{
@@ -106,17 +111,6 @@ class LocalAuthServer {
         'displayName': testUser().displayName,
         'roles': testUser().roles,
       };
-
-  Future<void> _writeJson(
-    HttpRequest request,
-    int status,
-    Map<String, dynamic> body,
-  ) async {
-    request.response.statusCode = status;
-    request.response.headers.contentType = ContentType.json;
-    request.response.write(jsonEncode(body));
-    await request.response.close();
-  }
 }
 
 AuthUser testUser({List<String> roles = const ['Inspector']}) => AuthUser(
@@ -147,6 +141,14 @@ Future<void> signIn(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
+void expectRedirectsDisabled(Iterable<http.BaseRequest> requests) {
+  for (final request in requests) {
+    final typedRequest = request as http.Request;
+    expect(typedRequest.followRedirects, isFalse);
+    expect(typedRequest.maxRedirects, 0);
+  }
+}
+
 void main() {
   testWidgets('successful login renders the authenticated shell', (tester) async {
     await pumpFoundation(tester);
@@ -163,7 +165,7 @@ void main() {
     expect(find.widgetWithText(FilledButton, 'Sign in'), findsOneWidget);
   });
 
-  testWidgets('failed login still shows invalid credentials', (tester) async {
+  testWidgets('direct login 401 still shows invalid credentials', (tester) async {
     await pumpFoundation(tester, loginSucceeds: false);
     await signIn(tester);
 
@@ -192,63 +194,101 @@ void main() {
     expect(result.gateway.logoutCalled, isTrue);
   });
 
-  test('native transport does not forward login cookies to me or logout', () async {
-    final server = LocalAuthServer(currentUserStatus: 200);
-    await server.start();
-    try {
-      final client = ApiClient(baseUrl: server.baseUrl);
-      final controller = SessionController(AuthRepository(client));
-      client.configureSession(
-        accessTokenProvider: () => controller.accessToken,
-        terminalAuthFailureHandler:
-            controller.handleTerminalAuthenticationFailure,
-      );
+  test('fresh clients isolate Set-Cookie from me and logout', () async {
+    final transport = FakeAuthTransport(currentUserStatus: 200);
+    final client = ApiClient(
+      baseUrl: Uri.parse('http://localhost:5000/'),
+      httpClientFactory: transport.factory,
+    );
+    final controller = SessionController(AuthRepository(client));
+    client.configureSession(
+      accessTokenProvider: () => controller.accessToken,
+      terminalAuthFailureHandler:
+          controller.handleTerminalAuthenticationFailure,
+    );
 
-      await controller.login('inspector@example.test', 'fictional-password');
-      await controller.logout();
+    await controller.login('inspector@example.test', 'fictional-password');
+    await controller.logout();
 
-      expect(server.loginSetCookie, isTrue);
-      expect(server.paths, [
-        '/api/v1/auth/login',
-        '/api/v1/auth/me',
-        '/api/v1/auth/logout',
-      ]);
-      expect(server.authorizationHeaders[1], 'Bearer memory-only-access-token');
-      expect(server.cookieHeaders[1], isNull);
-      expect(server.cookieHeaders[2], isNull);
-      client.dispose();
-    } finally {
-      await server.close();
-    }
+    expect(transport.clients, hasLength(3));
+    expect(transport.clients.first.cookie, 'unipm_refresh=server-only-value');
+    expect(transport.requests.map((request) => request.url.path), [
+      '/api/v1/auth/login',
+      '/api/v1/auth/me',
+      '/api/v1/auth/logout',
+    ]);
+    expect(transport.clients[1].requests.single.headers['authorization'],
+        'Bearer memory-only-access-token');
+    expect(transport.clients[1].requests.single.headers['cookie'], isNull);
+    expect(transport.clients[2].requests.single.headers['cookie'], isNull);
+    expectRedirectsDisabled(transport.requests);
+    client.dispose();
   });
 
-  testWidgets('protected 401 clears session without refresh or replay', (tester) async {
-    final server = LocalAuthServer(currentUserStatus: 401);
-    await server.start();
-    try {
-      final client = ApiClient(baseUrl: server.baseUrl);
-      final controller = SessionController(AuthRepository(client));
-      client.configureSession(
-        accessTokenProvider: () => controller.accessToken,
-        terminalAuthFailureHandler:
-            controller.handleTerminalAuthenticationFailure,
-      );
-      await tester.pumpWidget(UniPmApp(sessionController: controller));
-      await tester.pumpAndSettle();
-      await signIn(tester);
+  testWidgets('post-login me 401 clears session and displays expired message',
+      (tester) async {
+    final transport = FakeAuthTransport(currentUserStatus: 401);
+    final client = ApiClient(
+      baseUrl: Uri.parse('http://localhost:5000/'),
+      httpClientFactory: transport.factory,
+    );
+    final controller = SessionController(AuthRepository(client));
+    client.configureSession(
+      accessTokenProvider: () => controller.accessToken,
+      terminalAuthFailureHandler:
+          controller.handleTerminalAuthenticationFailure,
+    );
+    await tester.pumpWidget(UniPmApp(sessionController: controller));
+    await tester.pumpAndSettle();
+    await signIn(tester);
 
-      expect(controller.accessToken, isNull);
-      expect(controller.status, SessionStatus.signedOut);
-      expect(find.text('Your session expired. Please sign in again.'), findsOneWidget);
-      expect(server.paths, [
-        '/api/v1/auth/login',
-        '/api/v1/auth/me',
-      ]);
-      expect(server.authorizationHeaders[1], 'Bearer memory-only-access-token');
-      expect(server.cookieHeaders[1], isNull);
-      client.dispose();
-    } finally {
-      await server.close();
-    }
+    expect(controller.accessToken, isNull);
+    expect(controller.user, isNull);
+    expect(controller.status, SessionStatus.signedOut);
+    expect(find.text('Your session expired. Please sign in again.'), findsOneWidget);
+    expect(transport.requests.map((request) => request.url.path), [
+      '/api/v1/auth/login',
+      '/api/v1/auth/me',
+    ]);
+    expect(transport.clients[1].requests.single.headers['authorization'],
+        'Bearer memory-only-access-token');
+    expect(transport.clients[1].requests.single.headers['cookie'], isNull);
+    expectRedirectsDisabled(transport.requests);
+    client.dispose();
+  });
+
+  testWidgets('authenticated protected 401 signs out without replay',
+      (tester) async {
+    final transport = FakeAuthTransport();
+    final client = ApiClient(
+      baseUrl: Uri.parse('http://localhost:5000/'),
+      httpClientFactory: transport.factory,
+    );
+    final controller = SessionController(AuthRepository(client));
+    client.configureSession(
+      accessTokenProvider: () => controller.accessToken,
+      terminalAuthFailureHandler:
+          controller.handleTerminalAuthenticationFailure,
+    );
+    await tester.pumpWidget(UniPmApp(sessionController: controller));
+    await tester.pumpAndSettle();
+    await signIn(tester);
+    await expectLater(
+      client.getJson('/api/v1/assets'),
+      throwsA(isA<ApiException>()),
+    );
+    await tester.pumpAndSettle();
+
+    expect(controller.status, SessionStatus.signedOut);
+    expect(find.text('Your session expired. Please sign in again.'), findsOneWidget);
+    expect(transport.requests.map((request) => request.url.path), [
+      '/api/v1/auth/login',
+      '/api/v1/auth/me',
+      '/api/v1/assets',
+    ]);
+    expect(transport.clients[2].requests.single.headers['authorization'],
+        'Bearer memory-only-access-token');
+    expectRedirectsDisabled(transport.requests);
+    client.dispose();
   });
 }

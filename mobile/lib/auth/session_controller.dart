@@ -63,7 +63,9 @@ class SessionController extends ChangeNotifier {
 
   Future<void> handleTerminalAuthenticationFailure() async {
     _clearSession();
-    _setSignedOut();
+    errorMessage = 'Your session expired. Please sign in again.';
+    _setSignedOut(notify: false);
+    notifyListeners();
   }
 
   void _setRoleStatus() {
