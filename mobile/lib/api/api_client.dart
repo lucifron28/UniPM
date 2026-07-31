@@ -2,34 +2,27 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
-import '../storage/secure_session_store.dart';
 import 'api_exception.dart';
 
 typedef AccessTokenProvider = String? Function();
-typedef RefreshHandler = Future<String?> Function();
 typedef TerminalAuthFailureHandler = Future<void> Function();
 
 class ApiClient {
   ApiClient({
     required this.baseUrl,
-    required this.cookieStore,
     http.Client? httpClient,
   }) : _httpClient = httpClient ?? http.Client();
 
   final Uri? baseUrl;
-  final SessionCookieStore cookieStore;
   final http.Client _httpClient;
   AccessTokenProvider _accessTokenProvider = () => null;
-  RefreshHandler? _refreshHandler;
   TerminalAuthFailureHandler? _terminalAuthFailureHandler;
 
   void configureSession({
     required AccessTokenProvider accessTokenProvider,
-    required RefreshHandler refreshHandler,
     required TerminalAuthFailureHandler terminalAuthFailureHandler,
   }) {
     _accessTokenProvider = accessTokenProvider;
-    _refreshHandler = refreshHandler;
     _terminalAuthFailureHandler = terminalAuthFailureHandler;
   }
 
@@ -54,35 +47,10 @@ class ApiClient {
     String method,
     String path, {
     Map<String, dynamic>? body,
-    bool allowRefresh = true,
   }) async {
     final response = await _send(method, path, body: body);
-    if (response.statusCode == 401 &&
-        allowRefresh &&
-        _refreshHandler != null &&
-        !_isCookieOnlyAuthPath(path)) {
-      try {
-        final token = await _refreshHandler!();
-        if (token == null) {
-          throw const ApiException(
-            statusCode: 401,
-            message: 'Your session has expired.',
-          );
-        }
-        final replay = await _send(method, path, body: body);
-        if (replay.statusCode == 401) {
-          await _terminalAuthFailureHandler?.call();
-        }
-        _throwForStatus(replay);
-        return replay;
-      } on ApiException {
-        rethrow;
-      } catch (_) {
-        throw const ApiException(
-          statusCode: 401,
-          message: 'Your session has expired.',
-        );
-      }
+    if (response.statusCode == 401 && !_isTokenFreeAuthPath(path)) {
+      await _terminalAuthFailureHandler?.call();
     }
 
     _throwForStatus(response);
@@ -106,21 +74,12 @@ class ApiClient {
     }
 
     final accessToken = _accessTokenProvider();
-    if (accessToken != null && !_isCookieOnlyAuthPath(path)) {
+    if (accessToken != null && !_isTokenFreeAuthPath(path)) {
       request.headers['Authorization'] = 'Bearer $accessToken';
     }
 
-    final cookie = await cookieStore.readRefreshCookie();
-    if (cookie != null && cookie.isNotEmpty) {
-      request.headers['Cookie'] = cookie;
-    }
-
     try {
-      final response = await http.Response.fromStream(
-        await _httpClient.send(request),
-      );
-      await _captureRefreshCookie(response);
-      return response;
+      return await http.Response.fromStream(await _httpClient.send(request));
     } catch (_) {
       throw const ApiException(
         message: 'The mobile service is unavailable. Please try again.',
@@ -133,24 +92,8 @@ class ApiClient {
     return baseUrl!.resolve(relativePath);
   }
 
-  static bool _isCookieOnlyAuthPath(String path) =>
-      path == '/api/v1/auth/login' ||
-      path == '/api/v1/auth/refresh' ||
-      path == '/api/v1/auth/logout';
-
-  Future<void> _captureRefreshCookie(http.Response response) async {
-    final raw = response.headers['set-cookie'];
-    if (raw == null) return;
-
-    final cookie = raw.split(';').first.trim();
-    final equalsIndex = cookie.indexOf('=');
-    if (equalsIndex <= 0 || cookie.substring(equalsIndex + 1).isEmpty) {
-      await cookieStore.clearRefreshCookie();
-      return;
-    }
-
-    await cookieStore.writeRefreshCookie(cookie);
-  }
+  static bool _isTokenFreeAuthPath(String path) =>
+      path == '/api/v1/auth/login' || path == '/api/v1/auth/logout';
 
   static Map<String, dynamic> _decodeObject(http.Response response) {
     if (response.body.trim().isEmpty) return <String, dynamic>{};

@@ -1,11 +1,9 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 
 import '../auth/session_controller.dart';
 import '../features/auth/authenticated_shell.dart';
+import '../features/auth/configuration_error_page.dart';
 import '../features/auth/login_page.dart';
-import '../features/auth/session_restore_page.dart';
 import '../features/auth/unsupported_role_page.dart';
 
 class AppRouter extends StatefulWidget {
@@ -26,13 +24,12 @@ class _AppRouterState extends State<AppRouter> {
   @override
   void initState() {
     super.initState();
-    unawaited(widget.sessionController.restore());
   }
 
   @override
   Widget build(BuildContext context) {
     if (widget.configurationError != null) {
-      return SessionRestorePage(
+      return ConfigurationErrorPage(
         configurationError: widget.configurationError,
       );
     }
@@ -41,8 +38,6 @@ class _AppRouterState extends State<AppRouter> {
       animation: widget.sessionController,
       builder: (context, _) {
         switch (widget.sessionController.status) {
-          case SessionStatus.restoring:
-            return const SessionRestorePage();
           case SessionStatus.signedOut:
           case SessionStatus.signingIn:
             return LoginPage(controller: widget.sessionController);

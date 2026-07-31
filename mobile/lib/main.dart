@@ -5,21 +5,17 @@ import 'auth/auth_repository.dart';
 import 'auth/session_controller.dart';
 import 'config/app_config.dart';
 import 'routing/app_router.dart';
-import 'storage/secure_session_store.dart';
 
 void main() {
   final config = AppConfig.fromEnvironment();
-  final cookieStore = SecureSessionStore();
   final apiClient = ApiClient(
     baseUrl: config.apiBaseUrl,
-    cookieStore: cookieStore,
   );
   final authRepository = AuthRepository(apiClient);
-  final sessionController = SessionController(authRepository, cookieStore);
+  final sessionController = SessionController(authRepository);
 
   apiClient.configureSession(
     accessTokenProvider: () => sessionController.accessToken,
-    refreshHandler: sessionController.refreshForRequest,
     terminalAuthFailureHandler:
         sessionController.handleTerminalAuthenticationFailure,
   );

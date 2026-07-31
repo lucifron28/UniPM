@@ -3,7 +3,6 @@ import 'auth_models.dart';
 
 abstract interface class AuthGateway {
   Future<LoginResult> login(String email, String password);
-  Future<LoginResult> refresh();
   Future<AuthUser> currentUser();
   Future<void> logout();
 }
@@ -19,12 +18,6 @@ class AuthRepository implements AuthGateway {
       'email': email,
       'password': password,
     });
-    return LoginResult.fromJson(json);
-  }
-
-  @override
-  Future<LoginResult> refresh() async {
-    final json = await _client.postJson('/api/v1/auth/refresh', {});
     return LoginResult.fromJson(json);
   }
 
