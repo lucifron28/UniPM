@@ -79,7 +79,7 @@ submission is deferred to the planned mobile application.
 
 ## Preventive-Maintenance Form Review
 
-Authenticated GSD and Inspector users can browse `/preventive-maintenance-forms`
+Authenticated GSD and Inspector users can browse `/app/preventive-maintenance-forms`
 and inspect a read-only form detail with its row-level condition, remarks,
 recommended corrective action, asset, schedule, and skilled-worker context.
 The interface distinguishes `Draft`, `Submitted`, and `Acknowledged` without
