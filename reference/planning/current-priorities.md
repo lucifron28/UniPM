@@ -72,22 +72,26 @@ helps a human verify them.
   masking does not generally identify personal names in free text.
 - Browser-ready refresh-session contract: complete with short-lived JWT access
   tokens, rotating hash-only refresh sessions, exact-origin credentialed CORS,
-  bounded logout behavior, and focused SQL Server verification. Web integration
-  remains deferred.
+  bounded logout behavior, and focused SQL Server verification. Browser
+  authentication integration is implemented and merged.
 - Database platform baseline: native Windows SQL Server 2019 with Full-Text
   Search and compatibility level `150` is the minimum supported platform.
   SQL Server 2025 Docker tooling is optional and historical development support
   only; IIS deployment readiness remains unverified.
-- Reference-document foundation: in progress. The future approved institutional
-  procedure corpus is separate from maintenance history and begins with
-  fictional, source-traceable metadata and sections only. OEM retrieval is
-  excluded from the evaluated MVP.
+- Reference-document foundation: implemented and merged as a fictional,
+  source-traceable metadata and sectioning foundation. Approved institutional
+  source authorization and ingestion remain pending. OEM retrieval is excluded
+  from the evaluated MVP.
 - Confirmed preventive-maintenance workflow: complete in the backend. One form
   contains multiple inspection rows; its lifecycle is `Draft -> Submitted ->
   Acknowledged`. Only acknowledgement completes linked schedules and publishes
   rows to official history and retrieval. Corrective-action handoff preparation
   ends before manual WMS encoding; UniPM does not process RMRFs or integrate
   with the WMS.
+- Planned RAG-assisted inspection-history analysis: not implemented. See
+  [`reference/planning/rag-assisted-inspection-history-analysis.md`](rag-assisted-inspection-history-analysis.md).
+- Flutter mobile foundation: in review until PR #48 is approved; it is not
+  merged project capability yet.
 
 ## Immediate Task Order
 
@@ -122,6 +126,11 @@ Granite a required deployment dependency.
 The maintenance-review endpoint remains disabled by default and requires
 authorization when enabled. Real semantic and fused model-quality evidence
 remain pending; EXP-002 does not change those limits.
+
+The implemented maintenance-review endpoint is distinct from the planned
+RAG-assisted inspection-history analysis capability. The planned capability
+requires deterministic fact computation and scope/date-range reporting before
+any RAG-assisted interpretation is added.
 
 ## Risk-First Order
 
@@ -269,6 +278,10 @@ loop with a maximum of two fused passes, four deterministic context tiers,
 explicit evidence and summary statuses, request-scoped token masking, and
 source records returned for human verification. It remains disabled by default
 and requires `CanReviewMaintenanceHistory` whenever enabled.
+
+This endpoint is the implemented review/summarization contract only. The
+broader recurring-finding, condition-frequency, time-comparison, cross-asset,
+distribution, and single-asset timeline analysis remains planned.
 
 Optional provider thinking mode and a strict 12-case DeepSeek V4 summary
 experiment manifest are implemented. EXP-002 is executed with a real-provider

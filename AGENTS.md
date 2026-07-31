@@ -29,7 +29,8 @@ Do not change the stack without discussion.
   - Avoid Docker-only assumptions in application code.
 - Web frontend: React + TypeScript + Vite
 - Mobile: Flutter
-  - Offline-first sync is planned later through SQLite/Hive/Isar or an approved equivalent.
+  - Offline sync is deferred; its persistence and synchronization architecture
+    remain undecided until a separate approved decision.
   - Do not assume constant connectivity in mobile-facing API contracts.
 - Testing: xUnit
 
@@ -227,6 +228,24 @@ Acceptable temporary/MVP work:
 - use clearly named temporary DTOs
 - implement minimal sanitizer required for safe MVP AI calls
 - implement read-side endpoints that do not finalize deferred workflow semantics
+
+## Current Capability Status
+
+The implemented `/api/v1/maintenance-review` contract is an explicitly
+enabled, authenticated, source-bounded review/summarization path. It retrieves
+acknowledged maintenance-history evidence and may return an optional cited
+summary; it does not calculate the broader analytical features described in
+[`reference/planning/rag-assisted-inspection-history-analysis.md`](reference/planning/rag-assisted-inspection-history-analysis.md).
+
+The RAG-assisted inspection-history analysis capability is planned, not
+implemented. Its authoritative counts, denominators, percentages, recurrence
+intervals, timelines, and groupings must be calculated by SQL and deterministic
+application code, with RAG limited to retrieving supporting acknowledged
+records and optional generation limited to explaining computed results.
+
+Browser authentication integration and the reference-document foundation are
+implemented and merged. The Flutter mobile foundation remains in review until
+PR #48 is approved and must not be described as merged.
 
 ## Current Unblocked Work
 

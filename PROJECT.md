@@ -48,6 +48,8 @@
   - React web foundation and browser authentication with memory-only access
     tokens, refresh-cookie restoration, protected routes, current-user display,
     and logout.
+  - Browser authentication integration is implemented and merged; the Flutter
+    mobile foundation remains in review until PR #48 is approved.
   - Authenticated asset registry and preventive maintenance schedule modules
     with route-backed list/detail/create workflows, generated API contracts,
     runtime response validation, and backend-authoritative role policies.
@@ -56,6 +58,10 @@
     whole-form acknowledgement, schedule completion after acknowledgement,
     acknowledged-only history/retrieval publication, and GSD-only
     corrective-action handoff preparation.
+  - Reference-document foundation is implemented and merged as a fictional,
+    source-traceable metadata and sectioning foundation. Approved institutional
+    source authorization and ingestion remain pending; OEM retrieval is
+    excluded from the evaluated MVP.
 
 ## Synthetic Seed Commands
 
@@ -146,6 +152,17 @@ EXP-003 executed a local offline Granite baseline against the fictional
 maintenance retrieval fixture; it is controlled development evidence only and
 does not make Granite a required deployment dependency.
 
+## Planned RAG-Assisted Inspection-History Analysis
+
+The planned analysis capability is documented in
+[`reference/planning/rag-assisted-inspection-history-analysis.md`](reference/planning/rag-assisted-inspection-history-analysis.md).
+It is not implemented. It will analyze acknowledged preventive-maintenance
+inspection records through deterministic counts, percentages, recurrence
+intervals, distributions, patterns, and timelines, then use RAG only to
+retrieve the exact supporting acknowledged records. Optional generation may
+explain computed results but may not calculate authoritative statistics,
+diagnose equipment, infer causes, approve actions, or mutate records.
+
 ## Next Steps
 
 1. Complete field/mobile form operations only through separately approved
@@ -156,8 +173,12 @@ does not make Granite a required deployment dependency.
    from the evaluated MVP.
 3. Keep maintenance-history and any future institutional source group separate;
    do not add combined-source fusion or synthesis to the evaluated MVP.
-4. Defer grounded synthesis, final RBAC, audit rules, and source-review UI
-   until the relevant institutional policies and source contracts are verified.
+4. Define and approve the planned RAG-assisted inspection-history analysis
+   contracts before implementation. Defer final RBAC, audit rules, and client
+   presentation until the relevant policies are verified.
+5. Defer grounded synthesis and source-review UI beyond the implemented
+   maintenance-review contract until the planned analysis and source contracts
+   are verified.
 
 ## Engineering Evidence
 

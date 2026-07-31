@@ -209,6 +209,23 @@ See [`reference/api/maintenance-review-v0.1.md`](reference/api/maintenance-revie
 for the request, response, evidence-status, summary-status, source-selection,
 and provider configuration contract.
 
+## Planned Inspection-History Analysis
+
+The planned RAG-assisted inspection-history analysis capability is documented in
+[`reference/planning/rag-assisted-inspection-history-analysis.md`](reference/planning/rag-assisted-inspection-history-analysis.md).
+It is not implemented by `POST /api/v1/maintenance-review`. The planned
+capability will analyze acknowledged preventive-maintenance inspection records
+for recurring findings, condition frequencies, time comparisons and recurrence
+intervals, cross-asset patterns, distributions, and single-asset timelines.
+
+SQL and deterministic application code will calculate the authoritative facts;
+RAG will retrieve the exact acknowledged records supporting them; and optional
+generation will explain only the computed result model and displayed sources.
+Every output will include scope/date range, computed facts, interpretation,
+supporting acknowledged sources and locators, limitations, and no-diagnosis
+wording. The language model will not calculate authoritative statistics,
+diagnose equipment, infer causes, approve actions, or mutate records.
+
 ## Authentication
 
 UniPM uses ASP.NET Core IdentityCore with Guid keys, 15-minute configurable JWT
@@ -378,8 +395,12 @@ with developer-reviewed ratings; it did not establish production readiness.
 Tagalog and Taglish language fit was weak, and five outputs violated the citation
 contract. Inspection-submission integrity, retrieval/test layout organization,
 and explicit free-text-name sanitizer limitation documentation are complete.
-The web foundation and browser authentication integration are implemented;
-operational web modules remain deferred. EXP-003 executed a local offline
+The web foundation and browser authentication integration are implemented and
+merged; the Flutter mobile foundation remains in review until PR #48 is
+approved. The reference-document foundation is implemented and merged as a
+fictional metadata and sectioning foundation; approved institutional source
+authorization and ingestion remain pending, and OEM retrieval is excluded from
+the evaluated MVP. EXP-003 executed a local offline
 Granite multilingual embedding baseline on the fictional maintenance fixture;
 it is controlled development evidence only and does not make Granite a
 deployment dependency or establish real institutional performance.
