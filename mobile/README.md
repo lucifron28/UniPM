@@ -32,12 +32,12 @@ device and development machine must be able to reach the API.
 
 ## Authentication Boundary
 
-The client uses the existing `/api/v1/auth/login`, `/api/v1/auth/me`,
-`/api/v1/auth/refresh`, and `/api/v1/auth/logout` contracts. Access tokens live
-only in memory. The refresh-cookie value is stored through platform secure
-storage so the client can attempt one session restoration after restart. The
-HTTP client allows one refresh and one replay for an ordinary 401, then clears
-local session material on terminal failure.
+The client uses the existing `/api/v1/auth/login`, `/api/v1/auth/me`, and
+`/api/v1/auth/logout` contracts. Access tokens live only in memory. The mobile
+client does not persist, capture, or manually send cookies, and does not
+implement refresh-token rotation or startup session restoration. The app starts
+signed out after restart and requires a fresh login. A protected 401 clears the
+memory-only session and returns the user to sign-in without refresh or replay.
 
 Only `Inspector` and `GSD` users enter the current mobile shell. This is a
 navigation boundary; backend authorization remains authoritative.
@@ -45,8 +45,6 @@ navigation boundary; backend authorization remains authoritative.
 ## Dependencies
 
 - `http`: JSON HTTP requests to the existing ASP.NET Core API.
-- `flutter_secure_storage`: platform-secure storage for refresh-cookie session
-  material only. Access tokens are never persisted.
 
 No API credentials, URLs, tokens, cookies, or environment-specific settings are
-committed.
+committed or persisted by the mobile client.
