@@ -30,7 +30,9 @@ class SessionController extends ChangeNotifier {
       _setRoleStatus();
     } on ApiException catch (error) {
       _clearSession();
-      errorMessage = error.isUnauthorized
+      errorMessage = error.message == 'Your session expired. Please sign in again.'
+          ? error.message
+          : error.isUnauthorized
           ? 'Invalid email or password.'
           : 'The mobile service is unavailable. Please try again.';
       _setSignedOut(notify: false);

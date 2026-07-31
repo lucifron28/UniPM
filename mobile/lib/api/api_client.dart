@@ -6,15 +6,20 @@ import 'api_exception.dart';
 
 typedef AccessTokenProvider = String? Function();
 typedef TerminalAuthFailureHandler = Future<void> Function();
+typedef HttpClientFactory = http.Client Function();
 
 class ApiClient {
   ApiClient({
     required this.baseUrl,
     http.Client? httpClient,
-  }) : _httpClient = httpClient ?? http.Client();
+    HttpClientFactory? httpClientFactory,
+  })  : assert(httpClient == null || httpClientFactory == null),
+        _httpClientFactory = _resolveClientFactory(httpClient, httpClientFactory),
+        _disposeClients = httpClient == null;
 
   final Uri? baseUrl;
-  final http.Client _httpClient;
+  final HttpClientFactory _httpClientFactory;
+  final bool _disposeClients;
   AccessTokenProvider _accessTokenProvider = () => null;
   TerminalAuthFailureHandler? _terminalAuthFailureHandler;
 
@@ -49,11 +54,13 @@ class ApiClient {
     Map<String, dynamic>? body,
   }) async {
     final response = await _send(method, path, body: body);
-    if (response.statusCode == 401 && !_isTokenFreeAuthPath(path)) {
+    final protectedUnauthorized =
+        response.statusCode == 401 && !_isTokenFreeAuthPath(path);
+    if (protectedUnauthorized) {
       await _terminalAuthFailureHandler?.call();
     }
 
-    _throwForStatus(response);
+    _throwForStatus(response, expiredSession: protectedUnauthorized);
     return response;
   }
 
@@ -67,6 +74,8 @@ class ApiClient {
     }
 
     final request = http.Request(method, _resolve(path));
+    request.followRedirects = false;
+    request.maxRedirects = 0;
     request.headers['Accept'] = 'application/json';
     if (body != null) {
       request.headers['Content-Type'] = 'application/json';
@@ -78,12 +87,15 @@ class ApiClient {
       request.headers['Authorization'] = 'Bearer $accessToken';
     }
 
+    final client = _httpClientFactory();
     try {
-      return await http.Response.fromStream(await _httpClient.send(request));
+      return await http.Response.fromStream(await client.send(request));
     } catch (_) {
       throw const ApiException(
         message: 'The mobile service is unavailable. Please try again.',
       );
+    } finally {
+      if (_disposeClients) client.close();
     }
   }
 
@@ -94,6 +106,15 @@ class ApiClient {
 
   static bool _isTokenFreeAuthPath(String path) =>
       path == '/api/v1/auth/login' || path == '/api/v1/auth/logout';
+
+  static HttpClientFactory _resolveClientFactory(
+    http.Client? client,
+    HttpClientFactory? factory,
+  ) {
+    if (factory != null) return factory;
+    if (client != null) return () => client;
+    return () => http.Client();
+  }
 
   static Map<String, dynamic> _decodeObject(http.Response response) {
     if (response.body.trim().isEmpty) return <String, dynamic>{};
@@ -110,12 +131,17 @@ class ApiClient {
     );
   }
 
-  static void _throwForStatus(http.Response response) {
+  static void _throwForStatus(
+    http.Response response, {
+    bool expiredSession = false,
+  }) {
     if (response.statusCode >= 200 && response.statusCode < 300) return;
     if (response.statusCode == 401) {
-      throw const ApiException(
+      throw ApiException(
         statusCode: 401,
-        message: 'Invalid credentials or expired session.',
+        message: expiredSession
+            ? 'Your session expired. Please sign in again.'
+            : 'Invalid credentials or expired session.',
       );
     }
     if (response.statusCode == 403) {
@@ -135,5 +161,5 @@ class ApiClient {
     );
   }
 
-  void dispose() => _httpClient.close();
+  void dispose() {}
 }
