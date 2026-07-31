@@ -3,9 +3,14 @@ import 'package:flutter/material.dart';
 import '../../auth/auth_models.dart';
 
 class HomePage extends StatelessWidget {
-  const HomePage({super.key, required this.user});
+  const HomePage({
+    super.key,
+    required this.user,
+    this.onOpenPreventiveMaintenance,
+  });
 
   final AuthUser user;
+  final VoidCallback? onOpenPreventiveMaintenance;
 
   @override
   Widget build(BuildContext context) {
@@ -19,6 +24,17 @@ class HomePage extends StatelessWidget {
         const SizedBox(height: 8),
         const Text('Your field-work session is ready.'),
         const SizedBox(height: 24),
+        if (onOpenPreventiveMaintenance != null)
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.assignment_outlined),
+              title: const Text('Preventive-maintenance drafts'),
+              subtitle: const Text('Create, resume, and update field drafts.'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: onOpenPreventiveMaintenance,
+            ),
+          ),
+        if (onOpenPreventiveMaintenance != null) const SizedBox(height: 16),
         Card(
           child: Padding(
             padding: const EdgeInsets.all(16),

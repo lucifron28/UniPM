@@ -13,9 +13,12 @@ class ApiClient {
     required this.baseUrl,
     http.Client? httpClient,
     HttpClientFactory? httpClientFactory,
-  })  : assert(httpClient == null || httpClientFactory == null),
-        _httpClientFactory = _resolveClientFactory(httpClient, httpClientFactory),
-        _disposeClients = httpClient == null;
+  }) : assert(httpClient == null || httpClientFactory == null),
+       _httpClientFactory = _resolveClientFactory(
+         httpClient,
+         httpClientFactory,
+       ),
+       _disposeClients = httpClient == null;
 
   final Uri? baseUrl;
   final HttpClientFactory _httpClientFactory;
@@ -36,6 +39,11 @@ class ApiClient {
     return _decodeObject(response);
   }
 
+  Future<List<dynamic>> getJsonList(String path) async {
+    final response = await _request('GET', path);
+    return _decodeList(response);
+  }
+
   Future<Map<String, dynamic>> postJson(
     String path,
     Map<String, dynamic> body,
@@ -46,6 +54,18 @@ class ApiClient {
 
   Future<void> postEmpty(String path) async {
     await _request('POST', path);
+  }
+
+  Future<Map<String, dynamic>> putJson(
+    String path,
+    Map<String, dynamic> body,
+  ) async {
+    final response = await _request('PUT', path, body: body);
+    return _decodeObject(response);
+  }
+
+  Future<void> deleteEmpty(String path) async {
+    await _request('DELETE', path);
   }
 
   Future<http.Response> _request(
@@ -70,7 +90,9 @@ class ApiClient {
     Map<String, dynamic>? body,
   }) async {
     if (baseUrl == null) {
-      throw const ApiException(message: 'The mobile API URL is not configured.');
+      throw const ApiException(
+        message: 'The mobile API URL is not configured.',
+      );
     }
 
     final request = http.Request(method, _resolve(path));
@@ -126,6 +148,27 @@ class ApiClient {
         message: 'The server returned an invalid response.',
       );
     }
+    throw const ApiException(
+      message: 'The server returned an invalid response.',
+    );
+  }
+
+  static List<dynamic> _decodeList(http.Response response) {
+    if (response.body.trim().isEmpty) {
+      throw const ApiException(
+        message: 'The server returned an invalid response.',
+      );
+    }
+
+    try {
+      final decoded = jsonDecode(response.body);
+      if (decoded is List<dynamic>) return decoded;
+    } catch (_) {
+      throw const ApiException(
+        message: 'The server returned an invalid response.',
+      );
+    }
+
     throw const ApiException(
       message: 'The server returned an invalid response.',
     );

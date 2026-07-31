@@ -1,9 +1,9 @@
 # UniPM Mobile Foundation
 
 This Flutter application is the Android-first foundation for the skilled-worker
-field workflow. This phase contains authentication and a small authenticated
-home shell only. Preventive-maintenance forms, inspection entry, QR scanning,
-offline sync, and field workflow actions are intentionally deferred.
+field workflow. It contains authentication, a small authenticated home shell,
+and the first Draft preventive-maintenance form workflow. QR scanning, offline
+sync, and later field workflow actions remain outside this phase.
 
 ## Local Setup
 
@@ -41,6 +41,18 @@ memory-only session and returns the user to sign-in without refresh or replay.
 
 Only `Inspector` and `GSD` users enter the current mobile shell. This is a
 navigation boundary; backend authorization remains authoritative.
+
+## Preventive-maintenance Draft Workflow
+
+Inspector and GSD users can open **Preventive-maintenance drafts** from the
+authenticated shell. This phase supports creating a one-page form header,
+adding multiple inspection rows, resuming a saved Draft, and editing or
+deleting Draft rows. Every action is sent to the ASP.NET Core API immediately;
+the mobile app does not keep offline drafts or synchronize a local database.
+
+The mobile client only presents Draft forms. Submission, acknowledgement,
+signatures, schedule completion, corrective handoff, RMRF, QR scanning, and
+offline synchronization remain outside this phase.
 
 ## Dependencies
 
