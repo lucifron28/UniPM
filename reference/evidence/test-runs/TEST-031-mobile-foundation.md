@@ -7,6 +7,8 @@ recordedAtUtc: 2026-07-28T18:08:50Z
 testedCommit: 6e729061bb5eb58b9c91c874a0dd90b86ad001ee
 sourceBranch: feat/mobile-foundation
 evidenceLevel: locally-executed
+buildTestedCommit: 51fef8ec1a869065ae20a1270921dd8c6ac19f00
+buildVerificationStatus: blocked
 ---
 
 # Flutter Mobile Foundation Verification
@@ -59,5 +61,18 @@ production deployment verification was run.
 
 ## Generated Artifacts
 
-No credentials, URLs, tokens, cookies, logs, or real institutional records were
-recorded.
+No credentials, secrets, tokens, cookies, logs, or real institutional records
+were recorded.
+
+## Additional Android Build Verification
+
+- Corrected implementation commit:
+  `51fef8ec1a869065ae20a1270921dd8c6ac19f00`
+- Command:
+
+  ```powershell
+  flutter build apk --debug --dart-define=UNIPM_API_BASE_URL=http://10.0.2.2:5000/
+  ```
+
+- Result: blocked by the local command timeout before an APK was produced.
+- No emulator connectivity or live-backend verification is claimed.

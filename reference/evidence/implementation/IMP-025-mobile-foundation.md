@@ -7,6 +7,8 @@ recordedAtUtc: 2026-07-28T18:08:50Z
 sourceBranch: feat/mobile-foundation
 evidenceLevel: source-inspected
 testedCommit: 6e729061bb5eb58b9c91c874a0dd90b86ad001ee
+buildVerificationCommit: 51fef8ec1a869065ae20a1270921dd8c6ac19f00
+buildVerificationStatus: blocked
 ---
 
 # Flutter Mobile Authentication Foundation
@@ -42,6 +44,9 @@ field access without implementing preventive-maintenance workflows.
   unsupported-role states.
 - Allows only Inspector and GSD roles through the client navigation boundary.
 - Keeps backend authorization authoritative and adds no backend changes.
+- Adds a debug-only Android cleartext-traffic override for local HTTP
+  development; the main and release manifests remain without a cleartext
+  opt-in.
 
 ## Dependencies
 
@@ -58,4 +63,19 @@ OpenAPI, or web behavior was added.
 ## Verification Scope
 
 TEST-031 records the final Flutter analyzer and focused transport/widget-test
-results. No emulator integration test was run.
+results. The later debug APK build verification is recorded separately below.
+No emulator integration test was run.
+
+## Additional Android Build Verification
+
+- Corrected implementation commit:
+  `51fef8ec1a869065ae20a1270921dd8c6ac19f00`
+- Command:
+
+  ```powershell
+  flutter build apk --debug --dart-define=UNIPM_API_BASE_URL=http://10.0.2.2:5000/
+  ```
+
+- Result: blocked by the local command timeout before an APK was produced.
+- This attempt does not claim emulator connectivity, live-backend
+  verification, or a successful Android build.
