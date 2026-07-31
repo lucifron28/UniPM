@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -45,12 +46,13 @@ class LocalAuthServer {
   final cookieHeaders = <String?>[];
   bool loginSetCookie = false;
   HttpServer? _server;
+  StreamSubscription<HttpRequest>? _subscription;
 
   Uri get baseUrl => Uri.parse('http://127.0.0.1:${_server!.port}/');
 
   Future<void> start() async {
     _server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
-    _server!.listen((request) async {
+    _subscription = _server!.listen((request) async {
       final path = request.uri.path;
       paths.add(path);
       authorizationHeaders.add(
@@ -93,7 +95,10 @@ class LocalAuthServer {
     });
   }
 
-  Future<void> close() => _server?.close(force: true) ?? Future<void>.value();
+  Future<void> close() async {
+    await _subscription?.cancel();
+    await _server?.close(force: true);
+  }
 
   Map<String, dynamic> _userJson() => <String, dynamic>{
         'id': testUser().id,
