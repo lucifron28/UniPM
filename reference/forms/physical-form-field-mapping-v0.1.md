@@ -6,8 +6,11 @@
 - **Source:** Supplied blank General Services Department physical forms
 - **Available coverage:** Page 1 of 2 only
 - **Official completed samples:** Unavailable
-- **Acknowledgement rules:** Unresolved
-- **RMRF rules:** Unresolved
+- **Acknowledgement rules:** Confirmed for the digital workflow: whole-form
+  acknowledgement is captured through the skilled worker's authenticated mobile
+  session; the department head does not require a UniPM account.
+- **RMRF rules:** Outside UniPM. The system prepares an acknowledged
+  corrective-action handoff only; GSD manually encodes it in the existing WMS.
 
 No source photographs are committed to this repository. The synthetic fixture
 contains no real personnel names or signatures. This document records visible
@@ -84,9 +87,18 @@ Visible fields:
 - plumber role
 - PPF supervisor role
 
+## Confirmed Digital Mapping
+
+One digital form represents one existing one-page form and may contain multiple
+asset inspection rows. Its lifecycle is `Draft -> Submitted -> Acknowledged`.
+Only acknowledgement completes linked schedules and makes rows eligible for
+official history and retrieval. The signatory name, position, and signature are
+form data only and never retrieval, embedding, prompt, or handoff data.
+
 ## Pending Clarification
 
-Page 2 fields, final acknowledgement behavior, RMRF ownership and lifecycle,
-and the mapping from a paper form to digital records require GSD confirmation.
-The current `categoryDetails` and `formData` fixture fields are retained only as
-provisional development metadata and are not confirmed production schemas.
+Page 2 fields, official completed samples, official location lists, and the
+full mapping from remaining paper-form fields to digital records require further
+confirmation. The current `categoryDetails` and `formData` fixture fields are
+retained only as provisional development metadata and are not confirmed
+production schemas.

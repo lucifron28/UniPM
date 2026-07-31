@@ -53,6 +53,8 @@ unconfirmed GSD workflow rules.
 
 ## Deferred Boundaries
 
-This hardening does not finalize building/department/location catalogs,
-acknowledgement, RMRF, corrective-maintenance handoff, authority over schedule
-changes, authentication roles, or any other unresolved GSD workflow.
+This hardening does not alter the confirmed multi-asset form lifecycle,
+whole-form acknowledgement, or corrective-action handoff boundary. It also does
+not finalize building/department/location catalogs, authority over schedule
+changes, final authentication roles, audit rules, RMRF/WMS processing, or other
+remaining institutional policies.

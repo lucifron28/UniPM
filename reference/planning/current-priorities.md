@@ -7,14 +7,18 @@ The current strategy is risk-first:
 
 1. keep the project runnable and tested;
 2. preserve reproducible synthetic data and evidence;
-3. preserve inspection-submission integrity;
-4. preserve the organized retrieval and test layout without changing behavior;
+3. preserve the confirmed multi-asset form lifecycle and acknowledged-only
+   history boundary;
+4. complete separately approved mobile field workflows without duplicating
+   backend business rules;
 5. preserve explicit documentation of known sanitizer limitations;
-6. evaluate real multilingual embedding models;
-7. establish a provenance-preserving reference-document corpus before adding
-   institutional or OEM retrieval;
+6. preserve executed multilingual benchmark evidence without treating it as
+   real institutional performance;
+7. establish an authorized institutional-procedure corpus before any separate
+   institutional retrieval work; OEM retrieval is excluded from the evaluated
+   MVP;
 8. preserve the bounded maintenance-history review contract;
-9. keep final RBAC and institutional workflow rules deferred.
+9. keep final RBAC, audit, and remaining institutional policy rules deferred.
 
 The RAG feature is not a chatbot and not an autonomous diagnostic tool. It is a
 bounded maintenance-history review feature that retrieves source records and
@@ -68,15 +72,26 @@ helps a human verify them.
   masking does not generally identify personal names in free text.
 - Browser-ready refresh-session contract: complete with short-lived JWT access
   tokens, rotating hash-only refresh sessions, exact-origin credentialed CORS,
-  bounded logout behavior, and focused SQL Server verification. Web integration
-  remains deferred.
+  bounded logout behavior, and focused SQL Server verification. Browser
+  authentication integration is implemented and merged.
 - Database platform baseline: native Windows SQL Server 2019 with Full-Text
   Search and compatibility level `150` is the minimum supported platform.
   SQL Server 2025 Docker tooling is optional and historical development support
   only; IIS deployment readiness remains unverified.
-- Reference-document foundation: in progress. The future institutional and OEM
-  corpus is separate from maintenance history and begins with fictional,
-  source-traceable metadata and sections only.
+- Reference-document foundation: implemented and merged as a fictional,
+  source-traceable metadata and sectioning foundation. Approved institutional
+  source authorization and ingestion remain pending. OEM retrieval is excluded
+  from the evaluated MVP.
+- Confirmed preventive-maintenance workflow: complete in the backend. One form
+  contains multiple inspection rows; its lifecycle is `Draft -> Submitted ->
+  Acknowledged`. Only acknowledgement completes linked schedules and publishes
+  rows to official history and retrieval. Corrective-action handoff preparation
+  ends before manual WMS encoding; UniPM does not process RMRFs or integrate
+  with the WMS.
+- Planned RAG-assisted inspection-history analysis: not implemented. See
+  [`reference/planning/rag-assisted-inspection-history-analysis.md`](rag-assisted-inspection-history-analysis.md).
+- Flutter mobile foundation: in review until PR #48 is approved; it is not
+  merged project capability yet.
 
 ## Immediate Task Order
 
@@ -85,23 +100,23 @@ helps a human verify them.
 3. Completed: explicit documentation of the MVP sanitizer's free-text-name
    limitation.
 4. Completed: `feat/auth-refresh-sessions`.
-5. Completed: `feat/web-foundation`.
-6. Completed: `feat/web-auth-integration`.
-7. Completed: `feat/web-assets`.
-8. Completed: `feat/web-schedules`.
-9. Completed: `feat/web-inspections` read-only inspection review.
-10. The next web capability requires explicit approval.
+5. Completed: form-domain, draft, submission, acknowledgement, and
+   corrective-action handoff backend increments.
+6. Completed: `chore/preventive-maintenance-api-contract-sync`.
+7. Completed: read-only web preventive-maintenance form review.
+8. In review: `feat/mobile-foundation` authentication foundation.
+9. Next mobile field workflow capability requires explicit approval.
 
 ## Reference Evidence Roadmap
 
-1. Reference-document persistence, applicability, sectioning, lifecycle, and
-   provenance.
-2. Institutional lexical and semantic retrieval.
-3. OEM lexical and semantic retrieval.
-4. Evidence-review modes that keep source groups explicit.
-5. Source fusion and combined evidence only after independent channel review.
-6. Grounded synthesis and conflict handling after source behavior is verified.
-7. Web review UI after backend evidence contracts are stable.
+1. Authorization and ingestion requirements for institutional procedures,
+   forms, checklists, and SOPs.
+2. Institutional source persistence, applicability, sectioning, lifecycle, and
+   provenance using only approved sources.
+3. Separate institutional lexical and semantic retrieval after source approval.
+4. Keep institutional and maintenance-history sources distinct. OEM retrieval,
+   combined-source fusion, and combined synthesis are excluded from the
+   evaluated MVP.
 
 EXP-003 executed a local offline Granite multilingual embedding baseline on
 the fictional 24-query maintenance fixture. It is controlled development
@@ -111,6 +126,11 @@ Granite a required deployment dependency.
 The maintenance-review endpoint remains disabled by default and requires
 authorization when enabled. Real semantic and fused model-quality evidence
 remain pending; EXP-002 does not change those limits.
+
+The implemented maintenance-review endpoint is distinct from the planned
+RAG-assisted inspection-history analysis capability. The planned capability
+requires deterministic fact computation and scope/date-range reporting before
+any RAG-assisted interpretation is added.
 
 ## Risk-First Order
 
@@ -175,9 +195,9 @@ be loaded by runtime code, persisted, indexed, embedded, placed in prompts, or
 returned through ordinary API DTOs.
 
 Limitations remain explicit: the source forms are blank visible Page 1
-references. Page 2, completed samples, acknowledgement workflow, RMRF rules,
-and final institutional reference lists remain provisional pending GSD/adviser
-clarification.
+references. Page 2, completed samples, and final institutional reference lists
+remain provisional. The confirmed digital acknowledgement and corrective-handoff
+boundaries do not make unseen physical-form fields a final production contract.
 
 ## Task 2: List/GET Endpoints For Existing Entities
 
@@ -197,8 +217,9 @@ Completed implementation:
 - add pagination or filtering only where it matches the existing API style;
 - add happy-path and meaningful failure-case tests.
 
-Do not finalize acknowledgement, handoff, RMRF, or other deferred workflow rules
-as part of inspection list/detail reads.
+Inspection list/detail reads must preserve the confirmed form lifecycle: Draft
+and Submitted form rows remain outside official history and retrieval, while
+Acknowledged form rows are eligible.
 
 ## Task 3: Maintenance Issue Lexicon And Search Document
 
@@ -257,6 +278,10 @@ loop with a maximum of two fused passes, four deterministic context tiers,
 explicit evidence and summary statuses, request-scoped token masking, and
 source records returned for human verification. It remains disabled by default
 and requires `CanReviewMaintenanceHistory` whenever enabled.
+
+This endpoint is the implemented review/summarization contract only. The
+broader recurring-finding, condition-frequency, time-comparison, cross-asset,
+distribution, and single-asset timeline analysis remains planned.
 
 Optional provider thinking mode and a strict 12-case DeepSeek V4 summary
 experiment manifest are implemented. EXP-002 is executed with a real-provider
@@ -350,8 +375,10 @@ directly.
 ## Current Constraints
 
 - The four physical forms are blank Page 1 references only.
-- Page 2, acknowledgement, RMRF, official location lists, schedule authority,
-  final audit rules, and the approved reference knowledge base are deferred.
+- Page 2, official completed samples, official location lists, schedule
+  authority, final audit rules, and authorized institutional-reference sources
+  remain deferred. The digital form lifecycle, whole-form acknowledgement, and
+  corrective-handoff boundary are confirmed.
 - The operational fixture is fictional and provisional, not a production import
   contract.
 - Evaluation annotations are test-only and never runtime operational data.
@@ -377,7 +404,9 @@ directly.
 7. Completed: `feat/web-assets`.
 8. Completed: `feat/web-schedules`.
 9. Completed: `feat/web-inspections` read-only inspection review.
-10. The next web capability requires explicit approval.
+10. Completed: read-only preventive-maintenance form review.
+11. In review: `feat/mobile-foundation` authentication foundation.
+12. The next mobile field workflow capability requires explicit approval.
 
 EXP-003 completed a local offline Granite multilingual embedding baseline on
 the fictional maintenance fixture. Its conditional result is development
