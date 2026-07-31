@@ -48,7 +48,8 @@ Expected top-level structure:
 - `.github/` - CI workflows
 
 Do not split the frontend or mobile app into separate repositories unless explicitly decided later.
-The `web/` and `mobile/` directories may exist as placeholder directories until scaffolding starts; keep them empty except for required Git placeholder files.
+The `web/` and `mobile/` directories may begin as placeholders, but preserve
+their tracked application structure once implementation starts.
 
 ## Hard Architecture Rules
 
@@ -179,13 +180,26 @@ Optimize for minimal agent usage.
 - After the requested change and its permitted verification pass are
   complete, summarize the changes and stop.
 
-## Scope Boundaries
+## Confirmed Workflow Boundaries And Remaining Clarifications
 
-Deferred pending GSD/adviser clarifications:
+The confirmed workflow baseline is
+[`reference/planning/confirmed-gsd-workflow.md`](reference/planning/confirmed-gsd-workflow.md).
 
-- acknowledgement command and signature-capture validation implementation
-- corrective-action handoff preparation is confirmed; UniPM does not create,
-  process, or monitor RMRFs or the external WMS lifecycle
+- One preventive-maintenance form mirrors one existing one-page form and may
+  contain multiple inspection rows.
+- The confirmed lifecycle is `Draft -> Submitted -> Acknowledged`. Schedules
+  become `Completed` only after whole-form acknowledgement.
+- The department head does not require a UniPM account. The skilled worker's
+  authenticated mobile session captures the signatory name, position, and
+  signature as form data.
+- Draft and Submitted rows are excluded from official history and retrieval;
+  acknowledged rows are eligible. Signature and signatory data are never
+  retrieval, embedding, prompt, or corrective-handoff data.
+- Corrective-action handoff preparation is confirmed; UniPM does not create,
+  process, or monitor RMRFs or the external WMS lifecycle.
+
+Remaining GSD/adviser clarifications:
+
 - official building/department/location list
 - who has authority to adjust schedules
 - final audit-log persistence rules
@@ -197,13 +211,14 @@ Do not invent final schema or business logic for these unless explicitly told th
 
 ## Reference-Document Foundation
 
-Institutional procedures and OEM material are a separate future evidence corpus,
-not maintenance history. The current foundation may preserve fictional source
-metadata, revision/lifecycle, applicability, ordered sections, locators,
-checksums, synthetic provenance, deferred section embeddings, and SQL Server
-Full-Text indexing. Do not ingest real documents, add upload/OCR/extraction,
-or expose reference retrieval, combined evidence, conflict handling, or
-generated synthesis until the corresponding source-specific work is approved.
+Approved institutional procedures, forms, checklists, and SOPs are a separate
+future evidence group, not maintenance history. The current foundation may
+preserve fictional source metadata, revision/lifecycle, applicability, ordered
+sections, locators, checksums, synthetic provenance, deferred section
+embeddings, and SQL Server Full-Text indexing. Do not ingest real documents,
+add upload/OCR/extraction, or expose institutional retrieval until authorization
+and ingestion are approved. OEM retrieval is excluded from the evaluated MVP;
+do not add an OEM corpus, retrieval channel, fusion, or synthesis.
 
 Acceptable temporary/MVP work:
 
@@ -237,9 +252,11 @@ seeding, and coarse policy protection are also complete. Inspection-submission
 integrity, retrieval/test folder organization, explicit documentation of the
 MVP sanitizer's free-text-name limitation, the React web foundation, browser
 authentication integration, asset registry, preventive maintenance schedule
-workflows, and read-only inspection review are also complete. The next web
-capability requires explicit approval; the multilingual embedding baseline
-remains pending a configured real provider.
+workflows, read-only inspection review, multi-asset form drafting, form
+submission, whole-form acknowledgement, acknowledged-only history publication,
+and GSD-only corrective-action handoff preparation are also complete. The
+multilingual embedding baseline is recorded as controlled development evidence;
+it does not establish real institutional performance.
 
 Observability remains bounded infrastructure: `Observability:MetricsEnabled`
 is false by default, `/metrics` is exposed only when explicitly enabled, and
@@ -280,7 +297,9 @@ Unblocked areas:
   - Water drinking stations
 - Thin end-to-end RAG MVP:
   - Use synthetic `InspectionRecord` data.
-  - No dependency on final GSD handoff/RMRF command implementation or acknowledgement endpoint validation.
+  - Use only acknowledged form rows, plus legacy rows without a form, as
+    official maintenance-history evidence.
+  - Do not include signatory or signature data in retrieval or generation.
   - Do not build chatbot behavior.
   - Return source records with the summary.
 

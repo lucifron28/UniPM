@@ -12,7 +12,9 @@
 ## Active Context
 - **Architecture**: ASP.NET Core API hosted on IIS + native Windows SQL Server
   2019 with Full-Text Search. Docker is optional development tooling only.
-- **Core Entities**: `Asset`, `PreventiveMaintenanceSchedule`, and `InspectionRecord` are migrated.
+- **Core Entities**: `Asset`, `PreventiveMaintenanceSchedule`,
+  `InspectionRecord`, `PreventiveMaintenanceForm`, and
+  `PreventiveMaintenanceAcknowledgement` are migrated.
 - **Completed**:
   - Native SQL Server 2019 compatibility verification with Full-Text Search and
     compatibility level `150`; see TEST-022.
@@ -49,6 +51,11 @@
   - Authenticated asset registry and preventive maintenance schedule modules
     with route-backed list/detail/create workflows, generated API contracts,
     runtime response validation, and backend-authoritative role policies.
+  - Confirmed multi-asset preventive-maintenance form lifecycle:
+    `Draft -> Submitted -> Acknowledged`, provisional form file numbers,
+    whole-form acknowledgement, schedule completion after acknowledgement,
+    acknowledged-only history/retrieval publication, and GSD-only
+    corrective-action handoff preparation.
 
 ## Synthetic Seed Commands
 
@@ -141,17 +148,16 @@ does not make Granite a required deployment dependency.
 
 ## Next Steps
 
-1. Reference-document persistence and sectioning: establish fictional,
-   provenance-preserving institutional/OEM source foundations separately from
-   maintenance history.
-2. Add institutional lexical/semantic retrieval, then OEM lexical/semantic
-   retrieval, without changing the existing maintenance-history channel.
-3. Add explicit evidence-review modes, source fusion, and combined evidence
-   only after each source channel is independently inspectable.
-4. Defer grounded synthesis, conflict handling, and source-review UI until the
-   corpus and source-specific retrieval contracts are verified.
-5. The next web capability still requires explicit approval and must not
-   finalize unresolved GSD workflows.
+1. Complete field/mobile form operations only through separately approved
+   increments; preserve the confirmed whole-form lifecycle and acknowledgement
+   boundary.
+2. Establish an approved institutional CPMP/checklist/form/SOP corpus only
+   after authorization and ingestion are approved. OEM retrieval is excluded
+   from the evaluated MVP.
+3. Keep maintenance-history and any future institutional source group separate;
+   do not add combined-source fusion or synthesis to the evaluated MVP.
+4. Defer grounded synthesis, final RBAC, audit rules, and source-review UI
+   until the relevant institutional policies and source contracts are verified.
 
 ## Engineering Evidence
 
@@ -167,8 +173,9 @@ TEST-002 evidence for the local technical-health path. Production monitoring,
 IIS restriction, tracing, centralized logs, alerting, and maintenance KPI
 dashboards remain out of scope. Inspection integrity, retrieval/test
 organization, sanitizer-boundary documentation, the web foundation, browser
-authentication, asset registry, schedule workflows, and read-only inspection
-review are complete. The next web candidate requires explicit approval.
+authentication, asset registry, schedule workflows, read-only inspection review,
+and confirmed form workflow foundation are complete. The next client capability
+requires explicit approval.
 
 ## Manuscript Platform Guidance
 

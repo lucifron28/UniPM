@@ -1,10 +1,10 @@
 # UniPM
 
 UniPM is a web and mobile preventive-maintenance system for the university
-General Services Department. The repository contains an ASP.NET Core API, the
-initial preventive-maintenance domain, and an implemented bounded maintenance-
-history review MVP. The review endpoint is available only when explicitly
-enabled and is disabled in committed configuration.
+General Services Department. The repository contains an ASP.NET Core API,
+multi-asset preventive-maintenance forms, and an implemented bounded
+maintenance-history review MVP. The review endpoint is available only when
+explicitly enabled and is disabled in committed configuration.
 
 ## License
 
@@ -59,12 +59,37 @@ The backend currently provides:
 - asset creation, list, detail, and QR lookup;
 - schedule creation, list, and detail;
 - inspection submission, list, detail, and asset-history lookup;
+- preventive-maintenance form drafting and inspection-row management;
+- whole-form submission with provisional file-number allocation;
+- whole-form acknowledgement, schedule completion, and acknowledged-row
+  publication to official history and retrieval;
+- a GSD-only corrective-action handoff read model for acknowledged forms;
 - JWT login, refresh, logout, and current-user routes under `/api/v1/auth`;
 - policy-protected asset, schedule, inspection, and maintenance-review writes;
 - `POST /api/v1/maintenance-review` for authenticated, source-bounded
   maintenance-history review when explicitly enabled;
 - reference-data categories, validation/error contracts, health checks, tests,
   and backend CI.
+
+## Confirmed Preventive-Maintenance Workflow
+
+One digital preventive-maintenance form represents one existing one-page
+institutional form and contains multiple asset inspection rows. The lifecycle
+is `Draft -> Submitted -> Acknowledged`; one submitted form receives one
+provisional file number, while each row keeps its own inspection ID.
+
+The department head acknowledges the whole form through the skilled worker's
+authenticated mobile session and does not require a UniPM account. Only
+acknowledgement completes linked schedules. Draft and Submitted rows are not
+official history or retrieval evidence; acknowledged rows are eligible.
+Signatory names, positions, signatures, signature data, and signature checksums
+never enter retrieval, embeddings, prompts, or the corrective-handoff response.
+
+Corrective action ends at preparation of an acknowledged handoff for manual
+encoding in the existing GSD Work Management System. UniPM does not create,
+approve, process, monitor, or track RMRFs or corrective-maintenance work, and
+does not integrate directly with that system. See
+[`reference/planning/confirmed-gsd-workflow.md`](reference/planning/confirmed-gsd-workflow.md).
 
 ## Web Application
 
@@ -308,11 +333,11 @@ idempotent, and does not start HTTP hosting. Supplying more than one
 maintenance command flag is rejected without executing an operation.
 
 `--seed-reference-documents` creates a separate, fictional development corpus
-for future institutional and OEM evidence retrieval. It upserts only synthetic
-reference-document metadata, applicability records, and ordered sections;
+for future approved institutional-procedure evidence retrieval. It upserts only
+synthetic reference-document metadata, applicability records, and ordered sections;
 `--reset-reference-documents` removes only fixture-owned synthetic corpus
 records. It does not
-load real university procedures, OEM manuals, PDFs, OCR text, or source files,
+load real university procedures, PDFs, OCR text, or source files,
 and it does not change maintenance-history retrieval or the review endpoint.
 The reference foundation has its own SQL Server Full-Text catalog and preserves
 document revision, lifecycle, locator, checksum, and synthetic provenance for
@@ -326,8 +351,10 @@ The operational fixture is version `1.1.0`. The retrieval evaluation manifest
 is version `1.1.0`, is copied only to test output, and remains test-only: it is
 not loaded by the API, persisted, indexed, embedded, included in prompts, or
 returned by ordinary DTOs. Both files are fictional and based only on visible
-Page 1 blank-form fields; Page 2, completed samples, acknowledgement, and RMRF
-rules remain provisional.
+Page 1 blank-form fields; Page 2, completed samples, and official institutional
+reference lists remain provisional. The confirmed digital acknowledgement and
+corrective-handoff boundaries do not make unobserved physical-form fields final
+production contracts.
 
 Inspection list/detail reads, maintenance issue normalization, and internal
 lexical FTS retrieval are complete. Lexical retrieval searches only the

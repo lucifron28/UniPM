@@ -34,6 +34,11 @@ selected source inspection records. Source records include stable labels such as
 `SRC-1`, issue keys, deterministic matched reasons, context tier, original
 remarks/actions, and fused component trace fields.
 
+Official source records are limited to legacy inspections without a form and
+inspection rows from Acknowledged forms. Draft and Submitted form rows are not
+history or retrieval evidence. The current finding may be query context only
+until its form is acknowledged.
+
 The response never includes provider endpoints, API keys, prompts, query
 embeddings, provider payloads, or sanitizer token maps.
 
@@ -112,9 +117,9 @@ records through lexical fallback.
 ## Limitations
 
 This is a synthetic, provisional MVP. It does not prove real provider quality,
-infer equipment equivalence, diagnose failures, finalize
-GSD acknowledgement/RMRF workflows, make corrective decisions, retrieve
-external reference documents, or provide chatbot/multi-turn behavior.
+infer equipment equivalence, diagnose failures, make corrective decisions,
+create or process RMRFs, integrate with the external Work Management System,
+retrieve external reference documents, or provide chatbot/multi-turn behavior.
 
 Prompt sanitization is limited to the documented pattern coverage. Free-text
 personal names can remain in provider-bound input, so synthetic names and
