@@ -21,11 +21,14 @@ Configure the backend URL at runtime; it is not committed to the repository:
 flutter run --dart-define=UNIPM_API_BASE_URL=http://10.0.2.2:5000/
 ```
 
-For an Android emulator, `10.0.2.2` points to the development machine. For a
-physical device, use the development machine's reachable LAN address, for
-example `http://192.168.1.20:5000/`, and ensure the device can reach the API.
-Use HTTPS and an approved development certificate configuration when required
-by the device.
+HTTP is permitted only in debug builds for local development. The debug
+Android manifest enables cleartext traffic for this purpose; release builds
+must use HTTPS and do not enable cleartext traffic.
+
+For an Android emulator, `10.0.2.2` is the route to the development machine.
+For a physical device, use a reachable LAN address, for example
+`http://192.168.1.20:5000/`, or use an approved HTTPS development setup. The
+device and development machine must be able to reach the API.
 
 ## Authentication Boundary
 
