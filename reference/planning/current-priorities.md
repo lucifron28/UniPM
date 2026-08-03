@@ -90,8 +90,11 @@ helps a human verify them.
   with the WMS.
 - Planned RAG-assisted inspection-history analysis: not implemented. See
   [`reference/planning/rag-assisted-inspection-history-analysis.md`](rag-assisted-inspection-history-analysis.md).
-- Flutter mobile foundation: in review until PR #48 is approved; it is not
-  merged project capability yet.
+- Flutter mobile foundation: implemented and merged, including memory-only
+  authentication and the initial Draft preventive-maintenance form workflow.
+  Offline synchronization is deferred and its persistence and synchronization
+  architecture remain undecided. Submission, acknowledgement, signatures, QR
+  scanning, and later field actions remain separately approved work.
 
 ## Immediate Task Order
 
@@ -104,8 +107,9 @@ helps a human verify them.
    corrective-action handoff backend increments.
 6. Completed: `chore/preventive-maintenance-api-contract-sync`.
 7. Completed: read-only web preventive-maintenance form review.
-8. In review: `feat/mobile-foundation` authentication foundation.
-9. Next mobile field workflow capability requires explicit approval.
+8. Completed: `feat/mobile-foundation` authentication foundation.
+9. Completed: `feat/mobile-pm-form-drafts` initial mobile Draft form workflow.
+10. The next mobile field workflow capability requires explicit approval.
 
 ## Reference Evidence Roadmap
 
@@ -405,8 +409,9 @@ directly.
 8. Completed: `feat/web-schedules`.
 9. Completed: `feat/web-inspections` read-only inspection review.
 10. Completed: read-only preventive-maintenance form review.
-11. In review: `feat/mobile-foundation` authentication foundation.
-12. The next mobile field workflow capability requires explicit approval.
+11. Completed: `feat/mobile-foundation` authentication foundation.
+12. Completed: `feat/mobile-pm-form-drafts` initial mobile Draft form workflow.
+13. The next mobile field workflow capability requires explicit approval.
 
 EXP-003 completed a local offline Granite multilingual embedding baseline on
 the fictional maintenance fixture. Its conditional result is development

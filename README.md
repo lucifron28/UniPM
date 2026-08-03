@@ -117,6 +117,21 @@ condition, work-order, or device-specification workflows. Inspections provide
 read-only list/detail review and compact asset history; web inspection
 submission remains deferred to the planned mobile workflow.
 
+## Mobile Application
+
+The `mobile/` Flutter application is Android-first and currently provides
+memory-only authentication, an authenticated Inspector/GSD shell, and the
+initial Draft preventive-maintenance form workflow. Mobile users can create a
+Draft form, add multiple inspection rows, resume a Draft, and update or delete
+Draft rows through the API.
+
+The mobile client starts signed out after restart, does not persist access
+tokens or cookies, and does not implement refresh/replay or offline
+synchronization. Offline sync is deferred; its persistence and synchronization
+architecture remain undecided pending a separate approved decision. Submission,
+acknowledgement, signature capture, QR scanning, and later field actions remain
+outside the current mobile scope. See [mobile/README.md](mobile/README.md).
+
 ## First Run
 
 Install native Windows SQL Server 2019 with Database Engine Services and
@@ -396,11 +411,11 @@ Tagalog and Taglish language fit was weak, and five outputs violated the citatio
 contract. Inspection-submission integrity, retrieval/test layout organization,
 and explicit free-text-name sanitizer limitation documentation are complete.
 The web foundation and browser authentication integration are implemented and
-merged; the Flutter mobile foundation remains in review until PR #48 is
-approved. The reference-document foundation is implemented and merged as a
-fictional metadata and sectioning foundation; approved institutional source
-authorization and ingestion remain pending, and OEM retrieval is excluded from
-the evaluated MVP. EXP-003 executed a local offline
+merged; the Flutter mobile foundation and initial Draft form workflow are also
+implemented and merged. The reference-document foundation is implemented and
+merged as a fictional metadata and sectioning foundation; approved
+institutional source authorization and ingestion remain pending, and OEM
+retrieval is excluded from the evaluated MVP. EXP-003 executed a local offline
 Granite multilingual embedding baseline on the fictional maintenance fixture;
 it is controlled development evidence only and does not make Granite a
 deployment dependency or establish real institutional performance.
@@ -545,3 +560,7 @@ a production-readiness result.
 - [`AGENTS.md`](AGENTS.md)
 - [`PROJECT.md`](PROJECT.md)
 - [`reference/planning/current-priorities.md`](reference/planning/current-priorities.md)
+- [Run UniPM locally](reference/guides/tutorials/getting-started.md)
+- [Run the local stack and rebuild retrieval data](reference/guides/how-to/run-local-stack.md)
+- [System capabilities reference](reference/guides/reference/system-capabilities.md)
+- [Architecture and RAG boundaries](reference/guides/explanation/architecture-and-rag-boundaries.md)
