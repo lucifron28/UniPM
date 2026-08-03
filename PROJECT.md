@@ -48,8 +48,14 @@
   - React web foundation and browser authentication with memory-only access
     tokens, refresh-cookie restoration, protected routes, current-user display,
     and logout.
-  - Browser authentication integration is implemented and merged; the Flutter
-    mobile foundation remains in review until PR #48 is approved.
+  - Browser authentication integration is implemented and merged. The Flutter
+    mobile foundation and initial Draft preventive-maintenance form workflow
+    are implemented and merged; offline synchronization remains deferred and
+    architecture-undecided.
+  - The mobile client currently supports authenticated GSD/Inspector access,
+    Draft form creation, and Draft inspection-row add/update/delete operations.
+    Submission, acknowledgement, signatures, QR scanning, and later field
+    workflows remain separately approved work.
   - Authenticated asset registry and preventive maintenance schedule modules
     with route-backed list/detail/create workflows, generated API contracts,
     runtime response validation, and backend-authoritative role policies.
@@ -165,9 +171,8 @@ diagnose equipment, infer causes, approve actions, or mutate records.
 
 ## Next Steps
 
-1. Complete field/mobile form operations only through separately approved
-   increments; preserve the confirmed whole-form lifecycle and acknowledgement
-   boundary.
+1. Extend mobile field operations only through separately approved increments;
+   preserve the confirmed whole-form lifecycle and acknowledgement boundary.
 2. Establish an approved institutional CPMP/checklist/form/SOP corpus only
    after authorization and ingestion are approved. OEM retrieval is excluded
    from the evaluated MVP.
