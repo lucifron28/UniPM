@@ -11,11 +11,13 @@ class AppRouter extends StatefulWidget {
   const AppRouter({
     super.key,
     required this.sessionController,
+    required this.navigatorKey,
     this.preventiveMaintenanceRepository,
     this.configurationError,
   });
 
   final SessionController sessionController;
+  final GlobalKey<NavigatorState> navigatorKey;
   final PreventiveMaintenanceRepository? preventiveMaintenanceRepository;
   final String? configurationError;
 
@@ -24,9 +26,38 @@ class AppRouter extends StatefulWidget {
 }
 
 class _AppRouterState extends State<AppRouter> {
+  bool _signOutResetScheduled = false;
+
   @override
   void initState() {
     super.initState();
+    widget.sessionController.addListener(_handleSessionChange);
+  }
+
+  @override
+  void dispose() {
+    widget.sessionController.removeListener(_handleSessionChange);
+    super.dispose();
+  }
+
+  void _handleSessionChange() {
+    if (widget.sessionController.status != SessionStatus.signedOut) {
+      _signOutResetScheduled = false;
+      return;
+    }
+    if (_signOutResetScheduled) return;
+    _signOutResetScheduled = true;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (widget.sessionController.status != SessionStatus.signedOut) {
+        _signOutResetScheduled = false;
+        return;
+      }
+      final navigator = widget.navigatorKey.currentState;
+      navigator?.popUntil((route) => route.isFirst);
+      _signOutResetScheduled = false;
+    });
   }
 
   @override

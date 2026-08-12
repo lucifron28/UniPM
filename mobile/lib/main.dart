@@ -31,30 +31,42 @@ void main() {
   );
 }
 
-class UniPmApp extends StatelessWidget {
+class UniPmApp extends StatefulWidget {
   const UniPmApp({
     super.key,
     required this.sessionController,
     this.preventiveMaintenanceRepository,
     this.configurationError,
+    this.navigatorKey,
   });
 
   final SessionController sessionController;
   final PreventiveMaintenanceRepository? preventiveMaintenanceRepository;
   final String? configurationError;
+  final GlobalKey<NavigatorState>? navigatorKey;
+
+  @override
+  State<UniPmApp> createState() => _UniPmAppState();
+}
+
+class _UniPmAppState extends State<UniPmApp> {
+  late final GlobalKey<NavigatorState> _navigatorKey =
+      widget.navigatorKey ?? GlobalKey<NavigatorState>();
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: _navigatorKey,
       title: 'UniPM Mobile',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
         useMaterial3: true,
       ),
       home: AppRouter(
-        sessionController: sessionController,
-        preventiveMaintenanceRepository: preventiveMaintenanceRepository,
-        configurationError: configurationError,
+        sessionController: widget.sessionController,
+        preventiveMaintenanceRepository: widget.preventiveMaintenanceRepository,
+        configurationError: widget.configurationError,
+        navigatorKey: _navigatorKey,
       ),
     );
   }
