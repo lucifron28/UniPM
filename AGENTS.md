@@ -243,9 +243,13 @@ intervals, timelines, and groupings must be calculated by SQL and deterministic
 application code, with RAG limited to retrieving supporting acknowledged
 records and optional generation limited to explaining computed results.
 
-Browser authentication integration and the reference-document foundation are
-implemented and merged. The Flutter mobile foundation remains in review until
-PR #48 is approved and must not be described as merged.
+Browser authentication integration, the reference-document foundation, and the
+Flutter mobile foundation are implemented and merged. The mobile foundation
+includes memory-only authentication and the initial Draft preventive-
+maintenance form workflow. Offline synchronization is deferred and its
+persistence and synchronization architecture remain undecided; submission,
+acknowledgement, signatures, QR scanning, and later field actions remain outside
+the current mobile scope.
 
 ## Current Unblocked Work
 
@@ -274,8 +278,10 @@ authentication integration, asset registry, preventive maintenance schedule
 workflows, read-only inspection review, multi-asset form drafting, form
 submission, whole-form acknowledgement, acknowledged-only history publication,
 and GSD-only corrective-action handoff preparation are also complete. The
-multilingual embedding baseline is recorded as controlled development evidence;
-it does not establish real institutional performance.
+Flutter mobile foundation and initial Draft form workflow are complete; later
+mobile field actions remain separately approved work. The multilingual
+embedding baseline is recorded as controlled development evidence; it does not
+establish real institutional performance.
 
 Observability remains bounded infrastructure: `Observability:MetricsEnabled`
 is false by default, `/metrics` is exposed only when explicitly enabled, and

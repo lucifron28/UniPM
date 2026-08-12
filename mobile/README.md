@@ -2,8 +2,10 @@
 
 This Flutter application is the Android-first foundation for the skilled-worker
 field workflow. It contains authentication, a small authenticated home shell,
-and the first Draft preventive-maintenance form workflow. QR scanning, offline
-sync, and later field workflow actions remain outside this phase.
+and the first Draft preventive-maintenance form workflow. QR scanning and later
+field workflow actions remain outside this phase. Offline synchronization is
+deferred; its persistence and synchronization architecture remain undecided
+until a separate approved decision.
 
 ## Local Setup
 
@@ -52,7 +54,9 @@ the mobile app does not keep offline drafts or synchronize a local database.
 
 The mobile client only presents Draft forms. Submission, acknowledgement,
 signatures, schedule completion, corrective handoff, RMRF, QR scanning, and
-offline synchronization remain outside this phase.
+offline synchronization remain outside this phase. Offline synchronization is
+deferred rather than rejected; its persistence and synchronization architecture
+remain undecided pending a separate approved decision.
 
 ## Dependencies
 
