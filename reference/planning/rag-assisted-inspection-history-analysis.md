@@ -3,9 +3,8 @@
 ## Status
 
 - **Status:** Planned capability; not implemented
-- **Preferred working title:** UniPM: A Web and Mobile Preventive Maintenance
-  System with RAG-Assisted Inspection History Analysis for the University
-  General Services Department
+- **Preferred working title:** UniPM: A Preventive Maintenance System with
+  RAG-Assisted Inspection History Analysis for University General Services
 - **Title approval:** Pending adviser and panel approval
 - **Requirements source:** [GSD Head Interview - Confirmed Project Direction](https://app.notion.com/p/3ae92377e48b81cc8948d7b199ed7d2f)
 

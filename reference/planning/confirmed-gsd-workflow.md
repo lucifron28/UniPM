@@ -67,6 +67,6 @@ the evaluated MVP.
 
 ## Manuscript Direction
 
-The preferred working title is **UniPM: A Web and Mobile Preventive Maintenance
-System with RAG-Assisted Inspection History Analysis for the University General
-Services Department**. It remains subject to adviser and panel approval.
+The preferred working title is **UniPM: A Preventive Maintenance System with
+RAG-Assisted Inspection History Analysis for University General Services**. It
+remains subject to adviser and panel approval.

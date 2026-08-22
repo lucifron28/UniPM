@@ -51,9 +51,10 @@
     and logout.
   - Browser authentication integration is implemented and merged. The Flutter
     mobile foundation and initial Draft preventive-maintenance form workflow
-    are implemented and merged; offline synchronization remains deferred and
-    architecture-undecided.
-  - The mobile client currently supports authenticated GSD/Inspector access,
+    are implemented and merged in a separate partner-owned workstream;
+    offline synchronization remains deferred and architecture-undecided.
+  - The partner-owned mobile client currently supports authenticated
+    GSD/Inspector access,
     Draft form creation, and Draft inspection-row add/update/delete operations.
     Submission, acknowledgement, signatures, QR scanning, and later field
     workflows remain separately approved work.
@@ -159,6 +160,16 @@ EXP-003 executed a local offline Granite baseline against the fictional
 maintenance retrieval fixture; it is controlled development evidence only and
 does not make Granite a required deployment dependency.
 
+## Evaluated MVP And Planned Analysis
+
+The authoritative evaluated-MVP boundary is documented in
+[`reference/planning/mvp-definition.md`](reference/planning/mvp-definition.md).
+It includes the existing preventive-maintenance workflow, acknowledged-only
+history, deterministic inspection-history analysis, source-bounded RAG-assisted
+interpretation, the web workspaces, and bounded technical observability. Mobile
+is part of UniPM but is implemented in a separate partner-owned workstream and
+is not a blocker for this workstream.
+
 ## Planned RAG-Assisted Inspection-History Analysis
 
 The planned analysis capability is documented in
@@ -172,19 +183,16 @@ diagnose equipment, infer causes, approve actions, or mutate records.
 
 ## Next Steps
 
-1. Extend mobile field operations only through separately approved increments;
-   preserve the confirmed whole-form lifecycle and acknowledgement boundary.
-2. Establish an approved institutional CPMP/checklist/form/SOP corpus only
-   after authorization and ingestion are approved. OEM retrieval is excluded
-   from the evaluated MVP.
-3. Keep maintenance-history and any future institutional source group separate;
-   do not add combined-source fusion or synthesis to the evaluated MVP.
-4. Define and approve the planned RAG-assisted inspection-history analysis
-   contracts before implementation. Defer final RBAC, audit rules, and client
-   presentation until the relevant policies are verified.
-5. Defer grounded synthesis and source-review UI beyond the implemented
-   maintenance-review contract until the planned analysis and source contracts
-   are verified.
+1. Define and implement the bounded inspection-history analysis contract and
+   deterministic calculations.
+2. Add source-bounded RAG-assisted interpretation and synchronize the API
+   contract.
+3. Add the web inspection-history analysis workspace and the separate existing
+   maintenance-review interface.
+4. Extend bounded technical observability and run focused MVP verification.
+5. Keep institutional source authorization, final RBAC, audit rules, and other
+   unresolved policy decisions deferred. Mobile field implementation remains a
+   separate partner-owned workstream.
 
 ## Engineering Evidence
 
