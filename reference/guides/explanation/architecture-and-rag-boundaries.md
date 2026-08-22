@@ -5,7 +5,10 @@ review feature. The system of record is the ASP.NET Core API and SQL Server;
 retrieval and language-model behavior support human review rather than replace
 maintenance judgment.
 
-## Runtime Shape
+## Proposed deployment architecture
+
+The following diagram describes the proposed target architecture. It is not a
+record of a completed IIS deployment.
 
 ```text
 React web application / Flutter mobile application

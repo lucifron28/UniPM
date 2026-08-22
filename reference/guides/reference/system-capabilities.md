@@ -12,13 +12,14 @@ promise that every institutional workflow is finalized.
 | Database | Native Windows SQL Server 2019, compatibility level `150`, Full-Text Search |
 | Web | React, TypeScript, Vite, generated OpenAPI client |
 | Mobile | Flutter Android-first client with memory-only authentication and Draft form workflow |
-| Deployment target | ASP.NET Core hosted through IIS with native Windows SQL Server |
+| Proposed deployment target | ASP.NET Core hosted through IIS with native Windows SQL Server |
 | Docker | Optional development tooling for the retained SQL Server 2025 experiment |
 | Semantic retrieval | Versioned serialized embeddings, bounded SQL candidates, application-side cosine similarity |
 | Fusion | Internal Reciprocal Rank Fusion with deterministic component traceability |
 
-IIS production readiness, production workload testing, final secret management,
-and final institutional RBAC are not claimed.
+The capstone was evaluated as a local prototype. IIS deployment, public HTTPS
+exposure, production workload testing, final secret management, and final
+institutional RBAC are not claimed.
 
 ## Backend API Surface
 

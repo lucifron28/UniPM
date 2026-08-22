@@ -35,9 +35,13 @@ For operational licensing inquiries, contact the copyright holder.
 
 UniPM's minimum supported and default local database platform is native Windows
 SQL Server 2019 with Full-Text Search installed and database compatibility level
-`150`. The intended deployment architecture is ASP.NET Core hosted through IIS
+`150`. The proposed target architecture is ASP.NET Core hosted through IIS
 with a native Windows SQL Server instance; Docker is optional development
-tooling and is not required for deployment.
+tooling and is not required by that architecture.
+
+The capstone evaluates UniPM as a local development prototype. IIS deployment,
+public HTTPS exposure, and production workload verification are outside the
+evaluated scope.
 
 The database contains the initial `Asset`, `PreventiveMaintenanceSchedule`, and
 `InspectionRecord` schema plus the rebuildable `MaintenanceSearchDocument`

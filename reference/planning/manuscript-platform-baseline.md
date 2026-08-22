@@ -2,7 +2,8 @@
 
 Use this repository-controlled wording when updating UniPM manuscript sections.
 It reflects the accepted development platform decision and TEST-022 compatibility
-evidence. It does not claim IIS production deployment readiness.
+evidence. The capstone was evaluated as a local prototype and does not claim an
+IIS deployment or production readiness.
 
 ## Approved Platform Wording
 
