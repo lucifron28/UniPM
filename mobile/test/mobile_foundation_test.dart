@@ -67,10 +67,10 @@ class FakeAuthTransport {
   final clients = <CookieCapableFakeClient>[];
 
   HttpClientFactory get factory => () {
-        final client = CookieCapableFakeClient(_responseFor);
-        clients.add(client);
-        return client;
-      };
+    final client = CookieCapableFakeClient(_responseFor);
+    clients.add(client);
+    return client;
+  };
 
   Iterable<http.BaseRequest> get requests =>
       clients.expand((client) => client.requests);
@@ -106,22 +106,22 @@ class FakeAuthTransport {
   }
 
   Map<String, dynamic> _userJson() => <String, dynamic>{
-        'id': testUser().id,
-        'email': testUser().email,
-        'displayName': testUser().displayName,
-        'roles': testUser().roles,
-      };
+    'id': testUser().id,
+    'email': testUser().email,
+    'displayName': testUser().displayName,
+    'roles': testUser().roles,
+  };
 }
 
 AuthUser testUser({List<String> roles = const ['Inspector']}) => AuthUser(
-      id: '11111111-1111-4111-8111-111111111111',
-      email: 'inspector@example.test',
-      displayName: 'Synthetic Inspector',
-      roles: roles,
-    );
+  id: '11111111-1111-4111-8111-111111111111',
+  email: 'inspector@example.test',
+  displayName: 'Synthetic Inspector',
+  roles: roles,
+);
 
 Future<({SessionController controller, FakeAuthGateway gateway})>
-    pumpFoundation(
+pumpFoundation(
   WidgetTester tester, {
   List<String> roles = const ['Inspector'],
   bool loginSucceeds = true,
@@ -135,8 +135,14 @@ Future<({SessionController controller, FakeAuthGateway gateway})>
 }
 
 Future<void> signIn(WidgetTester tester) async {
-  await tester.enterText(find.byType(TextFormField).at(0), 'inspector@example.test');
-  await tester.enterText(find.byType(TextFormField).at(1), 'fictional-password');
+  await tester.enterText(
+    find.byType(TextFormField).at(0),
+    'inspector@example.test',
+  );
+  await tester.enterText(
+    find.byType(TextFormField).at(1),
+    'fictional-password',
+  );
   await tester.tap(find.widgetWithText(FilledButton, 'Sign in'));
   await tester.pumpAndSettle();
 }
@@ -150,7 +156,9 @@ void expectRedirectsDisabled(Iterable<http.BaseRequest> requests) {
 }
 
 void main() {
-  testWidgets('successful login renders the authenticated shell', (tester) async {
+  testWidgets('successful login renders the authenticated shell', (
+    tester,
+  ) async {
     await pumpFoundation(tester);
     await signIn(tester);
 
@@ -165,7 +173,9 @@ void main() {
     expect(find.widgetWithText(FilledButton, 'Sign in'), findsOneWidget);
   });
 
-  testWidgets('direct login 401 still shows invalid credentials', (tester) async {
+  testWidgets('direct login 401 still shows invalid credentials', (
+    tester,
+  ) async {
     await pumpFoundation(tester, loginSucceeds: false);
     await signIn(tester);
 
@@ -217,16 +227,19 @@ void main() {
       '/api/v1/auth/me',
       '/api/v1/auth/logout',
     ]);
-    expect(transport.clients[1].requests.single.headers['authorization'],
-        'Bearer memory-only-access-token');
+    expect(
+      transport.clients[1].requests.single.headers['authorization'],
+      'Bearer memory-only-access-token',
+    );
     expect(transport.clients[1].requests.single.headers['cookie'], isNull);
     expect(transport.clients[2].requests.single.headers['cookie'], isNull);
     expectRedirectsDisabled(transport.requests);
     client.dispose();
   });
 
-  testWidgets('post-login me 401 clears session and displays expired message',
-      (tester) async {
+  testWidgets('post-login me 401 clears session and displays expired message', (
+    tester,
+  ) async {
     final transport = FakeAuthTransport(currentUserStatus: 401);
     final client = ApiClient(
       baseUrl: Uri.parse('http://localhost:5000/'),
@@ -245,20 +258,26 @@ void main() {
     expect(controller.accessToken, isNull);
     expect(controller.user, isNull);
     expect(controller.status, SessionStatus.signedOut);
-    expect(find.text('Your session expired. Please sign in again.'), findsOneWidget);
+    expect(
+      find.text('Your session expired. Please sign in again.'),
+      findsOneWidget,
+    );
     expect(transport.requests.map((request) => request.url.path), [
       '/api/v1/auth/login',
       '/api/v1/auth/me',
     ]);
-    expect(transport.clients[1].requests.single.headers['authorization'],
-        'Bearer memory-only-access-token');
+    expect(
+      transport.clients[1].requests.single.headers['authorization'],
+      'Bearer memory-only-access-token',
+    );
     expect(transport.clients[1].requests.single.headers['cookie'], isNull);
     expectRedirectsDisabled(transport.requests);
     client.dispose();
   });
 
-  testWidgets('authenticated protected 401 signs out without replay',
-      (tester) async {
+  testWidgets('authenticated protected 401 signs out without replay', (
+    tester,
+  ) async {
     final transport = FakeAuthTransport();
     final client = ApiClient(
       baseUrl: Uri.parse('http://localhost:5000/'),
@@ -280,15 +299,48 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(controller.status, SessionStatus.signedOut);
-    expect(find.text('Your session expired. Please sign in again.'), findsOneWidget);
+    expect(
+      find.text('Your session expired. Please sign in again.'),
+      findsOneWidget,
+    );
     expect(transport.requests.map((request) => request.url.path), [
       '/api/v1/auth/login',
       '/api/v1/auth/me',
       '/api/v1/assets',
     ]);
-    expect(transport.clients[2].requests.single.headers['authorization'],
-        'Bearer memory-only-access-token');
+    expect(
+      transport.clients[2].requests.single.headers['authorization'],
+      'Bearer memory-only-access-token',
+    );
     expectRedirectsDisabled(transport.requests);
     client.dispose();
+  });
+
+  testWidgets('terminal authentication failure removes pushed feature routes', (
+    tester,
+  ) async {
+    final result = await pumpFoundation(tester);
+    await signIn(tester);
+
+    final homeContext = tester.element(
+      find.text('Welcome, Synthetic Inspector'),
+    );
+    Navigator.of(homeContext).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => const Scaffold(body: Text('Protected feature')),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    await result.controller.handleTerminalAuthenticationFailure();
+    await tester.pumpAndSettle();
+
+    expect(find.text('Protected feature'), findsNothing);
+    expect(find.widgetWithText(FilledButton, 'Sign in'), findsOneWidget);
+    expect(
+      find.text('Your session expired. Please sign in again.'),
+      findsOneWidget,
+    );
   });
 }

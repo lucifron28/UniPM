@@ -446,7 +446,10 @@ class _DraftEditorPageState extends State<_DraftEditorPage> {
   }
 
   Future<void> _retry() async {
-    setState(() => schedules = widget.controller.repository.listSchedules());
+    final nextSchedules = widget.controller.repository.listSchedules();
+    setState(() {
+      schedules = nextSchedules;
+    });
     await widget.controller.loadDraft(widget.formId);
   }
 
@@ -472,6 +475,13 @@ class _DraftEditorPageState extends State<_DraftEditorPage> {
           return FutureBuilder<List<ScheduleOption>>(
             future: schedules,
             builder: (context, snapshot) {
+              if (snapshot.connectionState != ConnectionState.done) {
+                return const Center(
+                  child: CircularProgressIndicator(
+                    key: Key('schedules-loading'),
+                  ),
+                );
+              }
               final scheduleError = snapshot.hasError
                   ? friendlyError(snapshot.error!)
                   : null;
@@ -520,13 +530,29 @@ class _DraftEditorPageState extends State<_DraftEditorPage> {
           ),
         if (scheduleError != null && canEdit)
           Card(
-            child: ListTile(
-              leading: const Icon(Icons.cloud_off),
-              title: const Text('Schedules unavailable'),
-              subtitle: Text(scheduleError),
-              trailing: TextButton(
-                onPressed: _retry,
-                child: const Text('Retry'),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.cloud_off),
+                      SizedBox(width: 12),
+                      Text('Schedules unavailable'),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(scheduleError),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      key: const Key('schedules-retry'),
+                      onPressed: _retry,
+                      child: const Text('Retry'),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -986,9 +1012,19 @@ int? _parseYear(String value) {
 }
 
 DateTime? _parseDate(String value) {
-  final normalized = value.trim();
-  if (normalized.isEmpty) return null;
-  return DateTime.tryParse(normalized);
+  final match = RegExp(r'^([0-9]{4})-([0-9]{2})-([0-9]{2})$').firstMatch(value);
+  if (match == null) return null;
+
+  final year = int.parse(match.group(1)!);
+  final month = int.parse(match.group(2)!);
+  final day = int.parse(match.group(3)!);
+  if (year < 1) return null;
+
+  final parsed = DateTime(year, month, day);
+  if (parsed.year != year || parsed.month != month || parsed.day != day) {
+    return null;
+  }
+  return parsed;
 }
 
 String _dateText(DateTime value) {

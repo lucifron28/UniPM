@@ -90,6 +90,8 @@ record's evidence level and tested/source commit.
 | TEST-032 | test-run | Flutter preventive-maintenance Draft form workflow verification | executed | locally-executed | `ab41d30` | [record](test-runs/TEST-032-mobile-preventive-maintenance-form-drafts.md) | Analyzer, 20 focused mobile tests, and debug APK build passed; no live backend, emulator, offline, SQL, or production verification was run. |
 | IMP-022 | implementation | Corrective-action handoff preparation read model | reviewed | source-inspected | `fb26a0b` | [record](implementation/IMP-022-corrective-action-handoff-read-model.md) | GSD-only, acknowledged-form, read-only preparation response; device number remains nullable pending an institutional source or mapping. |
 | TEST-028 | test-run | Corrective-action handoff read model verification | executed | locally-executed | `fb26a0b` | [record](test-runs/TEST-028-corrective-action-handoff-read-model.md) | Two focused endpoint tests passed; nullable device-number behavior verified; native SQL Server 2019 and full-suite verification were not run. |
+| IMP-027 | implementation | Flutter preventive-maintenance Draft workflow hardening | reviewed | locally-executed | `85ee12a` | [record](implementation/IMP-027-mobile-pm-draft-hardening.md) | Terminal 401 route reset, explicit schedule loading/retry states, strict date-only validation, and focused Draft API boundary coverage. |
+| TEST-033 | test-run | Flutter preventive-maintenance Draft workflow hardening verification | executed | locally-executed | `85ee12a` | [record](test-runs/TEST-033-mobile-pm-draft-hardening.md) | Analyzer, 25 focused mobile tests, and debug APK build passed; no live backend, emulator, offline, SQL, or production verification was run. |
 
 ## Pending Evidence
 

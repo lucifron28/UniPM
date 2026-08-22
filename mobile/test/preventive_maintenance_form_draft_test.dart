@@ -1,6 +1,11 @@
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
 
+import 'package:mobile/api/api_client.dart';
 import 'package:mobile/api/api_exception.dart';
 import 'package:mobile/auth/auth_models.dart';
 import 'package:mobile/features/preventive_maintenance/preventive_maintenance_models.dart';
@@ -133,6 +138,57 @@ void main() {
     expect(find.text('Asset category'), findsOneWidget);
   });
 
+  testWidgets('schedule loading and empty states wait for the request result', (
+    tester,
+  ) async {
+    final schedules = Completer<List<ScheduleOption>>();
+    final repository = FakePreventiveMaintenanceRepository(
+      forms: [testForm(id: formId)],
+      schedulesFuture: schedules.future,
+    );
+
+    await pumpPage(tester, repository);
+    await tester.tap(find.byKey(Key('draft-form-$formId')));
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.byKey(const Key('schedules-loading')), findsOneWidget);
+    expect(
+      find.text('No matching schedules are available for this category.'),
+      findsNothing,
+    );
+
+    schedules.complete(const []);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('No matching schedules are available for this category.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('schedule failure retains a retry state', (tester) async {
+    final repository = FakePreventiveMaintenanceRepository(
+      forms: [testForm(id: formId)],
+      scheduleFailures: 1,
+    );
+
+    await pumpPage(tester, repository);
+    await tester.tap(find.byKey(Key('draft-form-$formId')));
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.text('Schedules unavailable'), findsOneWidget);
+    final retryButton = tester.widget<TextButton>(
+      find.byKey(const Key('schedules-retry')),
+    );
+    retryButton.onPressed!();
+    await tester.pumpAndSettle();
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('inspection-schedule')), findsOneWidget);
+  });
+
   testWidgets('resuming a draft renders every existing row', (tester) async {
     final repository = FakePreventiveMaintenanceRepository(
       forms: [
@@ -197,6 +253,139 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(repository.addCallCount, 0);
+  });
+
+  testWidgets('inspection dates reject timestamps before an API write', (
+    tester,
+  ) async {
+    final repository = FakePreventiveMaintenanceRepository(
+      forms: [testForm(id: formId)],
+    );
+
+    await pumpPage(tester, repository);
+    await tester.tap(find.byKey(Key('draft-form-$formId')));
+    await tester.pumpAndSettle();
+    await scrollTo(tester, find.byKey(const Key('inspection-schedule')));
+    await chooseDropdown(tester, const Key('inspection-schedule'), 'FE-001');
+    await tester.enterText(
+      find.byKey(const Key('new-inspection-date')),
+      '2026-02-10T10:00:00Z',
+    );
+    await scrollTo(tester, find.byKey(const Key('add-inspection-button')));
+    await tester.tap(find.byKey(const Key('add-inspection-button')));
+    await tester.pumpAndSettle();
+
+    expect(repository.addCallCount, 0);
+    expect(find.text('Enter a valid date.'), findsOneWidget);
+  });
+
+  test('draft repository uses the authenticated API contract', () async {
+    final transportState = DraftTransportState();
+    final client = ApiClient(
+      baseUrl: Uri.parse('http://localhost:5000/'),
+      httpClientFactory: () => DraftTransport(transportState),
+    );
+    var terminalFailures = 0;
+    client.configureSession(
+      accessTokenProvider: () => 'inspector-access-token',
+      terminalAuthFailureHandler: () async => terminalFailures++,
+    );
+    final repository = ApiPreventiveMaintenanceRepository(client);
+    final inspectionDate = DateTime(2026, 2, 10);
+
+    await repository.createForm(
+      const CreatePreventiveMaintenanceFormInput(
+        assetCategory: 'fire-extinguisher',
+        building: 'Main Building',
+        department: 'GSD',
+        periodType: 'Quarter',
+        quarter: 'Q1',
+        semester: null,
+        year: 2026,
+        academicYear: '2026-2027',
+      ),
+    );
+    await repository.addInspection(
+      formId,
+      AddInspectionInput(
+        scheduleId: firstScheduleId,
+        inspectorUserId: inspectorId,
+        dateInspected: inspectionDate,
+        isOperational: false,
+        remarks: 'Low pressure',
+        actionsRecommendations: 'Inspect gauge',
+      ),
+    );
+    await repository.updateInspection(
+      formId,
+      firstInspectionId,
+      UpdateInspectionInput(
+        inspectorUserId: inspectorId,
+        dateInspected: inspectionDate,
+        isOperational: true,
+        remarks: 'Updated',
+        actionsRecommendations: 'Replace gauge',
+      ),
+    );
+    await repository.deleteInspection(formId, secondInspectionId);
+
+    final requests = transportState.requests;
+    expect(requests, hasLength(4));
+    for (final request in requests) {
+      expect(request.headers['authorization'], 'Bearer inspector-access-token');
+    }
+    expect(requests[0].url.path, '/api/v1/preventive-maintenance-forms');
+    expect(
+      requests[1].url.path,
+      '/api/v1/preventive-maintenance-forms/$formId/inspections',
+    );
+    expect(
+      jsonDecode((requests[1] as http.Request).body),
+      containsPair('scheduleId', firstScheduleId),
+    );
+    expect(
+      requests[2].url.path,
+      '/api/v1/preventive-maintenance-forms/$formId/inspections/$firstInspectionId',
+    );
+    expect(
+      jsonDecode((requests[2] as http.Request).body),
+      isNot(contains('scheduleId')),
+    );
+    expect(
+      requests[3].url.path,
+      '/api/v1/preventive-maintenance-forms/$formId/inspections/$secondInspectionId',
+    );
+
+    transportState.conflictResponses = 1;
+    await expectLater(
+      repository.addInspection(
+        formId,
+        AddInspectionInput(
+          scheduleId: firstScheduleId,
+          inspectorUserId: inspectorId,
+          dateInspected: inspectionDate,
+          isOperational: false,
+          remarks: null,
+          actionsRecommendations: null,
+        ),
+      ),
+      throwsA(
+        isA<ApiException>().having(
+          (error) => error.statusCode,
+          'status code',
+          409,
+        ),
+      ),
+    );
+
+    transportState.unauthorizedResponses = 1;
+    await expectLater(repository.listForms(), throwsA(isA<ApiException>()));
+    expect(terminalFailures, 1);
+    expect(
+      transportState.requests.last.url.path,
+      '/api/v1/preventive-maintenance-forms',
+    );
+    client.dispose();
   });
 
   testWidgets('editing a row persists date, condition, remarks, and action', (
@@ -367,10 +556,14 @@ class FakePreventiveMaintenanceRepository
   FakePreventiveMaintenanceRepository({
     List<PreventiveMaintenanceForm>? forms,
     this.referenceFailures = 0,
+    this.scheduleFailures = 0,
+    this.schedulesFuture,
   }) : forms = [...?forms];
 
   List<PreventiveMaintenanceForm> forms;
   int referenceFailures;
+  int scheduleFailures;
+  final Future<List<ScheduleOption>>? schedulesFuture;
   CreatePreventiveMaintenanceFormInput? createdInput;
   AddInspectionInput? addedInput;
   UpdateInspectionInput? updatedInput;
@@ -396,10 +589,21 @@ class FakePreventiveMaintenanceRepository
   }
 
   @override
-  Future<List<ScheduleOption>> listSchedules() async => [
-    testSchedule(firstScheduleId, 'FE-001'),
-    testSchedule(secondScheduleId, 'FE-002'),
-  ];
+  Future<List<ScheduleOption>> listSchedules() {
+    if (scheduleFailures > 0) {
+      scheduleFailures--;
+      return Future.error(
+        const ApiException(
+          message: 'The mobile service is unavailable. Please try again.',
+        ),
+      );
+    }
+    return schedulesFuture ??
+        Future.value([
+          testSchedule(firstScheduleId, 'FE-001'),
+          testSchedule(secondScheduleId, 'FE-002'),
+        ]);
+  }
 
   @override
   Future<List<ReferenceOption>> listAssetCategories() async {
@@ -495,3 +699,83 @@ ScheduleOption testSchedule(String id, String assetCode) => ScheduleOption(
 );
 
 const secondInspectionId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+
+class DraftTransport extends http.BaseClient {
+  DraftTransport(this.owner);
+
+  final DraftTransportState owner;
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) async {
+    owner.requests.add(request);
+    final response = owner.responseFor(request);
+    return http.StreamedResponse(
+      Stream.value(utf8.encode(response.body)),
+      response.statusCode,
+      headers: response.headers,
+      request: request,
+    );
+  }
+}
+
+class DraftTransportState {
+  final requests = <http.BaseRequest>[];
+  int conflictResponses = 0;
+  int unauthorizedResponses = 0;
+
+  http.Response responseFor(http.BaseRequest request) {
+    if (conflictResponses > 0) {
+      conflictResponses--;
+      return http.Response('', 409);
+    }
+    if (unauthorizedResponses > 0) {
+      unauthorizedResponses--;
+      return http.Response('', 401);
+    }
+
+    switch (request.url.path) {
+      case '/api/v1/preventive-maintenance-forms':
+        return http.Response(jsonEncode(testFormJson()), 201);
+      case '/api/v1/preventive-maintenance-forms/$formId/inspections':
+      case '/api/v1/preventive-maintenance-forms/$formId/inspections/$firstInspectionId':
+        return http.Response(jsonEncode(testInspectionJson()), 200);
+      case '/api/v1/preventive-maintenance-forms/$formId/inspections/$secondInspectionId':
+        return http.Response('', 204);
+      default:
+        return http.Response('', 404);
+    }
+  }
+
+  Map<String, dynamic> testFormJson() => <String, dynamic>{
+    'id': formId,
+    'fileNumber': null,
+    'assetCategory': 'fire-extinguisher',
+    'building': 'Main Building',
+    'department': 'GSD',
+    'periodType': 'Quarter',
+    'quarter': 'Q1',
+    'semester': null,
+    'year': 2026,
+    'academicYear': '2026-2027',
+    'status': 'Draft',
+    'createdByUserId': inspectorId,
+    'submittedByUserId': null,
+    'submittedAt': null,
+    'createdAt': '2026-01-15T00:00:00Z',
+    'updatedAt': '2026-01-15T00:00:00Z',
+    'inspections': [],
+  };
+
+  Map<String, dynamic> testInspectionJson() => <String, dynamic>{
+    'id': firstInspectionId,
+    'scheduleId': firstScheduleId,
+    'assetId': '88888888-8888-4888-8888-888888888888',
+    'inspectorUserId': inspectorId,
+    'dateInspected': '2026-01-15T00:00:00Z',
+    'isOperational': false,
+    'remarks': 'Low pressure',
+    'actionsRecommendations': 'Inspect gauge',
+    'createdAt': '2026-01-15T00:00:00Z',
+    'updatedAt': '2026-01-15T00:00:00Z',
+  };
+}
