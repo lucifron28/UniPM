@@ -25,7 +25,9 @@ Do not change the stack without discussion.
     database or require native SQL vector features.
 - Local dev: native SQL Server 2019 is the default path. The retained SQL
   Server 2025 Docker Compose stack is optional development tooling only.
-- Target production: IIS on Windows Server, not Docker
+- Proposed target deployment: IIS on Windows Server, not Docker
+  - IIS deployment is outside the evaluated capstone prototype. Do not describe
+    it as completed verification.
   - Avoid Docker-only assumptions in application code.
 - Web frontend: React + TypeScript + Vite
 - Mobile: Flutter

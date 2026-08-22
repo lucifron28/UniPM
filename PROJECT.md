@@ -10,8 +10,9 @@
 - **Optional legacy Docker stop**: `docker compose --env-file .env.sqlserver2025 -f docker-compose.sqlserver2025.yml down`
 
 ## Active Context
-- **Architecture**: ASP.NET Core API hosted on IIS + native Windows SQL Server
-  2019 with Full-Text Search. Docker is optional development tooling only.
+- **Proposed architecture**: ASP.NET Core API hosted on IIS + native Windows
+  SQL Server 2019 with Full-Text Search. Docker is optional development
+  tooling only. IIS deployment is not part of the evaluated capstone result.
 - **Core Entities**: `Asset`, `PreventiveMaintenanceSchedule`,
   `InspectionRecord`, `PreventiveMaintenanceForm`, and
   `PreventiveMaintenanceAcknowledgement` are migrated.
@@ -208,5 +209,5 @@ requires explicit approval.
 Use the repository-controlled wording in
 [`reference/planning/manuscript-platform-baseline.md`](reference/planning/manuscript-platform-baseline.md)
 when updating the capstone manuscript. It records the accepted SQL Server 2019,
-Full-Text Search, serialized-embedding, IIS deployment, and optional-Docker
-boundary without claiming IIS production readiness.
+Full-Text Search, serialized-embedding, proposed IIS architecture, and
+optional-Docker boundary without claiming that IIS deployment was performed.
