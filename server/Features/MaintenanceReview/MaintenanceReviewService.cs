@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using UniPM.Api.Data;
+using UniPM.Api.Features.PreventiveMaintenanceForms;
 using UniPM.Api.Features.Retrieval;
 using UniPM.Api.Models;
 
@@ -285,6 +286,9 @@ internal sealed class MaintenanceReviewService(
                 join document in context.MaintenanceSearchDocuments.AsNoTracking()
                     on inspection.Id equals document.InspectionId
                 where inspectionIds.Contains(inspection.Id)
+                    && (inspection.PreventiveMaintenanceFormId == null
+                        || inspection.PreventiveMaintenanceForm!.Status
+                            == PreventiveMaintenanceFormStatusCatalog.Acknowledged)
                 select new MaintenanceReviewSourceProjection(
                     inspection.Id,
                     inspection.AssetId,

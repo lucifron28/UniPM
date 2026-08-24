@@ -86,9 +86,6 @@ internal static class AuthServiceCollectionExtensions
                 AuthPolicyCatalog.CanAccessCorrectiveMaintenanceHandoff,
                 policy => policy.RequireRole(AuthRoleCatalog.Gsd));
             options.AddPolicy(
-                AuthPolicyCatalog.CanSubmitInspections,
-                policy => policy.RequireRole(AuthRoleCatalog.Gsd, AuthRoleCatalog.Inspector));
-            options.AddPolicy(
                 AuthPolicyCatalog.CanReviewMaintenanceHistory,
                 policy => policy.RequireRole(
                     AuthRoleCatalog.Gsd,

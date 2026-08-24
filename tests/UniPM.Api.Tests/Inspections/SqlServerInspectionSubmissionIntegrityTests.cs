@@ -81,33 +81,6 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
     }
 
     [SqlServerFact]
-    public async Task Concurrent_endpoint_submissions_create_one_inspection_and_one_search_document()
-    {
-        await using var database = await SqlServerTestDatabase.CreateAsync(RequireSqlServerConnection());
-        await using var application = new SqlServerInspectionApplicationFactory(database.ConnectionString);
-        var scheduleId = await application.SeedAsync();
-        using var firstClient = application.CreateClient();
-        using var secondClient = application.CreateClient();
-        var dateInspected = new DateTimeOffset(2026, 7, 17, 9, 0, 0, TimeSpan.FromHours(8));
-
-        var responses = await Task.WhenAll(
-            firstClient.PostAsJsonAsync("/api/v1/inspections/", CreateRequest(scheduleId, dateInspected)),
-            secondClient.PostAsJsonAsync("/api/v1/inspections/", CreateRequest(scheduleId, dateInspected)));
-
-        Assert.Equal(1, responses.Count(response => response.StatusCode == HttpStatusCode.Created));
-        Assert.Equal(1, responses.Count(response => response.StatusCode == HttpStatusCode.Conflict));
-
-        await using var context = database.CreateContext();
-        var inspection = await context.InspectionRecords.SingleAsync(record => record.ScheduleId == scheduleId);
-        var document = await context.MaintenanceSearchDocuments.SingleAsync();
-        var schedule = await context.PreventiveMaintenanceSchedules.SingleAsync(candidate => candidate.Id == scheduleId);
-
-        Assert.Equal(inspection.Id, document.InspectionId);
-        Assert.Equal("Completed", schedule.Status);
-        Assert.NotNull(schedule.CompletedAt);
-    }
-
-    [SqlServerFact]
     public async Task Concurrent_form_submissions_assign_distinct_provisional_file_numbers()
     {
         await using var database = await SqlServerTestDatabase.CreateAsync(RequireSqlServerConnection());
@@ -202,15 +175,6 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
         Assert.Empty(await context.MaintenanceSearchDocumentEmbeddings.ToListAsync());
     }
 
-    private static object CreateRequest(Guid scheduleId, DateTimeOffset dateInspected) => new
-    {
-        scheduleId,
-        inspectorUserId = TestAuthenticationHandler.UserId,
-        dateInspected,
-        isOperational = true,
-        remarks = "Concurrent SQL Server submission"
-    };
-
     private static PreventiveMaintenanceSchedule AddAssetAndSchedule(ApplicationDbContext context)
     {
         var now = DateTimeOffset.UtcNow;
@@ -286,28 +250,6 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
                 services.RemoveAll<DbContextOptions<ApplicationDbContext>>();
                 services.AddDbContextFactory<ApplicationDbContext>(options => options.UseUniPmSqlServer(connectionString));
             });
-        }
-
-        public async Task<Guid> SeedAsync()
-        {
-            await using var scope = Services.CreateAsyncScope();
-            var contextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
-            await using var context = await contextFactory.CreateDbContextAsync();
-            await context.Database.MigrateAsync();
-            context.Users.Add(new ApplicationUser
-            {
-                Id = TestAuthenticationHandler.UserId,
-                UserName = "sql-inspector@unipm.local",
-                NormalizedUserName = "SQL-INSPECTOR@UNIPM.LOCAL",
-                Email = "sql-inspector@unipm.local",
-                NormalizedEmail = "SQL-INSPECTOR@UNIPM.LOCAL",
-                EmailConfirmed = true,
-                DisplayName = "SQL Inspector",
-                IsActive = true
-            });
-            var schedule = AddAssetAndSchedule(context);
-            await context.SaveChangesAsync();
-            return schedule.Id;
         }
 
         public async Task<Guid[]> SeedDraftFormsAsync()

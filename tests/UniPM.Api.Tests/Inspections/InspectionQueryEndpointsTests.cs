@@ -1,4 +1,3 @@
-using System.Text.Json;
 using System.Net;
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Hosting;
@@ -10,6 +9,8 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using UniPM.Api.Data;
 using UniPM.Api.Features.Auth;
 using UniPM.Api.Features.Inspections;
+using UniPM.Api.Features.Retrieval;
+using UniPM.Api.Features.Schedules;
 using UniPM.Api.Models;
 
 namespace UniPM.Api.Tests;
@@ -206,97 +207,6 @@ public sealed class InspectionQueryEndpointsTests
         Assert.Equal(scenario.FirstInspection.Id, history[1].Id);
     }
 
-    [Fact]
-    public async Task Posting_an_inspection_creates_its_search_document()
-    {
-        await using var application = new TestApplicationFactory();
-        var client = application.CreateClient();
-        await application.EnsureAuthenticatedUserAsync();
-        var asset = await CreateAssetAsync(client, "FE-102", "fire-extinguisher");
-        var schedule = await CreateScheduleAsync(
-            client,
-            asset.Id,
-            new DateTimeOffset(2026, 4, 10, 8, 0, 0, TimeSpan.FromHours(8)));
-        var inspection = await CreateInspectionAsync(
-            client,
-            schedule.Id,
-            new DateTimeOffset(2026, 4, 15, 8, 0, 0, TimeSpan.FromHours(8)),
-            false,
-            "mahina ang pressure");
-
-        await using var scope = application.Services.CreateAsyncScope();
-        var contextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
-        await using var context = await contextFactory.CreateDbContextAsync();
-        var document = await context.MaintenanceSearchDocuments.SingleAsync();
-
-        Assert.Equal(inspection.Id, document.InspectionId);
-        Assert.Equal(asset.Id, document.AssetId);
-        Assert.Equal("[\"low_pressure\"]", document.IssueKeysJson);
-        Assert.Contains("remarks: mahina ang pressure", document.SearchText, StringComparison.Ordinal);
-
-        var persistedInspection = await context.InspectionRecords.SingleAsync();
-        var persistedSchedule = await context.PreventiveMaintenanceSchedules.SingleAsync();
-        Assert.Equal(schedule.Id, persistedInspection.ScheduleId);
-        Assert.Equal(asset.Id, persistedInspection.AssetId);
-        Assert.Equal("Completed", persistedSchedule.Status);
-        Assert.NotNull(persistedSchedule.CompletedAt);
-    }
-
-    [Fact]
-    public async Task Posting_a_second_inspection_for_the_same_schedule_returns_conflict_without_extra_records()
-    {
-        await using var application = new TestApplicationFactory();
-        var client = application.CreateClient();
-        await application.EnsureAuthenticatedUserAsync();
-        var asset = await CreateAssetAsync(client, "FE-103", "fire-extinguisher");
-        var schedule = await CreateScheduleAsync(
-            client,
-            asset.Id,
-            new DateTimeOffset(2026, 5, 10, 8, 0, 0, TimeSpan.FromHours(8)));
-        await CreateInspectionAsync(
-            client,
-            schedule.Id,
-            new DateTimeOffset(2026, 5, 15, 8, 0, 0, TimeSpan.FromHours(8)),
-            true,
-            "Operational");
-
-        var response = await client.PostAsJsonAsync("/api/v1/inspections/", new
-        {
-            scheduleId = schedule.Id,
-            inspectorUserId = TestAuthenticationHandler.UserId,
-            dateInspected = new DateTimeOffset(2026, 5, 16, 8, 0, 0, TimeSpan.FromHours(8)),
-            isOperational = true,
-            remarks = "Repeated submission"
-        });
-
-        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
-
-        await using var scope = application.Services.CreateAsyncScope();
-        var contextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
-        await using var context = await contextFactory.CreateDbContextAsync();
-        Assert.Equal(1, await context.InspectionRecords.CountAsync());
-        Assert.Equal(1, await context.MaintenanceSearchDocuments.CountAsync());
-    }
-
-    [Fact]
-    public async Task Posting_an_inspection_for_an_unknown_schedule_returns_not_found()
-    {
-        await using var application = new TestApplicationFactory();
-        var client = application.CreateClient();
-        await application.EnsureAuthenticatedUserAsync();
-
-        var response = await client.PostAsJsonAsync("/api/v1/inspections/", new
-        {
-            scheduleId = Guid.NewGuid(),
-            inspectorUserId = TestAuthenticationHandler.UserId,
-            dateInspected = DateTimeOffset.UtcNow,
-            isOperational = true,
-            remarks = "Unknown schedule"
-        });
-
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-    }
-
     private static async Task<InspectionScenario> CreateScenarioAsync(
         TestApplicationFactory application,
         HttpClient client)
@@ -318,19 +228,19 @@ public sealed class InspectionQueryEndpointsTests
             new DateTimeOffset(2026, 3, 10, 8, 0, 0, TimeSpan.FromHours(8)));
 
         var firstInspection = await CreateInspectionAsync(
-            client,
+            application,
             firstSchedule.Id,
             new DateTimeOffset(2026, 1, 15, 8, 0, 0, TimeSpan.FromHours(8)),
             true,
             "Operational");
         var secondInspection = await CreateInspectionAsync(
-            client,
+            application,
             secondSchedule.Id,
             new DateTimeOffset(2026, 2, 15, 8, 0, 0, TimeSpan.FromHours(8)),
             false,
             "Needs follow-up");
         var thirdInspection = await CreateInspectionAsync(
-            client,
+            application,
             thirdSchedule.Id,
             new DateTimeOffset(2026, 3, 15, 8, 0, 0, TimeSpan.FromHours(8)),
             true,
@@ -388,33 +298,52 @@ public sealed class InspectionQueryEndpointsTests
     }
 
     private static async Task<InspectionResponse> CreateInspectionAsync(
-        HttpClient client,
+        TestApplicationFactory application,
         Guid scheduleId,
         DateTimeOffset dateInspected,
         bool isOperational,
         string remarks)
     {
-        var response = await client.PostAsJsonAsync("/api/v1/inspections/", new
+        await using var scope = application.Services.CreateAsyncScope();
+        var contextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
+        await using var context = await contextFactory.CreateDbContextAsync();
+        var schedule = await context.PreventiveMaintenanceSchedules
+            .SingleAsync(candidate => candidate.Id == scheduleId);
+        var now = DateTimeOffset.UtcNow;
+        var inspection = new InspectionRecord
         {
-            scheduleId,
-            inspectorUserId = TestAuthenticationHandler.UserId,
-            dateInspected,
-            isOperational,
-            remarks
-        });
+            Id = Guid.NewGuid(),
+            ScheduleId = schedule.Id,
+            AssetId = schedule.AssetId,
+            InspectorUserId = TestAuthenticationHandler.UserId,
+            DateInspected = dateInspected,
+            IsOperational = isOperational,
+            Remarks = remarks,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
+        schedule.Status = ScheduleStatusCatalog.Completed;
+        schedule.CompletedAt = now;
+        schedule.UpdatedAt = now;
+        context.InspectionRecords.Add(inspection);
+        await context.SaveChangesAsync();
 
-        response.EnsureSuccessStatusCode();
-        var responseBody = await response.Content.ReadAsStringAsync();
-        using var document = JsonDocument.Parse(responseBody);
-        Assert.False(document.RootElement.TryGetProperty("remarksEmbedding", out _));
-        Assert.False(document.RootElement.TryGetProperty("asset", out _));
-        Assert.False(document.RootElement.TryGetProperty("schedule", out _));
+        var asset = await context.Assets.SingleAsync(candidate => candidate.Id == schedule.AssetId);
+        var projector = scope.ServiceProvider.GetRequiredService<MaintenanceSearchDocumentProjector>();
+        context.MaintenanceSearchDocuments.Add(projector.Build(inspection, asset));
+        await context.SaveChangesAsync();
 
-        var inspection = JsonSerializer.Deserialize<InspectionResponse>(
-            responseBody,
-            new JsonSerializerOptions(JsonSerializerDefaults.Web));
-        Assert.NotNull(inspection);
-        return inspection;
+        return new InspectionResponse(
+            inspection.Id,
+            inspection.ScheduleId,
+            inspection.AssetId,
+            inspection.InspectorUserId,
+            inspection.DateInspected,
+            inspection.IsOperational,
+            inspection.Remarks,
+            inspection.ActionsRecommendations,
+            inspection.CreatedAt,
+            inspection.UpdatedAt);
     }
 
     private sealed class TestApplicationFactory : WebApplicationFactory<Program>
