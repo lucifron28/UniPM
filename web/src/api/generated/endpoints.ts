@@ -43,7 +43,6 @@ import type {
   PreventiveMaintenanceAcknowledgementResponse,
   PreventiveMaintenanceFormResponse,
   ProblemDetails,
-  RecordInspectionDto,
   ScheduleReferenceResponse,
   ScheduleResponse,
   UpdateDraftInspectionRowDto,
@@ -1943,88 +1942,161 @@ export function useGetSchedule<
 }
 
 /**
- * @summary Records a completed field inspection for a schedule
+ * @summary Gets inspection history for an asset
  */
-export const recordInspection = (
-  recordInspectionDto: RecordInspectionDto,
-  signal?: AbortSignal,
-) => {
-  return customInstance<InspectionResponse>({
-    url: `/api/v1/inspections`,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    data: recordInspectionDto,
+export const getInspectionHistory = (assetId: string, signal?: AbortSignal) => {
+  return customInstance<InspectionHistoryResponse[]>({
+    url: `/api/v1/inspections/history/${assetId}`,
+    method: 'GET',
     signal,
   })
 }
 
-export const getRecordInspectionMutationOptions = <
-  TError = ValidationProblemDetails | void | ProblemDetails,
-  TContext = unknown,
->(options?: {
-  mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof recordInspection>>,
-    TError,
-    { data: RecordInspectionDto },
-    TContext
-  >
-}): UseMutationOptions<
-  Awaited<ReturnType<typeof recordInspection>>,
-  TError,
-  { data: RecordInspectionDto },
-  TContext
-> => {
-  const mutationKey = ['recordInspection']
-  const { mutation: mutationOptions } = options
-    ? options.mutation &&
-      'mutationKey' in options.mutation &&
-      options.mutation.mutationKey
-      ? options
-      : { ...options, mutation: { ...options.mutation, mutationKey } }
-    : { mutation: { mutationKey } }
-
-  const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof recordInspection>>,
-    { data: RecordInspectionDto }
-  > = (props) => {
-    const { data } = props ?? {}
-
-    return recordInspection(data)
-  }
-
-  return { mutationFn, ...mutationOptions }
+export const getGetInspectionHistoryQueryKey = (assetId: string) => {
+  return [`/api/v1/inspections/history/${assetId}`] as const
 }
 
-export type RecordInspectionMutationResult = NonNullable<
-  Awaited<ReturnType<typeof recordInspection>>
->
-export type RecordInspectionMutationBody = RecordInspectionDto
-export type RecordInspectionMutationError =
-  ValidationProblemDetails | void | ProblemDetails
-
-/**
- * @summary Records a completed field inspection for a schedule
- */
-export const useRecordInspection = <
-  TError = ValidationProblemDetails | void | ProblemDetails,
-  TContext = unknown,
+export const getGetInspectionHistoryQueryOptions = <
+  TData = Awaited<ReturnType<typeof getInspectionHistory>>,
+  TError = unknown,
 >(
+  assetId: string,
   options?: {
-    mutation?: UseMutationOptions<
-      Awaited<ReturnType<typeof recordInspection>>,
-      TError,
-      { data: RecordInspectionDto },
-      TContext
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getInspectionHistory>>,
+        TError,
+        TData
+      >
+    >
+  },
+) => {
+  const { query: queryOptions } = options ?? {}
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetInspectionHistoryQueryKey(assetId)
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getInspectionHistory>>
+  > = ({ signal }) => getInspectionHistory(assetId, signal)
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: assetId !== null && assetId !== undefined,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getInspectionHistory>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetInspectionHistoryQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getInspectionHistory>>
+>
+export type GetInspectionHistoryQueryError = unknown
+
+export function useGetInspectionHistory<
+  TData = Awaited<ReturnType<typeof getInspectionHistory>>,
+  TError = unknown,
+>(
+  assetId: string,
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getInspectionHistory>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getInspectionHistory>>,
+          TError,
+          Awaited<ReturnType<typeof getInspectionHistory>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useGetInspectionHistory<
+  TData = Awaited<ReturnType<typeof getInspectionHistory>>,
+  TError = unknown,
+>(
+  assetId: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getInspectionHistory>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getInspectionHistory>>,
+          TError,
+          Awaited<ReturnType<typeof getInspectionHistory>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useGetInspectionHistory<
+  TData = Awaited<ReturnType<typeof getInspectionHistory>>,
+  TError = unknown,
+>(
+  assetId: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getInspectionHistory>>,
+        TError,
+        TData
+      >
     >
   },
   queryClient?: QueryClient,
-): UseMutationResult<
-  Awaited<ReturnType<typeof recordInspection>>,
-  TError,
-  { data: RecordInspectionDto },
-  TContext
-> => {
-  return useMutation(getRecordInspectionMutationOptions(options), queryClient)
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+/**
+ * @summary Gets inspection history for an asset
+ */
+
+export function useGetInspectionHistory<
+  TData = Awaited<ReturnType<typeof getInspectionHistory>>,
+  TError = unknown,
+>(
+  assetId: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getInspectionHistory>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+} {
+  const queryOptions = getGetInspectionHistoryQueryOptions(assetId, options)
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+
+  return withQueryKey(query, queryOptions.queryKey)
 }
 
 /**
@@ -2174,164 +2246,6 @@ export function useListInspections<
   queryKey: DataTag<QueryKey, TData, TError>
 } {
   const queryOptions = getListInspectionsQueryOptions(params, options)
-
-  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
-    TData,
-    TError
-  > & { queryKey: DataTag<QueryKey, TData, TError> }
-
-  return withQueryKey(query, queryOptions.queryKey)
-}
-
-/**
- * @summary Gets inspection history for an asset
- */
-export const getInspectionHistory = (assetId: string, signal?: AbortSignal) => {
-  return customInstance<InspectionHistoryResponse[]>({
-    url: `/api/v1/inspections/history/${assetId}`,
-    method: 'GET',
-    signal,
-  })
-}
-
-export const getGetInspectionHistoryQueryKey = (assetId: string) => {
-  return [`/api/v1/inspections/history/${assetId}`] as const
-}
-
-export const getGetInspectionHistoryQueryOptions = <
-  TData = Awaited<ReturnType<typeof getInspectionHistory>>,
-  TError = unknown,
->(
-  assetId: string,
-  options?: {
-    query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof getInspectionHistory>>,
-        TError,
-        TData
-      >
-    >
-  },
-) => {
-  const { query: queryOptions } = options ?? {}
-
-  const queryKey =
-    queryOptions?.queryKey ?? getGetInspectionHistoryQueryKey(assetId)
-
-  const queryFn: QueryFunction<
-    Awaited<ReturnType<typeof getInspectionHistory>>
-  > = ({ signal }) => getInspectionHistory(assetId, signal)
-
-  return {
-    queryKey,
-    queryFn,
-    enabled: assetId !== null && assetId !== undefined,
-    ...queryOptions,
-  } as UseQueryOptions<
-    Awaited<ReturnType<typeof getInspectionHistory>>,
-    TError,
-    TData
-  > & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type GetInspectionHistoryQueryResult = NonNullable<
-  Awaited<ReturnType<typeof getInspectionHistory>>
->
-export type GetInspectionHistoryQueryError = unknown
-
-export function useGetInspectionHistory<
-  TData = Awaited<ReturnType<typeof getInspectionHistory>>,
-  TError = unknown,
->(
-  assetId: string,
-  options: {
-    query: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof getInspectionHistory>>,
-        TError,
-        TData
-      >
-    > &
-      Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getInspectionHistory>>,
-          TError,
-          Awaited<ReturnType<typeof getInspectionHistory>>
-        >,
-        'initialData'
-      >
-  },
-  queryClient?: QueryClient,
-): DefinedUseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>
-}
-export function useGetInspectionHistory<
-  TData = Awaited<ReturnType<typeof getInspectionHistory>>,
-  TError = unknown,
->(
-  assetId: string,
-  options?: {
-    query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof getInspectionHistory>>,
-        TError,
-        TData
-      >
-    > &
-      Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getInspectionHistory>>,
-          TError,
-          Awaited<ReturnType<typeof getInspectionHistory>>
-        >,
-        'initialData'
-      >
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>
-}
-export function useGetInspectionHistory<
-  TData = Awaited<ReturnType<typeof getInspectionHistory>>,
-  TError = unknown,
->(
-  assetId: string,
-  options?: {
-    query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof getInspectionHistory>>,
-        TError,
-        TData
-      >
-    >
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>
-}
-/**
- * @summary Gets inspection history for an asset
- */
-
-export function useGetInspectionHistory<
-  TData = Awaited<ReturnType<typeof getInspectionHistory>>,
-  TError = unknown,
->(
-  assetId: string,
-  options?: {
-    query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof getInspectionHistory>>,
-        TError,
-        TData
-      >
-    >
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>
-} {
-  const queryOptions = getGetInspectionHistoryQueryOptions(assetId, options)
 
   const query = useQuery(queryOptions, queryClient) as UseQueryResult<
     TData,

@@ -62,13 +62,6 @@ const scheduleOperations = [
 const inspectionOperations = [
   [
     '/api/v1/inspections',
-    'post',
-    'RecordInspection',
-    '201',
-    'InspectionResponse',
-  ],
-  [
-    '/api/v1/inspections',
     'get',
     'ListInspections',
     '200',
@@ -164,7 +157,7 @@ for (const [
     )
   }
 
-  if (operationId === 'RecordInspection' || operationId === 'GetInspection') {
+  if (operationId === 'GetInspection') {
     if (schema.$ref !== `#/components/schemas/${schemaName}`) {
       throw new Error(
         `Required inspection operation ${operationId} must return ${schemaName}.`,
