@@ -245,6 +245,16 @@ supporting acknowledged sources and locators, limitations, and no-diagnosis
 wording. The language model will not calculate authoritative statistics,
 diagnose equipment, infer causes, approve actions, or mutate records.
 
+## Evaluated MVP Definition
+
+The authoritative evaluated-MVP boundary is documented in
+[`reference/planning/mvp-definition.md`](reference/planning/mvp-definition.md).
+It keeps the implemented maintenance-review endpoint separate from the
+planned inspection-history analysis capability and defines the acknowledged-
+history, deterministic-analysis, source-retrieval, optional-interpretation,
+web, and technical-observability scope. Mobile remains part of UniPM but is
+owned by a separate partner workstream.
+
 ## Authentication
 
 UniPM uses ASP.NET Core IdentityCore with Guid keys, 15-minute configurable JWT
@@ -416,8 +426,9 @@ contract. Inspection-submission integrity, retrieval/test layout organization,
 and explicit free-text-name sanitizer limitation documentation are complete.
 The web foundation and browser authentication integration are implemented and
 merged; the Flutter mobile foundation and initial Draft form workflow are also
-implemented and merged. The reference-document foundation is implemented and
-merged as a fictional metadata and sectioning foundation; approved
+implemented and merged in a separate partner-owned workstream. This workstream
+does not implement mobile features. The reference-document foundation is
+implemented and merged as a fictional metadata and sectioning foundation; approved
 institutional source authorization and ingestion remain pending, and OEM
 retrieval is excluded from the evaluated MVP. EXP-003 executed a local offline
 Granite multilingual embedding baseline on the fictional maintenance fixture;

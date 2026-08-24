@@ -246,12 +246,17 @@ application code, with RAG limited to retrieving supporting acknowledged
 records and optional generation limited to explaining computed results.
 
 Browser authentication integration, the reference-document foundation, and the
-Flutter mobile foundation are implemented and merged. The mobile foundation
-includes memory-only authentication and the initial Draft preventive-
-maintenance form workflow. Offline synchronization is deferred and its
-persistence and synchronization architecture remain undecided; submission,
-acknowledgement, signatures, QR scanning, and later field actions remain outside
-the current mobile scope.
+Flutter mobile foundation are implemented and merged in the separate,
+partner-owned mobile workstream. The mobile foundation includes memory-only
+authentication and the initial Draft preventive-maintenance form workflow.
+Offline synchronization is deferred and its persistence and synchronization
+architecture remain undecided; submission, acknowledgement, signatures, QR
+scanning, and later field actions remain outside this workstream.
+
+The authoritative evaluated-MVP boundary for the current backend and web
+workstream is [`reference/planning/mvp-definition.md`](reference/planning/mvp-definition.md).
+The broader inspection-history analysis remains planned until its typed
+contract and deterministic implementation are merged.
 
 ## Current Unblocked Work
 
@@ -259,11 +264,12 @@ Priority should move risk-first:
 
 1. Confirm the backend runs and tests pass.
 2. Preserve engineering evidence for implementation and verification.
-3. Benchmark the completed lexical and semantic channels separately; the
-   semantic provider remains operationally optional and degradable.
-4. Fuse retrieval results with inspectable RRF and explicit degradation.
-5. Preserve the completed source-bounded maintenance-review path.
-6. Preserve coarse authentication and authorization while final RBAC remains
+3. Define and implement deterministic acknowledged-history analysis.
+4. Add source-bounded RAG-assisted interpretation without replacing facts.
+5. Synchronize the analysis API contract and add the web analysis workspace.
+6. Expose the existing maintenance-review capability in a separate web view.
+7. Extend bounded technical observability and verify the central MVP workflow.
+8. Preserve coarse authentication and authorization while final RBAC remains
    provisional.
 
 The deterministic synthetic fixture, test-only retrieval evaluation manifest,

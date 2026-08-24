@@ -9,16 +9,17 @@ The current strategy is risk-first:
 2. preserve reproducible synthetic data and evidence;
 3. preserve the confirmed multi-asset form lifecycle and acknowledged-only
    history boundary;
-4. complete separately approved mobile field workflows without duplicating
-   backend business rules;
-5. preserve explicit documentation of known sanitizer limitations;
-6. preserve executed multilingual benchmark evidence without treating it as
+4. define and implement deterministic acknowledged-history analysis;
+5. add source-bounded RAG-assisted interpretation without replacing facts;
+6. synchronize the analysis API and web workspaces;
+7. preserve explicit documentation of known sanitizer limitations;
+8. preserve executed multilingual benchmark evidence without treating it as
    real institutional performance;
-7. establish an authorized institutional-procedure corpus before any separate
+9. establish an authorized institutional-procedure corpus before any separate
    institutional retrieval work; OEM retrieval is excluded from the evaluated
    MVP;
-8. preserve the bounded maintenance-history review contract;
-9. keep final RBAC, audit, and remaining institutional policy rules deferred.
+10. preserve the bounded maintenance-history review contract;
+11. keep final RBAC, audit, and remaining institutional policy rules deferred.
 
 The RAG feature is not a chatbot and not an autonomous diagnostic tool. It is a
 bounded maintenance-history review feature that retrieves source records and
@@ -91,25 +92,35 @@ helps a human verify them.
 - Planned RAG-assisted inspection-history analysis: not implemented. See
   [`reference/planning/rag-assisted-inspection-history-analysis.md`](rag-assisted-inspection-history-analysis.md).
 - Flutter mobile foundation: implemented and merged, including memory-only
-  authentication and the initial Draft preventive-maintenance form workflow.
+  authentication and the initial Draft preventive-maintenance form workflow in
+  a separate partner-owned workstream. This workstream does not implement
+  mobile features.
   Offline synchronization is deferred and its persistence and synchronization
   architecture remain undecided. Submission, acknowledgement, signatures, QR
   scanning, and later field actions remain separately approved work.
 
+The authoritative evaluated-MVP boundary is documented in
+[`reference/planning/mvp-definition.md`](mvp-definition.md). The implemented
+`POST /api/v1/maintenance-review` capability remains separate from the planned
+inspection-history analysis service.
+
 ## Immediate Task Order
 
-1. Completed: `fix/inspection-submission-integrity`.
-2. Completed: retrieval and test folder organization refactor.
-3. Completed: explicit documentation of the MVP sanitizer's free-text-name
-   limitation.
-4. Completed: `feat/auth-refresh-sessions`.
-5. Completed: form-domain, draft, submission, acknowledgement, and
-   corrective-action handoff backend increments.
-6. Completed: `chore/preventive-maintenance-api-contract-sync`.
-7. Completed: read-only web preventive-maintenance form review.
-8. Completed: `feat/mobile-foundation` authentication foundation.
-9. Completed: `feat/mobile-pm-form-drafts` initial mobile Draft form workflow.
-10. The next mobile field workflow capability requires explicit approval.
+The current backend/web workstream proceeds in this order:
+
+1. Define the final evaluated MVP.
+2. Define the typed inspection-history analysis contract.
+3. Implement deterministic acknowledged-history analysis.
+4. Add source-bounded RAG-assisted interpretation.
+5. Synchronize the analysis API contract and generated client.
+6. Add the web inspection-history analysis workspace.
+7. Expose the existing maintenance-review capability in a separate web view.
+8. Extend bounded observability and run focused MVP verification.
+9. Align final project documentation and manuscript guidance.
+
+The Flutter foundation and initial Draft form workflow are completed in a
+separate partner-owned workstream. Later mobile field capabilities are not a
+blocker for this sequence.
 
 ## Reference Evidence Roadmap
 

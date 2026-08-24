@@ -11,7 +11,7 @@ promise that every institutional workflow is finalized.
 | API | ASP.NET Core Web API |
 | Database | Native Windows SQL Server 2019, compatibility level `150`, Full-Text Search |
 | Web | React, TypeScript, Vite, generated OpenAPI client |
-| Mobile | Flutter Android-first client with memory-only authentication and Draft form workflow |
+| Mobile | Flutter Android-first client with memory-only authentication and Draft form workflow, maintained by a separate partner-owned workstream |
 | Proposed deployment target | ASP.NET Core hosted through IIS with native Windows SQL Server |
 | Docker | Optional development tooling for the retained SQL Server 2025 experiment |
 | Semantic retrieval | Versioned serialized embeddings, bounded SQL candidates, application-side cosine similarity |
@@ -103,6 +103,9 @@ web application exposes the implemented read and role-gated modules described
 in [`web/README.md`](../../../web/README.md).
 
 ## Mobile Capability
+
+The mobile client is maintained in a separate partner-owned workstream. The
+backend and web analysis workstream does not implement mobile field features.
 
 The Flutter client currently provides:
 
