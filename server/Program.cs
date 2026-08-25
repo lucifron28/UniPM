@@ -344,7 +344,8 @@ app.MapGet("/", () => Results.Ok(new
 }))
 .WithName("GetApiInfo");
 
-app.MapApiEndpoints(maintenanceReviewEnabled);
+app.MapApiEndpoints(app.Configuration.GetValue<bool>(
+    $"{MaintenanceReviewOptions.SectionName}:Enabled"));
 
 app.MapHealthChecks("/health/live", new HealthCheckOptions
 {
