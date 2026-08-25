@@ -133,12 +133,15 @@ sanitization, or summaries.
 
 ## Maintenance Review
 
-The source-bounded maintenance-review loop is implemented as an explicitly
-enabled, authenticated endpoint. It performs at most two fused retrieval passes,
-uses deterministic context tiers, sanitizes provider-bound text in a
-request-scoped session, and returns original source records beside every
-summary status. It does not persist review data, prompts, summaries, or token
-maps and does not make autonomous maintenance decisions.
+The source-bounded maintenance-review loop was implemented as an explicitly
+enabled, authenticated endpoint and evaluated as controlled development work.
+In the current PMIS-only validation baseline the endpoint is mapped into the
+runtime contract only when explicitly enabled, so ordinary GSD workflows
+never contact retrieval, embeddings, or a summary provider. Where its sources
+remain preserved, behavior is unchanged: at most two fused retrieval passes,
+deterministic context tiers, request-scoped sanitization, original source
+records beside every summary status, no persistence of review data, prompts,
+summaries, or token maps, and no autonomous maintenance decisions.
 
 MVP prompt sanitization is pattern-based token masking and pseudonymization for
 email, supported Philippine mobile numbers, and labeled IDs. It does not

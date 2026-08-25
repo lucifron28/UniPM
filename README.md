@@ -1,10 +1,13 @@
 # UniPM
 
 UniPM is a web and mobile preventive-maintenance system for the university
-General Services Department. The repository contains an ASP.NET Core API,
-multi-asset preventive-maintenance forms, and an implemented bounded
-maintenance-history review MVP. The review endpoint is available only when
-explicitly enabled and is disabled in committed configuration.
+General Services Department. The repository contains an ASP.NET Core API and
+multi-asset preventive-maintenance forms. The current validation baseline
+focuses on the preventive-maintenance information system while further GSD
+requirements are being validated: core PMIS workflows run without any AI
+provider configuration. Maintenance-history RAG was previously implemented
+and evaluated as controlled development work and is not exposed by this
+validation baseline.
 
 ## License
 
@@ -55,6 +58,8 @@ reports degradation and uses the lexical channel without labeling the result as
 hybrid. Inspectable Reciprocal Rank Fusion combines eligible lexical and
 semantic results. Native SQL Server vector features and a separate vector
 database are not required.
+These retrieval channels persist as inactive infrastructure in this
+validation baseline and are not exposed through any public runtime path.
 
 ## Current API Surface
 
@@ -69,9 +74,7 @@ The backend currently provides:
   publication to official history and retrieval;
 - a GSD-only corrective-action handoff read model for acknowledged forms;
 - JWT login, refresh, logout, and current-user routes under `/api/v1/auth`;
-- policy-protected asset, schedule, inspection, and maintenance-review writes;
-- `POST /api/v1/maintenance-review` for authenticated, source-bounded
-  maintenance-history review when explicitly enabled;
+- policy-protected asset, schedule, and inspection writes;
 - reference-data categories, validation/error contracts, health checks, tests,
   and backend CI.
 
@@ -199,34 +202,18 @@ The optional legacy SQL Server 2025 Docker Compose experiment is documented in
 not the local baseline, is not required for IIS deployment, and must not reuse a
 SQL Server 2019 data volume.
 
-## Maintenance Review
+## Maintenance History Review Status
 
-The maintenance-review endpoint is disabled in committed configuration and is
-available in any environment only when explicitly enabled. It requires the
-`CanReviewMaintenanceHistory` policy (`GSD`, `Supervisor`, or
-`DepartmentHead`) and performs at most two fused retrieval passes. For local
-source-only review, set
-`UNIPM_MAINTENANCE_REVIEW_ENABLED=true` and keep
-`UNIPM_SUMMARY_ENABLED=false`. The endpoint returns selected original source
-records when summaries are disabled, unavailable, or rejected by citation
-validation. It never persists prompts, summaries, or sanitizer token maps.
-
-Its MVP prompt sanitizer is limited to pattern-based masking of email,
-supported Philippine mobile numbers, and labeled employee/student/staff/personnel
-IDs. It does not generally detect free-text personal names. Keep external
-provider use to fictional or separately reviewed, pre-sanitized data; see the
-[maintenance-review API contract](reference/api/maintenance-review-v0.1.md) for
-the provider and source-record boundary.
-
-The provider-neutral summary adapter supports an optional `ThinkingMode` value:
-empty omits the provider field, while `enabled` or `disabled` sends the
-corresponding structured provider option. DeepSeek V4 experiment configuration
-uses `deepseek-v4-flash` with `UNIPM_SUMMARY_THINKING_MODE=disabled`; committed
-summary configuration remains disabled and no API key belongs in the repo.
-
-See [`reference/api/maintenance-review-v0.1.md`](reference/api/maintenance-review-v0.1.md)
-for the request, response, evidence-status, summary-status, source-selection,
-and provider configuration contract.
+Maintenance-history RAG was previously implemented and evaluated as
+controlled development work; see `reference/evidence/` and
+[`reference/api/maintenance-review-v0.1.md`](reference/api/maintenance-review-v0.1.md)
+for what was built at the time. In the current PMIS-only validation baseline,
+the review endpoint is mapped into the runtime contract only when
+`MaintenanceReview:Enabled` is explicitly true, and committed configuration
+keeps it disabled, so the published OpenAPI contract and the generated web
+client contain no maintenance-review operation. Retrieval, fusion, embedding,
+and summary sources remain preserved in the repository pending cleanup
+decisions after GSD validates the PMIS direction.
 
 ## Planned Inspection-History Analysis
 
@@ -406,8 +393,9 @@ Inspection list/detail reads, maintenance issue normalization, and internal
 lexical FTS retrieval are complete. Lexical retrieval searches only the
 rebuildable `MaintenanceSearchDocument.SearchText` projection and returns
 source-traceable inspection metadata. It is an internal retriever, not a
-standalone public search endpoint; fused retrieval feeds the authenticated
-`POST /api/v1/maintenance-review` endpoint. Domain-contract hardening is
+standalone public search endpoint; internal fused retrieval has no public
+endpoint in the validation baseline, and the previously implemented
+maintenance-review endpoint is not exposed by default. Domain-contract hardening is
 complete: stable persisted codes have feature-owned
 catalogs, canonical API/storage values, SQL Server constraints, and migration
 preflight checks. Semantic retrieval is now an internal channel required by the
