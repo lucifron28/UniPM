@@ -344,7 +344,7 @@ app.MapGet("/", () => Results.Ok(new
 }))
 .WithName("GetApiInfo");
 
-app.MapApiEndpoints();
+app.MapApiEndpoints(maintenanceReviewEnabled);
 
 app.MapHealthChecks("/health/live", new HealthCheckOptions
 {

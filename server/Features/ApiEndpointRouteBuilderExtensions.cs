@@ -10,7 +10,9 @@ namespace UniPM.Api.Features;
 
 public static class ApiEndpointRouteBuilderExtensions
 {
-    public static IEndpointRouteBuilder MapApiEndpoints(this IEndpointRouteBuilder endpoints)
+    public static IEndpointRouteBuilder MapApiEndpoints(
+        this IEndpointRouteBuilder endpoints,
+        bool maintenanceReviewEnabled)
     {
         var api = endpoints.MapGroup("/api/v1");
 
@@ -20,7 +22,10 @@ public static class ApiEndpointRouteBuilderExtensions
         api.MapSchedulesEndpoints();
         api.MapInspectionsEndpoints();
         api.MapPreventiveMaintenanceFormEndpoints();
-        api.MapMaintenanceReviewEndpoints();
+        if (maintenanceReviewEnabled)
+        {
+            api.MapMaintenanceReviewEndpoints();
+        }
 
         return endpoints;
     }
