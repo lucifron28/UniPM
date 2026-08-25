@@ -6,7 +6,7 @@
   },
   "servers": [
     {
-      "url": "http://localhost:5000/"
+      "url": "http://localhost:5199/"
     }
   ],
   "paths": {
@@ -1374,29 +1374,6 @@
           }
         }
       }
-    },
-    "/api/v1/maintenance-review": {
-      "post": {
-        "tags": [
-          "Maintenance Review"
-        ],
-        "operationId": "CreateMaintenanceReview",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/MaintenanceReviewRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
     }
   },
   "components": {
@@ -2013,22 +1990,6 @@
           }
         }
       },
-      "MaintenanceReviewRequest": {
-        "type": "object",
-        "properties": {
-          "assetId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "findingText": {
-            "type": "string"
-          },
-          "generateSummary": {
-            "type": "boolean"
-          }
-        },
-        "additionalProperties": false
-      },
       "PreventiveMaintenanceAcknowledgementResponse": {
         "required": [
           "id",
@@ -2484,9 +2445,6 @@
     },
     {
       "name": "Preventive Maintenance Forms"
-    },
-    {
-      "name": "Maintenance Review"
     }
   ]
 }

@@ -39,7 +39,6 @@ import type {
   ListSchedulesParams,
   LoginRequest,
   LoginResponse,
-  MaintenanceReviewRequest,
   PreventiveMaintenanceAcknowledgementResponse,
   PreventiveMaintenanceFormResponse,
   ProblemDetails,
@@ -3411,87 +3410,6 @@ export const useDeletePreventiveMaintenanceFormDraftInspection = <
 > => {
   return useMutation(
     getDeletePreventiveMaintenanceFormDraftInspectionMutationOptions(options),
-    queryClient,
-  )
-}
-
-export const createMaintenanceReview = (
-  maintenanceReviewRequest: MaintenanceReviewRequest,
-  signal?: AbortSignal,
-) => {
-  return customInstance<void>({
-    url: `/api/v1/maintenance-review`,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    data: maintenanceReviewRequest,
-    signal,
-  })
-}
-
-export const getCreateMaintenanceReviewMutationOptions = <
-  TError = unknown,
-  TContext = unknown,
->(options?: {
-  mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof createMaintenanceReview>>,
-    TError,
-    { data: MaintenanceReviewRequest },
-    TContext
-  >
-}): UseMutationOptions<
-  Awaited<ReturnType<typeof createMaintenanceReview>>,
-  TError,
-  { data: MaintenanceReviewRequest },
-  TContext
-> => {
-  const mutationKey = ['createMaintenanceReview']
-  const { mutation: mutationOptions } = options
-    ? options.mutation &&
-      'mutationKey' in options.mutation &&
-      options.mutation.mutationKey
-      ? options
-      : { ...options, mutation: { ...options.mutation, mutationKey } }
-    : { mutation: { mutationKey } }
-
-  const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof createMaintenanceReview>>,
-    { data: MaintenanceReviewRequest }
-  > = (props) => {
-    const { data } = props ?? {}
-
-    return createMaintenanceReview(data)
-  }
-
-  return { mutationFn, ...mutationOptions }
-}
-
-export type CreateMaintenanceReviewMutationResult = NonNullable<
-  Awaited<ReturnType<typeof createMaintenanceReview>>
->
-export type CreateMaintenanceReviewMutationBody = MaintenanceReviewRequest
-export type CreateMaintenanceReviewMutationError = unknown
-
-export const useCreateMaintenanceReview = <
-  TError = unknown,
-  TContext = unknown,
->(
-  options?: {
-    mutation?: UseMutationOptions<
-      Awaited<ReturnType<typeof createMaintenanceReview>>,
-      TError,
-      { data: MaintenanceReviewRequest },
-      TContext
-    >
-  },
-  queryClient?: QueryClient,
-): UseMutationResult<
-  Awaited<ReturnType<typeof createMaintenanceReview>>,
-  TError,
-  { data: MaintenanceReviewRequest },
-  TContext
-> => {
-  return useMutation(
-    getCreateMaintenanceReviewMutationOptions(options),
     queryClient,
   )
 }
