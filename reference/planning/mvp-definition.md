@@ -49,11 +49,16 @@ workflow; they are a workflow prototype, not the final institutional schema.
 - Multi-row preventive-maintenance forms: Draft creation, inspection-row
   add/edit/delete within a Draft.
 - Whole-form submission with provisional file numbers.
-- Whole-form acknowledgement by the Department Head role.
+- Whole-form Department Head acknowledgement with name, position, and
+  signature captured as signatory data through the authenticated
+  GSD/skilled-worker workflow; the Department Head needs no separate UniPM
+  account, and acknowledgement is not corrective-budget approval.
 - Linked schedule completion after acknowledgement only.
 - Acknowledged-only official maintenance history (Draft and Submitted rows are
   never official history).
-- Deterministic reports/dashboard behavior already implemented.
+- Existing deterministic list, filter, history, and status-summary behavior
+  where currently implemented; the web dashboard is a placeholder and final
+  GSD dashboard/reporting requirements remain subject to validation.
 - Corrective-action handoff preparation as a read model ending at manual GSD
   Work Management System encoding.
 - Web PMIS workflow (React) and the partner-owned mobile Draft workflow.

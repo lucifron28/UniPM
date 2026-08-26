@@ -25,7 +25,10 @@
   - Initial `InitialDomainSchema` migration.
   - Asset create, list, detail, and QR lookup endpoints.
   - Schedule create, list, and detail endpoints.
-  - Inspection submission, list, detail, and asset-history endpoints.
+  - Inspection list, detail, and acknowledged asset-history read endpoints.
+    The standalone submission endpoint was removed by the official-inspection-
+    boundary refactor; inspection-row creation and editing occur only through
+    Draft preventive-maintenance forms.
   - Versioned maintenance issue lexicon with deterministic multilingual
     normalization and category-bounded matching.
   - Rebuildable `MaintenanceSearchDocument` projection with deterministic

@@ -68,14 +68,16 @@ The backend currently provides:
 
 - asset creation, list, detail, and QR lookup;
 - schedule creation, list, and detail;
-- inspection submission, list, detail, and asset-history lookup;
+- inspection list, detail, and acknowledged asset-history reads;
+  inspection-row creation and editing occur through Draft preventive-
+  maintenance forms;
 - preventive-maintenance form drafting and inspection-row management;
 - whole-form submission with provisional file-number allocation;
 - whole-form acknowledgement, schedule completion, and acknowledged-row
   publication to official history and retrieval;
 - a GSD-only corrective-action handoff read model for acknowledged forms;
 - JWT login, refresh, logout, and current-user routes under `/api/v1/auth`;
-- policy-protected asset, schedule, and inspection writes;
+- policy-protected asset, schedule, and preventive-maintenance form operations;
 - reference-data categories, validation/error contracts, health checks, tests,
   and backend CI.
 
