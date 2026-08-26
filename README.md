@@ -52,9 +52,10 @@ projection. SQL Server Full-Text Search retrieves lexical candidates from
 `MaintenanceSearchDocument.SearchText`. Versioned serialized embedding vectors
 are stored with relational document metadata; the backend filters a bounded SQL
 candidate set and calculates cosine similarity in application memory. Semantic
-retrieval is a required UniPM retrieval channel, while its embedding provider is
-operationally optional. When embeddings are unavailable, the system explicitly
-reports degradation and uses the lexical channel without labeling the result as
+retrieval was implemented as an internal channel of the previously evaluated
+maintenance-history review feature; its embedding provider is disabled by
+default and inactive here. When embeddings were unavailable, the preserved
+system reported degradation and used the lexical channel without labeling the
 hybrid. Inspectable Reciprocal Rank Fusion combines eligible lexical and
 semantic results. Native SQL Server vector features and a separate vector
 database are not required.
@@ -156,7 +157,19 @@ $env:UNIPM_DEV_USER_PASSWORD = "<temporary-development-password>"
 dotnet ef database update --project server
 dotnet run --project server -- --seed-synthetic
 dotnet run --project server -- --seed-development-users
+```
+
+For a named SQL Server instance, replace `Server=.` with
+`Server=localhost\INSTANCE_NAME`.
+
+That is everything the PMIS validation build needs. The commands below belong
+to the preserved, inactive retrieval infrastructure and are NOT required for
+ordinary PMIS operation:
+
+```powershell
+# Historical/inactive retrieval tooling (not needed for the PMIS validation build):
 dotnet run --project server -- --rebuild-maintenance-search-documents
+dotnet run --project server -- --rebuild-maintenance-embeddings
 ```
 
 For a named SQL Server instance, replace `Server=.` with
@@ -215,32 +228,29 @@ client contain no maintenance-review operation. Retrieval, fusion, embedding,
 and summary sources remain preserved in the repository pending cleanup
 decisions after GSD validates the PMIS direction.
 
-## Planned Inspection-History Analysis
+## Historical Planning Record: Inspection-History Analysis (Not Active)
 
-The planned RAG-assisted inspection-history analysis capability is documented in
-[`reference/planning/rag-assisted-inspection-history-analysis.md`](reference/planning/rag-assisted-inspection-history-analysis.md).
-It is not implemented by `POST /api/v1/maintenance-review`. The planned
-capability will analyze acknowledged preventive-maintenance inspection records
+The RAG-assisted inspection-history analysis capability was a planning
+direction that was never implemented. Its design record is preserved unchanged
+in [`reference/planning/rag-assisted-inspection-history-analysis.md`](reference/planning/rag-assisted-inspection-history-analysis.md).
+It described analysis of acknowledged preventive-maintenance inspection records
 for recurring findings, condition frequencies, time comparisons and recurrence
-intervals, cross-asset patterns, distributions, and single-asset timelines.
+intervals, cross-asset patterns, distributions, and single-asset timelines,
+with deterministic fact computation preceding any RAG-assisted interpretation.
+It is not an active roadmap item on this branch.
 
-SQL and deterministic application code will calculate the authoritative facts;
-RAG will retrieve the exact acknowledged records supporting them; and optional
-generation will explain only the computed result model and displayed sources.
-Every output will include scope/date range, computed facts, interpretation,
-supporting acknowledged sources and locators, limitations, and no-diagnosis
-wording. The language model will not calculate authoritative statistics,
-diagnose equipment, infer causes, approve actions, or mutate records.
+## Validation Baseline Definition
 
-## Evaluated MVP Definition
-
-The authoritative evaluated-MVP boundary is documented in
-[`reference/planning/mvp-definition.md`](reference/planning/mvp-definition.md).
-It keeps the implemented maintenance-review endpoint separate from the
-planned inspection-history analysis capability and defines the acknowledged-
-history, deterministic-analysis, source-retrieval, optional-interpretation,
-web, and technical-observability scope. Mobile remains part of UniPM but is
+The active boundary for this branch is documented in
+[`reference/planning/mvp-definition.md`](reference/planning/mvp-definition.md):
+the PMIS-only GSD validation baseline. It defines the acknowledged-history,
+form-lifecycle, corrective-handoff, web, and mobile scope demonstrated without
+AI, preserves the previous RAG-inclusive evaluated-MVP definition as history,
+and claims no replacement innovation. Mobile remains part of UniPM but is
 owned by a separate partner workstream.
+
+A concise GSD validation note with the prepared validation questions is at
+[`reference/planning/gsd-validation-note.md`](reference/planning/gsd-validation-note.md).
 
 ## Authentication
 
@@ -398,8 +408,8 @@ endpoint in the validation baseline, and the previously implemented
 maintenance-review endpoint is not exposed by default. Domain-contract hardening is
 complete: stable persisted codes have feature-owned
 catalogs, canonical API/storage values, SQL Server constraints, and migration
-preflight checks. Semantic retrieval is now an internal channel required by the
-target maintenance-history review workflow: it stores only document embeddings,
+preflight checks. Semantic retrieval was implemented as an internal channel of
+the evaluated maintenance-history review workflow: it stored only document embeddings,
 never query vectors, and does not affect core or lexical workflows when its
 provider is disabled. Internal fused retrieval uses RRF with K=60, candidate
 depth 20, output limit 10, deterministic ordering, component-rank traceability,

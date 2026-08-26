@@ -5,7 +5,10 @@
 - **Test**: `dotnet test .\UniPM.slnx --no-build` (or `dotnet test`)
 - **Native database baseline**: SQL Server 2019, Full-Text Search, compatibility level `150`.
 - **Migration Update**: set a process-only Windows Authentication
-  `ConnectionStrings__DefaultConnection`, run `dotnet ef database update --project server`, then run `dotnet run --project server -- --rebuild-maintenance-search-documents` and, when embeddings are enabled, `dotnet run --project server -- --rebuild-maintenance-embeddings`.
+  `ConnectionStrings__DefaultConnection`, run `dotnet ef database update --project server`. The
+  `--rebuild-maintenance-search-documents` / `--rebuild-maintenance-embeddings`
+  commands belong to the preserved inactive retrieval tooling and are not
+  needed for ordinary PMIS operation.
 - **Optional legacy Docker 2025 experiment**: `docker compose --env-file .env.sqlserver2025 -f docker-compose.sqlserver2025.yml up --build -d`
 - **Optional legacy Docker stop**: `docker compose --env-file .env.sqlserver2025 -f docker-compose.sqlserver2025.yml down`
 
@@ -82,6 +85,7 @@ dotnet run --project server -- --migrate-database
 dotnet run --project server -- --seed-synthetic
 dotnet run --project server -- --seed-development-users
 dotnet run --project server -- --reset-synthetic-seed
+# Historical/inactive retrieval tooling - not required for the PMIS validation build:
 dotnet run --project server -- --rebuild-maintenance-search-documents
 dotnet run --project server -- --rebuild-maintenance-embeddings
 ```
@@ -96,14 +100,13 @@ The rebuild command refreshes one search document per persisted inspection from
 approved operational fields. It is explicit, transactional on SQL Server, and
 does not run during normal API startup.
 
-## Retrieval Architecture Rule
+## Retrieval Architecture (Historical/Inactive Infrastructure)
 
-Semantic retrieval is a required target channel of the UniPM
-maintenance-history review feature, but it is operationally degradable. If
-embeddings are unavailable, maintenance review may use SQL, lexicon
-normalization, and FTS fallback while explicitly reporting lexical fallback.
-Core preventive-maintenance workflows must never depend on embeddings or an
-LLM being available.
+The preserved lexical, semantic, and fused retrieval channels served the
+previously evaluated maintenance-history review feature. They remain in the
+source tree for history and rollback, but the validation runtime does not
+expose them. Core preventive-maintenance workflows must never depend on
+embeddings or an LLM being available — on this branch they never contact them.
 
 The lexical channel is implemented as an internal SQL Server Full-Text Search
 service over the persisted `MaintenanceSearchDocument.SearchText` projection.
@@ -111,7 +114,7 @@ It does not search source entities independently and does not implement
 embeddings or benchmark orchestration; fusion and the maintenance-review layer
 consume its ranked results separately.
 
-Semantic retrieval is implemented as an internal channel required by the target
+Semantic retrieval was implemented as an internal channel of the evaluated
 maintenance-history review workflow. Document embeddings belong to
 `MaintenanceSearchDocumentEmbeddings`, are invalidated when `SearchText`
 changes, and are regenerated only by the explicit embedding rebuild command.
@@ -131,7 +134,7 @@ default candidate depth of 20, with a maximum of 100. It has no public endpoint
 and does not implement context boosts, thresholds, source selection,
 sanitization, or summaries.
 
-## Maintenance Review
+## Maintenance Review (Historical/Inactive On This Branch)
 
 The source-bounded maintenance-review loop was implemented as an explicitly
 enabled, authenticated endpoint and evaluated as controlled development work.
@@ -163,39 +166,42 @@ EXP-003 executed a local offline Granite baseline against the fictional
 maintenance retrieval fixture; it is controlled development evidence only and
 does not make Granite a required deployment dependency.
 
-## Evaluated MVP And Planned Analysis
+## Validation Baseline Definition
 
-The authoritative evaluated-MVP boundary is documented in
-[`reference/planning/mvp-definition.md`](reference/planning/mvp-definition.md).
-It includes the existing preventive-maintenance workflow, acknowledged-only
-history, deterministic inspection-history analysis, source-bounded RAG-assisted
-interpretation, the web workspaces, and bounded technical observability. Mobile
-is part of UniPM but is implemented in a separate partner-owned workstream and
-is not a blocker for this workstream.
+The active boundary for this branch is documented in
+[`reference/planning/mvp-definition.md`](reference/planning/mvp-definition.md):
+the PMIS-only GSD validation baseline. It covers authentication, the asset
+registry with QR lookup, schedules, multi-row preventive-maintenance forms,
+the confirmed `Draft -> Submitted -> Acknowledged` lifecycle,
+acknowledged-only official history, deterministic reports already implemented,
+corrective-handoff preparation, and the web/mobile PMIS workflows. Core PMIS
+workflows do not depend on AI; maintenance-review is inactive by default;
+retrieval/embedding/summary infrastructure is preserved temporarily for
+history and rollback. No replacement innovation is approved yet. The previous
+RAG-inclusive evaluated-MVP definition remains preserved in git history and is
+summarized as a historical record inside that file.
 
-## Planned RAG-Assisted Inspection-History Analysis
+## Historical Planning Record: RAG-Assisted Inspection-History Analysis
 
-The planned analysis capability is documented in
-[`reference/planning/rag-assisted-inspection-history-analysis.md`](reference/planning/rag-assisted-inspection-history-analysis.md).
-It is not implemented. It will analyze acknowledged preventive-maintenance
-inspection records through deterministic counts, percentages, recurrence
-intervals, distributions, patterns, and timelines, then use RAG only to
-retrieve the exact supporting acknowledged records. Optional generation may
-explain computed results but may not calculate authoritative statistics,
-diagnose equipment, infer causes, approve actions, or mutate records.
+The analysis capability was planned but never implemented. Its design record is
+preserved unchanged in
+[`reference/planning/rag-assisted-inspection-history-analysis.md`](reference/planning/rag-assisted-inspection-history-analysis.md):
+deterministic counts, percentages, recurrence intervals, distributions,
+patterns, and timelines computed by SQL and application code, with RAG
+retrieving supporting acknowledged records. It is not an active direction on
+this branch.
 
 ## Next Steps
 
-1. Define and implement the bounded inspection-history analysis contract and
-   deterministic calculations.
-2. Add source-bounded RAG-assisted interpretation and synchronize the API
-   contract.
-3. Add the web inspection-history analysis workspace and the separate existing
-   maintenance-review interface.
-4. Extend bounded technical observability and run focused MVP verification.
-5. Keep institutional source authorization, final RBAC, audit rules, and other
-   unresolved policy decisions deferred. Mobile field implementation remains a
-   separate partner-owned workstream.
+1. Verify the PMIS-only validation baseline end to end (backend suite, web
+   checks, AI-independent startup).
+2. Demonstrate the confirmed workflow to GSD.
+3. Collect exact form, report, and process requirements from GSD.
+4. Decide whether schema-driven protocols, AI report consolidation, analytics,
+   or another innovation is justified by the collected requirements.
+5. Only then create a separate implementation branch; keep institutional
+   source authorization, final RBAC, audit rules, and other unresolved policy
+   decisions deferred until then.
 
 ## Engineering Evidence
 

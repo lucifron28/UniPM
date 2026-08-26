@@ -2,16 +2,31 @@
 
 ## Project Identity
 
-UniPM is a web and mobile preventive maintenance system for a university General Services Department, with a bounded RAG-based maintenance-history review feature.
+UniPM is a web and mobile preventive-maintenance information system for a
+university General Services Department. This branch (`validation/pmis-only-gsd`)
+is the PMIS-only GSD validation baseline: the confirmed preventive-maintenance
+workflow is demonstrated without any AI feature so GSD can validate workflows,
+forms, reports, and remaining operational needs before a replacement innovation
+is selected.
 
-The RAG feature is not the product. It is an assistive, source-bounded support feature that retrieves related past records and summarizes them for human review. It does not diagnose, decide, approve, or act autonomously. Do not build chatbot-style open-ended AI behavior anywhere in this codebase.
+Maintenance-history RAG was previously implemented and evaluated as controlled
+development work. On this branch it is historical, inactive infrastructure: it
+is preserved for understanding and rollback, not active product behavior. Do
+not implement new RAG work, and do not implement a replacement innovation (AI
+report consolidation, schema-driven/versioned PM protocols, Document AI/OCR,
+natural-language analytics, process mining, predictive maintenance, or WMS/RPA
+automation) on this branch — none is approved yet. Future innovation work
+requires a separate approved task and branch after GSD validation.
+
+The safety rules below still apply to any code path that could contact an
+external AI provider, and chatbot-style open-ended AI behavior remains
+prohibited anywhere in the codebase.
 
 The main product identity remains:
 
 - Web application for administration, monitoring, reporting, review, and source verification.
 - Mobile application for field-side inspection, QR-based lookup, checklist completion, and inspection submission.
 - Backend/API and database as the controlled source of truth.
-- RAG as an advanced support feature inside the maintenance workflow.
 
 ## Current Stack
 
@@ -66,11 +81,12 @@ These are non-negotiable.
 6. AI output is always assistive and must be returned or displayed with the source records used.
 7. Source records remain the evidence. The generated summary is only a review shortcut.
 
-## MVP Safety Rule For RAG Work
+## AI Sanitizer Safety Rule For Preserved AI Code (Historical/Inactive)
 
-The full privacy masking/token-map pipeline is deferred, but basic MVP sanitization is not optional if an external provider is called.
-
-For the thin RAG MVP, implement or use a `PrivacySanitizerService` with at least:
+The full privacy masking/token-map pipeline was deferred during the evaluated
+RAG work. If any preserved AI path is ever re-enabled through a separately
+approved post-GSD decision, basic sanitization is mandatory before any external
+provider call. The preserved `PrivacySanitizerService` provides:
 
 - email masking, for example `user@example.com` -> `[EMAIL_1]`
 - Philippine-style phone/mobile number masking where practical, for example `0917-123-4567` -> `[PHONE_1]`
@@ -98,15 +114,15 @@ Stronger privacy handling later may include:
 Use the terms token masking, pseudonymization, and prompt sanitization. Do not
 describe the MVP sanitizer as anonymization.
 
-## Vector Search MVP Rule
+## Vector Storage Rule For Preserved Retrieval Code (Historical/Inactive)
 
 SQL Server 2019 is the minimum supported target database and no separate vector
 database should be introduced.
 
-For the RAG MVP, embeddings are stored as versioned serialized values alongside
-relational search-document metadata. The backend filters a bounded candidate set
-in SQL Server and calculates cosine similarity in application memory. Native
-SQL Server vector features are not required for UniPM.
+In the preserved retrieval infrastructure, embeddings are stored as versioned
+serialized values alongside relational search-document metadata. The backend
+filters a bounded candidate set in SQL Server and calculates cosine similarity
+in application memory. Native SQL Server vector features are not required for UniPM.
 
 Allowed for MVP:
 
@@ -121,11 +137,8 @@ Not allowed:
 - frontend/mobile embedding calls
 - hardcoding one provider so it cannot be swapped later
 
-Semantic retrieval is a required target channel of the maintenance-history
-review feature, but it is operationally degradable. If embeddings are
-unavailable, maintenance review may use SQL, lexicon normalization, and FTS
-fallback while explicitly reporting lexical fallback. Core
-preventive-maintenance workflows must never depend on embeddings or an LLM.
+Core preventive-maintenance workflows must never depend on embeddings or an
+LLM. On this validation branch they never contact either one.
 
 ## Engineering Evidence Rules
 
@@ -147,7 +160,9 @@ benchmarks, or deployment configuration, read
 
 ## AI Provider Cost Controls
 
-This is a student-budget project. Avoid open-ended API usage.
+This is a student-budget project. These controls apply whenever a preserved AI
+integration is enabled through an approved future decision; ordinary PMIS work
+makes no AI calls.
 
 - Prefer local or free-tier embedding for MVP.
 - DeepSeek prepaid may be used for LLM summary generation if configured by the developer.
@@ -231,19 +246,26 @@ Acceptable temporary/MVP work:
 - implement minimal sanitizer required for safe MVP AI calls
 - implement read-side endpoints that do not finalize deferred workflow semantics
 
-## Current Capability Status
+## Current Capability Status (Validation Branch)
 
-The implemented `/api/v1/maintenance-review` contract is an explicitly
-enabled, authenticated, source-bounded review/summarization path. It retrieves
-acknowledged maintenance-history evidence and may return an optional cited
-summary; it does not calculate the broader analytical features described in
-[`reference/planning/rag-assisted-inspection-history-analysis.md`](reference/planning/rag-assisted-inspection-history-analysis.md).
+The PMIS runtime exposes authentication, assets with QR lookup, schedules,
+multi-row preventive-maintenance forms covering the full
+`Draft -> Submitted -> Acknowledged` lifecycle, acknowledged-only official
+history, and GSD-only corrective-action handoff preparation. No endpoint
+requires an AI provider.
 
-The RAG-assisted inspection-history analysis capability is planned, not
-implemented. Its authoritative counts, denominators, percentages, recurrence
-intervals, timelines, and groupings must be calculated by SQL and deterministic
-application code, with RAG limited to retrieving supporting acknowledged
-records and optional generation limited to explaining computed results.
+The preserved `/api/v1/maintenance-review` contract is historical and inactive:
+it is mapped into the runtime only when `MaintenanceReview:Enabled` is
+explicitly true, and committed configuration keeps it false, so the published
+OpenAPI contract and generated web client contain no maintenance-review
+operation. Its sources remain in the repository for later retirement decisions
+(a future `refactor/retire-maintenance-history-rag` branch).
+
+The RAG-assisted inspection-history analysis capability described in
+[`reference/planning/rag-assisted-inspection-history-analysis.md`](reference/planning/rag-assisted-inspection-history-analysis.md)
+was a planning direction that was never implemented; it is not an active
+priority on this branch. The active boundary is defined in
+[`reference/planning/mvp-definition.md`](reference/planning/mvp-definition.md).
 
 Browser authentication integration, the reference-document foundation, and the
 Flutter mobile foundation are implemented and merged in the separate,
@@ -253,24 +275,18 @@ Offline synchronization is deferred and its persistence and synchronization
 architecture remain undecided; submission, acknowledgement, signatures, QR
 scanning, and later field actions remain outside this workstream.
 
-The authoritative evaluated-MVP boundary for the current backend and web
-workstream is [`reference/planning/mvp-definition.md`](reference/planning/mvp-definition.md).
-The broader inspection-history analysis remains planned until its typed
-contract and deterministic implementation are merged.
-
 ## Current Unblocked Work
 
-Priority should move risk-first:
+Priority order on this branch is the GSD validation phase:
 
-1. Confirm the backend runs and tests pass.
-2. Preserve engineering evidence for implementation and verification.
-3. Define and implement deterministic acknowledged-history analysis.
-4. Add source-bounded RAG-assisted interpretation without replacing facts.
-5. Synchronize the analysis API contract and add the web analysis workspace.
-6. Expose the existing maintenance-review capability in a separate web view.
-7. Extend bounded technical observability and verify the central MVP workflow.
-8. Preserve coarse authentication and authorization while final RBAC remains
-   provisional.
+1. Keep the PMIS validation branch stable and runnable.
+2. Verify the confirmed preventive-maintenance workflow end to end.
+3. Verify AI-independent startup and operation.
+4. Confirm acknowledged-only official history and corrective-handoff preparation.
+5. Prepare and run the GSD demonstration.
+6. Collect exact form, report, and process requirements from GSD.
+7. Record findings and defer all innovation selection until a separate
+   approved decision and branch.
 
 The deterministic synthetic fixture, test-only retrieval evaluation manifest,
 Development-only seed/reset commands, reset dependency protection, inspection
@@ -298,14 +314,14 @@ the local Prometheus/Grafana services are available only through the Compose
 maintenance KPI dashboard. Do not add tracing, centralized logs, alerting, or
 production monitoring claims to this scope.
 
-Retrieval fusion is an internal RRF orchestration service using K=60, bounded
-candidate/result limits, deterministic component-rank traceability, and
-explicit semantic degradation. The completed maintenance-review layer adds
-deterministic context tiers, request-scoped prompt sanitization, optional
-provider-neutral summaries, and source-returning evidence contracts. It remains
-authenticated whenever enabled. EXP-002 provides a fictional, developer-reviewed
-summary-provider baseline only; it does not establish production readiness or
-real semantic/fused model quality.
+Retrieval fusion was implemented as an internal RRF orchestration service using
+K=60, bounded candidate/result limits, deterministic component-rank
+traceability, and explicit semantic degradation. The completed maintenance-
+review layer added deterministic context tiers, request-scoped prompt
+sanitization, optional provider-neutral summaries, and source-returning
+evidence contracts. It remained authenticated whenever enabled. EXP-002
+provides a fictional, developer-reviewed summary-provider baseline only; it
+does not establish production readiness or real semantic/fused model quality.
 
 Admin is a technical system-administration role, not an operational super-role.
 Operational policies use GSD, Inspector, Supervisor, and DepartmentHead as
@@ -328,17 +344,18 @@ Unblocked areas:
   - Fire alarm systems
   - Emergency lights
   - Water drinking stations
-- Thin end-to-end RAG MVP:
-  - Use synthetic `InspectionRecord` data.
-  - Use only acknowledged form rows, plus legacy rows without a form, as
-    official maintenance-history evidence.
-  - Do not include signatory or signature data in retrieval or generation.
-  - Do not build chatbot behavior.
-  - Return source records with the summary.
+- Preserved inactive retrieval/review infrastructure:
+  - synthetic fixture data and acknowledged-row evidence rules;
+  - lexical, semantic, and fused retrieval, embeddings, summaries, sanitizer;
+  - none of these are exposed by the validation runtime;
+  - do not extend them without a separately approved post-GSD decision.
 
-## RAG Feature Boundaries
+## Historical RAG Behavior Boundaries (Preserved Code)
 
-The RAG feature should follow this shape:
+These boundaries governed the previously evaluated maintenance-review feature
+and remain the required safety shape for any future approved AI-assisted work.
+They are not active work items on this branch. The preserved feature followed
+this shape:
 
 `current finding -> retrieval -> source selection -> sanitization -> source-bounded summary -> source display -> human verification`
 
@@ -375,9 +392,9 @@ Required RAG behavior:
 - Keep commits small and conventional.
 - Prefer messages such as:
   - `feat(api): add asset list endpoint`
-  - `test(rag): cover seeded pressure retrieval`
+  - `test(api): cover form acknowledgement schedule completion`
   - `chore(seed): add synthetic maintenance records`
-  - `feat(rag): add maintenance review MVP endpoint`
+  - `feat(web): add corrective-handoff review page`
 - Do not mix manuscript edits, backend schema changes, frontend UI, and AI provider changes in one commit.
 - Do not commit:
   - `.env`
@@ -395,7 +412,7 @@ This is a capstone project. The written manuscript should describe the target sy
 - SQL Server
 - React + TypeScript + Vite web frontend
 - Flutter mobile app
-- provider-neutral AI/embedding services
+- provider-neutral design for preserved AI/embedding services (historical evaluated component; inactive in the current PMIS validation baseline)
 
 Some old manuscript diagrams may still say Django/PostgreSQL or hard-lock a specific AI provider. Those are being corrected and are not the target stack.
 

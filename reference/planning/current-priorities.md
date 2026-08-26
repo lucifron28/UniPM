@@ -1,29 +1,24 @@
-# Current Priorities - Active Work Items
+# Current Priorities - PMIS Validation Baseline
 
-Read `AGENTS.md` first. These tasks assume its architecture, privacy, scope,
-and retrieval-safety rules.
+Read `AGENTS.md` first. These priorities apply to the
+`validation/pmis-only-gsd` branch.
 
-The current strategy is risk-first:
+The active priority order is:
 
-1. keep the project runnable and tested;
-2. preserve reproducible synthetic data and evidence;
-3. preserve the confirmed multi-asset form lifecycle and acknowledged-only
-   history boundary;
-4. define and implement deterministic acknowledged-history analysis;
-5. add source-bounded RAG-assisted interpretation without replacing facts;
-6. synchronize the analysis API and web workspaces;
-7. preserve explicit documentation of known sanitizer limitations;
-8. preserve executed multilingual benchmark evidence without treating it as
-   real institutional performance;
-9. establish an authorized institutional-procedure corpus before any separate
-   institutional retrieval work; OEM retrieval is excluded from the evaluated
-   MVP;
-10. preserve the bounded maintenance-history review contract;
-11. keep final RBAC, audit, and remaining institutional policy rules deferred.
+1. keep the branch runnable;
+2. verify the confirmed PM workflow (`Draft -> Submitted -> Acknowledged`);
+3. verify AI-independent startup and operation;
+4. confirm acknowledged-only official history;
+5. confirm corrective-handoff preparation still works;
+6. prepare the GSD workflow validation session;
+7. collect missing exact form/report/workflow requirements;
+8. record findings;
+9. defer all innovation work until a separate approved decision.
 
-The RAG feature is not a chatbot and not an autonomous diagnostic tool. It is a
-bounded maintenance-history review feature that retrieves source records and
-helps a human verify them.
+Maintenance-history RAG was previously implemented and evaluated as controlled
+development work. On this branch it is historical, inactive infrastructure:
+preserved for understanding and rollback, excluded from the validation
+runtime, and not to be extended.
 
 ## Current Status
 
@@ -89,8 +84,10 @@ helps a human verify them.
   rows to official history and retrieval. Corrective-action handoff preparation
   ends before manual WMS encoding; UniPM does not process RMRFs or integrate
   with the WMS.
-- Planned RAG-assisted inspection-history analysis: not implemented. See
-  [`reference/planning/rag-assisted-inspection-history-analysis.md`](rag-assisted-inspection-history-analysis.md).
+- RAG-assisted inspection-history analysis: planned in the previous phase,
+  never implemented, and no longer an active direction. Its design record is
+  preserved unchanged in
+  [`rag-assisted-inspection-history-analysis.md`](rag-assisted-inspection-history-analysis.md).
 - Flutter mobile foundation: implemented and merged, including memory-only
   authentication and the initial Draft preventive-maintenance form workflow in
   a separate partner-owned workstream. This workstream does not implement
@@ -99,33 +96,35 @@ helps a human verify them.
   architecture remain undecided. Submission, acknowledgement, signatures, QR
   scanning, and later field actions remain separately approved work.
 
-The authoritative evaluated-MVP boundary is documented in
-[`reference/planning/mvp-definition.md`](mvp-definition.md). The implemented
-`POST /api/v1/maintenance-review` capability remains separate from the planned
-inspection-history analysis service.
+The active boundary for this branch is documented in
+[`mvp-definition.md`](mvp-definition.md): the PMIS-only GSD validation
+baseline. The previously implemented `POST /api/v1/maintenance-review`
+capability is historical and inactive (mapped only when explicitly enabled;
+disabled in committed configuration).
 
 ## Immediate Task Order
 
-The current backend/web workstream proceeds in this order:
+The validation phase proceeds in this order:
 
-1. Define the final evaluated MVP.
-2. Define the typed inspection-history analysis contract.
-3. Implement deterministic acknowledged-history analysis.
-4. Add source-bounded RAG-assisted interpretation.
-5. Synchronize the analysis API contract and generated client.
-6. Add the web inspection-history analysis workspace.
-7. Expose the existing maintenance-review capability in a separate web view.
-8. Extend bounded observability and run focused MVP verification.
-9. Align final project documentation and manuscript guidance.
+1. Keep the branch stable: restore/build/test green after any change.
+2. Verify AI-independent startup and operation.
+3. Verify the confirmed workflow end to end (draft rows, submit, acknowledge,
+   schedule completion, official history, corrective handoff).
+4. Prepare the GSD demonstration environment and demo script.
+5. Run the GSD validation session and capture answers.
+6. Record requirements and limitations in the GSD validation note.
+7. Defer innovation selection and implementation until GSD findings justify a
+   separate approved decision.
 
-The Flutter foundation and initial Draft form workflow are completed in a
-separate partner-owned workstream. Later mobile field capabilities are not a
-blocker for this sequence.
+Mobile remains a separate partner-owned workstream; later mobile field
+capabilities are not a blocker for this sequence.
 
-## Reference Evidence Roadmap
+## Historical Evidence Roadmap (Completed Phase)
+
+The records below document completed evidence phases. New evidence work is
+deferred until a post-GSD decision.
 
 1. Authorization and ingestion requirements for institutional procedures,
-   forms, checklists, and SOPs.
 2. Institutional source persistence, applicability, sectioning, lifecycle, and
    provenance using only approved sources.
 3. Separate institutional lexical and semantic retrieval after source approval.
@@ -138,27 +137,23 @@ the fictional 24-query maintenance fixture. It is controlled development
 evidence only; it does not establish real institutional performance or make
 Granite a required deployment dependency.
 
-The maintenance-review endpoint remains disabled by default and requires
+The maintenance-review endpoint remained disabled by default and required
 authorization when enabled. Real semantic and fused model-quality evidence
-remain pending; EXP-002 does not change those limits.
+remained pending; EXP-002 does not change those limits. The implemented
+maintenance-review endpoint was distinct from the planned RAG-assisted
+inspection-history analysis capability, which was never implemented.
 
-The implemented maintenance-review endpoint is distinct from the planned
-RAG-assisted inspection-history analysis capability. The planned capability
-requires deterministic fact computation and scope/date-range reporting before
-any RAG-assisted interpretation is added.
+## Historical Risk-First Order (Implementation Phase, Completed)
 
-## Risk-First Order
+The implementation phase followed a risk-first order, retained here as a
+record that the preserved infrastructure was built incrementally with
+verification at each step. Detailed task records follow below.
 
-1. Confirm the backend baseline.
-2. Preserve engineering evidence for implementation and verification.
-3. Keep the synthetic fixture and Development-only seeder verified.
-4. Preserve the executed lexical baseline and keep semantic model-quality
-   verification explicitly pending a configured real provider.
-5. Preserve the completed observability evidence and its production limits.
-6. Preserve inspectable RRF fusion and keep real fused quality evidence pending
-   until a provider is configured.
-7. Preserve the source-bounded review contract and its explicit limitations.
-8. Harden the backend MVP without expanding provisional role or workflow rules.
+## Completed Historical Work Records
+
+Tasks 0-6 and the engineering-evidence workflow below record finished
+implementation phases from earlier branches. They describe what was built,
+not active work.
 
 ## Task 0: Project Boot And Baseline Check
 
@@ -263,57 +258,45 @@ evaluation manifest remains outside runtime code.
 
 Do not treat the lexicon as a diagnosis system or invent official GSD wording.
 
-## Task 4: Thin Retrieval MVP
+## Task 4 (Historical, Completed): Thin Retrieval MVP
 
-Goal: preserve and validate the implemented bounded retrieval and maintenance-
-review pipeline while improving integrity, organization, and multilingual
-model-quality evidence.
+Historical, completed during the previous implementation phase; preserved
+inactive on this branch. Do not extend or revive it without a separate
+approved decision.
 
-Required shape:
+The implemented pipeline followed:
 
 `current finding -> retrieval -> source selection -> sanitization -> source-bounded summary -> source display -> human verification`
 
-Do:
+Implemented behavior included lexical and semantic channels behind
+`IEmbeddingService`/`ISummaryService`, the internal SQL Server FTS channel
+over `MaintenanceSearchDocument.SearchText`, internal RRF orchestration with
+explicit semantic degradation, returned source records with stated
+limitations, inspectable source selection and prompt construction, and
+sanitizer tests before any external provider call.
 
-- retrieve related records before generation;
-- use same-asset, same-category, and available location/building context;
-- implement lexical retrieval separately from semantic retrieval;
-- keep embeddings behind `IEmbeddingService` and summaries behind
-  `ISummaryService` or equivalent interfaces;
-- use the completed internal SQL Server FTS channel over
-  `MaintenanceSearchDocument.SearchText`;
-- use the completed semantic channel separately and through the completed
-  internal RRF orchestration, with semantic degradation reported explicitly;
-- return the source records used and limitations beside any summary;
-- keep source selection and prompt construction inspectable;
-- add sanitizer tests before any external provider call.
-
-The `POST /api/v1/maintenance-review` endpoint now implements this bounded
-loop with a maximum of two fused passes, four deterministic context tiers,
-explicit evidence and summary statuses, request-scoped token masking, and
-source records returned for human verification. It remains disabled by default
-and requires `CanReviewMaintenanceHistory` whenever enabled.
-
-This endpoint is the implemented review/summarization contract only. The
-broader recurring-finding, condition-frequency, time-comparison, cross-asset,
-distribution, and single-asset timeline analysis remains planned.
+The `POST /api/v1/maintenance-review` endpoint implemented this bounded loop
+with a maximum of two fused passes, four deterministic context tiers, explicit
+evidence and summary statuses, request-scoped token masking, and source
+records returned for human verification. It stayed disabled by default and
+required `CanReviewMaintenanceHistory` whenever enabled. It was the
+implemented review/summarization contract only; broader recurring-finding,
+condition-frequency, time-comparison, cross-asset, distribution, and timeline
+analysis remained planned and was never implemented.
 
 Optional provider thinking mode and a strict 12-case DeepSeek V4 summary
-experiment manifest are implemented. EXP-002 is executed with a real-provider
+experiment manifest were implemented. EXP-002 was executed with a real-provider
 run, retained fictional outputs, developer-approved human ratings, and latency
-evidence. The result does not establish production readiness; Tagalog and
-Taglish language fit remained weak, and five outputs violated the citation
-contract.
+evidence. It did not establish production readiness; Tagalog and Taglish
+language fit remained weak, and five outputs violated the citation contract.
 
-Semantic retrieval is a required target channel, not an excuse to block core
-maintenance workflows. Core workflows must work with AI disabled. No separate
-vector database may be introduced.
+Core maintenance workflows always worked with AI disabled; no separate vector
+database may be introduced. Chatbot behavior, autonomous decisions, automatic
+corrective handoffs, raw prompt persistence, token-map persistence, and
+unsupported claims about dates, causes, RMRF values, or personnel decisions
+remain prohibited everywhere in the codebase.
 
-Do not build chatbot behavior, autonomous decisions, automatic corrective
-handoffs, raw prompt persistence, token-map persistence, or unsupported claims
-about dates, causes, RMRF values, or personnel decisions.
-
-## Task 5: Retrieval Evaluation Benchmark
+## Task 5 (Historical, Completed): Retrieval Evaluation Benchmark
 
 Goal: measure lexical, semantic, and fused retrieval on the
 fictional dataset.
@@ -397,8 +380,9 @@ directly.
 - The operational fixture is fictional and provisional, not a production import
   contract.
 - Evaluation annotations are test-only and never runtime operational data.
-- Semantic retrieval is required but may degrade to an explicitly reported
-  lexical fallback when embeddings are unavailable.
+- Preserved semantic retrieval could degrade to an explicitly reported lexical
+  fallback when embeddings were unavailable; both channels are inactive on
+  this validation branch.
 - SQL Server 2019 remains the relational and FTS store. Versioned serialized
   embeddings are stored with relational metadata, bounded candidates are
   filtered in SQL, and cosine similarity is calculated by the backend. Do not
@@ -423,6 +407,9 @@ directly.
 11. Completed: `feat/mobile-foundation` authentication foundation.
 12. Completed: `feat/mobile-pm-form-drafts` initial mobile Draft form workflow.
 13. The next mobile field workflow capability requires explicit approval.
+14. Current: `validation/pmis-only-gsd` - the PMIS-only GSD validation
+    baseline (this branch). Any innovation branch requires a separate
+    approved decision after GSD validation.
 
 EXP-003 completed a local offline Granite multilingual embedding baseline on
 the fictional maintenance fixture. Its conditional result is development
