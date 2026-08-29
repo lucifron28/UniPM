@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../auth/session_controller.dart';
 import '../preventive_maintenance/preventive_maintenance_page.dart';
 import '../preventive_maintenance/preventive_maintenance_repository.dart';
+import '../qr_scanner/qr_scanner_page.dart';
 import 'home_page.dart';
 
 class AuthenticatedShell extends StatelessWidget {
@@ -30,6 +31,19 @@ class AuthenticatedShell extends StatelessWidget {
       ),
       body: HomePage(
         user: controller.user!,
+        onScanQr: () async {
+          final scannedText = await Navigator.of(context).push<String>(
+            MaterialPageRoute<String>(
+              builder: (_) => const QrScannerPage(),
+            ),
+          );
+          if (!context.mounted || scannedText == null) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('QR captured. Asset lookup is not enabled yet.'),
+            ),
+          );
+        },
         onOpenPreventiveMaintenance: preventiveMaintenanceRepository == null
             ? null
             : () {
