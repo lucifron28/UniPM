@@ -3,17 +3,11 @@ import 'package:flutter/material.dart';
 import 'qr_camera_preview.dart';
 import 'qr_scanner_controller.dart';
 
-typedef QrPreviewBuilder = Widget Function(
-  BuildContext context,
-  ValueChanged<String?> onDetected,
-);
+typedef QrPreviewBuilder =
+    Widget Function(BuildContext context, ValueChanged<String?> onDetected);
 
 class QrScannerPage extends StatefulWidget {
-  const QrScannerPage({
-    super.key,
-    this.controller,
-    this.previewBuilder,
-  });
+  const QrScannerPage({super.key, this.controller, this.previewBuilder});
 
   final QrScannerController? controller;
   final QrPreviewBuilder? previewBuilder;
@@ -56,7 +50,8 @@ class _QrScannerPageState extends State<QrScannerPage> {
   }
 
   Widget _buildScanner(BuildContext context) {
-    final preview = widget.previewBuilder?.call(context, controller.capture) ??
+    final preview =
+        widget.previewBuilder?.call(context, controller.capture) ??
         QrCameraPreview(onDetected: controller.capture);
 
     return Column(

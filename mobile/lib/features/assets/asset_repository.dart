@@ -27,9 +27,7 @@ String validateUniPmQrValue(String scannedValue) {
     );
   }
   if (!value.toUpperCase().startsWith('UNIPM-')) {
-    throw const InvalidUniPmQrException(
-      'This is not a UniPM asset QR code.',
-    );
+    throw const InvalidUniPmQrException('This is not a UniPM asset QR code.');
   }
   return value;
 }

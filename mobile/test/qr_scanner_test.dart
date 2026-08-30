@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 
+import 'package:mobile/features/qr_scanner/qr_camera_preview.dart';
 import 'package:mobile/features/qr_scanner/qr_scanner_controller.dart';
 import 'package:mobile/features/qr_scanner/qr_scanner_page.dart';
 
@@ -134,6 +136,88 @@ void main() {
     await tester.tap(find.text('Open scanner'));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('cancel-qr-scan')));
+    await tester.pumpAndSettle();
+
+    expect(returnedValue, isNull);
+  });
+
+  testWidgets('camera permission denial is clear and remains escapable', (
+    tester,
+  ) async {
+    String? returnedValue = 'not-returned';
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: FilledButton(
+              onPressed: () async {
+                returnedValue = await Navigator.of(context).push<String>(
+                  MaterialPageRoute<String>(
+                    builder: (_) => QrScannerPage(
+                      previewBuilder: (context, onDetected) =>
+                          const QrCameraErrorView(
+                            error: MobileScannerException(
+                              errorCode:
+                                  MobileScannerErrorCode.permissionDenied,
+                            ),
+                          ),
+                    ),
+                  ),
+                );
+              },
+              child: const Text('Open scanner'),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Open scanner'));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('qr-camera-error')), findsOneWidget);
+    expect(
+      find.textContaining('Camera permission is required'),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('cancel-qr-scan')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('cancel-qr-scan')));
+    await tester.pumpAndSettle();
+    expect(returnedValue, isNull);
+  });
+
+  testWidgets('system back exits the scanner without returning a value', (
+    tester,
+  ) async {
+    String? returnedValue = 'not-returned';
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: FilledButton(
+              onPressed: () async {
+                returnedValue = await Navigator.of(context).push<String>(
+                  MaterialPageRoute<String>(
+                    builder: (_) => QrScannerPage(
+                      previewBuilder: (context, onDetected) =>
+                          const ColoredBox(color: Colors.black),
+                    ),
+                  ),
+                );
+              },
+              child: const Text('Open scanner'),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Open scanner'));
+    await tester.pumpAndSettle();
+    await tester.pageBack();
     await tester.pumpAndSettle();
 
     expect(returnedValue, isNull);

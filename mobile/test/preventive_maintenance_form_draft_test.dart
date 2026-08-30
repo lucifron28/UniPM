@@ -275,7 +275,13 @@ void main() {
   ) async {
     final repository = FakePreventiveMaintenanceRepository(
       forms: [
-        testForm(id: formId, inspections: [testInspection()]),
+        testForm(
+          id: formId,
+          inspections: [
+            testInspection(id: secondInspectionId),
+            testInspection(),
+          ],
+        ),
       ],
       schedulesFuture: Future.value([testSchedule(firstScheduleId, 'FE-001')]),
     );
@@ -293,6 +299,10 @@ void main() {
     expect(find.text('Schedule ID: $firstScheduleId'), findsOneWidget);
     expect(repository.addCallCount, 0);
     expect(repository.createdInput, isNull);
+    expect(repository.forms.single.inspections.map((row) => row.id), [
+      secondInspectionId,
+      firstInspectionId,
+    ]);
   });
 
   testWidgets('compatible Draft opens with scanned schedule preselected', (
@@ -367,6 +377,175 @@ void main() {
     expect(resolution.kind, PmDraftResolutionKind.choose);
     expect(resolution.forms.map((form) => form.id), [formId, secondFormId]);
     controller.dispose();
+  });
+
+  testWidgets('one eligible schedule is selected automatically', (
+    tester,
+  ) async {
+    final repository = FakePreventiveMaintenanceRepository(
+      schedulesFuture: Future.value([
+        testSchedule(firstScheduleId, 'FE-001', status: 'Ongoing'),
+      ]),
+    );
+
+    await pumpScannedEntry(tester, repository);
+
+    expect(find.byKey(const Key('selected-pm-schedule')), findsOneWidget);
+    expect(find.textContaining('Ongoing'), findsOneWidget);
+    expect(find.byKey(const Key('start-pm')), findsOneWidget);
+    expect(repository.requestedScheduleAssetIds, [testAsset().id]);
+  });
+
+  testWidgets('multiple eligible schedules require explicit selection', (
+    tester,
+  ) async {
+    final repository = FakePreventiveMaintenanceRepository(
+      schedulesFuture: Future.value([
+        testSchedule(firstScheduleId, 'FE-001'),
+        testSchedule(secondScheduleId, 'FE-001', status: 'Overdue'),
+      ]),
+    );
+
+    await pumpScannedEntry(tester, repository);
+
+    expect(find.byKey(const Key('pm-schedule-select')), findsOneWidget);
+    expect(find.byKey(const Key('start-pm')), findsNothing);
+
+    await tester.tap(find.byKey(const Key('pm-schedule-select')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.textContaining('Overdue').last);
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('start-pm')), findsOneWidget);
+  });
+
+  testWidgets('completed and cancelled schedules are not eligible', (
+    tester,
+  ) async {
+    final repository = FakePreventiveMaintenanceRepository(
+      schedulesFuture: Future.value([
+        testSchedule(firstScheduleId, 'FE-001', status: 'Completed'),
+        testSchedule(secondScheduleId, 'FE-001', status: 'Cancelled'),
+      ]),
+    );
+
+    await pumpScannedEntry(tester, repository);
+
+    expect(find.byKey(const Key('pm-schedule-empty')), findsOneWidget);
+    expect(find.byKey(const Key('start-pm')), findsNothing);
+    expect(find.byKey(const Key('resume-pm')), findsNothing);
+  });
+
+  testWidgets('no schedules produces a bounded no-schedule state', (
+    tester,
+  ) async {
+    final repository = FakePreventiveMaintenanceRepository(
+      schedulesFuture: Future.value(const []),
+    );
+
+    await pumpScannedEntry(tester, repository);
+
+    expect(find.byKey(const Key('pm-schedule-empty')), findsOneWidget);
+    expect(
+      find.text('No applicable PM schedules are available for this asset.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('schedule API failure can retry without rescanning', (
+    tester,
+  ) async {
+    final repository = FakePreventiveMaintenanceRepository(
+      scheduleFailures: 1,
+      schedulesFuture: Future.value([testSchedule(firstScheduleId, 'FE-001')]),
+    );
+
+    await pumpScannedEntry(tester, repository);
+
+    expect(find.byKey(const Key('pm-entry-error')), findsOneWidget);
+    await tester.tap(find.text('Retry'));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('start-pm')), findsOneWidget);
+    expect(repository.requestedScheduleAssetIds, [
+      testAsset().id,
+      testAsset().id,
+    ]);
+  });
+
+  testWidgets('inactive and retired assets cannot start PM', (tester) async {
+    for (final status in const ['Inactive', 'Retired']) {
+      final repository = FakePreventiveMaintenanceRepository(
+        schedulesFuture: Future.value([
+          testSchedule(firstScheduleId, 'FE-001'),
+        ]),
+      );
+
+      await pumpScannedEntry(
+        tester,
+        repository,
+        asset: testAsset(status: status),
+      );
+
+      expect(find.byKey(const Key('pm-entry-blocked')), findsOneWidget);
+      expect(find.textContaining(status), findsOneWidget);
+      final button = tester.widget<FilledButton>(
+        find.byKey(const Key('start-pm')),
+      );
+      expect(button.onPressed, isNull);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpAndSettle();
+    }
+  });
+
+  testWidgets('compatible Draft selection is required when ambiguous', (
+    tester,
+  ) async {
+    final repository = FakePreventiveMaintenanceRepository(
+      forms: [
+        testForm(id: formId, fileNumber: 'PM-001'),
+        testForm(id: secondFormId, fileNumber: 'PM-002'),
+      ],
+      schedulesFuture: Future.value([testSchedule(firstScheduleId, 'FE-001')]),
+    );
+
+    await pumpScannedEntry(tester, repository);
+
+    expect(find.byKey(const Key('compatible-draft-select')), findsOneWidget);
+    var button = tester.widget<FilledButton>(find.byKey(const Key('start-pm')));
+    expect(button.onPressed, isNull);
+
+    await tester.tap(find.byKey(const Key('compatible-draft-select')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('PM-002').last);
+    await tester.pumpAndSettle();
+
+    button = tester.widget<FilledButton>(find.byKey(const Key('start-pm')));
+    expect(button.onPressed, isNotNull);
+    expect(repository.createdInput, isNull);
+    expect(repository.addCallCount, 0);
+  });
+
+  testWidgets('backing out of a new Draft editor does not create a row', (
+    tester,
+  ) async {
+    final repository = FakePreventiveMaintenanceRepository(
+      schedulesFuture: Future.value([testSchedule(firstScheduleId, 'FE-001')]),
+    );
+
+    await pumpScannedEntry(tester, repository);
+    await tester.tap(find.byKey(const Key('start-pm')));
+    await tester.pumpAndSettle();
+
+    expect(repository.createdInput, isNotNull);
+    expect(repository.addCallCount, 0);
+    expect(find.byKey(const Key('inspection-schedule')), findsOneWidget);
+
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+
+    expect(repository.addCallCount, 0);
   });
 
   testWidgets('inspection dates reject timestamps before an API write', (
@@ -501,6 +680,36 @@ void main() {
     );
     client.dispose();
   });
+
+  test(
+    'schedule lookup filters by exact asset ID and preserves metadata',
+    () async {
+      final transportState = DraftTransportState();
+      final client = ApiClient(
+        baseUrl: Uri.parse('http://localhost:5000/'),
+        httpClientFactory: () => DraftTransport(transportState),
+      );
+      client.configureSession(
+        accessTokenProvider: () => 'inspector-access-token',
+        terminalAuthFailureHandler: () async {},
+      );
+      final repository = ApiPreventiveMaintenanceRepository(client);
+
+      final schedules = await repository.listSchedules(assetId: testAsset().id);
+
+      final request = transportState.requests.single;
+      expect(request.url.path, '/api/v1/schedules');
+      expect(request.url.queryParameters['assetId'], testAsset().id);
+      expect(request.headers['authorization'], 'Bearer inspector-access-token');
+      expect(schedules.single.assetId, testAsset().id);
+      expect(schedules.single.periodType, 'Quarter');
+      expect(schedules.single.quarter, 'Q1');
+      expect(schedules.single.year, 2026);
+      expect(schedules.single.academicYear, '2026-2027');
+      expect(schedules.single.asset?.assetCategory, 'fire-extinguisher');
+      client.dispose();
+    },
+  );
 
   testWidgets('editing a row persists date, condition, remarks, and action', (
     tester,
@@ -643,6 +852,7 @@ Future<void> scrollTo(WidgetTester tester, Finder finder) async {
 
 PreventiveMaintenanceForm testForm({
   required String id,
+  String? fileNumber,
   String createdByUserId = inspectorId,
   List<PreventiveMaintenanceInspection> inspections = const [],
   String status = 'Draft',
@@ -658,7 +868,7 @@ PreventiveMaintenanceForm testForm({
   final now = DateTime.utc(2026, 1, 15);
   return PreventiveMaintenanceForm(
     id: id,
-    fileNumber: null,
+    fileNumber: fileNumber,
     assetCategory: assetCategory,
     building: building,
     department: department,
@@ -849,12 +1059,16 @@ class FakePreventiveMaintenanceRepository
   }
 }
 
-ScheduleOption testSchedule(String id, String assetCode) => ScheduleOption(
+ScheduleOption testSchedule(
+  String id,
+  String assetCode, {
+  String status = 'Due',
+}) => ScheduleOption(
   id: id,
   assetId: '88888888-8888-4888-8888-888888888888',
   scheduleDate: DateTime.utc(2026, 1, 10),
   periodType: 'Quarter',
-  status: 'Due',
+  status: status,
   quarter: 'Q1',
   semester: null,
   year: 2026,
@@ -905,6 +1119,8 @@ class DraftTransportState {
     }
 
     switch (request.url.path) {
+      case '/api/v1/schedules':
+        return http.Response(jsonEncode([testScheduleJson()]), 200);
       case '/api/v1/preventive-maintenance-forms':
         return http.Response(jsonEncode(testFormJson()), 201);
       case '/api/v1/preventive-maintenance-forms/$formId/inspections':
@@ -948,5 +1164,27 @@ class DraftTransportState {
     'actionsRecommendations': 'Inspect gauge',
     'createdAt': '2026-01-15T00:00:00Z',
     'updatedAt': '2026-01-15T00:00:00Z',
+  };
+
+  Map<String, dynamic> testScheduleJson() => <String, dynamic>{
+    'id': firstScheduleId,
+    'assetId': testAsset().id,
+    'scheduleDate': '2026-01-10T00:00:00Z',
+    'periodType': 'Quarter',
+    'status': 'Due',
+    'quarter': 'Q1',
+    'semester': null,
+    'year': 2026,
+    'academicYear': '2026-2027',
+    'assignedToUserId': inspectorId,
+    'completedAt': null,
+    'asset': <String, dynamic>{
+      'id': testAsset().id,
+      'assetCode': 'FE-001',
+      'assetCategory': 'fire-extinguisher',
+      'building': 'Main Building',
+      'department': 'GSD',
+      'location': 'Test Area',
+    },
   };
 }

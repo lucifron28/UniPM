@@ -40,9 +40,7 @@ class LoginResult {
     }
     return LoginResult(
       accessToken: json['accessToken'] as String,
-      user: AuthUser.fromJson(
-        (json['user'] as Map).cast<String, dynamic>(),
-      ),
+      user: AuthUser.fromJson((json['user'] as Map).cast<String, dynamic>()),
     );
   }
 }
