@@ -8,9 +8,12 @@ import 'package:http/http.dart' as http;
 import 'package:mobile/api/api_client.dart';
 import 'package:mobile/api/api_exception.dart';
 import 'package:mobile/auth/auth_models.dart';
+import 'package:mobile/features/assets/asset_models.dart';
+import 'package:mobile/features/preventive_maintenance/preventive_maintenance_controller.dart';
 import 'package:mobile/features/preventive_maintenance/preventive_maintenance_models.dart';
 import 'package:mobile/features/preventive_maintenance/preventive_maintenance_page.dart';
 import 'package:mobile/features/preventive_maintenance/preventive_maintenance_repository.dart';
+import 'package:mobile/features/preventive_maintenance/scanned_asset_pm_entry.dart';
 
 const inspectorId = '11111111-1111-4111-8111-111111111111';
 const otherUserId = '22222222-2222-4222-8222-222222222222';
@@ -154,7 +157,7 @@ void main() {
 
     expect(find.byKey(const Key('schedules-loading')), findsOneWidget);
     expect(
-      find.text('No matching schedules are available for this category.'),
+      find.text('No compatible schedules are available for this Draft.'),
       findsNothing,
     );
 
@@ -162,7 +165,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      find.text('No matching schedules are available for this category.'),
+      find.text('No compatible schedules are available for this Draft.'),
       findsOneWidget,
     );
   });
@@ -234,25 +237,136 @@ void main() {
     expect(find.textContaining('Inspection rows (1)'), findsOneWidget);
   });
 
-  testWidgets('duplicate schedules are blocked before another API write', (
+  test('duplicate schedules are blocked before another API write', () async {
+    final repository = FakePreventiveMaintenanceRepository(
+      forms: [
+        testForm(id: formId, inspections: [testInspection()]),
+      ],
+    );
+    final controller = PreventiveMaintenanceController(
+      repository: repository,
+      user: testUser(),
+    );
+    await controller.loadForms();
+    controller.selectForm(controller.visibleDrafts.single);
+
+    final added = await controller.addInspection(
+      AddInspectionInput(
+        scheduleId: firstScheduleId,
+        inspectorUserId: inspectorId,
+        dateInspected: DateTime(2026, 2, 10),
+        isOperational: false,
+        remarks: null,
+        actionsRecommendations: null,
+      ),
+    );
+
+    expect(added, isFalse);
+    expect(repository.addCallCount, 0);
+    expect(
+      controller.errorMessage,
+      'This schedule is already included in the draft.',
+    );
+    controller.dispose();
+  });
+
+  testWidgets('exact Draft inspection opens Resume PM in the existing editor', (
     tester,
   ) async {
     final repository = FakePreventiveMaintenanceRepository(
       forms: [
         testForm(id: formId, inspections: [testInspection()]),
       ],
+      schedulesFuture: Future.value([testSchedule(firstScheduleId, 'FE-001')]),
     );
 
-    await pumpPage(tester, repository);
-    await tester.tap(find.byKey(Key('draft-form-$formId')));
+    await pumpScannedEntry(tester, repository);
+
+    expect(find.byKey(const Key('resume-pm')), findsOneWidget);
+    expect(find.byKey(const Key('start-pm')), findsNothing);
+    await tester.tap(find.byKey(const Key('resume-pm')));
+    await tester.pumpAndSettle();
+    await scrollTo(tester, find.text('Resume inspection row'));
+
+    expect(find.text('Draft form'), findsOneWidget);
+    expect(find.text('Resume inspection row'), findsOneWidget);
+    expect(find.text('Schedule ID: $firstScheduleId'), findsOneWidget);
+    expect(repository.addCallCount, 0);
+    expect(repository.createdInput, isNull);
+  });
+
+  testWidgets('compatible Draft opens with scanned schedule preselected', (
+    tester,
+  ) async {
+    final repository = FakePreventiveMaintenanceRepository(
+      forms: [testForm(id: formId)],
+      schedulesFuture: Future.value([testSchedule(firstScheduleId, 'FE-001')]),
+    );
+
+    await pumpScannedEntry(tester, repository);
+
+    expect(find.byKey(const Key('start-pm')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('start-pm')));
     await tester.pumpAndSettle();
     await scrollTo(tester, find.byKey(const Key('inspection-schedule')));
-    await chooseDropdown(tester, const Key('inspection-schedule'), 'FE-001');
-    await scrollTo(tester, find.byKey(const Key('add-inspection-button')));
-    await tester.tap(find.byKey(const Key('add-inspection-button')));
-    await tester.pumpAndSettle();
 
+    final dropdown = tester.widget<DropdownButtonFormField<String>>(
+      find.byKey(const Key('inspection-schedule')),
+    );
+    expect(dropdown.initialValue, firstScheduleId);
+    expect(repository.requestedScheduleAssetIds.first, testAsset().id);
+    expect(repository.createdInput, isNull);
     expect(repository.addCallCount, 0);
+  });
+
+  testWidgets('no compatible Draft creates a derived header before editing', (
+    tester,
+  ) async {
+    final repository = FakePreventiveMaintenanceRepository(
+      schedulesFuture: Future.value([testSchedule(firstScheduleId, 'FE-001')]),
+    );
+
+    await pumpScannedEntry(tester, repository);
+    await tester.tap(find.byKey(const Key('start-pm')));
+    await tester.pumpAndSettle();
+    await scrollTo(tester, find.byKey(const Key('inspection-schedule')));
+
+    expect(repository.createdInput?.assetCategory, 'fire-extinguisher');
+    expect(repository.createdInput?.building, 'Main Building');
+    expect(repository.createdInput?.department, 'GSD');
+    expect(repository.createdInput?.periodType, 'Quarter');
+    expect(repository.createdInput?.quarter, 'Q1');
+    expect(repository.createdInput?.semester, isNull);
+    expect(repository.createdInput?.year, 2026);
+    expect(repository.createdInput?.academicYear, '2026-2027');
+    expect(repository.addCallCount, 0);
+    final dropdown = tester.widget<DropdownButtonFormField<String>>(
+      find.byKey(const Key('inspection-schedule')),
+    );
+    expect(dropdown.initialValue, firstScheduleId);
+  });
+
+  test('multiple compatible Drafts require an explicit choice', () async {
+    final repository = FakePreventiveMaintenanceRepository(
+      forms: [
+        testForm(id: formId),
+        testForm(id: secondFormId),
+      ],
+    );
+    final controller = PreventiveMaintenanceController(
+      repository: repository,
+      user: testUser(),
+    );
+    await controller.loadForms();
+
+    final resolution = controller.resolveDraftFor(
+      testAsset(),
+      testSchedule(firstScheduleId, 'FE-001'),
+    );
+
+    expect(resolution.kind, PmDraftResolutionKind.choose);
+    expect(resolution.forms.map((form) => form.id), [formId, secondFormId]);
+    controller.dispose();
   });
 
   testWidgets('inspection dates reject timestamps before an API write', (
@@ -488,6 +602,28 @@ Future<void> pumpPage(
   await tester.pumpAndSettle();
 }
 
+Future<void> pumpScannedEntry(
+  WidgetTester tester,
+  FakePreventiveMaintenanceRepository repository, {
+  Asset? asset,
+  AuthUser? user,
+}) async {
+  await tester.pumpWidget(
+    MaterialApp(
+      home: Scaffold(
+        body: SingleChildScrollView(
+          child: ScannedAssetPmEntry(
+            asset: asset ?? testAsset(),
+            repository: repository,
+            user: user ?? testUser(),
+          ),
+        ),
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
+}
+
 Future<void> chooseDropdown(WidgetTester tester, Key key, String label) async {
   await scrollTo(tester, find.byKey(key));
   await tester.tap(find.byKey(key));
@@ -510,19 +646,27 @@ PreventiveMaintenanceForm testForm({
   String createdByUserId = inspectorId,
   List<PreventiveMaintenanceInspection> inspections = const [],
   String status = 'Draft',
+  String assetCategory = 'fire-extinguisher',
+  String? building = 'Main Building',
+  String? department = 'GSD',
+  String periodType = 'Quarter',
+  String? quarter = 'Q1',
+  String? semester,
+  int? year = 2026,
+  String? academicYear = '2026-2027',
 }) {
   final now = DateTime.utc(2026, 1, 15);
   return PreventiveMaintenanceForm(
     id: id,
     fileNumber: null,
-    assetCategory: 'fire-extinguisher',
-    building: 'Main Building',
-    department: 'GSD',
-    periodType: 'Quarter',
-    quarter: 'Q1',
-    semester: null,
-    year: 2026,
-    academicYear: '2026-2027',
+    assetCategory: assetCategory,
+    building: building,
+    department: department,
+    periodType: periodType,
+    quarter: quarter,
+    semester: semester,
+    year: year,
+    academicYear: academicYear,
     status: status,
     createdByUserId: createdByUserId,
     submittedByUserId: null,
@@ -532,6 +676,17 @@ PreventiveMaintenanceForm testForm({
     inspections: inspections,
   );
 }
+
+Asset testAsset({String status = 'Active'}) => Asset(
+  id: '88888888-8888-4888-8888-888888888888',
+  assetCode: 'FE-001',
+  assetCategory: 'fire-extinguisher',
+  building: 'Main Building',
+  department: 'GSD',
+  location: 'Test Area',
+  qrCodeValue: 'UNIPM-FIREEXTINGUISHER-88888888',
+  status: status,
+);
 
 PreventiveMaintenanceInspection testInspection({
   String id = firstInspectionId,
@@ -569,6 +724,7 @@ class FakePreventiveMaintenanceRepository
   UpdateInspectionInput? updatedInput;
   String? deletedInspectionId;
   int addCallCount = 0;
+  final requestedScheduleAssetIds = <String?>[];
 
   @override
   Future<List<PreventiveMaintenanceForm>> listForms() async => forms;
@@ -583,13 +739,24 @@ class FakePreventiveMaintenanceRepository
     CreatePreventiveMaintenanceFormInput input,
   ) async {
     createdInput = input;
-    final created = testForm(id: '99999999-9999-4999-8999-999999999999');
+    final created = testForm(
+      id: '99999999-9999-4999-8999-999999999999',
+      assetCategory: input.assetCategory,
+      building: input.building,
+      department: input.department,
+      periodType: input.periodType,
+      quarter: input.quarter,
+      semester: input.semester,
+      year: input.year,
+      academicYear: input.academicYear,
+    );
     forms = [created, ...forms];
     return created;
   }
 
   @override
-  Future<List<ScheduleOption>> listSchedules() {
+  Future<List<ScheduleOption>> listSchedules({String? assetId}) {
+    requestedScheduleAssetIds.add(assetId);
     if (scheduleFailures > 0) {
       scheduleFailures--;
       return Future.error(
@@ -688,6 +855,10 @@ ScheduleOption testSchedule(String id, String assetCode) => ScheduleOption(
   scheduleDate: DateTime.utc(2026, 1, 10),
   periodType: 'Quarter',
   status: 'Due',
+  quarter: 'Q1',
+  semester: null,
+  year: 2026,
+  academicYear: '2026-2027',
   asset: ScheduleAssetOption(
     id: '88888888-8888-4888-8888-888888888888',
     assetCode: assetCode,

@@ -2,6 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../auth/auth_models.dart';
+import '../preventive_maintenance/preventive_maintenance_repository.dart';
+import '../preventive_maintenance/scanned_asset_pm_entry.dart';
 import '../qr_scanner/qr_scanner_page.dart';
 import 'asset_models.dart';
 import 'asset_qr_lookup_controller.dart';
@@ -16,12 +19,16 @@ class AssetQrLookupPage extends StatefulWidget {
     required this.scannedValue,
     this.controller,
     this.scannerLauncher,
+    this.preventiveMaintenanceRepository,
+    this.user,
   });
 
   final AssetRepository repository;
   final String scannedValue;
   final AssetQrLookupController? controller;
   final QrScannerLauncher? scannerLauncher;
+  final PreventiveMaintenanceRepository? preventiveMaintenanceRepository;
+  final AuthUser? user;
 
   @override
   State<AssetQrLookupPage> createState() => _AssetQrLookupPageState();
@@ -68,6 +75,9 @@ class _AssetQrLookupPageState extends State<AssetQrLookupPage> {
               AssetQrLookupStatus.success => _AssetDetails(
                 asset: controller.asset!,
                 onScanAnother: _scanAnother,
+                preventiveMaintenanceRepository:
+                    widget.preventiveMaintenanceRepository,
+                user: widget.user,
               ),
               AssetQrLookupStatus.invalidQr ||
               AssetQrLookupStatus.notFound ||
@@ -109,10 +119,17 @@ class _LookupLoading extends StatelessWidget {
 }
 
 class _AssetDetails extends StatelessWidget {
-  const _AssetDetails({required this.asset, required this.onScanAnother});
+  const _AssetDetails({
+    required this.asset,
+    required this.onScanAnother,
+    required this.preventiveMaintenanceRepository,
+    required this.user,
+  });
 
   final Asset asset;
   final VoidCallback onScanAnother;
+  final PreventiveMaintenanceRepository? preventiveMaintenanceRepository;
+  final AuthUser? user;
 
   @override
   Widget build(BuildContext context) {
@@ -156,6 +173,15 @@ class _AssetDetails extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 24),
+        if (preventiveMaintenanceRepository != null && user != null) ...[
+          ScannedAssetPmEntry(
+            key: ValueKey('pm-entry-${asset.id}'),
+            asset: asset,
+            repository: preventiveMaintenanceRepository!,
+            user: user!,
+          ),
+          const SizedBox(height: 24),
+        ],
         FilledButton.icon(
           key: const Key('scan-another-asset-qr'),
           onPressed: onScanAnother,

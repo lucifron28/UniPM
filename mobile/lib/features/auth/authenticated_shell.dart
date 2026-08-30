@@ -37,9 +37,7 @@ class AuthenticatedShell extends StatelessWidget {
         user: controller.user!,
         onScanQr: () async {
           final scannedText = await Navigator.of(context).push<String>(
-            MaterialPageRoute<String>(
-              builder: (_) => const QrScannerPage(),
-            ),
+            MaterialPageRoute<String>(builder: (_) => const QrScannerPage()),
           );
           if (!context.mounted || scannedText == null) return;
           final repository = assetRepository;
@@ -49,6 +47,9 @@ class AuthenticatedShell extends StatelessWidget {
               builder: (_) => AssetQrLookupPage(
                 repository: repository,
                 scannedValue: scannedText,
+                preventiveMaintenanceRepository:
+                    preventiveMaintenanceRepository,
+                user: controller.user,
               ),
             ),
           );

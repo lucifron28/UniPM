@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../api/api_exception.dart';
 import '../../auth/auth_models.dart';
+import '../assets/asset_models.dart';
 import 'preventive_maintenance_models.dart';
 import 'preventive_maintenance_repository.dart';
 
@@ -71,6 +72,39 @@ class PreventiveMaintenanceController extends ChangeNotifier {
     selectedForm = form;
     errorMessage = null;
     notifyListeners();
+  }
+
+  PmDraftResolution resolveDraftFor(Asset asset, ScheduleOption schedule) {
+    final drafts = visibleDrafts;
+    for (final form in drafts) {
+      for (final inspection in form.inspections) {
+        if (inspection.scheduleId == schedule.id) {
+          return PmDraftResolution.resume(
+            form: form,
+            inspectionId: inspection.id,
+          );
+        }
+      }
+    }
+
+    final grouping = PreventiveMaintenanceGrouping.fromAssetAndSchedule(
+      asset,
+      schedule,
+    );
+    final compatibleDrafts = drafts
+        .where(grouping.matches)
+        .toList(growable: false);
+    return switch (compatibleDrafts.length) {
+      0 => PmDraftResolution.create(grouping),
+      1 => PmDraftResolution.reuse(
+        form: compatibleDrafts.single,
+        grouping: grouping,
+      ),
+      _ => PmDraftResolution.choose(
+        forms: compatibleDrafts,
+        grouping: grouping,
+      ),
+    };
   }
 
   Future<bool> addInspection(AddInspectionInput input) async {
@@ -158,6 +192,60 @@ class PreventiveMaintenanceController extends ChangeNotifier {
         .map((candidate) => candidate.id == form.id ? form : candidate)
         .toList(growable: false);
   }
+}
+
+enum PmDraftResolutionKind { resume, reuse, create, choose }
+
+class PmDraftResolution {
+  const PmDraftResolution._({
+    required this.kind,
+    required this.forms,
+    required this.grouping,
+    this.inspectionId,
+  });
+
+  factory PmDraftResolution.resume({
+    required PreventiveMaintenanceForm form,
+    required String inspectionId,
+  }) => PmDraftResolution._(
+    kind: PmDraftResolutionKind.resume,
+    forms: [form],
+    grouping: null,
+    inspectionId: inspectionId,
+  );
+
+  factory PmDraftResolution.reuse({
+    required PreventiveMaintenanceForm form,
+    required PreventiveMaintenanceGrouping grouping,
+  }) => PmDraftResolution._(
+    kind: PmDraftResolutionKind.reuse,
+    forms: [form],
+    grouping: grouping,
+  );
+
+  factory PmDraftResolution.create(PreventiveMaintenanceGrouping grouping) =>
+      PmDraftResolution._(
+        kind: PmDraftResolutionKind.create,
+        forms: const [],
+        grouping: grouping,
+      );
+
+  factory PmDraftResolution.choose({
+    required List<PreventiveMaintenanceForm> forms,
+    required PreventiveMaintenanceGrouping grouping,
+  }) => PmDraftResolution._(
+    kind: PmDraftResolutionKind.choose,
+    forms: forms,
+    grouping: grouping,
+  );
+
+  final PmDraftResolutionKind kind;
+  final List<PreventiveMaintenanceForm> forms;
+  final PreventiveMaintenanceGrouping? grouping;
+  final String? inspectionId;
+
+  PreventiveMaintenanceForm? get form =>
+      forms.length == 1 ? forms.single : null;
 }
 
 String friendlyError(Object error) {
