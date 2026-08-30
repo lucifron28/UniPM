@@ -7,17 +7,21 @@ import 'asset_models.dart';
 import 'asset_qr_lookup_controller.dart';
 import 'asset_repository.dart';
 
+typedef QrScannerLauncher = Future<String?> Function(BuildContext context);
+
 class AssetQrLookupPage extends StatefulWidget {
   const AssetQrLookupPage({
     super.key,
     required this.repository,
     required this.scannedValue,
     this.controller,
+    this.scannerLauncher,
   });
 
   final AssetRepository repository;
   final String scannedValue;
   final AssetQrLookupController? controller;
+  final QrScannerLauncher? scannerLauncher;
 
   @override
   State<AssetQrLookupPage> createState() => _AssetQrLookupPageState();
@@ -41,9 +45,11 @@ class _AssetQrLookupPageState extends State<AssetQrLookupPage> {
   }
 
   Future<void> _scanAnother() async {
-    final scannedValue = await Navigator.of(context).push<String>(
-      MaterialPageRoute<String>(builder: (_) => const QrScannerPage()),
-    );
+    final scannedValue =
+        await (widget.scannerLauncher?.call(context) ??
+            Navigator.of(context).push<String>(
+              MaterialPageRoute<String>(builder: (_) => const QrScannerPage()),
+            ));
     if (!mounted || scannedValue == null) return;
     await controller.lookup(scannedValue);
   }
@@ -57,8 +63,8 @@ class _AssetQrLookupPageState extends State<AssetQrLookupPage> {
           animation: controller,
           builder: (context, _) {
             return switch (controller.status) {
-              AssetQrLookupStatus.idle || AssetQrLookupStatus.loading =>
-                const _LookupLoading(),
+              AssetQrLookupStatus.idle ||
+              AssetQrLookupStatus.loading => const _LookupLoading(),
               AssetQrLookupStatus.success => _AssetDetails(
                 asset: controller.asset!,
                 onScanAnother: _scanAnother,
@@ -66,6 +72,11 @@ class _AssetQrLookupPageState extends State<AssetQrLookupPage> {
               AssetQrLookupStatus.invalidQr ||
               AssetQrLookupStatus.notFound ||
               AssetQrLookupStatus.failure => _LookupError(
+                title: switch (controller.status) {
+                  AssetQrLookupStatus.invalidQr => 'Invalid QR',
+                  AssetQrLookupStatus.notFound => 'Asset not found',
+                  _ => 'Unable to look up asset',
+                },
                 message: controller.errorMessage!,
                 canRetry: controller.status == AssetQrLookupStatus.failure,
                 onRetry: () => controller.lookup(controller.scannedValue!),
@@ -126,12 +137,20 @@ class _AssetDetails extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _AssetField(label: 'Asset code', value: asset.assetCode),
+                Text(
+                  asset.assetCode,
+                  key: const Key('asset-code'),
+                  style: Theme.of(context).textTheme.headlineMedium,
+                ),
+                const SizedBox(height: 20),
                 _AssetField(label: 'Category', value: asset.assetCategory),
                 _AssetField(label: 'Status', value: asset.status),
-                _AssetField(label: 'Building', value: asset.building),
-                _AssetField(label: 'Department', value: asset.department),
-                _AssetField(label: 'Location', value: asset.location),
+                if (_hasValue(asset.building))
+                  _AssetField(label: 'Building', value: asset.building!),
+                if (_hasValue(asset.department))
+                  _AssetField(label: 'Department', value: asset.department!),
+                if (_hasValue(asset.location))
+                  _AssetField(label: 'Location', value: asset.location!),
               ],
             ),
           ),
@@ -152,13 +171,10 @@ class _AssetField extends StatelessWidget {
   const _AssetField({required this.label, required this.value});
 
   final String label;
-  final String? value;
+  final String value;
 
   @override
   Widget build(BuildContext context) {
-    final displayValue = value?.trim().isNotEmpty ?? false
-        ? value!
-        : 'Not recorded';
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Column(
@@ -166,7 +182,7 @@ class _AssetField extends StatelessWidget {
         children: [
           Text(label, style: Theme.of(context).textTheme.labelMedium),
           const SizedBox(height: 2),
-          Text(displayValue),
+          Text(value),
         ],
       ),
     );
@@ -175,12 +191,14 @@ class _AssetField extends StatelessWidget {
 
 class _LookupError extends StatelessWidget {
   const _LookupError({
+    required this.title,
     required this.message,
     required this.canRetry,
     required this.onRetry,
     required this.onScanAnother,
   });
 
+  final String title;
   final String message;
   final bool canRetry;
   final VoidCallback onRetry;
@@ -200,6 +218,13 @@ class _LookupError extends StatelessWidget {
               color: Theme.of(context).colorScheme.error,
             ),
             const SizedBox(height: 16),
+            Text(
+              title,
+              key: const Key('asset-lookup-error-title'),
+              style: Theme.of(context).textTheme.headlineSmall,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
             Text(
               message,
               key: const Key('asset-lookup-error'),
@@ -226,3 +251,5 @@ class _LookupError extends StatelessWidget {
     );
   }
 }
+
+bool _hasValue(String? value) => value?.trim().isNotEmpty ?? false;
