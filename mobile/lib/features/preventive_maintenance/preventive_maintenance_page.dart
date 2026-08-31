@@ -449,13 +449,17 @@ class PreventiveMaintenanceDraftPage extends StatefulWidget {
 class _PreventiveMaintenanceDraftPageState
     extends State<PreventiveMaintenanceDraftPage> {
   late Future<List<ScheduleOption>> schedules;
+  PreventiveMaintenanceForm? submittedForm;
 
   @override
   void initState() {
     super.initState();
     schedules = widget.controller.repository.listSchedules();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) widget.controller.loadDraft(widget.formId);
+      if (!mounted || widget.controller.selectedForm?.id == widget.formId) {
+        return;
+      }
+      widget.controller.loadDraft(widget.formId);
     });
   }
 
@@ -474,7 +478,7 @@ class _PreventiveMaintenanceDraftPageState
       body: AnimatedBuilder(
         animation: widget.controller,
         builder: (context, _) {
-          final form = widget.controller.selectedForm;
+          final form = submittedForm ?? widget.controller.selectedForm;
           if (form == null && widget.controller.isLoading) {
             return const Center(child: CircularProgressIndicator());
           }
@@ -631,7 +635,53 @@ class _PreventiveMaintenanceDraftPageState
             onDelete: () => widget.controller.deleteInspection(row.id),
           ),
         ),
+        if (canEdit) ...[
+          const SizedBox(height: 16),
+          _SubmitFormCard(
+            hasRows: form.inspections.isNotEmpty,
+            isSaving: widget.controller.isSaving,
+            onSubmit: _confirmSubmit,
+          ),
+        ],
       ],
+    );
+  }
+
+  Future<void> _confirmSubmit() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Submit preventive-maintenance form?'),
+        content: const Text(
+          'After submission, this form and its inspection rows cannot be edited. The backend will assign a provisional file number.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            key: const Key('confirm-submit-form'),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Submit form'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    final submitted = await widget.controller.submitForm();
+    if (!mounted || submitted == null) return;
+    setState(() => submittedForm = submitted);
+    final fileNumber = submitted.fileNumber;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          fileNumber == null
+              ? 'Form submitted.'
+              : 'Form submitted with provisional file number $fileNumber.',
+        ),
+      ),
     );
   }
 }
@@ -859,6 +909,50 @@ class _InspectionRowEditor extends StatefulWidget {
 
   @override
   State<_InspectionRowEditor> createState() => _InspectionRowEditorState();
+}
+
+class _SubmitFormCard extends StatelessWidget {
+  const _SubmitFormCard({
+    required this.hasRows,
+    required this.isSaving,
+    required this.onSubmit,
+  });
+
+  final bool hasRows;
+  final bool isSaving;
+  final VoidCallback onSubmit;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Submit whole form',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Submission locks the form and its rows for department-head acknowledgement.',
+            ),
+            if (!hasRows) ...[
+              const SizedBox(height: 8),
+              const Text('Add at least one inspection row before submitting.'),
+            ],
+            const SizedBox(height: 12),
+            FilledButton(
+              key: const Key('submit-form-button'),
+              onPressed: isSaving || !hasRows ? null : onSubmit,
+              child: Text(isSaving ? 'Submitting...' : 'Submit form'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _InspectionRowEditorState extends State<_InspectionRowEditor> {

@@ -572,6 +572,136 @@ void main() {
     expect(find.text('Enter a valid date.'), findsOneWidget);
   });
 
+  testWidgets('submits a draft with multiple rows and locks the editor', (
+    tester,
+  ) async {
+    final repository = FakePreventiveMaintenanceRepository(
+      forms: [
+        testForm(
+          id: formId,
+          inspections: [
+            testInspection(),
+            testInspection(id: secondInspectionId),
+          ],
+        ),
+      ],
+    );
+
+    await pumpPage(tester, repository);
+    await tester.tap(find.byKey(Key('draft-form-$formId')));
+    await tester.pumpAndSettle();
+    await scrollTo(tester, find.byKey(const Key('submit-form-button')));
+    await tester.tap(find.byKey(const Key('submit-form-button')));
+    await tester.pumpAndSettle();
+    expect(find.text('Submit preventive-maintenance form?'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('confirm-submit-form')));
+    await tester.pumpAndSettle();
+
+    expect(repository.submittedFormId, formId);
+    await tester.drag(find.byType(ListView).last, const Offset(0, 2000));
+    await tester.pumpAndSettle();
+    expect(find.text('Status: Submitted'), findsOneWidget);
+    expect(find.text('PM-2026-0001'), findsOneWidget);
+    expect(find.byKey(const Key('submit-form-button')), findsNothing);
+    expect(find.text('Save row'), findsNothing);
+    expect(find.text('Delete row'), findsNothing);
+    expect(
+      find.text('This form is no longer Draft and cannot be edited.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('submission confirmation can be cancelled without an API write', (
+    tester,
+  ) async {
+    final repository = FakePreventiveMaintenanceRepository(
+      forms: [
+        testForm(id: formId, inspections: [testInspection()]),
+      ],
+    );
+
+    await pumpPage(tester, repository);
+    await tester.tap(find.byKey(Key('draft-form-$formId')));
+    await tester.pumpAndSettle();
+    await scrollTo(tester, find.byKey(const Key('submit-form-button')));
+    await tester.tap(find.byKey(const Key('submit-form-button')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+
+    expect(repository.submitCallCount, 0);
+    expect(find.byKey(const Key('submit-form-button')), findsOneWidget);
+  });
+
+  test('empty draft submission is rejected before an API write', () async {
+    final repository = FakePreventiveMaintenanceRepository(
+      forms: [testForm(id: formId)],
+    );
+    final controller = PreventiveMaintenanceController(
+      repository: repository,
+      user: testUser(),
+    );
+    await controller.loadForms();
+    controller.selectForm(controller.visibleDrafts.single);
+
+    expect(await controller.submitForm(), isNull);
+    expect(repository.submitCallCount, 0);
+    expect(
+      controller.errorMessage,
+      'Add at least one inspection row before submitting this form.',
+    );
+    controller.dispose();
+  });
+
+  test(
+    'submission conflicts are surfaced without leaking server details',
+    () async {
+      final repository = FakePreventiveMaintenanceRepository(
+        forms: [
+          testForm(id: formId, inspections: [testInspection()]),
+        ],
+        submitError: const ApiException(
+          statusCode: 409,
+          message: 'internal sequence details',
+        ),
+      );
+      final controller = PreventiveMaintenanceController(
+        repository: repository,
+        user: testUser(),
+      );
+      await controller.loadForms();
+      controller.selectForm(controller.visibleDrafts.single);
+
+      expect(await controller.submitForm(), isNull);
+      expect(repository.submitCallCount, 1);
+      expect(
+        controller.errorMessage,
+        'This draft has a conflict. Refresh it and try again.',
+      );
+      expect(controller.errorMessage, isNot(contains('internal sequence')));
+      controller.dispose();
+    },
+  );
+
+  test('late form loading does not notify after controller disposal', () async {
+    final pendingForms = Completer<List<PreventiveMaintenanceForm>>();
+    final repository = FakePreventiveMaintenanceRepository(
+      formsFuture: pendingForms.future,
+    );
+    final controller = PreventiveMaintenanceController(
+      repository: repository,
+      user: testUser(),
+    );
+
+    final loading = controller.loadForms();
+    await Future<void>.delayed(Duration.zero);
+    controller.dispose();
+    pendingForms.complete(const []);
+
+    await expectLater(loading, completes);
+  });
+
   test('draft repository uses the authenticated API contract', () async {
     final transportState = DraftTransportState();
     final client = ApiClient(
@@ -923,21 +1053,28 @@ class FakePreventiveMaintenanceRepository
     this.referenceFailures = 0,
     this.scheduleFailures = 0,
     this.schedulesFuture,
+    this.formsFuture,
+    this.submitError,
   }) : forms = [...?forms];
 
   List<PreventiveMaintenanceForm> forms;
   int referenceFailures;
   int scheduleFailures;
   final Future<List<ScheduleOption>>? schedulesFuture;
+  final Future<List<PreventiveMaintenanceForm>>? formsFuture;
+  final ApiException? submitError;
   CreatePreventiveMaintenanceFormInput? createdInput;
   AddInspectionInput? addedInput;
   UpdateInspectionInput? updatedInput;
   String? deletedInspectionId;
   int addCallCount = 0;
+  int submitCallCount = 0;
+  String? submittedFormId;
   final requestedScheduleAssetIds = <String?>[];
 
   @override
-  Future<List<PreventiveMaintenanceForm>> listForms() async => forms;
+  Future<List<PreventiveMaintenanceForm>> listForms() =>
+      formsFuture ?? Future.value(forms);
 
   @override
   Future<PreventiveMaintenanceForm> getForm(String id) async {
@@ -962,6 +1099,35 @@ class FakePreventiveMaintenanceRepository
     );
     forms = [created, ...forms];
     return created;
+  }
+
+  @override
+  Future<PreventiveMaintenanceForm> submitForm(String formId) async {
+    submitCallCount++;
+    submittedFormId = formId;
+    if (submitError != null) {
+      throw submitError!;
+    }
+    final current = forms.singleWhere((candidate) => candidate.id == formId);
+    final submitted = testForm(
+      id: current.id,
+      fileNumber: 'PM-2026-0001',
+      createdByUserId: current.createdByUserId,
+      inspections: current.inspections,
+      status: 'Submitted',
+      assetCategory: current.assetCategory,
+      building: current.building,
+      department: current.department,
+      periodType: current.periodType,
+      quarter: current.quarter,
+      semester: current.semester,
+      year: current.year,
+      academicYear: current.academicYear,
+    );
+    forms = forms
+        .map((candidate) => candidate.id == formId ? submitted : candidate)
+        .toList(growable: false);
+    return submitted;
   }
 
   @override

@@ -20,6 +20,7 @@ class PreventiveMaintenanceController extends ChangeNotifier {
   bool isLoading = false;
   bool isSaving = false;
   String? errorMessage;
+  bool _isDisposed = false;
 
   bool get isGsd => user.roles.contains('GSD');
 
@@ -31,14 +32,14 @@ class PreventiveMaintenanceController extends ChangeNotifier {
   Future<void> loadForms() async {
     isLoading = true;
     errorMessage = null;
-    notifyListeners();
+    _notifyListeners();
     try {
       forms = await repository.listForms();
     } catch (error) {
       errorMessage = friendlyError(error);
     } finally {
       isLoading = false;
-      notifyListeners();
+      _notifyListeners();
     }
   }
 
@@ -53,25 +54,47 @@ class PreventiveMaintenanceController extends ChangeNotifier {
     });
   }
 
+  Future<PreventiveMaintenanceForm?> submitForm() async {
+    final form = selectedForm;
+    if (form == null) return null;
+    if (!form.isDraft) {
+      errorMessage = 'Only Draft forms can be submitted.';
+      _notifyListeners();
+      return null;
+    }
+    if (form.inspections.isEmpty) {
+      errorMessage =
+          'Add at least one inspection row before submitting this form.';
+      _notifyListeners();
+      return null;
+    }
+
+    return _runSaving(() async {
+      final submitted = await repository.submitForm(form.id);
+      _replaceSelected(submitted);
+      return submitted;
+    });
+  }
+
   Future<void> loadDraft(String formId) async {
     isLoading = true;
     errorMessage = null;
     selectedForm = null;
-    notifyListeners();
+    _notifyListeners();
     try {
       selectedForm = await repository.getForm(formId);
     } catch (error) {
       errorMessage = friendlyError(error);
     } finally {
       isLoading = false;
-      notifyListeners();
+      _notifyListeners();
     }
   }
 
   void selectForm(PreventiveMaintenanceForm form) {
     selectedForm = form;
     errorMessage = null;
-    notifyListeners();
+    _notifyListeners();
   }
 
   PmDraftResolution resolveDraftFor(Asset asset, ScheduleOption schedule) {
@@ -112,7 +135,7 @@ class PreventiveMaintenanceController extends ChangeNotifier {
     if (form == null) return false;
     if (form.inspections.any((row) => row.scheduleId == input.scheduleId)) {
       errorMessage = 'This schedule is already included in the draft.';
-      notifyListeners();
+      _notifyListeners();
       return false;
     }
     return (await _runSaving(() async {
@@ -168,13 +191,13 @@ class PreventiveMaintenanceController extends ChangeNotifier {
   void clearSelection() {
     selectedForm = null;
     errorMessage = null;
-    notifyListeners();
+    _notifyListeners();
   }
 
   Future<T?> _runSaving<T>(Future<T> Function() action) async {
     isSaving = true;
     errorMessage = null;
-    notifyListeners();
+    _notifyListeners();
     try {
       return await action();
     } catch (error) {
@@ -182,6 +205,18 @@ class PreventiveMaintenanceController extends ChangeNotifier {
       return null;
     } finally {
       isSaving = false;
+      _notifyListeners();
+    }
+  }
+
+  @override
+  void dispose() {
+    _isDisposed = true;
+    super.dispose();
+  }
+
+  void _notifyListeners() {
+    if (!_isDisposed) {
       notifyListeners();
     }
   }

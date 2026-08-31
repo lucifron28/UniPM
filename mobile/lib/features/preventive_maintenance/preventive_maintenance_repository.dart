@@ -7,6 +7,7 @@ abstract interface class PreventiveMaintenanceRepository {
   Future<PreventiveMaintenanceForm> createForm(
     CreatePreventiveMaintenanceFormInput input,
   );
+  Future<PreventiveMaintenanceForm> submitForm(String formId);
   Future<List<ScheduleOption>> listSchedules({String? assetId});
   Future<List<ReferenceOption>> listAssetCategories();
   Future<List<ReferenceOption>> listPeriodTypes();
@@ -59,6 +60,15 @@ class ApiPreventiveMaintenanceRepository
         'year': input.year,
         'academicYear': input.academicYear,
       }),
+    );
+  }
+
+  @override
+  Future<PreventiveMaintenanceForm> submitForm(String formId) async {
+    return PreventiveMaintenanceForm.fromJson(
+      await _client.postJson(
+        '/api/v1/preventive-maintenance-forms/$formId/submit',
+      ),
     );
   }
 
