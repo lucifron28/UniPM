@@ -1,5 +1,13 @@
+import {
+  useRef,
+  useState,
+  type FormEvent,
+  type PointerEvent,
+  type RefObject,
+} from 'react'
 import { Link } from '@tanstack/react-router'
 import { ApiError } from '@/api/problem-details'
+import type { PreventiveMaintenanceAcknowledgementResponse } from '@/api/generated/models/preventiveMaintenanceAcknowledgementResponse'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -13,6 +21,7 @@ import {
 } from '@/features/preventive-maintenance-forms/form-contract'
 import {
   useCorrectiveMaintenanceHandoff,
+  useAcknowledgePreventiveMaintenanceFormMutation,
   usePreventiveMaintenanceForm,
 } from '@/features/preventive-maintenance-forms/form-queries'
 import {
@@ -260,7 +269,328 @@ function InspectionRow({ row }: { row: PreventiveMaintenanceInspectionRow }) {
   )
 }
 
+function SignaturePad({
+  canvasRef,
+  disabled,
+  onDrawnChange,
+}: {
+  canvasRef: RefObject<HTMLCanvasElement | null>
+  disabled: boolean
+  onDrawnChange: (drawn: boolean) => void
+}) {
+  const [isDrawing, setIsDrawing] = useState(false)
+  const lastPoint = useRef<{ x: number; y: number } | null>(null)
+
+  function pointFor(event: PointerEvent<HTMLCanvasElement>) {
+    const canvas = canvasRef.current
+    if (!canvas) return null
+    const bounds = canvas.getBoundingClientRect()
+    return {
+      x: ((event.clientX - bounds.left) / bounds.width) * canvas.width,
+      y: ((event.clientY - bounds.top) / bounds.height) * canvas.height,
+    }
+  }
+
+  function begin(event: PointerEvent<HTMLCanvasElement>) {
+    if (disabled) return
+    const point = pointFor(event)
+    if (!point) return
+    if (event.currentTarget.setPointerCapture) {
+      event.currentTarget.setPointerCapture(event.pointerId)
+    }
+    lastPoint.current = point
+    setIsDrawing(true)
+    onDrawnChange(true)
+  }
+
+  function move(event: PointerEvent<HTMLCanvasElement>) {
+    if (!isDrawing) return
+    const canvas = canvasRef.current
+    const previous = lastPoint.current
+    const point = pointFor(event)
+    if (!canvas || !previous || !point) return
+    const context = canvas.getContext('2d')
+    if (!context) return
+    context.strokeStyle = '#17212b'
+    context.lineWidth = 2
+    context.lineCap = 'round'
+    context.beginPath()
+    context.moveTo(previous.x, previous.y)
+    context.lineTo(point.x, point.y)
+    context.stroke()
+    lastPoint.current = point
+  }
+
+  function end(event: PointerEvent<HTMLCanvasElement>) {
+    if (!isDrawing) return
+    setIsDrawing(false)
+    lastPoint.current = null
+    if (
+      event.currentTarget.hasPointerCapture &&
+      event.currentTarget.hasPointerCapture(event.pointerId)
+    ) {
+      event.currentTarget.releasePointerCapture(event.pointerId)
+    }
+  }
+
+  function clear() {
+    const canvas = canvasRef.current
+    const context = canvas?.getContext('2d')
+    if (canvas && context) context.clearRect(0, 0, canvas.width, canvas.height)
+    onDrawnChange(false)
+  }
+
+  return (
+    <div>
+      <canvas
+        ref={canvasRef}
+        aria-label="Signature"
+        width={640}
+        height={180}
+        className="h-36 w-full rounded-lg border border-[var(--border-soft)] bg-white"
+        style={{ touchAction: 'none' }}
+        onPointerDown={begin}
+        onPointerMove={move}
+        onPointerUp={end}
+        onPointerCancel={end}
+      />
+      <div className="mt-2 flex items-center justify-between gap-3">
+        <p className="text-xs text-[var(--text-neutral)]">
+          Draw the department-head signature in the box.
+        </p>
+        <Button
+          type="button"
+          className="bg-[var(--surface-muted)] text-[var(--text-primary)] hover:bg-[var(--border-soft)]"
+          onClick={clear}
+          disabled={disabled}
+        >
+          Clear
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+function acknowledgementError(error: unknown) {
+  if (error instanceof ApiError) {
+    if (error.classification === 'network') {
+      return 'The service could not be reached. Try again when the connection is available.'
+    }
+    if (error.status === 400) {
+      return 'The acknowledgement details were rejected. Check the signatory fields and signature.'
+    }
+    if (error.status === 403) {
+      return 'Your account is not permitted to acknowledge this form.'
+    }
+    if (error.status === 409) {
+      return 'This form is no longer available for acknowledgement.'
+    }
+  }
+  return 'The form could not be acknowledged. Please try again.'
+}
+
+function AcknowledgementSummary({
+  acknowledgement,
+}: {
+  acknowledgement: PreventiveMaintenanceAcknowledgementResponse
+}) {
+  return (
+    <Card className="shadow-none" role="status">
+      <p className="text-sm font-semibold tracking-[0.08em] text-[var(--primary)] uppercase">
+        Acknowledgement recorded
+      </p>
+      <dl className="mt-3 grid gap-4 text-sm sm:grid-cols-3">
+        <DetailItem
+          label="Signatory name"
+          value={acknowledgement.signatoryName}
+        />
+        <DetailItem
+          label="Signatory position"
+          value={acknowledgement.signatoryPosition}
+        />
+        <DetailItem
+          label="Acknowledged"
+          value={formatFormDate(acknowledgement.acknowledgedAt)}
+        />
+      </dl>
+    </Card>
+  )
+}
+
+function AcknowledgeForm({
+  formId,
+  onAcknowledged,
+}: {
+  formId: string
+  onAcknowledged: (
+    acknowledgement: PreventiveMaintenanceAcknowledgementResponse,
+  ) => void
+}) {
+  const mutation = useAcknowledgePreventiveMaintenanceFormMutation()
+  const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const [signatoryName, setSignatoryName] = useState('')
+  const [signatoryPosition, setSignatoryPosition] = useState('')
+  const [signatureDrawn, setSignatureDrawn] = useState(false)
+  const [validationError, setValidationError] = useState<string | null>(null)
+  const [isConfirming, setIsConfirming] = useState(false)
+
+  async function acknowledge(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setValidationError(null)
+    if (!signatoryName.trim() || !signatoryPosition.trim()) {
+      setValidationError('Signatory name and position are required.')
+      return
+    }
+    if (!signatureDrawn) {
+      setValidationError(
+        'Capture the department-head signature before continuing.',
+      )
+      return
+    }
+
+    setIsConfirming(true)
+  }
+
+  async function submitAcknowledgement() {
+    setIsConfirming(false)
+
+    const dataUrl = canvasRef.current?.toDataURL('image/png') ?? ''
+    const comma = dataUrl.indexOf(',')
+    const signatureData = comma >= 0 ? dataUrl.slice(comma + 1) : dataUrl
+    if (!signatureData) {
+      setValidationError('The signature could not be captured. Try again.')
+      return
+    }
+
+    try {
+      const acknowledgement = await mutation.mutateAsync({
+        id: formId,
+        data: {
+          signatoryName: signatoryName.trim(),
+          signatoryPosition: signatoryPosition.trim(),
+          signatureData,
+          signatureContentType: 'image/png',
+        },
+      })
+      onAcknowledged(acknowledgement)
+    } catch {
+      // The bounded mutation state below provides the user-facing message.
+    }
+  }
+
+  return (
+    <Card className="space-y-5 shadow-none">
+      <div>
+        <p className="text-sm font-semibold tracking-[0.08em] text-[var(--primary)] uppercase">
+          Department-head acknowledgement
+        </p>
+        <h2 className="mt-1 text-2xl font-bold text-[var(--text-primary)]">
+          Acknowledge submitted form
+        </h2>
+        <p className="mt-1 text-sm text-[var(--text-secondary)]">
+          Acknowledgement locks the form, completes its linked schedules, and
+          publishes the inspection rows as official history. It records receipt
+          and noting of the findings; it does not approve corrective work or
+          budget.
+        </p>
+      </div>
+      <form className="space-y-4" onSubmit={acknowledge}>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="text-sm font-semibold text-[var(--text-primary)]">
+            Signatory name
+            <input
+              className="mt-2 min-h-10 w-full rounded-lg border border-[var(--border-soft)] px-3 font-normal outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary-active)]"
+              value={signatoryName}
+              maxLength={160}
+              onChange={(event) => setSignatoryName(event.target.value)}
+            />
+          </label>
+          <label className="text-sm font-semibold text-[var(--text-primary)]">
+            Signatory position
+            <input
+              className="mt-2 min-h-10 w-full rounded-lg border border-[var(--border-soft)] px-3 font-normal outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary-active)]"
+              value={signatoryPosition}
+              maxLength={160}
+              onChange={(event) => setSignatoryPosition(event.target.value)}
+            />
+          </label>
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-[var(--text-primary)]">
+            Signature
+          </p>
+          <div className="mt-2">
+            <SignaturePad
+              canvasRef={canvasRef}
+              disabled={mutation.isPending}
+              onDrawnChange={setSignatureDrawn}
+            />
+          </div>
+        </div>
+        {validationError && (
+          <p role="alert" className="text-sm text-[var(--danger)]">
+            {validationError}
+          </p>
+        )}
+        {mutation.isError && (
+          <p role="alert" className="text-sm text-[var(--danger)]">
+            {acknowledgementError(mutation.error)}
+          </p>
+        )}
+        {mutation.isSuccess && (
+          <p role="status" className="text-sm text-[var(--success)]">
+            Acknowledgement recorded. The form is now locked.
+          </p>
+        )}
+        {isConfirming && (
+          <div
+            role="dialog"
+            aria-labelledby="acknowledgement-confirmation-title"
+            className="rounded-lg border border-[var(--border-soft)] bg-[var(--surface-muted)] p-4"
+          >
+            <h3
+              id="acknowledgement-confirmation-title"
+              className="font-semibold text-[var(--text-primary)]"
+            >
+              Confirm department-head acknowledgement
+            </h3>
+            <p className="mt-2 text-sm text-[var(--text-secondary)]">
+              This records receipt/noting of the preventive-maintenance
+              findings, locks the form, completes linked schedules, and does not
+              approve corrective work or budget.
+            </p>
+            <div className="mt-4 flex flex-wrap justify-end gap-3">
+              <Button
+                type="button"
+                className="bg-[var(--surface-muted)] text-[var(--text-primary)] hover:bg-[var(--border-soft)]"
+                onClick={() => setIsConfirming(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={() => void submitAcknowledgement()}
+              >
+                Confirm acknowledgement
+              </Button>
+            </div>
+          </div>
+        )}
+        <Button type="submit" disabled={mutation.isPending}>
+          {mutation.isPending
+            ? 'Acknowledging...'
+            : isConfirming
+              ? 'Review acknowledgement'
+              : 'Acknowledge form'}
+        </Button>
+      </form>
+    </Card>
+  )
+}
+
 export function FormDetail({ formId }: { formId: string }) {
+  const [acknowledgement, setAcknowledgement] =
+    useState<PreventiveMaintenanceAcknowledgementResponse | null>(null)
   const currentUser = useCurrentUser()
   const canReview = canReviewPreventiveMaintenanceForms(currentUser.data?.roles)
   const isGsd = isGsdRole(currentUser.data?.roles)
@@ -438,6 +768,15 @@ export function FormDetail({ formId }: { formId: string }) {
           </div>
         )}
       </section>
+      {acknowledgement && (
+        <AcknowledgementSummary acknowledgement={acknowledgement} />
+      )}
+      {record.status === 'Submitted' && !acknowledgement && (
+        <AcknowledgeForm
+          formId={record.id}
+          onAcknowledged={setAcknowledgement}
+        />
+      )}
       {isGsd && record.status === 'Acknowledged' && (
         <CorrectiveHandoff query={handoff} />
       )}

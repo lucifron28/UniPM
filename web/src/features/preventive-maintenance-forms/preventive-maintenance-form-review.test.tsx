@@ -1,4 +1,10 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import {
   createMemoryHistory,
@@ -7,7 +13,7 @@ import {
   RouterProvider,
 } from '@tanstack/react-router'
 import { http, HttpResponse } from 'msw'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { configureApiRuntime } from '@/api/http-client'
 import { FormDetail } from '@/features/preventive-maintenance-forms/form-detail'
 import { FormRegistry } from '@/features/preventive-maintenance-forms/form-registry'
@@ -185,6 +191,25 @@ describe('preventive-maintenance form review', () => {
     expect(screen.queryByText('Completed')).not.toBeInTheDocument()
     expect(screen.queryByText('signatureData')).not.toBeInTheDocument()
     expect(screen.queryByText('signatureChecksum')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('heading', { name: 'Acknowledge submitted form' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('does not offer acknowledgement for a Draft form', async () => {
+    server.use(
+      http.get(meUrl, () => HttpResponse.json(currentUser(['GSD']))),
+      http.get(`${formsUrl}/${formId}`, () => HttpResponse.json(form('Draft'))),
+    )
+
+    renderWithProviders(<FormDetail formId={formId} />)
+
+    expect(
+      await screen.findByRole('heading', { name: 'Inspection rows' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('heading', { name: 'Acknowledge submitted form' }),
+    ).not.toBeInTheDocument()
   })
 
   it('does not request corrective handoff for Inspector users', async () => {
@@ -209,5 +234,101 @@ describe('preventive-maintenance form review', () => {
     expect(
       screen.queryByRole('heading', { name: 'Corrective-action findings' }),
     ).not.toBeInTheDocument()
+  })
+
+  it('acknowledges a submitted form without exposing signature payloads', async () => {
+    let acknowledgementBody: Record<string, unknown> | undefined
+    let acknowledged = false
+    server.use(
+      http.get(meUrl, () => HttpResponse.json(currentUser(['GSD']))),
+      http.get(`${formsUrl}/${formId}`, () =>
+        HttpResponse.json(form(acknowledged ? 'Acknowledged' : 'Submitted')),
+      ),
+      http.get(`${formsUrl}/${formId}/corrective-handoff`, () =>
+        HttpResponse.json({
+          formId,
+          fileNumber: 'GSD-ACKNOWLEDGED-001',
+          acknowledgedAt: '2026-07-29T02:00:00Z',
+          department: 'GSD',
+          building: 'Main Building',
+          assetCategory: 'fire-extinguisher',
+          hasCorrectiveActionRows: false,
+          rows: [],
+        }),
+      ),
+      http.post(`${formsUrl}/${formId}/acknowledge`, async ({ request }) => {
+        acknowledged = true
+        acknowledgementBody = (await request.json()) as Record<string, unknown>
+        return HttpResponse.json({
+          id: '99999999-9999-4999-8999-999999999999',
+          formId,
+          signatoryName: 'Synthetic Department Head',
+          signatoryPosition: 'Department Head',
+          signatureContentType: 'image/png',
+          signatureChecksum: 'not-displayed',
+          capturedByUserId: inspectorId,
+          acknowledgedAt: '2026-07-29T02:00:00Z',
+        })
+      }),
+    )
+    const toDataUrl = vi
+      .spyOn(HTMLCanvasElement.prototype, 'toDataURL')
+      .mockReturnValue('data:image/png;base64,iVBORw0KGgo=')
+
+    renderWithProviders(<FormDetail formId={formId} />)
+
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Acknowledge submitted form',
+      }),
+    ).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('Signatory name'), {
+      target: { value: 'Synthetic Department Head' },
+    })
+    fireEvent.change(screen.getByLabelText('Signatory position'), {
+      target: { value: 'Department Head' },
+    })
+    fireEvent.pointerDown(screen.getByLabelText('Signature'), {
+      clientX: 20,
+      clientY: 20,
+      pointerId: 1,
+    })
+    fireEvent.pointerUp(screen.getByLabelText('Signature'), { pointerId: 1 })
+    fireEvent.click(screen.getByRole('button', { name: 'Acknowledge form' }))
+
+    expect(
+      await screen.findByRole('dialog', {
+        name: 'Confirm department-head acknowledgement',
+      }),
+    ).toBeInTheDocument()
+    expect(
+      within(
+        screen.getByRole('dialog', {
+          name: 'Confirm department-head acknowledgement',
+        }),
+      ).getByText(/does not approve corrective work or budget/),
+    ).toBeInTheDocument()
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Confirm acknowledgement' }),
+    )
+
+    await waitFor(() => expect(acknowledgementBody).toBeDefined())
+    expect(toDataUrl).toHaveBeenCalledWith('image/png')
+    expect(acknowledgementBody).toMatchObject({
+      signatoryName: 'Synthetic Department Head',
+      signatoryPosition: 'Department Head',
+      signatureContentType: 'image/png',
+    })
+    expect(acknowledgementBody?.signatureData).toBe('iVBORw0KGgo=')
+    expect(screen.getByText('Acknowledgement recorded')).toBeInTheDocument()
+    expect(screen.getByText('Synthetic Department Head')).toBeInTheDocument()
+    expect(screen.getByText('Department Head')).toBeInTheDocument()
+    expect(screen.getAllByText('Acknowledged')).toHaveLength(2)
+    expect(
+      screen.queryByRole('button', { name: 'Acknowledge form' }),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByText('signatureData')).not.toBeInTheDocument()
+    expect(screen.queryByText('signatureChecksum')).not.toBeInTheDocument()
+    toDataUrl.mockRestore()
   })
 })
