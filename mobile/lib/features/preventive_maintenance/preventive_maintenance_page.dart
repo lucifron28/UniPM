@@ -54,8 +54,10 @@ class _PreventiveMaintenancePageState extends State<PreventiveMaintenancePage> {
     controller.selectForm(form);
     await Navigator.of(context).push<void>(
       MaterialPageRoute<void>(
-        builder: (_) =>
-            _DraftEditorPage(controller: controller, formId: formId),
+        builder: (_) => PreventiveMaintenanceDraftPage(
+          controller: controller,
+          formId: formId,
+        ),
       ),
     );
     if (mounted) await controller.loadForms();
@@ -264,8 +266,10 @@ class _CreateDraftPageState extends State<_CreateDraftPage> {
     if (!mounted || created == null) return;
     await Navigator.of(context).pushReplacement<void, void>(
       MaterialPageRoute<void>(
-        builder: (_) =>
-            _DraftEditorPage(controller: widget.controller, formId: created.id),
+        builder: (_) => PreventiveMaintenanceDraftPage(
+          controller: widget.controller,
+          formId: created.id,
+        ),
       ),
     );
   }
@@ -423,17 +427,27 @@ class _CreateDraftPageState extends State<_CreateDraftPage> {
   }
 }
 
-class _DraftEditorPage extends StatefulWidget {
-  const _DraftEditorPage({required this.controller, required this.formId});
+class PreventiveMaintenanceDraftPage extends StatefulWidget {
+  const PreventiveMaintenanceDraftPage({
+    super.key,
+    required this.controller,
+    required this.formId,
+    this.preselectedScheduleId,
+    this.focusedInspectionId,
+  });
 
   final PreventiveMaintenanceController controller;
   final String formId;
+  final String? preselectedScheduleId;
+  final String? focusedInspectionId;
 
   @override
-  State<_DraftEditorPage> createState() => _DraftEditorPageState();
+  State<PreventiveMaintenanceDraftPage> createState() =>
+      _PreventiveMaintenanceDraftPageState();
 }
 
-class _DraftEditorPageState extends State<_DraftEditorPage> {
+class _PreventiveMaintenanceDraftPageState
+    extends State<PreventiveMaintenanceDraftPage> {
   late Future<List<ScheduleOption>> schedules;
 
   @override
@@ -508,10 +522,36 @@ class _DraftEditorPageState extends State<_DraftEditorPage> {
   ) {
     final canEdit = form.isDraft;
     final matchingSchedules = schedules
+        .where((schedule) {
+          try {
+            return PreventiveMaintenanceGrouping.fromSchedule(
+              schedule,
+            ).matches(form);
+          } on FormatException {
+            return false;
+          }
+        })
         .where(
-          (schedule) => schedule.asset?.assetCategory == form.assetCategory,
+          (schedule) => !form.inspections.any(
+            (inspection) => inspection.scheduleId == schedule.id,
+          ),
         )
         .toList(growable: false);
+    final preselectedScheduleId =
+        matchingSchedules.any(
+          (schedule) => schedule.id == widget.preselectedScheduleId,
+        )
+        ? widget.preselectedScheduleId
+        : null;
+    final displayedInspections = [...form.inspections];
+    final focusedInspectionId = widget.focusedInspectionId;
+    if (focusedInspectionId != null) {
+      displayedInspections.sort((left, right) {
+        if (left.id == focusedInspectionId) return -1;
+        if (right.id == focusedInspectionId) return 1;
+        return 0;
+      });
+    }
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -560,6 +600,7 @@ class _DraftEditorPageState extends State<_DraftEditorPage> {
           _AddInspectionCard(
             key: ValueKey('add-${form.inspections.length}'),
             schedules: matchingSchedules,
+            preselectedScheduleId: preselectedScheduleId,
             inspectorUserId: widget.controller.user.id,
             isSaving: widget.controller.isSaving,
             onAdd: widget.controller.addInspection,
@@ -577,10 +618,11 @@ class _DraftEditorPageState extends State<_DraftEditorPage> {
               child: Text('No rows yet. Add an inspection row to this draft.'),
             ),
           ),
-        ...form.inspections.map(
+        ...displayedInspections.map(
           (row) => _InspectionRowEditor(
             key: ValueKey(row.id),
             row: row,
+            highlighted: row.id == focusedInspectionId,
             inspectorUserId: widget.controller.user.id,
             isSaving: widget.controller.isSaving,
             editable: canEdit,
@@ -645,12 +687,14 @@ class _AddInspectionCard extends StatefulWidget {
   const _AddInspectionCard({
     super.key,
     required this.schedules,
+    this.preselectedScheduleId,
     required this.inspectorUserId,
     required this.isSaving,
     required this.onAdd,
   });
 
   final List<ScheduleOption> schedules;
+  final String? preselectedScheduleId;
   final String inspectorUserId;
   final bool isSaving;
   final Future<bool> Function(AddInspectionInput input) onAdd;
@@ -664,9 +708,15 @@ class _AddInspectionCardState extends State<_AddInspectionCard> {
   final dateController = TextEditingController(text: _dateText(DateTime.now()));
   final remarksController = TextEditingController();
   final actionsController = TextEditingController();
-  String? scheduleId;
+  late String? scheduleId;
   bool isOperational = false;
   String? localError;
+
+  @override
+  void initState() {
+    super.initState();
+    scheduleId = widget.preselectedScheduleId;
+  }
 
   @override
   void dispose() {
@@ -721,7 +771,7 @@ class _AddInspectionCardState extends State<_AddInspectionCard> {
               if (localError != null) _InlineError(message: localError!),
               if (widget.schedules.isEmpty)
                 const Text(
-                  'No matching schedules are available for this category.',
+                  'No compatible schedules are available for this Draft.',
                 )
               else ...[
                 DropdownButtonFormField<String>(
@@ -791,6 +841,7 @@ class _InspectionRowEditor extends StatefulWidget {
   const _InspectionRowEditor({
     super.key,
     required this.row,
+    required this.highlighted,
     required this.inspectorUserId,
     required this.isSaving,
     required this.editable,
@@ -799,6 +850,7 @@ class _InspectionRowEditor extends StatefulWidget {
   });
 
   final PreventiveMaintenanceInspection row;
+  final bool highlighted;
   final String inspectorUserId;
   final bool isSaving;
   final bool editable;
@@ -876,6 +928,9 @@ class _InspectionRowEditorState extends State<_InspectionRowEditor> {
   @override
   Widget build(BuildContext context) {
     return Card(
+      color: widget.highlighted
+          ? Theme.of(context).colorScheme.primaryContainer
+          : null,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Form(
@@ -884,7 +939,7 @@ class _InspectionRowEditorState extends State<_InspectionRowEditor> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Inspection row',
+                widget.highlighted ? 'Resume inspection row' : 'Inspection row',
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: 8),

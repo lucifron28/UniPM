@@ -7,7 +7,7 @@ abstract interface class PreventiveMaintenanceRepository {
   Future<PreventiveMaintenanceForm> createForm(
     CreatePreventiveMaintenanceFormInput input,
   );
-  Future<List<ScheduleOption>> listSchedules();
+  Future<List<ScheduleOption>> listSchedules({String? assetId});
   Future<List<ReferenceOption>> listAssetCategories();
   Future<List<ReferenceOption>> listPeriodTypes();
   Future<List<ReferenceOption>> listQuarters();
@@ -63,8 +63,11 @@ class ApiPreventiveMaintenanceRepository
   }
 
   @override
-  Future<List<ScheduleOption>> listSchedules() async {
-    final values = await _client.getJsonList('/api/v1/schedules');
+  Future<List<ScheduleOption>> listSchedules({String? assetId}) async {
+    final path = assetId == null
+        ? '/api/v1/schedules'
+        : '/api/v1/schedules?assetId=${Uri.encodeQueryComponent(assetId)}';
+    final values = await _client.getJsonList(path);
     return values.map(_scheduleFromValue).toList(growable: false);
   }
 

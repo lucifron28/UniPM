@@ -1,11 +1,10 @@
-# UniPM Mobile Foundation
+# UniPM Mobile
 
-This Flutter application is the Android-first foundation for the skilled-worker
-field workflow. It contains authentication, a small authenticated home shell,
-and the first Draft preventive-maintenance form workflow. QR scanning and later
-field workflow actions remain outside this phase. Offline synchronization is
-deferred; its persistence and synchronization architecture remain undecided
-until a separate approved decision.
+This Flutter application provides the Android-first skilled-worker field
+workflow. Authenticated Inspector and GSD users can identify an existing asset
+from its UniPM QR code, review backend-authoritative asset details, resolve an
+applicable asset schedule, and start or resume the existing Draft
+preventive-maintenance workflow.
 
 ## Local Setup
 
@@ -13,8 +12,8 @@ From this directory:
 
 ```powershell
 flutter pub get
-flutter analyze
-flutter test test/mobile_foundation_test.dart
+flutter analyze --no-pub
+flutter test --no-pub
 ```
 
 Configure the backend URL at runtime; it is not committed to the repository:
@@ -52,15 +51,25 @@ adding multiple inspection rows, resuming a saved Draft, and editing or
 deleting Draft rows. Every action is sent to the ASP.NET Core API immediately;
 the mobile app does not keep offline drafts or synchronize a local database.
 
-The mobile client only presents Draft forms. Submission, acknowledgement,
-signatures, schedule completion, corrective handoff, RMRF, QR scanning, and
-offline synchronization remain outside this phase. Offline synchronization is
-deferred rather than rejected; its persistence and synchronization architecture
-remain undecided pending a separate approved decision.
+The **Scan asset QR** entry sends the complete scanned UniPM QR value to the
+authenticated backend asset lookup. Backend asset data remains authoritative;
+the mobile app does not derive an asset identity or category from the QR text.
+Eligible schedules are requested for the returned asset ID. The worker chooses
+when more than one applicable schedule exists, then starts a derived Draft,
+reuses a compatible Draft, chooses between multiple compatible Drafts, or
+resumes an existing inspection row. An inspection row is created only when the
+worker saves it in the existing editor.
+
+Submission, acknowledgement, signatures, final category-specific forms,
+schedule completion, corrective handoff, RMRF processing, and offline workflow
+remain outside this implementation. Offline persistence and synchronization
+architecture remain undecided pending a separate approved decision.
 
 ## Dependencies
 
 - `http`: JSON HTTP requests to the existing ASP.NET Core API.
+- `mobile_scanner`: Android camera preview and QR decoding. Android camera
+  permission is declared in the application manifest.
 
 No API credentials, URLs, tokens, cookies, or environment-specific settings are
 committed or persisted by the mobile client.

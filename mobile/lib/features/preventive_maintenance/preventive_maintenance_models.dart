@@ -1,3 +1,5 @@
+import '../assets/asset_models.dart';
+
 class PreventiveMaintenanceForm {
   const PreventiveMaintenanceForm({
     required this.id,
@@ -151,6 +153,10 @@ class ScheduleOption {
     required this.scheduleDate,
     required this.periodType,
     required this.status,
+    required this.quarter,
+    required this.semester,
+    required this.year,
+    required this.academicYear,
     required this.asset,
   });
 
@@ -159,6 +165,10 @@ class ScheduleOption {
   final DateTime scheduleDate;
   final String periodType;
   final String status;
+  final String? quarter;
+  final String? semester;
+  final int? year;
+  final String? academicYear;
   final ScheduleAssetOption? asset;
 
   factory ScheduleOption.fromJson(Map<String, dynamic> json) {
@@ -172,6 +182,10 @@ class ScheduleOption {
       scheduleDate: _requiredDateTime(json, 'scheduleDate'),
       periodType: _requiredText(json, 'periodType'),
       status: _requiredText(json, 'status'),
+      quarter: _nullableString(json, 'quarter'),
+      semester: _nullableString(json, 'semester'),
+      year: _nullableInt(json, 'year'),
+      academicYear: _nullableString(json, 'academicYear'),
       asset: ScheduleAssetOption.fromJson(assetJson.cast<String, dynamic>()),
     );
   }
@@ -226,6 +240,85 @@ class CreatePreventiveMaintenanceFormInput {
   final String? semester;
   final int? year;
   final String? academicYear;
+}
+
+class PreventiveMaintenanceGrouping {
+  const PreventiveMaintenanceGrouping({
+    required this.assetCategory,
+    required this.building,
+    required this.department,
+    required this.periodType,
+    required this.quarter,
+    required this.semester,
+    required this.year,
+    required this.academicYear,
+  });
+
+  final String assetCategory;
+  final String? building;
+  final String? department;
+  final String periodType;
+  final String? quarter;
+  final String? semester;
+  final int? year;
+  final String? academicYear;
+
+  factory PreventiveMaintenanceGrouping.fromAssetAndSchedule(
+    Asset asset,
+    ScheduleOption schedule,
+  ) {
+    return PreventiveMaintenanceGrouping(
+      assetCategory: asset.assetCategory,
+      building: asset.building,
+      department: asset.department,
+      periodType: schedule.periodType,
+      quarter: schedule.quarter,
+      semester: schedule.semester,
+      year: schedule.year,
+      academicYear: schedule.academicYear,
+    );
+  }
+
+  factory PreventiveMaintenanceGrouping.fromSchedule(ScheduleOption schedule) {
+    final asset = schedule.asset;
+    if (asset == null) {
+      throw const FormatException('Schedule asset metadata is unavailable.');
+    }
+    return PreventiveMaintenanceGrouping(
+      assetCategory: asset.assetCategory,
+      building: asset.building,
+      department: asset.department,
+      periodType: schedule.periodType,
+      quarter: schedule.quarter,
+      semester: schedule.semester,
+      year: schedule.year,
+      academicYear: schedule.academicYear,
+    );
+  }
+
+  bool matches(PreventiveMaintenanceForm form) {
+    return _sameText(form.assetCategory, assetCategory) &&
+        _sameOptionalText(form.building, building) &&
+        _sameOptionalText(form.department, department) &&
+        _sameText(form.periodType, periodType) &&
+        _sameOptionalText(form.quarter, quarter) &&
+        _sameOptionalText(form.semester, semester) &&
+        form.year == year &&
+        _sameOptionalText(form.academicYear, academicYear);
+  }
+
+  CreatePreventiveMaintenanceFormInput toCreateInput() {
+    return CreatePreventiveMaintenanceFormInput(
+      assetCategory: assetCategory,
+      building: building,
+      department: department,
+      periodType: periodType,
+      quarter: quarter,
+      semester: semester,
+      year: year,
+      academicYear: academicYear,
+    );
+  }
 }
 
 class AddInspectionInput {
@@ -342,4 +435,18 @@ List<dynamic> _requiredList(Map<String, dynamic> json, String key) {
     throw FormatException('Invalid response field: $key.');
   }
   return value;
+}
+
+bool _sameText(String left, String right) =>
+    left.trim().toLowerCase() == right.trim().toLowerCase();
+
+bool _sameOptionalText(String? left, String? right) {
+  final normalizedLeft = _normalizedOptionalText(left);
+  final normalizedRight = _normalizedOptionalText(right);
+  return normalizedLeft == normalizedRight;
+}
+
+String? _normalizedOptionalText(String? value) {
+  final normalized = value?.trim().toLowerCase();
+  return normalized == null || normalized.isEmpty ? null : normalized;
 }
