@@ -156,6 +156,19 @@ void main() {
     controller.dispose();
   });
 
+  test('disposed lookup ignores a late repository response', () async {
+    final result = Completer<Asset>();
+    final repository = FakeAssetRepository((value) => result.future);
+    final controller = AssetQrLookupController(repository);
+    final lookup = controller.lookup(qrCodeValue);
+
+    await Future<void>.delayed(Duration.zero);
+    controller.dispose();
+    result.complete(testAsset());
+
+    await expectLater(lookup, completes);
+  });
+
   test(
     'empty and obvious non-UniPM values are rejected before a request',
     () async {
