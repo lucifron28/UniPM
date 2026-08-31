@@ -89,12 +89,12 @@ runtime, and not to be extended.
   preserved unchanged in
   [`rag-assisted-inspection-history-analysis.md`](rag-assisted-inspection-history-analysis.md).
 - Flutter mobile foundation: implemented and merged, including memory-only
-  authentication and the initial Draft preventive-maintenance form workflow in
-  a separate partner-owned workstream. This workstream does not implement
-  mobile features.
+  authentication, QR-based asset entry, the Draft preventive-maintenance form
+  workflow, and whole-form submission in a separate partner-owned workstream.
+  Web acknowledgement and signature capture are implemented separately.
   Offline synchronization is deferred and its persistence and synchronization
-  architecture remain undecided. Submission, acknowledgement, signatures, QR
-  scanning, and later field actions remain separately approved work.
+  architecture remain undecided; later mobile field actions remain separately
+  approved work.
 
 The active boundary for this branch is documented in
 [`mvp-definition.md`](mvp-definition.md): the PMIS-only GSD validation
@@ -405,9 +405,11 @@ directly.
 9. Completed: `feat/web-inspections` read-only inspection review.
 10. Completed: read-only preventive-maintenance form review.
 11. Completed: `feat/mobile-foundation` authentication foundation.
-12. Completed: `feat/mobile-pm-form-drafts` initial mobile Draft form workflow.
-13. The next mobile field workflow capability requires explicit approval.
-14. Current: `validation/pmis-only-gsd` - the PMIS-only GSD validation
+12. Completed: `feat/mobile-pm-form-drafts` initial mobile Draft form workflow
+    and whole-form submission.
+13. Completed: user-facing web acknowledgement capture for Submitted forms.
+14. The next mobile field workflow capability requires explicit approval.
+15. Current: `validation/pmis-only-gsd` - the PMIS-only GSD validation
     baseline (this branch). Any innovation branch requires a separate
     approved decision after GSD validation.
 

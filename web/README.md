@@ -75,21 +75,23 @@ schedule, recorded-result, and inspected-date filters, and open immutable
 source-record details. Asset details include a compact recent inspection-history
 panel. The inspection-review module does not submit inspections or expose
 acknowledgement actions, RMRF, approval, or reporting workflows; field
-submission is deferred to the planned mobile application.
+submission is handled by the mobile preventive-maintenance workflow.
 
 ## Preventive-Maintenance Form Review
 
 Authenticated GSD and Inspector users can browse `/app/preventive-maintenance-forms`
-and inspect a read-only form detail with its row-level condition, remarks,
-recommended corrective action, asset, schedule, and skilled-worker context.
-The interface distinguishes `Draft`, `Submitted`, and `Acknowledged` without
-calling an asset condition `Completed`.
+and inspect form details with their row-level condition, remarks, recommended
+corrective action, asset, schedule, and skilled-worker context. Submitted forms
+also expose the existing whole-form acknowledgement capture to an authorized
+reviewer. The interface distinguishes `Draft`, `Submitted`, and `Acknowledged`
+without calling an asset condition `Completed`.
 
 For GSD only, an Acknowledged form may display the existing corrective-action
 handoff read model. It preserves nullable `AssetDeviceNumber` as unresolved and
 does not substitute `AssetCode`. The interface never displays signature data,
-checksums, or acknowledgement-capture payloads, and it provides no draft,
-submit, acknowledgement, export, RMRF, WMS, or handoff-tracking action.
+checksums, or acknowledgement-response payloads. It provides no draft creation,
+inspection-row editing, submission, export, RMRF, WMS, or handoff-tracking
+action.
 
 ## Preventive Maintenance Schedules
 

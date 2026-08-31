@@ -3,8 +3,8 @@
 This Flutter application provides the Android-first skilled-worker field
 workflow. Authenticated Inspector and GSD users can identify an existing asset
 from its UniPM QR code, review backend-authoritative asset details, resolve an
-applicable asset schedule, and start or resume the existing Draft
-preventive-maintenance workflow.
+applicable asset schedule, and start, review, or submit the existing
+preventive-maintenance Draft workflow.
 
 ## Local Setup
 
@@ -48,7 +48,9 @@ navigation boundary; backend authorization remains authoritative.
 Inspector and GSD users can open **Preventive-maintenance drafts** from the
 authenticated shell. This phase supports creating a one-page form header,
 adding multiple inspection rows, resuming a saved Draft, and editing or
-deleting Draft rows. Every action is sent to the ASP.NET Core API immediately;
+deleting Draft rows. A worker can review the rows and submit the whole form;
+submission assigns the provisional file number returned by the API and makes
+the form read-only. Every action is sent to the ASP.NET Core API immediately;
 the mobile app does not keep offline drafts or synchronize a local database.
 
 The **Scan asset QR** entry sends the complete scanned UniPM QR value to the
@@ -60,10 +62,11 @@ reuses a compatible Draft, chooses between multiple compatible Drafts, or
 resumes an existing inspection row. An inspection row is created only when the
 worker saves it in the existing editor.
 
-Submission, acknowledgement, signatures, final category-specific forms,
-schedule completion, corrective handoff, RMRF processing, and offline workflow
-remain outside this implementation. Offline persistence and synchronization
-architecture remain undecided pending a separate approved decision.
+Acknowledgement and signature capture remain a web review operation. Schedule
+completion follows backend acknowledgement; final category-specific forms,
+corrective handoff, RMRF processing, and offline workflow remain outside this
+mobile implementation. Offline persistence and synchronization architecture
+remain undecided pending a separate approved decision.
 
 ## Dependencies
 

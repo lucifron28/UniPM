@@ -56,14 +56,15 @@
     tokens, refresh-cookie restoration, protected routes, current-user display,
     and logout.
   - Browser authentication integration is implemented and merged. The Flutter
-    mobile foundation and initial Draft preventive-maintenance form workflow
-    are implemented and merged in a separate partner-owned workstream;
-    offline synchronization remains deferred and architecture-undecided.
+    mobile foundation, Draft preventive-maintenance form workflow, and
+    whole-form submission are implemented and merged in a separate
+    partner-owned workstream; offline synchronization remains deferred and
+    architecture-undecided.
   - The partner-owned mobile client currently supports authenticated
-    GSD/Inspector access,
-    Draft form creation, and Draft inspection-row add/update/delete operations.
-    Submission, acknowledgement, signatures, QR scanning, and later field
-    workflows remain separately approved work.
+    GSD/Inspector access, QR-based asset entry, Draft form creation, Draft
+    inspection-row add/update/delete operations, and whole-form submission.
+    Web acknowledgement and signature capture are implemented separately;
+    later mobile field workflows remain separately approved work.
   - Authenticated asset registry and preventive maintenance schedule modules
     with route-backed list/detail/create workflows, generated API contracts,
     runtime response validation, and backend-authoritative role policies.

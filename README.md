@@ -124,23 +124,25 @@ Schedules provide URL-owned filters, recorded-status summaries, detail views,
 and GSD/Supervisor creation using only the current backend contract. Neither
 module invents editing, recurrence, status transitions, assignment, audit,
 condition, work-order, or device-specification workflows. Inspections provide
-read-only list/detail review and compact asset history; web inspection
-submission remains deferred to the planned mobile workflow.
+read-only list/detail review and compact asset history; field inspection
+submission is handled by the mobile preventive-maintenance workflow.
 
 ## Mobile Application
 
 The `mobile/` Flutter application is Android-first and currently provides
-memory-only authentication, an authenticated Inspector/GSD shell, and the
-initial Draft preventive-maintenance form workflow. Mobile users can create a
-Draft form, add multiple inspection rows, resume a Draft, and update or delete
-Draft rows through the API.
+memory-only authentication, an authenticated Inspector/GSD shell, QR-based
+asset entry, and the Draft preventive-maintenance form workflow. Mobile users
+can create a Draft form, add multiple inspection rows, resume a Draft, update
+or delete Draft rows, and submit the whole form through the API. Submission
+assigns a provisional file number and makes the form read-only.
 
 The mobile client starts signed out after restart, does not persist access
 tokens or cookies, and does not implement refresh/replay or offline
 synchronization. Offline sync is deferred; its persistence and synchronization
-architecture remain undecided pending a separate approved decision. Submission,
-acknowledgement, signature capture, QR scanning, and later field actions remain
-outside the current mobile scope. See [mobile/README.md](mobile/README.md).
+architecture remain undecided pending a separate approved decision.
+Acknowledgement and signature capture are available in the web review workflow;
+later mobile field actions remain outside the current mobile scope. See
+[mobile/README.md](mobile/README.md).
 
 ## First Run
 
@@ -425,9 +427,9 @@ Tagalog and Taglish language fit was weak, and five outputs violated the citatio
 contract. Inspection-submission integrity, retrieval/test layout organization,
 and explicit free-text-name sanitizer limitation documentation are complete.
 The web foundation and browser authentication integration are implemented and
-merged; the Flutter mobile foundation and initial Draft form workflow are also
-implemented and merged in a separate partner-owned workstream. This workstream
-does not implement mobile features. The reference-document foundation is
+merged; the Flutter mobile foundation, initial Draft form workflow, and
+whole-form submission are also implemented and merged in a separate
+partner-owned workstream. The reference-document foundation is
 implemented and merged as a fictional metadata and sectioning foundation; approved
 institutional source authorization and ingestion remain pending, and OEM
 retrieval is excluded from the evaluated MVP. EXP-003 executed a local offline

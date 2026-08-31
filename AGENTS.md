@@ -270,10 +270,11 @@ priority on this branch. The active boundary is defined in
 Browser authentication integration, the reference-document foundation, and the
 Flutter mobile foundation are implemented and merged in the separate,
 partner-owned mobile workstream. The mobile foundation includes memory-only
-authentication and the initial Draft preventive-maintenance form workflow.
-Offline synchronization is deferred and its persistence and synchronization
-architecture remain undecided; submission, acknowledgement, signatures, QR
-scanning, and later field actions remain outside this workstream.
+authentication, QR-based asset entry, the Draft preventive-maintenance form
+workflow, and whole-form submission. Web acknowledgement and signature capture
+are implemented separately. Offline synchronization is deferred and its
+persistence and synchronization architecture remain undecided; later mobile
+field actions remain outside this workstream.
 
 ## Current Unblocked Work
 
@@ -302,8 +303,9 @@ authentication integration, asset registry, preventive maintenance schedule
 workflows, read-only inspection review, multi-asset form drafting, form
 submission, whole-form acknowledgement, acknowledged-only history publication,
 and GSD-only corrective-action handoff preparation are also complete. The
-Flutter mobile foundation and initial Draft form workflow are complete; later
-mobile field actions remain separately approved work. The multilingual
+Flutter mobile foundation, initial Draft form workflow, and whole-form
+submission are complete; later mobile field actions remain separately approved
+work. The multilingual
 embedding baseline is recorded as controlled development evidence; it does not
 establish real institutional performance.
 
