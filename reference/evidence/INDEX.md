@@ -92,6 +92,8 @@ record's evidence level and tested/source commit.
 | TEST-028 | test-run | Corrective-action handoff read model verification | executed | locally-executed | `fb26a0b` | [record](test-runs/TEST-028-corrective-action-handoff-read-model.md) | Two focused endpoint tests passed; nullable device-number behavior verified; native SQL Server 2019 and full-suite verification were not run. |
 | IMP-027 | implementation | Flutter preventive-maintenance Draft workflow hardening | reviewed | locally-executed | `85ee12a` | [record](implementation/IMP-027-mobile-pm-draft-hardening.md) | Terminal 401 route reset, explicit schedule loading/retry states, strict date-only validation, and focused Draft API boundary coverage. |
 | TEST-033 | test-run | Flutter preventive-maintenance Draft workflow hardening verification | executed | locally-executed | `85ee12a` | [record](test-runs/TEST-033-mobile-pm-draft-hardening.md) | Analyzer, 25 focused mobile tests, and debug APK build passed; no live backend, emulator, offline, SQL, or production verification was run. |
+| IMP-028 | implementation | Flutter official asset maintenance history | reviewed | locally-executed | `6381397` | [record](implementation/IMP-028-mobile-asset-history.md) | QR-resolved read-only history over the existing acknowledged-only backend contract; category-specific Page 2 fields remain pending GSD validation. |
+| TEST-034 | test-run | Flutter official asset maintenance history verification | executed | locally-executed | `6381397` | [record](test-runs/TEST-034-mobile-asset-history.md) | Formatter, analyzer, 10 focused tests, 74 full mobile tests, and debug APK build passed; device, live backend, offline, SQL, and release checks were not run. |
 
 ## Pending Evidence
 
