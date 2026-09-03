@@ -5,6 +5,7 @@ import 'auth/auth_repository.dart';
 import 'auth/session_controller.dart';
 import 'config/app_config.dart';
 import 'features/assets/asset_repository.dart';
+import 'features/maintenance_history/asset_maintenance_history_repository.dart';
 import 'features/preventive_maintenance/preventive_maintenance_repository.dart';
 import 'routing/app_router.dart';
 
@@ -16,6 +17,8 @@ void main() {
   final preventiveMaintenanceRepository = ApiPreventiveMaintenanceRepository(
     apiClient,
   );
+  final assetMaintenanceHistoryRepository =
+      ApiAssetMaintenanceHistoryRepository(apiClient);
   final sessionController = SessionController(authRepository);
 
   apiClient.configureSession(
@@ -29,6 +32,7 @@ void main() {
       sessionController: sessionController,
       assetRepository: assetRepository,
       preventiveMaintenanceRepository: preventiveMaintenanceRepository,
+      assetMaintenanceHistoryRepository: assetMaintenanceHistoryRepository,
       configurationError: config.errorMessage,
     ),
   );
@@ -40,6 +44,7 @@ class UniPmApp extends StatefulWidget {
     required this.sessionController,
     this.assetRepository,
     this.preventiveMaintenanceRepository,
+    this.assetMaintenanceHistoryRepository,
     this.configurationError,
     this.navigatorKey,
   });
@@ -47,6 +52,7 @@ class UniPmApp extends StatefulWidget {
   final SessionController sessionController;
   final AssetRepository? assetRepository;
   final PreventiveMaintenanceRepository? preventiveMaintenanceRepository;
+  final AssetMaintenanceHistoryRepository? assetMaintenanceHistoryRepository;
   final String? configurationError;
   final GlobalKey<NavigatorState>? navigatorKey;
 
@@ -71,6 +77,8 @@ class _UniPmAppState extends State<UniPmApp> {
         sessionController: widget.sessionController,
         assetRepository: widget.assetRepository,
         preventiveMaintenanceRepository: widget.preventiveMaintenanceRepository,
+        assetMaintenanceHistoryRepository:
+            widget.assetMaintenanceHistoryRepository,
         configurationError: widget.configurationError,
         navigatorKey: _navigatorKey,
       ),

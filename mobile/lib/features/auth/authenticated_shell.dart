@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../auth/session_controller.dart';
 import '../assets/asset_qr_lookup_page.dart';
 import '../assets/asset_repository.dart';
+import '../maintenance_history/asset_maintenance_history_repository.dart';
 import '../preventive_maintenance/preventive_maintenance_page.dart';
 import '../preventive_maintenance/preventive_maintenance_repository.dart';
 import '../qr_scanner/qr_scanner_page.dart';
@@ -14,11 +15,13 @@ class AuthenticatedShell extends StatelessWidget {
     required this.controller,
     this.assetRepository,
     this.preventiveMaintenanceRepository,
+    this.assetMaintenanceHistoryRepository,
   });
 
   final SessionController controller;
   final AssetRepository? assetRepository;
   final PreventiveMaintenanceRepository? preventiveMaintenanceRepository;
+  final AssetMaintenanceHistoryRepository? assetMaintenanceHistoryRepository;
 
   @override
   Widget build(BuildContext context) {
@@ -49,6 +52,8 @@ class AuthenticatedShell extends StatelessWidget {
                 scannedValue: scannedText,
                 preventiveMaintenanceRepository:
                     preventiveMaintenanceRepository,
+                assetMaintenanceHistoryRepository:
+                    assetMaintenanceHistoryRepository,
                 user: controller.user,
               ),
             ),

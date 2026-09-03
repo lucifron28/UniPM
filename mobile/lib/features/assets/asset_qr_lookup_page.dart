@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../auth/auth_models.dart';
+import '../maintenance_history/asset_maintenance_history_page.dart';
+import '../maintenance_history/asset_maintenance_history_repository.dart';
 import '../preventive_maintenance/preventive_maintenance_repository.dart';
 import '../preventive_maintenance/scanned_asset_pm_entry.dart';
 import '../qr_scanner/qr_scanner_page.dart';
@@ -20,6 +22,7 @@ class AssetQrLookupPage extends StatefulWidget {
     this.controller,
     this.scannerLauncher,
     this.preventiveMaintenanceRepository,
+    this.assetMaintenanceHistoryRepository,
     this.user,
   });
 
@@ -28,6 +31,7 @@ class AssetQrLookupPage extends StatefulWidget {
   final AssetQrLookupController? controller;
   final QrScannerLauncher? scannerLauncher;
   final PreventiveMaintenanceRepository? preventiveMaintenanceRepository;
+  final AssetMaintenanceHistoryRepository? assetMaintenanceHistoryRepository;
   final AuthUser? user;
 
   @override
@@ -77,6 +81,8 @@ class _AssetQrLookupPageState extends State<AssetQrLookupPage> {
                 onScanAnother: _scanAnother,
                 preventiveMaintenanceRepository:
                     widget.preventiveMaintenanceRepository,
+                assetMaintenanceHistoryRepository:
+                    widget.assetMaintenanceHistoryRepository,
                 user: widget.user,
               ),
               AssetQrLookupStatus.invalidQr ||
@@ -123,12 +129,14 @@ class _AssetDetails extends StatelessWidget {
     required this.asset,
     required this.onScanAnother,
     required this.preventiveMaintenanceRepository,
+    required this.assetMaintenanceHistoryRepository,
     required this.user,
   });
 
   final Asset asset;
   final VoidCallback onScanAnother;
   final PreventiveMaintenanceRepository? preventiveMaintenanceRepository;
+  final AssetMaintenanceHistoryRepository? assetMaintenanceHistoryRepository;
   final AuthUser? user;
 
   @override
@@ -173,6 +181,24 @@ class _AssetDetails extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 24),
+        if (assetMaintenanceHistoryRepository != null) ...[
+          OutlinedButton.icon(
+            key: const Key('view-asset-history'),
+            onPressed: () {
+              Navigator.of(context).push<void>(
+                MaterialPageRoute<void>(
+                  builder: (_) => AssetMaintenanceHistoryPage(
+                    asset: asset,
+                    repository: assetMaintenanceHistoryRepository!,
+                  ),
+                ),
+              );
+            },
+            icon: const Icon(Icons.history),
+            label: const Text('View maintenance history'),
+          ),
+          const SizedBox(height: 24),
+        ],
         if (preventiveMaintenanceRepository != null && user != null) ...[
           ScannedAssetPmEntry(
             key: ValueKey('pm-entry-${asset.id}'),
