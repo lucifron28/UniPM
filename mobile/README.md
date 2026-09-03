@@ -62,6 +62,16 @@ reuses a compatible Draft, chooses between multiple compatible Drafts, or
 resumes an existing inspection row. An inspection row is created only when the
 worker saves it in the existing editor.
 
+From the scanned asset details, the worker can open read-only **Maintenance
+history**. The client requests `/api/v1/inspections/history/{assetId}` using
+the exact backend asset ID and displays only the records returned by that
+acknowledged-history contract, including inspection date, condition, the
+inspection-row reference, remarks, and recommendations. Draft and Submitted
+rows are excluded by the backend and are not reconstructed or classified by
+the mobile client. The current history contract does not expose final
+category-specific Page 2 fields or a form file number; those remain pending
+GSD validation.
+
 Acknowledgement and signature capture remain a web review operation. Schedule
 completion follows backend acknowledgement; final category-specific forms,
 corrective handoff, RMRF processing, and offline workflow remain outside this

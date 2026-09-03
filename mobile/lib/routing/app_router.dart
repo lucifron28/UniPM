@@ -6,6 +6,7 @@ import '../features/auth/authenticated_shell.dart';
 import '../features/auth/configuration_error_page.dart';
 import '../features/auth/login_page.dart';
 import '../features/auth/unsupported_role_page.dart';
+import '../features/maintenance_history/asset_maintenance_history_repository.dart';
 import '../features/preventive_maintenance/preventive_maintenance_repository.dart';
 
 class AppRouter extends StatefulWidget {
@@ -15,6 +16,7 @@ class AppRouter extends StatefulWidget {
     required this.navigatorKey,
     this.assetRepository,
     this.preventiveMaintenanceRepository,
+    this.assetMaintenanceHistoryRepository,
     this.configurationError,
   });
 
@@ -22,6 +24,7 @@ class AppRouter extends StatefulWidget {
   final GlobalKey<NavigatorState> navigatorKey;
   final AssetRepository? assetRepository;
   final PreventiveMaintenanceRepository? preventiveMaintenanceRepository;
+  final AssetMaintenanceHistoryRepository? assetMaintenanceHistoryRepository;
   final String? configurationError;
 
   @override
@@ -84,6 +87,8 @@ class _AppRouterState extends State<AppRouter> {
               assetRepository: widget.assetRepository,
               preventiveMaintenanceRepository:
                   widget.preventiveMaintenanceRepository,
+              assetMaintenanceHistoryRepository:
+                  widget.assetMaintenanceHistoryRepository,
             );
           case SessionStatus.unsupportedRole:
             return UnsupportedRolePage(controller: widget.sessionController);
