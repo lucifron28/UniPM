@@ -31,6 +31,17 @@ For a physical device, use a reachable LAN address, for example
 `http://192.168.1.20:5000/`, or use an approved HTTPS development setup. The
 device and development machine must be able to reach the API.
 
+For a release build, provide an approved HTTPS API URL:
+
+```powershell
+flutter build apk --release --dart-define=UNIPM_API_BASE_URL=https://<approved-api-host>/
+```
+
+Production signing is supplied outside the repository through the standard
+untracked `android/key.properties` file and its referenced keystore. Release
+configuration never falls back to the debug keystore. A release artifact built
+without project-owned signing material is not a distributable signed package.
+
 ## Authentication Boundary
 
 The client uses the existing `/api/v1/auth/login`, `/api/v1/auth/me`, and
