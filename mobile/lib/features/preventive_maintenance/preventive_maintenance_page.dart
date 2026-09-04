@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../auth/auth_models.dart';
+import 'preventive_maintenance_acknowledgement_page.dart';
 import 'preventive_maintenance_controller.dart';
 import 'preventive_maintenance_models.dart';
 import 'preventive_maintenance_repository.dart';
@@ -83,8 +84,9 @@ class _PreventiveMaintenancePageState extends State<PreventiveMaintenancePage> {
             );
           }
 
-          final forms = controller.visibleDrafts;
-          if (forms.isEmpty) {
+          final drafts = controller.visibleDrafts;
+          final reviewableForms = controller.visibleReviewableForms;
+          if (drafts.isEmpty && reviewableForms.isEmpty) {
             return _EmptyFormsState(onCreate: _openCreate);
           }
 
@@ -109,20 +111,35 @@ class _PreventiveMaintenancePageState extends State<PreventiveMaintenancePage> {
                 'Draft forms are saved to UniPM as you add and edit inspection rows.',
               ),
               const SizedBox(height: 16),
-              ...forms.map(
-                (form) => Card(
-                  child: ListTile(
-                    key: Key('draft-form-${form.id}'),
-                    title: Text(form.fileNumber ?? 'Unsubmitted draft'),
-                    subtitle: Text(
-                      '${form.assetCategory} | ${form.inspections.length} inspection row(s)\n${form.building ?? 'Building not recorded'} / ${form.department ?? 'Department not recorded'}',
-                    ),
-                    isThreeLine: true,
-                    trailing: const Icon(Icons.chevron_right),
+              if (drafts.isEmpty)
+                const Text('No draft forms yet.')
+              else
+                ...drafts.map(
+                  (form) => _FormListTile(
+                    form: form,
+                    tileKey: Key('draft-form-${form.id}'),
                     onTap: () => _openDraft(form.id),
                   ),
                 ),
-              ),
+              if (reviewableForms.isNotEmpty) ...[
+                const SizedBox(height: 24),
+                Text(
+                  'Submitted and acknowledged forms',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Submitted forms can be reviewed and acknowledged from this authenticated mobile session.',
+                ),
+                const SizedBox(height: 8),
+                ...reviewableForms.map(
+                  (form) => _FormListTile(
+                    form: form,
+                    tileKey: Key('review-form-${form.id}'),
+                    onTap: () => _openDraft(form.id),
+                  ),
+                ),
+              ],
             ],
           );
         },
@@ -131,6 +148,39 @@ class _PreventiveMaintenancePageState extends State<PreventiveMaintenancePage> {
         onPressed: _openCreate,
         icon: const Icon(Icons.add),
         label: const Text('New draft'),
+      ),
+    );
+  }
+}
+
+class _FormListTile extends StatelessWidget {
+  const _FormListTile({
+    required this.form,
+    required this.tileKey,
+    required this.onTap,
+  });
+
+  final PreventiveMaintenanceForm form;
+  final Key tileKey;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: ListTile(
+        key: tileKey,
+        title: Text(
+          form.fileNumber ??
+              (form.isDraft
+                  ? 'Unsubmitted draft'
+                  : 'Preventive-maintenance form'),
+        ),
+        subtitle: Text(
+          '${form.status} | ${form.assetCategory} | ${form.inspections.length} inspection row(s)\n${form.building ?? 'Building not recorded'} / ${form.department ?? 'Department not recorded'}',
+        ),
+        isThreeLine: true,
+        trailing: const Icon(Icons.chevron_right),
+        onTap: onTap,
       ),
     );
   }
@@ -565,11 +615,35 @@ class _PreventiveMaintenanceDraftPageState
         _FormMetadata(form: form),
         const SizedBox(height: 16),
         if (!canEdit)
-          const Card(
+          Card(
             color: Color(0xFFFFF4E5),
             child: Padding(
               padding: EdgeInsets.all(16),
-              child: Text('This form is no longer Draft and cannot be edited.'),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    form.status == 'Submitted'
+                        ? 'This Submitted form is locked for acknowledgement review.'
+                        : 'This form is already Acknowledged and is read-only.',
+                  ),
+                  if (form.status == 'Submitted') ...[
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Review every inspection row, then capture the Department Head signatory details and signature.',
+                    ),
+                    const SizedBox(height: 8),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: OutlinedButton(
+                        key: const Key('open-acknowledgement'),
+                        onPressed: () => _openAcknowledgement(form),
+                        child: const Text('Review and acknowledge'),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
             ),
           ),
         if (scheduleError != null && canEdit)
@@ -645,6 +719,22 @@ class _PreventiveMaintenanceDraftPageState
         ],
       ],
     );
+  }
+
+  Future<void> _openAcknowledgement(PreventiveMaintenanceForm form) async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => PreventiveMaintenanceAcknowledgementPage(
+          controller: widget.controller,
+          form: form,
+        ),
+      ),
+    );
+    if (!mounted) return;
+    final selectedForm = widget.controller.selectedForm;
+    if (selectedForm?.id == form.id) {
+      setState(() => submittedForm = selectedForm);
+    }
   }
 
   Future<void> _confirmSubmit() async {

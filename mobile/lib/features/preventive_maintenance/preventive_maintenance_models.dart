@@ -68,6 +68,7 @@ class PreventiveMaintenanceForm {
 
   PreventiveMaintenanceForm copyWith({
     List<PreventiveMaintenanceInspection>? inspections,
+    String? status,
   }) {
     return PreventiveMaintenanceForm(
       id: id,
@@ -80,7 +81,7 @@ class PreventiveMaintenanceForm {
       semester: semester,
       year: year,
       academicYear: academicYear,
-      status: status,
+      status: status ?? this.status,
       createdByUserId: createdByUserId,
       submittedByUserId: submittedByUserId,
       submittedAt: submittedAt,
@@ -353,6 +354,57 @@ class UpdateInspectionInput {
   final bool isOperational;
   final String? remarks;
   final String? actionsRecommendations;
+}
+
+class AcknowledgePreventiveMaintenanceInput {
+  const AcknowledgePreventiveMaintenanceInput({
+    required this.signatoryName,
+    required this.signatoryPosition,
+    required this.signatureData,
+    required this.signatureContentType,
+  });
+
+  final String signatoryName;
+  final String signatoryPosition;
+  final String signatureData;
+  final String signatureContentType;
+}
+
+class PreventiveMaintenanceAcknowledgement {
+  const PreventiveMaintenanceAcknowledgement({
+    required this.id,
+    required this.formId,
+    required this.signatoryName,
+    required this.signatoryPosition,
+    required this.signatureContentType,
+    required this.signatureChecksum,
+    required this.capturedByUserId,
+    required this.acknowledgedAt,
+  });
+
+  final String id;
+  final String formId;
+  final String signatoryName;
+  final String signatoryPosition;
+  final String signatureContentType;
+  final String signatureChecksum;
+  final String capturedByUserId;
+  final DateTime acknowledgedAt;
+
+  factory PreventiveMaintenanceAcknowledgement.fromJson(
+    Map<String, dynamic> json,
+  ) {
+    return PreventiveMaintenanceAcknowledgement(
+      id: _requiredUuid(json, 'id'),
+      formId: _requiredUuid(json, 'formId'),
+      signatoryName: _requiredText(json, 'signatoryName'),
+      signatoryPosition: _requiredText(json, 'signatoryPosition'),
+      signatureContentType: _requiredText(json, 'signatureContentType'),
+      signatureChecksum: _requiredText(json, 'signatureChecksum'),
+      capturedByUserId: _requiredUuid(json, 'capturedByUserId'),
+      acknowledgedAt: _requiredDateTime(json, 'acknowledgedAt'),
+    );
+  }
 }
 
 PreventiveMaintenanceInspection _mapInspection(dynamic value) {

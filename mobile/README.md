@@ -72,11 +72,22 @@ the mobile client. The current history contract does not expose final
 category-specific Page 2 fields or a form file number; those remain pending
 GSD validation.
 
-Acknowledgement and signature capture remain a web review operation. Schedule
-completion follows backend acknowledgement; final category-specific forms,
-corrective handoff, RMRF processing, and offline workflow remain outside this
-mobile implementation. Offline persistence and synchronization architecture
-remain undecided pending a separate approved decision.
+For the confirmed GSD workflow, a submitted form can be opened for
+acknowledgement in the authenticated skilled-worker mobile session. The worker
+reviews the whole form, records the concerned Department Head's name and
+position, and captures the signature; the Department Head does not need a
+UniPM account. The client calls
+`POST /api/v1/preventive-maintenance-forms/{id}/acknowledge` with the signatory
+data and a PNG signature. The backend remains authoritative: it changes the
+form to **Acknowledged** and completes linked schedules. The mobile client
+never marks schedules complete directly. After success, the form is
+read-only. Acknowledgement is not corrective-action, budget, RMRF, or WMS
+approval.
+
+Final category-specific forms, corrective handoff, RMRF processing, and
+offline workflow remain outside this mobile implementation. Offline
+persistence and synchronization architecture remain undecided pending a
+separate approved decision.
 
 ## Dependencies
 
