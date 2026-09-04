@@ -38,6 +38,30 @@ Known demo limitations are listed at the end of this note.
 6. Are there additional pages or revisions we have not yet seen?
 7. Which fields are always filled versus optional in practice?
 
+### Category Evidence To Collect
+
+For each category below, collect the current approved source before finalizing
+the mobile form model:
+
+- form title, revision, effective date, and approving authority;
+- complete blank form, including Page 2, plus an approved completed sample;
+- exact field labels, types, required/optional status, and allowed values;
+- inspection procedures, checks, test measurements, and result semantics;
+- remarks and recommendation requirements;
+- confirmation that historical records retain their original form revision.
+
+Categories:
+
+- Fire Extinguishers
+- Fire Alarm Systems
+- Emergency Lights
+- Water Drinking Stations
+
+The category-specific form gate remains open until each category has an
+authoritative answer for every item above. Synthetic fixtures, obsolete
+manuscript material, blank Page 1 references, and generic industry practice
+cannot close this gate.
+
 ### Reports And History
 
 8. What reports are prepared after PM work?
