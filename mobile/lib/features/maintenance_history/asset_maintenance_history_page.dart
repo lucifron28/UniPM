@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../ui/display_labels.dart';
 import '../assets/asset_models.dart';
 import 'asset_maintenance_history_controller.dart';
 import 'asset_maintenance_history_models.dart';
@@ -150,7 +151,7 @@ class _HistoryContent extends StatelessWidget {
       children: [
         Text(asset.assetCode, style: Theme.of(context).textTheme.headlineSmall),
         const SizedBox(height: 4),
-        Text(asset.assetCategory),
+        Text(displayAssetCategory(asset.assetCategory)),
         const SizedBox(height: 12),
         const Text('Official history contains acknowledged records only.'),
         const SizedBox(height: 24),

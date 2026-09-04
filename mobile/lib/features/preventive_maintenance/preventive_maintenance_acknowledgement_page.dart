@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
+import '../../ui/display_labels.dart';
 import 'preventive_maintenance_controller.dart';
 import 'preventive_maintenance_models.dart';
 
@@ -164,7 +165,7 @@ class _SubmittedFormSummary extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text('Status: ${form.status}'),
-            Text('Asset category: ${form.assetCategory}'),
+            Text('Asset category: ${displayAssetCategory(form.assetCategory)}'),
             Text('Building: ${form.building ?? 'Not recorded'}'),
             Text('Department: ${form.department ?? 'Not recorded'}'),
             const SizedBox(height: 16),

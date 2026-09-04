@@ -315,7 +315,7 @@ void main() {
     expect(find.text('Asset found'), findsOneWidget);
     expect(find.byKey(const Key('asset-code')), findsOneWidget);
     expect(find.text('FA-001'), findsOneWidget);
-    expect(find.text('fire-alarm'), findsOneWidget);
+    expect(find.text('Fire Alarm'), findsOneWidget);
     expect(find.text('Active'), findsOneWidget);
     expect(find.text('Department'), findsOneWidget);
     expect(find.text('GSD'), findsOneWidget);

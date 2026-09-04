@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../auth/auth_models.dart';
+import '../../ui/display_labels.dart';
 import '../maintenance_history/asset_maintenance_history_page.dart';
 import '../maintenance_history/asset_maintenance_history_repository.dart';
 import '../preventive_maintenance/preventive_maintenance_repository.dart';
@@ -168,7 +169,10 @@ class _AssetDetails extends StatelessWidget {
                   style: Theme.of(context).textTheme.headlineMedium,
                 ),
                 const SizedBox(height: 20),
-                _AssetField(label: 'Category', value: asset.assetCategory),
+                _AssetField(
+                  label: 'Category',
+                  value: displayAssetCategory(asset.assetCategory),
+                ),
                 _AssetField(label: 'Status', value: asset.status),
                 if (_hasValue(asset.building))
                   _AssetField(label: 'Building', value: asset.building!),

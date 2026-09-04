@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../auth/auth_models.dart';
+import '../../ui/display_labels.dart';
 import 'preventive_maintenance_acknowledgement_page.dart';
 import 'preventive_maintenance_controller.dart';
 import 'preventive_maintenance_models.dart';
@@ -67,7 +68,7 @@ class _PreventiveMaintenancePageState extends State<PreventiveMaintenancePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Preventive-maintenance drafts')),
+      appBar: AppBar(title: const Text('Preventive-maintenance forms')),
       body: AnimatedBuilder(
         animation: controller,
         builder: (context, _) {
@@ -96,10 +97,7 @@ class _PreventiveMaintenancePageState extends State<PreventiveMaintenancePage> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'Draft forms',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
+                  Text('Forms', style: Theme.of(context).textTheme.titleLarge),
                   OutlinedButton(
                     onPressed: _openCreate,
                     child: const Text('Create draft'),
@@ -108,7 +106,7 @@ class _PreventiveMaintenancePageState extends State<PreventiveMaintenancePage> {
               ),
               const SizedBox(height: 8),
               const Text(
-                'Draft forms are saved to UniPM as you add and edit inspection rows.',
+                'Create and update drafts, then submit and acknowledge forms in this authenticated session.',
               ),
               const SizedBox(height: 16),
               if (drafts.isEmpty)
@@ -176,7 +174,7 @@ class _FormListTile extends StatelessWidget {
                   : 'Preventive-maintenance form'),
         ),
         subtitle: Text(
-          '${form.status} | ${form.assetCategory} | ${form.inspections.length} inspection row(s)\n${form.building ?? 'Building not recorded'} / ${form.department ?? 'Department not recorded'}',
+          '${form.status} | ${displayAssetCategory(form.assetCategory)} | ${form.inspections.length} inspection row(s)\n${form.building ?? 'Building not recorded'} / ${form.department ?? 'Department not recorded'}',
         ),
         isThreeLine: true,
         trailing: const Icon(Icons.chevron_right),
@@ -513,6 +511,13 @@ class _PreventiveMaintenanceDraftPageState
     });
   }
 
+  String get _pageTitle {
+    final form = submittedForm ?? widget.controller.selectedForm;
+    return form != null && !form.isDraft
+        ? 'Preventive-maintenance form'
+        : 'Draft form';
+  }
+
   Future<void> _retry() async {
     final nextSchedules = widget.controller.repository.listSchedules();
     setState(() {
@@ -524,7 +529,7 @@ class _PreventiveMaintenanceDraftPageState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Draft form')),
+      appBar: AppBar(title: Text(_pageTitle)),
       body: AnimatedBuilder(
         animation: widget.controller,
         builder: (context, _) {
@@ -807,7 +812,7 @@ class _FormMetadata extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text('Status: ${form.status}'),
-            Text('Asset category: ${form.assetCategory}'),
+            Text('Asset category: ${displayAssetCategory(form.assetCategory)}'),
             Text('Building: ${form.building ?? 'Not recorded'}'),
             Text('Department: ${form.department ?? 'Not recorded'}'),
             Text('Period: ${form.periodType}'),
