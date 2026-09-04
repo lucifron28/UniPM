@@ -17,6 +17,7 @@ class PreventiveMaintenanceController extends ChangeNotifier {
 
   List<PreventiveMaintenanceForm> forms = const [];
   PreventiveMaintenanceForm? selectedForm;
+  PreventiveMaintenanceAcknowledgement? acknowledgement;
   bool isLoading = false;
   bool isSaving = false;
   String? errorMessage;
@@ -26,6 +27,11 @@ class PreventiveMaintenanceController extends ChangeNotifier {
 
   List<PreventiveMaintenanceForm> get visibleDrafts => forms
       .where((form) => form.isDraft)
+      .where((form) => isGsd || form.createdByUserId == user.id)
+      .toList(growable: false);
+
+  List<PreventiveMaintenanceForm> get visibleReviewableForms => forms
+      .where((form) => !form.isDraft)
       .where((form) => isGsd || form.createdByUserId == user.id)
       .toList(growable: false);
 
@@ -76,10 +82,33 @@ class PreventiveMaintenanceController extends ChangeNotifier {
     });
   }
 
+  Future<PreventiveMaintenanceAcknowledgement?> acknowledgeForm(
+    AcknowledgePreventiveMaintenanceInput input,
+  ) async {
+    final form = selectedForm;
+    if (form == null) return null;
+    if (form.status != 'Submitted') {
+      errorMessage = 'Only Submitted forms can be acknowledged.';
+      _notifyListeners();
+      return null;
+    }
+
+    return _runSaving(() async {
+      final nextAcknowledgement = await repository.acknowledgeForm(
+        form.id,
+        input,
+      );
+      acknowledgement = nextAcknowledgement;
+      _replaceSelected(form.copyWith(status: 'Acknowledged'));
+      return nextAcknowledgement;
+    });
+  }
+
   Future<void> loadDraft(String formId) async {
     isLoading = true;
     errorMessage = null;
     selectedForm = null;
+    acknowledgement = null;
     _notifyListeners();
     try {
       selectedForm = await repository.getForm(formId);
@@ -93,6 +122,7 @@ class PreventiveMaintenanceController extends ChangeNotifier {
 
   void selectForm(PreventiveMaintenanceForm form) {
     selectedForm = form;
+    acknowledgement = null;
     errorMessage = null;
     _notifyListeners();
   }
@@ -190,6 +220,7 @@ class PreventiveMaintenanceController extends ChangeNotifier {
 
   void clearSelection() {
     selectedForm = null;
+    acknowledgement = null;
     errorMessage = null;
     _notifyListeners();
   }
@@ -286,8 +317,10 @@ class PmDraftResolution {
 String friendlyError(Object error) {
   if (error is ApiException) {
     switch (error.statusCode) {
+      case 401:
+        return 'Your session expired. Please sign in again.';
       case 403:
-        return 'This account cannot edit preventive-maintenance drafts.';
+        return 'This account cannot manage preventive-maintenance forms.';
       case 404:
         return 'The requested form, schedule, or reference was not found.';
       case 409:

@@ -8,6 +8,10 @@ abstract interface class PreventiveMaintenanceRepository {
     CreatePreventiveMaintenanceFormInput input,
   );
   Future<PreventiveMaintenanceForm> submitForm(String formId);
+  Future<PreventiveMaintenanceAcknowledgement> acknowledgeForm(
+    String formId,
+    AcknowledgePreventiveMaintenanceInput input,
+  );
   Future<List<ScheduleOption>> listSchedules({String? assetId});
   Future<List<ReferenceOption>> listAssetCategories();
   Future<List<ReferenceOption>> listPeriodTypes();
@@ -70,6 +74,23 @@ class ApiPreventiveMaintenanceRepository
         '/api/v1/preventive-maintenance-forms/$formId/submit',
       ),
     );
+  }
+
+  @override
+  Future<PreventiveMaintenanceAcknowledgement> acknowledgeForm(
+    String formId,
+    AcknowledgePreventiveMaintenanceInput input,
+  ) async {
+    final json = await _client.postJson(
+      '/api/v1/preventive-maintenance-forms/$formId/acknowledge',
+      <String, dynamic>{
+        'signatoryName': input.signatoryName.trim(),
+        'signatoryPosition': input.signatoryPosition.trim(),
+        'signatureData': input.signatureData,
+        'signatureContentType': input.signatureContentType,
+      },
+    );
+    return PreventiveMaintenanceAcknowledgement.fromJson(json);
   }
 
   @override

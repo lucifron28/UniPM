@@ -1046,6 +1046,19 @@ PreventiveMaintenanceInspection testInspection({
   );
 }
 
+PreventiveMaintenanceAcknowledgement testAcknowledgement(String formId) {
+  return PreventiveMaintenanceAcknowledgement(
+    id: '99999999-9999-4999-8999-999999999999',
+    formId: formId,
+    signatoryName: 'Synthetic Department Head',
+    signatoryPosition: 'Department Head',
+    signatureContentType: 'image/png',
+    signatureChecksum: 'SYNTHETIC-CHECKSUM',
+    capturedByUserId: inspectorId,
+    acknowledgedAt: DateTime.utc(2026, 2, 10, 8),
+  );
+}
+
 class FakePreventiveMaintenanceRepository
     implements PreventiveMaintenanceRepository {
   FakePreventiveMaintenanceRepository({
@@ -1055,6 +1068,7 @@ class FakePreventiveMaintenanceRepository
     this.schedulesFuture,
     this.formsFuture,
     this.submitError,
+    this.acknowledgementError,
   }) : forms = [...?forms];
 
   List<PreventiveMaintenanceForm> forms;
@@ -1063,6 +1077,7 @@ class FakePreventiveMaintenanceRepository
   final Future<List<ScheduleOption>>? schedulesFuture;
   final Future<List<PreventiveMaintenanceForm>>? formsFuture;
   final ApiException? submitError;
+  final ApiException? acknowledgementError;
   CreatePreventiveMaintenanceFormInput? createdInput;
   AddInspectionInput? addedInput;
   UpdateInspectionInput? updatedInput;
@@ -1070,6 +1085,8 @@ class FakePreventiveMaintenanceRepository
   int addCallCount = 0;
   int submitCallCount = 0;
   String? submittedFormId;
+  int acknowledgementCallCount = 0;
+  AcknowledgePreventiveMaintenanceInput? acknowledgementInput;
   final requestedScheduleAssetIds = <String?>[];
 
   @override
@@ -1128,6 +1145,27 @@ class FakePreventiveMaintenanceRepository
         .map((candidate) => candidate.id == formId ? submitted : candidate)
         .toList(growable: false);
     return submitted;
+  }
+
+  @override
+  Future<PreventiveMaintenanceAcknowledgement> acknowledgeForm(
+    String formId,
+    AcknowledgePreventiveMaintenanceInput input,
+  ) async {
+    acknowledgementCallCount++;
+    acknowledgementInput = input;
+    if (acknowledgementError != null) {
+      throw acknowledgementError!;
+    }
+    final current = forms.singleWhere((candidate) => candidate.id == formId);
+    forms = forms
+        .map(
+          (candidate) => candidate.id == formId
+              ? candidate.copyWith(status: 'Acknowledged')
+              : candidate,
+        )
+        .toList(growable: false);
+    return testAcknowledgement(current.id);
   }
 
   @override
