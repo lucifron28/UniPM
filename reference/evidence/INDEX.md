@@ -100,6 +100,8 @@ record's evidence level and tested/source commit.
 | TEST-036 | test-run | Flutter mobile field-workflow UX hardening verification | executed | locally-executed | `085c381` | [record](test-runs/TEST-036-mobile-field-workflow-ux.md) | Formatter, analyzer, 65 focused workflow tests, and debug APK build passed; device, live backend, release, offline, SQL, and production verification were not run. |
 | IMP-031 | implementation | Flutter Android release-boundary hardening | reviewed | locally-executed | `4a78936` | [record](implementation/IMP-031-mobile-release-hardening.md) | HTTPS enforcement, explicit release cleartext denial, and external release-signing boundary without a debug-key fallback. |
 | TEST-037 | test-run | Flutter Android release-boundary hardening verification | executed | locally-executed | `4a78936` | [record](test-runs/TEST-037-mobile-release-hardening.md) | Full 86-test mobile regression, release APK packaging, and manifest inspection passed; artifact signing, device, live backend, SQL, AAB, and production checks remain pending. |
+| IMP-032 | implementation | Flutter Android debug cleartext overlay correction | reviewed | locally-executed | `e3f1067` | [record](implementation/IMP-032-mobile-debug-cleartext-overlay.md) | Restores the documented debug HTTP overlay with an explicit manifest replacement while preserving release cleartext denial. |
+| TEST-038 | test-run | Flutter Android debug cleartext overlay correction verification | executed | locally-executed | `e3f1067` | [record](test-runs/TEST-038-mobile-debug-cleartext-overlay.md) | Corrected debug APK packaging and manifest merge passed; emulator ADB installation hung and physical/live verification remain unexecuted. |
 
 ## Pending Evidence
 
