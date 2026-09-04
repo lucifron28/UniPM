@@ -15,6 +15,10 @@ Acknowledge whole form -> Linked schedules become Completed ->
 Acknowledged rows become official history -> Corrective handoff available
 where applicable.
 
+The mobile path uses the skilled worker's authenticated session for QR asset
+lookup, official history review, PM form work, and whole-form acknowledgement;
+the Department Head does not need a UniPM account.
+
 Known demo limitations are listed at the end of this note.
 
 ## Questions For GSD
@@ -49,9 +53,30 @@ Known demo limitations are listed at the end of this note.
     the Work Management System?
 15. What is missing from that handoff sheet?
 
+### Mobile Capability Decisions
+
+17. Does the field workflow require inspection evidence attachments? For each
+    category, which evidence is mandatory or optional, what file types and
+    limits apply, whether it belongs to a row or whole form, and what are the
+    deletion, read-only, retention, and access rules?
+18. Are preventive-maintenance alerts operationally required? If so, what are
+    the trigger, recipient role, schedule status, notice period, overdue and
+    dismissal behavior, local-versus-server delivery rule, and assignment
+    rule?
+19. Is offline PM work needed in the field? If so, what connectivity evidence
+    justifies it, which data and Draft actions may work offline, and what
+    synchronization, conflict, idempotency, authentication, and local-data
+    protection design should be approved?
+20. Is secure mobile session restoration required after an app restart? If so,
+    what secure storage, refresh, revocation, corrupted-data, and unavailable-
+    network behavior should be accepted?
+21. Which Android device, approved HTTPS API host, application identity,
+    signing owner, camera behavior, and network-transition checks are required
+    for GSD acceptance of the mobile release?
+
 ### Overall
 
-16. What is the biggest remaining pain point if this plain PMIS workflow were
+22. What is the biggest remaining pain point if this plain PMIS workflow were
     digitized as shown?
 
 These questions deliberately do not pitch AI summarization, schema-driven
@@ -62,9 +87,15 @@ requirements are collected.
 
 - Exact institutional form fields/revisions remain subject to GSD validation;
   current forms demonstrate the workflow, they are not the final schema.
-- The partner-owned mobile client covers authenticated Draft creation and row
-  editing only; mobile submission, acknowledgement, signatures, QR scanning,
-  and later field actions are not implemented yet.
+- The partner-owned mobile client covers authenticated QR asset lookup,
+  acknowledged-only official history, Draft creation and row editing,
+  whole-form submission, submitted-form review, and mobile whole-form
+  acknowledgement with signatory capture. Physical-device, live-backend,
+  production-signing, and distributable-release verification remain
+  unexecuted.
+- Inspection attachments, operational alerts, offline synchronization, and
+  persistent session restoration remain conditional capabilities awaiting GSD
+  or project-owner decisions; the current mobile session is memory-only.
 - Maintenance-history RAG, semantic search, embeddings, and AI summaries are
   intentionally absent from this baseline; they are preserved inactive in the
   repository for later retirement decisions.
