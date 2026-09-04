@@ -88,13 +88,15 @@ runtime, and not to be extended.
   never implemented, and no longer an active direction. Its design record is
   preserved unchanged in
   [`rag-assisted-inspection-history-analysis.md`](rag-assisted-inspection-history-analysis.md).
-- Flutter mobile foundation: implemented and merged, including memory-only
-  authentication, QR-based asset entry, the Draft preventive-maintenance form
-  workflow, and whole-form submission in a separate partner-owned workstream.
-  Web acknowledgement and signature capture are implemented separately.
-  Offline synchronization is deferred and its persistence and synchronization
-  architecture remain undecided; later mobile field actions remain separately
-  approved work.
+- Flutter mobile field workflow: implemented and merged in the partner-owned
+  workstream, including memory-only authentication, QR-based asset entry,
+  acknowledged-only official asset history, the multi-row Draft form workflow,
+  whole-form submission, submitted-form review, mobile whole-form
+  acknowledgement with signatory capture, UX hardening, and release-boundary
+  checks. Physical-device, live-backend, production signing, and distributable
+  release verification remain unexecuted. Final category-specific forms,
+  attachments, alerts, offline synchronization, and persistent session
+  restoration remain separately approved or GSD-validated work.
 
 The active boundary for this branch is documented in
 [`mvp-definition.md`](mvp-definition.md): the PMIS-only GSD validation
