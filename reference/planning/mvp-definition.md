@@ -61,7 +61,9 @@ workflow; they are a workflow prototype, not the final institutional schema.
   GSD dashboard/reporting requirements remain subject to validation.
 - Corrective-action handoff preparation as a read model ending at manual GSD
   Work Management System encoding.
-- Web PMIS workflow (React) and the partner-owned mobile Draft workflow.
+- Web PMIS workflow (React) and the partner-owned mobile workflow for QR
+  lookup, acknowledged-only asset history, multi-row Draft forms, whole-form
+  submission, submitted-form review, and authenticated mobile acknowledgement.
 - Bounded technical observability (`/metrics` opt-in only).
 
 No AI provider, embedding call, summary call, or retrieval pass participates
@@ -83,10 +85,17 @@ embeddings, prompts, or deterministic analysis designs.
 
 Mobile is part of the overall UniPM system and remains a Flutter client using
 the backend API. Its implementation is owned by a separate partner workstream.
-The current mobile client supports authenticated access, Draft form creation,
-and Draft inspection-row add/update/delete; submission, acknowledgement,
-signatures, QR scanning, and later field actions remain separately approved
-work and are documented demo limitations, not completed capabilities.
+The current mobile client supports authenticated access, QR scanning and
+backend asset lookup, acknowledged-only official asset history, Draft form
+creation and inspection-row add/update/delete, whole-form submission,
+submitted-form review, and whole-form acknowledgement with signatory capture.
+Release-boundary hardening enforces HTTPS configuration and no release
+cleartext traffic, but physical-device, live-backend, production-signing, and
+distributable-release verification remain unexecuted.
+
+Final category-specific forms, attachments, alerts, offline synchronization,
+and persistent session restoration remain separately approved or GSD-validated
+work; the current mobile authentication session remains memory-only.
 
 ## Explicit Exclusions From This Branch
 
