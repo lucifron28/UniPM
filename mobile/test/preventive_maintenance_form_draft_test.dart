@@ -40,9 +40,9 @@ void main() {
 
     await pumpPage(tester, repository);
 
-    expect(find.text('Draft forms'), findsOneWidget);
+    expect(find.text('Forms'), findsOneWidget);
     expect(find.textContaining('1 inspection row(s)'), findsOneWidget);
-    expect(find.textContaining('fire-extinguisher'), findsOneWidget);
+    expect(find.textContaining('Fire Extinguisher'), findsOneWidget);
   });
 
   testWidgets('Inspector presentation defaults to forms created by that user', (
@@ -602,12 +602,13 @@ void main() {
     await tester.drag(find.byType(ListView).last, const Offset(0, 2000));
     await tester.pumpAndSettle();
     expect(find.text('Status: Submitted'), findsOneWidget);
+    expect(find.text('Preventive-maintenance form'), findsOneWidget);
     expect(find.text('PM-2026-0001'), findsOneWidget);
     expect(find.byKey(const Key('submit-form-button')), findsNothing);
     expect(find.text('Save row'), findsNothing);
     expect(find.text('Delete row'), findsNothing);
     expect(
-      find.text('This form is no longer Draft and cannot be edited.'),
+      find.text('This Submitted form is locked for acknowledgement review.'),
       findsOneWidget,
     );
   });

@@ -42,8 +42,10 @@ class HomePage extends StatelessWidget {
           Card(
             child: ListTile(
               leading: const Icon(Icons.assignment_outlined),
-              title: const Text('Preventive-maintenance drafts'),
-              subtitle: const Text('Create, resume, and update field drafts.'),
+              title: const Text('Preventive-maintenance forms'),
+              subtitle: const Text(
+                'Create, resume, submit, and acknowledge PM forms.',
+              ),
               trailing: const Icon(Icons.chevron_right),
               onTap: onOpenPreventiveMaintenance,
             ),

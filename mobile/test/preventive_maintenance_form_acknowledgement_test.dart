@@ -225,6 +225,7 @@ void main() {
     await tester.tap(find.byKey(const Key('open-acknowledgement')));
     await tester.pumpAndSettle();
     expect(find.text('Department Head acknowledgement'), findsOneWidget);
+    expect(find.text('Asset category: Fire Extinguisher'), findsOneWidget);
     expect(find.text('Remarks: Low pressure'), findsOneWidget);
   });
 

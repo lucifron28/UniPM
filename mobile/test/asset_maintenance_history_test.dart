@@ -229,6 +229,7 @@ void main() {
 
       expect(find.text('Maintenance history'), findsOneWidget);
       expect(find.text('FA-001'), findsOneWidget);
+      expect(find.text('Fire Alarm'), findsOneWidget);
       expect(
         find.text('Official history contains acknowledged records only.'),
         findsOneWidget,
