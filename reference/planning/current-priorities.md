@@ -90,13 +90,15 @@ runtime, and not to be extended.
   [`rag-assisted-inspection-history-analysis.md`](rag-assisted-inspection-history-analysis.md).
 - Flutter mobile field workflow: implemented and merged in the partner-owned
   workstream, including memory-only authentication, QR-based asset entry,
-  acknowledged-only official asset history, the multi-row Draft form workflow,
+  acknowledged-only official asset history, the four supplied authoritative
+  visible category-form structures, the multi-row Draft form workflow,
   whole-form submission, submitted-form review, mobile whole-form
   acknowledgement with signatory capture, UX hardening, and release-boundary
   checks. Physical-device, live-backend, production signing, and distributable
-  release verification remain unexecuted. Final category-specific forms,
-  attachments, alerts, offline synchronization, and persistent session
-  restoration remain separately approved or GSD-validated work.
+  release verification remain unexecuted. Broader category-procedure,
+  requiredness, and historical form-version decisions, plus attachments,
+  alerts, offline synchronization, and persistent session restoration remain
+  separately approved or GSD-validated work.
 
 The active boundary for this branch is documented in
 [`mvp-definition.md`](mvp-definition.md): the PMIS-only GSD validation

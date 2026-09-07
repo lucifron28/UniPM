@@ -107,10 +107,11 @@ never marks schedules complete directly. After success, the form is
 read-only. Acknowledgement is not corrective-action, budget, RMRF, or WMS
 approval.
 
-Final category-specific forms, corrective handoff, RMRF processing, and
-offline workflow remain outside this mobile implementation. Offline
-persistence and synchronization architecture remain undecided pending a
-separate approved decision.
+The four supplied GSD forms are implemented as the authoritative visible
+category-form structure for the current mobile PM pass. Historical form-version
+preservation, corrective handoff, RMRF processing, and offline workflow remain
+outside this mobile implementation. Offline persistence and synchronization
+architecture remain undecided pending a separate approved decision.
 
 ## Dependencies
 

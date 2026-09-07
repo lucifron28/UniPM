@@ -93,9 +93,12 @@ Release-boundary hardening enforces HTTPS configuration and no release
 cleartext traffic, but physical-device, live-backend, production-signing, and
 distributable-release verification remain unexecuted.
 
-Final category-specific forms, attachments, alerts, offline synchronization,
-and persistent session restoration remain separately approved or GSD-validated
-work; the current mobile authentication session remains memory-only.
+The four supplied GSD forms are implemented as the authoritative visible
+category-form structure for the current mobile PM pass. Broader category
+procedures, requiredness, historical form-version preservation, attachments,
+alerts, offline synchronization, and persistent session restoration remain
+separately approved or GSD-validated work; the current mobile authentication
+session remains memory-only.
 
 ## Explicit Exclusions From This Branch
 
