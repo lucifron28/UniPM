@@ -129,3 +129,22 @@ requirements are collected.
   repository for later retirement decisions.
 - No WMS/RMRF integration exists by confirmed boundary; handoff ends at manual
   encoding preparation.
+
+### Conditional mobile capability status
+
+These capabilities are explicitly **Not Implemented — Awaiting Validation**;
+the status is not a decision that they are unnecessary:
+
+- Inspection attachments: awaiting category-specific evidence requirements,
+  file limits/types, row-versus-form ownership, deletion/read-only rules, and
+  retention/access expectations.
+- Operational alerts: awaiting trigger, recipient, schedule-status, notice,
+  overdue, dismissal, delivery, and assignment rules.
+- Offline PM workflow: awaiting field connectivity evidence and an approved
+  persistence, queue, conflict, idempotency, authentication, and local-data
+  protection design.
+- Persistent mobile session restoration: awaiting approval of secure storage,
+  refresh, revocation, corrupted-data, and unavailable-network behavior.
+
+No placeholder implementation branch is created for these capabilities until
+the corresponding validation gate is satisfied.
