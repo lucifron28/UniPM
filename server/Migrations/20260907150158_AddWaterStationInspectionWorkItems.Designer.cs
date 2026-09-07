@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using UniPM.Api.Data;
 
@@ -11,9 +12,11 @@ using UniPM.Api.Data;
 namespace UniPM.Api.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260907150158_AddWaterStationInspectionWorkItems")]
+    partial class AddWaterStationInspectionWorkItems
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -615,6 +618,8 @@ namespace UniPM.Api.Migrations
 
                     b.ToTable("PreventiveMaintenanceForms", null, t =>
                         {
+                            t.HasCheckConstraint("CK_PreventiveMaintenanceForms_AcademicYear_Format", "[AcademicYear] IS NULL OR [AcademicYear] LIKE '[0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9]'");
+
                             t.HasCheckConstraint("CK_PreventiveMaintenanceForms_AssetCategory_Allowed", "[AssetCategory] IN ('fire-extinguisher', 'fire-alarm', 'emergency-light', 'water-drinking-station')");
 
                             t.HasCheckConstraint("CK_PreventiveMaintenanceForms_PeriodType_Allowed", "[PeriodType] IN ('Quarter', 'Semester', 'Annual', 'Custom')");
@@ -622,8 +627,6 @@ namespace UniPM.Api.Migrations
                             t.HasCheckConstraint("CK_PreventiveMaintenanceForms_Quarter_Allowed", "[Quarter] IS NULL OR [Quarter] IN ('Q1', 'Q2', 'Q3', 'Q4')");
 
                             t.HasCheckConstraint("CK_PreventiveMaintenanceForms_Semester_Allowed", "[Semester] IS NULL OR [Semester] IN ('First', 'Second', 'Summer')");
-
-                            t.HasCheckConstraint("CK_PreventiveMaintenanceForms_AcademicYear_Format", "[AcademicYear] IS NULL OR [AcademicYear] LIKE '[0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9]'");
 
                             t.HasCheckConstraint("CK_PreventiveMaintenanceForms_Status_Allowed", "[Status] IN ('Draft', 'Submitted', 'Acknowledged')");
                         });

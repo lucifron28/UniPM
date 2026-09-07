@@ -122,6 +122,10 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             .HasMaxLength(2000);
         inspection.Property(entity => entity.ActionsRecommendations)
             .HasMaxLength(2000);
+        inspection.Property(entity => entity.DateAccomplished);
+        inspection.Property(entity => entity.WaterReplaceCarbonFilter);
+        inspection.Property(entity => entity.WaterReplaceSedimentFilter);
+        inspection.Property(entity => entity.WaterCheckUvLight);
         inspection.HasIndex(entity => entity.ScheduleId)
             .IsUnique();
 

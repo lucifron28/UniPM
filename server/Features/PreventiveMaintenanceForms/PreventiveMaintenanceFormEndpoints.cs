@@ -492,7 +492,15 @@ public static class PreventiveMaintenanceFormEndpoints
             }
 
             var now = DateTimeOffset.UtcNow;
-            var inspection = CreateInspection(dto, schedule.AssetId, form.Id, now);
+            var inspection = CreateInspection(
+                dto,
+                schedule.AssetId,
+                form.Id,
+                string.Equals(
+                    form.AssetCategory,
+                    AssetCategoryCatalog.WaterDrinkingStation,
+                    StringComparison.Ordinal),
+                now);
             context.InspectionRecords.Add(inspection);
             form.UpdatedAt = now;
 
@@ -576,11 +584,27 @@ public static class PreventiveMaintenanceFormEndpoints
                 });
             }
 
+            var isWaterDrinkingStation = string.Equals(
+                form.AssetCategory,
+                AssetCategoryCatalog.WaterDrinkingStation,
+                StringComparison.Ordinal);
             inspection.InspectorUserId = dto.InspectorUserId;
             inspection.DateInspected = dto.DateInspected;
+            inspection.DateAccomplished = isWaterDrinkingStation
+                ? dto.DateAccomplished
+                : null;
             inspection.IsOperational = dto.IsOperational;
             inspection.Remarks = NormalizeOptional(dto.Remarks);
             inspection.ActionsRecommendations = NormalizeOptional(dto.ActionsRecommendations);
+            inspection.WaterReplaceCarbonFilter = isWaterDrinkingStation
+                ? dto.WaterReplaceCarbonFilter
+                : null;
+            inspection.WaterReplaceSedimentFilter = isWaterDrinkingStation
+                ? dto.WaterReplaceSedimentFilter
+                : null;
+            inspection.WaterCheckUvLight = isWaterDrinkingStation
+                ? dto.WaterCheckUvLight
+                : null;
             inspection.UpdatedAt = DateTimeOffset.UtcNow;
             form.UpdatedAt = inspection.UpdatedAt;
             await context.SaveChangesAsync(cancellationToken);
@@ -653,6 +677,7 @@ public static class PreventiveMaintenanceFormEndpoints
         DraftInspectionRowDto dto,
         Guid assetId,
         Guid formId,
+        bool isWaterDrinkingStation,
         DateTimeOffset now)
     {
         return new InspectionRecord
@@ -663,9 +688,21 @@ public static class PreventiveMaintenanceFormEndpoints
             AssetId = assetId,
             InspectorUserId = dto.InspectorUserId,
             DateInspected = dto.DateInspected,
+            DateAccomplished = isWaterDrinkingStation
+                ? dto.DateAccomplished
+                : null,
             IsOperational = dto.IsOperational,
             Remarks = NormalizeOptional(dto.Remarks),
             ActionsRecommendations = NormalizeOptional(dto.ActionsRecommendations),
+            WaterReplaceCarbonFilter = isWaterDrinkingStation
+                ? dto.WaterReplaceCarbonFilter
+                : null,
+            WaterReplaceSedimentFilter = isWaterDrinkingStation
+                ? dto.WaterReplaceSedimentFilter
+                : null,
+            WaterCheckUvLight = isWaterDrinkingStation
+                ? dto.WaterCheckUvLight
+                : null,
             CreatedAt = now,
             UpdatedAt = now
         };
@@ -955,9 +992,13 @@ public sealed class DraftInspectionRowDto
     public Guid ScheduleId { get; set; }
     public Guid InspectorUserId { get; set; }
     public DateTimeOffset DateInspected { get; set; }
+    public DateTimeOffset? DateAccomplished { get; set; }
     public bool IsOperational { get; set; }
     public string? Remarks { get; set; }
     public string? ActionsRecommendations { get; set; }
+    public bool? WaterReplaceCarbonFilter { get; set; }
+    public bool? WaterReplaceSedimentFilter { get; set; }
+    public bool? WaterCheckUvLight { get; set; }
 
     internal Dictionary<string, string[]> Validate()
     {
@@ -1013,9 +1054,13 @@ public sealed class UpdateDraftInspectionRowDto
 {
     public Guid InspectorUserId { get; set; }
     public DateTimeOffset DateInspected { get; set; }
+    public DateTimeOffset? DateAccomplished { get; set; }
     public bool IsOperational { get; set; }
     public string? Remarks { get; set; }
     public string? ActionsRecommendations { get; set; }
+    public bool? WaterReplaceCarbonFilter { get; set; }
+    public bool? WaterReplaceSedimentFilter { get; set; }
+    public bool? WaterCheckUvLight { get; set; }
 
     internal Dictionary<string, string[]> Validate()
     {
@@ -1083,7 +1128,11 @@ public sealed record DraftInspectionRowResponse(
     string? Remarks,
     string? ActionsRecommendations,
     DateTimeOffset CreatedAt,
-    DateTimeOffset UpdatedAt)
+    DateTimeOffset UpdatedAt,
+    DateTimeOffset? DateAccomplished = null,
+    bool? WaterReplaceCarbonFilter = null,
+    bool? WaterReplaceSedimentFilter = null,
+    bool? WaterCheckUvLight = null)
 {
     internal static DraftInspectionRowResponse FromInspection(InspectionRecord inspection)
     {
@@ -1097,7 +1146,11 @@ public sealed record DraftInspectionRowResponse(
             inspection.Remarks,
             inspection.ActionsRecommendations,
             inspection.CreatedAt,
-            inspection.UpdatedAt);
+            inspection.UpdatedAt,
+            inspection.DateAccomplished,
+            inspection.WaterReplaceCarbonFilter,
+            inspection.WaterReplaceSedimentFilter,
+            inspection.WaterCheckUvLight);
     }
 }
 
