@@ -109,8 +109,12 @@ requirements are collected.
 
 ## Known Demo Limitations
 
-- Exact institutional form fields/revisions remain subject to GSD validation;
-  current forms demonstrate the workflow, they are not the final schema.
+- The four supplied GSD forms are the authoritative visible field structure for
+  the current mobile implementation pass: Fire Extinguishers Rev. 2 (November
+  2023), Fire Alarm Rev. 1 (May 2022), Emergency Lights Rev. 1 (May 2022), and
+  Water Drinking Stations Rev. 1 (November 2023). Broader institutional
+  decisions about requiredness, allowed values, procedures, measurements, and
+  historical revision preservation remain subject to GSD validation.
 - The partner-owned mobile client covers authenticated QR asset lookup,
   acknowledged-only official history, Draft creation and row editing,
   whole-form submission, submitted-form review, and mobile whole-form
