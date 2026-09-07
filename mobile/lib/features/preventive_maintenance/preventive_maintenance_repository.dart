@@ -125,9 +125,13 @@ class ApiPreventiveMaintenanceRepository
         scheduleId: input.scheduleId,
         inspectorUserId: input.inspectorUserId,
         dateInspected: input.dateInspected,
+        dateAccomplished: input.dateAccomplished,
         isOperational: input.isOperational,
         remarks: input.remarks,
         actionsRecommendations: input.actionsRecommendations,
+        waterReplaceCarbonFilter: input.waterReplaceCarbonFilter,
+        waterReplaceSedimentFilter: input.waterReplaceSedimentFilter,
+        waterCheckUvLight: input.waterCheckUvLight,
       ),
     );
     return PreventiveMaintenanceInspection.fromJson(json);
@@ -144,9 +148,13 @@ class ApiPreventiveMaintenanceRepository
       _inspectionBody(
         inspectorUserId: input.inspectorUserId,
         dateInspected: input.dateInspected,
+        dateAccomplished: input.dateAccomplished,
         isOperational: input.isOperational,
         remarks: input.remarks,
         actionsRecommendations: input.actionsRecommendations,
+        waterReplaceCarbonFilter: input.waterReplaceCarbonFilter,
+        waterReplaceSedimentFilter: input.waterReplaceSedimentFilter,
+        waterCheckUvLight: input.waterCheckUvLight,
       ),
     );
     return PreventiveMaintenanceInspection.fromJson(json);
@@ -185,17 +193,35 @@ Map<String, dynamic> _inspectionBody({
   String? scheduleId,
   required String inspectorUserId,
   required DateTime dateInspected,
+  DateTime? dateAccomplished,
   required bool isOperational,
   required String? remarks,
   required String? actionsRecommendations,
+  bool? waterReplaceCarbonFilter,
+  bool? waterReplaceSedimentFilter,
+  bool? waterCheckUvLight,
 }) {
   return <String, dynamic>{
     ...?scheduleId == null ? null : <String, dynamic>{'scheduleId': scheduleId},
     'inspectorUserId': inspectorUserId,
     'dateInspected': dateInspected.toUtc().toIso8601String(),
+    'dateAccomplished': dateAccomplished?.toUtc().toIso8601String(),
     'isOperational': isOperational,
     'remarks': _blankToNull(remarks),
     'actionsRecommendations': _blankToNull(actionsRecommendations),
+    ...?waterReplaceCarbonFilter == null
+        ? null
+        : <String, dynamic>{
+            'waterReplaceCarbonFilter': waterReplaceCarbonFilter,
+          },
+    ...?waterReplaceSedimentFilter == null
+        ? null
+        : <String, dynamic>{
+            'waterReplaceSedimentFilter': waterReplaceSedimentFilter,
+          },
+    ...?waterCheckUvLight == null
+        ? null
+        : <String, dynamic>{'waterCheckUvLight': waterCheckUvLight},
   };
 }
 

@@ -26,7 +26,11 @@ public static class InspectionsEndpoints
                     i.DateInspected,
                     i.IsOperational,
                     i.Remarks,
-                    i.ActionsRecommendations))
+                    i.ActionsRecommendations,
+                    i.DateAccomplished,
+                    i.WaterReplaceCarbonFilter,
+                    i.WaterReplaceSedimentFilter,
+                    i.WaterCheckUvLight))
                 .ToListAsync(cancellationToken);
 
             return Results.Ok(history);
@@ -96,7 +100,11 @@ public static class InspectionsEndpoints
                     inspection.Remarks,
                     inspection.ActionsRecommendations,
                     inspection.CreatedAt,
-                    inspection.UpdatedAt))
+                    inspection.UpdatedAt,
+                    inspection.DateAccomplished,
+                    inspection.WaterReplaceCarbonFilter,
+                    inspection.WaterReplaceSedimentFilter,
+                    inspection.WaterCheckUvLight))
                 .ToListAsync(cancellationToken);
 
             return Results.Ok(inspections);
@@ -140,7 +148,11 @@ public sealed record InspectionResponse(
     string? Remarks,
     string? ActionsRecommendations,
     DateTimeOffset CreatedAt,
-    DateTimeOffset UpdatedAt)
+    DateTimeOffset UpdatedAt,
+    DateTimeOffset? DateAccomplished = null,
+    bool? WaterReplaceCarbonFilter = null,
+    bool? WaterReplaceSedimentFilter = null,
+    bool? WaterCheckUvLight = null)
 {
     internal static InspectionResponse FromInspection(InspectionRecord inspection)
     {
@@ -154,7 +166,11 @@ public sealed record InspectionResponse(
             inspection.Remarks,
             inspection.ActionsRecommendations,
             inspection.CreatedAt,
-            inspection.UpdatedAt);
+            inspection.UpdatedAt,
+            inspection.DateAccomplished,
+            inspection.WaterReplaceCarbonFilter,
+            inspection.WaterReplaceSedimentFilter,
+            inspection.WaterCheckUvLight);
     }
 }
 
@@ -163,4 +179,8 @@ public sealed record InspectionHistoryResponse(
     DateTimeOffset DateInspected,
     bool IsOperational,
     string? Remarks,
-    string? ActionsRecommendations);
+    string? ActionsRecommendations,
+    DateTimeOffset? DateAccomplished = null,
+    bool? WaterReplaceCarbonFilter = null,
+    bool? WaterReplaceSedimentFilter = null,
+    bool? WaterCheckUvLight = null);

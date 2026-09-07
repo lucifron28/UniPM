@@ -99,9 +99,13 @@ class PreventiveMaintenanceInspection {
     required this.assetId,
     required this.inspectorUserId,
     required this.dateInspected,
+    this.dateAccomplished,
     required this.isOperational,
     required this.remarks,
     required this.actionsRecommendations,
+    this.waterReplaceCarbonFilter,
+    this.waterReplaceSedimentFilter,
+    this.waterCheckUvLight,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -111,9 +115,13 @@ class PreventiveMaintenanceInspection {
   final String assetId;
   final String inspectorUserId;
   final DateTime dateInspected;
+  final DateTime? dateAccomplished;
   final bool isOperational;
   final String? remarks;
   final String? actionsRecommendations;
+  final bool? waterReplaceCarbonFilter;
+  final bool? waterReplaceSedimentFilter;
+  final bool? waterCheckUvLight;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -124,9 +132,16 @@ class PreventiveMaintenanceInspection {
       assetId: _requiredUuid(json, 'assetId'),
       inspectorUserId: _requiredUuid(json, 'inspectorUserId'),
       dateInspected: _requiredDateTime(json, 'dateInspected'),
+      dateAccomplished: _nullableDateTime(json, 'dateAccomplished'),
       isOperational: _requiredBool(json, 'isOperational'),
       remarks: _nullableString(json, 'remarks'),
       actionsRecommendations: _nullableString(json, 'actionsRecommendations'),
+      waterReplaceCarbonFilter: _nullableBool(json, 'waterReplaceCarbonFilter'),
+      waterReplaceSedimentFilter: _nullableBool(
+        json,
+        'waterReplaceSedimentFilter',
+      ),
+      waterCheckUvLight: _nullableBool(json, 'waterCheckUvLight'),
       createdAt: _requiredDateTime(json, 'createdAt'),
       updatedAt: _requiredDateTime(json, 'updatedAt'),
     );
@@ -327,33 +342,49 @@ class AddInspectionInput {
     required this.scheduleId,
     required this.inspectorUserId,
     required this.dateInspected,
+    this.dateAccomplished,
     required this.isOperational,
     required this.remarks,
     required this.actionsRecommendations,
+    this.waterReplaceCarbonFilter,
+    this.waterReplaceSedimentFilter,
+    this.waterCheckUvLight,
   });
 
   final String scheduleId;
   final String inspectorUserId;
   final DateTime dateInspected;
+  final DateTime? dateAccomplished;
   final bool isOperational;
   final String? remarks;
   final String? actionsRecommendations;
+  final bool? waterReplaceCarbonFilter;
+  final bool? waterReplaceSedimentFilter;
+  final bool? waterCheckUvLight;
 }
 
 class UpdateInspectionInput {
   const UpdateInspectionInput({
     required this.inspectorUserId,
     required this.dateInspected,
+    this.dateAccomplished,
     required this.isOperational,
     required this.remarks,
     required this.actionsRecommendations,
+    this.waterReplaceCarbonFilter,
+    this.waterReplaceSedimentFilter,
+    this.waterCheckUvLight,
   });
 
   final String inspectorUserId;
   final DateTime dateInspected;
+  final DateTime? dateAccomplished;
   final bool isOperational;
   final String? remarks;
   final String? actionsRecommendations;
+  final bool? waterReplaceCarbonFilter;
+  final bool? waterReplaceSedimentFilter;
+  final bool? waterCheckUvLight;
 }
 
 class AcknowledgePreventiveMaintenanceInput {
@@ -428,6 +459,13 @@ String? _nullableString(Map<String, dynamic> json, String key) {
   final value = json[key];
   if (value == null) return null;
   if (value is String) return value;
+  throw FormatException('Invalid response field: $key.');
+}
+
+bool? _nullableBool(Map<String, dynamic> json, String key) {
+  final value = json[key];
+  if (value == null) return null;
+  if (value is bool) return value;
   throw FormatException('Invalid response field: $key.');
 }
 

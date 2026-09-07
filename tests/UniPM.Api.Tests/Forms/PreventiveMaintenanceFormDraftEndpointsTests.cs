@@ -48,6 +48,57 @@ public sealed class PreventiveMaintenanceFormDraftEndpointsTests
             persisted.Inspections.Select(row => row.ScheduleId));
     }
 
+    [Theory]
+    [InlineData("fire-extinguisher")]
+    [InlineData("fire-alarm")]
+    [InlineData("emergency-light")]
+    [InlineData("water-drinking-station")]
+    public async Task Confirmed_category_forms_preserve_visible_inspection_fields(string assetCategory)
+    {
+        await using var application = new TestApplicationFactory();
+        using var client = application.CreateClient();
+        await application.EnsureAuthenticatedUserAsync();
+        var asset = await CreateAssetAsync(client, $"PM-{assetCategory}", assetCategory);
+        var schedule = await CreateScheduleAsync(client, asset.Id, 1);
+        var form = await CreateFormAsync(client, assetCategory);
+
+        var rowResponse = await client.PostAsJsonAsync(
+            $"/api/v1/preventive-maintenance-forms/{form.Id}/inspections",
+            DraftInspectionRequest(
+                schedule.Id,
+                "Visible form remarks",
+                dateAccomplished: new DateTimeOffset(
+                    2026,
+                    1,
+                    16,
+                    8,
+                    0,
+                    0,
+                    TimeSpan.FromHours(8)),
+                waterReplaceCarbonFilter: assetCategory == "water-drinking-station",
+                waterReplaceSedimentFilter: false,
+                waterCheckUvLight: true));
+
+        rowResponse.EnsureSuccessStatusCode();
+        var row = await rowResponse.Content.ReadFromJsonAsync<DraftInspectionRowResponse>();
+        var expectedCarbonFilter = assetCategory == "water-drinking-station"
+            ? true
+            : (bool?)null;
+        var expectedSedimentFilter = assetCategory == "water-drinking-station"
+            ? false
+            : (bool?)null;
+
+        Assert.NotNull(row);
+        Assert.Equal(
+            assetCategory == "water-drinking-station"
+                ? new DateTimeOffset(2026, 1, 16, 8, 0, 0, TimeSpan.FromHours(8))
+                : null,
+            row.DateAccomplished);
+        Assert.Equal(expectedCarbonFilter, row.WaterReplaceCarbonFilter);
+        Assert.Equal(expectedSedimentFilter, row.WaterReplaceSedimentFilter);
+        Assert.Equal(assetCategory == "water-drinking-station" ? true : null, row.WaterCheckUvLight);
+    }
+
     [Fact]
     public async Task Draft_rows_reject_duplicate_or_category_mismatched_schedules()
     {
@@ -553,16 +604,24 @@ public sealed class PreventiveMaintenanceFormDraftEndpointsTests
     private static object DraftInspectionRequest(
         Guid scheduleId,
         string remarks,
-        string? actionsRecommendations = "Inspect during final submission.")
+        string? actionsRecommendations = "Inspect during final submission.",
+        DateTimeOffset? dateAccomplished = null,
+        bool? waterReplaceCarbonFilter = null,
+        bool? waterReplaceSedimentFilter = null,
+        bool? waterCheckUvLight = null)
     {
         return new
         {
             scheduleId,
             inspectorUserId = TestAuthenticationHandler.UserId,
             dateInspected = new DateTimeOffset(2026, 1, 15, 8, 0, 0, TimeSpan.FromHours(8)),
+            dateAccomplished,
             isOperational = false,
             remarks,
-            actionsRecommendations
+            actionsRecommendations,
+            waterReplaceCarbonFilter,
+            waterReplaceSedimentFilter,
+            waterCheckUvLight
         };
     }
 

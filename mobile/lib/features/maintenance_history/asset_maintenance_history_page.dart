@@ -215,6 +215,11 @@ class _HistoryRecordCard extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             _HistoryField(label: 'PM inspection reference', value: record.id),
+            if (record.dateAccomplished != null)
+              _HistoryField(
+                label: 'Date accomplished',
+                value: _dateText(record.dateAccomplished!),
+              ),
             _HistoryField(
               label: 'Remarks',
               value: _displayValue(record.remarks),
@@ -223,6 +228,22 @@ class _HistoryRecordCard extends StatelessWidget {
               label: 'Recommendations',
               value: _displayValue(record.actionsRecommendations),
             ),
+            if (record.waterReplaceCarbonFilter != null ||
+                record.waterReplaceSedimentFilter != null ||
+                record.waterCheckUvLight != null) ...[
+              _HistoryField(
+                label: 'Replace carbon filter',
+                value: _booleanValue(record.waterReplaceCarbonFilter),
+              ),
+              _HistoryField(
+                label: 'Replace sediment filter',
+                value: _booleanValue(record.waterReplaceSedimentFilter),
+              ),
+              _HistoryField(
+                label: 'Checking of UV Light',
+                value: _booleanValue(record.waterCheckUvLight),
+              ),
+            ],
             const SizedBox(height: 4),
             Text(
               'Acknowledged official record',
@@ -260,6 +281,14 @@ class _HistoryField extends StatelessWidget {
 String _displayValue(String? value) {
   final normalized = value?.trim();
   return normalized == null || normalized.isEmpty ? 'Not recorded' : normalized;
+}
+
+String _booleanValue(bool? value) {
+  return value == null
+      ? 'Not recorded'
+      : value
+      ? 'Yes'
+      : 'No';
 }
 
 String _dateText(DateTime value) {

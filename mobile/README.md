@@ -77,11 +77,23 @@ From the scanned asset details, the worker can open read-only **Maintenance
 history**. The client requests `/api/v1/inspections/history/{assetId}` using
 the exact backend asset ID and displays only the records returned by that
 acknowledged-history contract, including inspection date, condition, the
-inspection-row reference, remarks, and recommendations. Draft and Submitted
-rows are excluded by the backend and are not reconstructed or classified by
-the mobile client. The current history contract does not expose final
-category-specific Page 2 fields or a form file number; those remain pending
-GSD validation.
+inspection-row reference, remarks, recommendations, and the confirmed Water
+Drinking Station work items when present. Draft and Submitted rows are
+excluded by the backend and are not reconstructed or classified by the mobile
+client.
+
+The current PM editor follows the four confirmed visible GSD forms: Fire
+Extinguisher Monitoring (Rev. 2, November 2023), Fire Alarm Preventive
+Maintenance (Rev. 1, May 2022), Emergency Lights Preventive Maintenance (Rev.
+1, May 2022), and Water Drinking Station Preventive Maintenance (Rev. 1,
+November 2023). Asset/device number, location, building, department, and
+category are taken from backend asset/schedule data. The worker records
+operational status, inspection date, remarks, recommendations, the optional
+Water Station accomplishment date, and the Water Station filter/UV work items.
+Type, capacity, installation date, expiration
+date, and other metadata are shown only when supplied by the asset contract;
+the mobile form does not ask the worker to re-enter unavailable asset data.
+The Water Station RMRF number is outside this PM inspection boundary.
 
 For the confirmed GSD workflow, a submitted form can be opened for
 acknowledgement in the authenticated skilled-worker mobile session. The worker

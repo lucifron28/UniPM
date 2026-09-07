@@ -10,6 +10,7 @@ import 'package:mobile/api/api_exception.dart';
 import 'package:mobile/auth/auth_models.dart';
 import 'package:mobile/features/assets/asset_models.dart';
 import 'package:mobile/features/preventive_maintenance/preventive_maintenance_controller.dart';
+import 'package:mobile/features/preventive_maintenance/preventive_maintenance_form_specs.dart';
 import 'package:mobile/features/preventive_maintenance/preventive_maintenance_models.dart';
 import 'package:mobile/features/preventive_maintenance/preventive_maintenance_page.dart';
 import 'package:mobile/features/preventive_maintenance/preventive_maintenance_repository.dart';
@@ -924,6 +925,72 @@ void main() {
       expect(find.text('Signature'), findsNothing);
     },
   );
+
+  test('confirmed GSD form specs cover all four categories', () {
+    final specs = [
+      PreventiveMaintenanceFormSpec.fireExtinguisher,
+      PreventiveMaintenanceFormSpec.fireAlarm,
+      PreventiveMaintenanceFormSpec.emergencyLight,
+      PreventiveMaintenanceFormSpec.waterDrinkingStation,
+    ];
+
+    expect(specs.map((spec) => spec.assetCategory), [
+      'fire-extinguisher',
+      'fire-alarm',
+      'emergency-light',
+      'water-drinking-station',
+    ]);
+    expect(specs.map((spec) => spec.revision), ['2', '1', '1', '1']);
+    expect(PreventiveMaintenanceFormSpec.waterDrinkingStation.waterWorkItems, [
+      'Replace carbon filter',
+      'Replace sediment filter',
+      'Checking of UV Light',
+    ]);
+  });
+
+  testWidgets('water station draft exposes and submits visible work items', (
+    tester,
+  ) async {
+    final repository = FakePreventiveMaintenanceRepository(
+      forms: [testForm(id: formId, assetCategory: 'water-drinking-station')],
+      schedulesFuture: Future.value([
+        testSchedule(
+          firstScheduleId,
+          'WDS-001',
+          assetCategory: 'water-drinking-station',
+        ),
+      ]),
+    );
+
+    await pumpPage(tester, repository);
+    await tester.tap(find.byKey(Key('draft-form-$formId')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Water Drinking Station Preventive Maintenance Form'),
+      findsOneWidget,
+    );
+    await chooseDropdown(tester, const Key('inspection-schedule'), 'WDS-001');
+    await tester.enterText(
+      find.byKey(const Key('new-inspection-date-accomplished')),
+      '2026-01-16',
+    );
+    await scrollTo(
+      tester,
+      find.byKey(const Key('water-replace-carbon-filter')),
+    );
+    await tester.tap(find.byKey(const Key('water-replace-carbon-filter')));
+    await scrollTo(tester, find.byKey(const Key('water-check-uv-light')));
+    await tester.tap(find.byKey(const Key('water-check-uv-light')));
+    await scrollTo(tester, find.byKey(const Key('add-inspection-button')));
+    await tester.tap(find.byKey(const Key('add-inspection-button')));
+    await tester.pumpAndSettle();
+
+    expect(repository.addedInput?.waterReplaceCarbonFilter, isTrue);
+    expect(repository.addedInput?.waterReplaceSedimentFilter, isFalse);
+    expect(repository.addedInput?.waterCheckUvLight, isTrue);
+    expect(repository.addedInput?.dateAccomplished, DateTime(2026, 1, 16));
+  });
 }
 
 Future<void> pumpPage(
@@ -1268,6 +1335,7 @@ ScheduleOption testSchedule(
   String id,
   String assetCode, {
   String status = 'Due',
+  String assetCategory = 'fire-extinguisher',
 }) => ScheduleOption(
   id: id,
   assetId: '88888888-8888-4888-8888-888888888888',
@@ -1281,7 +1349,7 @@ ScheduleOption testSchedule(
   asset: ScheduleAssetOption(
     id: '88888888-8888-4888-8888-888888888888',
     assetCode: assetCode,
-    assetCategory: 'fire-extinguisher',
+    assetCategory: assetCategory,
     building: 'Main Building',
     department: 'GSD',
     location: 'Test Area',
