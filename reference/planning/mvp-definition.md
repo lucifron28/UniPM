@@ -90,8 +90,9 @@ backend asset lookup, acknowledged-only official asset history, Draft form
 creation and inspection-row add/update/delete, whole-form submission,
 submitted-form review, and whole-form acknowledgement with signatory capture.
 Release-boundary hardening enforces HTTPS configuration and no release
-cleartext traffic, but physical-device, live-backend, production-signing, and
-distributable-release verification remain unexecuted.
+cleartext traffic. The core PM lifecycle passed physical-device acceptance
+against the live development backend; production signing and distributable-
+release verification remain outside this milestone.
 
 The four supplied GSD forms are implemented as the authoritative visible
 category-form structure for the current mobile PM pass. Broader category
@@ -99,6 +100,19 @@ procedures, requiredness, historical form-version preservation, attachments,
 alerts, offline synchronization, and persistent session restoration remain
 separately approved or GSD-validated work; the current mobile authentication
 session remains memory-only.
+
+## Core PM Acceptance Status
+
+The core preventive-maintenance workflow is implementation-complete and
+physically accepted on Android. The accepted lifecycle is:
+
+`Login -> QR -> schedule -> category form -> multi-row Draft -> submit ->
+Department Head acknowledgement -> schedule completion -> official history`
+
+See [`TEST-040`](../evidence/test-runs/TEST-040-mobile-core-pm-physical-acceptance.md)
+for the execution record. This status does not make attachments, alerts,
+offline synchronization, persistent session restoration, AI/RAG, or other
+optional capabilities blockers for the milestone.
 
 ## Explicit Exclusions From This Branch
 
@@ -110,7 +124,10 @@ session remains memory-only.
 - Direct WMS integration, RMRF creation/processing, RPA, corrective-budget
   approval inside UniPM.
 - Deployment completion or IIS rehearsal.
+- Inspection attachments.
+- Operational alerts.
 - Offline synchronization.
+- Persistent mobile session restoration.
 - OEM retrieval and real institutional-document ingestion.
 - A separate vector database or native SQL vector features.
 - Final enterprise RBAC redesign.
@@ -118,20 +135,19 @@ session remains memory-only.
 - Chatbot behavior.
 - Production monitoring or production-readiness claims.
 
-## Validation Completion Criteria
+## Validation Completion Record
 
-This branch is ready when:
+The completed core PM acceptance lifecycle is:
 
 ```text
-login -> assets -> QR lookup -> schedules -> draft multi-row PM form
-      -> row edits -> whole-form submit -> whole-form acknowledge
-      -> linked schedules Completed -> acknowledged rows in official history
-      -> corrective handoff available where applicable
+Login -> QR -> schedule -> category form -> multi-row Draft -> submit
+      -> Department Head acknowledgement -> schedule completion
+      -> official history
 ```
 
-runs end to end without any AI configuration, and GSD can answer the prepared
-validation questions against it. Findings are recorded; innovation selection
-is deferred to a separate decision and branch.
+It runs end to end without any AI configuration. GSD requirement collection,
+production-release hardening, and separately approved optional capabilities are
+follow-on work; they are not blockers for this core PM milestone.
 
 ## Historical Record: Previous Evaluated MVP Definition
 
