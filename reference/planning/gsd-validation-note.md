@@ -9,17 +9,32 @@ replacement innovation is proposed or approved yet.
 
 ## Demo Flow Shown To GSD
 
-Login -> Asset registry -> QR lookup where available -> Schedule ->
-Create Draft PM form -> Add multiple rows -> Edit row -> Submit whole form ->
-Acknowledge whole form -> Linked schedules become Completed ->
-Acknowledged rows become official history -> Corrective handoff available
-where applicable.
+Login -> QR -> schedule -> category form -> multi-row Draft -> submit ->
+Department Head acknowledgement -> schedule completion -> official history.
+
+The web and mobile clients use the backend as the source of truth for asset
+identity, category, schedules, acknowledgement, completion, and official
+history. Corrective-handoff preparation remains available where applicable but
+is outside the core PM acceptance gate.
 
 The mobile path uses the skilled worker's authenticated session for QR asset
 lookup, official history review, PM form work, and whole-form acknowledgement;
 the Department Head does not need a UniPM account.
 
-Known demo limitations are listed at the end of this note.
+## Core PM Physical-Device Acceptance
+
+The core preventive-maintenance milestone is complete. The successful manual
+acceptance lifecycle was exercised on the connected Samsung Galaxy A16 against
+the reachable development backend:
+
+`Login -> QR -> schedule -> category form -> multi-row Draft -> submit ->
+Department Head acknowledgement -> schedule completion -> official history`
+
+The detailed execution record is [`TEST-040`](../evidence/test-runs/TEST-040-mobile-core-pm-physical-acceptance.md).
+This closes the core PM workflow gate; it does not claim production signing,
+store distribution, or IIS deployment.
+
+Known deferred capabilities are listed at the end of this note.
 
 ## Questions For GSD
 
@@ -94,9 +109,9 @@ cannot close this gate.
 20. Is secure mobile session restoration required after an app restart? If so,
     what secure storage, refresh, revocation, corrupted-data, and unavailable-
     network behavior should be accepted?
-21. Which Android device, approved HTTPS API host, application identity,
-    signing owner, camera behavior, and network-transition checks are required
-    for GSD acceptance of the mobile release?
+21. Which additional release, signing, HTTPS-host, camera, and
+    network-transition checks should be required before a production mobile
+    release?
 
 ### Overall
 
@@ -118,33 +133,28 @@ requirements are collected.
 - The partner-owned mobile client covers authenticated QR asset lookup,
   acknowledged-only official history, Draft creation and row editing,
   whole-form submission, submitted-form review, and mobile whole-form
-  acknowledgement with signatory capture. Physical-device, live-backend,
-  production-signing, and distributable-release verification remain
-  unexecuted.
+  acknowledgement with signatory capture. The core lifecycle was accepted on a
+  physical Android device against the live development backend. Production
+  signing and distributable-release verification remain outside this milestone.
 - Inspection attachments, operational alerts, offline synchronization, and
-  persistent session restoration remain conditional capabilities awaiting GSD
-  or project-owner decisions; the current mobile session is memory-only.
+  persistent session restoration are deferred and are not blockers for the core
+  PM milestone; the current mobile session remains memory-only.
 - Maintenance-history RAG, semantic search, embeddings, and AI summaries are
-  intentionally absent from this baseline; they are preserved inactive in the
-  repository for later retirement decisions.
+  intentionally absent from this baseline and remain deferred/out of scope.
 - No WMS/RMRF integration exists by confirmed boundary; handoff ends at manual
   encoding preparation.
 
-### Conditional mobile capability status
+### Deferred and out-of-scope capabilities
 
-These capabilities are explicitly **Not Implemented — Awaiting Validation**;
-the status is not a decision that they are unnecessary:
+The following capabilities are intentionally excluded from this completed
+milestone and must not be treated as blockers:
 
-- Inspection attachments: awaiting category-specific evidence requirements,
-  file limits/types, row-versus-form ownership, deletion/read-only rules, and
-  retention/access expectations.
-- Operational alerts: awaiting trigger, recipient, schedule-status, notice,
-  overdue, dismissal, delivery, and assignment rules.
-- Offline PM workflow: awaiting field connectivity evidence and an approved
-  persistence, queue, conflict, idempotency, authentication, and local-data
-  protection design.
-- Persistent mobile session restoration: awaiting approval of secure storage,
-  refresh, revocation, corrupted-data, and unavailable-network behavior.
+- Inspection attachments.
+- Operational alerts.
+- Offline synchronization.
+- Persistent session restoration.
+- AI/RAG, semantic search, and other replacement-innovation capabilities.
+- WMS/RMRF processing and other downstream administrative automation.
 
-No placeholder implementation branch is created for these capabilities until
-the corresponding validation gate is satisfied.
+No feature implementation branch is created for these deferred capabilities by
+this acceptance record.

@@ -3,17 +3,16 @@
 Read `AGENTS.md` first. These priorities apply to the
 `validation/pmis-only-gsd` branch.
 
-The active priority order is:
+The core PM milestone is complete and its physical-device acceptance is recorded
+in [`TEST-040`](../evidence/test-runs/TEST-040-mobile-core-pm-physical-acceptance.md).
+The active priority order is now:
 
 1. keep the branch runnable;
-2. verify the confirmed PM workflow (`Draft -> Submitted -> Acknowledged`);
-3. verify AI-independent startup and operation;
-4. confirm acknowledged-only official history;
-5. confirm corrective-handoff preparation still works;
-6. prepare the GSD workflow validation session;
-7. collect missing exact form/report/workflow requirements;
-8. record findings;
-9. defer all innovation work until a separate approved decision.
+2. preserve the accepted core PM lifecycle and its evidence;
+3. prepare the GSD workflow validation session;
+4. collect missing exact form/report/workflow requirements;
+5. record findings;
+6. defer all optional capability and innovation work until separately approved.
 
 Maintenance-history RAG was previously implemented and evaluated as controlled
 development work. On this branch it is historical, inactive infrastructure:
@@ -94,11 +93,13 @@ runtime, and not to be extended.
   visible category-form structures, the multi-row Draft form workflow,
   whole-form submission, submitted-form review, mobile whole-form
   acknowledgement with signatory capture, UX hardening, and release-boundary
-  checks. Physical-device, live-backend, production signing, and distributable
-  release verification remain unexecuted. Broader category-procedure,
-  requiredness, and historical form-version decisions, plus attachments,
-  alerts, offline synchronization, and persistent session restoration remain
-  separately approved or GSD-validated work.
+  checks. The core lifecycle passed physical-device acceptance against the
+  live development backend. Production signing and distributable-release
+  verification remain outside this milestone. Broader category-procedure,
+  requiredness, and historical form-version decisions remain separately
+  approved or GSD-validated work; attachments, alerts, offline synchronization,
+  persistent session restoration, and AI/RAG remain deferred and are not
+  blockers.
 
 The active boundary for this branch is documented in
 [`mvp-definition.md`](mvp-definition.md): the PMIS-only GSD validation
@@ -111,14 +112,13 @@ disabled in committed configuration).
 The validation phase proceeds in this order:
 
 1. Keep the branch stable: restore/build/test green after any change.
-2. Verify AI-independent startup and operation.
-3. Verify the confirmed workflow end to end (draft rows, submit, acknowledge,
-   schedule completion, official history, corrective handoff).
-4. Prepare the GSD demonstration environment and demo script.
-5. Run the GSD validation session and capture answers.
-6. Record requirements and limitations in the GSD validation note.
-7. Defer innovation selection and implementation until GSD findings justify a
-   separate approved decision.
+2. Preserve the completed AI-independent core PM lifecycle and acceptance
+   evidence.
+3. Prepare the GSD demonstration environment and demo script.
+4. Run the GSD validation session and capture answers.
+5. Record requirements and limitations in the GSD validation note.
+6. Defer optional capability and innovation selection until GSD findings
+   justify a separate approved decision.
 
 Mobile remains a separate partner-owned workstream; later mobile field
 capabilities are not a blocker for this sequence.
@@ -376,11 +376,13 @@ directly.
 
 ## Current Constraints
 
-- The four physical forms are blank Page 1 references only.
-- Page 2, official completed samples, official location lists, schedule
-  authority, final audit rules, and authorized institutional-reference sources
-  remain deferred. The digital form lifecycle, whole-form acknowledgement, and
-  corrective-handoff boundary are confirmed.
+- The four supplied forms are the authoritative visible field structure for
+  this milestone. A `Page 1 of 2` notation is document-control context and was
+  not treated as evidence of a missing content page.
+- Official completed samples, official location lists, schedule authority,
+  final audit rules, and authorized institutional-reference sources remain
+  future validation topics. The digital form lifecycle, whole-form
+  acknowledgement, and corrective-handoff boundary are confirmed.
 - The operational fixture is fictional and provisional, not a production import
   contract.
 - Evaluation annotations are test-only and never runtime operational data.
