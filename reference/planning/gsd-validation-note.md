@@ -34,36 +34,66 @@ The detailed execution record is [`TEST-040`](../evidence/test-runs/TEST-040-mob
 This closes the core PM workflow gate; it does not claim production signing,
 store distribution, or IIS deployment.
 
+## Settled Form Clarification
+
+GSD has confirmed that the supplied institutional forms do not have a missing
+Page 2 continuation form. The visible `Page 1 of 2` notation is treated as
+document-control context, not evidence that content is missing. Do not ask GSD
+to provide a missing Page 2.
+
+The remaining form-validation work is to confirm that the supplied forms are
+the current approved revisions and to validate the required information,
+category-specific checks, field requiredness, and digital representation.
+
 Known deferred capabilities are listed at the end of this note.
 
 ## Questions For GSD
 
 ### Workflow
 
-1. Does the current Draft -> Submitted -> Acknowledged workflow match actual
+1. Does the current `Draft -> Submitted -> Acknowledged` workflow match actual
    practice?
 2. Does one digital PM form correctly represent one institutional form with
    multiple asset rows?
 3. Who may revise PM forms or checklists today?
 4. How often do forms change?
 
-### Form Fidelity
+### Digital Form Fidelity
 
-5. Which exact form fields are missing or different for each category?
-6. Are there additional pages or revisions we have not yet seen?
-7. Which fields are always filled versus optional in practice?
+The proposed direction is semi-structured and digital-first: predictable,
+recurring, and analytically important values should use structured controls,
+while free text remains available for genuinely unusual observations. The
+mobile interface does not need to copy the paper layout directly as long as it
+preserves required information and workflow meaning.
 
-### Category Evidence To Collect
+5. Are the supplied forms the current approved revisions for the four selected
+   categories?
+6. Which fields are required, optional, or rarely used in actual PM work?
+7. Which values should be auto-filled after QR lookup from the asset and
+   schedule records, such as asset ID, category, building, department,
+   location, and due schedule?
+8. Which inspection results, findings, work-performed values, and recommended
+   actions are recurring enough to be structured choices?
+9. In which situations is free text genuinely required for an inspection row?
+10. Should a whole PM form retain a separate form-level
+    `Actions / Recommendations` entry when one recommendation applies to
+    several inspected assets?
+11. If UniPM later produces an official printable/exported form, must it match
+    the existing paper layout exactly, or only preserve the approved
+    information and signatory requirements?
 
-For each category below, collect the current approved source before finalizing
-the mobile form model:
+### Category Evidence To Confirm
+
+For each category below, confirm the current approved source before finalizing
+the digital form model:
 
 - form title, revision, effective date, and approving authority;
-- complete blank form, including Page 2, plus an approved completed sample;
+- complete current blank form plus an approved completed sample where available;
 - exact field labels, types, required/optional status, and allowed values;
 - inspection procedures, checks, test measurements, and result semantics;
-- remarks and recommendation requirements;
-- confirmation that historical records retain their original form revision.
+- remarks, work-performed, and recommendation requirements;
+- which information may be auto-filled from the asset or schedule;
+- whether historical records must retain their original form revision.
 
 Categories:
 
@@ -72,55 +102,105 @@ Categories:
 - Emergency Lights
 - Water Drinking Stations
 
-The category-specific form gate remains open until each category has an
-authoritative answer for every item above. Synthetic fixtures, obsolete
-manuscript material, blank Page 1 references, and generic industry practice
-cannot close this gate.
+The four supplied forms are the authoritative visible structures for the
+current implementation pass. Final requiredness, allowed values, procedure
+semantics, and historical revision handling remain subject to GSD validation.
 
-### Reports And History
+### Reports And Information Needs
 
-8. What reports are prepared after PM work?
-9. Who prepares those reports?
-10. How often are they prepared?
-11. What questions do managers commonly ask of PM history?
-12. Which parts of report consolidation are currently manual?
-13. What still requires duplicate encoding today?
+Use these conversational questions while showing the PMIS. Start with GSD's
+actual work; do not introduce the proposed natural-language feature until the
+last question.
+
+12. Kapag nagre-review po kayo ng inspection results, ano pong information ang
+    usually una ninyong tinitingnan?
+13. May recent example po ba kayo na kailangan ninyong kumuha ng information
+    mula sa maraming inspection forms? Ano po yung gusto ninyong malaman?
+    - Follow-up if needed: `Paano niyo po nakuha yung sagot?`
+14. Kapag nakuha niyo na po yung information, saan niyo po usually ginagamit?
+15. Usually pare-pareho lang po ba yung reports or information na kailangan
+    ninyo, or may iba-ibang tanong depende sa situation?
+    - Follow-up if needed: `May example po ba kayo?`
+16. Kung titingnan po ninyo itong filters at reports sa system, meron pa po
+    bang information na mahihirapan kayong hanapin?
+
+Only after the questions above, the interviewer may briefly explain the
+proposal:
+
+> May kino-consider din po kaming option na pwede kayong mag-type ng tanong,
+> tapos ita-translate ng system into supported report filters. Ipapakita rin
+> niya kung ano yung pagkaintindi niya, at magtatanong siya kung may hindi
+> malinaw.
+
+17. Para po dun sa example na binigay ninyo, mas makakatulong po ba kung
+    ita-type niyo lang yung tanong, or mas prefer niyo pa rin pumili ng filters
+    or gumamit ng saved report? Bakit po?
+
+Suggested closing request:
+
+> Pwede po ba kayong magbigay ng dalawa o tatlong actual questions na gusto
+> ninyong masagot ng system? Gagamitin po namin yun para malaman kung worth
+> adding talaga yung feature.
+
+Record the actual task, how often it happens, what makes it difficult, and what
+GSD does with the answer. Positive reactions alone do not establish a
+requirement.
+
+### Existing Reports
+
+18. Ano-ano pong reports ang regular ninyong ginagawa gamit ang PM records?
+19. Aling part po ng paggawa ng reports ang pinaka-manual o pinaka-matagal?
+20. If available, can GSD show one recent PM summary, status, or accomplishment
+    report and explain how its counts, tables, and narrative sections were
+    prepared?
 
 ### Corrective Handoff
 
-14. Does the corrective-handoff representation match what GSD transfers into
+21. Does the corrective-handoff representation match what GSD transfers into
     the Work Management System?
-15. What is missing from that handoff sheet?
+22. What is missing from that handoff sheet?
 
 ### Mobile Capability Decisions
 
-17. Does the field workflow require inspection evidence attachments? For each
+23. Does the field workflow require inspection evidence attachments? For each
     category, which evidence is mandatory or optional, what file types and
     limits apply, whether it belongs to a row or whole form, and what are the
     deletion, read-only, retention, and access rules?
-18. Are preventive-maintenance alerts operationally required? If so, what are
+24. Are preventive-maintenance alerts operationally required? If so, what are
     the trigger, recipient role, schedule status, notice period, overdue and
     dismissal behavior, local-versus-server delivery rule, and assignment
     rule?
-19. Is offline PM work needed in the field? If so, what connectivity evidence
+25. Is offline PM work needed in the field? If so, what connectivity evidence
     justifies it, which data and Draft actions may work offline, and what
     synchronization, conflict, idempotency, authentication, and local-data
     protection design should be approved?
-20. Is secure mobile session restoration required after an app restart? If so,
+26. Is secure mobile session restoration required after an app restart? If so,
     what secure storage, refresh, revocation, corrupted-data, and unavailable-
     network behavior should be accepted?
-21. Which additional release, signing, HTTPS-host, camera, and
+27. Which additional release, signing, HTTPS-host, camera, and
     network-transition checks should be required before a production mobile
     release?
 
-### Overall
+### Audit, Scheduling, And Remaining Pain Points
 
-22. What is the biggest remaining pain point if this plain PMIS workflow were
+These questions validate possible residual problems without proposing a
+specific technology.
+
+28. When GSD, QMR, or auditors review a PM record, what evidence do they check
+    to verify the inspection and acknowledgement?
+29. Has the date, performer, result, or acknowledgement of a PM inspection ever
+    needed to be verified or questioned?
+30. Is Department Head acknowledgement captured on the skilled worker's device
+    acceptable as the official digital acknowledgement process?
+31. Can GSD show one PM schedule that was difficult to arrange or had to be
+    changed and explain what caused the change?
+32. What is the biggest remaining pain point if this plain PMIS workflow were
     digitized as shown?
 
-These questions deliberately do not pitch AI summarization, schema-driven
-protocols, analytics, or any other innovation; selection happens after GSD
-requirements are collected.
+These questions deliberately avoid presenting natural-language analytics,
+report generation, cryptographic provenance, scheduling optimization, or any
+other emerging technology as a decided requirement. Innovation selection is
+based on GSD evidence and adviser approval.
 
 ## Known Demo Limitations
 
@@ -144,7 +224,7 @@ requirements are collected.
 - No WMS/RMRF integration exists by confirmed boundary; handoff ends at manual
   encoding preparation.
 
-### Deferred and out-of-scope capabilities
+### Deferred And Out-Of-Scope Capabilities
 
 The following capabilities are intentionally excluded from this completed
 milestone and must not be treated as blockers:
