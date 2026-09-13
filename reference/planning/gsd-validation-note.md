@@ -7,6 +7,9 @@ innovation is selected. Maintenance-history RAG was previously implemented and
 evaluated as controlled development work; it is inactive here and no
 replacement innovation is proposed or approved yet.
 
+Use the separate [GSD PMIS demonstration runbook](gsd-pmis-demo-runbook.md) to
+prepare the isolated database, applications, physical device, and walkthrough.
+
 ## Demo Flow Shown To GSD
 
 Login -> QR -> schedule -> category form -> multi-row Draft -> submit ->

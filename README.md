@@ -255,6 +255,8 @@ owned by a separate partner workstream.
 
 A concise GSD validation note with the prepared validation questions is at
 [`reference/planning/gsd-validation-note.md`](reference/planning/gsd-validation-note.md).
+The repeatable local demonstration setup and walkthrough are documented in
+[`reference/planning/gsd-pmis-demo-runbook.md`](reference/planning/gsd-pmis-demo-runbook.md).
 
 ## Authentication
 
