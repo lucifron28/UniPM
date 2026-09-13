@@ -30,9 +30,9 @@ In a PowerShell terminal at the repository root, set process-only values:
 
 ```powershell
 $env:ASPNETCORE_ENVIRONMENT = "Development"
-$env:ASPNETCORE_URLS = "http://0.0.0.0:5000"
+$env:ASPNETCORE_URLS = "http://0.0.0.0:5099"
 $env:ConnectionStrings__DefaultConnection =
-  "Server=.;Database=UniPM_GsdDemo_20260913;Integrated Security=True;Encrypt=True;TrustServerCertificate=True;"
+  "Server=.;Database=UniPM_GsdDemo_20260913;Integrated Security=True;Encrypt=False;TrustServerCertificate=True;"
 $env:UNIPM_DEV_USER_PASSWORD = "<temporary-local-password>"
 $env:MaintenanceReview__Enabled = "false"
 $env:Embeddings__Enabled = "false"
@@ -41,14 +41,17 @@ $env:Embeddings__Enabled = "false"
 Keep the password and connection string out of Git, screenshots, recordings,
 shell history captures, and evidence records.
 
+`Encrypt=False` is limited to this local SQL Server 2019 development setup. It
+is not a production database transport recommendation.
+
 ## Prepare the database
 
 Apply migrations and load the deterministic fictional fixture:
 
 ```powershell
-dotnet ef database update --project server
-dotnet run --project server -- --seed-synthetic
+dotnet run --project server -- --migrate-database
 dotnet run --project server -- --seed-development-users
+dotnet run --project server -- --seed-synthetic
 ```
 
 Do not run an embedding rebuild. The PMIS workflow does not need an embedding
@@ -86,7 +89,7 @@ For a physical Android device, replace `<development-machine-lan-ip>` with an
 address reachable from the device:
 
 ```powershell
-flutter run --dart-define=UNIPM_API_BASE_URL=http://<development-machine-lan-ip>:5000/
+flutter run --dart-define=UNIPM_API_BASE_URL=http://<development-machine-lan-ip>:5099/
 ```
 
 HTTP is allowed only by the Android debug manifest for local development.
@@ -171,4 +174,3 @@ Proceed with the GSD demonstration only when:
 - no AI provider is configured or contacted;
 - no real institutional record or signature is present; and
 - the complete walkthrough has passed once on the intended physical device.
-
