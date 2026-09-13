@@ -176,7 +176,7 @@ describe('preventive-maintenance form review', () => {
 
     renderWithProviders(<FormDetail formId={formId} />)
 
-    expect(await screen.findByText('WDS-MAIN-001')).toBeInTheDocument()
+    expect(await screen.findAllByText('WDS-MAIN-001')).toHaveLength(2)
     expect(screen.getByText('Main Building lobby')).toBeInTheDocument()
     expect(screen.getByText('Synthetic Inspector')).toBeInTheDocument()
     expect(
@@ -204,7 +204,7 @@ describe('preventive-maintenance form review', () => {
       screen.getByRole('link', { name: /Official history/ }),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('link', { name: /Form review/ }),
+      await screen.findByRole('link', { name: /Form review/ }),
     ).toBeInTheDocument()
     expect(
       screen.getByText(/Provisional UniPM file numbers remain independent/),
