@@ -8,9 +8,17 @@
 export interface UpdateDraftInspectionRowDto {
   inspectorUserId?: string
   dateInspected?: string
+  /** @nullable */
+  dateAccomplished?: string | null
   isOperational?: boolean
   /** @nullable */
   remarks?: string | null
   /** @nullable */
   actionsRecommendations?: string | null
+  /** @nullable */
+  waterReplaceCarbonFilter?: boolean | null
+  /** @nullable */
+  waterReplaceSedimentFilter?: boolean | null
+  /** @nullable */
+  waterCheckUvLight?: boolean | null
 }

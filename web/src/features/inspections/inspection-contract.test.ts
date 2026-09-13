@@ -14,13 +14,19 @@ const inspection = {
   isOperational: false,
   remarks: 'Low pressure recorded.',
   actionsRecommendations: 'Arrange a pressure check.',
+  dateAccomplished: '2026-07-22T02:00:00Z',
+  waterReplaceCarbonFilter: true,
+  waterReplaceSedimentFilter: false,
+  waterCheckUvLight: true,
   createdAt: '2026-07-22T01:00:00Z',
   updatedAt: '2026-07-22T01:00:00Z',
 }
 
 describe('inspection contracts', () => {
   it('parses public inspection and history responses while rejecting private fields', () => {
-    expect(parseInspection(inspection).scheduleId).toBe(inspection.scheduleId)
+    const parsedInspection = parseInspection(inspection)
+    expect(parsedInspection.scheduleId).toBe(inspection.scheduleId)
+    expect(parsedInspection.waterReplaceCarbonFilter).toBe(true)
     expect(() =>
       parseInspection({ ...inspection, remarksEmbedding: [0.1] } as never),
     ).toThrow(ZodError)
@@ -32,6 +38,10 @@ describe('inspection contracts', () => {
           isOperational: inspection.isOperational,
           remarks: inspection.remarks,
           actionsRecommendations: inspection.actionsRecommendations,
+          dateAccomplished: inspection.dateAccomplished,
+          waterReplaceCarbonFilter: inspection.waterReplaceCarbonFilter,
+          waterReplaceSedimentFilter: inspection.waterReplaceSedimentFilter,
+          waterCheckUvLight: inspection.waterCheckUvLight,
         },
       ])[0]?.id,
     ).toBe(inspection.id)

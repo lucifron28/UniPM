@@ -80,11 +80,16 @@ public static class PreventiveMaintenanceFormEndpoints
             var forms = await context.PreventiveMaintenanceForms
                 .AsNoTracking()
                 .Include(form => form.Inspections)
+                    .ThenInclude(inspection => inspection.Asset)
                 .OrderByDescending(form => form.CreatedAt)
                 .ThenBy(form => form.Id)
                 .ToListAsync(cancellationToken);
 
-            return Results.Ok(forms.Select(PreventiveMaintenanceFormResponse.FromForm).ToList());
+            var users = await LoadUserDisplayNamesAsync(context, forms, cancellationToken);
+
+            return Results.Ok(forms
+                .Select(form => PreventiveMaintenanceFormResponse.FromForm(form, users))
+                .ToList());
         })
         .WithName("ListPreventiveMaintenanceForms")
         .WithSummary("Lists preventive-maintenance forms")
@@ -100,11 +105,16 @@ public static class PreventiveMaintenanceFormEndpoints
             var form = await context.PreventiveMaintenanceForms
                 .AsNoTracking()
                 .Include(candidate => candidate.Inspections)
+                    .ThenInclude(inspection => inspection.Asset)
                 .SingleOrDefaultAsync(candidate => candidate.Id == id, cancellationToken);
+
+            var users = form is null
+                ? null
+                : await LoadUserDisplayNamesAsync(context, [form], cancellationToken);
 
             return form is null
                 ? ApiErrors.NotFound("Preventive-maintenance form not found.")
-                : Results.Ok(PreventiveMaintenanceFormResponse.FromForm(form));
+                : Results.Ok(PreventiveMaintenanceFormResponse.FromForm(form, users));
         })
         .WithName("GetPreventiveMaintenanceForm")
         .WithSummary("Gets a preventive-maintenance form")
@@ -130,6 +140,7 @@ public static class PreventiveMaintenanceFormEndpoints
                 await using var transaction = await BeginSerializableTransactionIfRelationalAsync(context, cancellationToken);
                 var form = await context.PreventiveMaintenanceForms
                     .Include(candidate => candidate.Inspections)
+                        .ThenInclude(inspection => inspection.Asset)
                     .SingleOrDefaultAsync(candidate => candidate.Id == id, cancellationToken);
                 if (form is null)
                 {
@@ -185,7 +196,8 @@ public static class PreventiveMaintenanceFormEndpoints
                         await transaction.CommitAsync(cancellationToken);
                     }
 
-                    return Results.Ok(PreventiveMaintenanceFormResponse.FromForm(form));
+                    var users = await LoadUserDisplayNamesAsync(context, [form], cancellationToken);
+                    return Results.Ok(PreventiveMaintenanceFormResponse.FromForm(form, users));
                 }
                 catch (Exception exception)
                     when (DatabaseConstraintViolation.IsUniqueConstraint(exception)
@@ -515,7 +527,11 @@ public static class PreventiveMaintenanceFormEndpoints
 
             return Results.Created(
                 $"/api/v1/preventive-maintenance-forms/{form.Id}/inspections/{inspection.Id}",
-                DraftInspectionRowResponse.FromInspection(inspection));
+                DraftInspectionRowResponse.FromInspection(
+                    inspection,
+                    schedule.Asset.AssetCode,
+                    schedule.Asset.Location,
+                    inspector.DisplayName));
         })
         .RequireAuthorization(AuthPolicyCatalog.CanManagePreventiveMaintenanceForms)
         .WithName("AddPreventiveMaintenanceFormDraftInspection")
@@ -560,6 +576,7 @@ public static class PreventiveMaintenanceFormEndpoints
             }
 
             var inspection = await context.InspectionRecords
+                .Include(candidate => candidate.Asset)
                 .SingleOrDefaultAsync(candidate => candidate.Id == inspectionId
                     && candidate.PreventiveMaintenanceFormId == form.Id,
                     cancellationToken);
@@ -609,7 +626,11 @@ public static class PreventiveMaintenanceFormEndpoints
             form.UpdatedAt = inspection.UpdatedAt;
             await context.SaveChangesAsync(cancellationToken);
 
-            return Results.Ok(DraftInspectionRowResponse.FromInspection(inspection));
+            return Results.Ok(DraftInspectionRowResponse.FromInspection(
+                inspection,
+                inspection.Asset?.AssetCode,
+                inspection.Asset?.Location,
+                inspector.DisplayName));
         })
         .RequireAuthorization(AuthPolicyCatalog.CanManagePreventiveMaintenanceForms)
         .WithName("UpdatePreventiveMaintenanceFormDraftInspection")
@@ -671,6 +692,28 @@ public static class PreventiveMaintenanceFormEndpoints
         .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status409Conflict);
 
         return endpoints;
+    }
+
+    private static async Task<IReadOnlyDictionary<Guid, string>> LoadUserDisplayNamesAsync(
+        ApplicationDbContext context,
+        IEnumerable<PreventiveMaintenanceForm> forms,
+        CancellationToken cancellationToken)
+    {
+        var userIds = forms
+            .SelectMany(form => form.Inspections)
+            .Select(inspection => inspection.InspectorUserId)
+            .Distinct()
+            .ToList();
+
+        if (userIds.Count == 0)
+        {
+            return new Dictionary<Guid, string>();
+        }
+
+        return await context.Users
+            .AsNoTracking()
+            .Where(user => userIds.Contains(user.Id))
+            .ToDictionaryAsync(user => user.Id, user => user.DisplayName, cancellationToken);
     }
 
     private static InspectionRecord CreateInspection(
@@ -1091,7 +1134,9 @@ public sealed record PreventiveMaintenanceFormResponse(
     DateTimeOffset UpdatedAt,
     IReadOnlyList<DraftInspectionRowResponse> Inspections)
 {
-    internal static PreventiveMaintenanceFormResponse FromForm(PreventiveMaintenanceForm form)
+    internal static PreventiveMaintenanceFormResponse FromForm(
+        PreventiveMaintenanceForm form,
+        IReadOnlyDictionary<Guid, string>? userDisplayNames = null)
     {
         return new PreventiveMaintenanceFormResponse(
             form.Id,
@@ -1113,7 +1158,11 @@ public sealed record PreventiveMaintenanceFormResponse(
             form.Inspections
                 .OrderBy(inspection => inspection.DateInspected)
                 .ThenBy(inspection => inspection.Id)
-                .Select(DraftInspectionRowResponse.FromInspection)
+                .Select(inspection => DraftInspectionRowResponse.FromInspection(
+                    inspection,
+                    inspection.Asset?.AssetCode,
+                    inspection.Asset?.Location,
+                    userDisplayNames?.GetValueOrDefault(inspection.InspectorUserId)))
                 .ToList());
     }
 }
@@ -1132,9 +1181,16 @@ public sealed record DraftInspectionRowResponse(
     DateTimeOffset? DateAccomplished = null,
     bool? WaterReplaceCarbonFilter = null,
     bool? WaterReplaceSedimentFilter = null,
-    bool? WaterCheckUvLight = null)
+    bool? WaterCheckUvLight = null,
+    string? AssetCode = null,
+    string? Location = null,
+    string? SkilledWorkerIdentity = null)
 {
-    internal static DraftInspectionRowResponse FromInspection(InspectionRecord inspection)
+    internal static DraftInspectionRowResponse FromInspection(
+        InspectionRecord inspection,
+        string? assetCode = null,
+        string? location = null,
+        string? skilledWorkerIdentity = null)
     {
         return new DraftInspectionRowResponse(
             inspection.Id,
@@ -1150,7 +1206,10 @@ public sealed record DraftInspectionRowResponse(
             inspection.DateAccomplished,
             inspection.WaterReplaceCarbonFilter,
             inspection.WaterReplaceSedimentFilter,
-            inspection.WaterCheckUvLight);
+            inspection.WaterCheckUvLight,
+            assetCode,
+            location,
+            skilledWorkerIdentity);
     }
 }
 

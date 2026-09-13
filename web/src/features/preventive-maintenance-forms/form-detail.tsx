@@ -214,12 +214,20 @@ function CorrectiveHandoff({
 }
 
 function InspectionRow({ row }: { row: PreventiveMaintenanceInspectionRow }) {
+  const hasWaterWorkItems =
+    row.dateAccomplished !== null ||
+    row.waterReplaceCarbonFilter !== null ||
+    row.waterReplaceSedimentFilter !== null ||
+    row.waterCheckUvLight !== null
+  const yesNo = (value: boolean | null | undefined) =>
+    value == null ? 'Not recorded' : value ? 'Yes' : 'No'
+
   return (
     <article className="rounded-xl border border-[var(--border-soft)] bg-white p-5 shadow-sm">
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
         <div>
           <p className="text-sm font-semibold text-[var(--text-primary)]">
-            Inspection {row.id}
+            {row.assetCode ?? `Inspection ${row.id}`}
           </p>
           <p className="mt-1 text-xs text-[var(--text-neutral)]">
             {formatFormDate(row.dateInspected)}
@@ -236,17 +244,56 @@ function InspectionRow({ row }: { row: PreventiveMaintenanceInspectionRow }) {
         </Badge>
       </div>
       <dl className="mt-5 grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
-        <DetailItem label="Asset ID" value={row.assetId} />
-        <DetailItem label="Schedule ID" value={row.scheduleId} />
+        <DetailItem label="Asset code" value={row.assetCode ?? ''} />
+        <DetailItem label="Location" value={row.location ?? ''} />
         <DetailItem
-          label="Skilled worker user ID"
-          value={row.inspectorUserId}
+          label="Skilled worker"
+          value={row.skilledWorkerIdentity ?? ''}
         />
         <DetailItem
           label="Inspection date"
           value={formatFormDate(row.dateInspected)}
         />
       </dl>
+      <details className="mt-4 text-xs text-[var(--text-neutral)]">
+        <summary className="cursor-pointer font-semibold">
+          Technical identifiers
+        </summary>
+        <dl className="mt-3 grid gap-3 sm:grid-cols-3">
+          <DetailItem label="Inspection ID" value={row.id} />
+          <DetailItem label="Asset ID" value={row.assetId} />
+          <DetailItem label="Schedule ID" value={row.scheduleId} />
+          <DetailItem
+            label="Skilled worker user ID"
+            value={row.inspectorUserId}
+          />
+        </dl>
+      </details>
+      {hasWaterWorkItems && (
+        <section className="mt-5 border-t border-[var(--border-soft)] pt-4">
+          <h3 className="text-xs font-semibold tracking-[0.08em] text-[var(--text-neutral)] uppercase">
+            Water drinking station work items
+          </h3>
+          <dl className="mt-3 grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
+            <DetailItem
+              label="Date accomplished"
+              value={formatFormDate(row.dateAccomplished ?? null)}
+            />
+            <DetailItem
+              label="Replace carbon filter"
+              value={yesNo(row.waterReplaceCarbonFilter)}
+            />
+            <DetailItem
+              label="Replace sediment filter"
+              value={yesNo(row.waterReplaceSedimentFilter)}
+            />
+            <DetailItem
+              label="Check UV light"
+              value={yesNo(row.waterCheckUvLight)}
+            />
+          </dl>
+        </section>
+      )}
       <div className="mt-5 grid gap-4 border-t border-[var(--border-soft)] pt-4 sm:grid-cols-2">
         <div>
           <h3 className="text-xs font-semibold tracking-[0.08em] text-[var(--text-neutral)] uppercase">

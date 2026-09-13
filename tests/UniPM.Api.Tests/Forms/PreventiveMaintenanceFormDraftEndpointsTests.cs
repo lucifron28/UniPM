@@ -33,7 +33,7 @@ public sealed class PreventiveMaintenanceFormDraftEndpointsTests
         var secondSchedule = await CreateScheduleAsync(client, asset.Id, 2);
 
         var form = await CreateFormAsync(client, asset.AssetCategory);
-        await AddInspectionRowAsync(client, form.Id, firstSchedule.Id, "First draft row");
+        var firstRow = await AddInspectionRowAsync(client, form.Id, firstSchedule.Id, "First draft row");
         await AddInspectionRowAsync(client, form.Id, secondSchedule.Id, "Second draft row");
 
         var response = await client.GetAsync($"/api/v1/preventive-maintenance-forms/{form.Id}");
@@ -43,6 +43,15 @@ public sealed class PreventiveMaintenanceFormDraftEndpointsTests
         Assert.NotNull(persisted);
         Assert.Equal("Draft", persisted.Status);
         Assert.Equal(2, persisted.Inspections.Count);
+        Assert.Equal(asset.AssetCode, firstRow.AssetCode);
+        Assert.Equal(asset.Location, firstRow.Location);
+        Assert.Equal("Form Drafts User", firstRow.SkilledWorkerIdentity);
+        Assert.All(persisted.Inspections, row =>
+        {
+            Assert.Equal(asset.AssetCode, row.AssetCode);
+            Assert.Equal(asset.Location, row.Location);
+            Assert.Equal("Form Drafts User", row.SkilledWorkerIdentity);
+        });
         Assert.Equivalent(
             new[] { firstSchedule.Id, secondSchedule.Id },
             persisted.Inspections.Select(row => row.ScheduleId));
@@ -831,7 +840,11 @@ public sealed class PreventiveMaintenanceFormDraftEndpointsTests
         }
     }
 
-    private sealed record AssetResponse(Guid Id, string AssetCategory);
+    private sealed record AssetResponse(
+        Guid Id,
+        string AssetCode,
+        string AssetCategory,
+        string? Location);
 
     private sealed record ScheduleResponse(Guid Id);
 }

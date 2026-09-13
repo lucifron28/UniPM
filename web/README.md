@@ -81,10 +81,11 @@ submission is handled by the mobile preventive-maintenance workflow.
 
 Authenticated GSD and Inspector users can browse `/app/preventive-maintenance-forms`
 and inspect form details with their row-level condition, remarks, recommended
-corrective action, asset, schedule, and skilled-worker context. Submitted forms
-also expose the existing whole-form acknowledgement capture to an authorized
-reviewer. The interface distinguishes `Draft`, `Submitted`, and `Acknowledged`
-without calling an asset condition `Completed`.
+corrective action, asset, schedule, and skilled-worker context. Water drinking
+station rows also show the recorded completion date and visible filter/UV work
+items. Submitted forms expose the existing whole-form acknowledgement capture
+to an authorized reviewer. The interface distinguishes `Draft`, `Submitted`,
+and `Acknowledged` without calling an asset condition `Completed`.
 
 For GSD only, an Acknowledged form may display the existing corrective-action
 handoff read model. It preserves nullable `AssetDeviceNumber` as unresolved and

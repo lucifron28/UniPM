@@ -13,4 +13,12 @@ export interface InspectionHistoryResponse {
   remarks: string | null
   /** @nullable */
   actionsRecommendations: string | null
+  /** @nullable */
+  dateAccomplished?: string | null
+  /** @nullable */
+  waterReplaceCarbonFilter?: boolean | null
+  /** @nullable */
+  waterReplaceSedimentFilter?: boolean | null
+  /** @nullable */
+  waterCheckUvLight?: boolean | null
 }

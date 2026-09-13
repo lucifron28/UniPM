@@ -18,4 +18,18 @@ export interface DraftInspectionRowResponse {
   actionsRecommendations: string | null
   createdAt: string
   updatedAt: string
+  /** @nullable */
+  dateAccomplished?: string | null
+  /** @nullable */
+  waterReplaceCarbonFilter?: boolean | null
+  /** @nullable */
+  waterReplaceSedimentFilter?: boolean | null
+  /** @nullable */
+  waterCheckUvLight?: boolean | null
+  /** @nullable */
+  assetCode?: string | null
+  /** @nullable */
+  location?: string | null
+  /** @nullable */
+  skilledWorkerIdentity?: string | null
 }

@@ -19,6 +19,7 @@ import { FormDetail } from '@/features/preventive-maintenance-forms/form-detail'
 import { FormRegistry } from '@/features/preventive-maintenance-forms/form-registry'
 import { useAuthStore } from '@/stores/auth-store'
 import { server } from '@/test/server'
+import { PreventiveMaintenanceDashboard } from '@/routes/app/dashboard'
 
 const meUrl = 'http://localhost:5000/api/v1/auth/me'
 const formsUrl = 'http://localhost:5000/api/v1/preventive-maintenance-forms'
@@ -63,6 +64,13 @@ function form(status: 'Draft' | 'Submitted' | 'Acknowledged') {
               isOperational: false,
               remarks: 'Pressure is low.',
               actionsRecommendations: 'Inspect and recharge the unit.',
+              dateAccomplished: null,
+              waterReplaceCarbonFilter: null,
+              waterReplaceSedimentFilter: null,
+              waterCheckUvLight: null,
+              assetCode: 'FE-TEST-001',
+              location: 'Main hallway',
+              skilledWorkerIdentity: 'Synthetic Inspector',
               ...timestamps,
             },
           ],
@@ -141,6 +149,66 @@ describe('preventive-maintenance form review', () => {
       'href',
       '/app/preventive-maintenance-forms/77777777-7777-4777-8777-777777777777',
     )
+  })
+
+  it('renders human-readable row context and water-station work items', async () => {
+    server.use(
+      http.get(meUrl, () => HttpResponse.json(currentUser(['GSD']))),
+      http.get(`${formsUrl}/${formId}`, () =>
+        HttpResponse.json({
+          ...form('Submitted'),
+          assetCategory: 'water-drinking-station',
+          inspections: [
+            {
+              ...form('Submitted').inspections[0],
+              assetCode: 'WDS-MAIN-001',
+              location: 'Main Building lobby',
+              skilledWorkerIdentity: 'Synthetic Inspector',
+              dateAccomplished: '2026-07-28T03:00:00Z',
+              waterReplaceCarbonFilter: true,
+              waterReplaceSedimentFilter: false,
+              waterCheckUvLight: true,
+            },
+          ],
+        }),
+      ),
+    )
+
+    renderWithProviders(<FormDetail formId={formId} />)
+
+    expect(await screen.findByText('WDS-MAIN-001')).toBeInTheDocument()
+    expect(screen.getByText('Main Building lobby')).toBeInTheDocument()
+    expect(screen.getByText('Synthetic Inspector')).toBeInTheDocument()
+    expect(
+      screen.getByText('Water drinking station work items'),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Replace carbon filter')).toBeInTheDocument()
+    expect(screen.getByText('Replace sediment filter')).toBeInTheDocument()
+    expect(screen.getByText('Check UV light')).toBeInTheDocument()
+  })
+
+  it('provides a role-aware PMIS validation launch page', async () => {
+    server.use(http.get(meUrl, () => HttpResponse.json(currentUser(['GSD']))))
+
+    renderWithProviders(<PreventiveMaintenanceDashboard />)
+
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Preventive Maintenance Portal',
+      }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Validation prototype')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Assets/ })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Schedules/ })).toBeInTheDocument()
+    expect(
+      screen.getByRole('link', { name: /Official history/ }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('link', { name: /Form review/ }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(/Provisional UniPM file numbers remain independent/),
+    ).toBeInTheDocument()
   })
 
   it('renders acknowledged detail and GSD corrective handoff without signatures', async () => {
