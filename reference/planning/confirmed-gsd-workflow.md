@@ -13,19 +13,33 @@ CPMP manual for procedure details or finalize unrelated institutional policies.
 
 1. GSD creates and manages a preventive-maintenance schedule.
 2. A skilled worker conducts the inspection.
-3. One digital form represents one institutional PM form and contains multiple
-   asset inspection rows.
-4. The skilled worker submits the whole form. UniPM assigns one provisional
-   file number while each asset row keeps its own inspection ID.
-5. The concerned department head acknowledges the whole form through the
+3. One digital form represents one department PM batch and contains multiple
+   asset inspection rows. The authoritative batch identity is department,
+   asset category, and scheduled PM period. Building does not split a batch.
+4. Completing an asset inspection records an authoritative field-work
+   completion timestamp and completes that asset's linked PM schedule. Schedule
+   completion does not wait for form submission or acknowledgement.
+5. The skilled worker submits the whole form only after every eligible schedule
+   in the batch has a completed inspection row. UniPM assigns one provisional
+   file number while each asset row keeps its own inspection ID. The persisted
+   form status remains `Submitted`; user interfaces display it as
+   `Awaiting acknowledgement`.
+6. The concerned department head acknowledges the whole form through the
    skilled worker's authenticated mobile session. The department head does not
    require a UniPM account; signatory name, position, and signature are form
    data.
-6. Only acknowledgement changes the form to `Acknowledged` and completes the
-   linked preventive-maintenance schedules.
+7. Acknowledgement changes the form to `Acknowledged`, records receipt/noting,
+   and makes its completed rows eligible for official history. It does not
+   change schedule-completion timestamps.
 
-The form lifecycle is `Draft -> Submitted -> Acknowledged`. Asset condition is
-`Operational` or `Non-operational`; `Completed` is a schedule state, not an
+The PM execution lifecycle and form lifecycle are separate:
+
+- PM execution: `Due/Ongoing/Overdue -> Completed` from field work.
+- PM form: `Draft -> Submitted -> Acknowledged`, with `Submitted` displayed as
+  `Awaiting acknowledgement`.
+
+An acknowledged form is not required for on-time PM execution. Asset condition
+is `Operational` or `Non-operational`; `Completed` is a schedule state, not an
 asset condition.
 
 ## Digital-Form Direction
@@ -47,6 +61,10 @@ revision handling remain subject to GSD validation.
 - Draft and Submitted rows are excluded from official inspection history.
 - Acknowledged rows are eligible official maintenance-history records. Legacy
   rows without a form may remain eligible for continuity where applicable.
+- `InspectionRecord.CompletedAt` is the authoritative execution timestamp for
+  future compliance analytics. Historical `Schedule.CompletedAt` values that
+  were written during acknowledgement are not field-work evidence and must not
+  be treated as execution timestamps.
 - Signatory names, positions, signatures, signature data, and checksums are not
   part of operational analytics inputs or corrective-handoff responses.
 - The previously implemented maintenance-history retrieval/RAG infrastructure
@@ -55,7 +73,7 @@ revision handling remain subject to GSD validation.
 ## Corrective-Action Boundary
 
 UniPM prepares an acknowledged corrective-action handoff containing the
-relevant finding and recommended action. GSD manually encodes the handoff in
+relevant finding and recommendation. GSD manually encodes the handoff in
 the existing Work Management System. UniPM does not create, approve, process,
 monitor, or track RMRFs or corrective-maintenance work, and it does not
 integrate directly with the Work Management System.
@@ -74,9 +92,9 @@ The selected asset categories are:
 
 The current PMIS validation baseline covers the deterministic preventive-
 maintenance workflow: asset registry, QR lookup, schedules, category-specific
-multi-row PM forms, submission, Department Head acknowledgement, schedule
-completion, acknowledged-only official history, and corrective-handoff
-preparation.
+department/category/period PM batches, field-work-driven schedule completion,
+submission, Department Head acknowledgement, acknowledged-only official
+history, and corrective-handoff preparation.
 
 The core lifecycle has passed physical-device acceptance against the live
 development backend. Production signing, IIS deployment, attachments, alerts,
