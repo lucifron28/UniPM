@@ -117,7 +117,12 @@ class _PreventiveMaintenanceAcknowledgementPageState
       builder: (context) => AlertDialog(
         title: const Text('Acknowledge whole PM form?'),
         content: const Text(
-          'This records the Department Head signatory details and signature, changes the form to Acknowledged, and completes its linked schedules.',
+          'Field-work completion and acknowledgement are separate. '
+          'Acknowledgement records receipt/noting of the findings and the '
+          'Department Head signatory details and signature, changes the form '
+          'to Acknowledged, and locks it. Its inspection rows become eligible '
+          'for official history. It does not approve corrective work, funding, '
+          'or an RMRF.',
         ),
         actions: [
           TextButton(

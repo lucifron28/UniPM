@@ -264,6 +264,18 @@ void main() {
     await tester.tap(find.byKey(const Key('acknowledge-form-button')));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('confirm-acknowledge-form')), findsOneWidget);
+    expect(
+      find.text(
+        'Field-work completion and acknowledgement are separate. '
+        'Acknowledgement records receipt/noting of the findings and the '
+        'Department Head signatory details and signature, changes the form '
+        'to Acknowledged, and locks it. Its inspection rows become eligible '
+        'for official history. It does not approve corrective work, funding, '
+        'or an RMRF.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.textContaining('completes its linked schedules'), findsNothing);
 
     await tester.tap(find.byKey(const Key('confirm-acknowledge-form')));
     await tester.pumpAndSettle();
