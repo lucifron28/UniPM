@@ -164,9 +164,49 @@ public static class PreventiveMaintenanceFormEndpoints
                     return Results.Forbid();
                 }
 
-                if (form.Inspections.Any(inspection => inspection.CompletedAt is null))
+                if (form.Inspections.Any(inspection => !PreventiveMaintenanceFormBatchPolicy.HasCompletedExecution(inspection)))
                 {
                     return ApiErrors.Conflict("Every inspection row must be completed before form submission.");
+                }
+
+                var formScheduleIds = form.Inspections
+                    .Select(inspection => inspection.ScheduleId)
+                    .Distinct()
+                    .ToArray();
+                var eligibleStatuses = new[]
+                {
+                    ScheduleStatusCatalog.Due,
+                    ScheduleStatusCatalog.Ongoing,
+                    ScheduleStatusCatalog.Overdue
+                };
+                var candidateSchedules = await context.PreventiveMaintenanceSchedules
+                    .Include(schedule => schedule.Asset)
+                    .Where(schedule => formScheduleIds.Contains(schedule.Id)
+                        || (eligibleStatuses.Contains(schedule.Status)
+                            && schedule.Asset != null
+                            && schedule.Asset.AssetCategory == form.AssetCategory
+                            && schedule.Year == form.Year))
+                    .ToListAsync(cancellationToken);
+                var expectedScheduleIds = candidateSchedules
+                    .Where(schedule => PreventiveMaintenanceFormBatchPolicy.Matches(form, schedule)
+                        && (PreventiveMaintenanceFormBatchPolicy.IsEligibleScheduleStatus(schedule.Status)
+                            || (PreventiveMaintenanceFormBatchPolicy.IsCompletedScheduleStatus(schedule.Status)
+                                && formScheduleIds.Contains(schedule.Id))))
+                    .Select(schedule => schedule.Id)
+                    .ToHashSet();
+
+                if (form.Inspections.Any(inspection => !expectedScheduleIds.Contains(inspection.ScheduleId)))
+                {
+                    return ApiErrors.Conflict("Every inspection row must reference an eligible schedule in the form batch.");
+                }
+
+                var completedInspectionScheduleIds = form.Inspections
+                    .Where(PreventiveMaintenanceFormBatchPolicy.HasCompletedExecution)
+                    .Select(inspection => inspection.ScheduleId)
+                    .ToHashSet();
+                if (expectedScheduleIds.Any(scheduleId => !completedInspectionScheduleIds.Contains(scheduleId)))
+                {
+                    return ApiErrors.Conflict("Every eligible schedule in the form batch must have a completed inspection row before submission.");
                 }
 
                 var now = DateTimeOffset.UtcNow;
@@ -477,11 +517,11 @@ public static class PreventiveMaintenanceFormEndpoints
                 return ApiErrors.NotFound("Asset not found.");
             }
 
-            if (!string.Equals(schedule.Asset.AssetCategory, form.AssetCategory, StringComparison.Ordinal))
+            if (!PreventiveMaintenanceFormBatchPolicy.Matches(form, schedule))
             {
                 return ApiErrors.Validation(new Dictionary<string, string[]>
                 {
-                    [nameof(dto.ScheduleId)] = ["Schedule asset category must match the form asset category."]
+                    [nameof(dto.ScheduleId)] = ["Schedule department, asset category, and maintenance period must match the form batch."]
                 });
             }
 
@@ -490,6 +530,11 @@ public static class PreventiveMaintenanceFormEndpoints
                     cancellationToken))
             {
                 return ApiErrors.Conflict("Schedule already has a recorded inspection.");
+            }
+
+            if (!PreventiveMaintenanceFormBatchPolicy.IsEligibleScheduleStatus(schedule.Status))
+            {
+                return ApiErrors.Conflict("Only Due, Ongoing, or Overdue schedules can be added to a draft form.");
             }
 
             var inspector = await context.Users
