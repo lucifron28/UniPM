@@ -15,7 +15,8 @@ CPMP manual for procedure details or finalize unrelated institutional policies.
 2. A skilled worker conducts the inspection.
 3. One digital form represents one department PM batch and contains multiple
    asset inspection rows. The authoritative batch identity is department,
-   asset category, and scheduled PM period. Building does not split a batch.
+   asset category, and the canonical PM cycle derived from the schedule date
+   as `YYYY-MM` (for example, `2026-06`). Building does not split a batch.
 4. Completing an asset inspection records an authoritative field-work
    completion timestamp and completes that asset's linked PM schedule. Schedule
    completion does not wait for form submission or acknowledgement.
@@ -92,7 +93,7 @@ The selected asset categories are:
 
 The current PMIS validation baseline covers the deterministic preventive-
 maintenance workflow: asset registry, QR lookup, schedules, category-specific
-department/category/period PM batches, field-work-driven schedule completion,
+department/category/PM-cycle batches, field-work-driven schedule completion,
 submission, Department Head acknowledgement, acknowledged-only official
 history, and corrective-handoff preparation.
 
