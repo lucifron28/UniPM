@@ -7,6 +7,9 @@ import '../../ui/display_labels.dart';
 import 'preventive_maintenance_controller.dart';
 import 'preventive_maintenance_models.dart';
 
+String _formStatusLabel(String status) =>
+    status == 'Submitted' ? 'Awaiting acknowledgement' : status;
+
 class PreventiveMaintenanceAcknowledgementPage extends StatefulWidget {
   const PreventiveMaintenanceAcknowledgementPage({
     super.key,
@@ -94,7 +97,7 @@ class _PreventiveMaintenanceAcknowledgementPageState
             child: Padding(
               padding: EdgeInsets.all(16),
               child: Text(
-                'This form is not in Submitted state and cannot be acknowledged.',
+                'This form is not awaiting acknowledgement and cannot be acknowledged.',
               ),
             ),
           ),
@@ -169,7 +172,7 @@ class _SubmittedFormSummary extends StatelessWidget {
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 8),
-            Text('Status: ${form.status}'),
+            Text('Status: ${_formStatusLabel(form.status)}'),
             Text('Asset category: ${displayAssetCategory(form.assetCategory)}'),
             Text('Building: ${form.building ?? 'Not recorded'}'),
             Text('Department: ${form.department ?? 'Not recorded'}'),

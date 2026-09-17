@@ -217,6 +217,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    expect(find.textContaining('Awaiting acknowledgement |'), findsOneWidget);
     expect(find.byKey(Key('review-form-$formId')), findsOneWidget);
     await tester.tap(find.byKey(Key('review-form-$formId')));
     await tester.pumpAndSettle();
@@ -225,6 +226,7 @@ void main() {
     await tester.tap(find.byKey(const Key('open-acknowledgement')));
     await tester.pumpAndSettle();
     expect(find.text('Department Head acknowledgement'), findsOneWidget);
+    expect(find.text('Status: Awaiting acknowledgement'), findsOneWidget);
     expect(find.text('Asset category: Fire Extinguisher'), findsOneWidget);
     expect(find.text('Remarks: Low pressure'), findsOneWidget);
   });
@@ -451,7 +453,7 @@ void main() {
       expect(repository.acknowledgementCallCount, 0);
       expect(
         controller.errorMessage,
-        'Only Submitted forms can be acknowledged.',
+        'Only forms awaiting acknowledgement can be acknowledged.',
       );
       controller.dispose();
     },

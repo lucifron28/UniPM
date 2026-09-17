@@ -8,6 +8,9 @@ import 'preventive_maintenance_form_specs.dart';
 import 'preventive_maintenance_models.dart';
 import 'preventive_maintenance_repository.dart';
 
+String _formStatusLabel(String status) =>
+    status == 'Submitted' ? 'Awaiting acknowledgement' : status;
+
 class PreventiveMaintenancePage extends StatefulWidget {
   const PreventiveMaintenancePage({
     super.key,
@@ -123,12 +126,12 @@ class _PreventiveMaintenancePageState extends State<PreventiveMaintenancePage> {
               if (reviewableForms.isNotEmpty) ...[
                 const SizedBox(height: 24),
                 Text(
-                  'Submitted and acknowledged forms',
+                  'Awaiting acknowledgement and acknowledged forms',
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
                 const SizedBox(height: 8),
                 const Text(
-                  'Submitted forms can be reviewed and acknowledged from this authenticated mobile session.',
+                  'Forms awaiting acknowledgement can be reviewed from this authenticated mobile session.',
                 ),
                 const SizedBox(height: 8),
                 ...reviewableForms.map(
@@ -175,7 +178,11 @@ class _FormListTile extends StatelessWidget {
                   : 'Preventive-maintenance form'),
         ),
         subtitle: Text(
-          '${form.status} | ${displayAssetCategory(form.assetCategory)} | ${form.inspections.length} inspection row(s)\n${form.building ?? 'Building not recorded'} / ${form.department ?? 'Department not recorded'}',
+          '${_formStatusLabel(form.status)} | '
+          '${displayAssetCategory(form.assetCategory)} | '
+          '${form.inspections.length} inspection row(s)\n'
+          '${form.building ?? 'Building not recorded'} / '
+          '${form.department ?? 'Department not recorded'}',
         ),
         isThreeLine: true,
         trailing: const Icon(Icons.chevron_right),
@@ -633,7 +640,7 @@ class _PreventiveMaintenanceDraftPageState
                 children: [
                   Text(
                     form.status == 'Submitted'
-                        ? 'This Submitted form is locked for acknowledgement review.'
+                        ? 'This form is awaiting acknowledgement and is locked for review.'
                         : 'This form is already Acknowledged and is read-only.',
                   ),
                   if (form.status == 'Submitted') ...[
@@ -821,7 +828,7 @@ class _FormMetadata extends StatelessWidget {
             const SizedBox(height: 8),
             Text(spec.documentTitle),
             Text(spec.revisionLabel),
-            Text('Status: ${form.status}'),
+            Text('Status: ${_formStatusLabel(form.status)}'),
             Text('Asset category: ${displayAssetCategory(form.assetCategory)}'),
             Text('Building: ${form.building ?? 'Not recorded'}'),
             Text('Department: ${form.department ?? 'Not recorded'}'),
@@ -1053,7 +1060,7 @@ class _AddInspectionCardState extends State<_AddInspectionCard> {
                   controller: actionsController,
                   maxLines: 3,
                   decoration: const InputDecoration(
-                    labelText: 'Recommended corrective action',
+                    labelText: 'Recommendation',
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -1407,7 +1414,7 @@ class _InspectionRowEditorState extends State<_InspectionRowEditor> {
                 enabled: widget.editable,
                 maxLines: 3,
                 decoration: const InputDecoration(
-                  labelText: 'Recommended corrective action',
+                  labelText: 'Recommendation',
                 ),
               ),
               if (widget.editable) ...[

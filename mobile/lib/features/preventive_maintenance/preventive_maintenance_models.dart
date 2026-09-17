@@ -271,7 +271,6 @@ class CreatePreventiveMaintenanceFormInput {
 class PreventiveMaintenanceGrouping {
   const PreventiveMaintenanceGrouping({
     required this.assetCategory,
-    required this.building,
     required this.department,
     required this.periodType,
     required this.quarter,
@@ -281,7 +280,6 @@ class PreventiveMaintenanceGrouping {
   });
 
   final String assetCategory;
-  final String? building;
   final String? department;
   final String periodType;
   final String? quarter;
@@ -295,7 +293,6 @@ class PreventiveMaintenanceGrouping {
   ) {
     return PreventiveMaintenanceGrouping(
       assetCategory: asset.assetCategory,
-      building: asset.building,
       department: asset.department,
       periodType: schedule.periodType,
       quarter: schedule.quarter,
@@ -312,7 +309,6 @@ class PreventiveMaintenanceGrouping {
     }
     return PreventiveMaintenanceGrouping(
       assetCategory: asset.assetCategory,
-      building: asset.building,
       department: asset.department,
       periodType: schedule.periodType,
       quarter: schedule.quarter,
@@ -324,7 +320,6 @@ class PreventiveMaintenanceGrouping {
 
   bool matches(PreventiveMaintenanceForm form) {
     return _sameText(form.assetCategory, assetCategory) &&
-        _sameOptionalText(form.building, building) &&
         _sameOptionalText(form.department, department) &&
         _sameText(form.periodType, periodType) &&
         _sameOptionalText(form.quarter, quarter) &&
@@ -336,7 +331,7 @@ class PreventiveMaintenanceGrouping {
   CreatePreventiveMaintenanceFormInput toCreateInput() {
     return CreatePreventiveMaintenanceFormInput(
       assetCategory: assetCategory,
-      building: building,
+      building: null,
       department: department,
       periodType: periodType,
       quarter: quarter,

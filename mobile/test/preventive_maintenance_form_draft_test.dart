@@ -165,7 +165,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(repository.createdInput?.assetCategory, 'fire-extinguisher');
-    expect(repository.createdInput?.building, 'Main Building');
+    expect(repository.createdInput?.building, isNull);
     expect(repository.createdInput?.department, 'GSD');
     expect(repository.createdInput?.periodType, 'Quarter');
     expect(repository.createdInput?.year, 2026);
@@ -394,7 +394,7 @@ void main() {
     await scrollTo(tester, find.byKey(const Key('inspection-schedule')));
 
     expect(repository.createdInput?.assetCategory, 'fire-extinguisher');
-    expect(repository.createdInput?.building, 'Main Building');
+    expect(repository.createdInput?.building, isNull);
     expect(repository.createdInput?.department, 'GSD');
     expect(repository.createdInput?.periodType, 'Quarter');
     expect(repository.createdInput?.quarter, 'Q1');
@@ -430,6 +430,31 @@ void main() {
     expect(resolution.forms.map((form) => form.id), [formId, secondFormId]);
     controller.dispose();
   });
+
+  test(
+    'Draft reuse ignores building when department, category, and period match',
+    () async {
+      final repository = FakePreventiveMaintenanceRepository(
+        forms: [testForm(id: formId, building: 'Science Annex')],
+      );
+      final controller = PreventiveMaintenanceController(
+        repository: repository,
+        user: testUser(),
+      );
+      await controller.loadForms();
+
+      final resolution = controller.resolveDraftFor(
+        testAsset(),
+        testSchedule(firstScheduleId, 'FE-001'),
+      );
+
+      expect(resolution.kind, PmDraftResolutionKind.reuse);
+      expect(resolution.form?.id, formId);
+      expect(resolution.form?.building, 'Science Annex');
+      expect(resolution.grouping?.toCreateInput().building, isNull);
+      controller.dispose();
+    },
+  );
 
   testWidgets('one eligible schedule is selected automatically', (
     tester,
@@ -653,14 +678,16 @@ void main() {
     expect(repository.submittedFormId, formId);
     await tester.drag(find.byType(ListView).last, const Offset(0, 2000));
     await tester.pumpAndSettle();
-    expect(find.text('Status: Submitted'), findsOneWidget);
+    expect(find.text('Status: Awaiting acknowledgement'), findsOneWidget);
     expect(find.text('Preventive-maintenance form'), findsOneWidget);
     expect(find.text('PM-2026-0001'), findsOneWidget);
     expect(find.byKey(const Key('submit-form-button')), findsNothing);
     expect(find.text('Save row'), findsNothing);
     expect(find.text('Delete row'), findsNothing);
     expect(
-      find.text('This Submitted form is locked for acknowledgement review.'),
+      find.text(
+        'This form is awaiting acknowledgement and is locked for review.',
+      ),
       findsOneWidget,
     );
   });
@@ -919,6 +946,11 @@ void main() {
       find.byKey(Key('inspection-remarks-$firstInspectionId')),
       'Updated remarks',
     );
+    await scrollTo(
+      tester,
+      find.byKey(Key('inspection-actions-$firstInspectionId')),
+    );
+    expect(find.text('Recommendation'), findsOneWidget);
     await tester.enterText(
       find.byKey(Key('inspection-actions-$firstInspectionId')),
       'Replace filter',

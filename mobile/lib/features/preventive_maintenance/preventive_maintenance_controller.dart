@@ -88,7 +88,7 @@ class PreventiveMaintenanceController extends ChangeNotifier {
     final form = selectedForm;
     if (form == null) return null;
     if (form.status != 'Submitted') {
-      errorMessage = 'Only Submitted forms can be acknowledged.';
+      errorMessage = 'Only forms awaiting acknowledgement can be acknowledged.';
       _notifyListeners();
       return null;
     }
