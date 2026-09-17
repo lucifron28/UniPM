@@ -9,6 +9,7 @@ public class PreventiveMaintenanceSchedule
     public Asset? Asset { get; set; }
 
     public DateTimeOffset ScheduleDate { get; set; }
+    public string PmCycle { get; set; } = string.Empty;
 
     /// <summary>
     /// Stores the canonical maintenance-period code normalized by SchedulePeriodTypeCatalog.

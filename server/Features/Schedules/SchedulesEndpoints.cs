@@ -38,6 +38,7 @@ public static class SchedulesEndpoints
                 AssetId = dto.AssetId,
                 Asset = asset,
                 ScheduleDate = dto.ScheduleDate,
+                PmCycle = PreventiveMaintenanceCycle.FromScheduleDate(dto.ScheduleDate),
                 PeriodType = SchedulePeriodTypeCatalog.TryNormalize(dto.PeriodType, out var periodType)
                     ? periodType
                     : throw new InvalidOperationException("Validated schedule period type was not canonicalizable."),
@@ -138,6 +139,7 @@ public static class SchedulesEndpoints
                     schedule.Id,
                     schedule.AssetId,
                     schedule.ScheduleDate,
+                    schedule.PmCycle,
                     schedule.PeriodType,
                     schedule.Status,
                     schedule.Quarter,
@@ -194,6 +196,7 @@ public sealed record ScheduleResponse(
     Guid Id,
     Guid AssetId,
     DateTimeOffset ScheduleDate,
+    string PmCycle,
     string PeriodType,
     string Status,
     string? Quarter,
@@ -212,6 +215,7 @@ public sealed record ScheduleResponse(
             schedule.Id,
             schedule.AssetId,
             schedule.ScheduleDate,
+            PreventiveMaintenanceCycle.ForSchedule(schedule),
             schedule.PeriodType,
             schedule.Status,
             schedule.Quarter,

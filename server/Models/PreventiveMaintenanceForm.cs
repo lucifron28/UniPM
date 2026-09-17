@@ -11,6 +11,7 @@ public sealed class PreventiveMaintenanceForm
     public string AssetCategory { get; set; } = string.Empty;
     public string? Building { get; set; }
     public string? Department { get; set; }
+    public string? PmCycle { get; set; }
     public string PeriodType { get; set; } = string.Empty;
     public string? Quarter { get; set; }
     public string? Semester { get; set; }

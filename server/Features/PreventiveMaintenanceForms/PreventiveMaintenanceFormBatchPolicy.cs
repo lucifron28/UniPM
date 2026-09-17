@@ -5,6 +5,8 @@ namespace UniPM.Api.Features.PreventiveMaintenanceForms;
 
 internal static class PreventiveMaintenanceFormBatchPolicy
 {
+    internal const string UniqueIndexName = "IX_PreventiveMaintenanceForms_Department_AssetCategory_PmCycle";
+
     internal static bool Matches(
         PreventiveMaintenanceForm form,
         PreventiveMaintenanceSchedule schedule)
@@ -16,11 +18,23 @@ internal static class PreventiveMaintenanceFormBatchPolicy
 
         return NullableTextEquals(form.Department, asset.Department)
             && NullableTextEquals(form.AssetCategory, asset.AssetCategory)
-            && NullableTextEquals(form.PeriodType, schedule.PeriodType)
-            && NullableTextEquals(form.Quarter, schedule.Quarter)
-            && NullableTextEquals(form.Semester, schedule.Semester)
-            && form.Year == schedule.Year
-            && NullableTextEquals(form.AcademicYear, schedule.AcademicYear);
+            && form.PmCycle is not null
+            && PreventiveMaintenanceCycle.Matches(
+                form.PmCycle,
+                PreventiveMaintenanceCycle.ForSchedule(schedule));
+    }
+
+    internal static string? NormalizeDepartment(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? null : value.Trim().ToUpperInvariant();
+    }
+
+    internal static bool IsSameDepartment(string? left, string? right)
+    {
+        return string.Equals(
+            NormalizeDepartment(left),
+            NormalizeDepartment(right),
+            StringComparison.Ordinal);
     }
 
     internal static bool IsEligibleScheduleStatus(string? status)
@@ -33,6 +47,11 @@ internal static class PreventiveMaintenanceFormBatchPolicy
     internal static bool IsCompletedScheduleStatus(string? status)
     {
         return string.Equals(status, ScheduleStatusCatalog.Completed, StringComparison.OrdinalIgnoreCase);
+    }
+
+    internal static bool IsCancelledScheduleStatus(string? status)
+    {
+        return string.Equals(status, ScheduleStatusCatalog.Cancelled, StringComparison.OrdinalIgnoreCase);
     }
 
     internal static bool HasCompletedExecution(InspectionRecord inspection)

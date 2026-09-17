@@ -45,7 +45,7 @@ public static class PreventiveMaintenanceFormEndpoints
                 Id = Guid.NewGuid(),
                 AssetCategory = NormalizeAssetCategory(dto.AssetCategory),
                 Building = NormalizeOptional(dto.Building),
-                Department = NormalizeOptional(dto.Department),
+                Department = PreventiveMaintenanceFormBatchPolicy.NormalizeDepartment(dto.Department),
                 PeriodType = NormalizePeriodType(dto.PeriodType),
                 Quarter = NormalizeQuarter(dto.Quarter),
                 Semester = NormalizeSemester(dto.Semester),
@@ -173,25 +173,36 @@ public static class PreventiveMaintenanceFormEndpoints
                     .Select(inspection => inspection.ScheduleId)
                     .Distinct()
                     .ToArray();
-                var eligibleStatuses = new[]
+                form.Department = PreventiveMaintenanceFormBatchPolicy.NormalizeDepartment(form.Department);
+                var inspectionCycles = await LoadInspectionCyclesAsync(
+                    context,
+                    form.Id,
+                    cancellationToken);
+                if (form.PmCycle is null)
                 {
-                    ScheduleStatusCatalog.Due,
-                    ScheduleStatusCatalog.Ongoing,
-                    ScheduleStatusCatalog.Overdue
-                };
+                    if (inspectionCycles.Length != 1)
+                    {
+                        return ApiErrors.Conflict("The form rows do not resolve to one PM cycle.");
+                    }
+
+                    form.PmCycle = inspectionCycles[0];
+                }
+                else if (inspectionCycles.Any(cycle => !PreventiveMaintenanceCycle.Matches(form.PmCycle, cycle)))
+                {
+                    return ApiErrors.Conflict("The form rows do not share one PM cycle.");
+                }
+
                 var candidateSchedules = await context.PreventiveMaintenanceSchedules
                     .Include(schedule => schedule.Asset)
                     .Where(schedule => formScheduleIds.Contains(schedule.Id)
-                        || (eligibleStatuses.Contains(schedule.Status)
-                            && schedule.Asset != null
+                        || (schedule.Asset != null
                             && schedule.Asset.AssetCategory == form.AssetCategory
-                            && schedule.Year == form.Year))
+                            && (schedule.PmCycle == form.PmCycle
+                                || schedule.PmCycle == string.Empty)))
                     .ToListAsync(cancellationToken);
                 var expectedScheduleIds = candidateSchedules
                     .Where(schedule => PreventiveMaintenanceFormBatchPolicy.Matches(form, schedule)
-                        && (PreventiveMaintenanceFormBatchPolicy.IsEligibleScheduleStatus(schedule.Status)
-                            || (PreventiveMaintenanceFormBatchPolicy.IsCompletedScheduleStatus(schedule.Status)
-                                && formScheduleIds.Contains(schedule.Id))))
+                        && !PreventiveMaintenanceFormBatchPolicy.IsCancelledScheduleStatus(schedule.Status))
                     .Select(schedule => schedule.Id)
                     .ToHashSet();
 
@@ -244,6 +255,13 @@ public static class PreventiveMaintenanceFormEndpoints
 
                     var users = await LoadUserDisplayNamesAsync(context, [form], cancellationToken);
                     return Results.Ok(PreventiveMaintenanceFormResponse.FromForm(form, users));
+                }
+                catch (Exception exception)
+                    when (DatabaseConstraintViolation.IsUniqueConstraint(
+                        exception,
+                        PreventiveMaintenanceFormBatchPolicy.UniqueIndexName))
+                {
+                    return ApiErrors.Conflict("A preventive-maintenance form already exists for this department, category, and PM cycle.");
                 }
                 catch (Exception exception)
                     when (DatabaseConstraintViolation.IsUniqueConstraint(exception)
@@ -517,11 +535,23 @@ public static class PreventiveMaintenanceFormEndpoints
                 return ApiErrors.NotFound("Asset not found.");
             }
 
+            form.Department = PreventiveMaintenanceFormBatchPolicy.NormalizeDepartment(form.Department);
+            var scheduleCycle = PreventiveMaintenanceCycle.ForSchedule(schedule);
+            if (!await TrySetFormCycleAsync(context, form, scheduleCycle, cancellationToken))
+            {
+                return ApiErrors.Conflict("A draft form can contain schedules from only one PM cycle.");
+            }
+
+            if (await HasCompetingBatchFormAsync(context, form, cancellationToken))
+            {
+                return ApiErrors.Conflict("A preventive-maintenance form already exists for this department, category, and PM cycle.");
+            }
+
             if (!PreventiveMaintenanceFormBatchPolicy.Matches(form, schedule))
             {
                 return ApiErrors.Validation(new Dictionary<string, string[]>
                 {
-                    [nameof(dto.ScheduleId)] = ["Schedule department, asset category, and maintenance period must match the form batch."]
+                    [nameof(dto.ScheduleId)] = ["Schedule department, asset category, and PM cycle must match the form batch."]
                 });
             }
 
@@ -570,6 +600,13 @@ public static class PreventiveMaintenanceFormEndpoints
             }
             catch (DbUpdateException exception) when (DatabaseConstraintViolation.IsUniqueConstraint(exception))
             {
+                if (DatabaseConstraintViolation.IsUniqueConstraint(
+                        exception,
+                        PreventiveMaintenanceFormBatchPolicy.UniqueIndexName))
+                {
+                    return ApiErrors.Conflict("A preventive-maintenance form already exists for this department, category, and PM cycle.");
+                }
+
                 return ApiErrors.Conflict("Schedule already has a recorded inspection.");
             }
 
@@ -772,6 +809,112 @@ public static class PreventiveMaintenanceFormEndpoints
             .AsNoTracking()
             .Where(user => userIds.Contains(user.Id))
             .ToDictionaryAsync(user => user.Id, user => user.DisplayName, cancellationToken);
+    }
+
+    private static async Task<string[]> LoadInspectionCyclesAsync(
+        ApplicationDbContext context,
+        Guid formId,
+        CancellationToken cancellationToken)
+    {
+        var scheduleDates = await (
+            from inspection in context.InspectionRecords.AsNoTracking()
+            join schedule in context.PreventiveMaintenanceSchedules.AsNoTracking()
+                on inspection.ScheduleId equals schedule.Id
+            where inspection.PreventiveMaintenanceFormId == formId
+            select new { schedule.PmCycle, schedule.ScheduleDate })
+            .ToListAsync(cancellationToken);
+
+        return scheduleDates
+            .Select(item => string.IsNullOrWhiteSpace(item.PmCycle)
+                ? PreventiveMaintenanceCycle.FromScheduleDate(item.ScheduleDate)
+                : item.PmCycle.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+    }
+
+    private static async Task<bool> TrySetFormCycleAsync(
+        ApplicationDbContext context,
+        PreventiveMaintenanceForm form,
+        string scheduleCycle,
+        CancellationToken cancellationToken)
+    {
+        if (!string.IsNullOrWhiteSpace(form.PmCycle))
+        {
+            form.PmCycle = form.PmCycle.Trim();
+            return PreventiveMaintenanceCycle.Matches(form.PmCycle, scheduleCycle);
+        }
+
+        var existingCycles = await LoadInspectionCyclesAsync(context, form.Id, cancellationToken);
+        if (existingCycles.Length == 0)
+        {
+            form.PmCycle = scheduleCycle;
+            return true;
+        }
+
+        if (existingCycles.Length != 1
+            || !PreventiveMaintenanceCycle.Matches(existingCycles[0], scheduleCycle))
+        {
+            return false;
+        }
+
+        form.PmCycle = existingCycles[0];
+        return true;
+    }
+
+    private static async Task<bool> HasCompetingBatchFormAsync(
+        ApplicationDbContext context,
+        PreventiveMaintenanceForm form,
+        CancellationToken cancellationToken)
+    {
+        var candidates = await context.PreventiveMaintenanceForms
+            .AsNoTracking()
+            .Where(candidate => candidate.Id != form.Id
+                && candidate.AssetCategory == form.AssetCategory
+                && (candidate.PmCycle == form.PmCycle
+                    || candidate.PmCycle == null
+                    || candidate.PmCycle == string.Empty))
+            .Select(candidate => new { candidate.Id, candidate.Department, candidate.PmCycle })
+            .ToListAsync(cancellationToken);
+        var sameDepartment = candidates
+            .Where(candidate => PreventiveMaintenanceFormBatchPolicy.IsSameDepartment(
+                candidate.Department,
+                form.Department))
+            .ToArray();
+
+        if (sameDepartment.Any(candidate =>
+                PreventiveMaintenanceCycle.Matches(candidate.PmCycle, form.PmCycle)))
+        {
+            return true;
+        }
+
+        var unresolvedFormIds = sameDepartment
+            .Where(candidate => string.IsNullOrWhiteSpace(candidate.PmCycle))
+            .Select(candidate => candidate.Id)
+            .ToArray();
+        if (unresolvedFormIds.Length == 0)
+        {
+            return false;
+        }
+
+        var linkedScheduleCycles = await (
+            from inspection in context.InspectionRecords.AsNoTracking()
+            join schedule in context.PreventiveMaintenanceSchedules.AsNoTracking()
+                on inspection.ScheduleId equals schedule.Id
+            where inspection.PreventiveMaintenanceFormId.HasValue
+                && unresolvedFormIds.Contains(inspection.PreventiveMaintenanceFormId.GetValueOrDefault())
+            select new
+            {
+                schedule.PmCycle,
+                schedule.ScheduleDate
+            })
+            .ToListAsync(cancellationToken);
+
+        return linkedScheduleCycles.Any(item =>
+            PreventiveMaintenanceCycle.Matches(
+                form.PmCycle,
+                string.IsNullOrWhiteSpace(item.PmCycle)
+                    ? PreventiveMaintenanceCycle.FromScheduleDate(item.ScheduleDate)
+                    : item.PmCycle));
     }
 
     private static InspectionRecord CreateInspection(
@@ -1180,6 +1323,7 @@ public sealed record PreventiveMaintenanceFormResponse(
     string AssetCategory,
     string? Building,
     string? Department,
+    string? PmCycle,
     string PeriodType,
     string? Quarter,
     string? Semester,
@@ -1204,6 +1348,7 @@ public sealed record PreventiveMaintenanceFormResponse(
             form.AssetCategory,
             form.Building,
             form.Department,
+            form.PmCycle,
             form.PeriodType,
             form.Quarter,
             form.Semester,
