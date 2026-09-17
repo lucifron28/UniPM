@@ -16,6 +16,8 @@ public class InspectionRecord
 
     public Guid InspectorUserId { get; set; }
     public DateTimeOffset DateInspected { get; set; }
+    public DateTimeOffset? StartedAt { get; set; }
+    public DateTimeOffset? CompletedAt { get; set; }
     public DateTimeOffset? DateAccomplished { get; set; }
     
     public bool IsOperational { get; set; }

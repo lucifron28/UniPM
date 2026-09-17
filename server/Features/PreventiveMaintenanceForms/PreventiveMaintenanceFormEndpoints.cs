@@ -164,7 +164,13 @@ public static class PreventiveMaintenanceFormEndpoints
                     return Results.Forbid();
                 }
 
+                if (form.Inspections.Any(inspection => inspection.CompletedAt is null))
+                {
+                    return ApiErrors.Conflict("Every inspection row must be completed before form submission.");
+                }
+
                 var now = DateTimeOffset.UtcNow;
+                form.FieldWorkCompletedAt = form.Inspections.Max(inspection => inspection.CompletedAt);
                 var seriesPrefix = fileNumberGenerator.CreateSeriesPrefix(now);
                 var existingFileNumbers = await context.PreventiveMaintenanceForms
                     .AsNoTracking()
@@ -296,12 +302,6 @@ public static class PreventiveMaintenanceFormEndpoints
             context.PreventiveMaintenanceAcknowledgements.Add(acknowledgement);
             form.Status = PreventiveMaintenanceFormStatusCatalog.Acknowledged;
             form.UpdatedAt = now;
-            foreach (var inspection in form.Inspections)
-            {
-                inspection.Schedule!.Status = ScheduleStatusCatalog.Completed;
-                inspection.Schedule.CompletedAt = now;
-                inspection.Schedule.UpdatedAt = now;
-            }
 
             try
             {
@@ -514,6 +514,9 @@ public static class PreventiveMaintenanceFormEndpoints
                     StringComparison.Ordinal),
                 now);
             context.InspectionRecords.Add(inspection);
+            schedule.Status = ScheduleStatusCatalog.Completed;
+            schedule.CompletedAt = now;
+            schedule.UpdatedAt = now;
             form.UpdatedAt = now;
 
             try
@@ -663,6 +666,7 @@ public static class PreventiveMaintenanceFormEndpoints
             }
 
             var inspection = await context.InspectionRecords
+                .Include(candidate => candidate.Schedule)
                 .SingleOrDefaultAsync(candidate => candidate.Id == inspectionId
                     && candidate.PreventiveMaintenanceFormId == form.Id,
                     cancellationToken);
@@ -676,8 +680,17 @@ public static class PreventiveMaintenanceFormEndpoints
                 return Results.Forbid();
             }
 
+            if (inspection.Schedule is null)
+            {
+                return ApiErrors.Conflict("Every form row must reference an available schedule before deletion.");
+            }
+
+            var now = DateTimeOffset.UtcNow;
+            inspection.Schedule.Status = ScheduleStatusCatalog.Due;
+            inspection.Schedule.CompletedAt = null;
+            inspection.Schedule.UpdatedAt = now;
             context.InspectionRecords.Remove(inspection);
-            form.UpdatedAt = DateTimeOffset.UtcNow;
+            form.UpdatedAt = now;
             await context.SaveChangesAsync(cancellationToken);
 
             return Results.NoContent();
@@ -731,6 +744,7 @@ public static class PreventiveMaintenanceFormEndpoints
             AssetId = assetId,
             InspectorUserId = dto.InspectorUserId,
             DateInspected = dto.DateInspected,
+            CompletedAt = now,
             DateAccomplished = isWaterDrinkingStation
                 ? dto.DateAccomplished
                 : null,
@@ -1130,6 +1144,7 @@ public sealed record PreventiveMaintenanceFormResponse(
     Guid CreatedByUserId,
     Guid? SubmittedByUserId,
     DateTimeOffset? SubmittedAt,
+    DateTimeOffset? FieldWorkCompletedAt,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
     IReadOnlyList<DraftInspectionRowResponse> Inspections)
@@ -1153,6 +1168,7 @@ public sealed record PreventiveMaintenanceFormResponse(
             form.CreatedByUserId,
             form.SubmittedByUserId,
             form.SubmittedAt,
+            form.FieldWorkCompletedAt,
             form.CreatedAt,
             form.UpdatedAt,
             form.Inspections
@@ -1173,6 +1189,8 @@ public sealed record DraftInspectionRowResponse(
     Guid AssetId,
     Guid InspectorUserId,
     DateTimeOffset DateInspected,
+    DateTimeOffset? StartedAt,
+    DateTimeOffset? CompletedAt,
     bool IsOperational,
     string? Remarks,
     string? ActionsRecommendations,
@@ -1198,6 +1216,8 @@ public sealed record DraftInspectionRowResponse(
             inspection.AssetId,
             inspection.InspectorUserId,
             inspection.DateInspected,
+            inspection.StartedAt,
+            inspection.CompletedAt,
             inspection.IsOperational,
             inspection.Remarks,
             inspection.ActionsRecommendations,

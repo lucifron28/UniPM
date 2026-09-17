@@ -20,6 +20,7 @@ public sealed class PreventiveMaintenanceForm
     public Guid CreatedByUserId { get; set; }
     public Guid? SubmittedByUserId { get; set; }
     public DateTimeOffset? SubmittedAt { get; set; }
+    public DateTimeOffset? FieldWorkCompletedAt { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
     public byte[] RowVersion { get; set; } = [];
