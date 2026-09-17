@@ -33,6 +33,8 @@ export interface PreventiveMaintenanceFormResponse {
   submittedByUserId: string | null
   /** @nullable */
   submittedAt: string | null
+  /** @nullable */
+  fieldWorkCompletedAt: string | null
   createdAt: string
   updatedAt: string
   inspections: DraftInspectionRowResponse[]

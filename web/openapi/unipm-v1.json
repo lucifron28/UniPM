@@ -1635,6 +1635,8 @@
           "assetId",
           "inspectorUserId",
           "dateInspected",
+          "startedAt",
+          "completedAt",
           "isOperational",
           "remarks",
           "actionsRecommendations",
@@ -1661,6 +1663,14 @@
           },
           "dateInspected": {
             "type": "string",
+            "format": "date-time"
+          },
+          "startedAt": {
+            "type": ["null", "string"],
+            "format": "date-time"
+          },
+          "completedAt": {
+            "type": ["null", "string"],
             "format": "date-time"
           },
           "isOperational": {
@@ -1931,6 +1941,7 @@
           "createdByUserId",
           "submittedByUserId",
           "submittedAt",
+          "fieldWorkCompletedAt",
           "createdAt",
           "updatedAt",
           "inspections"
@@ -1982,6 +1993,10 @@
             "format": "uuid"
           },
           "submittedAt": {
+            "type": ["null", "string"],
+            "format": "date-time"
+          },
+          "fieldWorkCompletedAt": {
             "type": ["null", "string"],
             "format": "date-time"
           },

@@ -11,6 +11,10 @@ export interface DraftInspectionRowResponse {
   assetId: string
   inspectorUserId: string
   dateInspected: string
+  /** @nullable */
+  startedAt: string | null
+  /** @nullable */
+  completedAt: string | null
   isOperational: boolean
   /** @nullable */
   remarks: string | null
