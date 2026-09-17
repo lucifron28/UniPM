@@ -304,6 +304,13 @@ void main() {
     expect(controller.selectedForm?.status, 'Acknowledged');
     expect(find.byKey(const Key('acknowledgement-receipt')), findsOneWidget);
     expect(find.text('Form acknowledged'), findsOneWidget);
+    expect(
+      find.text(
+        'Acknowledgement recorded receipt/noting, locked the form, and '
+        'made its inspection rows eligible for official history.',
+      ),
+      findsOneWidget,
+    );
     expect(find.byKey(const Key('acknowledge-form-button')), findsNothing);
     controller.dispose();
   });

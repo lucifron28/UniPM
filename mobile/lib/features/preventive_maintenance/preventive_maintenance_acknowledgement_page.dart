@@ -349,7 +349,8 @@ class _AcknowledgementReceipt extends StatelessWidget {
             Text('Signature type: ${value.signatureContentType}'),
             const SizedBox(height: 8),
             const Text(
-              'The backend recorded the acknowledgement and completed the linked schedules. This action does not approve corrective work, RMRFs, or WMS requests.',
+              'Acknowledgement recorded receipt/noting, locked the form, and '
+              'made its inspection rows eligible for official history.',
             ),
             if (alreadyAcknowledged) ...[
               const SizedBox(height: 8),
