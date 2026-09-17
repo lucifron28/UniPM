@@ -32,6 +32,57 @@ AuthUser testUser({List<String> roles = const ['Inspector']}) => AuthUser(
 );
 
 void main() {
+  test('form and inspection response timestamps are parsed and copied', () {
+    final fieldWorkCompletedAt = DateTime.utc(2026, 2, 10, 9);
+    final startedAt = DateTime.utc(2026, 2, 10, 8, 5);
+    final completedAt = DateTime.utc(2026, 2, 10, 8, 45);
+    final form = PreventiveMaintenanceForm.fromJson({
+      'id': formId,
+      'fileNumber': 'PM-2026-0001',
+      'assetCategory': 'fire-extinguisher',
+      'building': 'Main Building',
+      'department': 'GSD',
+      'periodType': 'Quarter',
+      'quarter': 'Q1',
+      'semester': null,
+      'year': 2026,
+      'academicYear': '2026-2027',
+      'status': 'Acknowledged',
+      'createdByUserId': inspectorId,
+      'submittedByUserId': inspectorId,
+      'submittedAt': '2026-02-10T08:00:00Z',
+      'fieldWorkCompletedAt': '2026-02-10T09:00:00Z',
+      'createdAt': '2026-02-10T07:00:00Z',
+      'updatedAt': '2026-02-10T09:00:00Z',
+      'inspections': [
+        {
+          'id': firstInspectionId,
+          'scheduleId': firstScheduleId,
+          'assetId': '88888888-8888-4888-8888-888888888888',
+          'inspectorUserId': inspectorId,
+          'dateInspected': '2026-02-10T08:00:00Z',
+          'startedAt': '2026-02-10T08:05:00Z',
+          'completedAt': '2026-02-10T08:45:00Z',
+          'dateAccomplished': null,
+          'isOperational': false,
+          'remarks': 'Low pressure',
+          'actionsRecommendations': 'Inspect gauge',
+          'waterReplaceCarbonFilter': null,
+          'waterReplaceSedimentFilter': null,
+          'waterCheckUvLight': null,
+          'createdAt': '2026-02-10T08:00:00Z',
+          'updatedAt': '2026-02-10T09:00:00Z',
+        },
+      ],
+    });
+
+    expect(form.fieldWorkCompletedAt, fieldWorkCompletedAt);
+    expect(form.inspections.single.startedAt, startedAt);
+    expect(form.inspections.single.completedAt, completedAt);
+    expect(form.copyWith(status: 'Submitted').fieldWorkCompletedAt,
+        fieldWorkCompletedAt);
+  });
+
   testWidgets('registry shows draft metadata and row count', (tester) async {
     final repository = FakePreventiveMaintenanceRepository(
       forms: [

@@ -16,6 +16,7 @@ class PreventiveMaintenanceForm {
     required this.createdByUserId,
     required this.submittedByUserId,
     required this.submittedAt,
+    this.fieldWorkCompletedAt,
     required this.createdAt,
     required this.updatedAt,
     required this.inspections,
@@ -35,6 +36,7 @@ class PreventiveMaintenanceForm {
   final String createdByUserId;
   final String? submittedByUserId;
   final DateTime? submittedAt;
+  final DateTime? fieldWorkCompletedAt;
   final DateTime createdAt;
   final DateTime updatedAt;
   final List<PreventiveMaintenanceInspection> inspections;
@@ -57,6 +59,7 @@ class PreventiveMaintenanceForm {
       createdByUserId: _requiredUuid(json, 'createdByUserId'),
       submittedByUserId: _nullableUuid(json, 'submittedByUserId'),
       submittedAt: _nullableDateTime(json, 'submittedAt'),
+      fieldWorkCompletedAt: _nullableDateTime(json, 'fieldWorkCompletedAt'),
       createdAt: _requiredDateTime(json, 'createdAt'),
       updatedAt: _requiredDateTime(json, 'updatedAt'),
       inspections: _requiredList(
@@ -85,6 +88,7 @@ class PreventiveMaintenanceForm {
       createdByUserId: createdByUserId,
       submittedByUserId: submittedByUserId,
       submittedAt: submittedAt,
+      fieldWorkCompletedAt: fieldWorkCompletedAt,
       createdAt: createdAt,
       updatedAt: updatedAt,
       inspections: inspections ?? this.inspections,
@@ -99,6 +103,8 @@ class PreventiveMaintenanceInspection {
     required this.assetId,
     required this.inspectorUserId,
     required this.dateInspected,
+    this.startedAt,
+    this.completedAt,
     this.dateAccomplished,
     required this.isOperational,
     required this.remarks,
@@ -115,6 +121,8 @@ class PreventiveMaintenanceInspection {
   final String assetId;
   final String inspectorUserId;
   final DateTime dateInspected;
+  final DateTime? startedAt;
+  final DateTime? completedAt;
   final DateTime? dateAccomplished;
   final bool isOperational;
   final String? remarks;
@@ -132,6 +140,8 @@ class PreventiveMaintenanceInspection {
       assetId: _requiredUuid(json, 'assetId'),
       inspectorUserId: _requiredUuid(json, 'inspectorUserId'),
       dateInspected: _requiredDateTime(json, 'dateInspected'),
+      startedAt: _nullableDateTime(json, 'startedAt'),
+      completedAt: _nullableDateTime(json, 'completedAt'),
       dateAccomplished: _nullableDateTime(json, 'dateAccomplished'),
       isOperational: _requiredBool(json, 'isOperational'),
       remarks: _nullableString(json, 'remarks'),
