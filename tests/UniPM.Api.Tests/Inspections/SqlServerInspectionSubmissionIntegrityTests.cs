@@ -195,6 +195,7 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
             Id = Guid.NewGuid(),
             AssetId = asset.Id,
             ScheduleDate = now,
+            PmCycle = $"{now.Year:D4}-{now.Month:D2}",
             PeriodType = "Quarter",
             Status = "Due",
             Quarter = "Q1",
