@@ -206,6 +206,16 @@ describe('preventive-maintenance form review', () => {
     expect(
       await screen.findByRole('link', { name: /Form review/ }),
     ).toBeInTheDocument()
+    const workflowCopy = screen.getByText(
+      /Field-work completion and acknowledgement are separate/,
+    )
+    expect(workflowCopy).toHaveTextContent(
+      /Acknowledgement records receipt\/noting, locks the form, and makes its inspection rows eligible for official history\./,
+    )
+    expect(workflowCopy).toHaveTextContent(
+      /It does not approve corrective work, funding, or an RMRF\./,
+    )
+    expect(workflowCopy).not.toHaveTextContent(/Schedule completion occurs/i)
     expect(
       screen.getByText(/Provisional UniPM file numbers remain independent/),
     ).toBeInTheDocument()
@@ -350,6 +360,15 @@ describe('preventive-maintenance form review', () => {
         name: 'Acknowledge submitted form',
       }),
     ).toBeInTheDocument()
+    const acknowledgementCopy = screen.getByText(
+      /Field-work completion and acknowledgement are separate/,
+    )
+    expect(acknowledgementCopy).toHaveTextContent(
+      /Acknowledgement records receipt\/noting, locks the form, and makes its inspection rows eligible for official history\./,
+    )
+    expect(acknowledgementCopy).toHaveTextContent(
+      /It does not approve corrective work, funding, or an RMRF\./,
+    )
     fireEvent.change(screen.getByLabelText('Signatory name'), {
       target: { value: 'Synthetic Department Head' },
     })
@@ -374,7 +393,14 @@ describe('preventive-maintenance form review', () => {
         screen.getByRole('dialog', {
           name: 'Confirm department-head acknowledgement',
         }),
-      ).getByText(/does not approve corrective work or budget/),
+      ).getByText(/makes its inspection rows eligible for official history/),
+    ).toBeInTheDocument()
+    expect(
+      within(
+        screen.getByRole('dialog', {
+          name: 'Confirm department-head acknowledgement',
+        }),
+      ).getByText(/does not approve corrective work, funding, or an RMRF/),
     ).toBeInTheDocument()
     fireEvent.click(
       screen.getByRole('button', { name: 'Confirm acknowledgement' }),

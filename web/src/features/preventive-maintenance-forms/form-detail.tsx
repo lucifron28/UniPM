@@ -535,10 +535,10 @@ function AcknowledgeForm({
           Acknowledge submitted form
         </h2>
         <p className="mt-1 text-sm text-[var(--text-secondary)]">
-          Acknowledgement locks the form, completes its linked schedules, and
-          publishes the inspection rows as official history. It records receipt
-          and noting of the findings; it does not approve corrective work or
-          budget.
+          Field-work completion and acknowledgement are separate. Acknowledgement
+          records receipt/noting, locks the form, and makes its inspection rows
+          eligible for official history. It does not approve corrective work,
+          funding, or an RMRF.
         </p>
       </div>
       <form className="space-y-4" onSubmit={acknowledge}>
@@ -602,9 +602,9 @@ function AcknowledgeForm({
               Confirm department-head acknowledgement
             </h3>
             <p className="mt-2 text-sm text-[var(--text-secondary)]">
-              This records receipt/noting of the preventive-maintenance
-              findings, locks the form, completes linked schedules, and does not
-              approve corrective work or budget.
+              This records receipt/noting of the findings, locks this form, and
+              makes its inspection rows eligible for official history. It does
+              not approve corrective work, funding, or an RMRF.
             </p>
             <div className="mt-4 flex flex-wrap justify-end gap-3">
               <Button
