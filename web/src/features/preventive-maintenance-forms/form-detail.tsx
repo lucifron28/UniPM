@@ -26,6 +26,7 @@ import {
 } from '@/features/preventive-maintenance-forms/form-queries'
 import {
   formStatusClass,
+  formStatusLabel,
   formatFormDate,
   formatFormPeriod,
   inspectionConditionLabel,
@@ -305,10 +306,10 @@ function InspectionRow({ row }: { row: PreventiveMaintenanceInspectionRow }) {
         </div>
         <div>
           <h3 className="text-xs font-semibold tracking-[0.08em] text-[var(--text-neutral)] uppercase">
-            Recommended corrective action
+            Recommendation
           </h3>
           <p className="mt-1 text-sm leading-6 whitespace-pre-wrap text-[var(--text-secondary)]">
-            {row.actionsRecommendations || 'No corrective action was recorded.'}
+            {row.actionsRecommendations || 'No recommendation was recorded.'}
           </p>
         </div>
       </div>
@@ -767,7 +768,7 @@ export function FormDetail({ formId }: { formId: string }) {
           </p>
         </div>
         <Badge className={formStatusClass(record.status)}>
-          {record.status}
+          {formStatusLabel(record.status)}
         </Badge>
       </div>
       <Card className="grid gap-5 shadow-none sm:grid-cols-2 lg:grid-cols-4">

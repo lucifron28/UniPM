@@ -139,7 +139,7 @@ describe('preventive-maintenance form review', () => {
       await screen.findByRole('heading', { name: 'Form review' }),
     ).toBeInTheDocument()
     expect(screen.getByText('Draft')).toBeInTheDocument()
-    expect(screen.getByText('Submitted')).toBeInTheDocument()
+    expect(screen.getByText('Awaiting acknowledgement')).toBeInTheDocument()
     expect(screen.getByText('Acknowledged')).toBeInTheDocument()
     expect(screen.getAllByText('Main Building / GSD')).toHaveLength(3)
     expect(screen.getAllByText('Inspection rows')).toHaveLength(3)
@@ -179,6 +179,8 @@ describe('preventive-maintenance form review', () => {
     expect(await screen.findAllByText('WDS-MAIN-001')).toHaveLength(2)
     expect(screen.getByText('Main Building lobby')).toBeInTheDocument()
     expect(screen.getByText('Synthetic Inspector')).toBeInTheDocument()
+    expect(screen.getByText('Awaiting acknowledgement')).toBeInTheDocument()
+    expect(screen.getByText('Recommendation')).toBeInTheDocument()
     expect(
       screen.getByText('Water drinking station work items'),
     ).toBeInTheDocument()
@@ -206,6 +208,7 @@ describe('preventive-maintenance form review', () => {
     expect(
       await screen.findByRole('link', { name: /Form review/ }),
     ).toBeInTheDocument()
+    expect(screen.getByText('Awaiting acknowledgement')).toBeInTheDocument()
     const workflowCopy = screen.getByText(
       /Field-work completion and acknowledgement are separate/,
     )

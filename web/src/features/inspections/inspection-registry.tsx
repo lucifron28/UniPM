@@ -83,7 +83,7 @@ const columns = [
     cell: ({ getValue }) => excerpt(getValue()),
   }),
   columnHelper.accessor('actionsRecommendations', {
-    header: 'Actions and recommendations',
+    header: 'Recommendation',
     cell: ({ getValue }) => excerpt(getValue()),
   }),
   columnHelper.display({

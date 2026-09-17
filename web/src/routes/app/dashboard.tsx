@@ -113,7 +113,7 @@ export function PreventiveMaintenanceDashboard() {
           <span aria-hidden="true" className="text-[var(--text-neutral)]">
             to
           </span>
-          <Badge>Submitted</Badge>
+          <Badge>Awaiting acknowledgement</Badge>
           <span aria-hidden="true" className="text-[var(--text-neutral)]">
             to
           </span>
