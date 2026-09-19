@@ -12,9 +12,7 @@
   "paths": {
     "/": {
       "get": {
-        "tags": [
-          "UniPM.Api"
-        ],
+        "tags": ["UniPM.Api"],
         "operationId": "GetApiInfo",
         "responses": {
           "200": {
@@ -25,9 +23,7 @@
     },
     "/api/v1/reference-data/asset-categories": {
       "get": {
-        "tags": [
-          "Reference Data"
-        ],
+        "tags": ["Reference Data"],
         "summary": "Lists the asset categories included in the current study scope",
         "operationId": "ListAssetCategories",
         "responses": {
@@ -49,9 +45,7 @@
     },
     "/api/v1/reference-data/schedule-statuses": {
       "get": {
-        "tags": [
-          "Reference Data"
-        ],
+        "tags": ["Reference Data"],
         "summary": "Lists persisted preventive maintenance schedule statuses",
         "operationId": "ListScheduleStatuses",
         "responses": {
@@ -73,9 +67,7 @@
     },
     "/api/v1/reference-data/schedule-period-types": {
       "get": {
-        "tags": [
-          "Reference Data"
-        ],
+        "tags": ["Reference Data"],
         "summary": "Lists schedule period types accepted by the current API",
         "operationId": "ListSchedulePeriodTypes",
         "responses": {
@@ -97,9 +89,7 @@
     },
     "/api/v1/reference-data/schedule-quarters": {
       "get": {
-        "tags": [
-          "Reference Data"
-        ],
+        "tags": ["Reference Data"],
         "summary": "Lists controlled quarter metadata accepted by the current API",
         "operationId": "ListScheduleQuarters",
         "responses": {
@@ -121,9 +111,7 @@
     },
     "/api/v1/auth/login": {
       "post": {
-        "tags": [
-          "Authentication"
-        ],
+        "tags": ["Authentication"],
         "operationId": "Login",
         "requestBody": {
           "content": {
@@ -181,9 +169,7 @@
     },
     "/api/v1/auth/refresh": {
       "post": {
-        "tags": [
-          "Authentication"
-        ],
+        "tags": ["Authentication"],
         "operationId": "RefreshSession",
         "responses": {
           "200": {
@@ -221,9 +207,7 @@
     },
     "/api/v1/auth/logout": {
       "post": {
-        "tags": [
-          "Authentication"
-        ],
+        "tags": ["Authentication"],
         "operationId": "Logout",
         "responses": {
           "204": {
@@ -244,9 +228,7 @@
     },
     "/api/v1/auth/me": {
       "get": {
-        "tags": [
-          "Authentication"
-        ],
+        "tags": ["Authentication"],
         "operationId": "GetCurrentUser",
         "responses": {
           "200": {
@@ -274,9 +256,7 @@
     },
     "/api/v1/assets": {
       "post": {
-        "tags": [
-          "Assets"
-        ],
+        "tags": ["Assets"],
         "summary": "Creates an asset in the current UniPM study scope",
         "operationId": "CreateAsset",
         "requestBody": {
@@ -343,9 +323,7 @@
         }
       },
       "get": {
-        "tags": [
-          "Assets"
-        ],
+        "tags": ["Assets"],
         "summary": "Lists assets using supported category, status, building, and department filters",
         "operationId": "ListAssets",
         "parameters": [
@@ -407,9 +385,7 @@
     },
     "/api/v1/assets/{id}": {
       "get": {
-        "tags": [
-          "Assets"
-        ],
+        "tags": ["Assets"],
         "summary": "Gets an asset by its identifier",
         "operationId": "GetAsset",
         "parameters": [
@@ -449,9 +425,7 @@
     },
     "/api/v1/assets/by-qr/{qrCodeValue}": {
       "get": {
-        "tags": [
-          "Assets"
-        ],
+        "tags": ["Assets"],
         "summary": "Gets an asset by its QR identifier",
         "operationId": "GetAssetByQr",
         "parameters": [
@@ -500,9 +474,7 @@
     },
     "/api/v1/schedules": {
       "post": {
-        "tags": [
-          "Schedules"
-        ],
+        "tags": ["Schedules"],
         "summary": "Creates a preventive maintenance schedule for an existing asset",
         "operationId": "CreateSchedule",
         "requestBody": {
@@ -569,9 +541,7 @@
         }
       },
       "get": {
-        "tags": [
-          "Schedules"
-        ],
+        "tags": ["Schedules"],
         "summary": "Lists preventive maintenance schedules using supported filters",
         "operationId": "ListSchedules",
         "parameters": [
@@ -618,10 +588,7 @@
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
+              "type": ["integer", "string"],
               "format": "int32"
             }
           }
@@ -655,9 +622,7 @@
     },
     "/api/v1/schedules/{id}": {
       "get": {
-        "tags": [
-          "Schedules"
-        ],
+        "tags": ["Schedules"],
         "summary": "Gets a preventive maintenance schedule by its identifier",
         "operationId": "GetSchedule",
         "parameters": [
@@ -697,9 +662,7 @@
     },
     "/api/v1/inspections/history/{assetId}": {
       "get": {
-        "tags": [
-          "Inspections"
-        ],
+        "tags": ["Inspections"],
         "summary": "Gets inspection history for an asset",
         "operationId": "GetInspectionHistory",
         "parameters": [
@@ -732,9 +695,7 @@
     },
     "/api/v1/inspections": {
       "get": {
-        "tags": [
-          "Inspections"
-        ],
+        "tags": ["Inspections"],
         "summary": "Lists inspection records using supported metadata filters",
         "operationId": "ListInspections",
         "parameters": [
@@ -807,9 +768,7 @@
     },
     "/api/v1/inspections/{id}": {
       "get": {
-        "tags": [
-          "Inspections"
-        ],
+        "tags": ["Inspections"],
         "summary": "Gets an inspection record by its identifier",
         "operationId": "GetInspection",
         "parameters": [
@@ -849,9 +808,7 @@
     },
     "/api/v1/preventive-maintenance-forms": {
       "post": {
-        "tags": [
-          "Preventive Maintenance Forms"
-        ],
+        "tags": ["Preventive Maintenance Forms"],
         "summary": "Creates a preventive-maintenance form draft",
         "operationId": "CreatePreventiveMaintenanceFormDraft",
         "requestBody": {
@@ -894,9 +851,7 @@
         }
       },
       "get": {
-        "tags": [
-          "Preventive Maintenance Forms"
-        ],
+        "tags": ["Preventive Maintenance Forms"],
         "summary": "Lists preventive-maintenance forms",
         "operationId": "ListPreventiveMaintenanceForms",
         "responses": {
@@ -918,9 +873,7 @@
     },
     "/api/v1/preventive-maintenance-forms/{id}": {
       "get": {
-        "tags": [
-          "Preventive Maintenance Forms"
-        ],
+        "tags": ["Preventive Maintenance Forms"],
         "summary": "Gets a preventive-maintenance form",
         "operationId": "GetPreventiveMaintenanceForm",
         "parameters": [
@@ -960,9 +913,7 @@
     },
     "/api/v1/preventive-maintenance-forms/{id}/submit": {
       "post": {
-        "tags": [
-          "Preventive Maintenance Forms"
-        ],
+        "tags": ["Preventive Maintenance Forms"],
         "summary": "Submits a completed preventive-maintenance form using a provisional file number",
         "operationId": "SubmitPreventiveMaintenanceForm",
         "parameters": [
@@ -1018,9 +969,7 @@
     },
     "/api/v1/preventive-maintenance-forms/{id}/acknowledge": {
       "post": {
-        "tags": [
-          "Preventive Maintenance Forms"
-        ],
+        "tags": ["Preventive Maintenance Forms"],
         "summary": "Acknowledges one submitted preventive-maintenance form",
         "operationId": "AcknowledgePreventiveMaintenanceForm",
         "parameters": [
@@ -1096,9 +1045,7 @@
     },
     "/api/v1/preventive-maintenance-forms/{id}/corrective-handoff": {
       "get": {
-        "tags": [
-          "Preventive Maintenance Forms"
-        ],
+        "tags": ["Preventive Maintenance Forms"],
         "summary": "Prepares acknowledged preventive-maintenance findings for corrective follow-up",
         "operationId": "GetCorrectiveMaintenanceHandoff",
         "parameters": [
@@ -1154,9 +1101,7 @@
     },
     "/api/v1/preventive-maintenance-forms/{id}/inspections": {
       "post": {
-        "tags": [
-          "Preventive Maintenance Forms"
-        ],
+        "tags": ["Preventive Maintenance Forms"],
         "summary": "Adds an inspection row to a preventive-maintenance form draft",
         "operationId": "AddPreventiveMaintenanceFormDraftInspection",
         "parameters": [
@@ -1232,9 +1177,7 @@
     },
     "/api/v1/preventive-maintenance-forms/{id}/inspections/{inspectionId}": {
       "put": {
-        "tags": [
-          "Preventive Maintenance Forms"
-        ],
+        "tags": ["Preventive Maintenance Forms"],
         "summary": "Updates an inspection row in a preventive-maintenance form draft",
         "operationId": "UpdatePreventiveMaintenanceFormDraftInspection",
         "parameters": [
@@ -1317,9 +1260,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "Preventive Maintenance Forms"
-        ],
+        "tags": ["Preventive Maintenance Forms"],
         "summary": "Removes an inspection row from a preventive-maintenance form draft",
         "operationId": "DeletePreventiveMaintenanceFormDraftInspection",
         "parameters": [
@@ -1377,9 +1318,7 @@
     },
     "/api/v1/pm-period-dashboard/cycles": {
       "get": {
-        "tags": [
-          "PM Period Dashboard"
-        ],
+        "tags": ["PM Period Dashboard"],
         "summary": "Lists available PM cycles grouped by asset category and year",
         "operationId": "ListPmPeriodDashboardCycles",
         "parameters": [
@@ -1395,10 +1334,7 @@
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
+              "type": ["integer", "string"],
               "format": "int32"
             }
           }
@@ -1432,9 +1368,7 @@
     },
     "/api/v1/pm-period-dashboard": {
       "get": {
-        "tags": [
-          "PM Period Dashboard"
-        ],
+        "tags": ["PM Period Dashboard"],
         "summary": "Gets a filtered PM-period dashboard read model",
         "operationId": "GetPmPeriodDashboard",
         "parameters": [
@@ -1526,10 +1460,7 @@
         }
       },
       "AssetCategoryResponse": {
-        "required": [
-          "code",
-          "displayName"
-        ],
+        "required": ["code", "displayName"],
         "type": "object",
         "properties": {
           "code": {
@@ -1566,28 +1497,16 @@
             "type": "string"
           },
           "building": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "department": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "location": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "qrCodeValue": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "status": {
             "type": "string"
@@ -1603,12 +1522,7 @@
         }
       },
       "AuthUserResponse": {
-        "required": [
-          "id",
-          "email",
-          "displayName",
-          "roles"
-        ],
+        "required": ["id", "email", "displayName", "roles"],
         "type": "object",
         "properties": {
           "id": {
@@ -1647,26 +1561,17 @@
             "format": "uuid"
           },
           "fileNumber": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "acknowledgedAt": {
             "type": "string",
             "format": "date-time"
           },
           "department": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "building": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "assetCategory": {
             "type": "string"
@@ -1706,25 +1611,16 @@
             "format": "date-time"
           },
           "assetDeviceNumber": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "assetCode": {
             "type": "string"
           },
           "location": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "findingOrRemarks": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "isOperational": {
             "type": "boolean"
@@ -1737,10 +1633,7 @@
             "format": "uuid"
           },
           "skilledWorkerIdentity": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           }
         }
       },
@@ -1754,22 +1647,13 @@
             "type": "string"
           },
           "building": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "department": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "location": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           }
         }
       },
@@ -1780,46 +1664,27 @@
             "type": "string"
           },
           "building": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "department": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "periodType": {
             "type": "string"
           },
           "quarter": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "semester": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "year": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "null",
-              "integer",
-              "string"
-            ],
+            "type": ["null", "integer", "string"],
             "format": "int32"
           },
           "academicYear": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           }
         }
       },
@@ -1838,18 +1703,11 @@
             "type": "string"
           },
           "quarter": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "year": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "null",
-              "integer",
-              "string"
-            ],
+            "type": ["null", "integer", "string"],
             "format": "int32"
           }
         }
@@ -1870,44 +1728,26 @@
             "format": "date-time"
           },
           "dateAccomplished": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "date-time"
           },
           "isOperational": {
             "type": "boolean"
           },
           "remarks": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "actionsRecommendations": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "waterReplaceCarbonFilter": {
-            "type": [
-              "null",
-              "boolean"
-            ]
+            "type": ["null", "boolean"]
           },
           "waterReplaceSedimentFilter": {
-            "type": [
-              "null",
-              "boolean"
-            ]
+            "type": ["null", "boolean"]
           },
           "waterCheckUvLight": {
-            "type": [
-              "null",
-              "boolean"
-            ]
+            "type": ["null", "boolean"]
           }
         }
       },
@@ -1949,33 +1789,21 @@
             "format": "date-time"
           },
           "startedAt": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "date-time"
           },
           "completedAt": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "date-time"
           },
           "isOperational": {
             "type": "boolean"
           },
           "remarks": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "actionsRecommendations": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "createdAt": {
             "type": "string",
@@ -1986,47 +1814,26 @@
             "format": "date-time"
           },
           "dateAccomplished": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "date-time"
           },
           "waterReplaceCarbonFilter": {
-            "type": [
-              "null",
-              "boolean"
-            ]
+            "type": ["null", "boolean"]
           },
           "waterReplaceSedimentFilter": {
-            "type": [
-              "null",
-              "boolean"
-            ]
+            "type": ["null", "boolean"]
           },
           "waterCheckUvLight": {
-            "type": [
-              "null",
-              "boolean"
-            ]
+            "type": ["null", "boolean"]
           },
           "assetCode": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "location": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "skilledWorkerIdentity": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           }
         }
       },
@@ -2034,37 +1841,21 @@
         "type": "object",
         "properties": {
           "type": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "title": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "status": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "null",
-              "integer",
-              "string"
-            ],
+            "type": ["null", "integer", "string"],
             "format": "int32"
           },
           "detail": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "instance": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "errors": {
             "type": "object",
@@ -2099,41 +1890,23 @@
             "type": "boolean"
           },
           "remarks": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "actionsRecommendations": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "dateAccomplished": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "date-time"
           },
           "waterReplaceCarbonFilter": {
-            "type": [
-              "null",
-              "boolean"
-            ]
+            "type": ["null", "boolean"]
           },
           "waterReplaceSedimentFilter": {
-            "type": [
-              "null",
-              "boolean"
-            ]
+            "type": ["null", "boolean"]
           },
           "waterCheckUvLight": {
-            "type": [
-              "null",
-              "boolean"
-            ]
+            "type": ["null", "boolean"]
           }
         }
       },
@@ -2176,16 +1949,10 @@
             "type": "boolean"
           },
           "remarks": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "actionsRecommendations": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "createdAt": {
             "type": "string",
@@ -2196,29 +1963,17 @@
             "format": "date-time"
           },
           "dateAccomplished": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "date-time"
           },
           "waterReplaceCarbonFilter": {
-            "type": [
-              "null",
-              "boolean"
-            ]
+            "type": ["null", "boolean"]
           },
           "waterReplaceSedimentFilter": {
-            "type": [
-              "null",
-              "boolean"
-            ]
+            "type": ["null", "boolean"]
           },
           "waterCheckUvLight": {
-            "type": [
-              "null",
-              "boolean"
-            ]
+            "type": ["null", "boolean"]
           }
         }
       },
@@ -2235,11 +1990,7 @@
         "additionalProperties": false
       },
       "LoginResponse": {
-        "required": [
-          "accessToken",
-          "expiresAtUtc",
-          "user"
-        ],
+        "required": ["accessToken", "expiresAtUtc", "user"],
         "type": "object",
         "properties": {
           "accessToken": {
@@ -2289,10 +2040,7 @@
             "format": "uuid"
           },
           "inspectionId": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "uuid"
           },
           "assetCode": {
@@ -2302,22 +2050,13 @@
             "type": "string"
           },
           "building": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "location": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "department": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "pmCycle": {
             "type": "string"
@@ -2340,10 +2079,7 @@
             "type": "boolean"
           },
           "inspectionCompletedAt": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "date-time"
           },
           "timeliness": {
@@ -2353,26 +2089,17 @@
             "type": "string"
           },
           "formId": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "uuid"
           },
           "formStatus": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "isAcknowledged": {
             "type": "boolean"
           },
           "acknowledgedAt": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "date-time"
           }
         }
@@ -2398,10 +2125,7 @@
         "type": "object",
         "properties": {
           "department": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "assetCategory": {
             "type": "string"
@@ -2411,96 +2135,59 @@
           },
           "scheduled": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "inspected": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "completedOnTime": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "completedLate": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "notCompleted": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "remaining": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "formId": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "uuid"
           },
           "formStatus": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "fileNumber": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "submittedAt": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "date-time"
           },
           "isAcknowledged": {
             "type": "boolean"
           },
           "acknowledgedAt": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "date-time"
           }
         }
       },
       "PmPeriodDashboardCycleGroupResponse": {
-        "required": [
-          "assetCategory",
-          "year",
-          "cycles"
-        ],
+        "required": ["assetCategory", "year", "cycles"],
         "type": "object",
         "properties": {
           "assetCategory": {
@@ -2508,10 +2195,7 @@
           },
           "year": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "cycles": {
@@ -2523,10 +2207,7 @@
         }
       },
       "PmPeriodDashboardCycleOptionResponse": {
-        "required": [
-          "pmCycle",
-          "scheduled"
-        ],
+        "required": ["pmCycle", "scheduled"],
         "type": "object",
         "properties": {
           "pmCycle": {
@@ -2534,10 +2215,7 @@
           },
           "scheduled": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           }
         }
@@ -2573,10 +2251,7 @@
             "type": "string"
           },
           "department": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "deadline": {
             "type": "string",
@@ -2593,83 +2268,52 @@
           },
           "scheduled": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "inspected": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "completedOnTime": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "completedLate": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "notCompleted": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "remaining": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "operational": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "nonOperational": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "onTimeCompliancePercent": {
             "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
-            "type": [
-              "null",
-              "number",
-              "string"
-            ],
+            "type": ["null", "number", "string"],
             "format": "double"
           },
           "progressPercent": {
             "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
-            "type": [
-              "number",
-              "string"
-            ],
+            "type": ["number", "string"],
             "format": "double"
           },
           "batches": {
@@ -2758,61 +2402,36 @@
             "format": "uuid"
           },
           "fileNumber": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "assetCategory": {
             "type": "string"
           },
           "building": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "department": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "pmCycle": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "periodType": {
             "type": "string"
           },
           "quarter": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "semester": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "year": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "null",
-              "integer",
-              "string"
-            ],
+            "type": ["null", "integer", "string"],
             "format": "int32"
           },
           "academicYear": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "status": {
             "type": "string"
@@ -2822,24 +2441,15 @@
             "format": "uuid"
           },
           "submittedByUserId": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "uuid"
           },
           "submittedAt": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "date-time"
           },
           "fieldWorkCompletedAt": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "date-time"
           },
           "createdAt": {
@@ -2862,37 +2472,21 @@
         "type": "object",
         "properties": {
           "type": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "title": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "status": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "null",
-              "integer",
-              "string"
-            ],
+            "type": ["null", "integer", "string"],
             "format": "int32"
           },
           "detail": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "instance": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           }
         }
       },
@@ -2918,30 +2512,18 @@
             "type": "string"
           },
           "building": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "department": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "location": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           }
         }
       },
       "ScheduleReferenceResponse": {
-        "required": [
-          "code",
-          "displayName"
-        ],
+        "required": ["code", "displayName"],
         "type": "object",
         "properties": {
           "code": {
@@ -2994,44 +2576,25 @@
             "type": "string"
           },
           "quarter": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "semester": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "year": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "null",
-              "integer",
-              "string"
-            ],
+            "type": ["null", "integer", "string"],
             "format": "int32"
           },
           "academicYear": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "assignedToUserId": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "uuid"
           },
           "completedAt": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "date-time"
           },
           "createdAt": {
@@ -3066,44 +2629,26 @@
             "format": "date-time"
           },
           "dateAccomplished": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "date-time"
           },
           "isOperational": {
             "type": "boolean"
           },
           "remarks": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "actionsRecommendations": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "waterReplaceCarbonFilter": {
-            "type": [
-              "null",
-              "boolean"
-            ]
+            "type": ["null", "boolean"]
           },
           "waterReplaceSedimentFilter": {
-            "type": [
-              "null",
-              "boolean"
-            ]
+            "type": ["null", "boolean"]
           },
           "waterCheckUvLight": {
-            "type": [
-              "null",
-              "boolean"
-            ]
+            "type": ["null", "boolean"]
           }
         }
       },
@@ -3111,37 +2656,21 @@
         "type": "object",
         "properties": {
           "type": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "title": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "status": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "null",
-              "integer",
-              "string"
-            ],
+            "type": ["null", "integer", "string"],
             "format": "int32"
           },
           "detail": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "instance": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "errors": {
             "type": "object",
