@@ -669,7 +669,7 @@ export function PmPeriodDashboard({
   ) => void
 }) {
   const cyclesQuery = usePmPeriodDashboardCycles()
-  const cycles = cyclesQuery.data ?? []
+  const cycles = useMemo(() => cyclesQuery.data ?? [], [cyclesQuery.data])
   const defaultGroup = useMemo(() => latestGroup(cycles), [cycles])
   const categoryOptions = useMemo(
     () => [...new Set(cycles.map((group) => group.assetCategory))].sort(),
@@ -703,7 +703,10 @@ export function PmPeriodDashboard({
   const [department, setDepartment] = useState(search.department ?? '')
   const [text, setText] = useState(search.search ?? '')
 
+  // Route changes reset the submitted filter drafts to the URL-backed values.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setDepartment(search.department ?? ''), [search.department])
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setText(search.search ?? ''), [search.search])
 
   useEffect(() => {
