@@ -155,7 +155,7 @@ test.describe('Inspection review workflows', () => {
     ).toBeVisible()
     await page.getByRole('link', { name: 'View details' }).click()
     await expect(page).toHaveURL(new RegExp(`/app/inspections/${inspectionId}`))
-    await expect(page.getByText('Actions and recommendations')).toBeVisible()
+    await expect(page.getByText('Recommendation')).toBeVisible()
     await expect(page.getByText('Arrange a pressure check.')).toBeVisible()
     await expect(
       page.getByRole('button', { name: /submit|record/i }),
