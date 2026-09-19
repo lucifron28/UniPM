@@ -82,17 +82,11 @@ internal sealed class PmPeriodDashboardService(
                     inspection.IsOperational))
                 .ToListAsync(cancellationToken);
 
-        var formIds = inspections
-            .Where(inspection => inspection.FormId is not null)
-            .Select(inspection => inspection.FormId!.Value)
-            .Distinct()
-            .ToArray();
         var forms = await context.PreventiveMaintenanceForms
             .AsNoTracking()
             .Include(form => form.Acknowledgement)
             .Where(form => form.AssetCategory == query.AssetCategory
-                && (form.PmCycle == query.PmCycle || form.PmCycle == null
-                    || formIds.Contains(form.Id)))
+                && form.PmCycle == query.PmCycle)
             .ToListAsync(cancellationToken);
 
         var inspectionBySchedule = inspections
@@ -168,7 +162,9 @@ internal sealed class PmPeriodDashboardService(
         }
 
         var pmCycle = PreventiveMaintenanceCycle.ForSchedule(schedule);
-        if (!PreventiveMaintenanceCycle.TryParse(pmCycle, out var year, out _)
+        var department = NormalizeDepartment(schedule.Asset.Department);
+        if (department is null
+            || !PreventiveMaintenanceCycle.TryParse(pmCycle, out var year, out _)
             || !AssetCategoryCatalog.TryNormalize(schedule.Asset.AssetCategory, out var assetCategory))
         {
             return null;
@@ -178,7 +174,7 @@ internal sealed class PmPeriodDashboardService(
             schedule.Id,
             schedule.AssetId,
             assetCategory,
-            NormalizeDepartment(schedule.Asset.Department),
+            department,
             pmCycle,
             year,
             schedule.ScheduleDate,
@@ -238,6 +234,7 @@ internal sealed class PmPeriodDashboardService(
             snapshot.AssetCode,
             snapshot.AssetCategory,
             snapshot.Building,
+            snapshot.Location,
             snapshot.Department,
             snapshot.PmCycle,
             snapshot.ScheduleDate,
@@ -294,8 +291,7 @@ internal sealed class PmPeriodDashboardService(
                 snapshot.Department,
                 StringComparison.Ordinal)
             && string.Equals(form.AssetCategory, snapshot.AssetCategory, StringComparison.OrdinalIgnoreCase)
-            && (form.PmCycle is null
-                || PreventiveMaintenanceCycle.Matches(form.PmCycle, snapshot.PmCycle));
+            && string.Equals(form.PmCycle, snapshot.PmCycle, StringComparison.Ordinal);
     }
 
     private static PmPeriodDashboardBatchResponse ToBatchResponse(
@@ -311,8 +307,7 @@ internal sealed class PmPeriodDashboardService(
                     group.Key.Department,
                     StringComparison.Ordinal)
                     && string.Equals(candidate.AssetCategory, group.Key.AssetCategory, StringComparison.OrdinalIgnoreCase)
-                    && (candidate.PmCycle is null
-                        || PreventiveMaintenanceCycle.Matches(candidate.PmCycle, group.Key.PmCycle)))
+                    && string.Equals(candidate.PmCycle, group.Key.PmCycle, StringComparison.Ordinal))
                 .OrderByDescending(candidate => string.Equals(candidate.PmCycle, group.Key.PmCycle, StringComparison.OrdinalIgnoreCase))
                 .ThenByDescending(candidate => candidate.CreatedAt)
                 .ThenBy(candidate => candidate.Id)

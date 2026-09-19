@@ -50,6 +50,7 @@ public sealed record PmPeriodDashboardAssetRowResponse(
     string AssetCode,
     string AssetCategory,
     string? Building,
+    string? Location,
     string? Department,
     string PmCycle,
     DateTimeOffset ScheduleDate,
