@@ -745,25 +745,17 @@ export function PmPeriodDashboard({
     selectedYear,
   ])
 
-  const dashboardFilters = useMemo(() => {
-    if (!selectedCategory || !selectedCycle) return undefined
-
-    return {
-      pmCycle: selectedCycle,
-      assetCategory: selectedCategory,
-      ...(search.department ? { department: search.department } : {}),
-      ...(search.condition ? { condition: search.condition } : {}),
-      ...(search.timeliness ? { timeliness: search.timeliness } : {}),
-      ...(search.search ? { search: search.search } : {}),
-    }
-  }, [
-    search.condition,
-    search.department,
-    search.search,
-    search.timeliness,
-    selectedCategory,
-    selectedCycle,
-  ])
+  const dashboardFilters =
+    selectedCategory && selectedCycle
+      ? {
+          pmCycle: selectedCycle,
+          assetCategory: selectedCategory,
+          ...(search.department ? { department: search.department } : {}),
+          ...(search.condition ? { condition: search.condition } : {}),
+          ...(search.timeliness ? { timeliness: search.timeliness } : {}),
+          ...(search.search ? { search: search.search } : {}),
+        }
+      : undefined
   const dashboardQuery = usePmPeriodDashboard(dashboardFilters)
 
   const departmentOptions = useMemo(
