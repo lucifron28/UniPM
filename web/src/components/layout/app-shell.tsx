@@ -195,7 +195,10 @@ export function AppShell() {
           </div>
         </header>
         <div className="border-b border-[var(--border-soft)] bg-white px-4 py-2.5 lg:hidden">
-          <nav aria-label="Primary" className="flex items-center gap-2">
+          <nav
+            aria-label="Primary"
+            className="flex items-center gap-2 overflow-x-auto"
+          >
             <Link
               to="/app/dashboard"
               activeProps={{
