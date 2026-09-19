@@ -20,6 +20,8 @@ export interface PmPeriodDashboardBatchResponse {
   completedLate: number | string
   /** @pattern ^-?(?:0|[1-9]\d*)$ */
   notCompleted: number | string
+  /** @pattern ^-?(?:0|[1-9]\d*)$ */
+  remaining: number | string
   /** @nullable */
   formId: string | null
   /** @nullable */

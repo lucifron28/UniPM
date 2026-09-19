@@ -13,7 +13,9 @@ export interface PmPeriodDashboardResponse {
   /** @nullable */
   department: string | null
   deadline: string
+  periodState: string
   complianceMeasurable: boolean
+  inspectionResultsAvailable: boolean
   /** @pattern ^-?(?:0|[1-9]\d*)$ */
   scheduled: number | string
   /** @pattern ^-?(?:0|[1-9]\d*)$ */
@@ -24,6 +26,8 @@ export interface PmPeriodDashboardResponse {
   completedLate: number | string
   /** @pattern ^-?(?:0|[1-9]\d*)$ */
   notCompleted: number | string
+  /** @pattern ^-?(?:0|[1-9]\d*)$ */
+  remaining: number | string
   /** @pattern ^-?(?:0|[1-9]\d*)$ */
   operational: number | string
   /** @pattern ^-?(?:0|[1-9]\d*)$ */
