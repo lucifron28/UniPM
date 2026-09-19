@@ -15,6 +15,8 @@ export interface PreventiveMaintenanceFormResponse {
   building: string | null
   /** @nullable */
   department: string | null
+  /** @nullable */
+  pmCycle: string | null
   periodType: string
   /** @nullable */
   quarter: string | null
