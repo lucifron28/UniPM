@@ -9,6 +9,7 @@ using UniPM.Api.Features.MaintenanceReview;
 using UniPM.Api.Features.PreventiveMaintenanceForms;
 using UniPM.Api.Features.Retrieval;
 using UniPM.Api.Features.ReferenceDocuments;
+using UniPM.Api.Features.Reports;
 using UniPM.Api.Observability;
 using OpenTelemetry.Metrics;
 using Microsoft.AspNetCore.Http.Features;
@@ -198,6 +199,7 @@ else
     builder.Services.AddSingleton<ISummaryExperimentCapture, NullSummaryExperimentCapture>();
 }
 builder.Services.AddScoped<IMaintenanceReviewService, MaintenanceReviewService>();
+builder.Services.AddScoped<PmPeriodDashboardService>();
 
 var app = builder.Build();
 
