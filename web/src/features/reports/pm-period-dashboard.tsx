@@ -260,6 +260,7 @@ function latestGroup(groups: PmPeriodDashboardCycleGroupResponse[]) {
   return [...groups].sort(
     (left, right) =>
       Number(right.year) - Number(left.year) ||
+      (latestCycle(right) ?? '').localeCompare(latestCycle(left) ?? '') ||
       left.assetCategory.localeCompare(right.assetCategory),
   )[0]
 }
