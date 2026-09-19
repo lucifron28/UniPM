@@ -120,11 +120,11 @@ export function PreventiveMaintenanceDashboard() {
           <Badge>Acknowledged</Badge>
         </div>
         <p className="mt-4 max-w-3xl text-sm leading-6 text-[var(--text-secondary)]">
-          Field-work completion and acknowledgement are separate. Acknowledgement
-          records receipt/noting, locks the form, and makes its inspection rows
-          eligible for official history. It does not approve corrective work,
-          funding, or an RMRF. Provisional UniPM file numbers remain independent
-          from the external GSD work management system.
+          Field-work completion and acknowledgement are separate.
+          Acknowledgement records receipt/noting, locks the form, and makes its
+          inspection rows eligible for official history. It does not approve
+          corrective work, funding, or an RMRF. Provisional UniPM file numbers
+          remain independent from the external GSD work management system.
         </p>
       </Card>
     </section>

@@ -536,10 +536,10 @@ function AcknowledgeForm({
           Acknowledge submitted form
         </h2>
         <p className="mt-1 text-sm text-[var(--text-secondary)]">
-          Field-work completion and acknowledgement are separate. Acknowledgement
-          records receipt/noting, locks the form, and makes its inspection rows
-          eligible for official history. It does not approve corrective work,
-          funding, or an RMRF.
+          Field-work completion and acknowledgement are separate.
+          Acknowledgement records receipt/noting, locks the form, and makes its
+          inspection rows eligible for official history. It does not approve
+          corrective work, funding, or an RMRF.
         </p>
       </div>
       <form className="space-y-4" onSubmit={acknowledge}>

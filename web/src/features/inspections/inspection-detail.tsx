@@ -271,8 +271,7 @@ export function InspectionDetail({ inspectionId }: { inspectionId: string }) {
         <div>
           <h2 className="font-semibold">Recommendation</h2>
           <p className="mt-2 text-sm leading-6 whitespace-pre-wrap text-[var(--text-secondary)]">
-            {record.actionsRecommendations ||
-              'No recommendation was recorded.'}
+            {record.actionsRecommendations || 'No recommendation was recorded.'}
           </p>
         </div>
       </Card>
