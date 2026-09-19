@@ -16,7 +16,9 @@ const searchSchema = z.object({
   condition: z
     .enum(['Operational', 'NonOperational', 'NotInspected'])
     .optional(),
-  timeliness: z.enum(['OnTime', 'Late', 'NotCompleted']).optional(),
+  timeliness: z
+    .enum(['OnTime', 'Late', 'Scheduled', 'Pending', 'NotCompleted'])
+    .optional(),
   search: z.string().trim().max(256).optional(),
 })
 
@@ -29,6 +31,10 @@ export const Route = createFileRoute('/app/dashboard')({
 })
 
 function DashboardPage() {
+  return <PreventiveMaintenanceDashboard />
+}
+
+export function PreventiveMaintenanceDashboard() {
   const search = Route.useSearch()
   const navigate = Route.useNavigate()
   return (
@@ -43,5 +49,3 @@ function DashboardPage() {
     />
   )
 }
-
-export const PreventiveMaintenanceDashboard = DashboardPage

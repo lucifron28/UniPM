@@ -46,6 +46,8 @@ const timelinessOptions = [
   { value: '', label: 'All timeliness' },
   { value: 'OnTime', label: 'Completed on time' },
   { value: 'Late', label: 'Completed late' },
+  { value: 'Scheduled', label: 'Scheduled' },
+  { value: 'Pending', label: 'Pending' },
   { value: 'NotCompleted', label: 'Not completed' },
 ]
 
@@ -108,8 +110,25 @@ function formatTimeliness(value: string) {
       return 'Completed on time'
     case 'Late':
       return 'Completed late'
+    case 'Scheduled':
+      return 'Scheduled'
+    case 'Pending':
+      return 'Pending'
     case 'NotCompleted':
       return 'Not completed'
+    default:
+      return value
+  }
+}
+
+function formatPeriodState(value: string) {
+  switch (value) {
+    case 'Future':
+      return 'Future'
+    case 'Active':
+      return 'Active'
+    case 'Closed':
+      return 'Closed'
     default:
       return value
   }
@@ -299,6 +318,7 @@ function BatchOverview({
                 'On time',
                 'Late',
                 'Not completed',
+                'Remaining',
                 'Form / acknowledgement',
               ].map((heading) => (
                 <th
@@ -334,6 +354,9 @@ function BatchOverview({
                 </td>
                 <td className="px-3 py-3 text-[var(--text-secondary)]">
                   {formatNumber(batch.notCompleted)}
+                </td>
+                <td className="px-3 py-3 text-[var(--text-secondary)]">
+                  {formatNumber(batch.remaining)}
                 </td>
                 <td className="space-y-2 px-3 py-3 text-[var(--text-secondary)]">
                   <p>{formatFormStatus(batch.formStatus)}</p>
@@ -433,7 +456,7 @@ function AssetRows({
                 </td>
                 <td className="space-y-1 px-3 py-3 text-[var(--text-secondary)]">
                   <p className="font-semibold text-[var(--text-primary)]">
-                    {asset.pmCycle}
+                    {formatPmCycle(asset.pmCycle)}
                   </p>
                   <p>Scheduled {formatDate(asset.scheduleDate)}</p>
                   <p className="text-xs text-[var(--text-neutral)]">
@@ -489,6 +512,48 @@ function AssetRows({
   )
 }
 
+function PeriodStateSummary({
+  dashboard,
+}: {
+  dashboard: PmPeriodDashboardResponse
+}) {
+  const state = formatPeriodState(dashboard.periodState)
+  const message =
+    dashboard.periodState === 'Future'
+      ? 'This period is before its month-end deadline. Unfinished rows are marked Scheduled, and on-time compliance is not measurable yet.'
+      : dashboard.periodState === 'Active'
+        ? 'This period is in progress. Unfinished rows are marked Pending, and on-time compliance is not measurable yet.'
+        : dashboard.periodState === 'Closed'
+          ? 'This period is closed. Completed rows retain their final on-time or late result; unfinished rows are marked Not completed.'
+          : 'The backend returned an unrecognized period state. Review the row-level status values for this period.'
+
+  return (
+    <Card role="status" className="p-4 shadow-none sm:p-5">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-xs font-semibold tracking-[0.08em] text-[var(--text-neutral)] uppercase">
+            Period state
+          </p>
+          <p className="mt-1 text-lg font-semibold text-[var(--text-primary)]">
+            {state}
+          </p>
+        </div>
+        <StatusText
+          value={state}
+          tone={
+            dashboard.periodState === 'Closed'
+              ? 'success'
+              : dashboard.periodState === 'Active'
+                ? 'warning'
+                : 'neutral'
+          }
+        />
+      </div>
+      <p className="mt-3 text-sm text-[var(--text-secondary)]">{message}</p>
+    </Card>
+  )
+}
+
 function DashboardMetrics({
   dashboard,
 }: {
@@ -517,13 +582,32 @@ function DashboardMetrics({
         value={formatNumber(dashboard.notCompleted)}
       />
       <DashboardMetric
-        label="Operational"
-        value={formatNumber(dashboard.operational)}
+        label="Remaining"
+        value={formatNumber(dashboard.remaining)}
+        note="Backend-reported unfinished scheduled work"
       />
-      <DashboardMetric
-        label="Non-operational"
-        value={formatNumber(dashboard.nonOperational)}
-      />
+      {dashboard.inspectionResultsAvailable ? (
+        <>
+          <DashboardMetric
+            label="Operational"
+            value={formatNumber(dashboard.operational)}
+          />
+          <DashboardMetric
+            label="Non-operational"
+            value={formatNumber(dashboard.nonOperational)}
+          />
+        </>
+      ) : (
+        <Card role="status" className="p-4 shadow-none">
+          <p className="text-sm font-semibold text-[var(--text-primary)]">
+            No completed inspection results yet
+          </p>
+          <p className="mt-2 text-xs text-[var(--text-secondary)]">
+            Operational and non-operational counts are not meaningful for this
+            period yet.
+          </p>
+        </Card>
+      )}
       <DashboardMetric
         label="Progress"
         value={formatPercent(dashboard.progressPercent)}
@@ -539,7 +623,7 @@ function DashboardMetrics({
         note={
           dashboard.complianceMeasurable
             ? 'Backend-reported result'
-            : 'Month-end deadline has not passed'
+            : 'Backend reports this period is not measurable yet'
         }
       />
     </div>
@@ -912,6 +996,7 @@ export function PmPeriodDashboard({
         />
       ) : dashboardQuery.data ? (
         <>
+          <PeriodStateSummary dashboard={dashboardQuery.data} />
           <DashboardMetrics dashboard={dashboardQuery.data} />
           {dashboardQuery.data.assets.length === 0 ? (
             <Card className="p-6 shadow-none">
@@ -950,6 +1035,11 @@ function DashboardHeader() {
       <p className="mt-2 max-w-3xl text-[var(--text-secondary)]">
         Review scheduled work, inspection completion, operational condition, and
         department batch acknowledgement from the backend read model.
+      </p>
+      <p className="mt-2 max-w-4xl text-sm text-[var(--text-secondary)]">
+        Official metrics use Category + PM period + optional Department.
+        Condition, timeliness/status, and search filters affect only the asset
+        table; Department recalculates the official metrics and the table.
       </p>
     </div>
   )
