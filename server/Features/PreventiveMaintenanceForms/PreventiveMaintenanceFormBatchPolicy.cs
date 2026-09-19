@@ -16,12 +16,21 @@ internal static class PreventiveMaintenanceFormBatchPolicy
             return false;
         }
 
-        return NullableTextEquals(form.Department, asset.Department)
+        return HasResolvedDepartment(form, schedule)
+            && NullableTextEquals(form.Department, asset.Department)
             && NullableTextEquals(form.AssetCategory, asset.AssetCategory)
             && form.PmCycle is not null
             && PreventiveMaintenanceCycle.Matches(
                 form.PmCycle,
                 PreventiveMaintenanceCycle.ForSchedule(schedule));
+    }
+
+    internal static bool HasResolvedDepartment(
+        PreventiveMaintenanceForm form,
+        PreventiveMaintenanceSchedule schedule)
+    {
+        return !string.IsNullOrWhiteSpace(form.Department)
+            && !string.IsNullOrWhiteSpace(schedule.Asset?.Department);
     }
 
     internal static string? NormalizeDepartment(string? value)

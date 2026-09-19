@@ -298,6 +298,43 @@ public sealed class PreventiveMaintenanceFormDraftEndpointsTests
     }
 
     [Fact]
+    public async Task Departmentless_assets_cannot_claim_a_pm_form_batch()
+    {
+        await using var application = new TestApplicationFactory();
+        using var client = application.CreateClient();
+        await application.EnsureAuthenticatedUserAsync();
+        var asset = await CreateAssetAsync(
+            client,
+            "FE-FORM-NO-DEPARTMENT-001",
+            "fire-extinguisher",
+            department: null);
+        var schedule = await CreateScheduleAsync(client, asset.Id, 1);
+        var form = await CreateFormAsync(client, asset.AssetCategory);
+
+        var response = await client.PostAsJsonAsync(
+            $"/api/v1/preventive-maintenance-forms/{form.Id}/inspections",
+            DraftInspectionRequest(schedule.Id, "Department-less asset row"));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+        await using var scope = application.Services.CreateAsyncScope();
+        var contextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
+        await using var context = await contextFactory.CreateDbContextAsync();
+        var persistedSchedule = await context.PreventiveMaintenanceSchedules
+            .AsNoTracking()
+            .SingleAsync(candidate => candidate.Id == schedule.Id);
+        var persistedForm = await context.PreventiveMaintenanceForms
+            .AsNoTracking()
+            .Include(candidate => candidate.Inspections)
+            .SingleAsync(candidate => candidate.Id == form.Id);
+
+        Assert.Equal(ScheduleStatusCatalog.Due, persistedSchedule.Status);
+        Assert.Null(persistedSchedule.CompletedAt);
+        Assert.Null(persistedForm.PmCycle);
+        Assert.Empty(persistedForm.Inspections);
+    }
+
+    [Fact]
     public async Task Draft_rows_reject_a_schedule_from_a_different_pm_cycle()
     {
         await using var application = new TestApplicationFactory();
@@ -867,7 +904,7 @@ public sealed class PreventiveMaintenanceFormDraftEndpointsTests
         string assetCode,
         string assetCategory,
         string building = "Main Building",
-        string department = "GSD")
+        string? department = "GSD")
     {
         var response = await client.PostAsJsonAsync("/api/v1/assets/", new
         {

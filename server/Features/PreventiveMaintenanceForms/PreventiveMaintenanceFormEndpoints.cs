@@ -174,6 +174,12 @@ public static class PreventiveMaintenanceFormEndpoints
                     .Distinct()
                     .ToArray();
                 form.Department = PreventiveMaintenanceFormBatchPolicy.NormalizeDepartment(form.Department);
+                if (string.IsNullOrWhiteSpace(form.Department)
+                    || form.Inspections.Any(inspection => string.IsNullOrWhiteSpace(inspection.Asset?.Department)))
+                {
+                    return ApiErrors.Conflict("A PM form batch requires a department on both the form and every scheduled asset.");
+                }
+
                 var inspectionCycles = await LoadInspectionCyclesAsync(
                     context,
                     form.Id,
@@ -536,6 +542,14 @@ public static class PreventiveMaintenanceFormEndpoints
             }
 
             form.Department = PreventiveMaintenanceFormBatchPolicy.NormalizeDepartment(form.Department);
+            if (!PreventiveMaintenanceFormBatchPolicy.HasResolvedDepartment(form, schedule))
+            {
+                return ApiErrors.Validation(new Dictionary<string, string[]>
+                {
+                    [nameof(dto.ScheduleId)] = ["A PM form batch requires a department on both the form and scheduled asset."]
+                });
+            }
+
             var scheduleCycle = PreventiveMaintenanceCycle.ForSchedule(schedule);
             if (!await TrySetFormCycleAsync(context, form, scheduleCycle, cancellationToken))
             {
