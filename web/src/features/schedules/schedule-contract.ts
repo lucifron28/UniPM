@@ -38,6 +38,11 @@ export const scheduleSchema = z
     id: z.string().uuid(),
     assetId: z.string().uuid(),
     scheduleDate: z.string().datetime({ offset: true }),
+    // Keep parsing older cached fixtures that predate the canonical PM cycle field.
+    pmCycle: z
+      .string()
+      .regex(/^\d{4}-\d{2}$/)
+      .optional(),
     periodType: z.enum(schedulePeriodTypeCodes),
     status: z.enum(scheduleStatusCodes),
     quarter: z.enum(scheduleQuarterCodes).nullable(),
@@ -155,11 +160,15 @@ export type CreateScheduleValues = {
   year?: number | string | undefined
 }
 
-export function parseSchedule(value: ScheduleResponse): Schedule {
+type ScheduleResponseCompat = Omit<ScheduleResponse, 'pmCycle'> & {
+  pmCycle?: string
+}
+
+export function parseSchedule(value: ScheduleResponseCompat): Schedule {
   return scheduleSchema.parse(value)
 }
 
-export function parseSchedules(values: ScheduleResponse[]): Schedule[] {
+export function parseSchedules(values: ScheduleResponseCompat[]): Schedule[] {
   return z.array(scheduleSchema).parse(values)
 }
 
