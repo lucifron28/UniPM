@@ -284,9 +284,13 @@ function groupForSelection(
 
 function BatchOverview({
   batches,
+  periodState,
 }: {
   batches: PmPeriodDashboardBatchResponse[]
+  periodState: string
 }) {
+  const isClosed = periodState === 'Closed'
+
   return (
     <Card className="p-4 shadow-none sm:p-5">
       <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
@@ -317,8 +321,7 @@ function BatchOverview({
                 'Inspected',
                 'On time',
                 'Late',
-                'Not completed',
-                'Remaining',
+                isClosed ? 'Not completed' : 'Remaining',
                 'Form / acknowledgement',
               ].map((heading) => (
                 <th
@@ -353,10 +356,9 @@ function BatchOverview({
                   {formatNumber(batch.completedLate)}
                 </td>
                 <td className="px-3 py-3 text-[var(--text-secondary)]">
-                  {formatNumber(batch.notCompleted)}
-                </td>
-                <td className="px-3 py-3 text-[var(--text-secondary)]">
-                  {formatNumber(batch.remaining)}
+                  {formatNumber(
+                    isClosed ? batch.notCompleted : batch.remaining,
+                  )}
                 </td>
                 <td className="space-y-2 px-3 py-3 text-[var(--text-secondary)]">
                   <p>{formatFormStatus(batch.formStatus)}</p>
@@ -559,6 +561,8 @@ function DashboardMetrics({
 }: {
   dashboard: PmPeriodDashboardResponse
 }) {
+  const isClosed = dashboard.periodState === 'Closed'
+
   return (
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
       <DashboardMetric
@@ -577,10 +581,12 @@ function DashboardMetrics({
         label="Completed late"
         value={formatNumber(dashboard.completedLate)}
       />
-      <DashboardMetric
-        label="Not completed"
-        value={formatNumber(dashboard.notCompleted)}
-      />
+      {isClosed && (
+        <DashboardMetric
+          label="Not completed"
+          value={formatNumber(dashboard.notCompleted)}
+        />
+      )}
       <DashboardMetric
         label="Remaining"
         value={formatNumber(dashboard.remaining)}
@@ -627,6 +633,27 @@ function DashboardMetrics({
         }
       />
     </div>
+  )
+}
+
+export function PmPeriodDashboardPresentation({
+  dashboard,
+  showBatch = true,
+}: {
+  dashboard: PmPeriodDashboardResponse
+  showBatch?: boolean
+}) {
+  return (
+    <>
+      <PeriodStateSummary dashboard={dashboard} />
+      <DashboardMetrics dashboard={dashboard} />
+      {showBatch && (
+        <BatchOverview
+          batches={dashboard.batches}
+          periodState={dashboard.periodState}
+        />
+      )}
+    </>
   )
 }
 
@@ -996,8 +1023,10 @@ export function PmPeriodDashboard({
         />
       ) : dashboardQuery.data ? (
         <>
-          <PeriodStateSummary dashboard={dashboardQuery.data} />
-          <DashboardMetrics dashboard={dashboardQuery.data} />
+          <PmPeriodDashboardPresentation
+            dashboard={dashboardQuery.data}
+            showBatch={dashboardQuery.data.assets.length > 0}
+          />
           {dashboardQuery.data.assets.length === 0 ? (
             <Card className="p-6 shadow-none">
               <h2 className="text-lg font-semibold text-[var(--text-primary)]">
@@ -1009,10 +1038,7 @@ export function PmPeriodDashboard({
               </p>
             </Card>
           ) : (
-            <>
-              <BatchOverview batches={dashboardQuery.data.batches} />
-              <AssetRows assets={dashboardQuery.data.assets} />
-            </>
+            <AssetRows assets={dashboardQuery.data.assets} />
           )}
         </>
       ) : null}
