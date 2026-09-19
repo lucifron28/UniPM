@@ -56,13 +56,31 @@ function formatCategory(value: string) {
     .join(' ')
 }
 
-function formatDate(value: string | null | undefined, withTime = false) {
+function formatDate(
+  value: string | null | undefined,
+  withTime = false,
+  timeZone?: string,
+) {
   if (!value) return 'Not recorded'
 
-  return new Intl.DateTimeFormat(undefined, {
+  return new Intl.DateTimeFormat('en-US', {
     dateStyle: 'medium',
     ...(withTime ? { timeStyle: 'short' } : {}),
+    ...(timeZone ? { timeZone } : {}),
   }).format(new Date(value))
+}
+
+function formatPmCycle(value: string) {
+  const [yearText, monthText] = value.split('-')
+  const year = Number(yearText)
+  const month = Number(monthText)
+  if (!Number.isInteger(year) || !Number.isInteger(month)) return value
+
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  }).format(new Date(Date.UTC(year, month - 1, 1)))
 }
 
 function formatNumber(value: number | string) {
@@ -227,6 +245,12 @@ function latestGroup(groups: PmPeriodDashboardCycleGroupResponse[]) {
   )[0]
 }
 
+function latestCycle(group: PmPeriodDashboardCycleGroupResponse | undefined) {
+  return [...(group?.cycles ?? [])].sort((left, right) =>
+    right.pmCycle.localeCompare(left.pmCycle),
+  )[0]?.pmCycle
+}
+
 function groupForSelection(
   groups: PmPeriodDashboardCycleGroupResponse[],
   assetCategory: string | undefined,
@@ -235,7 +259,7 @@ function groupForSelection(
   return groups.find(
     (group) =>
       group.assetCategory === assetCategory &&
-      (year === undefined || group.year === year),
+      (year === undefined || Number(group.year) === year),
   )
 }
 
@@ -562,7 +586,7 @@ export function PmPeriodDashboard({
     (cycle) => cycle.pmCycle === search.pmCycle,
   )
     ? search.pmCycle
-    : selectedGroup?.cycles[0]?.pmCycle
+    : latestCycle(selectedGroup)
 
   const [department, setDepartment] = useState(search.department ?? '')
   const [text, setText] = useState(search.search ?? '')
@@ -648,7 +672,7 @@ export function PmPeriodDashboard({
       ...search,
       assetCategory,
       year: nextGroup ? Number(nextGroup.year) : undefined,
-      pmCycle: nextGroup?.cycles[0]?.pmCycle,
+      pmCycle: latestCycle(nextGroup),
     })
   }
 
@@ -658,7 +682,7 @@ export function PmPeriodDashboard({
     onSearchChange({
       ...search,
       year: nextGroup ? Number(nextGroup.year) : undefined,
-      pmCycle: nextGroup?.cycles[0]?.pmCycle,
+      pmCycle: latestCycle(nextGroup),
     })
   }
 
@@ -757,7 +781,8 @@ export function PmPeriodDashboard({
             >
               {(selectedGroup?.cycles ?? []).map((cycle) => (
                 <option key={cycle.pmCycle} value={cycle.pmCycle}>
-                  {cycle.pmCycle} · {formatNumber(cycle.scheduled)} scheduled
+                  {formatPmCycle(cycle.pmCycle)} ·{' '}
+                  {formatNumber(cycle.scheduled)} scheduled
                 </option>
               ))}
             </select>
@@ -766,12 +791,12 @@ export function PmPeriodDashboard({
         {selectedCycle && (
           <p className="mt-4 text-sm text-[var(--text-secondary)]">
             <span className="font-semibold text-[var(--text-primary)]">
-              Month-end deadline:
+              Month-end deadline (Asia/Manila):
             </span>{' '}
             {dashboardQuery.isPending
               ? 'Loading...'
               : dashboardQuery.data
-                ? formatDate(dashboardQuery.data.deadline)
+                ? formatDate(dashboardQuery.data.deadline, false, 'Asia/Manila')
                 : 'Unavailable'}
           </p>
         )}
