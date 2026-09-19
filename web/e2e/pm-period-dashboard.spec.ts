@@ -376,6 +376,12 @@ function assetTable(page: Page) {
   })
 }
 
+function batchTable(page: Page) {
+  return page.getByRole('table', {
+    name: 'Department batch acknowledgement overview',
+  })
+}
+
 async function expectRequest(
   requests: URL[],
   expected: Record<string, string>,
@@ -502,6 +508,14 @@ test.describe('PM period dashboard', () => {
     await expect(
       page.getByText('No completed inspection results yet', { exact: true }),
     ).toBeVisible()
+    await expect(metricCard(page, 'Remaining')).toContainText('1')
+    await expect(metricCard(page, 'Not completed')).toHaveCount(0)
+    await expect(
+      batchTable(page).getByRole('columnheader', { name: 'Remaining' }),
+    ).toBeVisible()
+    await expect(
+      batchTable(page).getByRole('columnheader', { name: 'Not completed' }),
+    ).toHaveCount(0)
     await expect(
       page.locator('p').filter({ hasText: /^Operational$/ }),
     ).toHaveCount(0)
@@ -519,7 +533,15 @@ test.describe('PM period dashboard', () => {
     await expect(
       assetTable(page).getByText('Completed late', { exact: true }),
     ).toBeVisible()
+    await expect(metricCard(page, 'Progress')).toContainText('67%')
     await expect(metricCard(page, 'Remaining')).toContainText('1')
+    await expect(metricCard(page, 'Not completed')).toHaveCount(0)
+    await expect(
+      batchTable(page).getByRole('columnheader', { name: 'Remaining' }),
+    ).toBeVisible()
+    await expect(
+      batchTable(page).getByRole('columnheader', { name: 'Not completed' }),
+    ).toHaveCount(0)
     await expect(
       page.getByText('No completed inspection results yet', { exact: true }),
     ).toHaveCount(0)
@@ -531,6 +553,15 @@ test.describe('PM period dashboard', () => {
     await expect(
       assetTable(page).getByText('Not completed', { exact: true }),
     ).toBeVisible()
+    await expect(metricCard(page, 'Completed on time')).toContainText('1')
+    await expect(metricCard(page, 'Completed late')).toContainText('1')
+    await expect(metricCard(page, 'Not completed')).toContainText('1')
+    await expect(
+      batchTable(page).getByRole('columnheader', { name: 'Not completed' }),
+    ).toBeVisible()
+    await expect(
+      batchTable(page).getByRole('columnheader', { name: 'Remaining' }),
+    ).toHaveCount(0)
     await expect(metricCard(page, 'On-time compliance')).toContainText('50%')
 
     await page.setViewportSize({ width: 375, height: 667 })
