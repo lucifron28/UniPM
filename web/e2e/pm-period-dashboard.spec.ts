@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Locator, type Page } from '@playwright/test'
 
 const session = {
   accessToken: 'fictional-pm-dashboard-token',
@@ -376,6 +376,21 @@ function assetTable(page: Page) {
   })
 }
 
+const assetColumnIndexes = {
+  timeliness: 5,
+} as const
+
+function assetRow(page: Page, assetCode: string) {
+  const table = assetTable(page)
+  return table
+    .getByRole('link', { name: assetCode, exact: true })
+    .locator('xpath=ancestor::tr')
+}
+
+function assetCell(row: Locator, column: keyof typeof assetColumnIndexes) {
+  return row.getByRole('cell').nth(assetColumnIndexes[column])
+}
+
 function batchTable(page: Page) {
   return page.getByRole('table', {
     name: 'Department batch acknowledgement overview',
@@ -550,27 +565,57 @@ test.describe('PM period dashboard', () => {
     await expect(
       page.getByText('Closed', { exact: true }).first(),
     ).toBeVisible()
-    await expect(
-      assetTable(page).getByText('Not completed', { exact: true }),
-    ).toBeVisible()
+    const onTimeRow = assetRow(page, 'FE-001')
+    const lateRow = assetRow(page, 'FE-002')
+    const notCompletedRow = assetRow(page, 'FE-004')
+    await expect(onTimeRow).toHaveCount(1)
+    await expect(lateRow).toHaveCount(1)
+    await expect(notCompletedRow).toHaveCount(1)
+    await expect(assetCell(onTimeRow, 'timeliness')).toHaveText(
+      /^Completed on time$/,
+    )
+    await expect(assetCell(lateRow, 'timeliness')).toHaveText(
+      /^Completed late$/,
+    )
+    await expect(assetCell(notCompletedRow, 'timeliness')).toHaveText(
+      /^Not completed$/,
+    )
     await expect(metricCard(page, 'Completed on time')).toContainText('1')
     await expect(metricCard(page, 'Completed late')).toContainText('1')
-    await expect(metricCard(page, 'Not completed')).toContainText('1')
+    await expect(metricCard(page, 'Not completed')).toHaveText(/1/)
     await expect(
       batchTable(page).getByRole('columnheader', { name: 'Not completed' }),
     ).toBeVisible()
     await expect(
       batchTable(page).getByRole('columnheader', { name: 'Remaining' }),
     ).toHaveCount(0)
-    await expect(metricCard(page, 'On-time compliance')).toContainText('50%')
+    await expect(
+      metricCard(page, 'On-time compliance').locator('p').nth(1),
+    ).toHaveText('50%')
 
     await page.setViewportSize({ width: 375, height: 667 })
-    const tableContainer = assetTable(page).locator('..')
+    const scheduledAssetsTable = assetTable(page)
+    await expect(scheduledAssetsTable).toHaveCount(1)
+    await expect(scheduledAssetsTable).toBeVisible()
+    await expect(scheduledAssetsTable).toHaveAccessibleName(
+      'Scheduled PM assets and inspection status',
+    )
+    const tableContainer = scheduledAssetsTable.locator('..')
     await expect(tableContainer).toHaveCSS('overflow-x', 'auto')
     const dimensions = await tableContainer.evaluate((element) => ({
       clientWidth: element.clientWidth,
       scrollWidth: element.scrollWidth,
     }))
     expect(dimensions.scrollWidth).toBeGreaterThan(dimensions.clientWidth)
+    const pageDimensions = await page.evaluate(() => ({
+      viewportWidth: window.innerWidth,
+      documentWidth: Math.max(
+        document.documentElement.scrollWidth,
+        document.body.scrollWidth,
+      ),
+    }))
+    expect(pageDimensions.documentWidth).toBeLessThanOrEqual(
+      pageDimensions.viewportWidth,
+    )
   })
 })
