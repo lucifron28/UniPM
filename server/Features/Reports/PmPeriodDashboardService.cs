@@ -157,7 +157,7 @@ internal sealed class PmPeriodDashboardService(
             deadline,
             periodState,
             complianceMeasurable,
-            periodState != PmPeriodDashboardPeriodStateCatalog.Future,
+            inspected > 0,
             scheduled,
             inspected,
             completedOnTime,

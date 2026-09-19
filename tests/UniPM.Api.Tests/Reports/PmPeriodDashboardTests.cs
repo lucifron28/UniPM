@@ -112,6 +112,33 @@ public sealed class PmPeriodDashboardTests
     }
 
     [Fact]
+    public async Task Future_completed_inspection_remains_on_time_and_exposes_results()
+    {
+        const string futureCycle = "2026-07";
+        var completedAt = AtManila(2026, 6, 15);
+        var response = await GetDashboardAsync(
+            new PmPeriodDashboardQuery(
+                futureCycle,
+                AssetCategory,
+                null,
+                null,
+                null,
+                null),
+            AtManila(2026, 6, 15),
+            SeedCompletedSchedule(futureCycle, "FE-FUTURE-COMPLETED", "CCMS", completedAt));
+
+        Assert.Equal(PmPeriodDashboardPeriodStateCatalog.Future, response.PeriodState);
+        Assert.False(response.ComplianceMeasurable);
+        Assert.True(response.InspectionResultsAvailable);
+        Assert.Equal(1, response.Inspected);
+        Assert.Equal(1, response.CompletedOnTime);
+        Assert.Equal(1, response.Operational);
+        Assert.Equal(0, response.NonOperational);
+        var asset = Assert.Single(response.Assets);
+        Assert.Equal(PmPeriodDashboardFilterCatalog.OnTime, asset.Timeliness);
+    }
+
+    [Fact]
     public async Task Active_unfinished_asset_uses_pending_state()
     {
         var response = await GetDashboardAsync(
