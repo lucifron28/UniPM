@@ -31,14 +31,18 @@ import type {
   CreateScheduleDto,
   DraftInspectionRowDto,
   DraftInspectionRowResponse,
+  GetPmPeriodDashboardParams,
   HttpValidationProblemDetails,
   InspectionHistoryResponse,
   InspectionResponse,
   ListAssetsParams,
   ListInspectionsParams,
+  ListPmPeriodDashboardCyclesParams,
   ListSchedulesParams,
   LoginRequest,
   LoginResponse,
+  PmPeriodDashboardCycleGroupResponse,
+  PmPeriodDashboardResponse,
   PreventiveMaintenanceAcknowledgementResponse,
   PreventiveMaintenanceFormResponse,
   ProblemDetails,
@@ -3412,4 +3416,328 @@ export const useDeletePreventiveMaintenanceFormDraftInspection = <
     getDeletePreventiveMaintenanceFormDraftInspectionMutationOptions(options),
     queryClient,
   )
+}
+
+/**
+ * @summary Lists available PM cycles grouped by asset category and year
+ */
+export const listPmPeriodDashboardCycles = (
+  params?: ListPmPeriodDashboardCyclesParams,
+  signal?: AbortSignal,
+) => {
+  return customInstance<PmPeriodDashboardCycleGroupResponse[]>({
+    url: `/api/v1/pm-period-dashboard/cycles`,
+    method: 'GET',
+    params,
+    signal,
+  })
+}
+
+export const getListPmPeriodDashboardCyclesQueryKey = (
+  params?: ListPmPeriodDashboardCyclesParams,
+) => {
+  return [
+    `/api/v1/pm-period-dashboard/cycles`,
+    ...(params ? [params] : []),
+  ] as const
+}
+
+export const getListPmPeriodDashboardCyclesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listPmPeriodDashboardCycles>>,
+  TError = ValidationProblemDetails,
+>(
+  params?: ListPmPeriodDashboardCyclesParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listPmPeriodDashboardCycles>>,
+        TError,
+        TData
+      >
+    >
+  },
+) => {
+  const { query: queryOptions } = options ?? {}
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListPmPeriodDashboardCyclesQueryKey(params)
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listPmPeriodDashboardCycles>>
+  > = ({ signal }) => listPmPeriodDashboardCycles(params, signal)
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listPmPeriodDashboardCycles>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListPmPeriodDashboardCyclesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listPmPeriodDashboardCycles>>
+>
+export type ListPmPeriodDashboardCyclesQueryError = ValidationProblemDetails
+
+export function useListPmPeriodDashboardCycles<
+  TData = Awaited<ReturnType<typeof listPmPeriodDashboardCycles>>,
+  TError = ValidationProblemDetails,
+>(
+  params: undefined | ListPmPeriodDashboardCyclesParams,
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listPmPeriodDashboardCycles>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listPmPeriodDashboardCycles>>,
+          TError,
+          Awaited<ReturnType<typeof listPmPeriodDashboardCycles>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useListPmPeriodDashboardCycles<
+  TData = Awaited<ReturnType<typeof listPmPeriodDashboardCycles>>,
+  TError = ValidationProblemDetails,
+>(
+  params?: ListPmPeriodDashboardCyclesParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listPmPeriodDashboardCycles>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listPmPeriodDashboardCycles>>,
+          TError,
+          Awaited<ReturnType<typeof listPmPeriodDashboardCycles>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useListPmPeriodDashboardCycles<
+  TData = Awaited<ReturnType<typeof listPmPeriodDashboardCycles>>,
+  TError = ValidationProblemDetails,
+>(
+  params?: ListPmPeriodDashboardCyclesParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listPmPeriodDashboardCycles>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+/**
+ * @summary Lists available PM cycles grouped by asset category and year
+ */
+
+export function useListPmPeriodDashboardCycles<
+  TData = Awaited<ReturnType<typeof listPmPeriodDashboardCycles>>,
+  TError = ValidationProblemDetails,
+>(
+  params?: ListPmPeriodDashboardCyclesParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listPmPeriodDashboardCycles>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+} {
+  const queryOptions = getListPmPeriodDashboardCyclesQueryOptions(
+    params,
+    options,
+  )
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+
+  return withQueryKey(query, queryOptions.queryKey)
+}
+
+/**
+ * @summary Gets a filtered PM-period dashboard read model
+ */
+export const getPmPeriodDashboard = (
+  params?: GetPmPeriodDashboardParams,
+  signal?: AbortSignal,
+) => {
+  return customInstance<PmPeriodDashboardResponse>({
+    url: `/api/v1/pm-period-dashboard`,
+    method: 'GET',
+    params,
+    signal,
+  })
+}
+
+export const getGetPmPeriodDashboardQueryKey = (
+  params?: GetPmPeriodDashboardParams,
+) => {
+  return [`/api/v1/pm-period-dashboard`, ...(params ? [params] : [])] as const
+}
+
+export const getGetPmPeriodDashboardQueryOptions = <
+  TData = Awaited<ReturnType<typeof getPmPeriodDashboard>>,
+  TError = ValidationProblemDetails,
+>(
+  params?: GetPmPeriodDashboardParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getPmPeriodDashboard>>,
+        TError,
+        TData
+      >
+    >
+  },
+) => {
+  const { query: queryOptions } = options ?? {}
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetPmPeriodDashboardQueryKey(params)
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getPmPeriodDashboard>>
+  > = ({ signal }) => getPmPeriodDashboard(params, signal)
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getPmPeriodDashboard>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetPmPeriodDashboardQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getPmPeriodDashboard>>
+>
+export type GetPmPeriodDashboardQueryError = ValidationProblemDetails
+
+export function useGetPmPeriodDashboard<
+  TData = Awaited<ReturnType<typeof getPmPeriodDashboard>>,
+  TError = ValidationProblemDetails,
+>(
+  params: undefined | GetPmPeriodDashboardParams,
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getPmPeriodDashboard>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getPmPeriodDashboard>>,
+          TError,
+          Awaited<ReturnType<typeof getPmPeriodDashboard>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useGetPmPeriodDashboard<
+  TData = Awaited<ReturnType<typeof getPmPeriodDashboard>>,
+  TError = ValidationProblemDetails,
+>(
+  params?: GetPmPeriodDashboardParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getPmPeriodDashboard>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getPmPeriodDashboard>>,
+          TError,
+          Awaited<ReturnType<typeof getPmPeriodDashboard>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useGetPmPeriodDashboard<
+  TData = Awaited<ReturnType<typeof getPmPeriodDashboard>>,
+  TError = ValidationProblemDetails,
+>(
+  params?: GetPmPeriodDashboardParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getPmPeriodDashboard>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+/**
+ * @summary Gets a filtered PM-period dashboard read model
+ */
+
+export function useGetPmPeriodDashboard<
+  TData = Awaited<ReturnType<typeof getPmPeriodDashboard>>,
+  TError = ValidationProblemDetails,
+>(
+  params?: GetPmPeriodDashboardParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getPmPeriodDashboard>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+} {
+  const queryOptions = getGetPmPeriodDashboardQueryOptions(params, options)
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+
+  return withQueryKey(query, queryOptions.queryKey)
 }

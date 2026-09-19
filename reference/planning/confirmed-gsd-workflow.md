@@ -39,6 +39,16 @@ The PM execution lifecycle and form lifecycle are separate:
 - PM form: `Draft -> Submitted -> Acknowledged`, with `Submitted` displayed as
   `Awaiting acknowledgement`.
 
+For PM-period reporting, the deadline is the last instant of the calendar month
+represented by `PmCycle`, evaluated in the institutional Asia/Manila fixed
+`+08:00` calendar. Before that deadline, on-time compliance is not measurable
+and remains null, not zero. After the deadline, on-time compliance is
+completed-on-time schedules divided by all eligible non-cancelled scheduled
+assets in the selected scope. Completion and timeliness use only
+`InspectionRecord.CompletedAt`; inspection progress is a separate
+inspected/scheduled measure. Acknowledgement remains independent and cannot
+change execution compliance.
+
 An acknowledged form is not required for on-time PM execution. Asset condition
 is `Operational` or `Non-operational`; `Completed` is a schedule state, not an
 asset condition.

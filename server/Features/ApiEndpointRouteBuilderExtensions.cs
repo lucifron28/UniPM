@@ -4,6 +4,7 @@ using UniPM.Api.Features.Inspections;
 using UniPM.Api.Features.MaintenanceReview;
 using UniPM.Api.Features.PreventiveMaintenanceForms;
 using UniPM.Api.Features.ReferenceData;
+using UniPM.Api.Features.Reports;
 using UniPM.Api.Features.Schedules;
 
 namespace UniPM.Api.Features;
@@ -22,6 +23,7 @@ public static class ApiEndpointRouteBuilderExtensions
         api.MapSchedulesEndpoints();
         api.MapInspectionsEndpoints();
         api.MapPreventiveMaintenanceFormEndpoints();
+        api.MapPmPeriodDashboardEndpoints();
         if (maintenanceReviewEnabled)
         {
             api.MapMaintenanceReviewEndpoints();

@@ -109,7 +109,7 @@ test('successful login opens the dashboard and displays returned identity', asyn
 
   await expect(page).toHaveURL(/\/app\/dashboard$/)
   await expect(
-    page.getByRole('heading', { name: 'Preventive Maintenance Portal' }),
+    page.getByRole('heading', { name: 'Preventive maintenance compliance' }),
   ).toBeVisible()
   const sidebar = page.getByRole('complementary')
   await expect(sidebar.getByText('Fictional Inspector')).toBeVisible()

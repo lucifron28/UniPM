@@ -10,6 +10,7 @@ export interface ScheduleResponse {
   id: string
   assetId: string
   scheduleDate: string
+  pmCycle: string
   periodType: string
   status: string
   /** @nullable */

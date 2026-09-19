@@ -17,12 +17,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { configureApiRuntime } from '@/api/http-client'
 import { FormDetail } from '@/features/preventive-maintenance-forms/form-detail'
 import { FormRegistry } from '@/features/preventive-maintenance-forms/form-registry'
+import { AppShell } from '@/components/layout/app-shell'
 import { useAuthStore } from '@/stores/auth-store'
 import { server } from '@/test/server'
-import { PreventiveMaintenanceDashboard } from '@/routes/app/dashboard'
 
-const meUrl = 'http://localhost:5000/api/v1/auth/me'
-const formsUrl = 'http://localhost:5000/api/v1/preventive-maintenance-forms'
+const meUrl = '*/api/v1/auth/me'
+const formsUrl = '*/api/v1/preventive-maintenance-forms'
 const formId = '22222222-2222-4222-8222-222222222222'
 const inspectionId = '33333333-3333-4333-8333-333333333333'
 const scheduleId = '44444444-4444-4444-8444-444444444444'
@@ -189,38 +189,16 @@ describe('preventive-maintenance form review', () => {
     expect(screen.getByText('Check UV light')).toBeInTheDocument()
   })
 
-  it('provides a role-aware PMIS validation launch page', async () => {
+  it('provides role-aware form review navigation in the app shell', async () => {
     server.use(http.get(meUrl, () => HttpResponse.json(currentUser(['GSD']))))
 
-    renderWithProviders(<PreventiveMaintenanceDashboard />)
+    renderWithProviders(<AppShell />)
 
     expect(
-      await screen.findByRole('heading', {
-        name: 'Preventive Maintenance Portal',
-      }),
-    ).toBeInTheDocument()
-    expect(screen.getByText('Validation prototype')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /Assets/ })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /Schedules/ })).toBeInTheDocument()
-    expect(
-      screen.getByRole('link', { name: /Official history/ }),
+      await screen.findByText('Preventive Maintenance Portal'),
     ).toBeInTheDocument()
     expect(
-      await screen.findByRole('link', { name: /Form review/ }),
-    ).toBeInTheDocument()
-    expect(screen.getByText('Awaiting acknowledgement')).toBeInTheDocument()
-    const workflowCopy = screen.getByText(
-      /Field-work completion and acknowledgement are separate/,
-    )
-    expect(workflowCopy).toHaveTextContent(
-      /Acknowledgement records receipt\/noting, locks the form, and makes its inspection rows eligible for official history\./,
-    )
-    expect(workflowCopy).toHaveTextContent(
-      /It does not approve corrective work, funding, or an RMRF\./,
-    )
-    expect(workflowCopy).not.toHaveTextContent(/Schedule completion occurs/i)
-    expect(
-      screen.getByText(/Provisional UniPM file numbers remain independent/),
+      await screen.findByRole('link', { name: 'Form review' }),
     ).toBeInTheDocument()
   })
 
