@@ -94,7 +94,7 @@ public static class PmPeriodDashboardEndpoints
             {
                 if (!PmPeriodDashboardFilterCatalog.TryNormalizeTimeliness(timeliness, out var parsedTimeliness))
                 {
-                    errors[nameof(timeliness)] = ["Timeliness must be OnTime, Late, or NotCompleted."];
+                    errors[nameof(timeliness)] = ["Timeliness must be OnTime, Late, Scheduled, Pending, or NotCompleted."];
                 }
                 else
                 {

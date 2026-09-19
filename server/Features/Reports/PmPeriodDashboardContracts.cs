@@ -14,12 +14,15 @@ public sealed record PmPeriodDashboardResponse(
     string AssetCategory,
     string? Department,
     DateTimeOffset Deadline,
+    string PeriodState,
     bool ComplianceMeasurable,
+    bool InspectionResultsAvailable,
     int Scheduled,
     int Inspected,
     int CompletedOnTime,
     int CompletedLate,
     int NotCompleted,
+    int Remaining,
     int Operational,
     int NonOperational,
     decimal? OnTimeCompliancePercent,
@@ -36,6 +39,7 @@ public sealed record PmPeriodDashboardBatchResponse(
     int CompletedOnTime,
     int CompletedLate,
     int NotCompleted,
+    int Remaining,
     Guid? FormId,
     string? FormStatus,
     string? FileNumber,
@@ -74,6 +78,13 @@ internal sealed record PmPeriodDashboardQuery(
     string? Timeliness,
     string? Search);
 
+internal static class PmPeriodDashboardPeriodStateCatalog
+{
+    internal const string Future = "Future";
+    internal const string Active = "Active";
+    internal const string Closed = "Closed";
+}
+
 internal static class PmPeriodDashboardFilterCatalog
 {
     internal const string Operational = "Operational";
@@ -82,6 +93,8 @@ internal static class PmPeriodDashboardFilterCatalog
 
     internal const string OnTime = "OnTime";
     internal const string Late = "Late";
+    internal const string Scheduled = "Scheduled";
+    internal const string Pending = "Pending";
     internal const string NotCompleted = "NotCompleted";
 
     internal static bool TryNormalizeCondition(string? value, out string normalized)
@@ -107,7 +120,9 @@ internal static class PmPeriodDashboardFilterCatalog
         {
             "ontime" or "completedontime" or "completed-on-time" => OnTime,
             "late" or "completedlate" or "completed-late" => Late,
-            "notcompleted" or "not-completed" or "pending" => NotCompleted,
+            "scheduled" => Scheduled,
+            "pending" or "remaining" => Pending,
+            "notcompleted" or "not-completed" => NotCompleted,
             _ => string.Empty
         };
 

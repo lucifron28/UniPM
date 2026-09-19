@@ -7,7 +7,8 @@ using UniPM.Api.Models;
 namespace UniPM.Api.Features.Reports;
 
 internal sealed class PmPeriodDashboardService(
-    IDbContextFactory<ApplicationDbContext> contextFactory)
+    IDbContextFactory<ApplicationDbContext> contextFactory,
+    TimeProvider timeProvider)
 {
     internal async Task<IReadOnlyList<PmPeriodDashboardCycleGroupResponse>>
         GetAvailableCyclesAsync(
@@ -66,6 +67,12 @@ internal sealed class PmPeriodDashboardService(
                 && string.Equals(snapshot.AssetCategory, query.AssetCategory, StringComparison.Ordinal))
             .ToArray();
 
+        var department = NormalizeDepartment(query.Department);
+        var authoritativeSchedules = candidateSchedules
+            .Where(snapshot => department is null
+                || string.Equals(snapshot.Department, department, StringComparison.Ordinal))
+            .ToArray();
+
         var scheduleIds = candidateSchedules
             .Select(snapshot => snapshot.ScheduleId)
             .ToArray();
@@ -98,33 +105,39 @@ internal sealed class PmPeriodDashboardService(
                     .ThenBy(inspection => inspection.InspectionId)
                     .First());
         var formById = forms.ToDictionary(form => form.Id);
-        var now = DateTimeOffset.UtcNow;
-        var rows = candidateSchedules
+        var now = timeProvider.GetUtcNow();
+        var deadline = PreventiveMaintenanceCycle.DeadlineForCycle(query.PmCycle);
+        var periodState = ResolvePeriodState(query.PmCycle, deadline, now);
+        var authoritativeRows = authoritativeSchedules
             .Select(snapshot => ToDashboardRow(
                 snapshot,
                 inspectionBySchedule.GetValueOrDefault(snapshot.ScheduleId),
                 formById,
                 forms,
-                query,
-                now))
-            .Where(row => row is not null)
-            .Select(row => row!)
+                periodState,
+                deadline))
             .ToArray();
 
-        var deadline = PreventiveMaintenanceCycle.DeadlineForCycle(query.PmCycle);
-        var scheduled = rows.Length;
-        var inspected = rows.Count(row => row.IsInspected);
-        var completedOnTime = rows.Count(row => row.Timeliness == PmPeriodDashboardFilterCatalog.OnTime);
-        var completedLate = rows.Count(row => row.Timeliness == PmPeriodDashboardFilterCatalog.Late);
-        var notCompleted = rows.Count(row => row.Timeliness == PmPeriodDashboardFilterCatalog.NotCompleted);
-        var operational = rows.Count(row => row.Condition == PmPeriodDashboardFilterCatalog.Operational);
-        var nonOperational = rows.Count(row => row.Condition == PmPeriodDashboardFilterCatalog.NonOperational);
-        var complianceMeasurable = now > deadline;
+        var displayRows = authoritativeRows
+            .Where(row => MatchesDisplayFilters(row, query))
+            .ToArray();
+
+        var scheduled = authoritativeRows.Length;
+        var inspected = authoritativeRows.Count(row => row.IsInspected);
+        var completedOnTime = authoritativeRows.Count(row => row.Timeliness == PmPeriodDashboardFilterCatalog.OnTime);
+        var completedLate = authoritativeRows.Count(row => row.Timeliness == PmPeriodDashboardFilterCatalog.Late);
+        var notCompleted = authoritativeRows.Count(row => row.Timeliness == PmPeriodDashboardFilterCatalog.NotCompleted);
+        var remaining = authoritativeRows.Count(row => row.Timeliness is
+            PmPeriodDashboardFilterCatalog.Scheduled or
+            PmPeriodDashboardFilterCatalog.Pending);
+        var operational = authoritativeRows.Count(row => row.Condition == PmPeriodDashboardFilterCatalog.Operational);
+        var nonOperational = authoritativeRows.Count(row => row.Condition == PmPeriodDashboardFilterCatalog.NonOperational);
+        var complianceMeasurable = periodState == PmPeriodDashboardPeriodStateCatalog.Closed;
         decimal? onTimeCompliancePercent = complianceMeasurable && scheduled > 0
             ? ToPercent(completedOnTime, scheduled)
             : null;
 
-        var batches = rows
+        var batches = authoritativeRows
             .GroupBy(row => new BatchKey(
                 NormalizeDepartment(row.Department),
                 row.AssetCategory,
@@ -135,23 +148,28 @@ internal sealed class PmPeriodDashboardService(
             .Select(group => ToBatchResponse(group, forms))
             .ToArray();
 
+        var normalizedDepartment = department;
+
         return new PmPeriodDashboardResponse(
             query.PmCycle,
             query.AssetCategory,
-            query.Department,
+            normalizedDepartment,
             deadline,
+            periodState,
             complianceMeasurable,
+            periodState != PmPeriodDashboardPeriodStateCatalog.Future,
             scheduled,
             inspected,
             completedOnTime,
             completedLate,
             notCompleted,
+            remaining,
             operational,
             nonOperational,
             onTimeCompliancePercent,
             scheduled == 0 ? 0 : ToPercent(inspected, scheduled),
             batches,
-            rows.Select(row => row.Response).ToArray());
+            displayRows.Select(row => row.Response).ToArray());
     }
 
     private static CycleSnapshot? ToCycleSnapshot(PreventiveMaintenanceSchedule schedule)
@@ -184,24 +202,22 @@ internal sealed class PmPeriodDashboardService(
             schedule.Asset.Location);
     }
 
-    private static DashboardRow? ToDashboardRow(
+    private static DashboardRow ToDashboardRow(
         CycleSnapshot snapshot,
         InspectionSnapshot? inspection,
         IReadOnlyDictionary<Guid, PreventiveMaintenanceForm> formById,
         IReadOnlyList<PreventiveMaintenanceForm> forms,
-        PmPeriodDashboardQuery query,
-        DateTimeOffset now)
+        string periodState,
+        DateTimeOffset deadline)
     {
-        if (query.Department is not null
-            && !string.Equals(snapshot.Department, query.Department, StringComparison.Ordinal))
-        {
-            return null;
-        }
-
-        var deadline = PreventiveMaintenanceCycle.DeadlineForCycle(snapshot.PmCycle);
         var isInspected = inspection?.CompletedAt is not null;
         var timeliness = !isInspected
-            ? PmPeriodDashboardFilterCatalog.NotCompleted
+            ? periodState switch
+            {
+                PmPeriodDashboardPeriodStateCatalog.Future => PmPeriodDashboardFilterCatalog.Scheduled,
+                PmPeriodDashboardPeriodStateCatalog.Active => PmPeriodDashboardFilterCatalog.Pending,
+                _ => PmPeriodDashboardFilterCatalog.NotCompleted
+            }
             : inspection!.CompletedAt <= deadline
                 ? PmPeriodDashboardFilterCatalog.OnTime
                 : PmPeriodDashboardFilterCatalog.Late;
@@ -211,20 +227,14 @@ internal sealed class PmPeriodDashboardService(
                 ? PmPeriodDashboardFilterCatalog.Operational
                 : PmPeriodDashboardFilterCatalog.NonOperational;
 
-        if (query.Condition is not null && query.Condition != condition)
-        {
-            return null;
-        }
-
-        if (query.Timeliness is not null && query.Timeliness != timeliness)
-        {
-            return null;
-        }
-
-        if (!MatchesSearch(query.Search, snapshot, inspection))
-        {
-            return null;
-        }
+        var executionStatus = isInspected
+            ? "Completed"
+            : timeliness switch
+            {
+                PmPeriodDashboardFilterCatalog.Scheduled => PmPeriodDashboardFilterCatalog.Scheduled,
+                PmPeriodDashboardFilterCatalog.Pending => PmPeriodDashboardFilterCatalog.Pending,
+                _ => PmPeriodDashboardFilterCatalog.NotCompleted
+            };
 
         var form = ResolveForm(snapshot, inspection, formById, forms);
         var response = new PmPeriodDashboardAssetRowResponse(
@@ -240,7 +250,7 @@ internal sealed class PmPeriodDashboardService(
             snapshot.ScheduleDate,
             deadline,
             snapshot.ScheduleStatus,
-            isInspected ? "Completed" : "NotCompleted",
+            executionStatus,
             isInspected,
             inspection?.CompletedAt,
             timeliness,
@@ -258,7 +268,18 @@ internal sealed class PmPeriodDashboardService(
             form,
             isInspected,
             timeliness,
-            condition);
+            condition,
+            snapshot,
+            inspection);
+    }
+
+    private static bool MatchesDisplayFilters(
+        DashboardRow row,
+        PmPeriodDashboardQuery query)
+    {
+        return (query.Condition is null || query.Condition == row.Condition)
+            && (query.Timeliness is null || query.Timeliness == row.Timeliness)
+            && MatchesSearch(query.Search, row.Snapshot, row.Inspection);
     }
 
     private static PreventiveMaintenanceForm? ResolveForm(
@@ -322,6 +343,9 @@ internal sealed class PmPeriodDashboardService(
             group.Count(row => row.Timeliness == PmPeriodDashboardFilterCatalog.OnTime),
             group.Count(row => row.Timeliness == PmPeriodDashboardFilterCatalog.Late),
             group.Count(row => row.Timeliness == PmPeriodDashboardFilterCatalog.NotCompleted),
+            group.Count(row => row.Timeliness is
+                PmPeriodDashboardFilterCatalog.Scheduled or
+                PmPeriodDashboardFilterCatalog.Pending),
             form?.Id,
             form?.Status,
             form?.FileNumber,
@@ -352,6 +376,32 @@ internal sealed class PmPeriodDashboardService(
     private static bool Contains(string? value, string search)
     {
         return value?.Contains(search, StringComparison.OrdinalIgnoreCase) == true;
+    }
+
+    private static string ResolvePeriodState(
+        string pmCycle,
+        DateTimeOffset deadline,
+        DateTimeOffset now)
+    {
+        PreventiveMaintenanceCycle.TryParse(pmCycle, out var year, out var month);
+        var cycleStart = new DateTimeOffset(
+            year,
+            month,
+            1,
+            0,
+            0,
+            0,
+            PreventiveMaintenanceCycle.InstitutionalOffset);
+        var institutionalNow = PreventiveMaintenanceCycle.ToInstitutionalTime(now);
+
+        if (institutionalNow < cycleStart)
+        {
+            return PmPeriodDashboardPeriodStateCatalog.Future;
+        }
+
+        return institutionalNow > deadline
+            ? PmPeriodDashboardPeriodStateCatalog.Closed
+            : PmPeriodDashboardPeriodStateCatalog.Active;
     }
 
     private static decimal ToPercent(int numerator, int denominator)
@@ -392,7 +442,9 @@ internal sealed class PmPeriodDashboardService(
         PreventiveMaintenanceForm? Form,
         bool IsInspected,
         string Timeliness,
-        string Condition);
+        string Condition,
+        CycleSnapshot Snapshot,
+        InspectionSnapshot? Inspection);
 
     private readonly record struct BatchKey(
         string? Department,
