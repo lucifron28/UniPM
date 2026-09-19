@@ -11,6 +11,10 @@ export interface DraftInspectionRowResponse {
   assetId: string
   inspectorUserId: string
   dateInspected: string
+  /** @nullable */
+  startedAt: string | null
+  /** @nullable */
+  completedAt: string | null
   isOperational: boolean
   /** @nullable */
   remarks: string | null
@@ -18,4 +22,18 @@ export interface DraftInspectionRowResponse {
   actionsRecommendations: string | null
   createdAt: string
   updatedAt: string
+  /** @nullable */
+  dateAccomplished?: string | null
+  /** @nullable */
+  waterReplaceCarbonFilter?: boolean | null
+  /** @nullable */
+  waterReplaceSedimentFilter?: boolean | null
+  /** @nullable */
+  waterCheckUvLight?: boolean | null
+  /** @nullable */
+  assetCode?: string | null
+  /** @nullable */
+  location?: string | null
+  /** @nullable */
+  skilledWorkerIdentity?: string | null
 }

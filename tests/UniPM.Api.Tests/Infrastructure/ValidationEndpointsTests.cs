@@ -67,26 +67,6 @@ public sealed class ValidationEndpointsTests : IClassFixture<ValidationEndpoints
         Assert.Contains("PeriodType", problem.Errors.Keys);
     }
 
-    [Fact]
-    public async Task Record_inspection_rejects_missing_required_fields_before_database_access()
-    {
-        var response = await _client.PostAsJsonAsync("/api/v1/inspections/", new
-        {
-            scheduleId = Guid.Empty,
-            inspectorUserId = Guid.Empty,
-            dateInspected = default(DateTimeOffset),
-            isOperational = true
-        });
-
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-
-        var problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>();
-        Assert.NotNull(problem);
-        Assert.Contains("ScheduleId", problem.Errors.Keys);
-        Assert.Contains("InspectorUserId", problem.Errors.Keys);
-        Assert.Contains("DateInspected", problem.Errors.Keys);
-    }
-
     public sealed class TestApplicationFactory : WebApplicationFactory<Program>
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)

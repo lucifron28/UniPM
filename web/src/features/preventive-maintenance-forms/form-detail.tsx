@@ -1,5 +1,13 @@
+import {
+  useRef,
+  useState,
+  type FormEvent,
+  type PointerEvent,
+  type RefObject,
+} from 'react'
 import { Link } from '@tanstack/react-router'
 import { ApiError } from '@/api/problem-details'
+import type { PreventiveMaintenanceAcknowledgementResponse } from '@/api/generated/models/preventiveMaintenanceAcknowledgementResponse'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -13,10 +21,12 @@ import {
 } from '@/features/preventive-maintenance-forms/form-contract'
 import {
   useCorrectiveMaintenanceHandoff,
+  useAcknowledgePreventiveMaintenanceFormMutation,
   usePreventiveMaintenanceForm,
 } from '@/features/preventive-maintenance-forms/form-queries'
 import {
   formStatusClass,
+  formStatusLabel,
   formatFormDate,
   formatFormPeriod,
   inspectionConditionLabel,
@@ -205,12 +215,20 @@ function CorrectiveHandoff({
 }
 
 function InspectionRow({ row }: { row: PreventiveMaintenanceInspectionRow }) {
+  const hasWaterWorkItems =
+    row.dateAccomplished !== null ||
+    row.waterReplaceCarbonFilter !== null ||
+    row.waterReplaceSedimentFilter !== null ||
+    row.waterCheckUvLight !== null
+  const yesNo = (value: boolean | null | undefined) =>
+    value == null ? 'Not recorded' : value ? 'Yes' : 'No'
+
   return (
     <article className="rounded-xl border border-[var(--border-soft)] bg-white p-5 shadow-sm">
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
         <div>
           <p className="text-sm font-semibold text-[var(--text-primary)]">
-            Inspection {row.id}
+            {row.assetCode ?? `Inspection ${row.id}`}
           </p>
           <p className="mt-1 text-xs text-[var(--text-neutral)]">
             {formatFormDate(row.dateInspected)}
@@ -227,17 +245,56 @@ function InspectionRow({ row }: { row: PreventiveMaintenanceInspectionRow }) {
         </Badge>
       </div>
       <dl className="mt-5 grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
-        <DetailItem label="Asset ID" value={row.assetId} />
-        <DetailItem label="Schedule ID" value={row.scheduleId} />
+        <DetailItem label="Asset code" value={row.assetCode ?? ''} />
+        <DetailItem label="Location" value={row.location ?? ''} />
         <DetailItem
-          label="Skilled worker user ID"
-          value={row.inspectorUserId}
+          label="Skilled worker"
+          value={row.skilledWorkerIdentity ?? ''}
         />
         <DetailItem
           label="Inspection date"
           value={formatFormDate(row.dateInspected)}
         />
       </dl>
+      <details className="mt-4 text-xs text-[var(--text-neutral)]">
+        <summary className="cursor-pointer font-semibold">
+          Technical identifiers
+        </summary>
+        <dl className="mt-3 grid gap-3 sm:grid-cols-3">
+          <DetailItem label="Inspection ID" value={row.id} />
+          <DetailItem label="Asset ID" value={row.assetId} />
+          <DetailItem label="Schedule ID" value={row.scheduleId} />
+          <DetailItem
+            label="Skilled worker user ID"
+            value={row.inspectorUserId}
+          />
+        </dl>
+      </details>
+      {hasWaterWorkItems && (
+        <section className="mt-5 border-t border-[var(--border-soft)] pt-4">
+          <h3 className="text-xs font-semibold tracking-[0.08em] text-[var(--text-neutral)] uppercase">
+            Water drinking station work items
+          </h3>
+          <dl className="mt-3 grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
+            <DetailItem
+              label="Date accomplished"
+              value={formatFormDate(row.dateAccomplished ?? null)}
+            />
+            <DetailItem
+              label="Replace carbon filter"
+              value={yesNo(row.waterReplaceCarbonFilter)}
+            />
+            <DetailItem
+              label="Replace sediment filter"
+              value={yesNo(row.waterReplaceSedimentFilter)}
+            />
+            <DetailItem
+              label="Check UV light"
+              value={yesNo(row.waterCheckUvLight)}
+            />
+          </dl>
+        </section>
+      )}
       <div className="mt-5 grid gap-4 border-t border-[var(--border-soft)] pt-4 sm:grid-cols-2">
         <div>
           <h3 className="text-xs font-semibold tracking-[0.08em] text-[var(--text-neutral)] uppercase">
@@ -249,10 +306,10 @@ function InspectionRow({ row }: { row: PreventiveMaintenanceInspectionRow }) {
         </div>
         <div>
           <h3 className="text-xs font-semibold tracking-[0.08em] text-[var(--text-neutral)] uppercase">
-            Recommended corrective action
+            Recommendation
           </h3>
           <p className="mt-1 text-sm leading-6 whitespace-pre-wrap text-[var(--text-secondary)]">
-            {row.actionsRecommendations || 'No corrective action was recorded.'}
+            {row.actionsRecommendations || 'No recommendation was recorded.'}
           </p>
         </div>
       </div>
@@ -260,7 +317,328 @@ function InspectionRow({ row }: { row: PreventiveMaintenanceInspectionRow }) {
   )
 }
 
+function SignaturePad({
+  canvasRef,
+  disabled,
+  onDrawnChange,
+}: {
+  canvasRef: RefObject<HTMLCanvasElement | null>
+  disabled: boolean
+  onDrawnChange: (drawn: boolean) => void
+}) {
+  const [isDrawing, setIsDrawing] = useState(false)
+  const lastPoint = useRef<{ x: number; y: number } | null>(null)
+
+  function pointFor(event: PointerEvent<HTMLCanvasElement>) {
+    const canvas = canvasRef.current
+    if (!canvas) return null
+    const bounds = canvas.getBoundingClientRect()
+    return {
+      x: ((event.clientX - bounds.left) / bounds.width) * canvas.width,
+      y: ((event.clientY - bounds.top) / bounds.height) * canvas.height,
+    }
+  }
+
+  function begin(event: PointerEvent<HTMLCanvasElement>) {
+    if (disabled) return
+    const point = pointFor(event)
+    if (!point) return
+    if (event.currentTarget.setPointerCapture) {
+      event.currentTarget.setPointerCapture(event.pointerId)
+    }
+    lastPoint.current = point
+    setIsDrawing(true)
+    onDrawnChange(true)
+  }
+
+  function move(event: PointerEvent<HTMLCanvasElement>) {
+    if (!isDrawing) return
+    const canvas = canvasRef.current
+    const previous = lastPoint.current
+    const point = pointFor(event)
+    if (!canvas || !previous || !point) return
+    const context = canvas.getContext('2d')
+    if (!context) return
+    context.strokeStyle = '#17212b'
+    context.lineWidth = 2
+    context.lineCap = 'round'
+    context.beginPath()
+    context.moveTo(previous.x, previous.y)
+    context.lineTo(point.x, point.y)
+    context.stroke()
+    lastPoint.current = point
+  }
+
+  function end(event: PointerEvent<HTMLCanvasElement>) {
+    if (!isDrawing) return
+    setIsDrawing(false)
+    lastPoint.current = null
+    if (
+      event.currentTarget.hasPointerCapture &&
+      event.currentTarget.hasPointerCapture(event.pointerId)
+    ) {
+      event.currentTarget.releasePointerCapture(event.pointerId)
+    }
+  }
+
+  function clear() {
+    const canvas = canvasRef.current
+    const context = canvas?.getContext('2d')
+    if (canvas && context) context.clearRect(0, 0, canvas.width, canvas.height)
+    onDrawnChange(false)
+  }
+
+  return (
+    <div>
+      <canvas
+        ref={canvasRef}
+        aria-label="Signature"
+        width={640}
+        height={180}
+        className="h-36 w-full rounded-lg border border-[var(--border-soft)] bg-white"
+        style={{ touchAction: 'none' }}
+        onPointerDown={begin}
+        onPointerMove={move}
+        onPointerUp={end}
+        onPointerCancel={end}
+      />
+      <div className="mt-2 flex items-center justify-between gap-3">
+        <p className="text-xs text-[var(--text-neutral)]">
+          Draw the department-head signature in the box.
+        </p>
+        <Button
+          type="button"
+          className="bg-[var(--surface-muted)] text-[var(--text-primary)] hover:bg-[var(--border-soft)]"
+          onClick={clear}
+          disabled={disabled}
+        >
+          Clear
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+function acknowledgementError(error: unknown) {
+  if (error instanceof ApiError) {
+    if (error.classification === 'network') {
+      return 'The service could not be reached. Try again when the connection is available.'
+    }
+    if (error.status === 400) {
+      return 'The acknowledgement details were rejected. Check the signatory fields and signature.'
+    }
+    if (error.status === 403) {
+      return 'Your account is not permitted to acknowledge this form.'
+    }
+    if (error.status === 409) {
+      return 'This form is no longer available for acknowledgement.'
+    }
+  }
+  return 'The form could not be acknowledged. Please try again.'
+}
+
+function AcknowledgementSummary({
+  acknowledgement,
+}: {
+  acknowledgement: PreventiveMaintenanceAcknowledgementResponse
+}) {
+  return (
+    <Card className="shadow-none" role="status">
+      <p className="text-sm font-semibold tracking-[0.08em] text-[var(--primary)] uppercase">
+        Acknowledgement recorded
+      </p>
+      <dl className="mt-3 grid gap-4 text-sm sm:grid-cols-3">
+        <DetailItem
+          label="Signatory name"
+          value={acknowledgement.signatoryName}
+        />
+        <DetailItem
+          label="Signatory position"
+          value={acknowledgement.signatoryPosition}
+        />
+        <DetailItem
+          label="Acknowledged"
+          value={formatFormDate(acknowledgement.acknowledgedAt)}
+        />
+      </dl>
+    </Card>
+  )
+}
+
+function AcknowledgeForm({
+  formId,
+  onAcknowledged,
+}: {
+  formId: string
+  onAcknowledged: (
+    acknowledgement: PreventiveMaintenanceAcknowledgementResponse,
+  ) => void
+}) {
+  const mutation = useAcknowledgePreventiveMaintenanceFormMutation()
+  const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const [signatoryName, setSignatoryName] = useState('')
+  const [signatoryPosition, setSignatoryPosition] = useState('')
+  const [signatureDrawn, setSignatureDrawn] = useState(false)
+  const [validationError, setValidationError] = useState<string | null>(null)
+  const [isConfirming, setIsConfirming] = useState(false)
+
+  async function acknowledge(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setValidationError(null)
+    if (!signatoryName.trim() || !signatoryPosition.trim()) {
+      setValidationError('Signatory name and position are required.')
+      return
+    }
+    if (!signatureDrawn) {
+      setValidationError(
+        'Capture the department-head signature before continuing.',
+      )
+      return
+    }
+
+    setIsConfirming(true)
+  }
+
+  async function submitAcknowledgement() {
+    setIsConfirming(false)
+
+    const dataUrl = canvasRef.current?.toDataURL('image/png') ?? ''
+    const comma = dataUrl.indexOf(',')
+    const signatureData = comma >= 0 ? dataUrl.slice(comma + 1) : dataUrl
+    if (!signatureData) {
+      setValidationError('The signature could not be captured. Try again.')
+      return
+    }
+
+    try {
+      const acknowledgement = await mutation.mutateAsync({
+        id: formId,
+        data: {
+          signatoryName: signatoryName.trim(),
+          signatoryPosition: signatoryPosition.trim(),
+          signatureData,
+          signatureContentType: 'image/png',
+        },
+      })
+      onAcknowledged(acknowledgement)
+    } catch {
+      // The bounded mutation state below provides the user-facing message.
+    }
+  }
+
+  return (
+    <Card className="space-y-5 shadow-none">
+      <div>
+        <p className="text-sm font-semibold tracking-[0.08em] text-[var(--primary)] uppercase">
+          Department-head acknowledgement
+        </p>
+        <h2 className="mt-1 text-2xl font-bold text-[var(--text-primary)]">
+          Acknowledge submitted form
+        </h2>
+        <p className="mt-1 text-sm text-[var(--text-secondary)]">
+          Field-work completion and acknowledgement are separate.
+          Acknowledgement records receipt/noting, locks the form, and makes its
+          inspection rows eligible for official history. It does not approve
+          corrective work, funding, or an RMRF.
+        </p>
+      </div>
+      <form className="space-y-4" onSubmit={acknowledge}>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="text-sm font-semibold text-[var(--text-primary)]">
+            Signatory name
+            <input
+              className="mt-2 min-h-10 w-full rounded-lg border border-[var(--border-soft)] px-3 font-normal outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary-active)]"
+              value={signatoryName}
+              maxLength={160}
+              onChange={(event) => setSignatoryName(event.target.value)}
+            />
+          </label>
+          <label className="text-sm font-semibold text-[var(--text-primary)]">
+            Signatory position
+            <input
+              className="mt-2 min-h-10 w-full rounded-lg border border-[var(--border-soft)] px-3 font-normal outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary-active)]"
+              value={signatoryPosition}
+              maxLength={160}
+              onChange={(event) => setSignatoryPosition(event.target.value)}
+            />
+          </label>
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-[var(--text-primary)]">
+            Signature
+          </p>
+          <div className="mt-2">
+            <SignaturePad
+              canvasRef={canvasRef}
+              disabled={mutation.isPending}
+              onDrawnChange={setSignatureDrawn}
+            />
+          </div>
+        </div>
+        {validationError && (
+          <p role="alert" className="text-sm text-[var(--danger)]">
+            {validationError}
+          </p>
+        )}
+        {mutation.isError && (
+          <p role="alert" className="text-sm text-[var(--danger)]">
+            {acknowledgementError(mutation.error)}
+          </p>
+        )}
+        {mutation.isSuccess && (
+          <p role="status" className="text-sm text-[var(--success)]">
+            Acknowledgement recorded. The form is now locked.
+          </p>
+        )}
+        {isConfirming && (
+          <div
+            role="dialog"
+            aria-labelledby="acknowledgement-confirmation-title"
+            className="rounded-lg border border-[var(--border-soft)] bg-[var(--surface-muted)] p-4"
+          >
+            <h3
+              id="acknowledgement-confirmation-title"
+              className="font-semibold text-[var(--text-primary)]"
+            >
+              Confirm department-head acknowledgement
+            </h3>
+            <p className="mt-2 text-sm text-[var(--text-secondary)]">
+              This records receipt/noting of the findings, locks this form, and
+              makes its inspection rows eligible for official history. It does
+              not approve corrective work, funding, or an RMRF.
+            </p>
+            <div className="mt-4 flex flex-wrap justify-end gap-3">
+              <Button
+                type="button"
+                className="bg-[var(--surface-muted)] text-[var(--text-primary)] hover:bg-[var(--border-soft)]"
+                onClick={() => setIsConfirming(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={() => void submitAcknowledgement()}
+              >
+                Confirm acknowledgement
+              </Button>
+            </div>
+          </div>
+        )}
+        <Button type="submit" disabled={mutation.isPending}>
+          {mutation.isPending
+            ? 'Acknowledging...'
+            : isConfirming
+              ? 'Review acknowledgement'
+              : 'Acknowledge form'}
+        </Button>
+      </form>
+    </Card>
+  )
+}
+
 export function FormDetail({ formId }: { formId: string }) {
+  const [acknowledgement, setAcknowledgement] =
+    useState<PreventiveMaintenanceAcknowledgementResponse | null>(null)
   const currentUser = useCurrentUser()
   const canReview = canReviewPreventiveMaintenanceForms(currentUser.data?.roles)
   const isGsd = isGsdRole(currentUser.data?.roles)
@@ -390,7 +768,7 @@ export function FormDetail({ formId }: { formId: string }) {
           </p>
         </div>
         <Badge className={formStatusClass(record.status)}>
-          {record.status}
+          {formStatusLabel(record.status)}
         </Badge>
       </div>
       <Card className="grid gap-5 shadow-none sm:grid-cols-2 lg:grid-cols-4">
@@ -438,6 +816,15 @@ export function FormDetail({ formId }: { formId: string }) {
           </div>
         )}
       </section>
+      {acknowledgement && (
+        <AcknowledgementSummary acknowledgement={acknowledgement} />
+      )}
+      {record.status === 'Submitted' && !acknowledgement && (
+        <AcknowledgeForm
+          formId={record.id}
+          onAcknowledged={setAcknowledgement}
+        />
+      )}
       {isGsd && record.status === 'Acknowledged' && (
         <CorrectiveHandoff query={handoff} />
       )}

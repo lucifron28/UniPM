@@ -126,6 +126,13 @@ export function InspectionDetail({ inspectionId }: { inspectionId: string }) {
   const scheduleLabel = schedule.data
     ? formatScheduleDate(schedule.data.scheduleDate)
     : record.scheduleId
+  const hasWaterWorkItems =
+    record.dateAccomplished != null ||
+    record.waterReplaceCarbonFilter != null ||
+    record.waterReplaceSedimentFilter != null ||
+    record.waterCheckUvLight != null
+  const yesNo = (value: boolean | null | undefined) =>
+    value == null ? 'Not recorded' : value ? 'Yes' : 'No'
 
   return (
     <section
@@ -230,6 +237,30 @@ export function InspectionDetail({ inspectionId }: { inspectionId: string }) {
         </Card>
       )}
 
+      {hasWaterWorkItems && (
+        <Card className="shadow-none">
+          <h2 className="font-semibold">Water drinking station work items</h2>
+          <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
+            <DetailItem
+              label="Date accomplished"
+              value={formatInspectionDate(record.dateAccomplished ?? null)}
+            />
+            <DetailItem
+              label="Replace carbon filter"
+              value={yesNo(record.waterReplaceCarbonFilter)}
+            />
+            <DetailItem
+              label="Replace sediment filter"
+              value={yesNo(record.waterReplaceSedimentFilter)}
+            />
+            <DetailItem
+              label="Check UV light"
+              value={yesNo(record.waterCheckUvLight)}
+            />
+          </dl>
+        </Card>
+      )}
+
       <Card className="space-y-5 shadow-none">
         <div>
           <h2 className="font-semibold">Remarks</h2>
@@ -238,10 +269,9 @@ export function InspectionDetail({ inspectionId }: { inspectionId: string }) {
           </p>
         </div>
         <div>
-          <h2 className="font-semibold">Actions and recommendations</h2>
+          <h2 className="font-semibold">Recommendation</h2>
           <p className="mt-2 text-sm leading-6 whitespace-pre-wrap text-[var(--text-secondary)]">
-            {record.actionsRecommendations ||
-              'No actions or recommendations were recorded.'}
+            {record.actionsRecommendations || 'No recommendation was recorded.'}
           </p>
         </div>
       </Card>

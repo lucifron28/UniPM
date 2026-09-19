@@ -69,10 +69,9 @@ class _LoginPageState extends State<LoginPage> {
                     enabled: !isBusy,
                     keyboardType: TextInputType.emailAddress,
                     decoration: const InputDecoration(labelText: 'Email'),
-                    validator: (value) =>
-                        value == null || value.trim().isEmpty
-                            ? 'Enter your email.'
-                            : null,
+                    validator: (value) => value == null || value.trim().isEmpty
+                        ? 'Enter your email.'
+                        : null,
                   ),
                   const SizedBox(height: 16),
                   TextFormField(
@@ -80,10 +79,9 @@ class _LoginPageState extends State<LoginPage> {
                     enabled: !isBusy,
                     obscureText: true,
                     decoration: const InputDecoration(labelText: 'Password'),
-                    validator: (value) =>
-                        value == null || value.isEmpty
-                            ? 'Enter your password.'
-                            : null,
+                    validator: (value) => value == null || value.isEmpty
+                        ? 'Enter your password.'
+                        : null,
                   ),
                   const SizedBox(height: 24),
                   FilledButton(

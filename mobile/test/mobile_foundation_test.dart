@@ -164,6 +164,14 @@ void main() {
 
     expect(find.text('Welcome, Synthetic Inspector'), findsOneWidget);
     expect(find.text('Inspector'), findsOneWidget);
+    expect(find.byKey(const Key('scan-asset-qr')), findsOneWidget);
+  });
+
+  testWidgets('GSD users can access the QR scanner entry', (tester) async {
+    await pumpFoundation(tester, roles: const ['GSD']);
+    await signIn(tester);
+
+    expect(find.byKey(const Key('scan-asset-qr')), findsOneWidget);
   });
 
   testWidgets('app startup begins signed out', (tester) async {

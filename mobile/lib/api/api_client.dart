@@ -45,9 +45,9 @@ class ApiClient {
   }
 
   Future<Map<String, dynamic>> postJson(
-    String path,
-    Map<String, dynamic> body,
-  ) async {
+    String path, [
+    Map<String, dynamic>? body,
+  ]) async {
     final response = await _request('POST', path, body: body);
     return _decodeObject(response);
   }

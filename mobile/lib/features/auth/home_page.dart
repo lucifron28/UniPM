@@ -6,10 +6,12 @@ class HomePage extends StatelessWidget {
   const HomePage({
     super.key,
     required this.user,
+    this.onScanQr,
     this.onOpenPreventiveMaintenance,
   });
 
   final AuthUser user;
+  final VoidCallback? onScanQr;
   final VoidCallback? onOpenPreventiveMaintenance;
 
   @override
@@ -24,12 +26,26 @@ class HomePage extends StatelessWidget {
         const SizedBox(height: 8),
         const Text('Your field-work session is ready.'),
         const SizedBox(height: 24),
+        if (onScanQr != null)
+          Card(
+            child: ListTile(
+              key: const Key('scan-asset-qr'),
+              leading: const Icon(Icons.qr_code_scanner),
+              title: const Text('Scan asset QR'),
+              subtitle: const Text('Capture a UniPM asset QR code.'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: onScanQr,
+            ),
+          ),
+        if (onScanQr != null) const SizedBox(height: 16),
         if (onOpenPreventiveMaintenance != null)
           Card(
             child: ListTile(
               leading: const Icon(Icons.assignment_outlined),
-              title: const Text('Preventive-maintenance drafts'),
-              subtitle: const Text('Create, resume, and update field drafts.'),
+              title: const Text('Preventive-maintenance forms'),
+              subtitle: const Text(
+                'Create, resume, submit, and acknowledge PM forms.',
+              ),
               trailing: const Icon(Icons.chevron_right),
               onTap: onOpenPreventiveMaintenance,
             ),

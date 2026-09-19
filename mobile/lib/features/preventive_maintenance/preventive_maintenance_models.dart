@@ -1,3 +1,5 @@
+import '../assets/asset_models.dart';
+
 class PreventiveMaintenanceForm {
   const PreventiveMaintenanceForm({
     required this.id,
@@ -14,6 +16,7 @@ class PreventiveMaintenanceForm {
     required this.createdByUserId,
     required this.submittedByUserId,
     required this.submittedAt,
+    this.fieldWorkCompletedAt,
     required this.createdAt,
     required this.updatedAt,
     required this.inspections,
@@ -33,6 +36,7 @@ class PreventiveMaintenanceForm {
   final String createdByUserId;
   final String? submittedByUserId;
   final DateTime? submittedAt;
+  final DateTime? fieldWorkCompletedAt;
   final DateTime createdAt;
   final DateTime updatedAt;
   final List<PreventiveMaintenanceInspection> inspections;
@@ -55,6 +59,7 @@ class PreventiveMaintenanceForm {
       createdByUserId: _requiredUuid(json, 'createdByUserId'),
       submittedByUserId: _nullableUuid(json, 'submittedByUserId'),
       submittedAt: _nullableDateTime(json, 'submittedAt'),
+      fieldWorkCompletedAt: _nullableDateTime(json, 'fieldWorkCompletedAt'),
       createdAt: _requiredDateTime(json, 'createdAt'),
       updatedAt: _requiredDateTime(json, 'updatedAt'),
       inspections: _requiredList(
@@ -66,6 +71,7 @@ class PreventiveMaintenanceForm {
 
   PreventiveMaintenanceForm copyWith({
     List<PreventiveMaintenanceInspection>? inspections,
+    String? status,
   }) {
     return PreventiveMaintenanceForm(
       id: id,
@@ -78,10 +84,11 @@ class PreventiveMaintenanceForm {
       semester: semester,
       year: year,
       academicYear: academicYear,
-      status: status,
+      status: status ?? this.status,
       createdByUserId: createdByUserId,
       submittedByUserId: submittedByUserId,
       submittedAt: submittedAt,
+      fieldWorkCompletedAt: fieldWorkCompletedAt,
       createdAt: createdAt,
       updatedAt: updatedAt,
       inspections: inspections ?? this.inspections,
@@ -96,9 +103,15 @@ class PreventiveMaintenanceInspection {
     required this.assetId,
     required this.inspectorUserId,
     required this.dateInspected,
+    this.startedAt,
+    this.completedAt,
+    this.dateAccomplished,
     required this.isOperational,
     required this.remarks,
     required this.actionsRecommendations,
+    this.waterReplaceCarbonFilter,
+    this.waterReplaceSedimentFilter,
+    this.waterCheckUvLight,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -108,9 +121,15 @@ class PreventiveMaintenanceInspection {
   final String assetId;
   final String inspectorUserId;
   final DateTime dateInspected;
+  final DateTime? startedAt;
+  final DateTime? completedAt;
+  final DateTime? dateAccomplished;
   final bool isOperational;
   final String? remarks;
   final String? actionsRecommendations;
+  final bool? waterReplaceCarbonFilter;
+  final bool? waterReplaceSedimentFilter;
+  final bool? waterCheckUvLight;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -121,9 +140,18 @@ class PreventiveMaintenanceInspection {
       assetId: _requiredUuid(json, 'assetId'),
       inspectorUserId: _requiredUuid(json, 'inspectorUserId'),
       dateInspected: _requiredDateTime(json, 'dateInspected'),
+      startedAt: _nullableDateTime(json, 'startedAt'),
+      completedAt: _nullableDateTime(json, 'completedAt'),
+      dateAccomplished: _nullableDateTime(json, 'dateAccomplished'),
       isOperational: _requiredBool(json, 'isOperational'),
       remarks: _nullableString(json, 'remarks'),
       actionsRecommendations: _nullableString(json, 'actionsRecommendations'),
+      waterReplaceCarbonFilter: _nullableBool(json, 'waterReplaceCarbonFilter'),
+      waterReplaceSedimentFilter: _nullableBool(
+        json,
+        'waterReplaceSedimentFilter',
+      ),
+      waterCheckUvLight: _nullableBool(json, 'waterCheckUvLight'),
       createdAt: _requiredDateTime(json, 'createdAt'),
       updatedAt: _requiredDateTime(json, 'updatedAt'),
     );
@@ -151,6 +179,10 @@ class ScheduleOption {
     required this.scheduleDate,
     required this.periodType,
     required this.status,
+    required this.quarter,
+    required this.semester,
+    required this.year,
+    required this.academicYear,
     required this.asset,
   });
 
@@ -159,6 +191,10 @@ class ScheduleOption {
   final DateTime scheduleDate;
   final String periodType;
   final String status;
+  final String? quarter;
+  final String? semester;
+  final int? year;
+  final String? academicYear;
   final ScheduleAssetOption? asset;
 
   factory ScheduleOption.fromJson(Map<String, dynamic> json) {
@@ -172,6 +208,10 @@ class ScheduleOption {
       scheduleDate: _requiredDateTime(json, 'scheduleDate'),
       periodType: _requiredText(json, 'periodType'),
       status: _requiredText(json, 'status'),
+      quarter: _nullableString(json, 'quarter'),
+      semester: _nullableString(json, 'semester'),
+      year: _nullableInt(json, 'year'),
+      academicYear: _nullableString(json, 'academicYear'),
       asset: ScheduleAssetOption.fromJson(assetJson.cast<String, dynamic>()),
     );
   }
@@ -228,38 +268,179 @@ class CreatePreventiveMaintenanceFormInput {
   final String? academicYear;
 }
 
+class PreventiveMaintenanceGrouping {
+  const PreventiveMaintenanceGrouping({
+    required this.assetCategory,
+    required this.department,
+    required this.periodType,
+    required this.quarter,
+    required this.semester,
+    required this.year,
+    required this.academicYear,
+  });
+
+  final String assetCategory;
+  final String? department;
+  final String periodType;
+  final String? quarter;
+  final String? semester;
+  final int? year;
+  final String? academicYear;
+
+  factory PreventiveMaintenanceGrouping.fromAssetAndSchedule(
+    Asset asset,
+    ScheduleOption schedule,
+  ) {
+    return PreventiveMaintenanceGrouping(
+      assetCategory: asset.assetCategory,
+      department: asset.department,
+      periodType: schedule.periodType,
+      quarter: schedule.quarter,
+      semester: schedule.semester,
+      year: schedule.year,
+      academicYear: schedule.academicYear,
+    );
+  }
+
+  factory PreventiveMaintenanceGrouping.fromSchedule(ScheduleOption schedule) {
+    final asset = schedule.asset;
+    if (asset == null) {
+      throw const FormatException('Schedule asset metadata is unavailable.');
+    }
+    return PreventiveMaintenanceGrouping(
+      assetCategory: asset.assetCategory,
+      department: asset.department,
+      periodType: schedule.periodType,
+      quarter: schedule.quarter,
+      semester: schedule.semester,
+      year: schedule.year,
+      academicYear: schedule.academicYear,
+    );
+  }
+
+  bool matches(PreventiveMaintenanceForm form) {
+    return _sameText(form.assetCategory, assetCategory) &&
+        _sameOptionalText(form.department, department) &&
+        _sameText(form.periodType, periodType) &&
+        _sameOptionalText(form.quarter, quarter) &&
+        _sameOptionalText(form.semester, semester) &&
+        form.year == year &&
+        _sameOptionalText(form.academicYear, academicYear);
+  }
+
+  CreatePreventiveMaintenanceFormInput toCreateInput() {
+    return CreatePreventiveMaintenanceFormInput(
+      assetCategory: assetCategory,
+      building: null,
+      department: department,
+      periodType: periodType,
+      quarter: quarter,
+      semester: semester,
+      year: year,
+      academicYear: academicYear,
+    );
+  }
+}
+
 class AddInspectionInput {
   const AddInspectionInput({
     required this.scheduleId,
     required this.inspectorUserId,
     required this.dateInspected,
+    this.dateAccomplished,
     required this.isOperational,
     required this.remarks,
     required this.actionsRecommendations,
+    this.waterReplaceCarbonFilter,
+    this.waterReplaceSedimentFilter,
+    this.waterCheckUvLight,
   });
 
   final String scheduleId;
   final String inspectorUserId;
   final DateTime dateInspected;
+  final DateTime? dateAccomplished;
   final bool isOperational;
   final String? remarks;
   final String? actionsRecommendations;
+  final bool? waterReplaceCarbonFilter;
+  final bool? waterReplaceSedimentFilter;
+  final bool? waterCheckUvLight;
 }
 
 class UpdateInspectionInput {
   const UpdateInspectionInput({
     required this.inspectorUserId,
     required this.dateInspected,
+    this.dateAccomplished,
     required this.isOperational,
     required this.remarks,
     required this.actionsRecommendations,
+    this.waterReplaceCarbonFilter,
+    this.waterReplaceSedimentFilter,
+    this.waterCheckUvLight,
   });
 
   final String inspectorUserId;
   final DateTime dateInspected;
+  final DateTime? dateAccomplished;
   final bool isOperational;
   final String? remarks;
   final String? actionsRecommendations;
+  final bool? waterReplaceCarbonFilter;
+  final bool? waterReplaceSedimentFilter;
+  final bool? waterCheckUvLight;
+}
+
+class AcknowledgePreventiveMaintenanceInput {
+  const AcknowledgePreventiveMaintenanceInput({
+    required this.signatoryName,
+    required this.signatoryPosition,
+    required this.signatureData,
+    required this.signatureContentType,
+  });
+
+  final String signatoryName;
+  final String signatoryPosition;
+  final String signatureData;
+  final String signatureContentType;
+}
+
+class PreventiveMaintenanceAcknowledgement {
+  const PreventiveMaintenanceAcknowledgement({
+    required this.id,
+    required this.formId,
+    required this.signatoryName,
+    required this.signatoryPosition,
+    required this.signatureContentType,
+    required this.signatureChecksum,
+    required this.capturedByUserId,
+    required this.acknowledgedAt,
+  });
+
+  final String id;
+  final String formId;
+  final String signatoryName;
+  final String signatoryPosition;
+  final String signatureContentType;
+  final String signatureChecksum;
+  final String capturedByUserId;
+  final DateTime acknowledgedAt;
+
+  factory PreventiveMaintenanceAcknowledgement.fromJson(
+    Map<String, dynamic> json,
+  ) {
+    return PreventiveMaintenanceAcknowledgement(
+      id: _requiredUuid(json, 'id'),
+      formId: _requiredUuid(json, 'formId'),
+      signatoryName: _requiredText(json, 'signatoryName'),
+      signatoryPosition: _requiredText(json, 'signatoryPosition'),
+      signatureContentType: _requiredText(json, 'signatureContentType'),
+      signatureChecksum: _requiredText(json, 'signatureChecksum'),
+      capturedByUserId: _requiredUuid(json, 'capturedByUserId'),
+      acknowledgedAt: _requiredDateTime(json, 'acknowledgedAt'),
+    );
+  }
 }
 
 PreventiveMaintenanceInspection _mapInspection(dynamic value) {
@@ -283,6 +464,13 @@ String? _nullableString(Map<String, dynamic> json, String key) {
   final value = json[key];
   if (value == null) return null;
   if (value is String) return value;
+  throw FormatException('Invalid response field: $key.');
+}
+
+bool? _nullableBool(Map<String, dynamic> json, String key) {
+  final value = json[key];
+  if (value == null) return null;
+  if (value is bool) return value;
   throw FormatException('Invalid response field: $key.');
 }
 
@@ -342,4 +530,18 @@ List<dynamic> _requiredList(Map<String, dynamic> json, String key) {
     throw FormatException('Invalid response field: $key.');
   }
   return value;
+}
+
+bool _sameText(String left, String right) =>
+    left.trim().toLowerCase() == right.trim().toLowerCase();
+
+bool _sameOptionalText(String? left, String? right) {
+  final normalizedLeft = _normalizedOptionalText(left);
+  final normalizedRight = _normalizedOptionalText(right);
+  return normalizedLeft == normalizedRight;
+}
+
+String? _normalizedOptionalText(String? value) {
+  final normalized = value?.trim().toLowerCase();
+  return normalized == null || normalized.isEmpty ? null : normalized;
 }

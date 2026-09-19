@@ -86,6 +86,8 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
         });
 
         var schedule = modelBuilder.Entity<PreventiveMaintenanceSchedule>();
+        schedule.Property(entity => entity.PmCycle)
+            .HasMaxLength(PreventiveMaintenanceCycle.Length);
         schedule.Property(entity => entity.PeriodType)
             .HasMaxLength(32);
         schedule.Property(entity => entity.Status)
@@ -100,6 +102,9 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
         schedule.HasIndex(entity => new { entity.Status, entity.ScheduleDate });
         schedule.ToTable("PreventiveMaintenanceSchedules", table =>
         {
+            table.HasCheckConstraint(
+                "CK_Schedules_PmCycle_Format",
+                "LEN([PmCycle]) = 7 AND [PmCycle] LIKE '[0-9][0-9][0-9][0-9]-[0-1][0-9]' AND RIGHT([PmCycle], 2) BETWEEN '01' AND '12'");
             table.HasCheckConstraint(
                 "CK_Schedules_PeriodType_Allowed",
                 $"[PeriodType] IN ({SqlIn(SchedulePeriodTypeCatalog.PersistedValues)})");
@@ -122,6 +127,10 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             .HasMaxLength(2000);
         inspection.Property(entity => entity.ActionsRecommendations)
             .HasMaxLength(2000);
+        inspection.Property(entity => entity.DateAccomplished);
+        inspection.Property(entity => entity.WaterReplaceCarbonFilter);
+        inspection.Property(entity => entity.WaterReplaceSedimentFilter);
+        inspection.Property(entity => entity.WaterCheckUvLight);
         inspection.HasIndex(entity => entity.ScheduleId)
             .IsUnique();
 
@@ -140,6 +149,8 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             .HasMaxLength(AssetCodeValue.MetadataMaxLength);
         preventiveMaintenanceForm.Property(form => form.Department)
             .HasMaxLength(AssetCodeValue.MetadataMaxLength);
+        preventiveMaintenanceForm.Property(form => form.PmCycle)
+            .HasMaxLength(PreventiveMaintenanceCycle.Length);
         preventiveMaintenanceForm.Property(form => form.PeriodType)
             .HasMaxLength(32);
         preventiveMaintenanceForm.Property(form => form.Quarter)
@@ -156,8 +167,15 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             .IsUnique()
             .HasFilter("[FileNumber] IS NOT NULL");
         preventiveMaintenanceForm.HasIndex(form => new { form.AssetCategory, form.Status });
+        preventiveMaintenanceForm.HasIndex(form => new { form.Department, form.AssetCategory, form.PmCycle })
+            .IsUnique()
+            .HasFilter("[Department] IS NOT NULL AND [PmCycle] IS NOT NULL")
+            .HasDatabaseName(PreventiveMaintenanceFormBatchPolicy.UniqueIndexName);
         preventiveMaintenanceForm.ToTable("PreventiveMaintenanceForms", table =>
         {
+            table.HasCheckConstraint(
+                "CK_PreventiveMaintenanceForms_PmCycle_Format",
+                "[PmCycle] IS NULL OR (LEN([PmCycle]) = 7 AND [PmCycle] LIKE '[0-9][0-9][0-9][0-9]-[0-1][0-9]' AND RIGHT([PmCycle], 2) BETWEEN '01' AND '12')");
             table.HasCheckConstraint(
                 "CK_PreventiveMaintenanceForms_AssetCategory_Allowed",
                 $"[AssetCategory] IN ({SqlIn(AssetCategoryCatalog.PersistedValues)})");

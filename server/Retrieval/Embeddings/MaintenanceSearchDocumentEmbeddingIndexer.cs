@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using UniPM.Api.Data;
+using UniPM.Api.Features.PreventiveMaintenanceForms;
 using UniPM.Api.Models;
 
 namespace UniPM.Api.Features.Retrieval;
@@ -48,7 +49,12 @@ internal sealed class MaintenanceSearchDocumentEmbeddingIndexer(
         }
 
         await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
-        var total = await context.MaintenanceSearchDocuments.CountAsync(cancellationToken);
+        var officialDocumentsQuery = context.MaintenanceSearchDocuments
+            .Where(document => document.Inspection != null
+                && (document.Inspection.PreventiveMaintenanceFormId == null
+                    || document.Inspection.PreventiveMaintenanceForm!.Status
+                        == PreventiveMaintenanceFormStatusCatalog.Acknowledged));
+        var total = await officialDocumentsQuery.CountAsync(cancellationToken);
         var created = 0;
         var updated = 0;
         var skipped = 0;
@@ -57,7 +63,7 @@ internal sealed class MaintenanceSearchDocumentEmbeddingIndexer(
 
         while (true)
         {
-            var documents = await context.MaintenanceSearchDocuments
+            var documents = await officialDocumentsQuery
                 .AsNoTracking()
                 .OrderBy(document => document.InspectionId)
                 .Skip(offset)

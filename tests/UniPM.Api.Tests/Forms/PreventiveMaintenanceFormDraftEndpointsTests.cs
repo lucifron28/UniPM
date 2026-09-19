@@ -30,10 +30,10 @@ public sealed class PreventiveMaintenanceFormDraftEndpointsTests
         await application.EnsureAuthenticatedUserAsync();
         var asset = await CreateAssetAsync(client, "FE-FORM-001", "fire-extinguisher");
         var firstSchedule = await CreateScheduleAsync(client, asset.Id, 1);
-        var secondSchedule = await CreateScheduleAsync(client, asset.Id, 2);
+        var secondSchedule = await CreateScheduleAsync(client, asset.Id, 1, day: 11);
 
         var form = await CreateFormAsync(client, asset.AssetCategory);
-        await AddInspectionRowAsync(client, form.Id, firstSchedule.Id, "First draft row");
+        var firstRow = await AddInspectionRowAsync(client, form.Id, firstSchedule.Id, "First draft row");
         await AddInspectionRowAsync(client, form.Id, secondSchedule.Id, "Second draft row");
 
         var response = await client.GetAsync($"/api/v1/preventive-maintenance-forms/{form.Id}");
@@ -42,10 +42,71 @@ public sealed class PreventiveMaintenanceFormDraftEndpointsTests
         var persisted = await response.Content.ReadFromJsonAsync<PreventiveMaintenanceFormResponse>();
         Assert.NotNull(persisted);
         Assert.Equal("Draft", persisted.Status);
+        Assert.Null(persisted.FieldWorkCompletedAt);
         Assert.Equal(2, persisted.Inspections.Count);
+        Assert.Equal(asset.AssetCode, firstRow.AssetCode);
+        Assert.Equal(asset.Location, firstRow.Location);
+        Assert.Equal("Form Drafts User", firstRow.SkilledWorkerIdentity);
+        Assert.All(persisted.Inspections, row =>
+        {
+            Assert.Equal(asset.AssetCode, row.AssetCode);
+            Assert.Equal(asset.Location, row.Location);
+            Assert.Equal("Form Drafts User", row.SkilledWorkerIdentity);
+        });
         Assert.Equivalent(
             new[] { firstSchedule.Id, secondSchedule.Id },
             persisted.Inspections.Select(row => row.ScheduleId));
+    }
+
+    [Theory]
+    [InlineData("fire-extinguisher")]
+    [InlineData("fire-alarm")]
+    [InlineData("emergency-light")]
+    [InlineData("water-drinking-station")]
+    public async Task Confirmed_category_forms_preserve_visible_inspection_fields(string assetCategory)
+    {
+        await using var application = new TestApplicationFactory();
+        using var client = application.CreateClient();
+        await application.EnsureAuthenticatedUserAsync();
+        var asset = await CreateAssetAsync(client, $"PM-{assetCategory}", assetCategory);
+        var schedule = await CreateScheduleAsync(client, asset.Id, 1);
+        var form = await CreateFormAsync(client, assetCategory);
+
+        var rowResponse = await client.PostAsJsonAsync(
+            $"/api/v1/preventive-maintenance-forms/{form.Id}/inspections",
+            DraftInspectionRequest(
+                schedule.Id,
+                "Visible form remarks",
+                dateAccomplished: new DateTimeOffset(
+                    2026,
+                    1,
+                    16,
+                    8,
+                    0,
+                    0,
+                    TimeSpan.FromHours(8)),
+                waterReplaceCarbonFilter: assetCategory == "water-drinking-station",
+                waterReplaceSedimentFilter: false,
+                waterCheckUvLight: true));
+
+        rowResponse.EnsureSuccessStatusCode();
+        var row = await rowResponse.Content.ReadFromJsonAsync<DraftInspectionRowResponse>();
+        var expectedCarbonFilter = assetCategory == "water-drinking-station"
+            ? true
+            : (bool?)null;
+        var expectedSedimentFilter = assetCategory == "water-drinking-station"
+            ? false
+            : (bool?)null;
+
+        Assert.NotNull(row);
+        Assert.Equal(
+            assetCategory == "water-drinking-station"
+                ? new DateTimeOffset(2026, 1, 16, 8, 0, 0, TimeSpan.FromHours(8))
+                : null,
+            row.DateAccomplished);
+        Assert.Equal(expectedCarbonFilter, row.WaterReplaceCarbonFilter);
+        Assert.Equal(expectedSedimentFilter, row.WaterReplaceSedimentFilter);
+        Assert.Equal(assetCategory == "water-drinking-station" ? true : null, row.WaterCheckUvLight);
     }
 
     [Fact]
@@ -59,7 +120,7 @@ public sealed class PreventiveMaintenanceFormDraftEndpointsTests
         var fireExtinguisherSchedule = await CreateScheduleAsync(client, fireExtinguisher.Id, 1);
         var fireAlarmSchedule = await CreateScheduleAsync(client, fireAlarm.Id, 1);
         var form = await CreateFormAsync(client, fireExtinguisher.AssetCategory);
-        await AddInspectionRowAsync(client, form.Id, fireExtinguisherSchedule.Id, "Draft pressure check");
+        var row = await AddInspectionRowAsync(client, form.Id, fireExtinguisherSchedule.Id, "Draft pressure check");
 
         var duplicate = await client.PostAsJsonAsync(
             $"/api/v1/preventive-maintenance-forms/{form.Id}/inspections",
@@ -70,6 +131,249 @@ public sealed class PreventiveMaintenanceFormDraftEndpointsTests
 
         Assert.Equal(HttpStatusCode.Conflict, duplicate.StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, categoryMismatch.StatusCode);
+
+        Assert.Null(row.StartedAt);
+        Assert.NotNull(row.CompletedAt);
+        await using var scope = application.Services.CreateAsyncScope();
+        var contextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
+        await using var context = await contextFactory.CreateDbContextAsync();
+        var completedSchedule = await context.PreventiveMaintenanceSchedules
+            .AsNoTracking()
+            .SingleAsync(candidate => candidate.Id == fireExtinguisherSchedule.Id);
+        Assert.Equal(ScheduleStatusCatalog.Completed, completedSchedule.Status);
+        Assert.Equal(row.CompletedAt, completedSchedule.CompletedAt);
+
+        var delete = await client.DeleteAsync(
+            $"/api/v1/preventive-maintenance-forms/{form.Id}/inspections/{row.Id}");
+        Assert.Equal(HttpStatusCode.NoContent, delete.StatusCode);
+        var restoredSchedule = await context.PreventiveMaintenanceSchedules
+            .AsNoTracking()
+            .SingleAsync(candidate => candidate.Id == fireExtinguisherSchedule.Id);
+        Assert.Equal(ScheduleStatusCatalog.Due, restoredSchedule.Status);
+        Assert.Null(restoredSchedule.CompletedAt);
+    }
+
+    [Fact]
+    public async Task Different_buildings_can_share_a_form_batch()
+    {
+        await using var application = new TestApplicationFactory();
+        using var client = application.CreateClient();
+        await application.EnsureAuthenticatedUserAsync();
+        var asset = await CreateAssetAsync(
+            client,
+            "FE-FORM-BUILDING-001",
+            "fire-extinguisher",
+            building: "South Annex",
+            department: "gsd");
+        var schedule = await CreateScheduleAsync(client, asset.Id, 1);
+        var form = await CreateFormAsync(client, asset.AssetCategory);
+
+        var row = await AddInspectionRowAsync(client, form.Id, schedule.Id, "Different building row");
+
+        Assert.Equal(schedule.Id, row.ScheduleId);
+    }
+
+    [Fact]
+    public async Task A_pm_cycle_cannot_be_split_across_building_specific_forms()
+    {
+        await using var application = new TestApplicationFactory();
+        using var client = application.CreateClient();
+        await application.EnsureAuthenticatedUserAsync();
+        var mainBuildingAsset = await CreateAssetAsync(
+            client,
+            "FE-FORM-CYCLE-MAIN-001",
+            "fire-extinguisher",
+            building: "Main Building",
+            department: "GSD");
+        var annexAsset = await CreateAssetAsync(
+            client,
+            "FE-FORM-CYCLE-ANNEX-001",
+            "fire-extinguisher",
+            building: "South Annex",
+            department: "GSD");
+        var mainBuildingSchedule = await CreateScheduleAsync(client, mainBuildingAsset.Id, 1, day: 10);
+        var annexSchedule = await CreateScheduleAsync(client, annexAsset.Id, 1, day: 11);
+        var mainBuildingForm = await CreateFormAsync(
+            client,
+            mainBuildingAsset.AssetCategory,
+            building: "Main Building");
+        var annexForm = await CreateFormAsync(
+            client,
+            annexAsset.AssetCategory,
+            building: "South Annex");
+
+        Assert.Equal("Main Building", mainBuildingForm.Building);
+        Assert.Equal("South Annex", annexForm.Building);
+        var mainBuildingRow = await AddInspectionRowAsync(
+            client,
+            mainBuildingForm.Id,
+            mainBuildingSchedule.Id,
+            "Main Building row");
+        Assert.NotNull(mainBuildingRow.CompletedAt);
+
+        var secondFormAdd = await client.PostAsJsonAsync(
+            $"/api/v1/preventive-maintenance-forms/{annexForm.Id}/inspections",
+            DraftInspectionRequest(annexSchedule.Id, "Attempted split row"));
+        Assert.Equal(HttpStatusCode.Conflict, secondFormAdd.StatusCode);
+
+        var legacyCompletedAt = new DateTimeOffset(2026, 1, 16, 8, 0, 0, TimeSpan.FromHours(8));
+        await using (var scope = application.Services.CreateAsyncScope())
+        {
+            var contextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
+            await using var context = await contextFactory.CreateDbContextAsync();
+            var persistedAnnexSchedule = await context.PreventiveMaintenanceSchedules
+                .SingleAsync(candidate => candidate.Id == annexSchedule.Id);
+            persistedAnnexSchedule.Status = ScheduleStatusCatalog.Completed;
+            persistedAnnexSchedule.CompletedAt = legacyCompletedAt;
+            context.InspectionRecords.Add(new InspectionRecord
+            {
+                Id = Guid.NewGuid(),
+                ScheduleId = annexSchedule.Id,
+                PreventiveMaintenanceFormId = annexForm.Id,
+                AssetId = annexAsset.Id,
+                InspectorUserId = TestAuthenticationHandler.UserId,
+                DateInspected = legacyCompletedAt,
+                CompletedAt = legacyCompletedAt,
+                IsOperational = false,
+                Remarks = "Legacy split row",
+                CreatedAt = legacyCompletedAt,
+                UpdatedAt = legacyCompletedAt
+            });
+            await context.SaveChangesAsync();
+
+            var persistedSchedules = await context.PreventiveMaintenanceSchedules
+                .AsNoTracking()
+                .Where(candidate => candidate.Id == mainBuildingSchedule.Id || candidate.Id == annexSchedule.Id)
+                .ToDictionaryAsync(candidate => candidate.Id);
+            var persistedAnnexRow = await context.InspectionRecords
+                .AsNoTracking()
+                .SingleAsync(candidate => candidate.ScheduleId == annexSchedule.Id);
+            Assert.Equal(
+                mainBuildingRow.CompletedAt,
+                persistedSchedules[mainBuildingSchedule.Id].CompletedAt);
+            Assert.Equal(legacyCompletedAt, persistedAnnexRow.CompletedAt);
+            Assert.Equal(
+                persistedAnnexRow.CompletedAt,
+                persistedSchedules[annexSchedule.Id].CompletedAt);
+        }
+
+        var mainBuildingSubmit = await client.PostAsync(
+            $"/api/v1/preventive-maintenance-forms/{mainBuildingForm.Id}/submit",
+            content: null);
+        var annexSubmit = await client.PostAsync(
+            $"/api/v1/preventive-maintenance-forms/{annexForm.Id}/submit",
+            content: null);
+        Assert.Equal(HttpStatusCode.Conflict, mainBuildingSubmit.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, annexSubmit.StatusCode);
+
+        var mainBuildingAcknowledgement = await client.PostAsJsonAsync(
+            $"/api/v1/preventive-maintenance-forms/{mainBuildingForm.Id}/acknowledge",
+            AcknowledgementRequest());
+        var annexAcknowledgement = await client.PostAsJsonAsync(
+            $"/api/v1/preventive-maintenance-forms/{annexForm.Id}/acknowledge",
+            AcknowledgementRequest());
+        Assert.Equal(HttpStatusCode.Conflict, mainBuildingAcknowledgement.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, annexAcknowledgement.StatusCode);
+    }
+
+    [Fact]
+    public async Task Draft_rows_reject_a_schedule_from_a_different_department()
+    {
+        await using var application = new TestApplicationFactory();
+        using var client = application.CreateClient();
+        await application.EnsureAuthenticatedUserAsync();
+        var asset = await CreateAssetAsync(
+            client,
+            "FE-FORM-DEPARTMENT-001",
+            "fire-extinguisher",
+            department: "Engineering");
+        var schedule = await CreateScheduleAsync(client, asset.Id, 1);
+        var form = await CreateFormAsync(client, asset.AssetCategory);
+
+        var response = await client.PostAsJsonAsync(
+            $"/api/v1/preventive-maintenance-forms/{form.Id}/inspections",
+            DraftInspectionRequest(schedule.Id, "Different department row"));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Departmentless_assets_cannot_claim_a_pm_form_batch()
+    {
+        await using var application = new TestApplicationFactory();
+        using var client = application.CreateClient();
+        await application.EnsureAuthenticatedUserAsync();
+        var asset = await CreateAssetAsync(
+            client,
+            "FE-FORM-NO-DEPARTMENT-001",
+            "fire-extinguisher",
+            department: null);
+        var schedule = await CreateScheduleAsync(client, asset.Id, 1);
+        var form = await CreateFormAsync(client, asset.AssetCategory);
+
+        var response = await client.PostAsJsonAsync(
+            $"/api/v1/preventive-maintenance-forms/{form.Id}/inspections",
+            DraftInspectionRequest(schedule.Id, "Department-less asset row"));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+        await using var scope = application.Services.CreateAsyncScope();
+        var contextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
+        await using var context = await contextFactory.CreateDbContextAsync();
+        var persistedSchedule = await context.PreventiveMaintenanceSchedules
+            .AsNoTracking()
+            .SingleAsync(candidate => candidate.Id == schedule.Id);
+        var persistedForm = await context.PreventiveMaintenanceForms
+            .AsNoTracking()
+            .Include(candidate => candidate.Inspections)
+            .SingleAsync(candidate => candidate.Id == form.Id);
+
+        Assert.Equal(ScheduleStatusCatalog.Due, persistedSchedule.Status);
+        Assert.Null(persistedSchedule.CompletedAt);
+        Assert.Null(persistedForm.PmCycle);
+        Assert.Empty(persistedForm.Inspections);
+    }
+
+    [Fact]
+    public async Task Draft_rows_reject_a_schedule_from_a_different_pm_cycle()
+    {
+        await using var application = new TestApplicationFactory();
+        using var client = application.CreateClient();
+        await application.EnsureAuthenticatedUserAsync();
+        var asset = await CreateAssetAsync(client, "FE-FORM-PERIOD-001", "fire-extinguisher");
+        var januarySchedule = await CreateScheduleAsync(client, asset.Id, 1);
+        var februarySchedule = await CreateScheduleAsync(client, asset.Id, 2);
+        var form = await CreateFormAsync(client, asset.AssetCategory);
+        await AddInspectionRowAsync(client, form.Id, januarySchedule.Id, "January cycle row");
+
+        var response = await client.PostAsJsonAsync(
+            $"/api/v1/preventive-maintenance-forms/{form.Id}/inspections",
+            DraftInspectionRequest(februarySchedule.Id, "Different cycle row"));
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData(ScheduleStatusCatalog.Completed)]
+    [InlineData(ScheduleStatusCatalog.Cancelled)]
+    public async Task Draft_rows_reject_completed_or_cancelled_schedules(string status)
+    {
+        await using var application = new TestApplicationFactory();
+        using var client = application.CreateClient();
+        await application.EnsureAuthenticatedUserAsync();
+        var asset = await CreateAssetAsync(client, $"FE-FORM-STATUS-{status}", "fire-extinguisher");
+        var schedule = await CreateScheduleAsync(client, asset.Id, 1);
+        var form = await CreateFormAsync(client, asset.AssetCategory);
+        await application.SetScheduleStatusAsync(
+            schedule.Id,
+            status,
+            status == ScheduleStatusCatalog.Completed ? DateTimeOffset.UtcNow : null);
+
+        var response = await client.PostAsJsonAsync(
+            $"/api/v1/preventive-maintenance-forms/{form.Id}/inspections",
+            DraftInspectionRequest(schedule.Id, "Ineligible schedule row"));
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
     }
 
     [Theory]
@@ -228,8 +532,10 @@ public sealed class PreventiveMaintenanceFormDraftEndpointsTests
         await application.EnsureAuthenticatedUserAsync();
         var asset = await CreateAssetAsync(client, "FE-FORM-SUBMIT-001", "fire-extinguisher");
         var schedule = await CreateScheduleAsync(client, asset.Id, 1);
+        var secondSchedule = await CreateScheduleAsync(client, asset.Id, 1, day: 11);
         var form = await CreateFormAsync(client, asset.AssetCategory);
-        await AddInspectionRowAsync(client, form.Id, schedule.Id, "Draft submission row");
+        var firstRow = await AddInspectionRowAsync(client, form.Id, schedule.Id, "Draft submission row");
+        var secondRow = await AddInspectionRowAsync(client, form.Id, secondSchedule.Id, "Second draft submission row");
 
         var response = await client.PostAsync(
             $"/api/v1/preventive-maintenance-forms/{form.Id}/submit",
@@ -242,14 +548,82 @@ public sealed class PreventiveMaintenanceFormDraftEndpointsTests
         Assert.Matches("^PMF-[0-9]{4}-[0-9]{4}$", submitted.FileNumber);
         Assert.Equal(TestAuthenticationHandler.UserId, submitted.SubmittedByUserId);
         Assert.NotNull(submitted.SubmittedAt);
+        Assert.Equal(new[] { firstRow.CompletedAt, secondRow.CompletedAt }.Max(), submitted.FieldWorkCompletedAt);
 
         await using var scope = application.Services.CreateAsyncScope();
         var contextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
         await using var context = await contextFactory.CreateDbContextAsync();
-        var persistedSchedule = await context.PreventiveMaintenanceSchedules.SingleAsync(candidate => candidate.Id == schedule.Id);
-        Assert.Equal(ScheduleStatusCatalog.Due, persistedSchedule.Status);
-        Assert.Null(persistedSchedule.CompletedAt);
+        var persistedSchedules = await context.PreventiveMaintenanceSchedules
+            .AsNoTracking()
+            .Where(candidate => candidate.Id == schedule.Id || candidate.Id == secondSchedule.Id)
+            .ToDictionaryAsync(candidate => candidate.Id);
+        Assert.Equal(ScheduleStatusCatalog.Completed, persistedSchedules[schedule.Id].Status);
+        Assert.Equal(firstRow.CompletedAt, persistedSchedules[schedule.Id].CompletedAt);
+        Assert.Equal(ScheduleStatusCatalog.Completed, persistedSchedules[secondSchedule.Id].Status);
+        Assert.Equal(secondRow.CompletedAt, persistedSchedules[secondSchedule.Id].CompletedAt);
         Assert.Empty(await context.MaintenanceSearchDocuments.ToListAsync());
+    }
+
+    [Fact]
+    public async Task Submission_is_blocked_when_an_eligible_schedule_in_the_batch_has_no_row()
+    {
+        await using var application = new TestApplicationFactory();
+        using var client = application.CreateClient();
+        await application.EnsureAuthenticatedUserAsync();
+        var asset = await CreateAssetAsync(client, "FE-FORM-SUBMIT-BATCH-001", "fire-extinguisher");
+        var includedSchedule = await CreateScheduleAsync(client, asset.Id, 1);
+        _ = await CreateScheduleAsync(client, asset.Id, 1, day: 11);
+        var form = await CreateFormAsync(client, asset.AssetCategory);
+        await AddInspectionRowAsync(client, form.Id, includedSchedule.Id, "Only one of two batch schedules");
+
+        var response = await client.PostAsync(
+            $"/api/v1/preventive-maintenance-forms/{form.Id}/submit",
+            content: null);
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Legacy_schedule_completion_does_not_complete_its_inspection_row()
+    {
+        await using var application = new TestApplicationFactory();
+        using var client = application.CreateClient();
+        await application.EnsureAuthenticatedUserAsync();
+        var asset = await CreateAssetAsync(client, "FE-FORM-LEGACY-COMPLETION-001", "fire-extinguisher");
+        var schedule = await CreateScheduleAsync(client, asset.Id, 1);
+        var form = await CreateFormAsync(client, asset.AssetCategory);
+        var row = await AddInspectionRowAsync(client, form.Id, schedule.Id, "Legacy completion row");
+        var legacyScheduleCompletedAt = new DateTimeOffset(2024, 1, 15, 8, 0, 0, TimeSpan.Zero);
+
+        await using (var scope = application.Services.CreateAsyncScope())
+        {
+            var contextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
+            await using var context = await contextFactory.CreateDbContextAsync();
+            var inspection = await context.InspectionRecords.SingleAsync(candidate => candidate.Id == row.Id);
+            var persistedSchedule = await context.PreventiveMaintenanceSchedules.SingleAsync(candidate => candidate.Id == schedule.Id);
+            inspection.CompletedAt = null;
+            persistedSchedule.Status = ScheduleStatusCatalog.Completed;
+            persistedSchedule.CompletedAt = legacyScheduleCompletedAt;
+            await context.SaveChangesAsync();
+        }
+
+        var response = await client.PostAsync(
+            $"/api/v1/preventive-maintenance-forms/{form.Id}/submit",
+            content: null);
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        await using var verificationScope = application.Services.CreateAsyncScope();
+        var verificationFactory = verificationScope.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
+        await using var verificationContext = await verificationFactory.CreateDbContextAsync();
+        var persistedInspection = await verificationContext.InspectionRecords
+            .AsNoTracking()
+            .SingleAsync(candidate => candidate.Id == row.Id);
+        var persistedScheduleAfterSubmit = await verificationContext.PreventiveMaintenanceSchedules
+            .AsNoTracking()
+            .SingleAsync(candidate => candidate.Id == schedule.Id);
+        Assert.Null(persistedInspection.CompletedAt);
+        Assert.Equal(ScheduleStatusCatalog.Completed, persistedScheduleAfterSubmit.Status);
+        Assert.Equal(legacyScheduleCompletedAt, persistedScheduleAfterSubmit.CompletedAt);
     }
 
     [Fact]
@@ -262,6 +636,18 @@ public sealed class PreventiveMaintenanceFormDraftEndpointsTests
         var emptyForm = await CreateFormAsync(gsdClient, asset.AssetCategory);
         var emptySubmission = await gsdClient.PostAsync(
             $"/api/v1/preventive-maintenance-forms/{emptyForm.Id}/submit",
+            content: null);
+
+        await using var incompleteApplication = new TestApplicationFactory();
+        using var incompleteClient = incompleteApplication.CreateClient();
+        await incompleteApplication.EnsureAuthenticatedUserAsync();
+        var incompleteSchedule = await incompleteApplication.SeedScheduleAsync("fire-extinguisher");
+        var incompleteForm = await incompleteApplication.SeedDraftFormAsync(
+            incompleteSchedule.Id,
+            TestAuthenticationHandler.UserId,
+            TestAuthenticationHandler.UserId);
+        var incompleteSubmission = await incompleteClient.PostAsync(
+            $"/api/v1/preventive-maintenance-forms/{incompleteForm.Id}/submit",
             content: null);
 
         var schedule = await CreateScheduleAsync(gsdClient, asset.Id, 1);
@@ -287,25 +673,46 @@ public sealed class PreventiveMaintenanceFormDraftEndpointsTests
             content: null);
 
         Assert.Equal(HttpStatusCode.Conflict, emptySubmission.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, incompleteSubmission.StatusCode);
         firstSubmission.EnsureSuccessStatusCode();
         Assert.Equal(HttpStatusCode.Conflict, repeatedSubmission.StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, unauthorizedSubmission.StatusCode);
     }
 
     [Fact]
-    public async Task Acknowledgement_completes_schedules_and_publishes_history_and_projection()
+    public async Task Acknowledgement_preserves_schedule_completion_and_publishes_history_and_projection()
     {
         await using var application = new TestApplicationFactory();
         using var client = application.CreateClient();
         await application.EnsureAuthenticatedUserAsync();
         var asset = await CreateAssetAsync(client, "FE-FORM-ACK-001", "fire-extinguisher");
         var firstSchedule = await CreateScheduleAsync(client, asset.Id, 1);
-        var secondSchedule = await CreateScheduleAsync(client, asset.Id, 2);
+        var secondSchedule = await CreateScheduleAsync(client, asset.Id, 1, day: 11);
         var form = await CreateFormAsync(client, asset.AssetCategory);
         var firstRow = await AddInspectionRowAsync(client, form.Id, firstSchedule.Id, "First acknowledged row");
         var secondRow = await AddInspectionRowAsync(client, form.Id, secondSchedule.Id, "Second acknowledged row");
         (await client.PostAsync($"/api/v1/preventive-maintenance-forms/{form.Id}/submit", content: null))
             .EnsureSuccessStatusCode();
+
+        List<PreventiveMaintenanceSchedule> schedulesBeforeAcknowledgement;
+        await using (var beforeAcknowledgementScope = application.Services.CreateAsyncScope())
+        {
+            var beforeAcknowledgementFactory = beforeAcknowledgementScope.ServiceProvider
+                .GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
+            await using var beforeAcknowledgementContext = await beforeAcknowledgementFactory.CreateDbContextAsync();
+            schedulesBeforeAcknowledgement = await beforeAcknowledgementContext.PreventiveMaintenanceSchedules
+                .AsNoTracking()
+                .Where(schedule => schedule.Id == firstSchedule.Id || schedule.Id == secondSchedule.Id)
+                .ToListAsync();
+        }
+        Assert.Equal(2, schedulesBeforeAcknowledgement.Count);
+        Assert.All(schedulesBeforeAcknowledgement, schedule =>
+        {
+            Assert.Equal(ScheduleStatusCatalog.Completed, schedule.Status);
+            Assert.NotNull(schedule.CompletedAt);
+        });
+        Assert.Equal(firstRow.CompletedAt, schedulesBeforeAcknowledgement.Single(schedule => schedule.Id == firstSchedule.Id).CompletedAt);
+        Assert.Equal(secondRow.CompletedAt, schedulesBeforeAcknowledgement.Single(schedule => schedule.Id == secondSchedule.Id).CompletedAt);
 
         var response = await client.PostAsJsonAsync(
             $"/api/v1/preventive-maintenance-forms/{form.Id}/acknowledge",
@@ -335,7 +742,8 @@ public sealed class PreventiveMaintenanceFormDraftEndpointsTests
         var persistedForm = await context.PreventiveMaintenanceForms
             .Include(candidate => candidate.Acknowledgement)
             .SingleAsync(candidate => candidate.Id == form.Id);
-        var schedules = await context.PreventiveMaintenanceSchedules
+        var schedulesAfterAcknowledgement = await context.PreventiveMaintenanceSchedules
+            .AsNoTracking()
             .Where(schedule => schedule.Id == firstSchedule.Id || schedule.Id == secondSchedule.Id)
             .ToListAsync();
         var projectedInspectionIds = await context.MaintenanceSearchDocuments
@@ -345,10 +753,12 @@ public sealed class PreventiveMaintenanceFormDraftEndpointsTests
 
         Assert.Equal(PreventiveMaintenanceFormStatusCatalog.Acknowledged, persistedForm.Status);
         Assert.NotNull(persistedForm.Acknowledgement);
-        Assert.All(schedules, schedule =>
+        Assert.All(schedulesAfterAcknowledgement, schedule =>
         {
-            Assert.Equal(ScheduleStatusCatalog.Completed, schedule.Status);
-            Assert.Equal(acknowledgement.AcknowledgedAt, schedule.CompletedAt);
+            var previousSchedule = schedulesBeforeAcknowledgement.Single(previous => previous.Id == schedule.Id);
+            Assert.Equal(previousSchedule.Status, schedule.Status);
+            Assert.Equal(previousSchedule.CompletedAt, schedule.CompletedAt);
+            Assert.Equal(previousSchedule.UpdatedAt, schedule.UpdatedAt);
         });
         Assert.Equivalent(new[] { firstRow.Id, secondRow.Id }, projectedInspectionIds);
         Assert.Empty(await context.MaintenanceSearchDocumentEmbeddings.ToListAsync());
@@ -413,7 +823,7 @@ public sealed class PreventiveMaintenanceFormDraftEndpointsTests
         await application.EnsureAuthenticatedUserAsync();
         var asset = await CreateAssetAsync(client, "FE-HANDOFF-001", "fire-extinguisher");
         var firstSchedule = await CreateScheduleAsync(client, asset.Id, 3);
-        var secondSchedule = await CreateScheduleAsync(client, asset.Id, 4);
+        var secondSchedule = await CreateScheduleAsync(client, asset.Id, 3, day: 11);
         var form = await CreateFormAsync(client, asset.AssetCategory);
         var actionableRow = await AddInspectionRowAsync(
             client,
@@ -489,14 +899,19 @@ public sealed class PreventiveMaintenanceFormDraftEndpointsTests
         Assert.Equal(HttpStatusCode.Forbidden, unauthorizedResponse.StatusCode);
     }
 
-    private static async Task<AssetResponse> CreateAssetAsync(HttpClient client, string assetCode, string assetCategory)
+    private static async Task<AssetResponse> CreateAssetAsync(
+        HttpClient client,
+        string assetCode,
+        string assetCategory,
+        string building = "Main Building",
+        string? department = "GSD")
     {
         var response = await client.PostAsJsonAsync("/api/v1/assets/", new
         {
             assetCode,
             assetCategory,
-            building = "Main Building",
-            department = "GSD",
+            building,
+            department,
             location = "Test Area"
         });
 
@@ -504,28 +919,39 @@ public sealed class PreventiveMaintenanceFormDraftEndpointsTests
         return (await response.Content.ReadFromJsonAsync<AssetResponse>())!;
     }
 
-    private static async Task<ScheduleResponse> CreateScheduleAsync(HttpClient client, Guid assetId, int month)
+    private static async Task<ScheduleResponse> CreateScheduleAsync(
+        HttpClient client,
+        Guid assetId,
+        int month,
+        string periodType = "Quarter",
+        string? quarter = "Q1",
+        int? year = 2026,
+        int day = 10)
     {
         var response = await client.PostAsJsonAsync("/api/v1/schedules/", new
         {
             assetId,
-            scheduleDate = new DateTimeOffset(2026, month, 10, 8, 0, 0, TimeSpan.FromHours(8)),
-            periodType = "Quarter",
-            quarter = "Q1",
-            year = 2026
+            scheduleDate = new DateTimeOffset(2026, month, day, 8, 0, 0, TimeSpan.FromHours(8)),
+            periodType,
+            quarter,
+            year
         });
 
         response.EnsureSuccessStatusCode();
         return (await response.Content.ReadFromJsonAsync<ScheduleResponse>())!;
     }
 
-    private static async Task<PreventiveMaintenanceFormResponse> CreateFormAsync(HttpClient client, string assetCategory)
+    private static async Task<PreventiveMaintenanceFormResponse> CreateFormAsync(
+        HttpClient client,
+        string assetCategory,
+        string building = "Main Building",
+        string department = "GSD")
     {
         var response = await client.PostAsJsonAsync("/api/v1/preventive-maintenance-forms/", new
         {
             assetCategory,
-            building = "Main Building",
-            department = "GSD",
+            building,
+            department,
             periodType = "Quarter",
             quarter = "Q1",
             year = 2026
@@ -553,16 +979,24 @@ public sealed class PreventiveMaintenanceFormDraftEndpointsTests
     private static object DraftInspectionRequest(
         Guid scheduleId,
         string remarks,
-        string? actionsRecommendations = "Inspect during final submission.")
+        string? actionsRecommendations = "Inspect during final submission.",
+        DateTimeOffset? dateAccomplished = null,
+        bool? waterReplaceCarbonFilter = null,
+        bool? waterReplaceSedimentFilter = null,
+        bool? waterCheckUvLight = null)
     {
         return new
         {
             scheduleId,
             inspectorUserId = TestAuthenticationHandler.UserId,
             dateInspected = new DateTimeOffset(2026, 1, 15, 8, 0, 0, TimeSpan.FromHours(8)),
+            dateAccomplished,
             isOperational = false,
             remarks,
-            actionsRecommendations
+            actionsRecommendations,
+            waterReplaceCarbonFilter,
+            waterReplaceSedimentFilter,
+            waterCheckUvLight
         };
     }
 
@@ -641,6 +1075,20 @@ public sealed class PreventiveMaintenanceFormDraftEndpointsTests
             await using var context = await contextFactory.CreateDbContextAsync();
             var form = await context.PreventiveMaintenanceForms.SingleAsync(candidate => candidate.Id == formId);
             form.Status = status;
+            await context.SaveChangesAsync();
+        }
+
+        public async Task SetScheduleStatusAsync(
+            Guid scheduleId,
+            string status,
+            DateTimeOffset? completedAt = null)
+        {
+            await using var scope = Services.CreateAsyncScope();
+            var contextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
+            await using var context = await contextFactory.CreateDbContextAsync();
+            var schedule = await context.PreventiveMaintenanceSchedules.SingleAsync(candidate => candidate.Id == scheduleId);
+            schedule.Status = status;
+            schedule.CompletedAt = completedAt;
             await context.SaveChangesAsync();
         }
 
@@ -772,7 +1220,11 @@ public sealed class PreventiveMaintenanceFormDraftEndpointsTests
         }
     }
 
-    private sealed record AssetResponse(Guid Id, string AssetCategory);
+    private sealed record AssetResponse(
+        Guid Id,
+        string AssetCode,
+        string AssetCategory,
+        string? Location);
 
     private sealed record ScheduleResponse(Guid Id);
 }

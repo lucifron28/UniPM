@@ -1,10 +1,13 @@
 # UniPM
 
 UniPM is a web and mobile preventive-maintenance system for the university
-General Services Department. The repository contains an ASP.NET Core API,
-multi-asset preventive-maintenance forms, and an implemented bounded
-maintenance-history review MVP. The review endpoint is available only when
-explicitly enabled and is disabled in committed configuration.
+General Services Department. The repository contains an ASP.NET Core API and
+multi-asset preventive-maintenance forms. The current validation baseline
+focuses on the preventive-maintenance information system while further GSD
+requirements are being validated: core PMIS workflows run without any AI
+provider configuration. Maintenance-history RAG was previously implemented
+and evaluated as controlled development work and is not exposed by this
+validation baseline.
 
 ## License
 
@@ -49,12 +52,15 @@ projection. SQL Server Full-Text Search retrieves lexical candidates from
 `MaintenanceSearchDocument.SearchText`. Versioned serialized embedding vectors
 are stored with relational document metadata; the backend filters a bounded SQL
 candidate set and calculates cosine similarity in application memory. Semantic
-retrieval is a required UniPM retrieval channel, while its embedding provider is
-operationally optional. When embeddings are unavailable, the system explicitly
-reports degradation and uses the lexical channel without labeling the result as
+retrieval was implemented as an internal channel of the previously evaluated
+maintenance-history review feature; its embedding provider is disabled by
+default and inactive here. When embeddings were unavailable, the preserved
+system reported degradation and used the lexical channel without labeling the
 hybrid. Inspectable Reciprocal Rank Fusion combines eligible lexical and
 semantic results. Native SQL Server vector features and a separate vector
 database are not required.
+These retrieval channels persist as inactive infrastructure in this
+validation baseline and are not exposed through any public runtime path.
 
 ## Current API Surface
 
@@ -62,16 +68,16 @@ The backend currently provides:
 
 - asset creation, list, detail, and QR lookup;
 - schedule creation, list, and detail;
-- inspection submission, list, detail, and asset-history lookup;
+- inspection list, detail, and acknowledged asset-history reads;
+  inspection-row creation and editing occur through Draft preventive-
+  maintenance forms;
 - preventive-maintenance form drafting and inspection-row management;
 - whole-form submission with provisional file-number allocation;
 - whole-form acknowledgement, schedule completion, and acknowledged-row
   publication to official history and retrieval;
 - a GSD-only corrective-action handoff read model for acknowledged forms;
 - JWT login, refresh, logout, and current-user routes under `/api/v1/auth`;
-- policy-protected asset, schedule, inspection, and maintenance-review writes;
-- `POST /api/v1/maintenance-review` for authenticated, source-bounded
-  maintenance-history review when explicitly enabled;
+- policy-protected asset, schedule, and preventive-maintenance form operations;
 - reference-data categories, validation/error contracts, health checks, tests,
   and backend CI.
 
@@ -118,23 +124,25 @@ Schedules provide URL-owned filters, recorded-status summaries, detail views,
 and GSD/Supervisor creation using only the current backend contract. Neither
 module invents editing, recurrence, status transitions, assignment, audit,
 condition, work-order, or device-specification workflows. Inspections provide
-read-only list/detail review and compact asset history; web inspection
-submission remains deferred to the planned mobile workflow.
+read-only list/detail review and compact asset history; field inspection
+submission is handled by the mobile preventive-maintenance workflow.
 
 ## Mobile Application
 
 The `mobile/` Flutter application is Android-first and currently provides
-memory-only authentication, an authenticated Inspector/GSD shell, and the
-initial Draft preventive-maintenance form workflow. Mobile users can create a
-Draft form, add multiple inspection rows, resume a Draft, and update or delete
-Draft rows through the API.
+memory-only authentication, an authenticated Inspector/GSD shell, QR-based
+asset entry, and the Draft preventive-maintenance form workflow. Mobile users
+can create a Draft form, add multiple inspection rows, resume a Draft, update
+or delete Draft rows, and submit the whole form through the API. Submission
+assigns a provisional file number and makes the form read-only.
 
 The mobile client starts signed out after restart, does not persist access
 tokens or cookies, and does not implement refresh/replay or offline
 synchronization. Offline sync is deferred; its persistence and synchronization
-architecture remain undecided pending a separate approved decision. Submission,
-acknowledgement, signature capture, QR scanning, and later field actions remain
-outside the current mobile scope. See [mobile/README.md](mobile/README.md).
+architecture remain undecided pending a separate approved decision.
+Acknowledgement and signature capture are available in the web review workflow;
+later mobile field actions remain outside the current mobile scope. See
+[mobile/README.md](mobile/README.md).
 
 ## First Run
 
@@ -153,7 +161,19 @@ $env:UNIPM_DEV_USER_PASSWORD = "<temporary-development-password>"
 dotnet ef database update --project server
 dotnet run --project server -- --seed-synthetic
 dotnet run --project server -- --seed-development-users
+```
+
+For a named SQL Server instance, replace `Server=.` with
+`Server=localhost\INSTANCE_NAME`.
+
+That is everything the PMIS validation build needs. The commands below belong
+to the preserved, inactive retrieval infrastructure and are NOT required for
+ordinary PMIS operation:
+
+```powershell
+# Historical/inactive retrieval tooling (not needed for the PMIS validation build):
 dotnet run --project server -- --rebuild-maintenance-search-documents
+dotnet run --project server -- --rebuild-maintenance-embeddings
 ```
 
 For a named SQL Server instance, replace `Server=.` with
@@ -199,61 +219,44 @@ The optional legacy SQL Server 2025 Docker Compose experiment is documented in
 not the local baseline, is not required for IIS deployment, and must not reuse a
 SQL Server 2019 data volume.
 
-## Maintenance Review
+## Maintenance History Review Status
 
-The maintenance-review endpoint is disabled in committed configuration and is
-available in any environment only when explicitly enabled. It requires the
-`CanReviewMaintenanceHistory` policy (`GSD`, `Supervisor`, or
-`DepartmentHead`) and performs at most two fused retrieval passes. For local
-source-only review, set
-`UNIPM_MAINTENANCE_REVIEW_ENABLED=true` and keep
-`UNIPM_SUMMARY_ENABLED=false`. The endpoint returns selected original source
-records when summaries are disabled, unavailable, or rejected by citation
-validation. It never persists prompts, summaries, or sanitizer token maps.
+Maintenance-history RAG was previously implemented and evaluated as
+controlled development work; see `reference/evidence/` and
+[`reference/api/maintenance-review-v0.1.md`](reference/api/maintenance-review-v0.1.md)
+for what was built at the time. In the current PMIS-only validation baseline,
+the review endpoint is mapped into the runtime contract only when
+`MaintenanceReview:Enabled` is explicitly true, and committed configuration
+keeps it disabled, so the published OpenAPI contract and the generated web
+client contain no maintenance-review operation. Retrieval, fusion, embedding,
+and summary sources remain preserved in the repository pending cleanup
+decisions after GSD validates the PMIS direction.
 
-Its MVP prompt sanitizer is limited to pattern-based masking of email,
-supported Philippine mobile numbers, and labeled employee/student/staff/personnel
-IDs. It does not generally detect free-text personal names. Keep external
-provider use to fictional or separately reviewed, pre-sanitized data; see the
-[maintenance-review API contract](reference/api/maintenance-review-v0.1.md) for
-the provider and source-record boundary.
+## Historical Planning Record: Inspection-History Analysis (Not Active)
 
-The provider-neutral summary adapter supports an optional `ThinkingMode` value:
-empty omits the provider field, while `enabled` or `disabled` sends the
-corresponding structured provider option. DeepSeek V4 experiment configuration
-uses `deepseek-v4-flash` with `UNIPM_SUMMARY_THINKING_MODE=disabled`; committed
-summary configuration remains disabled and no API key belongs in the repo.
-
-See [`reference/api/maintenance-review-v0.1.md`](reference/api/maintenance-review-v0.1.md)
-for the request, response, evidence-status, summary-status, source-selection,
-and provider configuration contract.
-
-## Planned Inspection-History Analysis
-
-The planned RAG-assisted inspection-history analysis capability is documented in
-[`reference/planning/rag-assisted-inspection-history-analysis.md`](reference/planning/rag-assisted-inspection-history-analysis.md).
-It is not implemented by `POST /api/v1/maintenance-review`. The planned
-capability will analyze acknowledged preventive-maintenance inspection records
+The RAG-assisted inspection-history analysis capability was a planning
+direction that was never implemented. Its design record is preserved unchanged
+in [`reference/planning/rag-assisted-inspection-history-analysis.md`](reference/planning/rag-assisted-inspection-history-analysis.md).
+It described analysis of acknowledged preventive-maintenance inspection records
 for recurring findings, condition frequencies, time comparisons and recurrence
-intervals, cross-asset patterns, distributions, and single-asset timelines.
+intervals, cross-asset patterns, distributions, and single-asset timelines,
+with deterministic fact computation preceding any RAG-assisted interpretation.
+It is not an active roadmap item on this branch.
 
-SQL and deterministic application code will calculate the authoritative facts;
-RAG will retrieve the exact acknowledged records supporting them; and optional
-generation will explain only the computed result model and displayed sources.
-Every output will include scope/date range, computed facts, interpretation,
-supporting acknowledged sources and locators, limitations, and no-diagnosis
-wording. The language model will not calculate authoritative statistics,
-diagnose equipment, infer causes, approve actions, or mutate records.
+## Validation Baseline Definition
 
-## Evaluated MVP Definition
-
-The authoritative evaluated-MVP boundary is documented in
-[`reference/planning/mvp-definition.md`](reference/planning/mvp-definition.md).
-It keeps the implemented maintenance-review endpoint separate from the
-planned inspection-history analysis capability and defines the acknowledged-
-history, deterministic-analysis, source-retrieval, optional-interpretation,
-web, and technical-observability scope. Mobile remains part of UniPM but is
+The active boundary for this branch is documented in
+[`reference/planning/mvp-definition.md`](reference/planning/mvp-definition.md):
+the PMIS-only GSD validation baseline. It defines the acknowledged-history,
+form-lifecycle, corrective-handoff, web, and mobile scope demonstrated without
+AI, preserves the previous RAG-inclusive evaluated-MVP definition as history,
+and claims no replacement innovation. Mobile remains part of UniPM but is
 owned by a separate partner workstream.
+
+A concise GSD validation note with the prepared validation questions is at
+[`reference/planning/gsd-validation-note.md`](reference/planning/gsd-validation-note.md).
+The repeatable local demonstration setup and walkthrough are documented in
+[`reference/planning/gsd-pmis-demo-runbook.md`](reference/planning/gsd-pmis-demo-runbook.md).
 
 ## Authentication
 
@@ -406,12 +409,13 @@ Inspection list/detail reads, maintenance issue normalization, and internal
 lexical FTS retrieval are complete. Lexical retrieval searches only the
 rebuildable `MaintenanceSearchDocument.SearchText` projection and returns
 source-traceable inspection metadata. It is an internal retriever, not a
-standalone public search endpoint; fused retrieval feeds the authenticated
-`POST /api/v1/maintenance-review` endpoint. Domain-contract hardening is
+standalone public search endpoint; internal fused retrieval has no public
+endpoint in the validation baseline, and the previously implemented
+maintenance-review endpoint is not exposed by default. Domain-contract hardening is
 complete: stable persisted codes have feature-owned
 catalogs, canonical API/storage values, SQL Server constraints, and migration
-preflight checks. Semantic retrieval is now an internal channel required by the
-target maintenance-history review workflow: it stores only document embeddings,
+preflight checks. Semantic retrieval was implemented as an internal channel of
+the evaluated maintenance-history review workflow: it stored only document embeddings,
 never query vectors, and does not affect core or lexical workflows when its
 provider is disabled. Internal fused retrieval uses RRF with K=60, candidate
 depth 20, output limit 10, deterministic ordering, component-rank traceability,
@@ -425,9 +429,9 @@ Tagalog and Taglish language fit was weak, and five outputs violated the citatio
 contract. Inspection-submission integrity, retrieval/test layout organization,
 and explicit free-text-name sanitizer limitation documentation are complete.
 The web foundation and browser authentication integration are implemented and
-merged; the Flutter mobile foundation and initial Draft form workflow are also
-implemented and merged in a separate partner-owned workstream. This workstream
-does not implement mobile features. The reference-document foundation is
+merged; the Flutter mobile foundation, initial Draft form workflow, and
+whole-form submission are also implemented and merged in a separate
+partner-owned workstream. The reference-document foundation is
 implemented and merged as a fictional metadata and sectioning foundation; approved
 institutional source authorization and ingestion remain pending, and OEM
 retrieval is excluded from the evaluated MVP. EXP-003 executed a local offline

@@ -1,11 +1,10 @@
-# UniPM Mobile Foundation
+# UniPM Mobile
 
-This Flutter application is the Android-first foundation for the skilled-worker
-field workflow. It contains authentication, a small authenticated home shell,
-and the first Draft preventive-maintenance form workflow. QR scanning and later
-field workflow actions remain outside this phase. Offline synchronization is
-deferred; its persistence and synchronization architecture remain undecided
-until a separate approved decision.
+This Flutter application provides the Android-first skilled-worker field
+workflow. Authenticated Inspector and GSD users can identify an existing asset
+from its UniPM QR code, review backend-authoritative asset details, resolve an
+applicable asset schedule, and start, review, or submit the existing
+preventive-maintenance Draft workflow.
 
 ## Local Setup
 
@@ -13,8 +12,8 @@ From this directory:
 
 ```powershell
 flutter pub get
-flutter analyze
-flutter test test/mobile_foundation_test.dart
+flutter analyze --no-pub
+flutter test --no-pub
 ```
 
 Configure the backend URL at runtime; it is not committed to the repository:
@@ -31,6 +30,17 @@ For an Android emulator, `10.0.2.2` is the route to the development machine.
 For a physical device, use a reachable LAN address, for example
 `http://192.168.1.20:5000/`, or use an approved HTTPS development setup. The
 device and development machine must be able to reach the API.
+
+For a release build, provide an approved HTTPS API URL:
+
+```powershell
+flutter build apk --release --dart-define=UNIPM_API_BASE_URL=https://<approved-api-host>/
+```
+
+Production signing is supplied outside the repository through the standard
+untracked `android/key.properties` file and its referenced keystore. Release
+configuration never falls back to the debug keystore. A release artifact built
+without project-owned signing material is not a distributable signed package.
 
 ## Authentication Boundary
 
@@ -49,18 +59,65 @@ navigation boundary; backend authorization remains authoritative.
 Inspector and GSD users can open **Preventive-maintenance drafts** from the
 authenticated shell. This phase supports creating a one-page form header,
 adding multiple inspection rows, resuming a saved Draft, and editing or
-deleting Draft rows. Every action is sent to the ASP.NET Core API immediately;
+deleting Draft rows. A worker can review the rows and submit the whole form;
+submission assigns the provisional file number returned by the API and makes
+the form read-only. Every action is sent to the ASP.NET Core API immediately;
 the mobile app does not keep offline drafts or synchronize a local database.
 
-The mobile client only presents Draft forms. Submission, acknowledgement,
-signatures, schedule completion, corrective handoff, RMRF, QR scanning, and
-offline synchronization remain outside this phase. Offline synchronization is
-deferred rather than rejected; its persistence and synchronization architecture
-remain undecided pending a separate approved decision.
+The **Scan asset QR** entry sends the complete scanned UniPM QR value to the
+authenticated backend asset lookup. Backend asset data remains authoritative;
+the mobile app does not derive an asset identity or category from the QR text.
+Eligible schedules are requested for the returned asset ID. The worker chooses
+when more than one applicable schedule exists, then starts a derived Draft,
+reuses a compatible Draft, chooses between multiple compatible Drafts, or
+resumes an existing inspection row. An inspection row is created only when the
+worker saves it in the existing editor.
+
+From the scanned asset details, the worker can open read-only **Maintenance
+history**. The client requests `/api/v1/inspections/history/{assetId}` using
+the exact backend asset ID and displays only the records returned by that
+acknowledged-history contract, including inspection date, condition, the
+inspection-row reference, remarks, recommendations, and the confirmed Water
+Drinking Station work items when present. Draft and Submitted rows are
+excluded by the backend and are not reconstructed or classified by the mobile
+client.
+
+The current PM editor follows the four confirmed visible GSD forms: Fire
+Extinguisher Monitoring (Rev. 2, November 2023), Fire Alarm Preventive
+Maintenance (Rev. 1, May 2022), Emergency Lights Preventive Maintenance (Rev.
+1, May 2022), and Water Drinking Station Preventive Maintenance (Rev. 1,
+November 2023). Asset/device number, location, building, department, and
+category are taken from backend asset/schedule data. The worker records
+operational status, inspection date, remarks, recommendations, the optional
+Water Station accomplishment date, and the Water Station filter/UV work items.
+Type, capacity, installation date, expiration
+date, and other metadata are shown only when supplied by the asset contract;
+the mobile form does not ask the worker to re-enter unavailable asset data.
+The Water Station RMRF number is outside this PM inspection boundary.
+
+For the confirmed GSD workflow, a submitted form can be opened for
+acknowledgement in the authenticated skilled-worker mobile session. The worker
+reviews the whole form, records the concerned Department Head's name and
+position, and captures the signature; the Department Head does not need a
+UniPM account. The client calls
+`POST /api/v1/preventive-maintenance-forms/{id}/acknowledge` with the signatory
+data and a PNG signature. The backend remains authoritative: it changes the
+form to **Acknowledged** and completes linked schedules. The mobile client
+never marks schedules complete directly. After success, the form is
+read-only. Acknowledgement is not corrective-action, budget, RMRF, or WMS
+approval.
+
+The four supplied GSD forms are implemented as the authoritative visible
+category-form structure for the current mobile PM pass. Historical form-version
+preservation, corrective handoff, RMRF processing, and offline workflow remain
+outside this mobile implementation. Offline persistence and synchronization
+architecture remain undecided pending a separate approved decision.
 
 ## Dependencies
 
 - `http`: JSON HTTP requests to the existing ASP.NET Core API.
+- `mobile_scanner`: Android camera preview and QR decoding. Android camera
+  permission is declared in the application manifest.
 
 No API credentials, URLs, tokens, cookies, or environment-specific settings are
 committed or persisted by the mobile client.

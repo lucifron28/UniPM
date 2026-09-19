@@ -1,4 +1,10 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import {
   createMemoryHistory,
@@ -7,12 +13,13 @@ import {
   RouterProvider,
 } from '@tanstack/react-router'
 import { http, HttpResponse } from 'msw'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { configureApiRuntime } from '@/api/http-client'
 import { FormDetail } from '@/features/preventive-maintenance-forms/form-detail'
 import { FormRegistry } from '@/features/preventive-maintenance-forms/form-registry'
 import { useAuthStore } from '@/stores/auth-store'
 import { server } from '@/test/server'
+import { PreventiveMaintenanceDashboard } from '@/routes/app/dashboard'
 
 const meUrl = 'http://localhost:5000/api/v1/auth/me'
 const formsUrl = 'http://localhost:5000/api/v1/preventive-maintenance-forms'
@@ -57,6 +64,13 @@ function form(status: 'Draft' | 'Submitted' | 'Acknowledged') {
               isOperational: false,
               remarks: 'Pressure is low.',
               actionsRecommendations: 'Inspect and recharge the unit.',
+              dateAccomplished: null,
+              waterReplaceCarbonFilter: null,
+              waterReplaceSedimentFilter: null,
+              waterCheckUvLight: null,
+              assetCode: 'FE-TEST-001',
+              location: 'Main hallway',
+              skilledWorkerIdentity: 'Synthetic Inspector',
               ...timestamps,
             },
           ],
@@ -125,7 +139,7 @@ describe('preventive-maintenance form review', () => {
       await screen.findByRole('heading', { name: 'Form review' }),
     ).toBeInTheDocument()
     expect(screen.getByText('Draft')).toBeInTheDocument()
-    expect(screen.getByText('Submitted')).toBeInTheDocument()
+    expect(screen.getByText('Awaiting acknowledgement')).toBeInTheDocument()
     expect(screen.getByText('Acknowledged')).toBeInTheDocument()
     expect(screen.getAllByText('Main Building / GSD')).toHaveLength(3)
     expect(screen.getAllByText('Inspection rows')).toHaveLength(3)
@@ -135,6 +149,79 @@ describe('preventive-maintenance form review', () => {
       'href',
       '/app/preventive-maintenance-forms/77777777-7777-4777-8777-777777777777',
     )
+  })
+
+  it('renders human-readable row context and water-station work items', async () => {
+    server.use(
+      http.get(meUrl, () => HttpResponse.json(currentUser(['GSD']))),
+      http.get(`${formsUrl}/${formId}`, () =>
+        HttpResponse.json({
+          ...form('Submitted'),
+          assetCategory: 'water-drinking-station',
+          inspections: [
+            {
+              ...form('Submitted').inspections[0],
+              assetCode: 'WDS-MAIN-001',
+              location: 'Main Building lobby',
+              skilledWorkerIdentity: 'Synthetic Inspector',
+              dateAccomplished: '2026-07-28T03:00:00Z',
+              waterReplaceCarbonFilter: true,
+              waterReplaceSedimentFilter: false,
+              waterCheckUvLight: true,
+            },
+          ],
+        }),
+      ),
+    )
+
+    renderWithProviders(<FormDetail formId={formId} />)
+
+    expect(await screen.findAllByText('WDS-MAIN-001')).toHaveLength(2)
+    expect(screen.getByText('Main Building lobby')).toBeInTheDocument()
+    expect(screen.getByText('Synthetic Inspector')).toBeInTheDocument()
+    expect(screen.getByText('Awaiting acknowledgement')).toBeInTheDocument()
+    expect(screen.getByText('Recommendation')).toBeInTheDocument()
+    expect(
+      screen.getByText('Water drinking station work items'),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Replace carbon filter')).toBeInTheDocument()
+    expect(screen.getByText('Replace sediment filter')).toBeInTheDocument()
+    expect(screen.getByText('Check UV light')).toBeInTheDocument()
+  })
+
+  it('provides a role-aware PMIS validation launch page', async () => {
+    server.use(http.get(meUrl, () => HttpResponse.json(currentUser(['GSD']))))
+
+    renderWithProviders(<PreventiveMaintenanceDashboard />)
+
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Preventive Maintenance Portal',
+      }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Validation prototype')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Assets/ })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Schedules/ })).toBeInTheDocument()
+    expect(
+      screen.getByRole('link', { name: /Official history/ }),
+    ).toBeInTheDocument()
+    expect(
+      await screen.findByRole('link', { name: /Form review/ }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Awaiting acknowledgement')).toBeInTheDocument()
+    const workflowCopy = screen.getByText(
+      /Field-work completion and acknowledgement are separate/,
+    )
+    expect(workflowCopy).toHaveTextContent(
+      /Acknowledgement records receipt\/noting, locks the form, and makes its inspection rows eligible for official history\./,
+    )
+    expect(workflowCopy).toHaveTextContent(
+      /It does not approve corrective work, funding, or an RMRF\./,
+    )
+    expect(workflowCopy).not.toHaveTextContent(/Schedule completion occurs/i)
+    expect(
+      screen.getByText(/Provisional UniPM file numbers remain independent/),
+    ).toBeInTheDocument()
   })
 
   it('renders acknowledged detail and GSD corrective handoff without signatures', async () => {
@@ -185,6 +272,25 @@ describe('preventive-maintenance form review', () => {
     expect(screen.queryByText('Completed')).not.toBeInTheDocument()
     expect(screen.queryByText('signatureData')).not.toBeInTheDocument()
     expect(screen.queryByText('signatureChecksum')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('heading', { name: 'Acknowledge submitted form' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('does not offer acknowledgement for a Draft form', async () => {
+    server.use(
+      http.get(meUrl, () => HttpResponse.json(currentUser(['GSD']))),
+      http.get(`${formsUrl}/${formId}`, () => HttpResponse.json(form('Draft'))),
+    )
+
+    renderWithProviders(<FormDetail formId={formId} />)
+
+    expect(
+      await screen.findByRole('heading', { name: 'Inspection rows' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('heading', { name: 'Acknowledge submitted form' }),
+    ).not.toBeInTheDocument()
   })
 
   it('does not request corrective handoff for Inspector users', async () => {
@@ -209,5 +315,117 @@ describe('preventive-maintenance form review', () => {
     expect(
       screen.queryByRole('heading', { name: 'Corrective-action findings' }),
     ).not.toBeInTheDocument()
+  })
+
+  it('acknowledges a submitted form without exposing signature payloads', async () => {
+    let acknowledgementBody: Record<string, unknown> | undefined
+    let acknowledged = false
+    server.use(
+      http.get(meUrl, () => HttpResponse.json(currentUser(['GSD']))),
+      http.get(`${formsUrl}/${formId}`, () =>
+        HttpResponse.json(form(acknowledged ? 'Acknowledged' : 'Submitted')),
+      ),
+      http.get(`${formsUrl}/${formId}/corrective-handoff`, () =>
+        HttpResponse.json({
+          formId,
+          fileNumber: 'GSD-ACKNOWLEDGED-001',
+          acknowledgedAt: '2026-07-29T02:00:00Z',
+          department: 'GSD',
+          building: 'Main Building',
+          assetCategory: 'fire-extinguisher',
+          hasCorrectiveActionRows: false,
+          rows: [],
+        }),
+      ),
+      http.post(`${formsUrl}/${formId}/acknowledge`, async ({ request }) => {
+        acknowledged = true
+        acknowledgementBody = (await request.json()) as Record<string, unknown>
+        return HttpResponse.json({
+          id: '99999999-9999-4999-8999-999999999999',
+          formId,
+          signatoryName: 'Synthetic Department Head',
+          signatoryPosition: 'Department Head',
+          signatureContentType: 'image/png',
+          signatureChecksum: 'not-displayed',
+          capturedByUserId: inspectorId,
+          acknowledgedAt: '2026-07-29T02:00:00Z',
+        })
+      }),
+    )
+    const toDataUrl = vi
+      .spyOn(HTMLCanvasElement.prototype, 'toDataURL')
+      .mockReturnValue('data:image/png;base64,iVBORw0KGgo=')
+
+    renderWithProviders(<FormDetail formId={formId} />)
+
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Acknowledge submitted form',
+      }),
+    ).toBeInTheDocument()
+    const acknowledgementCopy = screen.getByText(
+      /Field-work completion and acknowledgement are separate/,
+    )
+    expect(acknowledgementCopy).toHaveTextContent(
+      /Acknowledgement records receipt\/noting, locks the form, and makes its inspection rows eligible for official history\./,
+    )
+    expect(acknowledgementCopy).toHaveTextContent(
+      /It does not approve corrective work, funding, or an RMRF\./,
+    )
+    fireEvent.change(screen.getByLabelText('Signatory name'), {
+      target: { value: 'Synthetic Department Head' },
+    })
+    fireEvent.change(screen.getByLabelText('Signatory position'), {
+      target: { value: 'Department Head' },
+    })
+    fireEvent.pointerDown(screen.getByLabelText('Signature'), {
+      clientX: 20,
+      clientY: 20,
+      pointerId: 1,
+    })
+    fireEvent.pointerUp(screen.getByLabelText('Signature'), { pointerId: 1 })
+    fireEvent.click(screen.getByRole('button', { name: 'Acknowledge form' }))
+
+    expect(
+      await screen.findByRole('dialog', {
+        name: 'Confirm department-head acknowledgement',
+      }),
+    ).toBeInTheDocument()
+    expect(
+      within(
+        screen.getByRole('dialog', {
+          name: 'Confirm department-head acknowledgement',
+        }),
+      ).getByText(/makes its inspection rows eligible for official history/),
+    ).toBeInTheDocument()
+    expect(
+      within(
+        screen.getByRole('dialog', {
+          name: 'Confirm department-head acknowledgement',
+        }),
+      ).getByText(/does not approve corrective work, funding, or an RMRF/),
+    ).toBeInTheDocument()
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Confirm acknowledgement' }),
+    )
+
+    await waitFor(() => expect(acknowledgementBody).toBeDefined())
+    expect(toDataUrl).toHaveBeenCalledWith('image/png')
+    expect(acknowledgementBody).toMatchObject({
+      signatoryName: 'Synthetic Department Head',
+      signatoryPosition: 'Department Head',
+      signatureContentType: 'image/png',
+    })
+    expect(acknowledgementBody?.signatureData).toBe('iVBORw0KGgo=')
+    expect(screen.getByText('Acknowledgement recorded')).toBeInTheDocument()
+    expect(screen.getByText('Synthetic Department Head')).toBeInTheDocument()
+    expect(screen.getByText('Department Head')).toBeInTheDocument()
+    expect(screen.getAllByText('Acknowledged')).toHaveLength(2)
+    expect(
+      screen.queryByRole('button', { name: 'Acknowledge form' }),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByText('signatureData')).not.toBeInTheDocument()
+    expect(screen.queryByText('signatureChecksum')).not.toBeInTheDocument()
+    toDataUrl.mockRestore()
   })
 })

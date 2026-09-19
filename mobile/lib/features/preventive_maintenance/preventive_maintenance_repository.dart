@@ -7,7 +7,12 @@ abstract interface class PreventiveMaintenanceRepository {
   Future<PreventiveMaintenanceForm> createForm(
     CreatePreventiveMaintenanceFormInput input,
   );
-  Future<List<ScheduleOption>> listSchedules();
+  Future<PreventiveMaintenanceForm> submitForm(String formId);
+  Future<PreventiveMaintenanceAcknowledgement> acknowledgeForm(
+    String formId,
+    AcknowledgePreventiveMaintenanceInput input,
+  );
+  Future<List<ScheduleOption>> listSchedules({String? assetId});
   Future<List<ReferenceOption>> listAssetCategories();
   Future<List<ReferenceOption>> listPeriodTypes();
   Future<List<ReferenceOption>> listQuarters();
@@ -63,8 +68,37 @@ class ApiPreventiveMaintenanceRepository
   }
 
   @override
-  Future<List<ScheduleOption>> listSchedules() async {
-    final values = await _client.getJsonList('/api/v1/schedules');
+  Future<PreventiveMaintenanceForm> submitForm(String formId) async {
+    return PreventiveMaintenanceForm.fromJson(
+      await _client.postJson(
+        '/api/v1/preventive-maintenance-forms/$formId/submit',
+      ),
+    );
+  }
+
+  @override
+  Future<PreventiveMaintenanceAcknowledgement> acknowledgeForm(
+    String formId,
+    AcknowledgePreventiveMaintenanceInput input,
+  ) async {
+    final json = await _client.postJson(
+      '/api/v1/preventive-maintenance-forms/$formId/acknowledge',
+      <String, dynamic>{
+        'signatoryName': input.signatoryName.trim(),
+        'signatoryPosition': input.signatoryPosition.trim(),
+        'signatureData': input.signatureData,
+        'signatureContentType': input.signatureContentType,
+      },
+    );
+    return PreventiveMaintenanceAcknowledgement.fromJson(json);
+  }
+
+  @override
+  Future<List<ScheduleOption>> listSchedules({String? assetId}) async {
+    final path = assetId == null
+        ? '/api/v1/schedules'
+        : '/api/v1/schedules?assetId=${Uri.encodeQueryComponent(assetId)}';
+    final values = await _client.getJsonList(path);
     return values.map(_scheduleFromValue).toList(growable: false);
   }
 
@@ -91,9 +125,13 @@ class ApiPreventiveMaintenanceRepository
         scheduleId: input.scheduleId,
         inspectorUserId: input.inspectorUserId,
         dateInspected: input.dateInspected,
+        dateAccomplished: input.dateAccomplished,
         isOperational: input.isOperational,
         remarks: input.remarks,
         actionsRecommendations: input.actionsRecommendations,
+        waterReplaceCarbonFilter: input.waterReplaceCarbonFilter,
+        waterReplaceSedimentFilter: input.waterReplaceSedimentFilter,
+        waterCheckUvLight: input.waterCheckUvLight,
       ),
     );
     return PreventiveMaintenanceInspection.fromJson(json);
@@ -110,9 +148,13 @@ class ApiPreventiveMaintenanceRepository
       _inspectionBody(
         inspectorUserId: input.inspectorUserId,
         dateInspected: input.dateInspected,
+        dateAccomplished: input.dateAccomplished,
         isOperational: input.isOperational,
         remarks: input.remarks,
         actionsRecommendations: input.actionsRecommendations,
+        waterReplaceCarbonFilter: input.waterReplaceCarbonFilter,
+        waterReplaceSedimentFilter: input.waterReplaceSedimentFilter,
+        waterCheckUvLight: input.waterCheckUvLight,
       ),
     );
     return PreventiveMaintenanceInspection.fromJson(json);
@@ -151,17 +193,35 @@ Map<String, dynamic> _inspectionBody({
   String? scheduleId,
   required String inspectorUserId,
   required DateTime dateInspected,
+  DateTime? dateAccomplished,
   required bool isOperational,
   required String? remarks,
   required String? actionsRecommendations,
+  bool? waterReplaceCarbonFilter,
+  bool? waterReplaceSedimentFilter,
+  bool? waterCheckUvLight,
 }) {
   return <String, dynamic>{
     ...?scheduleId == null ? null : <String, dynamic>{'scheduleId': scheduleId},
     'inspectorUserId': inspectorUserId,
     'dateInspected': dateInspected.toUtc().toIso8601String(),
+    'dateAccomplished': dateAccomplished?.toUtc().toIso8601String(),
     'isOperational': isOperational,
     'remarks': _blankToNull(remarks),
     'actionsRecommendations': _blankToNull(actionsRecommendations),
+    ...?waterReplaceCarbonFilter == null
+        ? null
+        : <String, dynamic>{
+            'waterReplaceCarbonFilter': waterReplaceCarbonFilter,
+          },
+    ...?waterReplaceSedimentFilter == null
+        ? null
+        : <String, dynamic>{
+            'waterReplaceSedimentFilter': waterReplaceSedimentFilter,
+          },
+    ...?waterCheckUvLight == null
+        ? null
+        : <String, dynamic>{'waterCheckUvLight': waterCheckUvLight},
   };
 }
 

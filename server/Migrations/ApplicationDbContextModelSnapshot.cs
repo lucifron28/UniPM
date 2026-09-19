@@ -307,7 +307,13 @@ namespace UniPM.Api.Migrations
                     b.Property<Guid>("AssetId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<DateTimeOffset?>("CompletedAt")
+                        .HasColumnType("datetimeoffset");
+
                     b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<DateTimeOffset?>("DateAccomplished")
                         .HasColumnType("datetimeoffset");
 
                     b.Property<DateTimeOffset>("DateInspected")
@@ -332,8 +338,20 @@ namespace UniPM.Api.Migrations
                     b.Property<Guid>("ScheduleId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<DateTimeOffset?>("StartedAt")
+                        .HasColumnType("datetimeoffset");
+
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("datetimeoffset");
+
+                    b.Property<bool?>("WaterCheckUvLight")
+                        .HasColumnType("bit");
+
+                    b.Property<bool?>("WaterReplaceCarbonFilter")
+                        .HasColumnType("bit");
+
+                    b.Property<bool?>("WaterReplaceSedimentFilter")
+                        .HasColumnType("bit");
 
                     b.HasKey("Id");
 
@@ -553,6 +571,9 @@ namespace UniPM.Api.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
 
+                    b.Property<DateTimeOffset?>("FieldWorkCompletedAt")
+                        .HasColumnType("datetimeoffset");
+
                     b.Property<string>("FileNumber")
                         .HasMaxLength(64)
                         .HasColumnType("nvarchar(64)");
@@ -561,6 +582,10 @@ namespace UniPM.Api.Migrations
                         .IsRequired()
                         .HasMaxLength(32)
                         .HasColumnType("nvarchar(32)");
+
+                    b.Property<string>("PmCycle")
+                        .HasMaxLength(7)
+                        .HasColumnType("nvarchar(7)");
 
                     b.Property<string>("Quarter")
                         .HasMaxLength(8)
@@ -601,17 +626,24 @@ namespace UniPM.Api.Migrations
 
                     b.HasIndex("AssetCategory", "Status");
 
+                    b.HasIndex("Department", "AssetCategory", "PmCycle")
+                        .IsUnique()
+                        .HasDatabaseName("IX_PreventiveMaintenanceForms_Department_AssetCategory_PmCycle")
+                        .HasFilter("[Department] IS NOT NULL AND [PmCycle] IS NOT NULL");
+
                     b.ToTable("PreventiveMaintenanceForms", null, t =>
                         {
+                            t.HasCheckConstraint("CK_PreventiveMaintenanceForms_AcademicYear_Format", "[AcademicYear] IS NULL OR [AcademicYear] LIKE '[0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9]'");
+
                             t.HasCheckConstraint("CK_PreventiveMaintenanceForms_AssetCategory_Allowed", "[AssetCategory] IN ('fire-extinguisher', 'fire-alarm', 'emergency-light', 'water-drinking-station')");
 
                             t.HasCheckConstraint("CK_PreventiveMaintenanceForms_PeriodType_Allowed", "[PeriodType] IN ('Quarter', 'Semester', 'Annual', 'Custom')");
 
+                            t.HasCheckConstraint("CK_PreventiveMaintenanceForms_PmCycle_Format", "[PmCycle] IS NULL OR (LEN([PmCycle]) = 7 AND [PmCycle] LIKE '[0-9][0-9][0-9][0-9]-[0-1][0-9]' AND RIGHT([PmCycle], 2) BETWEEN '01' AND '12')");
+
                             t.HasCheckConstraint("CK_PreventiveMaintenanceForms_Quarter_Allowed", "[Quarter] IS NULL OR [Quarter] IN ('Q1', 'Q2', 'Q3', 'Q4')");
 
                             t.HasCheckConstraint("CK_PreventiveMaintenanceForms_Semester_Allowed", "[Semester] IS NULL OR [Semester] IN ('First', 'Second', 'Summer')");
-
-                            t.HasCheckConstraint("CK_PreventiveMaintenanceForms_AcademicYear_Format", "[AcademicYear] IS NULL OR [AcademicYear] LIKE '[0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9]'");
 
                             t.HasCheckConstraint("CK_PreventiveMaintenanceForms_Status_Allowed", "[Status] IN ('Draft', 'Submitted', 'Acknowledged')");
                         });
@@ -643,6 +675,11 @@ namespace UniPM.Api.Migrations
                         .IsRequired()
                         .HasMaxLength(32)
                         .HasColumnType("nvarchar(32)");
+
+                    b.Property<string>("PmCycle")
+                        .IsRequired()
+                        .HasMaxLength(7)
+                        .HasColumnType("nvarchar(7)");
 
                     b.Property<string>("Quarter")
                         .HasMaxLength(8)
@@ -677,6 +714,8 @@ namespace UniPM.Api.Migrations
                             t.HasCheckConstraint("CK_Schedules_AcademicYear_Format", "[AcademicYear] IS NULL OR [AcademicYear] LIKE '[0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9]'");
 
                             t.HasCheckConstraint("CK_Schedules_PeriodType_Allowed", "[PeriodType] IN ('Quarter', 'Semester', 'Annual', 'Custom')");
+
+                            t.HasCheckConstraint("CK_Schedules_PmCycle_Format", "LEN([PmCycle]) = 7 AND [PmCycle] LIKE '[0-9][0-9][0-9][0-9]-[0-1][0-9]' AND RIGHT([PmCycle], 2) BETWEEN '01' AND '12'");
 
                             t.HasCheckConstraint("CK_Schedules_Quarter_Allowed", "[Quarter] IS NULL OR [Quarter] IN ('Q1', 'Q2', 'Q3', 'Q4')");
 

@@ -251,6 +251,7 @@ public sealed class SyntheticMaintenanceSeeder(
     {
         target.AssetId = source.AssetId;
         target.ScheduleDate = AtManilaMidnight(source.ScheduleDate);
+        target.PmCycle = PreventiveMaintenanceCycle.FromScheduleDate(target.ScheduleDate);
         SchedulePeriodTypeCatalog.TryNormalize(source.PeriodType, out var normalizedPeriodType);
         target.PeriodType = normalizedPeriodType;
         ScheduleQuarterCatalog.TryNormalizeNullable(source.Quarter, out var normalizedQuarter);

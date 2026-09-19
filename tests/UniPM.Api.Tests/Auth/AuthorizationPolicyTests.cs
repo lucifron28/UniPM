@@ -31,7 +31,6 @@ public sealed class AuthorizationPolicyTests
     [Theory]
     [InlineData("/api/v1/assets/")]
     [InlineData("/api/v1/schedules/")]
-    [InlineData("/api/v1/inspections/")]
     [InlineData("/api/v1/maintenance-review")]
     public async Task Admin_only_user_is_forbidden_from_operational_endpoints(string route)
     {
@@ -84,19 +83,6 @@ public sealed class AuthorizationPolicyTests
         });
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-    }
-
-    [Theory]
-    [InlineData(AuthRoleCatalog.Gsd)]
-    [InlineData(AuthRoleCatalog.Inspector)]
-    public async Task Gsd_and_inspector_can_submit_inspections(string role)
-    {
-        await using var application = new PolicyApplicationFactory(role);
-        using var client = application.CreateClient();
-
-        var response = await client.PostAsJsonAsync("/api/v1/inspections/", new { });
-
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
     [Theory]

@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
 
 import '../../auth/auth_models.dart';
+import '../../ui/display_labels.dart';
+import 'preventive_maintenance_acknowledgement_page.dart';
 import 'preventive_maintenance_controller.dart';
+import 'preventive_maintenance_form_specs.dart';
 import 'preventive_maintenance_models.dart';
 import 'preventive_maintenance_repository.dart';
+
+String _formStatusLabel(String status) =>
+    status == 'Submitted' ? 'Awaiting acknowledgement' : status;
 
 class PreventiveMaintenancePage extends StatefulWidget {
   const PreventiveMaintenancePage({
@@ -54,8 +60,10 @@ class _PreventiveMaintenancePageState extends State<PreventiveMaintenancePage> {
     controller.selectForm(form);
     await Navigator.of(context).push<void>(
       MaterialPageRoute<void>(
-        builder: (_) =>
-            _DraftEditorPage(controller: controller, formId: formId),
+        builder: (_) => PreventiveMaintenanceDraftPage(
+          controller: controller,
+          formId: formId,
+        ),
       ),
     );
     if (mounted) await controller.loadForms();
@@ -64,7 +72,7 @@ class _PreventiveMaintenancePageState extends State<PreventiveMaintenancePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Preventive-maintenance drafts')),
+      appBar: AppBar(title: const Text('Preventive-maintenance forms')),
       body: AnimatedBuilder(
         animation: controller,
         builder: (context, _) {
@@ -81,8 +89,9 @@ class _PreventiveMaintenancePageState extends State<PreventiveMaintenancePage> {
             );
           }
 
-          final forms = controller.visibleDrafts;
-          if (forms.isEmpty) {
+          final drafts = controller.visibleDrafts;
+          final reviewableForms = controller.visibleReviewableForms;
+          if (drafts.isEmpty && reviewableForms.isEmpty) {
             return _EmptyFormsState(onCreate: _openCreate);
           }
 
@@ -92,10 +101,7 @@ class _PreventiveMaintenancePageState extends State<PreventiveMaintenancePage> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'Draft forms',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
+                  Text('Forms', style: Theme.of(context).textTheme.titleLarge),
                   OutlinedButton(
                     onPressed: _openCreate,
                     child: const Text('Create draft'),
@@ -104,23 +110,38 @@ class _PreventiveMaintenancePageState extends State<PreventiveMaintenancePage> {
               ),
               const SizedBox(height: 8),
               const Text(
-                'Draft forms are saved to UniPM as you add and edit inspection rows.',
+                'Create and update drafts, then submit and acknowledge forms in this authenticated session.',
               ),
               const SizedBox(height: 16),
-              ...forms.map(
-                (form) => Card(
-                  child: ListTile(
-                    key: Key('draft-form-${form.id}'),
-                    title: Text(form.fileNumber ?? 'Unsubmitted draft'),
-                    subtitle: Text(
-                      '${form.assetCategory} | ${form.inspections.length} inspection row(s)\n${form.building ?? 'Building not recorded'} / ${form.department ?? 'Department not recorded'}',
-                    ),
-                    isThreeLine: true,
-                    trailing: const Icon(Icons.chevron_right),
+              if (drafts.isEmpty)
+                const Text('No draft forms yet.')
+              else
+                ...drafts.map(
+                  (form) => _FormListTile(
+                    form: form,
+                    tileKey: Key('draft-form-${form.id}'),
                     onTap: () => _openDraft(form.id),
                   ),
                 ),
-              ),
+              if (reviewableForms.isNotEmpty) ...[
+                const SizedBox(height: 24),
+                Text(
+                  'Awaiting acknowledgement and acknowledged forms',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Forms awaiting acknowledgement can be reviewed from this authenticated mobile session.',
+                ),
+                const SizedBox(height: 8),
+                ...reviewableForms.map(
+                  (form) => _FormListTile(
+                    form: form,
+                    tileKey: Key('review-form-${form.id}'),
+                    onTap: () => _openDraft(form.id),
+                  ),
+                ),
+              ],
             ],
           );
         },
@@ -129,6 +150,43 @@ class _PreventiveMaintenancePageState extends State<PreventiveMaintenancePage> {
         onPressed: _openCreate,
         icon: const Icon(Icons.add),
         label: const Text('New draft'),
+      ),
+    );
+  }
+}
+
+class _FormListTile extends StatelessWidget {
+  const _FormListTile({
+    required this.form,
+    required this.tileKey,
+    required this.onTap,
+  });
+
+  final PreventiveMaintenanceForm form;
+  final Key tileKey;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: ListTile(
+        key: tileKey,
+        title: Text(
+          form.fileNumber ??
+              (form.isDraft
+                  ? 'Unsubmitted draft'
+                  : 'Preventive-maintenance form'),
+        ),
+        subtitle: Text(
+          '${_formStatusLabel(form.status)} | '
+          '${displayAssetCategory(form.assetCategory)} | '
+          '${form.inspections.length} inspection row(s)\n'
+          '${form.building ?? 'Building not recorded'} / '
+          '${form.department ?? 'Department not recorded'}',
+        ),
+        isThreeLine: true,
+        trailing: const Icon(Icons.chevron_right),
+        onTap: onTap,
       ),
     );
   }
@@ -264,8 +322,10 @@ class _CreateDraftPageState extends State<_CreateDraftPage> {
     if (!mounted || created == null) return;
     await Navigator.of(context).pushReplacement<void, void>(
       MaterialPageRoute<void>(
-        builder: (_) =>
-            _DraftEditorPage(controller: widget.controller, formId: created.id),
+        builder: (_) => PreventiveMaintenanceDraftPage(
+          controller: widget.controller,
+          formId: created.id,
+        ),
       ),
     );
   }
@@ -423,26 +483,47 @@ class _CreateDraftPageState extends State<_CreateDraftPage> {
   }
 }
 
-class _DraftEditorPage extends StatefulWidget {
-  const _DraftEditorPage({required this.controller, required this.formId});
+class PreventiveMaintenanceDraftPage extends StatefulWidget {
+  const PreventiveMaintenanceDraftPage({
+    super.key,
+    required this.controller,
+    required this.formId,
+    this.preselectedScheduleId,
+    this.focusedInspectionId,
+  });
 
   final PreventiveMaintenanceController controller;
   final String formId;
+  final String? preselectedScheduleId;
+  final String? focusedInspectionId;
 
   @override
-  State<_DraftEditorPage> createState() => _DraftEditorPageState();
+  State<PreventiveMaintenanceDraftPage> createState() =>
+      _PreventiveMaintenanceDraftPageState();
 }
 
-class _DraftEditorPageState extends State<_DraftEditorPage> {
+class _PreventiveMaintenanceDraftPageState
+    extends State<PreventiveMaintenanceDraftPage> {
   late Future<List<ScheduleOption>> schedules;
+  PreventiveMaintenanceForm? submittedForm;
 
   @override
   void initState() {
     super.initState();
     schedules = widget.controller.repository.listSchedules();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) widget.controller.loadDraft(widget.formId);
+      if (!mounted || widget.controller.selectedForm?.id == widget.formId) {
+        return;
+      }
+      widget.controller.loadDraft(widget.formId);
     });
+  }
+
+  String get _pageTitle {
+    final form = submittedForm ?? widget.controller.selectedForm;
+    return form != null && !form.isDraft
+        ? 'Preventive-maintenance form'
+        : 'Draft form';
   }
 
   Future<void> _retry() async {
@@ -456,11 +537,11 @@ class _DraftEditorPageState extends State<_DraftEditorPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Draft form')),
+      appBar: AppBar(title: Text(_pageTitle)),
       body: AnimatedBuilder(
         animation: widget.controller,
         builder: (context, _) {
-          final form = widget.controller.selectedForm;
+          final form = submittedForm ?? widget.controller.selectedForm;
           if (form == null && widget.controller.isLoading) {
             return const Center(child: CircularProgressIndicator());
           }
@@ -508,10 +589,39 @@ class _DraftEditorPageState extends State<_DraftEditorPage> {
   ) {
     final canEdit = form.isDraft;
     final matchingSchedules = schedules
+        .where((schedule) {
+          try {
+            return PreventiveMaintenanceGrouping.fromSchedule(
+              schedule,
+            ).matches(form);
+          } on FormatException {
+            return false;
+          }
+        })
         .where(
-          (schedule) => schedule.asset?.assetCategory == form.assetCategory,
+          (schedule) => !form.inspections.any(
+            (inspection) => inspection.scheduleId == schedule.id,
+          ),
         )
         .toList(growable: false);
+    final preselectedScheduleId =
+        matchingSchedules.any(
+          (schedule) => schedule.id == widget.preselectedScheduleId,
+        )
+        ? widget.preselectedScheduleId
+        : null;
+    final displayedInspections = [...form.inspections];
+    final scheduleById = <String, ScheduleOption>{
+      for (final schedule in schedules) schedule.id: schedule,
+    };
+    final focusedInspectionId = widget.focusedInspectionId;
+    if (focusedInspectionId != null) {
+      displayedInspections.sort((left, right) {
+        if (left.id == focusedInspectionId) return -1;
+        if (right.id == focusedInspectionId) return 1;
+        return 0;
+      });
+    }
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -521,11 +631,35 @@ class _DraftEditorPageState extends State<_DraftEditorPage> {
         _FormMetadata(form: form),
         const SizedBox(height: 16),
         if (!canEdit)
-          const Card(
+          Card(
             color: Color(0xFFFFF4E5),
             child: Padding(
               padding: EdgeInsets.all(16),
-              child: Text('This form is no longer Draft and cannot be edited.'),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    form.status == 'Submitted'
+                        ? 'This form is awaiting acknowledgement and is locked for review.'
+                        : 'This form is already Acknowledged and is read-only.',
+                  ),
+                  if (form.status == 'Submitted') ...[
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Review every inspection row, then capture the Department Head signatory details and signature.',
+                    ),
+                    const SizedBox(height: 8),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: OutlinedButton(
+                        key: const Key('open-acknowledgement'),
+                        onPressed: () => _openAcknowledgement(form),
+                        child: const Text('Review and acknowledge'),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
             ),
           ),
         if (scheduleError != null && canEdit)
@@ -560,6 +694,8 @@ class _DraftEditorPageState extends State<_DraftEditorPage> {
           _AddInspectionCard(
             key: ValueKey('add-${form.inspections.length}'),
             schedules: matchingSchedules,
+            assetCategory: form.assetCategory,
+            preselectedScheduleId: preselectedScheduleId,
             inspectorUserId: widget.controller.user.id,
             isSaving: widget.controller.isSaving,
             onAdd: widget.controller.addInspection,
@@ -577,10 +713,13 @@ class _DraftEditorPageState extends State<_DraftEditorPage> {
               child: Text('No rows yet. Add an inspection row to this draft.'),
             ),
           ),
-        ...form.inspections.map(
+        ...displayedInspections.map(
           (row) => _InspectionRowEditor(
             key: ValueKey(row.id),
             row: row,
+            assetCategory: form.assetCategory,
+            asset: scheduleById[row.scheduleId]?.asset,
+            highlighted: row.id == focusedInspectionId,
             inspectorUserId: widget.controller.user.id,
             isSaving: widget.controller.isSaving,
             editable: canEdit,
@@ -589,7 +728,69 @@ class _DraftEditorPageState extends State<_DraftEditorPage> {
             onDelete: () => widget.controller.deleteInspection(row.id),
           ),
         ),
+        if (canEdit) ...[
+          const SizedBox(height: 16),
+          _SubmitFormCard(
+            hasRows: form.inspections.isNotEmpty,
+            isSaving: widget.controller.isSaving,
+            onSubmit: _confirmSubmit,
+          ),
+        ],
       ],
+    );
+  }
+
+  Future<void> _openAcknowledgement(PreventiveMaintenanceForm form) async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => PreventiveMaintenanceAcknowledgementPage(
+          controller: widget.controller,
+          form: form,
+        ),
+      ),
+    );
+    if (!mounted) return;
+    final selectedForm = widget.controller.selectedForm;
+    if (selectedForm?.id == form.id) {
+      setState(() => submittedForm = selectedForm);
+    }
+  }
+
+  Future<void> _confirmSubmit() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Submit preventive-maintenance form?'),
+        content: const Text(
+          'After submission, this form and its inspection rows cannot be edited. The backend will assign a provisional file number.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            key: const Key('confirm-submit-form'),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Submit form'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    final submitted = await widget.controller.submitForm();
+    if (!mounted || submitted == null) return;
+    setState(() => submittedForm = submitted);
+    final fileNumber = submitted.fileNumber;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          fileNumber == null
+              ? 'Form submitted.'
+              : 'Form submitted with provisional file number $fileNumber.',
+        ),
+      ),
     );
   }
 }
@@ -613,6 +814,7 @@ class _FormMetadata extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final spec = PreventiveMaintenanceFormSpec.forCategory(form.assetCategory);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -624,8 +826,10 @@ class _FormMetadata extends StatelessWidget {
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 8),
-            Text('Status: ${form.status}'),
-            Text('Asset category: ${form.assetCategory}'),
+            Text(spec.documentTitle),
+            Text(spec.revisionLabel),
+            Text('Status: ${_formStatusLabel(form.status)}'),
+            Text('Asset category: ${displayAssetCategory(form.assetCategory)}'),
             Text('Building: ${form.building ?? 'Not recorded'}'),
             Text('Department: ${form.department ?? 'Not recorded'}'),
             Text('Period: ${form.periodType}'),
@@ -645,12 +849,16 @@ class _AddInspectionCard extends StatefulWidget {
   const _AddInspectionCard({
     super.key,
     required this.schedules,
+    required this.assetCategory,
+    this.preselectedScheduleId,
     required this.inspectorUserId,
     required this.isSaving,
     required this.onAdd,
   });
 
   final List<ScheduleOption> schedules;
+  final String assetCategory;
+  final String? preselectedScheduleId;
   final String inspectorUserId;
   final bool isSaving;
   final Future<bool> Function(AddInspectionInput input) onAdd;
@@ -662,15 +870,33 @@ class _AddInspectionCard extends StatefulWidget {
 class _AddInspectionCardState extends State<_AddInspectionCard> {
   final formKey = GlobalKey<FormState>();
   final dateController = TextEditingController(text: _dateText(DateTime.now()));
+  final dateAccomplishedController = TextEditingController();
   final remarksController = TextEditingController();
   final actionsController = TextEditingController();
-  String? scheduleId;
+  late String? scheduleId;
   bool isOperational = false;
+  bool waterReplaceCarbonFilter = false;
+  bool waterReplaceSedimentFilter = false;
+  bool waterCheckUvLight = false;
   String? localError;
+
+  ScheduleOption? get selectedSchedule {
+    for (final schedule in widget.schedules) {
+      if (schedule.id == scheduleId) return schedule;
+    }
+    return null;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    scheduleId = widget.preselectedScheduleId;
+  }
 
   @override
   void dispose() {
     dateController.dispose();
+    dateAccomplishedController.dispose();
     remarksController.dispose();
     actionsController.dispose();
     super.dispose();
@@ -683,21 +909,49 @@ class _AddInspectionCardState extends State<_AddInspectionCard> {
       setState(() => localError = 'Enter the inspection date as YYYY-MM-DD.');
       return;
     }
+    final dateAccomplished = _parseOptionalDate(
+      dateAccomplishedController.text,
+    );
+    if (dateAccomplishedController.text.trim().isNotEmpty &&
+        dateAccomplished == null) {
+      setState(
+        () => localError = 'Enter the accomplishment date as YYYY-MM-DD.',
+      );
+      return;
+    }
     final added = await widget.onAdd(
       AddInspectionInput(
         scheduleId: scheduleId!,
         inspectorUserId: widget.inspectorUserId,
         dateInspected: date,
+        dateAccomplished: widget.assetCategory == 'water-drinking-station'
+            ? dateAccomplished
+            : null,
         isOperational: isOperational,
         remarks: _blankToNull(remarksController.text),
         actionsRecommendations: _blankToNull(actionsController.text),
+        waterReplaceCarbonFilter:
+            widget.assetCategory == 'water-drinking-station'
+            ? waterReplaceCarbonFilter
+            : null,
+        waterReplaceSedimentFilter:
+            widget.assetCategory == 'water-drinking-station'
+            ? waterReplaceSedimentFilter
+            : null,
+        waterCheckUvLight: widget.assetCategory == 'water-drinking-station'
+            ? waterCheckUvLight
+            : null,
       ),
     );
     if (added && mounted) {
       setState(() {
         scheduleId = null;
+        dateAccomplishedController.clear();
         remarksController.clear();
         actionsController.clear();
+        waterReplaceCarbonFilter = false;
+        waterReplaceSedimentFilter = false;
+        waterCheckUvLight = false;
         localError = null;
       });
     }
@@ -705,6 +959,9 @@ class _AddInspectionCardState extends State<_AddInspectionCard> {
 
   @override
   Widget build(BuildContext context) {
+    final spec = PreventiveMaintenanceFormSpec.forCategory(
+      widget.assetCategory,
+    );
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -721,7 +978,7 @@ class _AddInspectionCardState extends State<_AddInspectionCard> {
               if (localError != null) _InlineError(message: localError!),
               if (widget.schedules.isEmpty)
                 const Text(
-                  'No matching schedules are available for this category.',
+                  'No compatible schedules are available for this Draft.',
                 )
               else ...[
                 DropdownButtonFormField<String>(
@@ -742,6 +999,13 @@ class _AddInspectionCardState extends State<_AddInspectionCard> {
                   validator: (value) =>
                       value == null ? 'Select a schedule.' : null,
                 ),
+                if (selectedSchedule?.asset != null) ...[
+                  const SizedBox(height: 8),
+                  _AssetMetadata(
+                    asset: selectedSchedule!.asset!,
+                    assetNumberLabel: spec.assetNumberLabel,
+                  ),
+                ],
                 const SizedBox(height: 12),
                 TextFormField(
                   key: const Key('new-inspection-date'),
@@ -753,10 +1017,37 @@ class _AddInspectionCardState extends State<_AddInspectionCard> {
                       ? 'Enter a valid date.'
                       : null,
                 ),
+                if (spec.isWaterDrinkingStation)
+                  TextFormField(
+                    key: const Key('new-inspection-date-accomplished'),
+                    controller: dateAccomplishedController,
+                    decoration: const InputDecoration(
+                      labelText: 'Date accomplished (YYYY-MM-DD)',
+                    ),
+                    validator: (value) {
+                      final normalized = value?.trim() ?? '';
+                      return normalized.isEmpty ||
+                              _parseDate(normalized) != null
+                          ? null
+                          : 'Enter a valid date or leave it blank.';
+                    },
+                  ),
                 _ConditionSelector(
                   value: isOperational,
                   onChanged: (value) => setState(() => isOperational = value),
                 ),
+                if (spec.isWaterDrinkingStation)
+                  _WaterWorkItemsSelector(
+                    replaceCarbonFilter: waterReplaceCarbonFilter,
+                    replaceSedimentFilter: waterReplaceSedimentFilter,
+                    checkUvLight: waterCheckUvLight,
+                    onReplaceCarbonFilter: (value) =>
+                        setState(() => waterReplaceCarbonFilter = value),
+                    onReplaceSedimentFilter: (value) =>
+                        setState(() => waterReplaceSedimentFilter = value),
+                    onCheckUvLight: (value) =>
+                        setState(() => waterCheckUvLight = value),
+                  ),
                 TextField(
                   key: const Key('new-inspection-remarks'),
                   controller: remarksController,
@@ -769,7 +1060,7 @@ class _AddInspectionCardState extends State<_AddInspectionCard> {
                   controller: actionsController,
                   maxLines: 3,
                   decoration: const InputDecoration(
-                    labelText: 'Recommended corrective action',
+                    labelText: 'Recommendation',
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -787,10 +1078,96 @@ class _AddInspectionCardState extends State<_AddInspectionCard> {
   }
 }
 
+class _AssetMetadata extends StatelessWidget {
+  const _AssetMetadata({required this.asset, required this.assetNumberLabel});
+
+  final ScheduleAssetOption asset;
+  final String assetNumberLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('$assetNumberLabel: ${asset.assetCode}'),
+            if (asset.location != null) Text('Location: ${asset.location}'),
+            if (asset.building != null) Text('Building: ${asset.building}'),
+            if (asset.department != null)
+              Text('Department: ${asset.department}'),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _WaterWorkItemsSelector extends StatelessWidget {
+  const _WaterWorkItemsSelector({
+    required this.replaceCarbonFilter,
+    required this.replaceSedimentFilter,
+    required this.checkUvLight,
+    required this.onReplaceCarbonFilter,
+    required this.onReplaceSedimentFilter,
+    required this.onCheckUvLight,
+    this.enabled = true,
+  });
+
+  final bool replaceCarbonFilter;
+  final bool replaceSedimentFilter;
+  final bool checkUvLight;
+  final ValueChanged<bool> onReplaceCarbonFilter;
+  final ValueChanged<bool> onReplaceSedimentFilter;
+  final ValueChanged<bool> onCheckUvLight;
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 8),
+        const Text('Regular filter replacement'),
+        CheckboxListTile(
+          key: const Key('water-replace-carbon-filter'),
+          contentPadding: EdgeInsets.zero,
+          title: const Text('Replace carbon filter'),
+          value: replaceCarbonFilter,
+          onChanged: enabled
+              ? (value) => onReplaceCarbonFilter(value ?? false)
+              : null,
+        ),
+        CheckboxListTile(
+          key: const Key('water-replace-sediment-filter'),
+          contentPadding: EdgeInsets.zero,
+          title: const Text('Replace sediment filter'),
+          value: replaceSedimentFilter,
+          onChanged: enabled
+              ? (value) => onReplaceSedimentFilter(value ?? false)
+              : null,
+        ),
+        CheckboxListTile(
+          key: const Key('water-check-uv-light'),
+          contentPadding: EdgeInsets.zero,
+          title: const Text('Checking of UV Light'),
+          value: checkUvLight,
+          onChanged: enabled ? (value) => onCheckUvLight(value ?? false) : null,
+        ),
+      ],
+    );
+  }
+}
+
 class _InspectionRowEditor extends StatefulWidget {
   const _InspectionRowEditor({
     super.key,
     required this.row,
+    required this.assetCategory,
+    this.asset,
+    required this.highlighted,
     required this.inspectorUserId,
     required this.isSaving,
     required this.editable,
@@ -799,6 +1176,9 @@ class _InspectionRowEditor extends StatefulWidget {
   });
 
   final PreventiveMaintenanceInspection row;
+  final String assetCategory;
+  final ScheduleAssetOption? asset;
+  final bool highlighted;
   final String inspectorUserId;
   final bool isSaving;
   final bool editable;
@@ -809,12 +1189,60 @@ class _InspectionRowEditor extends StatefulWidget {
   State<_InspectionRowEditor> createState() => _InspectionRowEditorState();
 }
 
+class _SubmitFormCard extends StatelessWidget {
+  const _SubmitFormCard({
+    required this.hasRows,
+    required this.isSaving,
+    required this.onSubmit,
+  });
+
+  final bool hasRows;
+  final bool isSaving;
+  final VoidCallback onSubmit;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Submit whole form',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Submission locks the form and its rows for department-head acknowledgement.',
+            ),
+            if (!hasRows) ...[
+              const SizedBox(height: 8),
+              const Text('Add at least one inspection row before submitting.'),
+            ],
+            const SizedBox(height: 12),
+            FilledButton(
+              key: const Key('submit-form-button'),
+              onPressed: isSaving || !hasRows ? null : onSubmit,
+              child: Text(isSaving ? 'Submitting...' : 'Submit form'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _InspectionRowEditorState extends State<_InspectionRowEditor> {
   final formKey = GlobalKey<FormState>();
   late final TextEditingController dateController;
+  late final TextEditingController dateAccomplishedController;
   late final TextEditingController remarksController;
   late final TextEditingController actionsController;
   late bool isOperational;
+  late bool waterReplaceCarbonFilter;
+  late bool waterReplaceSedimentFilter;
+  late bool waterCheckUvLight;
 
   @override
   void initState() {
@@ -822,16 +1250,25 @@ class _InspectionRowEditorState extends State<_InspectionRowEditor> {
     dateController = TextEditingController(
       text: _dateText(widget.row.dateInspected),
     );
+    dateAccomplishedController = TextEditingController(
+      text: widget.row.dateAccomplished == null
+          ? ''
+          : _dateText(widget.row.dateAccomplished!),
+    );
     remarksController = TextEditingController(text: widget.row.remarks ?? '');
     actionsController = TextEditingController(
       text: widget.row.actionsRecommendations ?? '',
     );
     isOperational = widget.row.isOperational;
+    waterReplaceCarbonFilter = widget.row.waterReplaceCarbonFilter ?? false;
+    waterReplaceSedimentFilter = widget.row.waterReplaceSedimentFilter ?? false;
+    waterCheckUvLight = widget.row.waterCheckUvLight ?? false;
   }
 
   @override
   void dispose() {
     dateController.dispose();
+    dateAccomplishedController.dispose();
     remarksController.dispose();
     actionsController.dispose();
     super.dispose();
@@ -841,13 +1278,30 @@ class _InspectionRowEditorState extends State<_InspectionRowEditor> {
     if (!(formKey.currentState?.validate() ?? false)) return;
     final date = _parseDate(dateController.text);
     if (date == null) return;
+    final dateAccomplished = _parseOptionalDate(
+      dateAccomplishedController.text,
+    );
     await widget.onSave(
       UpdateInspectionInput(
         inspectorUserId: widget.inspectorUserId,
         dateInspected: date,
+        dateAccomplished: widget.assetCategory == 'water-drinking-station'
+            ? dateAccomplished
+            : null,
         isOperational: isOperational,
         remarks: _blankToNull(remarksController.text),
         actionsRecommendations: _blankToNull(actionsController.text),
+        waterReplaceCarbonFilter:
+            widget.assetCategory == 'water-drinking-station'
+            ? waterReplaceCarbonFilter
+            : null,
+        waterReplaceSedimentFilter:
+            widget.assetCategory == 'water-drinking-station'
+            ? waterReplaceSedimentFilter
+            : null,
+        waterCheckUvLight: widget.assetCategory == 'water-drinking-station'
+            ? waterCheckUvLight
+            : null,
       ),
     );
   }
@@ -876,6 +1330,9 @@ class _InspectionRowEditorState extends State<_InspectionRowEditor> {
   @override
   Widget build(BuildContext context) {
     return Card(
+      color: widget.highlighted
+          ? Theme.of(context).colorScheme.primaryContainer
+          : null,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Form(
@@ -884,13 +1341,20 @@ class _InspectionRowEditorState extends State<_InspectionRowEditor> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Inspection row',
+                widget.highlighted ? 'Resume inspection row' : 'Inspection row',
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: 8),
               Text('Schedule ID: ${widget.row.scheduleId}'),
               Text('Asset ID: ${widget.row.assetId}'),
               Text('Inspector ID: ${widget.row.inspectorUserId}'),
+              if (widget.asset != null)
+                _AssetMetadata(
+                  asset: widget.asset!,
+                  assetNumberLabel: PreventiveMaintenanceFormSpec.forCategory(
+                    widget.assetCategory,
+                  ).assetNumberLabel,
+                ),
               const SizedBox(height: 12),
               TextFormField(
                 key: Key('inspection-date-${widget.row.id}'),
@@ -903,11 +1367,39 @@ class _InspectionRowEditorState extends State<_InspectionRowEditor> {
                     ? 'Enter a valid date.'
                     : null,
               ),
+              if (widget.assetCategory == 'water-drinking-station')
+                TextFormField(
+                  key: Key('inspection-date-accomplished-${widget.row.id}'),
+                  controller: dateAccomplishedController,
+                  readOnly: !widget.editable,
+                  decoration: const InputDecoration(
+                    labelText: 'Date accomplished (YYYY-MM-DD)',
+                  ),
+                  validator: (value) {
+                    final normalized = value?.trim() ?? '';
+                    return normalized.isEmpty || _parseDate(normalized) != null
+                        ? null
+                        : 'Enter a valid date or leave it blank.';
+                  },
+                ),
               _ConditionSelector(
                 value: isOperational,
                 enabled: widget.editable,
                 onChanged: (value) => setState(() => isOperational = value),
               ),
+              if (widget.assetCategory == 'water-drinking-station')
+                _WaterWorkItemsSelector(
+                  replaceCarbonFilter: waterReplaceCarbonFilter,
+                  replaceSedimentFilter: waterReplaceSedimentFilter,
+                  checkUvLight: waterCheckUvLight,
+                  enabled: widget.editable,
+                  onReplaceCarbonFilter: (value) =>
+                      setState(() => waterReplaceCarbonFilter = value),
+                  onReplaceSedimentFilter: (value) =>
+                      setState(() => waterReplaceSedimentFilter = value),
+                  onCheckUvLight: (value) =>
+                      setState(() => waterCheckUvLight = value),
+                ),
               TextField(
                 key: Key('inspection-remarks-${widget.row.id}'),
                 controller: remarksController,
@@ -922,7 +1414,7 @@ class _InspectionRowEditorState extends State<_InspectionRowEditor> {
                 enabled: widget.editable,
                 maxLines: 3,
                 decoration: const InputDecoration(
-                  labelText: 'Recommended corrective action',
+                  labelText: 'Recommendation',
                 ),
               ),
               if (widget.editable) ...[
@@ -967,7 +1459,7 @@ class _ConditionSelector extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 8),
-        const Text('Condition'),
+        const Text('Status: Operational'),
         SegmentedButton<bool>(
           segments: const [
             ButtonSegment<bool>(value: true, label: Text('Operational')),
@@ -1025,6 +1517,11 @@ DateTime? _parseDate(String value) {
     return null;
   }
   return parsed;
+}
+
+DateTime? _parseOptionalDate(String value) {
+  final normalized = value.trim();
+  return normalized.isEmpty ? null : _parseDate(normalized);
 }
 
 String _dateText(DateTime value) {

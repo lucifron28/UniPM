@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using UniPM.Api.Data;
+using UniPM.Api.Features.PreventiveMaintenanceForms;
 using UniPM.Api.Models;
 
 namespace UniPM.Api.Features.Retrieval;
@@ -127,7 +128,11 @@ internal sealed class SqlServerSemanticMaintenanceRetriever(
             .Include(document => document.Embedding)
             .Where(document => document.Embedding != null
                 && document.Embedding.EmbeddingProfile == descriptor.EmbeddingProfile
-                && document.Embedding.Dimensions == expectedDimensions);
+                && document.Embedding.Dimensions == expectedDimensions
+                && document.Inspection != null
+                && (document.Inspection.PreventiveMaintenanceFormId == null
+                    || document.Inspection.PreventiveMaintenanceForm!.Status
+                        == PreventiveMaintenanceFormStatusCatalog.Acknowledged));
 
         if (query.AssetId is not null)
         {

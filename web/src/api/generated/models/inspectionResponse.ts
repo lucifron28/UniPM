@@ -18,4 +18,12 @@ export interface InspectionResponse {
   actionsRecommendations: string | null
   createdAt: string
   updatedAt: string
+  /** @nullable */
+  dateAccomplished?: string | null
+  /** @nullable */
+  waterReplaceCarbonFilter?: boolean | null
+  /** @nullable */
+  waterReplaceSedimentFilter?: boolean | null
+  /** @nullable */
+  waterCheckUvLight?: boolean | null
 }

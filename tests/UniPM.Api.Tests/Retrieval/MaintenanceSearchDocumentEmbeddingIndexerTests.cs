@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using UniPM.Api.Data;
+using UniPM.Api.Features.PreventiveMaintenanceForms;
 using UniPM.Api.Features.Retrieval;
 using UniPM.Api.Models;
 
@@ -93,6 +94,50 @@ public sealed class MaintenanceSearchDocumentEmbeddingIndexerTests
         });
     }
 
+    [Fact]
+    public async Task Indexer_excludes_draft_and_submitted_form_rows()
+    {
+        var factory = new InMemoryContextFactory();
+        var acknowledgedDocument = CreateDocument("doc-1", "acknowledged finding");
+        var submittedDocument = CreateDocument("doc-2", "submitted finding");
+        var acknowledgedForm = new PreventiveMaintenanceForm
+        {
+            Id = Guid.NewGuid(),
+            AssetCategory = "fire-extinguisher",
+            Status = PreventiveMaintenanceFormStatusCatalog.Acknowledged,
+            CreatedByUserId = Guid.NewGuid(),
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow
+        };
+        var submittedForm = new PreventiveMaintenanceForm
+        {
+            Id = Guid.NewGuid(),
+            AssetCategory = "fire-extinguisher",
+            Status = PreventiveMaintenanceFormStatusCatalog.Submitted,
+            CreatedByUserId = Guid.NewGuid(),
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow
+        };
+
+        await using (var context = factory.CreateDbContext())
+        {
+            context.PreventiveMaintenanceForms.AddRange(acknowledgedForm, submittedForm);
+            context.InspectionRecords.AddRange(
+                CreateSourceInspection(acknowledgedDocument, acknowledgedForm.Id),
+                CreateSourceInspection(submittedDocument, submittedForm.Id));
+            context.MaintenanceSearchDocuments.AddRange(acknowledgedDocument, submittedDocument);
+            await context.SaveChangesAsync();
+        }
+
+        var service = new DeterministicEmbeddingService(_ => [1d, 0d]);
+        var result = await CreateIndexer(factory, service, maxBatchSize: 2).RebuildAsync();
+
+        Assert.Equal(new MaintenanceEmbeddingIndexResult(1, 1, 0, 0, 0), result);
+        await using var verificationContext = factory.CreateDbContext();
+        var embedding = await verificationContext.MaintenanceSearchDocumentEmbeddings.SingleAsync();
+        Assert.Equal(acknowledgedDocument.InspectionId, embedding.InspectionId);
+    }
+
     private static MaintenanceSearchDocumentEmbeddingIndexer CreateIndexer(
         InMemoryContextFactory factory,
         IEmbeddingService service,
@@ -115,11 +160,34 @@ public sealed class MaintenanceSearchDocumentEmbeddingIndexerTests
     private static async Task AddDocumentsAsync(InMemoryContextFactory factory)
     {
         await using var context = factory.CreateDbContext();
-        context.MaintenanceSearchDocuments.AddRange(
+        var documents = new[]
+        {
             CreateDocument("doc-1", "alpha"),
             CreateDocument("doc-2", "beta"),
-            CreateDocument("doc-3", "gamma"));
+            CreateDocument("doc-3", "gamma")
+        };
+        context.InspectionRecords.AddRange(
+            documents.Select(document => CreateSourceInspection(document)));
+        context.MaintenanceSearchDocuments.AddRange(documents);
         await context.SaveChangesAsync();
+    }
+
+    private static InspectionRecord CreateSourceInspection(
+        MaintenanceSearchDocument document,
+        Guid? formId = null)
+    {
+        return new InspectionRecord
+        {
+            Id = document.InspectionId,
+            ScheduleId = document.ScheduleId,
+            AssetId = document.AssetId,
+            PreventiveMaintenanceFormId = formId,
+            InspectorUserId = Guid.NewGuid(),
+            DateInspected = document.DateInspected,
+            IsOperational = false,
+            CreatedAt = document.SourceCreatedAt,
+            UpdatedAt = document.SourceUpdatedAt
+        };
     }
 
     private static async Task AddEmbeddingAsync(

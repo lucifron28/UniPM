@@ -30,7 +30,8 @@ class SessionController extends ChangeNotifier {
       _setRoleStatus();
     } on ApiException catch (error) {
       _clearSession();
-      errorMessage = error.message == 'Your session expired. Please sign in again.'
+      errorMessage =
+          error.message == 'Your session expired. Please sign in again.'
           ? error.message
           : error.isUnauthorized
           ? 'Invalid email or password.'

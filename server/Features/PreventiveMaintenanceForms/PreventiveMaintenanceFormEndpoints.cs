@@ -45,7 +45,7 @@ public static class PreventiveMaintenanceFormEndpoints
                 Id = Guid.NewGuid(),
                 AssetCategory = NormalizeAssetCategory(dto.AssetCategory),
                 Building = NormalizeOptional(dto.Building),
-                Department = NormalizeOptional(dto.Department),
+                Department = PreventiveMaintenanceFormBatchPolicy.NormalizeDepartment(dto.Department),
                 PeriodType = NormalizePeriodType(dto.PeriodType),
                 Quarter = NormalizeQuarter(dto.Quarter),
                 Semester = NormalizeSemester(dto.Semester),
@@ -80,11 +80,16 @@ public static class PreventiveMaintenanceFormEndpoints
             var forms = await context.PreventiveMaintenanceForms
                 .AsNoTracking()
                 .Include(form => form.Inspections)
+                    .ThenInclude(inspection => inspection.Asset)
                 .OrderByDescending(form => form.CreatedAt)
                 .ThenBy(form => form.Id)
                 .ToListAsync(cancellationToken);
 
-            return Results.Ok(forms.Select(PreventiveMaintenanceFormResponse.FromForm).ToList());
+            var users = await LoadUserDisplayNamesAsync(context, forms, cancellationToken);
+
+            return Results.Ok(forms
+                .Select(form => PreventiveMaintenanceFormResponse.FromForm(form, users))
+                .ToList());
         })
         .WithName("ListPreventiveMaintenanceForms")
         .WithSummary("Lists preventive-maintenance forms")
@@ -100,11 +105,16 @@ public static class PreventiveMaintenanceFormEndpoints
             var form = await context.PreventiveMaintenanceForms
                 .AsNoTracking()
                 .Include(candidate => candidate.Inspections)
+                    .ThenInclude(inspection => inspection.Asset)
                 .SingleOrDefaultAsync(candidate => candidate.Id == id, cancellationToken);
+
+            var users = form is null
+                ? null
+                : await LoadUserDisplayNamesAsync(context, [form], cancellationToken);
 
             return form is null
                 ? ApiErrors.NotFound("Preventive-maintenance form not found.")
-                : Results.Ok(PreventiveMaintenanceFormResponse.FromForm(form));
+                : Results.Ok(PreventiveMaintenanceFormResponse.FromForm(form, users));
         })
         .WithName("GetPreventiveMaintenanceForm")
         .WithSummary("Gets a preventive-maintenance form")
@@ -130,6 +140,7 @@ public static class PreventiveMaintenanceFormEndpoints
                 await using var transaction = await BeginSerializableTransactionIfRelationalAsync(context, cancellationToken);
                 var form = await context.PreventiveMaintenanceForms
                     .Include(candidate => candidate.Inspections)
+                        .ThenInclude(inspection => inspection.Asset)
                     .SingleOrDefaultAsync(candidate => candidate.Id == id, cancellationToken);
                 if (form is null)
                 {
@@ -153,7 +164,70 @@ public static class PreventiveMaintenanceFormEndpoints
                     return Results.Forbid();
                 }
 
+                if (form.Inspections.Any(inspection => !PreventiveMaintenanceFormBatchPolicy.HasCompletedExecution(inspection)))
+                {
+                    return ApiErrors.Conflict("Every inspection row must be completed before form submission.");
+                }
+
+                var formScheduleIds = form.Inspections
+                    .Select(inspection => inspection.ScheduleId)
+                    .Distinct()
+                    .ToArray();
+                form.Department = PreventiveMaintenanceFormBatchPolicy.NormalizeDepartment(form.Department);
+                if (string.IsNullOrWhiteSpace(form.Department)
+                    || form.Inspections.Any(inspection => string.IsNullOrWhiteSpace(inspection.Asset?.Department)))
+                {
+                    return ApiErrors.Conflict("A PM form batch requires a department on both the form and every scheduled asset.");
+                }
+
+                var inspectionCycles = await LoadInspectionCyclesAsync(
+                    context,
+                    form.Id,
+                    cancellationToken);
+                if (form.PmCycle is null)
+                {
+                    if (inspectionCycles.Length != 1)
+                    {
+                        return ApiErrors.Conflict("The form rows do not resolve to one PM cycle.");
+                    }
+
+                    form.PmCycle = inspectionCycles[0];
+                }
+                else if (inspectionCycles.Any(cycle => !PreventiveMaintenanceCycle.Matches(form.PmCycle, cycle)))
+                {
+                    return ApiErrors.Conflict("The form rows do not share one PM cycle.");
+                }
+
+                var candidateSchedules = await context.PreventiveMaintenanceSchedules
+                    .Include(schedule => schedule.Asset)
+                    .Where(schedule => formScheduleIds.Contains(schedule.Id)
+                        || (schedule.Asset != null
+                            && schedule.Asset.AssetCategory == form.AssetCategory
+                            && (schedule.PmCycle == form.PmCycle
+                                || schedule.PmCycle == string.Empty)))
+                    .ToListAsync(cancellationToken);
+                var expectedScheduleIds = candidateSchedules
+                    .Where(schedule => PreventiveMaintenanceFormBatchPolicy.Matches(form, schedule)
+                        && !PreventiveMaintenanceFormBatchPolicy.IsCancelledScheduleStatus(schedule.Status))
+                    .Select(schedule => schedule.Id)
+                    .ToHashSet();
+
+                if (form.Inspections.Any(inspection => !expectedScheduleIds.Contains(inspection.ScheduleId)))
+                {
+                    return ApiErrors.Conflict("Every inspection row must reference an eligible schedule in the form batch.");
+                }
+
+                var completedInspectionScheduleIds = form.Inspections
+                    .Where(PreventiveMaintenanceFormBatchPolicy.HasCompletedExecution)
+                    .Select(inspection => inspection.ScheduleId)
+                    .ToHashSet();
+                if (expectedScheduleIds.Any(scheduleId => !completedInspectionScheduleIds.Contains(scheduleId)))
+                {
+                    return ApiErrors.Conflict("Every eligible schedule in the form batch must have a completed inspection row before submission.");
+                }
+
                 var now = DateTimeOffset.UtcNow;
+                form.FieldWorkCompletedAt = form.Inspections.Max(inspection => inspection.CompletedAt);
                 var seriesPrefix = fileNumberGenerator.CreateSeriesPrefix(now);
                 var existingFileNumbers = await context.PreventiveMaintenanceForms
                     .AsNoTracking()
@@ -185,7 +259,15 @@ public static class PreventiveMaintenanceFormEndpoints
                         await transaction.CommitAsync(cancellationToken);
                     }
 
-                    return Results.Ok(PreventiveMaintenanceFormResponse.FromForm(form));
+                    var users = await LoadUserDisplayNamesAsync(context, [form], cancellationToken);
+                    return Results.Ok(PreventiveMaintenanceFormResponse.FromForm(form, users));
+                }
+                catch (Exception exception)
+                    when (DatabaseConstraintViolation.IsUniqueConstraint(
+                        exception,
+                        PreventiveMaintenanceFormBatchPolicy.UniqueIndexName))
+                {
+                    return ApiErrors.Conflict("A preventive-maintenance form already exists for this department, category, and PM cycle.");
                 }
                 catch (Exception exception)
                     when (DatabaseConstraintViolation.IsUniqueConstraint(exception)
@@ -284,12 +366,6 @@ public static class PreventiveMaintenanceFormEndpoints
             context.PreventiveMaintenanceAcknowledgements.Add(acknowledgement);
             form.Status = PreventiveMaintenanceFormStatusCatalog.Acknowledged;
             form.UpdatedAt = now;
-            foreach (var inspection in form.Inspections)
-            {
-                inspection.Schedule!.Status = ScheduleStatusCatalog.Completed;
-                inspection.Schedule.CompletedAt = now;
-                inspection.Schedule.UpdatedAt = now;
-            }
 
             try
             {
@@ -465,11 +541,31 @@ public static class PreventiveMaintenanceFormEndpoints
                 return ApiErrors.NotFound("Asset not found.");
             }
 
-            if (!string.Equals(schedule.Asset.AssetCategory, form.AssetCategory, StringComparison.Ordinal))
+            form.Department = PreventiveMaintenanceFormBatchPolicy.NormalizeDepartment(form.Department);
+            if (!PreventiveMaintenanceFormBatchPolicy.HasResolvedDepartment(form, schedule))
             {
                 return ApiErrors.Validation(new Dictionary<string, string[]>
                 {
-                    [nameof(dto.ScheduleId)] = ["Schedule asset category must match the form asset category."]
+                    [nameof(dto.ScheduleId)] = ["A PM form batch requires a department on both the form and scheduled asset."]
+                });
+            }
+
+            var scheduleCycle = PreventiveMaintenanceCycle.ForSchedule(schedule);
+            if (!await TrySetFormCycleAsync(context, form, scheduleCycle, cancellationToken))
+            {
+                return ApiErrors.Conflict("A draft form can contain schedules from only one PM cycle.");
+            }
+
+            if (await HasCompetingBatchFormAsync(context, form, cancellationToken))
+            {
+                return ApiErrors.Conflict("A preventive-maintenance form already exists for this department, category, and PM cycle.");
+            }
+
+            if (!PreventiveMaintenanceFormBatchPolicy.Matches(form, schedule))
+            {
+                return ApiErrors.Validation(new Dictionary<string, string[]>
+                {
+                    [nameof(dto.ScheduleId)] = ["Schedule department, asset category, and PM cycle must match the form batch."]
                 });
             }
 
@@ -478,6 +574,11 @@ public static class PreventiveMaintenanceFormEndpoints
                     cancellationToken))
             {
                 return ApiErrors.Conflict("Schedule already has a recorded inspection.");
+            }
+
+            if (!PreventiveMaintenanceFormBatchPolicy.IsEligibleScheduleStatus(schedule.Status))
+            {
+                return ApiErrors.Conflict("Only Due, Ongoing, or Overdue schedules can be added to a draft form.");
             }
 
             var inspector = await context.Users
@@ -492,8 +593,19 @@ public static class PreventiveMaintenanceFormEndpoints
             }
 
             var now = DateTimeOffset.UtcNow;
-            var inspection = CreateInspection(dto, schedule.AssetId, form.Id, now);
+            var inspection = CreateInspection(
+                dto,
+                schedule.AssetId,
+                form.Id,
+                string.Equals(
+                    form.AssetCategory,
+                    AssetCategoryCatalog.WaterDrinkingStation,
+                    StringComparison.Ordinal),
+                now);
             context.InspectionRecords.Add(inspection);
+            schedule.Status = ScheduleStatusCatalog.Completed;
+            schedule.CompletedAt = now;
+            schedule.UpdatedAt = now;
             form.UpdatedAt = now;
 
             try
@@ -502,12 +614,23 @@ public static class PreventiveMaintenanceFormEndpoints
             }
             catch (DbUpdateException exception) when (DatabaseConstraintViolation.IsUniqueConstraint(exception))
             {
+                if (DatabaseConstraintViolation.IsUniqueConstraint(
+                        exception,
+                        PreventiveMaintenanceFormBatchPolicy.UniqueIndexName))
+                {
+                    return ApiErrors.Conflict("A preventive-maintenance form already exists for this department, category, and PM cycle.");
+                }
+
                 return ApiErrors.Conflict("Schedule already has a recorded inspection.");
             }
 
             return Results.Created(
                 $"/api/v1/preventive-maintenance-forms/{form.Id}/inspections/{inspection.Id}",
-                DraftInspectionRowResponse.FromInspection(inspection));
+                DraftInspectionRowResponse.FromInspection(
+                    inspection,
+                    schedule.Asset.AssetCode,
+                    schedule.Asset.Location,
+                    inspector.DisplayName));
         })
         .RequireAuthorization(AuthPolicyCatalog.CanManagePreventiveMaintenanceForms)
         .WithName("AddPreventiveMaintenanceFormDraftInspection")
@@ -552,6 +675,7 @@ public static class PreventiveMaintenanceFormEndpoints
             }
 
             var inspection = await context.InspectionRecords
+                .Include(candidate => candidate.Asset)
                 .SingleOrDefaultAsync(candidate => candidate.Id == inspectionId
                     && candidate.PreventiveMaintenanceFormId == form.Id,
                     cancellationToken);
@@ -576,16 +700,36 @@ public static class PreventiveMaintenanceFormEndpoints
                 });
             }
 
+            var isWaterDrinkingStation = string.Equals(
+                form.AssetCategory,
+                AssetCategoryCatalog.WaterDrinkingStation,
+                StringComparison.Ordinal);
             inspection.InspectorUserId = dto.InspectorUserId;
             inspection.DateInspected = dto.DateInspected;
+            inspection.DateAccomplished = isWaterDrinkingStation
+                ? dto.DateAccomplished
+                : null;
             inspection.IsOperational = dto.IsOperational;
             inspection.Remarks = NormalizeOptional(dto.Remarks);
             inspection.ActionsRecommendations = NormalizeOptional(dto.ActionsRecommendations);
+            inspection.WaterReplaceCarbonFilter = isWaterDrinkingStation
+                ? dto.WaterReplaceCarbonFilter
+                : null;
+            inspection.WaterReplaceSedimentFilter = isWaterDrinkingStation
+                ? dto.WaterReplaceSedimentFilter
+                : null;
+            inspection.WaterCheckUvLight = isWaterDrinkingStation
+                ? dto.WaterCheckUvLight
+                : null;
             inspection.UpdatedAt = DateTimeOffset.UtcNow;
             form.UpdatedAt = inspection.UpdatedAt;
             await context.SaveChangesAsync(cancellationToken);
 
-            return Results.Ok(DraftInspectionRowResponse.FromInspection(inspection));
+            return Results.Ok(DraftInspectionRowResponse.FromInspection(
+                inspection,
+                inspection.Asset?.AssetCode,
+                inspection.Asset?.Location,
+                inspector.DisplayName));
         })
         .RequireAuthorization(AuthPolicyCatalog.CanManagePreventiveMaintenanceForms)
         .WithName("UpdatePreventiveMaintenanceFormDraftInspection")
@@ -618,6 +762,7 @@ public static class PreventiveMaintenanceFormEndpoints
             }
 
             var inspection = await context.InspectionRecords
+                .Include(candidate => candidate.Schedule)
                 .SingleOrDefaultAsync(candidate => candidate.Id == inspectionId
                     && candidate.PreventiveMaintenanceFormId == form.Id,
                     cancellationToken);
@@ -631,8 +776,17 @@ public static class PreventiveMaintenanceFormEndpoints
                 return Results.Forbid();
             }
 
+            if (inspection.Schedule is null)
+            {
+                return ApiErrors.Conflict("Every form row must reference an available schedule before deletion.");
+            }
+
+            var now = DateTimeOffset.UtcNow;
+            inspection.Schedule.Status = ScheduleStatusCatalog.Due;
+            inspection.Schedule.CompletedAt = null;
+            inspection.Schedule.UpdatedAt = now;
             context.InspectionRecords.Remove(inspection);
-            form.UpdatedAt = DateTimeOffset.UtcNow;
+            form.UpdatedAt = now;
             await context.SaveChangesAsync(cancellationToken);
 
             return Results.NoContent();
@@ -649,10 +803,139 @@ public static class PreventiveMaintenanceFormEndpoints
         return endpoints;
     }
 
+    private static async Task<IReadOnlyDictionary<Guid, string>> LoadUserDisplayNamesAsync(
+        ApplicationDbContext context,
+        IEnumerable<PreventiveMaintenanceForm> forms,
+        CancellationToken cancellationToken)
+    {
+        var userIds = forms
+            .SelectMany(form => form.Inspections)
+            .Select(inspection => inspection.InspectorUserId)
+            .Distinct()
+            .ToList();
+
+        if (userIds.Count == 0)
+        {
+            return new Dictionary<Guid, string>();
+        }
+
+        return await context.Users
+            .AsNoTracking()
+            .Where(user => userIds.Contains(user.Id))
+            .ToDictionaryAsync(user => user.Id, user => user.DisplayName, cancellationToken);
+    }
+
+    private static async Task<string[]> LoadInspectionCyclesAsync(
+        ApplicationDbContext context,
+        Guid formId,
+        CancellationToken cancellationToken)
+    {
+        var scheduleDates = await (
+            from inspection in context.InspectionRecords.AsNoTracking()
+            join schedule in context.PreventiveMaintenanceSchedules.AsNoTracking()
+                on inspection.ScheduleId equals schedule.Id
+            where inspection.PreventiveMaintenanceFormId == formId
+            select new { schedule.PmCycle, schedule.ScheduleDate })
+            .ToListAsync(cancellationToken);
+
+        return scheduleDates
+            .Select(item => string.IsNullOrWhiteSpace(item.PmCycle)
+                ? PreventiveMaintenanceCycle.FromScheduleDate(item.ScheduleDate)
+                : item.PmCycle.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+    }
+
+    private static async Task<bool> TrySetFormCycleAsync(
+        ApplicationDbContext context,
+        PreventiveMaintenanceForm form,
+        string scheduleCycle,
+        CancellationToken cancellationToken)
+    {
+        if (!string.IsNullOrWhiteSpace(form.PmCycle))
+        {
+            form.PmCycle = form.PmCycle.Trim();
+            return PreventiveMaintenanceCycle.Matches(form.PmCycle, scheduleCycle);
+        }
+
+        var existingCycles = await LoadInspectionCyclesAsync(context, form.Id, cancellationToken);
+        if (existingCycles.Length == 0)
+        {
+            form.PmCycle = scheduleCycle;
+            return true;
+        }
+
+        if (existingCycles.Length != 1
+            || !PreventiveMaintenanceCycle.Matches(existingCycles[0], scheduleCycle))
+        {
+            return false;
+        }
+
+        form.PmCycle = existingCycles[0];
+        return true;
+    }
+
+    private static async Task<bool> HasCompetingBatchFormAsync(
+        ApplicationDbContext context,
+        PreventiveMaintenanceForm form,
+        CancellationToken cancellationToken)
+    {
+        var candidates = await context.PreventiveMaintenanceForms
+            .AsNoTracking()
+            .Where(candidate => candidate.Id != form.Id
+                && candidate.AssetCategory == form.AssetCategory
+                && (candidate.PmCycle == form.PmCycle
+                    || candidate.PmCycle == null
+                    || candidate.PmCycle == string.Empty))
+            .Select(candidate => new { candidate.Id, candidate.Department, candidate.PmCycle })
+            .ToListAsync(cancellationToken);
+        var sameDepartment = candidates
+            .Where(candidate => PreventiveMaintenanceFormBatchPolicy.IsSameDepartment(
+                candidate.Department,
+                form.Department))
+            .ToArray();
+
+        if (sameDepartment.Any(candidate =>
+                PreventiveMaintenanceCycle.Matches(candidate.PmCycle, form.PmCycle)))
+        {
+            return true;
+        }
+
+        var unresolvedFormIds = sameDepartment
+            .Where(candidate => string.IsNullOrWhiteSpace(candidate.PmCycle))
+            .Select(candidate => candidate.Id)
+            .ToArray();
+        if (unresolvedFormIds.Length == 0)
+        {
+            return false;
+        }
+
+        var linkedScheduleCycles = await (
+            from inspection in context.InspectionRecords.AsNoTracking()
+            join schedule in context.PreventiveMaintenanceSchedules.AsNoTracking()
+                on inspection.ScheduleId equals schedule.Id
+            where inspection.PreventiveMaintenanceFormId.HasValue
+                && unresolvedFormIds.Contains(inspection.PreventiveMaintenanceFormId.GetValueOrDefault())
+            select new
+            {
+                schedule.PmCycle,
+                schedule.ScheduleDate
+            })
+            .ToListAsync(cancellationToken);
+
+        return linkedScheduleCycles.Any(item =>
+            PreventiveMaintenanceCycle.Matches(
+                form.PmCycle,
+                string.IsNullOrWhiteSpace(item.PmCycle)
+                    ? PreventiveMaintenanceCycle.FromScheduleDate(item.ScheduleDate)
+                    : item.PmCycle));
+    }
+
     private static InspectionRecord CreateInspection(
         DraftInspectionRowDto dto,
         Guid assetId,
         Guid formId,
+        bool isWaterDrinkingStation,
         DateTimeOffset now)
     {
         return new InspectionRecord
@@ -663,9 +946,22 @@ public static class PreventiveMaintenanceFormEndpoints
             AssetId = assetId,
             InspectorUserId = dto.InspectorUserId,
             DateInspected = dto.DateInspected,
+            CompletedAt = now,
+            DateAccomplished = isWaterDrinkingStation
+                ? dto.DateAccomplished
+                : null,
             IsOperational = dto.IsOperational,
             Remarks = NormalizeOptional(dto.Remarks),
             ActionsRecommendations = NormalizeOptional(dto.ActionsRecommendations),
+            WaterReplaceCarbonFilter = isWaterDrinkingStation
+                ? dto.WaterReplaceCarbonFilter
+                : null,
+            WaterReplaceSedimentFilter = isWaterDrinkingStation
+                ? dto.WaterReplaceSedimentFilter
+                : null,
+            WaterCheckUvLight = isWaterDrinkingStation
+                ? dto.WaterCheckUvLight
+                : null,
             CreatedAt = now,
             UpdatedAt = now
         };
@@ -955,9 +1251,13 @@ public sealed class DraftInspectionRowDto
     public Guid ScheduleId { get; set; }
     public Guid InspectorUserId { get; set; }
     public DateTimeOffset DateInspected { get; set; }
+    public DateTimeOffset? DateAccomplished { get; set; }
     public bool IsOperational { get; set; }
     public string? Remarks { get; set; }
     public string? ActionsRecommendations { get; set; }
+    public bool? WaterReplaceCarbonFilter { get; set; }
+    public bool? WaterReplaceSedimentFilter { get; set; }
+    public bool? WaterCheckUvLight { get; set; }
 
     internal Dictionary<string, string[]> Validate()
     {
@@ -1013,9 +1313,13 @@ public sealed class UpdateDraftInspectionRowDto
 {
     public Guid InspectorUserId { get; set; }
     public DateTimeOffset DateInspected { get; set; }
+    public DateTimeOffset? DateAccomplished { get; set; }
     public bool IsOperational { get; set; }
     public string? Remarks { get; set; }
     public string? ActionsRecommendations { get; set; }
+    public bool? WaterReplaceCarbonFilter { get; set; }
+    public bool? WaterReplaceSedimentFilter { get; set; }
+    public bool? WaterCheckUvLight { get; set; }
 
     internal Dictionary<string, string[]> Validate()
     {
@@ -1033,6 +1337,7 @@ public sealed record PreventiveMaintenanceFormResponse(
     string AssetCategory,
     string? Building,
     string? Department,
+    string? PmCycle,
     string PeriodType,
     string? Quarter,
     string? Semester,
@@ -1042,11 +1347,14 @@ public sealed record PreventiveMaintenanceFormResponse(
     Guid CreatedByUserId,
     Guid? SubmittedByUserId,
     DateTimeOffset? SubmittedAt,
+    DateTimeOffset? FieldWorkCompletedAt,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
     IReadOnlyList<DraftInspectionRowResponse> Inspections)
 {
-    internal static PreventiveMaintenanceFormResponse FromForm(PreventiveMaintenanceForm form)
+    internal static PreventiveMaintenanceFormResponse FromForm(
+        PreventiveMaintenanceForm form,
+        IReadOnlyDictionary<Guid, string>? userDisplayNames = null)
     {
         return new PreventiveMaintenanceFormResponse(
             form.Id,
@@ -1054,6 +1362,7 @@ public sealed record PreventiveMaintenanceFormResponse(
             form.AssetCategory,
             form.Building,
             form.Department,
+            form.PmCycle,
             form.PeriodType,
             form.Quarter,
             form.Semester,
@@ -1063,12 +1372,17 @@ public sealed record PreventiveMaintenanceFormResponse(
             form.CreatedByUserId,
             form.SubmittedByUserId,
             form.SubmittedAt,
+            form.FieldWorkCompletedAt,
             form.CreatedAt,
             form.UpdatedAt,
             form.Inspections
                 .OrderBy(inspection => inspection.DateInspected)
                 .ThenBy(inspection => inspection.Id)
-                .Select(DraftInspectionRowResponse.FromInspection)
+                .Select(inspection => DraftInspectionRowResponse.FromInspection(
+                    inspection,
+                    inspection.Asset?.AssetCode,
+                    inspection.Asset?.Location,
+                    userDisplayNames?.GetValueOrDefault(inspection.InspectorUserId)))
                 .ToList());
     }
 }
@@ -1079,13 +1393,26 @@ public sealed record DraftInspectionRowResponse(
     Guid AssetId,
     Guid InspectorUserId,
     DateTimeOffset DateInspected,
+    DateTimeOffset? StartedAt,
+    DateTimeOffset? CompletedAt,
     bool IsOperational,
     string? Remarks,
     string? ActionsRecommendations,
     DateTimeOffset CreatedAt,
-    DateTimeOffset UpdatedAt)
+    DateTimeOffset UpdatedAt,
+    DateTimeOffset? DateAccomplished = null,
+    bool? WaterReplaceCarbonFilter = null,
+    bool? WaterReplaceSedimentFilter = null,
+    bool? WaterCheckUvLight = null,
+    string? AssetCode = null,
+    string? Location = null,
+    string? SkilledWorkerIdentity = null)
 {
-    internal static DraftInspectionRowResponse FromInspection(InspectionRecord inspection)
+    internal static DraftInspectionRowResponse FromInspection(
+        InspectionRecord inspection,
+        string? assetCode = null,
+        string? location = null,
+        string? skilledWorkerIdentity = null)
     {
         return new DraftInspectionRowResponse(
             inspection.Id,
@@ -1093,11 +1420,20 @@ public sealed record DraftInspectionRowResponse(
             inspection.AssetId,
             inspection.InspectorUserId,
             inspection.DateInspected,
+            inspection.StartedAt,
+            inspection.CompletedAt,
             inspection.IsOperational,
             inspection.Remarks,
             inspection.ActionsRecommendations,
             inspection.CreatedAt,
-            inspection.UpdatedAt);
+            inspection.UpdatedAt,
+            inspection.DateAccomplished,
+            inspection.WaterReplaceCarbonFilter,
+            inspection.WaterReplaceSedimentFilter,
+            inspection.WaterCheckUvLight,
+            assetCode,
+            location,
+            skilledWorkerIdentity);
     }
 }
 

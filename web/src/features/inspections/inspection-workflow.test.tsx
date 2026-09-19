@@ -202,7 +202,7 @@ describe('inspection review workflows', () => {
     expect(
       await screen.findByRole('link', { name: 'FE-001' }),
     ).toBeInTheDocument()
-    expect(screen.getByText('Actions and recommendations')).toBeInTheDocument()
+    expect(screen.getByText('Recommendation')).toBeInTheDocument()
   })
 
   it('renders compact asset history and an honest unavailable state', async () => {

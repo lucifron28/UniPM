@@ -62,13 +62,6 @@ const scheduleOperations = [
 const inspectionOperations = [
   [
     '/api/v1/inspections',
-    'post',
-    'RecordInspection',
-    '201',
-    'InspectionResponse',
-  ],
-  [
-    '/api/v1/inspections',
     'get',
     'ListInspections',
     '200',
@@ -87,6 +80,54 @@ const inspectionOperations = [
     'GetInspectionHistory',
     '200',
     'InspectionHistoryResponse',
+  ],
+]
+
+const preventiveMaintenanceFormOperations = [
+  [
+    '/api/v1/preventive-maintenance-forms',
+    'post',
+    'CreatePreventiveMaintenanceFormDraft',
+  ],
+  [
+    '/api/v1/preventive-maintenance-forms',
+    'get',
+    'ListPreventiveMaintenanceForms',
+  ],
+  [
+    '/api/v1/preventive-maintenance-forms/{id}',
+    'get',
+    'GetPreventiveMaintenanceForm',
+  ],
+  [
+    '/api/v1/preventive-maintenance-forms/{id}/submit',
+    'post',
+    'SubmitPreventiveMaintenanceForm',
+  ],
+  [
+    '/api/v1/preventive-maintenance-forms/{id}/acknowledge',
+    'post',
+    'AcknowledgePreventiveMaintenanceForm',
+  ],
+  [
+    '/api/v1/preventive-maintenance-forms/{id}/corrective-handoff',
+    'get',
+    'GetCorrectiveMaintenanceHandoff',
+  ],
+  [
+    '/api/v1/preventive-maintenance-forms/{id}/inspections',
+    'post',
+    'AddPreventiveMaintenanceFormDraftInspection',
+  ],
+  [
+    '/api/v1/preventive-maintenance-forms/{id}/inspections/{inspectionId}',
+    'put',
+    'UpdatePreventiveMaintenanceFormDraftInspection',
+  ],
+  [
+    '/api/v1/preventive-maintenance-forms/{id}/inspections/{inspectionId}',
+    'delete',
+    'DeletePreventiveMaintenanceFormDraftInspection',
   ],
 ]
 
@@ -164,7 +205,7 @@ for (const [
     )
   }
 
-  if (operationId === 'RecordInspection' || operationId === 'GetInspection') {
+  if (operationId === 'GetInspection') {
     if (schema.$ref !== `#/components/schemas/${schemaName}`) {
       throw new Error(
         `Required inspection operation ${operationId} must return ${schemaName}.`,
@@ -206,6 +247,15 @@ for (const [path, method, operationId, status, schemaName] of assetOperations) {
   ) {
     throw new Error(
       'Required asset operation ListAssets must return AssetResponse[].',
+    )
+  }
+}
+
+for (const [path, method, operationId] of preventiveMaintenanceFormOperations) {
+  const operation = snapshot.paths?.[path]?.[method]
+  if (operation?.operationId !== operationId) {
+    throw new Error(
+      `Missing required preventive-maintenance form operation: ${operationId}.`,
     )
   }
 }
@@ -296,6 +346,34 @@ if (
   )
 }
 
+const formRowFields = [
+  'id',
+  'scheduleId',
+  'assetId',
+  'inspectorUserId',
+  'dateInspected',
+  'dateAccomplished',
+  'isOperational',
+  'remarks',
+  'actionsRecommendations',
+  'waterReplaceCarbonFilter',
+  'waterReplaceSedimentFilter',
+  'waterCheckUvLight',
+  'assetCode',
+  'location',
+  'skilledWorkerIdentity',
+]
+const formRowProperties =
+  snapshot.components?.schemas?.DraftInspectionRowResponse?.properties
+if (
+  !formRowProperties ||
+  formRowFields.some((field) => !formRowProperties[field])
+) {
+  throw new Error(
+    'DraftInspectionRowResponse is missing one or more required PMIS review fields.',
+  )
+}
+
 console.log(
-  'OpenAPI auth, asset, schedule, and inspection contract sanity check passed.',
+  'OpenAPI auth, asset, schedule, inspection, and preventive-maintenance form contract sanity check passed.',
 )

@@ -18,7 +18,7 @@ public sealed class InspectionOpenApiContractTests : IClassFixture<WebApplicatio
         using var document = JsonDocument.Parse(await _client.GetStringAsync("/openapi/v1.json"));
         var paths = document.RootElement.GetProperty("paths");
 
-        AssertOperation(paths, "/api/v1/inspections", "post", "RecordInspection", "201", "InspectionResponse");
+        Assert.False(paths.GetProperty("/api/v1/inspections").TryGetProperty("post", out _));
         AssertArrayOperation(paths, "/api/v1/inspections", "get", "ListInspections", "InspectionResponse");
         AssertOperation(paths, "/api/v1/inspections/{id}", "get", "GetInspection", "200", "InspectionResponse");
         AssertArrayOperation(paths, "/api/v1/inspections/history/{assetId}", "get", "GetInspectionHistory", "InspectionHistoryResponse");

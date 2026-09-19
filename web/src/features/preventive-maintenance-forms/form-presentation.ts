@@ -21,7 +21,7 @@ export function formatFormPeriod(
 }
 
 export function formStatusLabel(status: PreventiveMaintenanceForm['status']) {
-  return status
+  return status === 'Submitted' ? 'Awaiting acknowledgement' : status
 }
 
 export function formStatusClass(status: PreventiveMaintenanceForm['status']) {

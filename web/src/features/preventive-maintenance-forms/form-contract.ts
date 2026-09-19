@@ -22,6 +22,17 @@ const inspectionRowSchema = z
     isOperational: z.boolean(),
     remarks: optionalText,
     actionsRecommendations: optionalText,
+    dateAccomplished: z
+      .string()
+      .datetime({ offset: true })
+      .nullable()
+      .optional(),
+    waterReplaceCarbonFilter: z.boolean().nullable().optional(),
+    waterReplaceSedimentFilter: z.boolean().nullable().optional(),
+    waterCheckUvLight: z.boolean().nullable().optional(),
+    assetCode: optionalText.optional(),
+    location: optionalText.optional(),
+    skilledWorkerIdentity: optionalText.optional(),
     createdAt: z.string().datetime({ offset: true }),
     updatedAt: z.string().datetime({ offset: true }),
   })

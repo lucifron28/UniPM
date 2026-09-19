@@ -28,6 +28,10 @@ internal sealed class SqlServerLexicalMaintenanceRetriever(
             @searchCondition) AS matches
         INNER JOIN [dbo].[MaintenanceSearchDocuments] AS document
             ON document.InspectionId = matches.[KEY]
+        INNER JOIN [dbo].[InspectionRecords] AS inspection
+            ON inspection.Id = document.InspectionId
+        LEFT JOIN [dbo].[PreventiveMaintenanceForms] AS form
+            ON form.Id = inspection.PreventiveMaintenanceFormId
         WHERE (@assetId IS NULL OR document.AssetId = @assetId)
           AND (@assetCategory IS NULL OR document.AssetCategory = @assetCategory)
           AND (@building IS NULL OR document.Building = @building)
@@ -36,6 +40,8 @@ internal sealed class SqlServerLexicalMaintenanceRetriever(
           AND (@isOperational IS NULL OR document.IsOperational = @isOperational)
           AND (@dateFrom IS NULL OR document.DateInspected >= @dateFrom)
           AND (@dateTo IS NULL OR document.DateInspected <= @dateTo)
+          AND (inspection.PreventiveMaintenanceFormId IS NULL
+               OR form.[Status] = @acknowledgedStatus)
         ORDER BY matches.[RANK] DESC, document.DateInspected DESC, document.InspectionId ASC;
         """;
 
@@ -101,6 +107,7 @@ internal sealed class SqlServerLexicalMaintenanceRetriever(
             AddParameter(command, "@isOperational", query.IsOperational, DbType.Boolean);
             AddParameter(command, "@dateFrom", query.DateFrom, DbType.DateTimeOffset);
             AddParameter(command, "@dateTo", query.DateTo, DbType.DateTimeOffset);
+            AddParameter(command, "@acknowledgedStatus", "Acknowledged", DbType.String);
 
             await using var reader = await command.ExecuteReaderAsync(cancellationToken);
             var results = new List<LexicalMaintenanceSearchResult>();

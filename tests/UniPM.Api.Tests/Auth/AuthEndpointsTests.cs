@@ -15,7 +15,6 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.IdentityModel.Tokens;
 using UniPM.Api.Data;
 using UniPM.Api.Features.Auth;
-using UniPM.Api.Features.Inspections;
 using UniPM.Api.Models;
 
 namespace UniPM.Api.Tests;
@@ -354,117 +353,6 @@ public sealed class AuthEndpointsTests
         Assert.Equal(HttpStatusCode.Forbidden, (await client.SendAsync(malformed)).StatusCode);
     }
 
-    [Fact]
-    public async Task Inspector_can_submit_an_inspection_for_their_authenticated_identity()
-    {
-        await using var application = new AuthApplicationFactory();
-        var inspectorId = await application.SeedUserAsync(
-            "inspector@unipm.local",
-            Password,
-            true,
-            false,
-            AuthRoleCatalog.Inspector);
-        var scheduleId = await application.SeedScheduleAsync();
-        using var client = application.CreateClient();
-        var login = await (await LoginAsync(client, "inspector@unipm.local", Password))
-            .Content.ReadFromJsonAsync<LoginPayload>();
-        client.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", login!.AccessToken);
-
-        var response = await client.PostAsJsonAsync("/api/v1/inspections/", InspectionRequest(
-            scheduleId,
-            inspectorId));
-
-        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-        var inspection = await response.Content.ReadFromJsonAsync<InspectionResponse>();
-        Assert.NotNull(inspection);
-        Assert.Equal(inspectorId, inspection.InspectorUserId);
-    }
-
-    [Fact]
-    public async Task Inspector_cannot_submit_an_inspection_for_another_user()
-    {
-        await using var application = new AuthApplicationFactory();
-        await application.SeedUserAsync(
-            "inspector@unipm.local",
-            Password,
-            true,
-            false,
-            AuthRoleCatalog.Inspector);
-        var scheduleId = await application.SeedScheduleAsync();
-        using var client = application.CreateClient();
-        var login = await (await LoginAsync(client, "inspector@unipm.local", Password))
-            .Content.ReadFromJsonAsync<LoginPayload>();
-        client.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", login!.AccessToken);
-
-        var response = await client.PostAsJsonAsync("/api/v1/inspections/", InspectionRequest(
-            scheduleId,
-            Guid.NewGuid()));
-
-        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
-    }
-
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task Gsd_submission_rejects_nonexistent_or_inactive_inspector_users(bool seedInactiveUser)
-    {
-        await using var application = new AuthApplicationFactory();
-        await application.SeedUserAsync(Email, Password, true, false, AuthRoleCatalog.Gsd);
-        var inspectorUserId = seedInactiveUser
-            ? await application.SeedUserAsync(
-                "inactive-inspector@unipm.local",
-                Password,
-                false,
-                false,
-                AuthRoleCatalog.Inspector)
-            : Guid.NewGuid();
-        var scheduleId = await application.SeedScheduleAsync();
-        using var client = application.CreateClient();
-        var login = await (await LoginAsync(client, Email, Password))
-            .Content.ReadFromJsonAsync<LoginPayload>();
-        client.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", login!.AccessToken);
-
-        var response = await client.PostAsJsonAsync("/api/v1/inspections/", InspectionRequest(
-            scheduleId,
-            inspectorUserId));
-
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        var problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>();
-        Assert.NotNull(problem);
-        Assert.Contains(nameof(RecordInspectionDto.InspectorUserId), problem.Errors.Keys);
-    }
-
-    [Fact]
-    public async Task Gsd_can_provisionally_submit_an_inspection_on_behalf_of_an_active_user()
-    {
-        await using var application = new AuthApplicationFactory();
-        await application.SeedUserAsync(Email, Password, true, false, AuthRoleCatalog.Gsd);
-        var inspectorUserId = await application.SeedUserAsync(
-            "field-personnel@unipm.local",
-            Password,
-            true,
-            false,
-            AuthRoleCatalog.Inspector);
-        var scheduleId = await application.SeedScheduleAsync();
-        using var client = application.CreateClient();
-        var login = await (await LoginAsync(client, Email, Password))
-            .Content.ReadFromJsonAsync<LoginPayload>();
-        client.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", login!.AccessToken);
-
-        var response = await client.PostAsJsonAsync("/api/v1/inspections/", InspectionRequest(
-            scheduleId,
-            inspectorUserId));
-
-        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-        var inspection = await response.Content.ReadFromJsonAsync<InspectionResponse>();
-        Assert.NotNull(inspection);
-        Assert.Equal(inspectorUserId, inspection.InspectorUserId);
-    }
-
     [Theory]
     [InlineData(null)]
     [InlineData("short-key")]
@@ -489,15 +377,6 @@ public sealed class AuthEndpointsTests
             .Single(value => value.StartsWith($"{RefreshCookieService.CookieName}=", StringComparison.Ordinal));
         return header.Split(';', 2)[0].Split('=', 2)[1];
     }
-
-    private static object InspectionRequest(Guid scheduleId, Guid inspectorUserId) => new
-    {
-        scheduleId,
-        inspectorUserId,
-        dateInspected = DateTimeOffset.UtcNow,
-        isOperational = true,
-        remarks = "Operational test inspection"
-    };
 
     private static string CreateToken(Guid userId, InvalidTokenKind kind)
     {

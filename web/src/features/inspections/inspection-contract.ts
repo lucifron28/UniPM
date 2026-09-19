@@ -16,6 +16,14 @@ export const inspectionSchema = z
     isOperational: z.boolean(),
     remarks: sourceText,
     actionsRecommendations: sourceText,
+    dateAccomplished: z
+      .string()
+      .datetime({ offset: true })
+      .nullable()
+      .optional(),
+    waterReplaceCarbonFilter: z.boolean().nullable().optional(),
+    waterReplaceSedimentFilter: z.boolean().nullable().optional(),
+    waterCheckUvLight: z.boolean().nullable().optional(),
     createdAt: z.string().datetime({ offset: true }),
     updatedAt: z.string().datetime({ offset: true }),
   })
@@ -28,6 +36,14 @@ export const inspectionHistorySchema = z
     isOperational: z.boolean(),
     remarks: sourceText,
     actionsRecommendations: sourceText,
+    dateAccomplished: z
+      .string()
+      .datetime({ offset: true })
+      .nullable()
+      .optional(),
+    waterReplaceCarbonFilter: z.boolean().nullable().optional(),
+    waterReplaceSedimentFilter: z.boolean().nullable().optional(),
+    waterCheckUvLight: z.boolean().nullable().optional(),
   })
   .strict()
 

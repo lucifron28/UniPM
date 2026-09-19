@@ -11,6 +11,7 @@ public sealed class PreventiveMaintenanceForm
     public string AssetCategory { get; set; } = string.Empty;
     public string? Building { get; set; }
     public string? Department { get; set; }
+    public string? PmCycle { get; set; }
     public string PeriodType { get; set; } = string.Empty;
     public string? Quarter { get; set; }
     public string? Semester { get; set; }
@@ -20,6 +21,7 @@ public sealed class PreventiveMaintenanceForm
     public Guid CreatedByUserId { get; set; }
     public Guid? SubmittedByUserId { get; set; }
     public DateTimeOffset? SubmittedAt { get; set; }
+    public DateTimeOffset? FieldWorkCompletedAt { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
     public byte[] RowVersion { get; set; } = [];

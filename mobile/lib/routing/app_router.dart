@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 
 import '../auth/session_controller.dart';
+import '../features/assets/asset_repository.dart';
 import '../features/auth/authenticated_shell.dart';
 import '../features/auth/configuration_error_page.dart';
 import '../features/auth/login_page.dart';
 import '../features/auth/unsupported_role_page.dart';
+import '../features/maintenance_history/asset_maintenance_history_repository.dart';
 import '../features/preventive_maintenance/preventive_maintenance_repository.dart';
 
 class AppRouter extends StatefulWidget {
@@ -12,13 +14,17 @@ class AppRouter extends StatefulWidget {
     super.key,
     required this.sessionController,
     required this.navigatorKey,
+    this.assetRepository,
     this.preventiveMaintenanceRepository,
+    this.assetMaintenanceHistoryRepository,
     this.configurationError,
   });
 
   final SessionController sessionController;
   final GlobalKey<NavigatorState> navigatorKey;
+  final AssetRepository? assetRepository;
   final PreventiveMaintenanceRepository? preventiveMaintenanceRepository;
+  final AssetMaintenanceHistoryRepository? assetMaintenanceHistoryRepository;
   final String? configurationError;
 
   @override
@@ -78,8 +84,11 @@ class _AppRouterState extends State<AppRouter> {
           case SessionStatus.authenticated:
             return AuthenticatedShell(
               controller: widget.sessionController,
+              assetRepository: widget.assetRepository,
               preventiveMaintenanceRepository:
                   widget.preventiveMaintenanceRepository,
+              assetMaintenanceHistoryRepository:
+                  widget.assetMaintenanceHistoryRepository,
             );
           case SessionStatus.unsupportedRole:
             return UnsupportedRolePage(controller: widget.sessionController);
