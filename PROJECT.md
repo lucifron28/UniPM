@@ -13,6 +13,9 @@
 - **Optional legacy Docker stop**: `docker compose --env-file .env.sqlserver2025 -f docker-compose.sqlserver2025.yml down`
 
 ## Active Context
+- **Active work**: `feature/pm-acknowledgement-review` / M3. M1 and M2 are
+  finished and merged; this branch carries the current PM acknowledgement
+  review and validation documentation.
 - **Proposed architecture**: ASP.NET Core API hosted on IIS + native Windows
   SQL Server 2019 with Full-Text Search. Docker is optional development
   tooling only. IIS deployment is not part of the evaluated capstone result.
@@ -39,13 +42,13 @@
     and CI.
   - Fictional synthetic maintenance fixture, retrieval evaluation manifest, and
     Development-only seed/reset commands.
-  - Internal SQL Server Full-Text Search over `MaintenanceSearchDocument.SearchText`
-    with bounded prefix-query construction, controlled filters, and source-
-    traceable lexical results.
-  - Semantic retrieval over a one-to-one SQL Server embedding cache for
-    `MaintenanceSearchDocument`, with explicit batch rebuilds and bounded
-    application-layer cosine similarity. The embedding provider is optional and
-    degradable; query embeddings are never persisted.
+  - Preserved historical/inactive SQL Server Full-Text Search over
+    `MaintenanceSearchDocument.SearchText` with bounded prefix-query
+    construction, controlled filters, and source-traceable lexical results.
+  - Preserved historical/inactive semantic retrieval over a one-to-one SQL
+    Server embedding cache for `MaintenanceSearchDocument`, with explicit batch
+    rebuilds and bounded application-layer cosine similarity. The embedding
+    provider is optional and degradable; query embeddings are never persisted.
   - Reset dependency protection, strict fixture-property loading, exact
     evaluation correspondence tests, case-insensitive uniqueness checks, and
     unambiguous maintenance-command handling.
@@ -70,9 +73,13 @@
     runtime response validation, and backend-authoritative role policies.
   - Confirmed multi-asset preventive-maintenance form lifecycle:
     `Draft -> Submitted -> Acknowledged`, provisional form file numbers,
-    whole-form acknowledgement, schedule completion after acknowledgement,
-    acknowledged-only history/retrieval publication, and GSD-only
-    corrective-action handoff preparation.
+    field-work-driven schedule completion from `InspectionRecord.CompletedAt`,
+    and whole-form acknowledgement. Acknowledgement records receipt/noting,
+    does not alter execution or compliance timestamps, does not complete
+    schedules, and makes completed rows eligible for acknowledged-only official
+    history. Preserved retrieval/RAG infrastructure is historical and inactive,
+    not actively published. GSD-only corrective-action handoff preparation
+    remains available.
   - Reference-document foundation is implemented and merged as a fictional,
     source-traceable metadata and sectioning foundation. Approved institutional
     source authorization and ingestion remain pending; OEM retrieval is
@@ -206,6 +213,10 @@ this branch.
 5. Only then create a separate implementation branch; keep institutional
    source authorization, final RBAC, audit rules, and other unresolved policy
    decisions deferred until then.
+
+Natural-language analytics remains a planned post-validation direction pending
+professor/adviser confirmation. It is not an implementation requirement on the
+current branch.
 
 ## Engineering Evidence
 

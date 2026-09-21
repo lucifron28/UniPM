@@ -182,7 +182,8 @@ Proceed with the GSD demonstration only when:
 - completed inspection rows have `InspectionRecord.CompletedAt` values and
   linked schedules are completed before form acknowledgement;
 - submission assigns a provisional UniPM file number;
-- acknowledgement records receipt/noting and does not complete schedules;
+- acknowledgement records receipt/noting, does not alter execution or compliance
+  timestamps, and does not complete schedules;
 - acknowledged rows appear in official history;
 - Draft and Submitted rows remain absent from official history;
 - no AI provider is configured or contacted;

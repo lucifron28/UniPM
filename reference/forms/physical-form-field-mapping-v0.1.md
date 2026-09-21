@@ -91,9 +91,14 @@ Visible fields:
 
 One digital form represents one existing one-page form and may contain multiple
 asset inspection rows. Its lifecycle is `Draft -> Submitted -> Acknowledged`.
-Only acknowledgement completes linked schedules and makes rows eligible for
-official history and retrieval. The signatory name, position, and signature are
-form data only and never retrieval, embedding, prompt, or handoff data.
+Field-work completion is recorded in `InspectionRecord.CompletedAt` and
+completes linked schedules before form submission. Acknowledgement records
+receipt/noting, does not alter execution or compliance timestamps, does not
+complete schedules, and makes completed rows eligible for acknowledged-only
+official history. Preserved retrieval/RAG infrastructure is historical and
+inactive, not part of current publication. The signatory name, position, and
+signature are form data only and never retrieval, embedding, prompt, or handoff
+data.
 
 ## Pending Clarification
 

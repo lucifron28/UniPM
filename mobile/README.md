@@ -102,10 +102,13 @@ position, and captures the signature; the Department Head does not need a
 UniPM account. The client calls
 `POST /api/v1/preventive-maintenance-forms/{id}/acknowledge` with the signatory
 data and a PNG signature. The backend remains authoritative: it changes the
-form to **Acknowledged** and completes linked schedules. The mobile client
-never marks schedules complete directly. After success, the form is
-read-only. Acknowledgement is not corrective-action, budget, RMRF, or WMS
-approval.
+form to **Acknowledged** and records receipt/noting. It does not alter
+execution or compliance timestamps or complete linked schedules. Field-work
+completion, recorded in `InspectionRecord.CompletedAt`, completes schedules
+before submission. The mobile client never marks schedules complete directly.
+After success, the form is read-only and its completed rows are eligible for
+acknowledged-only official history. Acknowledgement is not corrective-action,
+budget, RMRF, or WMS approval.
 
 The four supplied GSD forms are implemented as the authoritative visible
 category-form structure for the current mobile PM pass. Historical form-version

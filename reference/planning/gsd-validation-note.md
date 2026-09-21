@@ -1,6 +1,6 @@
 # GSD Validation Session Note
 
-This branch (`validation/pmis-only-gsd`) exists to demonstrate UniPM as a
+This branch (`feature/pm-acknowledgement-review`) exists to demonstrate UniPM as a
 plain preventive-maintenance information system so the University General
 Services Department can validate the actual workflow before any replacement
 innovation is selected. Maintenance-history RAG was previously implemented and
@@ -40,10 +40,12 @@ completion (InspectionRecord.CompletedAt) -> submit -> Department Head
 acknowledgement -> official history`
 
 The field-work completion timestamp completes the linked schedule before form
-submission. Acknowledgement remains a separate receipt/noting step and does not
-complete schedules.
+submission. Acknowledgement remains a separate receipt/noting step, does not
+alter execution or compliance timestamps, and does not complete schedules.
 
-The detailed execution record is [`TEST-040`](../evidence/test-runs/TEST-040-mobile-core-pm-physical-acceptance.md).
+The detailed mobile/core PM execution record is
+[`TEST-040`](../evidence/test-runs/TEST-040-mobile-core-pm-physical-acceptance.md).
+TEST-040 does not verify the M2 web dashboard.
 This closes the core PM workflow gate; it does not claim production signing,
 store distribution, or IIS deployment.
 

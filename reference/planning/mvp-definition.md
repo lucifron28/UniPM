@@ -5,10 +5,10 @@
 **UniPM: A Preventive Maintenance Information System for University General
 Services (PMIS-Only Validation Baseline)**
 
-This working title describes the current validation branch
-(`validation/pmis-only-gsd`). It replaces the previous RAG-inclusive working
-title for validation purposes; no replacement innovation title is proposed or
-approved yet.
+This working title describes the current M3 branch
+(`feature/pm-acknowledgement-review`). It replaces the previous RAG-inclusive
+working title for validation purposes; no replacement innovation title is
+proposed or approved yet.
 
 ## Milestone status
 
@@ -36,7 +36,8 @@ development work. It is preserved in the repository as historical/inactive
 infrastructure and is excluded from this validation runtime: the
 maintenance-review endpoint is mapped only when explicitly enabled, committed
 configuration keeps it disabled, and the published OpenAPI contract and
-generated web client contain no maintenance-review operation.
+generated web client contain no maintenance-review operation. It is not actively
+published by the current runtime.
 
 The selected asset categories are fire extinguishers, fire alarm systems,
 emergency lights, and water drinking stations. One preventive-maintenance form
@@ -46,8 +47,9 @@ Acknowledged`.
 
 The canonical PM batch is `Department + Asset Category + PmCycle`; building does
 not split a batch. Field-work execution completion comes from
-`InspectionRecord.CompletedAt`. Acknowledgement is separate from execution and
-does not complete schedules.
+`InspectionRecord.CompletedAt`. Acknowledgement records separate receipt/noting,
+does not alter execution or compliance timestamps, and does not complete
+schedules.
 
 Exact final institutional form fields, revisions, and category-specific
 requirements remain subject to GSD validation before any final form-model
@@ -68,12 +70,13 @@ workflow; they are a workflow prototype, not the final institutional schema.
   GSD/skilled-worker workflow; the Department Head needs no separate UniPM
   account, and acknowledgement is not corrective-budget approval.
 - Field-work-driven linked schedule completion from
-  `InspectionRecord.CompletedAt`; acknowledgement does not complete schedules.
+  `InspectionRecord.CompletedAt`; acknowledgement records receipt/noting, does
+  not alter execution or compliance timestamps, and does not complete schedules.
 - Acknowledged-only official maintenance history (Draft and Submitted rows are
   never official history).
-- Existing deterministic list, filter, history, and status-summary behavior
-  where currently implemented; the web dashboard is a placeholder and final
-  GSD dashboard/reporting requirements remain subject to validation.
+- Existing deterministic list, filter, history, status-summary, and PM-period
+  dashboard behavior where currently implemented; final GSD dashboard/reporting
+  requirements remain subject to validation.
 - Corrective-action handoff preparation as a read model ending at manual GSD
   Work Management System encoding.
 - Web PMIS workflow (React) and the partner-owned mobile workflow for QR
@@ -90,7 +93,8 @@ Only acknowledged form rows, together with eligible legacy inspection records
 without a form, are official inspection-history evidence. Draft and Submitted
 rows remain excluded from official history. Field-work completion comes from
 `InspectionRecord.CompletedAt`; acknowledgement is a separate receipt/noting
-step and does not complete linked schedules.
+step, does not alter execution or compliance timestamps, and does not complete
+linked schedules.
 
 Acknowledgement signatory names, positions, signatures, signature data, and
 signature checksums never enter corrective-handoff data or observability
@@ -127,7 +131,8 @@ completion (InspectionRecord.CompletedAt) -> submit -> Department Head
 acknowledgement -> official history`
 
 See [`TEST-040`](../evidence/test-runs/TEST-040-mobile-core-pm-physical-acceptance.md)
-for the execution record. This status does not make attachments, alerts,
+for the mobile/core PM execution record. TEST-040 does not verify the M2 web
+dashboard. This status does not make attachments, alerts,
 offline synchronization, persistent session restoration, AI/RAG, or other
 optional capabilities blockers for the milestone.
 
