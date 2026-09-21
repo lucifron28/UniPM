@@ -12,13 +12,10 @@ import {
 } from '@/features/inspections/inspection-presentation'
 import { useSchedule } from '@/features/schedules/schedule-queries'
 import { formatScheduleDate } from '@/features/schedules/schedule-presentation'
+import type { PmAcknowledgementReviewContext } from '@/features/preventive-maintenance-forms/pm-acknowledgement-review'
 
 const uuidPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-
-function isSafeReturnTo(value: string | undefined) {
-  return value?.startsWith('/app/') === true
-}
 
 function DetailItem({ label, value }: { label: string; value: string }) {
   return (
@@ -65,10 +62,10 @@ function DetailError({
 
 export function InspectionDetail({
   inspectionId,
-  returnTo,
+  reviewContext,
 }: {
   inspectionId: string
-  returnTo?: string | undefined
+  reviewContext?: PmAcknowledgementReviewContext | undefined
 }) {
   const isValidId = uuidPattern.test(inspectionId)
   const inspection = useInspection(inspectionId, isValidId)
@@ -149,13 +146,19 @@ export function InspectionDetail({
       aria-labelledby="inspection-detail-title"
       className="max-w-5xl space-y-6"
     >
-      {isSafeReturnTo(returnTo) ? (
-        <a
-          href={returnTo}
+      {reviewContext ? (
+        <Link
+          to="/app/preventive-maintenance-forms/$formId/review"
+          params={{ formId: reviewContext.reviewFormId }}
+          search={{
+            department: reviewContext.department,
+            assetCategory: reviewContext.assetCategory,
+            pmCycle: reviewContext.pmCycle,
+          }}
           className="text-sm font-semibold text-[var(--primary)] hover:underline"
         >
           Back to batch review
-        </a>
+        </Link>
       ) : (
         <Link
           to="/app/inspections"

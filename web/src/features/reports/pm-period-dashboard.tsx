@@ -377,7 +377,7 @@ function BatchOverview({
                   </p>
                 </td>
                 <td className="px-3 py-3">
-                  {batch.formId ? (
+                  {batch.formId && batch.formStatus === 'Submitted' ? (
                     <Link
                       to="/app/preventive-maintenance-forms/$formId/review"
                       params={{ formId: batch.formId }}
@@ -390,9 +390,18 @@ function BatchOverview({
                       }}
                       className="font-semibold text-[var(--primary)] underline-offset-2 hover:underline focus-visible:rounded focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:outline-none"
                     >
-                      {batch.formStatus === 'Submitted'
-                        ? 'Review batch'
-                        : 'View batch'}
+                      Review batch
+                    </Link>
+                  ) : batch.formId ? (
+                    <Link
+                      to="/app/preventive-maintenance-forms/$formId"
+                      params={{ formId: batch.formId }}
+                      search={{
+                        readonly: batch.formStatus === 'Acknowledged',
+                      }}
+                      className="font-semibold text-[var(--primary)] underline-offset-2 hover:underline focus-visible:rounded focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:outline-none"
+                    >
+                      View batch
                     </Link>
                   ) : (
                     <span className="text-xs text-[var(--text-neutral)]">

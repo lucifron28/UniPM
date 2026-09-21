@@ -31,13 +31,10 @@ import {
   formatFormPeriod,
   inspectionConditionLabel,
 } from '@/features/preventive-maintenance-forms/form-presentation'
+import type { PmAcknowledgementReviewContext } from '@/features/preventive-maintenance-forms/pm-acknowledgement-review'
 
 const uuidPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-
-function isSafeReturnTo(value: string | undefined) {
-  return value?.startsWith('/app/') === true
-}
 
 function DetailItem({ label, value }: { label: string; value: string }) {
   return (
@@ -647,11 +644,11 @@ export function AcknowledgeForm({
 export function FormDetail({
   formId,
   readOnly = false,
-  returnTo,
+  reviewContext,
 }: {
   formId: string
   readOnly?: boolean | undefined
-  returnTo?: string | undefined
+  reviewContext?: PmAcknowledgementReviewContext | undefined
 }) {
   const [acknowledgement, setAcknowledgement] =
     useState<PreventiveMaintenanceAcknowledgementResponse | null>(null)
@@ -762,13 +759,19 @@ export function FormDetail({
       aria-labelledby="form-detail-title"
       className="max-w-6xl space-y-6"
     >
-      {readOnly && isSafeReturnTo(returnTo) ? (
-        <a
-          href={returnTo}
+      {readOnly && reviewContext ? (
+        <Link
+          to="/app/preventive-maintenance-forms/$formId/review"
+          params={{ formId: reviewContext.reviewFormId }}
+          search={{
+            department: reviewContext.department,
+            assetCategory: reviewContext.assetCategory,
+            pmCycle: reviewContext.pmCycle,
+          }}
           className="text-sm font-semibold text-[var(--primary)] hover:underline"
         >
           Back to batch review
-        </a>
+        </Link>
       ) : (
         <Link
           to="/app/preventive-maintenance-forms"

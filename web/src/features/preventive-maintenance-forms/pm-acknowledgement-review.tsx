@@ -37,6 +37,13 @@ export type PmAcknowledgementReviewSearch = {
   pmCycle?: string | undefined
 }
 
+export type PmAcknowledgementReviewContext = {
+  reviewFormId: string
+  department?: string | undefined
+  assetCategory: string
+  pmCycle: string
+}
+
 function formatCategory(value: string) {
   return value
     .split('-')
@@ -91,25 +98,6 @@ function locationValue(asset: Pick<PmPeriodDashboardAssetRowResponse, 'building'
     [asset.building, asset.location].filter(Boolean).join(' · ') ||
     'Not recorded'
   )
-}
-
-function reviewPath(formId: string, search: PmAcknowledgementReviewSearch) {
-  const query = new URLSearchParams()
-  if (search.department) query.set('department', search.department)
-  if (search.assetCategory) query.set('assetCategory', search.assetCategory)
-  if (search.pmCycle) query.set('pmCycle', search.pmCycle)
-  const queryString = query.toString()
-  return `/app/preventive-maintenance-forms/${formId}/review${queryString ? `?${queryString}` : ''}`
-}
-
-function fullFormPath(formId: string, returnTo: string) {
-  const query = new URLSearchParams({ readonly: 'true', returnTo })
-  return `/app/preventive-maintenance-forms/${formId}?${query.toString()}`
-}
-
-function inspectionPath(inspectionId: string, returnTo: string) {
-  const query = new URLSearchParams({ returnTo })
-  return `/app/inspections/${inspectionId}?${query.toString()}`
 }
 
 function DetailItem({ label, value }: { label: string; value: string }) {
@@ -224,10 +212,10 @@ function Summary({
 
 function AssetReviewList({
   assets,
-  returnTo,
+  reviewContext,
 }: {
   assets: PmPeriodDashboardAssetRowResponse[]
-  returnTo: string
+  reviewContext: PmAcknowledgementReviewContext
 }) {
   return (
     <Card className="p-4 shadow-none sm:p-5">
@@ -296,12 +284,19 @@ function AssetReviewList({
                   </td>
                   <td className="px-3 py-3">
                     {asset.inspectionId ? (
-                      <a
-                        href={inspectionPath(asset.inspectionId, returnTo)}
+                      <Link
+                        to="/app/inspections/$inspectionId"
+                        params={{ inspectionId: asset.inspectionId }}
+                        search={{
+                          reviewFormId: reviewContext.reviewFormId,
+                          department: reviewContext.department,
+                          assetCategory: reviewContext.assetCategory,
+                          pmCycle: reviewContext.pmCycle,
+                        }}
                         className="font-semibold text-[var(--primary)] underline-offset-2 hover:underline focus-visible:rounded focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:outline-none"
                       >
                         View inspection detail
-                      </a>
+                      </Link>
                     ) : (
                       <span className="text-xs text-[var(--text-neutral)]">
                         No inspection detail
@@ -342,7 +337,6 @@ export function PmAcknowledgementReview({
         }
       : undefined
   const dashboardQuery = usePmPeriodDashboard(dashboardFilters)
-  const currentReviewPath = reviewPath(formId, search)
 
   if (currentUser.isPending) {
     return (
@@ -435,6 +429,12 @@ export function PmAcknowledgementReview({
   }
 
   const isSubmitted = form.status === 'Submitted'
+  const reviewContext: PmAcknowledgementReviewContext = {
+    reviewFormId: form.id,
+    department: batch.department ?? undefined,
+    assetCategory: batch.assetCategory,
+    pmCycle: batch.pmCycle,
+  }
 
   return (
     <section
@@ -454,14 +454,25 @@ export function PmAcknowledgementReview({
       </Link>
       <Summary batch={batch} form={form} />
       <div className="flex flex-wrap gap-3">
-        <a
-          href={fullFormPath(form.id, currentReviewPath)}
+        <Link
+          to="/app/preventive-maintenance-forms/$formId"
+          params={{ formId: form.id }}
+          search={{
+            readonly: true,
+            reviewFormId: reviewContext.reviewFormId,
+            department: reviewContext.department,
+            assetCategory: reviewContext.assetCategory,
+            pmCycle: reviewContext.pmCycle,
+          }}
           className="inline-flex min-h-10 items-center justify-center rounded-lg bg-[var(--primary)] px-4 py-2 text-sm font-semibold text-white hover:bg-[var(--primary-active)] focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:outline-none"
         >
           View full PM form
-        </a>
+        </Link>
       </div>
-      <AssetReviewList assets={dashboardQuery.data.assets} returnTo={currentReviewPath} />
+      <AssetReviewList
+        assets={dashboardQuery.data.assets}
+        reviewContext={reviewContext}
+      />
       {isSubmitted && !acknowledgement ? (
         <AcknowledgeForm
           formId={form.id}
