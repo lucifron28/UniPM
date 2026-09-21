@@ -17,6 +17,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { configureApiRuntime } from '@/api/http-client'
 import { FormDetail } from '@/features/preventive-maintenance-forms/form-detail'
 import { FormRegistry } from '@/features/preventive-maintenance-forms/form-registry'
+import { PmAcknowledgementReview } from '@/features/preventive-maintenance-forms/pm-acknowledgement-review'
 import { AppShell } from '@/components/layout/app-shell'
 import { useAuthStore } from '@/stores/auth-store'
 import { server } from '@/test/server'
@@ -345,7 +346,7 @@ describe('preventive-maintenance form review', () => {
       /Field-work completion and acknowledgement are separate/,
     )
     expect(acknowledgementCopy).toHaveTextContent(
-      /Acknowledgement records receipt\/noting, locks the form, and makes its inspection rows eligible for official history\./,
+      /For the whole PM batch, acknowledgement records receipt\/noting, locks the form, and makes its inspection rows eligible for official history\./,
     )
     expect(acknowledgementCopy).toHaveTextContent(
       /It does not approve corrective work, funding, or an RMRF\./,
@@ -405,5 +406,121 @@ describe('preventive-maintenance form review', () => {
     expect(screen.queryByText('signatureData')).not.toBeInTheDocument()
     expect(screen.queryByText('signatureChecksum')).not.toBeInTheDocument()
     toDataUrl.mockRestore()
+  })
+
+  it('shows submitted batch review metrics, rows, and awaiting acknowledgement', async () => {
+    const reviewForm = {
+      ...form('Submitted'),
+      pmCycle: '2026-07',
+      fieldWorkCompletedAt: '2026-07-28T03:00:00Z',
+    }
+    let dashboardRequest: URL | undefined
+    server.use(
+      http.get(meUrl, () => HttpResponse.json(currentUser(['GSD']))),
+      http.get(`${formsUrl}/${formId}`, () =>
+        HttpResponse.json(reviewForm),
+      ),
+      http.get('*/api/v1/pm-period-dashboard', ({ request }) => {
+        dashboardRequest = new URL(request.url)
+        return HttpResponse.json({
+          pmCycle: '2026-07',
+          assetCategory: 'fire-extinguisher',
+          department: 'GSD',
+          deadline: '2026-07-31T16:00:00Z',
+          periodState: 'Closed',
+          complianceMeasurable: true,
+          inspectionResultsAvailable: true,
+          scheduled: 1,
+          inspected: 1,
+          completedOnTime: 1,
+          completedLate: 0,
+          notCompleted: 0,
+          remaining: 0,
+          operational: 0,
+          nonOperational: 1,
+          onTimeCompliancePercent: 100,
+          progressPercent: 100,
+          batches: [
+            {
+              department: 'GSD',
+              assetCategory: 'fire-extinguisher',
+              pmCycle: '2026-07',
+              scheduled: 1,
+              inspected: 1,
+              completedOnTime: 1,
+              onTimeCompliancePercent: 100,
+              completedLate: 0,
+              notCompleted: 0,
+              remaining: 0,
+              formId,
+              formStatus: 'Submitted',
+              fileNumber: 'PMF-2026-0001',
+              fieldWorkCompletedAt: '2026-07-28T03:00:00Z',
+              submittedAt: '2026-07-29T01:00:00Z',
+              isAcknowledged: false,
+              acknowledgedAt: null,
+            },
+          ],
+          assets: [
+            {
+              scheduleId,
+              assetId,
+              inspectionId,
+              assetCode: 'FE-TEST-001',
+              assetCategory: 'fire-extinguisher',
+              building: 'Main Building',
+              location: 'Main hallway',
+              department: 'GSD',
+              pmCycle: '2026-07',
+              scheduleDate: '2026-07-01T00:00:00Z',
+              deadline: '2026-07-31T16:00:00Z',
+              scheduleStatus: 'Completed',
+              executionStatus: 'Completed',
+              isInspected: true,
+              inspectionCompletedAt: '2026-07-28T03:00:00Z',
+              timeliness: 'OnTime',
+              condition: 'NonOperational',
+              remarks: 'Pressure is low.',
+              actionsRecommendations: 'Inspect and recharge the unit.',
+              formId,
+              formStatus: 'Submitted',
+              isAcknowledged: false,
+              acknowledgedAt: null,
+            },
+          ],
+        })
+      }),
+    )
+
+    renderWithProviders(
+      <PmAcknowledgementReview formId={formId} search={{}} />,
+    )
+
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Review before acknowledgement',
+      }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Awaiting acknowledgement')).toBeInTheDocument()
+    expect(screen.getByText('100%')).toBeInTheDocument()
+    expect(screen.getByText('Pressure is low.')).toBeInTheDocument()
+    expect(screen.getByText('Inspect and recharge the unit.')).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'Finding' })).toBeInTheDocument()
+    expect(screen.getByRole('columnheader', { name: 'Recommendation' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'View full PM form' })).toHaveAttribute(
+      'href',
+      expect.stringContaining(`/app/preventive-maintenance-forms/${formId}?`),
+    )
+    expect(screen.getByRole('link', { name: 'View inspection detail' })).toHaveAttribute(
+      'href',
+      expect.stringContaining(`/app/inspections/${inspectionId}?`),
+    )
+    await waitFor(() => {
+      expect(dashboardRequest?.searchParams.get('assetCategory')).toBe(
+        'fire-extinguisher',
+      )
+      expect(dashboardRequest?.searchParams.get('pmCycle')).toBe('2026-07')
+      expect(dashboardRequest?.searchParams.get('department')).toBe('GSD')
+    })
   })
 })
