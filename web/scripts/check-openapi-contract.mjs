@@ -131,6 +131,16 @@ const preventiveMaintenanceFormOperations = [
   ],
 ]
 
+const pmPeriodDashboardOperations = [
+  [
+    '/api/v1/pm-period-dashboard/cycles',
+    'get',
+    'ListPmPeriodDashboardCycles',
+    '200',
+  ],
+  ['/api/v1/pm-period-dashboard', 'get', 'GetPmPeriodDashboard', '200'],
+]
+
 for (const [path, method, operationId, requiresSchema] of requiredOperations) {
   const operation = snapshot.paths?.[path]?.[method]
   if (operation?.operationId !== operationId) {
@@ -260,6 +270,21 @@ for (const [path, method, operationId] of preventiveMaintenanceFormOperations) {
   }
 }
 
+for (const [path, method, operationId, status] of pmPeriodDashboardOperations) {
+  const operation = snapshot.paths?.[path]?.[method]
+  if (operation?.operationId !== operationId) {
+    throw new Error(`Missing required PM dashboard operation: ${operationId}.`)
+  }
+
+  const schema =
+    operation.responses?.[status]?.content?.['application/json']?.schema
+  if (!schema) {
+    throw new Error(
+      `Required PM dashboard operation ${operationId} is missing its JSON success schema.`,
+    )
+  }
+}
+
 const assetFields = [
   'id',
   'assetCode',
@@ -371,6 +396,36 @@ if (
 ) {
   throw new Error(
     'DraftInspectionRowResponse is missing one or more required PMIS review fields.',
+  )
+}
+
+const pmDashboardBatchFields = [
+  'onTimeCompliancePercent',
+  'fieldWorkCompletedAt',
+]
+const pmDashboardBatchProperties =
+  snapshot.components?.schemas?.PmPeriodDashboardBatchResponse?.properties
+if (
+  !pmDashboardBatchProperties ||
+  pmDashboardBatchFields.some((field) => !pmDashboardBatchProperties[field])
+) {
+  throw new Error(
+    'PmPeriodDashboardBatchResponse is missing one or more acknowledgement-review fields.',
+  )
+}
+
+const pmDashboardAssetFields = [
+  'remarks',
+  'actionsRecommendations',
+]
+const pmDashboardAssetProperties =
+  snapshot.components?.schemas?.PmPeriodDashboardAssetRowResponse?.properties
+if (
+  !pmDashboardAssetProperties ||
+  pmDashboardAssetFields.some((field) => !pmDashboardAssetProperties[field])
+) {
+  throw new Error(
+    'PmPeriodDashboardAssetRowResponse is missing one or more acknowledgement-review fields.',
   )
 }
 

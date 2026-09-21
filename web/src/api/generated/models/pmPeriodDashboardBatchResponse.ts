@@ -16,6 +16,11 @@ export interface PmPeriodDashboardBatchResponse {
   inspected: number | string
   /** @pattern ^-?(?:0|[1-9]\d*)$ */
   completedOnTime: number | string
+  /**
+   * @nullable
+   * @pattern ^-?(?:0|[1-9]\d*)(?:\.\d+)?$
+   */
+  onTimeCompliancePercent: number | string | null
   /** @pattern ^-?(?:0|[1-9]\d*)$ */
   completedLate: number | string
   /** @pattern ^-?(?:0|[1-9]\d*)$ */
@@ -28,6 +33,8 @@ export interface PmPeriodDashboardBatchResponse {
   formStatus: string | null
   /** @nullable */
   fileNumber: string | null
+  /** @nullable */
+  fieldWorkCompletedAt: string | null
   /** @nullable */
   submittedAt: string | null
   isAcknowledged: boolean

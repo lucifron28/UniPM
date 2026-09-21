@@ -29,6 +29,10 @@ export interface PmPeriodDashboardAssetRowResponse {
   timeliness: string
   condition: string
   /** @nullable */
+  remarks: string | null
+  /** @nullable */
+  actionsRecommendations: string | null
+  /** @nullable */
   formId: string | null
   /** @nullable */
   formStatus: string | null
