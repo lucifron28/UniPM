@@ -3,8 +3,12 @@
 Read `AGENTS.md` first. These priorities apply to the
 `validation/pmis-only-gsd` branch.
 
-The core PM milestone is complete and its physical-device acceptance is recorded
-in [`TEST-040`](../evidence/test-runs/TEST-040-mobile-core-pm-physical-acceptance.md).
+## Milestone status
+
+M1 is finished and merged. M2 is finished and merged, with physical-device
+acceptance recorded in [`TEST-040`](../evidence/test-runs/TEST-040-mobile-core-pm-physical-acceptance.md).
+M3 is current. This document tracks the PMIS-only GSD validation work for M3.
+
 The active priority order is now:
 
 1. keep the branch runnable;
@@ -18,6 +22,11 @@ Maintenance-history RAG was previously implemented and evaluated as controlled
 development work. On this branch it is historical, inactive infrastructure:
 preserved for understanding and rollback, excluded from the validation
 runtime, and not to be extended.
+
+The canonical PM batch is `Department + Asset Category + PmCycle`; building
+does not split a batch. PM execution completion comes from
+`InspectionRecord.CompletedAt`. Acknowledgement is a separate receipt/noting
+step and does not complete schedules.
 
 ## Current Status
 
@@ -79,14 +88,18 @@ runtime, and not to be extended.
   from the evaluated MVP.
 - Confirmed preventive-maintenance workflow: complete in the backend. One form
   contains multiple inspection rows; its lifecycle is `Draft -> Submitted ->
-  Acknowledged`. Only acknowledgement completes linked schedules and publishes
-  rows to official history and retrieval. Corrective-action handoff preparation
-  ends before manual WMS encoding; UniPM does not process RMRFs or integrate
-  with the WMS.
+  Acknowledged`. Field-work completion is recorded on each
+  `InspectionRecord.CompletedAt` and completes linked schedules before form
+  submission. Acknowledgement is separate and does not complete schedules; it
+  publishes rows to official history and retrieval. Corrective-action handoff
+  preparation ends before manual WMS encoding; UniPM does not process RMRFs or
+  integrate with the WMS.
 - RAG-assisted inspection-history analysis: planned in the previous phase,
   never implemented, and no longer an active direction. Its design record is
   preserved unchanged in
   [`rag-assisted-inspection-history-analysis.md`](rag-assisted-inspection-history-analysis.md).
+- Natural-language analytics is a planned direction pending professor/adviser
+  confirmation after GSD validation; it is not implemented on this branch.
 - Flutter mobile field workflow: implemented and merged in the partner-owned
   workstream, including memory-only authentication, QR-based asset entry,
   acknowledged-only official asset history, the four supplied authoritative

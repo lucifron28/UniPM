@@ -10,6 +10,11 @@ This working title describes the current validation branch
 title for validation purposes; no replacement innovation title is proposed or
 approved yet.
 
+## Milestone status
+
+M1 is finished and merged. M2 is finished and merged. M3 is current. This
+document defines the PMIS-only GSD validation boundary for M3.
+
 ## Purpose And Boundary
 
 The active validation baseline is a plain preventive-maintenance information
@@ -21,6 +26,10 @@ This branch is not the final evaluated innovation architecture. No replacement
 innovation — AI report consolidation, schema-driven/versioned PM protocols,
 Document AI/OCR, natural-language analytics, process mining, predictive
 maintenance, or WMS automation — is claimed, approved, or included here.
+
+Natural-language analytics remains a planned direction pending
+professor/adviser confirmation after GSD validation. It is not part of this
+branch.
 
 Maintenance-history RAG was previously implemented and evaluated as controlled
 development work. It is preserved in the repository as historical/inactive
@@ -34,6 +43,11 @@ emergency lights, and water drinking stations. One preventive-maintenance form
 represents one existing one-page institutional form and may contain multiple
 inspection rows. The confirmed lifecycle is `Draft -> Submitted ->
 Acknowledged`.
+
+The canonical PM batch is `Department + Asset Category + PmCycle`; building does
+not split a batch. Field-work execution completion comes from
+`InspectionRecord.CompletedAt`. Acknowledgement is separate from execution and
+does not complete schedules.
 
 Exact final institutional form fields, revisions, and category-specific
 requirements remain subject to GSD validation before any final form-model
@@ -53,7 +67,8 @@ workflow; they are a workflow prototype, not the final institutional schema.
   signature captured as signatory data through the authenticated
   GSD/skilled-worker workflow; the Department Head needs no separate UniPM
   account, and acknowledgement is not corrective-budget approval.
-- Linked schedule completion after acknowledgement only.
+- Field-work-driven linked schedule completion from
+  `InspectionRecord.CompletedAt`; acknowledgement does not complete schedules.
 - Acknowledged-only official maintenance history (Draft and Submitted rows are
   never official history).
 - Existing deterministic list, filter, history, and status-summary behavior
@@ -73,8 +88,9 @@ in any of the above.
 
 Only acknowledged form rows, together with eligible legacy inspection records
 without a form, are official inspection-history evidence. Draft and Submitted
-rows remain excluded from official history. Acknowledgement completes linked
-schedules through the backend workflow.
+rows remain excluded from official history. Field-work completion comes from
+`InspectionRecord.CompletedAt`; acknowledgement is a separate receipt/noting
+step and does not complete linked schedules.
 
 Acknowledgement signatory names, positions, signatures, signature data, and
 signature checksums never enter corrective-handoff data or observability
@@ -106,8 +122,9 @@ session remains memory-only.
 The core preventive-maintenance workflow is implementation-complete and
 physically accepted on Android. The accepted lifecycle is:
 
-`Login -> QR -> schedule -> category form -> multi-row Draft -> submit ->
-Department Head acknowledgement -> schedule completion -> official history`
+`Login -> QR -> schedule -> category form -> multi-row Draft -> field-work
+completion (InspectionRecord.CompletedAt) -> submit -> Department Head
+acknowledgement -> official history`
 
 See [`TEST-040`](../evidence/test-runs/TEST-040-mobile-core-pm-physical-acceptance.md)
 for the execution record. This status does not make attachments, alerts,
@@ -140,9 +157,9 @@ optional capabilities blockers for the milestone.
 The completed core PM acceptance lifecycle is:
 
 ```text
-Login -> QR -> schedule -> category form -> multi-row Draft -> submit
-      -> Department Head acknowledgement -> schedule completion
-      -> official history
+Login -> QR -> schedule -> category form -> multi-row Draft
+      -> field-work completion (InspectionRecord.CompletedAt) -> submit
+      -> Department Head acknowledgement -> official history
 ```
 
 It runs end to end without any AI configuration. GSD requirement collection,

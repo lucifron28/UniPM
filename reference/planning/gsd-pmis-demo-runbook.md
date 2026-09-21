@@ -11,6 +11,10 @@ Use fictional records and a dedicated demo database. Do not enter real
 personnel, asset, signature, or maintenance data during the rehearsal or
 recording.
 
+Maintenance-history RAG is historical and inactive, so this runbook does not
+demonstrate it. Natural-language analytics is a planned direction pending
+professor/adviser confirmation and is also outside the walkthrough.
+
 ## Demonstration environment
 
 The demonstration uses:
@@ -115,26 +119,33 @@ All use the process-only password supplied to `UNIPM_DEV_USER_PASSWORD`.
 
 ## Demonstration walkthrough
 
-Use two assets from the same category and department so one digital form can
-contain both rows.
+Use two assets from the same department, asset category, and `PmCycle` so one
+canonical PM batch and one digital form can contain both rows. Building does
+not split the batch.
 
 1. In the web application, show the asset records and their QR identifiers.
-2. Show the two Due schedules linked to the selected assets.
+2. Show the two Due schedules linked to the selected assets and confirm that
+   they share the same canonical batch: department, asset category, and
+   `PmCycle`.
 3. On mobile, scan or enter the first asset QR identifier.
 4. Start a preventive-maintenance Draft and add the first inspection row.
 5. Add a second same-category asset row to the same form.
 6. Record one row as Operational and one as Non-operational. Give the
    Non-operational row a fictional remark and recommended corrective action.
-7. Submit the whole form. Point out that the backend assigns one provisional
+7. Confirm that each completed inspection row has an
+   `InspectionRecord.CompletedAt` timestamp and that its linked schedule is
+   already `Completed`. Schedule completion comes from field work, before form
+   submission or acknowledgement.
+8. Submit the whole form. Point out that the backend assigns one provisional
    UniPM file number to the form while each row keeps its inspection ID.
-8. In the web application, open Form review and inspect the Submitted form.
-9. Capture a fictional department-head acknowledgement through the authenticated
+9. In the web application, open Form review and inspect the Submitted form.
+10. Capture a fictional department-head acknowledgement through the authenticated
    session.
-10. Confirm that the form becomes Acknowledged and both linked schedules become
-    Completed.
-11. Open Official history and confirm the two rows appear only after
+11. Confirm that the form becomes Acknowledged while the linked schedules remain
+    Completed from the earlier field-work step.
+12. Open Official history and confirm the two rows appear only after
     acknowledgement.
-12. As GSD, open the corrective-action handoff section. Confirm that it includes
+13. As GSD, open the corrective-action handoff section. Confirm that it includes
     only the row with a recommended action and contains no signature payload.
 
 Run a short second walkthrough for a water drinking station. Show Date
@@ -167,8 +178,11 @@ Proceed with the GSD demonstration only when:
 
 - the web and mobile applications use the same current API contract;
 - the selected assets and schedules are available;
+- the walkthrough schedules share one department, asset category, and `PmCycle`;
+- completed inspection rows have `InspectionRecord.CompletedAt` values and
+  linked schedules are completed before form acknowledgement;
 - submission assigns a provisional UniPM file number;
-- acknowledgement completes every linked schedule;
+- acknowledgement records receipt/noting and does not complete schedules;
 - acknowledged rows appear in official history;
 - Draft and Submitted rows remain absent from official history;
 - no AI provider is configured or contacted;
