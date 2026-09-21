@@ -91,7 +91,9 @@ step and does not complete schedules.
   Acknowledged`. Field-work completion is recorded on each
   `InspectionRecord.CompletedAt` and completes linked schedules before form
   submission. Acknowledgement is separate and does not complete schedules; it
-  publishes rows to official history and retrieval. Corrective-action handoff
+  makes completed rows eligible for acknowledged-only official history. It does
+  not activate the preserved maintenance-history retrieval infrastructure,
+  which remains inactive on this validation branch. Corrective-action handoff
   preparation ends before manual WMS encoding; UniPM does not process RMRFs or
   integrate with the WMS.
 - RAG-assisted inspection-history analysis: planned in the previous phase,
