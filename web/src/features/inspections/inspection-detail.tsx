@@ -16,6 +16,10 @@ import { formatScheduleDate } from '@/features/schedules/schedule-presentation'
 const uuidPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
+function isSafeReturnTo(value: string | undefined) {
+  return value?.startsWith('/app/') === true
+}
+
 function DetailItem({ label, value }: { label: string; value: string }) {
   return (
     <div>
@@ -59,7 +63,13 @@ function DetailError({
   )
 }
 
-export function InspectionDetail({ inspectionId }: { inspectionId: string }) {
+export function InspectionDetail({
+  inspectionId,
+  returnTo,
+}: {
+  inspectionId: string
+  returnTo?: string | undefined
+}) {
   const isValidId = uuidPattern.test(inspectionId)
   const inspection = useInspection(inspectionId, isValidId)
   const asset = useAsset(
@@ -139,12 +149,21 @@ export function InspectionDetail({ inspectionId }: { inspectionId: string }) {
       aria-labelledby="inspection-detail-title"
       className="max-w-5xl space-y-6"
     >
-      <Link
-        to="/app/inspections"
-        className="text-sm font-semibold text-[var(--primary)] hover:underline"
-      >
-        Back to inspections
-      </Link>
+      {isSafeReturnTo(returnTo) ? (
+        <a
+          href={returnTo}
+          className="text-sm font-semibold text-[var(--primary)] hover:underline"
+        >
+          Back to batch review
+        </a>
+      ) : (
+        <Link
+          to="/app/inspections"
+          className="text-sm font-semibold text-[var(--primary)] hover:underline"
+        >
+          Back to inspections
+        </Link>
+      )}
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
         <div>
           <p className="text-sm font-semibold tracking-[0.08em] text-[var(--primary)] uppercase">

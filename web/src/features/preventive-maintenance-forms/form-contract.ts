@@ -19,6 +19,8 @@ const inspectionRowSchema = z
     assetId: z.string().uuid(),
     inspectorUserId: z.string().uuid(),
     dateInspected: z.string().datetime({ offset: true }),
+    startedAt: z.string().datetime({ offset: true }).nullable().optional(),
+    completedAt: z.string().datetime({ offset: true }).nullable().optional(),
     isOperational: z.boolean(),
     remarks: optionalText,
     actionsRecommendations: optionalText,
@@ -49,6 +51,7 @@ const formSchema = z
     assetCategory: z.string().trim().min(1),
     building: optionalText,
     department: optionalText,
+    pmCycle: optionalText.optional(),
     periodType: z.string().trim().min(1),
     quarter: optionalText,
     semester: optionalText,
@@ -61,6 +64,11 @@ const formSchema = z
     createdByUserId: z.string().uuid(),
     submittedByUserId: z.string().uuid().nullable(),
     submittedAt: z.string().datetime({ offset: true }).nullable(),
+    fieldWorkCompletedAt: z
+      .string()
+      .datetime({ offset: true })
+      .nullable()
+      .optional(),
     createdAt: z.string().datetime({ offset: true }),
     updatedAt: z.string().datetime({ offset: true }),
     inspections: z.array(inspectionRowSchema),

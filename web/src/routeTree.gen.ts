@@ -24,6 +24,8 @@ import { Route as AppPreventiveMaintenanceFormsFormIdRouteImport } from './route
 import { Route as AppSchedulesIndexRouteImport } from './routes/app/schedules/index'
 import { Route as AppSchedulesScheduleIdRouteImport } from './routes/app/schedules/$scheduleId'
 import { Route as AppSchedulesNewRouteImport } from './routes/app/schedules/new'
+import { Route as AppPreventiveMaintenanceFormsFormIdIndexRouteImport } from './routes/app/preventive-maintenance-forms/$formId.index'
+import { Route as AppPreventiveMaintenanceFormsFormIdReviewRouteImport } from './routes/app/preventive-maintenance-forms/$formId.review'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -103,6 +105,18 @@ const AppSchedulesNewRoute = AppSchedulesNewRouteImport.update({
   path: '/schedules/new',
   getParentRoute: () => AppRouteRoute,
 } as any)
+const AppPreventiveMaintenanceFormsFormIdIndexRoute =
+  AppPreventiveMaintenanceFormsFormIdIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AppPreventiveMaintenanceFormsFormIdRoute,
+  } as any)
+const AppPreventiveMaintenanceFormsFormIdReviewRoute =
+  AppPreventiveMaintenanceFormsFormIdReviewRouteImport.update({
+    id: '/review',
+    path: '/review',
+    getParentRoute: () => AppPreventiveMaintenanceFormsFormIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -113,13 +127,15 @@ export interface FileRoutesByFullPath {
   '/app/assets/$assetId': typeof AppAssetsAssetIdRoute
   '/app/assets/new': typeof AppAssetsNewRoute
   '/app/inspections/$inspectionId': typeof AppInspectionsInspectionIdRoute
-  '/app/preventive-maintenance-forms/$formId': typeof AppPreventiveMaintenanceFormsFormIdRoute
+  '/app/preventive-maintenance-forms/$formId': typeof AppPreventiveMaintenanceFormsFormIdRouteWithChildren
   '/app/schedules/$scheduleId': typeof AppSchedulesScheduleIdRoute
   '/app/schedules/new': typeof AppSchedulesNewRoute
   '/app/assets/': typeof AppAssetsIndexRoute
   '/app/inspections/': typeof AppInspectionsIndexRoute
   '/app/preventive-maintenance-forms/': typeof AppPreventiveMaintenanceFormsIndexRoute
   '/app/schedules/': typeof AppSchedulesIndexRoute
+  '/app/preventive-maintenance-forms/$formId/review': typeof AppPreventiveMaintenanceFormsFormIdReviewRoute
+  '/app/preventive-maintenance-forms/$formId/': typeof AppPreventiveMaintenanceFormsFormIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -129,13 +145,14 @@ export interface FileRoutesByTo {
   '/app/assets/$assetId': typeof AppAssetsAssetIdRoute
   '/app/assets/new': typeof AppAssetsNewRoute
   '/app/inspections/$inspectionId': typeof AppInspectionsInspectionIdRoute
-  '/app/preventive-maintenance-forms/$formId': typeof AppPreventiveMaintenanceFormsFormIdRoute
   '/app/schedules/$scheduleId': typeof AppSchedulesScheduleIdRoute
   '/app/schedules/new': typeof AppSchedulesNewRoute
   '/app/assets': typeof AppAssetsIndexRoute
   '/app/inspections': typeof AppInspectionsIndexRoute
   '/app/preventive-maintenance-forms': typeof AppPreventiveMaintenanceFormsIndexRoute
   '/app/schedules': typeof AppSchedulesIndexRoute
+  '/app/preventive-maintenance-forms/$formId/review': typeof AppPreventiveMaintenanceFormsFormIdReviewRoute
+  '/app/preventive-maintenance-forms/$formId': typeof AppPreventiveMaintenanceFormsFormIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -147,13 +164,15 @@ export interface FileRoutesById {
   '/app/assets/$assetId': typeof AppAssetsAssetIdRoute
   '/app/assets/new': typeof AppAssetsNewRoute
   '/app/inspections/$inspectionId': typeof AppInspectionsInspectionIdRoute
-  '/app/preventive-maintenance-forms/$formId': typeof AppPreventiveMaintenanceFormsFormIdRoute
+  '/app/preventive-maintenance-forms/$formId': typeof AppPreventiveMaintenanceFormsFormIdRouteWithChildren
   '/app/schedules/$scheduleId': typeof AppSchedulesScheduleIdRoute
   '/app/schedules/new': typeof AppSchedulesNewRoute
   '/app/assets/': typeof AppAssetsIndexRoute
   '/app/inspections/': typeof AppInspectionsIndexRoute
   '/app/preventive-maintenance-forms/': typeof AppPreventiveMaintenanceFormsIndexRoute
   '/app/schedules/': typeof AppSchedulesIndexRoute
+  '/app/preventive-maintenance-forms/$formId/review': typeof AppPreventiveMaintenanceFormsFormIdReviewRoute
+  '/app/preventive-maintenance-forms/$formId/': typeof AppPreventiveMaintenanceFormsFormIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -173,6 +192,8 @@ export interface FileRouteTypes {
     | '/app/inspections/'
     | '/app/preventive-maintenance-forms/'
     | '/app/schedules/'
+    | '/app/preventive-maintenance-forms/$formId/review'
+    | '/app/preventive-maintenance-forms/$formId/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -182,13 +203,14 @@ export interface FileRouteTypes {
     | '/app/assets/$assetId'
     | '/app/assets/new'
     | '/app/inspections/$inspectionId'
-    | '/app/preventive-maintenance-forms/$formId'
     | '/app/schedules/$scheduleId'
     | '/app/schedules/new'
     | '/app/assets'
     | '/app/inspections'
     | '/app/preventive-maintenance-forms'
     | '/app/schedules'
+    | '/app/preventive-maintenance-forms/$formId/review'
+    | '/app/preventive-maintenance-forms/$formId'
   id:
     | '__root__'
     | '/'
@@ -206,6 +228,8 @@ export interface FileRouteTypes {
     | '/app/inspections/'
     | '/app/preventive-maintenance-forms/'
     | '/app/schedules/'
+    | '/app/preventive-maintenance-forms/$formId/review'
+    | '/app/preventive-maintenance-forms/$formId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -321,8 +345,40 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSchedulesNewRouteImport
       parentRoute: typeof AppRouteRoute
     }
+    '/app/preventive-maintenance-forms/$formId/': {
+      id: '/app/preventive-maintenance-forms/$formId/'
+      path: '/'
+      fullPath: '/app/preventive-maintenance-forms/$formId/'
+      preLoaderRoute: typeof AppPreventiveMaintenanceFormsFormIdIndexRouteImport
+      parentRoute: typeof AppPreventiveMaintenanceFormsFormIdRoute
+    }
+    '/app/preventive-maintenance-forms/$formId/review': {
+      id: '/app/preventive-maintenance-forms/$formId/review'
+      path: '/review'
+      fullPath: '/app/preventive-maintenance-forms/$formId/review'
+      preLoaderRoute: typeof AppPreventiveMaintenanceFormsFormIdReviewRouteImport
+      parentRoute: typeof AppPreventiveMaintenanceFormsFormIdRoute
+    }
   }
 }
+
+interface AppPreventiveMaintenanceFormsFormIdRouteChildren {
+  AppPreventiveMaintenanceFormsFormIdReviewRoute: typeof AppPreventiveMaintenanceFormsFormIdReviewRoute
+  AppPreventiveMaintenanceFormsFormIdIndexRoute: typeof AppPreventiveMaintenanceFormsFormIdIndexRoute
+}
+
+const AppPreventiveMaintenanceFormsFormIdRouteChildren: AppPreventiveMaintenanceFormsFormIdRouteChildren =
+  {
+    AppPreventiveMaintenanceFormsFormIdReviewRoute:
+      AppPreventiveMaintenanceFormsFormIdReviewRoute,
+    AppPreventiveMaintenanceFormsFormIdIndexRoute:
+      AppPreventiveMaintenanceFormsFormIdIndexRoute,
+  }
+
+const AppPreventiveMaintenanceFormsFormIdRouteWithChildren =
+  AppPreventiveMaintenanceFormsFormIdRoute._addFileChildren(
+    AppPreventiveMaintenanceFormsFormIdRouteChildren,
+  )
 
 interface AppRouteRouteChildren {
   AppDashboardRoute: typeof AppDashboardRoute
@@ -330,7 +386,7 @@ interface AppRouteRouteChildren {
   AppAssetsAssetIdRoute: typeof AppAssetsAssetIdRoute
   AppAssetsNewRoute: typeof AppAssetsNewRoute
   AppInspectionsInspectionIdRoute: typeof AppInspectionsInspectionIdRoute
-  AppPreventiveMaintenanceFormsFormIdRoute: typeof AppPreventiveMaintenanceFormsFormIdRoute
+  AppPreventiveMaintenanceFormsFormIdRoute: typeof AppPreventiveMaintenanceFormsFormIdRouteWithChildren
   AppSchedulesScheduleIdRoute: typeof AppSchedulesScheduleIdRoute
   AppSchedulesNewRoute: typeof AppSchedulesNewRoute
   AppAssetsIndexRoute: typeof AppAssetsIndexRoute
@@ -346,7 +402,7 @@ const AppRouteRouteChildren: AppRouteRouteChildren = {
   AppAssetsNewRoute: AppAssetsNewRoute,
   AppInspectionsInspectionIdRoute: AppInspectionsInspectionIdRoute,
   AppPreventiveMaintenanceFormsFormIdRoute:
-    AppPreventiveMaintenanceFormsFormIdRoute,
+    AppPreventiveMaintenanceFormsFormIdRouteWithChildren,
   AppSchedulesScheduleIdRoute: AppSchedulesScheduleIdRoute,
   AppSchedulesNewRoute: AppSchedulesNewRoute,
   AppAssetsIndexRoute: AppAssetsIndexRoute,

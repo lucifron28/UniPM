@@ -35,6 +35,10 @@ import {
 const uuidPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
+function isSafeReturnTo(value: string | undefined) {
+  return value?.startsWith('/app/') === true
+}
+
 function DetailItem({ label, value }: { label: string; value: string }) {
   return (
     <div>
@@ -465,11 +469,13 @@ function AcknowledgementSummary({
   )
 }
 
-function AcknowledgeForm({
+export function AcknowledgeForm({
   formId,
+  title = 'Acknowledge submitted form',
   onAcknowledged,
 }: {
   formId: string
+  title?: string
   onAcknowledged: (
     acknowledgement: PreventiveMaintenanceAcknowledgementResponse,
   ) => void
@@ -533,13 +539,14 @@ function AcknowledgeForm({
           Department-head acknowledgement
         </p>
         <h2 className="mt-1 text-2xl font-bold text-[var(--text-primary)]">
-          Acknowledge submitted form
+          {title}
         </h2>
         <p className="mt-1 text-sm text-[var(--text-secondary)]">
           Field-work completion and acknowledgement are separate.
-          Acknowledgement records receipt/noting, locks the form, and makes its
-          inspection rows eligible for official history. It does not approve
-          corrective work, funding, or an RMRF.
+          For the whole PM batch, acknowledgement records receipt/noting, locks
+          the form, and makes its inspection rows eligible for official history.
+          It is not personal witnessing. It does not approve corrective work,
+          funding, or an RMRF.
         </p>
       </div>
       <form className="space-y-4" onSubmit={acknowledge}>
@@ -603,9 +610,10 @@ function AcknowledgeForm({
               Confirm department-head acknowledgement
             </h3>
             <p className="mt-2 text-sm text-[var(--text-secondary)]">
-              This records receipt/noting of the findings, locks this form, and
-              makes its inspection rows eligible for official history. It does
-              not approve corrective work, funding, or an RMRF.
+              This records receipt/noting of the whole PM batch, locks this form,
+              and makes its inspection rows eligible for official history. It is
+              not personal witnessing. It does not approve corrective work,
+              funding, or an RMRF.
             </p>
             <div className="mt-4 flex flex-wrap justify-end gap-3">
               <Button
@@ -636,7 +644,15 @@ function AcknowledgeForm({
   )
 }
 
-export function FormDetail({ formId }: { formId: string }) {
+export function FormDetail({
+  formId,
+  readOnly = false,
+  returnTo,
+}: {
+  formId: string
+  readOnly?: boolean | undefined
+  returnTo?: string | undefined
+}) {
   const [acknowledgement, setAcknowledgement] =
     useState<PreventiveMaintenanceAcknowledgementResponse | null>(null)
   const currentUser = useCurrentUser()
@@ -746,12 +762,21 @@ export function FormDetail({ formId }: { formId: string }) {
       aria-labelledby="form-detail-title"
       className="max-w-6xl space-y-6"
     >
-      <Link
-        to="/app/preventive-maintenance-forms"
-        className="text-sm font-semibold text-[var(--primary)] hover:underline"
-      >
-        Back to form review
-      </Link>
+      {readOnly && isSafeReturnTo(returnTo) ? (
+        <a
+          href={returnTo}
+          className="text-sm font-semibold text-[var(--primary)] hover:underline"
+        >
+          Back to batch review
+        </a>
+      ) : (
+        <Link
+          to="/app/preventive-maintenance-forms"
+          className="text-sm font-semibold text-[var(--primary)] hover:underline"
+        >
+          Back to form review
+        </Link>
+      )}
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
         <div>
           <p className="text-sm font-semibold tracking-[0.08em] text-[var(--primary)] uppercase">
@@ -790,6 +815,17 @@ export function FormDetail({ formId }: { formId: string }) {
           value={String(record.inspections.length)}
         />
       </Card>
+      {readOnly && record.status === 'Submitted' && (
+        <Card className="shadow-none" role="status">
+          <p className="text-sm font-semibold tracking-[0.08em] text-[var(--primary)] uppercase">
+            Read-only submitted form
+          </p>
+          <p className="mt-2 text-sm text-[var(--text-secondary)]">
+            This view shows the complete submitted PM form without editing or
+            acknowledgement controls.
+          </p>
+        </Card>
+      )}
       <section aria-labelledby="form-inspections-title" className="space-y-4">
         <div>
           <h2
@@ -819,7 +855,7 @@ export function FormDetail({ formId }: { formId: string }) {
       {acknowledgement && (
         <AcknowledgementSummary acknowledgement={acknowledgement} />
       )}
-      {record.status === 'Submitted' && !acknowledgement && (
+      {!readOnly && record.status === 'Submitted' && !acknowledgement && (
         <AcknowledgeForm
           formId={record.id}
           onAcknowledged={setAcknowledgement}
