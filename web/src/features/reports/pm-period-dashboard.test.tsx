@@ -1,4 +1,10 @@
 import { render, screen } from '@testing-library/react'
+import {
+  createMemoryHistory,
+  createRootRoute,
+  createRouter,
+  RouterProvider,
+} from '@tanstack/react-router'
 import { describe, expect, it } from 'vitest'
 import type {
   PmPeriodDashboardBatchResponse,
@@ -58,6 +64,18 @@ function renderState(periodState: PeriodState) {
   return render(
     <PmPeriodDashboardPresentation dashboard={dashboardFor(periodState)} />,
   )
+}
+
+function renderPresentationWithRouter(dashboard: PmPeriodDashboardResponse) {
+  const rootRoute = createRootRoute({
+    component: () => <PmPeriodDashboardPresentation dashboard={dashboard} />,
+  })
+  const router = createRouter({
+    routeTree: rootRoute,
+    history: createMemoryHistory({ initialEntries: ['/'] }),
+  })
+
+  return render(<RouterProvider router={router} />)
 }
 
 function expectMetricLabel(label: string) {
@@ -120,5 +138,29 @@ describe('PM period dashboard period terminology', () => {
     expect(
       screen.queryByRole('columnheader', { name: 'Remaining' }),
     ).not.toBeInTheDocument()
+  })
+
+  it('routes acknowledged batches to read-only form detail', async () => {
+    const formId = '22222222-2222-4222-8222-222222222222'
+    const acknowledgedBatch: PmPeriodDashboardBatchResponse = {
+      ...batch,
+      formId,
+      formStatus: 'Acknowledged',
+      isAcknowledged: true,
+      acknowledgedAt: '2026-07-01T08:00:00Z',
+    }
+
+    renderPresentationWithRouter({
+      ...dashboardFor('Closed'),
+      batches: [acknowledgedBatch],
+    })
+
+    const link = await screen.findByRole('link', { name: 'View batch' })
+    expect(link).toHaveAttribute(
+      'href',
+      expect.stringContaining(`/app/preventive-maintenance-forms/${formId}?`),
+    )
+    expect(link).toHaveAttribute('href', expect.stringContaining('readonly=true'))
+    expect(link).not.toHaveAttribute('href', expect.stringContaining('/review'))
   })
 })

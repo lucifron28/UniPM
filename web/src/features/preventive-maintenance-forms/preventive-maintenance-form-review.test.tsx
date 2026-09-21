@@ -18,6 +18,10 @@ import { configureApiRuntime } from '@/api/http-client'
 import { FormDetail } from '@/features/preventive-maintenance-forms/form-detail'
 import { FormRegistry } from '@/features/preventive-maintenance-forms/form-registry'
 import { PmAcknowledgementReview } from '@/features/preventive-maintenance-forms/pm-acknowledgement-review'
+import {
+  useAcknowledgePreventiveMaintenanceFormMutation,
+} from '@/features/preventive-maintenance-forms/form-queries'
+import { usePmPeriodDashboard } from '@/features/reports/pm-period-dashboard-queries'
 import { AppShell } from '@/components/layout/app-shell'
 import { useAuthStore } from '@/stores/auth-store'
 import { server } from '@/test/server'
@@ -515,6 +519,14 @@ describe('preventive-maintenance form review', () => {
       'href',
       expect.stringContaining(`/app/inspections/${inspectionId}?`),
     )
+    expect(screen.getByRole('link', { name: 'View full PM form' })).toHaveAttribute(
+      'href',
+      expect.stringContaining('reviewFormId='),
+    )
+    expect(screen.getByRole('link', { name: 'View inspection detail' })).toHaveAttribute(
+      'href',
+      expect.stringContaining('pmCycle=2026-07'),
+    )
     await waitFor(() => {
       expect(dashboardRequest?.searchParams.get('assetCategory')).toBe(
         'fire-extinguisher',
@@ -522,5 +534,63 @@ describe('preventive-maintenance form review', () => {
       expect(dashboardRequest?.searchParams.get('pmCycle')).toBe('2026-07')
       expect(dashboardRequest?.searchParams.get('department')).toBe('GSD')
     })
+  })
+
+  it('invalidates the PM dashboard cache after acknowledgement', async () => {
+    let dashboardRequests = 0
+    server.use(
+      http.get('*/api/v1/pm-period-dashboard', () => {
+        dashboardRequests += 1
+        return HttpResponse.json({ scheduled: dashboardRequests })
+      }),
+      http.post(`${formsUrl}/${formId}/acknowledge`, () =>
+        HttpResponse.json({
+          id: '99999999-9999-4999-8999-999999999999',
+          formId,
+          acknowledgedAt: '2026-07-29T02:00:00Z',
+        }),
+      ),
+    )
+
+    function CacheProbe() {
+      const dashboard = usePmPeriodDashboard({
+        assetCategory: 'fire-extinguisher',
+        pmCycle: '2026-07',
+        department: 'GSD',
+      })
+      const mutation = useAcknowledgePreventiveMaintenanceFormMutation()
+
+      return (
+        <>
+          <output data-testid="dashboard-scheduled">
+            {dashboard.data?.scheduled ?? 'loading'}
+          </output>
+          <button
+            type="button"
+            onClick={() =>
+              mutation.mutate({
+                id: formId,
+                data: {
+                  signatoryName: 'Synthetic Department Head',
+                  signatoryPosition: 'Department Head',
+                  signatureData: 'synthetic-signature',
+                  signatureContentType: 'image/png',
+                },
+              })
+            }
+          >
+            Acknowledge cache test
+          </button>
+        </>
+      )
+    }
+
+    renderWithProviders(<CacheProbe />)
+
+    await waitFor(() => expect(dashboardRequests).toBe(1))
+    expect(screen.getByTestId('dashboard-scheduled')).toHaveTextContent('1')
+    fireEvent.click(screen.getByRole('button', { name: 'Acknowledge cache test' }))
+    await waitFor(() => expect(dashboardRequests).toBe(2))
+    expect(screen.getByTestId('dashboard-scheduled')).toHaveTextContent('2')
   })
 })
