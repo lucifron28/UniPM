@@ -246,18 +246,46 @@ test('demonstrates the submitted PM batch acknowledgement review workflow', asyn
   await expect(
     page.getByRole('heading', { name: 'Review before acknowledgement' }),
   ).toBeVisible()
-  await expect(page.getByText('Department', { exact: true })).toBeVisible()
-  await expect(page.getByText('GSD', { exact: true }).first()).toBeVisible()
+  const summary = page.getByLabel('Submitted batch review summary')
+  const summaryValue = (label: string) =>
+    summary.locator('dt').filter({ hasText: label }).locator('..').locator('dd')
+
+  await expect(summary.getByText('Department', { exact: true })).toBeVisible()
+  await expect(summary.getByText('GSD', { exact: true })).toBeVisible()
   await expect(
-    page
-      .getByLabel('Submitted batch review summary')
-      .getByText('Fire Extinguisher', { exact: true }),
+    summary.getByText('Fire Extinguisher', { exact: true }),
   ).toBeVisible()
-  await expect(page.getByText('July 2026', { exact: true })).toBeVisible()
-  await expect(page.getByText('Awaiting acknowledgement', { exact: true })).toBeVisible()
+  await expect(summary.getByText('July 2026', { exact: true })).toBeVisible()
+  await expect(
+    summary.getByText('Awaiting acknowledgement', { exact: true }),
+  ).toBeVisible()
 
   // 5. Check backend-reported metrics and 6. the full asset row evidence.
-  await expect(page.getByText('100%', { exact: true })).toBeVisible()
+  await expect(summaryValue('Scheduled')).toHaveText('1')
+  await expect(summaryValue('Inspected')).toHaveText('1')
+  await expect(summaryValue('Completed on time')).toHaveText('1')
+  await expect(summaryValue('On-time compliance')).toHaveText('100%')
+  await expect(summaryValue('Field-work completion')).toHaveText(
+    /Jul 28, 2026/,
+  )
+  await expect(summaryValue('Submitted timestamp')).toHaveText(/Jul 29, 2026/)
+  const acknowledgementCard = page
+    .getByRole('heading', { name: 'Acknowledge whole PM batch' })
+    .locator('..')
+    .locator('..')
+  await expect(
+    acknowledgementCard.getByText(
+      /For the whole PM batch, acknowledgement records receipt\/noting/,
+    ),
+  ).toBeVisible()
+  await expect(
+    acknowledgementCard.getByText(/It is not personal witnessing\./),
+  ).toBeVisible()
+  await expect(
+    acknowledgementCard.getByText(
+      /It does not approve corrective work, funding, or an RMRF\./,
+    ),
+  ).toBeVisible()
   await expect(page.getByText('FE-TEST-001', { exact: true })).toBeVisible()
   await expect(page.getByText('Main Building · Main hallway', { exact: true })).toBeVisible()
   await expect(page.getByText('Not operational', { exact: true })).toBeVisible()
