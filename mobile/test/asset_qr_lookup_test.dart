@@ -101,6 +101,19 @@ class FakeAssetRepository implements AssetRepository {
     values.add(scannedValue);
     return handler(scannedValue);
   }
+
+  @override
+  Future<Asset> getByCode(String assetCode) {
+    values.add(assetCode);
+    return handler(assetCode);
+  }
+
+  @override
+  Future<List<Asset>> searchAssets({
+    String? search,
+    String? assetCategory,
+    int limit = 25,
+  }) async => [];
 }
 
 void main() {
