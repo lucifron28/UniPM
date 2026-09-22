@@ -94,12 +94,21 @@ class _HomePageState extends State<HomePage> {
   List<ScheduleOption> get _assignedSchedules {
     return _schedules.where((s) {
       if (s.status.toLowerCase() == 'cancelled') return false;
-      final isAssigned = s.assignedToUserId == widget.user.id ||
-          s.assignedToUserId == null ||
-          _isGsd;
+      final isAssigned = _isGsd || s.assignedToUserId == widget.user.id;
       final isActiveStatus =
           _activeScheduleStatuses.contains(s.status.trim().toLowerCase());
       return isAssigned && isActiveStatus;
+    }).toList(growable: false);
+  }
+
+  List<ScheduleOption> get _unassignedSchedules {
+    if (_isGsd) return const [];
+    return _schedules.where((s) {
+      if (s.status.toLowerCase() == 'cancelled') return false;
+      final isUnassigned = s.assignedToUserId == null;
+      final isActiveStatus =
+          _activeScheduleStatuses.contains(s.status.trim().toLowerCase());
+      return isUnassigned && isActiveStatus;
     }).toList(growable: false);
   }
 
@@ -156,12 +165,11 @@ class _HomePageState extends State<HomePage> {
     return total > 0 ? total : form.inspections.length;
   }
 
-  List<_AssignedPmBatch> get _assignedBatches {
-    final assigned = _assignedSchedules;
-    if (assigned.isEmpty) return const [];
+  List<_AssignedPmBatch> _groupSchedules(List<ScheduleOption> schedsList) {
+    if (schedsList.isEmpty) return const [];
 
     final groups = <String, List<ScheduleOption>>{};
-    for (final s in assigned) {
+    for (final s in schedsList) {
       final dept = s.asset?.department ?? 'General Department';
       final cat = s.asset?.assetCategory ?? '';
       final cycle = _resolvePmCycle(
@@ -212,6 +220,7 @@ class _HomePageState extends State<HomePage> {
     return batches;
   }
 
+  List<_AssignedPmBatch> get _assignedBatches => _groupSchedules(_assignedSchedules);
   List<_AssignedPmBatch> get _unstartedAssignedBatches {
     final draftKeys = _activeDrafts.map((d) {
       return _canonicalBatchKey(
@@ -224,13 +233,30 @@ class _HomePageState extends State<HomePage> {
         ),
       );
     }).toSet();
-
     return _assignedBatches.where((b) {
       final key = _canonicalBatchKey(b.department, b.assetCategory, b.pmCycle);
       return !draftKeys.contains(key);
     }).toList(growable: false);
   }
 
+  List<_AssignedPmBatch> get _availableUnassignedBatches {
+    final draftKeys = _activeDrafts.map((d) {
+      return _canonicalBatchKey(
+        d.department,
+        d.assetCategory,
+        _resolvePmCycle(
+          pmCycle: d.pmCycle,
+          periodType: d.periodType,
+          year: d.year,
+        ),
+      );
+    }).toSet();
+
+    return _groupSchedules(_unassignedSchedules).where((b) {
+      final key = _canonicalBatchKey(b.department, b.assetCategory, b.pmCycle);
+      return !draftKeys.contains(key);
+    }).toList(growable: false);
+  }
   @override
   Widget build(BuildContext context) {
     return RefreshIndicator(
@@ -388,43 +414,44 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
             )
-          else if (!_isLoadingBatches &&
-              _activeDrafts.isEmpty &&
-              _unstartedAssignedBatches.isEmpty &&
-              _awaitingAck.isEmpty)
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  children: [
-                    const Icon(
-                      Icons.checklist_rtl_outlined,
-                      size: 44,
-                      color: AppColors.textNeutral,
-                    ),
-                    const SizedBox(height: 12),
-                    const Text(
-                      'No active PM batches',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    const Text(
-                      'Scan an asset QR or search assets to begin your inspection rounds.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 13,
+          else ...[
+            if (!_isLoadingBatches &&
+                _activeDrafts.isEmpty &&
+                _unstartedAssignedBatches.isEmpty &&
+                _awaitingAck.isEmpty)
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    children: [
+                      const Icon(
+                        Icons.checklist_rtl_outlined,
+                        size: 44,
                         color: AppColors.textNeutral,
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 12),
+                      const Text(
+                        'No assigned PM tasks',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'You have no assigned PM tasks for this period.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: AppColors.textNeutral,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            )
-          else ...[
+              )
+            else ...[
             // Active Drafts
             ..._activeDrafts.map((draft) {
               final total = _calculateTotalForDraft(draft);
@@ -506,6 +533,42 @@ class _HomePageState extends State<HomePage> {
                         widget.onOpenAcknowledgement?.call(form),
                     onTap: () =>
                         widget.onOpenAcknowledgement?.call(form),
+                  ),
+                );
+              }),
+            ],
+            ],
+
+            // Available PM Tasks (Unassigned schedules shown separately)
+            if (_availableUnassignedBatches.isNotEmpty) ...[
+              const SizedBox(height: 20),
+              const Text(
+                'Available PM Tasks',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 12),
+              ..._availableUnassignedBatches.map((batch) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: BatchPmCard(
+                    key: ValueKey(
+                      'available-batch-${_canonicalBatchKey(batch.department, batch.assetCategory, batch.pmCycle)}',
+                    ),
+                    department: batch.department,
+                    assetCategory: batch.assetCategory,
+                    pmCycle: batch.pmCycle,
+                    status: batch.status,
+                    completedCount: 0,
+                    totalCount: batch.totalCount,
+                    building: batch.building,
+                    actionLabel:
+                        widget.onScanQr != null ? 'Start inspection' : null,
+                    onAction: widget.onScanQr,
+                    onTap: widget.onScanQr,
                   ),
                 );
               }),

@@ -172,6 +172,147 @@ void main() {
       expect(find.text('Start inspection'), findsOneWidget);
     },
   );
+
+  testWidgets(
+    'My PM Tasks strictly isolates assignments and maintains GSD visibility',
+    (tester) async {
+      const inspectorAliceId = '11111111-1111-4111-8111-111111111111';
+      const inspectorBobId = '22222222-2222-4222-8222-222222222222';
+      const gsdId = '33333333-3333-4333-8333-333333333333';
+
+      const aliceUser = AuthUser(
+        id: inspectorAliceId,
+        email: 'alice@example.test',
+        displayName: 'Inspector Alice',
+        roles: ['Inspector'],
+      );
+
+      const gsdUser = AuthUser(
+        id: gsdId,
+        email: 'gsd@example.test',
+        displayName: 'GSD Supervisor',
+        roles: ['GSD'],
+      );
+
+      final schedules = [
+        // Assigned to Alice
+        ScheduleOption(
+          id: 'sched-alice',
+          assetId: 'asset-alice',
+          scheduleDate: DateTime(2026, 6, 15),
+          pmCycle: '2026-06',
+          periodType: 'Quarter',
+          status: 'Due',
+          quarter: 'Q2',
+          semester: null,
+          year: 2026,
+          academicYear: '2025-2026',
+          assignedToUserId: inspectorAliceId,
+          asset: const ScheduleAssetOption(
+            id: 'asset-alice',
+            assetCode: 'ALICE-01',
+            assetCategory: 'fire-extinguisher',
+            building: 'Physics Wing',
+            department: 'Department of Physics',
+            location: 'Lab 1',
+          ),
+        ),
+        // Assigned to Bob
+        ScheduleOption(
+          id: 'sched-bob',
+          assetId: 'asset-bob',
+          scheduleDate: DateTime(2026, 6, 15),
+          pmCycle: '2026-06',
+          periodType: 'Quarter',
+          status: 'Due',
+          quarter: 'Q2',
+          semester: null,
+          year: 2026,
+          academicYear: '2025-2026',
+          assignedToUserId: inspectorBobId,
+          asset: const ScheduleAssetOption(
+            id: 'asset-bob',
+            assetCode: 'BOB-01',
+            assetCategory: 'emergency-light',
+            building: 'Chemistry Wing',
+            department: 'Department of Chemistry',
+            location: 'Lab 2',
+          ),
+        ),
+        // Unassigned
+        ScheduleOption(
+          id: 'sched-unassigned',
+          assetId: 'asset-unassigned',
+          scheduleDate: DateTime(2026, 6, 15),
+          pmCycle: '2026-06',
+          periodType: 'Quarter',
+          status: 'Due',
+          quarter: 'Q2',
+          semester: null,
+          year: 2026,
+          academicYear: '2025-2026',
+          assignedToUserId: null,
+          asset: const ScheduleAssetOption(
+            id: 'asset-unassigned',
+            assetCode: 'UNASSIGNED-01',
+            assetCategory: 'water-drinking-station',
+            building: 'Biology Wing',
+            department: 'Department of Biology',
+            location: 'Hallway',
+          ),
+        ),
+      ];
+
+      final repo = _FakePmRepository(forms: [], schedules: schedules);
+
+      // 1. Test Inspector Alice visibility
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: HomePage(
+              user: aliceUser,
+              preventiveMaintenanceRepository: repo,
+              onScanQr: _noop,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Alice sees her assigned schedule under My PM Tasks
+      expect(find.text('Department of Physics'), findsOneWidget);
+
+      // Alice does NOT see Bob's assigned schedule
+      expect(find.text('Department of Chemistry'), findsNothing);
+
+      await tester.scrollUntilVisible(
+        find.text('Available PM Tasks'),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(find.text('Available PM Tasks'), findsOneWidget);
+      expect(find.text('Department of Biology'), findsOneWidget);
+      // 2. Test GSD visibility: GSD sees all relevant schedules under My PM Tasks
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: HomePage(
+              user: gsdUser,
+              preventiveMaintenanceRepository: repo,
+              onScanQr: _noop,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Department of Physics'), findsOneWidget);
+      expect(find.text('Department of Chemistry'), findsOneWidget);
+      expect(find.text('Department of Biology'), findsOneWidget);
+      // GSD does not separate unassigned into "Available PM Tasks"
+      expect(find.text('Available PM Tasks'), findsNothing);
+    },
+  );
 }
 
 void _noop() {}

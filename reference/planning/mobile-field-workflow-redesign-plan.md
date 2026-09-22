@@ -24,7 +24,7 @@ UniPM is a preventive-maintenance information system for a university General Se
    - Lifecycle separation: Field work execution (`Due/Ongoing/Overdue -> Completed`) vs PM Form Batch (`Draft -> Submitted (Awaiting acknowledgement) -> Acknowledged`).
    - Department Head does not have a UniPM account; skilled worker's authenticated session captures signatory details, signature canvas image, and SHA-256 hash.
    - Official maintenance history remains strictly acknowledged-only.
-   - Working authorization preserved without privilege broadening.
+   - Working authorization preserved without privilege broadening: generic Draft/form CRUD is not exposed in the Inspector UI (the legacy PM-form CRUD management screen is GSD-only). Field-work endpoints continue using the PM form authorization boundary (`AuthPolicyCatalog.CanManagePreventiveMaintenanceForms`) so Inspector retains full API capability to add inspection rows, auto-resolve drafts, and submit completed batches without managing form CRUD.
 
 ---
 
