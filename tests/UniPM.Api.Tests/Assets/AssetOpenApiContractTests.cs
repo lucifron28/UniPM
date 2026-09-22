@@ -23,8 +23,8 @@ public sealed class AssetOpenApiContractTests : IClassFixture<AssetOpenApiContra
         AssertOperation(paths, "/api/v1/assets", "post", "CreateAsset", "201", "AssetResponse");
         AssertOperation(paths, "/api/v1/assets", "get", "ListAssets", "200", null);
         AssertOperation(paths, "/api/v1/assets/{id}", "get", "GetAsset", "200", "AssetResponse");
+        AssertOperation(paths, "/api/v1/assets/by-code/{assetCode}", "get", "GetAssetByCode", "200", "AssetResponse");
         AssertOperation(paths, "/api/v1/assets/by-qr/{qrCodeValue}", "get", "GetAssetByQr", "200", "AssetResponse");
-
         var create = paths.GetProperty("/api/v1/assets").GetProperty("post").GetProperty("responses");
         Assert.True(create.TryGetProperty("400", out _));
         Assert.True(create.TryGetProperty("403", out _));
@@ -38,9 +38,12 @@ public sealed class AssetOpenApiContractTests : IClassFixture<AssetOpenApiContra
 
         var detail = paths.GetProperty("/api/v1/assets/{id}").GetProperty("get").GetProperty("responses");
         var qr = paths.GetProperty("/api/v1/assets/by-qr/{qrCodeValue}").GetProperty("get").GetProperty("responses");
+        var byCode = paths.GetProperty("/api/v1/assets/by-code/{assetCode}").GetProperty("get").GetProperty("responses");
         Assert.True(detail.TryGetProperty("404", out _));
         Assert.True(qr.TryGetProperty("400", out _));
         Assert.True(qr.TryGetProperty("404", out _));
+        Assert.True(byCode.TryGetProperty("400", out _));
+        Assert.True(byCode.TryGetProperty("404", out _));
     }
 
     private static void AssertOperation(

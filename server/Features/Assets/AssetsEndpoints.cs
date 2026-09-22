@@ -94,6 +94,8 @@ public static class AssetsEndpoints
             string? status,
             string? building,
             string? department,
+            string? search,
+            int? limit,
             IDbContextFactory<ApplicationDbContext> factory,
             CancellationToken cancellationToken) =>
         {
@@ -138,8 +140,21 @@ public static class AssetsEndpoints
                 query = query.Where(asset => asset.Department != null && asset.Department.ToUpper() == normalizedDepartment);
             }
 
-            var assets = await query
-                .OrderBy(asset => asset.AssetCode)
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var normalizedSearch = search.Trim().ToUpper();
+                query = query.Where(asset =>
+                    asset.AssetCode.Contains(normalizedSearch) ||
+                    (asset.Building != null && asset.Building.ToUpper().Contains(normalizedSearch)) ||
+                    (asset.Department != null && asset.Department.ToUpper().Contains(normalizedSearch)) ||
+                    (asset.Location != null && asset.Location.ToUpper().Contains(normalizedSearch)));
+            }
+
+            var orderedQuery = query.OrderBy(asset => asset.AssetCode);
+            var maxResults = limit.HasValue ? Math.Clamp(limit.Value, 1, 100) : (int?)null;
+            var finalQuery = maxResults.HasValue ? orderedQuery.Take(maxResults.Value) : orderedQuery;
+
+            var assets = await finalQuery
                 .Select(asset => new AssetResponse(
                     asset.Id,
                     asset.AssetCode,
@@ -156,9 +171,39 @@ public static class AssetsEndpoints
             return Results.Ok(assets);
         })
         .WithName("ListAssets")
-        .WithSummary("Lists assets using supported category, status, building, and department filters")
+        .WithSummary("Lists assets using supported category, status, building, department, and search filters")
         .Produces<IReadOnlyList<AssetResponse>>(StatusCodes.Status200OK)
         .Produces<Microsoft.AspNetCore.Mvc.ValidationProblemDetails>(StatusCodes.Status400BadRequest);
+
+        group.MapGet("/by-code/{assetCode}", async (
+            string assetCode,
+            IDbContextFactory<ApplicationDbContext> factory,
+            CancellationToken cancellationToken) =>
+        {
+            if (string.IsNullOrWhiteSpace(assetCode))
+            {
+                return ApiErrors.Validation(new Dictionary<string, string[]>
+                {
+                    [nameof(assetCode)] = ["Asset code is required."]
+                });
+            }
+
+            var normalizedAssetCode = AssetCodeValue.Normalize(assetCode);
+
+            await using var context = await factory.CreateDbContextAsync(cancellationToken);
+            var asset = await context.Assets
+                .AsNoTracking()
+                .FirstOrDefaultAsync(
+                    asset => asset.AssetCode == normalizedAssetCode,
+                    cancellationToken);
+
+            return asset is not null ? Results.Ok(AssetResponse.FromAsset(asset)) : ApiErrors.NotFound("Asset not found.");
+        })
+        .WithName("GetAssetByCode")
+        .WithSummary("Gets an asset by its canonical asset code")
+        .Produces<AssetResponse>(StatusCodes.Status200OK)
+        .Produces<Microsoft.AspNetCore.Mvc.ValidationProblemDetails>(StatusCodes.Status400BadRequest)
+        .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status404NotFound);
 
         group.MapGet("/by-qr/{qrCodeValue}", async (
             string qrCodeValue,
