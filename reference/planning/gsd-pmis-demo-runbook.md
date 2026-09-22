@@ -50,13 +50,15 @@ is not a production database transport recommendation.
 
 ## Prepare the database
 
-Apply migrations and load the deterministic fictional fixture:
+Apply migrations, seed the Development users, restore the presentation
+scenarios, and generate the QR sheet:
 
 ```powershell
-dotnet run --project server -- --migrate-database
-dotnet run --project server -- --seed-development-users
-dotnet run --project server -- --seed-synthetic
+.\scripts\prepare-demo.ps1
 ```
+
+The scenario inventory, login accounts, QR payloads, and reset procedure are in
+[`reference/demo/README.md`](../demo/README.md).
 
 Do not run an embedding rebuild. The PMIS workflow does not need an embedding
 or summary provider.
@@ -89,17 +91,17 @@ Start the web application from `web/`:
 npm run dev
 ```
 
-For a physical Android device, replace `<development-machine-lan-ip>` with an
-address reachable from the device:
+For a physical Android device connected through USB, use Android Debug Bridge
+port forwarding:
 
 ```powershell
-flutter run --dart-define=UNIPM_API_BASE_URL=http://<development-machine-lan-ip>:5099/
+adb reverse tcp:5254 tcp:5254
+flutter run --dart-define=UNIPM_API_BASE_URL=http://127.0.0.1:5254/
 ```
 
 HTTP is allowed only by the Android debug manifest for local development.
-Release builds require HTTPS. If the device cannot reach the API, confirm that
-both devices use the same trusted network and that local firewall rules allow
-the development API port. Do not weaken the release network policy.
+Release builds require HTTPS. A trusted-LAN fallback is documented in the demo
+guide. Do not weaken the release network policy.
 
 ## Preflight check
 

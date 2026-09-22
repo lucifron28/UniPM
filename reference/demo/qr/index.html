@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>UniPM fictional demo QR sheet</title>
+  <style>
+    :root { color-scheme: light; font-family: Arial, sans-serif; }
+    body { margin: 0; padding: 28px; color: #101828; background: #eef2f6; }
+    header { max-width: 1500px; margin: 0 auto 24px; }
+    h1 { margin: 0 0 8px; font-size: 30px; }
+    header p { margin: 0; color: #475467; }
+    main { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 24px; max-width: 1500px; margin: auto; }
+    .card { padding: 24px; border: 2px solid #d0d5dd; border-radius: 16px; background: #fff; box-shadow: 0 8px 24px rgba(16, 24, 40, .08); break-inside: avoid; }
+    img { display: block; width: min(100%, 420px); aspect-ratio: 1; margin: 0 auto 18px; image-rendering: pixelated; }
+    h2 { margin: 0 0 14px; text-align: center; font-size: 28px; }
+    dl { display: grid; grid-template-columns: 110px 1fr; gap: 8px 12px; margin: 0; font-size: 17px; }
+    dt { font-weight: 700; }
+    dd { margin: 0; overflow-wrap: anywhere; }
+    .payload { font-family: Consolas, monospace; font-weight: 700; }
+    @media print { body { padding: 0; background: #fff; } main { grid-template-columns: repeat(2, 1fr); } .card { box-shadow: none; page-break-inside: avoid; } }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>UniPM fictional demo QR codes</h1>
+    <p>Development data only. Open this page at 100% zoom and scan a card from the mobile app.</p>
+  </header>
+  <main>
+<article class="card">
+  <img src="DEMO-FE-001.png" alt="QR code for DEMO-FE-001">
+  <h2>DEMO-FE-001</h2>
+  <dl><dt>Department</dt><dd>CCMS</dd>
+  <dt>Category</dt><dd>Fire Extinguisher</dd>
+  <dt>Location</dt><dd>Ground Floor Computer Laboratory</dd>
+  <dt>QR payload</dt><dd class="payload">UNIPM-DEMO-FE-001</dd></dl>
+</article>
+<article class="card">
+  <img src="DEMO-FE-002.png" alt="QR code for DEMO-FE-002">
+  <h2>DEMO-FE-002</h2>
+  <dl><dt>Department</dt><dd>CCMS</dd>
+  <dt>Category</dt><dd>Fire Extinguisher</dd>
+  <dt>Location</dt><dd>Second Floor Faculty Room</dd>
+  <dt>QR payload</dt><dd class="payload">UNIPM-DEMO-FE-002</dd></dl>
+</article>
+<article class="card">
+  <img src="DEMO-FE-003.png" alt="QR code for DEMO-FE-003">
+  <h2>DEMO-FE-003</h2>
+  <dl><dt>Department</dt><dd>CCMS</dd>
+  <dt>Category</dt><dd>Fire Extinguisher</dd>
+  <dt>Location</dt><dd>Third Floor Network Laboratory</dd>
+  <dt>QR payload</dt><dd class="payload">UNIPM-DEMO-FE-003</dd></dl>
+</article>
+<article class="card">
+  <img src="DEMO-LIB-FE-001.png" alt="QR code for DEMO-LIB-FE-001">
+  <h2>DEMO-LIB-FE-001</h2>
+  <dl><dt>Department</dt><dd>Library</dd>
+  <dt>Category</dt><dd>Fire Extinguisher</dd>
+  <dt>Location</dt><dd>Ground Floor Reading Area</dd>
+  <dt>QR payload</dt><dd class="payload">UNIPM-DEMO-LIB-FE-001</dd></dl>
+</article>
+<article class="card">
+  <img src="DEMO-LIB-FE-002.png" alt="QR code for DEMO-LIB-FE-002">
+  <h2>DEMO-LIB-FE-002</h2>
+  <dl><dt>Department</dt><dd>Library</dd>
+  <dt>Category</dt><dd>Fire Extinguisher</dd>
+  <dt>Location</dt><dd>Second Floor Periodicals Section</dd>
+  <dt>QR payload</dt><dd class="payload">UNIPM-DEMO-LIB-FE-002</dd></dl>
+</article>
+<article class="card">
+  <img src="DEMO-LIB-FE-003.png" alt="QR code for DEMO-LIB-FE-003">
+  <h2>DEMO-LIB-FE-003</h2>
+  <dl><dt>Department</dt><dd>Library</dd>
+  <dt>Category</dt><dd>Fire Extinguisher</dd>
+  <dt>Location</dt><dd>Third Floor Archives Room</dd>
+  <dt>QR payload</dt><dd class="payload">UNIPM-DEMO-LIB-FE-003</dd></dl>
+</article>
+<article class="card">
+  <img src="DEMO-EL-001.png" alt="QR code for DEMO-EL-001">
+  <h2>DEMO-EL-001</h2>
+  <dl><dt>Department</dt><dd>Student Affairs Office</dd>
+  <dt>Category</dt><dd>Emergency Light</dd>
+  <dt>Location</dt><dd>Ground Floor Main Corridor</dd>
+  <dt>QR payload</dt><dd class="payload">UNIPM-DEMO-EL-001</dd></dl>
+</article>
+<article class="card">
+  <img src="DEMO-EL-002.png" alt="QR code for DEMO-EL-002">
+  <h2>DEMO-EL-002</h2>
+  <dl><dt>Department</dt><dd>Student Affairs Office</dd>
+  <dt>Category</dt><dd>Emergency Light</dd>
+  <dt>Location</dt><dd>Second Floor Stairwell</dd>
+  <dt>QR payload</dt><dd class="payload">UNIPM-DEMO-EL-002</dd></dl>
+</article>
+<article class="card">
+  <img src="DEMO-EL-003.png" alt="QR code for DEMO-EL-003">
+  <h2>DEMO-EL-003</h2>
+  <dl><dt>Department</dt><dd>Student Affairs Office</dd>
+  <dt>Category</dt><dd>Emergency Light</dd>
+  <dt>Location</dt><dd>Third Floor Exit Hall</dd>
+  <dt>QR payload</dt><dd class="payload">UNIPM-DEMO-EL-003</dd></dl>
+</article>
+
+  </main>
+</body>
+</html>
