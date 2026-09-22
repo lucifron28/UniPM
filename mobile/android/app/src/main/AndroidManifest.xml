@@ -2,7 +2,7 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.INTERNET" />
     <application
-        android:label="UniPM Mobile"
+        android:label="UniPM"
         android:name="${applicationName}"
         android:usesCleartextTraffic="false"
         android:icon="@mipmap/ic_launcher">

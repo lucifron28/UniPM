@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../ui/widgets/unipm_brand_mark.dart';
 import '../../auth/session_controller.dart';
 
 class LoginPage extends StatefulWidget {
@@ -36,7 +37,10 @@ class _LoginPageState extends State<LoginPage> {
     final isBusy = widget.controller.status == SessionStatus.signingIn;
     final errorMessage = widget.controller.errorMessage;
     return Scaffold(
-      appBar: AppBar(title: const Text('UniPM Mobile')),
+      appBar: AppBar(
+        title: const Text('UniPM'),
+        centerTitle: true,
+      ),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -47,11 +51,20 @@ class _LoginPageState extends State<LoginPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  const Center(
+                    child: UniPmBrandMark(
+                      size: BrandMarkSize.standard,
+                      showSubtitle: true,
+                    ),
+                  ),
+                  const SizedBox(height: 32),
                   Text(
                     'Sign in',
-                    style: Theme.of(context).textTheme.headlineMedium,
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
                   const Text('Use your UniPM field-work account.'),
                   if (errorMessage != null) ...[
                     const SizedBox(height: 16),
