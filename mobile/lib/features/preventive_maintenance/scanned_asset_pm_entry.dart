@@ -72,6 +72,7 @@ class _ScannedAssetPmEntryState extends State<ScannedAssetPmEntry> {
       final applicable = values
           .where((schedule) => schedule.assetId == widget.asset.id)
           .where((schedule) => _applicableStatuses.contains(schedule.status))
+          .where(_canAccessSchedule)
           .toList(growable: false);
       setState(() {
         schedules = applicable;
@@ -208,7 +209,7 @@ class _ScannedAssetPmEntryState extends State<ScannedAssetPmEntry> {
               _PmError(message: errorMessage!, onRetry: _retry)
             else if (schedules.isEmpty)
               const Text(
-                'No applicable PM schedules are available for this asset.',
+                'No PM task is available to the current user for this asset.',
                 key: Key('pm-schedule-empty'),
               )
             else ...[
@@ -343,6 +344,12 @@ class _ScannedAssetPmEntryState extends State<ScannedAssetPmEntry> {
     } else {
       await _resolveSelectedSchedule();
     }
+  }
+
+  bool _canAccessSchedule(ScheduleOption schedule) {
+    return widget.user.roles.contains('GSD') ||
+        schedule.assignedToUserId == null ||
+        schedule.assignedToUserId == widget.user.id;
   }
 }
 
