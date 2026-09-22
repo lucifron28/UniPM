@@ -37,6 +37,12 @@ public sealed class SyntheticMaintenanceCommandParserTests
             SyntheticMaintenanceCommand.SeedDevelopmentUsers,
             SyntheticMaintenanceCommandParser.Parse(["--seed-development-users"]));
         Assert.Equal(
+            SyntheticMaintenanceCommand.SeedDemo,
+            SyntheticMaintenanceCommandParser.Parse(["--seed-demo"]));
+        Assert.Equal(
+            SyntheticMaintenanceCommand.ResetDemo,
+            SyntheticMaintenanceCommandParser.Parse(["--reset-demo"]));
+        Assert.Equal(
             SyntheticMaintenanceCommand.SeedReferenceDocuments,
             SyntheticMaintenanceCommandParser.Parse(["--seed-reference-documents"]));
         Assert.Equal(

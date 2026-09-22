@@ -10,6 +10,8 @@ internal enum SyntheticMaintenanceCommand
     RebuildInstitutionalReferenceEmbeddings,
     Migrate,
     SeedDevelopmentUsers,
+    SeedDemo,
+    ResetDemo,
     SeedReferenceDocuments,
     ResetReferenceDocuments,
     Ambiguous
@@ -55,6 +57,16 @@ internal static class SyntheticMaintenanceCommandParser
         if (arguments.Contains("--seed-development-users"))
         {
             requestedCommands.Add(SyntheticMaintenanceCommand.SeedDevelopmentUsers);
+        }
+
+        if (arguments.Contains("--seed-demo"))
+        {
+            requestedCommands.Add(SyntheticMaintenanceCommand.SeedDemo);
+        }
+
+        if (arguments.Contains("--reset-demo"))
+        {
+            requestedCommands.Add(SyntheticMaintenanceCommand.ResetDemo);
         }
 
         if (arguments.Contains("--seed-reference-documents"))
