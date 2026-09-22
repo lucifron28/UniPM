@@ -32,6 +32,10 @@ The login accounts are:
 Both use the password supplied through `UNIPM_DEV_USER_PASSWORD`. Do not place
 that password in this file, screenshots, or recordings.
 
+`--seed-development-users` does not change the password of an existing
+Development account. When reusing a demo database, use the password already
+configured for those accounts.
+
 ## Demo scenarios
 
 ### A. Live mobile workflow

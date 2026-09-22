@@ -26,7 +26,7 @@ internal sealed class DevelopmentDemoSeeder(
         await ValidateConflictsAsync(context, cancellationToken);
         await using var transaction = await BeginTransactionIfRelationalAsync(context, cancellationToken);
 
-        await RemoveDemoClosureAsync(context, cancellationToken);
+        await RemoveDemoClosureAsync(context, inspectorId, cancellationToken);
 
         var timestamp = AtManila(2026, 6, 1, 8);
         context.Assets.AddRange(DevelopmentDemoCatalog.Assets.Select(asset => new Asset
@@ -94,8 +94,9 @@ internal sealed class DevelopmentDemoSeeder(
     {
         EnsureDevelopment();
         await using var context = await CreateReadyContextAsync(cancellationToken);
+        var inspectorId = await ResolveDemoInspectorIdAsync(context, cancellationToken);
         await using var transaction = await BeginTransactionIfRelationalAsync(context, cancellationToken);
-        var result = await RemoveDemoClosureAsync(context, cancellationToken);
+        var result = await RemoveDemoClosureAsync(context, inspectorId, cancellationToken);
 
         if (transaction is not null)
         {
@@ -282,6 +283,20 @@ internal sealed class DevelopmentDemoSeeder(
         return (inspectorId, gsdId);
     }
 
+    private static async Task<Guid> ResolveDemoInspectorIdAsync(
+        ApplicationDbContext context,
+        CancellationToken cancellationToken)
+    {
+        var inspectorId = await context.Users
+            .AsNoTracking()
+            .Where(user => user.Email == DevelopmentDemoCatalog.InspectorEmail)
+            .Select(user => (Guid?)user.Id)
+            .SingleOrDefaultAsync(cancellationToken);
+
+        return inspectorId ?? throw new InvalidOperationException(
+            "Development demo reset requires inspector@unipm.local. Run --seed-development-users first.");
+    }
+
     private static async Task ValidateConflictsAsync(
         ApplicationDbContext context,
         CancellationToken cancellationToken)
@@ -313,11 +328,32 @@ internal sealed class DevelopmentDemoSeeder(
 
     private static async Task<DevelopmentDemoResetResult> RemoveDemoClosureAsync(
         ApplicationDbContext context,
+        Guid inspectorId,
         CancellationToken cancellationToken)
     {
         var assetIds = DevelopmentDemoCatalog.Assets.Select(asset => asset.Id).ToHashSet();
         var fixedScheduleIds = DevelopmentDemoCatalog.ScheduleIds.ToHashSet();
         var fixedFormIds = DevelopmentDemoCatalog.FormIds.ToHashSet();
+        var abandonedScenarioAFormIds = await context.PreventiveMaintenanceForms
+            .Where(form => form.CreatedByUserId == inspectorId
+                && form.Status == PreventiveMaintenanceFormStatusCatalog.Draft
+                && form.FileNumber == null
+                && form.AssetCategory == "fire-extinguisher"
+                && form.Building == null
+                && form.Department == "CCMS"
+                && form.PmCycle == null
+                && form.PeriodType == "Quarter"
+                && form.Quarter == "Q3"
+                && form.Semester == null
+                && form.Year == 2026
+                && form.AcademicYear == "2026-2027"
+                && form.SubmittedByUserId == null
+                && form.SubmittedAt == null
+                && form.FieldWorkCompletedAt == null
+                && form.Acknowledgement == null
+                && !form.Inspections.Any())
+            .Select(form => form.Id)
+            .ToListAsync(cancellationToken);
         var scheduleIds = (await context.PreventiveMaintenanceSchedules
                 .Where(schedule => assetIds.Contains(schedule.AssetId) || fixedScheduleIds.Contains(schedule.Id))
                 .Select(schedule => schedule.Id)
@@ -333,6 +369,7 @@ internal sealed class DevelopmentDemoSeeder(
             .Where(inspection => inspection.PreventiveMaintenanceFormId.HasValue)
             .Select(inspection => inspection.PreventiveMaintenanceFormId.GetValueOrDefault())
             .Concat(fixedFormIds)
+            .Concat(abandonedScenarioAFormIds)
             .ToHashSet();
         var mixedFormDependency = await context.InspectionRecords
             .AnyAsync(inspection => inspection.PreventiveMaintenanceFormId.HasValue

@@ -91,11 +91,14 @@ public sealed class DevelopmentDemoSeederTests
     public async Task Reset_removes_only_demo_data_and_is_repeatable()
     {
         var factory = new TestContextFactory();
-        await SeedRequiredUsersAsync(factory, Guid.NewGuid(), Guid.NewGuid());
+        var inspectorId = Guid.NewGuid();
+        var gsdId = Guid.NewGuid();
+        await SeedRequiredUsersAsync(factory, inspectorId, gsdId);
         var seeder = CreateSeeder(factory);
         await seeder.SeedAsync();
 
         var unrelatedAssetId = Guid.NewGuid();
+        var unrelatedFormId = Guid.NewGuid();
         await using (var context = factory.CreateDbContext())
         {
             context.Assets.Add(new Asset
@@ -106,6 +109,7 @@ public sealed class DevelopmentDemoSeederTests
                 QrCodeValue = "UNIPM-UNRELATED-001",
                 Status = "Active"
             });
+            context.PreventiveMaintenanceForms.Add(CreateEmptyScenarioADraft(unrelatedFormId, gsdId));
             await context.SaveChangesAsync();
         }
 
@@ -116,11 +120,40 @@ public sealed class DevelopmentDemoSeederTests
         Assert.Equal(new DevelopmentDemoResetResult(0, 0, 0, 0, 0), second);
         await using var verificationContext = factory.CreateDbContext();
         Assert.NotNull(await verificationContext.Assets.FindAsync(unrelatedAssetId));
+        Assert.NotNull(await verificationContext.PreventiveMaintenanceForms.FindAsync(unrelatedFormId));
         Assert.Equal(1, await verificationContext.Assets.CountAsync());
         Assert.Equal(0, await verificationContext.PreventiveMaintenanceSchedules.CountAsync());
         Assert.Equal(0, await verificationContext.InspectionRecords.CountAsync());
-        Assert.Equal(0, await verificationContext.PreventiveMaintenanceForms.CountAsync());
+        Assert.Equal(1, await verificationContext.PreventiveMaintenanceForms.CountAsync());
         Assert.Equal(0, await verificationContext.MaintenanceSearchDocuments.CountAsync());
+    }
+
+    [Fact]
+    public async Task Reset_and_reseed_remove_an_abandoned_scenario_a_draft()
+    {
+        var factory = new TestContextFactory();
+        var inspectorId = Guid.NewGuid();
+        await SeedRequiredUsersAsync(factory, inspectorId, Guid.NewGuid());
+        var seeder = CreateSeeder(factory);
+        await seeder.SeedAsync();
+
+        var abandonedFormId = Guid.NewGuid();
+        await AddEmptyScenarioADraftAsync(factory, abandonedFormId, inspectorId);
+
+        var reset = await seeder.ResetAsync();
+
+        Assert.Equal(new DevelopmentDemoResetResult(9, 9, 6, 3, 1), reset);
+        await using (var resetContext = factory.CreateDbContext())
+        {
+            Assert.Null(await resetContext.PreventiveMaintenanceForms.FindAsync(abandonedFormId));
+        }
+
+        await seeder.SeedAsync();
+        await AssertPristineDemoStateAsync(factory, inspectorId);
+
+        await AddEmptyScenarioADraftAsync(factory, Guid.NewGuid(), inspectorId);
+        await seeder.SeedAsync();
+        await AssertPristineDemoStateAsync(factory, inspectorId);
     }
 
     [Fact]
@@ -173,6 +206,57 @@ public sealed class DevelopmentDemoSeederTests
             factory,
             projector,
             new TestHostEnvironment(Environments.Development));
+    }
+
+    private static async Task AddEmptyScenarioADraftAsync(
+        TestContextFactory factory,
+        Guid formId,
+        Guid ownerId)
+    {
+        await using var context = factory.CreateDbContext();
+        context.PreventiveMaintenanceForms.Add(CreateEmptyScenarioADraft(formId, ownerId));
+        await context.SaveChangesAsync();
+    }
+
+    private static PreventiveMaintenanceForm CreateEmptyScenarioADraft(Guid formId, Guid ownerId)
+    {
+        var timestamp = new DateTimeOffset(2026, 9, 15, 8, 0, 0, TimeSpan.FromHours(8));
+        return new PreventiveMaintenanceForm
+        {
+            Id = formId,
+            AssetCategory = "fire-extinguisher",
+            Building = null,
+            Department = "CCMS",
+            PmCycle = null,
+            PeriodType = "Quarter",
+            Quarter = "Q3",
+            Semester = null,
+            Year = 2026,
+            AcademicYear = "2026-2027",
+            Status = "Draft",
+            CreatedByUserId = ownerId,
+            CreatedAt = timestamp,
+            UpdatedAt = timestamp
+        };
+    }
+
+    private static async Task AssertPristineDemoStateAsync(
+        TestContextFactory factory,
+        Guid inspectorId)
+    {
+        await using var context = factory.CreateDbContext();
+        Assert.Equal(9, await context.Assets.CountAsync());
+        Assert.Equal(9, await context.PreventiveMaintenanceSchedules.CountAsync());
+        Assert.Equal(6, await context.InspectionRecords.CountAsync());
+        Assert.Equal(2, await context.PreventiveMaintenanceForms.CountAsync());
+        Assert.Equal(1, await context.PreventiveMaintenanceAcknowledgements.CountAsync());
+        Assert.False(await context.PreventiveMaintenanceForms.AnyAsync(form =>
+            form.CreatedByUserId == inspectorId
+            && form.Status == "Draft"
+            && form.AssetCategory == "fire-extinguisher"
+            && form.Department == "CCMS"
+            && form.Year == 2026
+            && form.Quarter == "Q3"));
     }
 
     private static async Task SeedRequiredUsersAsync(
