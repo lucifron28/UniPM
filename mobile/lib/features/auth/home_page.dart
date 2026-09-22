@@ -89,20 +89,146 @@ class _HomePageState extends State<HomePage> {
         .toList(growable: false);
   }
 
-  int _calculateTotalForDraft(PreventiveMaintenanceForm form) {
-    if (_schedules.isEmpty) return form.inspections.length;
+  static const _activeScheduleStatuses = {'due', 'ongoing', 'overdue'};
+
+  List<ScheduleOption> get _assignedSchedules {
+    return _schedules.where((s) {
+      if (s.status.toLowerCase() == 'cancelled') return false;
+      final isAssigned = s.assignedToUserId == widget.user.id ||
+          s.assignedToUserId == null ||
+          _isGsd;
+      final isActiveStatus =
+          _activeScheduleStatuses.contains(s.status.trim().toLowerCase());
+      return isAssigned && isActiveStatus;
+    }).toList(growable: false);
+  }
+
+  String _resolvePmCycle({
+    String? pmCycle,
+    required String periodType,
+    int? year,
+  }) {
+    if (pmCycle != null && pmCycle.trim().isNotEmpty) {
+      return pmCycle.trim();
+    }
+    final yearStr = year != null ? ' $year' : '';
+    return '$periodType$yearStr'.trim();
+  }
+
+  String _canonicalBatchKey(
+    String? department,
+    String assetCategory,
+    String? pmCycle,
+  ) {
+    final dept = (department ?? '').trim().toLowerCase();
+    final cat = assetCategory.trim().toLowerCase();
+    final cycle = (pmCycle ?? '').trim().toLowerCase();
+    return '$dept|$cat|$cycle';
+  }
+
+  int _calculateTotalForBatch({
+    required String? department,
+    required String assetCategory,
+    required String? pmCycle,
+  }) {
     final matching = _schedules.where((s) {
+      if (s.status.toLowerCase() == 'cancelled') return false;
       final asset = s.asset;
       if (asset == null) return false;
-      final deptMatch = form.department == null ||
-          asset.department?.toLowerCase() == form.department!.toLowerCase();
+      final deptMatch = department == null ||
+          asset.department?.toLowerCase() == department.toLowerCase();
       final catMatch =
-          asset.assetCategory.toLowerCase() == form.assetCategory.toLowerCase();
-      final cycleMatch = form.pmCycle == null ||
-          s.pmCycle?.toLowerCase() == form.pmCycle!.toLowerCase();
+          asset.assetCategory.toLowerCase() == assetCategory.toLowerCase();
+      final cycleMatch = pmCycle == null ||
+          s.pmCycle?.toLowerCase() == pmCycle.toLowerCase();
       return deptMatch && catMatch && cycleMatch;
-    }).toList();
-    return matching.isNotEmpty ? matching.length : form.inspections.length;
+    }).toList(growable: false);
+    return matching.length;
+  }
+
+  int _calculateTotalForDraft(PreventiveMaintenanceForm form) {
+    if (_schedules.isEmpty) return form.inspections.length;
+    final total = _calculateTotalForBatch(
+      department: form.department,
+      assetCategory: form.assetCategory,
+      pmCycle: form.pmCycle,
+    );
+    return total > 0 ? total : form.inspections.length;
+  }
+
+  List<_AssignedPmBatch> get _assignedBatches {
+    final assigned = _assignedSchedules;
+    if (assigned.isEmpty) return const [];
+
+    final groups = <String, List<ScheduleOption>>{};
+    for (final s in assigned) {
+      final dept = s.asset?.department ?? 'General Department';
+      final cat = s.asset?.assetCategory ?? '';
+      final cycle = _resolvePmCycle(
+        pmCycle: s.pmCycle,
+        periodType: s.periodType,
+        year: s.year,
+      );
+      final key = _canonicalBatchKey(dept, cat, cycle);
+      groups.putIfAbsent(key, () => []).add(s);
+    }
+
+    final batches = <_AssignedPmBatch>[];
+    for (final entry in groups.entries) {
+      final scheds = entry.value;
+      final first = scheds.first;
+      final dept = first.asset?.department ?? 'General Department';
+      final cat = first.asset?.assetCategory ?? '';
+      final cycle = _resolvePmCycle(
+        pmCycle: first.pmCycle,
+        periodType: first.periodType,
+        year: first.year,
+      );
+
+      final hasOverdue =
+          scheds.any((s) => s.status.trim().toLowerCase() == 'overdue');
+      final hasOngoing =
+          scheds.any((s) => s.status.trim().toLowerCase() == 'ongoing');
+      final status = hasOverdue ? 'Overdue' : (hasOngoing ? 'Ongoing' : 'Due');
+
+      final total = _calculateTotalForBatch(
+        department: first.asset?.department,
+        assetCategory: cat,
+        pmCycle: first.pmCycle,
+      );
+
+      batches.add(
+        _AssignedPmBatch(
+          department: dept,
+          assetCategory: cat,
+          pmCycle: cycle,
+          status: status,
+          totalCount: total > 0 ? total : scheds.length,
+          building: first.asset?.building,
+        ),
+      );
+    }
+
+    return batches;
+  }
+
+  List<_AssignedPmBatch> get _unstartedAssignedBatches {
+    final draftKeys = _activeDrafts.map((d) {
+      return _canonicalBatchKey(
+        d.department,
+        d.assetCategory,
+        _resolvePmCycle(
+          pmCycle: d.pmCycle,
+          periodType: d.periodType,
+          year: d.year,
+        ),
+      );
+    }).toSet();
+
+    return _assignedBatches.where((b) {
+      final key = _canonicalBatchKey(b.department, b.assetCategory, b.pmCycle);
+      return !draftKeys.contains(key);
+    }).toList(growable: false);
   }
 
   @override
@@ -264,6 +390,7 @@ class _HomePageState extends State<HomePage> {
             )
           else if (!_isLoadingBatches &&
               _activeDrafts.isEmpty &&
+              _unstartedAssignedBatches.isEmpty &&
               _awaitingAck.isEmpty)
             Card(
               child: Padding(
@@ -307,15 +434,41 @@ class _HomePageState extends State<HomePage> {
                   key: ValueKey('draft-card-${draft.id}'),
                   department: draft.department ?? 'General Department',
                   assetCategory: draft.assetCategory,
-                  pmCycle: draft.pmCycle ??
-                      '${draft.periodType} ${draft.year ?? ""}',
-                  status: draft.status,
+                  pmCycle: _resolvePmCycle(
+                    pmCycle: draft.pmCycle,
+                    periodType: draft.periodType,
+                    year: draft.year,
+                  ),
+                  status: 'In Progress',
                   completedCount: draft.inspections.length,
                   totalCount: total,
                   building: draft.building,
                   actionLabel: 'Continue PM batch',
                   onAction: () => widget.onOpenForm?.call(draft.id),
                   onTap: () => widget.onOpenForm?.call(draft.id),
+                ),
+              );
+            }),
+
+            // Assigned PM Batches without existing drafts
+            ..._unstartedAssignedBatches.map((batch) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: BatchPmCard(
+                  key: ValueKey(
+                    'assigned-batch-${_canonicalBatchKey(batch.department, batch.assetCategory, batch.pmCycle)}',
+                  ),
+                  department: batch.department,
+                  assetCategory: batch.assetCategory,
+                  pmCycle: batch.pmCycle,
+                  status: batch.status,
+                  completedCount: 0,
+                  totalCount: batch.totalCount,
+                  building: batch.building,
+                  actionLabel:
+                      widget.onScanQr != null ? 'Start inspection' : null,
+                  onAction: widget.onScanQr,
+                  onTap: widget.onScanQr,
                 ),
               );
             }),
@@ -339,8 +492,11 @@ class _HomePageState extends State<HomePage> {
                     key: ValueKey('ack-card-${form.id}'),
                     department: form.department ?? 'General Department',
                     assetCategory: form.assetCategory,
-                    pmCycle: form.pmCycle ??
-                        '${form.periodType} ${form.year ?? ""}',
+                    pmCycle: _resolvePmCycle(
+                      pmCycle: form.pmCycle,
+                      periodType: form.periodType,
+                      year: form.year,
+                    ),
                     status: form.status,
                     completedCount: form.inspections.length,
                     totalCount: form.inspections.length,
@@ -360,7 +516,7 @@ class _HomePageState extends State<HomePage> {
           const SizedBox(height: 20),
 
           // Secondary/Administrative entry for backward compatibility
-          if (widget.onOpenPreventiveMaintenance != null)
+          if (_isGsd && widget.onOpenPreventiveMaintenance != null)
             Card(
               child: ListTile(
                 leading: const Icon(Icons.assignment_outlined),
@@ -438,4 +594,22 @@ class _QuickActionCard extends StatelessWidget {
       ),
     );
   }
+}
+
+class _AssignedPmBatch {
+  const _AssignedPmBatch({
+    required this.department,
+    required this.assetCategory,
+    required this.pmCycle,
+    required this.status,
+    required this.totalCount,
+    this.building,
+  });
+
+  final String department;
+  final String assetCategory;
+  final String pmCycle;
+  final String status;
+  final int totalCount;
+  final String? building;
 }

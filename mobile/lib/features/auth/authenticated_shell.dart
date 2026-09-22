@@ -12,6 +12,7 @@ import '../preventive_maintenance/preventive_maintenance_models.dart';
 import '../preventive_maintenance/preventive_maintenance_page.dart';
 import '../preventive_maintenance/preventive_maintenance_repository.dart';
 import '../qr_scanner/qr_scanner_page.dart';
+import '../qr_scanner/qr_scan_result.dart';
 import 'home_page.dart';
 
 class AuthenticatedShell extends StatelessWidget {
@@ -166,11 +167,16 @@ class AuthenticatedShell extends StatelessWidget {
       body: HomePage(
         user: controller.user!,
         onScanQr: () async {
-          final scannedText = await Navigator.of(context).push<String>(
-            MaterialPageRoute<String>(builder: (_) => const QrScannerPage()),
+          final result = await Navigator.of(context).push<QrScanResult>(
+            MaterialPageRoute<QrScanResult>(builder: (_) => const QrScannerPage()),
           );
-          if (!context.mounted || scannedText == null) return;
-          await _openAssetLookup(context, scannedText);
+          if (!context.mounted || result == null) return;
+          switch (result) {
+            case QrScanSuccess(:final qrCode):
+              await _openAssetLookup(context, qrCode, isCodeLookup: false);
+            case QrManualCodeEntry(:final assetCode):
+              await _openAssetLookup(context, assetCode, isCodeLookup: true);
+          }
         },
         onEnterAssetCode: () => _handleEnterAssetCode(context),
         onSearchAssets: () => _handleSearchAssets(context),
@@ -178,18 +184,20 @@ class AuthenticatedShell extends StatelessWidget {
         onOpenForm: (formId) => _handleOpenBatch(context, formId),
         onOpenAcknowledgement: (form) =>
             _handleOpenAcknowledgement(context, form),
-        onOpenPreventiveMaintenance: preventiveMaintenanceRepository == null
-            ? null
-            : () {
-                Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => PreventiveMaintenancePage(
-                      repository: preventiveMaintenanceRepository!,
-                      user: controller.user!,
-                    ),
-                  ),
-                );
-              },
+        onOpenPreventiveMaintenance:
+            (controller.user?.roles.contains('GSD') == true &&
+                    preventiveMaintenanceRepository != null)
+                ? () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => PreventiveMaintenancePage(
+                          repository: preventiveMaintenanceRepository!,
+                          user: controller.user!,
+                        ),
+                      ),
+                    );
+                  }
+                : null,
       ),
     );
   }
