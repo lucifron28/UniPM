@@ -1,4 +1,5 @@
 using System.IdentityModel.Tokens.Jwt;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using UniPM.Api.Data;
@@ -42,6 +43,7 @@ internal static class AuthServiceCollectionExtensions
         services.AddScoped<RefreshCookieService>();
         services.AddScoped<TrustedWebOriginValidator>();
         services.AddScoped<DevelopmentUserSeeder>();
+        services.AddSingleton<IAuthorizationHandler, PreventiveMaintenanceScheduleAuthorizationHandler>();
 
         services
             .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -82,6 +84,13 @@ internal static class AuthServiceCollectionExtensions
             options.AddPolicy(
                 AuthPolicyCatalog.CanManagePreventiveMaintenanceForms,
                 policy => policy.RequireRole(AuthRoleCatalog.Gsd, AuthRoleCatalog.Inspector));
+            options.AddPolicy(
+                AuthPolicyCatalog.CanInspectPreventiveMaintenanceSchedule,
+                policy =>
+                {
+                    policy.RequireRole(AuthRoleCatalog.Gsd, AuthRoleCatalog.Inspector);
+                    policy.AddRequirements(PreventiveMaintenanceScheduleAccessRequirement.Instance);
+                });
             options.AddPolicy(
                 AuthPolicyCatalog.CanAccessCorrectiveMaintenanceHandoff,
                 policy => policy.RequireRole(AuthRoleCatalog.Gsd));
