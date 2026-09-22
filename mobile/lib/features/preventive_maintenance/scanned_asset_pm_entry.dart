@@ -214,7 +214,7 @@ class _ScannedAssetPmEntryState extends State<ScannedAssetPmEntry> {
             else ...[
               if (schedules.length == 1)
                 _ScheduleSummary(schedule: schedules.single)
-              else
+              else ...[
                 DropdownButtonFormField<String>(
                   key: const Key('pm-schedule-select'),
                   initialValue: selectedSchedule?.id,
@@ -229,6 +229,11 @@ class _ScannedAssetPmEntryState extends State<ScannedAssetPmEntry> {
                       .toList(growable: false),
                   onChanged: isResolving ? null : _selectSchedule,
                 ),
+                if (selectedSchedule != null) ...[
+                  const SizedBox(height: 12),
+                  _ScheduleSummary(schedule: selectedSchedule!),
+                ],
+              ],
               if (isResolving) ...[
                 const SizedBox(height: 16),
                 const _PmLoading(label: 'Checking available Draft forms...'),
@@ -326,8 +331,8 @@ class _ScannedAssetPmEntryState extends State<ScannedAssetPmEntry> {
         isOpening
             ? 'Opening...'
             : isResume
-            ? 'Resume PM'
-            : 'Start PM',
+            ? 'Resume Inspection'
+            : 'Start Inspection',
       ),
     );
   }
@@ -396,7 +401,20 @@ class _ScheduleSummary extends StatelessWidget {
           style: Theme.of(context).textTheme.labelLarge,
         ),
         const SizedBox(height: 4),
-        Text(_scheduleLabel(schedule), key: const Key('selected-pm-schedule')),
+        Text(
+          '${_dateText(schedule.scheduleDate)} · ${schedule.periodType}',
+          key: const Key('selected-pm-schedule'),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'PM Cycle: ${schedule.pmCycle ?? 'N/A'}',
+          key: const Key('schedule-pm-cycle'),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Schedule status: ${schedule.status}',
+          key: const Key('schedule-status'),
+        ),
       ],
     );
   }

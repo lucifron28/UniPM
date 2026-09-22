@@ -189,6 +189,7 @@ class ScheduleOption {
     required this.year,
     required this.academicYear,
     required this.asset,
+    this.assignedToUserId,
   });
 
   final String id;
@@ -202,6 +203,7 @@ class ScheduleOption {
   final int? year;
   final String? academicYear;
   final ScheduleAssetOption? asset;
+  final String? assignedToUserId;
 
   factory ScheduleOption.fromJson(Map<String, dynamic> json) {
     final assetJson = json['asset'];
@@ -220,6 +222,7 @@ class ScheduleOption {
       year: _nullableInt(json, 'year'),
       academicYear: _nullableString(json, 'academicYear'),
       asset: ScheduleAssetOption.fromJson(assetJson.cast<String, dynamic>()),
+      assignedToUserId: _nullableUuid(json, 'assignedToUserId'),
     );
   }
 }

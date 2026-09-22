@@ -589,7 +589,10 @@ class _PreventiveMaintenanceDraftPageState
     String? scheduleError,
   ) {
     final canEdit = form.isDraft;
-    final matchingSchedules = schedules
+    final allBatchSchedules = schedules
+        .where(
+          (schedule) => schedule.status.trim().toLowerCase() != 'cancelled',
+        )
         .where((schedule) {
           try {
             return PreventiveMaintenanceGrouping.fromSchedule(
@@ -599,6 +602,8 @@ class _PreventiveMaintenanceDraftPageState
             return false;
           }
         })
+        .toList(growable: false);
+    final unattachedSchedules = allBatchSchedules
         .where(
           (schedule) => !form.inspections.any(
             (inspection) => inspection.scheduleId == schedule.id,
@@ -606,7 +611,7 @@ class _PreventiveMaintenanceDraftPageState
         )
         .toList(growable: false);
     final preselectedScheduleId =
-        matchingSchedules.any(
+        unattachedSchedules.any(
           (schedule) => schedule.id == widget.preselectedScheduleId,
         )
         ? widget.preselectedScheduleId
@@ -694,7 +699,7 @@ class _PreventiveMaintenanceDraftPageState
         if (canEdit && scheduleError == null)
           _AddInspectionCard(
             key: ValueKey('add-${form.inspections.length}'),
-            schedules: matchingSchedules,
+            schedules: unattachedSchedules,
             assetCategory: form.assetCategory,
             preselectedScheduleId: preselectedScheduleId,
             inspectorUserId: widget.controller.user.id,
@@ -703,7 +708,7 @@ class _PreventiveMaintenanceDraftPageState
               final ok = await widget.controller.addInspection(input);
               if (ok && mounted) {
                 final currentForm = widget.controller.selectedForm;
-                final sched = matchingSchedules
+                final sched = allBatchSchedules
                     .cast<ScheduleOption?>()
                     .firstWhere(
                       (s) => s?.id == input.scheduleId,
@@ -723,7 +728,9 @@ class _PreventiveMaintenanceDraftPageState
                     'Category';
                 final cycle = currentForm?.pmCycle ?? sched?.pmCycle ?? 'Current';
                 final completedCount = currentForm?.inspections.length ?? 1;
-                final totalCount = matchingSchedules.length;
+                final totalCount = allBatchSchedules.isNotEmpty
+                    ? allBatchSchedules.length
+                    : completedCount;
 
                 await InspectionCompletionSheet.show(
                   this.context,
@@ -732,7 +739,7 @@ class _PreventiveMaintenanceDraftPageState
                   assetCategory: cat,
                   pmCycle: cycle,
                   completedCount: completedCount,
-                  totalCount: totalCount > 0 ? totalCount : completedCount,
+                  totalCount: totalCount,
                   onNextAsset: () {
                     Navigator.of(this.context).pop();
                     Navigator.of(this.context).pop();
