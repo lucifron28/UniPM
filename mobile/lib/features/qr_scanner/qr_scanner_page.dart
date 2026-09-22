@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
 import 'qr_camera_preview.dart';
+import 'qr_scan_result.dart';
 import 'qr_scanner_controller.dart';
-
 typedef QrPreviewBuilder =
     Widget Function(BuildContext context, ValueChanged<String?> onDetected);
 
@@ -31,7 +31,7 @@ class _QrScannerPageState extends State<QrScannerPage> {
 
   void _useCapturedValue() {
     final value = controller.capturedText;
-    if (value != null) Navigator.of(context).pop(value);
+    if (value != null) Navigator.of(context).pop(QrScanSuccess(value));
   }
 
   Future<void> _enterCodeManually() async {
@@ -74,7 +74,7 @@ class _QrScannerPageState extends State<QrScannerPage> {
       ),
     );
     if (!mounted || code == null || code.isEmpty) return;
-    Navigator.of(context).pop(code);
+    Navigator.of(context).pop(QrManualCodeEntry(code));
   }
 
   @override

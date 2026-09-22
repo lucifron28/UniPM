@@ -3,9 +3,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
 import 'package:mobile/features/qr_scanner/qr_camera_preview.dart';
+import 'package:mobile/features/qr_scanner/qr_scan_result.dart';
 import 'package:mobile/features/qr_scanner/qr_scanner_controller.dart';
 import 'package:mobile/features/qr_scanner/qr_scanner_page.dart';
-
 void main() {
   test('ignores empty scans and captures the first usable value', () {
     final controller = QrScannerController();
@@ -53,16 +53,15 @@ void main() {
     tester,
   ) async {
     ValueChanged<String?>? emitScan;
-    String? returnedValue;
-
+    QrScanResult? returnedValue;
     await tester.pumpWidget(
       MaterialApp(
         home: Builder(
           builder: (context) => Scaffold(
             body: FilledButton(
               onPressed: () async {
-                returnedValue = await Navigator.of(context).push<String>(
-                  MaterialPageRoute<String>(
+                returnedValue = await Navigator.of(context).push<QrScanResult>(
+                  MaterialPageRoute<QrScanResult>(
                     builder: (_) => QrScannerPage(
                       previewBuilder: (context, onDetected) {
                         emitScan = onDetected;
@@ -104,21 +103,20 @@ void main() {
     await tester.tap(find.byKey(const Key('use-captured-qr')));
     await tester.pumpAndSettle();
 
-    expect(returnedValue, 'UNIPM-SECOND');
+    expect(returnedValue, const QrScanSuccess('UNIPM-SECOND'));
     expect(find.text('Open scanner'), findsOneWidget);
   });
 
   testWidgets('cancel exits without returning a scanned value', (tester) async {
-    String? returnedValue = 'not-returned';
-
+    QrScanResult? returnedValue = const QrScanSuccess('not-returned');
     await tester.pumpWidget(
       MaterialApp(
         home: Builder(
           builder: (context) => Scaffold(
             body: FilledButton(
               onPressed: () async {
-                returnedValue = await Navigator.of(context).push<String>(
-                  MaterialPageRoute<String>(
+                returnedValue = await Navigator.of(context).push<QrScanResult>(
+                  MaterialPageRoute<QrScanResult>(
                     builder: (_) => QrScannerPage(
                       previewBuilder: (context, onDetected) =>
                           const ColoredBox(color: Colors.black),
@@ -144,16 +142,15 @@ void main() {
   testWidgets('camera permission denial is clear and remains escapable', (
     tester,
   ) async {
-    String? returnedValue = 'not-returned';
-
+    QrScanResult? returnedValue = const QrScanSuccess('not-returned');
     await tester.pumpWidget(
       MaterialApp(
         home: Builder(
           builder: (context) => Scaffold(
             body: FilledButton(
               onPressed: () async {
-                returnedValue = await Navigator.of(context).push<String>(
-                  MaterialPageRoute<String>(
+                returnedValue = await Navigator.of(context).push<QrScanResult>(
+                  MaterialPageRoute<QrScanResult>(
                     builder: (_) => QrScannerPage(
                       previewBuilder: (context, onDetected) =>
                           const QrCameraErrorView(
@@ -191,16 +188,15 @@ void main() {
   testWidgets('system back exits the scanner without returning a value', (
     tester,
   ) async {
-    String? returnedValue = 'not-returned';
-
+    QrScanResult? returnedValue = const QrScanSuccess('not-returned');
     await tester.pumpWidget(
       MaterialApp(
         home: Builder(
           builder: (context) => Scaffold(
             body: FilledButton(
               onPressed: () async {
-                returnedValue = await Navigator.of(context).push<String>(
-                  MaterialPageRoute<String>(
+                returnedValue = await Navigator.of(context).push<QrScanResult>(
+                  MaterialPageRoute<QrScanResult>(
                     builder: (_) => QrScannerPage(
                       previewBuilder: (context, onDetected) =>
                           const ColoredBox(color: Colors.black),
@@ -221,5 +217,47 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(returnedValue, isNull);
+  });
+
+  testWidgets('manual code entry returns QrManualCodeEntry', (tester) async {
+    QrScanResult? returnedValue;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: FilledButton(
+              onPressed: () async {
+                returnedValue = await Navigator.of(context).push<QrScanResult>(
+                  MaterialPageRoute<QrScanResult>(
+                    builder: (_) => QrScannerPage(
+                      previewBuilder: (context, onDetected) =>
+                          const ColoredBox(color: Colors.black),
+                    ),
+                  ),
+                );
+              },
+              child: const Text('Open scanner'),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Open scanner'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('enter-code-manually-button')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Enter Asset Code'), findsOneWidget);
+    await tester.enterText(
+      find.byKey(const Key('manual-asset-code-input')),
+      'FE-CS-002',
+    );
+    await tester.tap(find.byKey(const Key('submit-manual-asset-code')));
+    await tester.pumpAndSettle();
+
+    expect(returnedValue, const QrManualCodeEntry('FE-CS-002'));
+    expect(find.text('Open scanner'), findsOneWidget);
   });
 }
