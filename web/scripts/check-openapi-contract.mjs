@@ -414,10 +414,7 @@ if (
   )
 }
 
-const pmDashboardAssetFields = [
-  'remarks',
-  'actionsRecommendations',
-]
+const pmDashboardAssetFields = ['remarks', 'actionsRecommendations']
 const pmDashboardAssetProperties =
   snapshot.components?.schemas?.PmPeriodDashboardAssetRowResponse?.properties
 if (

@@ -539,11 +539,11 @@ export function AcknowledgeForm({
           {title}
         </h2>
         <p className="mt-1 text-sm text-[var(--text-secondary)]">
-          Field-work completion and acknowledgement are separate.
-          For the whole PM batch, acknowledgement records receipt/noting, locks
-          the form, and makes its inspection rows eligible for official history.
-          It is not personal witnessing. It does not approve corrective work,
-          funding, or an RMRF.
+          Field-work completion and acknowledgement are separate. For the whole
+          PM batch, acknowledgement records receipt/noting, locks the form, and
+          makes its inspection rows eligible for official history. It is not
+          personal witnessing. It does not approve corrective work, funding, or
+          an RMRF.
         </p>
       </div>
       <form className="space-y-4" onSubmit={acknowledge}>
@@ -607,10 +607,10 @@ export function AcknowledgeForm({
               Confirm department-head acknowledgement
             </h3>
             <p className="mt-2 text-sm text-[var(--text-secondary)]">
-              This records receipt/noting of the whole PM batch, locks this form,
-              and makes its inspection rows eligible for official history. It is
-              not personal witnessing. It does not approve corrective work,
-              funding, or an RMRF.
+              This records receipt/noting of the whole PM batch, locks this
+              form, and makes its inspection rows eligible for official history.
+              It is not personal witnessing. It does not approve corrective
+              work, funding, or an RMRF.
             </p>
             <div className="mt-4 flex flex-wrap justify-end gap-3">
               <Button

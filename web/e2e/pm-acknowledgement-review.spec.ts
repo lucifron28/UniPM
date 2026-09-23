@@ -158,8 +158,9 @@ async function mockApi(page: import('@playwright/test').Page) {
       ]),
     ),
   )
-  await page.route(`**/api/v1/preventive-maintenance-forms/${formId}`, (route) =>
-    route.fulfill(jsonResponse(form)),
+  await page.route(
+    `**/api/v1/preventive-maintenance-forms/${formId}`,
+    (route) => route.fulfill(jsonResponse(form)),
   )
   await page.route(`**/api/v1/inspections/${inspectionId}`, (route) =>
     route.fulfill(
@@ -232,9 +233,7 @@ test('demonstrates the submitted PM batch acknowledgement review workflow', asyn
   await expect(
     page.getByRole('heading', { name: 'Preventive maintenance compliance' }),
   ).toBeVisible()
-  await expect(
-    page.getByRole('link', { name: 'Review batch' }),
-  ).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Review batch' })).toBeVisible()
 
   // 3. Open the exact Department + Category + PM cycle batch review.
   await page.getByRole('link', { name: 'Review batch' }).click()
@@ -265,9 +264,7 @@ test('demonstrates the submitted PM batch acknowledgement review workflow', asyn
   await expect(summaryValue('Inspected')).toHaveText('1')
   await expect(summaryValue('Completed on time')).toHaveText('1')
   await expect(summaryValue('On-time compliance')).toHaveText('100%')
-  await expect(summaryValue('Field-work completion')).toHaveText(
-    /Jul 28, 2026/,
-  )
+  await expect(summaryValue('Field-work completion')).toHaveText(/Jul 28, 2026/)
   await expect(summaryValue('Submitted timestamp')).toHaveText(/Jul 29, 2026/)
   const acknowledgementCard = page
     .getByRole('heading', { name: 'Acknowledge whole PM batch' })
@@ -287,9 +284,13 @@ test('demonstrates the submitted PM batch acknowledgement review workflow', asyn
     ),
   ).toBeVisible()
   await expect(page.getByText('FE-TEST-001', { exact: true })).toBeVisible()
-  await expect(page.getByText('Main Building · Main hallway', { exact: true })).toBeVisible()
+  await expect(
+    page.getByText('Main Building · Main hallway', { exact: true }),
+  ).toBeVisible()
   await expect(page.getByText('Not operational', { exact: true })).toBeVisible()
-  await expect(page.getByText('Pressure is low.', { exact: true })).toBeVisible()
+  await expect(
+    page.getByText('Pressure is low.', { exact: true }),
+  ).toBeVisible()
   await expect(
     page.getByText('Inspect and recharge the unit.', { exact: true }),
   ).toBeVisible()
@@ -310,8 +311,12 @@ test('demonstrates the submitted PM batch acknowledgement review workflow', asyn
 
   // 9. Open the complete PM form in read-only mode.
   await page.getByRole('link', { name: 'View full PM form' }).click()
-  await expect(page.getByText('Read-only submitted form', { exact: true })).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'Inspection rows' })).toBeVisible()
+  await expect(
+    page.getByText('Read-only submitted form', { exact: true }),
+  ).toBeVisible()
+  await expect(
+    page.getByRole('heading', { name: 'Inspection rows' }),
+  ).toBeVisible()
   await expect(
     page.getByRole('heading', { name: 'Acknowledge whole PM batch' }),
   ).toHaveCount(0)
@@ -321,7 +326,9 @@ test('demonstrates the submitted PM batch acknowledgement review workflow', asyn
     `/app/preventive-maintenance-forms/${formId}/review?department=GSD&assetCategory=fire-extinguisher&pmCycle=2026-07`,
   )
   await page.setViewportSize({ width: 375, height: 667 })
-  const table = page.getByRole('table', { name: 'Submitted batch asset review' })
+  const table = page.getByRole('table', {
+    name: 'Submitted batch asset review',
+  })
   await expect(table).toBeVisible()
   const container = table.locator('..')
   await expect(container).toHaveCSS('overflow-x', 'auto')

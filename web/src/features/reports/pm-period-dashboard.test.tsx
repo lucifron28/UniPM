@@ -160,7 +160,10 @@ describe('PM period dashboard period terminology', () => {
       'href',
       expect.stringContaining(`/app/preventive-maintenance-forms/${formId}?`),
     )
-    expect(link).toHaveAttribute('href', expect.stringContaining('readonly=true'))
+    expect(link).toHaveAttribute(
+      'href',
+      expect.stringContaining('readonly=true'),
+    )
     expect(link).not.toHaveAttribute('href', expect.stringContaining('/review'))
   })
 })

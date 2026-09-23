@@ -14,12 +14,8 @@ import {
   canReviewPreventiveMaintenanceForms,
   type PreventiveMaintenanceForm,
 } from '@/features/preventive-maintenance-forms/form-contract'
-import {
-  AcknowledgeForm,
-} from '@/features/preventive-maintenance-forms/form-detail'
-import {
-  usePreventiveMaintenanceForm,
-} from '@/features/preventive-maintenance-forms/form-queries'
+import { AcknowledgeForm } from '@/features/preventive-maintenance-forms/form-detail'
+import { usePreventiveMaintenanceForm } from '@/features/preventive-maintenance-forms/form-queries'
 import {
   formStatusClass,
   formStatusLabel,
@@ -93,7 +89,9 @@ function detailValue(value: string | null | undefined) {
   return value || 'Not recorded'
 }
 
-function locationValue(asset: Pick<PmPeriodDashboardAssetRowResponse, 'building' | 'location'>) {
+function locationValue(
+  asset: Pick<PmPeriodDashboardAssetRowResponse, 'building' | 'location'>,
+) {
   return (
     [asset.building, asset.location].filter(Boolean).join(' · ') ||
     'Not recorded'
@@ -177,12 +175,20 @@ function Summary({
           </p>
         </div>
         <Badge className={formStatusClass(form.status)}>
-          {status ? formStatusLabel(status as PreventiveMaintenanceForm['status']) : 'No form status'}
+          {status
+            ? formStatusLabel(status as PreventiveMaintenanceForm['status'])
+            : 'No form status'}
         </Badge>
       </div>
       <dl className="grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
-        <DetailItem label="Department" value={batch.department ?? form.department ?? ''} />
-        <DetailItem label="Asset category" value={formatCategory(batch.assetCategory)} />
+        <DetailItem
+          label="Department"
+          value={batch.department ?? form.department ?? ''}
+        />
+        <DetailItem
+          label="Asset category"
+          value={formatCategory(batch.assetCategory)}
+        />
         <DetailItem label="PM cycle" value={formatCycle(batch.pmCycle)} />
         <DetailItem label="Form period" value={formatFormPeriod(form)} />
         <DetailItem label="Scheduled" value={formatNumber(batch.scheduled)} />
@@ -203,7 +209,10 @@ function Summary({
           label="Submitted timestamp"
           value={formatFormDate(batch.submittedAt ?? form.submittedAt)}
         />
-        <DetailItem label="Inspection rows" value={String(form.inspections.length)} />
+        <DetailItem
+          label="Inspection rows"
+          value={String(form.inspections.length)}
+        />
         <DetailItem label="File number" value={form.fileNumber ?? ''} />
       </dl>
     </Card>
@@ -243,17 +252,22 @@ function AssetReviewList({
             <caption className="sr-only">Submitted batch asset review</caption>
             <thead className="border-b border-[var(--border-soft)] bg-[var(--page-background)]">
               <tr>
-                {['Asset', 'Location', 'Condition', 'Finding', 'Recommendation', 'Action'].map(
-                  (heading) => (
-                    <th
-                      key={heading}
-                      scope="col"
-                      className="px-3 py-3 font-semibold text-[var(--text-primary)]"
-                    >
-                      {heading}
-                    </th>
-                  ),
-                )}
+                {[
+                  'Asset',
+                  'Location',
+                  'Condition',
+                  'Finding',
+                  'Recommendation',
+                  'Action',
+                ].map((heading) => (
+                  <th
+                    key={heading}
+                    scope="col"
+                    className="px-3 py-3 font-semibold text-[var(--text-primary)]"
+                  >
+                    {heading}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
@@ -327,7 +341,8 @@ export function PmAcknowledgementReview({
   const formQuery = usePreventiveMaintenanceForm(formId, canReview && validId)
   const assetCategory = search.assetCategory || formQuery.data?.assetCategory
   const pmCycle = search.pmCycle || formQuery.data?.pmCycle || undefined
-  const department = search.department || formQuery.data?.department || undefined
+  const department =
+    search.department || formQuery.data?.department || undefined
   const dashboardFilters =
     assetCategory && pmCycle
       ? {
@@ -340,8 +355,14 @@ export function PmAcknowledgementReview({
 
   if (currentUser.isPending) {
     return (
-      <div className="space-y-4" role="status" aria-label="Loading review access">
-        <span className="sr-only">Loading preventive-maintenance review access...</span>
+      <div
+        className="space-y-4"
+        role="status"
+        aria-label="Loading review access"
+      >
+        <span className="sr-only">
+          Loading preventive-maintenance review access...
+        </span>
         <Skeleton className="h-9 w-72" />
         <Skeleton className="h-72 w-full" />
       </div>
@@ -377,7 +398,11 @@ export function PmAcknowledgementReview({
 
   if (formQuery.isPending || dashboardQuery.isPending) {
     return (
-      <div className="space-y-4" role="status" aria-label="Loading batch review">
+      <div
+        className="space-y-4"
+        role="status"
+        aria-label="Loading batch review"
+      >
         <span className="sr-only">Loading submitted PM batch review...</span>
         <Skeleton className="h-64 w-full" />
         <Skeleton className="h-72 w-full" />
@@ -386,7 +411,8 @@ export function PmAcknowledgementReview({
   }
 
   if (formQuery.isError || !formQuery.data) {
-    const notFound = formQuery.error instanceof ApiError && formQuery.error.status === 404
+    const notFound =
+      formQuery.error instanceof ApiError && formQuery.error.status === 404
     return (
       <ReviewError
         title={notFound ? 'Form not found' : 'Form unavailable'}
@@ -416,7 +442,8 @@ export function PmAcknowledgementReview({
       candidate.formId === form.id &&
       candidate.assetCategory === assetCategory &&
       candidate.pmCycle === pmCycle &&
-      normalizeDepartment(candidate.department) === normalizeDepartment(department),
+      normalizeDepartment(candidate.department) ===
+        normalizeDepartment(department),
   )
 
   if (!batch) {
