@@ -160,6 +160,11 @@ test.describe('Inspection review workflows', () => {
     await expect(
       page.getByRole('button', { name: /submit|record/i }),
     ).toHaveCount(0)
+    await page.getByRole('link', { name: 'Back to inspections' }).click()
+    await expect(page).toHaveURL(/isOperational=false/)
+    await expect(page.getByLabel('Recorded operational result')).toHaveValue(
+      'false',
+    )
   })
 
   test('shows asset inspection history and opens the linked source record', async ({

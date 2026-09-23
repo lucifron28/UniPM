@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { CalendarPlus } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
 import {
@@ -8,6 +8,7 @@ import {
   useReactTable,
 } from '@tanstack/react-table'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAssets } from '@/features/assets/asset-queries'
@@ -48,7 +49,16 @@ function SummaryCard({ label, count }: { label: string; count: number }) {
 }
 
 const columnHelper = createColumnHelper<Schedule>()
-const columns = [
+function statusVariant(
+  status: Schedule['status'],
+): 'neutral' | 'success' | 'warning' | 'danger' {
+  if (status === 'Completed') return 'success'
+  if (status === 'Overdue') return 'danger'
+  if (status === 'Due' || status === 'Ongoing') return 'warning'
+  return 'neutral'
+}
+
+const createColumns = (search: ScheduleSearch) => [
   columnHelper.accessor('asset', {
     header: 'Asset',
     cell: ({ row }) => (
@@ -80,7 +90,12 @@ const columns = [
         .filter((value) => value !== null)
         .join(' / ') || 'Not recorded',
   }),
-  columnHelper.accessor('status', { header: 'Recorded status' }),
+  columnHelper.accessor('status', {
+    header: 'Recorded status',
+    cell: ({ getValue }) => (
+      <Badge variant={statusVariant(getValue())}>{getValue()}</Badge>
+    ),
+  }),
   columnHelper.display({
     id: 'location',
     header: 'Location',
@@ -100,6 +115,7 @@ const columns = [
       <Link
         to="/app/schedules/$scheduleId"
         params={{ scheduleId: row.original.id }}
+        search={search}
         className="font-semibold text-[var(--primary)] hover:underline"
       >
         View details
@@ -115,7 +131,7 @@ export function ScheduleRegistry({
   search: ScheduleSearch
   onSearchChange: (
     next: ScheduleSearch,
-    options?: { replace?: boolean },
+    options?: { replace?: boolean; preserveScroll?: boolean },
   ) => void
 }) {
   const currentUser = useCurrentUser()
@@ -148,12 +164,31 @@ export function ScheduleRegistry({
     () => records.slice((page - 1) * pageSize, page * pageSize),
     [records, page],
   )
+  const listStart = useRef<HTMLDivElement>(null)
+  const focusAfterPageChange = useRef(false)
+
+  useEffect(() => {
+    if (!focusAfterPageChange.current || !filteredSchedules.isSuccess) return
+    focusAfterPageChange.current = false
+    listStart.current?.focus({ preventScroll: true })
+    listStart.current?.scrollIntoView({ block: 'start' })
+  }, [page, filteredSchedules.isSuccess])
+
+  const changePage = (nextPage: number) => {
+    focusAfterPageChange.current = true
+    onSearchChange(
+      { ...search, page: nextPage > 1 ? nextPage : undefined },
+      { preserveScroll: true },
+    )
+  }
+
+  const tableColumns = useMemo(() => createColumns(search), [search])
 
   // TanStack Table intentionally exposes mutable table methods to the renderer.
   // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
     data: pageData,
-    columns,
+    columns: tableColumns,
     getCoreRowModel: getCoreRowModel(),
   })
 
@@ -338,7 +373,7 @@ export function ScheduleRegistry({
           <div className="flex items-end">
             <Button
               type="button"
-              className="bg-white text-[var(--text-primary)] hover:bg-[var(--page-background)]"
+              variant="secondary"
               onClick={() => onSearchChange({ page: 1 })}
             >
               Clear filters
@@ -407,71 +442,80 @@ export function ScheduleRegistry({
         </Card>
       ) : (
         <div className="space-y-4">
-          <Card className="hidden overflow-hidden p-0 shadow-none md:block">
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[760px] text-left text-sm">
-                <thead className="bg-[var(--page-background)] text-xs tracking-wide text-[var(--text-neutral)] uppercase">
-                  {table.getHeaderGroups().map((headerGroup) => (
-                    <tr key={headerGroup.id}>
-                      {headerGroup.headers.map((header) => (
-                        <th key={header.id} className="px-5 py-3">
-                          {header.isPlaceholder
-                            ? null
-                            : flexRender(
-                                header.column.columnDef.header,
-                                header.getContext(),
-                              )}
-                        </th>
-                      ))}
-                    </tr>
-                  ))}
-                </thead>
-                <tbody className="divide-y divide-[var(--border-soft)]">
-                  {table.getRowModel().rows.map((row) => (
-                    <tr key={row.id}>
-                      {row.getVisibleCells().map((cell) => (
-                        <td key={cell.id} className="px-5 py-4">
-                          {flexRender(
-                            cell.column.columnDef.cell,
-                            cell.getContext(),
-                          )}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </Card>
-          <div className="grid gap-3 md:hidden">
-            {pageData.map((schedule) => (
-              <Card key={schedule.id} className="space-y-3 shadow-none">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <h2 className="font-bold">
-                      {schedule.asset?.assetCode ?? schedule.assetId}
-                    </h2>
-                    <p className="text-xs text-[var(--text-neutral)]">
-                      {schedule.asset?.assetCategory ?? 'Category not recorded'}
-                    </p>
+          <div
+            ref={listStart}
+            tabIndex={-1}
+            aria-label="Schedule results"
+            className="scroll-mt-4 space-y-4 outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary-active)]"
+          >
+            <Card className="hidden overflow-hidden p-0 shadow-none md:block">
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[760px] text-left text-sm">
+                  <thead className="bg-[var(--page-background)] text-xs tracking-wide text-[var(--text-neutral)] uppercase">
+                    {table.getHeaderGroups().map((headerGroup) => (
+                      <tr key={headerGroup.id}>
+                        {headerGroup.headers.map((header) => (
+                          <th key={header.id} className="px-5 py-3">
+                            {header.isPlaceholder
+                              ? null
+                              : flexRender(
+                                  header.column.columnDef.header,
+                                  header.getContext(),
+                                )}
+                          </th>
+                        ))}
+                      </tr>
+                    ))}
+                  </thead>
+                  <tbody className="divide-y divide-[var(--border-soft)]">
+                    {table.getRowModel().rows.map((row) => (
+                      <tr key={row.id}>
+                        {row.getVisibleCells().map((cell) => (
+                          <td key={cell.id} className="px-5 py-4">
+                            {flexRender(
+                              cell.column.columnDef.cell,
+                              cell.getContext(),
+                            )}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+            <div className="grid gap-3 md:hidden">
+              {pageData.map((schedule) => (
+                <Card key={schedule.id} className="space-y-3 shadow-none">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h2 className="font-bold">
+                        {schedule.asset?.assetCode ?? schedule.assetId}
+                      </h2>
+                      <p className="text-xs text-[var(--text-neutral)]">
+                        {schedule.asset?.assetCategory ??
+                          'Category not recorded'}
+                      </p>
+                    </div>
+                    <Badge variant={statusVariant(schedule.status)}>
+                      {schedule.status}
+                    </Badge>
                   </div>
-                  <span className="rounded-full bg-[var(--page-background)] px-2 py-1 text-xs font-semibold">
-                    {schedule.status}
-                  </span>
-                </div>
-                <p className="text-sm text-[var(--text-secondary)]">
-                  {formatScheduleDate(schedule.scheduleDate)} /{' '}
-                  {schedule.periodType}
-                </p>
-                <Link
-                  to="/app/schedules/$scheduleId"
-                  params={{ scheduleId: schedule.id }}
-                  className="inline-block font-semibold text-[var(--primary)] hover:underline"
-                >
-                  View details
-                </Link>
-              </Card>
-            ))}
+                  <p className="text-sm text-[var(--text-secondary)]">
+                    {formatScheduleDate(schedule.scheduleDate)} /{' '}
+                    {schedule.periodType}
+                  </p>
+                  <Link
+                    to="/app/schedules/$scheduleId"
+                    params={{ scheduleId: schedule.id }}
+                    search={search}
+                    className="inline-block font-semibold text-[var(--primary)] hover:underline"
+                  >
+                    View details
+                  </Link>
+                </Card>
+              ))}
+            </div>
           </div>
           <div className="flex items-center justify-between border-t border-[var(--border-soft)] px-5 py-4">
             <p className="text-sm text-[var(--text-secondary)]">
@@ -480,20 +524,17 @@ export function ScheduleRegistry({
             <div className="flex gap-2">
               <Button
                 type="button"
+                variant="secondary"
                 disabled={page <= 1}
-                onClick={() =>
-                  onSearchChange({
-                    ...search,
-                    page: page - 1 > 1 ? page - 1 : undefined,
-                  })
-                }
+                onClick={() => changePage(page - 1)}
               >
                 Previous
               </Button>
               <Button
                 type="button"
+                variant="secondary"
                 disabled={page >= pageCount}
-                onClick={() => onSearchChange({ ...search, page: page + 1 })}
+                onClick={() => changePage(page + 1)}
               >
                 Next
               </Button>

@@ -1,4 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react'
+import { useState } from 'react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -12,7 +13,10 @@ import {
 import { configureApiRuntime } from '@/api/http-client'
 import { ScheduleCreate } from '@/features/schedules/schedule-create'
 import { ScheduleDetail } from '@/features/schedules/schedule-detail'
-import { ScheduleRegistry } from '@/features/schedules/schedule-registry'
+import {
+  ScheduleRegistry,
+  type ScheduleSearch,
+} from '@/features/schedules/schedule-registry'
 import { useAuthStore } from '@/stores/auth-store'
 import { server } from '@/test/server'
 
@@ -152,6 +156,51 @@ describe('schedule workflows', () => {
           url.searchParams.get('to') === '2026-08-31T23:59:59.000Z',
       ),
     ).toBe(true)
+  })
+
+  it('keeps the schedule filter and focuses results after changing pages', async () => {
+    const records = Array.from({ length: 11 }, (_, index) => ({
+      ...schedule,
+      id: `10000000-0000-4000-8000-${(index + 1).toString().padStart(12, '0')}`,
+    }))
+    server.use(http.get(`${base}/schedules`, () => HttpResponse.json(records)))
+    const originalScroll = Element.prototype.scrollIntoView
+    const scrollIntoView = vi.fn()
+    Element.prototype.scrollIntoView = scrollIntoView
+    const onSearchChange = vi.fn()
+
+    function PaginationHarness() {
+      const [search, setSearch] = useState<ScheduleSearch>({
+        status: 'Due',
+        page: 1,
+      })
+      return (
+        <ScheduleRegistry
+          search={search}
+          onSearchChange={(next, options) => {
+            onSearchChange(next, options)
+            setSearch(next)
+          }}
+        />
+      )
+    }
+
+    try {
+      renderWithProviders(<PaginationHarness />)
+      await screen.findByText('Page 1 of 2')
+      await userEvent
+        .setup()
+        .click(screen.getByRole('button', { name: 'Next' }))
+      expect(onSearchChange).toHaveBeenCalledWith(
+        { status: 'Due', page: 2 },
+        { preserveScroll: true },
+      )
+      expect(await screen.findByText('Page 2 of 2')).toBeInTheDocument()
+      expect(screen.getByLabelText('Schedule results')).toHaveFocus()
+      expect(scrollIntoView).toHaveBeenCalledWith({ block: 'start' })
+    } finally {
+      Element.prototype.scrollIntoView = originalScroll
+    }
   })
 
   it('disables failed reference selectors and retries the affected data', async () => {

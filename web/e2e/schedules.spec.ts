@@ -140,6 +140,11 @@ test.describe('Schedule workflows', () => {
     await expect(page).toHaveURL(new RegExp(`/app/schedules/${scheduleId}`))
     await expect(page.getByRole('heading', { name: 'FE-001' })).toBeVisible()
     await expect(page.getByText('Recorded contract only')).toBeVisible()
+    await page.getByRole('link', { name: 'Back to schedules' }).click()
+    await expect(page).toHaveURL(/status=Due/)
+    await expect(page).toHaveURL(/quarter=Q3/)
+    await expect(page).toHaveURL(/year=2026/)
+    await expect(page.getByLabel('Schedule status')).toHaveValue('Due')
   })
 
   test('creates a schedule with only approved fields and opens its detail', async ({

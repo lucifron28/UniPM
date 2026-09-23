@@ -1,11 +1,13 @@
 import { Link } from '@tanstack/react-router'
 import { ZodError } from 'zod'
 import { ApiError } from '@/api/problem-details'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAsset } from '@/features/assets/asset-queries'
 import { useInspection } from '@/features/inspections/inspection-queries'
+import type { InspectionSearch } from '@/features/inspections/inspection-registry'
 import {
   formatInspectionDate,
   inspectionOutcome,
@@ -34,10 +36,12 @@ function DetailError({
   title,
   message,
   retry,
+  registrySearch,
 }: {
   title: string
   message: string
   retry?: (() => void) | undefined
+  registrySearch: InspectionSearch
 }) {
   return (
     <Card role="alert" className="border-[var(--error)] p-6 shadow-none">
@@ -49,11 +53,10 @@ function DetailError({
             Retry
           </Button>
         )}
-        <Button
-          asChild
-          className="bg-white text-[var(--text-primary)] hover:bg-[var(--page-background)]"
-        >
-          <Link to="/app/inspections">Return to inspections</Link>
+        <Button asChild variant="secondary">
+          <Link to="/app/inspections" search={registrySearch}>
+            Return to inspections
+          </Link>
         </Button>
       </div>
     </Card>
@@ -63,9 +66,11 @@ function DetailError({
 export function InspectionDetail({
   inspectionId,
   reviewContext,
+  registrySearch = {},
 }: {
   inspectionId: string
   reviewContext?: PmAcknowledgementReviewContext | undefined
+  registrySearch?: InspectionSearch
 }) {
   const isValidId = uuidPattern.test(inspectionId)
   const inspection = useInspection(inspectionId, isValidId)
@@ -83,6 +88,7 @@ export function InspectionDetail({
       <DetailError
         title="Inspection not found"
         message="The inspection link is invalid. No inspection request was made."
+        registrySearch={registrySearch}
       />
     )
   }
@@ -124,6 +130,7 @@ export function InspectionDetail({
                 : 'The inspection record could not be loaded.'
         }
         retry={notFound ? undefined : () => void inspection.refetch()}
+        registrySearch={registrySearch}
       />
     )
   }
@@ -162,6 +169,7 @@ export function InspectionDetail({
       ) : (
         <Link
           to="/app/inspections"
+          search={registrySearch}
           className="text-sm font-semibold text-[var(--primary)] hover:underline"
         >
           Back to inspections
@@ -182,9 +190,12 @@ export function InspectionDetail({
             Recorded {formatInspectionDate(record.dateInspected)}
           </p>
         </div>
-        <span className="inline-flex rounded-full bg-[var(--page-background)] px-3 py-1 text-sm font-semibold">
+        <Badge
+          variant={record.isOperational ? 'success' : 'danger'}
+          className="px-3 text-sm font-semibold"
+        >
           {inspectionOutcome(record.isOperational)}
-        </span>
+        </Badge>
       </div>
 
       <Card className="grid gap-6 shadow-none md:grid-cols-2 lg:grid-cols-3">
