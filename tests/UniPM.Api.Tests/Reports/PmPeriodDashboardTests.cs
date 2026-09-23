@@ -68,6 +68,115 @@ public sealed class PmPeriodDashboardTests
     }
 
     [Fact]
+    public async Task Batch_summary_uses_canonical_scope_and_inspection_source_fields()
+    {
+        const string otherCycle = "2026-07";
+        var deadline = PreventiveMaintenanceCycle.DeadlineForCycle(PmCycle);
+        var lateCompletion = deadline.AddTicks(1);
+        var submittedAt = AtManila(2026, 6, 30);
+        var formId = Guid.Parse("00000000-0000-0000-0000-000000000201");
+
+        var response = await GetClosedDashboardAsync(
+            CreateQuery(),
+            context =>
+            {
+                var main = CreateAsset("FE-BATCH-001", "CCMS", building: "Main");
+                var annex = CreateAsset("FE-BATCH-002", "CCMS", building: "South Annex");
+                var otherDepartment = CreateAsset("FE-BATCH-003", "OTHER");
+                var otherCategory = CreateAsset("FA-BATCH-001", "CCMS", assetCategory: "fire-alarm");
+                var otherCycleAsset = CreateAsset("FE-BATCH-004", "CCMS");
+                var mainSchedule = CreateSchedule(main, PmCycle);
+                var annexSchedule = CreateSchedule(annex, PmCycle);
+                var otherDepartmentSchedule = CreateSchedule(otherDepartment, PmCycle);
+                var otherCategorySchedule = CreateSchedule(otherCategory, PmCycle);
+                var otherCycleSchedule = CreateSchedule(otherCycleAsset, otherCycle);
+                var form = new PreventiveMaintenanceForm
+                {
+                    Id = formId,
+                    AssetCategory = AssetCategory,
+                    Department = "CCMS",
+                    PmCycle = PmCycle,
+                    PeriodType = "Quarter",
+                    Status = PreventiveMaintenanceFormStatusCatalog.Submitted,
+                    CreatedByUserId = Guid.NewGuid(),
+                    SubmittedAt = submittedAt,
+                    FieldWorkCompletedAt = submittedAt.AddDays(10),
+                    CreatedAt = submittedAt.AddDays(-1),
+                    UpdatedAt = submittedAt
+                };
+
+                context.Assets.AddRange(main, annex, otherDepartment, otherCategory, otherCycleAsset);
+                context.PreventiveMaintenanceSchedules.AddRange(
+                    mainSchedule,
+                    annexSchedule,
+                    otherDepartmentSchedule,
+                    otherCategorySchedule,
+                    otherCycleSchedule);
+                context.PreventiveMaintenanceForms.Add(form);
+                context.InspectionRecords.AddRange(
+                    CreateInspection(
+                        mainSchedule,
+                        main,
+                        AtManila(2026, 6, 20),
+                        true,
+                        formId,
+                        "Pressure gauge finding",
+                        "Arrange a pressure check."),
+                    CreateInspection(
+                        annexSchedule,
+                        annex,
+                        lateCompletion,
+                        false,
+                        formId,
+                        "Extinguisher finding",
+                        "Replace the unit."),
+                    CreateInspection(
+                        otherDepartmentSchedule,
+                        otherDepartment,
+                        AtManila(2026, 6, 20),
+                        true),
+                    CreateInspection(
+                        otherCategorySchedule,
+                        otherCategory,
+                        AtManila(2026, 6, 20),
+                        true),
+                    CreateInspection(
+                        otherCycleSchedule,
+                        otherCycleAsset,
+                        AtManila(2026, 6, 20),
+                        true));
+            });
+
+        Assert.Equal(3, response.Scheduled);
+        Assert.Equal(3, response.Assets.Count);
+        Assert.DoesNotContain(response.Assets, asset => asset.AssetCode == "FA-BATCH-001");
+        Assert.DoesNotContain(response.Assets, asset => asset.AssetCode == "FE-BATCH-004");
+
+        var ccmsBatch = Assert.Single(response.Batches, batch => batch.Department == "CCMS");
+        Assert.Equal(AssetCategory, ccmsBatch.AssetCategory);
+        Assert.Equal(PmCycle, ccmsBatch.PmCycle);
+        Assert.Equal(2, ccmsBatch.Scheduled);
+        Assert.Equal(2, ccmsBatch.Inspected);
+        Assert.Equal(1, ccmsBatch.CompletedOnTime);
+        Assert.Equal(50m, ccmsBatch.OnTimeCompliancePercent);
+        Assert.Equal(lateCompletion, ccmsBatch.FieldWorkCompletedAt);
+        Assert.Equal(formId, ccmsBatch.FormId);
+        Assert.Equal("Submitted", ccmsBatch.FormStatus);
+        Assert.Equal(submittedAt, ccmsBatch.SubmittedAt);
+
+        var reviewAsset = Assert.Single(response.Assets, asset => asset.AssetCode == "FE-BATCH-001");
+        Assert.Equal("South Annex", Assert.Single(response.Assets, asset => asset.AssetCode == "FE-BATCH-002").Building);
+        Assert.Equal("Pressure gauge finding", reviewAsset.Remarks);
+        Assert.Equal("Arrange a pressure check.", reviewAsset.ActionsRecommendations);
+        Assert.Equal(formId, reviewAsset.FormId);
+        Assert.NotNull(reviewAsset.InspectionId);
+
+        var otherBatch = Assert.Single(response.Batches, batch => batch.Department == "OTHER");
+        Assert.Equal(1, otherBatch.Scheduled);
+        Assert.Null(otherBatch.FormId);
+    }
+
+    [Fact]
     public async Task Batch_totals_remain_complete_under_asset_display_filters()
     {
         var filtered = await GetClosedDashboardAsync(
@@ -217,6 +326,9 @@ public sealed class PmPeriodDashboardTests
         Assert.Equal(PmPeriodDashboardFilterCatalog.OnTime, acknowledged.Timeliness);
         Assert.Equal(2, response.CompletedOnTime);
         Assert.Equal(40m, response.OnTimeCompliancePercent);
+        var batch = Assert.Single(response.Batches, candidate => candidate.Department == "CCMS");
+        Assert.Equal(50m, batch.OnTimeCompliancePercent);
+        Assert.Equal(response.Deadline, batch.FieldWorkCompletedAt);
     }
 
     [Fact]
@@ -358,14 +470,18 @@ public sealed class PmPeriodDashboardTests
         };
     }
 
-    private static Asset CreateAsset(string assetCode, string department)
+    private static Asset CreateAsset(
+        string assetCode,
+        string department,
+        string assetCategory = AssetCategory,
+        string building = "Main")
     {
         return new Asset
         {
             Id = Guid.NewGuid(),
             AssetCode = assetCode,
-            AssetCategory = AssetCategory,
-            Building = "Main",
+            AssetCategory = assetCategory,
+            Building = building,
             Department = department,
             Location = "Lobby",
             Status = "Active"
@@ -394,7 +510,9 @@ public sealed class PmPeriodDashboardTests
         Asset asset,
         DateTimeOffset completedAt,
         bool isOperational,
-        Guid? formId = null)
+        Guid? formId = null,
+        string? remarks = null,
+        string? actionsRecommendations = null)
     {
         return new InspectionRecord
         {
@@ -406,7 +524,9 @@ public sealed class PmPeriodDashboardTests
             CompletedAt = completedAt,
             DateAccomplished = completedAt,
             IsOperational = isOperational,
-            PreventiveMaintenanceFormId = formId
+            PreventiveMaintenanceFormId = formId,
+            Remarks = remarks,
+            ActionsRecommendations = actionsRecommendations
         };
     }
 

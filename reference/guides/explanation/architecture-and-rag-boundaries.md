@@ -1,9 +1,10 @@
-# UniPM Architecture and RAG Boundaries
+# UniPM Architecture and Historical RAG Boundaries
 
-UniPM is a preventive-maintenance system with a bounded maintenance-history
-review feature. The system of record is the ASP.NET Core API and SQL Server;
-retrieval and language-model behavior support human review rather than replace
-maintenance judgment.
+UniPM's current PMIS validation baseline is a preventive-maintenance system.
+The system of record is the ASP.NET Core API and SQL Server. The preserved
+maintenance-history retrieval/RAG implementation is historical and inactive,
+not published by the current runtime. Its documentation describes prior
+controlled development work, not an active product capability.
 
 ## Proposed deployment architecture
 
@@ -39,21 +40,24 @@ Draft -> Submitted -> Acknowledged
 ```
 
 Draft and Submitted rows are workflow data, not official maintenance-history
-evidence. Acknowledged rows become eligible for official history and retrieval.
-Legacy inspections without a form remain eligible for continuity.
+evidence. Acknowledged rows become eligible for acknowledged-only official
+history. Legacy inspections without a form remain eligible for continuity.
 
-Whole-form acknowledgement completes linked schedules and publishes the rows
-through the rebuildable `MaintenanceSearchDocument` projection. Signatory names,
-positions, signatures, signature data, and checksums are deliberately excluded
-from search documents, embeddings, prompts, and corrective-handoff responses.
+Field-work completion is recorded in `InspectionRecord.CompletedAt` and completes
+linked schedules before form submission. Whole-form acknowledgement records
+receipt/noting, does not alter execution or compliance timestamps, does not
+complete schedules, and makes completed rows eligible for acknowledged-only
+official history. Signatory names, positions, signatures, signature data, and
+checksums are deliberately excluded from preserved search documents, embeddings,
+prompts, and corrective-handoff responses.
 
 Corrective-action handoff preparation stops at a source-traceable read model for
 GSD manual follow-up. UniPM does not create, process, approve, monitor, or track
 RMRFs and does not integrate directly with the external Work Management System.
 
-## Retrieval Pipeline
+## Historical Retrieval Pipeline
 
-The implemented maintenance-review path follows this bounded shape:
+The preserved maintenance-review implementation followed this bounded shape:
 
 ```text
 finding
@@ -73,21 +77,21 @@ set; the ASP.NET Core backend calculates cosine similarity in memory. RRF
 combines eligible lexical and semantic ranks using the implemented deterministic
 configuration. Query vectors are transient and are never persisted.
 
-The semantic channel is a required target channel of the architecture, but its
-provider is operationally optional. When embeddings are unavailable, the review
-path reports degradation and uses lexical retrieval without labeling the result
-as hybrid. Core preventive-maintenance workflows do not depend on embeddings or
-an LLM.
+The preserved semantic channel had an optional provider. When embeddings were
+unavailable, that review path reported degradation and used lexical retrieval.
+Core preventive-maintenance workflows do not depend on embeddings or an LLM.
 
-## Current Review Contract Versus Planned Analysis
+## Historical Review Contract Versus Planned Analysis
 
-`POST /api/v1/maintenance-review` is implemented as an authenticated,
-source-bounded review/summarization contract. It accepts a finding and target
-asset, retrieves related acknowledged evidence, and may return an optional cited
-summary. It does not calculate the broader inspection-history analysis model.
+The historical `POST /api/v1/maintenance-review` contract was an authenticated,
+source-bounded review/summarization path. It accepted a finding and target asset,
+retrieved related acknowledged evidence, and could return an optional cited
+summary. The current runtime does not publish this endpoint or its generated
+client operation.
 
 The planned RAG-assisted inspection-history analysis capability is a separate
-future service. SQL and deterministic application code must calculate its
+post-validation direction pending professor/adviser confirmation. If it is
+approved later, SQL and deterministic application code must calculate its
 authoritative counts, denominators, percentages, recurrence intervals,
 timelines, and groupings. Planned analyses include recurring findings,
 condition frequencies, time comparisons, cross-asset patterns, location and
@@ -107,9 +111,9 @@ Every future analysis output is expected to include:
 - supporting acknowledged source records and locators;
 - limitations and no-diagnosis wording.
 
-The planned capability is documented in
+The historical/planned capability is documented in
 [`reference/planning/rag-assisted-inspection-history-analysis.md`](../../planning/rag-assisted-inspection-history-analysis.md)
-and must not be described as an existing endpoint.
+and must not be described as an existing endpoint or active product capability.
 
 ## Privacy and Evidence Boundaries
 

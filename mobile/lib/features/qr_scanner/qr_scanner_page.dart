@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
 import 'qr_camera_preview.dart';
+import 'qr_scan_result.dart';
 import 'qr_scanner_controller.dart';
-
 typedef QrPreviewBuilder =
     Widget Function(BuildContext context, ValueChanged<String?> onDetected);
 
@@ -31,7 +31,50 @@ class _QrScannerPageState extends State<QrScannerPage> {
 
   void _useCapturedValue() {
     final value = controller.capturedText;
-    if (value != null) Navigator.of(context).pop(value);
+    if (value != null) Navigator.of(context).pop(QrScanSuccess(value));
+  }
+
+  Future<void> _enterCodeManually() async {
+    final codeController = TextEditingController();
+    final code = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Enter Asset Code'),
+        content: TextField(
+          key: const Key('manual-asset-code-input'),
+          controller: codeController,
+          autofocus: true,
+          textCapitalization: TextCapitalization.characters,
+          decoration: const InputDecoration(
+            hintText: 'e.g. FE-CS-001',
+            labelText: 'Asset Code',
+          ),
+          onSubmitted: (val) {
+            if (val.trim().isNotEmpty) {
+              Navigator.of(dialogContext).pop(val.trim());
+            }
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            key: const Key('submit-manual-asset-code'),
+            onPressed: () {
+              final val = codeController.text.trim();
+              if (val.isNotEmpty) {
+                Navigator.of(dialogContext).pop(val);
+              }
+            },
+            child: const Text('Find Asset'),
+          ),
+        ],
+      ),
+    );
+    if (!mounted || code == null || code.isEmpty) return;
+    Navigator.of(context).pop(QrManualCodeEntry(code));
   }
 
   @override
@@ -74,13 +117,25 @@ class _QrScannerPageState extends State<QrScannerPage> {
         ),
         Padding(
           padding: const EdgeInsets.all(24),
-          child: SizedBox(
-            width: double.infinity,
-            child: OutlinedButton(
-              key: const Key('cancel-qr-scan'),
-              onPressed: _cancel,
-              child: const Text('Cancel'),
-            ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextButton.icon(
+                key: const Key('enter-code-manually-button'),
+                onPressed: _enterCodeManually,
+                icon: const Icon(Icons.keyboard_alt_outlined),
+                label: const Text('Damaged QR? Enter asset code'),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  key: const Key('cancel-qr-scan'),
+                  onPressed: _cancel,
+                  child: const Text('Cancel'),
+                ),
+              ),
+            ],
           ),
         ),
       ],

@@ -148,6 +148,66 @@ public sealed class AssetReadEndpointsTests
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
+    [Fact]
+    public async Task Get_asset_by_code_returns_asset_response()
+    {
+        await using var application = new TestApplicationFactory();
+        var client = application.CreateClient();
+
+        var created = await CreateAssetAsync(
+            client,
+            "FE-CODE-001",
+            "fire-extinguisher",
+            "North Wing",
+            "GSD",
+            "Room 101");
+
+        var response = await client.GetAsync("/api/v1/assets/by-code/fe-code-001");
+
+        response.EnsureSuccessStatusCode();
+        var asset = await response.Content.ReadFromJsonAsync<AssetResponse>();
+
+        Assert.NotNull(asset);
+        Assert.Equal(created.Id, asset.Id);
+        Assert.Equal("FE-CODE-001", asset.AssetCode);
+    }
+
+    [Fact]
+    public async Task Get_asset_by_code_returns_not_found_for_unknown_code()
+    {
+        await using var application = new TestApplicationFactory();
+        var client = application.CreateClient();
+
+        var response = await client.GetAsync("/api/v1/assets/by-code/NONEXISTENT");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task List_assets_supports_search_and_limit()
+    {
+        await using var application = new TestApplicationFactory();
+        var client = application.CreateClient();
+
+        await CreateAssetAsync(client, "SRCH-001", "fire-extinguisher", "Science", "Chemistry", "Lab 1");
+        await CreateAssetAsync(client, "SRCH-002", "emergency-light", "Engineering", "Civil", "Hall");
+        await CreateAssetAsync(client, "SRCH-003", "fire-alarm", "Science", "Physics", "Basement");
+
+        // Search by building
+        var response = await client.GetAsync("/api/v1/assets?search=Science");
+        response.EnsureSuccessStatusCode();
+        var assets = await response.Content.ReadFromJsonAsync<List<AssetResponse>>();
+        Assert.NotNull(assets);
+        Assert.Equal(2, assets.Count);
+
+        // Search with limit
+        var limitedResponse = await client.GetAsync("/api/v1/assets?search=SRCH&limit=1");
+        limitedResponse.EnsureSuccessStatusCode();
+        var limitedAssets = await limitedResponse.Content.ReadFromJsonAsync<List<AssetResponse>>();
+        Assert.NotNull(limitedAssets);
+        Assert.Single(limitedAssets);
+    }
+
     private static async Task<AssetResponse> CreateAssetAsync(
         HttpClient client,
         string assetCode,

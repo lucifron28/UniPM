@@ -13,7 +13,7 @@ EF enums are intentionally not used.
 | Asset category | `fire-extinguisher`, `fire-alarm`, `emergency-light`, `water-drinking-station` | all four on asset creation and filtering |
 | Asset status | `Active`, `Inactive`, `Retired` | `Active` is the current asset-create default; no status transition command exists |
 | Schedule period | `Quarter`, `Semester`, `Annual`, `Custom` | all four are accepted by schedule creation |
-| Schedule status | `Due`, `Ongoing`, `Completed`, `Overdue`, `Cancelled` | `Due` on schedule creation and `Completed` when an inspection is recorded |
+| Schedule status | `Due`, `Ongoing`, `Completed`, `Overdue`, `Cancelled` | `Due` on schedule creation and `Completed` when the linked inspection records `InspectionRecord.CompletedAt` |
 | Quarter | `Q1`, `Q2`, `Q3`, `Q4` | supplied quarter values on schedule creation |
 | Semester | `First`, `Second`, `Summer` | no current write command; fixture/read-side data only |
 
@@ -50,6 +50,13 @@ The domain-contract migration audits existing rows in this order:
 Asset codes have a unique index. QR values have a filtered unique index for
 non-null values. Schedule code checks do not encode status transitions or
 unconfirmed GSD workflow rules.
+
+## Preventive-maintenance form batch
+
+The canonical PM batch is `Department + Asset Category + PmCycle`; building
+does not split a batch. Field-work completion comes from
+`InspectionRecord.CompletedAt`. Acknowledgement is a separate receipt/noting
+step and does not complete schedules.
 
 ## Deferred Boundaries
 

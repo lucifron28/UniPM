@@ -486,6 +486,36 @@ public sealed class PreventiveMaintenanceFormDraftEndpointsTests
         }
     }
 
+    [Theory]
+    [InlineData(AuthRoleCatalog.Inspector, "own", HttpStatusCode.Created)]
+    [InlineData(AuthRoleCatalog.Inspector, "unassigned", HttpStatusCode.Created)]
+    [InlineData(AuthRoleCatalog.Inspector, "other", HttpStatusCode.Forbidden)]
+    [InlineData(AuthRoleCatalog.Gsd, "other", HttpStatusCode.Created)]
+    public async Task Adding_an_inspection_enforces_schedule_assignment(
+        string role,
+        string assignment,
+        HttpStatusCode expectedStatus)
+    {
+        await using var application = new TestApplicationFactory(role);
+        using var client = application.CreateClient();
+        await application.EnsureAuthenticatedUserAsync();
+        var schedule = await application.SeedScheduleAsync("fire-extinguisher");
+        Guid? assignedToUserId = assignment switch
+        {
+            "own" => TestAuthenticationHandler.UserId,
+            "unassigned" => null,
+            _ => Guid.NewGuid()
+        };
+        await application.SetScheduleAssigneeAsync(schedule.Id, assignedToUserId);
+        var form = await CreateFormAsync(client, "fire-extinguisher");
+
+        var response = await client.PostAsJsonAsync(
+            $"/api/v1/preventive-maintenance-forms/{form.Id}/inspections",
+            DraftInspectionRequest(schedule.Id, "Assignment authorization check"));
+
+        Assert.Equal(expectedStatus, response.StatusCode);
+    }
+
     [Fact]
     public async Task Submitted_rows_are_hidden_while_acknowledged_rows_are_official_and_projected()
     {
@@ -1089,6 +1119,16 @@ public sealed class PreventiveMaintenanceFormDraftEndpointsTests
             var schedule = await context.PreventiveMaintenanceSchedules.SingleAsync(candidate => candidate.Id == scheduleId);
             schedule.Status = status;
             schedule.CompletedAt = completedAt;
+            await context.SaveChangesAsync();
+        }
+
+        public async Task SetScheduleAssigneeAsync(Guid scheduleId, Guid? assignedToUserId)
+        {
+            await using var scope = Services.CreateAsyncScope();
+            var contextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
+            await using var context = await contextFactory.CreateDbContextAsync();
+            var schedule = await context.PreventiveMaintenanceSchedules.SingleAsync(candidate => candidate.Id == scheduleId);
+            schedule.AssignedToUserId = assignedToUserId;
             await context.SaveChangesAsync();
         }
 

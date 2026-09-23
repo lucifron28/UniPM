@@ -147,6 +147,7 @@ builder.Services.AddSingleton<SyntheticMaintenanceSeedOptions>();
 builder.Services.AddSingleton<SyntheticMaintenanceDatasetValidator>();
 builder.Services.AddSingleton<SyntheticMaintenanceDatasetLoader>();
 builder.Services.AddScoped<SyntheticMaintenanceSeeder>();
+builder.Services.AddScoped<DevelopmentDemoSeeder>();
 builder.Services.AddScoped<ReferenceDocumentRegistrationService>();
 builder.Services.AddScoped<SyntheticReferenceDocumentSeeder>();
 builder.Services.AddSingleton<MaintenanceIssueLexiconOptions>();
@@ -216,6 +217,8 @@ if (maintenanceCommand != SyntheticMaintenanceCommand.None)
             SyntheticMaintenanceCommand.Seed
             or SyntheticMaintenanceCommand.Reset
             or SyntheticMaintenanceCommand.SeedDevelopmentUsers
+            or SyntheticMaintenanceCommand.SeedDemo
+            or SyntheticMaintenanceCommand.ResetDemo
             or SyntheticMaintenanceCommand.SeedReferenceDocuments
             or SyntheticMaintenanceCommand.ResetReferenceDocuments)
         && !app.Environment.IsDevelopment())
@@ -273,6 +276,23 @@ if (maintenanceCommand != SyntheticMaintenanceCommand.None)
             var result = await seeder.SeedAsync();
             await Console.Out.WriteLineAsync(
                 $"Development users ready ({result.RolesCreated} roles created, {result.UsersCreated} users created, {result.RoleAssignmentsRepaired} role assignments repaired, {result.UsersReactivated} users reactivated).");
+        }
+        else if (maintenanceCommand is SyntheticMaintenanceCommand.SeedDemo
+                 or SyntheticMaintenanceCommand.ResetDemo)
+        {
+            var seeder = scope.ServiceProvider.GetRequiredService<DevelopmentDemoSeeder>();
+            if (maintenanceCommand == SyntheticMaintenanceCommand.SeedDemo)
+            {
+                var result = await seeder.SeedAsync();
+                await Console.Out.WriteLineAsync(
+                    $"Demo data ready ({result.Assets} assets, {result.Schedules} schedules, {result.Inspections} inspections, {result.Forms} forms, {result.Acknowledgements} acknowledgement).");
+            }
+            else
+            {
+                var result = await seeder.ResetAsync();
+                await Console.Out.WriteLineAsync(
+                    $"Demo data removed ({result.AssetsRemoved} assets, {result.SchedulesRemoved} schedules, {result.InspectionsRemoved} inspections, {result.FormsRemoved} forms, {result.AcknowledgementsRemoved} acknowledgements).");
+            }
         }
         else if (maintenanceCommand is SyntheticMaintenanceCommand.SeedReferenceDocuments
                  or SyntheticMaintenanceCommand.ResetReferenceDocuments)

@@ -2,6 +2,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text.RegularExpressions;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using UniPM.Api.Data;
@@ -501,6 +502,7 @@ public static class PreventiveMaintenanceFormEndpoints
             Guid id,
             DraftInspectionRowDto dto,
             ClaimsPrincipal principal,
+            IAuthorizationService authorizationService,
             IDbContextFactory<ApplicationDbContext> factory,
             CancellationToken cancellationToken) =>
         {
@@ -534,6 +536,15 @@ public static class PreventiveMaintenanceFormEndpoints
             if (schedule is null)
             {
                 return ApiErrors.NotFound("Schedule not found.");
+            }
+
+            var scheduleAccess = await authorizationService.AuthorizeAsync(
+                principal,
+                schedule,
+                AuthPolicyCatalog.CanInspectPreventiveMaintenanceSchedule);
+            if (!scheduleAccess.Succeeded)
+            {
+                return Results.Forbid();
             }
 
             if (schedule.Asset is null)

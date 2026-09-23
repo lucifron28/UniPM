@@ -1,13 +1,11 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { FormDetail } from '@/features/preventive-maintenance-forms/form-detail'
+import { createFileRoute, Outlet } from '@tanstack/react-router'
 
 export const Route = createFileRoute(
   '/app/preventive-maintenance-forms/$formId',
 )({
-  component: FormDetailPage,
+  component: FormDetailLayout,
 })
 
-function FormDetailPage() {
-  const { formId } = Route.useParams()
-  return <FormDetail formId={formId} />
+function FormDetailLayout() {
+  return <Outlet />
 }

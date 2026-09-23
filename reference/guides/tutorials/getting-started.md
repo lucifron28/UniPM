@@ -105,7 +105,9 @@ generated API client and the backend's browser refresh-cookie contract.
 ## 5. Start the Mobile Client
 
 The Flutter app is Android-first and currently supports memory-only
-authentication plus the initial Draft preventive-maintenance form workflow:
+authentication, QR-based asset lookup, acknowledged-only history, the
+multi-row Draft form workflow, whole-form submission, submitted-form review,
+and whole-form acknowledgement:
 
 ```powershell
 cd mobile

@@ -72,6 +72,7 @@ class _ScannedAssetPmEntryState extends State<ScannedAssetPmEntry> {
       final applicable = values
           .where((schedule) => schedule.assetId == widget.asset.id)
           .where((schedule) => _applicableStatuses.contains(schedule.status))
+          .where(_canAccessSchedule)
           .toList(growable: false);
       setState(() {
         schedules = applicable;
@@ -208,13 +209,13 @@ class _ScannedAssetPmEntryState extends State<ScannedAssetPmEntry> {
               _PmError(message: errorMessage!, onRetry: _retry)
             else if (schedules.isEmpty)
               const Text(
-                'No applicable PM schedules are available for this asset.',
+                'No PM task is available to the current user for this asset.',
                 key: Key('pm-schedule-empty'),
               )
             else ...[
               if (schedules.length == 1)
                 _ScheduleSummary(schedule: schedules.single)
-              else
+              else ...[
                 DropdownButtonFormField<String>(
                   key: const Key('pm-schedule-select'),
                   initialValue: selectedSchedule?.id,
@@ -229,6 +230,11 @@ class _ScannedAssetPmEntryState extends State<ScannedAssetPmEntry> {
                       .toList(growable: false),
                   onChanged: isResolving ? null : _selectSchedule,
                 ),
+                if (selectedSchedule != null) ...[
+                  const SizedBox(height: 12),
+                  _ScheduleSummary(schedule: selectedSchedule!),
+                ],
+              ],
               if (isResolving) ...[
                 const SizedBox(height: 16),
                 const _PmLoading(label: 'Checking available Draft forms...'),
@@ -326,8 +332,8 @@ class _ScannedAssetPmEntryState extends State<ScannedAssetPmEntry> {
         isOpening
             ? 'Opening...'
             : isResume
-            ? 'Resume PM'
-            : 'Start PM',
+            ? 'Resume Inspection'
+            : 'Start Inspection',
       ),
     );
   }
@@ -338,6 +344,12 @@ class _ScannedAssetPmEntryState extends State<ScannedAssetPmEntry> {
     } else {
       await _resolveSelectedSchedule();
     }
+  }
+
+  bool _canAccessSchedule(ScheduleOption schedule) {
+    return widget.user.roles.contains('GSD') ||
+        schedule.assignedToUserId == null ||
+        schedule.assignedToUserId == widget.user.id;
   }
 }
 
@@ -396,7 +408,20 @@ class _ScheduleSummary extends StatelessWidget {
           style: Theme.of(context).textTheme.labelLarge,
         ),
         const SizedBox(height: 4),
-        Text(_scheduleLabel(schedule), key: const Key('selected-pm-schedule')),
+        Text(
+          '${_dateText(schedule.scheduleDate)} · ${schedule.periodType}',
+          key: const Key('selected-pm-schedule'),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'PM Cycle: ${schedule.pmCycle ?? 'N/A'}',
+          key: const Key('schedule-pm-cycle'),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Schedule status: ${schedule.status}',
+          key: const Key('schedule-status'),
+        ),
       ],
     );
   }

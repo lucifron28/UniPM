@@ -7,6 +7,7 @@ import 'preventive_maintenance_controller.dart';
 import 'preventive_maintenance_form_specs.dart';
 import 'preventive_maintenance_models.dart';
 import 'preventive_maintenance_repository.dart';
+import 'inspection_completion_sheet.dart';
 
 String _formStatusLabel(String status) =>
     status == 'Submitted' ? 'Awaiting acknowledgement' : status;
@@ -310,7 +311,7 @@ class _CreateDraftPageState extends State<_CreateDraftPage> {
     final created = await widget.controller.createDraft(
       CreatePreventiveMaintenanceFormInput(
         assetCategory: assetCategory!,
-        building: _blankToNull(buildingController.text),
+        building: null,
         department: _blankToNull(departmentController.text),
         periodType: periodType!,
         quarter: quarter,
@@ -588,7 +589,10 @@ class _PreventiveMaintenanceDraftPageState
     String? scheduleError,
   ) {
     final canEdit = form.isDraft;
-    final matchingSchedules = schedules
+    final allBatchSchedules = schedules
+        .where(
+          (schedule) => schedule.status.trim().toLowerCase() != 'cancelled',
+        )
         .where((schedule) {
           try {
             return PreventiveMaintenanceGrouping.fromSchedule(
@@ -598,6 +602,8 @@ class _PreventiveMaintenanceDraftPageState
             return false;
           }
         })
+        .toList(growable: false);
+    final unattachedSchedules = allBatchSchedules
         .where(
           (schedule) => !form.inspections.any(
             (inspection) => inspection.scheduleId == schedule.id,
@@ -605,7 +611,7 @@ class _PreventiveMaintenanceDraftPageState
         )
         .toList(growable: false);
     final preselectedScheduleId =
-        matchingSchedules.any(
+        unattachedSchedules.any(
           (schedule) => schedule.id == widget.preselectedScheduleId,
         )
         ? widget.preselectedScheduleId
@@ -693,12 +699,58 @@ class _PreventiveMaintenanceDraftPageState
         if (canEdit && scheduleError == null)
           _AddInspectionCard(
             key: ValueKey('add-${form.inspections.length}'),
-            schedules: matchingSchedules,
+            schedules: unattachedSchedules,
             assetCategory: form.assetCategory,
             preselectedScheduleId: preselectedScheduleId,
             inspectorUserId: widget.controller.user.id,
             isSaving: widget.controller.isSaving,
-            onAdd: widget.controller.addInspection,
+            onAdd: (input) async {
+              final ok = await widget.controller.addInspection(input);
+              if (ok && mounted) {
+                final currentForm = widget.controller.selectedForm;
+                final sched = allBatchSchedules
+                    .cast<ScheduleOption?>()
+                    .firstWhere(
+                      (s) => s?.id == input.scheduleId,
+                      orElse: () => schedules
+                          .cast<ScheduleOption?>()
+                          .firstWhere(
+                            (s) => s?.id == input.scheduleId,
+                            orElse: () => null,
+                          ),
+                    );
+                final assetCode = sched?.asset?.assetCode ?? 'Asset';
+                final dept = currentForm?.department ??
+                    sched?.asset?.department ??
+                    'Department';
+                final cat = currentForm?.assetCategory ??
+                    sched?.asset?.assetCategory ??
+                    'Category';
+                final cycle = currentForm?.pmCycle ?? sched?.pmCycle ?? 'Current';
+                final completedCount = currentForm?.inspections.length ?? 1;
+                final totalCount = allBatchSchedules.isNotEmpty
+                    ? allBatchSchedules.length
+                    : completedCount;
+
+                await InspectionCompletionSheet.show(
+                  this.context,
+                  assetCode: assetCode,
+                  department: dept,
+                  assetCategory: cat,
+                  pmCycle: cycle,
+                  completedCount: completedCount,
+                  totalCount: totalCount,
+                  onNextAsset: () {
+                    Navigator.of(this.context).pop();
+                    Navigator.of(this.context).pop();
+                  },
+                  onViewBatch: () {
+                    Navigator.of(this.context).pop();
+                  },
+                );
+              }
+              return ok;
+            },
           ),
         const SizedBox(height: 16),
         Text(

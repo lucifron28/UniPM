@@ -69,4 +69,40 @@ class AssetQrLookupController extends ChangeNotifier {
     if (_disposed) return;
     notifyListeners();
   }
+
+  Future<void> lookupCode(String code) async {
+    if (_disposed) return;
+
+    status = AssetQrLookupStatus.loading;
+    asset = null;
+    scannedValue = code;
+    errorMessage = null;
+    notifyListeners();
+
+    try {
+      final nextAsset = await repository.getByCode(code);
+      if (_disposed) return;
+      asset = nextAsset;
+      status = AssetQrLookupStatus.success;
+    } on FormatException catch (error) {
+      if (_disposed) return;
+      status = AssetQrLookupStatus.failure;
+      errorMessage = error.message;
+    } on ApiException catch (error) {
+      if (_disposed) return;
+      if (error.statusCode == 404) {
+        status = AssetQrLookupStatus.notFound;
+        errorMessage = 'No asset matches this asset code.';
+      } else {
+        status = AssetQrLookupStatus.failure;
+        errorMessage = error.message;
+      }
+    } catch (_) {
+      if (_disposed) return;
+      status = AssetQrLookupStatus.failure;
+      errorMessage = 'The mobile service is unavailable. Please try again.';
+    }
+    if (_disposed) return;
+    notifyListeners();
+  }
 }

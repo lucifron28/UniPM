@@ -9,6 +9,10 @@
 This document summarizes confirmed workflow decisions. It does not replace the
 CPMP manual for procedure details or finalize unrelated institutional policies.
 
+## Milestone status
+
+M1 is finished and merged. M2 is finished and merged. M3 is current.
+
 ## Preventive-Maintenance Workflow
 
 1. GSD creates and manages a preventive-maintenance schedule.
@@ -135,8 +139,9 @@ workflow-validation session.
 No replacement innovation is confirmed by this workflow document. The previous
 RAG-assisted inspection-history direction is historical and inactive.
 
-Schema-constrained natural-language analytics is currently a leading
-post-validation hypothesis, not an approved requirement. It should be adopted
-only if GSD evidence shows repeated, varied analytical questions that remain
-cumbersome even with a competent conventional reporting/filter interface, and
-if the adviser accepts the revised emerging-technology contribution.
+Schema-constrained natural-language analytics is a planned post-validation
+direction pending professor/adviser confirmation, not an approved requirement.
+It should be adopted only if GSD evidence shows repeated, varied analytical
+questions that remain cumbersome even with a competent conventional
+reporting/filter interface, and if the adviser accepts the revised
+emerging-technology contribution.

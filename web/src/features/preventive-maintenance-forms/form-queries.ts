@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   getCorrectiveMaintenanceHandoff,
   getGetCorrectiveMaintenanceHandoffQueryKey,
+  getGetPmPeriodDashboardQueryKey,
   getGetPreventiveMaintenanceFormQueryKey,
   getListPreventiveMaintenanceFormsQueryKey,
   getPreventiveMaintenanceForm,
@@ -64,6 +65,9 @@ export function useAcknowledgePreventiveMaintenanceFormMutation() {
         })
         void queryClient.invalidateQueries({
           queryKey: getGetCorrectiveMaintenanceHandoffQueryKey(variables.id),
+        })
+        void queryClient.invalidateQueries({
+          queryKey: getGetPmPeriodDashboardQueryKey(),
         })
       },
     },

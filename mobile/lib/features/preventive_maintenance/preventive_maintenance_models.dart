@@ -7,6 +7,7 @@ class PreventiveMaintenanceForm {
     required this.assetCategory,
     required this.building,
     required this.department,
+    this.pmCycle,
     required this.periodType,
     required this.quarter,
     required this.semester,
@@ -27,6 +28,7 @@ class PreventiveMaintenanceForm {
   final String assetCategory;
   final String? building;
   final String? department;
+  final String? pmCycle;
   final String periodType;
   final String? quarter;
   final String? semester;
@@ -50,6 +52,7 @@ class PreventiveMaintenanceForm {
       assetCategory: _requiredText(json, 'assetCategory'),
       building: _nullableString(json, 'building'),
       department: _nullableString(json, 'department'),
+      pmCycle: _nullableString(json, 'pmCycle'),
       periodType: _requiredText(json, 'periodType'),
       quarter: _nullableString(json, 'quarter'),
       semester: _nullableString(json, 'semester'),
@@ -79,6 +82,7 @@ class PreventiveMaintenanceForm {
       assetCategory: assetCategory,
       building: building,
       department: department,
+      pmCycle: pmCycle,
       periodType: periodType,
       quarter: quarter,
       semester: semester,
@@ -177,6 +181,7 @@ class ScheduleOption {
     required this.id,
     required this.assetId,
     required this.scheduleDate,
+    this.pmCycle,
     required this.periodType,
     required this.status,
     required this.quarter,
@@ -184,11 +189,13 @@ class ScheduleOption {
     required this.year,
     required this.academicYear,
     required this.asset,
+    this.assignedToUserId,
   });
 
   final String id;
   final String assetId;
   final DateTime scheduleDate;
+  final String? pmCycle;
   final String periodType;
   final String status;
   final String? quarter;
@@ -196,6 +203,7 @@ class ScheduleOption {
   final int? year;
   final String? academicYear;
   final ScheduleAssetOption? asset;
+  final String? assignedToUserId;
 
   factory ScheduleOption.fromJson(Map<String, dynamic> json) {
     final assetJson = json['asset'];
@@ -206,6 +214,7 @@ class ScheduleOption {
       id: _requiredUuid(json, 'id'),
       assetId: _requiredUuid(json, 'assetId'),
       scheduleDate: _requiredDateTime(json, 'scheduleDate'),
+      pmCycle: _nullableString(json, 'pmCycle'),
       periodType: _requiredText(json, 'periodType'),
       status: _requiredText(json, 'status'),
       quarter: _nullableString(json, 'quarter'),
@@ -213,6 +222,7 @@ class ScheduleOption {
       year: _nullableInt(json, 'year'),
       academicYear: _nullableString(json, 'academicYear'),
       asset: ScheduleAssetOption.fromJson(assetJson.cast<String, dynamic>()),
+      assignedToUserId: _nullableUuid(json, 'assignedToUserId'),
     );
   }
 }
@@ -272,6 +282,7 @@ class PreventiveMaintenanceGrouping {
   const PreventiveMaintenanceGrouping({
     required this.assetCategory,
     required this.department,
+    this.pmCycle,
     required this.periodType,
     required this.quarter,
     required this.semester,
@@ -281,6 +292,7 @@ class PreventiveMaintenanceGrouping {
 
   final String assetCategory;
   final String? department;
+  final String? pmCycle;
   final String periodType;
   final String? quarter;
   final String? semester;
@@ -294,6 +306,7 @@ class PreventiveMaintenanceGrouping {
     return PreventiveMaintenanceGrouping(
       assetCategory: asset.assetCategory,
       department: asset.department,
+      pmCycle: schedule.pmCycle,
       periodType: schedule.periodType,
       quarter: schedule.quarter,
       semester: schedule.semester,
@@ -310,6 +323,7 @@ class PreventiveMaintenanceGrouping {
     return PreventiveMaintenanceGrouping(
       assetCategory: asset.assetCategory,
       department: asset.department,
+      pmCycle: schedule.pmCycle,
       periodType: schedule.periodType,
       quarter: schedule.quarter,
       semester: schedule.semester,
@@ -319,6 +333,11 @@ class PreventiveMaintenanceGrouping {
   }
 
   bool matches(PreventiveMaintenanceForm form) {
+    if (pmCycle != null && form.pmCycle != null) {
+      return _sameText(form.pmCycle!, pmCycle!) &&
+          _sameText(form.assetCategory, assetCategory) &&
+          _sameOptionalText(form.department, department);
+    }
     return _sameText(form.assetCategory, assetCategory) &&
         _sameOptionalText(form.department, department) &&
         _sameText(form.periodType, periodType) &&

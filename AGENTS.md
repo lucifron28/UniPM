@@ -193,7 +193,6 @@ Optimize for minimal agent usage.
   environment-related, unrelated, ambiguous, or requires a broader change,
   report the blocker and stop.
 - Do not run lint, formatting, type checking, builds, and tests together.
-- Do not use subagents or parallel agents.
 - Do not perform unrelated refactoring.
 - After the requested change and its permitted verification pass are
   complete, summarize the changes and stop.

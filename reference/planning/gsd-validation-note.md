@@ -1,6 +1,6 @@
 # GSD Validation Session Note
 
-This branch (`validation/pmis-only-gsd`) exists to demonstrate UniPM as a
+This branch (`feature/pm-acknowledgement-review`) exists to demonstrate UniPM as a
 plain preventive-maintenance information system so the University General
 Services Department can validate the actual workflow before any replacement
 innovation is selected. Maintenance-history RAG was previously implemented and
@@ -10,10 +10,15 @@ replacement innovation is proposed or approved yet.
 Use the separate [GSD PMIS demonstration runbook](gsd-pmis-demo-runbook.md) to
 prepare the isolated database, applications, physical device, and walkthrough.
 
+M1 is finished and merged. M2 is finished and merged. M3 is current. The
+canonical PM batch is `Department + Asset Category + PmCycle`; building does
+not split a batch.
+
 ## Demo Flow Shown To GSD
 
-Login -> QR -> schedule -> category form -> multi-row Draft -> submit ->
-Department Head acknowledgement -> schedule completion -> official history.
+Login -> QR -> schedule -> category form -> multi-row Draft -> field-work
+completion (`InspectionRecord.CompletedAt`) -> submit -> Department Head
+acknowledgement -> official history.
 
 The web and mobile clients use the backend as the source of truth for asset
 identity, category, schedules, acknowledgement, completion, and official
@@ -30,10 +35,17 @@ The core preventive-maintenance milestone is complete. The successful manual
 acceptance lifecycle was exercised on the connected Samsung Galaxy A16 against
 the reachable development backend:
 
-`Login -> QR -> schedule -> category form -> multi-row Draft -> submit ->
-Department Head acknowledgement -> schedule completion -> official history`
+`Login -> QR -> schedule -> category form -> multi-row Draft -> field-work
+completion (InspectionRecord.CompletedAt) -> submit -> Department Head
+acknowledgement -> official history`
 
-The detailed execution record is [`TEST-040`](../evidence/test-runs/TEST-040-mobile-core-pm-physical-acceptance.md).
+The field-work completion timestamp completes the linked schedule before form
+submission. Acknowledgement remains a separate receipt/noting step, does not
+alter execution or compliance timestamps, and does not complete schedules.
+
+The detailed mobile/core PM execution record is
+[`TEST-040`](../evidence/test-runs/TEST-040-mobile-core-pm-physical-acceptance.md).
+TEST-040 does not verify the M2 web dashboard.
 This closes the core PM workflow gate; it does not claim production signing,
 store distribution, or IIS deployment.
 
@@ -112,8 +124,8 @@ semantics, and historical revision handling remain subject to GSD validation.
 ### Reports And Information Needs
 
 Use these conversational questions while showing the PMIS. Start with GSD's
-actual work; do not introduce the proposed natural-language feature until the
-last question.
+actual work; do not introduce the planned natural-language analytics direction
+until the last question.
 
 12. Kapag nagre-review po kayo ng inspection results, ano pong information ang
     usually una ninyong tinitingnan?
@@ -128,7 +140,8 @@ last question.
     bang information na mahihirapan kayong hanapin?
 
 Only after the questions above, the interviewer may briefly explain the
-proposal:
+proposal. Natural-language analytics remains a planned direction pending
+professor/adviser confirmation:
 
 > May kino-consider din po kaming option na pwede kayong mag-type ng tanong,
 > tapos ita-translate ng system into supported report filters. Ipapakita rin
@@ -203,7 +216,7 @@ specific technology.
 These questions deliberately avoid presenting natural-language analytics,
 report generation, cryptographic provenance, scheduling optimization, or any
 other emerging technology as a decided requirement. Innovation selection is
-based on GSD evidence and adviser approval.
+based on GSD evidence and professor/adviser confirmation.
 
 ## Known Demo Limitations
 
@@ -223,7 +236,10 @@ based on GSD evidence and adviser approval.
   persistent session restoration are deferred and are not blockers for the core
   PM milestone; the current mobile session remains memory-only.
 - Maintenance-history RAG, semantic search, embeddings, and AI summaries are
-  intentionally absent from this baseline and remain deferred/out of scope.
+  historical/inactive or otherwise absent from this baseline and remain
+  deferred/out of scope.
+- Natural-language analytics is a planned direction pending
+  professor/adviser confirmation, not a current implementation requirement.
 - No WMS/RMRF integration exists by confirmed boundary; handoff ends at manual
   encoding preparation.
 

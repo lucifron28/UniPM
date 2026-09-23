@@ -2024,6 +2024,8 @@
           "inspectionCompletedAt",
           "timeliness",
           "condition",
+          "remarks",
+          "actionsRecommendations",
           "formId",
           "formStatus",
           "isAcknowledged",
@@ -2088,6 +2090,12 @@
           "condition": {
             "type": "string"
           },
+          "remarks": {
+            "type": ["null", "string"]
+          },
+          "actionsRecommendations": {
+            "type": ["null", "string"]
+          },
           "formId": {
             "type": ["null", "string"],
             "format": "uuid"
@@ -2112,12 +2120,14 @@
           "scheduled",
           "inspected",
           "completedOnTime",
+          "onTimeCompliancePercent",
           "completedLate",
           "notCompleted",
           "remaining",
           "formId",
           "formStatus",
           "fileNumber",
+          "fieldWorkCompletedAt",
           "submittedAt",
           "isAcknowledged",
           "acknowledgedAt"
@@ -2148,6 +2158,11 @@
             "type": ["integer", "string"],
             "format": "int32"
           },
+          "onTimeCompliancePercent": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": ["null", "number", "string"],
+            "format": "double"
+          },
           "completedLate": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": ["integer", "string"],
@@ -2172,6 +2187,10 @@
           },
           "fileNumber": {
             "type": ["null", "string"]
+          },
+          "fieldWorkCompletedAt": {
+            "type": ["null", "string"],
+            "format": "date-time"
           },
           "submittedAt": {
             "type": ["null", "string"],

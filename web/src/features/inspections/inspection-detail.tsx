@@ -12,6 +12,7 @@ import {
 } from '@/features/inspections/inspection-presentation'
 import { useSchedule } from '@/features/schedules/schedule-queries'
 import { formatScheduleDate } from '@/features/schedules/schedule-presentation'
+import type { PmAcknowledgementReviewContext } from '@/features/preventive-maintenance-forms/pm-acknowledgement-review'
 
 const uuidPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -59,7 +60,13 @@ function DetailError({
   )
 }
 
-export function InspectionDetail({ inspectionId }: { inspectionId: string }) {
+export function InspectionDetail({
+  inspectionId,
+  reviewContext,
+}: {
+  inspectionId: string
+  reviewContext?: PmAcknowledgementReviewContext | undefined
+}) {
   const isValidId = uuidPattern.test(inspectionId)
   const inspection = useInspection(inspectionId, isValidId)
   const asset = useAsset(
@@ -139,12 +146,27 @@ export function InspectionDetail({ inspectionId }: { inspectionId: string }) {
       aria-labelledby="inspection-detail-title"
       className="max-w-5xl space-y-6"
     >
-      <Link
-        to="/app/inspections"
-        className="text-sm font-semibold text-[var(--primary)] hover:underline"
-      >
-        Back to inspections
-      </Link>
+      {reviewContext ? (
+        <Link
+          to="/app/preventive-maintenance-forms/$formId/review"
+          params={{ formId: reviewContext.reviewFormId }}
+          search={{
+            department: reviewContext.department,
+            assetCategory: reviewContext.assetCategory,
+            pmCycle: reviewContext.pmCycle,
+          }}
+          className="text-sm font-semibold text-[var(--primary)] hover:underline"
+        >
+          Back to batch review
+        </Link>
+      ) : (
+        <Link
+          to="/app/inspections"
+          className="text-sm font-semibold text-[var(--primary)] hover:underline"
+        >
+          Back to inspections
+        </Link>
+      )}
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
         <div>
           <p className="text-sm font-semibold tracking-[0.08em] text-[var(--primary)] uppercase">

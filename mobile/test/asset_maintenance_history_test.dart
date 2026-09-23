@@ -86,6 +86,16 @@ class FakeAssetMaintenanceHistoryRepository
 class FakeAssetRepository implements AssetRepository {
   @override
   Future<Asset> getByQr(String scannedValue) async => testAsset();
+
+  @override
+  Future<Asset> getByCode(String assetCode) async => testAsset();
+
+  @override
+  Future<List<Asset>> searchAssets({
+    String? search,
+    String? assetCategory,
+    int limit = 25,
+  }) async => [testAsset()];
 }
 
 void main() {

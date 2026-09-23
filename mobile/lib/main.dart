@@ -8,6 +8,7 @@ import 'features/assets/asset_repository.dart';
 import 'features/maintenance_history/asset_maintenance_history_repository.dart';
 import 'features/preventive_maintenance/preventive_maintenance_repository.dart';
 import 'routing/app_router.dart';
+import 'ui/app_theme.dart';
 
 void main() {
   final config = AppConfig.fromEnvironment();
@@ -68,11 +69,8 @@ class _UniPmAppState extends State<UniPmApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       navigatorKey: _navigatorKey,
-      title: 'UniPM Mobile',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
-        useMaterial3: true,
-      ),
+      title: 'UniPM',
+      theme: AppTheme.lightTheme,
       home: AppRouter(
         sessionController: widget.sessionController,
         assetRepository: widget.assetRepository,

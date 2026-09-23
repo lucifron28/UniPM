@@ -324,6 +324,7 @@ function BatchOverview({
                 'Late',
                 isClosed ? 'Not completed' : 'Remaining',
                 'Form / acknowledgement',
+                'Action',
               ].map((heading) => (
                 <th
                   key={heading}
@@ -374,6 +375,39 @@ function BatchOverview({
                           batch.isAcknowledged,
                         )}
                   </p>
+                </td>
+                <td className="px-3 py-3">
+                  {batch.formId && batch.formStatus === 'Submitted' ? (
+                    <Link
+                      to="/app/preventive-maintenance-forms/$formId/review"
+                      params={{ formId: batch.formId }}
+                      search={{
+                        assetCategory: batch.assetCategory,
+                        pmCycle: batch.pmCycle,
+                        ...(batch.department
+                          ? { department: batch.department }
+                          : {}),
+                      }}
+                      className="font-semibold text-[var(--primary)] underline-offset-2 hover:underline focus-visible:rounded focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:outline-none"
+                    >
+                      Review batch
+                    </Link>
+                  ) : batch.formId ? (
+                    <Link
+                      to="/app/preventive-maintenance-forms/$formId"
+                      params={{ formId: batch.formId }}
+                      search={{
+                        readonly: batch.formStatus === 'Acknowledged',
+                      }}
+                      className="font-semibold text-[var(--primary)] underline-offset-2 hover:underline focus-visible:rounded focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:outline-none"
+                    >
+                      View batch
+                    </Link>
+                  ) : (
+                    <span className="text-xs text-[var(--text-neutral)]">
+                      No form action
+                    </span>
+                  )}
                 </td>
               </tr>
             ))}

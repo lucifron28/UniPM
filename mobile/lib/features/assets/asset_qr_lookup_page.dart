@@ -20,6 +20,7 @@ class AssetQrLookupPage extends StatefulWidget {
     super.key,
     required this.repository,
     required this.scannedValue,
+    this.isCodeLookup = false,
     this.controller,
     this.scannerLauncher,
     this.preventiveMaintenanceRepository,
@@ -29,6 +30,7 @@ class AssetQrLookupPage extends StatefulWidget {
 
   final AssetRepository repository;
   final String scannedValue;
+  final bool isCodeLookup;
   final AssetQrLookupController? controller;
   final QrScannerLauncher? scannerLauncher;
   final PreventiveMaintenanceRepository? preventiveMaintenanceRepository;
@@ -47,9 +49,16 @@ class _AssetQrLookupPageState extends State<AssetQrLookupPage> {
   @override
   void initState() {
     super.initState();
-    unawaited(controller.lookup(widget.scannedValue));
+    _performLookup(widget.scannedValue);
   }
 
+  void _performLookup(String value) {
+    if (widget.isCodeLookup) {
+      unawaited(controller.lookupCode(value));
+    } else {
+      unawaited(controller.lookup(value));
+    }
+  }
   @override
   void dispose() {
     if (ownsController) controller.dispose();
@@ -63,7 +72,7 @@ class _AssetQrLookupPageState extends State<AssetQrLookupPage> {
               MaterialPageRoute<String>(builder: (_) => const QrScannerPage()),
             ));
     if (!mounted || scannedValue == null) return;
-    await controller.lookup(scannedValue);
+    _performLookup(scannedValue);
   }
 
   @override
@@ -96,7 +105,7 @@ class _AssetQrLookupPageState extends State<AssetQrLookupPage> {
                 },
                 message: controller.errorMessage!,
                 canRetry: controller.status == AssetQrLookupStatus.failure,
-                onRetry: () => controller.lookup(controller.scannedValue!),
+                onRetry: () => _performLookup(controller.scannedValue!),
                 onScanAnother: _scanAnother,
               ),
             };

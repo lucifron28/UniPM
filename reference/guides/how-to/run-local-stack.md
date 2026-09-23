@@ -1,7 +1,11 @@
-# Run the Local Stack and Rebuild Retrieval Data
+# Run the Local Stack and Rebuild Historical Retrieval Data
 
 Use this guide when the API needs a repeatable local database setup, fictional
 maintenance data, or refreshed lexical and semantic projections.
+
+The retrieval rebuild commands and maintenance-review notes below document
+preserved historical/inactive infrastructure. They are not part of the current
+published PMIS runtime.
 
 ## Use the Supported Database Baseline
 
@@ -71,8 +75,8 @@ dotnet run --project server
 
 Check the health endpoint exposed by the current API configuration, then use
 the authenticated API routes described in the [capability reference](../reference/system-capabilities.md).
-The maintenance-review endpoint is disabled in committed configuration and
-requires explicit enablement and authorization.
+The historical maintenance-review contract is not published by the current
+runtime.
 
 ## Reset Fictional Records
 
@@ -108,11 +112,11 @@ experiment.
 ## Common Boundaries
 
 - Core form workflows do not depend on embeddings or an LLM.
-- Draft and Submitted form rows are excluded from official history and
-  retrieval; Acknowledged rows are eligible.
+- Draft and Submitted form rows are excluded from official history. Acknowledged
+  rows are eligible for official history; preserved retrieval remains inactive.
 - Signature and signatory fields never enter retrieval documents, embeddings,
   prompts, or corrective-handoff responses.
-- The planned inspection-history analysis is not implemented by the current
-  maintenance-review endpoint.
+- The planned inspection-history analysis is not implemented, and the historical
+  maintenance-review contract is not published by the current runtime.
 - IIS production deployment, final RBAC, audit persistence, institutional source
   authorization, and offline-sync architecture remain unverified or deferred.

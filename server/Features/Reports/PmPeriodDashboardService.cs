@@ -86,7 +86,9 @@ internal sealed class PmPeriodDashboardService(
                     inspection.ScheduleId,
                     inspection.PreventiveMaintenanceFormId,
                     inspection.CompletedAt,
-                    inspection.IsOperational))
+                    inspection.IsOperational,
+                    inspection.Remarks,
+                    inspection.ActionsRecommendations))
                 .ToListAsync(cancellationToken);
 
         var forms = await context.PreventiveMaintenanceForms
@@ -145,7 +147,7 @@ internal sealed class PmPeriodDashboardService(
             .OrderBy(group => group.Key.Department, StringComparer.Ordinal)
             .ThenBy(group => group.Key.AssetCategory, StringComparer.Ordinal)
             .ThenBy(group => group.Key.PmCycle, StringComparer.Ordinal)
-            .Select(group => ToBatchResponse(group, forms))
+            .Select(group => ToBatchResponse(group, forms, complianceMeasurable))
             .ToArray();
 
         var normalizedDepartment = department;
@@ -255,6 +257,8 @@ internal sealed class PmPeriodDashboardService(
             inspection?.CompletedAt,
             timeliness,
             condition,
+            inspection?.Remarks,
+            inspection?.ActionsRecommendations,
             form?.Id,
             form?.Status,
             form?.Acknowledgement is not null,
@@ -317,7 +321,8 @@ internal sealed class PmPeriodDashboardService(
 
     private static PmPeriodDashboardBatchResponse ToBatchResponse(
         IGrouping<BatchKey, DashboardRow> group,
-        IReadOnlyList<PreventiveMaintenanceForm> forms)
+        IReadOnlyList<PreventiveMaintenanceForm> forms,
+        bool complianceMeasurable)
     {
         var form = group
             .Select(row => row.Form)
@@ -334,13 +339,26 @@ internal sealed class PmPeriodDashboardService(
                 .ThenBy(candidate => candidate.Id)
                 .FirstOrDefault();
 
+        var scheduled = group.Count();
+        var completedOnTime = group.Count(row => row.Timeliness == PmPeriodDashboardFilterCatalog.OnTime);
+        var fieldWorkCompletedAt = form is null
+            ? null
+            : group
+                .Where(row => row.Inspection?.FormId == form.Id)
+                .Select(row => row.Inspection?.CompletedAt)
+                .Max();
+        decimal? onTimeCompliancePercent = complianceMeasurable && scheduled > 0
+            ? ToPercent(completedOnTime, scheduled)
+            : null;
+
         return new PmPeriodDashboardBatchResponse(
             group.Key.Department,
             group.Key.AssetCategory,
             group.Key.PmCycle,
-            group.Count(),
+            scheduled,
             group.Count(row => row.IsInspected),
-            group.Count(row => row.Timeliness == PmPeriodDashboardFilterCatalog.OnTime),
+            completedOnTime,
+            onTimeCompliancePercent,
             group.Count(row => row.Timeliness == PmPeriodDashboardFilterCatalog.Late),
             group.Count(row => row.Timeliness == PmPeriodDashboardFilterCatalog.NotCompleted),
             group.Count(row => row.Timeliness is
@@ -349,6 +367,7 @@ internal sealed class PmPeriodDashboardService(
             form?.Id,
             form?.Status,
             form?.FileNumber,
+            fieldWorkCompletedAt,
             form?.SubmittedAt,
             form?.Acknowledgement is not null,
             form?.Acknowledgement?.AcknowledgedAt);
@@ -432,7 +451,9 @@ internal sealed class PmPeriodDashboardService(
         Guid ScheduleId,
         Guid? FormId,
         DateTimeOffset? CompletedAt,
-        bool IsOperational);
+        bool IsOperational,
+        string? Remarks,
+        string? ActionsRecommendations);
 
     private sealed record DashboardRow(
         string? Department,

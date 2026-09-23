@@ -1,10 +1,15 @@
 # Current Priorities - PMIS Validation Baseline
 
 Read `AGENTS.md` first. These priorities apply to the
-`validation/pmis-only-gsd` branch.
+`feature/pm-acknowledgement-review` branch.
 
-The core PM milestone is complete and its physical-device acceptance is recorded
-in [`TEST-040`](../evidence/test-runs/TEST-040-mobile-core-pm-physical-acceptance.md).
+## Milestone status
+
+M1 and M2 are finished and merged. [`TEST-040`](../evidence/test-runs/TEST-040-mobile-core-pm-physical-acceptance.md)
+records the mobile/core PM physical-device acceptance for M2; it does not
+verify the M2 web dashboard. M3 is current. This document tracks the PMIS-only
+GSD validation work for M3.
+
 The active priority order is now:
 
 1. keep the branch runnable;
@@ -18,6 +23,12 @@ Maintenance-history RAG was previously implemented and evaluated as controlled
 development work. On this branch it is historical, inactive infrastructure:
 preserved for understanding and rollback, excluded from the validation
 runtime, and not to be extended.
+
+The canonical PM batch is `Department + Asset Category + PmCycle`; building
+does not split a batch. PM execution completion comes from
+`InspectionRecord.CompletedAt`. Acknowledgement is a separate receipt/noting
+step, does not alter execution or compliance timestamps, and does not complete
+schedules.
 
 ## Current Status
 
@@ -38,13 +49,12 @@ runtime, and not to be extended.
 - `MaintenanceSearchDocument`: done as a persisted, rebuildable projection.
 - Domain contracts: done for stable categories, statuses, schedule codes, and
   seed-only actor tokens, with canonical storage and SQL Server migration checks.
-- SQL Server FTS retrieval: complete as an internal service over
-  `MaintenanceSearchDocument.SearchText`. It does not expose a standalone public
-  search endpoint; fused retrieval feeds the bounded maintenance-review endpoint.
-- Semantic retrieval: complete as an internal channel over cached
-  `MaintenanceSearchDocument` embeddings; its provider is operationally
-  optional and degradable. It remains internal while the authenticated review
-  endpoint consumes fused retrieval when enabled.
+- SQL Server FTS retrieval: preserved historical/inactive infrastructure over
+  `MaintenanceSearchDocument.SearchText`. It is not published by the current
+  runtime.
+- Semantic retrieval: preserved historical/inactive infrastructure over cached
+  `MaintenanceSearchDocument` embeddings. It is not published by the current
+  runtime.
 - Retrieval benchmark: lexical baseline executed and preserved; semantic and
   fused orchestration are implemented and deterministically tested, while real
   semantic/fused model-quality evidence remains pending a configured provider.
@@ -54,9 +64,9 @@ runtime, and not to be extended.
 - Engineering-evidence workflow: complete with source-inspected chronology,
   architecture decisions, a fresh backend test record, and an executed lexical
   baseline.
-- Source-bounded maintenance review and summarization: complete as an
-  authenticated, source-returning, provider-neutral MVP when explicitly
-  enabled.
+- Source-bounded maintenance review and summarization: historical/inactive
+  provider-neutral development work preserved for reference; it is not
+  published by the current runtime.
 - Authentication scaffolding: complete with IdentityCore, JWT bearer access
   tokens, five provisional roles, Development user seeding, and policy-
   protected operational writes.
@@ -79,14 +89,22 @@ runtime, and not to be extended.
   from the evaluated MVP.
 - Confirmed preventive-maintenance workflow: complete in the backend. One form
   contains multiple inspection rows; its lifecycle is `Draft -> Submitted ->
-  Acknowledged`. Only acknowledgement completes linked schedules and publishes
-  rows to official history and retrieval. Corrective-action handoff preparation
-  ends before manual WMS encoding; UniPM does not process RMRFs or integrate
-  with the WMS.
+  Acknowledged`. Field-work completion is recorded on each
+  `InspectionRecord.CompletedAt` and completes linked schedules before form
+  submission. Acknowledgement records separate receipt/noting, does not alter
+  execution or compliance timestamps, and does not complete schedules. It makes
+  completed rows eligible for acknowledged-only official history. It does not
+  activate the preserved maintenance-history retrieval infrastructure, which
+  remains historical and inactive and is not actively published. Corrective-action
+  handoff
+  preparation ends before manual WMS encoding; UniPM does not process RMRFs or
+  integrate with the WMS.
 - RAG-assisted inspection-history analysis: planned in the previous phase,
   never implemented, and no longer an active direction. Its design record is
   preserved unchanged in
   [`rag-assisted-inspection-history-analysis.md`](rag-assisted-inspection-history-analysis.md).
+- Natural-language analytics is a planned direction pending professor/adviser
+  confirmation after GSD validation; it is not implemented on this branch.
 - Flutter mobile field workflow: implemented and merged in the partner-owned
   workstream, including memory-only authentication, QR-based asset entry,
   acknowledged-only official asset history, the four supplied authoritative
@@ -104,8 +122,8 @@ runtime, and not to be extended.
 The active boundary for this branch is documented in
 [`mvp-definition.md`](mvp-definition.md): the PMIS-only GSD validation
 baseline. The previously implemented `POST /api/v1/maintenance-review`
-capability is historical and inactive (mapped only when explicitly enabled;
-disabled in committed configuration).
+capability is historical and inactive and is not actively published (mapped only
+when explicitly enabled; disabled in committed configuration).
 
 ## Immediate Task Order
 
@@ -232,8 +250,9 @@ Completed implementation:
 - add happy-path and meaningful failure-case tests.
 
 Inspection list/detail reads must preserve the confirmed form lifecycle: Draft
-and Submitted form rows remain outside official history and retrieval, while
-Acknowledged form rows are eligible.
+and Submitted form rows remain outside official history. Acknowledged form rows
+are eligible for official history; preserved retrieval eligibility is historical
+and inactive.
 
 ## Task 3: Maintenance Issue Lexicon And Search Document
 
@@ -415,9 +434,9 @@ directly.
     and whole-form submission.
 13. Completed: user-facing web acknowledgement capture for Submitted forms.
 14. The next mobile field workflow capability requires explicit approval.
-15. Current: `validation/pmis-only-gsd` - the PMIS-only GSD validation
-    baseline (this branch). Any innovation branch requires a separate
-    approved decision after GSD validation.
+15. Current: `feature/pm-acknowledgement-review` / M3 - the PMIS-only GSD
+    validation baseline (this branch). Any innovation branch requires a
+    separate approved decision after GSD validation.
 
 EXP-003 completed a local offline Granite multilingual embedding baseline on
 the fictional maintenance fixture. Its conditional result is development

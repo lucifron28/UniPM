@@ -22,6 +22,7 @@ const formId = '33333333-3333-4333-8333-333333333333';
 const secondFormId = '44444444-4444-4444-8444-444444444444';
 const firstScheduleId = '55555555-5555-4555-8555-555555555555';
 const secondScheduleId = '66666666-6666-4666-8666-666666666666';
+const thirdScheduleId = '88888888-8888-4888-8888-888888888888';
 const firstInspectionId = '77777777-7777-4777-8777-777777777777';
 
 AuthUser testUser({List<String> roles = const ['Inspector']}) => AuthUser(
@@ -524,9 +525,72 @@ void main() {
 
     expect(find.byKey(const Key('pm-schedule-empty')), findsOneWidget);
     expect(
-      find.text('No applicable PM schedules are available for this asset.'),
+      find.text('No PM task is available to the current user for this asset.'),
       findsOneWidget,
     );
+  });
+
+  testWidgets(
+    'Inspector sees own and unassigned schedules but not another Inspector schedule',
+    (tester) async {
+      final repository = FakePreventiveMaintenanceRepository(
+        schedulesFuture: Future.value([
+          testSchedule(
+            firstScheduleId,
+            'FE-001',
+            assignedToUserId: inspectorId,
+          ),
+          testSchedule(secondScheduleId, 'FE-001', status: 'Ongoing'),
+          testSchedule(
+            thirdScheduleId,
+            'FE-001',
+            status: 'Overdue',
+            assignedToUserId: otherUserId,
+          ),
+        ]),
+      );
+
+      await pumpScannedEntry(tester, repository);
+
+      await tester.tap(find.byKey(const Key('pm-schedule-select')));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Due'), findsOneWidget);
+      expect(find.textContaining('Ongoing'), findsOneWidget);
+      expect(find.textContaining('Overdue'), findsNothing);
+    },
+  );
+
+  testWidgets('GSD sees all eligible schedules regardless of assignment', (
+    tester,
+  ) async {
+    final repository = FakePreventiveMaintenanceRepository(
+      schedulesFuture: Future.value([
+        testSchedule(
+          firstScheduleId,
+          'FE-001',
+          assignedToUserId: inspectorId,
+        ),
+        testSchedule(secondScheduleId, 'FE-001', status: 'Ongoing'),
+        testSchedule(
+          thirdScheduleId,
+          'FE-001',
+          status: 'Overdue',
+          assignedToUserId: otherUserId,
+        ),
+      ]),
+    );
+
+    await pumpScannedEntry(
+      tester,
+      repository,
+      user: testUser(roles: const ['GSD']),
+    );
+
+    await tester.tap(find.byKey(const Key('pm-schedule-select')));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Due'), findsOneWidget);
+    expect(find.textContaining('Ongoing'), findsOneWidget);
+    expect(find.textContaining('Overdue'), findsOneWidget);
   });
 
   testWidgets('schedule API failure can retry without rescanning', (
@@ -1419,6 +1483,7 @@ ScheduleOption testSchedule(
   String assetCode, {
   String status = 'Due',
   String assetCategory = 'fire-extinguisher',
+  String? assignedToUserId,
 }) => ScheduleOption(
   id: id,
   assetId: '88888888-8888-4888-8888-888888888888',
@@ -1429,6 +1494,7 @@ ScheduleOption testSchedule(
   semester: null,
   year: 2026,
   academicYear: '2026-2027',
+  assignedToUserId: assignedToUserId,
   asset: ScheduleAssetOption(
     id: '88888888-8888-4888-8888-888888888888',
     assetCode: assetCode,

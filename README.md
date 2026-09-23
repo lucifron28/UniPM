@@ -73,8 +73,9 @@ The backend currently provides:
   maintenance forms;
 - preventive-maintenance form drafting and inspection-row management;
 - whole-form submission with provisional file-number allocation;
-- whole-form acknowledgement, schedule completion, and acknowledged-row
-  publication to official history and retrieval;
+- field-work-driven schedule completion from `InspectionRecord.CompletedAt`;
+- whole-form acknowledgement, which makes completed rows eligible for
+  acknowledged-only official history;
 - a GSD-only corrective-action handoff read model for acknowledged forms;
 - JWT login, refresh, logout, and current-user routes under `/api/v1/auth`;
 - policy-protected asset, schedule, and preventive-maintenance form operations;
@@ -89,9 +90,14 @@ is `Draft -> Submitted -> Acknowledged`; one submitted form receives one
 provisional file number, while each row keeps its own inspection ID.
 
 The department head acknowledges the whole form through the skilled worker's
-authenticated mobile session and does not require a UniPM account. Only
-acknowledgement completes linked schedules. Draft and Submitted rows are not
-official history or retrieval evidence; acknowledged rows are eligible.
+authenticated mobile session and does not require a UniPM account. Field-work
+completion is recorded in each `InspectionRecord.CompletedAt` and completes the
+linked schedule before form submission. Acknowledgement records receipt/noting,
+does not alter execution or compliance timestamps, does not complete schedules,
+and makes completed rows eligible for acknowledged-only official history. Draft
+and Submitted rows are not official history or retrieval evidence. Preserved
+retrieval/RAG infrastructure is historical and inactive, not actively published
+by the current runtime.
 Signatory names, positions, signatures, signature data, and signature checksums
 never enter retrieval, embeddings, prompts, or the corrective-handoff response.
 
@@ -199,19 +205,29 @@ WHERE name = N'UniPMDb';
 The expected development baseline is major version `15`,
 `IsFullTextInstalled = 1`, and compatibility level `150`.
 
-Start the API after the database setup:
+After database setup, start each app in its own PowerShell window from the
+repository root:
 
 ```powershell
-dotnet run --project server
+.\scripts\start-server.ps1
+.\scripts\start-web.ps1
+.\scripts\start-mobile.ps1
 ```
 
-Check the API:
+The server launcher reads the database connection and JWT settings from the
+current process or the ignored root `.env`, then listens on port `5254`. The
+web launcher uses that API and serves the app on port `5173`. The mobile
+launcher uses the same API address and selects a connected Android device;
+for a physical phone it sets up `adb reverse`. Install web and mobile
+dependencies with `npm ci` in `web/` and `flutter pub get` in `mobile/` first.
+Each launcher remains in the foreground until you stop it with Ctrl+C.
+
+Check the API and open the web app:
 
 ```powershell
-Invoke-WebRequest -UseBasicParsing http://localhost:5000/
-Invoke-WebRequest -UseBasicParsing http://localhost:5000/health/live
-Invoke-WebRequest -UseBasicParsing http://localhost:5000/health/ready
-Invoke-WebRequest -UseBasicParsing http://localhost:5000/openapi/v1.json
+Invoke-WebRequest -UseBasicParsing http://localhost:5254/health/live
+Invoke-WebRequest -UseBasicParsing http://localhost:5254/health/ready
+Start-Process http://localhost:5173/login
 ```
 
 The optional legacy SQL Server 2025 Docker Compose experiment is documented in
@@ -405,19 +421,19 @@ reference lists remain provisional. The confirmed digital acknowledgement and
 corrective-handoff boundaries do not make unobserved physical-form fields final
 production contracts.
 
-Inspection list/detail reads, maintenance issue normalization, and internal
-lexical FTS retrieval are complete. Lexical retrieval searches only the
-rebuildable `MaintenanceSearchDocument.SearchText` projection and returns
-source-traceable inspection metadata. It is an internal retriever, not a
-standalone public search endpoint; internal fused retrieval has no public
-endpoint in the validation baseline, and the previously implemented
-maintenance-review endpoint is not exposed by default. Domain-contract hardening is
+Inspection list/detail reads and maintenance issue normalization are complete.
+The preserved internal lexical FTS retriever is historical and inactive. It
+searches only the rebuildable `MaintenanceSearchDocument.SearchText` projection
+and returns source-traceable inspection metadata. It is not a standalone public
+search endpoint. Internal fused retrieval and the previously implemented
+maintenance-review endpoint are not exposed by the current runtime.
+Domain-contract hardening is
 complete: stable persisted codes have feature-owned
 catalogs, canonical API/storage values, SQL Server constraints, and migration
-preflight checks. Semantic retrieval was implemented as an internal channel of
-the evaluated maintenance-history review workflow: it stored only document embeddings,
-never query vectors, and does not affect core or lexical workflows when its
-provider is disabled. Internal fused retrieval uses RRF with K=60, candidate
+preflight checks. The preserved semantic retrieval channel belongs to the
+evaluated maintenance-history review workflow. It stored only document
+embeddings, never query vectors, and does not affect core PM workflows. The
+preserved internal fused retrieval used RRF with K=60, candidate
 depth 20, output limit 10, deterministic ordering, component-rank traceability,
 and explicit semantic degradation. The retrieval benchmark supports lexical,
 semantic, and fused channels, but real semantic and fused model-quality evidence
@@ -479,7 +495,8 @@ slices. Fused reports preserve RRF metadata, FusionScore, and component ranks.
 Fused benchmarking requires both SQL Server Full-Text Search and real semantic
 provider configuration; degraded fused responses fail evaluation. Context
 selection, insufficient-evidence handling, sanitization, summaries, and the
-public review endpoint are implemented separately from benchmark scoring.
+historical review contract are separate from benchmark scoring and are not
+published by the current runtime.
 
 ## Optional Docker Development Tooling
 

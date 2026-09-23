@@ -14,8 +14,8 @@ promise that every institutional workflow is finalized.
 | Mobile | Flutter Android-first client with memory-only authentication and Draft form workflow, maintained by a separate partner-owned workstream |
 | Proposed deployment target | ASP.NET Core hosted through IIS with native Windows SQL Server |
 | Docker | Optional development tooling for the retained SQL Server 2025 experiment |
-| Semantic retrieval | Versioned serialized embeddings, bounded SQL candidates, application-side cosine similarity |
-| Fusion | Internal Reciprocal Rank Fusion with deterministic component traceability |
+| Historical semantic retrieval | Preserved versioned serialized embeddings, bounded SQL candidates, application-side cosine similarity; inactive in the current runtime |
+| Historical fusion | Preserved internal Reciprocal Rank Fusion with deterministic component traceability; not published |
 
 The capstone was evaluated as a local prototype. IIS deployment, public HTTPS
 exposure, production workload testing, final secret management, and final
@@ -65,31 +65,35 @@ rows. The implemented routes are:
 
 The lifecycle is `Draft -> Submitted -> Acknowledged`:
 
-| Form state | Row mutation | Official history/retrieval | Schedule completion |
+| Form state | Row mutation | Official history | Schedule completion |
 | --- | --- | --- | --- |
-| Draft | Allowed for authorized draft owners/GSD | Excluded | No |
-| Submitted | Immutable | Excluded | No |
-| Acknowledged | Immutable | Eligible | Completed during acknowledgement |
+| Draft | Allowed for authorized draft owners/GSD | Excluded | Set independently by field-work completion |
+| Submitted | Immutable | Excluded | Set independently by field-work completion |
+| Acknowledged | Immutable | Eligible | Already determined by `InspectionRecord.CompletedAt` |
 
 Submission assigns a provisional file number. Acknowledgement records the
 department-head signatory as form data captured through the skilled worker's
-authenticated session. It completes linked schedules and publishes eligible
-rows through the search-document projection. The GSD-only corrective handoff
-is a read model for manual follow-up; UniPM does not create or track RMRFs or
+authenticated session. It records receipt/noting, does not alter execution or
+compliance timestamps, and does not complete linked schedules. It makes
+completed rows eligible for acknowledged-only official history. Preserved
+retrieval/RAG infrastructure and its search-document projection are historical
+and inactive, not published by the current runtime. The GSD-only corrective
+handoff is a read model for manual follow-up; UniPM does not create or track RMRFs or
 integrate directly with the Work Management System. Its `AssetDeviceNumber`
 field remains nullable until an institutional device-number source is confirmed;
 the API does not substitute `AssetCode` for that unresolved value.
 
-### Maintenance Review and Reference Data
+### Historical Maintenance Review and Reference Data
 
-- `POST /maintenance-review` is an explicitly enabled, authenticated,
-  source-bounded review/summarization endpoint.
+- The historical `POST /maintenance-review` contract is preserved for reference
+  but is not part of the current published runtime or generated web client.
 - Reference-data routes provide the controlled categories and schedule values
   used by clients.
 - Health and readiness routes expose operational checks; metrics are opt-in.
 
-The maintenance-review path performs bounded fused retrieval and returns the
-selected source records. It does not implement the planned analytical service.
+The preserved maintenance-review path performed bounded fused retrieval and
+returned selected source records. It does not implement the planned analytical
+service and is not actively published.
 
 ## Authorization Boundary
 
@@ -105,15 +109,19 @@ in [`web/README.md`](../../../web/README.md).
 ## Mobile Capability
 
 The mobile client is maintained in a separate partner-owned workstream. The
-backend and web analysis workstream does not implement mobile field features.
+backend and web analysis workstream does not own the mobile implementation, but
+the current client contract includes the accepted core PM workflow.
 
 The Flutter client currently provides:
 
 - login, current-user loading, logout, and bounded terminal-session handling;
 - Inspector/GSD role gating;
 - a home shell;
+- QR-based asset lookup and acknowledged-only asset history;
 - Draft preventive-maintenance form creation, listing, detail loading, and
-  inspection-row add/update/delete operations.
+  inspection-row add/update/delete operations;
+- whole-form submission, submitted-form review, and whole-form acknowledgement
+  with signatory capture.
 
 Access tokens remain in memory only. The app does not persist cookies or tokens,
 does not restore a session after restart, and does not implement offline sync.
@@ -122,15 +130,15 @@ architecture remain undecided pending a separate approved decision.
 
 ## Explicitly Excluded or Planned
 
-- The RAG-assisted inspection-history analysis service is planned, not
-  implemented. Its authoritative facts must come from SQL and deterministic
-  application code; RAG retrieves supporting acknowledged records and optional
-  generation explains only computed results.
+- The previous RAG-assisted inspection-history analysis direction is historical
+  and inactive, and is not published by the current runtime.
+- Natural-language analytics is a planned post-validation direction pending
+  professor/adviser confirmation, not a current implementation requirement.
 - Approved institutional CPMP, checklist, form, and SOP ingestion and
   retrieval remain pending authorization and ingestion decisions.
 - OEM retrieval is excluded from the evaluated MVP.
 - Final RBAC, audit-log persistence, official building/department/location
   lists, and schedule-adjustment authority remain deferred.
-- Mobile submission, acknowledgement, signature capture, QR scanning, and
-  later offline field workflows are outside the current mobile client scope.
+- Offline synchronization, persistent session restoration, and later mobile
+  field workflows remain outside the current mobile scope.
 - No client calls SQL Server, an embedding provider, or an LLM directly.
