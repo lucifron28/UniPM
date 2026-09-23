@@ -11,6 +11,9 @@ enum StatusBadgeVariant {
   operational,
   nonOperational,
   overdue,
+  active,
+  inactive,
+  retired,
   neutral,
 }
 
@@ -29,65 +32,71 @@ class StatusBadge extends StatelessWidget {
   factory StatusBadge.fromFormStatus(String status) {
     return switch (status.trim().toLowerCase()) {
       'draft' => const StatusBadge(
-          label: 'Draft',
-          variant: StatusBadgeVariant.draft,
-        ),
+        label: 'Draft',
+        variant: StatusBadgeVariant.draft,
+      ),
       'submitted' => const StatusBadge(
-          label: 'Awaiting acknowledgement',
-          variant: StatusBadgeVariant.submitted,
-        ),
+        label: 'Awaiting acknowledgement',
+        variant: StatusBadgeVariant.submitted,
+      ),
       'acknowledged' => const StatusBadge(
-          label: 'Acknowledged',
-          variant: StatusBadgeVariant.acknowledged,
-        ),
-      _ => StatusBadge(
-          label: status,
-          variant: StatusBadgeVariant.neutral,
-        ),
+        label: 'Acknowledged',
+        variant: StatusBadgeVariant.acknowledged,
+      ),
+      _ => StatusBadge(label: status, variant: StatusBadgeVariant.neutral),
     };
   }
 
   factory StatusBadge.fromScheduleStatus(String status) {
     return switch (status.trim().toLowerCase()) {
-      'due' => const StatusBadge(
-          label: 'Due',
-          variant: StatusBadgeVariant.due,
-        ),
+      'due' => const StatusBadge(label: 'Due', variant: StatusBadgeVariant.due),
       'ongoing' => const StatusBadge(
-          label: 'Ongoing',
-          variant: StatusBadgeVariant.ongoing,
-        ),
+        label: 'Ongoing',
+        variant: StatusBadgeVariant.ongoing,
+      ),
       'completed' => const StatusBadge(
-          label: 'Completed',
-          variant: StatusBadgeVariant.completed,
-        ),
+        label: 'Completed',
+        variant: StatusBadgeVariant.completed,
+      ),
       'overdue' => const StatusBadge(
-          label: 'Overdue',
-          variant: StatusBadgeVariant.overdue,
-        ),
-      _ => StatusBadge(
-          label: status,
-          variant: StatusBadgeVariant.neutral,
-        ),
+        label: 'Overdue',
+        variant: StatusBadgeVariant.overdue,
+      ),
+      _ => StatusBadge(label: status, variant: StatusBadgeVariant.neutral),
     };
   }
 
   factory StatusBadge.fromAssetCondition(String condition) {
     return switch (condition.trim().toLowerCase()) {
       'operational' => const StatusBadge(
-          label: 'Operational',
-          variant: StatusBadgeVariant.operational,
-          icon: Icons.check_circle_outline,
-        ),
+        label: 'Operational',
+        variant: StatusBadgeVariant.operational,
+        icon: Icons.check_circle_outline,
+      ),
       'non-operational' || 'nonoperational' => const StatusBadge(
-          label: 'Non-operational',
-          variant: StatusBadgeVariant.nonOperational,
-          icon: Icons.error_outline,
-        ),
-      _ => StatusBadge(
-          label: condition,
-          variant: StatusBadgeVariant.neutral,
-        ),
+        label: 'Non-operational',
+        variant: StatusBadgeVariant.nonOperational,
+        icon: Icons.error_outline,
+      ),
+      _ => StatusBadge(label: condition, variant: StatusBadgeVariant.neutral),
+    };
+  }
+
+  factory StatusBadge.fromAssetStatus(String status) {
+    return switch (status.trim().toLowerCase()) {
+      'active' => const StatusBadge(
+        label: 'Active',
+        variant: StatusBadgeVariant.active,
+      ),
+      'inactive' => const StatusBadge(
+        label: 'Inactive',
+        variant: StatusBadgeVariant.inactive,
+      ),
+      'retired' => const StatusBadge(
+        label: 'Retired',
+        variant: StatusBadgeVariant.retired,
+      ),
+      _ => StatusBadge(label: status, variant: StatusBadgeVariant.neutral),
     };
   }
 
@@ -95,43 +104,45 @@ class StatusBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final (bg, border, text) = switch (variant) {
       StatusBadgeVariant.draft => (
-          AppColors.draftBg,
-          AppColors.draftBorder,
-          AppColors.draftText,
-        ),
+        AppColors.draftBg,
+        AppColors.draftBorder,
+        AppColors.draftText,
+      ),
       StatusBadgeVariant.submitted => (
-          AppColors.submittedBg,
-          AppColors.submittedBorder,
-          AppColors.submittedText,
-        ),
+        AppColors.submittedBg,
+        AppColors.submittedBorder,
+        AppColors.submittedText,
+      ),
       StatusBadgeVariant.acknowledged ||
       StatusBadgeVariant.completed ||
-      StatusBadgeVariant.operational => (
-          AppColors.acknowledgedBg,
-          AppColors.acknowledgedBorder,
-          AppColors.acknowledgedText,
-        ),
+      StatusBadgeVariant.operational ||
+      StatusBadgeVariant.active => (
+        AppColors.acknowledgedBg,
+        AppColors.acknowledgedBorder,
+        AppColors.acknowledgedText,
+      ),
       StatusBadgeVariant.due => (
-          AppColors.dueBg,
-          AppColors.dueBorder,
-          AppColors.dueText,
-        ),
+        AppColors.dueBg,
+        AppColors.dueBorder,
+        AppColors.dueText,
+      ),
       StatusBadgeVariant.ongoing => (
-          AppColors.ongoingBg,
-          AppColors.ongoingBorder,
-          AppColors.ongoingText,
-        ),
-      StatusBadgeVariant.overdue ||
-      StatusBadgeVariant.nonOperational => (
-          const Color(0xFFFEE2E2),
-          const Color(0xFFFECACA),
-          AppColors.error,
-        ),
+        AppColors.ongoingBg,
+        AppColors.ongoingBorder,
+        AppColors.ongoingText,
+      ),
+      StatusBadgeVariant.overdue || StatusBadgeVariant.nonOperational => (
+        const Color(0xFFFEE2E2),
+        const Color(0xFFFECACA),
+        AppColors.error,
+      ),
+      StatusBadgeVariant.inactive ||
+      StatusBadgeVariant.retired ||
       StatusBadgeVariant.neutral => (
-          AppColors.surfaceMuted,
-          AppColors.borderSoft,
-          AppColors.textNeutral,
-        ),
+        AppColors.surfaceMuted,
+        AppColors.borderSoft,
+        AppColors.textNeutral,
+      ),
     };
 
     return Container(

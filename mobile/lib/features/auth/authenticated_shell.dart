@@ -33,6 +33,7 @@ class AuthenticatedShell extends StatelessWidget {
     BuildContext context,
     String codeOrQr, {
     bool isCodeLookup = false,
+    PmBatchScope? batchScope,
   }) async {
     final repository = assetRepository;
     if (repository == null) return;
@@ -42,12 +43,34 @@ class AuthenticatedShell extends StatelessWidget {
           repository: repository,
           scannedValue: codeOrQr,
           isCodeLookup: isCodeLookup,
+          batchScope: batchScope,
           preventiveMaintenanceRepository: preventiveMaintenanceRepository,
           assetMaintenanceHistoryRepository: assetMaintenanceHistoryRepository,
           user: controller.user,
         ),
       ),
     );
+  }
+
+  Future<void> _handleStartBatch(
+    BuildContext context,
+    PmBatchScope scope,
+  ) async {
+    final result = await Navigator.of(context).push<QrScanResult>(
+      MaterialPageRoute<QrScanResult>(builder: (_) => const QrScannerPage()),
+    );
+    if (!context.mounted || result == null) return;
+    switch (result) {
+      case QrScanSuccess(:final qrCode):
+        await _openAssetLookup(context, qrCode, batchScope: scope);
+      case QrManualCodeEntry(:final assetCode):
+        await _openAssetLookup(
+          context,
+          assetCode,
+          isCodeLookup: true,
+          batchScope: scope,
+        );
+    }
   }
 
   Future<void> _handleEnterAssetCode(BuildContext context) async {
@@ -168,7 +191,9 @@ class AuthenticatedShell extends StatelessWidget {
         user: controller.user!,
         onScanQr: () async {
           final result = await Navigator.of(context).push<QrScanResult>(
-            MaterialPageRoute<QrScanResult>(builder: (_) => const QrScannerPage()),
+            MaterialPageRoute<QrScanResult>(
+              builder: (_) => const QrScannerPage(),
+            ),
           );
           if (!context.mounted || result == null) return;
           switch (result) {
@@ -180,24 +205,25 @@ class AuthenticatedShell extends StatelessWidget {
         },
         onEnterAssetCode: () => _handleEnterAssetCode(context),
         onSearchAssets: () => _handleSearchAssets(context),
+        onStartBatch: (scope) => _handleStartBatch(context, scope),
         preventiveMaintenanceRepository: preventiveMaintenanceRepository,
         onOpenForm: (formId) => _handleOpenBatch(context, formId),
         onOpenAcknowledgement: (form) =>
             _handleOpenAcknowledgement(context, form),
         onOpenPreventiveMaintenance:
             (controller.user?.roles.contains('GSD') == true &&
-                    preventiveMaintenanceRepository != null)
-                ? () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => PreventiveMaintenancePage(
-                          repository: preventiveMaintenanceRepository!,
-                          user: controller.user!,
-                        ),
-                      ),
-                    );
-                  }
-                : null,
+                preventiveMaintenanceRepository != null)
+            ? () {
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => PreventiveMaintenancePage(
+                      repository: preventiveMaintenanceRepository!,
+                      user: controller.user!,
+                    ),
+                  ),
+                );
+              }
+            : null,
       ),
     );
   }

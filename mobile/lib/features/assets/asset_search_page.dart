@@ -119,9 +119,7 @@ class _AssetSearchPageState extends State<AssetSearchPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Search Assets'),
-      ),
+      appBar: AppBar(title: const Text('Search Assets')),
       body: Column(
         children: [
           Padding(
@@ -174,9 +172,7 @@ class _AssetSearchPageState extends State<AssetSearchPage> {
               backgroundColor: Colors.transparent,
               valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
             ),
-          Expanded(
-            child: _buildResultsList(),
-          ),
+          Expanded(child: _buildResultsList()),
         ],
       ),
     );
@@ -233,10 +229,7 @@ class _AssetSearchPageState extends State<AssetSearchPage> {
               const Text(
                 'Try searching by asset code, building, department, or specific room.',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: AppColors.textNeutral,
-                ),
+                style: TextStyle(fontSize: 14, color: AppColors.textNeutral),
               ),
             ],
           ),
@@ -244,22 +237,37 @@ class _AssetSearchPageState extends State<AssetSearchPage> {
       );
     }
 
-    return ListView.separated(
-      padding: const EdgeInsets.all(16),
-      itemCount: _results.length,
-      separatorBuilder: (context, index) => const SizedBox(height: 12),
-      itemBuilder: (context, index) {
-        final asset = _results[index];
-        return AssetSummaryCard(
-          assetCode: asset.assetCode,
-          assetCategory: asset.assetCategory,
-          building: asset.building,
-          department: asset.department,
-          location: asset.location,
-          status: asset.status,
-          onTap: () => _onAssetSelected(asset),
-        );
-      },
+    return Column(
+      children: [
+        if (_results.length == 30)
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 8, 16, 0),
+            child: Text(
+              'Showing up to 30 assets. Refine your search if the asset is not listed.',
+              key: Key('asset-search-result-limit'),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        Expanded(
+          child: ListView.separated(
+            padding: const EdgeInsets.all(16),
+            itemCount: _results.length,
+            separatorBuilder: (context, index) => const SizedBox(height: 12),
+            itemBuilder: (context, index) {
+              final asset = _results[index];
+              return AssetSummaryCard(
+                assetCode: asset.assetCode,
+                assetCategory: asset.assetCategory,
+                building: asset.building,
+                department: asset.department,
+                location: asset.location,
+                status: asset.status,
+                onTap: () => _onAssetSelected(asset),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }

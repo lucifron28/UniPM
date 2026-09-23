@@ -144,10 +144,7 @@ void main() {
         ),
       ];
 
-      final repo = _FakePmRepository(
-        forms: [],
-        schedules: schedules,
-      );
+      final repo = _FakePmRepository(forms: [], schedules: schedules);
 
       await tester.pumpWidget(
         MaterialApp(
@@ -239,7 +236,7 @@ void main() {
             location: 'Lab 2',
           ),
         ),
-        // Unassigned
+        // Unassigned, which requires GSD assignment before field work.
         ScheduleOption(
           id: 'sched-unassigned',
           assetId: 'asset-unassigned',
@@ -264,6 +261,7 @@ void main() {
       ];
 
       final repo = _FakePmRepository(forms: [], schedules: schedules);
+      PmBatchScope? startedBatch;
 
       // 1. Test Inspector Alice visibility
       await tester.pumpWidget(
@@ -273,6 +271,7 @@ void main() {
               user: aliceUser,
               preventiveMaintenanceRepository: repo,
               onScanQr: _noop,
+              onStartBatch: (scope) => startedBatch = scope,
             ),
           ),
         ),
@@ -284,14 +283,17 @@ void main() {
 
       // Alice does NOT see Bob's assigned schedule
       expect(find.text('Department of Chemistry'), findsNothing);
+      // Unassigned work also remains unavailable until GSD assigns a worker.
+      expect(find.text('Department of Biology'), findsNothing);
+      expect(find.text('Available PM Tasks'), findsNothing);
 
-      await tester.scrollUntilVisible(
-        find.text('Available PM Tasks'),
-        200,
-        scrollable: find.byType(Scrollable).first,
-      );
-      expect(find.text('Available PM Tasks'), findsOneWidget);
-      expect(find.text('Department of Biology'), findsOneWidget);
+      final startInspection = find.text('Start inspection').first;
+      await tester.ensureVisible(startInspection);
+      await tester.pumpAndSettle();
+      await tester.tap(startInspection);
+      expect(startedBatch?.department, 'Department of Physics');
+      expect(startedBatch?.assetCategory, 'fire-extinguisher');
+      expect(startedBatch?.pmCycle, '2026-06');
       // 2. Test GSD visibility: GSD sees all relevant schedules under My PM Tasks
       await tester.pumpWidget(
         MaterialApp(
@@ -308,6 +310,12 @@ void main() {
 
       expect(find.text('Department of Physics'), findsOneWidget);
       expect(find.text('Department of Chemistry'), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.text('Department of Biology'),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
       expect(find.text('Department of Biology'), findsOneWidget);
       // GSD does not separate unassigned into "Available PM Tasks"
       expect(find.text('Available PM Tasks'), findsNothing);
@@ -318,10 +326,7 @@ void main() {
 void _noop() {}
 
 class _FakePmRepository implements PreventiveMaintenanceRepository {
-  _FakePmRepository({
-    this.forms = const [],
-    this.schedules = const [],
-  });
+  _FakePmRepository({this.forms = const [], this.schedules = const []});
 
   final List<PreventiveMaintenanceForm> forms;
   final List<ScheduleOption> schedules;
@@ -340,8 +345,7 @@ class _FakePmRepository implements PreventiveMaintenanceRepository {
   @override
   Future<PreventiveMaintenanceForm> createForm(
     CreatePreventiveMaintenanceFormInput input,
-  ) async =>
-      throw UnimplementedError();
+  ) async => throw UnimplementedError();
 
   @override
   Future<PreventiveMaintenanceForm> submitForm(String formId) async =>
@@ -351,23 +355,20 @@ class _FakePmRepository implements PreventiveMaintenanceRepository {
   Future<PreventiveMaintenanceAcknowledgement> acknowledgeForm(
     String formId,
     AcknowledgePreventiveMaintenanceInput input,
-  ) async =>
-      throw UnimplementedError();
+  ) async => throw UnimplementedError();
 
   @override
   Future<PreventiveMaintenanceInspection> addInspection(
     String formId,
     AddInspectionInput input,
-  ) async =>
-      throw UnimplementedError();
+  ) async => throw UnimplementedError();
 
   @override
   Future<PreventiveMaintenanceInspection> updateInspection(
     String formId,
     String inspectionId,
     UpdateInspectionInput input,
-  ) async =>
-      throw UnimplementedError();
+  ) async => throw UnimplementedError();
 
   @override
   Future<void> deleteInspection(String formId, String inspectionId) async =>
