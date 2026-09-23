@@ -39,6 +39,7 @@ public class PreventiveMaintenanceSchedule
     public string? AcademicYear { get; set; }
 
     public Guid? AssignedToUserId { get; set; }
+    public Guid? AssignedSupervisorUserId { get; set; }
     public DateTimeOffset? CompletedAt { get; set; }
 
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
