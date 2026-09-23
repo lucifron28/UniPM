@@ -81,7 +81,12 @@ if (-not $apiUriBuilder.Path.EndsWith('/')) {
 }
 $ApiBaseUrl = $apiUriBuilder.Uri.AbsoluteUri
 
-$flutterArguments = @('run', "--dart-define=UNIPM_API_BASE_URL=$ApiBaseUrl", '-d', $selectedDeviceId)
+$flutterArguments = @('run')
+if (-not $selectedDeviceId.StartsWith('emulator-', [StringComparison]::OrdinalIgnoreCase)) {
+    $flutterArguments += '--no-enable-impeller'
+    Write-Host 'Using Flutter compatibility rendering for this physical Android device.'
+}
+$flutterArguments += @("--dart-define=UNIPM_API_BASE_URL=$ApiBaseUrl", '-d', $selectedDeviceId)
 Write-Host "Starting UniPM Mobile on Android device $selectedDeviceId."
 
 Push-Location -LiteralPath $mobileRoot
