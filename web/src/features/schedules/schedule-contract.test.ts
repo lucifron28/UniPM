@@ -20,6 +20,7 @@ const schedule = {
   year: 2026,
   academicYear: null,
   assignedToUserId: null,
+  assignedSupervisorUserId: null,
   completedAt: null,
   createdAt: '2026-07-22T00:00:00Z',
   updatedAt: '2026-07-22T00:00:00Z',

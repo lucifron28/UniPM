@@ -1,11 +1,14 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
+  assignScheduleBatch,
   getGetScheduleQueryKey,
+  getListScheduleAssignmentOptionsQueryKey,
   getListSchedulePeriodTypesQueryKey,
   getListScheduleQuartersQueryKey,
   getListScheduleStatusesQueryKey,
   getListSchedulesQueryKey,
   getSchedule,
+  listScheduleAssignmentOptions,
   listSchedulePeriodTypes,
   listScheduleQuarters,
   listScheduleStatuses,
@@ -39,6 +42,40 @@ export function useSchedule(scheduleId: string, enabled = true) {
     queryFn: ({ signal }) =>
       getSchedule(scheduleId, signal).then(parseSchedule),
     enabled,
+  })
+}
+
+export function useScheduleAssignmentOptions(enabled: boolean) {
+  return useQuery({
+    queryKey: getListScheduleAssignmentOptionsQueryKey(),
+    queryFn: ({ signal }) => listScheduleAssignmentOptions(signal),
+    enabled,
+  })
+}
+
+export function useAssignScheduleBatch() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({
+      scheduleId,
+      workerUserId,
+      supervisorUserId,
+    }: {
+      scheduleId: string
+      workerUserId: string
+      supervisorUserId: string
+    }) => assignScheduleBatch(scheduleId, { workerUserId, supervisorUserId }),
+    onSuccess: async (_result, { scheduleId }) => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: getGetScheduleQueryKey(scheduleId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: getListSchedulesQueryKey(),
+        }),
+      ])
+    },
   })
 }
 
