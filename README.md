@@ -205,19 +205,29 @@ WHERE name = N'UniPMDb';
 The expected development baseline is major version `15`,
 `IsFullTextInstalled = 1`, and compatibility level `150`.
 
-Start the API after the database setup:
+After database setup, start each app in its own PowerShell window from the
+repository root:
 
 ```powershell
-dotnet run --project server
+.\scripts\start-server.ps1
+.\scripts\start-web.ps1
+.\scripts\start-mobile.ps1
 ```
 
-Check the API:
+The server launcher reads the database connection and JWT settings from the
+current process or the ignored root `.env`, then listens on port `5254`. The
+web launcher uses that API and serves the app on port `5173`. The mobile
+launcher uses the same API address and selects a connected Android device;
+for a physical phone it sets up `adb reverse`. Install web and mobile
+dependencies with `npm ci` in `web/` and `flutter pub get` in `mobile/` first.
+Each launcher remains in the foreground until you stop it with Ctrl+C.
+
+Check the API and open the web app:
 
 ```powershell
-Invoke-WebRequest -UseBasicParsing http://localhost:5000/
-Invoke-WebRequest -UseBasicParsing http://localhost:5000/health/live
-Invoke-WebRequest -UseBasicParsing http://localhost:5000/health/ready
-Invoke-WebRequest -UseBasicParsing http://localhost:5000/openapi/v1.json
+Invoke-WebRequest -UseBasicParsing http://localhost:5254/health/live
+Invoke-WebRequest -UseBasicParsing http://localhost:5254/health/ready
+Start-Process http://localhost:5173/login
 ```
 
 The optional legacy SQL Server 2025 Docker Compose experiment is documented in
