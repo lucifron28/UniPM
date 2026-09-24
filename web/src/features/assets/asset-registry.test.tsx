@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
+import { useState } from 'react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
@@ -10,7 +11,10 @@ import {
   RouterProvider,
 } from '@tanstack/react-router'
 import { configureApiRuntime } from '@/api/http-client'
-import { AssetRegistry } from '@/features/assets/asset-registry'
+import {
+  AssetRegistry,
+  type AssetSearch,
+} from '@/features/assets/asset-registry'
 import { useAuthStore } from '@/stores/auth-store'
 import { server } from '@/test/server'
 
@@ -109,6 +113,10 @@ describe('AssetRegistry feature component', () => {
 
     expect((await screen.findAllByText('FE-001')).length).toBeGreaterThan(0)
     expect(screen.getAllByText('FA-002').length).toBeGreaterThan(0)
+    expect(
+      screen.getByRole('columnheader', { name: 'QR label' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('UNIPM-FE-001')).not.toBeInTheDocument()
 
     const actor = userEvent.setup()
     const searchInput = screen.getByPlaceholderText(
@@ -176,6 +184,54 @@ describe('AssetRegistry feature component', () => {
       expect.objectContaining({ page: undefined }),
       { replace: true },
     )
+  })
+
+  it('keeps filters and focuses the result list after pagination', async () => {
+    const records = Array.from({ length: 11 }, (_, index) => ({
+      ...sampleAssets[0],
+      id: `10000000-0000-4000-8000-${(index + 1).toString().padStart(12, '0')}`,
+      assetCode: `FE-${(index + 1).toString().padStart(3, '0')}`,
+    }))
+    server.use(
+      http.get(assetsWildcardUrl, () => HttpResponse.json(records)),
+      http.get(categoriesUrl, () => HttpResponse.json(sampleCategories)),
+    )
+    const originalScroll = Element.prototype.scrollIntoView
+    const scrollIntoView = vi.fn()
+    Element.prototype.scrollIntoView = scrollIntoView
+    const onSearchChange = vi.fn()
+
+    function PaginationHarness() {
+      const [search, setSearch] = useState<AssetSearch>({ text: 'FE', page: 1 })
+      return (
+        <AssetRegistry
+          search={search}
+          onSearchChange={(next, options) => {
+            onSearchChange(next, options)
+            setSearch(next)
+          }}
+        />
+      )
+    }
+
+    try {
+      renderWithProviders(<PaginationHarness />)
+      await screen.findAllByText('FE-001')
+      await userEvent
+        .setup()
+        .click(screen.getByRole('button', { name: 'Next' }))
+      expect(onSearchChange).toHaveBeenCalledWith(
+        { text: 'FE', page: 2 },
+        { preserveScroll: true },
+      )
+      expect(await screen.findAllByText('FE-011')).not.toHaveLength(0)
+      await waitFor(() => {
+        expect(screen.getByLabelText('Asset results')).toHaveFocus()
+        expect(scrollIntoView).toHaveBeenCalledWith({ block: 'start' })
+      })
+    } finally {
+      Element.prototype.scrollIntoView = originalScroll
+    }
   })
 
   it('resets draft inputs and triggers search reset on Clear button click', async () => {
@@ -279,16 +335,12 @@ describe('AssetRegistry feature component', () => {
     )
 
     expect(
-      await screen.findByText('Category statistics are currently unavailable.'),
+      await screen.findByText('Categories unavailable'),
     ).toBeInTheDocument()
-    expect(screen.getByText('Categories unavailable')).toBeInTheDocument()
+    expect(screen.getByText('All assets')).toBeInTheDocument()
 
     const actor = userEvent.setup()
-    const retryBtns = screen.getAllByRole('button', {
-      name: 'Retry categories',
-    })
-    expect(retryBtns[0]).toBeDefined()
-    await actor.click(retryBtns[0]!)
+    await actor.click(screen.getByRole('button', { name: 'Retry categories' }))
 
     expect(
       (await screen.findAllByText('Fire extinguishers')).length,

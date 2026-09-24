@@ -143,6 +143,11 @@ test.describe('Schedule workflows', () => {
     await expect(
       page.getByRole('heading', { name: 'Batch assignment' }),
     ).toBeVisible()
+    await page.getByRole('link', { name: 'Back to schedules' }).click()
+    await expect(page).toHaveURL(/status=Due/)
+    await expect(page).toHaveURL(/quarter=Q3/)
+    await expect(page).toHaveURL(/year=2026/)
+    await expect(page.getByLabel('Schedule status')).toHaveValue('Due')
   })
 
   test('creates a schedule with only approved fields and opens its detail', async ({

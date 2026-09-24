@@ -79,6 +79,10 @@ describe('AssetDetail feature component', () => {
     server.use(
       http.get(meUrl, () => HttpResponse.json(gsdUser)),
       http.get(categoriesUrl, () => HttpResponse.json([])),
+      http.get(
+        `http://localhost:5000/api/v1/inspections/history/${assetId}`,
+        () => HttpResponse.json([]),
+      ),
     )
   })
 
@@ -135,7 +139,7 @@ describe('AssetDetail feature component', () => {
     expect((await screen.findAllByText('FE-001')).length).toBeGreaterThan(0)
   })
 
-  it('displays "Not generated" when asset QR code value is null', async () => {
+  it('shows an unavailable QR state when the asset QR value is null', async () => {
     server.use(
       http.get(assetUrl, () =>
         HttpResponse.json({ ...sampleAsset, qrCodeValue: null }),
@@ -144,7 +148,7 @@ describe('AssetDetail feature component', () => {
 
     renderWithProviders(<AssetDetail assetId={assetId} />)
 
-    expect(await screen.findByText('Not generated')).toBeInTheDocument()
+    expect(await screen.findByText('QR code not generated')).toBeInTheDocument()
   })
 
   it('displays error toast feedback when clipboard copy fails', async () => {
@@ -165,12 +169,14 @@ describe('AssetDetail feature component', () => {
     renderWithProviders(<AssetDetail assetId={assetId} />)
 
     const copyBtn = await screen.findByRole('button', {
-      name: 'Copy asset code',
+      name: 'Copy identifier',
     })
     fireEvent.click(copyBtn)
 
     await vi.waitFor(() => {
-      expect(errorSpy).toHaveBeenCalledWith('Asset code could not be copied.')
+      expect(errorSpy).toHaveBeenCalledWith(
+        'QR identifier could not be copied.',
+      )
     })
   })
 
@@ -208,7 +214,28 @@ describe('AssetDetail feature component', () => {
     renderWithProviders(<AssetDetail assetId={assetId} />)
 
     expect((await screen.findAllByText('FE-001')).length).toBeGreaterThan(0)
-    expect(screen.getByText('Main Building')).toBeInTheDocument()
-    expect(screen.getByText('Ground floor')).toBeInTheDocument()
+    expect(screen.getAllByText('Main Building').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Ground floor').length).toBeGreaterThan(0)
+    expect(
+      screen.getByRole('region', { name: 'Asset QR label for FE-001' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('UNIPM-FE-001')).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('Editing is not available yet'),
+    ).not.toBeInTheDocument()
+  })
+
+  it('keeps registry search context on the return link', async () => {
+    server.use(http.get(assetUrl, () => HttpResponse.json(sampleAsset)))
+    renderWithProviders(
+      <AssetDetail
+        assetId={assetId}
+        registrySearch={{ text: 'FE', page: 2 }}
+      />,
+    )
+
+    const back = await screen.findByRole('link', { name: 'Back to assets' })
+    expect(back).toHaveAttribute('href', expect.stringContaining('text=FE'))
+    expect(back).toHaveAttribute('href', expect.stringContaining('page=2'))
   })
 })

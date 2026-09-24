@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { Link } from '@tanstack/react-router'
 import {
   createColumnHelper,
@@ -8,6 +8,7 @@ import {
   useReactTable,
 } from '@tanstack/react-table'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAssets } from '@/features/assets/asset-queries'
@@ -47,7 +48,7 @@ function SummaryCard({ label, count }: { label: string; count: number }) {
 }
 
 const columnHelper = createColumnHelper<Inspection>()
-const columns = [
+const createColumns = (search: InspectionSearch) => [
   columnHelper.accessor('assetId', {
     header: 'Asset',
     cell: ({ getValue, table }) => {
@@ -76,7 +77,11 @@ const columns = [
   }),
   columnHelper.accessor('isOperational', {
     header: 'Recorded result',
-    cell: ({ getValue }) => inspectionOutcome(getValue()),
+    cell: ({ getValue }) => (
+      <Badge variant={getValue() ? 'success' : 'danger'}>
+        {inspectionOutcome(getValue())}
+      </Badge>
+    ),
   }),
   columnHelper.accessor('remarks', {
     header: 'Remarks',
@@ -93,6 +98,7 @@ const columns = [
       <Link
         to="/app/inspections/$inspectionId"
         params={{ inspectionId: row.original.id }}
+        search={search}
         className="font-semibold text-[var(--primary)] hover:underline"
       >
         View details
@@ -116,7 +122,7 @@ export function InspectionRegistry({
   search: InspectionSearch
   onSearchChange: (
     next: InspectionSearch,
-    options?: { replace?: boolean },
+    options?: { replace?: boolean; preserveScroll?: boolean },
   ) => void
 }) {
   const assets = useAssets()
@@ -164,12 +170,31 @@ export function InspectionRegistry({
     () => records.slice((page - 1) * pageSize, page * pageSize),
     [page, records],
   )
+  const listStart = useRef<HTMLDivElement>(null)
+  const focusAfterPageChange = useRef(false)
+
+  useEffect(() => {
+    if (!focusAfterPageChange.current || !filteredInspections.isSuccess) return
+    focusAfterPageChange.current = false
+    listStart.current?.scrollIntoView({ block: 'start' })
+    listStart.current?.focus({ preventScroll: true })
+  }, [page, filteredInspections.isSuccess])
+
+  const changePage = (nextPage: number) => {
+    focusAfterPageChange.current = true
+    onSearchChange(
+      { ...search, page: nextPage > 1 ? nextPage : undefined },
+      { preserveScroll: true },
+    )
+  }
+
+  const tableColumns = useMemo(() => createColumns(search), [search])
 
   // TanStack Table intentionally exposes mutable table methods to the renderer.
   // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
     data: pageData,
-    columns,
+    columns: tableColumns,
     getCoreRowModel: getCoreRowModel(),
     meta: { assets: assetMap, schedules: scheduleMap },
   })
@@ -335,7 +360,7 @@ export function InspectionRegistry({
           <div className="flex items-end">
             <Button
               type="button"
-              className="bg-white text-[var(--text-primary)] hover:bg-[var(--page-background)]"
+              variant="secondary"
               onClick={() => onSearchChange({ page: 1 })}
             >
               Clear filters
@@ -394,73 +419,85 @@ export function InspectionRegistry({
         </Card>
       ) : (
         <div className="space-y-4">
-          <Card className="hidden overflow-hidden p-0 shadow-none md:block">
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[960px] text-left text-sm">
-                <thead className="bg-[var(--page-background)] text-xs tracking-wide text-[var(--text-neutral)] uppercase">
-                  {table.getHeaderGroups().map((headerGroup) => (
-                    <tr key={headerGroup.id}>
-                      {headerGroup.headers.map((header) => (
-                        <th key={header.id} className="px-5 py-3">
-                          {header.isPlaceholder
-                            ? null
-                            : flexRender(
-                                header.column.columnDef.header,
-                                header.getContext(),
-                              )}
-                        </th>
-                      ))}
-                    </tr>
-                  ))}
-                </thead>
-                <tbody className="divide-y divide-[var(--border-soft)]">
-                  {table.getRowModel().rows.map((row) => (
-                    <tr key={row.id}>
-                      {row.getVisibleCells().map((cell) => (
-                        <td key={cell.id} className="px-5 py-4 align-top">
-                          {flexRender(
-                            cell.column.columnDef.cell,
-                            cell.getContext(),
-                          )}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </Card>
-          <div className="space-y-3 md:hidden">
-            {pageData.map((inspection) => {
-              const asset = assetMap.get(inspection.assetId)
-              return (
-                <Card key={inspection.id} className="space-y-3 shadow-none">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="font-semibold">
-                        {asset?.assetCode ?? inspection.assetId}
-                      </p>
-                      <p className="text-sm text-[var(--text-secondary)]">
-                        {formatInspectionDate(inspection.dateInspected)}
-                      </p>
+          <div
+            ref={listStart}
+            tabIndex={-1}
+            aria-label="Inspection results"
+            className="scroll-mt-4 space-y-4 outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary-active)]"
+          >
+            <Card className="hidden overflow-hidden p-0 shadow-none md:block">
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[960px] text-left text-sm">
+                  <thead className="bg-[var(--page-background)] text-xs tracking-wide text-[var(--text-neutral)] uppercase">
+                    {table.getHeaderGroups().map((headerGroup) => (
+                      <tr key={headerGroup.id}>
+                        {headerGroup.headers.map((header) => (
+                          <th key={header.id} className="px-5 py-3">
+                            {header.isPlaceholder
+                              ? null
+                              : flexRender(
+                                  header.column.columnDef.header,
+                                  header.getContext(),
+                                )}
+                          </th>
+                        ))}
+                      </tr>
+                    ))}
+                  </thead>
+                  <tbody className="divide-y divide-[var(--border-soft)]">
+                    {table.getRowModel().rows.map((row) => (
+                      <tr key={row.id}>
+                        {row.getVisibleCells().map((cell) => (
+                          <td key={cell.id} className="px-5 py-4 align-top">
+                            {flexRender(
+                              cell.column.columnDef.cell,
+                              cell.getContext(),
+                            )}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+            <div className="space-y-3 md:hidden">
+              {pageData.map((inspection) => {
+                const asset = assetMap.get(inspection.assetId)
+                return (
+                  <Card key={inspection.id} className="space-y-3 shadow-none">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-semibold">
+                          {asset?.assetCode ?? inspection.assetId}
+                        </p>
+                        <p className="text-sm text-[var(--text-secondary)]">
+                          {formatInspectionDate(inspection.dateInspected)}
+                        </p>
+                      </div>
+                      <Badge
+                        variant={
+                          inspection.isOperational ? 'success' : 'danger'
+                        }
+                      >
+                        {inspectionOutcome(inspection.isOperational)}
+                      </Badge>
                     </div>
-                    <span className="rounded-full bg-[var(--page-background)] px-3 py-1 text-xs font-semibold">
-                      {inspectionOutcome(inspection.isOperational)}
-                    </span>
-                  </div>
-                  <p className="text-sm text-[var(--text-secondary)]">
-                    {excerpt(inspection.remarks)}
-                  </p>
-                  <Link
-                    to="/app/inspections/$inspectionId"
-                    params={{ inspectionId: inspection.id }}
-                    className="text-sm font-semibold text-[var(--primary)] hover:underline"
-                  >
-                    View details
-                  </Link>
-                </Card>
-              )
-            })}
+                    <p className="text-sm text-[var(--text-secondary)]">
+                      {excerpt(inspection.remarks)}
+                    </p>
+                    <Link
+                      to="/app/inspections/$inspectionId"
+                      params={{ inspectionId: inspection.id }}
+                      search={search}
+                      className="text-sm font-semibold text-[var(--primary)] hover:underline"
+                    >
+                      View details
+                    </Link>
+                  </Card>
+                )
+              })}
+            </div>
           </div>
           {pageCount > 1 && (
             <div className="flex items-center justify-between gap-3">
@@ -470,15 +507,17 @@ export function InspectionRegistry({
               <div className="flex gap-2">
                 <Button
                   type="button"
+                  variant="secondary"
                   disabled={page === 1}
-                  onClick={() => onSearchChange({ ...search, page: page - 1 })}
+                  onClick={() => changePage(page - 1)}
                 >
                   Previous
                 </Button>
                 <Button
                   type="button"
+                  variant="secondary"
                   disabled={page === pageCount}
-                  onClick={() => onSearchChange({ ...search, page: page + 1 })}
+                  onClick={() => changePage(page + 1)}
                 >
                   Next
                 </Button>

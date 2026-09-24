@@ -10,6 +10,8 @@ export const router = createRouter({
     getAccessToken: () => useAuthStore.getState().accessToken,
   },
   defaultPreload: 'intent',
+  scrollRestoration: true,
+  getScrollRestorationKey: (location) => location.href,
 })
 
 declare module '@tanstack/react-router' {

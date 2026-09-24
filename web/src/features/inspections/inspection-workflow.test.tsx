@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react'
+import { useState } from 'react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import {
@@ -12,7 +13,10 @@ import { describe, expect, it, vi } from 'vitest'
 import { configureApiRuntime } from '@/api/http-client'
 import { InspectionDetail } from '@/features/inspections/inspection-detail'
 import { InspectionHistory } from '@/features/inspections/inspection-history'
-import { InspectionRegistry } from '@/features/inspections/inspection-registry'
+import {
+  InspectionRegistry,
+  type InspectionSearch,
+} from '@/features/inspections/inspection-registry'
 import { server } from '@/test/server'
 
 const base = 'http://localhost:5000/api/v1'
@@ -166,31 +170,45 @@ describe('inspection review workflows', () => {
       http.get(`${base}/inspections`, () => HttpResponse.json(records)),
     )
     const onSearchChange = vi.fn()
-    const view = renderWithProviders(
-      <InspectionRegistry
-        search={{ assetId, isOperational: false, page: 1 }}
-        onSearchChange={onSearchChange}
-      />,
-    )
+    const originalScroll = Element.prototype.scrollIntoView
+    const scrollIntoView = vi.fn()
+    Element.prototype.scrollIntoView = scrollIntoView
 
-    await screen.findAllByText('Inspection record 1')
-    await userEvent.setup().click(screen.getByRole('button', { name: 'Next' }))
-    expect(onSearchChange).toHaveBeenCalledWith({
-      assetId,
-      isOperational: false,
-      page: 2,
-    })
+    function PaginationHarness() {
+      const [search, setSearch] = useState<InspectionSearch>({
+        assetId,
+        isOperational: false,
+        page: 1,
+      })
+      return (
+        <InspectionRegistry
+          search={search}
+          onSearchChange={(next, options) => {
+            onSearchChange(next, options)
+            setSearch(next)
+          }}
+        />
+      )
+    }
 
-    view.unmount()
-    renderWithProviders(
-      <InspectionRegistry
-        search={{ assetId, isOperational: false, page: 2 }}
-        onSearchChange={onSearchChange}
-      />,
-    )
-    expect(await screen.findAllByText('Inspection record 11')).not.toHaveLength(
-      0,
-    )
+    try {
+      renderWithProviders(<PaginationHarness />)
+      await screen.findAllByText('Inspection record 1')
+      await userEvent
+        .setup()
+        .click(screen.getByRole('button', { name: 'Next' }))
+      expect(onSearchChange).toHaveBeenCalledWith(
+        { assetId, isOperational: false, page: 2 },
+        { preserveScroll: true },
+      )
+      expect(
+        await screen.findAllByText('Inspection record 11'),
+      ).not.toHaveLength(0)
+      expect(screen.getByLabelText('Inspection results')).toHaveFocus()
+      expect(scrollIntoView).toHaveBeenCalledWith({ block: 'start' })
+    } finally {
+      Element.prototype.scrollIntoView = originalScroll
+    }
   })
 
   it('renders source text safely with linked asset and schedule context', async () => {

@@ -47,6 +47,7 @@ function InspectionsPage() {
         void navigate({
           search: next,
           ...(options?.replace ? { replace: true } : {}),
+          ...(options?.preserveScroll ? { resetScroll: false } : {}),
         })
       }
     />

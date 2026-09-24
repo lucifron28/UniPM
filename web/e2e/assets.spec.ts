@@ -62,7 +62,7 @@ const createdAsset = {
   updatedAt: '2026-07-22T00:00:00+00:00',
 }
 
-const pagedAssets = Array.from({ length: 12 }, (_, index) => ({
+const pagedAssets = Array.from({ length: 20 }, (_, index) => ({
   ...assets[0],
   id: `00000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
   assetCode: `FE-${String(index + 1).padStart(3, '0')}`,
@@ -103,20 +103,23 @@ async function mockAssetRegistry(
       ]),
     }),
   )
-  await page.route('**/api/v1/assets**', (route) =>
-    route.fulfill({
+  await page.route('**/api/v1/assets**', (route) => {
+    if (route.request().method() !== 'GET') return route.fallback()
+
+    const pathname = new URL(route.request().url()).pathname
+    const asset = pathname.startsWith('/api/v1/assets/')
+      ? assetList.find(
+          (entry) => entry.id === pathname.slice('/api/v1/assets/'.length),
+        )
+      : undefined
+    if (pathname !== '/api/v1/assets' && !asset) return route.fallback()
+
+    return route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify(assetList),
-    }),
-  )
-  await page.route(`**/api/v1/assets/${assets[0].id}`, (route) =>
-    route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify(assets[0]),
-    }),
-  )
+      body: JSON.stringify(asset ?? assetList),
+    })
+  })
 }
 
 test.describe('Asset Registry E2E Specs', () => {
@@ -146,8 +149,52 @@ test.describe('Asset Registry E2E Specs', () => {
     page,
   }) => {
     await mockAssetRegistry(page, gsdSession, pagedAssets)
-    await page.goto('/app/assets?page=2')
+    await page.setViewportSize({ width: 1280, height: 600 })
+    await page.goto('/app/assets?status=Active')
+    await page.getByRole('button', { name: 'Next' }).click()
+    await expect(page).toHaveURL(/status=Active/)
+    await expect(page).toHaveURL(/page=2/)
+    const results = page.getByLabel('Asset results')
+    await expect(results).toBeFocused()
+    await expect
+      .poll(() =>
+        results.evaluate((element) => {
+          const top = element.getBoundingClientRect().top
+          return top >= 0 && top < 100
+        }),
+      )
+      .toBe(true)
     await expect(page.getByText('FE-011').first()).toBeVisible()
+    const detailResponse = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'GET' &&
+        new URL(response.url()).pathname ===
+          `/api/v1/assets/${pagedAssets[10].id}`,
+    )
+    await page
+      .getByRole('row', { name: /FE-011/ })
+      .getByRole('link', { name: 'View details' })
+      .click()
+    await expect(page).toHaveURL(
+      new RegExp(`/app/assets/${pagedAssets[10].id}\\?.*status=Active.*page=2`),
+    )
+    const response = await detailResponse
+    expect(response.status()).toBe(200)
+    expect((await response.json()).assetCode).toBe('FE-011')
+    await expect(
+      page.getByRole('heading', { name: 'FE-011', level: 1 }),
+    ).toBeVisible()
+    await page.getByRole('link', { name: 'Back to assets' }).click()
+    await expect(page).toHaveURL(/status=Active/)
+    await expect(page).toHaveURL(/page=2/)
+    await expect(page.getByText('FE-011').first()).toBeVisible()
+    await expect
+      .poll(() =>
+        page
+          .getByLabel('Asset results')
+          .evaluate((element) => element.getBoundingClientRect().top),
+      )
+      .toBeLessThan(100)
 
     await page.goto('/app/assets?page=99')
     await expect(page).toHaveURL(/page=2/)
@@ -436,8 +483,9 @@ test.describe('Asset Registry E2E Specs', () => {
     await page.goto(`/app/assets/${assets[0].id}`)
     await expect(page.getByRole('heading', { name: 'FE-001' })).toBeVisible()
 
-    await page.getByRole('button', { name: 'Copy Asset Code' }).click()
-    await expect(page.getByText('Asset Code copied.')).toBeVisible()
+    await expect(page.locator('svg[data-asset-qr-image]')).toBeVisible()
+    await page.getByRole('button', { name: 'Copy identifier' }).click()
+    await expect(page.getByText('QR identifier copied.')).toBeVisible()
   })
 
   test('shows copy failure feedback and keeps browser storage empty', async ({
@@ -451,9 +499,9 @@ test.describe('Asset Registry E2E Specs', () => {
     })
 
     await page.goto(`/app/assets/${assets[0].id}`)
-    await page.getByRole('button', { name: 'Copy Asset Code' }).click()
+    await page.getByRole('button', { name: 'Copy identifier' }).click()
     await expect(
-      page.getByText('Asset Code could not be copied.'),
+      page.getByText('QR identifier could not be copied.'),
     ).toBeVisible()
     await expect(
       page.locator(
