@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo } from 'react'
 import { Link } from '@tanstack/react-router'
 import {
   createColumnHelper,
@@ -20,6 +20,7 @@ import {
   inspectionOutcome,
 } from '@/features/inspections/inspection-presentation'
 import { useSchedules } from '@/features/schedules/schedule-queries'
+import { useStableRegistryPanel } from '@/features/shared/use-stable-registry-panel'
 import {
   fromDateTimeLocal,
   toDateTimeLocal,
@@ -170,18 +171,12 @@ export function InspectionRegistry({
     () => records.slice((page - 1) * pageSize, page * pageSize),
     [page, records],
   )
-  const listStart = useRef<HTMLDivElement>(null)
-  const focusAfterPageChange = useRef(false)
-
-  useEffect(() => {
-    if (!focusAfterPageChange.current || !filteredInspections.isSuccess) return
-    focusAfterPageChange.current = false
-    listStart.current?.scrollIntoView({ block: 'start' })
-    listStart.current?.focus({ preventScroll: true })
-  }, [page, filteredInspections.isSuccess])
+  const { panelRef, minHeight, preserveHeight } = useStableRegistryPanel(
+    JSON.stringify({ ...search, page: undefined }),
+  )
 
   const changePage = (nextPage: number) => {
-    focusAfterPageChange.current = true
+    preserveHeight()
     onSearchChange(
       { ...search, page: nextPage > 1 ? nextPage : undefined },
       { preserveScroll: true },
@@ -418,13 +413,13 @@ export function InspectionRegistry({
           </h2>
         </Card>
       ) : (
-        <div className="space-y-4">
-          <div
-            ref={listStart}
-            tabIndex={-1}
-            aria-label="Inspection results"
-            className="scroll-mt-4 space-y-4 outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary-active)]"
-          >
+        <div
+          ref={panelRef}
+          style={{ minHeight }}
+          aria-label="Inspection results"
+          className="flex flex-col justify-between gap-4"
+        >
+          <div className="space-y-4">
             <Card className="hidden overflow-hidden p-0 shadow-none md:block">
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[960px] text-left text-sm">

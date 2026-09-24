@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { useState } from 'react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
@@ -186,7 +186,7 @@ describe('AssetRegistry feature component', () => {
     )
   })
 
-  it('keeps filters and focuses the result list after pagination', async () => {
+  it('keeps filters and leaves focus on pagination after changing pages', async () => {
     const records = Array.from({ length: 11 }, (_, index) => ({
       ...sampleAssets[0],
       id: `10000000-0000-4000-8000-${(index + 1).toString().padStart(12, '0')}`,
@@ -196,9 +196,6 @@ describe('AssetRegistry feature component', () => {
       http.get(assetsWildcardUrl, () => HttpResponse.json(records)),
       http.get(categoriesUrl, () => HttpResponse.json(sampleCategories)),
     )
-    const originalScroll = Element.prototype.scrollIntoView
-    const scrollIntoView = vi.fn()
-    Element.prototype.scrollIntoView = scrollIntoView
     const onSearchChange = vi.fn()
 
     function PaginationHarness() {
@@ -214,24 +211,16 @@ describe('AssetRegistry feature component', () => {
       )
     }
 
-    try {
-      renderWithProviders(<PaginationHarness />)
-      await screen.findAllByText('FE-001')
-      await userEvent
-        .setup()
-        .click(screen.getByRole('button', { name: 'Next' }))
-      expect(onSearchChange).toHaveBeenCalledWith(
-        { text: 'FE', page: 2 },
-        { preserveScroll: true },
-      )
-      expect(await screen.findAllByText('FE-011')).not.toHaveLength(0)
-      await waitFor(() => {
-        expect(screen.getByLabelText('Asset results')).toHaveFocus()
-        expect(scrollIntoView).toHaveBeenCalledWith({ block: 'start' })
-      })
-    } finally {
-      Element.prototype.scrollIntoView = originalScroll
-    }
+    renderWithProviders(<PaginationHarness />)
+    await screen.findAllByText('FE-001')
+    const next = screen.getByRole('button', { name: 'Next' })
+    await userEvent.setup().click(next)
+    expect(onSearchChange).toHaveBeenCalledWith(
+      { text: 'FE', page: 2 },
+      { preserveScroll: true },
+    )
+    expect(await screen.findAllByText('FE-011')).not.toHaveLength(0)
+    expect(next).toHaveFocus()
   })
 
   it('resets draft inputs and triggers search reset on Clear button click', async () => {

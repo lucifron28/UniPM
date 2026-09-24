@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo } from 'react'
 import { CalendarPlus } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
 import {
@@ -13,6 +13,7 @@ import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAssets } from '@/features/assets/asset-queries'
 import { useCurrentUser } from '@/features/auth/current-user'
+import { useStableRegistryPanel } from '@/features/shared/use-stable-registry-panel'
 import type { Schedule } from '@/features/schedules/schedule-contract'
 import {
   useScheduleQuarters,
@@ -164,18 +165,12 @@ export function ScheduleRegistry({
     () => records.slice((page - 1) * pageSize, page * pageSize),
     [records, page],
   )
-  const listStart = useRef<HTMLDivElement>(null)
-  const focusAfterPageChange = useRef(false)
-
-  useEffect(() => {
-    if (!focusAfterPageChange.current || !filteredSchedules.isSuccess) return
-    focusAfterPageChange.current = false
-    listStart.current?.scrollIntoView({ block: 'start' })
-    listStart.current?.focus({ preventScroll: true })
-  }, [page, filteredSchedules.isSuccess])
+  const { panelRef, minHeight, preserveHeight } = useStableRegistryPanel(
+    JSON.stringify({ ...search, page: undefined }),
+  )
 
   const changePage = (nextPage: number) => {
-    focusAfterPageChange.current = true
+    preserveHeight()
     onSearchChange(
       { ...search, page: nextPage > 1 ? nextPage : undefined },
       { preserveScroll: true },
@@ -441,13 +436,13 @@ export function ScheduleRegistry({
           </p>
         </Card>
       ) : (
-        <div className="space-y-4">
-          <div
-            ref={listStart}
-            tabIndex={-1}
-            aria-label="Schedule results"
-            className="scroll-mt-4 space-y-4 outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary-active)]"
-          >
+        <div
+          ref={panelRef}
+          style={{ minHeight }}
+          aria-label="Schedule results"
+          className="flex flex-col justify-between gap-4"
+        >
+          <div className="space-y-4">
             <Card className="hidden overflow-hidden p-0 shadow-none md:block">
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[760px] text-left text-sm">

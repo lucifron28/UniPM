@@ -154,26 +154,25 @@ export function InspectionDetail({
       className="max-w-5xl space-y-6"
     >
       {reviewContext ? (
-        <Link
-          to="/app/preventive-maintenance-forms/$formId/review"
-          params={{ formId: reviewContext.reviewFormId }}
-          search={{
-            department: reviewContext.department,
-            assetCategory: reviewContext.assetCategory,
-            pmCycle: reviewContext.pmCycle,
-          }}
-          className="text-sm font-semibold text-[var(--primary)] hover:underline"
-        >
-          Back to batch review
-        </Link>
+        <Button asChild variant="secondary">
+          <Link
+            to="/app/preventive-maintenance-forms/$formId/review"
+            params={{ formId: reviewContext.reviewFormId }}
+            search={{
+              department: reviewContext.department,
+              assetCategory: reviewContext.assetCategory,
+              pmCycle: reviewContext.pmCycle,
+            }}
+          >
+            Back to batch review
+          </Link>
+        </Button>
       ) : (
-        <Link
-          to="/app/inspections"
-          search={registrySearch}
-          className="text-sm font-semibold text-[var(--primary)] hover:underline"
-        >
-          Back to inspections
-        </Link>
+        <Button asChild variant="secondary">
+          <Link to="/app/inspections" search={registrySearch}>
+            Back to inspections
+          </Link>
+        </Button>
       )}
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
         <div>

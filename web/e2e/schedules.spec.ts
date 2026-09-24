@@ -129,6 +129,41 @@ async function mockScheduleApi(page: Page, roles = ['GSD']) {
 }
 
 test.describe('Schedule workflows', () => {
+  test('keeps window scroll position on both pagination directions', async ({
+    page,
+  }) => {
+    await mockScheduleApi(page)
+    const records = Array.from({ length: 11 }, (_, index) => ({
+      ...schedule,
+      id: `10000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
+      asset: {
+        ...schedule.asset,
+        assetCode: `FE-${String(index + 1).padStart(3, '0')}`,
+      },
+    }))
+    await page.route('**/api/v1/schedules**', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(records),
+      }),
+    )
+    await page.setViewportSize({ width: 1280, height: 600 })
+    await page.goto('/app/schedules?status=Due')
+    const next = page.getByRole('button', { name: 'Next' })
+    await next.scrollIntoViewIfNeeded()
+    const scrollY = await page.evaluate(() => window.scrollY)
+    expect(scrollY).toBeGreaterThan(0)
+    await next.click()
+    await expect(page).toHaveURL(/status=Due/)
+    await expect(page).toHaveURL(/page=2/)
+    await expect(page.getByRole('cell', { name: 'FE-011' })).toBeVisible()
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(scrollY)
+    await page.getByRole('button', { name: 'Previous' }).click()
+    await expect(page).not.toHaveURL(/page=2/)
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(scrollY)
+  })
+
   test('browses URL-owned filters and restores a direct schedule detail', async ({
     page,
   }) => {

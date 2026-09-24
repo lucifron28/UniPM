@@ -170,9 +170,6 @@ describe('inspection review workflows', () => {
       http.get(`${base}/inspections`, () => HttpResponse.json(records)),
     )
     const onSearchChange = vi.fn()
-    const originalScroll = Element.prototype.scrollIntoView
-    const scrollIntoView = vi.fn()
-    Element.prototype.scrollIntoView = scrollIntoView
 
     function PaginationHarness() {
       const [search, setSearch] = useState<InspectionSearch>({
@@ -191,24 +188,18 @@ describe('inspection review workflows', () => {
       )
     }
 
-    try {
-      renderWithProviders(<PaginationHarness />)
-      await screen.findAllByText('Inspection record 1')
-      await userEvent
-        .setup()
-        .click(screen.getByRole('button', { name: 'Next' }))
-      expect(onSearchChange).toHaveBeenCalledWith(
-        { assetId, isOperational: false, page: 2 },
-        { preserveScroll: true },
-      )
-      expect(
-        await screen.findAllByText('Inspection record 11'),
-      ).not.toHaveLength(0)
-      expect(screen.getByLabelText('Inspection results')).toHaveFocus()
-      expect(scrollIntoView).toHaveBeenCalledWith({ block: 'start' })
-    } finally {
-      Element.prototype.scrollIntoView = originalScroll
-    }
+    renderWithProviders(<PaginationHarness />)
+    await screen.findAllByText('Inspection record 1')
+    const next = screen.getByRole('button', { name: 'Next' })
+    await userEvent.setup().click(next)
+    expect(onSearchChange).toHaveBeenCalledWith(
+      { assetId, isOperational: false, page: 2 },
+      { preserveScroll: true },
+    )
+    expect(await screen.findAllByText('Inspection record 11')).not.toHaveLength(
+      0,
+    )
+    expect(next).toHaveFocus()
   })
 
   it('renders source text safely with linked asset and schedule context', async () => {

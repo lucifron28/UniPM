@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import {
   createColumnHelper,
@@ -20,6 +20,7 @@ import {
   categoryLabel,
 } from '@/features/assets/asset-presentation'
 import { useCurrentUser } from '@/features/auth/current-user'
+import { useStableRegistryPanel } from '@/features/shared/use-stable-registry-panel'
 
 export type AssetSearch = {
   assetCategory?: Asset['assetCategory'] | undefined
@@ -126,8 +127,9 @@ export function AssetRegistry({
   const [text, setText] = useState(search.text ?? '')
   const [building, setBuilding] = useState(search.building ?? '')
   const [department, setDepartment] = useState(search.department ?? '')
-  const listStart = useRef<HTMLDivElement>(null)
-  const focusAfterPageChange = useRef(false)
+  const { panelRef, minHeight, preserveHeight } = useStableRegistryPanel(
+    JSON.stringify({ ...search, page: undefined }),
+  )
 
   useEffect(() => setText(search.text ?? ''), [search.text])
   useEffect(() => setBuilding(search.building ?? ''), [search.building])
@@ -157,18 +159,8 @@ export function AssetRegistry({
     [textFiltered, page, pageSize],
   )
 
-  useEffect(() => {
-    if (!focusAfterPageChange.current || !filteredAssets.isSuccess) return
-    focusAfterPageChange.current = false
-    const frame = requestAnimationFrame(() => {
-      listStart.current?.scrollIntoView({ block: 'start' })
-      listStart.current?.focus({ preventScroll: true })
-    })
-    return () => cancelAnimationFrame(frame)
-  }, [page, filteredAssets.isSuccess])
-
   const changePage = (nextPage: number) => {
-    focusAfterPageChange.current = true
+    preserveHeight()
     onSearchChange(
       { ...search, page: nextPage > 1 ? nextPage : undefined },
       { preserveScroll: true },
@@ -493,13 +485,13 @@ export function AssetRegistry({
           </p>
         </Card>
       ) : (
-        <>
-          <div
-            ref={listStart}
-            tabIndex={-1}
-            aria-label="Asset results"
-            className="scroll-mt-4 outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary-active)]"
-          >
+        <div
+          ref={panelRef}
+          style={{ minHeight }}
+          aria-label="Asset results"
+          className="flex flex-col justify-between gap-4"
+        >
+          <div>
             <div className="hidden overflow-x-auto rounded-xl border border-[var(--border-soft)] bg-white lg:block">
               <table className="w-full text-left text-sm">
                 <thead className="border-b border-[var(--border-soft)] bg-[var(--page-background)]">
@@ -621,7 +613,7 @@ export function AssetRegistry({
               </Button>
             </div>
           </div>
-        </>
+        </div>
       )}
     </section>
   )

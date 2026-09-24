@@ -62,7 +62,7 @@ const createdAsset = {
   updatedAt: '2026-07-22T00:00:00+00:00',
 }
 
-const pagedAssets = Array.from({ length: 20 }, (_, index) => ({
+const pagedAssets = Array.from({ length: 11 }, (_, index) => ({
   ...assets[0],
   id: `00000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
   assetCode: `FE-${String(index + 1).padStart(3, '0')}`,
@@ -151,20 +151,21 @@ test.describe('Asset Registry E2E Specs', () => {
     await mockAssetRegistry(page, gsdSession, pagedAssets)
     await page.setViewportSize({ width: 1280, height: 600 })
     await page.goto('/app/assets?status=Active')
-    await page.getByRole('button', { name: 'Next' }).click()
+    const next = page.getByRole('button', { name: 'Next' })
+    await next.scrollIntoViewIfNeeded()
+    const scrollY = await page.evaluate(() => window.scrollY)
+    expect(scrollY).toBeGreaterThan(0)
+    await next.click()
     await expect(page).toHaveURL(/status=Active/)
     await expect(page).toHaveURL(/page=2/)
-    const results = page.getByLabel('Asset results')
-    await expect(results).toBeFocused()
-    await expect
-      .poll(() =>
-        results.evaluate((element) => {
-          const top = element.getBoundingClientRect().top
-          return top >= 0 && top < 100
-        }),
-      )
-      .toBe(true)
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(scrollY)
     await expect(page.getByText('FE-011').first()).toBeVisible()
+    await page.getByRole('button', { name: 'Previous' }).click()
+    await expect(page).not.toHaveURL(/page=2/)
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(scrollY)
+    await next.click()
+    await expect(page).toHaveURL(/page=2/)
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(scrollY)
     const detailResponse = page.waitForResponse(
       (response) =>
         response.request().method() === 'GET' &&
@@ -188,13 +189,6 @@ test.describe('Asset Registry E2E Specs', () => {
     await expect(page).toHaveURL(/status=Active/)
     await expect(page).toHaveURL(/page=2/)
     await expect(page.getByText('FE-011').first()).toBeVisible()
-    await expect
-      .poll(() =>
-        page
-          .getByLabel('Asset results')
-          .evaluate((element) => element.getBoundingClientRect().top),
-      )
-      .toBeLessThan(100)
 
     await page.goto('/app/assets?page=99')
     await expect(page).toHaveURL(/page=2/)
@@ -486,6 +480,31 @@ test.describe('Asset Registry E2E Specs', () => {
     await expect(page.locator('svg[data-asset-qr-image]')).toBeVisible()
     await page.getByRole('button', { name: 'Copy identifier' }).click()
     await expect(page.getByText('QR identifier copied.')).toBeVisible()
+  })
+
+  test('keeps the authoritative QR label visible in print media', async ({
+    page,
+  }) => {
+    await mockAssetRegistry(page)
+    await page.goto(`/app/assets/${assets[0].id}`)
+    const label = page.getByRole('region', {
+      name: `Asset QR label for ${assets[0].assetCode}`,
+    })
+    await expect(label.locator('svg[data-asset-qr-image]')).toBeVisible()
+    await expect(label.locator('svg[data-asset-qr-image] title')).toHaveText(
+      `QR code for ${assets[0].assetCode}`,
+    )
+    await page.emulateMedia({ media: 'print' })
+    await expect(label).toHaveCSS('visibility', 'visible')
+    await expect(label.locator('svg[data-asset-qr-image]')).toHaveCSS(
+      'visibility',
+      'visible',
+    )
+    await expect(label.locator('.asset-qr-label-actions')).toHaveCSS(
+      'display',
+      'none',
+    )
+    await page.screenshot({ path: 'test-results/asset-qr-print-preview.png' })
   })
 
   test('shows copy failure feedback and keeps browser storage empty', async ({

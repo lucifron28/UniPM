@@ -172,15 +172,12 @@ describe('schedule workflows', () => {
     ).toBe(true)
   })
 
-  it('keeps the schedule filter and focuses results after changing pages', async () => {
+  it('keeps the schedule filter and pagination focus after changing pages', async () => {
     const records = Array.from({ length: 11 }, (_, index) => ({
       ...schedule,
       id: `10000000-0000-4000-8000-${(index + 1).toString().padStart(12, '0')}`,
     }))
     server.use(http.get(`${base}/schedules`, () => HttpResponse.json(records)))
-    const originalScroll = Element.prototype.scrollIntoView
-    const scrollIntoView = vi.fn()
-    Element.prototype.scrollIntoView = scrollIntoView
     const onSearchChange = vi.fn()
 
     function PaginationHarness() {
@@ -199,22 +196,16 @@ describe('schedule workflows', () => {
       )
     }
 
-    try {
-      renderWithProviders(<PaginationHarness />)
-      await screen.findByText('Page 1 of 2')
-      await userEvent
-        .setup()
-        .click(screen.getByRole('button', { name: 'Next' }))
-      expect(onSearchChange).toHaveBeenCalledWith(
-        { status: 'Due', page: 2 },
-        { preserveScroll: true },
-      )
-      expect(await screen.findByText('Page 2 of 2')).toBeInTheDocument()
-      expect(screen.getByLabelText('Schedule results')).toHaveFocus()
-      expect(scrollIntoView).toHaveBeenCalledWith({ block: 'start' })
-    } finally {
-      Element.prototype.scrollIntoView = originalScroll
-    }
+    renderWithProviders(<PaginationHarness />)
+    await screen.findByText('Page 1 of 2')
+    const next = screen.getByRole('button', { name: 'Next' })
+    await userEvent.setup().click(next)
+    expect(onSearchChange).toHaveBeenCalledWith(
+      { status: 'Due', page: 2 },
+      { preserveScroll: true },
+    )
+    expect(await screen.findByText('Page 2 of 2')).toBeInTheDocument()
+    expect(next).toHaveFocus()
   })
 
   it('disables failed reference selectors and retries the affected data', async () => {
