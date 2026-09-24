@@ -776,7 +776,8 @@ class _PreventiveMaintenanceDraftPageState
             key: ValueKey(row.id),
             row: row,
             assetCategory: form.assetCategory,
-            asset: scheduleById[row.scheduleId]?.asset,
+            schedule: scheduleById[row.scheduleId],
+            form: form,
             highlighted: row.id == focusedInspectionId,
             inspectorUserId: widget.controller.user.id,
             isSaving: widget.controller.isSaving,
@@ -890,6 +891,7 @@ class _FormMetadata extends StatelessWidget {
             Text('Asset category: ${displayAssetCategory(form.assetCategory)}'),
             Text('Building: ${form.building ?? 'Not recorded'}'),
             Text('Department: ${form.department ?? 'Not recorded'}'),
+            if (form.pmCycle != null) Text('PM cycle: ${form.pmCycle}'),
             Text('Period: ${form.periodType}'),
             if (form.quarter != null) Text('Quarter: ${form.quarter}'),
             if (form.semester != null) Text('Semester: ${form.semester}'),
@@ -948,7 +950,9 @@ class _AddInspectionCardState extends State<_AddInspectionCard> {
   @override
   void initState() {
     super.initState();
-    scheduleId = widget.preselectedScheduleId;
+    scheduleId =
+        widget.preselectedScheduleId ??
+        (widget.schedules.length == 1 ? widget.schedules.single.id : null);
   }
 
   @override
@@ -1041,6 +1045,7 @@ class _AddInspectionCardState extends State<_AddInspectionCard> {
               else ...[
                 DropdownButtonFormField<String>(
                   key: const Key('inspection-schedule'),
+                  isExpanded: true,
                   initialValue: scheduleId,
                   decoration: const InputDecoration(labelText: 'Schedule'),
                   items: widget.schedules
@@ -1224,7 +1229,8 @@ class _InspectionRowEditor extends StatefulWidget {
     super.key,
     required this.row,
     required this.assetCategory,
-    this.asset,
+    required this.form,
+    this.schedule,
     required this.highlighted,
     required this.inspectorUserId,
     required this.isSaving,
@@ -1235,7 +1241,8 @@ class _InspectionRowEditor extends StatefulWidget {
 
   final PreventiveMaintenanceInspection row;
   final String assetCategory;
-  final ScheduleAssetOption? asset;
+  final PreventiveMaintenanceForm form;
+  final ScheduleOption? schedule;
   final bool highlighted;
   final String inspectorUserId;
   final bool isSaving;
@@ -1403,16 +1410,26 @@ class _InspectionRowEditorState extends State<_InspectionRowEditor> {
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: 8),
-              Text('Schedule ID: ${widget.row.scheduleId}'),
-              Text('Asset ID: ${widget.row.assetId}'),
-              Text('Inspector ID: ${widget.row.inspectorUserId}'),
-              if (widget.asset != null)
+              Text(
+                'Asset category: ${displayAssetCategory(widget.assetCategory)}',
+              ),
+              Text(
+                'Department: ${widget.schedule?.asset?.department ?? widget.form.department ?? 'Not recorded'}',
+              ),
+              Text(
+                'PM cycle: ${widget.schedule?.pmCycle ?? widget.form.pmCycle ?? 'Not recorded'}',
+              ),
+              if (widget.schedule != null)
+                Text('Schedule status: ${widget.schedule!.status}'),
+              if (widget.schedule?.asset != null)
                 _AssetMetadata(
-                  asset: widget.asset!,
+                  asset: widget.schedule!.asset!,
                   assetNumberLabel: PreventiveMaintenanceFormSpec.forCategory(
                     widget.assetCategory,
                   ).assetNumberLabel,
                 ),
+              if (widget.schedule?.asset == null)
+                const Text('Asset details are unavailable.'),
               const SizedBox(height: 12),
               TextFormField(
                 key: Key('inspection-date-${widget.row.id}'),
@@ -1475,14 +1492,15 @@ class _InspectionRowEditorState extends State<_InspectionRowEditor> {
               ),
               if (widget.editable) ...[
                 const SizedBox(height: 12),
-                Row(
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
                   children: [
                     FilledButton(
                       key: Key('save-inspection-${widget.row.id}'),
                       onPressed: widget.isSaving ? null : _save,
                       child: const Text('Save row'),
                     ),
-                    const SizedBox(width: 8),
                     TextButton(
                       onPressed: widget.isSaving ? null : _confirmDelete,
                       child: const Text('Delete row'),
@@ -1515,17 +1533,21 @@ class _ConditionSelector extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 8),
-        const Text('Status: Operational'),
-        SegmentedButton<bool>(
-          segments: const [
-            ButtonSegment<bool>(value: true, label: Text('Operational')),
-            ButtonSegment<bool>(value: false, label: Text('Non-operational')),
+        const Text('Condition'),
+        Wrap(
+          spacing: 8,
+          children: [
+            ChoiceChip(
+              label: const Text('Operational'),
+              selected: value,
+              onSelected: enabled ? (_) => onChanged(true) : null,
+            ),
+            ChoiceChip(
+              label: const Text('Non-operational'),
+              selected: !value,
+              onSelected: enabled ? (_) => onChanged(false) : null,
+            ),
           ],
-          selected: {value},
-          onSelectionChanged: enabled
-              ? (selection) => onChanged(selection.single)
-              : null,
-          expandedInsets: EdgeInsets.zero,
         ),
       ],
     );
