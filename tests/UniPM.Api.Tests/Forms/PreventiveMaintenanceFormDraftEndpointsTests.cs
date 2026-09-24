@@ -488,7 +488,7 @@ public sealed class PreventiveMaintenanceFormDraftEndpointsTests
 
     [Theory]
     [InlineData(AuthRoleCatalog.Inspector, "own", HttpStatusCode.Created)]
-    [InlineData(AuthRoleCatalog.Inspector, "unassigned", HttpStatusCode.Created)]
+    [InlineData(AuthRoleCatalog.Inspector, "unassigned", HttpStatusCode.Forbidden)]
     [InlineData(AuthRoleCatalog.Inspector, "other", HttpStatusCode.Forbidden)]
     [InlineData(AuthRoleCatalog.Gsd, "other", HttpStatusCode.Created)]
     public async Task Adding_an_inspection_enforces_schedule_assignment(

@@ -9,6 +9,8 @@ import 'preventive_maintenance_models.dart';
 import 'preventive_maintenance_repository.dart';
 import 'inspection_completion_sheet.dart';
 
+enum PreventiveMaintenanceDraftAction { scanNextAsset }
+
 String _formStatusLabel(String status) =>
     status == 'Submitted' ? 'Awaiting acknowledgement' : status;
 
@@ -712,21 +714,23 @@ class _PreventiveMaintenanceDraftPageState
                     .cast<ScheduleOption?>()
                     .firstWhere(
                       (s) => s?.id == input.scheduleId,
-                      orElse: () => schedules
-                          .cast<ScheduleOption?>()
-                          .firstWhere(
+                      orElse: () =>
+                          schedules.cast<ScheduleOption?>().firstWhere(
                             (s) => s?.id == input.scheduleId,
                             orElse: () => null,
                           ),
                     );
                 final assetCode = sched?.asset?.assetCode ?? 'Asset';
-                final dept = currentForm?.department ??
+                final dept =
+                    currentForm?.department ??
                     sched?.asset?.department ??
                     'Department';
-                final cat = currentForm?.assetCategory ??
+                final cat =
+                    currentForm?.assetCategory ??
                     sched?.asset?.assetCategory ??
                     'Category';
-                final cycle = currentForm?.pmCycle ?? sched?.pmCycle ?? 'Current';
+                final cycle =
+                    currentForm?.pmCycle ?? sched?.pmCycle ?? 'Current';
                 final completedCount = currentForm?.inspections.length ?? 1;
                 final totalCount = allBatchSchedules.isNotEmpty
                     ? allBatchSchedules.length
@@ -742,7 +746,9 @@ class _PreventiveMaintenanceDraftPageState
                   totalCount: totalCount,
                   onNextAsset: () {
                     Navigator.of(this.context).pop();
-                    Navigator.of(this.context).pop();
+                    Navigator.of(
+                      this.context,
+                    ).pop(PreventiveMaintenanceDraftAction.scanNextAsset);
                   },
                   onViewBatch: () {
                     Navigator.of(this.context).pop();
@@ -1465,9 +1471,7 @@ class _InspectionRowEditorState extends State<_InspectionRowEditor> {
                 controller: actionsController,
                 enabled: widget.editable,
                 maxLines: 3,
-                decoration: const InputDecoration(
-                  labelText: 'Recommendation',
-                ),
+                decoration: const InputDecoration(labelText: 'Recommendation'),
               ),
               if (widget.editable) ...[
                 const SizedBox(height: 12),

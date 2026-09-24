@@ -30,8 +30,7 @@ internal sealed class PreventiveMaintenanceScheduleAuthorizationHandler
         var subject = context.User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
         if (context.User.IsInRole(AuthRoleCatalog.Inspector)
             && Guid.TryParse(subject, out var authenticatedUserId)
-            && (schedule.AssignedToUserId is null
-                || schedule.AssignedToUserId == authenticatedUserId))
+            && schedule.AssignedToUserId == authenticatedUserId)
         {
             context.Succeed(requirement);
         }

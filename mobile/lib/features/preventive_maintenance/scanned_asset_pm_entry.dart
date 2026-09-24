@@ -15,11 +15,15 @@ class ScannedAssetPmEntry extends StatefulWidget {
     required this.asset,
     required this.repository,
     required this.user,
+    this.batchScope,
+    this.onScanNextAsset,
   });
 
   final Asset asset;
   final PreventiveMaintenanceRepository repository;
   final AuthUser user;
+  final PmBatchScope? batchScope;
+  final VoidCallback? onScanNextAsset;
 
   @override
   State<ScannedAssetPmEntry> createState() => _ScannedAssetPmEntryState();
@@ -40,6 +44,8 @@ class _ScannedAssetPmEntryState extends State<ScannedAssetPmEntry> {
   bool isResolving = false;
   bool isOpening = false;
   String? errorMessage;
+  late PmBatchScope? _batchScope = widget.batchScope;
+  bool _hasOutOfBatchTask = false;
 
   bool get isActiveAsset => widget.asset.status == 'Active';
 
@@ -69,13 +75,21 @@ class _ScannedAssetPmEntryState extends State<ScannedAssetPmEntry> {
         assetId: widget.asset.id,
       );
       if (!mounted) return;
-      final applicable = values
+      final accessible = values
           .where((schedule) => schedule.assetId == widget.asset.id)
           .where((schedule) => _applicableStatuses.contains(schedule.status))
           .where(_canAccessSchedule)
           .toList(growable: false);
+      final applicable = accessible
+          .where(
+            (schedule) =>
+                _batchScope == null ||
+                _batchScope!.matches(widget.asset, schedule),
+          )
+          .toList(growable: false);
       setState(() {
         schedules = applicable;
+        _hasOutOfBatchTask = accessible.isNotEmpty && applicable.isEmpty;
         isLoadingSchedules = false;
         if (applicable.length == 1) selectedSchedule = applicable.single;
       });
@@ -174,17 +188,28 @@ class _ScannedAssetPmEntryState extends State<ScannedAssetPmEntry> {
 
     controller.selectForm(form);
     setState(() => isOpening = false);
-    await Navigator.of(context).push<void>(
-      MaterialPageRoute<void>(
-        builder: (_) => PreventiveMaintenanceDraftPage(
-          controller: controller,
-          formId: form!.id,
-          preselectedScheduleId: preselectedScheduleId,
-          focusedInspectionId: focusedInspectionId,
-        ),
-      ),
-    );
-    if (mounted) await _resolveSelectedSchedule();
+    final result = await Navigator.of(context)
+        .push<PreventiveMaintenanceDraftAction>(
+          MaterialPageRoute<PreventiveMaintenanceDraftAction>(
+            builder: (_) => PreventiveMaintenanceDraftPage(
+              controller: controller,
+              formId: form!.id,
+              preselectedScheduleId: preselectedScheduleId,
+              focusedInspectionId: focusedInspectionId,
+            ),
+          ),
+        );
+    if (!mounted) return;
+    if (result == PreventiveMaintenanceDraftAction.scanNextAsset) {
+      widget.onScanNextAsset?.call();
+    } else {
+      await _resolveSelectedSchedule();
+    }
+  }
+
+  Future<void> _leaveBatch() async {
+    setState(() => _batchScope = null);
+    await _loadSchedules();
   }
 
   @override
@@ -207,6 +232,22 @@ class _ScannedAssetPmEntryState extends State<ScannedAssetPmEntry> {
               )
             else if (errorMessage != null)
               _PmError(message: errorMessage!, onRetry: _retry)
+            else if (schedules.isEmpty && _hasOutOfBatchTask)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text(
+                    'This asset has an assigned PM task outside the selected batch.',
+                    key: Key('pm-task-outside-batch'),
+                  ),
+                  const SizedBox(height: 8),
+                  OutlinedButton(
+                    key: const Key('leave-batch-for-pm-task'),
+                    onPressed: _leaveBatch,
+                    child: const Text('Leave batch and view this task'),
+                  ),
+                ],
+              )
             else if (schedules.isEmpty)
               const Text(
                 'No PM task is available to the current user for this asset.',
@@ -348,7 +389,6 @@ class _ScannedAssetPmEntryState extends State<ScannedAssetPmEntry> {
 
   bool _canAccessSchedule(ScheduleOption schedule) {
     return widget.user.roles.contains('GSD') ||
-        schedule.assignedToUserId == null ||
         schedule.assignedToUserId == widget.user.id;
   }
 }

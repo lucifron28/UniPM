@@ -21,11 +21,11 @@ const testInspection1Id = '55555555-5555-4555-8555-555555555551';
 const testAsset1Id = '66666666-6666-4666-8666-666666666661';
 const testAsset2Id = '66666666-6666-4666-8666-666666666662';
 AuthUser testUser({List<String> roles = const ['Inspector']}) => AuthUser(
-      id: testInspectorId,
-      email: 'inspector@example.test',
-      displayName: 'Test Inspector',
-      roles: roles,
-    );
+  id: testInspectorId,
+  email: 'inspector@example.test',
+  displayName: 'Test Inspector',
+  roles: roles,
+);
 
 Asset testAsset({
   String id = testAsset1Id,
@@ -33,17 +33,16 @@ Asset testAsset({
   String status = 'Active',
   String department = 'GSD',
   String assetCategory = 'fire-extinguisher',
-}) =>
-    Asset(
-      id: id,
-      assetCode: assetCode,
-      assetCategory: assetCategory,
-      building: 'Main Building',
-      department: department,
-      location: 'Floor 1',
-      qrCodeValue: 'QR-$assetCode',
-      status: status,
-    );
+}) => Asset(
+  id: id,
+  assetCode: assetCode,
+  assetCategory: assetCategory,
+  building: 'Main Building',
+  department: department,
+  location: 'Floor 1',
+  qrCodeValue: 'QR-$assetCode',
+  status: status,
+);
 
 ScheduleOption makeSchedule({
   required String id,
@@ -53,28 +52,27 @@ ScheduleOption makeSchedule({
   String department = 'GSD',
   String assetCategory = 'fire-extinguisher',
   String? assignedToUserId,
-}) =>
-    ScheduleOption(
-      id: id,
-      assetId: '88888888-8888-4888-8888-888888888888',
-      scheduleDate: DateTime.utc(2026, 6, 15),
-      pmCycle: pmCycle,
-      periodType: 'Quarter',
-      status: status,
-      quarter: 'Q2',
-      semester: null,
-      year: 2026,
-      academicYear: '2025-2026',
-      assignedToUserId: assignedToUserId,
-      asset: ScheduleAssetOption(
-        id: '88888888-8888-4888-8888-888888888888',
-        assetCode: assetCode,
-        assetCategory: assetCategory,
-        building: 'Main Building',
-        department: department,
-        location: 'Floor 1',
-      ),
-    );
+}) => ScheduleOption(
+  id: id,
+  assetId: '88888888-8888-4888-8888-888888888888',
+  scheduleDate: DateTime.utc(2026, 6, 15),
+  pmCycle: pmCycle,
+  periodType: 'Quarter',
+  status: status,
+  quarter: 'Q2',
+  semester: null,
+  year: 2026,
+  academicYear: '2025-2026',
+  assignedToUserId: assignedToUserId,
+  asset: ScheduleAssetOption(
+    id: '88888888-8888-4888-8888-888888888888',
+    assetCode: assetCode,
+    assetCategory: assetCategory,
+    building: 'Main Building',
+    department: department,
+    location: 'Floor 1',
+  ),
+);
 
 PreventiveMaintenanceInspection makeInspection({
   required String id,
@@ -127,10 +125,7 @@ PreventiveMaintenanceForm makeForm({
 }
 
 class TestProgressRepository implements PreventiveMaintenanceRepository {
-  TestProgressRepository({
-    required this.forms,
-    required this.schedules,
-  });
+  TestProgressRepository({required this.forms, required this.schedules});
 
   List<PreventiveMaintenanceForm> forms;
   List<ScheduleOption> schedules;
@@ -145,7 +140,8 @@ class TestProgressRepository implements PreventiveMaintenanceRepository {
 
   @override
   Future<PreventiveMaintenanceForm> createForm(
-      CreatePreventiveMaintenanceFormInput input) async {
+    CreatePreventiveMaintenanceFormInput input,
+  ) async {
     throw UnimplementedError();
   }
 
@@ -156,7 +152,9 @@ class TestProgressRepository implements PreventiveMaintenanceRepository {
 
   @override
   Future<PreventiveMaintenanceAcknowledgement> acknowledgeForm(
-      String formId, AcknowledgePreventiveMaintenanceInput input) async {
+    String formId,
+    AcknowledgePreventiveMaintenanceInput input,
+  ) async {
     throw UnimplementedError();
   }
 
@@ -170,19 +168,21 @@ class TestProgressRepository implements PreventiveMaintenanceRepository {
 
   @override
   Future<List<ReferenceOption>> listAssetCategories() async => const [
-        ReferenceOption(
-            code: 'fire-extinguisher', displayName: 'Fire Extinguisher'),
-      ];
+    ReferenceOption(
+      code: 'fire-extinguisher',
+      displayName: 'Fire Extinguisher',
+    ),
+  ];
 
   @override
   Future<List<ReferenceOption>> listPeriodTypes() async => const [
-        ReferenceOption(code: 'Quarter', displayName: 'Quarter'),
-      ];
+    ReferenceOption(code: 'Quarter', displayName: 'Quarter'),
+  ];
 
   @override
   Future<List<ReferenceOption>> listQuarters() async => const [
-        ReferenceOption(code: 'Q2', displayName: 'Q2'),
-      ];
+    ReferenceOption(code: 'Q2', displayName: 'Q2'),
+  ];
 
   @override
   Future<PreventiveMaintenanceInspection> addInspection(
@@ -215,6 +215,7 @@ class TestProgressRepository implements PreventiveMaintenanceRepository {
   @override
   Future<void> deleteInspection(String formId, String inspectionId) async {}
 }
+
 Future<void> scrollTo(WidgetTester tester, Finder finder) async {
   final listView = find.byType(ListView).last;
   final scrollable = find
@@ -223,7 +224,6 @@ Future<void> scrollTo(WidgetTester tester, Finder finder) async {
   await tester.scrollUntilVisible(finder, 300, scrollable: scrollable);
   await tester.pumpAndSettle();
 }
-
 
 void main() {
   group('ScheduleOption model', () {
@@ -348,7 +348,9 @@ void main() {
 
         // 1. Verify dropdown only lists unattached schedules (s2, s3).
         // S1 (already inspected), S4 (cancelled), and S5 (different department) should not be available to attach.
-        final scheduleDropdownFinder = find.byKey(const Key('inspection-schedule'));
+        final scheduleDropdownFinder = find.byKey(
+          const Key('inspection-schedule'),
+        );
         expect(scheduleDropdownFinder, findsOneWidget);
 
         // Open the dropdown
@@ -376,7 +378,10 @@ void main() {
         // Total = 3 (s1 + s2 + s3; excludes s4 Cancelled and s5 different department)
         expect(find.byType(InspectionCompletionSheet), findsOneWidget);
         expect(find.text('Inspection Recorded'), findsOneWidget);
-        expect(find.text('Asset FE-002 successfully inspected.'), findsOneWidget);
+        expect(
+          find.text('Asset FE-002 successfully inspected.'),
+          findsOneWidget,
+        );
         expect(find.text('2 of 3 assets inspected'), findsOneWidget);
         expect(find.text('67%'), findsOneWidget);
 
@@ -388,7 +393,9 @@ void main() {
   });
 
   group('InspectionCompletionSheet standalone', () {
-    testWidgets('displays correct completed / total ratio and percentage', (tester) async {
+    testWidgets('displays correct completed / total ratio and percentage', (
+      tester,
+    ) async {
       var nextAssetTapped = false;
       var viewBatchTapped = false;
 
@@ -455,6 +462,7 @@ void main() {
           assetCode: 'FE-001',
           status: 'Due',
           pmCycle: '2026-06',
+          assignedToUserId: testInspectorId,
         );
         final repository = TestProgressRepository(
           forms: [],
@@ -498,6 +506,7 @@ void main() {
           assetCode: 'FE-001',
           status: 'Ongoing',
           pmCycle: '2026-06',
+          assignedToUserId: testInspectorId,
         );
         final existingInspection = makeInspection(
           id: testInspection1Id,

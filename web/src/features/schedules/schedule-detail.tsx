@@ -5,6 +5,8 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useCurrentUser } from '@/features/auth/current-user'
+import { ScheduleBatchAssignment } from '@/features/schedules/schedule-batch-assignment'
 import { useSchedule } from '@/features/schedules/schedule-queries'
 import type { ScheduleSearch } from '@/features/schedules/schedule-registry'
 import {
@@ -37,6 +39,8 @@ export function ScheduleDetail({
       scheduleId,
     )
   const schedule = useSchedule(scheduleId, isValidId)
+  const currentUser = useCurrentUser()
+  const canAssignBatch = currentUser.data?.roles.includes('GSD') === true
 
   if (!isValidId) {
     return (
@@ -193,12 +197,6 @@ export function ScheduleDetail({
           label="Academic year"
           value={record.academicYear ?? 'Not recorded'}
         />
-        {record.assignedToUserId && (
-          <DetailItem
-            label="Assigned user ID"
-            value={record.assignedToUserId}
-          />
-        )}
         <DetailItem
           label="Completed"
           value={formatScheduleDateTime(record.completedAt)}
@@ -213,13 +211,11 @@ export function ScheduleDetail({
         />
       </Card>
 
-      <Card className="border-dashed shadow-none">
-        <h2 className="font-semibold">Recorded contract only</h2>
-        <p className="mt-1 text-sm text-[var(--text-secondary)]">
-          Recurrence generation, status transitions, assignment, editing, and
-          deletion are not part of the current schedule workflow.
-        </p>
-      </Card>
+      <ScheduleBatchAssignment
+        key={record.id}
+        schedule={record}
+        canAssign={canAssignBatch}
+      />
     </section>
   )
 }

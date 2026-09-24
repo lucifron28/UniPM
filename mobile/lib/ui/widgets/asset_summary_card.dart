@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../app_colors.dart';
 import '../display_labels.dart';
+import 'status_badge.dart';
 
 class AssetSummaryCard extends StatelessWidget {
   const AssetSummaryCard({
@@ -68,22 +69,7 @@ class AssetSummaryCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: AppColors.acknowledgedBg,
-                      borderRadius: BorderRadius.circular(999),
-                      border: Border.all(color: AppColors.acknowledgedBorder),
-                    ),
-                    child: Text(
-                      status,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.acknowledgedText,
-                      ),
-                    ),
-                  ),
+                  StatusBadge.fromAssetStatus(status),
                 ],
               ),
               if (locationText.isNotEmpty) ...[

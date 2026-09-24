@@ -6,14 +6,17 @@ import '../../auth/auth_models.dart';
 import '../../ui/display_labels.dart';
 import '../maintenance_history/asset_maintenance_history_page.dart';
 import '../maintenance_history/asset_maintenance_history_repository.dart';
+import '../preventive_maintenance/preventive_maintenance_models.dart';
 import '../preventive_maintenance/preventive_maintenance_repository.dart';
 import '../preventive_maintenance/scanned_asset_pm_entry.dart';
 import '../qr_scanner/qr_scanner_page.dart';
+import '../qr_scanner/qr_scan_result.dart';
 import 'asset_models.dart';
 import 'asset_qr_lookup_controller.dart';
 import 'asset_repository.dart';
 
-typedef QrScannerLauncher = Future<String?> Function(BuildContext context);
+typedef QrScannerLauncher =
+    Future<QrScanResult?> Function(BuildContext context);
 
 class AssetQrLookupPage extends StatefulWidget {
   const AssetQrLookupPage({
@@ -26,6 +29,7 @@ class AssetQrLookupPage extends StatefulWidget {
     this.preventiveMaintenanceRepository,
     this.assetMaintenanceHistoryRepository,
     this.user,
+    this.batchScope,
   });
 
   final AssetRepository repository;
@@ -36,6 +40,7 @@ class AssetQrLookupPage extends StatefulWidget {
   final PreventiveMaintenanceRepository? preventiveMaintenanceRepository;
   final AssetMaintenanceHistoryRepository? assetMaintenanceHistoryRepository;
   final AuthUser? user;
+  final PmBatchScope? batchScope;
 
   @override
   State<AssetQrLookupPage> createState() => _AssetQrLookupPageState();
@@ -45,6 +50,7 @@ class _AssetQrLookupPageState extends State<AssetQrLookupPage> {
   late final AssetQrLookupController controller =
       widget.controller ?? AssetQrLookupController(widget.repository);
   late final bool ownsController = widget.controller == null;
+  late bool _isCodeLookup = widget.isCodeLookup;
 
   @override
   void initState() {
@@ -52,13 +58,15 @@ class _AssetQrLookupPageState extends State<AssetQrLookupPage> {
     _performLookup(widget.scannedValue);
   }
 
-  void _performLookup(String value) {
-    if (widget.isCodeLookup) {
+  void _performLookup(String value, {bool? isCodeLookup}) {
+    _isCodeLookup = isCodeLookup ?? _isCodeLookup;
+    if (_isCodeLookup) {
       unawaited(controller.lookupCode(value));
     } else {
       unawaited(controller.lookup(value));
     }
   }
+
   @override
   void dispose() {
     if (ownsController) controller.dispose();
@@ -66,13 +74,20 @@ class _AssetQrLookupPageState extends State<AssetQrLookupPage> {
   }
 
   Future<void> _scanAnother() async {
-    final scannedValue =
+    final result =
         await (widget.scannerLauncher?.call(context) ??
-            Navigator.of(context).push<String>(
-              MaterialPageRoute<String>(builder: (_) => const QrScannerPage()),
+            Navigator.of(context).push<QrScanResult>(
+              MaterialPageRoute<QrScanResult>(
+                builder: (_) => const QrScannerPage(),
+              ),
             ));
-    if (!mounted || scannedValue == null) return;
-    _performLookup(scannedValue);
+    if (!mounted || result == null) return;
+    switch (result) {
+      case QrScanSuccess(:final qrCode):
+        _performLookup(qrCode, isCodeLookup: false);
+      case QrManualCodeEntry(:final assetCode):
+        _performLookup(assetCode, isCodeLookup: true);
+    }
   }
 
   @override
@@ -94,6 +109,8 @@ class _AssetQrLookupPageState extends State<AssetQrLookupPage> {
                 assetMaintenanceHistoryRepository:
                     widget.assetMaintenanceHistoryRepository,
                 user: widget.user,
+                batchScope: widget.batchScope,
+                onScanNextAsset: _scanAnother,
               ),
               AssetQrLookupStatus.invalidQr ||
               AssetQrLookupStatus.notFound ||
@@ -141,6 +158,8 @@ class _AssetDetails extends StatelessWidget {
     required this.preventiveMaintenanceRepository,
     required this.assetMaintenanceHistoryRepository,
     required this.user,
+    required this.batchScope,
+    required this.onScanNextAsset,
   });
 
   final Asset asset;
@@ -148,6 +167,8 @@ class _AssetDetails extends StatelessWidget {
   final PreventiveMaintenanceRepository? preventiveMaintenanceRepository;
   final AssetMaintenanceHistoryRepository? assetMaintenanceHistoryRepository;
   final AuthUser? user;
+  final PmBatchScope? batchScope;
+  final VoidCallback onScanNextAsset;
 
   @override
   Widget build(BuildContext context) {
@@ -218,6 +239,8 @@ class _AssetDetails extends StatelessWidget {
             asset: asset,
             repository: preventiveMaintenanceRepository!,
             user: user!,
+            batchScope: batchScope,
+            onScanNextAsset: onScanNextAsset,
           ),
           const SizedBox(height: 24),
         ],

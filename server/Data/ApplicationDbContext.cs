@@ -100,6 +100,10 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             .HasMaxLength(16);
         schedule.HasIndex(entity => new { entity.AssetId, entity.Status, entity.ScheduleDate });
         schedule.HasIndex(entity => new { entity.Status, entity.ScheduleDate });
+        schedule.HasOne<ApplicationUser>()
+            .WithMany()
+            .HasForeignKey(entity => entity.AssignedSupervisorUserId)
+            .OnDelete(DeleteBehavior.NoAction);
         schedule.ToTable("PreventiveMaintenanceSchedules", table =>
         {
             table.HasCheckConstraint(

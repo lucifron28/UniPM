@@ -24,6 +24,7 @@ import type {
   AcknowledgePreventiveMaintenanceFormDto,
   AssetCategoryResponse,
   AssetResponse,
+  AssignScheduleBatchDto,
   AuthUserResponse,
   CorrectiveMaintenanceHandoffResponse,
   CreateAssetDto,
@@ -46,6 +47,8 @@ import type {
   PreventiveMaintenanceAcknowledgementResponse,
   PreventiveMaintenanceFormResponse,
   ProblemDetails,
+  ScheduleAssignmentBatchResponse,
+  ScheduleAssignmentOptionsResponse,
   ScheduleReferenceResponse,
   ScheduleResponse,
   UpdateDraftInspectionRowDto,
@@ -1181,7 +1184,7 @@ export const useCreateAsset = <
 }
 
 /**
- * @summary Lists assets using supported category, status, building, and department filters
+ * @summary Lists assets using supported category, status, building, department, and search filters
  */
 export const listAssets = (params?: ListAssetsParams, signal?: AbortSignal) => {
   return customInstance<AssetResponse[]>({
@@ -1286,7 +1289,7 @@ export function useListAssets<
   queryKey: DataTag<QueryKey, TData, TError>
 }
 /**
- * @summary Lists assets using supported category, status, building, and department filters
+ * @summary Lists assets using supported category, status, building, department, and search filters
  */
 
 export function useListAssets<
@@ -1449,6 +1452,144 @@ export function useGetAsset<
 }
 
 /**
+ * @summary Gets an asset by its canonical asset code
+ */
+export const getAssetByCode = (assetCode: string, signal?: AbortSignal) => {
+  return customInstance<AssetResponse>({
+    url: `/api/v1/assets/by-code/${assetCode}`,
+    method: 'GET',
+    signal,
+  })
+}
+
+export const getGetAssetByCodeQueryKey = (assetCode: string) => {
+  return [`/api/v1/assets/by-code/${assetCode}`] as const
+}
+
+export const getGetAssetByCodeQueryOptions = <
+  TData = Awaited<ReturnType<typeof getAssetByCode>>,
+  TError = ValidationProblemDetails | ProblemDetails,
+>(
+  assetCode: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof getAssetByCode>>, TError, TData>
+    >
+  },
+) => {
+  const { query: queryOptions } = options ?? {}
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetAssetByCodeQueryKey(assetCode)
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getAssetByCode>>> = ({
+    signal,
+  }) => getAssetByCode(assetCode, signal)
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: assetCode !== null && assetCode !== undefined,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getAssetByCode>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetAssetByCodeQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getAssetByCode>>
+>
+export type GetAssetByCodeQueryError = ValidationProblemDetails | ProblemDetails
+
+export function useGetAssetByCode<
+  TData = Awaited<ReturnType<typeof getAssetByCode>>,
+  TError = ValidationProblemDetails | ProblemDetails,
+>(
+  assetCode: string,
+  options: {
+    query: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof getAssetByCode>>, TError, TData>
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAssetByCode>>,
+          TError,
+          Awaited<ReturnType<typeof getAssetByCode>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useGetAssetByCode<
+  TData = Awaited<ReturnType<typeof getAssetByCode>>,
+  TError = ValidationProblemDetails | ProblemDetails,
+>(
+  assetCode: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof getAssetByCode>>, TError, TData>
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAssetByCode>>,
+          TError,
+          Awaited<ReturnType<typeof getAssetByCode>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useGetAssetByCode<
+  TData = Awaited<ReturnType<typeof getAssetByCode>>,
+  TError = ValidationProblemDetails | ProblemDetails,
+>(
+  assetCode: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof getAssetByCode>>, TError, TData>
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+/**
+ * @summary Gets an asset by its canonical asset code
+ */
+
+export function useGetAssetByCode<
+  TData = Awaited<ReturnType<typeof getAssetByCode>>,
+  TError = ValidationProblemDetails | ProblemDetails,
+>(
+  assetCode: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof getAssetByCode>>, TError, TData>
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+} {
+  const queryOptions = getGetAssetByCodeQueryOptions(assetCode, options)
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+
+  return withQueryKey(query, queryOptions.queryKey)
+}
+
+/**
  * @summary Gets an asset by its QR identifier
  */
 export const getAssetByQr = (qrCodeValue: string, signal?: AbortSignal) => {
@@ -1577,6 +1718,152 @@ export function useGetAssetByQr<
   queryKey: DataTag<QueryKey, TData, TError>
 } {
   const queryOptions = getGetAssetByQrQueryOptions(qrCodeValue, options)
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+
+  return withQueryKey(query, queryOptions.queryKey)
+}
+
+/**
+ * @summary Lists active Inspector and Supervisor accounts for GSD batch assignment
+ */
+export const listScheduleAssignmentOptions = (signal?: AbortSignal) => {
+  return customInstance<ScheduleAssignmentOptionsResponse>({
+    url: `/api/v1/schedules/assignment-options`,
+    method: 'GET',
+    signal,
+  })
+}
+
+export const getListScheduleAssignmentOptionsQueryKey = () => {
+  return [`/api/v1/schedules/assignment-options`] as const
+}
+
+export const getListScheduleAssignmentOptionsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listScheduleAssignmentOptions>>,
+  TError = unknown,
+>(options?: {
+  query?: Partial<
+    UseQueryOptions<
+      Awaited<ReturnType<typeof listScheduleAssignmentOptions>>,
+      TError,
+      TData
+    >
+  >
+}) => {
+  const { query: queryOptions } = options ?? {}
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListScheduleAssignmentOptionsQueryKey()
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listScheduleAssignmentOptions>>
+  > = ({ signal }) => listScheduleAssignmentOptions(signal)
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listScheduleAssignmentOptions>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListScheduleAssignmentOptionsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listScheduleAssignmentOptions>>
+>
+export type ListScheduleAssignmentOptionsQueryError = unknown
+
+export function useListScheduleAssignmentOptions<
+  TData = Awaited<ReturnType<typeof listScheduleAssignmentOptions>>,
+  TError = unknown,
+>(
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listScheduleAssignmentOptions>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listScheduleAssignmentOptions>>,
+          TError,
+          Awaited<ReturnType<typeof listScheduleAssignmentOptions>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useListScheduleAssignmentOptions<
+  TData = Awaited<ReturnType<typeof listScheduleAssignmentOptions>>,
+  TError = unknown,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listScheduleAssignmentOptions>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listScheduleAssignmentOptions>>,
+          TError,
+          Awaited<ReturnType<typeof listScheduleAssignmentOptions>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useListScheduleAssignmentOptions<
+  TData = Awaited<ReturnType<typeof listScheduleAssignmentOptions>>,
+  TError = unknown,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listScheduleAssignmentOptions>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+/**
+ * @summary Lists active Inspector and Supervisor accounts for GSD batch assignment
+ */
+
+export function useListScheduleAssignmentOptions<
+  TData = Awaited<ReturnType<typeof listScheduleAssignmentOptions>>,
+  TError = unknown,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listScheduleAssignmentOptions>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+} {
+  const queryOptions = getListScheduleAssignmentOptionsQueryOptions(options)
 
   const query = useQuery(queryOptions, queryClient) as UseQueryResult<
     TData,
@@ -1805,6 +2092,95 @@ export function useListSchedules<
   > & { queryKey: DataTag<QueryKey, TData, TError> }
 
   return withQueryKey(query, queryOptions.queryKey)
+}
+
+/**
+ * @summary Assigns the schedules in one department, category, and PM cycle batch
+ */
+export const assignScheduleBatch = (
+  id: string,
+  assignScheduleBatchDto: AssignScheduleBatchDto,
+  signal?: AbortSignal,
+) => {
+  return customInstance<ScheduleAssignmentBatchResponse>({
+    url: `/api/v1/schedules/${id}/assignment`,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    data: assignScheduleBatchDto,
+    signal,
+  })
+}
+
+export const getAssignScheduleBatchMutationOptions = <
+  TError = ValidationProblemDetails | void | ProblemDetails,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof assignScheduleBatch>>,
+    TError,
+    { id: string; data: AssignScheduleBatchDto },
+    TContext
+  >
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof assignScheduleBatch>>,
+  TError,
+  { id: string; data: AssignScheduleBatchDto },
+  TContext
+> => {
+  const mutationKey = ['assignScheduleBatch']
+  const { mutation: mutationOptions } = options
+    ? options.mutation &&
+      'mutationKey' in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey } }
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof assignScheduleBatch>>,
+    { id: string; data: AssignScheduleBatchDto }
+  > = (props) => {
+    const { id, data } = props ?? {}
+
+    return assignScheduleBatch(id, data)
+  }
+
+  return { mutationFn, ...mutationOptions }
+}
+
+export type AssignScheduleBatchMutationResult = NonNullable<
+  Awaited<ReturnType<typeof assignScheduleBatch>>
+>
+export type AssignScheduleBatchMutationBody = AssignScheduleBatchDto
+export type AssignScheduleBatchMutationError =
+  ValidationProblemDetails | void | ProblemDetails
+
+/**
+ * @summary Assigns the schedules in one department, category, and PM cycle batch
+ */
+export const useAssignScheduleBatch = <
+  TError = ValidationProblemDetails | void | ProblemDetails,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof assignScheduleBatch>>,
+      TError,
+      { id: string; data: AssignScheduleBatchDto },
+      TContext
+    >
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof assignScheduleBatch>>,
+  TError,
+  { id: string; data: AssignScheduleBatchDto },
+  TContext
+> => {
+  return useMutation(
+    getAssignScheduleBatchMutationOptions(options),
+    queryClient,
+  )
 }
 
 /**

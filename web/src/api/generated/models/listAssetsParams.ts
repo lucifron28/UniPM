@@ -10,4 +10,9 @@ export type ListAssetsParams = {
   status?: string
   building?: string
   department?: string
+  search?: string
+  /**
+   * @pattern ^-?(?:0|[1-9]\d*)$
+   */
+  limit?: number | string
 }
