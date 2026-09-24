@@ -161,8 +161,8 @@ export function AssetRegistry({
     if (!focusAfterPageChange.current || !filteredAssets.isSuccess) return
     focusAfterPageChange.current = false
     const frame = requestAnimationFrame(() => {
-      listStart.current?.focus({ preventScroll: true })
       listStart.current?.scrollIntoView({ block: 'start' })
+      listStart.current?.focus({ preventScroll: true })
     })
     return () => cancelAnimationFrame(frame)
   }, [page, filteredAssets.isSuccess])

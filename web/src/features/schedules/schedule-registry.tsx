@@ -170,8 +170,8 @@ export function ScheduleRegistry({
   useEffect(() => {
     if (!focusAfterPageChange.current || !filteredSchedules.isSuccess) return
     focusAfterPageChange.current = false
-    listStart.current?.focus({ preventScroll: true })
     listStart.current?.scrollIntoView({ block: 'start' })
+    listStart.current?.focus({ preventScroll: true })
   }, [page, filteredSchedules.isSuccess])
 
   const changePage = (nextPage: number) => {

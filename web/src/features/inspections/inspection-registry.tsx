@@ -176,8 +176,8 @@ export function InspectionRegistry({
   useEffect(() => {
     if (!focusAfterPageChange.current || !filteredInspections.isSuccess) return
     focusAfterPageChange.current = false
-    listStart.current?.focus({ preventScroll: true })
     listStart.current?.scrollIntoView({ block: 'start' })
+    listStart.current?.focus({ preventScroll: true })
   }, [page, filteredInspections.isSuccess])
 
   const changePage = (nextPage: number) => {
