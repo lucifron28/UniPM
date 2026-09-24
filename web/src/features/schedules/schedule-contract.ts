@@ -53,6 +53,7 @@ export const scheduleSchema = z
       .transform((value) => (value === null ? null : Number(value))),
     academicYear: z.string().max(32).nullable(),
     assignedToUserId: z.string().uuid().nullable(),
+    assignedSupervisorUserId: z.string().uuid().nullable(),
     completedAt: z.string().datetime({ offset: true }).nullable(),
     createdAt: z.string().datetime({ offset: true }),
     updatedAt: z.string().datetime({ offset: true }),

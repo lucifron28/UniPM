@@ -35,6 +35,7 @@ const schedule = {
   year: 2026,
   academicYear: null,
   assignedToUserId: null,
+  assignedSupervisorUserId: null,
   completedAt: null,
   createdAt: '2026-07-22T00:00:00Z',
   updatedAt: '2026-07-22T00:00:00Z',
@@ -139,7 +140,9 @@ test.describe('Schedule workflows', () => {
     await page.getByRole('link', { name: 'View details' }).click()
     await expect(page).toHaveURL(new RegExp(`/app/schedules/${scheduleId}`))
     await expect(page.getByRole('heading', { name: 'FE-001' })).toBeVisible()
-    await expect(page.getByText('Recorded contract only')).toBeVisible()
+    await expect(
+      page.getByRole('heading', { name: 'Batch assignment' }),
+    ).toBeVisible()
   })
 
   test('creates a schedule with only approved fields and opens its detail', async ({

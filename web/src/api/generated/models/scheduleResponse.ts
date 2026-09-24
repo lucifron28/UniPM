@@ -27,6 +27,8 @@ export interface ScheduleResponse {
   /** @nullable */
   assignedToUserId: string | null
   /** @nullable */
+  assignedSupervisorUserId: string | null
+  /** @nullable */
   completedAt: string | null
   createdAt: string
   updatedAt: string

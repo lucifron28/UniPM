@@ -190,6 +190,7 @@ class ScheduleOption {
     required this.academicYear,
     required this.asset,
     this.assignedToUserId,
+    this.assignedSupervisorUserId,
   });
 
   final String id;
@@ -204,6 +205,7 @@ class ScheduleOption {
   final String? academicYear;
   final ScheduleAssetOption? asset;
   final String? assignedToUserId;
+  final String? assignedSupervisorUserId;
 
   factory ScheduleOption.fromJson(Map<String, dynamic> json) {
     final assetJson = json['asset'];
@@ -223,8 +225,29 @@ class ScheduleOption {
       academicYear: _nullableString(json, 'academicYear'),
       asset: ScheduleAssetOption.fromJson(assetJson.cast<String, dynamic>()),
       assignedToUserId: _nullableUuid(json, 'assignedToUserId'),
+      assignedSupervisorUserId: _nullableUuid(json, 'assignedSupervisorUserId'),
     );
   }
+}
+
+class PmBatchScope {
+  const PmBatchScope({
+    required this.department,
+    required this.assetCategory,
+    required this.pmCycle,
+  });
+
+  final String department;
+  final String assetCategory;
+  final String pmCycle;
+
+  bool matches(Asset asset, ScheduleOption schedule) {
+    return _normalize(department) == _normalize(asset.department) &&
+        _normalize(assetCategory) == _normalize(asset.assetCategory) &&
+        _normalize(pmCycle) == _normalize(schedule.pmCycle);
+  }
+
+  static String _normalize(String? value) => (value ?? '').trim().toLowerCase();
 }
 
 class ScheduleAssetOption {

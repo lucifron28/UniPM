@@ -41,6 +41,7 @@ const schedule = {
   id: scheduleId,
   assetId,
   scheduleDate: '2026-08-01T00:00:00+08:00',
+  pmCycle: '2026-08',
   periodType: 'Quarter',
   status: 'Due',
   quarter: 'Q3',
@@ -48,6 +49,7 @@ const schedule = {
   year: 2026,
   academicYear: null,
   assignedToUserId: null,
+  assignedSupervisorUserId: null,
   completedAt: null,
   createdAt: '2026-07-22T00:00:00Z',
   updatedAt: '2026-07-22T00:00:00Z',
@@ -60,6 +62,8 @@ const schedule = {
     location: asset.location,
   },
 }
+const workerId = '44444444-4444-4444-8444-444444444444'
+const supervisorId = '55555555-5555-4555-8555-555555555555'
 
 function setupAuth() {
   useAuthStore.getState().establishSession('synthetic-schedule-token')
@@ -90,6 +94,16 @@ function renderWithProviders(ui: React.ReactNode) {
 function mockReferences(roles = ['GSD']) {
   server.use(
     http.get(`${base}/auth/me`, () => HttpResponse.json({ ...user, roles })),
+    http.get(`${base}/schedules/assignment-options`, () =>
+      roles.includes('GSD')
+        ? HttpResponse.json({
+            workers: [{ id: workerId, displayName: 'Fictional Inspector' }],
+            supervisors: [
+              { id: supervisorId, displayName: 'Fictional Supervisor' },
+            ],
+          })
+        : HttpResponse.json({}, { status: 403 }),
+    ),
     http.get(`${base}/assets`, () => HttpResponse.json([asset])),
     http.get(`${base}/reference-data/schedule-statuses`, () =>
       HttpResponse.json([
@@ -201,6 +215,72 @@ describe('schedule workflows', () => {
     )
     renderWithProviders(<ScheduleDetail scheduleId={scheduleId} />)
     expect(await screen.findByText('Schedule record error')).toBeInTheDocument()
+  })
+
+  it('lets GSD assign the full department, category, and cycle batch', async () => {
+    let requestBody: unknown
+    server.use(
+      http.get(`${base}/schedules/${scheduleId}`, () =>
+        HttpResponse.json(schedule),
+      ),
+      http.put(
+        `${base}/schedules/${scheduleId}/assignment`,
+        async ({ request }) => {
+          requestBody = await request.json()
+          return HttpResponse.json({
+            department: 'GSD',
+            assetCategory: 'fire-extinguisher',
+            pmCycle: '2026-08',
+            workerUserId: workerId,
+            workerDisplayName: 'Fictional Inspector',
+            supervisorUserId: supervisorId,
+            supervisorDisplayName: 'Fictional Supervisor',
+            scheduleIds: [scheduleId, assetId],
+          })
+        },
+      ),
+    )
+
+    renderWithProviders(<ScheduleDetail scheduleId={scheduleId} />)
+    const actor = userEvent.setup()
+    const worker = await screen.findByLabelText('Skilled worker (Inspector)')
+    await actor.selectOptions(worker, workerId)
+    await actor.selectOptions(
+      screen.getByLabelText('Supervisor (oversight)'),
+      supervisorId,
+    )
+    await actor.click(
+      screen.getByRole('button', { name: 'Assign entire batch' }),
+    )
+
+    expect(
+      await screen.findByText(/Assigned 2 schedule\(s\) for GSD/),
+    ).toBeVisible()
+    expect(requestBody).toEqual({
+      workerUserId: workerId,
+      supervisorUserId: supervisorId,
+    })
+  })
+
+  it('does not load assignment options or show assignment controls to Inspectors', async () => {
+    mockReferences(['Inspector'])
+    let optionsRequested = false
+    server.use(
+      http.get(`${base}/schedules/${scheduleId}`, () =>
+        HttpResponse.json(schedule),
+      ),
+      http.get(`${base}/schedules/assignment-options`, () => {
+        optionsRequested = true
+        return HttpResponse.json({}, { status: 403 })
+      }),
+    )
+
+    renderWithProviders(<ScheduleDetail scheduleId={scheduleId} />)
+
+    await screen.findByText('Batch assignment')
+    expect(screen.queryByLabelText('Skilled worker (Inspector)')).toBeNull()
+    expect(screen.queryByLabelText('Supervisor (oversight)')).toBeNull()
+    expect(optionsRequested).toBe(false)
   })
 
   it('denies an Admin-only user and does not render a create action', async () => {

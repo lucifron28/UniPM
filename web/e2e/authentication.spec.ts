@@ -16,6 +16,16 @@ const fictionalSession = {
   },
 }
 
+test.beforeEach(async ({ page }) => {
+  await page.route('**/api/v1/**', (route) =>
+    route.fulfill({
+      status: 503,
+      contentType: 'application/problem+json',
+      body: JSON.stringify({ title: 'Service unavailable', status: 503 }),
+    }),
+  )
+})
+
 async function mockAnonymousRefresh(page: Page) {
   await page.route(`${apiPattern}/refresh`, (route) =>
     route.fulfill({
@@ -26,7 +36,18 @@ async function mockAnonymousRefresh(page: Page) {
   )
 }
 
+async function mockAuthenticatedCurrentUser(page: Page) {
+  await page.route(`${apiPattern}/me`, (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(fictionalSession.user),
+    }),
+  )
+}
+
 async function mockSuccessfulLogin(page: Page) {
+  await mockAuthenticatedCurrentUser(page)
   await page.route(`${apiPattern}/login`, async (route) => {
     const body = route.request().postDataJSON()
     expect(body).toEqual(fictionalCredentials)
@@ -119,6 +140,7 @@ test('successful login opens the dashboard and displays returned identity', asyn
 test('direct protected navigation restores through the refresh cookie contract', async ({
   page,
 }) => {
+  await mockAuthenticatedCurrentUser(page)
   await page.route(`${apiPattern}/refresh`, (route) =>
     route.fulfill({
       status: 200,
@@ -147,6 +169,7 @@ test('anonymous protected navigation redirects only after restoration', async ({
 })
 
 test('logout is locally final and returns to login', async ({ page }) => {
+  await mockAuthenticatedCurrentUser(page)
   await page.route(`${apiPattern}/refresh`, (route) =>
     route.fulfill({
       status: 200,
@@ -193,6 +216,7 @@ test('a stale refresh cannot overwrite the cookie from a later logout and login'
   context,
   page,
 }) => {
+  await mockAuthenticatedCurrentUser(page)
   let loginCount = 0
   let refreshCount = 0
   let releaseStaleRefresh!: () => void

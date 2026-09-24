@@ -80,8 +80,10 @@ void main() {
     expect(form.fieldWorkCompletedAt, fieldWorkCompletedAt);
     expect(form.inspections.single.startedAt, startedAt);
     expect(form.inspections.single.completedAt, completedAt);
-    expect(form.copyWith(status: 'Submitted').fieldWorkCompletedAt,
-        fieldWorkCompletedAt);
+    expect(
+      form.copyWith(status: 'Submitted').fieldWorkCompletedAt,
+      fieldWorkCompletedAt,
+    );
   });
 
   testWidgets('registry shows draft metadata and row count', (tester) async {
@@ -409,6 +411,34 @@ void main() {
     expect(dropdown.initialValue, firstScheduleId);
   });
 
+  testWidgets('Next Asset returns to the scanner callback after saving a row', (
+    tester,
+  ) async {
+    final repository = FakePreventiveMaintenanceRepository(
+      schedulesFuture: Future.value([
+        testSchedule(firstScheduleId, 'FE-001', assignedToUserId: inspectorId),
+      ]),
+    );
+    var scanNextAssetCalled = false;
+
+    await pumpScannedEntry(
+      tester,
+      repository,
+      onScanNextAsset: () => scanNextAssetCalled = true,
+    );
+    await tester.tap(find.byKey(const Key('start-pm')));
+    await tester.pumpAndSettle();
+    await scrollTo(tester, find.byKey(const Key('add-inspection-button')));
+    await tester.tap(find.byKey(const Key('add-inspection-button')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('sheet-next-asset')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('sheet-next-asset')));
+    await tester.pumpAndSettle();
+
+    expect(scanNextAssetCalled, isTrue);
+  });
+
   test('multiple compatible Drafts require an explicit choice', () async {
     final repository = FakePreventiveMaintenanceRepository(
       forms: [
@@ -530,46 +560,67 @@ void main() {
     );
   });
 
-  testWidgets(
-    'Inspector sees own and unassigned schedules but not another Inspector schedule',
-    (tester) async {
-      final repository = FakePreventiveMaintenanceRepository(
-        schedulesFuture: Future.value([
-          testSchedule(
-            firstScheduleId,
-            'FE-001',
-            assignedToUserId: inspectorId,
-          ),
-          testSchedule(secondScheduleId, 'FE-001', status: 'Ongoing'),
-          testSchedule(
-            thirdScheduleId,
-            'FE-001',
-            status: 'Overdue',
-            assignedToUserId: otherUserId,
-          ),
-        ]),
-      );
+  testWidgets('Inspector sees only own assigned schedules', (tester) async {
+    final repository = FakePreventiveMaintenanceRepository(
+      schedulesFuture: Future.value([
+        testSchedule(firstScheduleId, 'FE-001', assignedToUserId: inspectorId),
+        testSchedule(
+          secondScheduleId,
+          'FE-001',
+          status: 'Ongoing',
+          assignedToUserId: null,
+        ),
+        testSchedule(
+          thirdScheduleId,
+          'FE-001',
+          status: 'Overdue',
+          assignedToUserId: otherUserId,
+        ),
+      ]),
+    );
 
-      await pumpScannedEntry(tester, repository);
+    await pumpScannedEntry(tester, repository);
 
-      await tester.tap(find.byKey(const Key('pm-schedule-select')));
-      await tester.pumpAndSettle();
-      expect(find.textContaining('Due'), findsOneWidget);
-      expect(find.textContaining('Ongoing'), findsOneWidget);
-      expect(find.textContaining('Overdue'), findsNothing);
-    },
-  );
+    expect(find.textContaining('Due'), findsOneWidget);
+    expect(find.textContaining('Ongoing'), findsNothing);
+    expect(find.textContaining('Overdue'), findsNothing);
+  });
+
+  testWidgets('a task outside the selected batch requires an explicit exit', (
+    tester,
+  ) async {
+    final repository = FakePreventiveMaintenanceRepository(
+      schedulesFuture: Future.value([
+        testSchedule(firstScheduleId, 'FE-001', assignedToUserId: inspectorId),
+      ]),
+    );
+
+    await pumpScannedEntry(
+      tester,
+      repository,
+      batchScope: const PmBatchScope(
+        department: 'Library',
+        assetCategory: 'fire-extinguisher',
+        pmCycle: '2026-01',
+      ),
+    );
+
+    expect(find.byKey(const Key('pm-task-outside-batch')), findsOneWidget);
+    expect(find.byKey(const Key('start-pm')), findsNothing);
+
+    await tester.tap(find.byKey(const Key('leave-batch-for-pm-task')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('pm-task-outside-batch')), findsNothing);
+    expect(find.byKey(const Key('start-pm')), findsOneWidget);
+  });
 
   testWidgets('GSD sees all eligible schedules regardless of assignment', (
     tester,
   ) async {
     final repository = FakePreventiveMaintenanceRepository(
       schedulesFuture: Future.value([
-        testSchedule(
-          firstScheduleId,
-          'FE-001',
-          assignedToUserId: inspectorId,
-        ),
+        testSchedule(firstScheduleId, 'FE-001', assignedToUserId: inspectorId),
         testSchedule(secondScheduleId, 'FE-001', status: 'Ongoing'),
         testSchedule(
           thirdScheduleId,
@@ -1161,6 +1212,8 @@ Future<void> pumpScannedEntry(
   FakePreventiveMaintenanceRepository repository, {
   Asset? asset,
   AuthUser? user,
+  PmBatchScope? batchScope,
+  VoidCallback? onScanNextAsset,
 }) async {
   await tester.pumpWidget(
     MaterialApp(
@@ -1170,6 +1223,8 @@ Future<void> pumpScannedEntry(
             asset: asset ?? testAsset(),
             repository: repository,
             user: user ?? testUser(),
+            batchScope: batchScope,
+            onScanNextAsset: onScanNextAsset,
           ),
         ),
       ),
@@ -1483,7 +1538,7 @@ ScheduleOption testSchedule(
   String assetCode, {
   String status = 'Due',
   String assetCategory = 'fire-extinguisher',
-  String? assignedToUserId,
+  String? assignedToUserId = inspectorId,
 }) => ScheduleOption(
   id: id,
   assetId: '88888888-8888-4888-8888-888888888888',

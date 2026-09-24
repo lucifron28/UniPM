@@ -324,7 +324,7 @@
       },
       "get": {
         "tags": ["Assets"],
-        "summary": "Lists assets using supported category, status, building, and department filters",
+        "summary": "Lists assets using supported category, status, building, department, and search filters",
         "operationId": "ListAssets",
         "parameters": [
           {
@@ -353,6 +353,22 @@
             "in": "query",
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": ["integer", "string"],
+              "format": "int32"
             }
           }
         ],
@@ -423,6 +439,55 @@
         }
       }
     },
+    "/api/v1/assets/by-code/{assetCode}": {
+      "get": {
+        "tags": ["Assets"],
+        "summary": "Gets an asset by its canonical asset code",
+        "operationId": "GetAssetByCode",
+        "parameters": [
+          {
+            "name": "assetCode",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/assets/by-qr/{qrCodeValue}": {
       "get": {
         "tags": ["Assets"],
@@ -465,6 +530,25 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/schedules/assignment-options": {
+      "get": {
+        "tags": ["Schedules"],
+        "summary": "Lists active Inspector and Supervisor accounts for GSD batch assignment",
+        "operationId": "ListScheduleAssignmentOptions",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleAssignmentOptionsResponse"
                 }
               }
             }
@@ -613,6 +697,82 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/schedules/{id}/assignment": {
+      "put": {
+        "tags": ["Schedules"],
+        "summary": "Assigns the schedules in one department, category, and PM cycle batch",
+        "operationId": "AssignScheduleBatch",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignScheduleBatchDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleAssignmentBatchResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
                 }
               }
             }
@@ -1518,6 +1678,19 @@
           "updatedAt": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "AssignScheduleBatchDto": {
+        "type": "object",
+        "properties": {
+          "workerUserId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "supervisorUserId": {
+            "type": "string",
+            "format": "uuid"
           }
         }
       },
@@ -2541,6 +2714,82 @@
           }
         }
       },
+      "ScheduleAssigneeOption": {
+        "required": ["id", "displayName"],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "displayName": {
+            "type": "string"
+          }
+        }
+      },
+      "ScheduleAssignmentBatchResponse": {
+        "required": [
+          "department",
+          "assetCategory",
+          "pmCycle",
+          "workerUserId",
+          "workerDisplayName",
+          "supervisorUserId",
+          "supervisorDisplayName",
+          "scheduleIds"
+        ],
+        "type": "object",
+        "properties": {
+          "department": {
+            "type": "string"
+          },
+          "assetCategory": {
+            "type": "string"
+          },
+          "pmCycle": {
+            "type": "string"
+          },
+          "workerUserId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "workerDisplayName": {
+            "type": "string"
+          },
+          "supervisorUserId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "supervisorDisplayName": {
+            "type": "string"
+          },
+          "scheduleIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        }
+      },
+      "ScheduleAssignmentOptionsResponse": {
+        "required": ["workers", "supervisors"],
+        "type": "object",
+        "properties": {
+          "workers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScheduleAssigneeOption"
+            }
+          },
+          "supervisors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScheduleAssigneeOption"
+            }
+          }
+        }
+      },
       "ScheduleReferenceResponse": {
         "required": ["code", "displayName"],
         "type": "object",
@@ -2566,6 +2815,7 @@
           "year",
           "academicYear",
           "assignedToUserId",
+          "assignedSupervisorUserId",
           "completedAt",
           "createdAt",
           "updatedAt",
@@ -2609,6 +2859,10 @@
             "type": ["null", "string"]
           },
           "assignedToUserId": {
+            "type": ["null", "string"],
+            "format": "uuid"
+          },
+          "assignedSupervisorUserId": {
             "type": ["null", "string"],
             "format": "uuid"
           },

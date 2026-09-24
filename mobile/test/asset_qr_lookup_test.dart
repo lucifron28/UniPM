@@ -15,6 +15,7 @@ import 'package:mobile/features/assets/asset_models.dart';
 import 'package:mobile/features/assets/asset_qr_lookup_controller.dart';
 import 'package:mobile/features/assets/asset_qr_lookup_page.dart';
 import 'package:mobile/features/assets/asset_repository.dart';
+import 'package:mobile/features/qr_scanner/qr_scan_result.dart';
 
 const assetId = '11111111-1111-4111-8111-111111111111';
 const qrCodeValue = 'UNIPM-FIREALARM-11111111';
@@ -95,6 +96,7 @@ class FakeAssetRepository implements AssetRepository {
 
   final Future<Asset> Function(String value) handler;
   final values = <String>[];
+  final codeValues = <String>[];
 
   @override
   Future<Asset> getByQr(String scannedValue) {
@@ -105,6 +107,7 @@ class FakeAssetRepository implements AssetRepository {
   @override
   Future<Asset> getByCode(String assetCode) {
     values.add(assetCode);
+    codeValues.add(assetCode);
     return handler(assetCode);
   }
 
@@ -429,7 +432,7 @@ void main() {
         home: AssetQrLookupPage(
           repository: repository,
           scannedValue: unknownValue,
-          scannerLauncher: (context) async => qrCodeValue,
+          scannerLauncher: (context) async => QrScanSuccess(qrCodeValue),
         ),
       ),
     );
@@ -442,5 +445,34 @@ void main() {
     expect(repository.values, [unknownValue, qrCodeValue]);
     expect(find.text('Asset found'), findsOneWidget);
     expect(find.text('FA-001'), findsOneWidget);
+  });
+
+  testWidgets('scan another can return a manual asset-code result', (
+    tester,
+  ) async {
+    const unknownValue = 'UNIPM-UNKNOWN-00000000';
+    final repository = FakeAssetRepository((value) async {
+      if (value == unknownValue) {
+        throw const ApiException(statusCode: 404, message: 'Not found.');
+      }
+      return testAsset();
+    });
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: AssetQrLookupPage(
+          repository: repository,
+          scannedValue: unknownValue,
+          scannerLauncher: (context) async => const QrManualCodeEntry('FA-001'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('scan-another-asset-qr')));
+    await tester.pumpAndSettle();
+
+    expect(repository.codeValues, ['FA-001']);
+    expect(find.text('Asset found'), findsOneWidget);
   });
 }
