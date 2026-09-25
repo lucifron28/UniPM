@@ -20,7 +20,10 @@ import {
   categoryLabel,
 } from '@/features/assets/asset-presentation'
 import { useCurrentUser } from '@/features/auth/current-user'
-import { useStableRegistryPanel } from '@/features/shared/use-stable-registry-panel'
+import {
+  RegistryResultsPanel,
+  registryDesktopViewportClassName,
+} from '@/features/shared/registry-results-panel'
 
 export type AssetSearch = {
   assetCategory?: Asset['assetCategory'] | undefined
@@ -127,9 +130,6 @@ export function AssetRegistry({
   const [text, setText] = useState(search.text ?? '')
   const [building, setBuilding] = useState(search.building ?? '')
   const [department, setDepartment] = useState(search.department ?? '')
-  const { panelRef, minHeight, preserveHeight } = useStableRegistryPanel(
-    JSON.stringify({ ...search, page: undefined }),
-  )
 
   useEffect(() => setText(search.text ?? ''), [search.text])
   useEffect(() => setBuilding(search.building ?? ''), [search.building])
@@ -160,7 +160,6 @@ export function AssetRegistry({
   )
 
   const changePage = (nextPage: number) => {
-    preserveHeight()
     onSearchChange(
       { ...search, page: nextPage > 1 ? nextPage : undefined },
       { preserveScroll: true },
@@ -444,12 +443,19 @@ export function AssetRegistry({
       </Card>
 
       {filteredAssets.isPending ? (
-        <div className="space-y-3" role="status" aria-label="Loading assets">
+        <Card
+          role="status"
+          aria-label="Loading assets"
+          className={
+            'space-y-3 p-4 shadow-none ' +
+            registryDesktopViewportClassName('lg')
+          }
+        >
           <span className="sr-only">Loading asset records...</span>
           {Array.from({ length: 5 }, (_, index) => (
             <Skeleton key={index} className="h-16 w-full" />
           ))}
-        </div>
+        </Card>
       ) : filteredAssets.isError ? (
         <Card
           role="alert"
@@ -485,71 +491,68 @@ export function AssetRegistry({
           </p>
         </Card>
       ) : (
-        <div
-          ref={panelRef}
-          style={{ minHeight }}
-          aria-label="Asset results"
-          className="flex flex-col justify-between gap-4"
-        >
-          <div>
-            <div className="hidden overflow-x-auto rounded-xl border border-[var(--border-soft)] bg-white lg:block">
-              <table className="w-full text-left text-sm">
-                <thead className="border-b border-[var(--border-soft)] bg-[var(--page-background)]">
-                  {table.getHeaderGroups().map((headerGroup) => (
-                    <tr key={headerGroup.id}>
-                      {headerGroup.headers.map((header) => (
-                        <th
-                          key={header.id}
-                          className="px-4 py-3 font-semibold text-[var(--text-primary)]"
-                        >
-                          {header.isPlaceholder
-                            ? null
-                            : flexRender(
-                                header.column.columnDef.header,
-                                header.getContext(),
-                              )}
-                        </th>
-                      ))}
-                    </tr>
-                  ))}
-                </thead>
-                <tbody>
-                  {table.getRowModel().rows.map((row) => (
-                    <tr
-                      key={row.id}
-                      className="border-b border-[var(--border-soft)] last:border-0 hover:bg-[var(--page-background)]"
-                    >
-                      {row.getVisibleCells().map((cell, index) => (
-                        <td
-                          key={cell.id}
-                          className="px-4 py-3 text-[var(--text-secondary)]"
-                        >
-                          {index === 0 ? (
-                            <Link
-                              to="/app/assets/$assetId"
-                              params={{ assetId: row.original.id }}
-                              search={search}
-                              className="font-semibold text-[var(--primary)] hover:underline"
-                            >
-                              {flexRender(
-                                cell.column.columnDef.cell,
-                                cell.getContext(),
-                              )}
-                            </Link>
-                          ) : (
-                            flexRender(
+        <RegistryResultsPanel
+          label="Assets"
+          breakpoint="lg"
+          desktopContent={
+            <table className="w-full text-left text-sm">
+              <thead className="border-b border-[var(--border-soft)] bg-[var(--page-background)]">
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <tr key={headerGroup.id}>
+                    {headerGroup.headers.map((header) => (
+                      <th
+                        key={header.id}
+                        className="px-4 py-3 font-semibold text-[var(--text-primary)]"
+                      >
+                        {header.isPlaceholder
+                          ? null
+                          : flexRender(
+                              header.column.columnDef.header,
+                              header.getContext(),
+                            )}
+                      </th>
+                    ))}
+                  </tr>
+                ))}
+              </thead>
+              <tbody>
+                {table.getRowModel().rows.map((row) => (
+                  <tr
+                    key={row.id}
+                    className="border-b border-[var(--border-soft)] last:border-0 hover:bg-[var(--page-background)]"
+                  >
+                    {row.getVisibleCells().map((cell, index) => (
+                      <td
+                        key={cell.id}
+                        className="px-4 py-3 text-[var(--text-secondary)]"
+                      >
+                        {index === 0 ? (
+                          <Link
+                            to="/app/assets/$assetId"
+                            params={{ assetId: row.original.id }}
+                            search={search}
+                            className="font-semibold text-[var(--primary)] hover:underline"
+                          >
+                            {flexRender(
                               cell.column.columnDef.cell,
                               cell.getContext(),
-                            )
-                          )}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div className="grid gap-3 lg:hidden">
+                            )}
+                          </Link>
+                        ) : (
+                          flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext(),
+                          )
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          }
+          mobileContent={
+            <div className="grid gap-3">
               {pageData.map((asset) => (
                 <Link
                   key={asset.id}
@@ -587,33 +590,14 @@ export function AssetRegistry({
                 </Link>
               ))}
             </div>
-          </div>
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-[var(--text-secondary)]">
-              Showing {Math.min((page - 1) * pageSize + 1, textFiltered.length)}
-              –{Math.min(page * pageSize, textFiltered.length)} of{' '}
-              {textFiltered.length} filtered assets · page {page} of {pageCount}
-            </p>
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                variant="secondary"
-                disabled={page <= 1}
-                onClick={() => changePage(page - 1)}
-              >
-                Previous
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                disabled={page >= pageCount}
-                onClick={() => changePage(page + 1)}
-              >
-                Next
-              </Button>
-            </div>
-          </div>
-        </div>
+          }
+          pagination={{
+            page,
+            pageSize,
+            total: textFiltered.length,
+            onPageChange: changePage,
+          }}
+        />
       )}
     </section>
   )

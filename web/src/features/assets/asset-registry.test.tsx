@@ -116,6 +116,12 @@ describe('AssetRegistry feature component', () => {
     expect(
       screen.getByRole('columnheader', { name: 'QR label' }),
     ).toBeInTheDocument()
+    expect(screen.getByText('Showing 1-2 of 2')).toBeInTheDocument()
+    expect(screen.getByText('Page 1 of 1')).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Previous' }),
+    ).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Next' })).toBeDisabled()
     expect(screen.queryByText('UNIPM-FE-001')).not.toBeInTheDocument()
 
     const actor = userEvent.setup()
@@ -214,12 +220,14 @@ describe('AssetRegistry feature component', () => {
     renderWithProviders(<PaginationHarness />)
     await screen.findAllByText('FE-001')
     const next = screen.getByRole('button', { name: 'Next' })
+    expect(screen.getByText('Showing 1-10 of 11')).toBeInTheDocument()
     await userEvent.setup().click(next)
     expect(onSearchChange).toHaveBeenCalledWith(
       { text: 'FE', page: 2 },
       { preserveScroll: true },
     )
     expect(await screen.findAllByText('FE-011')).not.toHaveLength(0)
+    expect(screen.getByText('Showing 11-11 of 11')).toBeInTheDocument()
     expect(next).toHaveFocus()
   })
 

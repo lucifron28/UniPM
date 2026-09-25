@@ -20,7 +20,10 @@ import {
   inspectionOutcome,
 } from '@/features/inspections/inspection-presentation'
 import { useSchedules } from '@/features/schedules/schedule-queries'
-import { useStableRegistryPanel } from '@/features/shared/use-stable-registry-panel'
+import {
+  RegistryResultsPanel,
+  registryDesktopViewportClassName,
+} from '@/features/shared/registry-results-panel'
 import {
   fromDateTimeLocal,
   toDateTimeLocal,
@@ -171,12 +174,8 @@ export function InspectionRegistry({
     () => records.slice((page - 1) * pageSize, page * pageSize),
     [page, records],
   )
-  const { panelRef, minHeight, preserveHeight } = useStableRegistryPanel(
-    JSON.stringify({ ...search, page: undefined }),
-  )
 
   const changePage = (nextPage: number) => {
-    preserveHeight()
     onSearchChange(
       { ...search, page: nextPage > 1 ? nextPage : undefined },
       { preserveScroll: true },
@@ -382,7 +381,13 @@ export function InspectionRegistry({
       </Card>
 
       {filteredInspections.isPending ? (
-        <Card role="status" className="space-y-3 p-5 shadow-none">
+        <Card
+          role="status"
+          className={
+            'space-y-3 p-5 shadow-none ' +
+            registryDesktopViewportClassName('md')
+          }
+        >
           <span className="sr-only">Loading inspections...</span>
           {Array.from({ length: 5 }, (_, index) => (
             <Skeleton key={index} className="h-10 w-full" />
@@ -413,113 +418,83 @@ export function InspectionRegistry({
           </h2>
         </Card>
       ) : (
-        <div
-          ref={panelRef}
-          style={{ minHeight }}
-          aria-label="Inspection results"
-          className="flex flex-col justify-between gap-4"
-        >
-          <div className="space-y-4">
-            <Card className="hidden overflow-hidden p-0 shadow-none md:block">
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[960px] text-left text-sm">
-                  <thead className="bg-[var(--page-background)] text-xs tracking-wide text-[var(--text-neutral)] uppercase">
-                    {table.getHeaderGroups().map((headerGroup) => (
-                      <tr key={headerGroup.id}>
-                        {headerGroup.headers.map((header) => (
-                          <th key={header.id} className="px-5 py-3">
-                            {header.isPlaceholder
-                              ? null
-                              : flexRender(
-                                  header.column.columnDef.header,
-                                  header.getContext(),
-                                )}
-                          </th>
-                        ))}
-                      </tr>
-                    ))}
-                  </thead>
-                  <tbody className="divide-y divide-[var(--border-soft)]">
-                    {table.getRowModel().rows.map((row) => (
-                      <tr key={row.id}>
-                        {row.getVisibleCells().map((cell) => (
-                          <td key={cell.id} className="px-5 py-4 align-top">
-                            {flexRender(
-                              cell.column.columnDef.cell,
-                              cell.getContext(),
+        <RegistryResultsPanel
+          label="Inspections"
+          breakpoint="md"
+          desktopContent={
+            <table className="w-full min-w-[960px] text-left text-sm">
+              <thead className="bg-[var(--page-background)] text-xs tracking-wide text-[var(--text-neutral)] uppercase">
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <tr key={headerGroup.id}>
+                    {headerGroup.headers.map((header) => (
+                      <th key={header.id} className="px-5 py-3">
+                        {header.isPlaceholder
+                          ? null
+                          : flexRender(
+                              header.column.columnDef.header,
+                              header.getContext(),
                             )}
-                          </td>
-                        ))}
-                      </tr>
+                      </th>
                     ))}
-                  </tbody>
-                </table>
-              </div>
-            </Card>
-            <div className="space-y-3 md:hidden">
-              {pageData.map((inspection) => {
-                const asset = assetMap.get(inspection.assetId)
-                return (
-                  <Card key={inspection.id} className="space-y-3 shadow-none">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="font-semibold">
-                          {asset?.assetCode ?? inspection.assetId}
-                        </p>
-                        <p className="text-sm text-[var(--text-secondary)]">
-                          {formatInspectionDate(inspection.dateInspected)}
-                        </p>
-                      </div>
-                      <Badge
-                        variant={
-                          inspection.isOperational ? 'success' : 'danger'
-                        }
-                      >
-                        {inspectionOutcome(inspection.isOperational)}
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-[var(--text-secondary)]">
-                      {excerpt(inspection.remarks)}
+                  </tr>
+                ))}
+              </thead>
+              <tbody className="divide-y divide-[var(--border-soft)]">
+                {table.getRowModel().rows.map((row) => (
+                  <tr key={row.id}>
+                    {row.getVisibleCells().map((cell) => (
+                      <td key={cell.id} className="px-5 py-4 align-top">
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext(),
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          }
+          mobileContent={pageData.map((inspection) => {
+            const asset = assetMap.get(inspection.assetId)
+            return (
+              <Card key={inspection.id} className="space-y-3 shadow-none">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-semibold">
+                      {asset?.assetCode ?? inspection.assetId}
                     </p>
-                    <Link
-                      to="/app/inspections/$inspectionId"
-                      params={{ inspectionId: inspection.id }}
-                      search={search}
-                      className="text-sm font-semibold text-[var(--primary)] hover:underline"
-                    >
-                      View details
-                    </Link>
-                  </Card>
-                )
-              })}
-            </div>
-          </div>
-          {pageCount > 1 && (
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-sm text-[var(--text-secondary)]">
-                Page {page} of {pageCount}
-              </p>
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  disabled={page === 1}
-                  onClick={() => changePage(page - 1)}
+                    <p className="text-sm text-[var(--text-secondary)]">
+                      {formatInspectionDate(inspection.dateInspected)}
+                    </p>
+                  </div>
+                  <Badge
+                    variant={inspection.isOperational ? 'success' : 'danger'}
+                  >
+                    {inspectionOutcome(inspection.isOperational)}
+                  </Badge>
+                </div>
+                <p className="text-sm text-[var(--text-secondary)]">
+                  {excerpt(inspection.remarks)}
+                </p>
+                <Link
+                  to="/app/inspections/$inspectionId"
+                  params={{ inspectionId: inspection.id }}
+                  search={search}
+                  className="text-sm font-semibold text-[var(--primary)] hover:underline"
                 >
-                  Previous
-                </Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  disabled={page === pageCount}
-                  onClick={() => changePage(page + 1)}
-                >
-                  Next
-                </Button>
-              </div>
-            </div>
-          )}
-        </div>
+                  View details
+                </Link>
+              </Card>
+            )
+          })}
+          pagination={{
+            page,
+            pageSize,
+            total: records.length,
+            onPageChange: changePage,
+          }}
+        />
       )}
     </section>
   )

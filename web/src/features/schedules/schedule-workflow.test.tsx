@@ -198,6 +198,7 @@ describe('schedule workflows', () => {
 
     renderWithProviders(<PaginationHarness />)
     await screen.findByText('Page 1 of 2')
+    expect(screen.getByText('Showing 1-10 of 11')).toBeInTheDocument()
     const next = screen.getByRole('button', { name: 'Next' })
     await userEvent.setup().click(next)
     expect(onSearchChange).toHaveBeenCalledWith(
@@ -205,6 +206,7 @@ describe('schedule workflows', () => {
       { preserveScroll: true },
     )
     expect(await screen.findByText('Page 2 of 2')).toBeInTheDocument()
+    expect(screen.getByText('Showing 11-11 of 11')).toBeInTheDocument()
     expect(next).toHaveFocus()
   })
 

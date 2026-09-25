@@ -147,6 +147,12 @@ describe('inspection review workflows', () => {
     )
 
     await screen.findAllByText('FE-001')
+    expect(screen.getByText('Showing 1-1 of 1')).toBeInTheDocument()
+    expect(screen.getByText('Page 1 of 1')).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Previous' }),
+    ).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Next' })).toBeDisabled()
     const filtered = urls.find(
       (url) => url.searchParams.get('assetId') === assetId,
     )
@@ -190,6 +196,7 @@ describe('inspection review workflows', () => {
 
     renderWithProviders(<PaginationHarness />)
     await screen.findAllByText('Inspection record 1')
+    expect(screen.getByText('Showing 1-10 of 11')).toBeInTheDocument()
     const next = screen.getByRole('button', { name: 'Next' })
     await userEvent.setup().click(next)
     expect(onSearchChange).toHaveBeenCalledWith(
@@ -199,6 +206,7 @@ describe('inspection review workflows', () => {
     expect(await screen.findAllByText('Inspection record 11')).not.toHaveLength(
       0,
     )
+    expect(screen.getByText('Showing 11-11 of 11')).toBeInTheDocument()
     expect(next).toHaveFocus()
   })
 
