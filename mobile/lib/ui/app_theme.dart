@@ -54,7 +54,7 @@ abstract final class AppTheme {
         style: FilledButton.styleFrom(
           backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
-          minimumSize: const Size.fromHeight(48),
+          minimumSize: const Size(0, 48),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
         ),
@@ -62,7 +62,7 @@ abstract final class AppTheme {
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColors.textPrimary,
-          minimumSize: const Size.fromHeight(48),
+          minimumSize: const Size(0, 48),
           side: const BorderSide(color: AppColors.borderSoft),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
@@ -71,7 +71,10 @@ abstract final class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: AppColors.inputSurface,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
         hintStyle: const TextStyle(color: AppColors.textNeutral, fontSize: 14),
         labelStyle: const TextStyle(color: AppColors.textNeutral, fontSize: 14),
         border: OutlineInputBorder(
