@@ -32,6 +32,7 @@ class _PreventiveMaintenanceAcknowledgementPageState
   final signatoryNameController = TextEditingController();
   final signatoryPositionController = TextEditingController();
   String? localError;
+  bool isSignatureGestureActive = false;
 
   @override
   void dispose() {
@@ -67,6 +68,9 @@ class _PreventiveMaintenanceAcknowledgementPageState
     return ListView(
       key: const Key('acknowledgement-page'),
       padding: const EdgeInsets.all(16),
+      physics: isSignatureGestureActive
+          ? const NeverScrollableScrollPhysics()
+          : null,
       children: [
         _SubmittedFormSummary(form: form),
         const SizedBox(height: 16),
@@ -85,6 +89,11 @@ class _PreventiveMaintenanceAcknowledgementPageState
             signatoryPositionController: signatoryPositionController,
             localError: localError,
             isSaving: widget.controller.isSaving,
+            onSignatureGestureChanged: (isActive) {
+              if (isSignatureGestureActive != isActive) {
+                setState(() => isSignatureGestureActive = isActive);
+              }
+            },
             onSignatureChanged: (hasSignature) {
               if (hasSignature && localError != null) {
                 setState(() => localError = null);
@@ -208,11 +217,13 @@ class _InspectionSummary extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Inspection ${row.id}'),
-          Text('Schedule: ${row.scheduleId}'),
+          Text('Asset: ${_assetCodeLabel(row.assetCode)}'),
+          if (row.location?.trim().isNotEmpty ?? false)
+            Text('Location: ${row.location!.trim()}'),
           Text(
             'Condition: ${row.isOperational ? 'Operational' : 'Non-operational'}',
           ),
+          Text('Inspection date: ${_dateText(row.dateInspected)}'),
           Text('Remarks: ${_displayValue(row.remarks)}'),
           Text('Recommendation: ${_displayValue(row.actionsRecommendations)}'),
         ],
@@ -229,6 +240,7 @@ class _AcknowledgementForm extends StatelessWidget {
     required this.signatoryPositionController,
     required this.localError,
     required this.isSaving,
+    required this.onSignatureGestureChanged,
     required this.onSignatureChanged,
     required this.onAcknowledge,
   });
@@ -239,6 +251,7 @@ class _AcknowledgementForm extends StatelessWidget {
   final TextEditingController signatoryPositionController;
   final String? localError;
   final bool isSaving;
+  final ValueChanged<bool> onSignatureGestureChanged;
   final ValueChanged<bool> onSignatureChanged;
   final VoidCallback onAcknowledge;
 
@@ -291,6 +304,7 @@ class _AcknowledgementForm extends StatelessWidget {
               PmSignaturePad(
                 key: signaturePadKey,
                 enabled: !isSaving,
+                onGestureChanged: onSignatureGestureChanged,
                 onChanged: onSignatureChanged,
               ),
               if (localError != null) ...[
@@ -385,10 +399,12 @@ class PmSignaturePad extends StatefulWidget {
   const PmSignaturePad({
     super.key,
     required this.onChanged,
+    required this.onGestureChanged,
     this.enabled = true,
   });
 
   final ValueChanged<bool> onChanged;
+  final ValueChanged<bool> onGestureChanged;
   final bool enabled;
 
   @override
@@ -407,6 +423,7 @@ class PmSignaturePadState extends State<PmSignaturePad> {
     activePointer = details.pointer;
     setState(() => strokes.add([details.localPosition]));
     widget.onChanged(true);
+    widget.onGestureChanged(true);
   }
 
   void _updateStroke(PointerMoveEvent details) {
@@ -419,24 +436,27 @@ class PmSignaturePadState extends State<PmSignaturePad> {
   }
 
   void _endStroke(PointerUpEvent details) {
-    if (!widget.enabled ||
-        details.pointer != activePointer ||
-        strokes.isEmpty) {
+    if (details.pointer != activePointer || strokes.isEmpty) {
       return;
     }
     activePointer = null;
     setState(() => strokes.add(const []));
+    widget.onGestureChanged(false);
   }
 
   void _cancelStroke(PointerCancelEvent details) {
-    if (details.pointer == activePointer) activePointer = null;
+    if (details.pointer != activePointer) return;
+    activePointer = null;
+    widget.onGestureChanged(false);
   }
 
   void clear() {
     if (!widget.enabled) return;
+    final hadActivePointer = activePointer != null;
     activePointer = null;
     setState(strokes.clear);
     widget.onChanged(false);
+    if (hadActivePointer) widget.onGestureChanged(false);
   }
 
   Future<String?> toPngBase64() async {
@@ -461,8 +481,11 @@ class PmSignaturePadState extends State<PmSignaturePad> {
             behavior: HitTestBehavior.opaque,
             onPointerDown: widget.enabled ? _startStroke : null,
             onPointerMove: widget.enabled ? _updateStroke : null,
-            onPointerUp: widget.enabled ? _endStroke : null,
-            onPointerCancel: widget.enabled ? _cancelStroke : null,
+            onPointerUp:
+                widget.enabled || activePointer != null ? _endStroke : null,
+            onPointerCancel: widget.enabled || activePointer != null
+                ? _cancelStroke
+                : null,
             child: RepaintBoundary(
               key: repaintKey,
               child: DecoratedBox(
@@ -526,6 +549,20 @@ class _SignaturePainter extends CustomPainter {
 String _displayValue(String? value) {
   final normalized = value?.trim();
   return normalized == null || normalized.isEmpty ? 'Not recorded' : normalized;
+}
+
+String _assetCodeLabel(String? value) {
+  final normalized = value?.trim();
+  return normalized == null || normalized.isEmpty
+      ? 'Asset details unavailable'
+      : normalized;
+}
+
+String _dateText(DateTime value) {
+  final local = value.toLocal();
+  final month = local.month.toString().padLeft(2, '0');
+  final day = local.day.toString().padLeft(2, '0');
+  return '${local.year}-$month-$day';
 }
 
 String _dateTimeText(DateTime value) {

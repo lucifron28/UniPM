@@ -15,6 +15,7 @@ import 'package:mobile/features/preventive_maintenance/preventive_maintenance_mo
 import 'package:mobile/features/preventive_maintenance/preventive_maintenance_page.dart';
 import 'package:mobile/features/preventive_maintenance/preventive_maintenance_repository.dart';
 import 'package:mobile/features/preventive_maintenance/scanned_asset_pm_entry.dart';
+import 'package:mobile/ui/app_theme.dart';
 
 const inspectorId = '11111111-1111-4111-8111-111111111111';
 const otherUserId = '22222222-2222-4222-8222-222222222222';
@@ -266,9 +267,51 @@ void main() {
 
     await scrollTo(tester, find.textContaining('Inspection rows (2)'));
     expect(find.textContaining('Inspection rows (2)'), findsOneWidget);
-    expect(find.text('Schedule ID: $firstScheduleId'), findsOneWidget);
-    await scrollTo(tester, find.text('Schedule ID: $secondScheduleId'));
-    expect(find.text('Schedule ID: $secondScheduleId'), findsOneWidget);
+    expect(
+      find.byKey(const Key('inspection-date-$firstInspectionId')),
+      findsOneWidget,
+    );
+    await scrollTo(
+      tester,
+      find.byKey(const Key('inspection-date-$secondScheduleId')),
+    );
+    expect(
+      find.byKey(const Key('inspection-date-$secondScheduleId')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('draft row actions fit a phone under the app theme', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final repository = FakePreventiveMaintenanceRepository(
+      forms: [
+        testForm(id: formId, inspections: [testInspection()]),
+      ],
+    );
+
+    await pumpPage(tester, repository, theme: AppTheme.lightTheme);
+    expect(tester.takeException(), isNull, reason: 'forms registry');
+    await tester.tap(find.byKey(Key('draft-form-$formId')));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull, reason: 'draft editor');
+    await scrollTo(
+      tester,
+      find.byKey(const Key('save-inspection-$firstInspectionId')),
+    );
+
+    expect(tester.takeException(), isNull, reason: 'row actions');
+    expect(
+      find.byKey(const Key('save-inspection-$firstInspectionId')),
+      findsOneWidget,
+    );
+    expect(find.text('Delete row'), findsOneWidget);
+    expect(find.text('Condition'), findsWidgets);
+    expect(find.text('Non-operational'), findsWidgets);
   });
 
   testWidgets('adding a row persists the authenticated inspector ID', (
@@ -351,7 +394,7 @@ void main() {
 
     expect(find.text('Draft form'), findsOneWidget);
     expect(find.text('Resume inspection row'), findsOneWidget);
-    expect(find.text('Schedule ID: $firstScheduleId'), findsOneWidget);
+    expect(find.textContaining('FE-001'), findsWidgets);
     expect(repository.addCallCount, 0);
     expect(repository.createdInput, isNull);
     expect(repository.forms.single.inspections.map((row) => row.id), [
@@ -1195,9 +1238,11 @@ Future<void> pumpPage(
   WidgetTester tester,
   FakePreventiveMaintenanceRepository repository, {
   AuthUser? user,
+  ThemeData? theme,
 }) async {
   await tester.pumpWidget(
     MaterialApp(
+      theme: theme,
       home: PreventiveMaintenancePage(
         repository: repository,
         user: user ?? testUser(),
