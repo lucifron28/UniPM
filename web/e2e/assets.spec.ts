@@ -122,6 +122,35 @@ async function mockAssetRegistry(
   })
 }
 
+async function registryLayout(page: Page) {
+  return page.getByRole('table').evaluate((table) => {
+    const viewport = table.parentElement
+    const pagination = document.querySelector<HTMLElement>(
+      'nav[aria-label="Assets pagination"]',
+    )
+    if (!viewport || !pagination) throw new Error('Registry layout not found')
+
+    return {
+      viewportHeight: viewport.getBoundingClientRect().height,
+      paginationTop: pagination.getBoundingClientRect().top + window.scrollY,
+    }
+  })
+}
+
+function expectStableRegistryLayout(
+  before: Awaited<ReturnType<typeof registryLayout>>,
+  after: Awaited<ReturnType<typeof registryLayout>>,
+) {
+  expect(
+    Math.abs(after.viewportHeight - before.viewportHeight),
+    `Result viewport heights changed: ${before.viewportHeight}px to ${after.viewportHeight}px`,
+  ).toBeLessThanOrEqual(8)
+  expect(
+    Math.abs(after.paginationTop - before.paginationTop),
+    `Pagination top moved: ${before.paginationTop}px to ${after.paginationTop}px`,
+  ).toBeLessThanOrEqual(8)
+}
+
 test.describe('Asset Registry E2E Specs', () => {
   test('authenticated GSD users can browse and filter fictional assets', async ({
     page,
@@ -151,18 +180,26 @@ test.describe('Asset Registry E2E Specs', () => {
     await mockAssetRegistry(page, gsdSession, pagedAssets)
     await page.setViewportSize({ width: 1280, height: 600 })
     await page.goto('/app/assets?status=Active')
+    const rows = page.getByRole('table').locator('tbody tr')
+    await expect(rows).toHaveCount(10)
     const next = page.getByRole('button', { name: 'Next' })
     await next.scrollIntoViewIfNeeded()
     const scrollY = await page.evaluate(() => window.scrollY)
     expect(scrollY).toBeGreaterThan(0)
+    const firstPageLayout = await registryLayout(page)
     await next.click()
     await expect(page).toHaveURL(/status=Active/)
     await expect(page).toHaveURL(/page=2/)
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(scrollY)
+    await expect(rows).toHaveCount(1)
     await expect(page.getByText('FE-011').first()).toBeVisible()
+    const lastPageLayout = await registryLayout(page)
+    expectStableRegistryLayout(firstPageLayout, lastPageLayout)
     await page.getByRole('button', { name: 'Previous' }).click()
     await expect(page).not.toHaveURL(/page=2/)
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(scrollY)
+    await expect(rows).toHaveCount(10)
+    expectStableRegistryLayout(firstPageLayout, await registryLayout(page))
     await next.click()
     await expect(page).toHaveURL(/page=2/)
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(scrollY)
@@ -190,9 +227,44 @@ test.describe('Asset Registry E2E Specs', () => {
     await expect(page).toHaveURL(/page=2/)
     await expect(page.getByText('FE-011').first()).toBeVisible()
 
-    await page.goto('/app/assets?page=99')
+    await page.goto('/app/assets?status=Active&page=2')
+    await expect(page).toHaveURL(/status=Active/)
     await expect(page).toHaveURL(/page=2/)
+    await expect(rows).toHaveCount(1)
+    await page.reload()
+    await expect(page).toHaveURL(/status=Active/)
+    await expect(page).toHaveURL(/page=2/)
+    await expect(rows).toHaveCount(1)
+
+    await page.goto('/app/assets?status=Active&page=99')
+    await expect(page).toHaveURL(/page=2/)
+    await expect(page).toHaveURL(/status=Active/)
     await expect(page.getByText('FE-011').first()).toBeVisible()
+
+    await page.setViewportSize({ width: 375, height: 667 })
+    await page.goto('/app/assets?status=Active&page=2')
+    const mobileAsset = page.getByRole('link', { name: /FE-011/ })
+    await expect(mobileAsset).toBeVisible()
+    await page
+      .getByRole('navigation', { name: 'Assets pagination' })
+      .scrollIntoViewIfNeeded()
+    const [assetBounds, paginationBounds] = await Promise.all([
+      mobileAsset.boundingBox(),
+      page.getByRole('navigation', { name: 'Assets pagination' }).boundingBox(),
+    ])
+    if (!assetBounds || !paginationBounds) {
+      throw new Error('Mobile registry geometry could not be measured')
+    }
+    expect(
+      paginationBounds.y - (assetBounds.y + assetBounds.height),
+    ).toBeLessThanOrEqual(64)
+    expect(
+      await page.evaluate(
+        () =>
+          document.documentElement.scrollWidth -
+          document.documentElement.clientWidth,
+      ),
+    ).toBeLessThanOrEqual(1)
   })
 
   test('renders primary navigation landmark in mobile viewport', async ({
