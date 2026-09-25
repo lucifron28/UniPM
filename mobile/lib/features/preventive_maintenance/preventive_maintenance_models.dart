@@ -105,6 +105,8 @@ class PreventiveMaintenanceInspection {
     required this.id,
     required this.scheduleId,
     required this.assetId,
+    this.assetCode,
+    this.location,
     required this.inspectorUserId,
     required this.dateInspected,
     this.startedAt,
@@ -123,6 +125,8 @@ class PreventiveMaintenanceInspection {
   final String id;
   final String scheduleId;
   final String assetId;
+  final String? assetCode;
+  final String? location;
   final String inspectorUserId;
   final DateTime dateInspected;
   final DateTime? startedAt;
@@ -142,6 +146,8 @@ class PreventiveMaintenanceInspection {
       id: _requiredUuid(json, 'id'),
       scheduleId: _requiredUuid(json, 'scheduleId'),
       assetId: _requiredUuid(json, 'assetId'),
+      assetCode: _nullableString(json, 'assetCode'),
+      location: _nullableString(json, 'location'),
       inspectorUserId: _requiredUuid(json, 'inspectorUserId'),
       dateInspected: _requiredDateTime(json, 'dateInspected'),
       startedAt: _nullableDateTime(json, 'startedAt'),

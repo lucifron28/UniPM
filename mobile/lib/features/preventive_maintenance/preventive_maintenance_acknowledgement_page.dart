@@ -217,11 +217,13 @@ class _InspectionSummary extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Inspection ${row.id}'),
-          Text('Schedule: ${row.scheduleId}'),
+          Text('Asset: ${_assetCodeLabel(row.assetCode)}'),
+          if (row.location?.trim().isNotEmpty ?? false)
+            Text('Location: ${row.location!.trim()}'),
           Text(
             'Condition: ${row.isOperational ? 'Operational' : 'Non-operational'}',
           ),
+          Text('Inspection date: ${_dateText(row.dateInspected)}'),
           Text('Remarks: ${_displayValue(row.remarks)}'),
           Text('Recommendation: ${_displayValue(row.actionsRecommendations)}'),
         ],
@@ -547,6 +549,20 @@ class _SignaturePainter extends CustomPainter {
 String _displayValue(String? value) {
   final normalized = value?.trim();
   return normalized == null || normalized.isEmpty ? 'Not recorded' : normalized;
+}
+
+String _assetCodeLabel(String? value) {
+  final normalized = value?.trim();
+  return normalized == null || normalized.isEmpty
+      ? 'Asset details unavailable'
+      : normalized;
+}
+
+String _dateText(DateTime value) {
+  final local = value.toLocal();
+  final month = local.month.toString().padLeft(2, '0');
+  final day = local.day.toString().padLeft(2, '0');
+  return '${local.year}-$month-$day';
 }
 
 String _dateTimeText(DateTime value) {

@@ -27,41 +27,46 @@ AuthUser testUser() => const AuthUser(
   roles: ['Inspector'],
 );
 
-PreventiveMaintenanceForm submittedForm() {
-  final now = DateTime.utc(2026, 2, 10);
-  return PreventiveMaintenanceForm(
-    id: formId,
-    fileNumber: 'PM-2026-0001',
-    assetCategory: 'fire-extinguisher',
-    building: 'Main Building',
-    department: 'GSD',
-    periodType: 'Quarter',
-    quarter: 'Q1',
-    semester: null,
-    year: 2026,
-    academicYear: '2026-2027',
-    status: 'Submitted',
-    createdByUserId: inspectorId,
-    submittedByUserId: inspectorId,
-    submittedAt: now,
-    createdAt: now,
-    updatedAt: now,
-    inspections: [
-      PreventiveMaintenanceInspection(
-        id: inspectionId,
-        scheduleId: scheduleId,
-        assetId: '66666666-6666-4666-8666-666666666666',
-        inspectorUserId: inspectorId,
-        dateInspected: now,
-        isOperational: false,
-        remarks: 'Low pressure',
-        actionsRecommendations: 'Inspect gauge',
-        createdAt: now,
-        updatedAt: now,
-      ),
-    ],
-  );
-}
+PreventiveMaintenanceForm submittedForm({bool includeAssetMetadata = true}) =>
+    PreventiveMaintenanceForm.fromJson(
+      _submittedFormJson(includeAssetMetadata: includeAssetMetadata),
+    );
+
+Map<String, dynamic> _submittedFormJson({bool includeAssetMetadata = true}) =>
+    <String, dynamic>{
+      'id': formId,
+      'fileNumber': 'PM-2026-0001',
+      'assetCategory': 'fire-extinguisher',
+      'building': 'Main Building',
+      'department': 'GSD',
+      'periodType': 'Quarter',
+      'quarter': 'Q1',
+      'semester': null,
+      'year': 2026,
+      'academicYear': '2026-2027',
+      'status': 'Submitted',
+      'createdByUserId': inspectorId,
+      'submittedByUserId': inspectorId,
+      'submittedAt': '2026-02-10T00:00:00Z',
+      'createdAt': '2026-02-10T00:00:00Z',
+      'updatedAt': '2026-02-10T00:00:00Z',
+      'inspections': [
+        <String, dynamic>{
+          'id': inspectionId,
+          'scheduleId': scheduleId,
+          'assetId': '66666666-6666-4666-8666-666666666666',
+          if (includeAssetMetadata) 'assetCode': 'FE-2026-0001',
+          if (includeAssetMetadata) 'location': 'Room 101',
+          'inspectorUserId': inspectorId,
+          'dateInspected': '2026-02-09T16:30:00Z',
+          'isOperational': false,
+          'remarks': 'Low pressure',
+          'actionsRecommendations': 'Inspect gauge',
+          'createdAt': '2026-02-10T00:00:00Z',
+          'updatedAt': '2026-02-10T00:00:00Z',
+        },
+      ],
+    };
 
 PreventiveMaintenanceAcknowledgement testAcknowledgement() {
   return PreventiveMaintenanceAcknowledgement(
@@ -228,7 +233,51 @@ void main() {
     expect(find.text('Department Head acknowledgement'), findsOneWidget);
     expect(find.text('Status: Awaiting acknowledgement'), findsOneWidget);
     expect(find.text('Asset category: Fire Extinguisher'), findsOneWidget);
+    expect(find.text('Building: Main Building'), findsOneWidget);
+    expect(find.text('Department: GSD'), findsOneWidget);
+    expect(find.text('Asset: FE-2026-0001'), findsOneWidget);
+    expect(find.text('Location: Room 101'), findsOneWidget);
+    expect(find.text('Condition: Non-operational'), findsOneWidget);
+    final localInspectionDate = DateTime.parse(
+      '2026-02-09T16:30:00Z',
+    ).toLocal().toIso8601String().substring(0, 10);
+    expect(find.text('Inspection date: $localInspectionDate'), findsOneWidget);
     expect(find.text('Remarks: Low pressure'), findsOneWidget);
+    expect(find.text('Recommendation: Inspect gauge'), findsOneWidget);
+    expect(find.textContaining(inspectionId), findsNothing);
+    expect(find.textContaining(scheduleId), findsNothing);
+    expect(
+      find.textContaining('66666666-6666-4666-8666-666666666666'),
+      findsNothing,
+    );
+  });
+
+  testWidgets('missing asset metadata does not expose row identifiers', (
+    tester,
+  ) async {
+    final repository = FakeAcknowledgementRepository()
+      ..form = submittedForm(includeAssetMetadata: false);
+    final controller = PreventiveMaintenanceController(
+      repository: repository,
+      user: testUser(),
+    );
+    controller.selectForm(repository.form);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: PreventiveMaintenanceAcknowledgementPage(
+          controller: controller,
+          form: repository.form,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Asset: Asset details unavailable'), findsOneWidget);
+    expect(find.textContaining('Location:'), findsNothing);
+    expect(find.textContaining(inspectionId), findsNothing);
+    expect(find.textContaining(scheduleId), findsNothing);
+    controller.dispose();
   });
 
   testWidgets('signature drawing locks and restores acknowledgement scrolling', (
