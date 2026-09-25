@@ -118,9 +118,7 @@ describe('AssetRegistry feature component', () => {
     ).toBeInTheDocument()
     expect(screen.getByText('Showing 1-2 of 2')).toBeInTheDocument()
     expect(screen.getByText('Page 1 of 1')).toBeInTheDocument()
-    expect(
-      screen.getByRole('button', { name: 'Previous' }),
-    ).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Previous' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Next' })).toBeDisabled()
     expect(screen.queryByText('UNIPM-FE-001')).not.toBeInTheDocument()
 

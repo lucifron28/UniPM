@@ -22,7 +22,7 @@ type RegistryResultsPanelProps = {
 export function registryDesktopViewportClassName(
   breakpoint: RegistryBreakpoint,
 ) {
-  return breakpoint === 'md' ? 'md:min-h-[720px]' : 'lg:min-h-[720px]'
+  return breakpoint === 'md' ? 'md:min-h-[960px]' : 'lg:min-h-[960px]'
 }
 
 export function RegistryResultsPanel({
@@ -51,9 +51,7 @@ export function RegistryResultsPanel({
   return (
     <section aria-label={label + ' results'} className="space-y-4">
       <Card
-        className={
-          'hidden overflow-hidden p-0 shadow-none ' + desktopClassName
-        }
+        className={'hidden overflow-hidden p-0 shadow-none ' + desktopClassName}
       >
         <div
           className={

@@ -149,9 +149,7 @@ describe('inspection review workflows', () => {
     await screen.findAllByText('FE-001')
     expect(screen.getByText('Showing 1-1 of 1')).toBeInTheDocument()
     expect(screen.getByText('Page 1 of 1')).toBeInTheDocument()
-    expect(
-      screen.getByRole('button', { name: 'Previous' }),
-    ).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Previous' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Next' })).toBeDisabled()
     const filtered = urls.find(
       (url) => url.searchParams.get('assetId') === assetId,
