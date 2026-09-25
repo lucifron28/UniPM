@@ -14,8 +14,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useAssets } from '@/features/assets/asset-queries'
 import { useCurrentUser } from '@/features/auth/current-user'
 import {
+  RegistryLoadingPanel,
   RegistryResultsPanel,
-  registryDesktopViewportClassName,
 } from '@/features/shared/registry-results-panel'
 import type { Schedule } from '@/features/schedules/schedule-contract'
 import {
@@ -399,18 +399,12 @@ export function ScheduleRegistry({
       </Card>
 
       {filteredSchedules.isPending ? (
-        <Card
-          role="status"
-          className={
-            'space-y-3 p-5 shadow-none ' +
-            registryDesktopViewportClassName('md')
-          }
-        >
+        <RegistryLoadingPanel breakpoint="md">
           <span className="sr-only">Loading schedules...</span>
           {Array.from({ length: 5 }, (_, index) => (
             <Skeleton key={index} className="h-10 w-full" />
           ))}
-        </Card>
+        </RegistryLoadingPanel>
       ) : filteredSchedules.isError ? (
         <Card role="alert" className="border-[var(--error)] p-6 shadow-none">
           <h2 className="font-bold text-[var(--error)]">

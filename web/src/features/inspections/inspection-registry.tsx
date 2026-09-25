@@ -21,8 +21,8 @@ import {
 } from '@/features/inspections/inspection-presentation'
 import { useSchedules } from '@/features/schedules/schedule-queries'
 import {
+  RegistryLoadingPanel,
   RegistryResultsPanel,
-  registryDesktopViewportClassName,
 } from '@/features/shared/registry-results-panel'
 import {
   fromDateTimeLocal,
@@ -381,18 +381,12 @@ export function InspectionRegistry({
       </Card>
 
       {filteredInspections.isPending ? (
-        <Card
-          role="status"
-          className={
-            'space-y-3 p-5 shadow-none ' +
-            registryDesktopViewportClassName('md')
-          }
-        >
+        <RegistryLoadingPanel breakpoint="md">
           <span className="sr-only">Loading inspections...</span>
           {Array.from({ length: 5 }, (_, index) => (
             <Skeleton key={index} className="h-10 w-full" />
           ))}
-        </Card>
+        </RegistryLoadingPanel>
       ) : filteredInspections.isError ? (
         <Card role="alert" className="border-[var(--error)] p-6 shadow-none">
           <h2 className="font-bold text-[var(--error)]">

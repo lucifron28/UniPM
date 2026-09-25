@@ -21,8 +21,8 @@ import {
 } from '@/features/assets/asset-presentation'
 import { useCurrentUser } from '@/features/auth/current-user'
 import {
+  RegistryLoadingPanel,
   RegistryResultsPanel,
-  registryDesktopViewportClassName,
 } from '@/features/shared/registry-results-panel'
 
 export type AssetSearch = {
@@ -443,19 +443,12 @@ export function AssetRegistry({
       </Card>
 
       {filteredAssets.isPending ? (
-        <Card
-          role="status"
-          aria-label="Loading assets"
-          className={
-            'space-y-3 p-4 shadow-none ' +
-            registryDesktopViewportClassName('lg')
-          }
-        >
+        <RegistryLoadingPanel breakpoint="lg" label="Loading assets">
           <span className="sr-only">Loading asset records...</span>
           {Array.from({ length: 5 }, (_, index) => (
             <Skeleton key={index} className="h-16 w-full" />
           ))}
-        </Card>
+        </RegistryLoadingPanel>
       ) : filteredAssets.isError ? (
         <Card
           role="alert"

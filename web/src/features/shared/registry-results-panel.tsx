@@ -19,10 +19,31 @@ type RegistryResultsPanelProps = {
   pagination?: RegistryPagination
 }
 
-export function registryDesktopViewportClassName(
-  breakpoint: RegistryBreakpoint,
-) {
+function registryDesktopViewportClassName(breakpoint: RegistryBreakpoint) {
   return breakpoint === 'md' ? 'md:min-h-[960px]' : 'lg:min-h-[960px]'
+}
+
+export function RegistryLoadingPanel({
+  breakpoint,
+  label,
+  children,
+}: {
+  breakpoint: RegistryBreakpoint
+  label?: string
+  children: ReactNode
+}) {
+  return (
+    <Card
+      role="status"
+      aria-label={label}
+      className={
+        'space-y-3 p-5 shadow-none ' +
+        registryDesktopViewportClassName(breakpoint)
+      }
+    >
+      {children}
+    </Card>
+  )
 }
 
 export function RegistryResultsPanel({
