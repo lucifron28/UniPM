@@ -1,12 +1,14 @@
 import { Link } from '@tanstack/react-router'
 import { ZodError } from 'zod'
 import { ApiError } from '@/api/problem-details'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useCurrentUser } from '@/features/auth/current-user'
 import { ScheduleBatchAssignment } from '@/features/schedules/schedule-batch-assignment'
 import { useSchedule } from '@/features/schedules/schedule-queries'
+import type { ScheduleSearch } from '@/features/schedules/schedule-registry'
 import {
   formatScheduleDate,
   formatScheduleDateTime,
@@ -25,7 +27,13 @@ function DetailItem({ label, value }: { label: string; value: string }) {
   )
 }
 
-export function ScheduleDetail({ scheduleId }: { scheduleId: string }) {
+export function ScheduleDetail({
+  scheduleId,
+  registrySearch = {},
+}: {
+  scheduleId: string
+  registrySearch?: ScheduleSearch
+}) {
   const isValidId =
     /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
       scheduleId,
@@ -41,8 +49,10 @@ export function ScheduleDetail({ scheduleId }: { scheduleId: string }) {
         <p className="mt-2 text-sm text-[var(--text-secondary)]">
           The schedule link is invalid. No schedule request was made.
         </p>
-        <Button asChild className="mt-5">
-          <Link to="/app/schedules">Return to schedules</Link>
+        <Button asChild variant="secondary" className="mt-5">
+          <Link to="/app/schedules" search={registrySearch}>
+            Return to schedules
+          </Link>
         </Button>
       </Card>
     )
@@ -91,11 +101,10 @@ export function ScheduleDetail({ scheduleId }: { scheduleId: string }) {
               Retry
             </Button>
           )}
-          <Button
-            asChild
-            className="bg-white text-[var(--text-primary)] hover:bg-[var(--page-background)]"
-          >
-            <Link to="/app/schedules">Return to schedules</Link>
+          <Button asChild variant="secondary">
+            <Link to="/app/schedules" search={registrySearch}>
+              Return to schedules
+            </Link>
           </Button>
         </div>
       </Card>
@@ -110,6 +119,7 @@ export function ScheduleDetail({ scheduleId }: { scheduleId: string }) {
     >
       <Link
         to="/app/schedules"
+        search={registrySearch}
         className="text-sm font-semibold text-[var(--primary)] hover:underline"
       >
         Back to schedules
@@ -129,9 +139,20 @@ export function ScheduleDetail({ scheduleId }: { scheduleId: string }) {
             Scheduled for {formatScheduleDate(record.scheduleDate)}
           </p>
         </div>
-        <span className="inline-flex rounded-full bg-[var(--page-background)] px-3 py-1 text-sm font-semibold">
+        <Badge
+          variant={
+            record.status === 'Completed'
+              ? 'success'
+              : record.status === 'Overdue'
+                ? 'danger'
+                : record.status === 'Due' || record.status === 'Ongoing'
+                  ? 'warning'
+                  : 'neutral'
+          }
+          className="px-3 text-sm font-semibold"
+        >
           {record.status}
-        </span>
+        </Badge>
       </div>
 
       <Card className="grid gap-6 shadow-none md:grid-cols-2 lg:grid-cols-3">

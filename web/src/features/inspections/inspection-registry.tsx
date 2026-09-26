@@ -8,6 +8,7 @@ import {
   useReactTable,
 } from '@tanstack/react-table'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAssets } from '@/features/assets/asset-queries'
@@ -19,6 +20,10 @@ import {
   inspectionOutcome,
 } from '@/features/inspections/inspection-presentation'
 import { useSchedules } from '@/features/schedules/schedule-queries'
+import {
+  RegistryLoadingPanel,
+  RegistryResultsPanel,
+} from '@/features/shared/registry-results-panel'
 import {
   fromDateTimeLocal,
   toDateTimeLocal,
@@ -47,7 +52,7 @@ function SummaryCard({ label, count }: { label: string; count: number }) {
 }
 
 const columnHelper = createColumnHelper<Inspection>()
-const columns = [
+const createColumns = (search: InspectionSearch) => [
   columnHelper.accessor('assetId', {
     header: 'Asset',
     cell: ({ getValue, table }) => {
@@ -76,7 +81,11 @@ const columns = [
   }),
   columnHelper.accessor('isOperational', {
     header: 'Recorded result',
-    cell: ({ getValue }) => inspectionOutcome(getValue()),
+    cell: ({ getValue }) => (
+      <Badge variant={getValue() ? 'success' : 'danger'}>
+        {inspectionOutcome(getValue())}
+      </Badge>
+    ),
   }),
   columnHelper.accessor('remarks', {
     header: 'Remarks',
@@ -93,6 +102,7 @@ const columns = [
       <Link
         to="/app/inspections/$inspectionId"
         params={{ inspectionId: row.original.id }}
+        search={search}
         className="font-semibold text-[var(--primary)] hover:underline"
       >
         View details
@@ -116,7 +126,7 @@ export function InspectionRegistry({
   search: InspectionSearch
   onSearchChange: (
     next: InspectionSearch,
-    options?: { replace?: boolean },
+    options?: { replace?: boolean; preserveScroll?: boolean },
   ) => void
 }) {
   const assets = useAssets()
@@ -165,11 +175,20 @@ export function InspectionRegistry({
     [page, records],
   )
 
+  const changePage = (nextPage: number) => {
+    onSearchChange(
+      { ...search, page: nextPage > 1 ? nextPage : undefined },
+      { preserveScroll: true },
+    )
+  }
+
+  const tableColumns = useMemo(() => createColumns(search), [search])
+
   // TanStack Table intentionally exposes mutable table methods to the renderer.
   // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
     data: pageData,
-    columns,
+    columns: tableColumns,
     getCoreRowModel: getCoreRowModel(),
     meta: { assets: assetMap, schedules: scheduleMap },
   })
@@ -335,7 +354,7 @@ export function InspectionRegistry({
           <div className="flex items-end">
             <Button
               type="button"
-              className="bg-white text-[var(--text-primary)] hover:bg-[var(--page-background)]"
+              variant="secondary"
               onClick={() => onSearchChange({ page: 1 })}
             >
               Clear filters
@@ -362,12 +381,12 @@ export function InspectionRegistry({
       </Card>
 
       {filteredInspections.isPending ? (
-        <Card role="status" className="space-y-3 p-5 shadow-none">
+        <RegistryLoadingPanel breakpoint="md" viewportSize="standard">
           <span className="sr-only">Loading inspections...</span>
           {Array.from({ length: 5 }, (_, index) => (
             <Skeleton key={index} className="h-10 w-full" />
           ))}
-        </Card>
+        </RegistryLoadingPanel>
       ) : filteredInspections.isError ? (
         <Card role="alert" className="border-[var(--error)] p-6 shadow-none">
           <h2 className="font-bold text-[var(--error)]">
@@ -393,99 +412,84 @@ export function InspectionRegistry({
           </h2>
         </Card>
       ) : (
-        <div className="space-y-4">
-          <Card className="hidden overflow-hidden p-0 shadow-none md:block">
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[960px] text-left text-sm">
-                <thead className="bg-[var(--page-background)] text-xs tracking-wide text-[var(--text-neutral)] uppercase">
-                  {table.getHeaderGroups().map((headerGroup) => (
-                    <tr key={headerGroup.id}>
-                      {headerGroup.headers.map((header) => (
-                        <th key={header.id} className="px-5 py-3">
-                          {header.isPlaceholder
-                            ? null
-                            : flexRender(
-                                header.column.columnDef.header,
-                                header.getContext(),
-                              )}
-                        </th>
-                      ))}
-                    </tr>
-                  ))}
-                </thead>
-                <tbody className="divide-y divide-[var(--border-soft)]">
-                  {table.getRowModel().rows.map((row) => (
-                    <tr key={row.id}>
-                      {row.getVisibleCells().map((cell) => (
-                        <td key={cell.id} className="px-5 py-4 align-top">
-                          {flexRender(
-                            cell.column.columnDef.cell,
-                            cell.getContext(),
-                          )}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </Card>
-          <div className="space-y-3 md:hidden">
-            {pageData.map((inspection) => {
-              const asset = assetMap.get(inspection.assetId)
-              return (
-                <Card key={inspection.id} className="space-y-3 shadow-none">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="font-semibold">
-                        {asset?.assetCode ?? inspection.assetId}
-                      </p>
-                      <p className="text-sm text-[var(--text-secondary)]">
-                        {formatInspectionDate(inspection.dateInspected)}
-                      </p>
-                    </div>
-                    <span className="rounded-full bg-[var(--page-background)] px-3 py-1 text-xs font-semibold">
-                      {inspectionOutcome(inspection.isOperational)}
-                    </span>
+        <RegistryResultsPanel
+          label="Inspections"
+          breakpoint="md"
+          viewportSize="standard"
+          desktopContent={
+            <table className="w-full min-w-[960px] text-left text-sm">
+              <thead className="bg-[var(--page-background)] text-xs tracking-wide text-[var(--text-neutral)] uppercase">
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <tr key={headerGroup.id}>
+                    {headerGroup.headers.map((header) => (
+                      <th key={header.id} className="px-5 py-3">
+                        {header.isPlaceholder
+                          ? null
+                          : flexRender(
+                              header.column.columnDef.header,
+                              header.getContext(),
+                            )}
+                      </th>
+                    ))}
+                  </tr>
+                ))}
+              </thead>
+              <tbody className="divide-y divide-[var(--border-soft)]">
+                {table.getRowModel().rows.map((row) => (
+                  <tr key={row.id}>
+                    {row.getVisibleCells().map((cell) => (
+                      <td key={cell.id} className="px-5 py-2 align-top">
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext(),
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          }
+          mobileContent={pageData.map((inspection) => {
+            const asset = assetMap.get(inspection.assetId)
+            return (
+              <Card key={inspection.id} className="space-y-3 shadow-none">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-semibold">
+                      {asset?.assetCode ?? inspection.assetId}
+                    </p>
+                    <p className="text-sm text-[var(--text-secondary)]">
+                      {formatInspectionDate(inspection.dateInspected)}
+                    </p>
                   </div>
-                  <p className="text-sm text-[var(--text-secondary)]">
-                    {excerpt(inspection.remarks)}
-                  </p>
-                  <Link
-                    to="/app/inspections/$inspectionId"
-                    params={{ inspectionId: inspection.id }}
-                    className="text-sm font-semibold text-[var(--primary)] hover:underline"
+                  <Badge
+                    variant={inspection.isOperational ? 'success' : 'danger'}
                   >
-                    View details
-                  </Link>
-                </Card>
-              )
-            })}
-          </div>
-          {pageCount > 1 && (
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-sm text-[var(--text-secondary)]">
-                Page {page} of {pageCount}
-              </p>
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  disabled={page === 1}
-                  onClick={() => onSearchChange({ ...search, page: page - 1 })}
+                    {inspectionOutcome(inspection.isOperational)}
+                  </Badge>
+                </div>
+                <p className="text-sm text-[var(--text-secondary)]">
+                  {excerpt(inspection.remarks)}
+                </p>
+                <Link
+                  to="/app/inspections/$inspectionId"
+                  params={{ inspectionId: inspection.id }}
+                  search={search}
+                  className="text-sm font-semibold text-[var(--primary)] hover:underline"
                 >
-                  Previous
-                </Button>
-                <Button
-                  type="button"
-                  disabled={page === pageCount}
-                  onClick={() => onSearchChange({ ...search, page: page + 1 })}
-                >
-                  Next
-                </Button>
-              </div>
-            </div>
-          )}
-        </div>
+                  View details
+                </Link>
+              </Card>
+            )
+          })}
+          pagination={{
+            page,
+            pageSize,
+            total: records.length,
+            onPageChange: changePage,
+          }}
+        />
       )}
     </section>
   )

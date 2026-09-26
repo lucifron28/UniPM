@@ -62,7 +62,7 @@ const createdAsset = {
   updatedAt: '2026-07-22T00:00:00+00:00',
 }
 
-const pagedAssets = Array.from({ length: 12 }, (_, index) => ({
+const pagedAssets = Array.from({ length: 11 }, (_, index) => ({
   ...assets[0],
   id: `00000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
   assetCode: `FE-${String(index + 1).padStart(3, '0')}`,
@@ -103,20 +103,60 @@ async function mockAssetRegistry(
       ]),
     }),
   )
-  await page.route('**/api/v1/assets**', (route) =>
-    route.fulfill({
+  await page.route('**/api/v1/assets**', (route) => {
+    if (route.request().method() !== 'GET') return route.fallback()
+
+    const pathname = new URL(route.request().url()).pathname
+    const asset = pathname.startsWith('/api/v1/assets/')
+      ? assetList.find(
+          (entry) => entry.id === pathname.slice('/api/v1/assets/'.length),
+        )
+      : undefined
+    if (pathname !== '/api/v1/assets' && !asset) return route.fallback()
+
+    return route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify(assetList),
-    }),
-  )
-  await page.route(`**/api/v1/assets/${assets[0].id}`, (route) =>
-    route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify(assets[0]),
-    }),
-  )
+      body: JSON.stringify(asset ?? assetList),
+    })
+  })
+}
+
+async function registryLayout(page: Page) {
+  return page.getByRole('table').evaluate((table) => {
+    const viewport = table.parentElement
+    const pagination = document.querySelector<HTMLElement>(
+      'nav[aria-label="Assets pagination"]',
+    )
+    if (!viewport || !pagination) throw new Error('Registry layout not found')
+
+    return {
+      viewportHeight: viewport.getBoundingClientRect().height,
+      paginationTop: pagination.getBoundingClientRect().top + window.scrollY,
+    }
+  })
+}
+
+function expectStableRegistryLayout(
+  before: Awaited<ReturnType<typeof registryLayout>>,
+  after: Awaited<ReturnType<typeof registryLayout>>,
+) {
+  expect(
+    before.viewportHeight,
+    `Assets result viewport exceeds 560px: ${before.viewportHeight}px`,
+  ).toBeLessThanOrEqual(560)
+  expect(
+    after.viewportHeight,
+    `Assets result viewport exceeds 560px: ${after.viewportHeight}px`,
+  ).toBeLessThanOrEqual(560)
+  expect(
+    Math.abs(after.viewportHeight - before.viewportHeight),
+    `Result viewport heights changed: ${before.viewportHeight}px to ${after.viewportHeight}px`,
+  ).toBeLessThanOrEqual(8)
+  expect(
+    Math.abs(after.paginationTop - before.paginationTop),
+    `Pagination top moved: ${before.paginationTop}px to ${after.paginationTop}px`,
+  ).toBeLessThanOrEqual(8)
 }
 
 test.describe('Asset Registry E2E Specs', () => {
@@ -146,12 +186,93 @@ test.describe('Asset Registry E2E Specs', () => {
     page,
   }) => {
     await mockAssetRegistry(page, gsdSession, pagedAssets)
-    await page.goto('/app/assets?page=2')
+    await page.setViewportSize({ width: 1280, height: 600 })
+    await page.goto('/app/assets?status=Active')
+    const rows = page.getByRole('table').locator('tbody tr')
+    await expect(rows).toHaveCount(10)
+    const next = page.getByRole('button', { name: 'Next' })
+    await next.scrollIntoViewIfNeeded()
+    const scrollY = await page.evaluate(() => window.scrollY)
+    expect(scrollY).toBeGreaterThan(0)
+    const firstPageLayout = await registryLayout(page)
+    await next.click()
+    await expect(page).toHaveURL(/status=Active/)
+    await expect(page).toHaveURL(/page=2/)
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(scrollY)
+    await expect(rows).toHaveCount(1)
     await expect(page.getByText('FE-011').first()).toBeVisible()
-
-    await page.goto('/app/assets?page=99')
+    const lastPageLayout = await registryLayout(page)
+    expectStableRegistryLayout(firstPageLayout, lastPageLayout)
+    await page.getByRole('button', { name: 'Previous' }).click()
+    await expect(page).not.toHaveURL(/page=2/)
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(scrollY)
+    await expect(rows).toHaveCount(10)
+    expectStableRegistryLayout(firstPageLayout, await registryLayout(page))
+    await next.click()
+    await expect(page).toHaveURL(/page=2/)
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(scrollY)
+    const detailResponse = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'GET' &&
+        new URL(response.url()).pathname ===
+          `/api/v1/assets/${pagedAssets[10].id}`,
+    )
+    await page
+      .getByRole('row', { name: /FE-011/ })
+      .getByRole('link', { name: 'View details' })
+      .click()
+    await expect(page).toHaveURL(
+      new RegExp(`/app/assets/${pagedAssets[10].id}\\?.*status=Active.*page=2`),
+    )
+    const response = await detailResponse
+    expect(response.status()).toBe(200)
+    expect((await response.json()).assetCode).toBe('FE-011')
+    await expect(
+      page.getByRole('heading', { name: 'FE-011', level: 1 }),
+    ).toBeVisible()
+    await page.getByRole('link', { name: 'Back to assets' }).click()
+    await expect(page).toHaveURL(/status=Active/)
     await expect(page).toHaveURL(/page=2/)
     await expect(page.getByText('FE-011').first()).toBeVisible()
+
+    await page.goto('/app/assets?status=Active&page=2')
+    await expect(page).toHaveURL(/status=Active/)
+    await expect(page).toHaveURL(/page=2/)
+    await expect(rows).toHaveCount(1)
+    await page.reload()
+    await expect(page).toHaveURL(/status=Active/)
+    await expect(page).toHaveURL(/page=2/)
+    await expect(rows).toHaveCount(1)
+
+    await page.goto('/app/assets?status=Active&page=99')
+    await expect(page).toHaveURL(/page=2/)
+    await expect(page).toHaveURL(/status=Active/)
+    await expect(page.getByText('FE-011').first()).toBeVisible()
+
+    await page.setViewportSize({ width: 375, height: 667 })
+    await page.goto('/app/assets?status=Active&page=2')
+    const mobileAsset = page.getByRole('link', { name: /FE-011/ })
+    await expect(mobileAsset).toBeVisible()
+    await page
+      .getByRole('navigation', { name: 'Assets pagination' })
+      .scrollIntoViewIfNeeded()
+    const [assetBounds, paginationBounds] = await Promise.all([
+      mobileAsset.boundingBox(),
+      page.getByRole('navigation', { name: 'Assets pagination' }).boundingBox(),
+    ])
+    if (!assetBounds || !paginationBounds) {
+      throw new Error('Mobile registry geometry could not be measured')
+    }
+    const mobileGap = paginationBounds.y - (assetBounds.y + assetBounds.height)
+    expect(mobileGap).toBeGreaterThanOrEqual(0)
+    expect(mobileGap).toBeLessThanOrEqual(64)
+    expect(
+      await page.evaluate(
+        () =>
+          document.documentElement.scrollWidth -
+          document.documentElement.clientWidth,
+      ),
+    ).toBeLessThanOrEqual(1)
   })
 
   test('renders primary navigation landmark in mobile viewport', async ({
@@ -436,8 +557,34 @@ test.describe('Asset Registry E2E Specs', () => {
     await page.goto(`/app/assets/${assets[0].id}`)
     await expect(page.getByRole('heading', { name: 'FE-001' })).toBeVisible()
 
-    await page.getByRole('button', { name: 'Copy Asset Code' }).click()
-    await expect(page.getByText('Asset Code copied.')).toBeVisible()
+    await expect(page.locator('svg[data-asset-qr-image]')).toBeVisible()
+    await page.getByRole('button', { name: 'Copy identifier' }).click()
+    await expect(page.getByText('QR identifier copied.')).toBeVisible()
+  })
+
+  test('keeps the authoritative QR label visible in print media', async ({
+    page,
+  }) => {
+    await mockAssetRegistry(page)
+    await page.goto(`/app/assets/${assets[0].id}`)
+    const label = page.getByRole('region', {
+      name: `Asset QR label for ${assets[0].assetCode}`,
+    })
+    await expect(label.locator('svg[data-asset-qr-image]')).toBeVisible()
+    await expect(label.locator('svg[data-asset-qr-image] title')).toHaveText(
+      `QR code for ${assets[0].assetCode}`,
+    )
+    await page.emulateMedia({ media: 'print' })
+    await expect(label).toHaveCSS('visibility', 'visible')
+    await expect(label.locator('svg[data-asset-qr-image]')).toHaveCSS(
+      'visibility',
+      'visible',
+    )
+    await expect(label.locator('.asset-qr-label-actions')).toHaveCSS(
+      'display',
+      'none',
+    )
+    await page.screenshot({ path: 'test-results/asset-qr-print-preview.png' })
   })
 
   test('shows copy failure feedback and keeps browser storage empty', async ({
@@ -451,9 +598,9 @@ test.describe('Asset Registry E2E Specs', () => {
     })
 
     await page.goto(`/app/assets/${assets[0].id}`)
-    await page.getByRole('button', { name: 'Copy Asset Code' }).click()
+    await page.getByRole('button', { name: 'Copy identifier' }).click()
     await expect(
-      page.getByText('Asset Code could not be copied.'),
+      page.getByText('QR identifier could not be copied.'),
     ).toBeVisible()
     await expect(
       page.locator(

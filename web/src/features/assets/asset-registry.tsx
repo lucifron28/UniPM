@@ -8,6 +8,7 @@ import {
 } from '@tanstack/react-table'
 import { Plus, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -19,6 +20,10 @@ import {
   categoryLabel,
 } from '@/features/assets/asset-presentation'
 import { useCurrentUser } from '@/features/auth/current-user'
+import {
+  RegistryLoadingPanel,
+  RegistryResultsPanel,
+} from '@/features/shared/registry-results-panel'
 
 export type AssetSearch = {
   assetCategory?: Asset['assetCategory'] | undefined
@@ -33,7 +38,7 @@ type AssetRow = Asset & { category: AssetCategory | undefined }
 
 const columnHelper = createColumnHelper<AssetRow>()
 
-const columns = [
+const createColumns = (search: AssetSearch) => [
   columnHelper.accessor('assetCode', { header: 'Asset code' }),
   columnHelper.accessor('assetCategory', {
     header: 'Category',
@@ -51,10 +56,21 @@ const columns = [
     cell: ({ getValue }) => getValue() ?? 'Not recorded',
   }),
   columnHelper.accessor('qrCodeValue', {
-    header: 'QR value',
-    cell: ({ getValue }) => getValue() ?? 'Not generated',
+    header: 'QR label',
+    cell: ({ getValue }) => (
+      <Badge variant={getValue() ? 'success' : 'neutral'}>
+        {getValue() ? 'Ready' : 'Unavailable'}
+      </Badge>
+    ),
   }),
-  columnHelper.accessor('status', { header: 'Status' }),
+  columnHelper.accessor('status', {
+    header: 'Status',
+    cell: ({ getValue }) => (
+      <Badge variant={getValue() === 'Active' ? 'success' : 'neutral'}>
+        {getValue()}
+      </Badge>
+    ),
+  }),
   columnHelper.accessor('updatedAt', {
     header: 'Updated',
     cell: ({ getValue }) =>
@@ -69,6 +85,7 @@ const columns = [
       <Link
         to="/app/assets/$assetId"
         params={{ assetId: row.original.id }}
+        search={search}
         className="font-semibold text-[var(--primary)] hover:underline"
       >
         View details
@@ -95,7 +112,10 @@ export function AssetRegistry({
   onSearchChange,
 }: {
   search: AssetSearch
-  onSearchChange: (next: AssetSearch, options?: { replace?: boolean }) => void
+  onSearchChange: (
+    next: AssetSearch,
+    options?: { replace?: boolean; preserveScroll?: boolean },
+  ) => void
 }) {
   const currentUser = useCurrentUser()
   const categories = useAssetCategories()
@@ -139,6 +159,13 @@ export function AssetRegistry({
     [textFiltered, page, pageSize],
   )
 
+  const changePage = (nextPage: number) => {
+    onSearchChange(
+      { ...search, page: nextPage > 1 ? nextPage : undefined },
+      { preserveScroll: true },
+    )
+  }
+
   useEffect(() => {
     if (filteredAssets.isSuccess && search.page && search.page > pageCount) {
       onSearchChange(
@@ -151,14 +178,21 @@ export function AssetRegistry({
     }
   }, [filteredAssets.isSuccess, search, pageCount, onSearchChange])
 
+  const tableColumns = useMemo(() => createColumns(search), [search])
+  const tableData = useMemo(
+    () =>
+      pageData.map((asset) => ({
+        ...asset,
+        category: categoryByCode.get(asset.assetCategory),
+      })),
+    [pageData, categoryByCode],
+  )
+
   // TanStack Table intentionally exposes mutable table methods to the renderer.
   // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
-    data: pageData.map((asset) => ({
-      ...asset,
-      category: categoryByCode.get(asset.assetCategory),
-    })),
-    columns,
+    data: tableData,
+    columns: tableColumns,
     getCoreRowModel: getCoreRowModel(),
   })
 
@@ -209,9 +243,7 @@ export function AssetRegistry({
             Assets
           </h1>
           <p className="mt-2 max-w-2xl text-[var(--text-secondary)]">
-            Browse the current controlled asset registry. Search and pagination
-            are handled in the browser; category, status, building, and
-            department remain server filters.
+            Find equipment by category, status, location, or asset code.
           </p>
         </div>
         {canCreate && (
@@ -224,14 +256,14 @@ export function AssetRegistry({
         )}
       </div>
 
-      {allAssets.isPending || categories.isPending ? (
+      {allAssets.isPending ? (
         <div
-          className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5"
+          className="grid gap-3 sm:grid-cols-2"
           role="status"
           aria-label="Loading summary statistics"
         >
           <span className="sr-only">Loading summary statistics...</span>
-          {Array.from({ length: 5 }, (_, i) => (
+          {Array.from({ length: 2 }, (_, i) => (
             <Card key={i} className="p-4 shadow-none">
               <Skeleton className="h-4 w-24" />
               <Skeleton className="mt-2 h-8 w-12" />
@@ -255,50 +287,14 @@ export function AssetRegistry({
           </Button>
         </Card>
       ) : (
-        <div className="space-y-3">
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-            <SummaryCard label="All assets" count={allAssets.data.length} />
-            {assetStatusCodes.map((status) => (
-              <SummaryCard
-                key={status}
-                label={status}
-                count={
-                  allAssets.data.filter((asset) => asset.status === status)
-                    .length
-                }
-              />
-            ))}
-            {(categories.data ?? []).map((category) => (
-              <SummaryCard
-                key={category.code}
-                label={category.displayName}
-                count={
-                  allAssets.data.filter(
-                    (asset) => asset.assetCategory === category.code,
-                  ).length
-                }
-              />
-            ))}
-          </div>
-          {categories.isError && (
-            <Card
-              role="alert"
-              className="border-[var(--error)] p-3 text-[var(--error)] shadow-none"
-            >
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-xs font-semibold">
-                  Category statistics are currently unavailable.
-                </p>
-                <Button
-                  type="button"
-                  className="text-xs"
-                  onClick={() => void categories.refetch()}
-                >
-                  Retry categories
-                </Button>
-              </div>
-            </Card>
-          )}
+        <div className="grid gap-3 sm:grid-cols-2">
+          <SummaryCard label="All assets" count={allAssets.data.length} />
+          <SummaryCard
+            label="Active"
+            count={
+              allAssets.data.filter((asset) => asset.status === 'Active').length
+            }
+          />
         </div>
       )}
 
@@ -411,7 +407,7 @@ export function AssetRegistry({
             <Button type="submit">Apply filters</Button>
             <Button
               type="button"
-              className="bg-white text-[var(--text-primary)] hover:bg-[var(--page-background)]"
+              variant="secondary"
               onClick={() => {
                 setText('')
                 setBuilding('')
@@ -447,12 +443,16 @@ export function AssetRegistry({
       </Card>
 
       {filteredAssets.isPending ? (
-        <div className="space-y-3" role="status" aria-label="Loading assets">
+        <RegistryLoadingPanel
+          breakpoint="lg"
+          viewportSize="compact"
+          label="Loading assets"
+        >
           <span className="sr-only">Loading asset records...</span>
           {Array.from({ length: 5 }, (_, index) => (
             <Skeleton key={index} className="h-16 w-full" />
           ))}
-        </div>
+        </RegistryLoadingPanel>
       ) : filteredAssets.isError ? (
         <Card
           role="alert"
@@ -488,8 +488,11 @@ export function AssetRegistry({
           </p>
         </Card>
       ) : (
-        <>
-          <div className="hidden overflow-x-auto rounded-xl border border-[var(--border-soft)] bg-white lg:block">
+        <RegistryResultsPanel
+          label="Assets"
+          breakpoint="lg"
+          viewportSize="compact"
+          desktopContent={
             <table className="w-full text-left text-sm">
               <thead className="border-b border-[var(--border-soft)] bg-[var(--page-background)]">
                 {table.getHeaderGroups().map((headerGroup) => (
@@ -497,7 +500,7 @@ export function AssetRegistry({
                     {headerGroup.headers.map((header) => (
                       <th
                         key={header.id}
-                        className="px-4 py-3 font-semibold text-[var(--text-primary)]"
+                        className="px-4 py-3 font-semibold whitespace-nowrap text-[var(--text-primary)]"
                       >
                         {header.isPlaceholder
                           ? null
@@ -519,12 +522,13 @@ export function AssetRegistry({
                     {row.getVisibleCells().map((cell, index) => (
                       <td
                         key={cell.id}
-                        className="px-4 py-3 text-[var(--text-secondary)]"
+                        className="px-4 py-3 whitespace-nowrap text-[var(--text-secondary)]"
                       >
                         {index === 0 ? (
                           <Link
                             to="/app/assets/$assetId"
                             params={{ assetId: row.original.id }}
+                            search={search}
                             className="font-semibold text-[var(--primary)] hover:underline"
                           >
                             {flexRender(
@@ -544,59 +548,54 @@ export function AssetRegistry({
                 ))}
               </tbody>
             </table>
-          </div>
-          <div className="grid gap-3 lg:hidden">
-            {pageData.map((asset) => (
-              <Link
-                key={asset.id}
-                to="/app/assets/$assetId"
-                params={{ assetId: asset.id }}
-                className="rounded-xl border border-[var(--border-soft)] bg-white p-4 shadow-sm"
-              >
-                <p className="font-semibold text-[var(--primary)]">
-                  {asset.assetCode}
-                </p>
-                <p className="mt-1 text-sm text-[var(--text-secondary)]">
-                  {categoryLabel(
-                    categoryByCode.get(asset.assetCategory),
-                    asset.assetCategory,
-                  )}
-                </p>
-                <p className="mt-1 text-sm text-[var(--text-neutral)]">
-                  {[asset.building, asset.department, asset.location]
-                    .filter(Boolean)
-                    .join(' · ') || 'Not recorded'}
-                </p>
-                <p className="mt-3 text-xs font-semibold text-[var(--text-neutral)]">
-                  {asset.status}
-                </p>
-              </Link>
-            ))}
-          </div>
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-[var(--text-secondary)]">
-              Showing {Math.min((page - 1) * pageSize + 1, textFiltered.length)}
-              –{Math.min(page * pageSize, textFiltered.length)} of{' '}
-              {textFiltered.length} filtered assets · page {page} of {pageCount}
-            </p>
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                disabled={page <= 1}
-                onClick={() => onSearchChange({ ...search, page: page - 1 })}
-              >
-                Previous
-              </Button>
-              <Button
-                type="button"
-                disabled={page >= pageCount}
-                onClick={() => onSearchChange({ ...search, page: page + 1 })}
-              >
-                Next
-              </Button>
+          }
+          mobileContent={
+            <div className="grid gap-3">
+              {pageData.map((asset) => (
+                <Link
+                  key={asset.id}
+                  to="/app/assets/$assetId"
+                  params={{ assetId: asset.id }}
+                  search={search}
+                  className="rounded-xl border border-[var(--border-soft)] bg-white p-4 shadow-sm"
+                >
+                  <p className="font-semibold text-[var(--primary)]">
+                    {asset.assetCode}
+                  </p>
+                  <p className="mt-1 text-sm text-[var(--text-secondary)]">
+                    {categoryLabel(
+                      categoryByCode.get(asset.assetCategory),
+                      asset.assetCategory,
+                    )}
+                  </p>
+                  <p className="mt-1 text-sm text-[var(--text-neutral)]">
+                    {[asset.building, asset.department, asset.location]
+                      .filter(Boolean)
+                      .join(' · ') || 'Not recorded'}
+                  </p>
+                  <div className="mt-3 flex gap-2">
+                    <Badge
+                      variant={
+                        asset.status === 'Active' ? 'success' : 'neutral'
+                      }
+                    >
+                      {asset.status}
+                    </Badge>
+                    <Badge variant={asset.qrCodeValue ? 'success' : 'neutral'}>
+                      {asset.qrCodeValue ? 'QR ready' : 'QR unavailable'}
+                    </Badge>
+                  </div>
+                </Link>
+              ))}
             </div>
-          </div>
-        </>
+          }
+          pagination={{
+            page,
+            pageSize,
+            total: textFiltered.length,
+            onPageChange: changePage,
+          }}
+        />
       )}
     </section>
   )

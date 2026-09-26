@@ -128,7 +128,134 @@ async function mockScheduleApi(page: Page, roles = ['GSD']) {
   })
 }
 
+async function registryLayout(page: Page) {
+  return page.getByRole('table').evaluate((table) => {
+    const viewport = table.parentElement
+    const pagination = document.querySelector<HTMLElement>(
+      'nav[aria-label="Schedules pagination"]',
+    )
+    if (!viewport || !pagination) throw new Error('Registry layout not found')
+
+    return {
+      viewportHeight: viewport.getBoundingClientRect().height,
+      paginationTop: pagination.getBoundingClientRect().top + window.scrollY,
+    }
+  })
+}
+
+function expectStableRegistryLayout(
+  before: Awaited<ReturnType<typeof registryLayout>>,
+  after: Awaited<ReturnType<typeof registryLayout>>,
+) {
+  expect(
+    before.viewportHeight,
+    `Schedules result viewport exceeds 780px: ${before.viewportHeight}px`,
+  ).toBeLessThanOrEqual(780)
+  expect(
+    after.viewportHeight,
+    `Schedules result viewport exceeds 780px: ${after.viewportHeight}px`,
+  ).toBeLessThanOrEqual(780)
+  expect(
+    Math.abs(after.viewportHeight - before.viewportHeight),
+    `Result viewport heights changed: ${before.viewportHeight}px to ${after.viewportHeight}px`,
+  ).toBeLessThanOrEqual(8)
+  expect(
+    Math.abs(after.paginationTop - before.paginationTop),
+    `Pagination top moved: ${before.paginationTop}px to ${after.paginationTop}px`,
+  ).toBeLessThanOrEqual(8)
+}
+
 test.describe('Schedule workflows', () => {
+  test('keeps window scroll position on both pagination directions', async ({
+    page,
+  }) => {
+    await mockScheduleApi(page)
+    const records = Array.from({ length: 11 }, (_, index) => ({
+      ...schedule,
+      id: `10000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
+      asset: {
+        ...schedule.asset,
+        assetCode: `FE-${String(index + 1).padStart(3, '0')}`,
+      },
+    }))
+    await page.route('**/api/v1/schedules**', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(records),
+      }),
+    )
+    await page.setViewportSize({ width: 1280, height: 600 })
+    await page.goto('/app/schedules?status=Due&quarter=Q3&year=2026')
+    const rows = page.getByRole('table').locator('tbody tr')
+    await expect(rows).toHaveCount(10)
+    const next = page.getByRole('button', { name: 'Next' })
+    await next.scrollIntoViewIfNeeded()
+    const scrollY = await page.evaluate(() => window.scrollY)
+    expect(scrollY).toBeGreaterThan(0)
+    const firstPageLayout = await registryLayout(page)
+    await next.click()
+    await expect(page).toHaveURL(/status=Due/)
+    await expect(page).toHaveURL(/quarter=Q3/)
+    await expect(page).toHaveURL(/year=2026/)
+    await expect(page).toHaveURL(/page=2/)
+    await expect(page.getByRole('cell', { name: 'FE-011' })).toBeVisible()
+    await expect(rows).toHaveCount(1)
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(scrollY)
+    const lastPageLayout = await registryLayout(page)
+    expectStableRegistryLayout(firstPageLayout, lastPageLayout)
+    await page.getByRole('button', { name: 'Previous' }).click()
+    await expect(page).not.toHaveURL(/page=2/)
+    await expect(rows).toHaveCount(10)
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(scrollY)
+    expectStableRegistryLayout(firstPageLayout, await registryLayout(page))
+
+    await page.goto('/app/schedules?status=Due&quarter=Q3&year=2026&page=2')
+    await expect(page).toHaveURL(/page=2/)
+    await expect(rows).toHaveCount(1)
+    await page.reload()
+    await expect(page).toHaveURL(/status=Due/)
+    await expect(page).toHaveURL(/quarter=Q3/)
+    await expect(page).toHaveURL(/year=2026/)
+    await expect(page).toHaveURL(/page=2/)
+    await expect(rows).toHaveCount(1)
+
+    await page.goto('/app/schedules?status=Due&quarter=Q3&year=2026&page=99')
+    await expect(page).toHaveURL(/status=Due/)
+    await expect(page).toHaveURL(/quarter=Q3/)
+    await expect(page).toHaveURL(/year=2026/)
+    await expect(page).toHaveURL(/page=2/)
+
+    await page.setViewportSize({ width: 375, height: 667 })
+    await page.goto('/app/schedules?status=Due&quarter=Q3&year=2026&page=2')
+    const mobileSchedule = page
+      .getByRole('heading', { name: 'FE-011' })
+      .locator('xpath=../../..')
+    await expect(mobileSchedule).toBeVisible()
+    const pagination = page.getByRole('navigation', {
+      name: 'Schedules pagination',
+    })
+    await pagination.scrollIntoViewIfNeeded()
+    const [scheduleBounds, paginationBounds] = await Promise.all([
+      mobileSchedule.boundingBox(),
+      pagination.boundingBox(),
+    ])
+    if (!scheduleBounds || !paginationBounds) {
+      throw new Error('Mobile registry geometry could not be measured')
+    }
+    const mobileGap =
+      paginationBounds.y - (scheduleBounds.y + scheduleBounds.height)
+    expect(mobileGap).toBeGreaterThanOrEqual(0)
+    expect(mobileGap).toBeLessThanOrEqual(64)
+    expect(
+      await page.evaluate(
+        () =>
+          document.documentElement.scrollWidth -
+          document.documentElement.clientWidth,
+      ),
+    ).toBeLessThanOrEqual(1)
+  })
+
   test('browses URL-owned filters and restores a direct schedule detail', async ({
     page,
   }) => {
@@ -143,6 +270,11 @@ test.describe('Schedule workflows', () => {
     await expect(
       page.getByRole('heading', { name: 'Batch assignment' }),
     ).toBeVisible()
+    await page.getByRole('link', { name: 'Back to schedules' }).click()
+    await expect(page).toHaveURL(/status=Due/)
+    await expect(page).toHaveURL(/quarter=Q3/)
+    await expect(page).toHaveURL(/year=2026/)
+    await expect(page.getByLabel('Schedule status')).toHaveValue('Due')
   })
 
   test('creates a schedule with only approved fields and opens its detail', async ({

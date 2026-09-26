@@ -137,7 +137,127 @@ async function mockInspectionApi(page: Page) {
   )
 }
 
+async function registryLayout(page: Page) {
+  return page.getByRole('table').evaluate((table) => {
+    const viewport = table.parentElement
+    const pagination = document.querySelector<HTMLElement>(
+      'nav[aria-label="Inspections pagination"]',
+    )
+    if (!viewport || !pagination) throw new Error('Registry layout not found')
+
+    return {
+      viewportHeight: viewport.getBoundingClientRect().height,
+      paginationTop: pagination.getBoundingClientRect().top + window.scrollY,
+    }
+  })
+}
+
+function expectStableRegistryLayout(
+  before: Awaited<ReturnType<typeof registryLayout>>,
+  after: Awaited<ReturnType<typeof registryLayout>>,
+) {
+  expect(
+    before.viewportHeight,
+    `Inspections result viewport exceeds 780px: ${before.viewportHeight}px`,
+  ).toBeLessThanOrEqual(780)
+  expect(
+    after.viewportHeight,
+    `Inspections result viewport exceeds 780px: ${after.viewportHeight}px`,
+  ).toBeLessThanOrEqual(780)
+  expect(
+    Math.abs(after.viewportHeight - before.viewportHeight),
+    `Result viewport heights changed: ${before.viewportHeight}px to ${after.viewportHeight}px`,
+  ).toBeLessThanOrEqual(8)
+  expect(
+    Math.abs(after.paginationTop - before.paginationTop),
+    `Pagination top moved: ${before.paginationTop}px to ${after.paginationTop}px`,
+  ).toBeLessThanOrEqual(8)
+}
+
 test.describe('Inspection review workflows', () => {
+  test('keeps window scroll position on both pagination directions', async ({
+    page,
+  }) => {
+    await mockInspectionApi(page)
+    const records = Array.from({ length: 11 }, (_, index) => ({
+      ...inspection,
+      id: `10000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
+      remarks: `Finding ${index + 1}`,
+    }))
+    await page.route('**/api/v1/inspections**', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(records),
+      }),
+    )
+    await page.setViewportSize({ width: 1280, height: 600 })
+    await page.goto('/app/inspections?isOperational=false')
+    const rows = page.getByRole('table').locator('tbody tr')
+    await expect(rows).toHaveCount(10)
+    const next = page.getByRole('button', { name: 'Next' })
+    await next.scrollIntoViewIfNeeded()
+    const scrollY = await page.evaluate(() => window.scrollY)
+    expect(scrollY).toBeGreaterThan(0)
+    const firstPageLayout = await registryLayout(page)
+    await next.click()
+    await expect(page).toHaveURL(/isOperational=false/)
+    await expect(page).toHaveURL(/page=2/)
+    await expect(page.getByRole('cell', { name: 'Finding 11' })).toBeVisible()
+    await expect(rows).toHaveCount(1)
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(scrollY)
+    const lastPageLayout = await registryLayout(page)
+    expectStableRegistryLayout(firstPageLayout, lastPageLayout)
+    await page.getByRole('button', { name: 'Previous' }).click()
+    await expect(page).not.toHaveURL(/page=2/)
+    await expect(rows).toHaveCount(10)
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(scrollY)
+    expectStableRegistryLayout(firstPageLayout, await registryLayout(page))
+
+    await page.goto('/app/inspections?isOperational=false&page=2')
+    await expect(page).toHaveURL(/isOperational=false/)
+    await expect(page).toHaveURL(/page=2/)
+    await expect(rows).toHaveCount(1)
+    await page.reload()
+    await expect(page).toHaveURL(/isOperational=false/)
+    await expect(page).toHaveURL(/page=2/)
+    await expect(rows).toHaveCount(1)
+
+    await page.goto('/app/inspections?isOperational=false&page=99')
+    await expect(page).toHaveURL(/isOperational=false/)
+    await expect(page).toHaveURL(/page=2/)
+
+    await page.setViewportSize({ width: 375, height: 667 })
+    await page.goto('/app/inspections?isOperational=false&page=2')
+    const mobileInspection = page
+      .getByText('Finding 11', { exact: true })
+      .last()
+      .locator('xpath=..')
+    await expect(mobileInspection).toBeVisible()
+    const pagination = page.getByRole('navigation', {
+      name: 'Inspections pagination',
+    })
+    await pagination.scrollIntoViewIfNeeded()
+    const [inspectionBounds, paginationBounds] = await Promise.all([
+      mobileInspection.boundingBox(),
+      pagination.boundingBox(),
+    ])
+    if (!inspectionBounds || !paginationBounds) {
+      throw new Error('Mobile registry geometry could not be measured')
+    }
+    const mobileGap =
+      paginationBounds.y - (inspectionBounds.y + inspectionBounds.height)
+    expect(mobileGap).toBeGreaterThanOrEqual(0)
+    expect(mobileGap).toBeLessThanOrEqual(64)
+    expect(
+      await page.evaluate(
+        () =>
+          document.documentElement.scrollWidth -
+          document.documentElement.clientWidth,
+      ),
+    ).toBeLessThanOrEqual(1)
+  })
+
   test('filters inspection records and opens immutable source detail', async ({
     page,
   }) => {
@@ -161,6 +281,11 @@ test.describe('Inspection review workflows', () => {
     await expect(
       page.getByRole('button', { name: /submit|record/i }),
     ).toHaveCount(0)
+    await page.getByRole('link', { name: 'Back to inspections' }).click()
+    await expect(page).toHaveURL(/isOperational=false/)
+    await expect(page.getByLabel('Recorded operational result')).toHaveValue(
+      'false',
+    )
   })
 
   test('shows asset inspection history and opens the linked source record', async ({

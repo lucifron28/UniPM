@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react'
+import { useState } from 'react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import {
@@ -12,7 +13,10 @@ import { describe, expect, it, vi } from 'vitest'
 import { configureApiRuntime } from '@/api/http-client'
 import { InspectionDetail } from '@/features/inspections/inspection-detail'
 import { InspectionHistory } from '@/features/inspections/inspection-history'
-import { InspectionRegistry } from '@/features/inspections/inspection-registry'
+import {
+  InspectionRegistry,
+  type InspectionSearch,
+} from '@/features/inspections/inspection-registry'
 import { server } from '@/test/server'
 
 const base = 'http://localhost:5000/api/v1'
@@ -143,6 +147,10 @@ describe('inspection review workflows', () => {
     )
 
     await screen.findAllByText('FE-001')
+    expect(screen.getByText('Showing 1-1 of 1')).toBeInTheDocument()
+    expect(screen.getByText('Page 1 of 1')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Previous' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Next' })).toBeDisabled()
     const filtered = urls.find(
       (url) => url.searchParams.get('assetId') === assetId,
     )
@@ -166,31 +174,38 @@ describe('inspection review workflows', () => {
       http.get(`${base}/inspections`, () => HttpResponse.json(records)),
     )
     const onSearchChange = vi.fn()
-    const view = renderWithProviders(
-      <InspectionRegistry
-        search={{ assetId, isOperational: false, page: 1 }}
-        onSearchChange={onSearchChange}
-      />,
-    )
 
+    function PaginationHarness() {
+      const [search, setSearch] = useState<InspectionSearch>({
+        assetId,
+        isOperational: false,
+        page: 1,
+      })
+      return (
+        <InspectionRegistry
+          search={search}
+          onSearchChange={(next, options) => {
+            onSearchChange(next, options)
+            setSearch(next)
+          }}
+        />
+      )
+    }
+
+    renderWithProviders(<PaginationHarness />)
     await screen.findAllByText('Inspection record 1')
-    await userEvent.setup().click(screen.getByRole('button', { name: 'Next' }))
-    expect(onSearchChange).toHaveBeenCalledWith({
-      assetId,
-      isOperational: false,
-      page: 2,
-    })
-
-    view.unmount()
-    renderWithProviders(
-      <InspectionRegistry
-        search={{ assetId, isOperational: false, page: 2 }}
-        onSearchChange={onSearchChange}
-      />,
+    expect(screen.getByText('Showing 1-10 of 11')).toBeInTheDocument()
+    const next = screen.getByRole('button', { name: 'Next' })
+    await userEvent.setup().click(next)
+    expect(onSearchChange).toHaveBeenCalledWith(
+      { assetId, isOperational: false, page: 2 },
+      { preserveScroll: true },
     )
     expect(await screen.findAllByText('Inspection record 11')).not.toHaveLength(
       0,
     )
+    expect(screen.getByText('Showing 11-11 of 11')).toBeInTheDocument()
+    expect(next).toHaveFocus()
   })
 
   it('renders source text safely with linked asset and schedule context', async () => {
