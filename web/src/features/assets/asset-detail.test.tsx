@@ -272,7 +272,9 @@ describe('AssetDetail feature component', () => {
 
     renderWithProviders(<AssetDetail assetId={assetId} />)
 
-    expect(await screen.findByText('FE-001')).toBeInTheDocument()
+    expect(
+      await screen.findByRole('heading', { name: 'FE-001' }),
+    ).toBeInTheDocument()
     expect(
       screen.queryByRole('heading', {
         name: 'Inspection location verification',

@@ -476,10 +476,12 @@ describe('AssetCreate feature component', () => {
     await actor.click(screen.getByRole('button', { name: 'Create asset' }))
 
     expect(
-      await screen.findByText(
-        'Enter latitude, longitude, and radius together.',
-      ),
-    ).toBeInTheDocument()
+      (
+        await screen.findAllByText(
+          'Enter latitude, longitude, and radius together.',
+        )
+      ).length,
+    ).toBe(2)
     expect(attempts).toBe(0)
   })
 
