@@ -17,6 +17,7 @@ import { server } from '@/test/server'
 
 const assetId = '11111111-1111-4111-8111-111111111111'
 const assetUrl = `http://localhost:5000/api/v1/assets/${assetId}`
+const verificationLocationUrl = `${assetUrl}/verification-location`
 const categoriesUrl =
   'http://localhost:5000/api/v1/reference-data/asset-categories'
 const meUrl = 'http://localhost:5000/api/v1/auth/me'
@@ -35,6 +36,9 @@ const sampleAsset = {
   building: 'Main Building',
   department: 'GSD',
   location: 'Ground floor',
+  verificationLatitude: null,
+  verificationLongitude: null,
+  verificationRadiusMeters: null,
   qrCodeValue: 'UNIPM-FE-001',
   status: 'Active',
   createdAt: '2026-07-19T00:00:00Z',
@@ -223,6 +227,58 @@ describe('AssetDetail feature component', () => {
     expect(
       screen.queryByText('Editing is not available yet'),
     ).not.toBeInTheDocument()
+  })
+
+  it('allows GSD to save the optional verification location through the generated API client', async () => {
+    let submitted: Record<string, unknown> | undefined
+    server.use(
+      http.get(assetUrl, () => HttpResponse.json(sampleAsset)),
+      http.put(verificationLocationUrl, async ({ request }) => {
+        submitted = (await request.json()) as Record<string, unknown>
+        return HttpResponse.json({ ...sampleAsset, ...submitted })
+      }),
+    )
+
+    renderWithProviders(<AssetDetail assetId={assetId} />)
+    const actor = userEvent.setup()
+    await actor.clear(await screen.findByLabelText('Latitude'))
+    await actor.type(screen.getByLabelText('Latitude'), '14.5995')
+    await actor.type(screen.getByLabelText('Longitude'), '120.9842')
+    await actor.type(screen.getByLabelText('Radius (meters)'), '25')
+    await actor.click(screen.getByRole('button', { name: 'Save location' }))
+
+    await vi.waitFor(() => {
+      expect(submitted).toEqual({
+        verificationLatitude: 14.5995,
+        verificationLongitude: 120.9842,
+        verificationRadiusMeters: 25,
+      })
+    })
+    expect(toast.success).toHaveBeenCalledWith('Verification location saved.')
+  })
+
+  it('does not expose verification configuration to non-GSD users', async () => {
+    server.use(
+      http.get(meUrl, () =>
+        HttpResponse.json({
+          id: '22222222-2222-4222-8222-222222222222',
+          email: 'inspector@example.test',
+          displayName: 'Inspector User',
+          roles: ['Inspector'],
+        }),
+      ),
+      http.get(assetUrl, () => HttpResponse.json(sampleAsset)),
+    )
+
+    renderWithProviders(<AssetDetail assetId={assetId} />)
+
+    expect(await screen.findByText('FE-001')).toBeInTheDocument()
+    expect(
+      screen.queryByRole('heading', {
+        name: 'Inspection location verification',
+      }),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Latitude')).not.toBeInTheDocument()
   })
 
   it('keeps registry search context on the return link', async () => {

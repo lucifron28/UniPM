@@ -1,16 +1,30 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { ZodError } from 'zod'
+import {
+  getGetAssetQueryKey,
+  updateAssetVerificationLocation,
+} from '@/api/generated/endpoints'
 import { ApiError } from '@/api/problem-details'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAssetCategories, useAsset } from '@/features/assets/asset-queries'
+import {
+  parseAsset,
+  verificationLocationSchema,
+  type Asset,
+} from '@/features/assets/asset-contract'
 import { categoryLabel, formatDate } from '@/features/assets/asset-presentation'
 import { AssetQrLabel } from '@/features/assets/asset-qr-label'
 import type { AssetSearch } from '@/features/assets/asset-registry'
+import { useCurrentUser } from '@/features/auth/current-user'
 import { InspectionHistory } from '@/features/inspections/inspection-history'
+import { toast } from 'sonner'
 
 function DetailItem({ label, value }: { label: string; value: string | null }) {
   return (
@@ -22,6 +36,140 @@ function DetailItem({ label, value }: { label: string; value: string | null }) {
         {value || 'Not recorded'}
       </dd>
     </div>
+  )
+}
+
+function AssetVerificationLocationEditor({ asset }: { asset: Asset }) {
+  const queryClient = useQueryClient()
+  const [latitude, setLatitude] = useState(
+    asset.verificationLatitude?.toString() ?? '',
+  )
+  const [longitude, setLongitude] = useState(
+    asset.verificationLongitude?.toString() ?? '',
+  )
+  const [radius, setRadius] = useState(
+    asset.verificationRadiusMeters?.toString() ?? '',
+  )
+  const [error, setError] = useState<string | null>(null)
+
+  const mutation = useMutation({
+    mutationFn: async (values: {
+      verificationLatitude: number | null
+      verificationLongitude: number | null
+      verificationRadiusMeters: number | null
+    }) => parseAsset(await updateAssetVerificationLocation(asset.id, values)),
+    onSuccess: (updatedAsset) => {
+      queryClient.setQueryData(
+        getGetAssetQueryKey(updatedAsset.id),
+        updatedAsset,
+      )
+      setLatitude(updatedAsset.verificationLatitude?.toString() ?? '')
+      setLongitude(updatedAsset.verificationLongitude?.toString() ?? '')
+      setRadius(updatedAsset.verificationRadiusMeters?.toString() ?? '')
+      setError(null)
+      toast.success('Verification location saved.')
+    },
+    onError: (cause) => {
+      setError(
+        cause instanceof ApiError && cause.status === 403
+          ? 'Only GSD users can configure an asset verification location.'
+          : 'The verification location could not be saved. Review the values and try again.',
+      )
+    },
+  })
+
+  const save = () => {
+    setError(null)
+    const parsed = verificationLocationSchema.safeParse({
+      verificationLatitude: latitude,
+      verificationLongitude: longitude,
+      verificationRadiusMeters: radius,
+    })
+    if (!parsed.success) {
+      const issue = parsed.error.issues[0]
+      setError(issue?.message ?? 'Review the verification location values.')
+      const field = issue?.path[0]
+      if (typeof field === 'string') document.getElementById(field)?.focus()
+      return
+    }
+
+    mutation.mutate({
+      verificationLatitude: parsed.data.verificationLatitude ?? null,
+      verificationLongitude: parsed.data.verificationLongitude ?? null,
+      verificationRadiusMeters: parsed.data.verificationRadiusMeters ?? null,
+    })
+  }
+
+  return (
+    <Card className="space-y-4 p-6 shadow-none">
+      <div>
+        <h2 className="text-lg font-semibold text-[var(--text-primary)]">
+          Inspection location verification
+        </h2>
+        <p className="mt-1 text-sm text-[var(--text-secondary)]">
+          Optional experimental reference for inspection attempts. It never
+          blocks an inspection.
+        </p>
+      </div>
+      <fieldset className="grid gap-4 sm:grid-cols-3">
+        <legend className="sr-only">Verification location values</legend>
+        <div className="space-y-2">
+          <Label htmlFor="verificationLatitude">Latitude</Label>
+          <Input
+            id="verificationLatitude"
+            type="number"
+            step="any"
+            min="-90"
+            max="90"
+            value={latitude}
+            onChange={(event) => {
+              setLatitude(event.target.value)
+              setError(null)
+            }}
+            aria-invalid={Boolean(error)}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="verificationLongitude">Longitude</Label>
+          <Input
+            id="verificationLongitude"
+            type="number"
+            step="any"
+            min="-180"
+            max="180"
+            value={longitude}
+            onChange={(event) => {
+              setLongitude(event.target.value)
+              setError(null)
+            }}
+            aria-invalid={Boolean(error)}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="verificationRadiusMeters">Radius (meters)</Label>
+          <Input
+            id="verificationRadiusMeters"
+            type="number"
+            step="any"
+            min="0"
+            value={radius}
+            onChange={(event) => {
+              setRadius(event.target.value)
+              setError(null)
+            }}
+            aria-invalid={Boolean(error)}
+          />
+        </div>
+      </fieldset>
+      {error && (
+        <p role="alert" className="text-sm text-[var(--error)]">
+          {error}
+        </p>
+      )}
+      <Button type="button" onClick={save} disabled={mutation.isPending}>
+        {mutation.isPending ? 'Saving location...' : 'Save location'}
+      </Button>
+    </Card>
   )
 }
 
@@ -38,6 +186,7 @@ export function AssetDetail({
     )
   const asset = useAsset(assetId, isValidId)
   const categories = useAssetCategories()
+  const currentUser = useCurrentUser()
   const heading = useRef<HTMLHeadingElement>(null)
 
   useEffect(() => {
@@ -231,6 +380,9 @@ export function AssetDetail({
         building={record.building}
         location={record.location}
       />
+      {currentUser.data?.roles.includes('GSD') && (
+        <AssetVerificationLocationEditor asset={record} />
+      )}
       <InspectionHistory assetId={record.id} />
     </section>
   )

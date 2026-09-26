@@ -8,6 +8,8 @@
 export interface DraftInspectionRowDto {
   scheduleId?: string
   inspectorUserId?: string
+  /** @nullable */
+  locationAttemptId?: string | null
   dateInspected?: string
   /** @nullable */
   dateAccomplished?: string | null

@@ -13,9 +13,11 @@ import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
+  createAssetFieldSchemas,
   createAssetSchema,
   parseAsset,
   toCreateAssetDto,
+  verificationLocationFieldSchemas,
   type CreateAssetValues,
 } from '@/features/assets/asset-contract'
 import { useAssetCategories } from '@/features/assets/asset-queries'
@@ -43,7 +45,31 @@ const ALLOWED_FIELD_KEYS = new Set<keyof CreateAssetValues>([
   'building',
   'department',
   'location',
+  'verificationLatitude',
+  'verificationLongitude',
+  'verificationRadiusMeters',
 ])
+
+const VERIFICATION_LOCATION_FIELDS = [
+  {
+    name: 'verificationLatitude',
+    label: 'Verification latitude',
+    min: '-90',
+    max: '90',
+  },
+  {
+    name: 'verificationLongitude',
+    label: 'Verification longitude',
+    min: '-180',
+    max: '180',
+  },
+  {
+    name: 'verificationRadiusMeters',
+    label: 'Verification radius (meters)',
+    min: '0',
+    max: undefined,
+  },
+] as const
 
 function cleanBackendErrorKey(rawKey: string): keyof CreateAssetValues | null {
   const parts = rawKey.split(/[.[]/)
@@ -73,6 +99,9 @@ export function AssetCreate() {
       building: '',
       department: '',
       location: '',
+      verificationLatitude: '',
+      verificationLongitude: '',
+      verificationRadiusMeters: '',
     },
     onSubmitInvalid: () => {
       setSubmitError('Please review and correct the required fields.')
@@ -82,6 +111,9 @@ export function AssetCreate() {
         'building',
         'department',
         'location',
+        'verificationLatitude',
+        'verificationLongitude',
+        'verificationRadiusMeters',
       ].find((key) => {
         const meta = form.getFieldMeta(key as keyof CreateAssetValues)
         return meta && (meta.errors.length > 0 || meta.errorMap.onChange)
@@ -327,7 +359,7 @@ export function AssetCreate() {
             name="assetCode"
             validators={{
               onChange: ({ value }) => {
-                const res = createAssetSchema.shape.assetCode.safeParse(value)
+                const res = createAssetFieldSchemas.assetCode.safeParse(value)
                 return res.success ? undefined : res.error.issues[0]?.message
               },
             }}
@@ -366,7 +398,7 @@ export function AssetCreate() {
             validators={{
               onChange: ({ value }) => {
                 const res =
-                  createAssetSchema.shape.assetCategory.safeParse(value)
+                  createAssetFieldSchemas.assetCategory.safeParse(value)
                 return res.success ? undefined : res.error.issues[0]?.message
               },
             }}
@@ -417,7 +449,7 @@ export function AssetCreate() {
               name={name}
               validators={{
                 onChange: ({ value }) => {
-                  const res = createAssetSchema.shape[name].safeParse(value)
+                  const res = createAssetFieldSchemas[name].safeParse(value)
                   return res.success ? undefined : res.error.issues[0]?.message
                 },
               }}
@@ -456,6 +488,63 @@ export function AssetCreate() {
               }}
             </form.Field>
           ))}
+
+          <fieldset className="space-y-4 rounded-lg border border-[var(--border-soft)] p-4">
+            <legend className="px-1 text-sm font-semibold text-[var(--text-primary)]">
+              Experimental inspection location verification
+            </legend>
+            <p className="text-sm text-[var(--text-secondary)]">
+              Optional. Enter all three values to configure this non-blocking
+              check.
+            </p>
+            {VERIFICATION_LOCATION_FIELDS.map(({ name, label, min, max }) => (
+              <form.Field
+                key={name}
+                name={name}
+                validators={{
+                  onChange: ({ value }) => {
+                    const result =
+                      verificationLocationFieldSchemas[name].safeParse(value)
+                    return result.success
+                      ? undefined
+                      : result.error.issues[0]?.message
+                  },
+                }}
+              >
+                {(field) => {
+                  const err = fieldErrorText(field.state.meta)
+                  return (
+                    <div className="space-y-2">
+                      <Label htmlFor={name}>{label}</Label>
+                      <Input
+                        id={name}
+                        type="number"
+                        step="any"
+                        min={min}
+                        max={max}
+                        value={field.state.value ?? ''}
+                        onBlur={field.handleBlur}
+                        onChange={(event) => {
+                          clearBackendFieldError(name)
+                          field.handleChange(event.target.value)
+                        }}
+                        aria-invalid={Boolean(err)}
+                        aria-describedby={err ? `${name}-error` : undefined}
+                      />
+                      {err && (
+                        <p
+                          id={`${name}-error`}
+                          className="text-sm text-[var(--error)]"
+                        >
+                          {err}
+                        </p>
+                      )}
+                    </div>
+                  )
+                }}
+              </form.Field>
+            ))}
+          </fieldset>
 
           <form.Subscribe selector={(state) => state.isSubmitting}>
             {(isSubmitting) => {

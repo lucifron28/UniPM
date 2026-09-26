@@ -20,4 +20,19 @@ export interface AssetResponse {
   status: string
   createdAt: string
   updatedAt: string
+  /**
+   * @nullable
+   * @pattern ^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$
+   */
+  verificationLatitude: number | string | null
+  /**
+   * @nullable
+   * @pattern ^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$
+   */
+  verificationLongitude: number | string | null
+  /**
+   * @nullable
+   * @pattern ^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$
+   */
+  verificationRadiusMeters: number | string | null
 }

@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
   assetSchema,
+  createAssetSchema,
   parseAssetCategories,
   toCreateAssetDto,
+  verificationLocationSchema,
 } from '@/features/assets/asset-contract'
 
 const asset = {
@@ -12,6 +14,9 @@ const asset = {
   building: 'Main Building',
   department: 'GSD',
   location: 'Ground floor',
+  verificationLatitude: null,
+  verificationLongitude: null,
+  verificationRadiusMeters: null,
   qrCodeValue: 'UNIPM-FIREEXTINGUISHER-11111111',
   status: 'Active',
   createdAt: '2026-07-19T00:00:00+00:00',
@@ -47,7 +52,68 @@ describe('asset API contracts', () => {
       building: null,
       department: 'GSD',
       location: null,
+      verificationLatitude: null,
+      verificationLongitude: null,
+      verificationRadiusMeters: null,
     })
+  })
+
+  it('validates optional verification values as finite, bounded, and all-or-none', () => {
+    expect(
+      verificationLocationSchema.parse({
+        verificationLatitude: '90',
+        verificationLongitude: '-180',
+        verificationRadiusMeters: '0.1',
+      }),
+    ).toEqual({
+      verificationLatitude: 90,
+      verificationLongitude: -180,
+      verificationRadiusMeters: 0.1,
+    })
+    expect(
+      verificationLocationSchema.safeParse({
+        verificationLatitude: '14.6',
+        verificationLongitude: '',
+        verificationRadiusMeters: '',
+      }).success,
+    ).toBe(false)
+    expect(
+      verificationLocationSchema.safeParse({
+        verificationLatitude: '91',
+        verificationLongitude: '181',
+        verificationRadiusMeters: '0',
+      }).success,
+    ).toBe(false)
+    expect(
+      verificationLocationSchema.safeParse({
+        verificationLatitude: 'NaN',
+        verificationLongitude: '0',
+        verificationRadiusMeters: 'Infinity',
+      }).success,
+    ).toBe(false)
+  })
+
+  it('converts configured verification values to numbers for the create DTO', () => {
+    expect(
+      toCreateAssetDto({
+        assetCode: 'FE-002',
+        assetCategory: 'fire-extinguisher',
+        verificationLatitude: '14.5995',
+        verificationLongitude: '120.9842',
+        verificationRadiusMeters: '25',
+      }),
+    ).toMatchObject({
+      verificationLatitude: 14.5995,
+      verificationLongitude: 120.9842,
+      verificationRadiusMeters: 25,
+    })
+    expect(
+      createAssetSchema.safeParse({
+        assetCode: 'FE-003',
+        assetCategory: 'fire-extinguisher',
+        verificationLatitude: '14.6',
+      }).success,
+    ).toBe(false)
   })
 
   it('uses reference-data labels instead of a client-side category label list', () => {
