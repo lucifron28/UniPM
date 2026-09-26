@@ -27,6 +27,10 @@ public class Asset
     public string? Location { get; set; }
     public string? QrCodeValue { get; set; }
 
+    public double? VerificationLatitude { get; set; }
+    public double? VerificationLongitude { get; set; }
+    public double? VerificationRadiusMeters { get; set; }
+
     /// <summary>
     /// Stores the canonical controlled status from AssetStatusCatalog.
     /// Persisted statuses may be broader than values currently written by API commands;

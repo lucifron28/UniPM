@@ -15,6 +15,7 @@ public class InspectionRecord
     public Asset? Asset { get; set; }
 
     public Guid InspectorUserId { get; set; }
+    public Guid? LocationAttemptId { get; set; }
     public DateTimeOffset DateInspected { get; set; }
     public DateTimeOffset? StartedAt { get; set; }
     public DateTimeOffset? CompletedAt { get; set; }

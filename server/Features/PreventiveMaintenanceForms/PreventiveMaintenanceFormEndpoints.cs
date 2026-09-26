@@ -603,6 +603,28 @@ public static class PreventiveMaintenanceFormEndpoints
                 });
             }
 
+            if (dto.LocationAttemptId is { } locationAttemptId)
+            {
+                var locationAttempt = await context.InspectionLocationAttempts
+                    .AsNoTracking()
+                    .SingleOrDefaultAsync(candidate => candidate.Id == locationAttemptId, cancellationToken);
+                if (locationAttempt is null
+                    || locationAttempt.ScheduleId != schedule.Id
+                    || locationAttempt.AssetId != schedule.AssetId
+                    || locationAttempt.ActorUserId != dto.InspectorUserId)
+                {
+                    return ApiErrors.Conflict(
+                        "Location verification attempt must match this schedule and inspection actor.");
+                }
+
+                if (await context.InspectionRecords.AnyAsync(
+                        candidate => candidate.LocationAttemptId == locationAttemptId,
+                        cancellationToken))
+                {
+                    return ApiErrors.Conflict("Location verification attempt has already been attached.");
+                }
+            }
+
             var now = DateTimeOffset.UtcNow;
             var inspection = CreateInspection(
                 dto,
@@ -625,6 +647,13 @@ public static class PreventiveMaintenanceFormEndpoints
             }
             catch (DbUpdateException exception) when (DatabaseConstraintViolation.IsUniqueConstraint(exception))
             {
+                if (DatabaseConstraintViolation.IsUniqueConstraint(
+                        exception,
+                        "IX_InspectionRecords_LocationAttemptId"))
+                {
+                    return ApiErrors.Conflict("Location verification attempt has already been attached.");
+                }
+
                 if (DatabaseConstraintViolation.IsUniqueConstraint(
                         exception,
                         PreventiveMaintenanceFormBatchPolicy.UniqueIndexName))
@@ -953,6 +982,7 @@ public static class PreventiveMaintenanceFormEndpoints
         {
             Id = Guid.NewGuid(),
             ScheduleId = dto.ScheduleId,
+            LocationAttemptId = dto.LocationAttemptId,
             PreventiveMaintenanceFormId = formId,
             AssetId = assetId,
             InspectorUserId = dto.InspectorUserId,
@@ -1261,6 +1291,7 @@ public sealed class DraftInspectionRowDto
 {
     public Guid ScheduleId { get; set; }
     public Guid InspectorUserId { get; set; }
+    public Guid? LocationAttemptId { get; set; }
     public DateTimeOffset DateInspected { get; set; }
     public DateTimeOffset? DateAccomplished { get; set; }
     public bool IsOperational { get; set; }
@@ -1280,6 +1311,11 @@ public sealed class DraftInspectionRowDto
         if (ScheduleId == Guid.Empty)
         {
             errors.Add(nameof(ScheduleId), ["Schedule ID is required."]);
+        }
+
+        if (LocationAttemptId == Guid.Empty)
+        {
+            errors.Add(nameof(LocationAttemptId), ["Location attempt ID must be a valid identifier."]);
         }
 
         return errors;

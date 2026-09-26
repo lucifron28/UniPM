@@ -16,6 +16,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     public DbSet<Asset> Assets => Set<Asset>();
     public DbSet<PreventiveMaintenanceSchedule> PreventiveMaintenanceSchedules => Set<PreventiveMaintenanceSchedule>();
     public DbSet<InspectionRecord> InspectionRecords => Set<InspectionRecord>();
+    public DbSet<InspectionLocationAttempt> InspectionLocationAttempts => Set<InspectionLocationAttempt>();
     public DbSet<PreventiveMaintenanceForm> PreventiveMaintenanceForms => Set<PreventiveMaintenanceForm>();
     public DbSet<PreventiveMaintenanceAcknowledgement> PreventiveMaintenanceAcknowledgements => Set<PreventiveMaintenanceAcknowledgement>();
     public DbSet<MaintenanceSearchDocument> MaintenanceSearchDocuments => Set<MaintenanceSearchDocument>();
@@ -83,6 +84,9 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             table.HasCheckConstraint(
                 "CK_Assets_Status_Allowed",
                 $"[Status] IN ({SqlIn(AssetStatusCatalog.PersistedValues)})");
+            table.HasCheckConstraint(
+                "CK_Assets_VerificationLocation_Complete",
+                "([VerificationLatitude] IS NULL AND [VerificationLongitude] IS NULL AND [VerificationRadiusMeters] IS NULL) OR ([VerificationLatitude] IS NOT NULL AND [VerificationLongitude] IS NOT NULL AND [VerificationRadiusMeters] IS NOT NULL AND [VerificationLatitude] BETWEEN -90 AND 90 AND [VerificationLongitude] BETWEEN -180 AND 180 AND [VerificationRadiusMeters] > 0)");
         });
 
         var schedule = modelBuilder.Entity<PreventiveMaintenanceSchedule>();
@@ -137,6 +141,10 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
         inspection.Property(entity => entity.WaterCheckUvLight);
         inspection.HasIndex(entity => entity.ScheduleId)
             .IsUnique();
+        inspection.HasIndex(entity => entity.LocationAttemptId)
+            .IsUnique()
+            .HasFilter("[LocationAttemptId] IS NOT NULL")
+            .HasDatabaseName("IX_InspectionRecords_LocationAttemptId");
 
         inspection
             .HasOne(entity => entity.PreventiveMaintenanceForm)
@@ -254,6 +262,45 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             .WithMany()
             .HasForeignKey(i => i.AssetId)
             .OnDelete(DeleteBehavior.NoAction);
+
+        inspection
+            .HasOne<InspectionLocationAttempt>()
+            .WithMany()
+            .HasForeignKey(entity => entity.LocationAttemptId)
+            .OnDelete(DeleteBehavior.NoAction);
+
+        var locationAttempt = modelBuilder.Entity<InspectionLocationAttempt>();
+        locationAttempt.Property(entity => entity.Outcome)
+            .HasMaxLength(24);
+        locationAttempt.HasIndex(entity => entity.ScheduleId);
+        locationAttempt.HasIndex(entity => new { entity.ActorUserId, entity.CapturedAt });
+        locationAttempt.HasOne<Asset>()
+            .WithMany()
+            .HasForeignKey(entity => entity.AssetId)
+            .OnDelete(DeleteBehavior.NoAction);
+        locationAttempt.HasOne<PreventiveMaintenanceSchedule>()
+            .WithMany()
+            .HasForeignKey(entity => entity.ScheduleId)
+            .OnDelete(DeleteBehavior.NoAction);
+        locationAttempt.HasOne<ApplicationUser>()
+            .WithMany()
+            .HasForeignKey(entity => entity.ActorUserId)
+            .OnDelete(DeleteBehavior.NoAction);
+        locationAttempt.ToTable("InspectionLocationAttempts", table =>
+        {
+            table.HasCheckConstraint(
+                "CK_InspectionLocationAttempts_MeasuredCoordinates",
+                "[MeasuredLatitude] BETWEEN -90 AND 90 AND [MeasuredLongitude] BETWEEN -180 AND 180");
+            table.HasCheckConstraint(
+                "CK_InspectionLocationAttempts_Accuracy",
+                "[AccuracyMeters] >= 0");
+            table.HasCheckConstraint(
+                "CK_InspectionLocationAttempts_ExpectedLocation_Complete",
+                "([ExpectedLatitude] IS NULL AND [ExpectedLongitude] IS NULL AND [ExpectedRadiusMeters] IS NULL) OR ([ExpectedLatitude] IS NOT NULL AND [ExpectedLongitude] IS NOT NULL AND [ExpectedRadiusMeters] IS NOT NULL AND [ExpectedLatitude] BETWEEN -90 AND 90 AND [ExpectedLongitude] BETWEEN -180 AND 180 AND [ExpectedRadiusMeters] > 0)");
+            table.HasCheckConstraint(
+                "CK_InspectionLocationAttempts_Outcome_Consistent",
+                "([Outcome] = 'NotConfigured' AND [ExpectedLatitude] IS NULL AND [ExpectedLongitude] IS NULL AND [ExpectedRadiusMeters] IS NULL AND [DistanceMeters] IS NULL) OR ([Outcome] IN ('Inside', 'Outside', 'Uncertain') AND [ExpectedLatitude] IS NOT NULL AND [ExpectedLongitude] IS NOT NULL AND [ExpectedRadiusMeters] IS NOT NULL AND [DistanceMeters] IS NOT NULL AND [DistanceMeters] >= 0)");
+        });
 
         searchDocument
             .HasKey(document => document.InspectionId);
