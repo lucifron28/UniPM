@@ -108,41 +108,61 @@ public sealed class InspectionLocationVerificationTests
     }
 
     [Fact]
-    public async Task Asset_location_configuration_is_gsd_only_and_visible_on_asset_reads()
+    public async Task Asset_location_configuration_is_gsd_only_and_hidden_from_ordinary_asset_reads()
     {
         await using var application = new TestApplicationFactory(AuthRoleCatalog.Gsd);
         using var client = application.CreateClient();
         var asset = await CreateAssetAsync(client, "LOC-READ-001", 14.5, 121.01, 75);
-        Assert.Equal(14.5, asset.VerificationLatitude);
-        Assert.Equal(121.01, asset.VerificationLongitude);
-        Assert.Equal(75, asset.VerificationRadiusMeters);
+        Assert.True(asset.HasVerificationLocation);
+
+        var ordinaryDetailResponse = await client.GetAsync($"/api/v1/assets/{asset.Id}");
+        ordinaryDetailResponse.EnsureSuccessStatusCode();
+        using var ordinaryDetail = System.Text.Json.JsonDocument.Parse(
+            await ordinaryDetailResponse.Content.ReadAsStringAsync());
+        var detailJson = ordinaryDetail.RootElement;
+        Assert.True(detailJson.GetProperty("hasVerificationLocation").GetBoolean());
+        Assert.False(detailJson.TryGetProperty("verificationLatitude", out _));
+        Assert.False(detailJson.TryGetProperty("verificationLongitude", out _));
+        Assert.False(detailJson.TryGetProperty("verificationRadiusMeters", out _));
+
+        var initialConfiguration = await client.GetFromJsonAsync<AssetVerificationLocationResponse>(
+            $"/api/v1/assets/{asset.Id}/verification-location");
+        Assert.Equal(14.5, initialConfiguration?.VerificationLatitude);
+        Assert.Equal(121.01, initialConfiguration?.VerificationLongitude);
+        Assert.Equal(75, initialConfiguration?.VerificationRadiusMeters);
 
         var update = await client.PutAsJsonAsync(
             $"/api/v1/assets/{asset.Id}/verification-location",
             new { verificationLatitude = 14.6, verificationLongitude = 121.02, verificationRadiusMeters = 80 });
 
         Assert.Equal(HttpStatusCode.OK, update.StatusCode);
-        var updated = await update.Content.ReadFromJsonAsync<AssetResponse>();
+        var updated = await update.Content.ReadFromJsonAsync<AssetVerificationLocationResponse>();
         Assert.NotNull(updated);
         Assert.Equal(14.6, updated.VerificationLatitude);
         Assert.Equal(121.02, updated.VerificationLongitude);
         Assert.Equal(80, updated.VerificationRadiusMeters);
 
         var list = await client.GetFromJsonAsync<List<AssetResponse>>("/api/v1/assets");
-        Assert.Equal(14.6, Assert.Single(list!).VerificationLatitude);
+        Assert.True(Assert.Single(list!).HasVerificationLocation);
 
         var clear = await client.PutAsJsonAsync(
             $"/api/v1/assets/{asset.Id}/verification-location",
             new { verificationLatitude = (double?)null, verificationLongitude = (double?)null, verificationRadiusMeters = (double?)null });
         Assert.Equal(HttpStatusCode.OK, clear.StatusCode);
-        Assert.Null((await clear.Content.ReadFromJsonAsync<AssetResponse>())?.VerificationLatitude);
+        Assert.Null((await clear.Content.ReadFromJsonAsync<AssetVerificationLocationResponse>())?.VerificationLatitude);
+
+        var clearedAsset = await client.GetFromJsonAsync<AssetResponse>($"/api/v1/assets/{asset.Id}");
+        Assert.False(clearedAsset?.HasVerificationLocation);
 
         await using var supervisorApplication = new TestApplicationFactory(AuthRoleCatalog.Supervisor);
         using var supervisorClient = supervisorApplication.CreateClient();
+        var getForbidden = await supervisorClient.GetAsync(
+            $"/api/v1/assets/{asset.Id}/verification-location");
         var forbidden = await supervisorClient.PutAsJsonAsync(
             $"/api/v1/assets/{asset.Id}/verification-location",
             new { verificationLatitude = 14.6, verificationLongitude = 121.02, verificationRadiusMeters = 80 });
 
+        Assert.Equal(HttpStatusCode.Forbidden, getForbidden.StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, forbidden.StatusCode);
     }
 
@@ -471,9 +491,7 @@ public sealed class InspectionLocationVerificationTests
         string Status,
         DateTimeOffset CreatedAt,
         DateTimeOffset UpdatedAt,
-        double? VerificationLatitude,
-        double? VerificationLongitude,
-        double? VerificationRadiusMeters);
+        bool HasVerificationLocation);
 
     private sealed record ScheduleResponse(Guid Id);
 

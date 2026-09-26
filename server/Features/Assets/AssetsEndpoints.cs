@@ -92,6 +92,25 @@ public static class AssetsEndpoints
         .Produces<AssetResponse>(StatusCodes.Status200OK)
         .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status404NotFound);
 
+        group.MapGet("/{id}/verification-location", async (
+            Guid id,
+            IDbContextFactory<ApplicationDbContext> factory,
+            CancellationToken cancellationToken) =>
+        {
+            await using var context = await factory.CreateDbContextAsync(cancellationToken);
+            var asset = await context.Assets.SingleOrDefaultAsync(candidate => candidate.Id == id, cancellationToken);
+            return asset is not null
+                ? Results.Ok(AssetVerificationLocationResponse.FromAsset(asset))
+                : ApiErrors.NotFound("Asset not found.");
+        })
+        .WithName("GetAssetVerificationLocation")
+        .WithSummary("Gets the verification location configuration for an asset")
+        .Produces<AssetVerificationLocationResponse>(StatusCodes.Status200OK)
+        .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status401Unauthorized)
+        .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status403Forbidden)
+        .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status404NotFound)
+        .RequireAuthorization(AuthPolicyCatalog.CanManageAssets);
+
         group.MapPut("/{id}/verification-location", async (
             Guid id,
             UpdateAssetVerificationLocationDto dto,
@@ -117,11 +136,11 @@ public static class AssetsEndpoints
             asset.UpdatedAt = DateTimeOffset.UtcNow;
             await context.SaveChangesAsync(cancellationToken);
 
-            return Results.Ok(AssetResponse.FromAsset(asset));
+            return Results.Ok(AssetVerificationLocationResponse.FromAsset(asset));
         })
         .WithName("UpdateAssetVerificationLocation")
         .WithSummary("Replaces or clears an asset verification location")
-        .Produces<AssetResponse>(StatusCodes.Status200OK)
+        .Produces<AssetVerificationLocationResponse>(StatusCodes.Status200OK)
         .Produces<Microsoft.AspNetCore.Mvc.ValidationProblemDetails>(StatusCodes.Status400BadRequest)
         .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status401Unauthorized)
         .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status403Forbidden)
@@ -205,9 +224,9 @@ public static class AssetsEndpoints
                     asset.Status,
                     asset.CreatedAt,
                     asset.UpdatedAt,
-                    asset.VerificationLatitude,
-                    asset.VerificationLongitude,
-                    asset.VerificationRadiusMeters))
+                    asset.VerificationLatitude != null
+                        && asset.VerificationLongitude != null
+                        && asset.VerificationRadiusMeters != null))
                 .ToListAsync(cancellationToken);
 
             return Results.Ok(assets);
@@ -297,9 +316,7 @@ public sealed record AssetResponse(
     string Status,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
-    double? VerificationLatitude,
-    double? VerificationLongitude,
-    double? VerificationRadiusMeters)
+    bool HasVerificationLocation)
 {
     internal static AssetResponse FromAsset(Asset asset)
     {
@@ -314,10 +331,22 @@ public sealed record AssetResponse(
             asset.Status,
             asset.CreatedAt,
             asset.UpdatedAt,
+            asset.VerificationLatitude.HasValue
+                && asset.VerificationLongitude.HasValue
+                && asset.VerificationRadiusMeters.HasValue);
+    }
+}
+
+public sealed record AssetVerificationLocationResponse(
+    double? VerificationLatitude,
+    double? VerificationLongitude,
+    double? VerificationRadiusMeters)
+{
+    internal static AssetVerificationLocationResponse FromAsset(Asset asset)
+        => new(
             asset.VerificationLatitude,
             asset.VerificationLongitude,
             asset.VerificationRadiusMeters);
-    }
 }
 
 public class CreateAssetDto
