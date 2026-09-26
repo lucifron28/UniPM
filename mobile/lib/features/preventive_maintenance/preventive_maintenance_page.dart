@@ -493,12 +493,14 @@ class PreventiveMaintenanceDraftPage extends StatefulWidget {
     required this.formId,
     this.preselectedScheduleId,
     this.focusedInspectionId,
+    this.locationAttemptId,
   });
 
   final PreventiveMaintenanceController controller;
   final String formId;
   final String? preselectedScheduleId;
   final String? focusedInspectionId;
+  final String? locationAttemptId;
 
   @override
   State<PreventiveMaintenanceDraftPage> createState() =>
@@ -704,6 +706,8 @@ class _PreventiveMaintenanceDraftPageState
             schedules: unattachedSchedules,
             assetCategory: form.assetCategory,
             preselectedScheduleId: preselectedScheduleId,
+            locationAttemptId: widget.locationAttemptId,
+            locationAttemptScheduleId: preselectedScheduleId,
             inspectorUserId: widget.controller.user.id,
             isSaving: widget.controller.isSaving,
             onAdd: (input) async {
@@ -911,6 +915,8 @@ class _AddInspectionCard extends StatefulWidget {
     required this.schedules,
     required this.assetCategory,
     this.preselectedScheduleId,
+    this.locationAttemptId,
+    this.locationAttemptScheduleId,
     required this.inspectorUserId,
     required this.isSaving,
     required this.onAdd,
@@ -919,6 +925,8 @@ class _AddInspectionCard extends StatefulWidget {
   final List<ScheduleOption> schedules;
   final String assetCategory;
   final String? preselectedScheduleId;
+  final String? locationAttemptId;
+  final String? locationAttemptScheduleId;
   final String inspectorUserId;
   final bool isSaving;
   final Future<bool> Function(AddInspectionInput input) onAdd;
@@ -984,6 +992,9 @@ class _AddInspectionCardState extends State<_AddInspectionCard> {
     final added = await widget.onAdd(
       AddInspectionInput(
         scheduleId: scheduleId!,
+        locationAttemptId: scheduleId == widget.locationAttemptScheduleId
+            ? widget.locationAttemptId
+            : null,
         inspectorUserId: widget.inspectorUserId,
         dateInspected: date,
         dateAccomplished: widget.assetCategory == 'water-drinking-station'

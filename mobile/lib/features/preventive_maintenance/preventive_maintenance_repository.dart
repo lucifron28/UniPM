@@ -28,8 +28,17 @@ abstract interface class PreventiveMaintenanceRepository {
   Future<void> deleteInspection(String formId, String inspectionId);
 }
 
+abstract interface class LocationVerificationRepository {
+  Future<LocationVerificationAttempt> createLocationVerificationAttempt(
+    String scheduleId, {
+    required double latitude,
+    required double longitude,
+    required double accuracyMeters,
+  });
+}
+
 class ApiPreventiveMaintenanceRepository
-    implements PreventiveMaintenanceRepository {
+    implements PreventiveMaintenanceRepository, LocationVerificationRepository {
   const ApiPreventiveMaintenanceRepository(this._client);
 
   final ApiClient _client;
@@ -103,6 +112,24 @@ class ApiPreventiveMaintenanceRepository
   }
 
   @override
+  Future<LocationVerificationAttempt> createLocationVerificationAttempt(
+    String scheduleId, {
+    required double latitude,
+    required double longitude,
+    required double accuracyMeters,
+  }) async {
+    final json = await _client.postJson(
+      '/api/v1/schedules/${Uri.encodeComponent(scheduleId)}/location-verification-attempts',
+      <String, dynamic>{
+        'latitude': latitude,
+        'longitude': longitude,
+        'accuracyMeters': accuracyMeters,
+      },
+    );
+    return LocationVerificationAttempt.fromJson(json);
+  }
+
+  @override
   Future<List<ReferenceOption>> listAssetCategories() =>
       _getReferences('/api/v1/reference-data/asset-categories');
 
@@ -123,6 +150,7 @@ class ApiPreventiveMaintenanceRepository
       '/api/v1/preventive-maintenance-forms/$formId/inspections',
       _inspectionBody(
         scheduleId: input.scheduleId,
+        locationAttemptId: input.locationAttemptId,
         inspectorUserId: input.inspectorUserId,
         dateInspected: input.dateInspected,
         dateAccomplished: input.dateAccomplished,
@@ -191,6 +219,7 @@ ReferenceOption _referenceFromValue(dynamic value) {
 
 Map<String, dynamic> _inspectionBody({
   String? scheduleId,
+  String? locationAttemptId,
   required String inspectorUserId,
   required DateTime dateInspected,
   DateTime? dateAccomplished,
@@ -203,6 +232,9 @@ Map<String, dynamic> _inspectionBody({
 }) {
   return <String, dynamic>{
     ...?scheduleId == null ? null : <String, dynamic>{'scheduleId': scheduleId},
+    ...?locationAttemptId == null
+        ? null
+        : <String, dynamic>{'locationAttemptId': locationAttemptId},
     'inspectorUserId': inspectorUserId,
     'dateInspected': dateInspected.toUtc().toIso8601String(),
     'dateAccomplished': dateAccomplished?.toUtc().toIso8601String(),

@@ -10,6 +10,7 @@ import 'package:mobile/api/api_exception.dart';
 import 'package:mobile/auth/auth_models.dart';
 import 'package:mobile/features/assets/asset_models.dart';
 import 'package:mobile/features/preventive_maintenance/preventive_maintenance_controller.dart';
+import 'package:mobile/features/preventive_maintenance/inspection_location_capture.dart';
 import 'package:mobile/features/preventive_maintenance/preventive_maintenance_form_specs.dart';
 import 'package:mobile/features/preventive_maintenance/preventive_maintenance_models.dart';
 import 'package:mobile/features/preventive_maintenance/preventive_maintenance_page.dart';
@@ -388,8 +389,7 @@ void main() {
 
     expect(find.byKey(const Key('resume-pm')), findsOneWidget);
     expect(find.byKey(const Key('start-pm')), findsNothing);
-    await tester.tap(find.byKey(const Key('resume-pm')));
-    await tester.pumpAndSettle();
+    await _openScannedInspection(tester, const Key('resume-pm'));
     await scrollTo(tester, find.text('Resume inspection row'));
 
     expect(find.text('Draft form'), findsOneWidget);
@@ -414,8 +414,7 @@ void main() {
     await pumpScannedEntry(tester, repository);
 
     expect(find.byKey(const Key('start-pm')), findsOneWidget);
-    await tester.tap(find.byKey(const Key('start-pm')));
-    await tester.pumpAndSettle();
+    await _openScannedInspection(tester, const Key('start-pm'));
     await scrollTo(tester, find.byKey(const Key('inspection-schedule')));
 
     final dropdown = tester.widget<DropdownButtonFormField<String>>(
@@ -435,8 +434,7 @@ void main() {
     );
 
     await pumpScannedEntry(tester, repository);
-    await tester.tap(find.byKey(const Key('start-pm')));
-    await tester.pumpAndSettle();
+    await _openScannedInspection(tester, const Key('start-pm'));
     await scrollTo(tester, find.byKey(const Key('inspection-schedule')));
 
     expect(repository.createdInput?.assetCategory, 'fire-extinguisher');
@@ -469,8 +467,7 @@ void main() {
       repository,
       onScanNextAsset: () => scanNextAssetCalled = true,
     );
-    await tester.tap(find.byKey(const Key('start-pm')));
-    await tester.pumpAndSettle();
+    await _openScannedInspection(tester, const Key('start-pm'));
     await scrollTo(tester, find.byKey(const Key('add-inspection-button')));
     await tester.tap(find.byKey(const Key('add-inspection-button')));
     await tester.pumpAndSettle();
@@ -770,8 +767,7 @@ void main() {
     );
 
     await pumpScannedEntry(tester, repository);
-    await tester.tap(find.byKey(const Key('start-pm')));
-    await tester.pumpAndSettle();
+    await _openScannedInspection(tester, const Key('start-pm'));
 
     expect(repository.createdInput, isNotNull);
     expect(repository.addCallCount, 0);
@@ -1270,11 +1266,24 @@ Future<void> pumpScannedEntry(
             user: user ?? testUser(),
             batchScope: batchScope,
             onScanNextAsset: onScanNextAsset,
+            locationCapture: InspectionLocationCapture(
+              platform: _GrantedDeviceLocationPlatform(),
+            ),
+            locationVerificationRepository:
+                _InsideLocationVerificationRepository(),
           ),
         ),
       ),
     ),
   );
+  await tester.pumpAndSettle();
+}
+
+Future<void> _openScannedInspection(WidgetTester tester, Key actionKey) async {
+  await tester.tap(find.byKey(actionKey));
+  await tester.pumpAndSettle();
+  expect(find.byKey(const Key('location-verification-dialog')), findsOneWidget);
+  await tester.tap(find.byKey(const Key('location-continue')));
   await tester.pumpAndSettle();
 }
 
@@ -1709,4 +1718,40 @@ class DraftTransportState {
       'location': 'Test Area',
     },
   };
+}
+
+class _GrantedDeviceLocationPlatform implements DeviceLocationPlatform {
+  @override
+  Future<bool> isLocationServiceEnabled() async => true;
+
+  @override
+  Future<DeviceLocationPermission> checkPermission() async =>
+      DeviceLocationPermission.granted;
+
+  @override
+  Future<DeviceLocationPermission> requestPermission() async =>
+      DeviceLocationPermission.granted;
+
+  @override
+  Future<DeviceLocationCoordinates> getCurrentPosition({
+    required Duration timeout,
+  }) async => const DeviceLocationCoordinates(
+    latitude: 14.5995,
+    longitude: 120.9842,
+    accuracyMeters: 5,
+  );
+}
+
+class _InsideLocationVerificationRepository
+    implements LocationVerificationRepository {
+  @override
+  Future<LocationVerificationAttempt> createLocationVerificationAttempt(
+    String scheduleId, {
+    required double latitude,
+    required double longitude,
+    required double accuracyMeters,
+  }) async => const LocationVerificationAttempt(
+    id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+    outcome: LocationVerificationOutcome.inside,
+  );
 }
