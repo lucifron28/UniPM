@@ -272,6 +272,15 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
         var locationAttempt = modelBuilder.Entity<InspectionLocationAttempt>();
         locationAttempt.Property(entity => entity.Outcome)
             .HasMaxLength(24);
+        locationAttempt.Property(entity => entity.AccuracyMode)
+            .HasMaxLength(16)
+            .HasDefaultValue("Unknown");
+        locationAttempt.Property(entity => entity.HasAccuracy)
+            .HasDefaultValue(true);
+        locationAttempt.Property(entity => entity.IsMocked)
+            .HasDefaultValue(false);
+        locationAttempt.Property(entity => entity.AcquisitionDurationMs)
+            .HasDefaultValue(0);
         locationAttempt.HasIndex(entity => entity.ScheduleId);
         locationAttempt.HasIndex(entity => new { entity.ActorUserId, entity.CapturedAt });
         locationAttempt.HasOne<Asset>()
@@ -293,13 +302,19 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
                 "[MeasuredLatitude] BETWEEN -90 AND 90 AND [MeasuredLongitude] BETWEEN -180 AND 180");
             table.HasCheckConstraint(
                 "CK_InspectionLocationAttempts_Accuracy",
-                "[AccuracyMeters] >= 0");
+                "([AccuracyMeters] IS NULL OR [AccuracyMeters] >= 0) AND (([HasAccuracy] = 1 AND [AccuracyMeters] IS NOT NULL) OR ([HasAccuracy] = 0 AND [AccuracyMeters] IS NULL))");
+            table.HasCheckConstraint(
+                "CK_InspectionLocationAttempts_AccuracyMode",
+                "[AccuracyMode] IN ('Precise', 'Reduced', 'Unknown')");
+            table.HasCheckConstraint(
+                "CK_InspectionLocationAttempts_AcquisitionDuration",
+                "[AcquisitionDurationMs] >= 0");
             table.HasCheckConstraint(
                 "CK_InspectionLocationAttempts_ExpectedLocation_Complete",
                 "([ExpectedLatitude] IS NULL AND [ExpectedLongitude] IS NULL AND [ExpectedRadiusMeters] IS NULL) OR ([ExpectedLatitude] IS NOT NULL AND [ExpectedLongitude] IS NOT NULL AND [ExpectedRadiusMeters] IS NOT NULL AND [ExpectedLatitude] BETWEEN -90 AND 90 AND [ExpectedLongitude] BETWEEN -180 AND 180 AND [ExpectedRadiusMeters] > 0)");
             table.HasCheckConstraint(
                 "CK_InspectionLocationAttempts_Outcome_Consistent",
-                "([Outcome] = 'NotConfigured' AND [ExpectedLatitude] IS NULL AND [ExpectedLongitude] IS NULL AND [ExpectedRadiusMeters] IS NULL AND [DistanceMeters] IS NULL) OR ([Outcome] IN ('Inside', 'Outside', 'Uncertain') AND [ExpectedLatitude] IS NOT NULL AND [ExpectedLongitude] IS NOT NULL AND [ExpectedRadiusMeters] IS NOT NULL AND [DistanceMeters] IS NOT NULL AND [DistanceMeters] >= 0)");
+                "([Outcome] = 'NotConfigured' AND [ExpectedLatitude] IS NULL AND [ExpectedLongitude] IS NULL AND [ExpectedRadiusMeters] IS NULL AND [DistanceMeters] IS NULL) OR ([Outcome] = 'Uncertain' AND [HasAccuracy] = 0 AND [ExpectedLatitude] IS NOT NULL AND [ExpectedLongitude] IS NOT NULL AND [ExpectedRadiusMeters] IS NOT NULL AND [DistanceMeters] IS NOT NULL AND [DistanceMeters] >= 0) OR ([Outcome] IN ('Inside', 'Outside', 'Uncertain') AND [HasAccuracy] = 1 AND [ExpectedLatitude] IS NOT NULL AND [ExpectedLongitude] IS NOT NULL AND [ExpectedRadiusMeters] IS NOT NULL AND [DistanceMeters] IS NOT NULL AND [DistanceMeters] >= 0)");
         });
 
         searchDocument

@@ -30,15 +30,17 @@ public sealed class InspectionLocationVerificationTests
     [Fact]
     public void Classifier_includes_accuracy_boundary_and_marks_overlap_uncertain()
     {
-        var inside = InspectionLocationClassifier.Classify(0, 0, 100, 0, 0, 100);
-        var uncertain = InspectionLocationClassifier.Classify(0, 0, 1_000, 0, 0.01, 150);
-        var outside = InspectionLocationClassifier.Classify(0, 0, 1_000, 0, 0.01, 50);
+        var inside = InspectionLocationClassifier.Classify(0, 0, 100, 0, 0, true, 100);
+        var uncertain = InspectionLocationClassifier.Classify(0, 0, 1_000, 0, 0.01, true, 150);
+        var outside = InspectionLocationClassifier.Classify(0, 0, 1_000, 0, 0.01, true, 50);
+        var unavailableAccuracy = InspectionLocationClassifier.Classify(0, 0, 100, 0, 0, false, null);
 
         Assert.Equal("Inside", inside.Outcome);
         Assert.Equal("Uncertain", uncertain.Outcome);
         Assert.Equal("Outside", outside.Outcome);
-        Assert.Null(InspectionLocationClassifier.Classify(null, null, null, 0, 0, 0).DistanceMeters);
-        Assert.Equal("NotConfigured", InspectionLocationClassifier.Classify(null, null, null, 0, 0, 0).Outcome);
+        Assert.Equal("Uncertain", unavailableAccuracy.Outcome);
+        Assert.Null(InspectionLocationClassifier.Classify(null, null, null, 0, 0, false, null).DistanceMeters);
+        Assert.Equal("NotConfigured", InspectionLocationClassifier.Classify(null, null, null, 0, 0, false, null).Outcome);
     }
 
     [Theory]
@@ -76,12 +78,9 @@ public sealed class InspectionLocationVerificationTests
             VerificationLongitude = 0,
             VerificationRadiusMeters = 100
         };
-        var attempt = new CreateInspectionLocationAttemptDto
-        {
-            Latitude = 0,
-            Longitude = double.PositiveInfinity,
-            AccuracyMeters = double.NaN
-        };
+        var attempt = ValidLocationAttemptDto(
+            longitude: double.PositiveInfinity,
+            accuracyMeters: double.NaN);
 
         Assert.Contains(nameof(CreateAssetDto.VerificationLatitude), asset.Validate().Keys);
         Assert.Contains(nameof(CreateInspectionLocationAttemptDto.Longitude), attempt.Validate().Keys);
@@ -97,12 +96,10 @@ public sealed class InspectionLocationVerificationTests
         double longitude,
         double accuracyMeters)
     {
-        var dto = new CreateInspectionLocationAttemptDto
-        {
-            Latitude = latitude,
-            Longitude = longitude,
-            AccuracyMeters = accuracyMeters
-        };
+        var dto = ValidLocationAttemptDto(
+            latitude: latitude,
+            longitude: longitude,
+            accuracyMeters: accuracyMeters);
 
         Assert.NotEmpty(dto.Validate());
     }
@@ -178,19 +175,39 @@ public sealed class InspectionLocationVerificationTests
 
         var attemptResponse = await client.PostAsJsonAsync(
             $"/api/v1/schedules/{firstSchedule.Id}/location-verification-attempts",
-            new { latitude = 0, longitude = 0, accuracyMeters = 100 });
+            new
+            {
+                latitude = 0,
+                longitude = 0,
+                accuracyMeters = 100,
+                hasAccuracy = true,
+                devicePositionTimestamp = new DateTimeOffset(2026, 9, 26, 1, 0, 0, TimeSpan.Zero),
+                isMocked = true,
+                accuracyMode = "Reduced",
+                acquisitionDurationMs = 325
+            });
 
         Assert.Equal(HttpStatusCode.OK, attemptResponse.StatusCode);
         Assert.Null(attemptResponse.Headers.Location);
         var attempt = await attemptResponse.Content.ReadFromJsonAsync<InspectionLocationAttemptResponse>();
         Assert.NotNull(attempt);
-        Assert.Equal(asset.Id, attempt.AssetId);
-        Assert.Equal(firstSchedule.Id, attempt.ScheduleId);
-        Assert.Equal(TestAuthenticationHandler.UserId, attempt.ActorUserId);
+        Assert.NotEqual(Guid.Empty, attempt.Id);
         Assert.Equal("Inside", attempt.Outcome);
         Assert.Equal(0, attempt.DistanceMeters);
-        Assert.Equal(0, attempt.ExpectedLatitude);
+        Assert.Equal(100, attempt.AccuracyMeters);
+        Assert.True(attempt.HasAccuracy);
+        Assert.True(attempt.IsMocked);
+        Assert.Equal("Reduced", attempt.AccuracyMode);
+        Assert.Equal(325, attempt.AcquisitionDurationMs);
+        Assert.Equal(new DateTimeOffset(2026, 9, 26, 1, 0, 0, TimeSpan.Zero), attempt.DevicePositionTimestamp);
+        Assert.False(System.Text.Json.JsonDocument.Parse(
+            await attemptResponse.Content.ReadAsStringAsync()).RootElement.TryGetProperty("expectedLatitude", out _));
         Assert.InRange(attempt.CapturedAt, DateTimeOffset.UtcNow.AddMinutes(-1), DateTimeOffset.UtcNow.AddMinutes(1));
+
+        var changedLocation = await client.PutAsJsonAsync(
+            $"/api/v1/assets/{asset.Id}/verification-location",
+            new { verificationLatitude = 1d, verificationLongitude = 1d, verificationRadiusMeters = 150d });
+        Assert.Equal(HttpStatusCode.OK, changedLocation.StatusCode);
 
         var form = await CreateFormAsync(client, asset.AssetCategory);
         var wrongSchedule = await AddInspectionRowAsync(client, form.Id, secondSchedule.Id, attempt.Id);
@@ -211,6 +228,16 @@ public sealed class InspectionLocationVerificationTests
         await using var context = await factory.CreateDbContextAsync();
         var inspection = await context.InspectionRecords.SingleAsync(row => row.ScheduleId == firstSchedule.Id);
         Assert.Equal(attempt.Id, inspection.LocationAttemptId);
+        var persistedAttempt = await context.InspectionLocationAttempts.SingleAsync(row => row.Id == attempt.Id);
+        Assert.Equal(0, persistedAttempt.ExpectedLatitude);
+        Assert.Equal(0, persistedAttempt.ExpectedLongitude);
+        Assert.Equal(100, persistedAttempt.ExpectedRadiusMeters);
+        Assert.Equal(attempt.DevicePositionTimestamp, persistedAttempt.DevicePositionTimestamp);
+        Assert.True(persistedAttempt.HasAccuracy);
+        Assert.Equal(100, persistedAttempt.AccuracyMeters);
+        Assert.True(persistedAttempt.IsMocked);
+        Assert.Equal("Reduced", persistedAttempt.AccuracyMode);
+        Assert.Equal(325, persistedAttempt.AcquisitionDurationMs);
         Assert.Equal(ScheduleStatusCatalog.Completed,
             (await context.PreventiveMaintenanceSchedules.SingleAsync(row => row.Id == firstSchedule.Id)).Status);
         Assert.Equal(ScheduleStatusCatalog.Due,
@@ -227,16 +254,15 @@ public sealed class InspectionLocationVerificationTests
 
         var allowed = await client.PostAsJsonAsync(
             $"/api/v1/schedules/{assignedScheduleId}/location-verification-attempts",
-            new { latitude = 90, longitude = 180, accuracyMeters = 0 });
+            ValidLocationAttemptDto(latitude: 90, longitude: 180));
         var otherAssignedDenied = await client.PostAsJsonAsync(
             $"/api/v1/schedules/{otherAssignedScheduleId}/location-verification-attempts",
-            new { latitude = 0, longitude = 0, accuracyMeters = 0 });
+            ValidLocationAttemptDto());
         Assert.Equal(HttpStatusCode.OK, allowed.StatusCode);
         Assert.Null(allowed.Headers.Location);
         var attempt = await allowed.Content.ReadFromJsonAsync<InspectionLocationAttemptResponse>();
         Assert.NotNull(attempt);
         Assert.Equal("NotConfigured", attempt.Outcome);
-        Assert.Null(attempt.ExpectedLatitude);
         Assert.Null(attempt.DistanceMeters);
         Assert.Equal(HttpStatusCode.Forbidden, otherAssignedDenied.StatusCode);
 
@@ -246,14 +272,12 @@ public sealed class InspectionLocationVerificationTests
             await gsdApplication.SeedSchedulesAsync();
         var unassignedAllowed = await gsdClient.PostAsJsonAsync(
             $"/api/v1/schedules/{gsdUnassignedScheduleId}/location-verification-attempts",
-            new { latitude = 0, longitude = 0, accuracyMeters = 0 });
+            ValidLocationAttemptDto());
 
         Assert.Equal(HttpStatusCode.OK, unassignedAllowed.StatusCode);
         var unassignedAttempt = await unassignedAllowed.Content
             .ReadFromJsonAsync<InspectionLocationAttemptResponse>();
         Assert.NotNull(unassignedAttempt);
-        Assert.Equal(gsdUnassignedScheduleId, unassignedAttempt.ScheduleId);
-        Assert.Equal(TestAuthenticationHandler.UserId, unassignedAttempt.ActorUserId);
         Assert.Equal("NotConfigured", unassignedAttempt.Outcome);
     }
 
@@ -285,12 +309,12 @@ public sealed class InspectionLocationVerificationTests
 
         var preStartAttempt = await client.PostAsJsonAsync(
             $"/api/v1/schedules/{preStartSchedule.Id}/location-verification-attempts",
-            new { latitude = 0, longitude = 0, accuracyMeters = 0 });
+            ValidLocationAttemptDto());
         Assert.Equal(HttpStatusCode.OK, preStartAttempt.StatusCode);
 
         var initialAttempt = await client.PostAsJsonAsync(
             $"/api/v1/schedules/{resumeSchedule.Id}/location-verification-attempts",
-            new { latitude = 0, longitude = 0, accuracyMeters = 0 });
+            ValidLocationAttemptDto());
         Assert.Equal(HttpStatusCode.OK, initialAttempt.StatusCode);
         var attempt = (await initialAttempt.Content.ReadFromJsonAsync<InspectionLocationAttemptResponse>())!;
         var form = await CreateFormAsync(client, asset.AssetCategory);
@@ -299,13 +323,13 @@ public sealed class InspectionLocationVerificationTests
 
         var resumedAttempt = await client.PostAsJsonAsync(
             $"/api/v1/schedules/{resumeSchedule.Id}/location-verification-attempts",
-            new { latitude = 0, longitude = 0, accuracyMeters = 0 });
+            ValidLocationAttemptDto());
         var canceledAttempt = await client.PostAsJsonAsync(
             $"/api/v1/schedules/{canceledSchedule.Id}/location-verification-attempts",
-            new { latitude = 0, longitude = 0, accuracyMeters = 0 });
+            ValidLocationAttemptDto());
         var ineligibleAttempt = await client.PostAsJsonAsync(
             $"/api/v1/schedules/{completedSchedule.Id}/location-verification-attempts",
-            new { latitude = 0, longitude = 0, accuracyMeters = 0 });
+            ValidLocationAttemptDto());
 
         Assert.Equal(HttpStatusCode.OK, resumedAttempt.StatusCode);
         Assert.Equal(HttpStatusCode.Conflict, canceledAttempt.StatusCode);
@@ -326,6 +350,77 @@ public sealed class InspectionLocationVerificationTests
             Assert.Equal(3, await context.InspectionLocationAttempts.CountAsync());
         }
     }
+
+    [Fact]
+    public async Task Location_attempt_persists_precise_and_reduced_accuracy_metadata()
+    {
+        await using var application = new TestApplicationFactory(AuthRoleCatalog.Gsd);
+        using var client = application.CreateClient();
+        var (preciseScheduleId, reducedScheduleId, _) = await application.SeedSchedulesAsync();
+        var deviceTimestamp = new DateTimeOffset(2026, 9, 26, 1, 0, 0, TimeSpan.Zero);
+
+        var preciseResponse = await client.PostAsJsonAsync(
+            $"/api/v1/schedules/{preciseScheduleId}/location-verification-attempts",
+            ValidLocationAttemptDto(
+                devicePositionTimestamp: deviceTimestamp,
+                accuracyMode: "Precise",
+                acquisitionDurationMs: 120));
+        var reducedResponse = await client.PostAsJsonAsync(
+            $"/api/v1/schedules/{reducedScheduleId}/location-verification-attempts",
+            ValidLocationAttemptDto(
+                hasAccuracy: false,
+                accuracyMeters: null,
+                devicePositionTimestamp: deviceTimestamp,
+                isMocked: true,
+                accuracyMode: "Reduced",
+                acquisitionDurationMs: 480));
+
+        Assert.Equal(HttpStatusCode.OK, preciseResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, reducedResponse.StatusCode);
+        var precise = (await preciseResponse.Content.ReadFromJsonAsync<InspectionLocationAttemptResponse>())!;
+        var reduced = (await reducedResponse.Content.ReadFromJsonAsync<InspectionLocationAttemptResponse>())!;
+        Assert.Equal("Precise", precise.AccuracyMode);
+        Assert.True(precise.HasAccuracy);
+        Assert.Equal("Reduced", reduced.AccuracyMode);
+        Assert.False(reduced.HasAccuracy);
+        Assert.Null(reduced.AccuracyMeters);
+        Assert.True(reduced.IsMocked);
+        Assert.Equal("NotConfigured", reduced.Outcome);
+
+        await using var scope = application.Services.CreateAsyncScope();
+        var factory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
+        await using var context = await factory.CreateDbContextAsync();
+        var savedPrecise = await context.InspectionLocationAttempts.SingleAsync(row => row.Id == precise.Id);
+        var savedReduced = await context.InspectionLocationAttempts.SingleAsync(row => row.Id == reduced.Id);
+        Assert.Equal(deviceTimestamp, savedPrecise.DevicePositionTimestamp);
+        Assert.Equal(120, savedPrecise.AcquisitionDurationMs);
+        Assert.Equal("Precise", savedPrecise.AccuracyMode);
+        Assert.Equal(deviceTimestamp, savedReduced.DevicePositionTimestamp);
+        Assert.Equal(480, savedReduced.AcquisitionDurationMs);
+        Assert.Equal("Reduced", savedReduced.AccuracyMode);
+        Assert.True(savedReduced.IsMocked);
+    }
+
+    private static CreateInspectionLocationAttemptDto ValidLocationAttemptDto(
+        double latitude = 0,
+        double longitude = 0,
+        double? accuracyMeters = 0,
+        bool hasAccuracy = true,
+        DateTimeOffset? devicePositionTimestamp = null,
+        bool isMocked = false,
+        string accuracyMode = "Precise",
+        int acquisitionDurationMs = 0)
+        => new()
+        {
+            Latitude = latitude,
+            Longitude = longitude,
+            AccuracyMeters = accuracyMeters,
+            HasAccuracy = hasAccuracy,
+            DevicePositionTimestamp = devicePositionTimestamp,
+            IsMocked = isMocked,
+            AccuracyMode = accuracyMode,
+            AcquisitionDurationMs = acquisitionDurationMs
+        };
 
     private static async Task<AssetResponse> CreateAssetAsync(
         HttpClient client,
@@ -499,16 +594,13 @@ public sealed class InspectionLocationVerificationTests
 
     private sealed record InspectionLocationAttemptResponse(
         Guid Id,
-        Guid AssetId,
-        Guid ScheduleId,
-        Guid ActorUserId,
         DateTimeOffset CapturedAt,
-        double MeasuredLatitude,
-        double MeasuredLongitude,
-        double AccuracyMeters,
-        double? ExpectedLatitude,
-        double? ExpectedLongitude,
-        double? ExpectedRadiusMeters,
+        double? AccuracyMeters,
+        bool HasAccuracy,
+        DateTimeOffset? DevicePositionTimestamp,
+        bool IsMocked,
+        string AccuracyMode,
+        int AcquisitionDurationMs,
         double? DistanceMeters,
         string Outcome);
 }

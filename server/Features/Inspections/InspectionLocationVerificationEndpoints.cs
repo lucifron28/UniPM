@@ -76,17 +76,24 @@ public static class InspectionLocationVerificationEndpoints
                 schedule.Asset.VerificationRadiusMeters,
                 dto.Latitude,
                 dto.Longitude,
+                dto.HasAccuracy,
                 dto.AccuracyMeters);
+            var capturedAt = DateTimeOffset.UtcNow;
             var attempt = new InspectionLocationAttempt
             {
                 Id = Guid.NewGuid(),
                 AssetId = schedule.AssetId,
                 ScheduleId = schedule.Id,
                 ActorUserId = actorUserId,
-                CapturedAt = DateTimeOffset.UtcNow,
+                CapturedAt = capturedAt,
+                DevicePositionTimestamp = dto.DevicePositionTimestamp,
                 MeasuredLatitude = dto.Latitude,
                 MeasuredLongitude = dto.Longitude,
                 AccuracyMeters = dto.AccuracyMeters,
+                HasAccuracy = dto.HasAccuracy,
+                IsMocked = dto.IsMocked,
+                AccuracyMode = dto.AccuracyMode,
+                AcquisitionDurationMs = dto.AcquisitionDurationMs,
                 ExpectedLatitude = schedule.Asset.VerificationLatitude,
                 ExpectedLongitude = schedule.Asset.VerificationLongitude,
                 ExpectedRadiusMeters = schedule.Asset.VerificationRadiusMeters,
@@ -118,7 +125,12 @@ public sealed class CreateInspectionLocationAttemptDto
 {
     public double Latitude { get; set; }
     public double Longitude { get; set; }
-    public double AccuracyMeters { get; set; }
+    public double? AccuracyMeters { get; set; }
+    public required bool HasAccuracy { get; set; }
+    public DateTimeOffset? DevicePositionTimestamp { get; set; }
+    public required bool IsMocked { get; set; }
+    public required string AccuracyMode { get; set; }
+    public required int AcquisitionDurationMs { get; set; }
 
     internal Dictionary<string, string[]> Validate()
     {
@@ -133,9 +145,25 @@ public sealed class CreateInspectionLocationAttemptDto
             errors[nameof(Longitude)] = ["Longitude must be between -180 and 180."];
         }
 
-        if (!double.IsFinite(AccuracyMeters) || AccuracyMeters < 0)
+        if (HasAccuracy && (AccuracyMeters is not { } accuracyValue
+            || !double.IsFinite(accuracyValue)
+            || accuracyValue < 0))
         {
-            errors[nameof(AccuracyMeters)] = ["Accuracy must be zero or greater."];
+            errors[nameof(AccuracyMeters)] = ["A valid accuracy value is required when accuracy is available."];
+        }
+        else if (!HasAccuracy && AccuracyMeters is not null)
+        {
+            errors[nameof(AccuracyMeters)] = ["Accuracy must be omitted when it is unavailable."];
+        }
+
+        if (AccuracyMode is not ("Precise" or "Reduced" or "Unknown"))
+        {
+            errors[nameof(AccuracyMode)] = ["Accuracy mode must be Precise, Reduced, or Unknown."];
+        }
+
+        if (AcquisitionDurationMs < 0)
+        {
+            errors[nameof(AcquisitionDurationMs)] = ["Acquisition duration must be zero or greater."];
         }
 
         return errors;
@@ -144,32 +172,26 @@ public sealed class CreateInspectionLocationAttemptDto
 
 public sealed record InspectionLocationAttemptResponse(
     Guid Id,
-    Guid AssetId,
-    Guid ScheduleId,
-    Guid ActorUserId,
     DateTimeOffset CapturedAt,
-    double MeasuredLatitude,
-    double MeasuredLongitude,
-    double AccuracyMeters,
-    double? ExpectedLatitude,
-    double? ExpectedLongitude,
-    double? ExpectedRadiusMeters,
+    double? AccuracyMeters,
+    bool HasAccuracy,
+    DateTimeOffset? DevicePositionTimestamp,
+    bool IsMocked,
+    string AccuracyMode,
+    int AcquisitionDurationMs,
     double? DistanceMeters,
     string Outcome)
 {
     internal static InspectionLocationAttemptResponse FromAttempt(InspectionLocationAttempt attempt)
         => new(
             attempt.Id,
-            attempt.AssetId,
-            attempt.ScheduleId,
-            attempt.ActorUserId,
             attempt.CapturedAt,
-            attempt.MeasuredLatitude,
-            attempt.MeasuredLongitude,
             attempt.AccuracyMeters,
-            attempt.ExpectedLatitude,
-            attempt.ExpectedLongitude,
-            attempt.ExpectedRadiusMeters,
+            attempt.HasAccuracy,
+            attempt.DevicePositionTimestamp,
+            attempt.IsMocked,
+            attempt.AccuracyMode,
+            attempt.AcquisitionDurationMs,
             attempt.DistanceMeters,
             attempt.Outcome);
 }

@@ -12,7 +12,8 @@ internal static class InspectionLocationClassifier
         double? expectedRadiusMeters,
         double measuredLatitude,
         double measuredLongitude,
-        double accuracyMeters)
+        bool hasAccuracy,
+        double? accuracyMeters)
     {
         var configuredCount = (expectedLatitude.HasValue ? 1 : 0)
             + (expectedLongitude.HasValue ? 1 : 0)
@@ -32,10 +33,22 @@ internal static class InspectionLocationClassifier
             expectedLongitude!.Value,
             measuredLatitude,
             measuredLongitude);
+        if (!hasAccuracy)
+        {
+            return new InspectionLocationClassification(distance, "Uncertain");
+        }
+
+        if (accuracyMeters is not { } reportedAccuracy
+            || !double.IsFinite(reportedAccuracy)
+            || reportedAccuracy < 0)
+        {
+            throw new ArgumentException("A valid accuracy value is required when accuracy is available.");
+        }
+
         var radius = expectedRadiusMeters!.Value;
-        var outcome = distance + accuracyMeters <= radius
+        var outcome = distance + reportedAccuracy <= radius
             ? "Inside"
-            : distance - accuracyMeters > radius
+            : distance - reportedAccuracy > radius
                 ? "Outside"
                 : "Uncertain";
 
