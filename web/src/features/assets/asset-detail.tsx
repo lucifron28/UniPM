@@ -381,7 +381,7 @@ export function AssetDetail({
         location={record.location}
       />
       {currentUser.data?.roles.includes('GSD') && (
-        <AssetVerificationLocationEditor asset={record} />
+        <AssetVerificationLocationEditor key={record.id} asset={record} />
       )}
       <InspectionHistory assetId={record.id} />
     </section>
