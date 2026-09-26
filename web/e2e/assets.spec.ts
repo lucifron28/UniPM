@@ -34,9 +34,7 @@ const assets = [
     status: 'Active',
     createdAt: '2026-07-19T00:00:00+00:00',
     updatedAt: '2026-07-19T00:00:00+00:00',
-    verificationLatitude: null,
-    verificationLongitude: null,
-    verificationRadiusMeters: null,
+    hasVerificationLocation: false,
   },
   {
     id: '33333333-3333-4333-8333-333333333333',
@@ -49,9 +47,7 @@ const assets = [
     status: 'Inactive',
     createdAt: '2026-07-19T00:00:00+00:00',
     updatedAt: '2026-07-19T00:00:00+00:00',
-    verificationLatitude: null,
-    verificationLongitude: null,
-    verificationRadiusMeters: null,
+    hasVerificationLocation: false,
   },
 ]
 
@@ -66,9 +62,7 @@ const createdAsset = {
   status: 'Active',
   createdAt: '2026-07-22T00:00:00+00:00',
   updatedAt: '2026-07-22T00:00:00+00:00',
-  verificationLatitude: null,
-  verificationLongitude: null,
-  verificationRadiusMeters: null,
+  hasVerificationLocation: false,
 }
 
 const pagedAssets = Array.from({ length: 11 }, (_, index) => ({
@@ -116,6 +110,18 @@ async function mockAssetRegistry(
     if (route.request().method() !== 'GET') return route.fallback()
 
     const pathname = new URL(route.request().url()).pathname
+    if (/^\/api\/v1\/assets\/[^/]+\/verification-location$/.test(pathname)) {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          verificationLatitude: null,
+          verificationLongitude: null,
+          verificationRadiusMeters: null,
+        }),
+      })
+    }
+
     const asset = pathname.startsWith('/api/v1/assets/')
       ? assetList.find(
           (entry) => entry.id === pathname.slice('/api/v1/assets/'.length),
