@@ -443,7 +443,11 @@ export function AssetRegistry({
       </Card>
 
       {filteredAssets.isPending ? (
-        <RegistryLoadingPanel breakpoint="lg" label="Loading assets">
+        <RegistryLoadingPanel
+          breakpoint="lg"
+          viewportSize="compact"
+          label="Loading assets"
+        >
           <span className="sr-only">Loading asset records...</span>
           {Array.from({ length: 5 }, (_, index) => (
             <Skeleton key={index} className="h-16 w-full" />
@@ -487,6 +491,7 @@ export function AssetRegistry({
         <RegistryResultsPanel
           label="Assets"
           breakpoint="lg"
+          viewportSize="compact"
           desktopContent={
             <table className="w-full text-left text-sm">
               <thead className="border-b border-[var(--border-soft)] bg-[var(--page-background)]">

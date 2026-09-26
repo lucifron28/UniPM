@@ -399,7 +399,7 @@ export function ScheduleRegistry({
       </Card>
 
       {filteredSchedules.isPending ? (
-        <RegistryLoadingPanel breakpoint="md">
+        <RegistryLoadingPanel breakpoint="md" viewportSize="standard">
           <span className="sr-only">Loading schedules...</span>
           {Array.from({ length: 5 }, (_, index) => (
             <Skeleton key={index} className="h-10 w-full" />
@@ -438,6 +438,7 @@ export function ScheduleRegistry({
         <RegistryResultsPanel
           label="Schedules"
           breakpoint="md"
+          viewportSize="standard"
           desktopContent={
             <table className="w-full min-w-[760px] text-left text-sm">
               <thead className="bg-[var(--page-background)] text-xs tracking-wide text-[var(--text-neutral)] uppercase">
@@ -460,7 +461,7 @@ export function ScheduleRegistry({
                 {table.getRowModel().rows.map((row) => (
                   <tr key={row.id}>
                     {row.getVisibleCells().map((cell) => (
-                      <td key={cell.id} className="px-5 py-4">
+                      <td key={cell.id} className="px-5 py-2">
                         {flexRender(
                           cell.column.columnDef.cell,
                           cell.getContext(),

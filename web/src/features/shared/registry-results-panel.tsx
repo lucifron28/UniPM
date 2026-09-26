@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 
 type RegistryBreakpoint = 'md' | 'lg'
+type RegistryViewportSize = 'compact' | 'standard'
 
 type RegistryPagination = {
   page: number
@@ -14,21 +15,30 @@ type RegistryPagination = {
 type RegistryResultsPanelProps = {
   label: string
   breakpoint: RegistryBreakpoint
+  viewportSize: RegistryViewportSize
   desktopContent: ReactNode
   mobileContent: ReactNode
   pagination?: RegistryPagination
 }
 
-function registryDesktopViewportClassName(breakpoint: RegistryBreakpoint) {
-  return breakpoint === 'md' ? 'md:min-h-[960px]' : 'lg:min-h-[960px]'
+function registryDesktopViewportClassName(
+  breakpoint: RegistryBreakpoint,
+  viewportSize: RegistryViewportSize,
+) {
+  if (breakpoint === 'md') {
+    return viewportSize === 'compact' ? 'md:min-h-[544px]' : 'md:min-h-[760px]'
+  }
+  return viewportSize === 'compact' ? 'lg:min-h-[544px]' : 'lg:min-h-[760px]'
 }
 
 export function RegistryLoadingPanel({
   breakpoint,
+  viewportSize,
   label,
   children,
 }: {
   breakpoint: RegistryBreakpoint
+  viewportSize: RegistryViewportSize
   label?: string
   children: ReactNode
 }) {
@@ -38,7 +48,7 @@ export function RegistryLoadingPanel({
       aria-label={label}
       className={
         'space-y-3 p-5 shadow-none ' +
-        registryDesktopViewportClassName(breakpoint)
+        registryDesktopViewportClassName(breakpoint, viewportSize)
       }
     >
       {children}
@@ -49,6 +59,7 @@ export function RegistryLoadingPanel({
 export function RegistryResultsPanel({
   label,
   breakpoint,
+  viewportSize,
   desktopContent,
   mobileContent,
   pagination,
@@ -76,7 +87,8 @@ export function RegistryResultsPanel({
       >
         <div
           className={
-            'overflow-x-auto ' + registryDesktopViewportClassName(breakpoint)
+            'overflow-x-auto ' +
+            registryDesktopViewportClassName(breakpoint, viewportSize)
           }
         >
           {desktopContent}

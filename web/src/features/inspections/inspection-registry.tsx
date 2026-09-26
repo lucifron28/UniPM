@@ -381,7 +381,7 @@ export function InspectionRegistry({
       </Card>
 
       {filteredInspections.isPending ? (
-        <RegistryLoadingPanel breakpoint="md">
+        <RegistryLoadingPanel breakpoint="md" viewportSize="standard">
           <span className="sr-only">Loading inspections...</span>
           {Array.from({ length: 5 }, (_, index) => (
             <Skeleton key={index} className="h-10 w-full" />
@@ -415,6 +415,7 @@ export function InspectionRegistry({
         <RegistryResultsPanel
           label="Inspections"
           breakpoint="md"
+          viewportSize="standard"
           desktopContent={
             <table className="w-full min-w-[960px] text-left text-sm">
               <thead className="bg-[var(--page-background)] text-xs tracking-wide text-[var(--text-neutral)] uppercase">
@@ -437,7 +438,7 @@ export function InspectionRegistry({
                 {table.getRowModel().rows.map((row) => (
                   <tr key={row.id}>
                     {row.getVisibleCells().map((cell) => (
-                      <td key={cell.id} className="px-5 py-4 align-top">
+                      <td key={cell.id} className="px-5 py-2 align-top">
                         {flexRender(
                           cell.column.columnDef.cell,
                           cell.getContext(),
