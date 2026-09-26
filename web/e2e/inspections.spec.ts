@@ -157,6 +157,14 @@ function expectStableRegistryLayout(
   after: Awaited<ReturnType<typeof registryLayout>>,
 ) {
   expect(
+    before.viewportHeight,
+    `Inspections result viewport exceeds 780px: ${before.viewportHeight}px`,
+  ).toBeLessThanOrEqual(780)
+  expect(
+    after.viewportHeight,
+    `Inspections result viewport exceeds 780px: ${after.viewportHeight}px`,
+  ).toBeLessThanOrEqual(780)
+  expect(
     Math.abs(after.viewportHeight - before.viewportHeight),
     `Result viewport heights changed: ${before.viewportHeight}px to ${after.viewportHeight}px`,
   ).toBeLessThanOrEqual(8)
@@ -237,9 +245,10 @@ test.describe('Inspection review workflows', () => {
     if (!inspectionBounds || !paginationBounds) {
       throw new Error('Mobile registry geometry could not be measured')
     }
-    expect(
-      paginationBounds.y - (inspectionBounds.y + inspectionBounds.height),
-    ).toBeLessThanOrEqual(64)
+    const mobileGap =
+      paginationBounds.y - (inspectionBounds.y + inspectionBounds.height)
+    expect(mobileGap).toBeGreaterThanOrEqual(0)
+    expect(mobileGap).toBeLessThanOrEqual(64)
     expect(
       await page.evaluate(
         () =>

@@ -142,6 +142,14 @@ function expectStableRegistryLayout(
   after: Awaited<ReturnType<typeof registryLayout>>,
 ) {
   expect(
+    before.viewportHeight,
+    `Assets result viewport exceeds 560px: ${before.viewportHeight}px`,
+  ).toBeLessThanOrEqual(560)
+  expect(
+    after.viewportHeight,
+    `Assets result viewport exceeds 560px: ${after.viewportHeight}px`,
+  ).toBeLessThanOrEqual(560)
+  expect(
     Math.abs(after.viewportHeight - before.viewportHeight),
     `Result viewport heights changed: ${before.viewportHeight}px to ${after.viewportHeight}px`,
   ).toBeLessThanOrEqual(8)
@@ -255,9 +263,9 @@ test.describe('Asset Registry E2E Specs', () => {
     if (!assetBounds || !paginationBounds) {
       throw new Error('Mobile registry geometry could not be measured')
     }
-    expect(
-      paginationBounds.y - (assetBounds.y + assetBounds.height),
-    ).toBeLessThanOrEqual(64)
+    const mobileGap = paginationBounds.y - (assetBounds.y + assetBounds.height)
+    expect(mobileGap).toBeGreaterThanOrEqual(0)
+    expect(mobileGap).toBeLessThanOrEqual(64)
     expect(
       await page.evaluate(
         () =>
