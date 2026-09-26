@@ -34,6 +34,9 @@ const assets = [
     status: 'Active',
     createdAt: '2026-07-19T00:00:00+00:00',
     updatedAt: '2026-07-19T00:00:00+00:00',
+    verificationLatitude: null,
+    verificationLongitude: null,
+    verificationRadiusMeters: null,
   },
   {
     id: '33333333-3333-4333-8333-333333333333',
@@ -46,6 +49,9 @@ const assets = [
     status: 'Inactive',
     createdAt: '2026-07-19T00:00:00+00:00',
     updatedAt: '2026-07-19T00:00:00+00:00',
+    verificationLatitude: null,
+    verificationLongitude: null,
+    verificationRadiusMeters: null,
   },
 ]
 
@@ -60,6 +66,9 @@ const createdAsset = {
   status: 'Active',
   createdAt: '2026-07-22T00:00:00+00:00',
   updatedAt: '2026-07-22T00:00:00+00:00',
+  verificationLatitude: null,
+  verificationLongitude: null,
+  verificationRadiusMeters: null,
 }
 
 const pagedAssets = Array.from({ length: 11 }, (_, index) => ({

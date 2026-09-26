@@ -191,6 +191,9 @@ async function mockApi(page: import('@playwright/test').Page) {
         status: 'Active',
         createdAt: '2026-07-01T00:00:00Z',
         updatedAt: '2026-07-28T03:00:00Z',
+        verificationLatitude: null,
+        verificationLongitude: null,
+        verificationRadiusMeters: null,
       }),
     ),
   )
