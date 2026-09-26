@@ -198,19 +198,19 @@ public sealed class InspectionLocationVerificationTests
     }
 
     [Fact]
-    public async Task Inspector_can_capture_only_for_an_assigned_schedule_and_unconfigured_assets_are_recorded()
+    public async Task Inspector_can_capture_only_for_an_assigned_schedule_and_Gsd_can_capture_unassigned_schedules()
     {
         await using var application = new TestApplicationFactory(AuthRoleCatalog.Inspector);
         using var client = application.CreateClient();
-        var (assignedScheduleId, unassignedScheduleId) = await application.SeedSchedulesAsync();
+        var (assignedScheduleId, otherAssignedScheduleId, _) =
+            await application.SeedSchedulesAsync();
 
         var allowed = await client.PostAsJsonAsync(
             $"/api/v1/schedules/{assignedScheduleId}/location-verification-attempts",
             new { latitude = 90, longitude = 180, accuracyMeters = 0 });
-        var denied = await client.PostAsJsonAsync(
-            $"/api/v1/schedules/{unassignedScheduleId}/location-verification-attempts",
+        var otherAssignedDenied = await client.PostAsJsonAsync(
+            $"/api/v1/schedules/{otherAssignedScheduleId}/location-verification-attempts",
             new { latitude = 0, longitude = 0, accuracyMeters = 0 });
-
         Assert.Equal(HttpStatusCode.OK, allowed.StatusCode);
         Assert.Null(allowed.Headers.Location);
         var attempt = await allowed.Content.ReadFromJsonAsync<InspectionLocationAttemptResponse>();
@@ -218,7 +218,23 @@ public sealed class InspectionLocationVerificationTests
         Assert.Equal("NotConfigured", attempt.Outcome);
         Assert.Null(attempt.ExpectedLatitude);
         Assert.Null(attempt.DistanceMeters);
-        Assert.Equal(HttpStatusCode.Forbidden, denied.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, otherAssignedDenied.StatusCode);
+
+        await using var gsdApplication = new TestApplicationFactory(AuthRoleCatalog.Gsd);
+        using var gsdClient = gsdApplication.CreateClient();
+        var (_, _, gsdUnassignedScheduleId) =
+            await gsdApplication.SeedSchedulesAsync();
+        var unassignedAllowed = await gsdClient.PostAsJsonAsync(
+            $"/api/v1/schedules/{gsdUnassignedScheduleId}/location-verification-attempts",
+            new { latitude = 0, longitude = 0, accuracyMeters = 0 });
+
+        Assert.Equal(HttpStatusCode.OK, unassignedAllowed.StatusCode);
+        var unassignedAttempt = await unassignedAllowed.Content
+            .ReadFromJsonAsync<InspectionLocationAttemptResponse>();
+        Assert.NotNull(unassignedAttempt);
+        Assert.Equal(gsdUnassignedScheduleId, unassignedAttempt.ScheduleId);
+        Assert.Equal(TestAuthenticationHandler.UserId, unassignedAttempt.ActorUserId);
+        Assert.Equal("NotConfigured", unassignedAttempt.Outcome);
     }
 
     [Fact]
@@ -401,7 +417,10 @@ public sealed class InspectionLocationVerificationTests
             }
         }
 
-        public async Task<(Guid AssignedScheduleId, Guid UnassignedScheduleId)> SeedSchedulesAsync()
+        public async Task<(
+            Guid AssignedScheduleId,
+            Guid OtherAssignedScheduleId,
+            Guid UnassignedScheduleId)> SeedSchedulesAsync()
         {
             await SeedUserAsync(TestAuthenticationHandler.UserId, "Location Inspector");
             await using var scope = Services.CreateAsyncScope();
@@ -418,14 +437,15 @@ public sealed class InspectionLocationVerificationTests
                 Status = "Active"
             };
             var assigned = NewSchedule(asset.Id, TestAuthenticationHandler.UserId);
-            var unassigned = NewSchedule(asset.Id, Guid.NewGuid());
+            var otherAssigned = NewSchedule(asset.Id, Guid.NewGuid());
+            var unassigned = NewSchedule(asset.Id, null);
             context.Assets.Add(asset);
-            context.PreventiveMaintenanceSchedules.AddRange(assigned, unassigned);
+            context.PreventiveMaintenanceSchedules.AddRange(assigned, otherAssigned, unassigned);
             await context.SaveChangesAsync();
-            return (assigned.Id, unassigned.Id);
+            return (assigned.Id, otherAssigned.Id, unassigned.Id);
         }
 
-        private static PreventiveMaintenanceSchedule NewSchedule(Guid assetId, Guid assignedToUserId)
+        private static PreventiveMaintenanceSchedule NewSchedule(Guid assetId, Guid? assignedToUserId)
             => new()
             {
                 Id = Guid.NewGuid(),
