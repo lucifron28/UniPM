@@ -2,6 +2,7 @@ import { z } from 'zod'
 import type {
   AssetCategoryResponse,
   AssetResponse,
+  AssetVerificationLocationResponse,
   CreateAssetDto,
 } from '@/api/generated/models'
 
@@ -24,9 +25,7 @@ export const assetSchema = z
     building: optionalText,
     department: optionalText,
     location: optionalText,
-    verificationLatitude: z.number().finite().min(-90).max(90).nullable(),
-    verificationLongitude: z.number().finite().min(-180).max(180).nullable(),
-    verificationRadiusMeters: z.number().finite().positive().nullable(),
+    hasVerificationLocation: z.boolean(),
     qrCodeValue: z.string().trim().min(1).max(128).nullable(),
     status: z.enum(assetStatusCodes),
     createdAt: z.string().datetime({ offset: true }),
@@ -35,6 +34,18 @@ export const assetSchema = z
   .strict()
 
 export type Asset = z.infer<typeof assetSchema>
+
+const assetVerificationLocationSchema = z
+  .object({
+    verificationLatitude: z.number().finite().min(-90).max(90).nullable(),
+    verificationLongitude: z.number().finite().min(-180).max(180).nullable(),
+    verificationRadiusMeters: z.number().finite().positive().nullable(),
+  })
+  .strict()
+
+export type AssetVerificationLocation = z.infer<
+  typeof assetVerificationLocationSchema
+>
 
 const assetCategorySchema = z
   .object({
@@ -143,6 +154,12 @@ export type CreateAssetValues = z.input<typeof createAssetSchema>
 
 export function parseAsset(value: AssetResponse): Asset {
   return assetSchema.parse(value)
+}
+
+export function parseAssetVerificationLocation(
+  value: AssetVerificationLocationResponse,
+): AssetVerificationLocation {
+  return assetVerificationLocationSchema.parse(value)
 }
 
 export function parseAssets(values: AssetResponse[]): Asset[] {

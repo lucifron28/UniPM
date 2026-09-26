@@ -36,13 +36,17 @@ const sampleAsset = {
   building: 'Main Building',
   department: 'GSD',
   location: 'Ground floor',
-  verificationLatitude: null,
-  verificationLongitude: null,
-  verificationRadiusMeters: null,
+  hasVerificationLocation: false,
   qrCodeValue: 'UNIPM-FE-001',
   status: 'Active',
   createdAt: '2026-07-19T00:00:00Z',
   updatedAt: '2026-07-19T00:00:00Z',
+}
+
+const emptyVerificationLocation = {
+  verificationLatitude: null,
+  verificationLongitude: null,
+  verificationRadiusMeters: null,
 }
 
 function setupAuth() {
@@ -83,6 +87,9 @@ describe('AssetDetail feature component', () => {
     server.use(
       http.get(meUrl, () => HttpResponse.json(gsdUser)),
       http.get(categoriesUrl, () => HttpResponse.json([])),
+      http.get(verificationLocationUrl, () =>
+        HttpResponse.json(emptyVerificationLocation),
+      ),
       http.get(
         `http://localhost:5000/api/v1/inspections/history/${assetId}`,
         () => HttpResponse.json([]),
@@ -235,7 +242,7 @@ describe('AssetDetail feature component', () => {
       http.get(assetUrl, () => HttpResponse.json(sampleAsset)),
       http.put(verificationLocationUrl, async ({ request }) => {
         submitted = (await request.json()) as Record<string, unknown>
-        return HttpResponse.json({ ...sampleAsset, ...submitted })
+        return HttpResponse.json(submitted)
       }),
     )
 

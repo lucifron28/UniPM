@@ -8,6 +8,7 @@
 export * from './acknowledgePreventiveMaintenanceFormDto'
 export * from './assetCategoryResponse'
 export * from './assetResponse'
+export * from './assetVerificationLocationResponse'
 export * from './assignScheduleBatchDto'
 export * from './authUserResponse'
 export * from './correctiveMaintenanceHandoffResponse'

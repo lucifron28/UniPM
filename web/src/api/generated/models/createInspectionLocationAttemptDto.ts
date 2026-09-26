@@ -10,6 +10,16 @@ export interface CreateInspectionLocationAttemptDto {
   latitude?: number | string
   /** @pattern ^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$ */
   longitude?: number | string
-  /** @pattern ^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$ */
-  accuracyMeters?: number | string
+  /**
+   * @nullable
+   * @pattern ^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$
+   */
+  accuracyMeters?: number | string | null
+  hasAccuracy: boolean
+  /** @nullable */
+  devicePositionTimestamp?: string | null
+  isMocked: boolean
+  accuracyMode: string
+  /** @pattern ^-?(?:0|[1-9]\d*)$ */
+  acquisitionDurationMs: number | string
 }

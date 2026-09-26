@@ -7,31 +7,19 @@
 
 export interface InspectionLocationAttemptResponse {
   id: string
-  assetId: string
-  scheduleId: string
-  actorUserId: string
   capturedAt: string
-  /** @pattern ^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$ */
-  measuredLatitude: number | string
-  /** @pattern ^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$ */
-  measuredLongitude: number | string
-  /** @pattern ^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$ */
-  accuracyMeters: number | string
   /**
    * @nullable
    * @pattern ^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$
    */
-  expectedLatitude: number | string | null
-  /**
-   * @nullable
-   * @pattern ^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$
-   */
-  expectedLongitude: number | string | null
-  /**
-   * @nullable
-   * @pattern ^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$
-   */
-  expectedRadiusMeters: number | string | null
+  accuracyMeters: number | string | null
+  hasAccuracy: boolean
+  /** @nullable */
+  devicePositionTimestamp: string | null
+  isMocked: boolean
+  accuracyMode: string
+  /** @pattern ^-?(?:0|[1-9]\d*)$ */
+  acquisitionDurationMs: number | string
   /**
    * @nullable
    * @pattern ^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$

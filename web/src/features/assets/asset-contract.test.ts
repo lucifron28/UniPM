@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   assetSchema,
   createAssetSchema,
+  parseAssetVerificationLocation,
   parseAssetCategories,
   toCreateAssetDto,
   verificationLocationSchema,
@@ -14,9 +15,7 @@ const asset = {
   building: 'Main Building',
   department: 'GSD',
   location: 'Ground floor',
-  verificationLatitude: null,
-  verificationLongitude: null,
-  verificationRadiusMeters: null,
+  hasVerificationLocation: false,
   qrCodeValue: 'UNIPM-FIREEXTINGUISHER-11111111',
   status: 'Active',
   createdAt: '2026-07-19T00:00:00+00:00',
@@ -27,8 +26,30 @@ describe('asset API contracts', () => {
   it('accepts only the public asset response shape', () => {
     expect(assetSchema.parse(asset)).toMatchObject(asset)
     expect(() =>
+      assetSchema.parse({
+        ...asset,
+        verificationLatitude: 14.6,
+        verificationLongitude: 120.9,
+        verificationRadiusMeters: 25,
+      }),
+    ).toThrow()
+    expect(() =>
       assetSchema.parse({ ...asset, descriptionEmbedding: '[1,2,3]' }),
     ).toThrow()
+  })
+
+  it('parses exact verification coordinates only from the configuration contract', () => {
+    expect(
+      parseAssetVerificationLocation({
+        verificationLatitude: 14.6,
+        verificationLongitude: 120.9,
+        verificationRadiusMeters: 25,
+      }),
+    ).toEqual({
+      verificationLatitude: 14.6,
+      verificationLongitude: 120.9,
+      verificationRadiusMeters: 25,
+    })
   })
 
   it('rejects categories outside the current study scope', () => {

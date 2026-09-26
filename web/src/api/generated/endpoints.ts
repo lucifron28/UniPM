@@ -24,6 +24,7 @@ import type {
   AcknowledgePreventiveMaintenanceFormDto,
   AssetCategoryResponse,
   AssetResponse,
+  AssetVerificationLocationResponse,
   AssignScheduleBatchDto,
   AuthUserResponse,
   CorrectiveMaintenanceHandoffResponse,
@@ -1455,6 +1456,167 @@ export function useGetAsset<
 }
 
 /**
+ * @summary Gets the verification location configuration for an asset
+ */
+export const getAssetVerificationLocation = (
+  id: string,
+  signal?: AbortSignal,
+) => {
+  return customInstance<AssetVerificationLocationResponse>({
+    url: `/api/v1/assets/${id}/verification-location`,
+    method: 'GET',
+    signal,
+  })
+}
+
+export const getGetAssetVerificationLocationQueryKey = (id: string) => {
+  return [`/api/v1/assets/${id}/verification-location`] as const
+}
+
+export const getGetAssetVerificationLocationQueryOptions = <
+  TData = Awaited<ReturnType<typeof getAssetVerificationLocation>>,
+  TError = ProblemDetails,
+>(
+  id: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getAssetVerificationLocation>>,
+        TError,
+        TData
+      >
+    >
+  },
+) => {
+  const { query: queryOptions } = options ?? {}
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetAssetVerificationLocationQueryKey(id)
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getAssetVerificationLocation>>
+  > = ({ signal }) => getAssetVerificationLocation(id, signal)
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: id !== null && id !== undefined,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getAssetVerificationLocation>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetAssetVerificationLocationQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getAssetVerificationLocation>>
+>
+export type GetAssetVerificationLocationQueryError = ProblemDetails
+
+export function useGetAssetVerificationLocation<
+  TData = Awaited<ReturnType<typeof getAssetVerificationLocation>>,
+  TError = ProblemDetails,
+>(
+  id: string,
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getAssetVerificationLocation>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAssetVerificationLocation>>,
+          TError,
+          Awaited<ReturnType<typeof getAssetVerificationLocation>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useGetAssetVerificationLocation<
+  TData = Awaited<ReturnType<typeof getAssetVerificationLocation>>,
+  TError = ProblemDetails,
+>(
+  id: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getAssetVerificationLocation>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAssetVerificationLocation>>,
+          TError,
+          Awaited<ReturnType<typeof getAssetVerificationLocation>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useGetAssetVerificationLocation<
+  TData = Awaited<ReturnType<typeof getAssetVerificationLocation>>,
+  TError = ProblemDetails,
+>(
+  id: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getAssetVerificationLocation>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+/**
+ * @summary Gets the verification location configuration for an asset
+ */
+
+export function useGetAssetVerificationLocation<
+  TData = Awaited<ReturnType<typeof getAssetVerificationLocation>>,
+  TError = ProblemDetails,
+>(
+  id: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getAssetVerificationLocation>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+} {
+  const queryOptions = getGetAssetVerificationLocationQueryOptions(id, options)
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+
+  return withQueryKey(query, queryOptions.queryKey)
+}
+
+/**
  * @summary Replaces or clears an asset verification location
  */
 export const updateAssetVerificationLocation = (
@@ -1462,7 +1624,7 @@ export const updateAssetVerificationLocation = (
   updateAssetVerificationLocationDto: UpdateAssetVerificationLocationDto,
   signal?: AbortSignal,
 ) => {
-  return customInstance<AssetResponse>({
+  return customInstance<AssetVerificationLocationResponse>({
     url: `/api/v1/assets/${id}/verification-location`,
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },

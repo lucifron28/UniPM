@@ -6,7 +6,7 @@
   },
   "servers": [
     {
-      "url": "http://127.0.0.1:5123/"
+      "url": "http://localhost:5254/"
     }
   ],
   "paths": {
@@ -440,6 +440,64 @@
       }
     },
     "/api/v1/assets/{id}/verification-location": {
+      "get": {
+        "tags": ["Assets"],
+        "summary": "Gets the verification location configuration for an asset",
+        "operationId": "GetAssetVerificationLocation",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetVerificationLocationResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
       "put": {
         "tags": ["Assets"],
         "summary": "Replaces or clears an asset verification location",
@@ -471,7 +529,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AssetResponse"
+                  "$ref": "#/components/schemas/AssetVerificationLocationResponse"
                 }
               }
             }
@@ -1813,9 +1871,7 @@
           "status",
           "createdAt",
           "updatedAt",
-          "verificationLatitude",
-          "verificationLongitude",
-          "verificationRadiusMeters"
+          "hasVerificationLocation"
         ],
         "type": "object",
         "properties": {
@@ -1852,6 +1908,19 @@
             "type": "string",
             "format": "date-time"
           },
+          "hasVerificationLocation": {
+            "type": "boolean"
+          }
+        }
+      },
+      "AssetVerificationLocationResponse": {
+        "required": [
+          "verificationLatitude",
+          "verificationLongitude",
+          "verificationRadiusMeters"
+        ],
+        "type": "object",
+        "properties": {
           "verificationLatitude": {
             "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
             "type": ["null", "number", "string"],
@@ -2034,6 +2103,12 @@
         }
       },
       "CreateInspectionLocationAttemptDto": {
+        "required": [
+          "hasAccuracy",
+          "isMocked",
+          "accuracyMode",
+          "acquisitionDurationMs"
+        ],
         "type": "object",
         "properties": {
           "latitude": {
@@ -2048,8 +2123,26 @@
           },
           "accuracyMeters": {
             "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
-            "type": ["number", "string"],
+            "type": ["null", "number", "string"],
             "format": "double"
+          },
+          "hasAccuracy": {
+            "type": "boolean"
+          },
+          "devicePositionTimestamp": {
+            "type": ["null", "string"],
+            "format": "date-time"
+          },
+          "isMocked": {
+            "type": "boolean"
+          },
+          "accuracyMode": {
+            "type": "string"
+          },
+          "acquisitionDurationMs": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
           }
         }
       },
@@ -2313,16 +2406,13 @@
       "InspectionLocationAttemptResponse": {
         "required": [
           "id",
-          "assetId",
-          "scheduleId",
-          "actorUserId",
           "capturedAt",
-          "measuredLatitude",
-          "measuredLongitude",
           "accuracyMeters",
-          "expectedLatitude",
-          "expectedLongitude",
-          "expectedRadiusMeters",
+          "hasAccuracy",
+          "devicePositionTimestamp",
+          "isMocked",
+          "accuracyMode",
+          "acquisitionDurationMs",
           "distanceMeters",
           "outcome"
         ],
@@ -2332,51 +2422,32 @@
             "type": "string",
             "format": "uuid"
           },
-          "assetId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "scheduleId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "actorUserId": {
-            "type": "string",
-            "format": "uuid"
-          },
           "capturedAt": {
             "type": "string",
             "format": "date-time"
           },
-          "measuredLatitude": {
-            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
-            "type": ["number", "string"],
-            "format": "double"
-          },
-          "measuredLongitude": {
-            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
-            "type": ["number", "string"],
-            "format": "double"
-          },
           "accuracyMeters": {
             "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
-            "type": ["number", "string"],
-            "format": "double"
-          },
-          "expectedLatitude": {
-            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
             "type": ["null", "number", "string"],
             "format": "double"
           },
-          "expectedLongitude": {
-            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
-            "type": ["null", "number", "string"],
-            "format": "double"
+          "hasAccuracy": {
+            "type": "boolean"
           },
-          "expectedRadiusMeters": {
-            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
-            "type": ["null", "number", "string"],
-            "format": "double"
+          "devicePositionTimestamp": {
+            "type": ["null", "string"],
+            "format": "date-time"
+          },
+          "isMocked": {
+            "type": "boolean"
+          },
+          "accuracyMode": {
+            "type": "string"
+          },
+          "acquisitionDurationMs": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
           },
           "distanceMeters": {
             "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",

@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { ZodError } from 'zod'
 import {
+  getAssetVerificationLocation,
   getGetAssetQueryKey,
+  getGetAssetVerificationLocationQueryKey,
   updateAssetVerificationLocation,
 } from '@/api/generated/endpoints'
 import { ApiError } from '@/api/problem-details'
@@ -15,7 +17,7 @@ import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAssetCategories, useAsset } from '@/features/assets/asset-queries'
 import {
-  parseAsset,
+  parseAssetVerificationLocation,
   verificationLocationSchema,
   type Asset,
 } from '@/features/assets/asset-contract'
@@ -40,15 +42,65 @@ function DetailItem({ label, value }: { label: string; value: string | null }) {
 }
 
 function AssetVerificationLocationEditor({ asset }: { asset: Asset }) {
+  const locationKey = getGetAssetVerificationLocationQueryKey(asset.id)
+  const location = useQuery({
+    queryKey: locationKey,
+    queryFn: ({ signal }) =>
+      getAssetVerificationLocation(asset.id, signal).then(
+        parseAssetVerificationLocation,
+      ),
+  })
+
+  if (location.isPending) {
+    return (
+      <Card role="status" className="p-6 shadow-none">
+        Loading inspection verification settings...
+      </Card>
+    )
+  }
+
+  if (location.isError || !location.data) {
+    return (
+      <Card role="alert" className="p-6 shadow-none">
+        <p className="text-sm text-[var(--error)]">
+          Inspection verification settings could not be loaded.
+        </p>
+        <Button
+          type="button"
+          className="mt-3"
+          onClick={() => void location.refetch()}
+        >
+          Retry
+        </Button>
+      </Card>
+    )
+  }
+
+  return (
+    <AssetVerificationLocationForm
+      asset={asset}
+      initialLocation={location.data}
+    />
+  )
+}
+
+function AssetVerificationLocationForm({
+  asset,
+  initialLocation,
+}: {
+  asset: Asset
+  initialLocation: ReturnType<typeof parseAssetVerificationLocation>
+}) {
   const queryClient = useQueryClient()
+  const locationKey = getGetAssetVerificationLocationQueryKey(asset.id)
   const [latitude, setLatitude] = useState(
-    asset.verificationLatitude?.toString() ?? '',
+    () => initialLocation.verificationLatitude?.toString() ?? '',
   )
   const [longitude, setLongitude] = useState(
-    asset.verificationLongitude?.toString() ?? '',
+    () => initialLocation.verificationLongitude?.toString() ?? '',
   )
   const [radius, setRadius] = useState(
-    asset.verificationRadiusMeters?.toString() ?? '',
+    () => initialLocation.verificationRadiusMeters?.toString() ?? '',
   )
   const [error, setError] = useState<string | null>(null)
 
@@ -57,15 +109,18 @@ function AssetVerificationLocationEditor({ asset }: { asset: Asset }) {
       verificationLatitude: number | null
       verificationLongitude: number | null
       verificationRadiusMeters: number | null
-    }) => parseAsset(await updateAssetVerificationLocation(asset.id, values)),
-    onSuccess: (updatedAsset) => {
-      queryClient.setQueryData(
-        getGetAssetQueryKey(updatedAsset.id),
-        updatedAsset,
-      )
-      setLatitude(updatedAsset.verificationLatitude?.toString() ?? '')
-      setLongitude(updatedAsset.verificationLongitude?.toString() ?? '')
-      setRadius(updatedAsset.verificationRadiusMeters?.toString() ?? '')
+    }) =>
+      updateAssetVerificationLocation(asset.id, values).then(
+        parseAssetVerificationLocation,
+      ),
+    onSuccess: (updatedLocation) => {
+      queryClient.setQueryData(locationKey, updatedLocation)
+      void queryClient.invalidateQueries({
+        queryKey: getGetAssetQueryKey(asset.id),
+      })
+      setLatitude(updatedLocation.verificationLatitude?.toString() ?? '')
+      setLongitude(updatedLocation.verificationLongitude?.toString() ?? '')
+      setRadius(updatedLocation.verificationRadiusMeters?.toString() ?? '')
       setError(null)
       toast.success('Verification location saved.')
     },
