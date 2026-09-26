@@ -1350,6 +1350,7 @@ Asset testAsset({String status = 'Active'}) => Asset(
   location: 'Test Area',
   qrCodeValue: 'UNIPM-FIREEXTINGUISHER-88888888',
   status: status,
+  hasVerificationLocation: true,
 );
 
 PreventiveMaintenanceInspection testInspection({
@@ -1733,6 +1734,10 @@ class _GrantedDeviceLocationPlatform implements DeviceLocationPlatform {
       DeviceLocationPermission.granted;
 
   @override
+  Future<DeviceLocationAccuracyMode> getAccuracyMode() async =>
+      DeviceLocationAccuracyMode.precise;
+
+  @override
   Future<DeviceLocationCoordinates> getCurrentPosition({
     required Duration timeout,
   }) async => const DeviceLocationCoordinates(
@@ -1749,7 +1754,12 @@ class _InsideLocationVerificationRepository
     String scheduleId, {
     required double latitude,
     required double longitude,
-    required double accuracyMeters,
+    required bool hasAccuracy,
+    required double? accuracyMeters,
+    required DateTime? devicePositionTimestamp,
+    required bool isMocked,
+    required String accuracyMode,
+    required int acquisitionDurationMs,
   }) async => const LocationVerificationAttempt(
     id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
     outcome: LocationVerificationOutcome.inside,

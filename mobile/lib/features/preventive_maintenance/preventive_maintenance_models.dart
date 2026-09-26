@@ -426,12 +426,22 @@ class LocationVerificationAttempt {
     required this.outcome,
     this.accuracyMeters,
     this.distanceMeters,
+    this.hasAccuracy = false,
+    this.devicePositionTimestamp,
+    this.isMocked = false,
+    this.accuracyMode = 'Unknown',
+    this.acquisitionDurationMs = 0,
   });
 
   final String id;
   final LocationVerificationOutcome outcome;
   final double? accuracyMeters;
   final double? distanceMeters;
+  final bool hasAccuracy;
+  final DateTime? devicePositionTimestamp;
+  final bool isMocked;
+  final String accuracyMode;
+  final int acquisitionDurationMs;
 
   factory LocationVerificationAttempt.fromJson(Map<String, dynamic> json) {
     final outcome = switch (json['outcome']) {
@@ -443,11 +453,35 @@ class LocationVerificationAttempt {
         'Invalid location verification response.',
       ),
     };
+    final hasAccuracy = json['hasAccuracy'];
+    final isMocked = json['isMocked'];
+    final accuracyMode = json['accuracyMode'];
+    final acquisitionDurationMs = json['acquisitionDurationMs'];
+    final accuracyMeters = json['accuracyMeters'];
+    final distanceMeters = json['distanceMeters'];
+    if (hasAccuracy is! bool ||
+        isMocked is! bool ||
+        accuracyMode is! String ||
+        !const {'Precise', 'Reduced', 'Unknown'}.contains(accuracyMode) ||
+        acquisitionDurationMs is! int ||
+        acquisitionDurationMs < 0 ||
+        (accuracyMeters != null && accuracyMeters is! num) ||
+        (distanceMeters != null && distanceMeters is! num)) {
+      throw const FormatException('Invalid location verification response.');
+    }
     return LocationVerificationAttempt(
       id: _requiredUuid(json, 'id'),
       outcome: outcome,
-      accuracyMeters: (json['accuracyMeters'] as num?)?.toDouble(),
-      distanceMeters: (json['distanceMeters'] as num?)?.toDouble(),
+      accuracyMeters: (accuracyMeters as num?)?.toDouble(),
+      distanceMeters: (distanceMeters as num?)?.toDouble(),
+      hasAccuracy: hasAccuracy,
+      devicePositionTimestamp: _nullableDateTime(
+        json,
+        'devicePositionTimestamp',
+      ),
+      isMocked: isMocked,
+      accuracyMode: accuracyMode,
+      acquisitionDurationMs: acquisitionDurationMs,
     );
   }
 }

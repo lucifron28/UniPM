@@ -232,6 +232,33 @@ class _ScannedAssetPmEntryState extends State<ScannedAssetPmEntry> {
   Future<_LocationVerificationDecision> _verifyLocation(
     String scheduleId,
   ) async {
+    if (!widget.asset.hasVerificationLocation) {
+      final action = await showDialog<_LocationDialogAction>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogContext) => AlertDialog(
+          key: const Key('location-verification-dialog'),
+          title: const Text('Location verification'),
+          content: const Text(
+            'No inspection verification area is configured for this asset.',
+            key: Key('location-verification-result'),
+          ),
+          actions: [
+            FilledButton(
+              key: const Key('location-continue'),
+              onPressed: () => Navigator.of(
+                dialogContext,
+              ).pop(_LocationDialogAction.continueWithoutVerification),
+              child: const Text('Continue'),
+            ),
+          ],
+        ),
+      );
+      return action == _LocationDialogAction.continueWithoutVerification
+          ? const _LocationVerificationDecision.continueWith(null)
+          : const _LocationVerificationDecision.stop();
+    }
+
     String? locationAttemptId;
     while (mounted) {
       locationAttemptId = null;
@@ -257,7 +284,12 @@ class _ScannedAssetPmEntryState extends State<ScannedAssetPmEntry> {
                   scheduleId,
                   latitude: coordinates.latitude,
                   longitude: coordinates.longitude,
+                  hasAccuracy: coordinates.hasAccuracy,
                   accuracyMeters: coordinates.accuracyMeters,
+                  devicePositionTimestamp: coordinates.devicePositionTimestamp,
+                  isMocked: coordinates.isMocked,
+                  accuracyMode: coordinates.accuracyMode.apiValue,
+                  acquisitionDurationMs: coordinates.acquisitionDurationMs,
                 )
                 .timeout(const Duration(seconds: 10));
             locationAttemptId = attempt.id;
@@ -269,6 +301,10 @@ class _ScannedAssetPmEntryState extends State<ScannedAssetPmEntry> {
             message =
                 'Location verification could not be completed. Retry or continue without it.';
           }
+        }
+        if (coordinates.accuracyMode == DeviceLocationAccuracyMode.reduced) {
+          message =
+              '$message Approximate location access is enabled. Verification may be less accurate.';
         }
       }
 

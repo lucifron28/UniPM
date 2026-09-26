@@ -45,6 +45,7 @@ Map<String, dynamic> assetJson({Object? status = 'Active'}) =>
       'location': 'First floor',
       'qrCodeValue': qrCodeValue,
       'status': status,
+      'hasVerificationLocation': false,
       'createdAt': '2026-08-01T00:00:00Z',
       'updatedAt': '2026-08-01T00:00:00Z',
     };

@@ -8,6 +8,7 @@ class Asset {
     required this.location,
     required this.qrCodeValue,
     required this.status,
+    this.hasVerificationLocation = false,
   });
 
   final String id;
@@ -18,6 +19,7 @@ class Asset {
   final String? location;
   final String qrCodeValue;
   final String status;
+  final bool hasVerificationLocation;
 
   factory Asset.fromJson(Map<String, dynamic> json) {
     return Asset(
@@ -29,8 +31,17 @@ class Asset {
       location: _nullableString(json, 'location'),
       qrCodeValue: _requiredText(json, 'qrCodeValue'),
       status: _requiredText(json, 'status'),
+      hasVerificationLocation: _requiredBool(json, 'hasVerificationLocation'),
     );
   }
+}
+
+bool _requiredBool(Map<String, dynamic> json, String key) {
+  final value = json[key];
+  if (value is! bool) {
+    throw FormatException('Invalid asset response field: $key.');
+  }
+  return value;
 }
 
 String _requiredText(Map<String, dynamic> json, String key) {

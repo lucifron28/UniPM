@@ -33,7 +33,12 @@ abstract interface class LocationVerificationRepository {
     String scheduleId, {
     required double latitude,
     required double longitude,
-    required double accuracyMeters,
+    required bool hasAccuracy,
+    required double? accuracyMeters,
+    required DateTime? devicePositionTimestamp,
+    required bool isMocked,
+    required String accuracyMode,
+    required int acquisitionDurationMs,
   });
 }
 
@@ -116,7 +121,12 @@ class ApiPreventiveMaintenanceRepository
     String scheduleId, {
     required double latitude,
     required double longitude,
-    required double accuracyMeters,
+    required bool hasAccuracy,
+    required double? accuracyMeters,
+    required DateTime? devicePositionTimestamp,
+    required bool isMocked,
+    required String accuracyMode,
+    required int acquisitionDurationMs,
   }) async {
     final json = await _client.postJson(
       '/api/v1/schedules/${Uri.encodeComponent(scheduleId)}/location-verification-attempts',
@@ -124,6 +134,13 @@ class ApiPreventiveMaintenanceRepository
         'latitude': latitude,
         'longitude': longitude,
         'accuracyMeters': accuracyMeters,
+        'hasAccuracy': hasAccuracy,
+        'devicePositionTimestamp': devicePositionTimestamp
+            ?.toUtc()
+            .toIso8601String(),
+        'isMocked': isMocked,
+        'accuracyMode': accuracyMode,
+        'acquisitionDurationMs': acquisitionDurationMs,
       },
     );
     return LocationVerificationAttempt.fromJson(json);

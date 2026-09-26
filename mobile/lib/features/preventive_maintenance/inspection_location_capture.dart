@@ -2,16 +2,50 @@ import 'dart:async';
 
 import 'package:geolocator/geolocator.dart';
 
+enum DeviceLocationAccuracyMode {
+  precise('Precise'),
+  reduced('Reduced'),
+  unknown('Unknown');
+
+  const DeviceLocationAccuracyMode(this.apiValue);
+
+  final String apiValue;
+}
+
 class DeviceLocationCoordinates {
   const DeviceLocationCoordinates({
     required this.latitude,
     required this.longitude,
-    required this.accuracyMeters,
+    this.accuracyMeters = 0,
+    this.hasAccuracy = true,
+    this.devicePositionTimestamp,
+    this.isMocked = false,
+    this.accuracyMode = DeviceLocationAccuracyMode.unknown,
+    this.acquisitionDurationMs = 0,
   });
 
   final double latitude;
   final double longitude;
-  final double accuracyMeters;
+  final double? accuracyMeters;
+  final bool hasAccuracy;
+  final DateTime? devicePositionTimestamp;
+  final bool isMocked;
+  final DeviceLocationAccuracyMode accuracyMode;
+  final int acquisitionDurationMs;
+
+  DeviceLocationCoordinates withCaptureMetadata({
+    required DeviceLocationAccuracyMode accuracyMode,
+    required int acquisitionDurationMs,
+  }) => DeviceLocationCoordinates(
+    latitude: latitude,
+    longitude: longitude,
+    accuracyMeters: accuracyMeters,
+    hasAccuracy: hasAccuracy,
+    devicePositionTimestamp: devicePositionTimestamp,
+    isMocked: isMocked,
+    accuracyMode: accuracyMode,
+    acquisitionDurationMs: acquisitionDurationMs,
+  );
 }
 
 enum DeviceLocationPermission { granted, denied, permanentlyDenied }
@@ -20,6 +54,7 @@ abstract interface class DeviceLocationPlatform {
   Future<bool> isLocationServiceEnabled();
   Future<DeviceLocationPermission> checkPermission();
   Future<DeviceLocationPermission> requestPermission();
+  Future<DeviceLocationAccuracyMode> getAccuracyMode();
   Future<DeviceLocationCoordinates> getCurrentPosition({
     required Duration timeout,
   });
@@ -73,10 +108,18 @@ class InspectionLocationCapture {
         );
       }
 
-      final coordinates = await _platform
+      final accuracyMode = await _platform.getAccuracyMode();
+      final stopwatch = Stopwatch()..start();
+      final position = await _platform
           .getCurrentPosition(timeout: timeout)
           .timeout(timeout);
-      return LocationCaptureResult.success(coordinates);
+      stopwatch.stop();
+      return LocationCaptureResult.success(
+        position.withCaptureMetadata(
+          accuracyMode: accuracyMode,
+          acquisitionDurationMs: stopwatch.elapsedMilliseconds,
+        ),
+      );
     } on TimeoutException {
       return const LocationCaptureResult.failure(
         LocationCaptureFailure.timedOut,
@@ -111,6 +154,19 @@ class GeolocatorDeviceLocationPlatform implements DeviceLocationPlatform {
       _permission(await Geolocator.requestPermission());
 
   @override
+  Future<DeviceLocationAccuracyMode> getAccuracyMode() async {
+    try {
+      return switch (await Geolocator.getLocationAccuracy()) {
+        LocationAccuracyStatus.precise => DeviceLocationAccuracyMode.precise,
+        LocationAccuracyStatus.reduced => DeviceLocationAccuracyMode.reduced,
+        LocationAccuracyStatus.unknown => DeviceLocationAccuracyMode.unknown,
+      };
+    } catch (_) {
+      return DeviceLocationAccuracyMode.unknown;
+    }
+  }
+
+  @override
   Future<DeviceLocationCoordinates> getCurrentPosition({
     required Duration timeout,
   }) async {
@@ -123,7 +179,10 @@ class GeolocatorDeviceLocationPlatform implements DeviceLocationPlatform {
     return DeviceLocationCoordinates(
       latitude: position.latitude,
       longitude: position.longitude,
-      accuracyMeters: position.accuracy,
+      accuracyMeters: position.hasAccuracy ? position.accuracy : null,
+      hasAccuracy: position.hasAccuracy,
+      devicePositionTimestamp: position.timestamp,
+      isMocked: position.isMocked,
     );
   }
 

@@ -34,6 +34,11 @@ void main() {
       ).capture();
 
       expect(result.coordinates?.latitude, 14.6);
+      expect(result.coordinates?.hasAccuracy, isTrue);
+      expect(
+        result.coordinates?.accuracyMode,
+        DeviceLocationAccuracyMode.precise,
+      );
       expect(platform.permissionRequestCount, 1);
       expect(platform.positionCallCount, 1);
       expect(platform.receivedTimeout, const Duration(seconds: 10));
@@ -85,6 +90,42 @@ void main() {
 
       expect(result.failure, LocationCaptureFailure.timedOut);
     });
+
+    test(
+      'preserves reduced mode, mocked flag, missing accuracy, and timestamp',
+      () async {
+        final timestamp = DateTime.utc(2026, 9, 26, 1);
+        final platform = _FakeDeviceLocationPlatform(
+          accuracyMode: DeviceLocationAccuracyMode.reduced,
+          hasAccuracy: false,
+          isMocked: true,
+          devicePositionTimestamp: timestamp,
+        );
+
+        final result = await InspectionLocationCapture(
+          platform: platform,
+        ).capture();
+
+        final position = result.coordinates!;
+        expect(position.hasAccuracy, isFalse);
+        expect(position.accuracyMeters, isNull);
+        expect(position.accuracyMode, DeviceLocationAccuracyMode.reduced);
+        expect(position.isMocked, isTrue);
+        expect(position.devicePositionTimestamp, timestamp);
+        expect(position.acquisitionDurationMs, greaterThanOrEqualTo(0));
+      },
+    );
+
+    test('keeps a valid zero-meter accuracy reading', () async {
+      final platform = _FakeDeviceLocationPlatform(accuracyMeters: 0);
+
+      final position = (await InspectionLocationCapture(
+        platform: platform,
+      ).capture()).coordinates!;
+
+      expect(position.hasAccuracy, isTrue);
+      expect(position.accuracyMeters, 0);
+    });
   });
 
   test(
@@ -97,8 +138,14 @@ void main() {
           return http.Response(
             jsonEncode({
               'id': _attemptId,
+              'capturedAt': '2026-09-26T01:00:00Z',
               'outcome': 'NotConfigured',
               'accuracyMeters': 5.0,
+              'hasAccuracy': true,
+              'devicePositionTimestamp': '2026-09-26T00:59:59Z',
+              'isMocked': false,
+              'accuracyMode': 'Precise',
+              'acquisitionDurationMs': 32,
               'distanceMeters': null,
             }),
             200,
@@ -116,7 +163,12 @@ void main() {
         _scheduleId,
         latitude: 14.6,
         longitude: 120.98,
+        hasAccuracy: true,
         accuracyMeters: 5,
+        devicePositionTimestamp: DateTime.utc(2026, 9, 26, 0, 59, 59),
+        isMocked: false,
+        accuracyMode: 'Precise',
+        acquisitionDurationMs: 32,
       );
       await repository.addInspection(
         _formId,
@@ -152,6 +204,11 @@ void main() {
         'latitude': 14.6,
         'longitude': 120.98,
         'accuracyMeters': 5,
+        'hasAccuracy': true,
+        'devicePositionTimestamp': '2026-09-26T00:59:59.000Z',
+        'isMocked': false,
+        'accuracyMode': 'Precise',
+        'acquisitionDurationMs': 32,
       });
       expect(jsonDecode(requests[1].body)['locationAttemptId'], _attemptId);
       expect(
@@ -175,6 +232,10 @@ void main() {
       final attempt = LocationVerificationAttempt.fromJson({
         'id': _attemptId,
         'outcome': entry.key,
+        'hasAccuracy': true,
+        'isMocked': false,
+        'accuracyMode': 'Precise',
+        'acquisitionDurationMs': 0,
       });
       expect(attempt.outcome, entry.value);
     }
@@ -255,6 +316,78 @@ void main() {
     },
   );
 
+  testWidgets(
+    'unconfigured asset continues without permission, position, or server attempt',
+    (tester) async {
+      final platform = _FakeDeviceLocationPlatform();
+      final repository = _FakePmRepository();
+
+      await _pumpEntry(
+        tester,
+        repository,
+        platform,
+        hasVerificationLocation: false,
+      );
+      await tester.tap(find.byKey(const Key('start-pm')));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text(
+          'No inspection verification area is configured for this asset.',
+        ),
+        findsOneWidget,
+      );
+      expect(platform.permissionCheckCount, 0);
+      expect(platform.permissionRequestCount, 0);
+      expect(platform.positionCallCount, 0);
+      expect(repository.locationAttempts, isEmpty);
+
+      await tester.tap(find.byKey(const Key('location-continue')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('add-inspection-button')), findsOneWidget);
+    },
+  );
+
+  testWidgets('reduced access warns but keeps Continue and the attempt ID', (
+    tester,
+  ) async {
+    final platform = _FakeDeviceLocationPlatform(
+      accuracyMode: DeviceLocationAccuracyMode.reduced,
+      hasAccuracy: false,
+      isMocked: true,
+    );
+    final repository = _FakePmRepository(
+      locationOutcomes: [LocationVerificationOutcome.uncertain],
+    );
+
+    await _pumpEntry(tester, repository, platform);
+    await tester.tap(find.byKey(const Key('start-pm')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.textContaining('Approximate location access is enabled.'),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('location-continue')), findsOneWidget);
+    expect(repository.locationAttempts.single.hasAccuracy, isFalse);
+    expect(repository.locationAttempts.single.accuracyMeters, isNull);
+    expect(repository.locationAttempts.single.isMocked, isTrue);
+    expect(repository.locationAttempts.single.accuracyMode, 'Reduced');
+
+    await tester.tap(find.byKey(const Key('location-continue')));
+    await tester.pumpAndSettle();
+    final addButton = find.byKey(const Key('add-inspection-button'));
+    final listView = find.byType(ListView).last;
+    final scrollable = find
+        .descendant(of: listView, matching: find.byType(Scrollable))
+        .first;
+    await tester.scrollUntilVisible(addButton, 300, scrollable: scrollable);
+    await tester.pumpAndSettle();
+    await tester.tap(addButton);
+    await tester.pumpAndSettle();
+    expect(repository.addedInput?.locationAttemptId, _attemptId);
+  });
+
   testWidgets('disabled services offer continuation without a server attempt', (
     tester,
   ) async {
@@ -301,14 +434,15 @@ void main() {
 Future<void> _pumpEntry(
   WidgetTester tester,
   _FakePmRepository repository,
-  _FakeDeviceLocationPlatform platform,
-) async {
+  _FakeDeviceLocationPlatform platform, {
+  bool hasVerificationLocation = true,
+}) async {
   await tester.pumpWidget(
     MaterialApp(
       home: Scaffold(
         body: SingleChildScrollView(
           child: ScannedAssetPmEntry(
-            asset: const Asset(
+      asset: Asset(
               id: _assetId,
               assetCode: 'FE-001',
               assetCategory: 'fire-extinguisher',
@@ -317,6 +451,7 @@ Future<void> _pumpEntry(
               location: 'Room 101',
               qrCodeValue: 'UNIPM:ASSET:FE-001',
               status: 'Active',
+              hasVerificationLocation: hasVerificationLocation,
             ),
             repository: repository,
             user: const AuthUser(
@@ -338,11 +473,21 @@ class _FakeDeviceLocationPlatform implements DeviceLocationPlatform {
   _FakeDeviceLocationPlatform({
     this.serviceEnabled = true,
     this.permission = DeviceLocationPermission.granted,
+    this.accuracyMode = DeviceLocationAccuracyMode.precise,
+    this.accuracyMeters = 5,
+    this.hasAccuracy = true,
+    this.isMocked = false,
+    this.devicePositionTimestamp,
     List<DeviceLocationPermission> permissionRequests = const [],
   }) : permissionRequests = [...permissionRequests];
 
   bool serviceEnabled;
   DeviceLocationPermission permission;
+  final DeviceLocationAccuracyMode accuracyMode;
+  final double? accuracyMeters;
+  final bool hasAccuracy;
+  final bool isMocked;
+  final DateTime? devicePositionTimestamp;
   final List<DeviceLocationPermission> permissionRequests;
   Completer<DeviceLocationCoordinates>? pendingPosition;
   int permissionCheckCount = 0;
@@ -369,6 +514,9 @@ class _FakeDeviceLocationPlatform implements DeviceLocationPlatform {
   }
 
   @override
+  Future<DeviceLocationAccuracyMode> getAccuracyMode() async => accuracyMode;
+
+  @override
   Future<DeviceLocationCoordinates> getCurrentPosition({
     required Duration timeout,
   }) {
@@ -376,10 +524,13 @@ class _FakeDeviceLocationPlatform implements DeviceLocationPlatform {
     receivedTimeout = timeout;
     return pendingPosition?.future ??
         Future.value(
-          const DeviceLocationCoordinates(
+        DeviceLocationCoordinates(
             latitude: 14.6,
             longitude: 120.98,
-            accuracyMeters: 5,
+            accuracyMeters: hasAccuracy ? accuracyMeters : null,
+            hasAccuracy: hasAccuracy,
+            devicePositionTimestamp: devicePositionTimestamp,
+            isMocked: isMocked,
           ),
         );
   }
@@ -420,7 +571,12 @@ class _FakePmRepository
           String scheduleId,
           double latitude,
           double longitude,
-          double accuracyMeters,
+          bool hasAccuracy,
+          double? accuracyMeters,
+          DateTime? devicePositionTimestamp,
+          bool isMocked,
+          String accuracyMode,
+          int acquisitionDurationMs,
         })
       >[];
   AddInspectionInput? addedInput;
@@ -471,19 +627,34 @@ class _FakePmRepository
     String scheduleId, {
     required double latitude,
     required double longitude,
-    required double accuracyMeters,
+    required bool hasAccuracy,
+    required double? accuracyMeters,
+    required DateTime? devicePositionTimestamp,
+    required bool isMocked,
+    required String accuracyMode,
+    required int acquisitionDurationMs,
   }) async {
     locationAttempts.add((
       scheduleId: scheduleId,
       latitude: latitude,
       longitude: longitude,
+      hasAccuracy: hasAccuracy,
       accuracyMeters: accuracyMeters,
+      devicePositionTimestamp: devicePositionTimestamp,
+      isMocked: isMocked,
+      accuracyMode: accuracyMode,
+      acquisitionDurationMs: acquisitionDurationMs,
     ));
     final outcome = locationOutcomes[_nextLocationOutcome++];
     return LocationVerificationAttempt(
       id: _attemptId,
       outcome: outcome,
       accuracyMeters: accuracyMeters,
+      hasAccuracy: hasAccuracy,
+      devicePositionTimestamp: devicePositionTimestamp,
+      isMocked: isMocked,
+      accuracyMode: accuracyMode,
+      acquisitionDurationMs: acquisitionDurationMs,
     );
   }
 
