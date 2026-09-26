@@ -500,7 +500,7 @@ export function AssetRegistry({
                     {headerGroup.headers.map((header) => (
                       <th
                         key={header.id}
-                        className="px-4 py-3 font-semibold text-[var(--text-primary)]"
+                        className="px-4 py-3 font-semibold whitespace-nowrap text-[var(--text-primary)]"
                       >
                         {header.isPlaceholder
                           ? null
@@ -522,7 +522,7 @@ export function AssetRegistry({
                     {row.getVisibleCells().map((cell, index) => (
                       <td
                         key={cell.id}
-                        className="px-4 py-3 text-[var(--text-secondary)]"
+                        className="px-4 py-3 whitespace-nowrap text-[var(--text-secondary)]"
                       >
                         {index === 0 ? (
                           <Link
