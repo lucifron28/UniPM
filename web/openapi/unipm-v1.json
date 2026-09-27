@@ -2413,7 +2413,6 @@
           "isMocked",
           "accuracyMode",
           "acquisitionDurationMs",
-          "distanceMeters",
           "outcome"
         ],
         "type": "object",
@@ -2448,11 +2447,6 @@
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": ["integer", "string"],
             "format": "int32"
-          },
-          "distanceMeters": {
-            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
-            "type": ["null", "number", "string"],
-            "format": "double"
           },
           "outcome": {
             "type": "string"

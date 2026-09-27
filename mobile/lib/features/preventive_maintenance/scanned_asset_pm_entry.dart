@@ -375,8 +375,6 @@ class _ScannedAssetPmEntryState extends State<ScannedAssetPmEntry> {
     final details = <String>[
       if (attempt.accuracyMeters != null)
         'Accuracy: ${attempt.accuracyMeters!.toStringAsFixed(0)} m.',
-      if (attempt.distanceMeters != null)
-        'Distance: ${attempt.distanceMeters!.toStringAsFixed(0)} m.',
     ];
     return details.isEmpty ? outcome : '$outcome ${details.join(' ')}';
   }

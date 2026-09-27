@@ -179,7 +179,6 @@ public sealed record InspectionLocationAttemptResponse(
     bool IsMocked,
     string AccuracyMode,
     int AcquisitionDurationMs,
-    double? DistanceMeters,
     string Outcome)
 {
     internal static InspectionLocationAttemptResponse FromAttempt(InspectionLocationAttempt attempt)
@@ -192,6 +191,5 @@ public sealed record InspectionLocationAttemptResponse(
             attempt.IsMocked,
             attempt.AccuracyMode,
             attempt.AcquisitionDurationMs,
-            attempt.DistanceMeters,
             attempt.Outcome);
 }

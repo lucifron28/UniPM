@@ -425,7 +425,6 @@ class LocationVerificationAttempt {
     required this.id,
     required this.outcome,
     this.accuracyMeters,
-    this.distanceMeters,
     this.hasAccuracy = false,
     this.devicePositionTimestamp,
     this.isMocked = false,
@@ -436,7 +435,6 @@ class LocationVerificationAttempt {
   final String id;
   final LocationVerificationOutcome outcome;
   final double? accuracyMeters;
-  final double? distanceMeters;
   final bool hasAccuracy;
   final DateTime? devicePositionTimestamp;
   final bool isMocked;
@@ -458,22 +456,19 @@ class LocationVerificationAttempt {
     final accuracyMode = json['accuracyMode'];
     final acquisitionDurationMs = json['acquisitionDurationMs'];
     final accuracyMeters = json['accuracyMeters'];
-    final distanceMeters = json['distanceMeters'];
     if (hasAccuracy is! bool ||
         isMocked is! bool ||
         accuracyMode is! String ||
         !const {'Precise', 'Reduced', 'Unknown'}.contains(accuracyMode) ||
         acquisitionDurationMs is! int ||
         acquisitionDurationMs < 0 ||
-        (accuracyMeters != null && accuracyMeters is! num) ||
-        (distanceMeters != null && distanceMeters is! num)) {
+        (accuracyMeters != null && accuracyMeters is! num)) {
       throw const FormatException('Invalid location verification response.');
     }
     return LocationVerificationAttempt(
       id: _requiredUuid(json, 'id'),
       outcome: outcome,
       accuracyMeters: (accuracyMeters as num?)?.toDouble(),
-      distanceMeters: (distanceMeters as num?)?.toDouble(),
       hasAccuracy: hasAccuracy,
       devicePositionTimestamp: _nullableDateTime(
         json,

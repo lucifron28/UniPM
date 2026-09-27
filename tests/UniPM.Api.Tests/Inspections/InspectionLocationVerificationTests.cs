@@ -193,15 +193,16 @@ public sealed class InspectionLocationVerificationTests
         Assert.NotNull(attempt);
         Assert.NotEqual(Guid.Empty, attempt.Id);
         Assert.Equal("Inside", attempt.Outcome);
-        Assert.Equal(0, attempt.DistanceMeters);
         Assert.Equal(100, attempt.AccuracyMeters);
         Assert.True(attempt.HasAccuracy);
         Assert.True(attempt.IsMocked);
         Assert.Equal("Reduced", attempt.AccuracyMode);
         Assert.Equal(325, attempt.AcquisitionDurationMs);
         Assert.Equal(new DateTimeOffset(2026, 9, 26, 1, 0, 0, TimeSpan.Zero), attempt.DevicePositionTimestamp);
-        Assert.False(System.Text.Json.JsonDocument.Parse(
-            await attemptResponse.Content.ReadAsStringAsync()).RootElement.TryGetProperty("expectedLatitude", out _));
+        using var responseJson = System.Text.Json.JsonDocument.Parse(
+            await attemptResponse.Content.ReadAsStringAsync());
+        Assert.False(responseJson.RootElement.TryGetProperty("expectedLatitude", out _));
+        Assert.False(responseJson.RootElement.TryGetProperty("distanceMeters", out _));
         Assert.InRange(attempt.CapturedAt, DateTimeOffset.UtcNow.AddMinutes(-1), DateTimeOffset.UtcNow.AddMinutes(1));
 
         var changedLocation = await client.PutAsJsonAsync(
@@ -232,6 +233,7 @@ public sealed class InspectionLocationVerificationTests
         Assert.Equal(0, persistedAttempt.ExpectedLatitude);
         Assert.Equal(0, persistedAttempt.ExpectedLongitude);
         Assert.Equal(100, persistedAttempt.ExpectedRadiusMeters);
+        Assert.Equal(0, persistedAttempt.DistanceMeters);
         Assert.Equal(attempt.DevicePositionTimestamp, persistedAttempt.DevicePositionTimestamp);
         Assert.True(persistedAttempt.HasAccuracy);
         Assert.Equal(100, persistedAttempt.AccuracyMeters);
@@ -263,7 +265,6 @@ public sealed class InspectionLocationVerificationTests
         var attempt = await allowed.Content.ReadFromJsonAsync<InspectionLocationAttemptResponse>();
         Assert.NotNull(attempt);
         Assert.Equal("NotConfigured", attempt.Outcome);
-        Assert.Null(attempt.DistanceMeters);
         Assert.Equal(HttpStatusCode.Forbidden, otherAssignedDenied.StatusCode);
 
         await using var gsdApplication = new TestApplicationFactory(AuthRoleCatalog.Gsd);
@@ -601,6 +602,5 @@ public sealed class InspectionLocationVerificationTests
         bool IsMocked,
         string AccuracyMode,
         int AcquisitionDurationMs,
-        double? DistanceMeters,
         string Outcome);
 }

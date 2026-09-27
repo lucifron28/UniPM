@@ -20,10 +20,5 @@ export interface InspectionLocationAttemptResponse {
   accuracyMode: string
   /** @pattern ^-?(?:0|[1-9]\d*)$ */
   acquisitionDurationMs: number | string
-  /**
-   * @nullable
-   * @pattern ^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$
-   */
-  distanceMeters: number | string | null
   outcome: string
 }

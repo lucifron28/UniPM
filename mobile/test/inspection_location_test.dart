@@ -146,7 +146,6 @@ void main() {
               'isMocked': false,
               'accuracyMode': 'Precise',
               'acquisitionDurationMs': 32,
-              'distanceMeters': null,
             }),
             200,
           );
@@ -260,6 +259,8 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.textContaining(entry.value), findsOneWidget);
+      expect(find.textContaining('Accuracy: 5 m.'), findsOneWidget);
+      expect(find.textContaining('Distance:'), findsNothing);
       expect(find.byKey(const Key('location-continue')), findsOneWidget);
       await tester.tap(find.byKey(const Key('location-continue')));
       await tester.pumpAndSettle();
