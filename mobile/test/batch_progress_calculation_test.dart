@@ -341,32 +341,17 @@ void main() {
             home: PreventiveMaintenanceDraftPage(
               controller: controller,
               formId: testFormId,
+              preselectedScheduleId: testSchedule2Id,
             ),
           ),
         );
         await tester.pumpAndSettle();
 
-        // 1. Verify dropdown only lists unattached schedules (s2, s3).
-        // S1 (already inspected), S4 (cancelled), and S5 (different department) should not be available to attach.
-        final scheduleDropdownFinder = find.byKey(
-          const Key('inspection-schedule'),
-        );
-        expect(scheduleDropdownFinder, findsOneWidget);
-
-        // Open the dropdown
-        await tester.tap(scheduleDropdownFinder);
-        await tester.pumpAndSettle();
-
-        // FE-002 and FE-003 are unattached and non-cancelled
-        expect(find.textContaining('FE-002'), findsWidgets);
-        expect(find.textContaining('FE-003'), findsWidgets);
-        // FE-001 (already inspected) and FE-004 (cancelled) must not be in the dropdown
-        expect(find.textContaining('FE-001'), findsNothing);
+        // The scanned/preselected schedule is the only new inspection exposed.
+        expect(find.byKey(const Key('inspection-schedule')), findsNothing);
+        expect(find.text('Inspect FE-002'), findsOneWidget);
+        expect(find.textContaining('FE-003'), findsNothing);
         expect(find.textContaining('FE-004'), findsNothing);
-
-        // Select FE-002
-        await tester.tap(find.textContaining('FE-002').last);
-        await tester.pumpAndSettle();
 
         // Tap Add Inspection row
         await scrollTo(tester, find.byKey(const Key('add-inspection-button')));
