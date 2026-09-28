@@ -379,7 +379,20 @@ function assetTable(page: Page) {
 
 const assetColumnIndexes = {
   timeliness: 5,
+  condition: 6,
 } as const
+
+const officialMetricLabels = [
+  'Scheduled',
+  'Inspected',
+  'Completed on time',
+  'Completed late',
+  'Remaining',
+  'Operational',
+  'Non-operational',
+  'Progress',
+  'On-time compliance',
+] as const
 
 function assetRow(page: Page, assetCode: string) {
   const table = assetTable(page)
@@ -413,6 +426,14 @@ async function expectRequest(
     .toBe(true)
 }
 
+async function readOfficialMetrics(page: Page) {
+  return Promise.all(
+    officialMetricLabels.map((label) =>
+      metricCard(page, label).locator('p').nth(1).innerText(),
+    ),
+  )
+}
+
 async function selectDashboardPeriod(page: Page, month: string) {
   await page.getByRole('button', { name: /fire extinguishers?/i }).click()
   await page.getByRole('button', { name: /^2026\b/ }).click()
@@ -426,101 +447,161 @@ async function generateDashboard(page: Page) {
 }
 
 test.describe('PM period dashboard', () => {
-  test('generates only after scope selection, then filters and prints the report', async ({
-    page,
-  }) => {
+  test('filters and exports the generated June report', async ({ page }) => {
     const requests = await mockDashboardApi(page)
+    const juneScope = {
+      assetCategory: 'fire-extinguisher',
+      pmCycle: '2026-06',
+    }
     await page.addInitScript(() => {
       window.print = () => {
         document.documentElement.dataset.printInvoked = 'true'
       }
     })
     await page.goto('/app/dashboard')
-
-    await expect(
-      page.getByRole('heading', { name: 'Preventive Maintenance Dashboard' }),
-    ).toBeVisible()
-    await expect(
-      page.getByRole('button', { name: /fire extinguishers?/i }),
-    ).toBeVisible()
+    await expect(page.locator('.pm-dashboard-report')).toHaveCount(0)
     await expect(
       page.getByRole('button', { name: 'Generate dashboard' }),
     ).toBeDisabled()
-    await expect(
-      page.getByRole('group', { name: /choose a year/i }),
-    ).toHaveCount(0)
-    await expect(
-      page.getByRole('group', { name: /choose a scheduled month/i }),
-    ).toHaveCount(0)
     expect(requests).toHaveLength(0)
-    expect(new URL(page.url()).searchParams.has('pmCycle')).toBe(false)
-
-    await selectDashboardPeriod(page, 'June')
-    await page.getByRole('button', { name: /fire alarms?/i }).click()
-    await expect(
-      page.getByRole('group', { name: /choose a scheduled month/i }),
-    ).toHaveCount(0)
-    await expect(
-      page.getByRole('button', { name: 'Generate dashboard' }),
-    ).toBeDisabled()
     await selectDashboardPeriod(page, 'June')
     expect(requests).toHaveLength(0)
-    expect(new URL(page.url()).searchParams.has('assetCategory')).toBe(false)
-    expect(new URL(page.url()).searchParams.has('year')).toBe(false)
-    expect(new URL(page.url()).searchParams.has('pmCycle')).toBe(false)
-
     await generateDashboard(page)
-    await expectRequest(requests, {
-      assetCategory: 'fire-extinguisher',
-      pmCycle: '2026-06',
-    })
-    await expect
-      .poll(() => {
-        const url = new URL(page.url())
-        return [
-          url.searchParams.get('assetCategory'),
-          url.searchParams.get('year'),
-          url.searchParams.get('pmCycle'),
-        ]
-      })
-      .toEqual(['fire-extinguisher', '2026', '2026-06'])
+    await expectRequest(requests, juneScope)
 
     const report = page.locator('.pm-dashboard-report')
+    const assets = assetTable(page).getByRole('link')
     await expect(report).toBeVisible()
-    await expect(metricCard(page, 'Scheduled')).toContainText('3')
-    await expect(metricCard(page, 'Inspected')).toContainText('2')
-    await expect(metricCard(page, 'Completed on time')).toContainText('1')
-    await expect(metricCard(page, 'Completed late')).toContainText('1')
+    await expect(assets).toHaveText(['FE-001', 'FE-002', 'FE-003'])
+    const metrics = await readOfficialMetrics(page)
+    expect(metrics).toEqual([
+      '3',
+      '2',
+      '1',
+      '1',
+      '1',
+      '1',
+      '1',
+      '67%',
+      'Not measurable yet',
+    ])
 
-    await page.getByLabel('Department').selectOption('OPS')
+    await page.getByLabel('Condition').selectOption('NonOperational')
     await expectRequest(requests, {
-      assetCategory: 'fire-extinguisher',
-      pmCycle: '2026-06',
-      department: 'OPS',
+      ...juneScope,
+      condition: 'NonOperational',
     })
-    await expect(metricCard(page, 'Scheduled')).toContainText('2')
-    await expect(metricCard(page, 'Inspected')).toContainText('1')
-    await expect(metricCard(page, 'Completed late')).toContainText('1')
+    await expect(page).toHaveURL(/condition=NonOperational/)
+    await expect(assets).toHaveText(['FE-002'])
+    await expect(assetCell(assetRow(page, 'FE-002'), 'condition')).toHaveText(
+      'Non-operational',
+    )
+    await expect.poll(() => readOfficialMetrics(page)).toEqual(metrics)
+
+    await page.getByLabel('Condition').selectOption('')
+    await expect
+      .poll(() => new URL(page.url()).searchParams.has('condition'))
+      .toBe(false)
+    await page.getByLabel('Timeliness / status').selectOption('Late')
+    await expectRequest(requests, {
+      ...juneScope,
+      timeliness: 'Late',
+    })
+    await expect(page).toHaveURL(/timeliness=Late/)
+    await expect(assets).toHaveText(['FE-002'])
+    await expect(assetCell(assetRow(page, 'FE-002'), 'timeliness')).toHaveText(
+      'Completed late',
+    )
+    await expect.poll(() => readOfficialMetrics(page)).toEqual(metrics)
+
+    await page.getByLabel('Timeliness / status').selectOption('')
+    await expect
+      .poll(() => new URL(page.url()).searchParams.has('timeliness'))
+      .toBe(false)
+    await page.getByLabel('Search assets').fill('FE-001')
+    await page.getByRole('button', { name: 'Apply search' }).click()
+    await expectRequest(requests, {
+      ...juneScope,
+      search: 'FE-001',
+    })
+    await expect(page).toHaveURL(/search=FE-001/)
+    await expect(assets).toHaveText(['FE-001'])
+    await expect.poll(() => readOfficialMetrics(page)).toEqual(metrics)
+
+    await page.getByLabel('Condition').selectOption('Operational')
+    await expect
+      .poll(() => new URL(page.url()).searchParams.get('condition'))
+      .toBe('Operational')
+    await page.getByLabel('Timeliness / status').selectOption('OnTime')
+    await expectRequest(requests, {
+      ...juneScope,
+      condition: 'Operational',
+      timeliness: 'OnTime',
+      search: 'FE-001',
+    })
+    const activeParams = new URL(page.url()).searchParams
+    expect(
+      ['condition', 'timeliness', 'search'].map((key) => activeParams.get(key)),
+    ).toEqual(['Operational', 'OnTime', 'FE-001'])
+    await expect.poll(() => readOfficialMetrics(page)).toEqual(metrics)
 
     await page.getByRole('button', { name: 'Export dashboard' }).click()
     await expect(page.locator('html')).toHaveAttribute(
       'data-print-invoked',
       'true',
     )
-    await expect(report).toContainText('Scheduled')
-    await expect(report).toContainText('FE-002')
+    await page.emulateMedia({ media: 'print' })
+    const filterSummary = report
+      .getByRole('heading', { name: 'Asset-list filters' })
+      .locator('..')
+    await expect(filterSummary).toBeVisible()
+    await expect(filterSummary.locator('dd')).toHaveText([
+      'Operational',
+      'Completed on time',
+      'FE-001',
+    ])
+    await expect(filterSummary).toContainText('narrow asset rows only')
     await expect(report).toContainText('UniPM')
     await expect(report).toContainText('June 2026')
-    await expect(report).toContainText('OPS')
-    await page.emulateMedia({ media: 'print' })
-    await expect(page.locator('#dashboard-title')).toBeHidden()
+    await expect(report).toContainText('All departments')
+    await expect(page.locator('form')).toBeHidden()
     await expect(
       page.getByRole('button', {
         name: 'Export dashboard',
         includeHidden: true,
       }),
     ).toBeHidden()
-    await expect(report).toBeVisible()
+
+    const batches = batchTable(page)
+    await expect(
+      batches.getByRole('columnheader', { name: 'Department' }),
+    ).toBeVisible()
+    await expect(
+      batches.getByRole('columnheader', { name: 'Scheduled' }),
+    ).toBeVisible()
+    await expect(batches.locator('thead th').last()).toBeHidden()
+    await expect(
+      batches.locator('tbody tr').first().locator('td').last(),
+    ).toBeHidden()
+
+    await page.emulateMedia({ media: 'screen' })
+    await page.getByRole('button', { name: 'Clear filters' }).click()
+    const clearKeys = ['department', 'condition', 'timeliness', 'search']
+    await expect
+      .poll(() =>
+        clearKeys.map((key) => new URL(page.url()).searchParams.has(key)),
+      )
+      .toEqual([false, false, false, false])
+    await expect(assets).toHaveText(['FE-001', 'FE-002', 'FE-003'])
+    await expect.poll(() => readOfficialMetrics(page)).toEqual(metrics)
+
+    await page.getByLabel('Department').selectOption('OPS')
+    await expectRequest(requests, {
+      ...juneScope,
+      department: 'OPS',
+    })
+    await expect(metricCard(page, 'Scheduled')).toContainText('2')
+    await expect(metricCard(page, 'Inspected')).toContainText('1')
   })
 
   test('loads a valid scope URL directly and keeps asset detail links navigable', async ({
