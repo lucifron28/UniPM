@@ -393,6 +393,7 @@ class PreventiveMaintenanceGrouping {
 class AddInspectionInput {
   const AddInspectionInput({
     required this.scheduleId,
+    this.locationAttemptId,
     required this.inspectorUserId,
     required this.dateInspected,
     this.dateAccomplished,
@@ -405,6 +406,7 @@ class AddInspectionInput {
   });
 
   final String scheduleId;
+  final String? locationAttemptId;
   final String inspectorUserId;
   final DateTime dateInspected;
   final DateTime? dateAccomplished;
@@ -414,6 +416,69 @@ class AddInspectionInput {
   final bool? waterReplaceCarbonFilter;
   final bool? waterReplaceSedimentFilter;
   final bool? waterCheckUvLight;
+}
+
+enum LocationVerificationOutcome { inside, outside, uncertain, notConfigured }
+
+class LocationVerificationAttempt {
+  const LocationVerificationAttempt({
+    required this.id,
+    required this.outcome,
+    this.accuracyMeters,
+    this.hasAccuracy = false,
+    this.devicePositionTimestamp,
+    this.isMocked = false,
+    this.accuracyMode = 'Unknown',
+    this.acquisitionDurationMs = 0,
+  });
+
+  final String id;
+  final LocationVerificationOutcome outcome;
+  final double? accuracyMeters;
+  final bool hasAccuracy;
+  final DateTime? devicePositionTimestamp;
+  final bool isMocked;
+  final String accuracyMode;
+  final int acquisitionDurationMs;
+
+  factory LocationVerificationAttempt.fromJson(Map<String, dynamic> json) {
+    final outcome = switch (json['outcome']) {
+      'Inside' => LocationVerificationOutcome.inside,
+      'Outside' => LocationVerificationOutcome.outside,
+      'Uncertain' => LocationVerificationOutcome.uncertain,
+      'NotConfigured' => LocationVerificationOutcome.notConfigured,
+      _ => throw const FormatException(
+        'Invalid location verification response.',
+      ),
+    };
+    final hasAccuracy = json['hasAccuracy'];
+    final isMocked = json['isMocked'];
+    final accuracyMode = json['accuracyMode'];
+    final acquisitionDurationMs = json['acquisitionDurationMs'];
+    final accuracyMeters = json['accuracyMeters'];
+    if (hasAccuracy is! bool ||
+        isMocked is! bool ||
+        accuracyMode is! String ||
+        !const {'Precise', 'Reduced', 'Unknown'}.contains(accuracyMode) ||
+        acquisitionDurationMs is! int ||
+        acquisitionDurationMs < 0 ||
+        (accuracyMeters != null && accuracyMeters is! num)) {
+      throw const FormatException('Invalid location verification response.');
+    }
+    return LocationVerificationAttempt(
+      id: _requiredUuid(json, 'id'),
+      outcome: outcome,
+      accuracyMeters: (accuracyMeters as num?)?.toDouble(),
+      hasAccuracy: hasAccuracy,
+      devicePositionTimestamp: _nullableDateTime(
+        json,
+        'devicePositionTimestamp',
+      ),
+      isMocked: isMocked,
+      accuracyMode: accuracyMode,
+      acquisitionDurationMs: acquisitionDurationMs,
+    );
+  }
 }
 
 class UpdateInspectionInput {

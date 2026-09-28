@@ -36,6 +36,7 @@ const asset = {
   building: 'Main',
   department: 'GSD',
   location: 'Lobby',
+  hasVerificationLocation: false,
   qrCodeValue: 'UNIPM-FE-001',
   status: 'Active',
   createdAt: '2026-07-22T00:00:00Z',

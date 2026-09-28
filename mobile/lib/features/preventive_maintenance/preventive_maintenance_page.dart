@@ -493,12 +493,14 @@ class PreventiveMaintenanceDraftPage extends StatefulWidget {
     required this.formId,
     this.preselectedScheduleId,
     this.focusedInspectionId,
+    this.locationAttemptId,
   });
 
   final PreventiveMaintenanceController controller;
   final String formId;
   final String? preselectedScheduleId;
   final String? focusedInspectionId;
+  final String? locationAttemptId;
 
   @override
   State<PreventiveMaintenanceDraftPage> createState() =>
@@ -612,12 +614,12 @@ class _PreventiveMaintenanceDraftPageState
           ),
         )
         .toList(growable: false);
-    final preselectedScheduleId =
-        unattachedSchedules.any(
-          (schedule) => schedule.id == widget.preselectedScheduleId,
-        )
-        ? widget.preselectedScheduleId
-        : null;
+    final scannedSchedule = unattachedSchedules
+        .cast<ScheduleOption?>()
+        .firstWhere(
+          (schedule) => schedule?.id == widget.preselectedScheduleId,
+          orElse: () => null,
+        );
     final displayedInspections = [...form.inspections];
     final scheduleById = <String, ScheduleOption>{
       for (final schedule in schedules) schedule.id: schedule,
@@ -698,12 +700,12 @@ class _PreventiveMaintenanceDraftPageState
               ),
             ),
           ),
-        if (canEdit && scheduleError == null)
-          _AddInspectionCard(
+        if (canEdit && scheduleError == null && scannedSchedule != null)
+          _ScannedAssetInspectionCard(
             key: ValueKey('add-${form.inspections.length}'),
-            schedules: unattachedSchedules,
+            schedule: scannedSchedule,
             assetCategory: form.assetCategory,
-            preselectedScheduleId: preselectedScheduleId,
+            locationAttemptId: widget.locationAttemptId,
             inspectorUserId: widget.controller.user.id,
             isSaving: widget.controller.isSaving,
             onAdd: (input) async {
@@ -757,6 +759,34 @@ class _PreventiveMaintenanceDraftPageState
               }
               return ok;
             },
+          )
+        else if (canEdit &&
+            scheduleError == null &&
+            unattachedSchedules.isNotEmpty)
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Scan the next assigned asset to add its inspection.',
+                    key: Key('scan-next-asset-guidance'),
+                  ),
+                  if (widget.preselectedScheduleId != null) ...[
+                    const SizedBox(height: 12),
+                    OutlinedButton.icon(
+                      key: const Key('draft-scan-next-asset'),
+                      onPressed: () => Navigator.of(
+                        context,
+                      ).pop(PreventiveMaintenanceDraftAction.scanNextAsset),
+                      icon: const Icon(Icons.qr_code_scanner),
+                      label: const Text('Scan next asset'),
+                    ),
+                  ],
+                ],
+              ),
+            ),
           ),
         const SizedBox(height: 16),
         Text(
@@ -768,7 +798,9 @@ class _PreventiveMaintenanceDraftPageState
           const Card(
             child: Padding(
               padding: EdgeInsets.all(16),
-              child: Text('No rows yet. Add an inspection row to this draft.'),
+              child: Text(
+                'No inspections recorded yet. Scan an assigned asset to begin.',
+              ),
             ),
           ),
         ...displayedInspections.map(
@@ -905,55 +937,41 @@ class _FormMetadata extends StatelessWidget {
   }
 }
 
-class _AddInspectionCard extends StatefulWidget {
-  const _AddInspectionCard({
+class _ScannedAssetInspectionCard extends StatefulWidget {
+  const _ScannedAssetInspectionCard({
     super.key,
-    required this.schedules,
+    required this.schedule,
     required this.assetCategory,
-    this.preselectedScheduleId,
+    this.locationAttemptId,
     required this.inspectorUserId,
     required this.isSaving,
     required this.onAdd,
   });
 
-  final List<ScheduleOption> schedules;
+  final ScheduleOption schedule;
   final String assetCategory;
-  final String? preselectedScheduleId;
+  final String? locationAttemptId;
   final String inspectorUserId;
   final bool isSaving;
   final Future<bool> Function(AddInspectionInput input) onAdd;
 
   @override
-  State<_AddInspectionCard> createState() => _AddInspectionCardState();
+  State<_ScannedAssetInspectionCard> createState() =>
+      _ScannedAssetInspectionCardState();
 }
 
-class _AddInspectionCardState extends State<_AddInspectionCard> {
+class _ScannedAssetInspectionCardState
+    extends State<_ScannedAssetInspectionCard> {
   final formKey = GlobalKey<FormState>();
   final dateController = TextEditingController(text: _dateText(DateTime.now()));
   final dateAccomplishedController = TextEditingController();
   final remarksController = TextEditingController();
   final actionsController = TextEditingController();
-  late String? scheduleId;
   bool isOperational = false;
   bool waterReplaceCarbonFilter = false;
   bool waterReplaceSedimentFilter = false;
   bool waterCheckUvLight = false;
   String? localError;
-
-  ScheduleOption? get selectedSchedule {
-    for (final schedule in widget.schedules) {
-      if (schedule.id == scheduleId) return schedule;
-    }
-    return null;
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    scheduleId =
-        widget.preselectedScheduleId ??
-        (widget.schedules.length == 1 ? widget.schedules.single.id : null);
-  }
 
   @override
   void dispose() {
@@ -983,7 +1001,8 @@ class _AddInspectionCardState extends State<_AddInspectionCard> {
     }
     final added = await widget.onAdd(
       AddInspectionInput(
-        scheduleId: scheduleId!,
+        scheduleId: widget.schedule.id,
+        locationAttemptId: widget.locationAttemptId,
         inspectorUserId: widget.inspectorUserId,
         dateInspected: date,
         dateAccomplished: widget.assetCategory == 'water-drinking-station'
@@ -1007,7 +1026,6 @@ class _AddInspectionCardState extends State<_AddInspectionCard> {
     );
     if (added && mounted) {
       setState(() {
-        scheduleId = null;
         dateAccomplishedController.clear();
         remarksController.clear();
         actionsController.clear();
@@ -1024,6 +1042,7 @@ class _AddInspectionCardState extends State<_AddInspectionCard> {
     final spec = PreventiveMaintenanceFormSpec.forCategory(
       widget.assetCategory,
     );
+    final asset = widget.schedule.asset!;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -1033,106 +1052,79 @@ class _AddInspectionCardState extends State<_AddInspectionCard> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Add inspection row',
+                'Inspect ${asset.assetCode}',
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: 12),
               if (localError != null) _InlineError(message: localError!),
-              if (widget.schedules.isEmpty)
-                const Text(
-                  'No compatible schedules are available for this Draft.',
-                )
-              else ...[
-                DropdownButtonFormField<String>(
-                  key: const Key('inspection-schedule'),
-                  isExpanded: true,
-                  initialValue: scheduleId,
-                  decoration: const InputDecoration(labelText: 'Schedule'),
-                  items: widget.schedules
-                      .map(
-                        (schedule) => DropdownMenuItem(
-                          value: schedule.id,
-                          child: Text(
-                            '${schedule.asset!.assetCode} - ${_dateText(schedule.scheduleDate)}',
-                          ),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (value) => setState(() => scheduleId = value),
-                  validator: (value) =>
-                      value == null ? 'Select a schedule.' : null,
-                ),
-                if (selectedSchedule?.asset != null) ...[
-                  const SizedBox(height: 8),
-                  _AssetMetadata(
-                    asset: selectedSchedule!.asset!,
-                    assetNumberLabel: spec.assetNumberLabel,
-                  ),
-                ],
-                const SizedBox(height: 12),
-                TextFormField(
-                  key: const Key('new-inspection-date'),
-                  controller: dateController,
-                  decoration: const InputDecoration(
-                    labelText: 'Inspection date (YYYY-MM-DD)',
-                  ),
-                  validator: (value) => _parseDate(value ?? '') == null
-                      ? 'Enter a valid date.'
-                      : null,
-                ),
-                if (spec.isWaterDrinkingStation)
-                  TextFormField(
-                    key: const Key('new-inspection-date-accomplished'),
-                    controller: dateAccomplishedController,
-                    decoration: const InputDecoration(
-                      labelText: 'Date accomplished (YYYY-MM-DD)',
-                    ),
-                    validator: (value) {
-                      final normalized = value?.trim() ?? '';
-                      return normalized.isEmpty ||
-                              _parseDate(normalized) != null
-                          ? null
-                          : 'Enter a valid date or leave it blank.';
-                    },
-                  ),
-                _ConditionSelector(
-                  value: isOperational,
-                  onChanged: (value) => setState(() => isOperational = value),
-                ),
-                if (spec.isWaterDrinkingStation)
-                  _WaterWorkItemsSelector(
-                    replaceCarbonFilter: waterReplaceCarbonFilter,
-                    replaceSedimentFilter: waterReplaceSedimentFilter,
-                    checkUvLight: waterCheckUvLight,
-                    onReplaceCarbonFilter: (value) =>
-                        setState(() => waterReplaceCarbonFilter = value),
-                    onReplaceSedimentFilter: (value) =>
-                        setState(() => waterReplaceSedimentFilter = value),
-                    onCheckUvLight: (value) =>
-                        setState(() => waterCheckUvLight = value),
-                  ),
-                TextField(
-                  key: const Key('new-inspection-remarks'),
-                  controller: remarksController,
-                  maxLines: 3,
-                  decoration: const InputDecoration(labelText: 'Remarks'),
-                ),
+              _AssetMetadata(
+                asset: asset,
+                assetNumberLabel: spec.assetNumberLabel,
+              ),
+              if (widget.schedule.pmCycle != null) ...[
                 const SizedBox(height: 8),
-                TextField(
-                  key: const Key('new-inspection-actions'),
-                  controller: actionsController,
-                  maxLines: 3,
-                  decoration: const InputDecoration(
-                    labelText: 'Recommendation',
-                  ),
-                ),
-                const SizedBox(height: 12),
-                FilledButton(
-                  key: const Key('add-inspection-button'),
-                  onPressed: widget.isSaving ? null : _add,
-                  child: Text(widget.isSaving ? 'Saving...' : 'Add row'),
-                ),
+                Text('PM cycle: ${widget.schedule.pmCycle}'),
               ],
+              const SizedBox(height: 12),
+              TextFormField(
+                key: const Key('new-inspection-date'),
+                controller: dateController,
+                decoration: const InputDecoration(
+                  labelText: 'Inspection date (YYYY-MM-DD)',
+                ),
+                validator: (value) => _parseDate(value ?? '') == null
+                    ? 'Enter a valid date.'
+                    : null,
+              ),
+              if (spec.isWaterDrinkingStation)
+                TextFormField(
+                  key: const Key('new-inspection-date-accomplished'),
+                  controller: dateAccomplishedController,
+                  decoration: const InputDecoration(
+                    labelText: 'Date accomplished (YYYY-MM-DD)',
+                  ),
+                  validator: (value) {
+                    final normalized = value?.trim() ?? '';
+                    return normalized.isEmpty || _parseDate(normalized) != null
+                        ? null
+                        : 'Enter a valid date or leave it blank.';
+                  },
+                ),
+              _ConditionSelector(
+                value: isOperational,
+                onChanged: (value) => setState(() => isOperational = value),
+              ),
+              if (spec.isWaterDrinkingStation)
+                _WaterWorkItemsSelector(
+                  replaceCarbonFilter: waterReplaceCarbonFilter,
+                  replaceSedimentFilter: waterReplaceSedimentFilter,
+                  checkUvLight: waterCheckUvLight,
+                  onReplaceCarbonFilter: (value) =>
+                      setState(() => waterReplaceCarbonFilter = value),
+                  onReplaceSedimentFilter: (value) =>
+                      setState(() => waterReplaceSedimentFilter = value),
+                  onCheckUvLight: (value) =>
+                      setState(() => waterCheckUvLight = value),
+                ),
+              TextField(
+                key: const Key('new-inspection-remarks'),
+                controller: remarksController,
+                maxLines: 3,
+                decoration: const InputDecoration(labelText: 'Remarks'),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                key: const Key('new-inspection-actions'),
+                controller: actionsController,
+                maxLines: 3,
+                decoration: const InputDecoration(labelText: 'Recommendation'),
+              ),
+              const SizedBox(height: 12),
+              FilledButton(
+                key: const Key('add-inspection-button'),
+                onPressed: widget.isSaving ? null : _add,
+                child: Text(widget.isSaving ? 'Saving...' : 'Save inspection'),
+              ),
             ],
           ),
         ),

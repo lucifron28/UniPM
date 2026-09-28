@@ -5,15 +5,7 @@
  * OpenAPI spec version: 1.0.0
  */
 
-export interface CreateAssetDto {
-  assetCode?: string
-  assetCategory?: string
-  /** @nullable */
-  building?: string | null
-  /** @nullable */
-  department?: string | null
-  /** @nullable */
-  location?: string | null
+export interface UpdateAssetVerificationLocationDto {
   /**
    * @nullable
    * @pattern ^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$

@@ -24,10 +24,12 @@ import type {
   AcknowledgePreventiveMaintenanceFormDto,
   AssetCategoryResponse,
   AssetResponse,
+  AssetVerificationLocationResponse,
   AssignScheduleBatchDto,
   AuthUserResponse,
   CorrectiveMaintenanceHandoffResponse,
   CreateAssetDto,
+  CreateInspectionLocationAttemptDto,
   CreatePreventiveMaintenanceFormDto,
   CreateScheduleDto,
   DraftInspectionRowDto,
@@ -35,6 +37,7 @@ import type {
   GetPmPeriodDashboardParams,
   HttpValidationProblemDetails,
   InspectionHistoryResponse,
+  InspectionLocationAttemptResponse,
   InspectionResponse,
   ListAssetsParams,
   ListInspectionsParams,
@@ -51,6 +54,7 @@ import type {
   ScheduleAssignmentOptionsResponse,
   ScheduleReferenceResponse,
   ScheduleResponse,
+  UpdateAssetVerificationLocationDto,
   UpdateDraftInspectionRowDto,
   ValidationProblemDetails,
 } from './models'
@@ -1452,6 +1456,257 @@ export function useGetAsset<
 }
 
 /**
+ * @summary Gets the verification location configuration for an asset
+ */
+export const getAssetVerificationLocation = (
+  id: string,
+  signal?: AbortSignal,
+) => {
+  return customInstance<AssetVerificationLocationResponse>({
+    url: `/api/v1/assets/${id}/verification-location`,
+    method: 'GET',
+    signal,
+  })
+}
+
+export const getGetAssetVerificationLocationQueryKey = (id: string) => {
+  return [`/api/v1/assets/${id}/verification-location`] as const
+}
+
+export const getGetAssetVerificationLocationQueryOptions = <
+  TData = Awaited<ReturnType<typeof getAssetVerificationLocation>>,
+  TError = ProblemDetails,
+>(
+  id: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getAssetVerificationLocation>>,
+        TError,
+        TData
+      >
+    >
+  },
+) => {
+  const { query: queryOptions } = options ?? {}
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetAssetVerificationLocationQueryKey(id)
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getAssetVerificationLocation>>
+  > = ({ signal }) => getAssetVerificationLocation(id, signal)
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: id !== null && id !== undefined,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getAssetVerificationLocation>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetAssetVerificationLocationQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getAssetVerificationLocation>>
+>
+export type GetAssetVerificationLocationQueryError = ProblemDetails
+
+export function useGetAssetVerificationLocation<
+  TData = Awaited<ReturnType<typeof getAssetVerificationLocation>>,
+  TError = ProblemDetails,
+>(
+  id: string,
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getAssetVerificationLocation>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAssetVerificationLocation>>,
+          TError,
+          Awaited<ReturnType<typeof getAssetVerificationLocation>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useGetAssetVerificationLocation<
+  TData = Awaited<ReturnType<typeof getAssetVerificationLocation>>,
+  TError = ProblemDetails,
+>(
+  id: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getAssetVerificationLocation>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAssetVerificationLocation>>,
+          TError,
+          Awaited<ReturnType<typeof getAssetVerificationLocation>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useGetAssetVerificationLocation<
+  TData = Awaited<ReturnType<typeof getAssetVerificationLocation>>,
+  TError = ProblemDetails,
+>(
+  id: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getAssetVerificationLocation>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+/**
+ * @summary Gets the verification location configuration for an asset
+ */
+
+export function useGetAssetVerificationLocation<
+  TData = Awaited<ReturnType<typeof getAssetVerificationLocation>>,
+  TError = ProblemDetails,
+>(
+  id: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getAssetVerificationLocation>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+} {
+  const queryOptions = getGetAssetVerificationLocationQueryOptions(id, options)
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+
+  return withQueryKey(query, queryOptions.queryKey)
+}
+
+/**
+ * @summary Replaces or clears an asset verification location
+ */
+export const updateAssetVerificationLocation = (
+  id: string,
+  updateAssetVerificationLocationDto: UpdateAssetVerificationLocationDto,
+  signal?: AbortSignal,
+) => {
+  return customInstance<AssetVerificationLocationResponse>({
+    url: `/api/v1/assets/${id}/verification-location`,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    data: updateAssetVerificationLocationDto,
+    signal,
+  })
+}
+
+export const getUpdateAssetVerificationLocationMutationOptions = <
+  TError = ValidationProblemDetails | ProblemDetails,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateAssetVerificationLocation>>,
+    TError,
+    { id: string; data: UpdateAssetVerificationLocationDto },
+    TContext
+  >
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateAssetVerificationLocation>>,
+  TError,
+  { id: string; data: UpdateAssetVerificationLocationDto },
+  TContext
+> => {
+  const mutationKey = ['updateAssetVerificationLocation']
+  const { mutation: mutationOptions } = options
+    ? options.mutation &&
+      'mutationKey' in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey } }
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateAssetVerificationLocation>>,
+    { id: string; data: UpdateAssetVerificationLocationDto }
+  > = (props) => {
+    const { id, data } = props ?? {}
+
+    return updateAssetVerificationLocation(id, data)
+  }
+
+  return { mutationFn, ...mutationOptions }
+}
+
+export type UpdateAssetVerificationLocationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateAssetVerificationLocation>>
+>
+export type UpdateAssetVerificationLocationMutationBody =
+  UpdateAssetVerificationLocationDto
+export type UpdateAssetVerificationLocationMutationError =
+  ValidationProblemDetails | ProblemDetails
+
+/**
+ * @summary Replaces or clears an asset verification location
+ */
+export const useUpdateAssetVerificationLocation = <
+  TError = ValidationProblemDetails | ProblemDetails,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof updateAssetVerificationLocation>>,
+      TError,
+      { id: string; data: UpdateAssetVerificationLocationDto },
+      TContext
+    >
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof updateAssetVerificationLocation>>,
+  TError,
+  { id: string; data: UpdateAssetVerificationLocationDto },
+  TContext
+> => {
+  return useMutation(
+    getUpdateAssetVerificationLocationMutationOptions(options),
+    queryClient,
+  )
+}
+
+/**
  * @summary Gets an asset by its canonical asset code
  */
 export const getAssetByCode = (assetCode: string, signal?: AbortSignal) => {
@@ -2318,6 +2573,96 @@ export function useGetSchedule<
   > & { queryKey: DataTag<QueryKey, TData, TError> }
 
   return withQueryKey(query, queryOptions.queryKey)
+}
+
+/**
+ * @summary Records an inspection location verification attempt
+ */
+export const createInspectionLocationAttempt = (
+  scheduleId: string,
+  createInspectionLocationAttemptDto: CreateInspectionLocationAttemptDto,
+  signal?: AbortSignal,
+) => {
+  return customInstance<InspectionLocationAttemptResponse>({
+    url: `/api/v1/schedules/${scheduleId}/location-verification-attempts`,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    data: createInspectionLocationAttemptDto,
+    signal,
+  })
+}
+
+export const getCreateInspectionLocationAttemptMutationOptions = <
+  TError = ValidationProblemDetails | ProblemDetails,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createInspectionLocationAttempt>>,
+    TError,
+    { scheduleId: string; data: CreateInspectionLocationAttemptDto },
+    TContext
+  >
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createInspectionLocationAttempt>>,
+  TError,
+  { scheduleId: string; data: CreateInspectionLocationAttemptDto },
+  TContext
+> => {
+  const mutationKey = ['createInspectionLocationAttempt']
+  const { mutation: mutationOptions } = options
+    ? options.mutation &&
+      'mutationKey' in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey } }
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createInspectionLocationAttempt>>,
+    { scheduleId: string; data: CreateInspectionLocationAttemptDto }
+  > = (props) => {
+    const { scheduleId, data } = props ?? {}
+
+    return createInspectionLocationAttempt(scheduleId, data)
+  }
+
+  return { mutationFn, ...mutationOptions }
+}
+
+export type CreateInspectionLocationAttemptMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createInspectionLocationAttempt>>
+>
+export type CreateInspectionLocationAttemptMutationBody =
+  CreateInspectionLocationAttemptDto
+export type CreateInspectionLocationAttemptMutationError =
+  ValidationProblemDetails | ProblemDetails
+
+/**
+ * @summary Records an inspection location verification attempt
+ */
+export const useCreateInspectionLocationAttempt = <
+  TError = ValidationProblemDetails | ProblemDetails,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof createInspectionLocationAttempt>>,
+      TError,
+      { scheduleId: string; data: CreateInspectionLocationAttemptDto },
+      TContext
+    >
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof createInspectionLocationAttempt>>,
+  TError,
+  { scheduleId: string; data: CreateInspectionLocationAttemptDto },
+  TContext
+> => {
+  return useMutation(
+    getCreateInspectionLocationAttemptMutationOptions(options),
+    queryClient,
+  )
 }
 
 /**

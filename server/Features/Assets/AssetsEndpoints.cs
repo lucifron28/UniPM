@@ -45,6 +45,9 @@ public static class AssetsEndpoints
                 Building = NormalizeOptional(dto.Building),
                 Department = NormalizeOptional(dto.Department),
                 Location = NormalizeOptional(dto.Location),
+                VerificationLatitude = dto.VerificationLatitude,
+                VerificationLongitude = dto.VerificationLongitude,
+                VerificationRadiusMeters = dto.VerificationRadiusMeters,
                 Status = AssetStatusCatalog.Active,
                 CreatedAt = now,
                 UpdatedAt = now
@@ -88,6 +91,61 @@ public static class AssetsEndpoints
         .WithSummary("Gets an asset by its identifier")
         .Produces<AssetResponse>(StatusCodes.Status200OK)
         .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status404NotFound);
+
+        group.MapGet("/{id}/verification-location", async (
+            Guid id,
+            IDbContextFactory<ApplicationDbContext> factory,
+            CancellationToken cancellationToken) =>
+        {
+            await using var context = await factory.CreateDbContextAsync(cancellationToken);
+            var asset = await context.Assets.SingleOrDefaultAsync(candidate => candidate.Id == id, cancellationToken);
+            return asset is not null
+                ? Results.Ok(AssetVerificationLocationResponse.FromAsset(asset))
+                : ApiErrors.NotFound("Asset not found.");
+        })
+        .WithName("GetAssetVerificationLocation")
+        .WithSummary("Gets the verification location configuration for an asset")
+        .Produces<AssetVerificationLocationResponse>(StatusCodes.Status200OK)
+        .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status401Unauthorized)
+        .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status403Forbidden)
+        .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status404NotFound)
+        .RequireAuthorization(AuthPolicyCatalog.CanManageAssets);
+
+        group.MapPut("/{id}/verification-location", async (
+            Guid id,
+            UpdateAssetVerificationLocationDto dto,
+            IDbContextFactory<ApplicationDbContext> factory,
+            CancellationToken cancellationToken) =>
+        {
+            var validationErrors = dto.Validate();
+            if (validationErrors.Count > 0)
+            {
+                return ApiErrors.Validation(validationErrors);
+            }
+
+            await using var context = await factory.CreateDbContextAsync(cancellationToken);
+            var asset = await context.Assets.SingleOrDefaultAsync(candidate => candidate.Id == id, cancellationToken);
+            if (asset is null)
+            {
+                return ApiErrors.NotFound("Asset not found.");
+            }
+
+            asset.VerificationLatitude = dto.VerificationLatitude;
+            asset.VerificationLongitude = dto.VerificationLongitude;
+            asset.VerificationRadiusMeters = dto.VerificationRadiusMeters;
+            asset.UpdatedAt = DateTimeOffset.UtcNow;
+            await context.SaveChangesAsync(cancellationToken);
+
+            return Results.Ok(AssetVerificationLocationResponse.FromAsset(asset));
+        })
+        .WithName("UpdateAssetVerificationLocation")
+        .WithSummary("Replaces or clears an asset verification location")
+        .Produces<AssetVerificationLocationResponse>(StatusCodes.Status200OK)
+        .Produces<Microsoft.AspNetCore.Mvc.ValidationProblemDetails>(StatusCodes.Status400BadRequest)
+        .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status401Unauthorized)
+        .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status403Forbidden)
+        .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status404NotFound)
+        .RequireAuthorization(AuthPolicyCatalog.CanManageAssets);
 
         group.MapGet("/", async (
             string? assetCategory,
@@ -165,7 +223,10 @@ public static class AssetsEndpoints
                     asset.QrCodeValue,
                     asset.Status,
                     asset.CreatedAt,
-                    asset.UpdatedAt))
+                    asset.UpdatedAt,
+                    asset.VerificationLatitude != null
+                        && asset.VerificationLongitude != null
+                        && asset.VerificationRadiusMeters != null))
                 .ToListAsync(cancellationToken);
 
             return Results.Ok(assets);
@@ -254,7 +315,8 @@ public sealed record AssetResponse(
     string? QrCodeValue,
     string Status,
     DateTimeOffset CreatedAt,
-    DateTimeOffset UpdatedAt)
+    DateTimeOffset UpdatedAt,
+    bool HasVerificationLocation)
 {
     internal static AssetResponse FromAsset(Asset asset)
     {
@@ -268,8 +330,23 @@ public sealed record AssetResponse(
             asset.QrCodeValue,
             asset.Status,
             asset.CreatedAt,
-            asset.UpdatedAt);
+            asset.UpdatedAt,
+            asset.VerificationLatitude.HasValue
+                && asset.VerificationLongitude.HasValue
+                && asset.VerificationRadiusMeters.HasValue);
     }
+}
+
+public sealed record AssetVerificationLocationResponse(
+    double? VerificationLatitude,
+    double? VerificationLongitude,
+    double? VerificationRadiusMeters)
+{
+    internal static AssetVerificationLocationResponse FromAsset(Asset asset)
+        => new(
+            asset.VerificationLatitude,
+            asset.VerificationLongitude,
+            asset.VerificationRadiusMeters);
 }
 
 public class CreateAssetDto
@@ -279,6 +356,9 @@ public class CreateAssetDto
     public string? Building { get; set; }
     public string? Department { get; set; }
     public string? Location { get; set; }
+    public double? VerificationLatitude { get; set; }
+    public double? VerificationLongitude { get; set; }
+    public double? VerificationRadiusMeters { get; set; }
 
     internal Dictionary<string, string[]> Validate()
     {
@@ -307,6 +387,11 @@ public class CreateAssetDto
         ValidateOptionalLength(Building, nameof(Building), AssetCodeValue.MetadataMaxLength, errors);
         ValidateOptionalLength(Department, nameof(Department), AssetCodeValue.MetadataMaxLength, errors);
         ValidateOptionalLength(Location, nameof(Location), AssetCodeValue.MetadataMaxLength, errors);
+        AssetVerificationLocationRules.AddConfigurationErrors(
+            VerificationLatitude,
+            VerificationLongitude,
+            VerificationRadiusMeters,
+            errors);
 
         return errors;
     }
@@ -321,5 +406,23 @@ public class CreateAssetDto
         {
             errors[fieldName] = [$"{fieldName} must not exceed {maxLength} characters."];
         }
+    }
+}
+
+public sealed class UpdateAssetVerificationLocationDto
+{
+    public double? VerificationLatitude { get; set; }
+    public double? VerificationLongitude { get; set; }
+    public double? VerificationRadiusMeters { get; set; }
+
+    internal Dictionary<string, string[]> Validate()
+    {
+        var errors = new Dictionary<string, string[]>();
+        AssetVerificationLocationRules.AddConfigurationErrors(
+            VerificationLatitude,
+            VerificationLongitude,
+            VerificationRadiusMeters,
+            errors);
+        return errors;
     }
 }

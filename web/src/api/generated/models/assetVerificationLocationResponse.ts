@@ -5,28 +5,20 @@
  * OpenAPI spec version: 1.0.0
  */
 
-export interface CreateAssetDto {
-  assetCode?: string
-  assetCategory?: string
-  /** @nullable */
-  building?: string | null
-  /** @nullable */
-  department?: string | null
-  /** @nullable */
-  location?: string | null
+export interface AssetVerificationLocationResponse {
   /**
    * @nullable
    * @pattern ^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$
    */
-  verificationLatitude?: number | string | null
+  verificationLatitude: number | string | null
   /**
    * @nullable
    * @pattern ^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$
    */
-  verificationLongitude?: number | string | null
+  verificationLongitude: number | string | null
   /**
    * @nullable
    * @pattern ^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$
    */
-  verificationRadiusMeters?: number | string | null
+  verificationRadiusMeters: number | string | null
 }

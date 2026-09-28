@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using UniPM.Api.Data;
 
@@ -11,9 +12,11 @@ using UniPM.Api.Data;
 namespace UniPM.Api.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260926064226_AddInspectionLocationVerification")]
+    partial class AddInspectionLocationVerification
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -311,20 +314,8 @@ namespace UniPM.Api.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<double?>("AccuracyMeters")
+                    b.Property<double>("AccuracyMeters")
                         .HasColumnType("float");
-
-                    b.Property<string>("AccuracyMode")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(16)
-                        .HasColumnType("nvarchar(16)")
-                        .HasDefaultValue("Unknown");
-
-                    b.Property<int>("AcquisitionDurationMs")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasDefaultValue(0);
 
                     b.Property<Guid>("ActorUserId")
                         .HasColumnType("uniqueidentifier");
@@ -333,9 +324,6 @@ namespace UniPM.Api.Migrations
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTimeOffset>("CapturedAt")
-                        .HasColumnType("datetimeoffset");
-
-                    b.Property<DateTimeOffset?>("DevicePositionTimestamp")
                         .HasColumnType("datetimeoffset");
 
                     b.Property<double?>("DistanceMeters")
@@ -349,16 +337,6 @@ namespace UniPM.Api.Migrations
 
                     b.Property<double?>("ExpectedRadiusMeters")
                         .HasColumnType("float");
-
-                    b.Property<bool>("HasAccuracy")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(true);
-
-                    b.Property<bool>("IsMocked")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bit")
-                        .HasDefaultValue(false);
 
                     b.Property<double>("MeasuredLatitude")
                         .HasColumnType("float");
@@ -384,17 +362,13 @@ namespace UniPM.Api.Migrations
 
                     b.ToTable("InspectionLocationAttempts", null, t =>
                         {
-                            t.HasCheckConstraint("CK_InspectionLocationAttempts_Accuracy", "([AccuracyMeters] IS NULL OR [AccuracyMeters] >= 0) AND (([HasAccuracy] = 1 AND [AccuracyMeters] IS NOT NULL) OR ([HasAccuracy] = 0 AND [AccuracyMeters] IS NULL))");
-
-                            t.HasCheckConstraint("CK_InspectionLocationAttempts_AccuracyMode", "[AccuracyMode] IN ('Precise', 'Reduced', 'Unknown')");
-
-                            t.HasCheckConstraint("CK_InspectionLocationAttempts_AcquisitionDuration", "[AcquisitionDurationMs] >= 0");
+                            t.HasCheckConstraint("CK_InspectionLocationAttempts_Accuracy", "[AccuracyMeters] >= 0");
 
                             t.HasCheckConstraint("CK_InspectionLocationAttempts_ExpectedLocation_Complete", "([ExpectedLatitude] IS NULL AND [ExpectedLongitude] IS NULL AND [ExpectedRadiusMeters] IS NULL) OR ([ExpectedLatitude] IS NOT NULL AND [ExpectedLongitude] IS NOT NULL AND [ExpectedRadiusMeters] IS NOT NULL AND [ExpectedLatitude] BETWEEN -90 AND 90 AND [ExpectedLongitude] BETWEEN -180 AND 180 AND [ExpectedRadiusMeters] > 0)");
 
                             t.HasCheckConstraint("CK_InspectionLocationAttempts_MeasuredCoordinates", "[MeasuredLatitude] BETWEEN -90 AND 90 AND [MeasuredLongitude] BETWEEN -180 AND 180");
 
-                            t.HasCheckConstraint("CK_InspectionLocationAttempts_Outcome_Consistent", "([Outcome] = 'NotConfigured' AND [ExpectedLatitude] IS NULL AND [ExpectedLongitude] IS NULL AND [ExpectedRadiusMeters] IS NULL AND [DistanceMeters] IS NULL) OR ([Outcome] = 'Uncertain' AND [HasAccuracy] = 0 AND [ExpectedLatitude] IS NOT NULL AND [ExpectedLongitude] IS NOT NULL AND [ExpectedRadiusMeters] IS NOT NULL AND [DistanceMeters] IS NOT NULL AND [DistanceMeters] >= 0) OR ([Outcome] IN ('Inside', 'Outside', 'Uncertain') AND [HasAccuracy] = 1 AND [ExpectedLatitude] IS NOT NULL AND [ExpectedLongitude] IS NOT NULL AND [ExpectedRadiusMeters] IS NOT NULL AND [DistanceMeters] IS NOT NULL AND [DistanceMeters] >= 0)");
+                            t.HasCheckConstraint("CK_InspectionLocationAttempts_Outcome_Consistent", "([Outcome] = 'NotConfigured' AND [ExpectedLatitude] IS NULL AND [ExpectedLongitude] IS NULL AND [ExpectedRadiusMeters] IS NULL AND [DistanceMeters] IS NULL) OR ([Outcome] IN ('Inside', 'Outside', 'Uncertain') AND [ExpectedLatitude] IS NOT NULL AND [ExpectedLongitude] IS NOT NULL AND [ExpectedRadiusMeters] IS NOT NULL AND [DistanceMeters] IS NOT NULL AND [DistanceMeters] >= 0)");
                         });
                 });
 

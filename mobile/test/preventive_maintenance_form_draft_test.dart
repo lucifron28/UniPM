@@ -10,6 +10,7 @@ import 'package:mobile/api/api_exception.dart';
 import 'package:mobile/auth/auth_models.dart';
 import 'package:mobile/features/assets/asset_models.dart';
 import 'package:mobile/features/preventive_maintenance/preventive_maintenance_controller.dart';
+import 'package:mobile/features/preventive_maintenance/inspection_location_capture.dart';
 import 'package:mobile/features/preventive_maintenance/preventive_maintenance_form_specs.dart';
 import 'package:mobile/features/preventive_maintenance/preventive_maintenance_models.dart';
 import 'package:mobile/features/preventive_maintenance/preventive_maintenance_page.dart';
@@ -213,7 +214,9 @@ void main() {
 
     expect(find.byKey(const Key('schedules-loading')), findsOneWidget);
     expect(
-      find.text('No compatible schedules are available for this Draft.'),
+      find.text(
+        'No inspections recorded yet. Scan an assigned asset to begin.',
+      ),
       findsNothing,
     );
 
@@ -221,7 +224,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      find.text('No compatible schedules are available for this Draft.'),
+      find.text(
+        'No inspections recorded yet. Scan an assigned asset to begin.',
+      ),
       findsOneWidget,
     );
   });
@@ -245,7 +250,8 @@ void main() {
     await tester.pumpAndSettle();
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('inspection-schedule')), findsOneWidget);
+    expect(find.byKey(const Key('inspection-schedule')), findsNothing);
+    expect(find.byKey(const Key('scan-next-asset-guidance')), findsOneWidget);
   });
 
   testWidgets('resuming a draft renders every existing row', (tester) async {
@@ -319,20 +325,20 @@ void main() {
   ) async {
     final repository = FakePreventiveMaintenanceRepository(
       forms: [testForm(id: formId)],
+      schedulesFuture: Future.value([testSchedule(firstScheduleId, 'FE-001')]),
     );
 
-    await pumpPage(tester, repository);
-    await tester.tap(find.byKey(Key('draft-form-$formId')));
-    await tester.pumpAndSettle();
-    await scrollTo(tester, find.byKey(const Key('inspection-schedule')));
-    await chooseDropdown(tester, const Key('inspection-schedule'), 'FE-001');
+    await pumpScannedEntry(tester, repository);
+    await _openScannedInspection(tester, const Key('start-pm'));
+    expect(find.byKey(const Key('inspection-schedule')), findsNothing);
+    expect(find.text('Inspect FE-001'), findsOneWidget);
     await scrollTo(tester, find.byKey(const Key('add-inspection-button')));
     await tester.tap(find.byKey(const Key('add-inspection-button')));
     await tester.pumpAndSettle();
 
     expect(repository.addedInput?.scheduleId, firstScheduleId);
     expect(repository.addedInput?.inspectorUserId, inspectorId);
-    expect(find.textContaining('Inspection rows (1)'), findsOneWidget);
+    expect(repository.forms.single.inspections, hasLength(1));
   });
 
   test('duplicate schedules are blocked before another API write', () async {
@@ -388,8 +394,7 @@ void main() {
 
     expect(find.byKey(const Key('resume-pm')), findsOneWidget);
     expect(find.byKey(const Key('start-pm')), findsNothing);
-    await tester.tap(find.byKey(const Key('resume-pm')));
-    await tester.pumpAndSettle();
+    await _openScannedInspection(tester, const Key('resume-pm'));
     await scrollTo(tester, find.text('Resume inspection row'));
 
     expect(find.text('Draft form'), findsOneWidget);
@@ -414,14 +419,12 @@ void main() {
     await pumpScannedEntry(tester, repository);
 
     expect(find.byKey(const Key('start-pm')), findsOneWidget);
-    await tester.tap(find.byKey(const Key('start-pm')));
-    await tester.pumpAndSettle();
-    await scrollTo(tester, find.byKey(const Key('inspection-schedule')));
+    await _openScannedInspection(tester, const Key('start-pm'));
+    await scrollTo(tester, find.text('Inspect FE-001'));
 
-    final dropdown = tester.widget<DropdownButtonFormField<String>>(
-      find.byKey(const Key('inspection-schedule')),
-    );
-    expect(dropdown.initialValue, firstScheduleId);
+    expect(find.byKey(const Key('inspection-schedule')), findsNothing);
+    expect(find.text('Inspect FE-001'), findsOneWidget);
+    expect(find.textContaining('FE-002'), findsNothing);
     expect(repository.requestedScheduleAssetIds.first, testAsset().id);
     expect(repository.createdInput, isNull);
     expect(repository.addCallCount, 0);
@@ -435,9 +438,8 @@ void main() {
     );
 
     await pumpScannedEntry(tester, repository);
-    await tester.tap(find.byKey(const Key('start-pm')));
-    await tester.pumpAndSettle();
-    await scrollTo(tester, find.byKey(const Key('inspection-schedule')));
+    await _openScannedInspection(tester, const Key('start-pm'));
+    await scrollTo(tester, find.text('Inspect FE-001'));
 
     expect(repository.createdInput?.assetCategory, 'fire-extinguisher');
     expect(repository.createdInput?.building, isNull);
@@ -448,10 +450,8 @@ void main() {
     expect(repository.createdInput?.year, 2026);
     expect(repository.createdInput?.academicYear, '2026-2027');
     expect(repository.addCallCount, 0);
-    final dropdown = tester.widget<DropdownButtonFormField<String>>(
-      find.byKey(const Key('inspection-schedule')),
-    );
-    expect(dropdown.initialValue, firstScheduleId);
+    expect(find.byKey(const Key('inspection-schedule')), findsNothing);
+    expect(find.text('Inspect FE-001'), findsOneWidget);
   });
 
   testWidgets('Next Asset returns to the scanner callback after saving a row', (
@@ -469,8 +469,7 @@ void main() {
       repository,
       onScanNextAsset: () => scanNextAssetCalled = true,
     );
-    await tester.tap(find.byKey(const Key('start-pm')));
-    await tester.pumpAndSettle();
+    await _openScannedInspection(tester, const Key('start-pm'));
     await scrollTo(tester, find.byKey(const Key('add-inspection-button')));
     await tester.tap(find.byKey(const Key('add-inspection-button')));
     await tester.pumpAndSettle();
@@ -480,6 +479,91 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(scanNextAssetCalled, isTrue);
+  });
+
+  testWidgets(
+    'two scanned assets append two bound rows to the same batch Draft',
+    (tester) async {
+      const secondAssetId = '77777777-7777-4777-8777-777777777777';
+      final repository = FakePreventiveMaintenanceRepository(
+        schedulesFuture: Future.value([
+          testSchedule(firstScheduleId, 'FE-001'),
+          testSchedule(secondScheduleId, 'FE-002', assetId: secondAssetId),
+        ]),
+      );
+      var scanNextAssetCalled = false;
+
+      await pumpScannedEntry(
+        tester,
+        repository,
+        onScanNextAsset: () => scanNextAssetCalled = true,
+      );
+      await _openScannedInspection(tester, const Key('start-pm'));
+      expect(find.text('Inspect FE-001'), findsOneWidget);
+      expect(find.textContaining('FE-002'), findsNothing);
+      expect(find.byKey(const Key('inspection-schedule')), findsNothing);
+      await scrollTo(tester, find.byKey(const Key('add-inspection-button')));
+      await tester.tap(find.byKey(const Key('add-inspection-button')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('sheet-next-asset')));
+      await tester.pumpAndSettle();
+
+      expect(scanNextAssetCalled, isTrue);
+      expect(repository.forms, hasLength(1));
+      expect(repository.forms.single.inspections, hasLength(1));
+      expect(
+        repository.forms.single.inspections.single.scheduleId,
+        firstScheduleId,
+      );
+
+      await pumpScannedEntry(
+        tester,
+        repository,
+        asset: testAsset(id: secondAssetId, assetCode: 'FE-002'),
+      );
+      await _openScannedInspection(tester, const Key('start-pm'));
+      await scrollTo(tester, find.text('Inspect FE-002'));
+      expect(find.text('Inspect FE-002'), findsOneWidget);
+      expect(find.text('Inspect FE-001'), findsNothing);
+      expect(find.byKey(const Key('inspection-schedule')), findsNothing);
+      await scrollTo(tester, find.byKey(const Key('add-inspection-button')));
+      await tester.tap(find.byKey(const Key('add-inspection-button')));
+      await tester.pumpAndSettle();
+
+      expect(repository.forms, hasLength(1));
+      expect(repository.forms.single.inspections.map((row) => row.scheduleId), [
+        firstScheduleId,
+        secondScheduleId,
+      ]);
+      expect(repository.addedInputs, hasLength(2));
+      expect(repository.addedInputs[0].scheduleId, firstScheduleId);
+      expect(repository.addedInputs[1].scheduleId, secondScheduleId);
+      expect(
+        repository.addedInputs.every(
+          (input) =>
+              input.locationAttemptId == 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+        ),
+        isTrue,
+      );
+    },
+  );
+
+  testWidgets('Draft review cannot manually attach an unscanned schedule', (
+    tester,
+  ) async {
+    final repository = FakePreventiveMaintenanceRepository(
+      forms: [testForm(id: formId)],
+    );
+
+    await pumpPage(tester, repository);
+    await tester.tap(find.byKey(Key('draft-form-$formId')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('inspection-schedule')), findsNothing);
+    expect(find.byKey(const Key('add-inspection-button')), findsNothing);
+    expect(find.byKey(const Key('scan-next-asset-guidance')), findsOneWidget);
+    expect(find.byKey(const Key('draft-scan-next-asset')), findsNothing);
+    expect(repository.addCallCount, 0);
   });
 
   test('multiple compatible Drafts require an explicit choice', () async {
@@ -770,12 +854,12 @@ void main() {
     );
 
     await pumpScannedEntry(tester, repository);
-    await tester.tap(find.byKey(const Key('start-pm')));
-    await tester.pumpAndSettle();
+    await _openScannedInspection(tester, const Key('start-pm'));
 
     expect(repository.createdInput, isNotNull);
     expect(repository.addCallCount, 0);
-    expect(find.byKey(const Key('inspection-schedule')), findsOneWidget);
+    expect(find.byKey(const Key('inspection-schedule')), findsNothing);
+    expect(find.text('Inspect FE-001'), findsOneWidget);
 
     await tester.pageBack();
     await tester.pumpAndSettle();
@@ -788,13 +872,11 @@ void main() {
   ) async {
     final repository = FakePreventiveMaintenanceRepository(
       forms: [testForm(id: formId)],
+      schedulesFuture: Future.value([testSchedule(firstScheduleId, 'FE-001')]),
     );
 
-    await pumpPage(tester, repository);
-    await tester.tap(find.byKey(Key('draft-form-$formId')));
-    await tester.pumpAndSettle();
-    await scrollTo(tester, find.byKey(const Key('inspection-schedule')));
-    await chooseDropdown(tester, const Key('inspection-schedule'), 'FE-001');
+    await pumpScannedEntry(tester, repository);
+    await _openScannedInspection(tester, const Key('start-pm'));
     await tester.enterText(
       find.byKey(const Key('new-inspection-date')),
       '2026-02-10T10:00:00Z',
@@ -822,9 +904,12 @@ void main() {
       ],
     );
 
-    await pumpPage(tester, repository);
-    await tester.tap(find.byKey(Key('draft-form-$formId')));
-    await tester.pumpAndSettle();
+    await pumpDraftEditor(
+      tester,
+      repository,
+      formId: formId,
+      preselectedScheduleId: firstScheduleId,
+    );
     await scrollTo(tester, find.byKey(const Key('submit-form-button')));
     await tester.tap(find.byKey(const Key('submit-form-button')));
     await tester.pumpAndSettle();
@@ -1203,15 +1288,20 @@ void main() {
       ]),
     );
 
-    await pumpPage(tester, repository);
-    await tester.tap(find.byKey(Key('draft-form-$formId')));
-    await tester.pumpAndSettle();
+    await pumpDraftEditor(
+      tester,
+      repository,
+      formId: formId,
+      preselectedScheduleId: firstScheduleId,
+    );
 
     expect(
       find.text('Water Drinking Station Preventive Maintenance Form'),
       findsOneWidget,
     );
-    await chooseDropdown(tester, const Key('inspection-schedule'), 'WDS-001');
+    expect(find.byKey(const Key('inspection-schedule')), findsNothing);
+    await scrollTo(tester, find.text('Inspect WDS-001'));
+    expect(find.text('Inspect WDS-001'), findsOneWidget);
     await tester.enterText(
       find.byKey(const Key('new-inspection-date-accomplished')),
       '2026-01-16',
@@ -1260,21 +1350,63 @@ Future<void> pumpScannedEntry(
   PmBatchScope? batchScope,
   VoidCallback? onScanNextAsset,
 }) async {
+  final scannedAsset = asset ?? testAsset();
   await tester.pumpWidget(
     MaterialApp(
       home: Scaffold(
         body: SingleChildScrollView(
           child: ScannedAssetPmEntry(
-            asset: asset ?? testAsset(),
+            key: ValueKey(scannedAsset.id),
+            asset: scannedAsset,
             repository: repository,
             user: user ?? testUser(),
             batchScope: batchScope,
             onScanNextAsset: onScanNextAsset,
+            locationCapture: InspectionLocationCapture(
+              platform: _GrantedDeviceLocationPlatform(),
+            ),
+            locationVerificationRepository:
+                _InsideLocationVerificationRepository(),
           ),
         ),
       ),
     ),
   );
+  await tester.pumpAndSettle();
+}
+
+Future<void> pumpDraftEditor(
+  WidgetTester tester,
+  FakePreventiveMaintenanceRepository repository, {
+  required String formId,
+  String? preselectedScheduleId,
+}) async {
+  final controller = PreventiveMaintenanceController(
+    repository: repository,
+    user: testUser(),
+  );
+  await controller.loadForms();
+  controller.selectForm(
+    controller.forms.singleWhere((form) => form.id == formId),
+  );
+  addTearDown(controller.dispose);
+  await tester.pumpWidget(
+    MaterialApp(
+      home: PreventiveMaintenanceDraftPage(
+        controller: controller,
+        formId: formId,
+        preselectedScheduleId: preselectedScheduleId,
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
+}
+
+Future<void> _openScannedInspection(WidgetTester tester, Key actionKey) async {
+  await tester.tap(find.byKey(actionKey));
+  await tester.pumpAndSettle();
+  expect(find.byKey(const Key('location-verification-dialog')), findsOneWidget);
+  await tester.tap(find.byKey(const Key('location-continue')));
   await tester.pumpAndSettle();
 }
 
@@ -1332,25 +1464,34 @@ PreventiveMaintenanceForm testForm({
   );
 }
 
-Asset testAsset({String status = 'Active'}) => Asset(
-  id: '88888888-8888-4888-8888-888888888888',
-  assetCode: 'FE-001',
+Asset testAsset({
+  String id = '88888888-8888-4888-8888-888888888888',
+  String assetCode = 'FE-001',
+  String status = 'Active',
+}) => Asset(
+  id: id,
+  assetCode: assetCode,
   assetCategory: 'fire-extinguisher',
   building: 'Main Building',
   department: 'GSD',
   location: 'Test Area',
-  qrCodeValue: 'UNIPM-FIREEXTINGUISHER-88888888',
+  qrCodeValue: 'UNIPM-$assetCode',
   status: status,
+  hasVerificationLocation: true,
 );
 
 PreventiveMaintenanceInspection testInspection({
   String id = firstInspectionId,
+  String? scheduleId,
+  String assetId = '88888888-8888-4888-8888-888888888888',
 }) {
   final now = DateTime.utc(2026, 1, 15);
   return PreventiveMaintenanceInspection(
     id: id,
-    scheduleId: id == firstInspectionId ? firstScheduleId : secondScheduleId,
-    assetId: '88888888-8888-4888-8888-888888888888',
+    scheduleId:
+        scheduleId ??
+        (id == firstInspectionId ? firstScheduleId : secondScheduleId),
+    assetId: assetId,
     inspectorUserId: inspectorId,
     dateInspected: now,
     isOperational: false,
@@ -1395,6 +1536,7 @@ class FakePreventiveMaintenanceRepository
   final ApiException? acknowledgementError;
   CreatePreventiveMaintenanceFormInput? createdInput;
   AddInspectionInput? addedInput;
+  final addedInputs = <AddInspectionInput>[];
   UpdateInspectionInput? updatedInput;
   String? deletedInspectionId;
   int addCallCount = 0;
@@ -1529,7 +1671,18 @@ class FakePreventiveMaintenanceRepository
   ) async {
     addCallCount++;
     addedInput = input;
-    final row = testInspection(id: secondInspectionId);
+    addedInputs.add(input);
+    final schedules = await listSchedules();
+    final schedule = schedules.singleWhere(
+      (candidate) => candidate.id == input.scheduleId,
+    );
+    final row = testInspection(
+      id: input.scheduleId == firstScheduleId
+          ? firstInspectionId
+          : secondInspectionId,
+      scheduleId: input.scheduleId,
+      assetId: schedule.assetId,
+    );
     final form = forms.singleWhere((candidate) => candidate.id == formId);
     forms = forms
         .map(
@@ -1581,12 +1734,13 @@ class FakePreventiveMaintenanceRepository
 ScheduleOption testSchedule(
   String id,
   String assetCode, {
+  String assetId = '88888888-8888-4888-8888-888888888888',
   String status = 'Due',
   String assetCategory = 'fire-extinguisher',
   String? assignedToUserId = inspectorId,
 }) => ScheduleOption(
   id: id,
-  assetId: '88888888-8888-4888-8888-888888888888',
+  assetId: assetId,
   scheduleDate: DateTime.utc(2026, 1, 10),
   periodType: 'Quarter',
   status: status,
@@ -1596,7 +1750,7 @@ ScheduleOption testSchedule(
   academicYear: '2026-2027',
   assignedToUserId: assignedToUserId,
   asset: ScheduleAssetOption(
-    id: '88888888-8888-4888-8888-888888888888',
+    id: assetId,
     assetCode: assetCode,
     assetCategory: assetCategory,
     building: 'Main Building',
@@ -1709,4 +1863,49 @@ class DraftTransportState {
       'location': 'Test Area',
     },
   };
+}
+
+class _GrantedDeviceLocationPlatform implements DeviceLocationPlatform {
+  @override
+  Future<bool> isLocationServiceEnabled() async => true;
+
+  @override
+  Future<DeviceLocationPermission> checkPermission() async =>
+      DeviceLocationPermission.granted;
+
+  @override
+  Future<DeviceLocationPermission> requestPermission() async =>
+      DeviceLocationPermission.granted;
+
+  @override
+  Future<DeviceLocationAccuracyMode> getAccuracyMode() async =>
+      DeviceLocationAccuracyMode.precise;
+
+  @override
+  Future<DeviceLocationCoordinates> getCurrentPosition({
+    required Duration timeout,
+  }) async => const DeviceLocationCoordinates(
+    latitude: 14.5995,
+    longitude: 120.9842,
+    accuracyMeters: 5,
+  );
+}
+
+class _InsideLocationVerificationRepository
+    implements LocationVerificationRepository {
+  @override
+  Future<LocationVerificationAttempt> createLocationVerificationAttempt(
+    String scheduleId, {
+    required double latitude,
+    required double longitude,
+    required bool hasAccuracy,
+    required double? accuracyMeters,
+    required DateTime? devicePositionTimestamp,
+    required bool isMocked,
+    required String accuracyMode,
+    required int acquisitionDurationMs,
+  }) async => const LocationVerificationAttempt(
+    id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+    outcome: LocationVerificationOutcome.inside,
+  );
 }

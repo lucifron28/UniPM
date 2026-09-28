@@ -20,4 +20,5 @@ export interface AssetResponse {
   status: string
   createdAt: string
   updatedAt: string
+  hasVerificationLocation: boolean
 }
