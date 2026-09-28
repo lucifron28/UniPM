@@ -1,0 +1,113 @@
+@page pm-dashboard-report {
+  size: A4 landscape;
+  margin: 10mm;
+}
+
+@media print {
+  body:has(.pm-dashboard-report) {
+    margin: 0 !important;
+    background: #fff !important;
+    color: #111 !important;
+  }
+
+  body:has(.pm-dashboard-report) div:has(> aside) {
+    display: block !important;
+    min-height: 0 !important;
+    background: #fff !important;
+  }
+
+  body:has(.pm-dashboard-report) aside,
+  body:has(.pm-dashboard-report) .min-w-0:has(> main) > :not(main) {
+    display: none !important;
+  }
+
+  body:has(.pm-dashboard-report) main {
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+  }
+
+  body:has(.pm-dashboard-report)
+    main
+    :is(
+      form,
+      button,
+      input,
+      select,
+      textarea,
+      datalist,
+      [role='combobox'],
+      [data-print-hide]
+    ),
+  body:has(.pm-dashboard-report) main div:has(> form),
+  body:has(.pm-dashboard-report) main div:has(> select),
+  body:has(.pm-dashboard-report) main div:has(> input),
+  body:has(.pm-dashboard-report) main fieldset:has(input, select, textarea) {
+    display: none !important;
+  }
+
+  .pm-dashboard-report {
+    page: pm-dashboard-report;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    color: #111 !important;
+    font-size: 8pt;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .pm-dashboard-report,
+  .pm-dashboard-report * {
+    box-sizing: border-box;
+    text-shadow: none !important;
+  }
+
+  .pm-dashboard-report [class*='overflow-x-auto'],
+  .pm-dashboard-report [class*='overflow-auto'],
+  .pm-dashboard-report [class*='overflow-hidden'] {
+    max-width: 100% !important;
+    overflow: visible !important;
+  }
+
+  .pm-dashboard-report table {
+    width: 100% !important;
+    max-width: 100% !important;
+    table-layout: fixed;
+    border-collapse: collapse;
+    font-size: 7pt;
+  }
+
+  .pm-dashboard-report th,
+  .pm-dashboard-report td {
+    min-width: 0 !important;
+    padding: 3pt !important;
+    overflow-wrap: anywhere;
+    white-space: normal !important;
+  }
+
+  .pm-dashboard-report thead {
+    display: table-header-group;
+  }
+
+  .pm-dashboard-report tfoot {
+    display: table-footer-group;
+  }
+
+  .pm-dashboard-report tr,
+  .pm-dashboard-report .grid > * {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .pm-dashboard-report :is(h1, h2, h3) {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  .pm-dashboard-report,
+  .pm-dashboard-report * {
+    box-shadow: none !important;
+  }
+}
