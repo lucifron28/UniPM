@@ -323,6 +323,7 @@ function BatchOverview({
                 <th
                   key={heading}
                   scope="col"
+                  data-print-hide={heading === 'Action' ? '' : undefined}
                   className="px-3 py-3 font-semibold text-[var(--text-primary)]"
                 >
                   {heading}
@@ -370,7 +371,7 @@ function BatchOverview({
                         )}
                   </p>
                 </td>
-                <td className="px-3 py-3">
+                <td data-print-hide className="px-3 py-3">
                   {batch.formId && batch.formStatus === 'Submitted' ? (
                     <Link
                       to="/app/preventive-maintenance-forms/$formId/review"
@@ -991,6 +992,51 @@ export function PmPeriodDashboard({
           </Card>
 
           <div className="pm-dashboard-report space-y-5">
+            {(search.condition || search.timeliness || search.search) && (
+              <Card className="hidden p-4 shadow-none sm:p-5 print:block">
+                <h3 className="text-sm font-semibold text-[var(--text-primary)]">
+                  Asset-list filters
+                </h3>
+                <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-3">
+                  {search.condition && (
+                    <div>
+                      <dt className="text-xs font-semibold text-[var(--text-neutral)]">
+                        Condition
+                      </dt>
+                      <dd className="mt-1 font-medium text-[var(--text-primary)]">
+                        {formatCondition(search.condition)}
+                      </dd>
+                    </div>
+                  )}
+                  {search.timeliness && (
+                    <div>
+                      <dt className="text-xs font-semibold text-[var(--text-neutral)]">
+                        Timeliness / status
+                      </dt>
+                      <dd className="mt-1 font-medium text-[var(--text-primary)]">
+                        {formatTimeliness(search.timeliness)}
+                      </dd>
+                    </div>
+                  )}
+                  {search.search && (
+                    <div>
+                      <dt className="text-xs font-semibold text-[var(--text-neutral)]">
+                        Search
+                      </dt>
+                      <dd className="mt-1 font-medium whitespace-pre-wrap text-[var(--text-primary)]">
+                        {search.search}
+                      </dd>
+                    </div>
+                  )}
+                </dl>
+                <p className="mt-3 text-xs text-[var(--text-secondary)]">
+                  Active filters narrow asset rows only. Metric totals use the
+                  selected asset category and PM cycle, plus Department when
+                  selected.
+                </p>
+              </Card>
+            )}
+
             <Card className="p-4 shadow-none sm:p-5">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="space-y-3">
