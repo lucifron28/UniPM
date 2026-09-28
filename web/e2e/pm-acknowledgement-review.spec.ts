@@ -229,11 +229,17 @@ test('demonstrates the submitted PM batch acknowledgement review workflow', asyn
 }) => {
   await mockApi(page)
 
-  // 1. Start at the PM dashboard and 2. confirm the submitted batch action.
+  // 1. Generate the PM dashboard and 2. confirm the submitted batch action.
   await page.goto('/app/dashboard')
   await expect(
-    page.getByRole('heading', { name: 'Preventive maintenance compliance' }),
+    page
+      .getByRole('heading', { name: 'Preventive Maintenance Dashboard' })
+      .first(),
   ).toBeVisible()
+  await page.getByRole('button', { name: 'Fire Extinguisher' }).click()
+  await page.getByRole('button', { name: '2026' }).click()
+  await page.getByRole('button', { name: /July 2026/ }).click()
+  await page.getByRole('button', { name: 'Generate dashboard' }).click()
   await expect(page.getByRole('link', { name: 'Review batch' })).toBeVisible()
 
   // 3. Open the exact Department + Category + PM cycle batch review.
