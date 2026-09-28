@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import {
   createMemoryHistory,
   createRootRoute,
@@ -86,12 +86,29 @@ function expectMetricLabel(label: string) {
   ).toBe(true)
 }
 
+function expectMetricValue(label: string, value: string) {
+  const labelElement = screen
+    .getAllByText(label, { exact: true })
+    .find((element) => element.tagName === 'P')
+
+  if (!labelElement?.parentElement) {
+    throw new Error(`Metric card not found: ${label}`)
+  }
+
+  expect(
+    within(labelElement.parentElement).getByText(value, { exact: true }),
+  ).toBeInTheDocument()
+}
+
 describe('PM period dashboard period terminology', () => {
   it('uses Remaining and not Not completed for Future periods', () => {
     renderState('Future')
 
     expectMetricLabel('Scheduled')
     expectMetricLabel('Remaining')
+    expectMetricValue('Scheduled', '5')
+    expectMetricValue('Remaining', '2')
+    expectMetricValue('On-time compliance', 'Not measurable yet')
     expect(
       screen.getByText('Not measurable yet', { exact: true }),
     ).toBeInTheDocument()
@@ -111,6 +128,8 @@ describe('PM period dashboard period terminology', () => {
 
     expectMetricLabel('Progress')
     expectMetricLabel('Remaining')
+    expectMetricValue('Progress', '60%')
+    expectMetricValue('Remaining', '2')
     expect(
       screen.getByText('Not measurable yet', { exact: true }),
     ).toBeInTheDocument()
@@ -131,6 +150,15 @@ describe('PM period dashboard period terminology', () => {
     expectMetricLabel('Completed on time')
     expectMetricLabel('Completed late')
     expectMetricLabel('Not completed')
+    expectMetricValue('Scheduled', '5')
+    expectMetricValue('Inspected', '3')
+    expectMetricValue('Completed on time', '2')
+    expectMetricValue('Completed late', '1')
+    expectMetricValue('Not completed', '1')
+    expectMetricValue('Remaining', '0')
+    expectMetricValue('Operational', '2')
+    expectMetricValue('Non-operational', '1')
+    expectMetricValue('On-time compliance', '50%')
     expect(screen.getByText('50%', { exact: true })).toBeInTheDocument()
     expect(
       screen.getByRole('columnheader', { name: 'Not completed' }),

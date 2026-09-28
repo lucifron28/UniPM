@@ -413,30 +413,129 @@ async function expectRequest(
     .toBe(true)
 }
 
+async function selectDashboardPeriod(page: Page, month: string) {
+  await page.getByRole('button', { name: /fire extinguishers?/i }).click()
+  await page.getByRole('button', { name: /^2026\b/ }).click()
+  await page
+    .getByRole('button', { name: new RegExp(`^${month}\\b`, 'i') })
+    .click()
+}
+
+async function generateDashboard(page: Page) {
+  await page.getByRole('button', { name: 'Generate dashboard' }).click()
+}
+
 test.describe('PM period dashboard', () => {
-  test('navigates category, year, period, and asset detail links', async ({
+  test('generates only after scope selection, then filters and prints the report', async ({
     page,
   }) => {
-    await mockDashboardApi(page)
+    const requests = await mockDashboardApi(page)
+    await page.addInitScript(() => {
+      window.print = () => {
+        document.documentElement.dataset.printInvoked = 'true'
+      }
+    })
     await page.goto('/app/dashboard')
 
     await expect(
-      page.getByRole('heading', { name: /Preventive maintenance compliance/ }),
+      page.getByRole('heading', { name: 'Preventive Maintenance Dashboard' }),
     ).toBeVisible()
-    await expect(page.locator('#pm-dashboard-cycle')).toHaveValue('2026-07')
-    await expect(page.locator('#pm-dashboard-cycle')).toContainText('July 2026')
+    await expect(
+      page.getByRole('button', { name: /fire extinguishers?/i }),
+    ).toBeVisible()
+    await expect(
+      page.getByRole('button', { name: 'Generate dashboard' }),
+    ).toBeDisabled()
+    await expect(
+      page.getByRole('group', { name: /choose a year/i }),
+    ).toHaveCount(0)
+    await expect(
+      page.getByRole('group', { name: /choose a scheduled month/i }),
+    ).toHaveCount(0)
+    expect(requests).toHaveLength(0)
+    expect(new URL(page.url()).searchParams.has('pmCycle')).toBe(false)
 
-    await page.locator('#pm-dashboard-category').selectOption('fire-alarm')
-    await expect(page).toHaveURL(/assetCategory=fire-alarm/)
-    await expect(page.locator('#pm-dashboard-cycle')).toHaveValue('2026-03')
+    await selectDashboardPeriod(page, 'June')
+    await page.getByRole('button', { name: /fire alarms?/i }).click()
+    await expect(
+      page.getByRole('group', { name: /choose a scheduled month/i }),
+    ).toHaveCount(0)
+    await expect(
+      page.getByRole('button', { name: 'Generate dashboard' }),
+    ).toBeDisabled()
+    await selectDashboardPeriod(page, 'June')
+    expect(requests).toHaveLength(0)
+    expect(new URL(page.url()).searchParams.has('assetCategory')).toBe(false)
+    expect(new URL(page.url()).searchParams.has('year')).toBe(false)
+    expect(new URL(page.url()).searchParams.has('pmCycle')).toBe(false)
 
-    await page
-      .locator('#pm-dashboard-category')
-      .selectOption('fire-extinguisher')
-    await page.locator('#pm-dashboard-year').selectOption('2025')
-    await expect(page.locator('#pm-dashboard-cycle')).toHaveValue('2025-12')
-    await page.locator('#pm-dashboard-year').selectOption('2026')
-    await page.locator('#pm-dashboard-cycle').selectOption('2026-07')
+    await generateDashboard(page)
+    await expectRequest(requests, {
+      assetCategory: 'fire-extinguisher',
+      pmCycle: '2026-06',
+    })
+    await expect
+      .poll(() => {
+        const url = new URL(page.url())
+        return [
+          url.searchParams.get('assetCategory'),
+          url.searchParams.get('year'),
+          url.searchParams.get('pmCycle'),
+        ]
+      })
+      .toEqual(['fire-extinguisher', '2026', '2026-06'])
+
+    const report = page.locator('.pm-dashboard-report')
+    await expect(report).toBeVisible()
+    await expect(metricCard(page, 'Scheduled')).toContainText('3')
+    await expect(metricCard(page, 'Inspected')).toContainText('2')
+    await expect(metricCard(page, 'Completed on time')).toContainText('1')
+    await expect(metricCard(page, 'Completed late')).toContainText('1')
+
+    await page.getByLabel('Department').selectOption('OPS')
+    await expectRequest(requests, {
+      assetCategory: 'fire-extinguisher',
+      pmCycle: '2026-06',
+      department: 'OPS',
+    })
+    await expect(metricCard(page, 'Scheduled')).toContainText('2')
+    await expect(metricCard(page, 'Inspected')).toContainText('1')
+    await expect(metricCard(page, 'Completed late')).toContainText('1')
+
+    await page.getByRole('button', { name: 'Export dashboard' }).click()
+    await expect(page.locator('html')).toHaveAttribute(
+      'data-print-invoked',
+      'true',
+    )
+    await expect(report).toContainText('Scheduled')
+    await expect(report).toContainText('FE-002')
+    await expect(report).toContainText('UniPM')
+    await expect(report).toContainText('June 2026')
+    await expect(report).toContainText('OPS')
+    await page.emulateMedia({ media: 'print' })
+    await expect(page.locator('#dashboard-title')).toBeHidden()
+    await expect(
+      page.getByRole('button', {
+        name: 'Export dashboard',
+        includeHidden: true,
+      }),
+    ).toBeHidden()
+    await expect(report).toBeVisible()
+  })
+
+  test('loads a valid scope URL directly and keeps asset detail links navigable', async ({
+    page,
+  }) => {
+    const requests = await mockDashboardApi(page)
+    await page.goto(
+      '/app/dashboard?assetCategory=fire-extinguisher&year=2026&pmCycle=2026-07',
+    )
+    await expectRequest(requests, {
+      assetCategory: 'fire-extinguisher',
+      pmCycle: '2026-07',
+    })
+    await expect(page.locator('.pm-dashboard-report')).toBeVisible()
+    await expect(metricCard(page, 'Scheduled')).toContainText('4')
 
     const assetLink = page.getByRole('link', { name: 'FE-001' }).first()
     await expect(assetLink).toHaveAttribute(
@@ -448,70 +547,18 @@ test.describe('PM period dashboard', () => {
     await expect(page.getByRole('heading', { name: 'FE-001' })).toBeVisible()
   })
 
-  test('keeps official metrics scoped while table filters change', async ({
-    page,
-  }) => {
-    const requests = await mockDashboardApi(page)
-    await page.goto('/app/dashboard')
-    await page.locator('#pm-dashboard-cycle').selectOption('2026-06')
-    await expect(
-      page.getByText('Active', { exact: true }).first(),
-    ).toBeVisible()
-
-    await page.locator('#pm-dashboard-department').fill('OPS')
-    await page.getByRole('button', { name: 'Apply filters' }).click()
-    await expectRequest(requests, {
-      pmCycle: '2026-06',
-      department: 'OPS',
-    })
-    await expect(metricCard(page, 'Scheduled')).toContainText('2')
-
-    await page.locator('#pm-dashboard-condition').selectOption('Operational')
-    await expectRequest(requests, {
-      pmCycle: '2026-06',
-      department: 'OPS',
-      condition: 'Operational',
-    })
-    await expect(metricCard(page, 'Scheduled')).toContainText('2')
-
-    await page.locator('#pm-dashboard-timeliness').selectOption('Pending')
-    await expectRequest(requests, {
-      pmCycle: '2026-06',
-      department: 'OPS',
-      condition: 'Operational',
-      timeliness: 'Pending',
-    })
-    await expect(metricCard(page, 'Scheduled')).toContainText('2')
-
-    await page.locator('#pm-dashboard-search').fill('FE-003')
-    await page.getByRole('button', { name: 'Apply filters' }).click()
-    await expectRequest(requests, {
-      pmCycle: '2026-06',
-      department: 'OPS',
-      condition: 'Operational',
-      timeliness: 'Pending',
-      search: 'FE-003',
-    })
-    await expect(metricCard(page, 'Scheduled')).toContainText('2')
-    await expect(assetTable(page).locator('tbody tr')).toHaveCount(1)
-    await expect(assetTable(page).getByText('FE-003')).toBeVisible()
-
-    await page.getByRole('button', { name: 'Clear filters' }).click()
-    await expect(page.locator('#pm-dashboard-department')).toHaveValue('')
-    await expect(page.locator('#pm-dashboard-condition')).toHaveValue('')
-    await expect(page.locator('#pm-dashboard-timeliness')).toHaveValue('')
-    await expect(page.locator('#pm-dashboard-search')).toHaveValue('')
-    await expect(metricCard(page, 'Scheduled')).toContainText('3')
-    await expect(assetTable(page).locator('tbody tr')).toHaveCount(3)
-  })
-
   test('presents Future, Active, and Closed states and contains tables on mobile', async ({
     page,
   }) => {
-    await mockDashboardApi(page)
-    await page.goto('/app/dashboard')
-
-    await page.locator('#pm-dashboard-cycle').selectOption('2026-01')
+    const requests = await mockDashboardApi(page)
+    await page.goto(
+      '/app/dashboard?assetCategory=fire-extinguisher&year=2026&pmCycle=2026-01',
+    )
+    await expectRequest(requests, {
+      assetCategory: 'fire-extinguisher',
+      pmCycle: '2026-01',
+    })
+    await expect(page.locator('.pm-dashboard-report')).toBeVisible()
     await expect(
       page.getByText('Future', { exact: true }).first(),
     ).toBeVisible()
@@ -536,7 +583,15 @@ test.describe('PM period dashboard', () => {
       page.locator('p').filter({ hasText: /^Operational$/ }),
     ).toHaveCount(0)
 
-    await page.locator('#pm-dashboard-cycle').selectOption('2026-06')
+    const futureRequestCount = requests.length
+    await page.getByRole('button', { name: 'Change selection' }).click()
+    await selectDashboardPeriod(page, 'June')
+    expect(requests).toHaveLength(futureRequestCount)
+    await generateDashboard(page)
+    await expectRequest(requests, {
+      assetCategory: 'fire-extinguisher',
+      pmCycle: '2026-06',
+    })
     await expect(
       page.getByText('Active', { exact: true }).first(),
     ).toBeVisible()
@@ -562,7 +617,15 @@ test.describe('PM period dashboard', () => {
       page.getByText('No completed inspection results yet', { exact: true }),
     ).toHaveCount(0)
 
-    await page.locator('#pm-dashboard-cycle').selectOption('2026-07')
+    const activeRequestCount = requests.length
+    await page.getByRole('button', { name: 'Change selection' }).click()
+    await selectDashboardPeriod(page, 'July')
+    expect(requests).toHaveLength(activeRequestCount)
+    await generateDashboard(page)
+    await expectRequest(requests, {
+      assetCategory: 'fire-extinguisher',
+      pmCycle: '2026-07',
+    })
     await expect(
       page.getByText('Closed', { exact: true }).first(),
     ).toBeVisible()
