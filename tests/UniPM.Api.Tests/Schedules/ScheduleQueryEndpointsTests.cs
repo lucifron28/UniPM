@@ -8,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using UniPM.Api.Data;
 using UniPM.Api.Features.Auth;
+using UniPM.Api.Models;
 
 namespace UniPM.Api.Tests;
 
@@ -123,6 +124,102 @@ public sealed class ScheduleQueryEndpointsTests
 
         Assert.Equal(HttpStatusCode.BadRequest, statusResponse.StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, quarterResponse.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("Inactive")]
+    [InlineData("Retired")]
+    public async Task Create_schedule_rejects_non_active_asset(string status)
+    {
+        await using var application = new TestApplicationFactory();
+        var client = application.CreateClient();
+        var asset = await CreateAssetAsync(client, $"FE-{status}", "fire-extinguisher");
+        await using (var context = await application.Services
+            .GetRequiredService<IDbContextFactory<ApplicationDbContext>>().CreateDbContextAsync())
+        {
+            var stored = await context.Assets.SingleAsync(candidate => candidate.Id == asset.Id);
+            stored.Status = status;
+            await context.SaveChangesAsync();
+        }
+
+        var response = await client.PostAsJsonAsync("/api/v1/schedules/", new
+        {
+            assetId = asset.Id,
+            scheduleDate = new DateTimeOffset(2026, 9, 1, 0, 0, 0, TimeSpan.FromHours(8)),
+            periodType = "Quarter"
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>();
+        Assert.NotNull(problem);
+        Assert.Contains("AssetId", problem.Errors.Keys);
+    }
+
+    [Fact]
+    public async Task Create_schedule_rejects_legacy_asset_without_department()
+    {
+        await using var application = new TestApplicationFactory();
+        var client = application.CreateClient();
+        var assetId = Guid.NewGuid();
+        await using (var context = await application.Services
+            .GetRequiredService<IDbContextFactory<ApplicationDbContext>>().CreateDbContextAsync())
+        {
+            context.Assets.Add(new Asset
+            {
+                Id = assetId,
+                AssetCode = "FE-LEGACY",
+                AssetCategory = "fire-extinguisher",
+                Status = "Active"
+            });
+            await context.SaveChangesAsync();
+        }
+
+        var response = await client.PostAsJsonAsync("/api/v1/schedules/", new
+        {
+            assetId,
+            scheduleDate = new DateTimeOffset(2026, 9, 1, 0, 0, 0, TimeSpan.FromHours(8)),
+            periodType = "Quarter"
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>();
+        Assert.NotNull(problem);
+        Assert.Contains("AssetId", problem.Errors.Keys);
+    }
+
+    [Fact]
+    public async Task Create_schedule_derives_year_and_quarter_and_rejects_conflicting_values()
+    {
+        await using var application = new TestApplicationFactory();
+        var client = application.CreateClient();
+        var asset = await CreateAssetAsync(client, "FE-TEMPORAL", "fire-extinguisher");
+        var scheduleDate = new DateTimeOffset(2027, 1, 1, 0, 30, 0, TimeSpan.FromHours(14));
+
+        var created = await client.PostAsJsonAsync("/api/v1/schedules/", new
+        {
+            assetId = asset.Id,
+            scheduleDate,
+            periodType = "Quarter"
+        });
+        created.EnsureSuccessStatusCode();
+        var schedule = await created.Content.ReadFromJsonAsync<ScheduleResponse>();
+        Assert.NotNull(schedule);
+        Assert.Equal(2026, schedule.Year);
+        Assert.Equal("Q4", schedule.Quarter);
+
+        var conflicting = await client.PostAsJsonAsync("/api/v1/schedules/", new
+        {
+            assetId = asset.Id,
+            scheduleDate,
+            periodType = "Quarter",
+            year = 2027,
+            quarter = "Q1"
+        });
+        Assert.Equal(HttpStatusCode.BadRequest, conflicting.StatusCode);
+        var problem = await conflicting.Content.ReadFromJsonAsync<ValidationProblemDetails>();
+        Assert.NotNull(problem);
+        Assert.Contains("Year", problem.Errors.Keys);
+        Assert.Contains("Quarter", problem.Errors.Keys);
     }
 
     private static async Task<AssetResponse> CreateAssetAsync(

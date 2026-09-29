@@ -384,6 +384,11 @@ public class CreateAssetDto
                 ["Asset category must be one of the selected UniPM study scope categories."]);
         }
 
+        if (string.IsNullOrWhiteSpace(Department))
+        {
+            errors.Add(nameof(Department), ["Department is required for preventive maintenance assets."]);
+        }
+
         ValidateOptionalLength(Building, nameof(Building), AssetCodeValue.MetadataMaxLength, errors);
         ValidateOptionalLength(Department, nameof(Department), AssetCodeValue.MetadataMaxLength, errors);
         ValidateOptionalLength(Location, nameof(Location), AssetCodeValue.MetadataMaxLength, errors);

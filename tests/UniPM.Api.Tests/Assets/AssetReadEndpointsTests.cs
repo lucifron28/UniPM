@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -58,10 +59,30 @@ public sealed class AssetReadEndpointsTests
         var response = await client.PostAsJsonAsync("/api/v1/assets/", new
         {
             assetCode = " fe-101 ",
-            assetCategory = "fire-extinguisher"
+            assetCategory = "fire-extinguisher",
+            department = "GSD"
         });
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Create_asset_requires_department_for_preventive_maintenance()
+    {
+        await using var application = new TestApplicationFactory();
+        var client = application.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/api/v1/assets/", new
+        {
+            assetCode = "FE-NO-DEPT",
+            assetCategory = "fire-extinguisher",
+            department = "  "
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>();
+        Assert.NotNull(problem);
+        Assert.Contains("Department", problem.Errors.Keys);
     }
 
     [Fact]
