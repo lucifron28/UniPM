@@ -143,6 +143,11 @@ public sealed class PreventiveMaintenanceFormDraftEndpointsTests
         Assert.Equal(ScheduleStatusCatalog.Completed, completedSchedule.Status);
         Assert.Equal(row.CompletedAt, completedSchedule.CompletedAt);
 
+        var scheduleToDelete = await context.PreventiveMaintenanceSchedules
+            .SingleAsync(candidate => candidate.Id == fireExtinguisherSchedule.Id);
+        scheduleToDelete.ScheduleDate = DateTimeOffset.UtcNow.AddDays(1);
+        await context.SaveChangesAsync();
+
         var delete = await client.DeleteAsync(
             $"/api/v1/preventive-maintenance-forms/{form.Id}/inspections/{row.Id}");
         Assert.Equal(HttpStatusCode.NoContent, delete.StatusCode);
@@ -150,6 +155,73 @@ public sealed class PreventiveMaintenanceFormDraftEndpointsTests
             .AsNoTracking()
             .SingleAsync(candidate => candidate.Id == fireExtinguisherSchedule.Id);
         Assert.Equal(ScheduleStatusCatalog.Due, restoredSchedule.Status);
+        Assert.Null(restoredSchedule.CompletedAt);
+    }
+
+    [Fact]
+    public async Task Updating_a_draft_row_preserves_its_inspector_identity()
+    {
+        await using var application = new TestApplicationFactory();
+        using var client = application.CreateClient();
+        await application.EnsureAuthenticatedUserAsync();
+        var asset = await CreateAssetAsync(client, "FE-FORM-UPDATE-IDENTITY-001", "fire-extinguisher");
+        var schedule = await CreateScheduleAsync(client, asset.Id, 1);
+        var form = await CreateFormAsync(client, asset.AssetCategory);
+        var row = await AddInspectionRowAsync(client, form.Id, schedule.Id, "Original draft row");
+
+        var update = await client.PutAsJsonAsync(
+            $"/api/v1/preventive-maintenance-forms/{form.Id}/inspections/{row.Id}",
+            new
+            {
+                inspectorUserId = Guid.NewGuid(),
+                dateInspected = new DateTimeOffset(2026, 1, 15, 8, 0, 0, TimeSpan.FromHours(8)),
+                isOperational = true,
+                remarks = "Updated draft row",
+                actionsRecommendations = "Updated recommendation"
+            });
+
+        Assert.Equal(HttpStatusCode.OK, update.StatusCode);
+        var updatedRow = await update.Content.ReadFromJsonAsync<DraftInspectionRowResponse>();
+        Assert.NotNull(updatedRow);
+        Assert.Equal(row.InspectorUserId, updatedRow.InspectorUserId);
+        Assert.Equal("Updated draft row", updatedRow.Remarks);
+
+        await using var scope = application.Services.CreateAsyncScope();
+        var factory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
+        await using var context = await factory.CreateDbContextAsync();
+        var persistedRow = await context.InspectionRecords
+            .AsNoTracking()
+            .SingleAsync(candidate => candidate.Id == row.Id);
+        Assert.Equal(row.InspectorUserId, persistedRow.InspectorUserId);
+    }
+
+    [Fact]
+    public async Task Deleting_a_draft_row_restores_overdue_schedule_status()
+    {
+        await using var application = new TestApplicationFactory();
+        using var client = application.CreateClient();
+        await application.EnsureAuthenticatedUserAsync();
+        var asset = await CreateAssetAsync(client, "FE-FORM-DELETE-OVERDUE-001", "fire-extinguisher");
+        var schedule = await CreateScheduleAsync(client, asset.Id, 1);
+        var form = await CreateFormAsync(client, asset.AssetCategory);
+        var row = await AddInspectionRowAsync(client, form.Id, schedule.Id, "Draft row to delete");
+
+        await using var scope = application.Services.CreateAsyncScope();
+        var factory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
+        await using var context = await factory.CreateDbContextAsync();
+        var scheduleToDelete = await context.PreventiveMaintenanceSchedules
+            .SingleAsync(candidate => candidate.Id == schedule.Id);
+        scheduleToDelete.ScheduleDate = DateTimeOffset.UtcNow.AddDays(-1);
+        await context.SaveChangesAsync();
+
+        var delete = await client.DeleteAsync(
+            $"/api/v1/preventive-maintenance-forms/{form.Id}/inspections/{row.Id}");
+
+        Assert.Equal(HttpStatusCode.NoContent, delete.StatusCode);
+        var restoredSchedule = await context.PreventiveMaintenanceSchedules
+            .AsNoTracking()
+            .SingleAsync(candidate => candidate.Id == schedule.Id);
+        Assert.Equal(ScheduleStatusCatalog.Overdue, restoredSchedule.Status);
         Assert.Null(restoredSchedule.CompletedAt);
     }
 
@@ -303,17 +375,49 @@ public sealed class PreventiveMaintenanceFormDraftEndpointsTests
         await using var application = new TestApplicationFactory();
         using var client = application.CreateClient();
         await application.EnsureAuthenticatedUserAsync();
-        var asset = await CreateAssetAsync(
-            client,
-            "FE-FORM-NO-DEPARTMENT-001",
-            "fire-extinguisher",
-            department: null);
-        var schedule = await CreateScheduleAsync(client, asset.Id, 1);
-        var form = await CreateFormAsync(client, asset.AssetCategory);
+        var assetId = Guid.NewGuid();
+        await using (var seedScope = application.Services.CreateAsyncScope())
+        {
+            var seedContextFactory = seedScope.ServiceProvider
+                .GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
+            await using var seedContext = await seedContextFactory.CreateDbContextAsync();
+            seedContext.Assets.Add(new Asset
+            {
+                Id = assetId,
+                AssetCode = "FE-FORM-NO-DEPARTMENT-001",
+                AssetCategory = "fire-extinguisher",
+                Building = "Main Building",
+                Department = null,
+                Location = "Test Area",
+                Status = "Active"
+            });
+            await seedContext.SaveChangesAsync();
+        }
+
+        var scheduleId = Guid.NewGuid();
+        await using (var scheduleSeedScope = application.Services.CreateAsyncScope())
+        {
+            var scheduleSeedFactory = scheduleSeedScope.ServiceProvider
+                .GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
+            await using var scheduleSeedContext = await scheduleSeedFactory.CreateDbContextAsync();
+            scheduleSeedContext.PreventiveMaintenanceSchedules.Add(new PreventiveMaintenanceSchedule
+            {
+                Id = scheduleId,
+                AssetId = assetId,
+                ScheduleDate = new DateTimeOffset(2026, 1, 10, 8, 0, 0, TimeSpan.FromHours(8)),
+                PeriodType = "Quarter",
+                Quarter = "Q1",
+                Year = 2026,
+                Status = ScheduleStatusCatalog.Due
+            });
+            await scheduleSeedContext.SaveChangesAsync();
+        }
+
+        var form = await CreateFormAsync(client, "fire-extinguisher");
 
         var response = await client.PostAsJsonAsync(
             $"/api/v1/preventive-maintenance-forms/{form.Id}/inspections",
-            DraftInspectionRequest(schedule.Id, "Department-less asset row"));
+            DraftInspectionRequest(scheduleId, "Department-less asset row"));
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
@@ -322,7 +426,7 @@ public sealed class PreventiveMaintenanceFormDraftEndpointsTests
         await using var context = await contextFactory.CreateDbContextAsync();
         var persistedSchedule = await context.PreventiveMaintenanceSchedules
             .AsNoTracking()
-            .SingleAsync(candidate => candidate.Id == schedule.Id);
+            .SingleAsync(candidate => candidate.Id == scheduleId);
         var persistedForm = await context.PreventiveMaintenanceForms
             .AsNoTracking()
             .Include(candidate => candidate.Inspections)
@@ -1034,7 +1138,6 @@ public sealed class PreventiveMaintenanceFormDraftEndpointsTests
     {
         return new
         {
-            inspectorUserId = TestAuthenticationHandler.UserId,
             dateInspected = new DateTimeOffset(2026, 1, 15, 8, 0, 0, TimeSpan.FromHours(8)),
             isOperational = false,
             remarks,

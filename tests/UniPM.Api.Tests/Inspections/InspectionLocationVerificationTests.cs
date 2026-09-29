@@ -230,6 +230,7 @@ public sealed class InspectionLocationVerificationTests
         var inspection = await context.InspectionRecords.SingleAsync(row => row.ScheduleId == firstSchedule.Id);
         Assert.Equal(attempt.Id, inspection.LocationAttemptId);
         var persistedAttempt = await context.InspectionLocationAttempts.SingleAsync(row => row.Id == attempt.Id);
+        Assert.Equal(TestAuthenticationHandler.UserId, persistedAttempt.ActorUserId);
         Assert.Equal(0, persistedAttempt.ExpectedLatitude);
         Assert.Equal(0, persistedAttempt.ExpectedLongitude);
         Assert.Equal(100, persistedAttempt.ExpectedRadiusMeters);
@@ -244,6 +245,27 @@ public sealed class InspectionLocationVerificationTests
             (await context.PreventiveMaintenanceSchedules.SingleAsync(row => row.Id == firstSchedule.Id)).Status);
         Assert.Equal(ScheduleStatusCatalog.Due,
             (await context.PreventiveMaintenanceSchedules.SingleAsync(row => row.Id == secondSchedule.Id)).Status);
+
+        inspection.InspectorUserId = otherInspectorId;
+        persistedAttempt.ActorUserId = otherInspectorId;
+        await context.SaveChangesAsync();
+
+        var editAsGsd = await client.PutAsJsonAsync(
+            $"/api/v1/preventive-maintenance-forms/{form.Id}/inspections/{inspection.Id}",
+            new
+            {
+                inspectorUserId = TestAuthenticationHandler.UserId,
+                dateInspected = inspection.DateInspected,
+                isOperational = false,
+                remarks = "Edited by GSD"
+            });
+        Assert.Equal(HttpStatusCode.OK, editAsGsd.StatusCode);
+        var updated = await context.InspectionRecords.AsNoTracking()
+            .SingleAsync(row => row.Id == inspection.Id);
+        var linkedAttempt = await context.InspectionLocationAttempts.AsNoTracking()
+            .SingleAsync(row => row.Id == attempt.Id);
+        Assert.Equal(otherInspectorId, updated.InspectorUserId);
+        Assert.Equal(updated.InspectorUserId, linkedAttempt.ActorUserId);
     }
 
     [Fact]
