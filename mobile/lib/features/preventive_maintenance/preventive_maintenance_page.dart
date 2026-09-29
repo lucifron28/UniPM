@@ -14,6 +14,49 @@ enum PreventiveMaintenanceDraftAction { scanNextAsset }
 String _formStatusLabel(String status) =>
     status == 'Submitted' ? 'Awaiting acknowledgement' : status;
 
+String? _canonicalPmCycleForForm(
+  PreventiveMaintenanceForm form,
+  Map<String, ScheduleOption> scheduleById,
+) {
+  final persistedCycle = form.pmCycle?.trim();
+  if (persistedCycle != null && persistedCycle.isNotEmpty) {
+    return persistedCycle;
+  }
+  if (form.inspections.isEmpty) return null;
+
+  final cycles = <String>{};
+  for (final inspection in form.inspections) {
+    final schedule = scheduleById[inspection.scheduleId];
+    if (schedule == null) return null;
+    cycles.add(schedule.canonicalPmCycle.toLowerCase());
+  }
+  return cycles.length == 1 ? cycles.single : null;
+}
+
+bool _matchesCanonicalPmBatch(
+  PreventiveMaintenanceForm form,
+  ScheduleOption schedule,
+  String pmCycle,
+) {
+  final asset = schedule.asset;
+  final formDepartment = form.department?.trim();
+  final assetDepartment = asset?.department?.trim();
+  if (asset == null ||
+      formDepartment == null ||
+      formDepartment.isEmpty ||
+      assetDepartment == null ||
+      assetDepartment.isEmpty) {
+    return false;
+  }
+
+  return _sameBatchText(form.assetCategory, asset.assetCategory) &&
+      _sameBatchText(formDepartment, assetDepartment) &&
+      _sameBatchText(pmCycle, schedule.canonicalPmCycle);
+}
+
+bool _sameBatchText(String left, String right) =>
+    left.trim().toLowerCase() == right.trim().toLowerCase();
+
 class PreventiveMaintenancePage extends StatefulWidget {
   const PreventiveMaintenancePage({
     super.key,
@@ -593,11 +636,27 @@ class _PreventiveMaintenanceDraftPageState
     String? scheduleError,
   ) {
     final canEdit = form.isDraft;
-    final allBatchSchedules = schedules
-        .where(
-          (schedule) => schedule.status.trim().toLowerCase() != 'cancelled',
-        )
+    final scheduleById = <String, ScheduleOption>{
+      for (final schedule in schedules) schedule.id: schedule,
+    };
+    final preselectedSchedule = widget.preselectedScheduleId == null
+        ? null
+        : scheduleById[widget.preselectedScheduleId];
+    final canonicalBatchCycle =
+        _canonicalPmCycleForForm(form, scheduleById) ??
+        (form.inspections.isEmpty
+            ? preselectedSchedule?.canonicalPmCycle
+            : null);
+    final matchingBatchSchedules = schedules
         .where((schedule) {
+          if (canonicalBatchCycle != null) {
+            return _matchesCanonicalPmBatch(
+              form,
+              schedule,
+              canonicalBatchCycle,
+            );
+          }
+          if (form.inspections.isNotEmpty) return false;
           try {
             return PreventiveMaintenanceGrouping.fromSchedule(
               schedule,
@@ -607,7 +666,37 @@ class _PreventiveMaintenanceDraftPageState
           }
         })
         .toList(growable: false);
-    final unattachedSchedules = allBatchSchedules
+    final batchGroupResolved =
+        canonicalBatchCycle != null &&
+        form.inspections.every((inspection) {
+          final schedule = scheduleById[inspection.scheduleId];
+          return schedule != null &&
+              !schedule.isCancelled &&
+              _matchesCanonicalPmBatch(form, schedule, canonicalBatchCycle);
+        });
+    final fieldWorkSchedules = matchingBatchSchedules
+        .where((schedule) => schedule.isEligibleForFieldWork)
+        .toList(growable: false);
+    final existingScheduleIds = form.inspections
+        .where(
+          (inspection) =>
+              scheduleById[inspection.scheduleId]?.isCancelled != true,
+        )
+        .map((inspection) => inspection.scheduleId)
+        .toSet();
+    final eligibleScheduleIds = <String>{
+      ...matchingBatchSchedules
+          .where((schedule) => !schedule.isCancelled)
+          .map((schedule) => schedule.id),
+    };
+    final completedWithoutDraftCount = matchingBatchSchedules
+        .where(
+          (schedule) =>
+              schedule.isCompleted &&
+              !existingScheduleIds.contains(schedule.id),
+        )
+        .length;
+    final unattachedSchedules = fieldWorkSchedules
         .where(
           (schedule) => !form.inspections.any(
             (inspection) => inspection.scheduleId == schedule.id,
@@ -621,9 +710,6 @@ class _PreventiveMaintenanceDraftPageState
           orElse: () => null,
         );
     final displayedInspections = [...form.inspections];
-    final scheduleById = <String, ScheduleOption>{
-      for (final schedule in schedules) schedule.id: schedule,
-    };
     final focusedInspectionId = widget.focusedInspectionId;
     if (focusedInspectionId != null) {
       displayedInspections.sort((left, right) {
@@ -712,7 +798,7 @@ class _PreventiveMaintenanceDraftPageState
               final ok = await widget.controller.addInspection(input);
               if (ok && mounted) {
                 final currentForm = widget.controller.selectedForm;
-                final sched = allBatchSchedules
+                final sched = matchingBatchSchedules
                     .cast<ScheduleOption?>()
                     .firstWhere(
                       (s) => s?.id == input.scheduleId,
@@ -731,12 +817,37 @@ class _PreventiveMaintenanceDraftPageState
                     currentForm?.assetCategory ??
                     sched?.asset?.assetCategory ??
                     'Category';
-                final cycle =
-                    currentForm?.pmCycle ?? sched?.pmCycle ?? 'Current';
-                final completedCount = currentForm?.inspections.length ?? 1;
-                final totalCount = allBatchSchedules.isNotEmpty
-                    ? allBatchSchedules.length
-                    : completedCount;
+                final cycle = currentForm?.pmCycle?.trim().isNotEmpty == true
+                    ? currentForm!.pmCycle!.trim()
+                    : sched?.canonicalPmCycle ?? 'Current';
+                final progressForm = currentForm ?? form;
+                final progressCycle =
+                    _canonicalPmCycleForForm(progressForm, scheduleById) ??
+                    sched?.canonicalPmCycle;
+                final progressScheduleIds = progressCycle == null
+                    ? <String>{}
+                    : schedules
+                          .where(
+                            (candidate) =>
+                                !candidate.isCancelled &&
+                                _matchesCanonicalPmBatch(
+                                  progressForm,
+                                  candidate,
+                                  progressCycle,
+                                ),
+                          )
+                          .map((candidate) => candidate.id)
+                          .toSet();
+                final inspectionScheduleIds =
+                    currentForm?.inspections
+                        .where((inspection) => inspection.completedAt != null)
+                        .map((inspection) => inspection.scheduleId)
+                        .toSet() ??
+                    <String>{};
+                final completedCount = inspectionScheduleIds
+                    .intersection(progressScheduleIds)
+                    .length;
+                final totalCount = progressScheduleIds.length;
 
                 await InspectionCompletionSheet.show(
                   this.context,
@@ -811,7 +922,6 @@ class _PreventiveMaintenanceDraftPageState
             schedule: scheduleById[row.scheduleId],
             form: form,
             highlighted: row.id == focusedInspectionId,
-            inspectorUserId: widget.controller.user.id,
             isSaving: widget.controller.isSaving,
             editable: canEdit,
             onSave: (input) =>
@@ -824,6 +934,16 @@ class _PreventiveMaintenanceDraftPageState
           _SubmitFormCard(
             hasRows: form.inspections.isNotEmpty,
             isSaving: widget.controller.isSaving,
+            scheduleListAvailable: scheduleError == null,
+            batchGroupResolved: batchGroupResolved,
+            completedScheduleCount: form.inspections
+                .where((inspection) => inspection.completedAt != null)
+                .map((inspection) => inspection.scheduleId)
+                .toSet()
+                .intersection(eligibleScheduleIds)
+                .length,
+            eligibleScheduleCount: eligibleScheduleIds.length,
+            completedWithoutDraftCount: completedWithoutDraftCount,
             onSubmit: _confirmSubmit,
           ),
         ],
@@ -1224,7 +1344,6 @@ class _InspectionRowEditor extends StatefulWidget {
     required this.form,
     this.schedule,
     required this.highlighted,
-    required this.inspectorUserId,
     required this.isSaving,
     required this.editable,
     required this.onSave,
@@ -1236,7 +1355,6 @@ class _InspectionRowEditor extends StatefulWidget {
   final PreventiveMaintenanceForm form;
   final ScheduleOption? schedule;
   final bool highlighted;
-  final String inspectorUserId;
   final bool isSaving;
   final bool editable;
   final Future<bool> Function(UpdateInspectionInput input) onSave;
@@ -1250,12 +1368,29 @@ class _SubmitFormCard extends StatelessWidget {
   const _SubmitFormCard({
     required this.hasRows,
     required this.isSaving,
+    required this.scheduleListAvailable,
+    required this.batchGroupResolved,
+    required this.completedScheduleCount,
+    required this.eligibleScheduleCount,
+    required this.completedWithoutDraftCount,
     required this.onSubmit,
   });
 
   final bool hasRows;
   final bool isSaving;
+  final bool scheduleListAvailable;
+  final bool batchGroupResolved;
+  final int completedScheduleCount;
+  final int eligibleScheduleCount;
+  final int completedWithoutDraftCount;
   final VoidCallback onSubmit;
+
+  bool get canSubmit =>
+      scheduleListAvailable &&
+      batchGroupResolved &&
+      hasRows &&
+      eligibleScheduleCount > 0 &&
+      completedScheduleCount >= eligibleScheduleCount;
 
   @override
   Widget build(BuildContext context) {
@@ -1276,11 +1411,32 @@ class _SubmitFormCard extends StatelessWidget {
             if (!hasRows) ...[
               const SizedBox(height: 8),
               const Text('Add at least one inspection row before submitting.'),
+            ] else if (!scheduleListAvailable) ...[
+              const SizedBox(height: 8),
+              const Text('Load schedules before submitting this form.'),
+            ] else if (!batchGroupResolved) ...[
+              const SizedBox(height: 8),
+              const Text(
+                'Draft rows must match one non-cancelled PM batch before submission.',
+              ),
+            ] else if (eligibleScheduleCount == 0) ...[
+              const SizedBox(height: 8),
+              const Text('No eligible schedules are available for this form.'),
+            ] else if (!canSubmit) ...[
+              const SizedBox(height: 8),
+              Text(
+                'Inspect all eligible schedules before submitting '
+                '($completedScheduleCount of $eligibleScheduleCount complete).',
+              ),
+              if (completedWithoutDraftCount > 0)
+                const Text(
+                  'A Completed schedule has no row in this Draft. Contact GSD to review the batch.',
+                ),
             ],
             const SizedBox(height: 12),
             FilledButton(
               key: const Key('submit-form-button'),
-              onPressed: isSaving || !hasRows ? null : onSubmit,
+              onPressed: isSaving || !canSubmit ? null : onSubmit,
               child: Text(isSaving ? 'Submitting...' : 'Submit form'),
             ),
           ],
@@ -1340,7 +1496,6 @@ class _InspectionRowEditorState extends State<_InspectionRowEditor> {
     );
     await widget.onSave(
       UpdateInspectionInput(
-        inspectorUserId: widget.inspectorUserId,
         dateInspected: date,
         dateAccomplished: widget.assetCategory == 'water-drinking-station'
             ? dateAccomplished

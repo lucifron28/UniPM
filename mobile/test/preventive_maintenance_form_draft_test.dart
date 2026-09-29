@@ -654,22 +654,26 @@ void main() {
     expect(find.byKey(const Key('start-pm')), findsOneWidget);
   });
 
-  testWidgets('completed and cancelled schedules are not eligible', (
-    tester,
-  ) async {
-    final repository = FakePreventiveMaintenanceRepository(
-      schedulesFuture: Future.value([
-        testSchedule(firstScheduleId, 'FE-001', status: 'Completed'),
-        testSchedule(secondScheduleId, 'FE-001', status: 'Cancelled'),
-      ]),
-    );
+  testWidgets(
+    'Completed without a Draft row cannot start, and Cancelled stays hidden',
+    (tester) async {
+      final repository = FakePreventiveMaintenanceRepository(
+        schedulesFuture: Future.value([
+          testSchedule(firstScheduleId, 'FE-001', status: 'Completed'),
+          testSchedule(secondScheduleId, 'FE-001', status: 'Cancelled'),
+        ]),
+      );
 
-    await pumpScannedEntry(tester, repository);
+      await pumpScannedEntry(tester, repository);
 
-    expect(find.byKey(const Key('pm-schedule-empty')), findsOneWidget);
-    expect(find.byKey(const Key('start-pm')), findsNothing);
-    expect(find.byKey(const Key('resume-pm')), findsNothing);
-  });
+      expect(
+        find.byKey(const Key('pm-entry-completed-no-draft')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('start-pm')), findsNothing);
+      expect(find.byKey(const Key('resume-pm')), findsNothing);
+    },
+  );
 
   testWidgets('no schedules produces a bounded no-schedule state', (
     tester,
@@ -942,6 +946,9 @@ void main() {
       forms: [
         testForm(id: formId, inspections: [testInspection()]),
       ],
+      schedulesFuture: Future.value([
+        testSchedule(firstScheduleId, 'FE-001', status: 'Completed'),
+      ]),
     );
 
     await pumpPage(tester, repository);
@@ -1066,7 +1073,6 @@ void main() {
       formId,
       firstInspectionId,
       UpdateInspectionInput(
-        inspectorUserId: inspectorId,
         dateInspected: inspectionDate,
         isOperational: true,
         remarks: 'Updated',
@@ -1096,6 +1102,10 @@ void main() {
     expect(
       jsonDecode((requests[2] as http.Request).body),
       isNot(contains('scheduleId')),
+    );
+    expect(
+      jsonDecode((requests[2] as http.Request).body),
+      isNot(contains('inspectorUserId')),
     );
     expect(
       requests[3].url.path,
@@ -1205,7 +1215,6 @@ void main() {
     await tester.tap(find.byKey(Key('save-inspection-$firstInspectionId')));
     await tester.pumpAndSettle();
 
-    expect(repository.updatedInput?.inspectorUserId, inspectorId);
     expect(repository.updatedInput?.dateInspected, DateTime(2026, 2, 10));
     expect(repository.updatedInput?.isOperational, isTrue);
     expect(repository.updatedInput?.remarks, 'Updated remarks');
@@ -1405,6 +1414,10 @@ Future<void> pumpDraftEditor(
 Future<void> _openScannedInspection(WidgetTester tester, Key actionKey) async {
   await tester.tap(find.byKey(actionKey));
   await tester.pumpAndSettle();
+  if (actionKey == const Key('resume-pm')) {
+    expect(find.byKey(const Key('location-verification-dialog')), findsNothing);
+    return;
+  }
   expect(find.byKey(const Key('location-verification-dialog')), findsOneWidget);
   await tester.tap(find.byKey(const Key('location-continue')));
   await tester.pumpAndSettle();
@@ -1494,6 +1507,7 @@ PreventiveMaintenanceInspection testInspection({
     assetId: assetId,
     inspectorUserId: inspectorId,
     dateInspected: now,
+    completedAt: now,
     isOperational: false,
     remarks: 'Low pressure',
     actionsRecommendations: 'Inspect gauge',
@@ -1706,7 +1720,7 @@ class FakePreventiveMaintenanceRepository
       id: current.id,
       scheduleId: current.scheduleId,
       assetId: current.assetId,
-      inspectorUserId: input.inspectorUserId,
+      inspectorUserId: current.inspectorUserId,
       dateInspected: input.dateInspected,
       isOperational: input.isOperational,
       remarks: input.remarks,

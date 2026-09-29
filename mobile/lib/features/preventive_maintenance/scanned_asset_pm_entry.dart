@@ -86,7 +86,10 @@ class _ScannedAssetPmEntryState extends State<ScannedAssetPmEntry> {
       if (!mounted) return;
       final accessible = values
           .where((schedule) => schedule.assetId == widget.asset.id)
-          .where((schedule) => _applicableStatuses.contains(schedule.status))
+          .where(
+            (schedule) =>
+                schedule.isEligibleForFieldWork || schedule.isCompleted,
+          )
           .where(_canAccessSchedule)
           .toList(growable: false);
       final applicable = accessible
@@ -155,6 +158,9 @@ class _ScannedAssetPmEntryState extends State<ScannedAssetPmEntry> {
     final schedule = selectedSchedule;
     final currentResolution = resolution;
     if (schedule == null || currentResolution == null || isOpening) return;
+    if (currentResolution.kind == PmDraftResolutionKind.completedWithoutDraft) {
+      return;
+    }
     if (!isActiveAsset &&
         currentResolution.kind != PmDraftResolutionKind.resume) {
       return;
@@ -166,7 +172,10 @@ class _ScannedAssetPmEntryState extends State<ScannedAssetPmEntry> {
       errorMessage = null;
     });
 
-    final locationDecision = await _verifyLocation(schedule.id);
+    final locationDecision =
+        currentResolution.kind == PmDraftResolutionKind.resume
+        ? const _LocationVerificationDecision.continueWith(null)
+        : await _verifyLocation(schedule.id);
     if (!mounted) return;
     if (!locationDecision.shouldContinue) {
       setState(() {
@@ -195,6 +204,8 @@ class _ScannedAssetPmEntryState extends State<ScannedAssetPmEntry> {
       case PmDraftResolutionKind.choose:
         form = chosenDraft;
         preselectedScheduleId = schedule.id;
+      case PmDraftResolutionKind.completedWithoutDraft:
+        return;
     }
 
     if (!mounted) return;
@@ -466,6 +477,13 @@ class _ScannedAssetPmEntryState extends State<ScannedAssetPmEntry> {
     BuildContext context,
     PmDraftResolution currentResolution,
   ) {
+    if (currentResolution.kind == PmDraftResolutionKind.completedWithoutDraft) {
+      return const Text(
+        'This Completed schedule has no existing Draft inspection row to resume.',
+        key: Key('pm-entry-completed-no-draft'),
+      );
+    }
+
     if (currentResolution.kind == PmDraftResolutionKind.choose) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -510,6 +528,7 @@ class _ScannedAssetPmEntryState extends State<ScannedAssetPmEntry> {
       PmDraftResolutionKind.create =>
         'A new Draft will use this asset and schedule metadata.',
       PmDraftResolutionKind.choose => '',
+      PmDraftResolutionKind.completedWithoutDraft => '',
     };
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -654,8 +673,6 @@ class _ScheduleSummary extends StatelessWidget {
     );
   }
 }
-
-const _applicableStatuses = {'Due', 'Ongoing', 'Overdue'};
 
 String _scheduleLabel(ScheduleOption schedule) =>
     '${_dateText(schedule.scheduleDate)} · ${schedule.periodType} · ${schedule.status}';
