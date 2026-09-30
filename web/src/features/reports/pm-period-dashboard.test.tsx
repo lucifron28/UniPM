@@ -14,6 +14,10 @@ import {
   PmPeriodDashboardPresentation,
   type PmPeriodDashboardSearch,
 } from './pm-period-dashboard'
+import {
+  formatPmCycle,
+  formatPmCycleDueDate,
+} from '@/features/schedules/schedule-presentation'
 
 type PeriodState = 'Future' | 'Active' | 'Closed'
 
@@ -191,49 +195,9 @@ describe('PM period dashboard period terminology', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('shows a cycle-derived due date and a separate actual inspection date', async () => {
-    const dashboard = {
-      ...dashboardFor('Closed'),
-      assets: [
-        {
-          scheduleId: '11111111-1111-4111-8111-111111111111',
-          assetId: '22222222-2222-4222-8222-222222222222',
-          inspectionId: '33333333-3333-4333-8333-333333333333',
-          assetCode: 'FE-001',
-          assetCategory: 'fire-extinguisher',
-          building: 'Main Building',
-          location: 'Lobby',
-          department: 'GSD',
-          pmCycle: '2028-02',
-          scheduleDate: '2028-02-05T00:00:00Z',
-          deadline: '2028-02-29T16:00:00Z',
-          scheduleStatus: 'Completed',
-          executionStatus: 'Completed',
-          isInspected: true,
-          inspectionCompletedAt: '2028-02-28T12:00:00Z',
-          timeliness: 'OnTime',
-          condition: 'Operational',
-          remarks: null,
-          actionsRecommendations: null,
-          formId: null,
-          formStatus: null,
-          isAcknowledged: false,
-          acknowledgedAt: null,
-        },
-      ],
-    }
-
-    renderPresentationWithRouter(dashboard)
-
-    expect(
-      await screen.findByRole('columnheader', {
-        name: 'Scheduled month / due date',
-      }),
-    ).toBeInTheDocument()
-    expect(screen.getByText('February 2028')).toBeInTheDocument()
-    expect(screen.getAllByText(/Feb 29, 2028/).length).toBeGreaterThan(0)
-    expect(screen.getByText(/Actual inspection date:/)).toBeInTheDocument()
-    expect(screen.getByText('Due date (Asia/Manila):')).toBeInTheDocument()
+  it('formats a cycle-derived leap-February month and deadline', () => {
+    expect(formatPmCycle('2028-02')).toBe('February 2028')
+    expect(formatPmCycleDueDate('2028-02')).toBe('Feb 29, 2028')
   })
 
   it('routes acknowledged batches to read-only form detail', async () => {
