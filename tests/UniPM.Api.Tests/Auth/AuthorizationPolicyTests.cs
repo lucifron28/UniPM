@@ -77,9 +77,7 @@ public sealed class AuthorizationPolicyTests
         {
             assetId,
             scheduleDate = DateTimeOffset.UtcNow.AddDays(1),
-            periodType = "Quarter",
-            quarter = "Q1",
-            year = 2026
+            periodType = "Quarter"
         });
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
