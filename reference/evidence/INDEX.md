@@ -13,6 +13,8 @@ record's evidence level and tested/source commit.
 
 ## Records
 
+| IMP-037 | implementation | CPMP month scheduling and GSD compliance terminology | reviewed | source-inspected | `ae42440` | [record](implementation/IMP-037-cpmp-month-end-scheduling.md) | Category-month validation, canonical deadlines, web creation and reporting terminology, and synthetic demo alignment. |
+
 | ID | Type | Title | Status | Evidence level | Tested/source commit | Record | Note |
 |---|---|---|---|---|---|---|---|
 | IMP-001 | implementation | Synthetic maintenance dataset and Development seeder | reviewed | source-inspected | `00e5401` | [record](implementation/IMP-001-synthetic-maintenance-dataset.md) | Fictional deterministic fixture and scoped seed/reset behavior. |
