@@ -280,9 +280,11 @@ function selectionButtonClass(isSelected: boolean) {
 function BatchOverview({
   batches,
   periodState,
+  dashboardSearch,
 }: {
   batches: PmPeriodDashboardBatchResponse[]
   periodState: string
+  dashboardSearch?: PmPeriodDashboardSearch | undefined
 }) {
   const isClosed = periodState === 'Closed'
 
@@ -377,11 +379,10 @@ function BatchOverview({
                       to="/app/preventive-maintenance-forms/$formId/review"
                       params={{ formId: batch.formId }}
                       search={{
+                        ...dashboardSearch,
                         assetCategory: batch.assetCategory,
+                        year: Number(batch.pmCycle.slice(0, 4)),
                         pmCycle: batch.pmCycle,
-                        ...(batch.department
-                          ? { department: batch.department }
-                          : {}),
                       }}
                       className="font-semibold text-[var(--primary)] underline-offset-2 hover:underline focus-visible:rounded focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:outline-none"
                     >
@@ -669,9 +670,11 @@ function DashboardMetrics({
 export function PmPeriodDashboardPresentation({
   dashboard,
   showBatch = true,
+  search,
 }: {
   dashboard: PmPeriodDashboardResponse
   showBatch?: boolean
+  search?: PmPeriodDashboardSearch
 }) {
   return (
     <>
@@ -681,6 +684,7 @@ export function PmPeriodDashboardPresentation({
         <BatchOverview
           batches={dashboard.batches}
           periodState={dashboard.periodState}
+          dashboardSearch={search}
         />
       )}
     </>
@@ -1118,6 +1122,7 @@ export function PmPeriodDashboard({
                 <PmPeriodDashboardPresentation
                   dashboard={dashboardQuery.data}
                   showBatch={dashboardQuery.data.assets.length > 0}
+                  search={search}
                 />
                 {dashboardQuery.data.assets.length === 0 ? (
                   <Card className="p-6 shadow-none">

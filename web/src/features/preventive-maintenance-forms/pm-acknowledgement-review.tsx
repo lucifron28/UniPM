@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { ApiError } from '@/api/problem-details'
+import type { PmPeriodDashboardSearch } from '@/features/reports/pm-period-dashboard'
 import type {
   PmPeriodDashboardAssetRowResponse,
   PmPeriodDashboardBatchResponse,
@@ -27,11 +28,7 @@ import { usePmPeriodDashboard } from '@/features/reports/pm-period-dashboard-que
 const uuidPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
-export type PmAcknowledgementReviewSearch = {
-  department?: string | undefined
-  assetCategory?: string | undefined
-  pmCycle?: string | undefined
-}
+export type PmAcknowledgementReviewSearch = PmPeriodDashboardSearch
 
 export type PmAcknowledgementReviewContext = {
   reviewFormId: string
@@ -339,12 +336,15 @@ export function PmAcknowledgementReview({
   const canReview = canReviewPreventiveMaintenanceForms(currentUser.data?.roles)
   const validId = uuidPattern.test(formId)
   const formQuery = usePreventiveMaintenanceForm(formId, canReview && validId)
-  const assetCategory = search.assetCategory || formQuery.data?.assetCategory
-  const pmCycle = search.pmCycle || formQuery.data?.pmCycle || undefined
-  const department =
-    search.department || formQuery.data?.department || undefined
+  const formRecord =
+    canReview && validId && formQuery.isSuccess && !formQuery.isError
+      ? formQuery.data
+      : undefined
+  const assetCategory = search.assetCategory || formRecord?.assetCategory
+  const pmCycle = search.pmCycle || formRecord?.pmCycle || undefined
+  const department = search.department || formRecord?.department || undefined
   const dashboardFilters =
-    assetCategory && pmCycle
+    formRecord && assetCategory && pmCycle
       ? {
           assetCategory,
           pmCycle,
@@ -396,7 +396,7 @@ export function PmAcknowledgementReview({
     )
   }
 
-  if (formQuery.isPending || dashboardQuery.isPending) {
+  if (formQuery.isPending) {
     return (
       <div
         className="space-y-4"
@@ -423,6 +423,20 @@ export function PmAcknowledgementReview({
         }
         retry={notFound ? undefined : () => void formQuery.refetch()}
       />
+    )
+  }
+
+  if (dashboardQuery.isPending) {
+    return (
+      <div
+        className="space-y-4"
+        role="status"
+        aria-label="Loading batch review"
+      >
+        <span className="sr-only">Loading submitted PM batch review...</span>
+        <Skeleton className="h-64 w-full" />
+        <Skeleton className="h-72 w-full" />
+      </div>
     )
   }
 
@@ -471,9 +485,10 @@ export function PmAcknowledgementReview({
       <Link
         to="/app/dashboard"
         search={{
+          ...search,
           assetCategory: batch.assetCategory,
+          year: Number(batch.pmCycle.slice(0, 4)),
           pmCycle: batch.pmCycle,
-          ...(batch.department ? { department: batch.department } : {}),
         }}
         className="text-sm font-semibold text-[var(--primary)] hover:underline"
       >

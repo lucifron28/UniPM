@@ -10,7 +10,10 @@ import type {
   PmPeriodDashboardBatchResponse,
   PmPeriodDashboardResponse,
 } from '@/api/generated/models'
-import { PmPeriodDashboardPresentation } from './pm-period-dashboard'
+import {
+  PmPeriodDashboardPresentation,
+  type PmPeriodDashboardSearch,
+} from './pm-period-dashboard'
 
 type PeriodState = 'Future' | 'Active' | 'Closed'
 
@@ -66,9 +69,17 @@ function renderState(periodState: PeriodState) {
   )
 }
 
-function renderPresentationWithRouter(dashboard: PmPeriodDashboardResponse) {
+function renderPresentationWithRouter(
+  dashboard: PmPeriodDashboardResponse,
+  search?: PmPeriodDashboardSearch,
+) {
   const rootRoute = createRootRoute({
-    component: () => <PmPeriodDashboardPresentation dashboard={dashboard} />,
+    component: () => (
+      <PmPeriodDashboardPresentation
+        dashboard={dashboard}
+        {...(search ? { search } : {})}
+      />
+    ),
   })
   const router = createRouter({
     routeTree: rootRoute,
@@ -76,6 +87,15 @@ function renderPresentationWithRouter(dashboard: PmPeriodDashboardResponse) {
   })
 
   return render(<RouterProvider router={router} />)
+}
+
+function expectSearchParams(
+  searchParams: URLSearchParams,
+  expected: Record<string, string>,
+) {
+  for (const [key, value] of Object.entries(expected)) {
+    expect(searchParams.get(key)).toBe(value)
+  }
 }
 
 function expectMetricLabel(label: string) {
@@ -193,5 +213,41 @@ describe('PM period dashboard period terminology', () => {
       expect.stringContaining('readonly=true'),
     )
     expect(link).not.toHaveAttribute('href', expect.stringContaining('/review'))
+  })
+
+  it('preserves dashboard scope and filters when opening a submitted batch review', async () => {
+    const reviewFormId = '22222222-2222-4222-8222-222222222222'
+    const reviewSearch: PmPeriodDashboardSearch = {
+      assetCategory: 'fire-extinguisher',
+      year: 2026,
+      pmCycle: '2026-06',
+      department: 'GSD',
+      condition: 'NonOperational',
+      timeliness: 'Late',
+      search: 'FE-TEST-001',
+    }
+
+    renderPresentationWithRouter(
+      {
+        ...dashboardFor('Closed'),
+        batches: [{ ...batch, formId: reviewFormId }],
+      },
+      reviewSearch,
+    )
+
+    const link = await screen.findByRole('link', { name: 'Review batch' })
+    const reviewUrl = new URL(link.getAttribute('href')!, 'http://localhost')
+    expect(reviewUrl.pathname).toBe(
+      `/app/preventive-maintenance-forms/${reviewFormId}/review`,
+    )
+    expectSearchParams(reviewUrl.searchParams, {
+      assetCategory: 'fire-extinguisher',
+      year: '2026',
+      pmCycle: '2026-06',
+      department: 'GSD',
+      condition: 'NonOperational',
+      timeliness: 'Late',
+      search: 'FE-TEST-001',
+    })
   })
 })

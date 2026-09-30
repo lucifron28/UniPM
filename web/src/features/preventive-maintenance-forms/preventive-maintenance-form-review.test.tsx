@@ -336,6 +336,16 @@ describe('preventive-maintenance form review', () => {
     const toDataUrl = vi
       .spyOn(HTMLCanvasElement.prototype, 'toDataURL')
       .mockReturnValue('data:image/png;base64,iVBORw0KGgo=')
+    const canvasContext = {
+      beginPath: vi.fn(),
+      moveTo: vi.fn(),
+      lineTo: vi.fn(),
+      stroke: vi.fn(),
+      clearRect: vi.fn(),
+    } as unknown as CanvasRenderingContext2D
+    const getContext = vi
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockReturnValue(canvasContext)
 
     renderWithProviders(<FormDetail formId={formId} />)
 
@@ -359,16 +369,83 @@ describe('preventive-maintenance form review', () => {
     fireEvent.change(screen.getByLabelText('Signatory position'), {
       target: { value: 'Department Head' },
     })
-    fireEvent.pointerDown(screen.getByLabelText('Signature'), {
+    const signatureCanvas = screen.getByLabelText('Signature')
+    const bounds = {
+      x: 0,
+      y: 0,
+      left: 0,
+      top: 0,
+      right: 640,
+      bottom: 180,
+      width: 640,
+      height: 180,
+      toJSON: () => undefined,
+    } as DOMRect
+    const getBoundingClientRect = vi
+      .spyOn(signatureCanvas, 'getBoundingClientRect')
+      .mockReturnValue(bounds)
+    fireEvent.pointerDown(signatureCanvas, {
       clientX: 20,
       clientY: 20,
       pointerId: 1,
     })
-    fireEvent.pointerUp(screen.getByLabelText('Signature'), { pointerId: 1 })
+    fireEvent.pointerUp(signatureCanvas, { pointerId: 1 })
+    fireEvent.click(screen.getByRole('button', { name: 'Acknowledge form' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Capture the department-head signature before continuing.',
+    )
+    expect(
+      screen.queryByRole('dialog', {
+        name: 'Confirm department-head acknowledgement',
+      }),
+    ).not.toBeInTheDocument()
+    expect(acknowledgementBody).toBeUndefined()
+
+    fireEvent.pointerDown(signatureCanvas, {
+      clientX: 20,
+      clientY: 20,
+      pointerId: 1,
+    })
+    fireEvent.pointerMove(signatureCanvas, {
+      clientX: 100,
+      clientY: 100,
+      pointerId: 1,
+    })
+    fireEvent.pointerUp(signatureCanvas, { pointerId: 1 })
+    expect(canvasContext.stroke).toHaveBeenCalled()
     fireEvent.click(screen.getByRole('button', { name: 'Acknowledge form' }))
 
     expect(
-      await screen.findByRole('dialog', {
+      screen.getByRole('dialog', {
+        name: 'Confirm department-head acknowledgement',
+      }),
+    ).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Clear' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Acknowledge form' }))
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Capture the department-head signature before continuing.',
+    )
+    expect(
+      screen.queryByRole('dialog', {
+        name: 'Confirm department-head acknowledgement',
+      }),
+    ).not.toBeInTheDocument()
+
+    fireEvent.pointerDown(signatureCanvas, {
+      clientX: 20,
+      clientY: 20,
+      pointerId: 1,
+    })
+    fireEvent.pointerMove(signatureCanvas, {
+      clientX: 100,
+      clientY: 100,
+      pointerId: 1,
+    })
+    fireEvent.pointerUp(signatureCanvas, { pointerId: 1 })
+    fireEvent.click(screen.getByRole('button', { name: 'Acknowledge form' }))
+    expect(
+      screen.getByRole('dialog', {
         name: 'Confirm department-head acknowledgement',
       }),
     ).toBeInTheDocument()
@@ -407,6 +484,8 @@ describe('preventive-maintenance form review', () => {
     ).not.toBeInTheDocument()
     expect(screen.queryByText('signatureData')).not.toBeInTheDocument()
     expect(screen.queryByText('signatureChecksum')).not.toBeInTheDocument()
+    getBoundingClientRect.mockRestore()
+    getContext.mockRestore()
     toDataUrl.mockRestore()
   })
 
@@ -492,7 +571,18 @@ describe('preventive-maintenance form review', () => {
       }),
     )
 
-    renderWithProviders(<PmAcknowledgementReview formId={formId} search={{}} />)
+    const dashboardSearch = {
+      assetCategory: 'fire-extinguisher',
+      year: 2026,
+      pmCycle: '2026-07',
+      department: 'GSD',
+      condition: 'NonOperational',
+      timeliness: 'Late',
+      search: 'FE-TEST-001',
+    }
+    renderWithProviders(
+      <PmAcknowledgementReview formId={formId} search={dashboardSearch} />,
+    )
 
     expect(
       await screen.findByRole('heading', {
@@ -529,6 +619,24 @@ describe('preventive-maintenance form review', () => {
     expect(
       screen.getByRole('link', { name: 'View inspection detail' }),
     ).toHaveAttribute('href', expect.stringContaining('pmCycle=2026-07'))
+    const backToDashboard = screen.getByRole('link', {
+      name: 'Back to PM dashboard',
+    })
+    const dashboardUrl = new URL(
+      backToDashboard.getAttribute('href')!,
+      'http://localhost',
+    )
+    for (const [key, value] of Object.entries({
+      assetCategory: 'fire-extinguisher',
+      year: '2026',
+      pmCycle: '2026-07',
+      department: 'GSD',
+      condition: 'NonOperational',
+      timeliness: 'Late',
+      search: 'FE-TEST-001',
+    })) {
+      expect(dashboardUrl.searchParams.get(key)).toBe(value)
+    }
     await waitFor(() => {
       expect(dashboardRequest?.searchParams.get('assetCategory')).toBe(
         'fire-extinguisher',
@@ -537,6 +645,77 @@ describe('preventive-maintenance form review', () => {
       expect(dashboardRequest?.searchParams.get('department')).toBe('GSD')
     })
   })
+
+  it('rejects an invalid review form id without requesting form or batch data', async () => {
+    let formRequests = 0
+    let dashboardRequests = 0
+    server.use(
+      http.get(meUrl, () => HttpResponse.json(currentUser(['GSD']))),
+      http.get(`${formsUrl}/:requestedFormId`, () => {
+        formRequests += 1
+        return HttpResponse.json(form('Submitted'))
+      }),
+      http.get('*/api/v1/pm-period-dashboard', () => {
+        dashboardRequests += 1
+        return HttpResponse.json({})
+      }),
+    )
+
+    renderWithProviders(
+      <PmAcknowledgementReview
+        formId="not-a-guid"
+        search={{
+          assetCategory: 'fire-extinguisher',
+          year: 2026,
+          pmCycle: '2026-07',
+          department: 'GSD',
+        }}
+      />,
+    )
+
+    expect(
+      await screen.findByRole('heading', { name: 'Review not found' }),
+    ).toBeInTheDocument()
+    expect(formRequests).toBe(0)
+    expect(dashboardRequests).toBe(0)
+  })
+
+  it.each([
+    { status: 404, title: 'Form not found' },
+    { status: 503, title: 'Form unavailable' },
+  ])(
+    'shows a form failure before requesting batch context ($status)',
+    async ({ status, title }) => {
+      let dashboardRequested = false
+      server.use(
+        http.get(meUrl, () => HttpResponse.json(currentUser(['GSD']))),
+        http.get(`${formsUrl}/${formId}`, () =>
+          HttpResponse.json({}, { status }),
+        ),
+        http.get('*/api/v1/pm-period-dashboard', () => {
+          dashboardRequested = true
+          return HttpResponse.json({})
+        }),
+      )
+
+      renderWithProviders(
+        <PmAcknowledgementReview
+          formId={formId}
+          search={{
+            assetCategory: 'fire-extinguisher',
+            year: 2026,
+            pmCycle: '2026-07',
+            department: 'GSD',
+          }}
+        />,
+      )
+
+      expect(
+        await screen.findByRole('heading', { name: title }),
+      ).toBeInTheDocument()
+      expect(dashboardRequested).toBe(false)
+    },
+  )
 
   it('invalidates the PM dashboard cache after acknowledgement', async () => {
     let dashboardRequests = 0
