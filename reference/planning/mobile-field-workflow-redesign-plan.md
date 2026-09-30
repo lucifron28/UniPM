@@ -24,6 +24,16 @@ UniPM is a preventive-maintenance information system for a university General Se
    - Lifecycle separation: Field work execution (`Due/Ongoing/Overdue -> Completed`) vs PM Form Batch (`Draft -> Submitted (Awaiting acknowledgement) -> Acknowledged`).
    - Department Head does not have a UniPM account; skilled worker's authenticated session captures signatory details, signature canvas image, and SHA-256 hash.
    - Official maintenance history remains strictly acknowledged-only.
+   - The mobile batch indicator reports **Progress** (`inspected / scheduled`),
+     not GSD Compliance rate. Compliance rate remains in GSD reporting. It is
+     completed inspections on or before the deadline divided by eligible
+     non-cancelled scheduled assets.
+   - `PmCycle` identifies the institutional scheduled month and year as
+     `YYYY-MM`. Derive the displayed due date from its civil month-end in
+     fixed Asia/Manila `+08:00` time, not from `ScheduleDate` or the device
+     time zone. New schedule records store that deadline in `ScheduleDate`;
+     historical values remain unchanged and may differ. The due date is not a
+     planned visit date. Actual inspection dates come from field work.
    - Working authorization preserved without privilege broadening: generic Draft/form CRUD is not exposed in the Inspector UI (the legacy PM-form CRUD management screen is GSD-only). Field-work endpoints continue using the PM form authorization boundary (`AuthPolicyCatalog.CanManagePreventiveMaintenanceForms`) so Inspector retains full API capability to add inspection rows, auto-resolve drafts, and submit completed batches without managing form CRUD.
 
 ---
@@ -61,7 +71,8 @@ UniPM is a preventive-maintenance information system for a university General Se
   - `unipm_brand_mark.dart`: UniPM wordmark with official shield logo.
   - `status_badge.dart`: Semantic status badges (Draft, Awaiting acknowledgement, Acknowledged, Due, Operational, etc.).
   - `batch_pm_card.dart`: Department + Category + Cycle batch card with progress bar.
-  - `pm_progress_indicator.dart`: Visual completion bar and numeric compliance fraction.
+  - `pm_progress_indicator.dart`: Visual Progress bar and numeric
+    completed/scheduled count.
   - `asset_summary_card.dart`: Clean asset metadata summary.
 
 ### 3.2 Asset Entry & Lookup
@@ -79,7 +90,13 @@ UniPM is a preventive-maintenance information system for a university General Se
 - **Models (`mobile/lib/features/preventive_maintenance/preventive_maintenance_models.dart`)**:
   - Add `pmCycle` property to `PreventiveMaintenanceForm` and `ScheduleOption`.
   - Refactor `PreventiveMaintenanceGrouping` to group strictly by `Department + AssetCategory + PmCycle`.
-  - Add batch progress calculation (`completedAssetCount / totalAssetCount`).
+  - Add batch Progress calculation (`completedAssetCount / totalAssetCount`).
+  - Present `PmCycle` as the institutional scheduled month and year, and
+    derive the displayed due date from its civil month-end in fixed
+    Asia/Manila `+08:00` time. New records store that deadline in
+    `ScheduleDate`, while historical `ScheduleDate` values remain unchanged
+    and may differ. Do not present the due date as a planned visit date or
+    format it in the device time zone.
 - **Controller (`mobile/lib/features/preventive_maintenance/preventive_maintenance_controller.dart`)**:
   - Auto-resolve or create matching batch draft for an asset's `Department + AssetCategory + PmCycle`.
   - Manage batch status and progress.
