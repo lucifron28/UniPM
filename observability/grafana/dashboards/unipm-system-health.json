@@ -72,41 +72,8 @@
     },
     {
       "datasource": { "type": "prometheus", "uid": "unipm-prometheus" },
-      "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
-      "gridPos": { "h": 7, "w": 12, "x": 0, "y": 14 },
-      "id": 7,
-      "options": { "legend": { "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
-      "targets": [{ "expr": "sum by (channel, outcome) (rate(unipm_retrieval_requests_total[5m]))", "refId": "A" }],
-      "title": "Retrieval requests by channel and outcome",
-      "type": "timeseries"
-    },
-    {
-      "datasource": { "type": "prometheus", "uid": "unipm-prometheus" },
-      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
-      "gridPos": { "h": 7, "w": 12, "x": 12, "y": 14 },
-      "id": 8,
-      "options": { "legend": { "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
-      "targets": [
-        { "expr": "histogram_quantile(0.50, sum by (channel, le) (rate(unipm_retrieval_duration_seconds_bucket[5m])))", "legendFormat": "{{channel}} p50", "refId": "A" },
-        { "expr": "histogram_quantile(0.95, sum by (channel, le) (rate(unipm_retrieval_duration_seconds_bucket[5m])))", "legendFormat": "{{channel}} p95", "refId": "B" }
-      ],
-      "title": "Retrieval duration by channel",
-      "type": "timeseries"
-    },
-    {
-      "datasource": { "type": "prometheus", "uid": "unipm-prometheus" },
-      "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
-      "gridPos": { "h": 7, "w": 8, "x": 0, "y": 21 },
-      "id": 9,
-      "options": { "legend": { "displayMode": "list", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
-      "targets": [{ "expr": "sum by (channel) (rate(unipm_retrieval_results_sum[5m]))", "refId": "A" }],
-      "title": "Retrieval result count by channel",
-      "type": "timeseries"
-    },
-    {
-      "datasource": { "type": "prometheus", "uid": "unipm-prometheus" },
       "fieldConfig": { "defaults": { "unit": "cps" }, "overrides": [] },
-      "gridPos": { "h": 7, "w": 8, "x": 8, "y": 28 },
+      "gridPos": { "h": 7, "w": 8, "x": 0, "y": 14 },
       "id": 13,
       "options": { "legend": { "displayMode": "table", "placement": "bottom" }, "tooltip": { "mode": "multi" } },
       "targets": [{ "expr": "sum by (gc_heap_generation) (rate(dotnet_gc_collections_total[5m]))", "refId": "A" }],

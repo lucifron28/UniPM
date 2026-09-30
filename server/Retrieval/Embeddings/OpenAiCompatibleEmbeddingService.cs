@@ -239,7 +239,7 @@ internal sealed class OpenAiCompatibleEmbeddingService(
             EmbeddingOptions.ProviderAdapterKey,
             providerKey,
             model,
-            MaintenanceEmbeddingInput.InputFormatVersion,
+            "embedding-provider-v1",
             dimensions?.ToString() ?? "unknown");
     }
 

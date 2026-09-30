@@ -11,6 +11,12 @@ internal static class InstitutionalReferenceQueryBuilder
     internal const int MaxTokenCount = 8;
     internal const int MaxTokenLength = 64;
 
+    private static readonly HashSet<string> FullTextOperators = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "AND", "OR", "NOT", "NEAR", "FORMSOF", "ISABOUT", "WEIGHT",
+        "MAX", "MIN", "CUSTOM", "GENERIC", "SIMPLE"
+    };
+
     public static InstitutionalReferenceQuery Build(InstitutionalReferenceSearchRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -27,7 +33,7 @@ internal static class InstitutionalReferenceQueryBuilder
                 $"The institutional reference query cannot exceed {MaxQueryLength} characters.");
         }
 
-        var tokens = LexicalMaintenanceQueryBuilder.TokenizeSearchableTerms(normalizedQuery);
+        var tokens = TokenizeSearchableTerms(normalizedQuery);
         if (tokens.Count == 0 || tokens.Any(token => token.Length > MaxTokenLength))
         {
             throw new InstitutionalReferenceQueryValidationException("The institutional reference query contains no supported searchable terms.");
@@ -56,6 +62,43 @@ internal static class InstitutionalReferenceQueryBuilder
             assetCategory,
             request.AsOfDate,
             limit == 0 ? DefaultLimit : limit);
+    }
+
+    private static IReadOnlyList<string> TokenizeSearchableTerms(string value)
+    {
+        var compatibilityNormalized = value.Normalize(NormalizationForm.FormKC).ToLowerInvariant();
+        var tokens = new List<string>();
+        var token = new StringBuilder();
+
+        void CompleteToken()
+        {
+            if (token.Length == 0)
+            {
+                return;
+            }
+
+            var term = token.ToString();
+            token.Clear();
+            if (!FullTextOperators.Contains(term))
+            {
+                tokens.Add(term);
+            }
+        }
+
+        foreach (var character in compatibilityNormalized)
+        {
+            if (char.IsLetterOrDigit(character))
+            {
+                token.Append(character);
+            }
+            else
+            {
+                CompleteToken();
+            }
+        }
+
+        CompleteToken();
+        return tokens;
     }
 
     private static string NormalizeWhitespace(string? value)
