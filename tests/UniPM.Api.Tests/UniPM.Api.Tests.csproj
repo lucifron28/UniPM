@@ -22,20 +22,10 @@
     <ProjectReference Include="..\..\server\server.csproj" />
     <ProjectReference Include="..\..\tools\UniPM.DemoQrGenerator\UniPM.DemoQrGenerator.csproj"
                       Aliases="DemoQrGenerator" />
-    <ProjectReference Include="..\..\tools\UniPM.RetrievalBenchmark\UniPM.RetrievalBenchmark.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <Using Include="Xunit" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Update="Retrieval/Fixtures/*.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="MaintenanceReview/Fixtures/*.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
   </ItemGroup>
 
 </Project>
