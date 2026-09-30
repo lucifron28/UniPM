@@ -8,9 +8,13 @@ import {
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import {
   createMemoryHistory,
+  createRoute,
   createRootRoute,
   createRouter,
+  Outlet,
   RouterProvider,
+  useParams,
+  useSearch,
 } from '@tanstack/react-router'
 import { http, HttpResponse } from 'msw'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -19,6 +23,10 @@ import { FormDetail } from '@/features/preventive-maintenance-forms/form-detail'
 import { FormRegistry } from '@/features/preventive-maintenance-forms/form-registry'
 import { PmAcknowledgementReview } from '@/features/preventive-maintenance-forms/pm-acknowledgement-review'
 import { useAcknowledgePreventiveMaintenanceFormMutation } from '@/features/preventive-maintenance-forms/form-queries'
+import {
+  PmPeriodDashboard,
+  type PmPeriodDashboardSearch,
+} from '@/features/reports/pm-period-dashboard'
 import { usePmPeriodDashboard } from '@/features/reports/pm-period-dashboard-queries'
 import { AppShell } from '@/components/layout/app-shell'
 import { useAuthStore } from '@/stores/auth-store'
@@ -105,6 +113,55 @@ function renderWithProviders(ui: React.ReactNode) {
   })
 
   return render(<RouterProvider router={router} />)
+}
+
+function renderDashboardReviewWithProviders(
+  initialSearch: PmPeriodDashboardSearch,
+) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  })
+  const rootRoute = createRootRoute({
+    component: () => (
+      <QueryClientProvider client={queryClient}>
+        <Outlet />
+      </QueryClientProvider>
+    ),
+  })
+  const dashboardRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/app/dashboard',
+    validateSearch: (search) => search as PmPeriodDashboardSearch,
+    component: () => {
+      const search = useSearch({ strict: false }) as PmPeriodDashboardSearch
+      return <PmPeriodDashboard search={search} onSearchChange={() => {}} />
+    },
+  })
+  const reviewRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/app/preventive-maintenance-forms/$formId/review',
+    validateSearch: (search) => search as PmPeriodDashboardSearch,
+    component: () => {
+      const { formId: routeFormId } = useParams({ strict: false }) as {
+        formId: string
+      }
+      const search = useSearch({ strict: false }) as PmPeriodDashboardSearch
+      return <PmAcknowledgementReview formId={routeFormId} search={search} />
+    },
+  })
+  const searchParams = new URLSearchParams()
+  for (const [key, value] of Object.entries(initialSearch)) {
+    if (value !== undefined) searchParams.set(key, String(value))
+  }
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([dashboardRoute, reviewRoute]),
+    history: createMemoryHistory({
+      initialEntries: [`/app/dashboard?${searchParams}`],
+    }),
+  })
+
+  render(<RouterProvider router={router} />)
+  return router
 }
 
 function currentUser(roles: string[]) {
@@ -489,7 +546,7 @@ describe('preventive-maintenance form review', () => {
     toDataUrl.mockRestore()
   })
 
-  it('shows submitted batch review metrics, rows, and awaiting acknowledgement', async () => {
+  it('preserves dashboard scope and filters through batch review and back', async () => {
     const reviewForm = {
       ...form('Submitted'),
       pmCycle: '2026-07',
@@ -499,6 +556,15 @@ describe('preventive-maintenance form review', () => {
     server.use(
       http.get(meUrl, () => HttpResponse.json(currentUser(['GSD']))),
       http.get(`${formsUrl}/${formId}`, () => HttpResponse.json(reviewForm)),
+      http.get('*/api/v1/pm-period-dashboard/cycles', () =>
+        HttpResponse.json([
+          {
+            assetCategory: 'fire-extinguisher',
+            year: 2026,
+            cycles: [{ pmCycle: '2026-07', scheduled: 1 }],
+          },
+        ]),
+      ),
       http.get('*/api/v1/pm-period-dashboard', ({ request }) => {
         dashboardRequest = new URL(request.url)
         return HttpResponse.json({
@@ -580,9 +646,9 @@ describe('preventive-maintenance form review', () => {
       timeliness: 'Late',
       search: 'FE-TEST-001',
     }
-    renderWithProviders(
-      <PmAcknowledgementReview formId={formId} search={dashboardSearch} />,
-    )
+    const router = renderDashboardReviewWithProviders(dashboardSearch)
+
+    fireEvent.click(await screen.findByRole('link', { name: 'Review batch' }))
 
     expect(
       await screen.findByRole('heading', {
@@ -644,6 +710,23 @@ describe('preventive-maintenance form review', () => {
       expect(dashboardRequest?.searchParams.get('pmCycle')).toBe('2026-07')
       expect(dashboardRequest?.searchParams.get('department')).toBe('GSD')
     })
+
+    fireEvent.click(screen.getByRole('link', { name: 'Back to PM dashboard' }))
+    await screen.findByRole('link', { name: 'Review batch' })
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/app/dashboard')
+      expect(router.state.location.search).toMatchObject(dashboardSearch)
+    })
+    expect(screen.getByLabelText('Department')).toHaveValue('GSD')
+    expect(screen.getByLabelText('Condition')).toHaveValue('NonOperational')
+    expect(screen.getByLabelText('Timeliness / status')).toHaveValue('Late')
+    expect(screen.getByLabelText('Search assets')).toHaveValue('FE-TEST-001')
+    expect(screen.getByText('Asset category').parentElement).toHaveTextContent(
+      'Fire Extinguisher',
+    )
+    expect(
+      screen.getByText('Scheduled month/year').parentElement,
+    ).toHaveTextContent('July 2026')
   })
 
   it('rejects an invalid review form id without requesting form or batch data', async () => {
