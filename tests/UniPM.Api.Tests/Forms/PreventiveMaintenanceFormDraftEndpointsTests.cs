@@ -11,7 +11,6 @@ using UniPM.Api.Features.Assets;
 using UniPM.Api.Features.Auth;
 using UniPM.Api.Features.Inspections;
 using UniPM.Api.Features.PreventiveMaintenanceForms;
-using UniPM.Api.Features.Retrieval;
 using UniPM.Api.Features.Schedules;
 using UniPM.Api.Models;
 
@@ -505,7 +504,7 @@ public sealed class PreventiveMaintenanceFormDraftEndpointsTests
     }
 
     [Fact]
-    public async Task Draft_rows_are_excluded_from_official_history_and_search_projection()
+    public async Task Draft_rows_are_excluded_from_official_history_and_inspection_reads()
     {
         await using var application = new TestApplicationFactory();
         using var client = application.CreateClient();
@@ -518,17 +517,10 @@ public sealed class PreventiveMaintenanceFormDraftEndpointsTests
         var history = await client.GetAsync($"/api/v1/inspections/history/{asset.Id}");
         var list = await client.GetAsync("/api/v1/inspections");
         var detail = await client.GetAsync($"/api/v1/inspections/{row.Id}");
-        await using var scope = application.Services.CreateAsyncScope();
-        var projector = scope.ServiceProvider.GetRequiredService<MaintenanceSearchDocumentProjector>();
-        var rebuild = await projector.RebuildAsync();
-        var contextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
-        await using var context = await contextFactory.CreateDbContextAsync();
 
         Assert.Empty(await history.Content.ReadFromJsonAsync<List<InspectionHistoryResponse>>() ?? []);
         Assert.Empty(await list.Content.ReadFromJsonAsync<List<InspectionResponse>>() ?? []);
         Assert.Equal(HttpStatusCode.NotFound, detail.StatusCode);
-        Assert.Equal(0, rebuild.Total);
-        Assert.Empty(await context.MaintenanceSearchDocuments.ToListAsync());
     }
 
     [Theory]
@@ -621,7 +613,7 @@ public sealed class PreventiveMaintenanceFormDraftEndpointsTests
     }
 
     [Fact]
-    public async Task Submitted_rows_are_hidden_while_acknowledged_rows_are_official_and_projected()
+    public async Task Submitted_rows_are_hidden_while_acknowledged_rows_are_official()
     {
         await using var application = new TestApplicationFactory();
         using var client = application.CreateClient();
@@ -640,11 +632,6 @@ public sealed class PreventiveMaintenanceFormDraftEndpointsTests
         var list = await client.GetAsync("/api/v1/inspections");
         var submittedDetail = await client.GetAsync($"/api/v1/inspections/{submittedRow.Id}");
         var acknowledgedDetail = await client.GetAsync($"/api/v1/inspections/{acknowledgedRow.Id}");
-        await using var scope = application.Services.CreateAsyncScope();
-        var projector = scope.ServiceProvider.GetRequiredService<MaintenanceSearchDocumentProjector>();
-        var rebuild = await projector.RebuildAsync();
-        var contextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
-        await using var context = await contextFactory.CreateDbContextAsync();
 
         var historyRows = await history.Content.ReadFromJsonAsync<List<InspectionHistoryResponse>>();
         var inspectionRows = await list.Content.ReadFromJsonAsync<List<InspectionResponse>>();
@@ -652,10 +639,6 @@ public sealed class PreventiveMaintenanceFormDraftEndpointsTests
         Assert.Equal([acknowledgedRow.Id], inspectionRows!.Select(row => row.Id).ToArray());
         Assert.Equal(HttpStatusCode.NotFound, submittedDetail.StatusCode);
         acknowledgedDetail.EnsureSuccessStatusCode();
-        Assert.Equal(1, rebuild.Total);
-        Assert.Equal([acknowledgedRow.Id], (await context.MaintenanceSearchDocuments
-            .Select(document => document.InspectionId)
-            .ToListAsync()).ToArray());
     }
 
     [Fact]
@@ -695,7 +678,6 @@ public sealed class PreventiveMaintenanceFormDraftEndpointsTests
         Assert.Equal(firstRow.CompletedAt, persistedSchedules[schedule.Id].CompletedAt);
         Assert.Equal(ScheduleStatusCatalog.Completed, persistedSchedules[secondSchedule.Id].Status);
         Assert.Equal(secondRow.CompletedAt, persistedSchedules[secondSchedule.Id].CompletedAt);
-        Assert.Empty(await context.MaintenanceSearchDocuments.ToListAsync());
     }
 
     [Fact]
@@ -880,11 +862,6 @@ public sealed class PreventiveMaintenanceFormDraftEndpointsTests
             .AsNoTracking()
             .Where(schedule => schedule.Id == firstSchedule.Id || schedule.Id == secondSchedule.Id)
             .ToListAsync();
-        var projectedInspectionIds = await context.MaintenanceSearchDocuments
-            .Where(document => document.InspectionId == firstRow.Id || document.InspectionId == secondRow.Id)
-            .Select(document => document.InspectionId)
-            .ToListAsync();
-
         Assert.Equal(PreventiveMaintenanceFormStatusCatalog.Acknowledged, persistedForm.Status);
         Assert.NotNull(persistedForm.Acknowledgement);
         Assert.All(schedulesAfterAcknowledgement, schedule =>
@@ -894,8 +871,6 @@ public sealed class PreventiveMaintenanceFormDraftEndpointsTests
             Assert.Equal(previousSchedule.CompletedAt, schedule.CompletedAt);
             Assert.Equal(previousSchedule.UpdatedAt, schedule.UpdatedAt);
         });
-        Assert.Equivalent(new[] { firstRow.Id, secondRow.Id }, projectedInspectionIds);
-        Assert.Empty(await context.MaintenanceSearchDocumentEmbeddings.ToListAsync());
     }
 
     [Fact]

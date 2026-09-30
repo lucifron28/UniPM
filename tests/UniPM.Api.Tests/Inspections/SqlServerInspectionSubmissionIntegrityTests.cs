@@ -155,11 +155,6 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
         var schedules = await context.PreventiveMaintenanceSchedules
             .Where(schedule => scheduleIds.Contains(schedule.Id))
             .ToListAsync();
-        var projectedInspectionIds = await context.MaintenanceSearchDocuments
-            .Where(document => inspectionIds.Contains(document.InspectionId))
-            .Select(document => document.InspectionId)
-            .ToListAsync();
-
         Assert.NotNull(form.Acknowledgement);
         Assert.Equal(PreventiveMaintenanceFormStatusCatalog.Acknowledged, form.Status);
         Assert.Equal(2, inspectionIds.Count);
@@ -169,10 +164,6 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
             Assert.Equal(ScheduleStatusCatalog.Completed, schedule.Status);
             Assert.NotNull(schedule.CompletedAt);
         });
-        Assert.Equivalent(
-            inspectionIds.OrderBy(inspectionId => inspectionId),
-            projectedInspectionIds.OrderBy(inspectionId => inspectionId));
-        Assert.Empty(await context.MaintenanceSearchDocumentEmbeddings.ToListAsync());
     }
 
     private static PreventiveMaintenanceSchedule AddAssetAndSchedule(ApplicationDbContext context)

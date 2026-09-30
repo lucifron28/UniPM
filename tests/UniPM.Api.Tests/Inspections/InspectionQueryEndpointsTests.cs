@@ -9,7 +9,6 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using UniPM.Api.Data;
 using UniPM.Api.Features.Auth;
 using UniPM.Api.Features.Inspections;
-using UniPM.Api.Features.Retrieval;
 using UniPM.Api.Features.Schedules;
 using UniPM.Api.Models;
 
@@ -326,11 +325,6 @@ public sealed class InspectionQueryEndpointsTests
         schedule.CompletedAt = now;
         schedule.UpdatedAt = now;
         context.InspectionRecords.Add(inspection);
-        await context.SaveChangesAsync();
-
-        var asset = await context.Assets.SingleAsync(candidate => candidate.Id == schedule.AssetId);
-        var projector = scope.ServiceProvider.GetRequiredService<MaintenanceSearchDocumentProjector>();
-        context.MaintenanceSearchDocuments.Add(projector.Build(inspection, asset));
         await context.SaveChangesAsync();
 
         return new InspectionResponse(

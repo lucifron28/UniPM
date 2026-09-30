@@ -15,7 +15,7 @@ internal sealed class DeterministicEmbeddingService(
         providerKey,
         modelKey,
         dimensions,
-        profile ?? $"{providerKey}:{modelKey}:maintenance-search-document-embedding-v1:{dimensions}");
+        profile ?? $"{providerKey}:{modelKey}:test-embedding-v1:{dimensions}");
 
     public List<IReadOnlyList<string>> Batches { get; } = [];
     public bool FailExecution { get; set; }
