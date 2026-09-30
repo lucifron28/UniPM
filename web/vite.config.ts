@@ -30,6 +30,7 @@ export default defineConfig({
     pool: 'vmThreads',
     exclude: ['e2e/**', 'node_modules/**'],
     environment: 'jsdom',
+    env: { VITE_API_BASE_URL: 'http://localhost:5000' },
     globals: true,
     setupFiles: ['./src/test/polyfill.ts', './src/test/setup.ts'],
     restoreMocks: true,
