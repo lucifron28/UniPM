@@ -58,6 +58,62 @@ describe('asset API contracts', () => {
     ).toThrow()
   })
 
+  it('normalizes catalog months and fails closed when older responses omit them', () => {
+    expect(
+      parseAssetCategories([
+        {
+          code: 'fire-extinguisher',
+          displayName: 'Fire extinguishers',
+          scheduledMonths: ['2', 5, '8', 11],
+        },
+      ]),
+    ).toEqual([
+      {
+        code: 'fire-extinguisher',
+        displayName: 'Fire extinguishers',
+        scheduledMonths: [2, 5, 8, 11],
+      },
+    ])
+    expect(
+      parseAssetCategories([
+        {
+          code: 'fire-extinguisher',
+          displayName: 'Fire extinguishers',
+          scheduledMonths: null,
+        },
+      ]),
+    ).toEqual([
+      {
+        code: 'fire-extinguisher',
+        displayName: 'Fire extinguishers',
+        scheduledMonths: [],
+      },
+    ])
+    expect(
+      parseAssetCategories([
+        {
+          code: 'fire-extinguisher',
+          displayName: 'Fire extinguishers',
+        },
+      ]),
+    ).toEqual([
+      {
+        code: 'fire-extinguisher',
+        displayName: 'Fire extinguishers',
+        scheduledMonths: [],
+      },
+    ])
+    expect(() =>
+      parseAssetCategories([
+        {
+          code: 'fire-extinguisher',
+          displayName: 'Fire extinguishers',
+          scheduledMonths: ['13'],
+        },
+      ]),
+    ).toThrow()
+  })
+
   it('normalizes create values without inventing optional metadata', () => {
     expect(
       toCreateAssetDto({
@@ -154,7 +210,11 @@ describe('asset API contracts', () => {
         { code: 'fire-extinguisher', displayName: 'Fire extinguishers' },
       ]),
     ).toEqual([
-      { code: 'fire-extinguisher', displayName: 'Fire extinguishers' },
+      {
+        code: 'fire-extinguisher',
+        displayName: 'Fire extinguishers',
+        scheduledMonths: [],
+      },
     ])
   })
 })

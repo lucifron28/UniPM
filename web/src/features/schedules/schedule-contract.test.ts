@@ -42,57 +42,57 @@ describe('schedule contracts', () => {
     ).toThrow(ZodError)
   })
 
-  it('derives temporal fields from the schedule date and rejects contradictions', () => {
+  it('builds a PM cycle from the selected year and allowed month', () => {
     expect(
       createScheduleSchema.safeParse({
         assetId: schedule.assetId,
-        scheduleDate: '2026-08-01',
-        periodType: 'Quarter',
-        quarter: 'Q2',
-        year: 2025,
-      }).success,
-    ).toBe(false)
-    expect(
-      createScheduleSchema.safeParse({
-        assetId: schedule.assetId,
-        scheduleDate: '2026-08-01',
-        periodType: 'Quarter',
-        quarter: undefined,
-        year: undefined,
+        year: 2026,
+        month: 8,
+        allowedMonths: [2, 5, 8, 11],
       }).success,
     ).toBe(true)
     expect(
       toCreateScheduleDto({
         assetId: schedule.assetId,
-        scheduleDate: '2027-01-01',
-        periodType: 'Quarter',
+        year: 2027,
+        month: 1,
+        allowedMonths: [1, 4, 7, 10],
       }),
     ).toMatchObject({
-      scheduleDate: '2027-01-01T00:00:00.000Z',
+      pmCycle: '2027-01',
+      periodType: 'Quarter',
       year: 2027,
       quarter: 'Q1',
     })
   })
 
-  it('clears a stale mismatched quarter from non-quarter create payloads', () => {
-    const values = {
-      assetId: schedule.assetId,
-      scheduleDate: '2026-08-01',
-      periodType: 'Annual',
-      quarter: 'Q1',
-    } as const
-    expect(createScheduleSchema.safeParse(values).success).toBe(true)
+  it('rejects months that are absent from the category reference data', () => {
+    expect(
+      createScheduleSchema.safeParse({
+        assetId: schedule.assetId,
+        year: 2026,
+        month: 9,
+        allowedMonths: [2, 5, 8, 11],
+      }).success,
+    ).toBe(false)
 
-    const dto = toCreateScheduleDto(values)
-    expect(dto.quarter).toBeNull()
+    expect(
+      createScheduleSchema.safeParse({
+        assetId: schedule.assetId,
+        year: 2026,
+        month: 8,
+        allowedMonths: [],
+      }).success,
+    ).toBe(false)
   })
 
-  it('rejects an out-of-range derived year when the year field is omitted', () => {
+  it('rejects an out-of-range selected year', () => {
     const unsupportedYear = new Date().getUTCFullYear() + 6
     const result = createScheduleSchema.safeParse({
       assetId: schedule.assetId,
-      scheduleDate: `${unsupportedYear}-01-01`,
-      periodType: 'Annual',
+      year: unsupportedYear,
+      month: 8,
+      allowedMonths: [2, 5, 8, 11],
     })
 
     expect(result.success).toBe(false)

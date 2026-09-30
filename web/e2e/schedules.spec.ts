@@ -29,6 +29,7 @@ const schedule = {
   id: scheduleId,
   assetId,
   scheduleDate: '2026-08-01T00:00:00+08:00',
+  pmCycle: '2026-08',
   periodType: 'Quarter',
   status: 'Due',
   quarter: 'Q3',
@@ -71,6 +72,19 @@ async function mockScheduleApi(page: Page, roles = ['GSD']) {
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify([asset]),
+    }),
+  )
+  await page.route('**/api/v1/reference-data/asset-categories', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([
+        {
+          code: 'fire-extinguisher',
+          displayName: 'Fire extinguishers',
+          scheduledMonths: [2, 5, 8, 11],
+        },
+      ]),
     }),
   )
   await page.route('**/api/v1/reference-data/schedule-statuses', (route) =>
@@ -296,20 +310,21 @@ test.describe('Schedule workflows', () => {
     })
     await page.goto('/app/schedules/new')
     await page.getByLabel('Asset', { exact: true }).selectOption(assetId)
-    await page.getByLabel('Schedule date').fill('2026-08-01')
-    const quarter = page.getByLabel('Quarter')
-    await expect(quarter).toHaveValue('Q3')
-    await expect(quarter).toHaveJSProperty('readOnly', true)
+    await page.getByLabel('Scheduled year').fill('2026')
+    await page.getByLabel('Scheduled month').selectOption('8')
+    await expect(page.getByLabel('Due date')).toHaveValue('Aug 31, 2026')
+    await expect(page.getByLabel('Schedule date')).toHaveCount(0)
+    await expect(page.locator('input[type="date"]')).toHaveCount(0)
     await page.getByRole('button', { name: 'Create schedule' }).click()
     await expect(page).toHaveURL(new RegExp(`/app/schedules/${scheduleId}`))
     expect(Object.keys(payload ?? {}).sort()).toEqual(
-      ['assetId', 'periodType', 'quarter', 'scheduleDate', 'year'].sort(),
+      ['assetId', 'periodType', 'quarter', 'pmCycle', 'year'].sort(),
     )
     expect(payload).toMatchObject({
       assetId,
       periodType: 'Quarter',
       quarter: 'Q3',
-      scheduleDate: '2026-08-01T00:00:00.000Z',
+      pmCycle: '2026-08',
       year: 2026,
     })
   })

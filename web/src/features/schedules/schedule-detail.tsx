@@ -10,7 +10,8 @@ import { ScheduleBatchAssignment } from '@/features/schedules/schedule-batch-ass
 import { useSchedule } from '@/features/schedules/schedule-queries'
 import type { ScheduleSearch } from '@/features/schedules/schedule-registry'
 import {
-  formatScheduleDate,
+  formatPmCycle,
+  formatPmCycleDueDate,
   formatScheduleDateTime,
 } from '@/features/schedules/schedule-presentation'
 
@@ -136,7 +137,7 @@ export function ScheduleDetail({
             {record.asset?.assetCode ?? 'Schedule record'}
           </h1>
           <p className="mt-2 text-[var(--text-secondary)]">
-            Scheduled for {formatScheduleDate(record.scheduleDate)}
+            Scheduled month: {formatPmCycle(record.pmCycle)}
           </p>
         </div>
         <Badge
@@ -179,8 +180,8 @@ export function ScheduleDetail({
           value={record.asset?.location ?? 'Not recorded'}
         />
         <DetailItem
-          label="Schedule date"
-          value={formatScheduleDate(record.scheduleDate)}
+          label="Due date"
+          value={formatPmCycleDueDate(record.pmCycle)}
         />
         <DetailItem label="Period type" value={record.periodType} />
         <DetailItem label="Quarter" value={record.quarter ?? 'Not recorded'} />

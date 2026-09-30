@@ -51,6 +51,16 @@ const assetCategorySchema = z
   .object({
     code: z.enum(assetCategoryCodes),
     displayName: z.string().trim().min(1).max(128),
+    scheduledMonths: z.preprocess(
+      (value) => {
+        if (value == null) return []
+        if (!Array.isArray(value)) return value
+        return value.map((month) =>
+          typeof month === 'string' ? Number(month) : month,
+        )
+      },
+      z.array(z.number().int().min(1).max(12)),
+    ),
   })
   .strict()
 
