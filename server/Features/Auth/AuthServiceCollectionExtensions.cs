@@ -97,12 +97,6 @@ internal static class AuthServiceCollectionExtensions
             options.AddPolicy(
                 AuthPolicyCatalog.CanAccessCorrectiveMaintenanceHandoff,
                 policy => policy.RequireRole(AuthRoleCatalog.Gsd));
-            options.AddPolicy(
-                AuthPolicyCatalog.CanReviewMaintenanceHistory,
-                policy => policy.RequireRole(
-                    AuthRoleCatalog.Gsd,
-                    AuthRoleCatalog.Supervisor,
-                    AuthRoleCatalog.DepartmentHead));
         });
 
         return services;

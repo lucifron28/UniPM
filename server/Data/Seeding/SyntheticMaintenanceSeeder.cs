@@ -3,15 +3,13 @@ using Microsoft.EntityFrameworkCore.Storage;
 using UniPM.Api.Features.Assets;
 using UniPM.Api.Features.ReferenceData;
 using UniPM.Api.Features.Schedules;
-using UniPM.Api.Features.Retrieval;
 using UniPM.Api.Models;
 
 namespace UniPM.Api.Data.Seeding;
 
 public sealed class SyntheticMaintenanceSeeder(
     IDbContextFactory<ApplicationDbContext> contextFactory,
-    SyntheticMaintenanceDatasetLoader datasetLoader,
-    MaintenanceSearchDocumentProjector searchDocumentProjector)
+    SyntheticMaintenanceDatasetLoader datasetLoader)
 {
     private static readonly TimeSpan ManilaOffset = TimeSpan.FromHours(8);
 
@@ -75,11 +73,6 @@ public sealed class SyntheticMaintenanceSeeder(
 
         await context.SaveChangesAsync(cancellationToken);
 
-        await searchDocumentProjector.RebuildAsync(
-            context,
-            dataset.Inspections.Select(inspection => inspection.Id).ToHashSet(),
-            cancellationToken);
-
         if (transaction is not null)
         {
             await transaction.CommitAsync(cancellationToken);
@@ -104,12 +97,6 @@ public sealed class SyntheticMaintenanceSeeder(
         await ValidateResetDependenciesAsync(context, inspectionIds, scheduleIds, assetIds, cancellationToken);
 
         await using var transaction = await BeginTransactionIfRelationalAsync(context, cancellationToken);
-
-        var documents = await context.MaintenanceSearchDocuments
-            .Where(document => inspectionIds.Contains(document.InspectionId))
-            .ToListAsync(cancellationToken);
-        context.MaintenanceSearchDocuments.RemoveRange(documents);
-        await context.SaveChangesAsync(cancellationToken);
 
         var inspections = await context.InspectionRecords
             .Where(inspection => inspectionIds.Contains(inspection.Id))

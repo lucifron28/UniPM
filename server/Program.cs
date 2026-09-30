@@ -5,7 +5,6 @@ using UniPM.Api.Data;
 using UniPM.Api.Data.Seeding;
 using UniPM.Api.Features;
 using UniPM.Api.Health;
-using UniPM.Api.Features.MaintenanceReview;
 using UniPM.Api.Features.PreventiveMaintenanceForms;
 using UniPM.Api.Features.Retrieval;
 using UniPM.Api.Features.ReferenceDocuments;
@@ -18,19 +17,6 @@ using UniPM.Api.Features.Auth;
 
 var maintenanceCommand = SyntheticMaintenanceCommandParser.Parse(args);
 var builder = WebApplication.CreateBuilder(args);
-
-var maintenanceReviewEnabled = builder.Configuration.GetValue<bool>(
-    $"{MaintenanceReviewOptions.SectionName}:Enabled");
-
-var maintenanceReviewConfiguration = builder.Configuration.GetSection(MaintenanceReviewOptions.SectionName);
-if (maintenanceReviewEnabled
-    && (maintenanceReviewConfiguration.GetValue<int>(nameof(MaintenanceReviewOptions.MaxSourceRecords)) is < 1 or > 100
-        || maintenanceReviewConfiguration.GetValue<int>(nameof(MaintenanceReviewOptions.RetrievalCandidateLimit)) is < 1 or > 100
-        || maintenanceReviewConfiguration.GetValue<int>(nameof(MaintenanceReviewOptions.MaxFindingCharacters)) is < 1 or > 2000))
-{
-    throw new InvalidOperationException(
-        "MaintenanceReview source, candidate, and finding limits must remain within the supported bounds.");
-}
 
 var metricsEnabled = builder.Configuration.GetValue<bool>(
     $"{ObservabilityOptions.SectionName}:MetricsEnabled");
@@ -71,13 +57,11 @@ var authSessionRuntimeConfiguration = AuthSessionRuntimeConfiguration.Create(
 builder.Services.Configure<ObservabilityOptions>(
     builder.Configuration.GetSection(ObservabilityOptions.SectionName));
 builder.Services.AddMetrics();
-builder.Services.AddSingleton<UniPMMetrics>();
 if (metricsEnabled)
 {
     builder.Services
         .AddOpenTelemetry()
         .WithMetrics(metrics => metrics
-            .AddMeter(UniPMMetrics.MeterName)
             .AddMeter("Microsoft.AspNetCore.Hosting")
             .AddMeter("Microsoft.AspNetCore.Server.Kestrel")
             .AddMeter("System.Runtime")
@@ -86,12 +70,6 @@ if (metricsEnabled)
                 new ExplicitBucketHistogramConfiguration
                 {
                     Boundaries = [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10]
-                })
-            .AddView(
-                "unipm.retrieval.duration",
-                new ExplicitBucketHistogramConfiguration
-                {
-                    Boundaries = [0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5]
                 })
             .AddPrometheusExporter(exporter =>
             {
@@ -150,56 +128,14 @@ builder.Services.AddScoped<SyntheticMaintenanceSeeder>();
 builder.Services.AddScoped<DevelopmentDemoSeeder>();
 builder.Services.AddScoped<ReferenceDocumentRegistrationService>();
 builder.Services.AddScoped<SyntheticReferenceDocumentSeeder>();
-builder.Services.AddSingleton<MaintenanceIssueLexiconOptions>();
-builder.Services.AddSingleton<MaintenanceIssueLexiconLoader>();
-builder.Services.AddSingleton<MaintenanceIssueNormalizer>();
-builder.Services.AddScoped<MaintenanceSearchDocumentProjector>();
-builder.Services.AddScoped<SqlServerLexicalMaintenanceRetriever>();
-builder.Services.AddScoped<ILexicalMaintenanceRetriever>(serviceProvider =>
-    new MetricsLexicalMaintenanceRetriever(
-        serviceProvider.GetRequiredService<SqlServerLexicalMaintenanceRetriever>(),
-        serviceProvider.GetRequiredService<UniPMMetrics>()));
 builder.Services.Configure<EmbeddingOptions>(builder.Configuration.GetSection(EmbeddingOptions.SectionName));
 builder.Services.Configure<PreventiveMaintenanceFormSubmissionOptions>(
     builder.Configuration.GetSection(PreventiveMaintenanceFormSubmissionOptions.SectionName));
 builder.Services.AddSingleton<PreventiveMaintenanceFileNumberGenerator>();
 builder.Services.AddHttpClient<IEmbeddingService, OpenAiCompatibleEmbeddingService>();
-builder.Services.AddScoped<IMaintenanceSearchDocumentEmbeddingIndexer, MaintenanceSearchDocumentEmbeddingIndexer>();
 builder.Services.AddScoped<IInstitutionalReferenceEmbeddingIndexer, InstitutionalReferenceEmbeddingIndexer>();
-builder.Services.AddScoped<SqlServerSemanticMaintenanceRetriever>();
-builder.Services.AddScoped<ISemanticMaintenanceRetriever>(serviceProvider =>
-    new MetricsSemanticMaintenanceRetriever(
-        serviceProvider.GetRequiredService<SqlServerSemanticMaintenanceRetriever>(),
-        serviceProvider.GetRequiredService<UniPMMetrics>()));
 builder.Services.AddScoped<ILexicalInstitutionalReferenceRetriever, SqlServerLexicalInstitutionalReferenceRetriever>();
 builder.Services.AddScoped<ISemanticInstitutionalReferenceRetriever, SqlServerSemanticInstitutionalReferenceRetriever>();
-builder.Services.AddScoped<FusedMaintenanceRetriever>();
-builder.Services.AddScoped<IFusedMaintenanceRetriever>(serviceProvider =>
-    new MetricsFusedMaintenanceRetriever(
-        serviceProvider.GetRequiredService<FusedMaintenanceRetriever>(),
-        serviceProvider.GetRequiredService<UniPMMetrics>()));
-builder.Services.Configure<MaintenanceReviewOptions>(
-    builder.Configuration.GetSection(MaintenanceReviewOptions.SectionName));
-builder.Services.Configure<SummaryOptions>(
-    builder.Configuration.GetSection(SummaryOptions.SectionName));
-builder.Services.Configure<SummaryExperimentOptions>(
-    builder.Configuration.GetSection(SummaryExperimentOptions.SectionName));
-builder.Services.AddScoped<PrivacySanitizerService>();
-builder.Services.AddSingleton<MaintenanceReviewSourceSelector>();
-builder.Services.AddSingleton<MaintenanceReviewPromptBuilder>();
-builder.Services.AddHttpClient<ISummaryService, OpenAiCompatibleSummaryService>();
-var summaryExperimentCaptureEnabled = builder.Environment.IsDevelopment()
-    && builder.Configuration.GetValue<bool>(
-        $"{SummaryExperimentOptions.SectionName}:{nameof(SummaryExperimentOptions.CaptureGeneratedText)}");
-if (summaryExperimentCaptureEnabled)
-{
-    builder.Services.AddSingleton<ISummaryExperimentCapture, FileSummaryExperimentCapture>();
-}
-else
-{
-    builder.Services.AddSingleton<ISummaryExperimentCapture, NullSummaryExperimentCapture>();
-}
-builder.Services.AddScoped<IMaintenanceReviewService, MaintenanceReviewService>();
 builder.Services.AddScoped<PmPeriodDashboardService>();
 
 var app = builder.Build();
@@ -238,25 +174,6 @@ if (maintenanceCommand != SyntheticMaintenanceCommand.None)
             await using var context = await contextFactory.CreateDbContextAsync();
             await context.Database.MigrateAsync();
             await Console.Out.WriteLineAsync("Database migrations applied successfully.");
-        }
-        else if (maintenanceCommand == SyntheticMaintenanceCommand.Rebuild)
-        {
-            var projector = scope.ServiceProvider.GetRequiredService<MaintenanceSearchDocumentProjector>();
-            var result = await projector.RebuildAsync();
-            await Console.Out.WriteLineAsync(
-                $"Rebuilt {result.Total} maintenance search documents ({result.Created} created, {result.Updated} updated, {result.Removed} removed).");
-        }
-        else if (maintenanceCommand == SyntheticMaintenanceCommand.RebuildEmbeddings)
-        {
-            var indexer = scope.ServiceProvider
-                .GetRequiredService<IMaintenanceSearchDocumentEmbeddingIndexer>();
-            var result = await indexer.RebuildAsync();
-            await Console.Out.WriteLineAsync(
-                $"Rebuilt {result.Total} maintenance embeddings ({result.Created} created, {result.Updated} updated, {result.Skipped} skipped, {result.Failed} failed).");
-            if (result.Failed > 0)
-            {
-                Environment.ExitCode = 1;
-            }
         }
         else if (maintenanceCommand == SyntheticMaintenanceCommand.RebuildInstitutionalReferenceEmbeddings)
         {
@@ -366,8 +283,7 @@ app.MapGet("/", () => Results.Ok(new
 }))
 .WithName("GetApiInfo");
 
-app.MapApiEndpoints(app.Configuration.GetValue<bool>(
-    $"{MaintenanceReviewOptions.SectionName}:Enabled"));
+app.MapApiEndpoints();
 
 app.MapHealthChecks("/health/live", new HealthCheckOptions
 {
