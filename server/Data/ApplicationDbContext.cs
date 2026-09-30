@@ -19,8 +19,6 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     public DbSet<InspectionLocationAttempt> InspectionLocationAttempts => Set<InspectionLocationAttempt>();
     public DbSet<PreventiveMaintenanceForm> PreventiveMaintenanceForms => Set<PreventiveMaintenanceForm>();
     public DbSet<PreventiveMaintenanceAcknowledgement> PreventiveMaintenanceAcknowledgements => Set<PreventiveMaintenanceAcknowledgement>();
-    public DbSet<MaintenanceSearchDocument> MaintenanceSearchDocuments => Set<MaintenanceSearchDocument>();
-    public DbSet<MaintenanceSearchDocumentEmbedding> MaintenanceSearchDocumentEmbeddings => Set<MaintenanceSearchDocumentEmbedding>();
     public DbSet<ReferenceDocument> ReferenceDocuments => Set<ReferenceDocument>();
     public DbSet<ReferenceDocumentApplicability> ReferenceDocumentApplicabilities => Set<ReferenceDocumentApplicability>();
     public DbSet<ReferenceDocumentSection> ReferenceDocumentSections => Set<ReferenceDocumentSection>();
@@ -236,21 +234,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             .HasForeignKey<PreventiveMaintenanceAcknowledgement>(record => record.FormId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        var searchDocument = modelBuilder.Entity<MaintenanceSearchDocument>();
-        searchDocument.Property(document => document.AssetCode)
-            .HasMaxLength(AssetCodeValue.MaxLength);
-        searchDocument.Property(document => document.AssetCategory)
-            .HasMaxLength(64);
-        searchDocument.Property(document => document.Building)
-            .HasMaxLength(AssetCodeValue.MetadataMaxLength);
-        searchDocument.Property(document => document.Department)
-            .HasMaxLength(AssetCodeValue.MetadataMaxLength);
-        searchDocument.Property(document => document.Location)
-            .HasMaxLength(AssetCodeValue.MetadataMaxLength);
-        searchDocument.Property(document => document.IssueKeysJson)
-            .HasMaxLength(1024);
-
-        // Define relationships and indexes (hybrid search foundations)
+        // Define inspection relationships and supporting indexes.
         inspection
             .HasOne(i => i.Schedule)
             .WithMany()
@@ -315,73 +299,6 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             table.HasCheckConstraint(
                 "CK_InspectionLocationAttempts_Outcome_Consistent",
                 "([Outcome] = 'NotConfigured' AND [ExpectedLatitude] IS NULL AND [ExpectedLongitude] IS NULL AND [ExpectedRadiusMeters] IS NULL AND [DistanceMeters] IS NULL) OR ([Outcome] = 'Uncertain' AND [HasAccuracy] = 0 AND [ExpectedLatitude] IS NOT NULL AND [ExpectedLongitude] IS NOT NULL AND [ExpectedRadiusMeters] IS NOT NULL AND [DistanceMeters] IS NOT NULL AND [DistanceMeters] >= 0) OR ([Outcome] IN ('Inside', 'Outside', 'Uncertain') AND [HasAccuracy] = 1 AND [ExpectedLatitude] IS NOT NULL AND [ExpectedLongitude] IS NOT NULL AND [ExpectedRadiusMeters] IS NOT NULL AND [DistanceMeters] IS NOT NULL AND [DistanceMeters] >= 0)");
-        });
-
-        searchDocument
-            .HasKey(document => document.InspectionId);
-
-        modelBuilder.Entity<MaintenanceSearchDocument>()
-            .HasOne(document => document.Inspection)
-            .WithOne()
-            .HasForeignKey<MaintenanceSearchDocument>(document => document.InspectionId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        searchDocument
-            .Property(document => document.ProjectionVersion)
-            .HasMaxLength(32);
-
-        searchDocument
-            .Property(document => document.LexiconVersion)
-            .HasMaxLength(32);
-
-        searchDocument
-            .HasIndex(document => new { document.AssetId, document.DateInspected });
-
-        searchDocument
-            .HasIndex(document => document.ScheduleId);
-
-        searchDocument
-            .HasIndex(document => new { document.AssetCategory, document.DateInspected });
-
-        searchDocument
-            .HasIndex(document => new { document.IsOperational, document.DateInspected });
-
-        var searchDocumentEmbedding = modelBuilder.Entity<MaintenanceSearchDocumentEmbedding>();
-        searchDocumentEmbedding
-            .HasKey(embedding => embedding.InspectionId);
-        searchDocumentEmbedding
-            .Property(embedding => embedding.ProviderKey)
-            .HasMaxLength(64);
-        searchDocumentEmbedding
-            .Property(embedding => embedding.ModelKey)
-            .HasMaxLength(256);
-        searchDocumentEmbedding
-            .Property(embedding => embedding.EmbeddingProfile)
-            .HasMaxLength(512);
-        searchDocumentEmbedding
-            .Property(embedding => embedding.Dimensions)
-            .IsRequired();
-        searchDocumentEmbedding
-            .Property(embedding => embedding.VectorJson)
-            .HasColumnType("nvarchar(max)");
-        searchDocumentEmbedding
-            .Property(embedding => embedding.SourceHash)
-            .HasMaxLength(64);
-        searchDocumentEmbedding
-            .HasIndex(embedding => new { embedding.EmbeddingProfile, embedding.SourceHash });
-        searchDocumentEmbedding
-            .HasOne(embedding => embedding.SearchDocument)
-            .WithOne(document => document.Embedding)
-            .HasForeignKey<MaintenanceSearchDocumentEmbedding>(embedding => embedding.InspectionId)
-            .OnDelete(DeleteBehavior.Cascade);
-        searchDocumentEmbedding.ToTable("MaintenanceSearchDocumentEmbeddings", table =>
-        {
-            table.HasCheckConstraint(
-                "CK_MaintenanceSearchDocumentEmbeddings_Dimensions",
-                "[Dimensions] BETWEEN 1 AND 4096");
-            table.HasCheckConstraint(
-                "CK_MaintenanceSearchDocumentEmbeddings_VectorJson",
-                "ISJSON([VectorJson]) = 1");
         });
 
         var referenceDocument = modelBuilder.Entity<ReferenceDocument>();
