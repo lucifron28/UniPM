@@ -72,8 +72,11 @@ public static class SchedulesEndpoints
             var pmCycle = PreventiveMaintenanceCycle.FromScheduleDate(dto.ScheduleDate);
             PreventiveMaintenanceCycle.TryParse(pmCycle, out var year, out var month);
             var quarter = $"Q{((month - 1) / 3) + 1}";
-            var isQuarterly = SchedulePeriodTypeCatalog.TryNormalize(dto.PeriodType, out var normalizedPeriodType)
-                && normalizedPeriodType == SchedulePeriodTypeCatalog.Quarter;
+            var periodType = SchedulePeriodTypeCatalog.TryNormalize(
+                dto.PeriodType,
+                out var normalizedPeriodType)
+                ? normalizedPeriodType
+                : throw new InvalidOperationException("Validated schedule period type was not canonicalizable.");
 
             var schedule = new PreventiveMaintenanceSchedule
             {
@@ -82,10 +85,8 @@ public static class SchedulesEndpoints
                 Asset = asset,
                 ScheduleDate = dto.ScheduleDate,
                 PmCycle = pmCycle,
-                PeriodType = SchedulePeriodTypeCatalog.TryNormalize(dto.PeriodType, out var periodType)
-                    ? periodType
-                    : throw new InvalidOperationException("Validated schedule period type was not canonicalizable."),
-                Quarter = isQuarterly || !string.IsNullOrWhiteSpace(dto.Quarter) ? quarter : null,
+                PeriodType = periodType,
+                Quarter = periodType == SchedulePeriodTypeCatalog.Quarter ? quarter : null,
                 Year = year,
                 Status = ScheduleStatusCatalog.Due,
                 CreatedAt = now,
@@ -469,7 +470,9 @@ public class CreateScheduleDto
             errors.Add(nameof(ScheduleDate), ["Schedule date is required."]);
         }
 
-        var hasSupportedPeriodType = SchedulePeriodTypeCatalog.TryNormalize(PeriodType, out _);
+        var hasSupportedPeriodType = SchedulePeriodTypeCatalog.TryNormalize(
+            PeriodType,
+            out var normalizedPeriodType);
         if (string.IsNullOrWhiteSpace(PeriodType))
         {
             errors.Add(nameof(PeriodType), ["Period type is required."]);
@@ -489,12 +492,27 @@ public class CreateScheduleDto
             var pmCycle = PreventiveMaintenanceCycle.FromScheduleDate(ScheduleDate);
             PreventiveMaintenanceCycle.TryParse(pmCycle, out var cycleYear, out var cycleMonth);
             var expectedQuarter = $"Q{((cycleMonth - 1) / 3) + 1}";
+            var maxPlanningYear = DateTimeOffset.UtcNow.Year + 5;
+            var yearErrors = new List<string>();
             if (Year is not null && Year != cycleYear)
             {
-                errors[nameof(Year)] = ["Year must match the schedule date's PM cycle."];
+                yearErrors.Add("Year must match the schedule date's PM cycle.");
             }
 
-            if (normalizedQuarter is not null && normalizedQuarter != expectedQuarter)
+            if (cycleYear < 2000 || cycleYear > maxPlanningYear)
+            {
+                yearErrors.Add($"Year must be between 2000 and {maxPlanningYear}.");
+            }
+
+            if (yearErrors.Count > 0)
+            {
+                errors[nameof(Year)] = yearErrors.ToArray();
+            }
+
+            if (hasSupportedPeriodType
+                && normalizedPeriodType == SchedulePeriodTypeCatalog.Quarter
+                && normalizedQuarter is not null
+                && normalizedQuarter != expectedQuarter)
             {
                 errors[nameof(Quarter)] = ["Quarter must match the schedule date's PM cycle."];
             }
@@ -503,15 +521,6 @@ public class CreateScheduleDto
         if (!string.IsNullOrWhiteSpace(PeriodType) && PeriodType.Trim().Length > 32)
         {
             errors.Add(nameof(PeriodType), ["Period type must not exceed 32 characters."]);
-        }
-
-        if (Year is not null)
-        {
-            var maxPlanningYear = DateTimeOffset.UtcNow.Year + 5;
-            if (Year < 2000 || Year > maxPlanningYear)
-            {
-                errors.Add(nameof(Year), [$"Year must be between 2000 and {maxPlanningYear}."]);
-            }
         }
 
         return errors;

@@ -204,6 +204,7 @@ public sealed class ScheduleQueryEndpointsTests
         created.EnsureSuccessStatusCode();
         var schedule = await created.Content.ReadFromJsonAsync<ScheduleResponse>();
         Assert.NotNull(schedule);
+        Assert.Equal("2026-12", schedule.PmCycle);
         Assert.Equal(2026, schedule.Year);
         Assert.Equal("Q4", schedule.Quarter);
 
@@ -220,6 +221,68 @@ public sealed class ScheduleQueryEndpointsTests
         Assert.NotNull(problem);
         Assert.Contains("Year", problem.Errors.Keys);
         Assert.Contains("Quarter", problem.Errors.Keys);
+    }
+
+    [Fact]
+    public async Task Create_schedule_normalizes_stale_quarter_for_non_quarter_period()
+    {
+        await using var application = new TestApplicationFactory();
+        var client = application.CreateClient();
+        var asset = await CreateAssetAsync(
+            client,
+            "FE-ANNUAL",
+            "fire-extinguisher");
+        var scheduleDate = new DateTimeOffset(2027, 1, 1, 0, 30, 0, TimeSpan.FromHours(14));
+
+        var response = await client.PostAsJsonAsync("/api/v1/schedules/", new
+        {
+            assetId = asset.Id,
+            scheduleDate,
+            periodType = "Annual",
+            quarter = "Q1"
+        });
+
+        response.EnsureSuccessStatusCode();
+        var schedule = await response.Content.ReadFromJsonAsync<ScheduleResponse>();
+        Assert.NotNull(schedule);
+        Assert.Equal("2026-12", schedule.PmCycle);
+        Assert.Equal(2026, schedule.Year);
+        Assert.Null(schedule.Quarter);
+    }
+
+    [Fact]
+    public async Task Create_schedule_rejects_derived_year_outside_planning_range_without_year_input()
+    {
+        await using var application = new TestApplicationFactory();
+        var client = application.CreateClient();
+        var asset = await CreateAssetAsync(
+            client,
+            "FE-FUTURE-YEAR",
+            "fire-extinguisher");
+        var unsupportedYear = DateTimeOffset.UtcNow.Year + 6;
+
+        var response = await client.PostAsJsonAsync("/api/v1/schedules/", new
+        {
+            assetId = asset.Id,
+            scheduleDate = new DateTimeOffset(
+                unsupportedYear,
+                1,
+                1,
+                0,
+                0,
+                0,
+                TimeSpan.FromHours(8)),
+            periodType = "Annual"
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>();
+        Assert.NotNull(problem);
+        Assert.Contains("Year", problem.Errors.Keys);
+        var maxPlanningYear = DateTimeOffset.UtcNow.Year + 5;
+        Assert.Contains(
+            problem.Errors["Year"],
+            message => message.Contains(maxPlanningYear.ToString()));
     }
 
     private static async Task<AssetResponse> CreateAssetAsync(
@@ -301,6 +364,7 @@ public sealed class ScheduleQueryEndpointsTests
         Guid Id,
         Guid AssetId,
         DateTimeOffset ScheduleDate,
+        string PmCycle,
         string PeriodType,
         string Status,
         string? Quarter,
