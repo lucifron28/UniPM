@@ -130,7 +130,7 @@ public sealed class DevelopmentDemoSeederTests
             .SingleAsync(item => item.FormId == acknowledged.Id);
         var submittedAt = new DateTimeOffset(2026, 7, 3, 11, 0, 0, TimeSpan.FromHours(8));
         Assert.Equal(
-            new DateTimeOffset(2026, 7, 7, 9, 0, 0, TimeSpan.FromHours(8)),
+            new DateTimeOffset(2026, 7, 26, 9, 0, 0, TimeSpan.FromHours(8)),
             acknowledgement.AcknowledgedAt);
         Assert.Equal(submittedAt, acknowledged.SubmittedAt);
         Assert.True(acknowledgement.AcknowledgedAt > submittedAt);
