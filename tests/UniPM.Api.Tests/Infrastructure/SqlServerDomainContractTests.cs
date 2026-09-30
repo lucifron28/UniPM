@@ -62,7 +62,7 @@ public sealed class SqlServerDomainContractTests
     }
 
     [SqlServer2019Fact]
-    public async Task Sql_Server_2019_with_full_text_search_applies_migrations_and_executes_containstable()
+    public async Task Sql_Server_2019_with_full_text_search_applies_migrations_and_executes_reference_containstable()
     {
         var baseConnectionString = RequireSqlServer2019Connection();
         await using (var server = new SqlConnection(baseConnectionString))
@@ -98,18 +98,45 @@ public sealed class SqlServerDomainContractTests
             FROM sys.databases
             WHERE name = DB_NAME();
             SELECT COUNT(*)
+            FROM sys.tables
+            WHERE name = N'MaintenanceSearchDocuments';
+            SELECT COUNT(*)
+            FROM sys.tables
+            WHERE name = N'MaintenanceSearchDocumentEmbeddings';
+            SELECT COUNT(*)
             FROM sys.fulltext_catalogs
             WHERE name = N'UniPMMaintenanceRetrieval';
             SELECT COUNT(*)
+            FROM sys.tables
+            WHERE name = N'ReferenceDocumentSections';
+            SELECT COUNT(*)
+            FROM sys.fulltext_catalogs
+            WHERE name = N'UniPMReferenceRetrieval';
+            SELECT COUNT(*)
             FROM sys.fulltext_indexes AS indexTable
             INNER JOIN sys.tables AS tableInfo ON tableInfo.object_id = indexTable.object_id
-            WHERE tableInfo.name = N'MaintenanceSearchDocuments' AND indexTable.is_enabled = 1;
+            INNER JOIN sys.fulltext_catalogs AS catalog ON catalog.fulltext_catalog_id = indexTable.fulltext_catalog_id
+            WHERE tableInfo.name = N'ReferenceDocumentSections'
+              AND catalog.name = N'UniPMReferenceRetrieval'
+              AND indexTable.is_enabled = 1;
             SELECT COUNT(*)
-            FROM CONTAINSTABLE(dbo.MaintenanceSearchDocuments, SearchText, N'pressure');
+            FROM CONTAINSTABLE(dbo.ReferenceDocumentSections, ([Heading], [SectionText]), N'pressure');
             """;
         await using var verificationReader = await verificationCommand.ExecuteReaderAsync();
         Assert.True(await verificationReader.ReadAsync());
         Assert.Equal(150, verificationReader.GetInt32(0));
+        Assert.True(await verificationReader.NextResultAsync());
+        Assert.True(await verificationReader.ReadAsync());
+        Assert.Equal(0, verificationReader.GetInt32(0));
+        Assert.True(await verificationReader.NextResultAsync());
+        Assert.True(await verificationReader.ReadAsync());
+        Assert.Equal(0, verificationReader.GetInt32(0));
+        Assert.True(await verificationReader.NextResultAsync());
+        Assert.True(await verificationReader.ReadAsync());
+        Assert.Equal(0, verificationReader.GetInt32(0));
+        Assert.True(await verificationReader.NextResultAsync());
+        Assert.True(await verificationReader.ReadAsync());
+        Assert.Equal(1, verificationReader.GetInt32(0));
         Assert.True(await verificationReader.NextResultAsync());
         Assert.True(await verificationReader.ReadAsync());
         Assert.Equal(1, verificationReader.GetInt32(0));

@@ -49,7 +49,7 @@ try {
     & dotnet build .\UniPM.slnx -c Release --no-restore *> (Join-Path $artifactDirectory 'build.log')
     if ($LASTEXITCODE -ne 0) { throw 'dotnet build failed.' }
 
-    foreach ($command in @('--migrate-database', '--seed-synthetic', '--seed-development-users', '--rebuild-maintenance-search-documents')) {
+    foreach ($command in @('--migrate-database', '--seed-synthetic', '--seed-development-users')) {
         & dotnet run --project server -- $command *> (Join-Path $artifactDirectory ("{0}.log" -f $command.TrimStart('-')))
         if ($LASTEXITCODE -ne 0) { throw "Maintenance command $command failed." }
     }
@@ -57,13 +57,31 @@ try {
     $compatibilityLevel = [int](Invoke-SqlScalar $ApplicationConnectionString "SELECT compatibility_level FROM sys.databases WHERE name = N'$($applicationDatabaseName.Replace("'", "''"))';")
     if ($compatibilityLevel -ne 150) { throw "Expected $applicationDatabaseName compatibility level 150, found $compatibilityLevel." }
 
+    $maintenanceSearchDocumentTableCount = [int](Invoke-SqlScalar $ApplicationConnectionString "SELECT COUNT(*) FROM sys.tables WHERE name = N'MaintenanceSearchDocuments';")
+    $maintenanceSearchDocumentEmbeddingsTableCount = [int](Invoke-SqlScalar $ApplicationConnectionString "SELECT COUNT(*) FROM sys.tables WHERE name = N'MaintenanceSearchDocumentEmbeddings';")
+    $maintenanceFullTextCatalogCount = [int](Invoke-SqlScalar $ApplicationConnectionString "SELECT COUNT(*) FROM sys.fulltext_catalogs WHERE name = N'UniPMMaintenanceRetrieval';")
+    $referenceDocumentSectionTableCount = [int](Invoke-SqlScalar $ApplicationConnectionString "SELECT COUNT(*) FROM sys.tables WHERE name = N'ReferenceDocumentSections';")
+    $referenceFullTextCatalogCount = [int](Invoke-SqlScalar $ApplicationConnectionString "SELECT COUNT(*) FROM sys.fulltext_catalogs WHERE name = N'UniPMReferenceRetrieval';")
+    $referenceDocumentSectionFullTextIndexCount = [int](Invoke-SqlScalar $ApplicationConnectionString "SELECT COUNT(*) FROM sys.fulltext_indexes AS indexTable INNER JOIN sys.tables AS tableInfo ON tableInfo.object_id = indexTable.object_id INNER JOIN sys.fulltext_catalogs AS catalog ON catalog.fulltext_catalog_id = indexTable.fulltext_catalog_id WHERE tableInfo.name = N'ReferenceDocumentSections' AND catalog.name = N'UniPMReferenceRetrieval' AND indexTable.is_enabled = 1;")
+
+    if ($maintenanceSearchDocumentTableCount -ne 0) { throw 'Retired MaintenanceSearchDocuments table is still present.' }
+    if ($maintenanceSearchDocumentEmbeddingsTableCount -ne 0) { throw 'Retired MaintenanceSearchDocumentEmbeddings table is still present.' }
+    if ($maintenanceFullTextCatalogCount -ne 0) { throw 'Retired maintenance full-text catalog is still present.' }
+    if ($referenceDocumentSectionTableCount -ne 1) { throw 'ReferenceDocumentSections table is missing.' }
+    if ($referenceFullTextCatalogCount -ne 1) { throw 'Reference full-text catalog is missing.' }
+    if ($referenceDocumentSectionFullTextIndexCount -ne 1) { throw 'ReferenceDocumentSections full-text index is missing or disabled.' }
+
     [ordered]@{
         sqlServerMajorVersion = $majorVersion
         fullTextInstalled = $fullTextInstalled
         applicationDatabase = $applicationDatabaseName
         compatibilityLevel = $compatibilityLevel
-        fullTextCatalogCount = [int](Invoke-SqlScalar $ApplicationConnectionString "SELECT COUNT(*) FROM sys.fulltext_catalogs WHERE name = N'UniPMMaintenanceRetrieval';")
-        maintenanceSearchDocumentFullTextIndexCount = [int](Invoke-SqlScalar $ApplicationConnectionString "SELECT COUNT(*) FROM sys.fulltext_indexes AS indexTable INNER JOIN sys.tables AS tableInfo ON tableInfo.object_id = indexTable.object_id WHERE tableInfo.name = N'MaintenanceSearchDocuments' AND indexTable.is_enabled = 1;")
+        maintenanceSearchDocumentTableCount = $maintenanceSearchDocumentTableCount
+        maintenanceSearchDocumentEmbeddingsTableCount = $maintenanceSearchDocumentEmbeddingsTableCount
+        maintenanceFullTextCatalogCount = $maintenanceFullTextCatalogCount
+        referenceDocumentSectionTableCount = $referenceDocumentSectionTableCount
+        referenceFullTextCatalogCount = $referenceFullTextCatalogCount
+        referenceDocumentSectionFullTextIndexCount = $referenceDocumentSectionFullTextIndexCount
     } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $artifactDirectory 'sql-server-probes.json') -Encoding utf8
 
     # SQL integration tests use their own explicit connection. Remove the application
