@@ -26,9 +26,9 @@ function registryDesktopViewportClassName(
   viewportSize: RegistryViewportSize,
 ) {
   if (breakpoint === 'md') {
-    return viewportSize === 'compact' ? 'md:min-h-[544px]' : 'md:min-h-[760px]'
+    return viewportSize === 'compact' ? 'md:h-[544px]' : 'md:h-[760px]'
   }
-  return viewportSize === 'compact' ? 'lg:min-h-[544px]' : 'lg:min-h-[760px]'
+  return viewportSize === 'compact' ? 'lg:h-[544px]' : 'lg:h-[760px]'
 }
 
 export function RegistryLoadingPanel({
@@ -87,7 +87,7 @@ export function RegistryResultsPanel({
       >
         <div
           className={
-            'overflow-x-auto ' +
+            'overflow-auto ' +
             registryDesktopViewportClassName(breakpoint, viewportSize)
           }
         >

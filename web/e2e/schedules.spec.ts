@@ -202,6 +202,10 @@ test.describe('Schedule workflows', () => {
     )
     await page.setViewportSize({ width: 1280, height: 600 })
     await page.goto('/app/schedules?status=Due&quarter=Q3&year=2026')
+    // Longer CPMP cells must preserve the viewport even with enlarged text.
+    await page.addStyleTag({
+      content: 'tbody td { font-size: 18px; line-height: 28px; }',
+    })
     const rows = page.getByRole('table').locator('tbody tr')
     await expect(rows).toHaveCount(10)
     const next = page.getByRole('button', { name: 'Next' })
