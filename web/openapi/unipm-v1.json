@@ -1856,6 +1856,14 @@
           },
           "displayName": {
             "type": "string"
+          },
+          "scheduledMonths": {
+            "type": ["null", "array"],
+            "items": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": ["integer", "string"],
+              "format": "int32"
+            }
           }
         }
       },
@@ -2185,8 +2193,11 @@
             "format": "uuid"
           },
           "scheduleDate": {
-            "type": "string",
+            "type": ["null", "string"],
             "format": "date-time"
+          },
+          "pmCycle": {
+            "type": ["null", "string"]
           },
           "periodType": {
             "type": "string"

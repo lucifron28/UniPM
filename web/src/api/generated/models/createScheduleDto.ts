@@ -7,7 +7,10 @@
 
 export interface CreateScheduleDto {
   assetId?: string
-  scheduleDate?: string
+  /** @nullable */
+  scheduleDate?: string | null
+  /** @nullable */
+  pmCycle?: string | null
   periodType?: string
   /** @nullable */
   quarter?: string | null
