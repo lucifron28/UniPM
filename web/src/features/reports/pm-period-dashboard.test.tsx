@@ -191,7 +191,7 @@ describe('PM period dashboard period terminology', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('shows a cycle-derived due date and a separate actual inspection date', () => {
+  it('shows a cycle-derived due date and a separate actual inspection date', async () => {
     const dashboard = {
       ...dashboardFor('Closed'),
       assets: [
@@ -226,7 +226,9 @@ describe('PM period dashboard period terminology', () => {
     renderPresentationWithRouter(dashboard)
 
     expect(
-      screen.getByRole('columnheader', { name: 'Scheduled month / due date' }),
+      await screen.findByRole('columnheader', {
+        name: 'Scheduled month / due date',
+      }),
     ).toBeInTheDocument()
     expect(screen.getByText('February 2028')).toBeInTheDocument()
     expect(screen.getAllByText(/Feb 29, 2028/).length).toBeGreaterThan(0)

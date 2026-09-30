@@ -218,9 +218,9 @@ describe('inspection review workflows', () => {
     expect(screen.getByText(inspection.remarks)).toBeInTheDocument()
     expect(document.querySelector('script')).toBeNull()
     expect(screen.getByText('Scheduled month')).toBeInTheDocument()
-    expect(screen.getByText('August 2026')).toBeInTheDocument()
+    expect(await screen.findByText('August 2026')).toBeInTheDocument()
     expect(screen.getByText('Due date')).toBeInTheDocument()
-    expect(screen.getByText('Aug 31, 2026')).toBeInTheDocument()
+    expect(await screen.findByText('Aug 31, 2026')).toBeInTheDocument()
     expect(screen.getByText('Actual inspection date')).toBeInTheDocument()
     expect(
       await screen.findByRole('link', { name: 'FE-001' }),
