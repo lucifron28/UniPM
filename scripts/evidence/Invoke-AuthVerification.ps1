@@ -25,8 +25,6 @@ $environmentNames = @(
     'UNIPM_JWT_SIGNING_KEY',
     'UNIPM_JWT_ACCESS_TOKEN_MINUTES',
     'UNIPM_DEV_USER_PASSWORD',
-    'UNIPM_MAINTENANCE_REVIEW_ENABLED',
-    'UNIPM_SUMMARY_ENABLED',
     'UNIPM_EMBEDDINGS_ENABLED')
 
 function Invoke-GitValue {
@@ -197,8 +195,6 @@ try {
         'UNIPM_DEV_USER_PASSWORD',
         "AuthEvidence!9$([Guid]::NewGuid().ToString('N'))",
         'Process')
-    [Environment]::SetEnvironmentVariable('UNIPM_MAINTENANCE_REVIEW_ENABLED', 'true', 'Process')
-    [Environment]::SetEnvironmentVariable('UNIPM_SUMMARY_ENABLED', 'false', 'Process')
     [Environment]::SetEnvironmentVariable('UNIPM_EMBEDDINGS_ENABLED', 'false', 'Process')
 
     Invoke-Stage 'compose-config' {
