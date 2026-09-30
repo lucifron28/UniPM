@@ -115,6 +115,9 @@ record's evidence level and tested/source commit.
 | IMP-036 | implementation | Pre-acceptance context and schedule-contract follow-up | reviewed | source-inspected | `1784778`; `177b5e6`; `67cdb44`; `3052bb0` | [record](implementation/IMP-036-pre-acceptance-context-and-schedule-contract-follow-up.md) | Documents dashboard-context restoration, canonical schedule-date rules, and lifecycle correction. Final navigation checks ran at HEAD `177b5e6` plus patch `5d08c539`; no rerun at navigation commit `67cdb44`. |
 | TEST-043 | test-run | Final pre-acceptance integration verification | executed | locally-executed | `c2fe175` + `abafc874`; `177b5e6` + `5d08c539` | [record](test-runs/TEST-043-pre-acceptance-integration-verification.md) | Schedule API 11/11 and web 17/17 passed. Initial navigation patch identity was not retained; final rerun passed 5 with 11 skipped on the identified patch. ESLint, typecheck, formatting, and scoped diff check passed; later navigation commit `67cdb44` was not rerun. |
 
+| IMP-038 | implementation | Mobile CPMP cycle and due-date presentation | reviewed | source-inspected | `e87a229` | [record](implementation/IMP-038-mobile-cpmp-cycle-presentation.md) | Canonical month/year, civil month-end, preserved field workflow and progress terminology. |
+| TEST-045 | test-run | Mobile CPMP presentation and workflow verification | executed | locally-executed | `e87a229` | [record](test-runs/TEST-045-mobile-cpmp-presentation.md) | 103 focused tests, analyzer and changed-file formatting passed; seven unchanged formatting baseline files; physical/iOS not verified. |
+
 ## Pending Evidence
 
 - Independent semantic model-quality baseline on real institutional records:
