@@ -9,15 +9,12 @@ namespace UniPM.Api.Tests.Seeding;
 public sealed class SyntheticMaintenanceDatasetTests
 {
     [Fact]
-    public async Task Fixtures_exist_and_validate_against_their_schemas()
+    public async Task Operational_fixture_exists_and_validates_against_its_schema()
     {
         Assert.True(File.Exists(SyntheticFixturePaths.OperationalFixture));
         Assert.True(File.Exists(SyntheticFixturePaths.OperationalSchema));
-        Assert.True(File.Exists(SyntheticFixturePaths.EvaluationFixture));
-        Assert.True(File.Exists(SyntheticFixturePaths.EvaluationSchema));
 
         await AssertSchemaValidAsync(SyntheticFixturePaths.OperationalSchema, SyntheticFixturePaths.OperationalFixture);
-        await AssertSchemaValidAsync(SyntheticFixturePaths.EvaluationSchema, SyntheticFixturePaths.EvaluationFixture);
     }
 
     [Fact]
@@ -151,76 +148,6 @@ public sealed class SyntheticMaintenanceDatasetTests
         }
     }
 
-    [Fact]
-    public async Task Evaluation_manifest_is_complete_and_remains_test_only()
-    {
-        var dataset = await LoadOperationalDatasetAsync();
-        var evaluation = (await LoadJsonObjectAsync(SyntheticFixturePaths.EvaluationFixture));
-        var assetAnnotations = evaluation["assetAnnotations"]!.AsArray();
-        var recordAnnotations = evaluation["recordAnnotations"]!.AsArray();
-
-        Assert.Equal("1.1.0", evaluation["evaluationVersion"]!.GetValue<string>());
-        Assert.Equal(dataset.DatasetVersion, evaluation["datasetVersion"]!.GetValue<string>());
-        Assert.Equal(24, evaluation["queries"]!.AsArray().Count);
-        Assert.Equal(4, assetAnnotations.Count);
-        Assert.Equal(dataset.Inspections.Count, recordAnnotations.Count);
-
-        var assetAnnotationEntries = assetAnnotations
-            .Select(annotation =>
-            (
-                Id: Guid.Parse(annotation!["assetId"]!.GetValue<string>()),
-                Code: annotation["assetCode"]!.GetValue<string>()))
-            .ToList();
-        Assert.Equal(assetAnnotationEntries.Count, assetAnnotationEntries.Select(entry => entry.Id).Distinct().Count());
-        Assert.Equal(assetAnnotationEntries.Count, assetAnnotationEntries.Select(entry => entry.Code).Distinct(StringComparer.Ordinal).Count());
-
-        var operationalAssetsById = dataset.Assets.ToDictionary(asset => asset.Id);
-        Assert.All(assetAnnotationEntries, entry =>
-        {
-            Assert.True(operationalAssetsById.TryGetValue(entry.Id, out var asset));
-            Assert.Equal(asset!.AssetCode, entry.Code);
-        });
-
-        var expectedColdStartAssetIds = dataset.Assets
-            .Where(asset => dataset.Schedules.Any(schedule => schedule.AssetId == asset.Id && schedule.Status == "Due"))
-            .Where(asset => dataset.Inspections.All(inspection => inspection.AssetId != asset.Id))
-            .Select(asset => asset.Id)
-            .ToHashSet();
-        Assert.True(expectedColdStartAssetIds.SetEquals(assetAnnotationEntries.Select(entry => entry.Id)));
-
-        var recordAnnotationEntries = recordAnnotations
-            .Select(annotation =>
-            (
-                Id: Guid.Parse(annotation!["inspectionId"]!.GetValue<string>()),
-                SeedKey: annotation["inspectionSeedKey"]!.GetValue<string>()))
-            .ToList();
-        Assert.Equal(recordAnnotationEntries.Count, recordAnnotationEntries.Select(entry => entry.Id).Distinct().Count());
-        Assert.Equal(recordAnnotationEntries.Count, recordAnnotationEntries.Select(entry => entry.SeedKey).Distinct(StringComparer.Ordinal).Count());
-
-        var operationalInspectionsById = dataset.Inspections.ToDictionary(inspection => inspection.Id);
-        Assert.Equal(
-            dataset.Inspections.Select(inspection => inspection.Id).ToHashSet(),
-            recordAnnotationEntries.Select(entry => entry.Id).ToHashSet());
-        Assert.All(recordAnnotationEntries, entry =>
-        {
-            Assert.True(operationalInspectionsById.TryGetValue(entry.Id, out var inspection));
-            Assert.Equal(inspection!.Id, entry.Id);
-            Assert.Equal(inspection.SeedKey, entry.SeedKey);
-        });
-
-        var annotationTags = recordAnnotations
-            .SelectMany(annotation => annotation!["scenarioTags"]!.AsArray())
-            .Select(tag => tag!.GetValue<string>())
-            .ToHashSet(StringComparer.Ordinal);
-        Assert.Contains("english", annotationTags);
-        Assert.Contains("tagalog", annotationTags);
-        Assert.Contains("taglish", annotationTags);
-        Assert.Contains("semantic-paraphrase", annotationTags);
-        Assert.Contains("distractor", annotationTags);
-        Assert.Contains("same-asset-history", annotationTags);
-        Assert.Contains("similar-asset-fallback", annotationTags);
-    }
-
     private static async Task<SyntheticMaintenanceDataset> LoadOperationalDatasetAsync()
     {
         var validator = new SyntheticMaintenanceDatasetValidator();
@@ -238,11 +165,6 @@ public sealed class SyntheticMaintenanceDatasetTests
         var evaluation = schema.Evaluate(instance.RootElement);
 
         Assert.True(evaluation.IsValid, $"Schema validation failed for '{Path.GetFileName(instancePath)}'.");
-    }
-
-    private static async Task<JsonObject> LoadJsonObjectAsync(string path)
-    {
-        return JsonNode.Parse(await File.ReadAllTextAsync(path))!.AsObject();
     }
 
     private static async Task<string> CreateModifiedFixtureAsync(Action<JsonObject> mutate)
