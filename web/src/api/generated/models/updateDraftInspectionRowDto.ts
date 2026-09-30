@@ -6,7 +6,6 @@
  */
 
 export interface UpdateDraftInspectionRowDto {
-  inspectorUserId?: string
   dateInspected?: string
   /** @nullable */
   dateAccomplished?: string | null

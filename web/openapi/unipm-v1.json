@@ -3283,10 +3283,6 @@
       "UpdateDraftInspectionRowDto": {
         "type": "object",
         "properties": {
-          "inspectorUserId": {
-            "type": "string",
-            "format": "uuid"
-          },
           "dateInspected": {
             "type": "string",
             "format": "date-time"
