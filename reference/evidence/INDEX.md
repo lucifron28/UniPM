@@ -107,6 +107,8 @@ record's evidence level and tested/source commit.
 | TEST-040 | test-run | Flutter mobile core preventive-maintenance physical-device acceptance | executed | locally-executed | `0b77134` | [record](test-runs/TEST-040-mobile-core-pm-physical-acceptance.md) | Samsung Galaxy A16 manual acceptance passed against the live development backend for Login -> QR -> schedule -> category form -> multi-row Draft -> submit -> Department Head acknowledgement -> schedule completion -> official history; optional capabilities remain deferred. |
 | IMP-034 | implementation | PMIS GSD demonstration readiness | reviewed | locally-executed | `c9deb6d` | [record](implementation/IMP-034-pmis-gsd-demo-readiness.md) | Live form-review contract alignment, readable PM review fields, validation dashboard, and a repository-verified GSD demo runbook; no AI or workflow expansion. |
 | TEST-041 | test-run | PMIS GSD demonstration readiness verification | executed | locally-executed | `c9deb6d` | [record](test-runs/TEST-041-pmis-gsd-demo-readiness.md) | Focused web 8/8, backend 18/18, native SQL 3/3, generated-client drift, web build, and isolated fictional seed checks passed; fresh physical-device rehearsal remains pending. |
+| IMP-035 | implementation | Pre-acceptance integration hardening | reviewed | source-inspected | `e301a91` | [record](implementation/IMP-035-pre-acceptance-integration-hardening.md) | Maps all 12 fixes to sources/tests; documents authoritative save-completes and acknowledgement-receipt semantics. |
+| TEST-042 | test-run | Pre-acceptance integration hardening verification | executed | locally-executed | `e301a91` web; `fabb49a` backend/mobile tests | [record](test-runs/TEST-042-pre-acceptance-integration-hardening.md) | Backend 70/70, mobile 73/73, web 54/54, Playwright 25/25, contract checks 7/7; full formatting fails 39 unchanged paths, SQL skipped, physical/iOS NOT VERIFIED. |
 
 ## Pending Evidence
 
@@ -122,3 +124,6 @@ record's evidence level and tested/source commit.
 - Production authentication deployment verification: pending configured IIS
   hosting, institutional secret management, and final RBAC decisions.
 - IIS deployment verification: pending a configured Windows Server deployment.
+- Physical-device and iOS verification for the pre-acceptance hardening remain
+  unverified. Native SQL coverage was skipped in TEST-042 because no test
+  connection was configured.
