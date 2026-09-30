@@ -247,6 +247,7 @@ test('demonstrates the submitted PM batch acknowledgement review workflow', asyn
   await expect(page).toHaveURL(
     new RegExp(`/app/preventive-maintenance-forms/${formId}/review`),
   )
+  const reviewUrl = page.url()
 
   // 4. Confirm the whole-batch context and submitted lifecycle status.
   await expect(
@@ -312,9 +313,7 @@ test('demonstrates the submitted PM batch acknowledgement review workflow', asyn
   await expect(page).toHaveURL(
     new RegExp(`/app/preventive-maintenance-forms/${formId}/review`),
   )
-  await expect(page).toHaveURL(/assetCategory=fire-extinguisher/)
-  await expect(page).toHaveURL(/pmCycle=2026-07/)
-  await expect(page).toHaveURL(/department=GSD/)
+  await expect(page).toHaveURL(reviewUrl)
 
   // 9. Open the complete PM form in read-only mode.
   await page.getByRole('link', { name: 'View full PM form' }).click()
