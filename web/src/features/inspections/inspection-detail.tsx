@@ -161,7 +161,11 @@ export function InspectionDetail({
             search={{
               department: reviewContext.department,
               assetCategory: reviewContext.assetCategory,
+              year: reviewContext.year,
               pmCycle: reviewContext.pmCycle,
+              condition: reviewContext.condition,
+              timeliness: reviewContext.timeliness,
+              search: reviewContext.search,
             }}
           >
             Back to batch review

@@ -30,11 +30,8 @@ const uuidPattern =
 
 export type PmAcknowledgementReviewSearch = PmPeriodDashboardSearch
 
-export type PmAcknowledgementReviewContext = {
+export type PmAcknowledgementReviewContext = PmPeriodDashboardSearch & {
   reviewFormId: string
-  department?: string | undefined
-  assetCategory: string
-  pmCycle: string
 }
 
 function formatCategory(value: string) {
@@ -298,12 +295,7 @@ function AssetReviewList({
                       <Link
                         to="/app/inspections/$inspectionId"
                         params={{ inspectionId: asset.inspectionId }}
-                        search={{
-                          reviewFormId: reviewContext.reviewFormId,
-                          department: reviewContext.department,
-                          assetCategory: reviewContext.assetCategory,
-                          pmCycle: reviewContext.pmCycle,
-                        }}
+                        search={reviewContext}
                         className="font-semibold text-[var(--primary)] underline-offset-2 hover:underline focus-visible:rounded focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:outline-none"
                       >
                         View inspection detail
@@ -471,10 +463,8 @@ export function PmAcknowledgementReview({
 
   const isSubmitted = form.status === 'Submitted'
   const reviewContext: PmAcknowledgementReviewContext = {
+    ...search,
     reviewFormId: form.id,
-    department: batch.department ?? undefined,
-    assetCategory: batch.assetCategory,
-    pmCycle: batch.pmCycle,
   }
 
   return (
@@ -484,12 +474,7 @@ export function PmAcknowledgementReview({
     >
       <Link
         to="/app/dashboard"
-        search={{
-          ...search,
-          assetCategory: batch.assetCategory,
-          year: Number(batch.pmCycle.slice(0, 4)),
-          pmCycle: batch.pmCycle,
-        }}
+        search={search}
         className="text-sm font-semibold text-[var(--primary)] hover:underline"
       >
         Back to PM dashboard
@@ -501,10 +486,7 @@ export function PmAcknowledgementReview({
           params={{ formId: form.id }}
           search={{
             readonly: true,
-            reviewFormId: reviewContext.reviewFormId,
-            department: reviewContext.department,
-            assetCategory: reviewContext.assetCategory,
-            pmCycle: reviewContext.pmCycle,
+            ...reviewContext,
           }}
           className="inline-flex min-h-10 items-center justify-center rounded-lg bg-[var(--primary)] px-4 py-2 text-sm font-semibold text-white hover:bg-[var(--primary-active)] focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:outline-none"
         >

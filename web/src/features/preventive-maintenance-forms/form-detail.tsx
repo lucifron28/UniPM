@@ -32,6 +32,7 @@ import {
   inspectionConditionLabel,
 } from '@/features/preventive-maintenance-forms/form-presentation'
 import type { PmAcknowledgementReviewContext } from '@/features/preventive-maintenance-forms/pm-acknowledgement-review'
+import type { PmPeriodDashboardSearch } from '@/features/reports/pm-period-dashboard'
 
 const uuidPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -648,10 +649,12 @@ export function FormDetail({
   formId,
   readOnly = false,
   reviewContext,
+  dashboardSearch,
 }: {
   formId: string
   readOnly?: boolean | undefined
   reviewContext?: PmAcknowledgementReviewContext | undefined
+  dashboardSearch?: PmPeriodDashboardSearch | undefined
 }) {
   const [acknowledgement, setAcknowledgement] =
     useState<PreventiveMaintenanceAcknowledgementResponse | null>(null)
@@ -769,11 +772,23 @@ export function FormDetail({
           search={{
             department: reviewContext.department,
             assetCategory: reviewContext.assetCategory,
+            year: reviewContext.year,
             pmCycle: reviewContext.pmCycle,
+            condition: reviewContext.condition,
+            timeliness: reviewContext.timeliness,
+            search: reviewContext.search,
           }}
           className="text-sm font-semibold text-[var(--primary)] hover:underline"
         >
           Back to batch review
+        </Link>
+      ) : readOnly && dashboardSearch ? (
+        <Link
+          to="/app/dashboard"
+          search={dashboardSearch}
+          className="text-sm font-semibold text-[var(--primary)] hover:underline"
+        >
+          Back to PM dashboard
         </Link>
       ) : (
         <Link

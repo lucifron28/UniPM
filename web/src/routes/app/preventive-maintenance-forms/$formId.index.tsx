@@ -12,6 +12,14 @@ const searchSchema = z.object({
     .string()
     .regex(/^\d{4}-\d{2}$/)
     .optional(),
+  year: z.coerce.number().int().positive().optional(),
+  condition: z
+    .enum(['Operational', 'NonOperational', 'NotInspected'])
+    .optional(),
+  timeliness: z
+    .enum(['OnTime', 'Late', 'Scheduled', 'Pending', 'NotCompleted'])
+    .optional(),
+  search: z.string().trim().max(256).optional(),
 })
 
 export const Route = createFileRoute(
@@ -27,13 +35,20 @@ export const Route = createFileRoute(
 function FormDetailPage() {
   const { formId } = Route.useParams()
   const search = Route.useSearch()
+  const dashboardSearch = {
+    department: search.department,
+    assetCategory: search.assetCategory,
+    year: search.year,
+    pmCycle: search.pmCycle,
+    condition: search.condition,
+    timeliness: search.timeliness,
+    search: search.search,
+  }
   const reviewContext: PmAcknowledgementReviewContext | undefined =
-    search.reviewFormId && search.assetCategory && search.pmCycle
+    search.reviewFormId
       ? {
+          ...dashboardSearch,
           reviewFormId: search.reviewFormId,
-          department: search.department,
-          assetCategory: search.assetCategory,
-          pmCycle: search.pmCycle,
         }
       : undefined
   return (
@@ -41,6 +56,9 @@ function FormDetailPage() {
       formId={formId}
       readOnly={search.readonly}
       reviewContext={reviewContext}
+      dashboardSearch={
+        search.readonly && !reviewContext ? dashboardSearch : undefined
+      }
     />
   )
 }

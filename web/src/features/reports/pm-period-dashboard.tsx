@@ -22,8 +22,9 @@ export type PmPeriodDashboardSearch = {
   year?: number | undefined
   pmCycle?: string | undefined
   department?: string | undefined
-  condition?: string | undefined
-  timeliness?: string | undefined
+  condition?: 'Operational' | 'NonOperational' | 'NotInspected' | undefined
+  timeliness?:
+    'OnTime' | 'Late' | 'Scheduled' | 'Pending' | 'NotCompleted' | undefined
   search?: string | undefined
 }
 
@@ -378,12 +379,7 @@ function BatchOverview({
                     <Link
                       to="/app/preventive-maintenance-forms/$formId/review"
                       params={{ formId: batch.formId }}
-                      search={{
-                        ...dashboardSearch,
-                        assetCategory: batch.assetCategory,
-                        year: Number(batch.pmCycle.slice(0, 4)),
-                        pmCycle: batch.pmCycle,
-                      }}
+                      search={dashboardSearch ?? {}}
                       className="font-semibold text-[var(--primary)] underline-offset-2 hover:underline focus-visible:rounded focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:outline-none"
                     >
                       Review batch
@@ -393,6 +389,7 @@ function BatchOverview({
                       to="/app/preventive-maintenance-forms/$formId"
                       params={{ formId: batch.formId }}
                       search={{
+                        ...dashboardSearch,
                         readonly: batch.formStatus === 'Acknowledged',
                       }}
                       className="font-semibold text-[var(--primary)] underline-offset-2 hover:underline focus-visible:rounded focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:outline-none"
@@ -925,7 +922,8 @@ export function PmPeriodDashboard({
                   onChange={(event) =>
                     onSearchChange({
                       ...search,
-                      condition: event.target.value || undefined,
+                      condition: (event.target.value ||
+                        undefined) as PmPeriodDashboardSearch['condition'],
                     })
                   }
                   className={`${selectClassName} mt-2`}
@@ -947,7 +945,8 @@ export function PmPeriodDashboard({
                   onChange={(event) =>
                     onSearchChange({
                       ...search,
-                      timeliness: event.target.value || undefined,
+                      timeliness: (event.target.value ||
+                        undefined) as PmPeriodDashboardSearch['timeliness'],
                     })
                   }
                   className={`${selectClassName} mt-2`}
