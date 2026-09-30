@@ -76,7 +76,7 @@ public sealed class AuthorizationPolicyTests
         var response = await client.PostAsJsonAsync("/api/v1/schedules/", new
         {
             assetId,
-            scheduleDate = DateTimeOffset.UtcNow.AddDays(1),
+            pmCycle = $"{DateTimeOffset.UtcNow.Year}-11",
             periodType = "Quarter"
         });
 

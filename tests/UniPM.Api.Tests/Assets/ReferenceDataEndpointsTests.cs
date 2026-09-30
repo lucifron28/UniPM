@@ -21,18 +21,10 @@ public sealed class ReferenceDataEndpointsTests : IClassFixture<WebApplicationFa
         Assert.NotNull(categories);
         Assert.Collection(
             categories,
-            category => Assert.Equal(
-                new("fire-extinguisher", "Fire Extinguisher"),
-                category),
-            category => Assert.Equal(
-                new("fire-alarm", "Fire Alarm"),
-                category),
-            category => Assert.Equal(
-                new("emergency-light", "Emergency Light"),
-                category),
-            category => Assert.Equal(
-                new("water-drinking-station", "Water Drinking Station"),
-                category));
+            category => AssertAssetCategory(category, "fire-extinguisher", "Fire Extinguisher", [2, 5, 8, 11]),
+            category => AssertAssetCategory(category, "fire-alarm", "Fire Alarm", [6, 12]),
+            category => AssertAssetCategory(category, "emergency-light", "Emergency Light", [6, 12]),
+            category => AssertAssetCategory(category, "water-drinking-station", "Water Drinking Station", [2, 5, 8, 11]));
     }
 
     [Fact]
@@ -53,6 +45,20 @@ public sealed class ReferenceDataEndpointsTests : IClassFixture<WebApplicationFa
         Assert.All(quarters!, value => Assert.False(string.IsNullOrWhiteSpace(value.DisplayName)));
     }
 
-    private sealed record AssetCategoryResponse(string Code, string DisplayName);
+    private static void AssertAssetCategory(
+        AssetCategoryResponse category,
+        string code,
+        string displayName,
+        int[] scheduledMonths)
+    {
+        Assert.Equal(code, category.Code);
+        Assert.Equal(displayName, category.DisplayName);
+        Assert.Equal(scheduledMonths, category.ScheduledMonths);
+    }
+
+    private sealed record AssetCategoryResponse(
+        string Code,
+        string DisplayName,
+        IReadOnlyList<int> ScheduledMonths);
     private sealed record ScheduleReferenceResponse(string Code, string DisplayName);
 }

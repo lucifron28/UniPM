@@ -1,6 +1,9 @@
 namespace UniPM.Api.Features.ReferenceData;
 
-public sealed record AssetCategoryResponse(string Code, string DisplayName);
+public sealed record AssetCategoryResponse(string Code, string DisplayName)
+{
+    public IReadOnlyList<int> ScheduledMonths => CpmpScheduleFrequency.GetMonths(Code);
+}
 
 internal static class AssetCategoryCatalog
 {

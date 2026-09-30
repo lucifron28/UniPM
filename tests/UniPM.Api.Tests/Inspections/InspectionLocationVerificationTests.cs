@@ -472,7 +472,7 @@ public sealed class InspectionLocationVerificationTests
         var response = await client.PostAsJsonAsync("/api/v1/schedules/", new
         {
             assetId,
-            scheduleDate = new DateTimeOffset(2026, 1, day, 8, 0, 0, TimeSpan.FromHours(8)),
+            scheduleDate = new DateTimeOffset(2026, 2, day, 8, 0, 0, TimeSpan.FromHours(8)),
             periodType = "Quarter",
             quarter = "Q1",
             year = 2026
