@@ -712,7 +712,7 @@ void main() {
 
     await pumpScannedEntry(tester, repository);
 
-    expect(find.textContaining('Due'), findsOneWidget);
+    expect(find.text('Schedule status: Due'), findsOneWidget);
     expect(find.textContaining('Ongoing'), findsNothing);
     expect(find.textContaining('Overdue'), findsNothing);
   });
