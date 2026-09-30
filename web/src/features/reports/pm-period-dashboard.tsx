@@ -15,14 +15,16 @@ import {
   usePmPeriodDashboard,
   usePmPeriodDashboardCycles,
 } from '@/features/reports/pm-period-dashboard-queries'
+import './pm-dashboard-print.css'
 
 export type PmPeriodDashboardSearch = {
   assetCategory?: string | undefined
   year?: number | undefined
   pmCycle?: string | undefined
   department?: string | undefined
-  condition?: string | undefined
-  timeliness?: string | undefined
+  condition?: 'Operational' | 'NonOperational' | 'NotInspected' | undefined
+  timeliness?:
+    'OnTime' | 'Late' | 'Scheduled' | 'Pending' | 'NotCompleted' | undefined
   search?: string | undefined
 }
 
@@ -256,21 +258,6 @@ function DashboardLoading() {
   )
 }
 
-function latestGroup(groups: PmPeriodDashboardCycleGroupResponse[]) {
-  return [...groups].sort(
-    (left, right) =>
-      Number(right.year) - Number(left.year) ||
-      (latestCycle(right) ?? '').localeCompare(latestCycle(left) ?? '') ||
-      left.assetCategory.localeCompare(right.assetCategory),
-  )[0]
-}
-
-function latestCycle(group: PmPeriodDashboardCycleGroupResponse | undefined) {
-  return [...(group?.cycles ?? [])].sort((left, right) =>
-    right.pmCycle.localeCompare(left.pmCycle),
-  )[0]?.pmCycle
-}
-
 function groupForSelection(
   groups: PmPeriodDashboardCycleGroupResponse[],
   assetCategory: string | undefined,
@@ -283,12 +270,22 @@ function groupForSelection(
   )
 }
 
+function selectionButtonClass(isSelected: boolean) {
+  return `min-h-10 rounded-lg border px-3 py-2 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] ${
+    isSelected
+      ? 'border-[var(--primary)] bg-[var(--primary)] text-white'
+      : 'border-[var(--border-soft)] bg-white text-[var(--text-primary)] hover:bg-[var(--page-background)]'
+  }`
+}
+
 function BatchOverview({
   batches,
   periodState,
+  dashboardSearch,
 }: {
   batches: PmPeriodDashboardBatchResponse[]
   periodState: string
+  dashboardSearch?: PmPeriodDashboardSearch | undefined
 }) {
   const isClosed = periodState === 'Closed'
 
@@ -329,6 +326,7 @@ function BatchOverview({
                 <th
                   key={heading}
                   scope="col"
+                  data-print-hide={heading === 'Action' ? '' : undefined}
                   className="px-3 py-3 font-semibold text-[var(--text-primary)]"
                 >
                   {heading}
@@ -376,18 +374,12 @@ function BatchOverview({
                         )}
                   </p>
                 </td>
-                <td className="px-3 py-3">
+                <td data-print-hide className="px-3 py-3">
                   {batch.formId && batch.formStatus === 'Submitted' ? (
                     <Link
                       to="/app/preventive-maintenance-forms/$formId/review"
                       params={{ formId: batch.formId }}
-                      search={{
-                        assetCategory: batch.assetCategory,
-                        pmCycle: batch.pmCycle,
-                        ...(batch.department
-                          ? { department: batch.department }
-                          : {}),
-                      }}
+                      search={dashboardSearch ?? {}}
                       className="font-semibold text-[var(--primary)] underline-offset-2 hover:underline focus-visible:rounded focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:outline-none"
                     >
                       Review batch
@@ -397,6 +389,7 @@ function BatchOverview({
                       to="/app/preventive-maintenance-forms/$formId"
                       params={{ formId: batch.formId }}
                       search={{
+                        ...dashboardSearch,
                         readonly: batch.formStatus === 'Acknowledged',
                       }}
                       className="font-semibold text-[var(--primary)] underline-offset-2 hover:underline focus-visible:rounded focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:outline-none"
@@ -674,9 +667,11 @@ function DashboardMetrics({
 export function PmPeriodDashboardPresentation({
   dashboard,
   showBatch = true,
+  search,
 }: {
   dashboard: PmPeriodDashboardResponse
   showBatch?: boolean
+  search?: PmPeriodDashboardSearch
 }) {
   return (
     <>
@@ -686,6 +681,7 @@ export function PmPeriodDashboardPresentation({
         <BatchOverview
           batches={dashboard.batches}
           periodState={dashboard.periodState}
+          dashboardSearch={search}
         />
       )}
     </>
@@ -704,127 +700,127 @@ export function PmPeriodDashboard({
 }) {
   const cyclesQuery = usePmPeriodDashboardCycles()
   const cycles = useMemo(() => cyclesQuery.data ?? [], [cyclesQuery.data])
-  const defaultGroup = useMemo(() => latestGroup(cycles), [cycles])
   const categoryOptions = useMemo(
     () => [...new Set(cycles.map((group) => group.assetCategory))].sort(),
     [cycles],
   )
-  const selectedCategory = categoryOptions.includes(search.assetCategory ?? '')
-    ? search.assetCategory
-    : defaultGroup?.assetCategory
-  const yearOptions = useMemo(
-    () =>
-      cycles
-        .filter((group) => group.assetCategory === selectedCategory)
-        .map((group) => Number(group.year))
-        .sort((left, right) => right - left),
-    [cycles, selectedCategory],
+  const hasRequestedScope = Boolean(
+    search.assetCategory && search.year !== undefined && search.pmCycle,
   )
-  const selectedYear = yearOptions.includes(search.year ?? Number.NaN)
-    ? search.year
-    : yearOptions[0]
-  const selectedGroup = groupForSelection(
-    cycles,
-    selectedCategory,
-    selectedYear,
+  const [draftCategoryValue, setDraftCategoryValue] = useState(
+    hasRequestedScope ? (search.assetCategory ?? '') : '',
   )
-  const selectedCycle = selectedGroup?.cycles.some(
-    (cycle) => cycle.pmCycle === search.pmCycle,
+  const [draftYearValue, setDraftYearValue] = useState(
+    hasRequestedScope && search.year !== undefined ? String(search.year) : '',
   )
-    ? search.pmCycle
-    : latestCycle(selectedGroup)
-
-  const [department, setDepartment] = useState(search.department ?? '')
+  const [draftCycleValue, setDraftCycleValue] = useState(
+    hasRequestedScope ? (search.pmCycle ?? '') : '',
+  )
+  const [isChangingSelection, setIsChangingSelection] = useState(false)
   const [text, setText] = useState(search.search ?? '')
 
-  // Route changes reset the submitted filter drafts to the URL-backed values.
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => setDepartment(search.department ?? ''), [search.department])
+  // Route changes reset the submitted search draft to its URL-backed value.
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setText(search.search ?? ''), [search.search])
 
-  useEffect(() => {
-    if (
-      !cyclesQuery.isSuccess ||
-      !selectedCategory ||
-      selectedYear === undefined ||
-      !selectedCycle
-    ) {
-      return
-    }
+  const draftCategory = categoryOptions.includes(draftCategoryValue)
+    ? draftCategoryValue
+    : ''
+  const yearOptions = useMemo(
+    () =>
+      cycles
+        .filter((group) => group.assetCategory === draftCategory)
+        .map((group) => Number(group.year))
+        .sort((left, right) => right - left),
+    [cycles, draftCategory],
+  )
+  const draftYear = yearOptions.includes(Number(draftYearValue))
+    ? Number(draftYearValue)
+    : undefined
+  const draftGroup = groupForSelection(cycles, draftCategory, draftYear)
+  const draftCycle = draftGroup?.cycles.some(
+    (cycle) => cycle.pmCycle === draftCycleValue,
+  )
+    ? draftCycleValue
+    : ''
 
-    if (
-      search.assetCategory === selectedCategory &&
-      search.year === selectedYear &&
-      search.pmCycle === selectedCycle
-    ) {
-      return
-    }
-
-    onSearchChange(
-      {
-        ...search,
-        assetCategory: selectedCategory,
-        year: selectedYear,
-        pmCycle: selectedCycle,
-      },
-      { replace: true },
+  const generatedGroup = groupForSelection(
+    cycles,
+    search.assetCategory,
+    search.year,
+  )
+  const hasValidGeneratedScope =
+    cyclesQuery.isSuccess &&
+    hasRequestedScope &&
+    Boolean(
+      generatedGroup?.cycles.some((cycle) => cycle.pmCycle === search.pmCycle),
     )
-  }, [
-    cyclesQuery.isSuccess,
-    onSearchChange,
-    search,
-    selectedCategory,
-    selectedCycle,
-    selectedYear,
-  ])
-
-  const dashboardFilters =
-    selectedCategory && selectedCycle
-      ? {
-          pmCycle: selectedCycle,
-          assetCategory: selectedCategory,
-          ...(search.department ? { department: search.department } : {}),
-          ...(search.condition ? { condition: search.condition } : {}),
-          ...(search.timeliness ? { timeliness: search.timeliness } : {}),
-          ...(search.search ? { search: search.search } : {}),
-        }
+  const reportScopeFilters =
+    hasValidGeneratedScope && search.assetCategory && search.pmCycle
+      ? { assetCategory: search.assetCategory, pmCycle: search.pmCycle }
       : undefined
+  const dashboardFilters = reportScopeFilters
+    ? {
+        ...reportScopeFilters,
+        ...(search.department ? { department: search.department } : {}),
+        ...(search.condition ? { condition: search.condition } : {}),
+        ...(search.timeliness ? { timeliness: search.timeliness } : {}),
+        ...(search.search ? { search: search.search } : {}),
+      }
+    : undefined
+  const scopeDashboardQuery = usePmPeriodDashboard(reportScopeFilters)
   const dashboardQuery = usePmPeriodDashboard(dashboardFilters)
+  const showGeneratedReport = hasValidGeneratedScope && !isChangingSelection
+  const canGenerate = Boolean(
+    draftCategory && draftYear !== undefined && draftCycle,
+  )
 
   const departmentOptions = useMemo(
     () =>
       [
-        ...(dashboardQuery.data?.batches.map((batch) => batch.department) ??
-          []),
-        ...(dashboardQuery.data?.assets.map((asset) => asset.department) ?? []),
-      ]
-        .filter((value): value is string => Boolean(value))
-        .filter((value, index, values) => values.indexOf(value) === index)
-        .sort(),
-    [dashboardQuery.data],
+        ...new Set(
+          [
+            ...(scopeDashboardQuery.data?.batches.map(
+              (batch) => batch.department,
+            ) ?? []),
+            ...(scopeDashboardQuery.data?.assets.map(
+              (asset) => asset.department,
+            ) ?? []),
+          ].filter((value): value is string => Boolean(value)),
+        ),
+      ].sort(),
+    [scopeDashboardQuery.data],
   )
 
-  const handleCategoryChange = (assetCategory: string) => {
-    const nextGroup = latestGroup(
-      cycles.filter((group) => group.assetCategory === assetCategory),
-    )
+  const handleGenerate = () => {
+    if (!canGenerate || draftYear === undefined) return
+
+    if (
+      search.assetCategory === draftCategory &&
+      search.year === draftYear &&
+      search.pmCycle === draftCycle
+    ) {
+      setIsChangingSelection(false)
+      return
+    }
+
     onSearchChange({
       ...search,
-      assetCategory,
-      year: nextGroup ? Number(nextGroup.year) : undefined,
-      pmCycle: latestCycle(nextGroup),
+      assetCategory: draftCategory,
+      year: draftYear,
+      pmCycle: draftCycle,
+      department: undefined,
+      condition: undefined,
+      timeliness: undefined,
+      search: undefined,
     })
   }
 
-  const handleYearChange = (year: string) => {
-    const nextYear = Number(year)
-    const nextGroup = groupForSelection(cycles, selectedCategory, nextYear)
-    onSearchChange({
-      ...search,
-      year: nextGroup ? Number(nextGroup.year) : undefined,
-      pmCycle: latestCycle(nextGroup),
-    })
+  const handleChangeSelection = () => {
+    setDraftCategoryValue(search.assetCategory ?? '')
+    setDraftYearValue(search.year === undefined ? '' : String(search.year))
+    setDraftCycleValue(search.pmCycle ?? '')
+    setIsChangingSelection(true)
   }
 
   if (cyclesQuery.isPending) {
@@ -866,8 +862,7 @@ export function PmPeriodDashboard({
             No PM periods are scheduled
           </h2>
           <p className="mt-1 text-sm text-[var(--text-secondary)]">
-            The dashboard will show a category, year, and cycle once the system
-            has scheduled PM work.
+            Schedule a PM period to make it available for report generation.
           </p>
         </Card>
       </section>
@@ -878,224 +873,440 @@ export function PmPeriodDashboard({
     <section aria-labelledby="dashboard-title" className="max-w-7xl space-y-5">
       <DashboardHeader />
 
-      <Card className="p-4 shadow-none sm:p-5">
-        <div className="grid gap-4 md:grid-cols-3">
-          <div>
-            <Label htmlFor="pm-dashboard-category">Category</Label>
-            <select
-              id="pm-dashboard-category"
-              value={selectedCategory ?? ''}
-              onChange={(event) => handleCategoryChange(event.target.value)}
-              className={`${selectClassName} mt-2`}
-            >
-              {categoryOptions.map((category) => (
-                <option key={category} value={category}>
-                  {formatCategory(category)}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <Label htmlFor="pm-dashboard-year">Year</Label>
-            <select
-              id="pm-dashboard-year"
-              value={selectedYear ?? ''}
-              onChange={(event) => handleYearChange(event.target.value)}
-              className={`${selectClassName} mt-2`}
-            >
-              {yearOptions.map((year) => (
-                <option key={year} value={year}>
-                  {year}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <Label htmlFor="pm-dashboard-cycle">PM period</Label>
-            <select
-              id="pm-dashboard-cycle"
-              value={selectedCycle ?? ''}
-              onChange={(event) =>
-                onSearchChange({ ...search, pmCycle: event.target.value })
-              }
-              className={`${selectClassName} mt-2`}
-            >
-              {(selectedGroup?.cycles ?? []).map((cycle) => (
-                <option key={cycle.pmCycle} value={cycle.pmCycle}>
-                  {formatPmCycle(cycle.pmCycle)} ·{' '}
-                  {formatNumber(cycle.scheduled)} scheduled
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-        {selectedCycle && (
-          <p className="mt-4 text-sm text-[var(--text-secondary)]">
-            <span className="font-semibold text-[var(--text-primary)]">
-              Month-end deadline (Asia/Manila):
-            </span>{' '}
-            {dashboardQuery.isPending
-              ? 'Loading...'
-              : dashboardQuery.data
-                ? formatDate(dashboardQuery.data.deadline, false, 'Asia/Manila')
-                : 'Unavailable'}
-          </p>
-        )}
-      </Card>
-
-      <Card className="p-4 shadow-none sm:p-5">
-        <form
-          className="grid gap-3 md:grid-cols-2 xl:grid-cols-4"
-          onSubmit={(event) => {
-            event.preventDefault()
-            onSearchChange({
-              ...search,
-              department: department.trim() || undefined,
-              search: text.trim() || undefined,
-            })
-          }}
-        >
-          <div>
-            <Label htmlFor="pm-dashboard-department">Department</Label>
-            <Input
-              id="pm-dashboard-department"
-              list="pm-dashboard-departments"
-              value={department}
-              onChange={(event) => setDepartment(event.target.value)}
-              placeholder="All departments"
-              className="mt-2"
-            />
-            <datalist id="pm-dashboard-departments">
-              {departmentOptions.map((value) => (
-                <option key={value} value={value} />
-              ))}
-            </datalist>
-          </div>
-          <div>
-            <Label htmlFor="pm-dashboard-condition">Condition</Label>
-            <select
-              id="pm-dashboard-condition"
-              value={search.condition ?? ''}
-              onChange={(event) =>
+      {showGeneratedReport ? (
+        <>
+          <Card className="p-4 shadow-none sm:p-5">
+            <form
+              className="grid gap-3 md:grid-cols-2 xl:grid-cols-4"
+              onSubmit={(event) => {
+                event.preventDefault()
                 onSearchChange({
                   ...search,
-                  condition: event.target.value || undefined,
-                })
-              }
-              className={`${selectClassName} mt-2`}
-            >
-              {conditionOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <Label htmlFor="pm-dashboard-timeliness">Timeliness / status</Label>
-            <select
-              id="pm-dashboard-timeliness"
-              value={search.timeliness ?? ''}
-              onChange={(event) =>
-                onSearchChange({
-                  ...search,
-                  timeliness: event.target.value || undefined,
-                })
-              }
-              className={`${selectClassName} mt-2`}
-            >
-              {timelinessOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <Label htmlFor="pm-dashboard-search">Search</Label>
-            <Input
-              id="pm-dashboard-search"
-              value={text}
-              onChange={(event) => setText(event.target.value)}
-              placeholder="Asset, building, location, or inspection"
-              className="mt-2"
-            />
-          </div>
-          <div className="flex gap-2 md:col-span-2 xl:col-span-4">
-            <Button type="submit">Apply filters</Button>
-            <Button
-              type="button"
-              className="bg-white text-[var(--text-primary)] hover:bg-[var(--page-background)]"
-              onClick={() => {
-                setDepartment('')
-                setText('')
-                onSearchChange({
-                  ...search,
-                  department: undefined,
-                  condition: undefined,
-                  timeliness: undefined,
-                  search: undefined,
+                  search: text.trim() || undefined,
                 })
               }}
             >
-              Clear filters
-            </Button>
-          </div>
-        </form>
-      </Card>
+              <div>
+                <Label htmlFor="pm-dashboard-department">Department</Label>
+                <select
+                  id="pm-dashboard-department"
+                  value={search.department ?? ''}
+                  onChange={(event) =>
+                    onSearchChange({
+                      ...search,
+                      department: event.target.value || undefined,
+                    })
+                  }
+                  disabled={scopeDashboardQuery.isPending}
+                  className={`${selectClassName} mt-2`}
+                >
+                  <option value="">All departments</option>
+                  {search.department &&
+                    !departmentOptions.includes(search.department) && (
+                      <option value={search.department}>
+                        {search.department}
+                      </option>
+                    )}
+                  {departmentOptions.map((value) => (
+                    <option key={value} value={value}>
+                      {value}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <Label htmlFor="pm-dashboard-condition">Condition</Label>
+                <select
+                  id="pm-dashboard-condition"
+                  value={search.condition ?? ''}
+                  onChange={(event) =>
+                    onSearchChange({
+                      ...search,
+                      condition: (event.target.value ||
+                        undefined) as PmPeriodDashboardSearch['condition'],
+                    })
+                  }
+                  className={`${selectClassName} mt-2`}
+                >
+                  {conditionOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <Label htmlFor="pm-dashboard-timeliness">
+                  Timeliness / status
+                </Label>
+                <select
+                  id="pm-dashboard-timeliness"
+                  value={search.timeliness ?? ''}
+                  onChange={(event) =>
+                    onSearchChange({
+                      ...search,
+                      timeliness: (event.target.value ||
+                        undefined) as PmPeriodDashboardSearch['timeliness'],
+                    })
+                  }
+                  className={`${selectClassName} mt-2`}
+                >
+                  {timelinessOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <Label htmlFor="pm-dashboard-search">Search assets</Label>
+                <Input
+                  id="pm-dashboard-search"
+                  value={text}
+                  onChange={(event) => setText(event.target.value)}
+                  placeholder="Asset, building, location, or inspection"
+                  className="mt-2"
+                />
+              </div>
+              <div className="flex gap-2 md:col-span-2 xl:col-span-4">
+                <Button type="submit">Apply search</Button>
+                <Button
+                  type="button"
+                  className="bg-white text-[var(--text-primary)] hover:bg-[var(--page-background)]"
+                  onClick={() => {
+                    setText('')
+                    onSearchChange({
+                      ...search,
+                      department: undefined,
+                      condition: undefined,
+                      timeliness: undefined,
+                      search: undefined,
+                    })
+                  }}
+                >
+                  Clear filters
+                </Button>
+                <p className="self-center text-xs text-[var(--text-neutral)]">
+                  Department updates report totals. Other filters narrow asset
+                  rows.
+                </p>
+              </div>
+            </form>
+          </Card>
 
-      {dashboardQuery.isPending ? (
-        <DashboardLoading />
-      ) : dashboardQuery.isError ? (
-        <QueryError
-          message="The selected PM period could not be loaded."
-          onRetry={() => void dashboardQuery.refetch()}
-        />
-      ) : dashboardQuery.data ? (
-        <>
-          <PmPeriodDashboardPresentation
-            dashboard={dashboardQuery.data}
-            showBatch={dashboardQuery.data.assets.length > 0}
-          />
-          {dashboardQuery.data.assets.length === 0 ? (
-            <Card className="p-6 shadow-none">
-              <h2 className="text-lg font-semibold text-[var(--text-primary)]">
-                No scheduled assets match
-              </h2>
-              <p className="mt-1 text-sm text-[var(--text-secondary)]">
-                Adjust the server-backed filters to view scheduled assets for
-                this PM period.
+          <div className="pm-dashboard-report space-y-5">
+            {(search.condition || search.timeliness || search.search) && (
+              <Card className="hidden p-4 shadow-none sm:p-5 print:block">
+                <h3 className="text-sm font-semibold text-[var(--text-primary)]">
+                  Asset-list filters
+                </h3>
+                <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-3">
+                  {search.condition && (
+                    <div>
+                      <dt className="text-xs font-semibold text-[var(--text-neutral)]">
+                        Condition
+                      </dt>
+                      <dd className="mt-1 font-medium text-[var(--text-primary)]">
+                        {formatCondition(search.condition)}
+                      </dd>
+                    </div>
+                  )}
+                  {search.timeliness && (
+                    <div>
+                      <dt className="text-xs font-semibold text-[var(--text-neutral)]">
+                        Timeliness / status
+                      </dt>
+                      <dd className="mt-1 font-medium text-[var(--text-primary)]">
+                        {formatTimeliness(search.timeliness)}
+                      </dd>
+                    </div>
+                  )}
+                  {search.search && (
+                    <div>
+                      <dt className="text-xs font-semibold text-[var(--text-neutral)]">
+                        Search
+                      </dt>
+                      <dd className="mt-1 font-medium whitespace-pre-wrap text-[var(--text-primary)]">
+                        {search.search}
+                      </dd>
+                    </div>
+                  )}
+                </dl>
+                <p className="mt-3 text-xs text-[var(--text-secondary)]">
+                  Active filters narrow asset rows only. Metric totals use the
+                  selected asset category and PM cycle, plus Department when
+                  selected.
+                </p>
+              </Card>
+            )}
+
+            <Card className="p-4 shadow-none sm:p-5">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="space-y-3">
+                  <p className="text-sm font-semibold tracking-[0.08em] text-[var(--primary)] uppercase">
+                    UniPM
+                  </p>
+                  <h2 className="mt-1 text-2xl font-bold text-[var(--text-primary)]">
+                    Preventive Maintenance Dashboard
+                  </h2>
+                  <dl className="grid gap-3 text-sm sm:grid-cols-3">
+                    <div>
+                      <dt className="text-xs font-semibold text-[var(--text-neutral)]">
+                        Asset category
+                      </dt>
+                      <dd className="mt-1 font-medium text-[var(--text-primary)]">
+                        {formatCategory(search.assetCategory ?? '')}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs font-semibold text-[var(--text-neutral)]">
+                        Scheduled month/year
+                      </dt>
+                      <dd className="mt-1 font-medium text-[var(--text-primary)]">
+                        {formatPmCycle(search.pmCycle ?? '')}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs font-semibold text-[var(--text-neutral)]">
+                        Department
+                      </dt>
+                      <dd className="mt-1 font-medium text-[var(--text-primary)]">
+                        {search.department || 'All departments'}
+                      </dd>
+                    </div>
+                  </dl>
+                </div>
+                <div className="flex flex-wrap gap-2 print:hidden">
+                  <Button
+                    type="button"
+                    disabled={!dashboardQuery.data}
+                    onClick={() => window.print()}
+                  >
+                    Export dashboard
+                  </Button>
+                  <Button
+                    type="button"
+                    className="bg-white text-[var(--text-primary)] hover:bg-[var(--page-background)]"
+                    onClick={handleChangeSelection}
+                  >
+                    Change selection
+                  </Button>
+                </div>
+              </div>
+              <p className="mt-4 text-sm text-[var(--text-secondary)]">
+                <span className="font-semibold text-[var(--text-primary)]">
+                  Month-end deadline (Asia/Manila):
+                </span>{' '}
+                {dashboardQuery.isPending
+                  ? 'Loading...'
+                  : dashboardQuery.data
+                    ? formatDate(
+                        dashboardQuery.data.deadline,
+                        false,
+                        'Asia/Manila',
+                      )
+                    : 'Unavailable'}
               </p>
             </Card>
-          ) : (
-            <AssetRows assets={dashboardQuery.data.assets} />
-          )}
+
+            {dashboardQuery.isPending ? (
+              <DashboardLoading />
+            ) : dashboardQuery.isError ? (
+              <QueryError
+                message="The selected PM period could not be loaded."
+                onRetry={() => void dashboardQuery.refetch()}
+              />
+            ) : dashboardQuery.data ? (
+              <>
+                <PmPeriodDashboardPresentation
+                  dashboard={dashboardQuery.data}
+                  showBatch={dashboardQuery.data.assets.length > 0}
+                  search={search}
+                />
+                {dashboardQuery.data.assets.length === 0 ? (
+                  <Card className="p-6 shadow-none">
+                    <h2 className="text-lg font-semibold text-[var(--text-primary)]">
+                      No scheduled assets match
+                    </h2>
+                    <p className="mt-1 text-sm text-[var(--text-secondary)]">
+                      {search.department
+                        ? `No scheduled assets match the selected filters for ${search.department}.`
+                        : 'No scheduled assets match the selected report filters.'}
+                    </p>
+                  </Card>
+                ) : (
+                  <AssetRows assets={dashboardQuery.data.assets} />
+                )}
+              </>
+            ) : null}
+          </div>
         </>
-      ) : null}
+      ) : (
+        <Card className="p-4 shadow-none sm:p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-xs font-semibold tracking-[0.08em] text-[var(--primary)] uppercase">
+                Report selection
+              </p>
+              <h2 className="mt-1 text-xl font-semibold text-[var(--text-primary)]">
+                Choose a scheduled PM period
+              </h2>
+              <p className="mt-1 max-w-3xl text-sm text-[var(--text-secondary)]">
+                Choose a category, year, and scheduled month. The report loads
+                only after you generate it.
+              </p>
+            </div>
+            {hasValidGeneratedScope && isChangingSelection && (
+              <Button
+                type="button"
+                className="bg-white text-[var(--text-primary)] hover:bg-[var(--page-background)]"
+                onClick={() => setIsChangingSelection(false)}
+              >
+                Cancel
+              </Button>
+            )}
+          </div>
+
+          {hasRequestedScope && !hasValidGeneratedScope && (
+            <p
+              role="status"
+              className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900"
+            >
+              This saved report period is no longer available. Choose a
+              scheduled period and generate a new report.
+            </p>
+          )}
+
+          <div className="mt-6 space-y-5">
+            <div role="group" aria-labelledby="pm-dashboard-category-step">
+              <h3
+                id="pm-dashboard-category-step"
+                className="text-sm font-semibold text-[var(--text-primary)]"
+              >
+                1. Choose a category
+              </h3>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {categoryOptions.map((category) => (
+                  <Button
+                    key={category}
+                    type="button"
+                    aria-pressed={draftCategory === category}
+                    className={selectionButtonClass(draftCategory === category)}
+                    onClick={() => {
+                      setDraftCategoryValue(category)
+                      setDraftYearValue('')
+                      setDraftCycleValue('')
+                    }}
+                  >
+                    {formatCategory(category)}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            {draftCategory && (
+              <div role="group" aria-labelledby="pm-dashboard-year-step">
+                <h3
+                  id="pm-dashboard-year-step"
+                  className="text-sm font-semibold text-[var(--text-primary)]"
+                >
+                  2. Choose a year
+                </h3>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {yearOptions.map((year) => (
+                    <Button
+                      key={year}
+                      type="button"
+                      aria-pressed={draftYear === year}
+                      className={selectionButtonClass(draftYear === year)}
+                      onClick={() => {
+                        setDraftYearValue(String(year))
+                        setDraftCycleValue('')
+                      }}
+                    >
+                      {year}
+                    </Button>
+                  ))}
+                </div>
+                {yearOptions.length === 0 && (
+                  <p
+                    role="status"
+                    className="mt-2 text-sm text-[var(--text-secondary)]"
+                  >
+                    No years with scheduled maintenance are available for this
+                    category.
+                  </p>
+                )}
+              </div>
+            )}
+
+            {draftYear !== undefined && (
+              <div role="group" aria-labelledby="pm-dashboard-month-step">
+                <h3
+                  id="pm-dashboard-month-step"
+                  className="text-sm font-semibold text-[var(--text-primary)]"
+                >
+                  3. Choose a scheduled month
+                </h3>
+                {draftGroup && draftGroup.cycles.length > 0 ? (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {draftGroup.cycles.map((cycle) => (
+                      <Button
+                        key={cycle.pmCycle}
+                        type="button"
+                        aria-pressed={draftCycle === cycle.pmCycle}
+                        className={selectionButtonClass(
+                          draftCycle === cycle.pmCycle,
+                        )}
+                        onClick={() => setDraftCycleValue(cycle.pmCycle)}
+                      >
+                        {formatPmCycle(cycle.pmCycle)} ·{' '}
+                        {formatNumber(cycle.scheduled)} scheduled
+                      </Button>
+                    ))}
+                  </div>
+                ) : (
+                  <p
+                    role="status"
+                    className="mt-2 text-sm text-[var(--text-secondary)]"
+                  >
+                    No scheduled months are available for this category and
+                    year.
+                  </p>
+                )}
+              </div>
+            )}
+
+            <div className="flex gap-2 border-t border-[var(--border-soft)] pt-4">
+              <Button
+                type="button"
+                disabled={!canGenerate}
+                onClick={handleGenerate}
+              >
+                Generate dashboard
+              </Button>
+            </div>
+          </div>
+        </Card>
+      )}
     </section>
   )
 }
 
 function DashboardHeader() {
   return (
-    <div>
+    <div data-print-hide>
       <p className="text-sm font-semibold tracking-[0.08em] text-[var(--primary)] uppercase">
-        PM period dashboard
+        UniPM
       </p>
       <h1
         id="dashboard-title"
         className="mt-2 text-3xl font-bold tracking-tight text-[var(--text-primary)] sm:text-4xl"
       >
-        Preventive maintenance compliance
+        Preventive Maintenance Dashboard
       </h1>
       <p className="mt-2 max-w-3xl text-[var(--text-secondary)]">
-        Review scheduled work, inspection completion, operational condition, and
-        department batch acknowledgement from the backend read model.
-      </p>
-      <p className="mt-2 max-w-4xl text-sm text-[var(--text-secondary)]">
-        Official metrics use Category + PM period + optional Department.
-        Condition, timeliness/status, and search filters affect only the asset
-        table; Department recalculates the official metrics and the table.
+        Choose the maintenance period you want to review.
       </p>
     </div>
   )

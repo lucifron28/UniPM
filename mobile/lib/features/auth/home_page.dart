@@ -91,17 +91,11 @@ class _HomePageState extends State<HomePage> {
         .toList(growable: false);
   }
 
-  static const _activeScheduleStatuses = {'due', 'ongoing', 'overdue'};
-
   List<ScheduleOption> get _assignedSchedules {
     return _schedules
         .where((s) {
-          if (s.status.toLowerCase() == 'cancelled') return false;
           final isAssigned = _isGsd || s.assignedToUserId == widget.user.id;
-          final isActiveStatus = _activeScheduleStatuses.contains(
-            s.status.trim().toLowerCase(),
-          );
-          return isAssigned && isActiveStatus;
+          return isAssigned && s.isEligibleForFieldWork;
         })
         .toList(growable: false);
   }

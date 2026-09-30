@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/auth/auth_models.dart';
 import 'package:mobile/features/assets/asset_models.dart';
 import 'package:mobile/features/preventive_maintenance/inspection_completion_sheet.dart';
+import 'package:mobile/features/preventive_maintenance/inspection_location_capture.dart';
 import 'package:mobile/features/preventive_maintenance/preventive_maintenance_models.dart';
 import 'package:mobile/features/preventive_maintenance/preventive_maintenance_page.dart';
 import 'package:mobile/features/preventive_maintenance/preventive_maintenance_repository.dart';
@@ -20,6 +21,7 @@ const testOtherBatchScheduleId = '44444444-4444-4444-8444-444444444445';
 const testInspection1Id = '55555555-5555-4555-8555-555555555551';
 const testAsset1Id = '66666666-6666-4666-8666-666666666661';
 const testAsset2Id = '66666666-6666-4666-8666-666666666662';
+const testLocationAttemptId = '77777777-7777-4777-8777-777777777777';
 AuthUser testUser({List<String> roles = const ['Inspector']}) => AuthUser(
   id: testInspectorId,
   email: 'inspector@example.test',
@@ -33,6 +35,7 @@ Asset testAsset({
   String status = 'Active',
   String department = 'GSD',
   String assetCategory = 'fire-extinguisher',
+  bool hasVerificationLocation = false,
 }) => Asset(
   id: id,
   assetCode: assetCode,
@@ -42,6 +45,7 @@ Asset testAsset({
   location: 'Floor 1',
   qrCodeValue: 'QR-$assetCode',
   status: status,
+  hasVerificationLocation: hasVerificationLocation,
 );
 
 ScheduleOption makeSchedule({
@@ -49,17 +53,20 @@ ScheduleOption makeSchedule({
   required String assetCode,
   String status = 'Due',
   String? pmCycle = '2026-06',
+  DateTime? scheduleDate,
+  String periodType = 'Quarter',
+  String? quarter = 'Q2',
   String department = 'GSD',
   String assetCategory = 'fire-extinguisher',
   String? assignedToUserId,
 }) => ScheduleOption(
   id: id,
   assetId: '88888888-8888-4888-8888-888888888888',
-  scheduleDate: DateTime.utc(2026, 6, 15),
+  scheduleDate: scheduleDate ?? DateTime.utc(2026, 6, 15),
   pmCycle: pmCycle,
-  periodType: 'Quarter',
+  periodType: periodType,
   status: status,
-  quarter: 'Q2',
+  quarter: quarter,
   semester: null,
   year: 2026,
   academicYear: '2025-2026',
@@ -85,6 +92,7 @@ PreventiveMaintenanceInspection makeInspection({
     assetId: '88888888-8888-4888-8888-888888888888',
     inspectorUserId: testInspectorId,
     dateInspected: now,
+    completedAt: now,
     isOperational: true,
     remarks: 'Good',
     actionsRecommendations: 'None',
@@ -124,12 +132,15 @@ PreventiveMaintenanceForm makeForm({
   );
 }
 
-class TestProgressRepository implements PreventiveMaintenanceRepository {
+class TestProgressRepository
+    implements PreventiveMaintenanceRepository, LocationVerificationRepository {
   TestProgressRepository({required this.forms, required this.schedules});
 
   List<PreventiveMaintenanceForm> forms;
   List<ScheduleOption> schedules;
   AddInspectionInput? lastAddedInput;
+  int createFormCount = 0;
+  int locationAttemptCount = 0;
 
   @override
   Future<List<PreventiveMaintenanceForm>> listForms() async => forms;
@@ -142,7 +153,33 @@ class TestProgressRepository implements PreventiveMaintenanceRepository {
   Future<PreventiveMaintenanceForm> createForm(
     CreatePreventiveMaintenanceFormInput input,
   ) async {
+    createFormCount++;
     throw UnimplementedError();
+  }
+
+  @override
+  Future<LocationVerificationAttempt> createLocationVerificationAttempt(
+    String scheduleId, {
+    required double latitude,
+    required double longitude,
+    required bool hasAccuracy,
+    required double? accuracyMeters,
+    required DateTime? devicePositionTimestamp,
+    required bool isMocked,
+    required String accuracyMode,
+    required int acquisitionDurationMs,
+  }) async {
+    locationAttemptCount++;
+    return LocationVerificationAttempt(
+      id: testLocationAttemptId,
+      outcome: LocationVerificationOutcome.notConfigured,
+      accuracyMeters: accuracyMeters,
+      hasAccuracy: hasAccuracy,
+      devicePositionTimestamp: devicePositionTimestamp,
+      isMocked: isMocked,
+      accuracyMode: accuracyMode,
+      acquisitionDurationMs: acquisitionDurationMs,
+    );
   }
 
   @override
@@ -216,12 +253,44 @@ class TestProgressRepository implements PreventiveMaintenanceRepository {
   Future<void> deleteInspection(String formId, String inspectionId) async {}
 }
 
-Future<void> scrollTo(WidgetTester tester, Finder finder) async {
-  final listView = find.byType(ListView).last;
-  final scrollable = find
-      .descendant(of: listView, matching: find.byType(Scrollable))
-      .first;
-  await tester.scrollUntilVisible(finder, 300, scrollable: scrollable);
+class TestLocationPlatform implements DeviceLocationPlatform {
+  int positionCallCount = 0;
+
+  @override
+  Future<bool> isLocationServiceEnabled() async => true;
+
+  @override
+  Future<DeviceLocationPermission> checkPermission() async =>
+      DeviceLocationPermission.granted;
+
+  @override
+  Future<DeviceLocationPermission> requestPermission() async =>
+      DeviceLocationPermission.granted;
+
+  @override
+  Future<DeviceLocationAccuracyMode> getAccuracyMode() async =>
+      DeviceLocationAccuracyMode.precise;
+
+  @override
+  Future<DeviceLocationCoordinates> getCurrentPosition({
+    required Duration timeout,
+  }) async {
+    positionCallCount++;
+    return const DeviceLocationCoordinates(
+      latitude: 14.6,
+      longitude: 120.98,
+      accuracyMeters: 5,
+    );
+  }
+}
+
+Future<void> scrollTo(
+  WidgetTester tester,
+  Finder finder, {
+  double delta = 300,
+}) async {
+  final scrollable = find.byType(Scrollable).first;
+  await tester.scrollUntilVisible(finder, delta, scrollable: scrollable);
   await tester.pumpAndSettle();
 }
 
@@ -282,99 +351,248 @@ void main() {
     });
   });
 
-  group('Batch denominator and progress calculation in PreventiveMaintenancePage', () {
-    testWidgets(
-      'denominator includes already-inspected and uninspected schedules, excludes Cancelled schedules',
-      (tester) async {
-        final existingInspection = makeInspection(
-          id: testInspection1Id,
-          scheduleId: testSchedule1Id,
-        );
-        final initialForm = makeForm(
-          id: testFormId,
-          inspections: [existingInspection],
-        );
+  group('Batch progress and submission in PreventiveMaintenanceDraftPage', () {
+    testWidgets('gates submission on every non-cancelled schedule in the batch', (
+      tester,
+    ) async {
+      final existingInspection = makeInspection(
+        id: testInspection1Id,
+        scheduleId: testSchedule1Id,
+      );
+      final initialForm = makeForm(
+        id: testFormId,
+        inspections: [existingInspection],
+      );
 
-        // Schedule 1: already inspected in form
-        final s1 = makeSchedule(
-          id: testSchedule1Id,
-          assetCode: 'FE-001',
-          status: 'Ongoing',
-        );
-        // Schedule 2: uninspected, in batch
-        final s2 = makeSchedule(
-          id: testSchedule2Id,
-          assetCode: 'FE-002',
-          status: 'Due',
-        );
-        // Schedule 3: uninspected, in batch
-        final s3 = makeSchedule(
-          id: testSchedule3Id,
-          assetCode: 'FE-003',
-          status: 'Due',
-        );
-        // Schedule 4: CANCELLED, in batch -> must be strictly excluded from batch total!
-        final s4 = makeSchedule(
-          id: testCancelledScheduleId,
-          assetCode: 'FE-004',
-          status: 'Cancelled',
-        );
-        // Schedule 5: another department -> not matching batch
-        final s5 = makeSchedule(
-          id: testOtherBatchScheduleId,
-          assetCode: 'FE-005',
-          department: 'College of Science',
-          status: 'Due',
-        );
+      // Schedule 1: already inspected in form
+      final s1 = makeSchedule(
+        id: testSchedule1Id,
+        assetCode: 'FE-001',
+        status: 'Ongoing',
+      );
+      // Schedule 2: uninspected, in batch
+      final s2 = makeSchedule(
+        id: testSchedule2Id,
+        assetCode: 'FE-002',
+        status: 'Due',
+      );
+      // Schedule 3: Completed without a Draft row, so no new row is allowed.
+      final s3 = makeSchedule(
+        id: testSchedule3Id,
+        assetCode: 'FE-003',
+        status: 'Completed',
+      );
+      // Schedule 4: CANCELLED, in batch -> must be strictly excluded from batch total!
+      final s4 = makeSchedule(
+        id: testCancelledScheduleId,
+        assetCode: 'FE-004',
+        status: 'Cancelled',
+      );
+      // Schedule 5: another department -> not matching batch
+      final s5 = makeSchedule(
+        id: testOtherBatchScheduleId,
+        assetCode: 'FE-005',
+        department: 'College of Science',
+        status: 'Due',
+      );
 
-        final repository = TestProgressRepository(
-          forms: [initialForm],
-          schedules: [s1, s2, s3, s4, s5],
-        );
+      final repository = TestProgressRepository(
+        forms: [initialForm],
+        schedules: [s1, s2, s3, s4, s5],
+      );
 
-        final controller = PreventiveMaintenanceController(
-          repository: repository,
-          user: testUser(),
-        );
-        await tester.pumpWidget(
-          MaterialApp(
-            home: PreventiveMaintenanceDraftPage(
-              controller: controller,
-              formId: testFormId,
-              preselectedScheduleId: testSchedule2Id,
-            ),
+      final controller = PreventiveMaintenanceController(
+        repository: repository,
+        user: testUser(),
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          home: PreventiveMaintenanceDraftPage(
+            controller: controller,
+            formId: testFormId,
+            preselectedScheduleId: testSchedule2Id,
           ),
-        );
-        await tester.pumpAndSettle();
+        ),
+      );
+      await tester.pumpAndSettle();
 
-        // The scanned/preselected schedule is the only new inspection exposed.
-        expect(find.byKey(const Key('inspection-schedule')), findsNothing);
-        expect(find.text('Inspect FE-002'), findsOneWidget);
-        expect(find.textContaining('FE-003'), findsNothing);
-        expect(find.textContaining('FE-004'), findsNothing);
+      await scrollTo(tester, find.byKey(const Key('submit-form-button')));
+      final incompleteSubmitButton = tester.widget<FilledButton>(
+        find.byKey(const Key('submit-form-button')),
+      );
+      expect(incompleteSubmitButton.onPressed, isNull);
+      expect(
+        find.text(
+          'Inspect all eligible schedules before submitting (1 of 3 complete).',
+        ),
+        findsOneWidget,
+      );
 
-        // Tap Add Inspection row
-        await scrollTo(tester, find.byKey(const Key('add-inspection-button')));
-        await tester.tap(find.byKey(const Key('add-inspection-button')));
-        await tester.pumpAndSettle();
+      // The scanned/preselected schedule is the only new inspection exposed.
+      await scrollTo(
+        tester,
+        find.byKey(const Key('add-inspection-button')),
+        delta: -300,
+      );
+      expect(find.byKey(const Key('inspection-schedule')), findsNothing);
+      expect(find.text('Inspect FE-002'), findsOneWidget);
+      expect(find.textContaining('FE-003'), findsNothing);
+      expect(find.textContaining('FE-004'), findsNothing);
 
-        // 2. Verify InspectionCompletionSheet is shown with correct completed/total ratio:
-        // Completed = 2 (s1 + s2)
-        // Total = 3 (s1 + s2 + s3; excludes s4 Cancelled and s5 different department)
-        expect(find.byType(InspectionCompletionSheet), findsOneWidget);
-        expect(find.text('Inspection Recorded'), findsOneWidget);
-        expect(
-          find.text('Asset FE-002 successfully inspected.'),
-          findsOneWidget,
-        );
-        expect(find.text('2 of 3 assets inspected'), findsOneWidget);
-        expect(find.text('67%'), findsOneWidget);
+      // Tap Add Inspection row
+      await tester.tap(find.byKey(const Key('add-inspection-button')));
+      await tester.pumpAndSettle();
 
-        // Verify actions
-        expect(find.byKey(const Key('sheet-next-asset')), findsOneWidget);
-        expect(find.byKey(const Key('sheet-view-batch')), findsOneWidget);
-      },
-    );
+      // The progress count uses the same eligible schedules as the submit gate.
+      expect(find.byType(InspectionCompletionSheet), findsOneWidget);
+      expect(find.text('Inspection Recorded'), findsOneWidget);
+      expect(find.text('Asset FE-002 successfully inspected.'), findsOneWidget);
+      expect(find.text('2 of 3 assets inspected'), findsOneWidget);
+      expect(find.text('67%'), findsOneWidget);
+
+      // Verify actions
+      expect(find.byKey(const Key('sheet-next-asset')), findsOneWidget);
+      expect(find.byKey(const Key('sheet-view-batch')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('sheet-view-batch')));
+      await tester.pumpAndSettle();
+      await scrollTo(tester, find.byKey(const Key('submit-form-button')));
+      final stillIncompleteSubmitButton = tester.widget<FilledButton>(
+        find.byKey(const Key('submit-form-button')),
+      );
+      expect(stillIncompleteSubmitButton.onPressed, isNull);
+      expect(
+        find.text(
+          'A Completed schedule has no row in this Draft. Contact GSD to review the batch.',
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('enables submission when all batch schedules have rows', (
+      tester,
+    ) async {
+      final form = makeForm(
+        id: testFormId,
+        inspections: [
+          makeInspection(id: testInspection1Id, scheduleId: testSchedule1Id),
+          makeInspection(
+            id: '55555555-5555-4555-8555-555555555552',
+            scheduleId: testSchedule2Id,
+          ),
+        ],
+      );
+      final repository = TestProgressRepository(
+        forms: [form],
+        schedules: [
+          makeSchedule(
+            id: testSchedule1Id,
+            assetCode: 'FE-001',
+            status: 'Completed',
+          ),
+          makeSchedule(
+            id: testSchedule2Id,
+            assetCode: 'FE-002',
+            status: 'Completed',
+          ),
+          makeSchedule(
+            id: testCancelledScheduleId,
+            assetCode: 'FE-003',
+            status: 'Cancelled',
+          ),
+        ],
+      );
+      final controller = PreventiveMaintenanceController(
+        repository: repository,
+        user: testUser(),
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          home: PreventiveMaintenanceDraftPage(
+            controller: controller,
+            formId: testFormId,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await scrollTo(tester, find.byKey(const Key('submit-form-button')));
+      final button = tester.widget<FilledButton>(
+        find.byKey(const Key('submit-form-button')),
+      );
+      expect(button.onPressed, isNotNull);
+    });
+
+    testWidgets('legacy Drafts use the canonical cycle derived from their rows', (
+      tester,
+    ) async {
+      final form = makeForm(
+        id: testFormId,
+        pmCycle: null,
+        inspections: [
+          makeInspection(id: testInspection1Id, scheduleId: testSchedule1Id),
+        ],
+      );
+      final repository = TestProgressRepository(
+        forms: [form],
+        schedules: [
+          makeSchedule(
+            id: testSchedule1Id,
+            assetCode: 'FE-001',
+            status: 'Completed',
+          ),
+          makeSchedule(
+            id: testSchedule2Id,
+            assetCode: 'FE-002',
+            pmCycle: null,
+            scheduleDate: DateTime.utc(2026, 5, 31, 16),
+            periodType: 'Annual',
+            quarter: null,
+          ),
+          makeSchedule(
+            id: testSchedule3Id,
+            assetCode: 'FE-003',
+            pmCycle: '2026-07',
+          ),
+          makeSchedule(
+            id: testCancelledScheduleId,
+            assetCode: 'FE-004',
+            status: 'Cancelled',
+          ),
+          makeSchedule(
+            id: testOtherBatchScheduleId,
+            assetCode: 'FE-005',
+            pmCycle: '2026-08',
+          ),
+        ],
+      );
+      final controller = PreventiveMaintenanceController(
+        repository: repository,
+        user: testUser(),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: PreventiveMaintenanceDraftPage(
+            controller: controller,
+            formId: testFormId,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await scrollTo(tester, find.byKey(const Key('submit-form-button')));
+
+      expect(
+        find.text(
+          'Inspect all eligible schedules before submitting (1 of 2 complete).',
+        ),
+        findsOneWidget,
+      );
+      expect(
+        tester
+            .widget<FilledButton>(find.byKey(const Key('submit-form-button')))
+            .onPressed,
+        isNull,
+      );
+    });
   });
 
   group('InspectionCompletionSheet standalone', () {
@@ -537,5 +755,153 @@ void main() {
         expect(find.byKey(const Key('start-pm')), findsNothing);
       },
     );
+
+    testWidgets(
+      'resumes a Completed schedule Draft without creating a location attempt',
+      (tester) async {
+        final schedule = makeSchedule(
+          id: testSchedule1Id,
+          assetCode: 'FE-001',
+          status: 'Completed',
+          assignedToUserId: testInspectorId,
+        );
+        final existingDraft = makeForm(
+          id: testFormId,
+          inspections: [
+            makeInspection(id: testInspection1Id, scheduleId: testSchedule1Id),
+          ],
+        );
+        final repository = TestProgressRepository(
+          forms: [existingDraft],
+          schedules: [schedule],
+        );
+        final platform = TestLocationPlatform();
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: SingleChildScrollView(
+                child: ScannedAssetPmEntry(
+                  asset: testAsset(
+                    id: schedule.assetId,
+                    assetCode: 'FE-001',
+                    hasVerificationLocation: true,
+                  ),
+                  repository: repository,
+                  user: testUser(),
+                  locationCapture: InspectionLocationCapture(
+                    platform: platform,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.byKey(const Key('schedule-status')), findsOneWidget);
+        expect(find.text('Schedule status: Completed'), findsOneWidget);
+        expect(find.byKey(const Key('resume-pm')), findsOneWidget);
+        await tester.tap(find.byKey(const Key('resume-pm')));
+        await tester.pumpAndSettle();
+
+        expect(
+          find.byKey(const Key('location-verification-dialog')),
+          findsNothing,
+        );
+        expect(platform.positionCallCount, 0);
+        expect(repository.locationAttemptCount, 0);
+        expect(repository.createFormCount, 0);
+        expect(find.text('Resume inspection row'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'Completed schedule without a Draft row cannot start a new row',
+      (tester) async {
+        final schedule = makeSchedule(
+          id: testSchedule1Id,
+          assetCode: 'FE-001',
+          status: 'Completed',
+          assignedToUserId: testInspectorId,
+        );
+        final repository = TestProgressRepository(
+          forms: [],
+          schedules: [schedule],
+        );
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: SingleChildScrollView(
+                child: ScannedAssetPmEntry(
+                  asset: testAsset(id: schedule.assetId, assetCode: 'FE-001'),
+                  repository: repository,
+                  user: testUser(),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(
+          find.byKey(const Key('pm-entry-completed-no-draft')),
+          findsOneWidget,
+        );
+        expect(find.byKey(const Key('start-pm')), findsNothing);
+        expect(find.byKey(const Key('resume-pm')), findsNothing);
+        expect(repository.createFormCount, 0);
+      },
+    );
+
+    testWidgets('Start still captures and records a location attempt', (
+      tester,
+    ) async {
+      final schedule = makeSchedule(
+        id: testSchedule1Id,
+        assetCode: 'FE-001',
+        status: 'Due',
+        assignedToUserId: testInspectorId,
+      );
+      final repository = TestProgressRepository(
+        forms: [],
+        schedules: [schedule],
+      );
+      final platform = TestLocationPlatform();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SingleChildScrollView(
+              child: ScannedAssetPmEntry(
+                asset: testAsset(
+                  id: schedule.assetId,
+                  assetCode: 'FE-001',
+                  hasVerificationLocation: true,
+                ),
+                repository: repository,
+                user: testUser(),
+                locationCapture: InspectionLocationCapture(platform: platform),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('start-pm')));
+      await tester.pumpAndSettle();
+
+      expect(platform.positionCallCount, 1);
+      expect(repository.locationAttemptCount, 1);
+      expect(
+        find.byKey(const Key('location-verification-dialog')),
+        findsOneWidget,
+      );
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(repository.createFormCount, 0);
+    });
   });
 }

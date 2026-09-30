@@ -140,6 +140,10 @@ class PreventiveMaintenanceController extends ChangeNotifier {
       }
     }
 
+    if (schedule.isCompleted) {
+      return PmDraftResolution.completedWithoutDraft();
+    }
+
     final grouping = PreventiveMaintenanceGrouping.fromAssetAndSchedule(
       asset,
       schedule,
@@ -260,7 +264,13 @@ class PreventiveMaintenanceController extends ChangeNotifier {
   }
 }
 
-enum PmDraftResolutionKind { resume, reuse, create, choose }
+enum PmDraftResolutionKind {
+  resume,
+  reuse,
+  create,
+  choose,
+  completedWithoutDraft,
+}
 
 class PmDraftResolution {
   const PmDraftResolution._({
@@ -294,6 +304,13 @@ class PmDraftResolution {
         kind: PmDraftResolutionKind.create,
         forms: const [],
         grouping: grouping,
+      );
+
+  factory PmDraftResolution.completedWithoutDraft() =>
+      const PmDraftResolution._(
+        kind: PmDraftResolutionKind.completedWithoutDraft,
+        forms: [],
+        grouping: null,
       );
 
   factory PmDraftResolution.choose({

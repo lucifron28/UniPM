@@ -107,6 +107,10 @@ record's evidence level and tested/source commit.
 | TEST-040 | test-run | Flutter mobile core preventive-maintenance physical-device acceptance | executed | locally-executed | `0b77134` | [record](test-runs/TEST-040-mobile-core-pm-physical-acceptance.md) | Samsung Galaxy A16 manual acceptance passed against the live development backend for Login -> QR -> schedule -> category form -> multi-row Draft -> submit -> Department Head acknowledgement -> schedule completion -> official history; optional capabilities remain deferred. |
 | IMP-034 | implementation | PMIS GSD demonstration readiness | reviewed | locally-executed | `c9deb6d` | [record](implementation/IMP-034-pmis-gsd-demo-readiness.md) | Live form-review contract alignment, readable PM review fields, validation dashboard, and a repository-verified GSD demo runbook; no AI or workflow expansion. |
 | TEST-041 | test-run | PMIS GSD demonstration readiness verification | executed | locally-executed | `c9deb6d` | [record](test-runs/TEST-041-pmis-gsd-demo-readiness.md) | Focused web 8/8, backend 18/18, native SQL 3/3, generated-client drift, web build, and isolated fictional seed checks passed; fresh physical-device rehearsal remains pending. |
+| IMP-035 | implementation | Pre-acceptance integration hardening | reviewed | source-inspected | `e301a91`; test-only follow-up `8951f44` | [record](implementation/IMP-035-pre-acceptance-integration-hardening.md) | Maps all 12 fixes to sources/tests; documents authoritative save-completes and acknowledgement-receipt semantics. |
+| TEST-042 | test-run | Pre-acceptance integration hardening verification | executed | locally-executed | `e301a91` web; `fabb49a` backend/mobile; `b15300f` + patch `3c9f84c` dashboard follow-up | [record](test-runs/TEST-042-pre-acceptance-integration-hardening.md) | Backend 70/70, mobile 73/73, web 54/54, Playwright 25/25, contract checks 7/7; dashboard round-trip 1 passed/11 skipped on the identified worktree patch, later committed unchanged as `8951f44` without rerun. Full formatting fails 39 unchanged paths, SQL skipped, physical/iOS NOT VERIFIED. |
+| IMP-036 | implementation | Pre-acceptance context and schedule-contract follow-up | reviewed | source-inspected | `1784778`; `177b5e6`; `67cdb44`; `3052bb0` | [record](implementation/IMP-036-pre-acceptance-context-and-schedule-contract-follow-up.md) | Documents dashboard-context restoration, canonical schedule-date rules, and lifecycle correction. Final navigation checks ran at HEAD `177b5e6` plus patch `5d08c539`; no rerun at navigation commit `67cdb44`. |
+| TEST-043 | test-run | Final pre-acceptance integration verification | executed | locally-executed | `c2fe175` + `abafc874`; `177b5e6` + `5d08c539` | [record](test-runs/TEST-043-pre-acceptance-integration-verification.md) | Schedule API 11/11 and web 17/17 passed. Initial navigation patch identity was not retained; final rerun passed 5 with 11 skipped on the identified patch. ESLint, typecheck, formatting, and scoped diff check passed; later navigation commit `67cdb44` was not rerun. |
 
 ## Pending Evidence
 
@@ -122,3 +126,6 @@ record's evidence level and tested/source commit.
 - Production authentication deployment verification: pending configured IIS
   hosting, institutional secret management, and final RBAC decisions.
 - IIS deployment verification: pending a configured Windows Server deployment.
+- Physical-device and iOS verification for the pre-acceptance hardening remain
+  unverified. Native SQL coverage was skipped in TEST-042 because no test
+  connection was configured.

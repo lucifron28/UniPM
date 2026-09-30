@@ -4,6 +4,7 @@ using UniPM.Api.Data;
 using UniPM.Api.Features;
 using UniPM.Api.Models;
 using UniPM.Api.Features.Auth;
+using UniPM.Api.Features.Assets;
 
 namespace UniPM.Api.Features.Schedules;
 
@@ -51,7 +52,31 @@ public static class SchedulesEndpoints
                 return ApiErrors.NotFound("Asset not found.");
             }
 
+            if (asset.Status != AssetStatusCatalog.Active)
+            {
+                return ApiErrors.Validation(new Dictionary<string, string[]>
+                {
+                    [nameof(dto.AssetId)] = ["Choose an active asset for preventive maintenance."]
+                });
+            }
+
+            if (string.IsNullOrWhiteSpace(asset.Department))
+            {
+                return ApiErrors.Validation(new Dictionary<string, string[]>
+                {
+                    [nameof(dto.AssetId)] = ["The asset needs a department before it can be scheduled."]
+                });
+            }
+
             var now = DateTimeOffset.UtcNow;
+            var pmCycle = PreventiveMaintenanceCycle.FromScheduleDate(dto.ScheduleDate);
+            PreventiveMaintenanceCycle.TryParse(pmCycle, out var year, out var month);
+            var quarter = $"Q{((month - 1) / 3) + 1}";
+            var periodType = SchedulePeriodTypeCatalog.TryNormalize(
+                dto.PeriodType,
+                out var normalizedPeriodType)
+                ? normalizedPeriodType
+                : throw new InvalidOperationException("Validated schedule period type was not canonicalizable.");
 
             var schedule = new PreventiveMaintenanceSchedule
             {
@@ -59,14 +84,10 @@ public static class SchedulesEndpoints
                 AssetId = dto.AssetId,
                 Asset = asset,
                 ScheduleDate = dto.ScheduleDate,
-                PmCycle = PreventiveMaintenanceCycle.FromScheduleDate(dto.ScheduleDate),
-                PeriodType = SchedulePeriodTypeCatalog.TryNormalize(dto.PeriodType, out var periodType)
-                    ? periodType
-                    : throw new InvalidOperationException("Validated schedule period type was not canonicalizable."),
-                Quarter = ScheduleQuarterCatalog.TryNormalizeNullable(dto.Quarter, out var quarter)
-                    ? quarter
-                    : throw new InvalidOperationException("Validated schedule quarter was not canonicalizable."),
-                Year = dto.Year,
+                PmCycle = pmCycle,
+                PeriodType = periodType,
+                Quarter = periodType == SchedulePeriodTypeCatalog.Quarter ? quarter : null,
+                Year = year,
                 Status = ScheduleStatusCatalog.Due,
                 CreatedAt = now,
                 UpdatedAt = now
@@ -449,7 +470,9 @@ public class CreateScheduleDto
             errors.Add(nameof(ScheduleDate), ["Schedule date is required."]);
         }
 
-        var hasSupportedPeriodType = SchedulePeriodTypeCatalog.TryNormalize(PeriodType, out var normalizedPeriodType);
+        var hasSupportedPeriodType = SchedulePeriodTypeCatalog.TryNormalize(
+            PeriodType,
+            out var normalizedPeriodType);
         if (string.IsNullOrWhiteSpace(PeriodType))
         {
             errors.Add(nameof(PeriodType), ["Period type is required."]);
@@ -459,30 +482,45 @@ public class CreateScheduleDto
             errors.Add(nameof(PeriodType), ["Period type must be a supported maintenance period."]);
         }
 
-        if (hasSupportedPeriodType
-            && string.Equals(normalizedPeriodType, SchedulePeriodTypeCatalog.Quarter, StringComparison.Ordinal)
-            && string.IsNullOrWhiteSpace(Quarter))
-        {
-            errors.Add(nameof(Quarter), ["Quarter is required for quarterly schedules."]);
-        }
-
-        if (!ScheduleQuarterCatalog.TryNormalizeNullable(Quarter, out _))
+        if (!ScheduleQuarterCatalog.TryNormalizeNullable(Quarter, out var normalizedQuarter))
         {
             errors.Add(nameof(Quarter), ["Quarter must be one of Q1, Q2, Q3, or Q4."]);
+        }
+
+        if (ScheduleDate != default)
+        {
+            var pmCycle = PreventiveMaintenanceCycle.FromScheduleDate(ScheduleDate);
+            PreventiveMaintenanceCycle.TryParse(pmCycle, out var cycleYear, out var cycleMonth);
+            var expectedQuarter = $"Q{((cycleMonth - 1) / 3) + 1}";
+            var maxPlanningYear = DateTimeOffset.UtcNow.Year + 5;
+            var yearErrors = new List<string>();
+            if (Year is not null && Year != cycleYear)
+            {
+                yearErrors.Add("Year must match the schedule date's PM cycle.");
+            }
+
+            if (cycleYear < 2000 || cycleYear > maxPlanningYear)
+            {
+                yearErrors.Add($"Year must be between 2000 and {maxPlanningYear}.");
+            }
+
+            if (yearErrors.Count > 0)
+            {
+                errors[nameof(Year)] = yearErrors.ToArray();
+            }
+
+            if (hasSupportedPeriodType
+                && normalizedPeriodType == SchedulePeriodTypeCatalog.Quarter
+                && normalizedQuarter is not null
+                && normalizedQuarter != expectedQuarter)
+            {
+                errors[nameof(Quarter)] = ["Quarter must match the schedule date's PM cycle."];
+            }
         }
 
         if (!string.IsNullOrWhiteSpace(PeriodType) && PeriodType.Trim().Length > 32)
         {
             errors.Add(nameof(PeriodType), ["Period type must not exceed 32 characters."]);
-        }
-
-        if (Year is not null)
-        {
-            var maxPlanningYear = DateTimeOffset.UtcNow.Year + 5;
-            if (Year < 2000 || Year > maxPlanningYear)
-            {
-                errors.Add(nameof(Year), [$"Year must be between 2000 and {maxPlanningYear}."]);
-            }
         }
 
         return errors;

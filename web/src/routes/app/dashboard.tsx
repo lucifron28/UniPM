@@ -39,6 +39,7 @@ export function PreventiveMaintenanceDashboard() {
   const navigate = Route.useNavigate()
   return (
     <PmPeriodDashboard
+      key={`${search.assetCategory ?? ''}|${search.year ?? ''}|${search.pmCycle ?? ''}`}
       search={search}
       onSearchChange={(next, options) =>
         void navigate({

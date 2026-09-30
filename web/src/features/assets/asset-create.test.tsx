@@ -70,6 +70,17 @@ function renderWithProviders(ui: React.ReactNode, queryClient?: QueryClient) {
   return { ...render(<RouterProvider router={router} />), queryClient: qc }
 }
 
+async function fillRequiredAssetFields(
+  actor: ReturnType<typeof userEvent.setup>,
+  assetCode: string,
+) {
+  await actor.type(screen.getByLabelText('Asset code'), assetCode)
+  fireEvent.change(screen.getByLabelText('Category'), {
+    target: { value: 'fire-extinguisher' },
+  })
+  await actor.type(screen.getByLabelText('Department'), 'GSD')
+}
+
 describe('AssetCreate feature component', () => {
   beforeEach(() => {
     setupAuth()
@@ -141,6 +152,11 @@ describe('AssetCreate feature component', () => {
     ).toBeInTheDocument()
     expect(screen.getByText('Asset code is required.')).toBeInTheDocument()
     expect(screen.getByText('Choose an asset category.')).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'Department is required for preventive maintenance assets.',
+      ),
+    ).toBeInTheDocument()
     expect(document.activeElement).toBe(screen.getByLabelText('Asset code'))
   })
 
@@ -202,10 +218,7 @@ describe('AssetCreate feature component', () => {
     const actor = userEvent.setup()
     await screen.findByLabelText('Asset code')
 
-    await actor.type(screen.getByLabelText('Asset code'), 'FE-001')
-    fireEvent.change(screen.getByLabelText('Category'), {
-      target: { value: 'fire-extinguisher' },
-    })
+    await fillRequiredAssetFields(actor, 'FE-001')
     await actor.click(screen.getByRole('button', { name: 'Create asset' }))
 
     expect(
@@ -236,10 +249,7 @@ describe('AssetCreate feature component', () => {
     const actor = userEvent.setup()
     await screen.findByLabelText('Asset code')
 
-    await actor.type(screen.getByLabelText('Asset code'), 'FE-001')
-    fireEvent.change(screen.getByLabelText('Category'), {
-      target: { value: 'fire-extinguisher' },
-    })
+    await fillRequiredAssetFields(actor, 'FE-001')
     await actor.click(screen.getByRole('button', { name: 'Create asset' }))
 
     expect(
@@ -283,10 +293,7 @@ describe('AssetCreate feature component', () => {
     const actor = userEvent.setup()
     await screen.findByLabelText('Asset code')
 
-    await actor.type(screen.getByLabelText('Asset code'), 'FE-001')
-    fireEvent.change(screen.getByLabelText('Category'), {
-      target: { value: 'fire-extinguisher' },
-    })
+    await fillRequiredAssetFields(actor, 'FE-001')
     await actor.click(screen.getByRole('button', { name: 'Create asset' }))
 
     expect(
@@ -317,10 +324,7 @@ describe('AssetCreate feature component', () => {
     const actor = userEvent.setup()
     await screen.findByLabelText('Asset code')
 
-    await actor.type(screen.getByLabelText('Asset code'), 'FE-001')
-    fireEvent.change(screen.getByLabelText('Category'), {
-      target: { value: 'fire-extinguisher' },
-    })
+    await fillRequiredAssetFields(actor, 'FE-001')
     await actor.click(screen.getByRole('button', { name: 'Create asset' }))
 
     expect(
@@ -349,10 +353,7 @@ describe('AssetCreate feature component', () => {
     const actor = userEvent.setup()
     await screen.findByLabelText('Asset code')
 
-    await actor.type(screen.getByLabelText('Asset code'), 'FE-001')
-    fireEvent.change(screen.getByLabelText('Category'), {
-      target: { value: 'fire-extinguisher' },
-    })
+    await fillRequiredAssetFields(actor, 'FE-001')
     await actor.click(screen.getByRole('button', { name: 'Create asset' }))
 
     expect(
@@ -384,10 +385,7 @@ describe('AssetCreate feature component', () => {
     const actor = userEvent.setup()
     await screen.findByLabelText('Asset code')
 
-    await actor.type(screen.getByLabelText('Asset code'), 'FE-999')
-    fireEvent.change(screen.getByLabelText('Category'), {
-      target: { value: 'fire-extinguisher' },
-    })
+    await fillRequiredAssetFields(actor, 'FE-999')
     await actor.click(screen.getByRole('button', { name: 'Create asset' }))
 
     await vi.waitFor(() => {
@@ -419,10 +417,7 @@ describe('AssetCreate feature component', () => {
     renderWithProviders(<AssetCreate />)
     const actor = userEvent.setup()
     await screen.findByLabelText('Asset code')
-    await actor.type(screen.getByLabelText('Asset code'), 'FE-998')
-    fireEvent.change(screen.getByLabelText('Category'), {
-      target: { value: 'fire-extinguisher' },
-    })
+    await fillRequiredAssetFields(actor, 'FE-998')
     fireEvent.change(screen.getByLabelText('Verification latitude'), {
       target: { value: '14.5995' },
     })
@@ -464,10 +459,7 @@ describe('AssetCreate feature component', () => {
     renderWithProviders(<AssetCreate />)
     const actor = userEvent.setup()
     await screen.findByLabelText('Asset code')
-    await actor.type(screen.getByLabelText('Asset code'), 'FE-997')
-    fireEvent.change(screen.getByLabelText('Category'), {
-      target: { value: 'fire-extinguisher' },
-    })
+    await fillRequiredAssetFields(actor, 'FE-997')
     fireEvent.change(screen.getByLabelText('Verification latitude'), {
       target: { value: '14.5995' },
     })
@@ -505,10 +497,7 @@ describe('AssetCreate feature component', () => {
     const actor = userEvent.setup()
     await screen.findByLabelText('Asset code')
 
-    await actor.type(screen.getByLabelText('Asset code'), 'FE-999')
-    fireEvent.change(screen.getByLabelText('Category'), {
-      target: { value: 'fire-extinguisher' },
-    })
+    await fillRequiredAssetFields(actor, 'FE-999')
 
     const submitBtn = screen.getByRole('button', { name: 'Create asset' })
     await actor.click(submitBtn)

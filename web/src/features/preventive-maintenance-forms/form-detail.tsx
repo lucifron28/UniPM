@@ -32,6 +32,7 @@ import {
   inspectionConditionLabel,
 } from '@/features/preventive-maintenance-forms/form-presentation'
 import type { PmAcknowledgementReviewContext } from '@/features/preventive-maintenance-forms/pm-acknowledgement-review'
+import type { PmPeriodDashboardSearch } from '@/features/reports/pm-period-dashboard'
 
 const uuidPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -349,7 +350,6 @@ function SignaturePad({
     }
     lastPoint.current = point
     setIsDrawing(true)
-    onDrawnChange(true)
   }
 
   function move(event: PointerEvent<HTMLCanvasElement>) {
@@ -358,6 +358,7 @@ function SignaturePad({
     const previous = lastPoint.current
     const point = pointFor(event)
     if (!canvas || !previous || !point) return
+    if (point.x === previous.x && point.y === previous.y) return
     const context = canvas.getContext('2d')
     if (!context) return
     context.strokeStyle = '#17212b'
@@ -368,6 +369,7 @@ function SignaturePad({
     context.lineTo(point.x, point.y)
     context.stroke()
     lastPoint.current = point
+    onDrawnChange(true)
   }
 
   function end(event: PointerEvent<HTMLCanvasElement>) {
@@ -386,6 +388,8 @@ function SignaturePad({
     const canvas = canvasRef.current
     const context = canvas?.getContext('2d')
     if (canvas && context) context.clearRect(0, 0, canvas.width, canvas.height)
+    lastPoint.current = null
+    setIsDrawing(false)
     onDrawnChange(false)
   }
 
@@ -645,10 +649,12 @@ export function FormDetail({
   formId,
   readOnly = false,
   reviewContext,
+  dashboardSearch,
 }: {
   formId: string
   readOnly?: boolean | undefined
   reviewContext?: PmAcknowledgementReviewContext | undefined
+  dashboardSearch?: PmPeriodDashboardSearch | undefined
 }) {
   const [acknowledgement, setAcknowledgement] =
     useState<PreventiveMaintenanceAcknowledgementResponse | null>(null)
@@ -766,11 +772,23 @@ export function FormDetail({
           search={{
             department: reviewContext.department,
             assetCategory: reviewContext.assetCategory,
+            year: reviewContext.year,
             pmCycle: reviewContext.pmCycle,
+            condition: reviewContext.condition,
+            timeliness: reviewContext.timeliness,
+            search: reviewContext.search,
           }}
           className="text-sm font-semibold text-[var(--primary)] hover:underline"
         >
           Back to batch review
+        </Link>
+      ) : readOnly && dashboardSearch ? (
+        <Link
+          to="/app/dashboard"
+          search={dashboardSearch}
+          className="text-sm font-semibold text-[var(--primary)] hover:underline"
+        >
+          Back to PM dashboard
         </Link>
       ) : (
         <Link

@@ -460,9 +460,11 @@ export function AssetCreate() {
                   <div className="space-y-2">
                     <Label htmlFor={name}>
                       {name.charAt(0).toUpperCase() + name.slice(1)}{' '}
-                      <span className="font-normal text-[var(--text-neutral)]">
-                        (optional)
-                      </span>
+                      {name !== 'department' && (
+                        <span className="font-normal text-[var(--text-neutral)]">
+                          (optional)
+                        </span>
+                      )}
                     </Label>
                     <Input
                       id={name}

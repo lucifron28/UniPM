@@ -25,6 +25,14 @@ const searchSchema = z.object({
     .string()
     .regex(/^\d{4}-\d{2}$/)
     .optional(),
+  year: z.coerce.number().int().positive().optional(),
+  condition: z
+    .enum(['Operational', 'NonOperational', 'NotInspected'])
+    .optional(),
+  timeliness: z
+    .enum(['OnTime', 'Late', 'Scheduled', 'Pending', 'NotCompleted'])
+    .optional(),
+  search: z.string().trim().max(256).optional(),
 })
 
 export const Route = createFileRoute('/app/inspections/$inspectionId')({
@@ -47,12 +55,16 @@ function InspectionDetailPage() {
     page: search.page,
   }
   const reviewContext: PmAcknowledgementReviewContext | undefined =
-    search.reviewFormId && search.assetCategory && search.pmCycle
+    search.reviewFormId
       ? {
           reviewFormId: search.reviewFormId,
           department: search.department,
           assetCategory: search.assetCategory,
+          year: search.year,
           pmCycle: search.pmCycle,
+          condition: search.condition,
+          timeliness: search.timeliness,
+          search: search.search,
         }
       : undefined
   return (

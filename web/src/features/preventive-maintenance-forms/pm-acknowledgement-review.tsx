@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { ApiError } from '@/api/problem-details'
+import type { PmPeriodDashboardSearch } from '@/features/reports/pm-period-dashboard'
 import type {
   PmPeriodDashboardAssetRowResponse,
   PmPeriodDashboardBatchResponse,
@@ -27,17 +28,10 @@ import { usePmPeriodDashboard } from '@/features/reports/pm-period-dashboard-que
 const uuidPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
-export type PmAcknowledgementReviewSearch = {
-  department?: string | undefined
-  assetCategory?: string | undefined
-  pmCycle?: string | undefined
-}
+export type PmAcknowledgementReviewSearch = PmPeriodDashboardSearch
 
-export type PmAcknowledgementReviewContext = {
+export type PmAcknowledgementReviewContext = PmPeriodDashboardSearch & {
   reviewFormId: string
-  department?: string | undefined
-  assetCategory: string
-  pmCycle: string
 }
 
 function formatCategory(value: string) {
@@ -301,12 +295,7 @@ function AssetReviewList({
                       <Link
                         to="/app/inspections/$inspectionId"
                         params={{ inspectionId: asset.inspectionId }}
-                        search={{
-                          reviewFormId: reviewContext.reviewFormId,
-                          department: reviewContext.department,
-                          assetCategory: reviewContext.assetCategory,
-                          pmCycle: reviewContext.pmCycle,
-                        }}
+                        search={reviewContext}
                         className="font-semibold text-[var(--primary)] underline-offset-2 hover:underline focus-visible:rounded focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:outline-none"
                       >
                         View inspection detail
@@ -339,12 +328,15 @@ export function PmAcknowledgementReview({
   const canReview = canReviewPreventiveMaintenanceForms(currentUser.data?.roles)
   const validId = uuidPattern.test(formId)
   const formQuery = usePreventiveMaintenanceForm(formId, canReview && validId)
-  const assetCategory = search.assetCategory || formQuery.data?.assetCategory
-  const pmCycle = search.pmCycle || formQuery.data?.pmCycle || undefined
-  const department =
-    search.department || formQuery.data?.department || undefined
+  const formRecord =
+    canReview && validId && formQuery.isSuccess && !formQuery.isError
+      ? formQuery.data
+      : undefined
+  const assetCategory = search.assetCategory || formRecord?.assetCategory
+  const pmCycle = search.pmCycle || formRecord?.pmCycle || undefined
+  const department = search.department || formRecord?.department || undefined
   const dashboardFilters =
-    assetCategory && pmCycle
+    formRecord && assetCategory && pmCycle
       ? {
           assetCategory,
           pmCycle,
@@ -396,7 +388,7 @@ export function PmAcknowledgementReview({
     )
   }
 
-  if (formQuery.isPending || dashboardQuery.isPending) {
+  if (formQuery.isPending) {
     return (
       <div
         className="space-y-4"
@@ -423,6 +415,20 @@ export function PmAcknowledgementReview({
         }
         retry={notFound ? undefined : () => void formQuery.refetch()}
       />
+    )
+  }
+
+  if (dashboardQuery.isPending) {
+    return (
+      <div
+        className="space-y-4"
+        role="status"
+        aria-label="Loading batch review"
+      >
+        <span className="sr-only">Loading submitted PM batch review...</span>
+        <Skeleton className="h-64 w-full" />
+        <Skeleton className="h-72 w-full" />
+      </div>
     )
   }
 
@@ -457,10 +463,8 @@ export function PmAcknowledgementReview({
 
   const isSubmitted = form.status === 'Submitted'
   const reviewContext: PmAcknowledgementReviewContext = {
+    ...search,
     reviewFormId: form.id,
-    department: batch.department ?? undefined,
-    assetCategory: batch.assetCategory,
-    pmCycle: batch.pmCycle,
   }
 
   return (
@@ -470,11 +474,7 @@ export function PmAcknowledgementReview({
     >
       <Link
         to="/app/dashboard"
-        search={{
-          assetCategory: batch.assetCategory,
-          pmCycle: batch.pmCycle,
-          ...(batch.department ? { department: batch.department } : {}),
-        }}
+        search={search}
         className="text-sm font-semibold text-[var(--primary)] hover:underline"
       >
         Back to PM dashboard
@@ -486,10 +486,7 @@ export function PmAcknowledgementReview({
           params={{ formId: form.id }}
           search={{
             readonly: true,
-            reviewFormId: reviewContext.reviewFormId,
-            department: reviewContext.department,
-            assetCategory: reviewContext.assetCategory,
-            pmCycle: reviewContext.pmCycle,
+            ...reviewContext,
           }}
           className="inline-flex min-h-10 items-center justify-center rounded-lg bg-[var(--primary)] px-4 py-2 text-sm font-semibold text-white hover:bg-[var(--primary-active)] focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:outline-none"
         >

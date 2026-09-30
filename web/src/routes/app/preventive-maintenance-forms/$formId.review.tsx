@@ -12,6 +12,14 @@ const searchSchema = z.object({
     .string()
     .regex(/^\d{4}-\d{2}$/)
     .optional(),
+  year: z.coerce.number().int().positive().optional(),
+  condition: z
+    .enum(['Operational', 'NonOperational', 'NotInspected'])
+    .optional(),
+  timeliness: z
+    .enum(['OnTime', 'Late', 'Scheduled', 'Pending', 'NotCompleted'])
+    .optional(),
+  search: z.string().trim().max(256).optional(),
 })
 
 export const Route = createFileRoute(

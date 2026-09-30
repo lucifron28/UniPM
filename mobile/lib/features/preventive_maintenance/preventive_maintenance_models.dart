@@ -213,6 +213,26 @@ class ScheduleOption {
   final String? assignedToUserId;
   final String? assignedSupervisorUserId;
 
+  String get canonicalPmCycle {
+    final persistedCycle = pmCycle?.trim();
+    if (persistedCycle != null && persistedCycle.isNotEmpty) {
+      return persistedCycle;
+    }
+
+    final institutionalDate = scheduleDate.toUtc().add(
+      const Duration(hours: 8),
+    );
+    return '${institutionalDate.year.toString().padLeft(4, '0')}-'
+        '${institutionalDate.month.toString().padLeft(2, '0')}';
+  }
+
+  bool get isEligibleForFieldWork =>
+      const {'due', 'ongoing', 'overdue'}.contains(status.trim().toLowerCase());
+
+  bool get isCompleted => status.trim().toLowerCase() == 'completed';
+
+  bool get isCancelled => status.trim().toLowerCase() == 'cancelled';
+
   factory ScheduleOption.fromJson(Map<String, dynamic> json) {
     final assetJson = json['asset'];
     if (assetJson is! Map) {
@@ -483,7 +503,6 @@ class LocationVerificationAttempt {
 
 class UpdateInspectionInput {
   const UpdateInspectionInput({
-    required this.inspectorUserId,
     required this.dateInspected,
     this.dateAccomplished,
     required this.isOperational,
@@ -494,7 +513,6 @@ class UpdateInspectionInput {
     this.waterCheckUvLight,
   });
 
-  final String inspectorUserId;
   final DateTime dateInspected;
   final DateTime? dateAccomplished;
   final bool isOperational;

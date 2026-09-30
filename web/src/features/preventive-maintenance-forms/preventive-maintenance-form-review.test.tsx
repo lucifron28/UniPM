@@ -19,8 +19,10 @@ import { FormDetail } from '@/features/preventive-maintenance-forms/form-detail'
 import { FormRegistry } from '@/features/preventive-maintenance-forms/form-registry'
 import { PmAcknowledgementReview } from '@/features/preventive-maintenance-forms/pm-acknowledgement-review'
 import { useAcknowledgePreventiveMaintenanceFormMutation } from '@/features/preventive-maintenance-forms/form-queries'
+import type { PmPeriodDashboardSearch } from '@/features/reports/pm-period-dashboard'
 import { usePmPeriodDashboard } from '@/features/reports/pm-period-dashboard-queries'
 import { AppShell } from '@/components/layout/app-shell'
+import { routeTree } from '@/routeTree.gen'
 import { useAuthStore } from '@/stores/auth-store'
 import { server } from '@/test/server'
 
@@ -80,6 +82,169 @@ function form(status: 'Draft' | 'Submitted' | 'Acknowledged') {
   }
 }
 
+const allDepartmentDashboardSearch: PmPeriodDashboardSearch = {
+  assetCategory: 'fire-extinguisher',
+  year: 2026,
+  pmCycle: '2026-07',
+  condition: 'NonOperational',
+  timeliness: 'Late',
+  search: 'FE-TEST-001',
+}
+const selectedDepartmentDashboardSearch: PmPeriodDashboardSearch = {
+  ...allDepartmentDashboardSearch,
+  department: 'GSD',
+}
+
+function installDashboardNavigationHandlers(
+  status: 'Submitted' | 'Acknowledged',
+) {
+  const acknowledgedAt =
+    status === 'Acknowledged' ? '2026-07-30T02:00:00Z' : null
+  const reviewForm = {
+    ...form(status),
+    pmCycle: '2026-07',
+    fieldWorkCompletedAt: '2026-07-28T03:00:00Z',
+  }
+  const batch = {
+    department: 'GSD',
+    assetCategory: 'fire-extinguisher',
+    pmCycle: '2026-07',
+    scheduled: 1,
+    inspected: 1,
+    completedOnTime: 1,
+    onTimeCompliancePercent: 100,
+    completedLate: 0,
+    notCompleted: 0,
+    remaining: 0,
+    formId,
+    formStatus: status,
+    fileNumber: reviewForm.fileNumber,
+    fieldWorkCompletedAt: '2026-07-28T03:00:00Z',
+    submittedAt: '2026-07-29T01:00:00Z',
+    isAcknowledged: status === 'Acknowledged',
+    acknowledgedAt,
+  }
+
+  server.use(
+    http.get(meUrl, () => HttpResponse.json(currentUser(['Inspector']))),
+    http.get(formsUrl, () => HttpResponse.json([reviewForm])),
+    http.get(`${formsUrl}/${formId}`, () => HttpResponse.json(reviewForm)),
+    http.get('*/api/v1/pm-period-dashboard/cycles', () =>
+      HttpResponse.json([
+        {
+          assetCategory: 'fire-extinguisher',
+          year: 2026,
+          cycles: [{ pmCycle: '2026-07', scheduled: 1 }],
+        },
+      ]),
+    ),
+    http.get('*/api/v1/pm-period-dashboard', () =>
+      HttpResponse.json({
+        pmCycle: '2026-07',
+        assetCategory: 'fire-extinguisher',
+        department: 'GSD',
+        deadline: '2026-07-31T16:00:00Z',
+        periodState: 'Closed',
+        complianceMeasurable: true,
+        inspectionResultsAvailable: true,
+        scheduled: 1,
+        inspected: 1,
+        completedOnTime: 1,
+        completedLate: 0,
+        notCompleted: 0,
+        remaining: 0,
+        operational: 0,
+        nonOperational: 1,
+        onTimeCompliancePercent: 100,
+        progressPercent: 100,
+        batches: [batch],
+        assets: [
+          {
+            scheduleId,
+            assetId,
+            inspectionId,
+            assetCode: 'FE-TEST-001',
+            assetCategory: 'fire-extinguisher',
+            building: 'Main Building',
+            location: 'Main hallway',
+            department: 'GSD',
+            pmCycle: '2026-07',
+            scheduleDate: '2026-07-01T00:00:00Z',
+            deadline: '2026-07-31T16:00:00Z',
+            scheduleStatus: 'Completed',
+            executionStatus: 'Completed',
+            isInspected: true,
+            inspectionCompletedAt: '2026-07-28T03:00:00Z',
+            timeliness: 'OnTime',
+            condition: 'NonOperational',
+            remarks: 'Pressure is low.',
+            actionsRecommendations: 'Inspect and recharge the unit.',
+            formId,
+            formStatus: status,
+            isAcknowledged: status === 'Acknowledged',
+            acknowledgedAt,
+          },
+        ],
+      }),
+    ),
+    http.get(`*/api/v1/inspections/${inspectionId}`, () =>
+      HttpResponse.json({
+        id: inspectionId,
+        scheduleId,
+        assetId,
+        inspectorUserId: inspectorId,
+        dateInspected: '2026-07-28T02:00:00Z',
+        isOperational: false,
+        remarks: 'Pressure is low.',
+        actionsRecommendations: 'Inspect and recharge the unit.',
+        createdAt: timestamps.createdAt,
+        updatedAt: timestamps.updatedAt,
+      }),
+    ),
+    http.get(`*/api/v1/assets/${assetId}`, () =>
+      HttpResponse.json({
+        id: assetId,
+        assetCode: 'FE-TEST-001',
+        assetCategory: 'fire-extinguisher',
+        building: 'Main Building',
+        department: 'GSD',
+        location: 'Main hallway',
+        hasVerificationLocation: false,
+        qrCodeValue: null,
+        status: 'Active',
+        ...timestamps,
+      }),
+    ),
+    http.get(`*/api/v1/schedules/${scheduleId}`, () =>
+      HttpResponse.json({
+        id: scheduleId,
+        assetId,
+        scheduleDate: '2026-07-01T00:00:00Z',
+        pmCycle: '2026-07',
+        periodType: 'Quarter',
+        status: 'Completed',
+        quarter: 'Q3',
+        semester: null,
+        year: 2026,
+        academicYear: '2026-2027',
+        assignedToUserId: null,
+        assignedSupervisorUserId: null,
+        completedAt: '2026-07-28T03:00:00Z',
+        createdAt: timestamps.createdAt,
+        updatedAt: timestamps.updatedAt,
+        asset: {
+          id: assetId,
+          assetCode: 'FE-TEST-001',
+          assetCategory: 'fire-extinguisher',
+          building: 'Main Building',
+          department: 'GSD',
+          location: 'Main hallway',
+        },
+      }),
+    ),
+  )
+}
+
 function setupAuth() {
   useAuthStore.getState().establishSession('synthetic-test-token')
   configureApiRuntime({
@@ -105,6 +270,39 @@ function renderWithProviders(ui: React.ReactNode) {
   })
 
   return render(<RouterProvider router={router} />)
+}
+
+function renderAppRouter(initialEntry: string) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  })
+  const router = createRouter({
+    routeTree,
+    context: {
+      queryClient,
+      getAccessToken: () => useAuthStore.getState().accessToken,
+    },
+    history: createMemoryHistory({
+      initialEntries: [initialEntry],
+    }),
+  })
+
+  render(
+    <QueryClientProvider client={queryClient}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>,
+  )
+  return router
+}
+
+function renderDashboardReviewWithProviders(
+  initialSearch: PmPeriodDashboardSearch,
+) {
+  const searchParams = new URLSearchParams()
+  for (const [key, value] of Object.entries(initialSearch)) {
+    if (value !== undefined) searchParams.set(key, String(value))
+  }
+  return renderAppRouter(`/app/dashboard?${searchParams}`)
 }
 
 function currentUser(roles: string[]) {
@@ -336,6 +534,16 @@ describe('preventive-maintenance form review', () => {
     const toDataUrl = vi
       .spyOn(HTMLCanvasElement.prototype, 'toDataURL')
       .mockReturnValue('data:image/png;base64,iVBORw0KGgo=')
+    const canvasContext = {
+      beginPath: vi.fn(),
+      moveTo: vi.fn(),
+      lineTo: vi.fn(),
+      stroke: vi.fn(),
+      clearRect: vi.fn(),
+    } as unknown as CanvasRenderingContext2D
+    const getContext = vi
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockReturnValue(canvasContext)
 
     renderWithProviders(<FormDetail formId={formId} />)
 
@@ -359,16 +567,83 @@ describe('preventive-maintenance form review', () => {
     fireEvent.change(screen.getByLabelText('Signatory position'), {
       target: { value: 'Department Head' },
     })
-    fireEvent.pointerDown(screen.getByLabelText('Signature'), {
+    const signatureCanvas = screen.getByLabelText('Signature')
+    const bounds = {
+      x: 0,
+      y: 0,
+      left: 0,
+      top: 0,
+      right: 640,
+      bottom: 180,
+      width: 640,
+      height: 180,
+      toJSON: () => undefined,
+    } as DOMRect
+    const getBoundingClientRect = vi
+      .spyOn(signatureCanvas, 'getBoundingClientRect')
+      .mockReturnValue(bounds)
+    fireEvent.pointerDown(signatureCanvas, {
       clientX: 20,
       clientY: 20,
       pointerId: 1,
     })
-    fireEvent.pointerUp(screen.getByLabelText('Signature'), { pointerId: 1 })
+    fireEvent.pointerUp(signatureCanvas, { pointerId: 1 })
+    fireEvent.click(screen.getByRole('button', { name: 'Acknowledge form' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Capture the department-head signature before continuing.',
+    )
+    expect(
+      screen.queryByRole('dialog', {
+        name: 'Confirm department-head acknowledgement',
+      }),
+    ).not.toBeInTheDocument()
+    expect(acknowledgementBody).toBeUndefined()
+
+    fireEvent.pointerDown(signatureCanvas, {
+      clientX: 20,
+      clientY: 20,
+      pointerId: 1,
+    })
+    fireEvent.pointerMove(signatureCanvas, {
+      clientX: 100,
+      clientY: 100,
+      pointerId: 1,
+    })
+    fireEvent.pointerUp(signatureCanvas, { pointerId: 1 })
+    expect(canvasContext.stroke).toHaveBeenCalled()
     fireEvent.click(screen.getByRole('button', { name: 'Acknowledge form' }))
 
     expect(
-      await screen.findByRole('dialog', {
+      screen.getByRole('dialog', {
+        name: 'Confirm department-head acknowledgement',
+      }),
+    ).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Clear' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Acknowledge form' }))
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Capture the department-head signature before continuing.',
+    )
+    expect(
+      screen.queryByRole('dialog', {
+        name: 'Confirm department-head acknowledgement',
+      }),
+    ).not.toBeInTheDocument()
+
+    fireEvent.pointerDown(signatureCanvas, {
+      clientX: 20,
+      clientY: 20,
+      pointerId: 1,
+    })
+    fireEvent.pointerMove(signatureCanvas, {
+      clientX: 100,
+      clientY: 100,
+      pointerId: 1,
+    })
+    fireEvent.pointerUp(signatureCanvas, { pointerId: 1 })
+    fireEvent.click(screen.getByRole('button', { name: 'Acknowledge form' }))
+    expect(
+      screen.getByRole('dialog', {
         name: 'Confirm department-head acknowledgement',
       }),
     ).toBeInTheDocument()
@@ -407,136 +682,330 @@ describe('preventive-maintenance form review', () => {
     ).not.toBeInTheDocument()
     expect(screen.queryByText('signatureData')).not.toBeInTheDocument()
     expect(screen.queryByText('signatureChecksum')).not.toBeInTheDocument()
+    getBoundingClientRect.mockRestore()
+    getContext.mockRestore()
     toDataUrl.mockRestore()
   })
 
-  it('shows submitted batch review metrics, rows, and awaiting acknowledgement', async () => {
-    const reviewForm = {
-      ...form('Submitted'),
-      pmCycle: '2026-07',
-      fieldWorkCompletedAt: '2026-07-28T03:00:00Z',
-    }
-    let dashboardRequest: URL | undefined
-    server.use(
-      http.get(meUrl, () => HttpResponse.json(currentUser(['GSD']))),
-      http.get(`${formsUrl}/${formId}`, () => HttpResponse.json(reviewForm)),
-      http.get('*/api/v1/pm-period-dashboard', ({ request }) => {
-        dashboardRequest = new URL(request.url)
-        return HttpResponse.json({
-          pmCycle: '2026-07',
-          assetCategory: 'fire-extinguisher',
-          department: 'GSD',
-          deadline: '2026-07-31T16:00:00Z',
-          periodState: 'Closed',
-          complianceMeasurable: true,
-          inspectionResultsAvailable: true,
-          scheduled: 1,
-          inspected: 1,
-          completedOnTime: 1,
-          completedLate: 0,
-          notCompleted: 0,
-          remaining: 0,
-          operational: 0,
-          nonOperational: 1,
-          onTimeCompliancePercent: 100,
-          progressPercent: 100,
-          batches: [
-            {
-              department: 'GSD',
-              assetCategory: 'fire-extinguisher',
-              pmCycle: '2026-07',
-              scheduled: 1,
-              inspected: 1,
-              completedOnTime: 1,
-              onTimeCompliancePercent: 100,
-              completedLate: 0,
-              notCompleted: 0,
-              remaining: 0,
-              formId,
-              formStatus: 'Submitted',
-              fileNumber: 'PMF-2026-0001',
-              fieldWorkCompletedAt: '2026-07-28T03:00:00Z',
-              submittedAt: '2026-07-29T01:00:00Z',
-              isAcknowledged: false,
-              acknowledgedAt: null,
-            },
-          ],
-          assets: [
-            {
-              scheduleId,
-              assetId,
-              inspectionId,
-              assetCode: 'FE-TEST-001',
-              assetCategory: 'fire-extinguisher',
-              building: 'Main Building',
-              location: 'Main hallway',
-              department: 'GSD',
-              pmCycle: '2026-07',
-              scheduleDate: '2026-07-01T00:00:00Z',
-              deadline: '2026-07-31T16:00:00Z',
-              scheduleStatus: 'Completed',
-              executionStatus: 'Completed',
-              isInspected: true,
-              inspectionCompletedAt: '2026-07-28T03:00:00Z',
-              timeliness: 'OnTime',
-              condition: 'NonOperational',
-              remarks: 'Pressure is low.',
-              actionsRecommendations: 'Inspect and recharge the unit.',
-              formId,
-              formStatus: 'Submitted',
-              isAcknowledged: false,
-              acknowledgedAt: null,
-            },
-          ],
+  it.each([
+    {
+      scope: 'all departments',
+      search: allDepartmentDashboardSearch,
+      departmentValue: '',
+    },
+    {
+      scope: 'a selected department',
+      search: selectedDepartmentDashboardSearch,
+      departmentValue: 'GSD',
+    },
+  ])(
+    'preserves $scope filters through review, inspection, and full-form returns',
+    async ({ search: dashboardSearch, departmentValue }) => {
+      installDashboardNavigationHandlers('Submitted')
+      const router = renderDashboardReviewWithProviders(dashboardSearch)
+
+      fireEvent.click(await screen.findByRole('link', { name: 'Review batch' }))
+
+      expect(
+        await screen.findByRole('heading', {
+          name: 'Review before acknowledgement',
+        }),
+      ).toBeInTheDocument()
+      expect(screen.getByText('Awaiting acknowledgement')).toBeInTheDocument()
+      expect(screen.getByText('100%')).toBeInTheDocument()
+      expect(screen.getByText('Pressure is low.')).toBeInTheDocument()
+      expect(
+        screen.getByText('Inspect and recharge the unit.'),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('columnheader', { name: 'Finding' }),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('columnheader', { name: 'Recommendation' }),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('link', { name: 'View full PM form' }),
+      ).toHaveAttribute(
+        'href',
+        expect.stringContaining(`/app/preventive-maintenance-forms/${formId}?`),
+      )
+      expect(
+        screen.getByRole('link', { name: 'View inspection detail' }),
+      ).toHaveAttribute(
+        'href',
+        expect.stringContaining(`/app/inspections/${inspectionId}?`),
+      )
+      expect(
+        screen.getByRole('link', { name: 'View full PM form' }),
+      ).toHaveAttribute('href', expect.stringContaining('reviewFormId='))
+      expect(
+        screen.getByRole('link', { name: 'View inspection detail' }),
+      ).toHaveAttribute('href', expect.stringContaining('pmCycle=2026-07'))
+
+      fireEvent.click(
+        screen.getByRole('link', { name: 'View inspection detail' }),
+      )
+      expect(
+        await screen.findByRole('heading', {
+          name: `Inspection ${inspectionId}`,
+        }),
+      ).toBeInTheDocument()
+      await waitFor(() => {
+        expect(router.state.location.pathname).toBe(
+          `/app/inspections/${inspectionId}`,
+        )
+        expect(router.state.location.search).toEqual({
+          ...dashboardSearch,
+          reviewFormId: formId,
         })
-      }),
-    )
+      })
 
-    renderWithProviders(<PmAcknowledgementReview formId={formId} search={{}} />)
-
-    expect(
+      fireEvent.click(
+        screen.getByRole('link', { name: 'Back to batch review' }),
+      )
       await screen.findByRole('heading', {
         name: 'Review before acknowledgement',
-      }),
-    ).toBeInTheDocument()
-    expect(screen.getByText('Awaiting acknowledgement')).toBeInTheDocument()
-    expect(screen.getByText('100%')).toBeInTheDocument()
-    expect(screen.getByText('Pressure is low.')).toBeInTheDocument()
-    expect(
-      screen.getByText('Inspect and recharge the unit.'),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByRole('columnheader', { name: 'Finding' }),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByRole('columnheader', { name: 'Recommendation' }),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByRole('link', { name: 'View full PM form' }),
-    ).toHaveAttribute(
-      'href',
-      expect.stringContaining(`/app/preventive-maintenance-forms/${formId}?`),
-    )
-    expect(
-      screen.getByRole('link', { name: 'View inspection detail' }),
-    ).toHaveAttribute(
-      'href',
-      expect.stringContaining(`/app/inspections/${inspectionId}?`),
-    )
-    expect(
-      screen.getByRole('link', { name: 'View full PM form' }),
-    ).toHaveAttribute('href', expect.stringContaining('reviewFormId='))
-    expect(
-      screen.getByRole('link', { name: 'View inspection detail' }),
-    ).toHaveAttribute('href', expect.stringContaining('pmCycle=2026-07'))
-    await waitFor(() => {
-      expect(dashboardRequest?.searchParams.get('assetCategory')).toBe(
-        'fire-extinguisher',
+      })
+      await waitFor(() => {
+        expect(router.state.location.pathname).toBe(
+          `/app/preventive-maintenance-forms/${formId}/review`,
+        )
+        expect(router.state.location.search).toEqual(dashboardSearch)
+      })
+
+      fireEvent.click(
+        screen.getByRole('link', { name: 'Back to PM dashboard' }),
       )
-      expect(dashboardRequest?.searchParams.get('pmCycle')).toBe('2026-07')
-      expect(dashboardRequest?.searchParams.get('department')).toBe('GSD')
+      await screen.findByRole('link', { name: 'Review batch' })
+      await waitFor(() => {
+        expect(router.state.location.pathname).toBe('/app/dashboard')
+        expect(router.state.location.search).toEqual(dashboardSearch)
+      })
+      expect(screen.getByLabelText('Department')).toHaveValue(departmentValue)
+      expect(screen.getByLabelText('Condition')).toHaveValue('NonOperational')
+      expect(screen.getByLabelText('Timeliness / status')).toHaveValue('Late')
+      expect(screen.getByLabelText('Search assets')).toHaveValue('FE-TEST-001')
+      expect(
+        screen.getByText('Asset category').parentElement,
+      ).toHaveTextContent('Fire Extinguisher')
+      expect(
+        screen.getByText('Scheduled month/year').parentElement,
+      ).toHaveTextContent('July 2026')
+
+      fireEvent.click(screen.getByRole('link', { name: 'Review batch' }))
+      await screen.findByRole('heading', {
+        name: 'Review before acknowledgement',
+      })
+      fireEvent.click(screen.getByRole('link', { name: 'View full PM form' }))
+      expect(
+        await screen.findByRole('heading', { name: 'GSD-SUBMITTED-001' }),
+      ).toBeInTheDocument()
+      expect(screen.getByText('Read-only submitted form')).toBeInTheDocument()
+      await waitFor(() => {
+        expect(router.state.location.pathname).toBe(
+          `/app/preventive-maintenance-forms/${formId}`,
+        )
+        expect(router.state.location.search).toEqual({
+          readonly: true,
+          ...dashboardSearch,
+          reviewFormId: formId,
+        })
+      })
+
+      fireEvent.click(
+        screen.getByRole('link', { name: 'Back to batch review' }),
+      )
+      await screen.findByRole('heading', {
+        name: 'Review before acknowledgement',
+      })
+      await waitFor(() => {
+        expect(router.state.location.pathname).toBe(
+          `/app/preventive-maintenance-forms/${formId}/review`,
+        )
+        expect(router.state.location.search).toEqual(dashboardSearch)
+      })
+      fireEvent.click(
+        screen.getByRole('link', { name: 'Back to PM dashboard' }),
+      )
+      await screen.findByRole('link', { name: 'Review batch' })
+      await waitFor(() => {
+        expect(router.state.location.pathname).toBe('/app/dashboard')
+        expect(router.state.location.search).toEqual(dashboardSearch)
+      })
+      expect(screen.getByLabelText('Department')).toHaveValue(departmentValue)
+    },
+  )
+
+  it('returns an acknowledged batch detail to its filtered dashboard scope', async () => {
+    installDashboardNavigationHandlers('Acknowledged')
+    const router = renderDashboardReviewWithProviders(
+      allDepartmentDashboardSearch,
+    )
+
+    fireEvent.click(await screen.findByRole('link', { name: 'View batch' }))
+    expect(
+      await screen.findByRole('heading', { name: 'GSD-ACKNOWLEDGED-001' }),
+    ).toBeInTheDocument()
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe(
+        `/app/preventive-maintenance-forms/${formId}`,
+      )
+      expect(router.state.location.search).toEqual({
+        readonly: true,
+        ...allDepartmentDashboardSearch,
+      })
+    })
+
+    fireEvent.click(screen.getByRole('link', { name: 'Back to PM dashboard' }))
+    await screen.findByRole('link', { name: 'View batch' })
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/app/dashboard')
+      expect(router.state.location.search).toEqual(allDepartmentDashboardSearch)
+    })
+    expect(screen.getByLabelText('Department')).toHaveValue('')
+  })
+
+  it('preserves omitted dashboard scope fields across the review-form return path', async () => {
+    installDashboardNavigationHandlers('Submitted')
+    const reviewSearch = {
+      condition: 'NonOperational',
+      timeliness: 'Late',
+      search: 'FE-TEST-001',
+    }
+    const router = renderAppRouter(
+      `/app/preventive-maintenance-forms/${formId}/review?condition=NonOperational&timeliness=Late&search=FE-TEST-001`,
+    )
+
+    fireEvent.click(
+      await screen.findByRole('link', { name: 'View full PM form' }),
+    )
+    expect(
+      await screen.findByRole('heading', { name: 'GSD-SUBMITTED-001' }),
+    ).toBeInTheDocument()
+    await waitFor(() => {
+      expect(router.state.location.search).toEqual({
+        readonly: true,
+        ...reviewSearch,
+        reviewFormId: formId,
+      })
+    })
+
+    fireEvent.click(screen.getByRole('link', { name: 'Back to batch review' }))
+    await screen.findByRole('heading', {
+      name: 'Review before acknowledgement',
+    })
+    await waitFor(() => {
+      expect(router.state.location.search).toEqual(reviewSearch)
+    })
+    fireEvent.click(screen.getByRole('link', { name: 'Back to PM dashboard' }))
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/app/dashboard')
+      expect(router.state.location.search).toEqual(reviewSearch)
     })
   })
+
+  it('keeps ordinary form-registry detail navigation scoped to the registry', async () => {
+    server.use(
+      http.get(meUrl, () => HttpResponse.json(currentUser(['Inspector']))),
+      http.get(formsUrl, () => HttpResponse.json([form('Submitted')])),
+      http.get(`${formsUrl}/${formId}`, () =>
+        HttpResponse.json(form('Submitted')),
+      ),
+    )
+    const router = renderAppRouter('/app/preventive-maintenance-forms')
+
+    fireEvent.click(
+      await screen.findByRole('link', { name: 'GSD-SUBMITTED-001' }),
+    )
+    expect(
+      await screen.findByRole('heading', { name: 'Inspection rows' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('link', { name: 'Back to form review' }),
+    ).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('link', { name: 'Back to form review' }))
+    expect(
+      await screen.findByRole('heading', { name: 'Form review' }),
+    ).toBeInTheDocument()
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe(
+        '/app/preventive-maintenance-forms',
+      )
+      expect(router.state.location.search).toEqual({})
+    })
+  })
+
+  it('rejects an invalid review form id without requesting form or batch data', async () => {
+    let formRequests = 0
+    let dashboardRequests = 0
+    server.use(
+      http.get(meUrl, () => HttpResponse.json(currentUser(['GSD']))),
+      http.get(`${formsUrl}/:requestedFormId`, () => {
+        formRequests += 1
+        return HttpResponse.json(form('Submitted'))
+      }),
+      http.get('*/api/v1/pm-period-dashboard', () => {
+        dashboardRequests += 1
+        return HttpResponse.json({})
+      }),
+    )
+
+    renderWithProviders(
+      <PmAcknowledgementReview
+        formId="not-a-guid"
+        search={{
+          assetCategory: 'fire-extinguisher',
+          year: 2026,
+          pmCycle: '2026-07',
+          department: 'GSD',
+        }}
+      />,
+    )
+
+    expect(
+      await screen.findByRole('heading', { name: 'Review not found' }),
+    ).toBeInTheDocument()
+    expect(formRequests).toBe(0)
+    expect(dashboardRequests).toBe(0)
+  })
+
+  it.each([
+    { status: 404, title: 'Form not found' },
+    { status: 503, title: 'Form unavailable' },
+  ])(
+    'shows a form failure before requesting batch context ($status)',
+    async ({ status, title }) => {
+      let dashboardRequested = false
+      server.use(
+        http.get(meUrl, () => HttpResponse.json(currentUser(['GSD']))),
+        http.get(`${formsUrl}/${formId}`, () =>
+          HttpResponse.json({}, { status }),
+        ),
+        http.get('*/api/v1/pm-period-dashboard', () => {
+          dashboardRequested = true
+          return HttpResponse.json({})
+        }),
+      )
+
+      renderWithProviders(
+        <PmAcknowledgementReview
+          formId={formId}
+          search={{
+            assetCategory: 'fire-extinguisher',
+            year: 2026,
+            pmCycle: '2026-07',
+            department: 'GSD',
+          }}
+        />,
+      )
+
+      expect(
+        await screen.findByRole('heading', { name: title }),
+      ).toBeInTheDocument()
+      expect(dashboardRequested).toBe(false)
+    },
+  )
 
   it('invalidates the PM dashboard cache after acknowledgement', async () => {
     let dashboardRequests = 0

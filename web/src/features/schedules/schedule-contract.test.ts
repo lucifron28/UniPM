@@ -42,36 +42,65 @@ describe('schedule contracts', () => {
     ).toThrow(ZodError)
   })
 
-  it('requires quarter only for quarterly schedules', () => {
+  it('derives temporal fields from the schedule date and rejects contradictions', () => {
     expect(
       createScheduleSchema.safeParse({
         assetId: schedule.assetId,
         scheduleDate: '2026-08-01',
         periodType: 'Quarter',
-        quarter: undefined,
-        year: 2026,
+        quarter: 'Q2',
+        year: 2025,
       }).success,
     ).toBe(false)
     expect(
       createScheduleSchema.safeParse({
         assetId: schedule.assetId,
         scheduleDate: '2026-08-01',
-        periodType: 'Annual',
+        periodType: 'Quarter',
         quarter: undefined,
-        year: 2026,
+        year: undefined,
       }).success,
     ).toBe(true)
+    expect(
+      toCreateScheduleDto({
+        assetId: schedule.assetId,
+        scheduleDate: '2027-01-01',
+        periodType: 'Quarter',
+      }),
+    ).toMatchObject({
+      scheduleDate: '2027-01-01T00:00:00.000Z',
+      year: 2027,
+      quarter: 'Q1',
+    })
   })
 
-  it('clears quarter from non-quarter create payloads', () => {
-    const dto = toCreateScheduleDto({
+  it('clears a stale mismatched quarter from non-quarter create payloads', () => {
+    const values = {
       assetId: schedule.assetId,
       scheduleDate: '2026-08-01',
       periodType: 'Annual',
-      quarter: 'Q3',
-      year: 2026,
-    })
+      quarter: 'Q1',
+    } as const
+    expect(createScheduleSchema.safeParse(values).success).toBe(true)
+
+    const dto = toCreateScheduleDto(values)
     expect(dto.quarter).toBeNull()
+  })
+
+  it('rejects an out-of-range derived year when the year field is omitted', () => {
+    const unsupportedYear = new Date().getUTCFullYear() + 6
+    const result = createScheduleSchema.safeParse({
+      assetId: schedule.assetId,
+      scheduleDate: `${unsupportedYear}-01-01`,
+      periodType: 'Annual',
+    })
+
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues.some((issue) => issue.path[0] === 'year')).toBe(
+        true,
+      )
+    }
   })
 
   it.each([

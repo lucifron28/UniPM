@@ -185,7 +185,6 @@ void main() {
         _formId,
         _inspectionId,
         UpdateInspectionInput(
-          inspectorUserId: _inspectorId,
           dateInspected: DateTime.utc(2026, 9, 26),
           isOperational: true,
           remarks: null,
@@ -214,6 +213,7 @@ void main() {
         jsonDecode(requests[2].body),
         isNot(contains('locationAttemptId')),
       );
+      expect(jsonDecode(requests[2].body), isNot(contains('inspectorUserId')));
       client.dispose();
       transport.close();
     },
@@ -443,7 +443,7 @@ Future<void> _pumpEntry(
       home: Scaffold(
         body: SingleChildScrollView(
           child: ScannedAssetPmEntry(
-      asset: Asset(
+            asset: Asset(
               id: _assetId,
               assetCode: 'FE-001',
               assetCategory: 'fire-extinguisher',
@@ -525,7 +525,7 @@ class _FakeDeviceLocationPlatform implements DeviceLocationPlatform {
     receivedTimeout = timeout;
     return pendingPosition?.future ??
         Future.value(
-        DeviceLocationCoordinates(
+          DeviceLocationCoordinates(
             latitude: 14.6,
             longitude: 120.98,
             accuracyMeters: hasAccuracy ? accuracyMeters : null,

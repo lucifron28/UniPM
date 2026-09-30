@@ -204,8 +204,11 @@ The confirmed workflow baseline is
 
 - One preventive-maintenance form mirrors one existing one-page form and may
   contain multiple inspection rows.
-- The confirmed lifecycle is `Draft -> Submitted -> Acknowledged`. Schedules
-  become `Completed` only after whole-form acknowledgement.
+- The form lifecycle is `Draft -> Submitted -> Acknowledged`. Saving a completed
+  inspection marks its linked schedule `Completed` while the form remains
+  `Draft`. Submission and acknowledgement are separate whole-form transitions.
+  Acknowledgement records the Department Head's receipt and signatory details;
+  it does not complete schedules.
 - The department head does not require a UniPM account. The skilled worker's
   authenticated mobile session captures the signatory name, position, and
   signature as form data.
@@ -393,7 +396,7 @@ Required RAG behavior:
 - Keep commits small and conventional.
 - Prefer messages such as:
   - `feat(api): add asset list endpoint`
-  - `test(api): cover form acknowledgement schedule completion`
+  - `test(api): cover inspection schedule completion`
   - `chore(seed): add synthetic maintenance records`
   - `feat(web): add corrective-handoff review page`
 - Do not mix manuscript edits, backend schema changes, frontend UI, and AI provider changes in one commit.

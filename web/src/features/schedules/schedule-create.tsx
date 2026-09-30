@@ -23,10 +23,7 @@ import {
   toCreateScheduleDto,
   type CreateScheduleValues,
 } from '@/features/schedules/schedule-contract'
-import {
-  useSchedulePeriodTypes,
-  useScheduleQuarters,
-} from '@/features/schedules/schedule-queries'
+import { useSchedulePeriodTypes } from '@/features/schedules/schedule-queries'
 
 type FieldName = keyof CreateScheduleValues
 type FieldErrors = Partial<Record<FieldName, string>>
@@ -51,7 +48,9 @@ export function ScheduleCreate() {
   const currentUser = useCurrentUser()
   const assets = useAssets()
   const periodTypes = useSchedulePeriodTypes()
-  const quarters = useScheduleQuarters()
+  const eligibleAssets = (assets.data ?? []).filter(
+    (asset) => asset.status === 'Active' && Boolean(asset.department?.trim()),
+  )
   const summaryRef = useRef<HTMLDivElement>(null)
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const [submitError, setSubmitError] = useState<string | null>(null)
@@ -136,7 +135,7 @@ export function ScheduleCreate() {
       scheduleDate: '',
       periodType: 'Quarter',
       quarter: undefined,
-      year: new Date().getUTCFullYear(),
+      year: undefined,
     } as CreateScheduleValues,
     onSubmit: ({ value }) => {
       setFieldErrors({})
@@ -181,15 +180,14 @@ export function ScheduleCreate() {
     )
   }
 
-  if (assets.isError || periodTypes.isError || quarters.isError) {
+  if (assets.isError || periodTypes.isError) {
     return (
       <Card role="alert" className="border-[var(--error)] p-6 shadow-none">
         <h1 className="text-xl font-bold">
           Schedule reference data unavailable
         </h1>
         <p className="mt-2 text-sm text-[var(--text-secondary)]">
-          Assets, period types, and quarter codes are required before a schedule
-          can be created.
+          Assets and period types are required before a schedule can be created.
         </p>
         <Button
           type="button"
@@ -197,7 +195,6 @@ export function ScheduleCreate() {
           onClick={() => {
             void assets.refetch()
             void periodTypes.refetch()
-            void quarters.refetch()
           }}
         >
           Retry reference data
@@ -262,12 +259,15 @@ export function ScheduleCreate() {
                   className="min-h-10 w-full rounded-lg border border-[var(--border-soft)] bg-white px-3 text-sm"
                 >
                   <option value="">Choose an asset</option>
-                  {(assets.data ?? []).map((asset) => (
+                  {eligibleAssets.map((asset) => (
                     <option key={asset.id} value={asset.id}>
                       {asset.assetCode} - {asset.assetCategory}
                     </option>
                   ))}
                 </select>
+                <p className="text-xs text-[var(--text-secondary)]">
+                  Only active assets with a department can be scheduled.
+                </p>
                 {fieldErrors.assetId && (
                   <p id="assetId-error" className="text-sm text-[var(--error)]">
                     {fieldErrors.assetId}
@@ -293,7 +293,20 @@ export function ScheduleCreate() {
                         : undefined
                     }
                     onChange={(event) => {
-                      field.handleChange(event.target.value)
+                      const date = event.target.value
+                      field.handleChange(date)
+                      if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+                        const year = Number(date.slice(0, 4))
+                        const month = Number(date.slice(5, 7))
+                        form.setFieldValue('year', year)
+                        form.setFieldValue(
+                          'quarter',
+                          `Q${Math.floor((month - 1) / 3) + 1}` as CreateScheduleValues['quarter'],
+                        )
+                      } else {
+                        form.setFieldValue('year', undefined)
+                        form.setFieldValue('quarter', undefined)
+                      }
                       clearFieldError('scheduleDate')
                     }}
                   />
@@ -317,15 +330,12 @@ export function ScheduleCreate() {
                     type="number"
                     min="2000"
                     max={new Date().getUTCFullYear() + 5}
-                    value={field.state.value}
+                    value={field.state.value ?? ''}
+                    readOnly
                     aria-invalid={fieldErrors.year ? true : undefined}
                     aria-describedby={
                       fieldErrors.year ? 'year-error' : undefined
                     }
-                    onChange={(event) => {
-                      field.handleChange(event.target.value)
-                      clearFieldError('year')
-                    }}
                   />
                   {fieldErrors.year && (
                     <p id="year-error" className="text-sm text-[var(--error)]">
@@ -353,11 +363,7 @@ export function ScheduleCreate() {
                       const next = event.target
                         .value as CreateScheduleValues['periodType']
                       field.handleChange(next)
-                      if (next !== 'Quarter') {
-                        form.setFieldValue('quarter', undefined)
-                      }
                       clearFieldError('periodType')
-                      clearFieldError('quarter')
                     }}
                     className="min-h-10 w-full rounded-lg border border-[var(--border-soft)] bg-white px-3 text-sm"
                   >
@@ -386,29 +392,15 @@ export function ScheduleCreate() {
                     {(field) => (
                       <div className="space-y-2">
                         <Label htmlFor="quarter">Quarter</Label>
-                        <select
+                        <Input
                           id="quarter"
                           value={field.state.value ?? ''}
+                          readOnly
                           aria-invalid={fieldErrors.quarter ? true : undefined}
                           aria-describedby={
                             fieldErrors.quarter ? 'quarter-error' : undefined
                           }
-                          onChange={(event) => {
-                            field.handleChange(
-                              (event.target.value || undefined) as
-                                CreateScheduleValues['quarter'] | undefined,
-                            )
-                            clearFieldError('quarter')
-                          }}
-                          className="min-h-10 w-full rounded-lg border border-[var(--border-soft)] bg-white px-3 text-sm"
-                        >
-                          <option value="">Choose a quarter</option>
-                          {(quarters.data ?? []).map((quarter) => (
-                            <option key={quarter.code} value={quarter.code}>
-                              {quarter.displayName}
-                            </option>
-                          ))}
-                        </select>
+                        />
                         {fieldErrors.quarter && (
                           <p
                             id="quarter-error"
@@ -429,10 +421,7 @@ export function ScheduleCreate() {
             <Button
               type="submit"
               disabled={
-                mutation.isPending ||
-                assets.isPending ||
-                periodTypes.isPending ||
-                quarters.isPending
+                mutation.isPending || assets.isPending || periodTypes.isPending
               }
             >
               {mutation.isPending && (

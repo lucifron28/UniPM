@@ -191,7 +191,6 @@ class ApiPreventiveMaintenanceRepository
     final json = await _client.putJson(
       '/api/v1/preventive-maintenance-forms/$formId/inspections/$inspectionId',
       _inspectionBody(
-        inspectorUserId: input.inspectorUserId,
         dateInspected: input.dateInspected,
         dateAccomplished: input.dateAccomplished,
         isOperational: input.isOperational,
@@ -237,7 +236,7 @@ ReferenceOption _referenceFromValue(dynamic value) {
 Map<String, dynamic> _inspectionBody({
   String? scheduleId,
   String? locationAttemptId,
-  required String inspectorUserId,
+  String? inspectorUserId,
   required DateTime dateInspected,
   DateTime? dateAccomplished,
   required bool isOperational,
@@ -252,7 +251,9 @@ Map<String, dynamic> _inspectionBody({
     ...?locationAttemptId == null
         ? null
         : <String, dynamic>{'locationAttemptId': locationAttemptId},
-    'inspectorUserId': inspectorUserId,
+    ...?inspectorUserId == null
+        ? null
+        : <String, dynamic>{'inspectorUserId': inspectorUserId},
     'dateInspected': dateInspected.toUtc().toIso8601String(),
     'dateAccomplished': dateAccomplished?.toUtc().toIso8601String(),
     'isOperational': isOperational,

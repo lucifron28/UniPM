@@ -297,12 +297,21 @@ test.describe('Schedule workflows', () => {
     await page.goto('/app/schedules/new')
     await page.getByLabel('Asset', { exact: true }).selectOption(assetId)
     await page.getByLabel('Schedule date').fill('2026-08-01')
-    await page.getByLabel('Quarter').selectOption('Q3')
+    const quarter = page.getByLabel('Quarter')
+    await expect(quarter).toHaveValue('Q3')
+    await expect(quarter).toHaveJSProperty('readOnly', true)
     await page.getByRole('button', { name: 'Create schedule' }).click()
     await expect(page).toHaveURL(new RegExp(`/app/schedules/${scheduleId}`))
     expect(Object.keys(payload ?? {}).sort()).toEqual(
       ['assetId', 'periodType', 'quarter', 'scheduleDate', 'year'].sort(),
     )
+    expect(payload).toMatchObject({
+      assetId,
+      periodType: 'Quarter',
+      quarter: 'Q3',
+      scheduleDate: '2026-08-01T00:00:00.000Z',
+      year: 2026,
+    })
   })
 
   test('blocks an Admin-only user without sending a schedule POST', async ({

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import {
   createMemoryHistory,
   createRootRoute,
@@ -10,7 +10,10 @@ import type {
   PmPeriodDashboardBatchResponse,
   PmPeriodDashboardResponse,
 } from '@/api/generated/models'
-import { PmPeriodDashboardPresentation } from './pm-period-dashboard'
+import {
+  PmPeriodDashboardPresentation,
+  type PmPeriodDashboardSearch,
+} from './pm-period-dashboard'
 
 type PeriodState = 'Future' | 'Active' | 'Closed'
 
@@ -66,9 +69,17 @@ function renderState(periodState: PeriodState) {
   )
 }
 
-function renderPresentationWithRouter(dashboard: PmPeriodDashboardResponse) {
+function renderPresentationWithRouter(
+  dashboard: PmPeriodDashboardResponse,
+  search?: PmPeriodDashboardSearch,
+) {
   const rootRoute = createRootRoute({
-    component: () => <PmPeriodDashboardPresentation dashboard={dashboard} />,
+    component: () => (
+      <PmPeriodDashboardPresentation
+        dashboard={dashboard}
+        {...(search ? { search } : {})}
+      />
+    ),
   })
   const router = createRouter({
     routeTree: rootRoute,
@@ -76,6 +87,15 @@ function renderPresentationWithRouter(dashboard: PmPeriodDashboardResponse) {
   })
 
   return render(<RouterProvider router={router} />)
+}
+
+function expectSearchParams(
+  searchParams: URLSearchParams,
+  expected: Record<string, string>,
+) {
+  for (const [key, value] of Object.entries(expected)) {
+    expect(searchParams.get(key)).toBe(value)
+  }
 }
 
 function expectMetricLabel(label: string) {
@@ -86,12 +106,29 @@ function expectMetricLabel(label: string) {
   ).toBe(true)
 }
 
+function expectMetricValue(label: string, value: string) {
+  const labelElement = screen
+    .getAllByText(label, { exact: true })
+    .find((element) => element.tagName === 'P')
+
+  if (!labelElement?.parentElement) {
+    throw new Error(`Metric card not found: ${label}`)
+  }
+
+  expect(
+    within(labelElement.parentElement).getByText(value, { exact: true }),
+  ).toBeInTheDocument()
+}
+
 describe('PM period dashboard period terminology', () => {
   it('uses Remaining and not Not completed for Future periods', () => {
     renderState('Future')
 
     expectMetricLabel('Scheduled')
     expectMetricLabel('Remaining')
+    expectMetricValue('Scheduled', '5')
+    expectMetricValue('Remaining', '2')
+    expectMetricValue('On-time compliance', 'Not measurable yet')
     expect(
       screen.getByText('Not measurable yet', { exact: true }),
     ).toBeInTheDocument()
@@ -111,6 +148,8 @@ describe('PM period dashboard period terminology', () => {
 
     expectMetricLabel('Progress')
     expectMetricLabel('Remaining')
+    expectMetricValue('Progress', '60%')
+    expectMetricValue('Remaining', '2')
     expect(
       screen.getByText('Not measurable yet', { exact: true }),
     ).toBeInTheDocument()
@@ -131,6 +170,15 @@ describe('PM period dashboard period terminology', () => {
     expectMetricLabel('Completed on time')
     expectMetricLabel('Completed late')
     expectMetricLabel('Not completed')
+    expectMetricValue('Scheduled', '5')
+    expectMetricValue('Inspected', '3')
+    expectMetricValue('Completed on time', '2')
+    expectMetricValue('Completed late', '1')
+    expectMetricValue('Not completed', '1')
+    expectMetricValue('Remaining', '0')
+    expectMetricValue('Operational', '2')
+    expectMetricValue('Non-operational', '1')
+    expectMetricValue('On-time compliance', '50%')
     expect(screen.getByText('50%', { exact: true })).toBeInTheDocument()
     expect(
       screen.getByRole('columnheader', { name: 'Not completed' }),
@@ -165,5 +213,41 @@ describe('PM period dashboard period terminology', () => {
       expect.stringContaining('readonly=true'),
     )
     expect(link).not.toHaveAttribute('href', expect.stringContaining('/review'))
+  })
+
+  it('preserves dashboard scope and filters when opening a submitted batch review', async () => {
+    const reviewFormId = '22222222-2222-4222-8222-222222222222'
+    const reviewSearch: PmPeriodDashboardSearch = {
+      assetCategory: 'fire-extinguisher',
+      year: 2026,
+      pmCycle: '2026-06',
+      department: 'GSD',
+      condition: 'NonOperational',
+      timeliness: 'Late',
+      search: 'FE-TEST-001',
+    }
+
+    renderPresentationWithRouter(
+      {
+        ...dashboardFor('Closed'),
+        batches: [{ ...batch, formId: reviewFormId }],
+      },
+      reviewSearch,
+    )
+
+    const link = await screen.findByRole('link', { name: 'Review batch' })
+    const reviewUrl = new URL(link.getAttribute('href')!, 'http://localhost')
+    expect(reviewUrl.pathname).toBe(
+      `/app/preventive-maintenance-forms/${reviewFormId}/review`,
+    )
+    expectSearchParams(reviewUrl.searchParams, {
+      assetCategory: 'fire-extinguisher',
+      year: '2026',
+      pmCycle: '2026-06',
+      department: 'GSD',
+      condition: 'NonOperational',
+      timeliness: 'Late',
+      search: 'FE-TEST-001',
+    })
   })
 })

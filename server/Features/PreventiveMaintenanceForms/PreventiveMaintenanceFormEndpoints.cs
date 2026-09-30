@@ -696,11 +696,6 @@ public static class PreventiveMaintenanceFormEndpoints
                 return ApiErrors.Validation(errors);
             }
 
-            if (!CanUseInspectorUserId(principal, dto.InspectorUserId))
-            {
-                return Results.Forbid();
-            }
-
             await using var context = await factory.CreateDbContextAsync(cancellationToken);
             var form = await context.PreventiveMaintenanceForms
                 .SingleOrDefaultAsync(candidate => candidate.Id == id, cancellationToken);
@@ -729,22 +724,16 @@ public static class PreventiveMaintenanceFormEndpoints
                 return Results.Forbid();
             }
 
-            var inspector = await context.Users
+            var inspectorDisplayName = await context.Users
                 .AsNoTracking()
-                .SingleOrDefaultAsync(user => user.Id == dto.InspectorUserId, cancellationToken);
-            if (inspector is null || !inspector.IsActive)
-            {
-                return ApiErrors.Validation(new Dictionary<string, string[]>
-                {
-                    [nameof(dto.InspectorUserId)] = ["Inspector user is unavailable."]
-                });
-            }
+                .Where(user => user.Id == inspection.InspectorUserId)
+                .Select(user => user.DisplayName)
+                .SingleOrDefaultAsync(cancellationToken);
 
             var isWaterDrinkingStation = string.Equals(
                 form.AssetCategory,
                 AssetCategoryCatalog.WaterDrinkingStation,
                 StringComparison.Ordinal);
-            inspection.InspectorUserId = dto.InspectorUserId;
             inspection.DateInspected = dto.DateInspected;
             inspection.DateAccomplished = isWaterDrinkingStation
                 ? dto.DateAccomplished
@@ -769,7 +758,7 @@ public static class PreventiveMaintenanceFormEndpoints
                 inspection,
                 inspection.Asset?.AssetCode,
                 inspection.Asset?.Location,
-                inspector.DisplayName));
+                inspectorDisplayName));
         })
         .RequireAuthorization(AuthPolicyCatalog.CanManagePreventiveMaintenanceForms)
         .WithName("UpdatePreventiveMaintenanceFormDraftInspection")
@@ -822,7 +811,11 @@ public static class PreventiveMaintenanceFormEndpoints
             }
 
             var now = DateTimeOffset.UtcNow;
-            inspection.Schedule.Status = ScheduleStatusCatalog.Due;
+            var institutionalToday = PreventiveMaintenanceCycle.ToInstitutionalTime(now).Date;
+            var scheduledDay = PreventiveMaintenanceCycle.ToInstitutionalTime(inspection.Schedule.ScheduleDate).Date;
+            inspection.Schedule.Status = scheduledDay < institutionalToday
+                ? ScheduleStatusCatalog.Overdue
+                : ScheduleStatusCatalog.Due;
             inspection.Schedule.CompletedAt = null;
             inspection.Schedule.UpdatedAt = now;
             context.InspectionRecords.Remove(inspection);
@@ -1322,7 +1315,7 @@ public sealed class DraftInspectionRowDto
     }
 
     internal static Dictionary<string, string[]> ValidateInspectionDetails(
-        Guid inspectorUserId,
+        Guid? inspectorUserId,
         DateTimeOffset dateInspected,
         string? remarks,
         string? actionsRecommendations)
@@ -1358,7 +1351,6 @@ public sealed class DraftInspectionRowDto
 
 public sealed class UpdateDraftInspectionRowDto
 {
-    public Guid InspectorUserId { get; set; }
     public DateTimeOffset DateInspected { get; set; }
     public DateTimeOffset? DateAccomplished { get; set; }
     public bool IsOperational { get; set; }
@@ -1371,7 +1363,7 @@ public sealed class UpdateDraftInspectionRowDto
     internal Dictionary<string, string[]> Validate()
     {
         return DraftInspectionRowDto.ValidateInspectionDetails(
-            InspectorUserId,
+            null,
             DateInspected,
             Remarks,
             ActionsRecommendations);

@@ -136,8 +136,8 @@ export const createAssetFieldSchemas = {
   department: z
     .string()
     .trim()
-    .max(256, 'Department must not exceed 256 characters.')
-    .optional(),
+    .min(1, 'Department is required for preventive maintenance assets.')
+    .max(256, 'Department must not exceed 256 characters.'),
   location: z
     .string()
     .trim()
