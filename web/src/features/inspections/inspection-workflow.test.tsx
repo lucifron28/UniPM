@@ -41,6 +41,7 @@ const schedule = {
   id: scheduleId,
   assetId,
   scheduleDate: '2026-08-01T00:00:00+08:00',
+  pmCycle: '2026-08',
   periodType: 'Quarter',
   status: 'Completed',
   quarter: 'Q3',
@@ -216,6 +217,11 @@ describe('inspection review workflows', () => {
     expect(await screen.findByText('Remarks')).toBeInTheDocument()
     expect(screen.getByText(inspection.remarks)).toBeInTheDocument()
     expect(document.querySelector('script')).toBeNull()
+    expect(screen.getByText('Scheduled month')).toBeInTheDocument()
+    expect(screen.getByText('August 2026')).toBeInTheDocument()
+    expect(screen.getByText('Due date')).toBeInTheDocument()
+    expect(screen.getByText('Aug 31, 2026')).toBeInTheDocument()
+    expect(screen.getByText('Actual inspection date')).toBeInTheDocument()
     expect(
       await screen.findByRole('link', { name: 'FE-001' }),
     ).toBeInTheDocument()

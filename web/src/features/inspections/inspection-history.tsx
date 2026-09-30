@@ -64,6 +64,7 @@ export function InspectionHistory({ assetId }: { assetId: string }) {
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <p className="font-semibold text-[var(--text-primary)]">
+                    Actual inspection date:{' '}
                     {formatInspectionDate(record.dateInspected)}
                   </p>
                   <p className="mt-1 text-sm text-[var(--text-secondary)]">
