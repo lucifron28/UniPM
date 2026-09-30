@@ -2,13 +2,11 @@ namespace UniPM.Api.Features.ReferenceDocuments;
 
 internal static class EvidenceSourceGroupCatalog
 {
-    internal const string MaintenanceHistory = "MaintenanceHistory";
     internal const string InstitutionalReference = "InstitutionalReference";
     internal const string OemReference = "OemReference";
 
     internal static IReadOnlyList<string> PersistedValues { get; } =
     [
-        MaintenanceHistory,
         InstitutionalReference,
         OemReference
     ];
