@@ -391,7 +391,7 @@ const officialMetricLabels = [
   'Operational',
   'Non-operational',
   'Progress',
-  'On-time compliance',
+  'Compliance rate',
 ] as const
 
 function assetRow(page: Page, assetCode: string) {
@@ -735,7 +735,7 @@ test.describe('PM period dashboard', () => {
       batchTable(page).getByRole('columnheader', { name: 'Remaining' }),
     ).toHaveCount(0)
     await expect(
-      metricCard(page, 'On-time compliance').locator('p').nth(1),
+      metricCard(page, 'Compliance rate').locator('p').nth(1),
     ).toHaveText('50%')
 
     await page.setViewportSize({ width: 375, height: 667 })

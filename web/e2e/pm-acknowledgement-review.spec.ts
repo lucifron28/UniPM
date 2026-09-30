@@ -271,7 +271,7 @@ test('demonstrates the submitted PM batch acknowledgement review workflow', asyn
   await expect(summaryValue('Scheduled')).toHaveText('1')
   await expect(summaryValue('Inspected')).toHaveText('1')
   await expect(summaryValue('Completed on time')).toHaveText('1')
-  await expect(summaryValue('On-time compliance')).toHaveText('100%')
+  await expect(summaryValue('Compliance rate')).toHaveText('100%')
   await expect(summaryValue('Field-work completion')).toHaveText(/Jul 28, 2026/)
   await expect(summaryValue('Submitted timestamp')).toHaveText(/Jul 29, 2026/)
   const acknowledgementCard = page

@@ -15,6 +15,10 @@ import {
   usePmPeriodDashboard,
   usePmPeriodDashboardCycles,
 } from '@/features/reports/pm-period-dashboard-queries'
+import {
+  formatPmCycle,
+  formatPmCycleDueDate,
+} from '@/features/schedules/schedule-presentation'
 import './pm-dashboard-print.css'
 
 export type PmPeriodDashboardSearch = {
@@ -72,19 +76,6 @@ function formatDate(
     ...(withTime ? { timeStyle: 'short' } : {}),
     ...(timeZone ? { timeZone } : {}),
   }).format(new Date(value))
-}
-
-function formatPmCycle(value: string) {
-  const [yearText, monthText] = value.split('-')
-  const year = Number(yearText)
-  const month = Number(monthText)
-  if (!Number.isInteger(year) || !Number.isInteger(month)) return value
-
-  return new Intl.DateTimeFormat('en-US', {
-    month: 'long',
-    year: 'numeric',
-    timeZone: 'UTC',
-  }).format(new Date(Date.UTC(year, month - 1, 1)))
 }
 
 function formatNumber(value: number | string) {
@@ -317,7 +308,7 @@ function BatchOverview({
                 'Department',
                 'Scheduled',
                 'Inspected',
-                'On time',
+                'Completed on time',
                 'Late',
                 isClosed ? 'Not completed' : 'Remaining',
                 'Form / acknowledgement',
@@ -444,7 +435,7 @@ function AssetRows({
                 'Asset',
                 'Department',
                 'Building / location',
-                'Cycle / schedule',
+                'Scheduled month / due date',
                 'Inspection completion',
                 'Timeliness',
                 'Condition',
@@ -488,7 +479,7 @@ function AssetRows({
                   <p className="font-semibold text-[var(--text-primary)]">
                     {formatPmCycle(asset.pmCycle)}
                   </p>
-                  <p>Scheduled {formatDate(asset.scheduleDate)}</p>
+                  <p>Due date: {formatPmCycleDueDate(asset.pmCycle)}</p>
                   <p className="text-xs text-[var(--text-neutral)]">
                     {asset.scheduleStatus}
                   </p>
@@ -497,7 +488,7 @@ function AssetRows({
                   <p>{formatExecutionStatus(asset.executionStatus)}</p>
                   <p className="text-xs text-[var(--text-neutral)]">
                     {asset.isInspected
-                      ? formatDate(asset.inspectionCompletedAt, true)
+                      ? `Actual inspection date: ${formatDate(asset.inspectionCompletedAt, true)}`
                       : 'Not inspected'}
                   </p>
                 </td>
@@ -550,9 +541,9 @@ function PeriodStateSummary({
   const state = formatPeriodState(dashboard.periodState)
   const message =
     dashboard.periodState === 'Future'
-      ? 'This period is before its month-end deadline. Unfinished rows are marked Scheduled, and on-time compliance is not measurable yet.'
+      ? 'This period is before its month-end deadline. Unfinished rows are marked Scheduled, and the compliance rate is not measurable yet.'
       : dashboard.periodState === 'Active'
-        ? 'This period is in progress. Unfinished rows are marked Pending, and on-time compliance is not measurable yet.'
+        ? 'This period is in progress. Unfinished rows are marked Pending, and the compliance rate is not measurable yet.'
         : dashboard.periodState === 'Closed'
           ? 'This period is closed. Completed rows retain their final on-time or late result; unfinished rows are marked Not completed.'
           : 'The backend returned an unrecognized period state. Review the row-level status values for this period.'
@@ -648,7 +639,7 @@ function DashboardMetrics({
         note="Backend-reported inspection progress"
       />
       <DashboardMetric
-        label="On-time compliance"
+        label="Compliance rate"
         value={
           dashboard.complianceMeasurable
             ? formatPercent(dashboard.onTimeCompliancePercent)
@@ -1095,16 +1086,12 @@ export function PmPeriodDashboard({
               </div>
               <p className="mt-4 text-sm text-[var(--text-secondary)]">
                 <span className="font-semibold text-[var(--text-primary)]">
-                  Month-end deadline (Asia/Manila):
+                  Due date (Asia/Manila):
                 </span>{' '}
                 {dashboardQuery.isPending
                   ? 'Loading...'
                   : dashboardQuery.data
-                    ? formatDate(
-                        dashboardQuery.data.deadline,
-                        false,
-                        'Asia/Manila',
-                      )
+                    ? formatPmCycleDueDate(dashboardQuery.data.pmCycle)
                     : 'Unavailable'}
               </p>
             </Card>

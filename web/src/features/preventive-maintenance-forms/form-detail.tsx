@@ -233,7 +233,7 @@ function InspectionRow({ row }: { row: PreventiveMaintenanceInspectionRow }) {
             {row.assetCode ?? `Inspection ${row.id}`}
           </p>
           <p className="mt-1 text-xs text-[var(--text-neutral)]">
-            {formatFormDate(row.dateInspected)}
+            Actual inspection date: {formatFormDate(row.dateInspected)}
           </p>
         </div>
         <Badge
@@ -254,7 +254,7 @@ function InspectionRow({ row }: { row: PreventiveMaintenanceInspectionRow }) {
           value={row.skilledWorkerIdentity ?? ''}
         />
         <DetailItem
-          label="Inspection date"
+          label="Actual inspection date"
           value={formatFormDate(row.dateInspected)}
         />
       </dl>
