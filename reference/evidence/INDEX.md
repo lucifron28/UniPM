@@ -16,6 +16,7 @@ record's evidence level and tested/source commit.
 
 | ID | Type | Title | Status | Evidence level | Tested/source commit | Record | Note |
 |---|---|---|---|---|---|---|---|
+| TEST-044 | test-run | CPMP scheduling and compliance verification | executed | ci-executed | `73ed2c1`; local identities in record | [record](test-runs/TEST-044-cpmp-scheduling-compliance.md) | Backend and Web CI green, targeted API/web/browser checks and disposable native SQL scenarios passed; SQL CI skips remain explicit. |
 | IMP-037 | implementation | CPMP month scheduling and GSD compliance terminology | reviewed | source-inspected | `ae42440` | [record](implementation/IMP-037-cpmp-month-end-scheduling.md) | Category-month validation, canonical deadlines, web creation and reporting terminology, and synthetic demo alignment. |
 | IMP-001 | implementation | Synthetic maintenance dataset and Development seeder | reviewed | source-inspected | `00e5401` | [record](implementation/IMP-001-synthetic-maintenance-dataset.md) | Fictional deterministic fixture and scoped seed/reset behavior. |
 | IMP-002 | implementation | Versioned maintenance issue lexicon | reviewed | source-inspected | `00e5401` | [record](implementation/IMP-002-maintenance-issue-lexicon.md) | Deterministic category-bounded normalization; no accuracy baseline claimed. |
