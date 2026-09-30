@@ -20,6 +20,11 @@ checks ran at `e301a91`. Their individual execution SHAs are recorded below.
 ## Execution identity
 
 - Final web tested commit: `e301a91cf4ffaa6bdc13812f52141b4891c657af`.
+- Focused issue #8 dashboard round-trip test: executed at committed HEAD
+  `b15300fdd57291fce4a73cdaa47e0267c3086b8a` with test-only worktree patch
+  SHA-1 `3c9f84c532367638a9ad66cc34499d48a0398322`. That patch was committed
+  unchanged as `8951f44781ad07d3295cfa675376f3ccb2b586fc` after the test run;
+  it was not rerun at the new commit.
 - Backend API tests, backend build, and mobile functional tests commit:
   `fabb49a05f8947c6eabb5836b0647e1bf46c2960`.
 - Branch: `feature/pre-acceptance-integration-hardening`.
@@ -50,6 +55,8 @@ flutter test test/batch_progress_calculation_test.dart test/inspection_location_
 
 npm run test:run -- src/features/assets/asset-contract.test.ts src/features/assets/asset-create.test.tsx src/features/schedules/schedule-contract.test.ts src/features/schedules/schedule-workflow.test.tsx src/features/reports/pm-period-dashboard.test.tsx src/features/preventive-maintenance-forms/preventive-maintenance-form-review.test.tsx
 
+npm run test:run -- src/features/preventive-maintenance-forms/preventive-maintenance-form-review.test.tsx -t "preserves dashboard scope and filters through batch review and back"
+
 node node_modules/@playwright/test/cli.js test e2e/assets.spec.ts e2e/schedules.spec.ts e2e/pm-period-dashboard.spec.ts e2e/pm-acknowledgement-review.spec.ts --global-timeout=75000 --reporter=line,json
 
 npm run api:contract:test
@@ -79,6 +86,17 @@ and `flutter analyze`.
   `fabb49a`.
 - Focused web Vitest at `e301a91`: 6 files passed, 54/54 tests passed,
   0 failed, 0 pending.
+- Focused issue #8 dashboard round-trip target at base HEAD
+  `b15300fdd57291fce4a73cdaa47e0267c3086b8a` plus patch SHA-1
+  `3c9f84c532367638a9ad66cc34499d48a0398322`: exit 0, 1 passed, 0 failed,
+  11 skipped. It navigated Dashboard -> Review batch -> Back and verified the
+  generated filters (`assetCategory=fire-extinguisher`, `year=2026`,
+  `pmCycle=2026-07`, `department=GSD`, `condition=NonOperational`,
+  `timeliness=Late`, `search=FE-TEST-001`) in route state and the restored
+  dashboard UI. Vitest emitted non-fatal jsdom `scrollTo` notices. The test
+  patch was committed unchanged as
+  `8951f44781ad07d3295cfa675376f3ccb2b586fc`; this target was not rerun at that
+  commit.
 - Playwright at `e301a91`: 4 specs, 25/25 passed, 0 skipped, 0 unexpected,
   0 flaky; exit 0.
 - Negative OpenAPI contract checks at `e301a91`: 7/7 passed, exit 0.
@@ -101,6 +119,7 @@ and `flutter analyze`.
 | Dart format check | 9 files checked, 0 changed | 0 | n/a | `e301a91cf4ffaa6bdc13812f52141b4891c657af` |
 | Flutter analyze | no issues | 0 | n/a | `e301a91cf4ffaa6bdc13812f52141b4891c657af` |
 | Focused web Vitest | 54 | 0 | 0 | `e301a91cf4ffaa6bdc13812f52141b4891c657af` |
+| Dashboard review round-trip target | 1 | 0 | 11 | `b15300fdd57291fce4a73cdaa47e0267c3086b8a` + worktree patch `3c9f84c`; committed unchanged as `8951f44781ad07d3295cfa675376f3ccb2b586fc`, not rerun |
 | Playwright, 4 specs | 25 | 0 | 0 | `e301a91cf4ffaa6bdc13812f52141b4891c657af` |
 | Negative API contract checks | 7 | 0 | 0 | `e301a91cf4ffaa6bdc13812f52141b4891c657af` |
 
@@ -152,6 +171,8 @@ No AI provider was contacted. These fixes do not require an AI provider.
 | `final-e301a91-api-check.log` | `7B2607708C46A7CD4A659DBA1E4AE3621F5AA50B09564444F8313C48B3C43745` |
 | `final-e301a91-format-touched.log` | `4CDB3001DF92FCD42A0E2AED7FC9DF0E51D3E66E5F18F8D254D57028E1F35D63` |
 | `final-e301a91-format-full.log` | `780DB163E4BEB7A430BD40CAC2ABDAB5D8004515AC104AD9852BFCC9B3E7AF05` |
+| `dashboard-review-round-trip-b15300f.log` (initial selector failure) | `0209A6CD602D21C7842C19CCE1B56D63621749B8E123360A847CD982AA0F543C` |
+| `dashboard-review-round-trip-b15300f-corrected.log` | `7C73E286DB465BF3B5B9BC51AE820EBC0E75358CE2672DD5209BCF13E840FEFC` |
 - No raw artifacts were copied into committed evidence.
 
 ## Failures and corrections
@@ -167,6 +188,18 @@ five with exit 0. Final focused Vitest and Playwright runs at `e301a91` passed.
 Before commit, `api:check` returned 1 because generated changes were
 uncommitted; the committed-state check at `e301a91` passed.
 
+The first issue #8 round-trip target run failed because the text selector for
+`Fire Extinguisher` matched both the generated dashboard filter and the review
+summary (1 failed, 11 skipped). The test assertion was narrowed to the
+definition-list field; the same target then passed (1 passed, 11 skipped) at
+base HEAD `b15300fdd57291fce4a73cdaa47e0267c3086b8a` with worktree patch
+`3c9f84c532367638a9ad66cc34499d48a0398322`. The patch OID is the SHA-1 of the
+full `git diff --binary -- web/src/features/preventive-maintenance-forms/preventive-maintenance-form-review.test.tsx`
+output piped to `git hash-object --stdin`; the edited test file blob was
+`9a0b8fbbd95b2b93c719304596aed8c7f676611b`. The unchanged patch was committed
+afterward as `8951f44781ad07d3295cfa675376f3ccb2b586fc`; it was not rerun at
+that commit.
+
 ## Skipped verification
 
 Native SQL coverage, physical-device and iOS checks were not run. The full web
@@ -179,5 +212,7 @@ The backend and mobile functional test results apply to
 `fabb49a05f8947c6eabb5836b0647e1bf46c2960`. Web and mobile static checks apply
 to `e301a91cf4ffaa6bdc13812f52141b4891c657af`. No claim is made that backend
 or mobile test suites were rerun at `e301a91`. Native SQL and physical-device/
-iOS limits remain as stated above. Historical evidence records were not
-changed.
+iOS limits remain as stated above. The focused dashboard round-trip target was
+executed against base HEAD `b15300f` plus its identified worktree patch, before
+that exact patch was committed as `8951f44781ad07d3295cfa675376f3ccb2b586fc`;
+no post-commit rerun is claimed. Historical evidence records were not changed.

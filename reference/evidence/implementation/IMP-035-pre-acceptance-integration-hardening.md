@@ -74,10 +74,15 @@ acknowledgement records receipt/noting only and does not complete schedules.
    Coverage: `tests/UniPM.Api.Tests/Schedules/ScheduleQueryEndpointsTests.cs`,
    `web/src/features/schedules/schedule-workflow.test.tsx`, and
    `web/e2e/schedules.spec.ts`.
-8. Dashboard review navigation retains the generated asset category, year,
-   cycle, and department scope when returning from acknowledgement review.
-   Coverage: `web/src/features/reports/pm-period-dashboard.test.tsx` and
-   `web/src/features/preventive-maintenance-forms/preventive-maintenance-form-review.test.tsx`.
+8. Dashboard review navigation restores the generated dashboard scope when
+   returning from acknowledgement review. The focused component regression
+   follows Dashboard -> Review batch -> Back and checks route search plus
+   rendered filters for asset category, year, pmCycle, department, condition,
+   timeliness, and search. Coverage: `web/src/features/reports/pm-period-dashboard.test.tsx`
+   and `web/src/features/preventive-maintenance-forms/preventive-maintenance-form-review.test.tsx`.
+   The test-only change was committed as `8951f44781ad07d3295cfa675376f3ccb2b586fc`;
+   its execution identity and the fact it was not rerun post-commit are recorded
+   in TEST-042.
 9. Form request failures and missing/invalid form states resolve before the
    page waits on dependent dashboard data. Coverage:
    `web/src/features/preventive-maintenance-forms/preventive-maintenance-form-review.test.tsx`.
