@@ -79,6 +79,16 @@ describe('asset API contracts', () => {
     })
   })
 
+  it('requires a department for a new PM asset', () => {
+    expect(
+      createAssetSchema.safeParse({
+        assetCode: 'FE-NO-DEPT',
+        assetCategory: 'fire-extinguisher',
+        department: ' ',
+      }).success,
+    ).toBe(false)
+  })
+
   it('validates optional verification values as finite, bounded, and all-or-none', () => {
     expect(
       verificationLocationSchema.parse({
@@ -119,6 +129,7 @@ describe('asset API contracts', () => {
       toCreateAssetDto({
         assetCode: 'FE-002',
         assetCategory: 'fire-extinguisher',
+        department: 'GSD',
         verificationLatitude: '14.5995',
         verificationLongitude: '120.9842',
         verificationRadiusMeters: '25',

@@ -144,11 +144,21 @@ export const createScheduleSchema = z
     ),
   })
   .superRefine((value, context) => {
-    if (value.periodType === 'Quarter' && !value.quarter) {
+    const year = Number(value.scheduleDate.slice(0, 4))
+    const month = Number(value.scheduleDate.slice(5, 7))
+    const quarter = `Q${Math.floor((month - 1) / 3) + 1}`
+    if (value.year !== undefined && value.year !== year) {
+      context.addIssue({
+        code: 'custom',
+        path: ['year'],
+        message: 'Year must match the schedule date.',
+      })
+    }
+    if (value.quarter !== undefined && value.quarter !== quarter) {
       context.addIssue({
         code: 'custom',
         path: ['quarter'],
-        message: 'Choose a quarter for a quarterly schedule.',
+        message: 'Quarter must match the schedule date.',
       })
     }
   })
@@ -195,11 +205,16 @@ export function toCreateScheduleDto(
   values: CreateScheduleValues,
 ): CreateScheduleDto {
   const parsed = createScheduleSchema.parse(values)
+  const year = Number(parsed.scheduleDate.slice(0, 4))
+  const month = Number(parsed.scheduleDate.slice(5, 7))
   return {
     assetId: parsed.assetId,
-    scheduleDate: new Date(`${parsed.scheduleDate}T00:00:00`).toISOString(),
+    scheduleDate: new Date(`${parsed.scheduleDate}T00:00:00Z`).toISOString(),
     periodType: parsed.periodType,
-    quarter: parsed.periodType === 'Quarter' ? (parsed.quarter ?? null) : null,
-    year: parsed.year ?? null,
+    quarter:
+      parsed.periodType === 'Quarter'
+        ? `Q${Math.floor((month - 1) / 3) + 1}`
+        : null,
+    year,
   }
 }

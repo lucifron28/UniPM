@@ -309,8 +309,10 @@ test.describe('Asset Registry E2E Specs', () => {
     page,
   }) => {
     await mockAssetRegistry(page)
+    let payload: Record<string, unknown> | undefined
     await page.route('**/api/v1/assets', async (route) => {
       if (route.request().method() === 'POST') {
+        payload = route.request().postDataJSON() as Record<string, unknown>
         await route.fulfill({
           status: 201,
           contentType: 'application/json',
@@ -338,10 +340,12 @@ test.describe('Asset Registry E2E Specs', () => {
     await page.getByLabel('Asset code').fill('FE-999')
     await page.getByLabel('Category').selectOption('fire-extinguisher')
     await page.getByLabel('Building (optional)').fill('Library')
+    await page.getByLabel('Department').fill('GSD')
     await page.getByRole('button', { name: 'Create asset' }).click()
 
     await expect(page).toHaveURL(new RegExp(`/app/assets/${createdAsset.id}`))
     await expect(page.getByRole('heading', { name: 'FE-999' })).toBeVisible()
+    expect(payload?.department).toBe('GSD')
   })
 
   test('blocks non-GSD users from accessing create asset route', async ({
@@ -406,6 +410,7 @@ test.describe('Asset Registry E2E Specs', () => {
 
     await page.getByLabel('Asset code').fill('FE-001')
     await page.getByLabel('Category').selectOption('fire-extinguisher')
+    await page.getByLabel('Department').fill('GSD')
     await page.getByRole('button', { name: 'Create asset' }).click()
 
     const alert = page.getByRole('alert')
@@ -437,6 +442,7 @@ test.describe('Asset Registry E2E Specs', () => {
     await page.goto('/app/assets/new')
     await page.getByLabel('Asset code').fill('FE-001')
     await page.getByLabel('Category').selectOption('fire-extinguisher')
+    await page.getByLabel('Department').fill('GSD')
     await page.getByRole('button', { name: 'Create asset' }).click()
     await expect(page.locator('#assetCode-error')).toHaveText(
       'That asset code already exists.',
@@ -485,6 +491,7 @@ test.describe('Asset Registry E2E Specs', () => {
     await page.goto('/app/assets/new')
     await page.getByLabel('Asset code').fill('FE-998')
     await page.getByLabel('Category').selectOption('fire-extinguisher')
+    await page.getByLabel('Department').fill('GSD')
     await page.getByRole('button', { name: 'Create asset' }).click()
 
     await expect(

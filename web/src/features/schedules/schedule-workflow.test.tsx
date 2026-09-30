@@ -337,7 +337,7 @@ describe('schedule workflows', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('clears quarter when period changes and submits the approved fields', async () => {
+  it('derives year and quarter from the date and clears quarter for annual schedules', async () => {
     let requestBody: unknown
     server.use(
       http.post(`${base}/schedules`, async ({ request }) => {
@@ -358,9 +358,8 @@ describe('schedule workflows', () => {
     fireEvent.change(screen.getByLabelText('Schedule date'), {
       target: { value: '2026-08-01' },
     })
-    fireEvent.change(screen.getByLabelText('Quarter'), {
-      target: { value: 'Q3' },
-    })
+    expect(screen.getByLabelText('Year')).toHaveValue(2026)
+    expect(screen.getByLabelText('Quarter')).toHaveValue('Q3')
     fireEvent.change(screen.getByLabelText('Period type'), {
       target: { value: 'Annual' },
     })
@@ -377,5 +376,45 @@ describe('schedule workflows', () => {
     expect(Object.keys(requestBody as object).sort()).toEqual(
       ['assetId', 'periodType', 'quarter', 'scheduleDate', 'year'].sort(),
     )
+  })
+
+  it('offers only active assets with a department for scheduling', async () => {
+    server.use(
+      http.get(`${base}/assets`, () =>
+        HttpResponse.json([
+          asset,
+          {
+            ...asset,
+            id: '66666666-6666-4666-8666-666666666666',
+            assetCode: 'FE-INACTIVE',
+            status: 'Inactive',
+          },
+          {
+            ...asset,
+            id: '77777777-7777-4777-8777-777777777777',
+            assetCode: 'FE-RETIRED',
+            status: 'Retired',
+          },
+          {
+            ...asset,
+            id: '88888888-8888-4888-8888-888888888888',
+            assetCode: 'FE-NO-DEPT',
+            department: null,
+          },
+        ]),
+      ),
+    )
+
+    renderWithProviders(<ScheduleCreate />)
+    const select = await screen.findByLabelText('Asset')
+    expect(select).toHaveTextContent('FE-001')
+    expect(select).not.toHaveTextContent('FE-INACTIVE')
+    expect(select).not.toHaveTextContent('FE-RETIRED')
+    expect(select).not.toHaveTextContent('FE-NO-DEPT')
+    expect(
+      screen.getByText(
+        'Only active assets with a department can be scheduled.',
+      ),
+    ).toBeInTheDocument()
   })
 })
