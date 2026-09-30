@@ -7,6 +7,12 @@ import 'package:mobile/features/preventive_maintenance/preventive_maintenance_mo
 import 'package:mobile/features/preventive_maintenance/preventive_maintenance_repository.dart';
 import 'package:mobile/ui/display_labels.dart';
 
+DateTime _deadlineForCycle(String pmCycle) {
+  final year = int.parse(pmCycle.substring(0, 4));
+  final month = int.parse(pmCycle.substring(5, 7));
+  return DateTime.utc(year, month + 1, 0, 15, 59, 59, 999, 999);
+}
+
 void main() {
   test('formats backend category codes for display without changing codes', () {
     expect(displayAssetCategory('fire-alarm'), 'Fire Alarm');
@@ -82,8 +88,8 @@ void main() {
         ScheduleOption(
           id: 'sched-1',
           assetId: 'asset-1',
-          scheduleDate: DateTime(2026, 6, 15),
-          pmCycle: '2026-06',
+          scheduleDate: _deadlineForCycle('2026-05'),
+          pmCycle: '2026-05',
           periodType: 'Quarter',
           status: 'Due',
           quarter: 'Q2',
@@ -103,8 +109,8 @@ void main() {
         ScheduleOption(
           id: 'sched-2',
           assetId: 'asset-2',
-          scheduleDate: DateTime(2026, 6, 15),
-          pmCycle: '2026-06',
+          scheduleDate: _deadlineForCycle('2026-05'),
+          pmCycle: '2026-05',
           periodType: 'Quarter',
           status: 'Ongoing',
           quarter: 'Q2',
@@ -124,8 +130,8 @@ void main() {
         ScheduleOption(
           id: 'sched-cancelled',
           assetId: 'asset-3',
-          scheduleDate: DateTime(2026, 6, 15),
-          pmCycle: '2026-06',
+          scheduleDate: _deadlineForCycle('2026-05'),
+          pmCycle: '2026-05',
           periodType: 'Quarter',
           status: 'Cancelled',
           quarter: 'Q2',
@@ -163,7 +169,8 @@ void main() {
       expect(find.text('No active PM batches'), findsNothing);
       expect(find.text('Fire Extinguisher'), findsOneWidget);
       expect(find.text('College of Science'), findsOneWidget);
-      expect(find.text('Cycle: 2026-06'), findsOneWidget);
+      expect(find.text('PM cycle: May 2026'), findsOneWidget);
+      expect(find.text('Due date: May 31, 2026'), findsOneWidget);
       // Cancelled schedule is excluded from batch total (2 instead of 3)
       expect(find.text('0 of 2 assets inspected'), findsOneWidget);
       expect(find.text('Start inspection'), findsOneWidget);
@@ -196,8 +203,8 @@ void main() {
         ScheduleOption(
           id: 'sched-alice',
           assetId: 'asset-alice',
-          scheduleDate: DateTime(2026, 6, 15),
-          pmCycle: '2026-06',
+          scheduleDate: _deadlineForCycle('2026-05'),
+          pmCycle: '2026-05',
           periodType: 'Quarter',
           status: 'Due',
           quarter: 'Q2',
@@ -218,7 +225,7 @@ void main() {
         ScheduleOption(
           id: 'sched-bob',
           assetId: 'asset-bob',
-          scheduleDate: DateTime(2026, 6, 15),
+          scheduleDate: _deadlineForCycle('2026-06'),
           pmCycle: '2026-06',
           periodType: 'Quarter',
           status: 'Due',
@@ -240,14 +247,14 @@ void main() {
         ScheduleOption(
           id: 'sched-unassigned',
           assetId: 'asset-unassigned',
-          scheduleDate: DateTime(2026, 6, 15),
-          pmCycle: '2026-06',
+          scheduleDate: _deadlineForCycle('2026-08'),
+          pmCycle: '2026-08',
           periodType: 'Quarter',
           status: 'Due',
-          quarter: 'Q2',
+          quarter: 'Q3',
           semester: null,
           year: 2026,
-          academicYear: '2025-2026',
+          academicYear: '2026-2027',
           assignedToUserId: null,
           asset: const ScheduleAssetOption(
             id: 'asset-unassigned',
@@ -293,7 +300,7 @@ void main() {
       await tester.tap(startInspection);
       expect(startedBatch?.department, 'Department of Physics');
       expect(startedBatch?.assetCategory, 'fire-extinguisher');
-      expect(startedBatch?.pmCycle, '2026-06');
+      expect(startedBatch?.pmCycle, '2026-05');
       // 2. Test GSD visibility: GSD sees all relevant schedules under My PM Tasks
       await tester.pumpWidget(
         MaterialApp(
