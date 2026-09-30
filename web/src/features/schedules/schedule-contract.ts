@@ -224,6 +224,6 @@ export function toCreateScheduleDto(
     pmCycle,
     periodType: 'Quarter',
     quarter: `Q${Math.floor((month - 1) / 3) + 1}`,
-    year: parsed.year,
+    year: Number(parsed.year),
   }
 }
