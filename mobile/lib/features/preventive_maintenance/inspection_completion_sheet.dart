@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../ui/app_colors.dart';
 import '../../ui/display_labels.dart';
 import '../../ui/widgets/pm_progress_indicator.dart';
+import 'pm_cycle_presentation.dart';
 
 class InspectionCompletionSheet extends StatelessWidget {
   const InspectionCompletionSheet({
@@ -121,27 +122,22 @@ class InspectionCompletionSheet extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        displayAssetCategory(assetCategory),
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
+                      Expanded(
+                        child: Text(
+                          displayAssetCategory(assetCategory),
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary,
+                          ),
                         ),
                       ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.surfaceMuted,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
+                      Flexible(
                         child: Text(
-                          pmCycle,
+                          'PM cycle: ${formatPmCycle(pmCycle)}',
+                          textAlign: TextAlign.end,
                           style: const TextStyle(
-                            fontSize: 11,
+                            fontSize: 12,
                             fontWeight: FontWeight.w600,
                             color: AppColors.textNeutral,
                           ),
@@ -157,6 +153,8 @@ class InspectionCompletionSheet extends StatelessWidget {
                       color: AppColors.textSecondary,
                     ),
                   ),
+                  const SizedBox(height: 4),
+                  Text('Due date: ${formatPmCycleDueDate(pmCycle)}'),
                   const SizedBox(height: 14),
                   PmProgressIndicator(
                     completed: completedCount,
