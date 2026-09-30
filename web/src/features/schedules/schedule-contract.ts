@@ -132,10 +132,7 @@ export const createScheduleSchema = z
     quarter: z.enum(scheduleQuarterCodes).optional(),
     year: z.preprocess(
       (value) => (value === '' || value === null ? undefined : value),
-      z.coerce
-        .number()
-        .int('Year must be a whole number.')
-        .optional(),
+      z.coerce.number().int('Year must be a whole number.').optional(),
     ),
   })
   .superRefine((value, context) => {
