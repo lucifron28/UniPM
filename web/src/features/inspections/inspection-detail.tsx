@@ -13,6 +13,12 @@ import {
   inspectionOutcome,
 } from '@/features/inspections/inspection-presentation'
 import { useSchedule } from '@/features/schedules/schedule-queries'
+import { DetailBackLink } from '@/features/shared/detail-back-link'
+import {
+  inspectionDetailReturnContext,
+  type DetailReturnContext,
+  type DetailReturnFallback,
+} from '@/features/shared/detail-navigation'
 import {
   formatPmCycle,
   formatPmCycleDueDate,
@@ -39,12 +45,14 @@ function DetailError({
   title,
   message,
   retry,
-  registrySearch,
+  context,
+  fallback,
 }: {
   title: string
   message: string
   retry?: (() => void) | undefined
-  registrySearch: InspectionSearch
+  context?: DetailReturnContext | undefined
+  fallback: DetailReturnFallback
 }) {
   return (
     <Card role="alert" className="border-[var(--error)] p-6 shadow-none">
@@ -57,9 +65,7 @@ function DetailError({
           </Button>
         )}
         <Button asChild variant="secondary">
-          <Link to="/app/inspections" search={registrySearch}>
-            Return to inspections
-          </Link>
+          <DetailBackLink context={context} fallback={fallback} />
         </Button>
       </div>
     </Card>
@@ -70,10 +76,12 @@ export function InspectionDetail({
   inspectionId,
   reviewContext,
   registrySearch = {},
+  returnContext,
 }: {
   inspectionId: string
   reviewContext?: PmAcknowledgementReviewContext | undefined
   registrySearch?: InspectionSearch
+  returnContext?: DetailReturnContext | undefined
 }) {
   const isValidId = uuidPattern.test(inspectionId)
   const inspection = useInspection(inspectionId, isValidId)
@@ -85,13 +93,34 @@ export function InspectionDetail({
     inspection.data?.scheduleId ?? '',
     Boolean(inspection.data),
   )
+  const legacyReviewOrigin: DetailReturnContext | undefined = reviewContext
+    ? {
+        kind: 'batchReview',
+        formId: reviewContext.reviewFormId,
+        search: {
+          department: reviewContext.department,
+          assetCategory: reviewContext.assetCategory,
+          year: reviewContext.year,
+          pmCycle: reviewContext.pmCycle,
+          condition: reviewContext.condition,
+          timeliness: reviewContext.timeliness,
+          search: reviewContext.search,
+        },
+      }
+    : undefined
+  const effectiveReturnContext = returnContext ?? legacyReviewOrigin
+  const returnFallback: DetailReturnFallback = {
+    kind: 'inspectionRegistry',
+    search: registrySearch,
+  }
 
   if (!isValidId) {
     return (
       <DetailError
         title="Inspection not found"
         message="The inspection link is invalid. No inspection request was made."
-        registrySearch={registrySearch}
+        context={effectiveReturnContext}
+        fallback={legacyReviewOrigin ?? returnFallback}
       />
     )
   }
@@ -133,7 +162,8 @@ export function InspectionDetail({
                 : 'The inspection record could not be loaded.'
         }
         retry={notFound ? undefined : () => void inspection.refetch()}
-        registrySearch={registrySearch}
+        context={effectiveReturnContext}
+        fallback={legacyReviewOrigin ?? returnFallback}
       />
     )
   }
@@ -156,31 +186,10 @@ export function InspectionDetail({
       aria-labelledby="inspection-detail-title"
       className="max-w-5xl space-y-6"
     >
-      {reviewContext ? (
-        <Button asChild variant="secondary">
-          <Link
-            to="/app/preventive-maintenance-forms/$formId/review"
-            params={{ formId: reviewContext.reviewFormId }}
-            search={{
-              department: reviewContext.department,
-              assetCategory: reviewContext.assetCategory,
-              year: reviewContext.year,
-              pmCycle: reviewContext.pmCycle,
-              condition: reviewContext.condition,
-              timeliness: reviewContext.timeliness,
-              search: reviewContext.search,
-            }}
-          >
-            Back to batch review
-          </Link>
-        </Button>
-      ) : (
-        <Button asChild variant="secondary">
-          <Link to="/app/inspections" search={registrySearch}>
-            Back to inspections
-          </Link>
-        </Button>
-      )}
+      <DetailBackLink
+        context={effectiveReturnContext}
+        fallback={returnFallback}
+      />
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
         <div>
           <p className="text-sm font-semibold tracking-[0.08em] text-[var(--primary)] uppercase">
@@ -213,6 +222,13 @@ export function InspectionDetail({
             <Link
               to="/app/assets/$assetId"
               params={{ assetId: record.assetId }}
+              search={{
+                returnContext: inspectionDetailReturnContext(
+                  record.id,
+                  effectiveReturnContext,
+                  legacyReviewOrigin ?? returnFallback,
+                ),
+              }}
               className="font-semibold text-[var(--primary)] hover:underline"
             >
               {assetLabel}
@@ -227,6 +243,13 @@ export function InspectionDetail({
             <Link
               to="/app/schedules/$scheduleId"
               params={{ scheduleId: record.scheduleId }}
+              search={{
+                returnContext: inspectionDetailReturnContext(
+                  record.id,
+                  effectiveReturnContext,
+                  legacyReviewOrigin ?? returnFallback,
+                ),
+              }}
               className="font-semibold text-[var(--primary)] hover:underline"
             >
               {scheduleLabel}

@@ -1,6 +1,10 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { z } from 'zod'
 import { ScheduleDetail } from '@/features/schedules/schedule-detail'
+import {
+  parseDetailReturnContext,
+  type DetailReturnContext,
+} from '@/features/shared/detail-navigation'
 import type { ScheduleSearch } from '@/features/schedules/schedule-registry'
 import {
   scheduleQuarterCodes,
@@ -22,21 +26,44 @@ const searchSchema = z
       .max(new Date().getUTCFullYear() + 5)
       .optional(),
     page: z.coerce.number().int().positive().max(10000).optional(),
+    returnContext: z.unknown().optional(),
   })
   .refine((value) => !value.from || !value.to || value.from <= value.to)
 
 export const Route = createFileRoute('/app/schedules/$scheduleId')({
-  validateSearch: (search): ScheduleSearch => {
+  validateSearch: (
+    search,
+  ): ScheduleSearch & {
+    returnContext?: DetailReturnContext | undefined
+  } => {
     const parsed = searchSchema.safeParse(search)
-    return parsed.success ? parsed.data : {}
+    return parsed.success
+      ? {
+          ...parsed.data,
+          returnContext: parseDetailReturnContext(parsed.data.returnContext),
+        }
+      : {}
   },
   component: ScheduleDetailPage,
 })
 
 function ScheduleDetailPage() {
   const { scheduleId } = Route.useParams()
-  const registrySearch = Route.useSearch()
+  const { returnContext, ...detailSearch } = Route.useSearch()
+  const registrySearch: ScheduleSearch = {
+    assetId: detailSearch.assetId,
+    status: detailSearch.status,
+    from: detailSearch.from,
+    to: detailSearch.to,
+    quarter: detailSearch.quarter,
+    year: detailSearch.year,
+    page: detailSearch.page,
+  }
   return (
-    <ScheduleDetail scheduleId={scheduleId} registrySearch={registrySearch} />
+    <ScheduleDetail
+      scheduleId={scheduleId}
+      registrySearch={registrySearch}
+      returnContext={returnContext}
+    />
   )
 }

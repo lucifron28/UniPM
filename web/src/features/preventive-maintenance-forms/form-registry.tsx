@@ -44,6 +44,7 @@ function FormSummary({ form }: { form: PreventiveMaintenanceForm }) {
           <Link
             to="/app/preventive-maintenance-forms/$formId"
             params={{ formId: form.id }}
+            search={{ returnContext: { kind: 'formRegistry' } }}
             className="font-semibold text-[var(--primary)] hover:underline"
           >
             {form.fileNumber ?? 'Unsubmitted form'}

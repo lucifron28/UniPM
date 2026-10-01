@@ -8,8 +8,23 @@ import {
   formatInspectionDate,
   inspectionOutcome,
 } from '@/features/inspections/inspection-presentation'
+import { assetDetailReturnContext } from '@/features/shared/detail-navigation'
+import type {
+  DetailReturnContext,
+  DetailReturnFallback,
+} from '@/features/shared/detail-navigation'
 
-export function InspectionHistory({ assetId }: { assetId: string }) {
+export function InspectionHistory({
+  assetId,
+  assetCode,
+  returnContext,
+  fallback = { kind: 'assetRegistry' },
+}: {
+  assetId: string
+  assetCode?: string
+  returnContext?: DetailReturnContext | undefined
+  fallback?: DetailReturnFallback
+}) {
   const history = useInspectionHistory(assetId)
 
   return (
@@ -75,6 +90,15 @@ export function InspectionHistory({ assetId }: { assetId: string }) {
                 <Link
                   to="/app/inspections/$inspectionId"
                   params={{ inspectionId: record.id }}
+                  search={{
+                    assetId,
+                    returnContext: assetDetailReturnContext(
+                      assetId,
+                      assetCode ?? 'Asset',
+                      returnContext,
+                      fallback,
+                    ),
+                  }}
                   className="text-sm font-semibold text-[var(--primary)] hover:underline"
                 >
                   View source

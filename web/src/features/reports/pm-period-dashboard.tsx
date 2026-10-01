@@ -370,7 +370,13 @@ function BatchOverview({
                     <Link
                       to="/app/preventive-maintenance-forms/$formId/review"
                       params={{ formId: batch.formId }}
-                      search={dashboardSearch ?? {}}
+                      search={{
+                        ...(dashboardSearch ?? {}),
+                        returnContext: {
+                          kind: 'dashboard',
+                          search: dashboardSearch ?? {},
+                        },
+                      }}
                       className="font-semibold text-[var(--primary)] underline-offset-2 hover:underline focus-visible:rounded focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:outline-none"
                     >
                       Review batch
@@ -382,6 +388,10 @@ function BatchOverview({
                       search={{
                         ...dashboardSearch,
                         readonly: batch.formStatus === 'Acknowledged',
+                        returnContext: {
+                          kind: 'dashboard',
+                          search: dashboardSearch ?? {},
+                        },
                       }}
                       className="font-semibold text-[var(--primary)] underline-offset-2 hover:underline focus-visible:rounded focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:outline-none"
                     >
@@ -404,8 +414,10 @@ function BatchOverview({
 
 function AssetRows({
   assets,
+  dashboardSearch,
 }: {
   assets: PmPeriodDashboardAssetRowResponse[]
+  dashboardSearch?: PmPeriodDashboardSearch | undefined
 }) {
   return (
     <Card className="p-4 shadow-none sm:p-5">
@@ -461,6 +473,12 @@ function AssetRows({
                   <Link
                     to="/app/assets/$assetId"
                     params={{ assetId: asset.assetId }}
+                    search={{
+                      returnContext: {
+                        kind: 'dashboard',
+                        search: dashboardSearch ?? {},
+                      },
+                    }}
                     className="font-semibold text-[var(--primary)] underline-offset-2 hover:underline focus-visible:rounded focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:outline-none"
                   >
                     {asset.assetCode}
@@ -1122,7 +1140,10 @@ export function PmPeriodDashboard({
                     </p>
                   </Card>
                 ) : (
-                  <AssetRows assets={dashboardQuery.data.assets} />
+                  <AssetRows
+                    assets={dashboardQuery.data.assets}
+                    dashboardSearch={search}
+                  />
                 )}
               </>
             ) : null}

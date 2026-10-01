@@ -4,6 +4,7 @@ import {
   PmAcknowledgementReview,
   type PmAcknowledgementReviewSearch,
 } from '@/features/preventive-maintenance-forms/pm-acknowledgement-review'
+import { parseDetailReturnContext } from '@/features/shared/detail-navigation'
 
 const searchSchema = z.object({
   department: z.string().trim().max(256).optional(),
@@ -20,6 +21,7 @@ const searchSchema = z.object({
     .enum(['OnTime', 'Late', 'Scheduled', 'Pending', 'NotCompleted'])
     .optional(),
   search: z.string().trim().max(256).optional(),
+  returnContext: z.unknown().optional(),
 })
 
 export const Route = createFileRoute(
@@ -27,7 +29,12 @@ export const Route = createFileRoute(
 )({
   validateSearch: (search): PmAcknowledgementReviewSearch => {
     const parsed = searchSchema.safeParse(search)
-    return parsed.success ? parsed.data : {}
+    return parsed.success
+      ? {
+          ...parsed.data,
+          returnContext: parseDetailReturnContext(parsed.data.returnContext),
+        }
+      : {}
   },
   component: PmAcknowledgementReviewPage,
 })

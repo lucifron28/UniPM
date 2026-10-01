@@ -85,7 +85,7 @@ const createColumns = (search: AssetSearch) => [
       <Link
         to="/app/assets/$assetId"
         params={{ assetId: row.original.id }}
-        search={search}
+        search={{ ...search, returnContext: { kind: 'assetRegistry', search } }}
         className="font-semibold text-[var(--primary)] hover:underline"
       >
         View details
@@ -528,7 +528,10 @@ export function AssetRegistry({
                           <Link
                             to="/app/assets/$assetId"
                             params={{ assetId: row.original.id }}
-                            search={search}
+                            search={{
+                              ...search,
+                              returnContext: { kind: 'assetRegistry', search },
+                            }}
                             className="font-semibold text-[var(--primary)] hover:underline"
                           >
                             {flexRender(
@@ -556,7 +559,10 @@ export function AssetRegistry({
                   key={asset.id}
                   to="/app/assets/$assetId"
                   params={{ assetId: asset.id }}
-                  search={search}
+                  search={{
+                    ...search,
+                    returnContext: { kind: 'assetRegistry', search },
+                  }}
                   className="rounded-xl border border-[var(--border-soft)] bg-white p-4 shadow-sm"
                 >
                   <p className="font-semibold text-[var(--primary)]">
