@@ -258,7 +258,11 @@ void main() {
         await tester.pumpAndSettle();
         expect(openedFormId, 'draft-form-1');
 
-        await tester.ensureVisible(find.text('Capture Signature'));
+        await tester.scrollUntilVisible(
+          find.text('Capture Signature'),
+          250,
+          scrollable: find.byType(Scrollable).first,
+        );
         await tester.pumpAndSettle();
         expect(find.text('Awaiting Acknowledgement'), findsOneWidget);
         expect(find.text('Capture Signature'), findsOneWidget);

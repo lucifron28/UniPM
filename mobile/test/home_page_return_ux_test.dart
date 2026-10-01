@@ -192,6 +192,7 @@ Future<void> _pumpHome(
   required AuthUser user,
   required _MutablePmRepository repository,
   Future<void> Function(BuildContext context, String formId)? onOpenForm,
+  Future<void> Function(BuildContext context, PmBatchScope scope)? onStartBatch,
   Future<void> Function(BuildContext context, PreventiveMaintenanceForm form)?
   onOpenAcknowledgement,
   Future<void> Function(BuildContext context)? onSearchAssets,
@@ -207,6 +208,9 @@ Future<void> _pumpHome(
             onOpenForm: onOpenForm == null
                 ? null
                 : (formId) => onOpenForm(context, formId),
+            onStartBatch: onStartBatch == null
+                ? null
+                : (scope) => onStartBatch(context, scope),
             onOpenAcknowledgement: onOpenAcknowledgement == null
                 ? null
                 : (form) => onOpenAcknowledgement(context, form),
@@ -295,6 +299,7 @@ void main() {
 
     final continueBatch = find.text('Continue PM batch').first;
     await tester.ensureVisible(continueBatch);
+    await tester.pumpAndSettle();
     await tester.tap(continueBatch);
     await tester.pumpAndSettle();
     expect(find.text('Continue PM batch'), findsOneWidget);
@@ -355,6 +360,7 @@ void main() {
     expect(repository.listSchedulesCalls, 1);
     final captureSignature = find.text('Capture Signature');
     await tester.ensureVisible(captureSignature);
+    await tester.pumpAndSettle();
     await tester.tap(captureSignature);
     await tester.pumpAndSettle();
 
@@ -391,6 +397,7 @@ void main() {
       tester,
       user: _inspector,
       repository: repository,
+      onStartBatch: (_, __) async {},
       onSearchAssets: (context) => _pushWorkflowPage(
         context,
         title: 'Search Assets',
@@ -432,6 +439,10 @@ void main() {
   testWidgets(
     'orders assigned tasks by urgency then cycle and keeps assignments',
     (tester) async {
+      tester.view.physicalSize = const Size(800, 2600);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
       final repository = _MutablePmRepository(
         forms: [
           _form(
@@ -535,6 +546,7 @@ void main() {
     expect(find.text('No assigned PM tasks'), findsOneWidget);
     final adminForms = find.text('Preventive-maintenance forms');
     await tester.ensureVisible(adminForms);
+    await tester.pumpAndSettle();
     await tester.tap(adminForms);
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('child-workflow-action')));

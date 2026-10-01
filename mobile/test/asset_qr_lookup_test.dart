@@ -367,6 +367,10 @@ void main() {
   testWidgets('PM task entry comes before history and scan is secondary', (
     tester,
   ) async {
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     final repository = FakeAssetRepository((value) async => testAsset());
     const user = AuthUser(
       id: assetId,
