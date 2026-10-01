@@ -235,6 +235,7 @@ void main() {
         );
 
         String? openedFormId;
+        String? acknowledgedFormId;
 
         await tester.pumpWidget(
           MaterialApp(
@@ -243,6 +244,7 @@ void main() {
                 user: createTestUser(),
                 preventiveMaintenanceRepository: repository,
                 onOpenForm: (id) => openedFormId = id,
+                onOpenAcknowledgement: (form) => acknowledgedFormId = form.id,
               ),
             ),
           ),
@@ -266,6 +268,9 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.text('Awaiting Acknowledgement'), findsOneWidget);
         expect(find.text('Capture Signature'), findsOneWidget);
+        await tester.tap(find.text('Capture Signature'));
+        await tester.pumpAndSettle();
+        expect(acknowledgedFormId, 'sub-form-2');
       },
     );
   });

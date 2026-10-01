@@ -563,6 +563,16 @@ void main() {
     expect(repository.listFormsCalls, 2);
     expect(repository.listSchedulesCalls, 2);
     expect(find.text('No assigned PM tasks'), findsNothing);
-    expect(find.text('Continue PM batch'), findsOneWidget);
+    final createdDraft = find.byKey(
+      const ValueKey('draft-card-new-admin-draft'),
+    );
+    await tester.scrollUntilVisible(
+      createdDraft,
+      -250,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+    expect(createdDraft, findsOneWidget);
+    expect(find.text('1 of 1 assets inspected'), findsOneWidget);
   });
 }
