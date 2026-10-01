@@ -35,6 +35,15 @@ class BatchPmCard extends StatelessWidget {
   bool get isCompleted => totalCount > 0 && completedCount >= totalCount;
   bool get isAwaitingAck => status.toLowerCase() == 'submitted';
 
+  StatusBadge get _statusBadge => switch (status.trim().toLowerCase()) {
+    'overdue' || 'ongoing' || 'due' => StatusBadge.fromScheduleStatus(status),
+    'in progress' => const StatusBadge(
+      label: 'In Progress',
+      variant: StatusBadgeVariant.ongoing,
+    ),
+    _ => StatusBadge.fromFormStatus(status),
+  };
+
   @override
   Widget build(BuildContext context) {
     final formattedCycle = formatPmCycle(pmCycle);
@@ -79,7 +88,7 @@ class BatchPmCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  StatusBadge.fromFormStatus(status),
+                  _statusBadge,
                 ],
               ),
               const SizedBox(height: 12),
