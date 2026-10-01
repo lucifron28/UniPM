@@ -397,7 +397,7 @@ void main() {
       tester,
       user: _inspector,
       repository: repository,
-      onStartBatch: (_, __) async {},
+      onStartBatch: (_, _) async {},
       onSearchAssets: (context) => _pushWorkflowPage(
         context,
         title: 'Search Assets',
