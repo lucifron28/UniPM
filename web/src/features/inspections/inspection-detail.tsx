@@ -199,7 +199,7 @@ export function InspectionDetail({
             id="inspection-detail-title"
             className="mt-2 text-3xl font-bold tracking-tight text-[var(--text-primary)]"
           >
-            Inspection {record.id}
+            {asset.data?.assetCode ?? 'Inspection record'}
           </h1>
           <p className="mt-2 text-[var(--text-secondary)]">
             Actual inspection date: {formatInspectionDate(record.dateInspected)}
@@ -260,7 +260,6 @@ export function InspectionDetail({
           label="Due date"
           value={formatPmCycleDueDate(schedule.data?.pmCycle)}
         />
-        <DetailItem label="Inspector user ID" value={record.inspectorUserId} />
         <DetailItem
           label="Actual inspection date"
           value={formatInspectionDate(record.dateInspected)}
@@ -340,6 +339,18 @@ export function InspectionDetail({
             {record.actionsRecommendations || 'No recommendation was recorded.'}
           </p>
         </div>
+      </Card>
+      <Card className="shadow-none">
+        <h2 className="font-semibold">Record information</h2>
+        <dl className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <DetailItem label="Inspection record ID" value={record.id} />
+          <DetailItem
+            label="Inspector user ID"
+            value={record.inspectorUserId}
+          />
+          <DetailItem label="Asset record ID" value={record.assetId} />
+          <DetailItem label="Schedule record ID" value={record.scheduleId} />
+        </dl>
       </Card>
     </section>
   )

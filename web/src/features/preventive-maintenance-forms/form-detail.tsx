@@ -815,9 +815,6 @@ export function FormDetail({
           >
             {record.fileNumber ?? 'Unsubmitted form'}
           </h1>
-          <p className="mt-2 text-sm break-all text-[var(--text-secondary)]">
-            {record.id}
-          </p>
         </div>
         <Badge className={formStatusClass(record.status)}>
           {formStatusLabel(record.status)}
@@ -828,11 +825,6 @@ export function FormDetail({
         <DetailItem label="Building" value={record.building ?? ''} />
         <DetailItem label="Department" value={record.department ?? ''} />
         <DetailItem label="Period" value={formatFormPeriod(record)} />
-        <DetailItem label="Created by user ID" value={record.createdByUserId} />
-        <DetailItem
-          label="Submitted by user ID"
-          value={record.submittedByUserId ?? ''}
-        />
         <DetailItem
           label="Submitted"
           value={formatFormDate(record.submittedAt)}
@@ -891,6 +883,20 @@ export function FormDetail({
       {isGsd && record.status === 'Acknowledged' && (
         <CorrectiveHandoff query={handoff} />
       )}
+      <Card className="shadow-none">
+        <h2 className="font-semibold">Record information</h2>
+        <dl className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <DetailItem label="Form record ID" value={record.id} />
+          <DetailItem
+            label="Created by user ID"
+            value={record.createdByUserId}
+          />
+          <DetailItem
+            label="Submitted by user ID"
+            value={record.submittedByUserId ?? ''}
+          />
+        </dl>
+      </Card>
     </section>
   )
 }
