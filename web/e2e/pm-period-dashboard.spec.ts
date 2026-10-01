@@ -637,13 +637,27 @@ test.describe('PM period dashboard', () => {
     await expect(metricCard(page, 'Scheduled')).toContainText('4')
 
     const assetLink = page.getByRole('link', { name: 'FE-001' }).first()
+    const returnContext = {
+      kind: 'dashboard',
+      search: {
+        assetCategory: 'fire-extinguisher',
+        year: 2026,
+        pmCycle: '2026-07',
+      },
+    }
     await expect(assetLink).toHaveAttribute(
       'href',
-      `/app/assets/${assetIds.onTime}`,
+      `/app/assets/${assetIds.onTime}?returnContext=${encodeURIComponent(JSON.stringify(returnContext))}`,
     )
     await assetLink.click()
-    await expect(page).toHaveURL(new RegExp(`/app/assets/${assetIds.onTime}$`))
+    await expect(page).toHaveURL(
+      new RegExp(`/app/assets/${assetIds.onTime}\\?`),
+    )
     await expect(page.getByRole('heading', { name: 'FE-001' })).toBeVisible()
+    await page.getByRole('link', { name: 'Back to PM dashboard' }).click()
+    await expect(page).toHaveURL(/assetCategory=fire-extinguisher/)
+    await expect(page).toHaveURL(/year=2026/)
+    await expect(page).toHaveURL(/pmCycle=2026-07/)
   })
 
   test('presents Future, Active, and Closed states and contains tables on mobile', async ({

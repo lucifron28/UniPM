@@ -364,7 +364,10 @@ for (const viewport of dashboardViewports) {
         '/app/dashboard?assetCategory=fire-extinguisher&year=2026&pmCycle=2026-08&department=GSD&condition=NonOperational&timeliness=OnTime&search=FE-001',
       )
       await expect(
-        page.getByRole('heading', { name: 'Preventive Maintenance Dashboard' }),
+        page.getByRole('heading', {
+          name: 'Preventive Maintenance Dashboard',
+          level: 1,
+        }),
       ).toBeVisible()
       if (viewport.width === 375) await expectNoHorizontalOverflow(page)
 
