@@ -67,6 +67,7 @@ class _AssetSearchPageState extends State<AssetSearchPage> {
   }
 
   void _onQueryChanged(String query) {
+    setState(() {});
     _debounceTimer?.cancel();
     _debounceTimer = Timer(const Duration(milliseconds: 300), () {
       _performSearch(query);
@@ -136,7 +137,9 @@ class _AssetSearchPageState extends State<AssetSearchPage> {
                     ? IconButton(
                         icon: const Icon(Icons.clear),
                         onPressed: () {
+                          _debounceTimer?.cancel();
                           _searchController.clear();
+                          setState(() {});
                           _performSearch('');
                         },
                       )
