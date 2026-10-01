@@ -348,7 +348,7 @@ describe('preventive-maintenance form review', () => {
       screen.getByRole('link', { name: 'GSD-SUBMITTED-001' }),
     ).toHaveAttribute(
       'href',
-      '/app/preventive-maintenance-forms/77777777-7777-4777-8777-777777777777',
+      '/app/preventive-maintenance-forms/77777777-7777-4777-8777-777777777777?returnContext=%7B%22kind%22%3A%22formRegistry%22%7D',
     )
   })
 
@@ -762,6 +762,11 @@ describe('preventive-maintenance form review', () => {
         expect(router.state.location.search).toEqual({
           ...dashboardSearch,
           reviewFormId: formId,
+          returnContext: {
+            kind: 'batchReview',
+            formId,
+            search: dashboardSearch,
+          },
         })
       })
 
@@ -775,7 +780,10 @@ describe('preventive-maintenance form review', () => {
         expect(router.state.location.pathname).toBe(
           `/app/preventive-maintenance-forms/${formId}/review`,
         )
-        expect(router.state.location.search).toEqual(dashboardSearch)
+        expect(router.state.location.search).toEqual({
+          ...dashboardSearch,
+          returnContext: { kind: 'dashboard', search: dashboardSearch },
+        })
       })
 
       fireEvent.click(
@@ -814,6 +822,11 @@ describe('preventive-maintenance form review', () => {
           readonly: true,
           ...dashboardSearch,
           reviewFormId: formId,
+          returnContext: {
+            kind: 'batchReview',
+            formId,
+            search: dashboardSearch,
+          },
         })
       })
 
@@ -827,7 +840,10 @@ describe('preventive-maintenance form review', () => {
         expect(router.state.location.pathname).toBe(
           `/app/preventive-maintenance-forms/${formId}/review`,
         )
-        expect(router.state.location.search).toEqual(dashboardSearch)
+        expect(router.state.location.search).toEqual({
+          ...dashboardSearch,
+          returnContext: { kind: 'dashboard', search: dashboardSearch },
+        })
       })
       fireEvent.click(
         screen.getByRole('link', { name: 'Back to PM dashboard' }),
@@ -858,6 +874,10 @@ describe('preventive-maintenance form review', () => {
       expect(router.state.location.search).toEqual({
         readonly: true,
         ...allDepartmentDashboardSearch,
+        returnContext: {
+          kind: 'dashboard',
+          search: allDepartmentDashboardSearch,
+        },
       })
     })
 
@@ -892,6 +912,11 @@ describe('preventive-maintenance form review', () => {
         readonly: true,
         ...reviewSearch,
         reviewFormId: formId,
+        returnContext: {
+          kind: 'batchReview',
+          formId,
+          search: reviewSearch,
+        },
       })
     })
 
@@ -900,7 +925,10 @@ describe('preventive-maintenance form review', () => {
       name: 'Review before acknowledgement',
     })
     await waitFor(() => {
-      expect(router.state.location.search).toEqual(reviewSearch)
+      expect(router.state.location.search).toEqual({
+        ...reviewSearch,
+        returnContext: { kind: 'dashboard', search: reviewSearch },
+      })
     })
     fireEvent.click(screen.getByRole('link', { name: 'Back to PM dashboard' }))
     await waitFor(() => {
