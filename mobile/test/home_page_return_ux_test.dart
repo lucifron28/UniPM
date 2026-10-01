@@ -56,22 +56,27 @@ class _MutablePmRepository implements PreventiveMaintenanceRepository {
 PreventiveMaintenanceForm _form({
   required String id,
   String status = 'Draft',
+  String pmCycle = '2026-05',
   String createdByUserId = _inspectorId,
   List<PreventiveMaintenanceInspection> inspections = const [],
 }) {
-  final now = DateTime.utc(2026, 5, 20, 8);
+  final cycleParts = pmCycle.split('-');
+  final cycleYear = int.parse(cycleParts[0]);
+  final cycleMonth = int.parse(cycleParts[1]);
+  final quarterNumber = ((cycleMonth - 1) ~/ 3) + 1;
+  final now = DateTime.utc(cycleYear, cycleMonth, 20, 8);
   final isSubmitted = status == 'Submitted';
   return PreventiveMaintenanceForm(
     id: id,
-    fileNumber: 'PM-2026-05-001',
+    fileNumber: 'PM-$cycleYear-${cycleMonth.toString().padLeft(2, '0')}-001',
     assetCategory: 'fire-extinguisher',
     building: 'Science Hall',
     department: 'Facilities',
-    pmCycle: '2026-05',
+    pmCycle: pmCycle,
     periodType: 'Quarter',
-    quarter: 'Q2',
+    quarter: 'Q$quarterNumber',
     semester: null,
-    year: 2026,
+    year: cycleYear,
     academicYear: '2025-2026',
     status: status,
     createdByUserId: createdByUserId,
@@ -431,15 +436,41 @@ void main() {
         forms: [
           _form(
             id: _draftId,
+            pmCycle: '2026-08',
             inspections: [_inspection(1, scheduleId: 'draft-schedule')],
           ),
         ],
         schedules: [
-          _schedule(id: 'due-july', cycle: '2026-07', status: 'Due'),
-          _schedule(id: 'due-march', cycle: '2026-03', status: 'Due'),
-          _schedule(id: 'ongoing', cycle: '2026-11', status: 'Ongoing'),
-          _schedule(id: 'overdue-nov', cycle: '2026-11', status: 'Overdue'),
-          _schedule(id: 'overdue-aug', cycle: '2026-08', status: 'Overdue'),
+          _schedule(
+            id: 'due-feb',
+            cycle: '2026-02',
+            status: 'Due',
+            department: 'Student Affairs Office',
+          ),
+          _schedule(
+            id: 'due-aug',
+            cycle: '2026-08',
+            status: 'Due',
+            department: 'General Services Department',
+          ),
+          _schedule(
+            id: 'ongoing-feb',
+            cycle: '2026-02',
+            status: 'Ongoing',
+            department: 'Campus Facilities',
+          ),
+          _schedule(
+            id: 'overdue-aug-student-affairs',
+            cycle: '2026-08',
+            status: 'Overdue',
+            department: 'Student Affairs Office',
+          ),
+          _schedule(
+            id: 'overdue-nov-campus-facilities',
+            cycle: '2026-11',
+            status: 'Overdue',
+            department: 'Campus Facilities',
+          ),
           _schedule(
             id: 'other-worker',
             cycle: '2026-02',
@@ -456,18 +487,18 @@ void main() {
       expect(cards.map((card) => card.status).toList(), [
         'Overdue',
         'Overdue',
-        'In Progress',
         'Ongoing',
+        'In Progress',
         'Due',
         'Due',
       ]);
       expect(cards.map((card) => card.pmCycle).toList(), [
         '2026-08',
         '2026-11',
-        '2026-05',
-        '2026-11',
-        '2026-03',
-        '2026-07',
+        '2026-02',
+        '2026-08',
+        '2026-02',
+        '2026-08',
       ]);
       expect(find.text('Other Department'), findsNothing);
     },
