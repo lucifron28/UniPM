@@ -15,6 +15,10 @@ import 'package:mobile/features/assets/asset_models.dart';
 import 'package:mobile/features/assets/asset_qr_lookup_controller.dart';
 import 'package:mobile/features/assets/asset_qr_lookup_page.dart';
 import 'package:mobile/features/assets/asset_repository.dart';
+import 'package:mobile/features/maintenance_history/asset_maintenance_history_models.dart';
+import 'package:mobile/features/maintenance_history/asset_maintenance_history_repository.dart';
+import 'package:mobile/features/preventive_maintenance/preventive_maintenance_models.dart';
+import 'package:mobile/features/preventive_maintenance/preventive_maintenance_repository.dart';
 import 'package:mobile/features/qr_scanner/qr_scan_result.dart';
 
 const assetId = '11111111-1111-4111-8111-111111111111';
@@ -90,6 +94,24 @@ class FakeAuthGateway implements AuthGateway {
 
   @override
   Future<void> logout() async {}
+}
+
+class EmptyPreventiveMaintenanceRepository
+    implements PreventiveMaintenanceRepository {
+  @override
+  Future<List<ScheduleOption>> listSchedules({String? assetId}) async =>
+      const [];
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class EmptyMaintenanceHistoryRepository
+    implements AssetMaintenanceHistoryRepository {
+  @override
+  Future<List<AssetMaintenanceHistoryRecord>> getForAsset(
+    String assetId,
+  ) async => const [];
 }
 
 class FakeAssetRepository implements AssetRepository {
@@ -339,6 +361,47 @@ void main() {
     expect(find.text('Building'), findsNothing);
     expect(find.text('Location'), findsNothing);
     expect(find.text('Not recorded'), findsNothing);
+    expect(find.byKey(const Key('view-asset-history')), findsNothing);
+  });
+
+  testWidgets('PM task entry comes before history and scan is secondary', (
+    tester,
+  ) async {
+    final repository = FakeAssetRepository((value) async => testAsset());
+    const user = AuthUser(
+      id: assetId,
+      email: 'inspector@example.test',
+      displayName: 'Synthetic Inspector',
+      roles: ['Inspector'],
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: AssetQrLookupPage(
+          repository: repository,
+          scannedValue: qrCodeValue,
+          preventiveMaintenanceRepository:
+              EmptyPreventiveMaintenanceRepository(),
+          assetMaintenanceHistoryRepository:
+              EmptyMaintenanceHistoryRepository(),
+          user: user,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final pmEntry = find.byKey(ValueKey('pm-entry-$assetId'));
+    final maintenanceHistory = find.byKey(const Key('view-asset-history'));
+    expect(pmEntry, findsOneWidget);
+    expect(maintenanceHistory, findsOneWidget);
+    expect(
+      tester.getTopLeft(pmEntry).dy,
+      lessThan(tester.getTopLeft(maintenanceHistory).dy),
+    );
+    final scanAnother = tester.widget(
+      find.byKey(const Key('scan-another-asset-qr')),
+    );
+    expect(scanAnother, isA<OutlinedButton>());
   });
 
   testWidgets('lookup page distinguishes invalid and unknown QR states', (

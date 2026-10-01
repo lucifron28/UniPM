@@ -253,6 +253,41 @@ void main() {
       },
     );
 
+    testWidgets('clear search icon clears the query and restores results', (
+      tester,
+    ) async {
+      final assets = [
+        createTestAsset(code: 'FE-CLEAR-001'),
+        createTestAsset(code: 'FA-CLEAR-002', category: 'fire-alarm'),
+      ];
+      final repository = FakeSearchAssetRepository(assets: assets);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: AssetSearchPage(
+            repository: repository,
+            initialQuery: 'FE-CLEAR-001',
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('FE-CLEAR-001'), findsOneWidget);
+      expect(find.text('FA-CLEAR-002'), findsNothing);
+      await tester.enterText(
+        find.byKey(const Key('asset-search-input')),
+        'FA-CLEAR-002',
+      );
+      expect(find.byIcon(Icons.clear), findsOneWidget);
+
+      await tester.tap(find.byIcon(Icons.clear));
+      await tester.pumpAndSettle();
+
+      expect(find.byIcon(Icons.clear), findsNothing);
+      expect(find.text('FE-CLEAR-001'), findsOneWidget);
+      expect(find.text('FA-CLEAR-002'), findsOneWidget);
+    });
+
     testWidgets('search page explains when results reach the 30-item cap', (
       tester,
     ) async {
