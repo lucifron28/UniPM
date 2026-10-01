@@ -712,7 +712,7 @@ void main() {
 
     await pumpScannedEntry(tester, repository);
 
-    expect(find.textContaining('Due'), findsOneWidget);
+    expect(find.text('Schedule status: Due'), findsOneWidget);
     expect(find.textContaining('Ongoing'), findsNothing);
     expect(find.textContaining('Overdue'), findsNothing);
   });
@@ -732,7 +732,7 @@ void main() {
       batchScope: const PmBatchScope(
         department: 'Library',
         assetCategory: 'fire-extinguisher',
-        pmCycle: '2026-01',
+        pmCycle: '2026-02',
       ),
     );
 
@@ -1755,7 +1755,7 @@ ScheduleOption testSchedule(
 }) => ScheduleOption(
   id: id,
   assetId: assetId,
-  scheduleDate: DateTime.utc(2026, 1, 10),
+  scheduleDate: DateTime.utc(2026, 2, 28, 15, 59, 59, 999, 999),
   periodType: 'Quarter',
   status: status,
   quarter: 'Q1',
@@ -1859,7 +1859,7 @@ class DraftTransportState {
   Map<String, dynamic> testScheduleJson() => <String, dynamic>{
     'id': firstScheduleId,
     'assetId': testAsset().id,
-    'scheduleDate': '2026-01-10T00:00:00Z',
+    'scheduleDate': '2026-02-28T15:59:59.9999999Z',
     'periodType': 'Quarter',
     'status': 'Due',
     'quarter': 'Q1',

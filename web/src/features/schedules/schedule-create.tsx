@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { useAssets } from '@/features/assets/asset-queries'
+import { useAssetCategories, useAssets } from '@/features/assets/asset-queries'
 import { useCurrentUser } from '@/features/auth/current-user'
 import {
   createScheduleSchema,
@@ -23,22 +23,24 @@ import {
   toCreateScheduleDto,
   type CreateScheduleValues,
 } from '@/features/schedules/schedule-contract'
-import { useSchedulePeriodTypes } from '@/features/schedules/schedule-queries'
+import {
+  formatMonthName,
+  formatPmCycle,
+  formatPmCycleDueDate,
+} from '@/features/schedules/schedule-presentation'
 
 type FieldName = keyof CreateScheduleValues
 type FieldErrors = Partial<Record<FieldName, string>>
 
-const fieldNames = new Set<FieldName>([
-  'assetId',
-  'scheduleDate',
-  'periodType',
-  'quarter',
-  'year',
-])
+const fieldNames = new Set<FieldName>(['assetId', 'month', 'year'])
 
 function backendFieldName(raw: string): FieldName | null {
   const segment = raw.split(/[.[]/).at(-1)?.replace(/\]$/, '') ?? ''
-  const key = (segment.charAt(0).toLowerCase() + segment.slice(1)) as FieldName
+  const normalized = segment.charAt(0).toLowerCase() + segment.slice(1)
+  if (normalized === 'pmCycle' || normalized === 'scheduleDate') {
+    return 'month'
+  }
+  const key = normalized as FieldName
   return fieldNames.has(key) ? key : null
 }
 
@@ -47,10 +49,11 @@ export function ScheduleCreate() {
   const queryClient = useQueryClient()
   const currentUser = useCurrentUser()
   const assets = useAssets()
-  const periodTypes = useSchedulePeriodTypes()
+  const categories = useAssetCategories()
   const eligibleAssets = (assets.data ?? []).filter(
     (asset) => asset.status === 'Active' && Boolean(asset.department?.trim()),
   )
+  const assetCategories = categories.data ?? []
   const summaryRef = useRef<HTMLDivElement>(null)
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const [submitError, setSubmitError] = useState<string | null>(null)
@@ -132,10 +135,9 @@ export function ScheduleCreate() {
   const form = useForm({
     defaultValues: {
       assetId: '',
-      scheduleDate: '',
-      periodType: 'Quarter',
-      quarter: undefined,
       year: undefined,
+      month: undefined,
+      allowedMonths: [],
     } as CreateScheduleValues,
     onSubmit: ({ value }) => {
       setFieldErrors({})
@@ -180,21 +182,22 @@ export function ScheduleCreate() {
     )
   }
 
-  if (assets.isError || periodTypes.isError) {
+  if (assets.isError || categories.isError) {
     return (
       <Card role="alert" className="border-[var(--error)] p-6 shadow-none">
         <h1 className="text-xl font-bold">
           Schedule reference data unavailable
         </h1>
         <p className="mt-2 text-sm text-[var(--text-secondary)]">
-          Assets and period types are required before a schedule can be created.
+          Assets and CPMP month reference data are required before a schedule
+          can be created.
         </p>
         <Button
           type="button"
           className="mt-5"
           onClick={() => {
             void assets.refetch()
-            void periodTypes.refetch()
+            void categories.refetch()
           }}
         >
           Retry reference data
@@ -222,7 +225,8 @@ export function ScheduleCreate() {
           Add schedule
         </h1>
         <p className="mt-2 text-[var(--text-secondary)]">
-          Record one preventive maintenance date using the current API contract.
+          Choose an asset, scheduled year, and allowed PM month. The due date is
+          calculated from the selected month.
         </p>
       </div>
 
@@ -253,8 +257,20 @@ export function ScheduleCreate() {
                     fieldErrors.assetId ? 'assetId-error' : undefined
                   }
                   onChange={(event) => {
-                    field.handleChange(event.target.value)
+                    const assetId = event.target.value
+                    field.handleChange(assetId)
+                    const selectedAsset = eligibleAssets.find(
+                      (asset) => asset.id === assetId,
+                    )
+                    const allowedMonths =
+                      assetCategories.find(
+                        (category) =>
+                          category.code === selectedAsset?.assetCategory,
+                      )?.scheduledMonths ?? []
+                    form.setFieldValue('month', undefined)
+                    form.setFieldValue('allowedMonths', allowedMonths)
                     clearFieldError('assetId')
+                    clearFieldError('month')
                   }}
                   className="min-h-10 w-full rounded-lg border border-[var(--border-soft)] bg-white px-3 text-sm"
                 >
@@ -277,151 +293,143 @@ export function ScheduleCreate() {
             )}
           </form.Field>
 
-          <div className="grid gap-5 sm:grid-cols-2">
-            <form.Field name="scheduleDate">
-              {(field) => (
-                <div className="space-y-2">
-                  <Label htmlFor="scheduleDate">Schedule date</Label>
-                  <Input
-                    id="scheduleDate"
-                    type="date"
-                    value={field.state.value}
-                    aria-invalid={fieldErrors.scheduleDate ? true : undefined}
-                    aria-describedby={
-                      fieldErrors.scheduleDate
-                        ? 'scheduleDate-error'
-                        : undefined
-                    }
-                    onChange={(event) => {
-                      const date = event.target.value
-                      field.handleChange(date)
-                      if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-                        const year = Number(date.slice(0, 4))
-                        const month = Number(date.slice(5, 7))
-                        form.setFieldValue('year', year)
-                        form.setFieldValue(
-                          'quarter',
-                          `Q${Math.floor((month - 1) / 3) + 1}` as CreateScheduleValues['quarter'],
-                        )
-                      } else {
-                        form.setFieldValue('year', undefined)
-                        form.setFieldValue('quarter', undefined)
-                      }
-                      clearFieldError('scheduleDate')
-                    }}
-                  />
-                  {fieldErrors.scheduleDate && (
-                    <p
-                      id="scheduleDate-error"
-                      className="text-sm text-[var(--error)]"
-                    >
-                      {fieldErrors.scheduleDate}
-                    </p>
-                  )}
-                </div>
-              )}
-            </form.Field>
-            <form.Field name="year">
-              {(field) => (
-                <div className="space-y-2">
-                  <Label htmlFor="year">Year</Label>
-                  <Input
-                    id="year"
-                    type="number"
-                    min="2000"
-                    max={new Date().getUTCFullYear() + 5}
-                    value={field.state.value ?? ''}
-                    readOnly
-                    aria-invalid={fieldErrors.year ? true : undefined}
-                    aria-describedby={
-                      fieldErrors.year ? 'year-error' : undefined
-                    }
-                  />
-                  {fieldErrors.year && (
-                    <p id="year-error" className="text-sm text-[var(--error)]">
-                      {fieldErrors.year}
-                    </p>
-                  )}
-                </div>
-              )}
-            </form.Field>
-          </div>
+          <form.Subscribe selector={(state) => state.values}>
+            {(values) => {
+              const selectedAsset = eligibleAssets.find(
+                (asset) => asset.id === values.assetId,
+              )
+              const allowedMonths =
+                assetCategories.find(
+                  (category) => category.code === selectedAsset?.assetCategory,
+                )?.scheduledMonths ?? []
+              const year = Number(values.year)
+              const month = Number(values.month)
+              const pmCycle =
+                Number.isInteger(year) &&
+                year >= 2000 &&
+                Number.isInteger(month) &&
+                month >= 1 &&
+                month <= 12
+                  ? `${year}-${String(month).padStart(2, '0')}`
+                  : null
 
-          <div className="grid gap-5 sm:grid-cols-2">
-            <form.Field name="periodType">
-              {(field) => (
-                <div className="space-y-2">
-                  <Label htmlFor="periodType">Period type</Label>
-                  <select
-                    id="periodType"
-                    value={field.state.value}
-                    aria-invalid={fieldErrors.periodType ? true : undefined}
-                    aria-describedby={
-                      fieldErrors.periodType ? 'periodType-error' : undefined
-                    }
-                    onChange={(event) => {
-                      const next = event.target
-                        .value as CreateScheduleValues['periodType']
-                      field.handleChange(next)
-                      clearFieldError('periodType')
-                    }}
-                    className="min-h-10 w-full rounded-lg border border-[var(--border-soft)] bg-white px-3 text-sm"
-                  >
-                    {(periodTypes.data ?? []).map((period) => (
-                      <option key={period.code} value={period.code}>
-                        {period.displayName}
-                      </option>
-                    ))}
-                  </select>
-                  {fieldErrors.periodType && (
-                    <p
-                      id="periodType-error"
-                      className="text-sm text-[var(--error)]"
-                    >
-                      {fieldErrors.periodType}
-                    </p>
-                  )}
-                </div>
-              )}
-            </form.Field>
-
-            <form.Subscribe selector={(state) => state.values.periodType}>
-              {(periodType) =>
-                periodType === 'Quarter' ? (
-                  <form.Field name="quarter">
+              return (
+                <div className="grid gap-5 sm:grid-cols-2">
+                  <form.Field name="year">
                     {(field) => (
                       <div className="space-y-2">
-                        <Label htmlFor="quarter">Quarter</Label>
+                        <Label htmlFor="year">Scheduled year</Label>
                         <Input
-                          id="quarter"
+                          id="year"
+                          type="number"
+                          min="2000"
+                          max={new Date().getUTCFullYear() + 5}
                           value={field.state.value ?? ''}
-                          readOnly
-                          aria-invalid={fieldErrors.quarter ? true : undefined}
+                          aria-invalid={fieldErrors.year ? true : undefined}
                           aria-describedby={
-                            fieldErrors.quarter ? 'quarter-error' : undefined
+                            fieldErrors.year ? 'year-error' : undefined
                           }
+                          onChange={(event) => {
+                            field.handleChange(event.target.value)
+                            clearFieldError('year')
+                          }}
                         />
-                        {fieldErrors.quarter && (
+                        {fieldErrors.year && (
                           <p
-                            id="quarter-error"
+                            id="year-error"
                             className="text-sm text-[var(--error)]"
                           >
-                            {fieldErrors.quarter}
+                            {fieldErrors.year}
                           </p>
                         )}
                       </div>
                     )}
                   </form.Field>
-                ) : null
-              }
-            </form.Subscribe>
-          </div>
+
+                  <form.Field name="month">
+                    {(field) => (
+                      <div className="space-y-2">
+                        <Label htmlFor="month">Scheduled month</Label>
+                        <select
+                          id="month"
+                          value={field.state.value ?? ''}
+                          disabled={
+                            !selectedAsset ||
+                            categories.isPending ||
+                            allowedMonths.length === 0
+                          }
+                          aria-invalid={fieldErrors.month ? true : undefined}
+                          aria-describedby={
+                            fieldErrors.month ? 'month-error' : undefined
+                          }
+                          onChange={(event) => {
+                            field.handleChange(
+                              event.target.value
+                                ? Number(event.target.value)
+                                : undefined,
+                            )
+                            clearFieldError('month')
+                          }}
+                          className="min-h-10 w-full rounded-lg border border-[var(--border-soft)] bg-white px-3 text-sm"
+                        >
+                          <option value="">
+                            {selectedAsset
+                              ? 'Choose an allowed PM month'
+                              : 'Choose an asset first'}
+                          </option>
+                          {[...allowedMonths]
+                            .sort((left, right) => left - right)
+                            .map((allowedMonth) => (
+                              <option key={allowedMonth} value={allowedMonth}>
+                                {formatMonthName(allowedMonth)}
+                              </option>
+                            ))}
+                        </select>
+                        {selectedAsset && allowedMonths.length === 0 && (
+                          <p className="text-sm text-[var(--error)]">
+                            Allowed PM months are unavailable for this asset
+                            category. A schedule cannot be created.
+                          </p>
+                        )}
+                        {fieldErrors.month && (
+                          <p
+                            id="month-error"
+                            className="text-sm text-[var(--error)]"
+                          >
+                            {fieldErrors.month}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </form.Field>
+
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label htmlFor="dueDate">Due date</Label>
+                    <Input
+                      id="dueDate"
+                      value={
+                        pmCycle
+                          ? formatPmCycleDueDate(pmCycle)
+                          : 'Choose a scheduled year and month'
+                      }
+                      readOnly
+                    />
+                    {pmCycle && (
+                      <p className="text-xs text-[var(--text-secondary)]">
+                        Scheduled month: {formatPmCycle(pmCycle)}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )
+            }}
+          </form.Subscribe>
 
           <div className="flex flex-wrap gap-3">
             <Button
               type="submit"
               disabled={
-                mutation.isPending || assets.isPending || periodTypes.isPending
+                mutation.isPending || assets.isPending || categories.isPending
               }
             >
               {mutation.isPending && (

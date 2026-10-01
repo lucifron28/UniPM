@@ -378,6 +378,8 @@ function assetTable(page: Page) {
 }
 
 const assetColumnIndexes = {
+  scheduledMonth: 3,
+  inspection: 4,
   timeliness: 5,
   condition: 6,
 } as const
@@ -391,7 +393,7 @@ const officialMetricLabels = [
   'Operational',
   'Non-operational',
   'Progress',
-  'On-time compliance',
+  'Compliance rate',
 ] as const
 
 function assetRow(page: Page, assetCode: string) {
@@ -473,6 +475,22 @@ test.describe('PM period dashboard', () => {
     const assets = assetTable(page).getByRole('link')
     await expect(report).toBeVisible()
     await expect(assets).toHaveText(['FE-001', 'FE-002', 'FE-003'])
+    await expect(
+      assetTable(page).getByRole('columnheader', {
+        name: 'Scheduled month / due date',
+        exact: true,
+      }),
+    ).toBeVisible()
+    const onTimeRow = assetRow(page, 'FE-001')
+    await expect(assetCell(onTimeRow, 'scheduledMonth')).toContainText(
+      'June 2026',
+    )
+    await expect(assetCell(onTimeRow, 'scheduledMonth')).toContainText(
+      'Due date: Jun 30, 2026',
+    )
+    await expect(assetCell(onTimeRow, 'inspection')).toContainText(
+      'Actual inspection date: Jun 20, 2026',
+    )
     const metrics = await readOfficialMetrics(page)
     expect(metrics).toEqual([
       '3',
@@ -735,7 +753,7 @@ test.describe('PM period dashboard', () => {
       batchTable(page).getByRole('columnheader', { name: 'Remaining' }),
     ).toHaveCount(0)
     await expect(
-      metricCard(page, 'On-time compliance').locator('p').nth(1),
+      metricCard(page, 'Compliance rate').locator('p').nth(1),
     ).toHaveText('50%')
 
     await page.setViewportSize({ width: 375, height: 667 })

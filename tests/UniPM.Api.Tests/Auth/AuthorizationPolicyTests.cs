@@ -76,10 +76,8 @@ public sealed class AuthorizationPolicyTests
         var response = await client.PostAsJsonAsync("/api/v1/schedules/", new
         {
             assetId,
-            scheduleDate = DateTimeOffset.UtcNow.AddDays(1),
-            periodType = "Quarter",
-            quarter = "Q1",
-            year = 2026
+            pmCycle = $"{DateTimeOffset.UtcNow.Year}-11",
+            periodType = "Quarter"
         });
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);

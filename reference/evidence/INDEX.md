@@ -13,8 +13,11 @@ record's evidence level and tested/source commit.
 
 ## Records
 
+
 | ID | Type | Title | Status | Evidence level | Tested/source commit | Record | Note |
 |---|---|---|---|---|---|---|---|
+| TEST-044 | test-run | CPMP scheduling and compliance verification | executed | ci-executed | `73ed2c1`; local identities in record | [record](test-runs/TEST-044-cpmp-scheduling-compliance.md) | Backend and Web CI green, targeted API/web/browser checks and disposable native SQL scenarios passed; SQL CI skips remain explicit. |
+| IMP-037 | implementation | CPMP month scheduling and GSD compliance terminology | reviewed | source-inspected | `ae42440` | [record](implementation/IMP-037-cpmp-month-end-scheduling.md) | Category-month validation, canonical deadlines, web creation and reporting terminology, and synthetic demo alignment. |
 | IMP-001 | implementation | Synthetic maintenance dataset and Development seeder | reviewed | source-inspected | `00e5401` | [record](implementation/IMP-001-synthetic-maintenance-dataset.md) | Fictional deterministic fixture and scoped seed/reset behavior. |
 | IMP-002 | implementation | Versioned maintenance issue lexicon | reviewed | source-inspected | `00e5401` | [record](implementation/IMP-002-maintenance-issue-lexicon.md) | Deterministic category-bounded normalization; no accuracy baseline claimed. |
 | IMP-003 | implementation | SQL Server lexical Full-Text retrieval | reviewed | source-inspected | `00e5401` | [record](implementation/IMP-003-lexical-full-text-retrieval.md) | Internal SQL Server FTS channel over the rebuildable projection. |
@@ -111,6 +114,8 @@ record's evidence level and tested/source commit.
 | TEST-042 | test-run | Pre-acceptance integration hardening verification | executed | locally-executed | `e301a91` web; `fabb49a` backend/mobile; `b15300f` + patch `3c9f84c` dashboard follow-up | [record](test-runs/TEST-042-pre-acceptance-integration-hardening.md) | Backend 70/70, mobile 73/73, web 54/54, Playwright 25/25, contract checks 7/7; dashboard round-trip 1 passed/11 skipped on the identified worktree patch, later committed unchanged as `8951f44` without rerun. Full formatting fails 39 unchanged paths, SQL skipped, physical/iOS NOT VERIFIED. |
 | IMP-036 | implementation | Pre-acceptance context and schedule-contract follow-up | reviewed | source-inspected | `1784778`; `177b5e6`; `67cdb44`; `3052bb0` | [record](implementation/IMP-036-pre-acceptance-context-and-schedule-contract-follow-up.md) | Documents dashboard-context restoration, canonical schedule-date rules, and lifecycle correction. Final navigation checks ran at HEAD `177b5e6` plus patch `5d08c539`; no rerun at navigation commit `67cdb44`. |
 | TEST-043 | test-run | Final pre-acceptance integration verification | executed | locally-executed | `c2fe175` + `abafc874`; `177b5e6` + `5d08c539` | [record](test-runs/TEST-043-pre-acceptance-integration-verification.md) | Schedule API 11/11 and web 17/17 passed. Initial navigation patch identity was not retained; final rerun passed 5 with 11 skipped on the identified patch. ESLint, typecheck, formatting, and scoped diff check passed; later navigation commit `67cdb44` was not rerun. |
+| IMP-038 | implementation | Mobile CPMP cycle and due-date presentation | reviewed | source-inspected | `e87a229` | [record](implementation/IMP-038-mobile-cpmp-cycle-presentation.md) | Canonical month/year, civil month-end, preserved field workflow and progress terminology. |
+| TEST-045 | test-run | Mobile CPMP presentation and workflow verification | executed | locally-executed | `e87a229` | [record](test-runs/TEST-045-mobile-cpmp-presentation.md) | 103 focused tests, analyzer and changed-file formatting passed; seven unchanged formatting baseline files; physical/iOS not verified. |
 
 ## Pending Evidence
 

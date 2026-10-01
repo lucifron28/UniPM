@@ -247,6 +247,7 @@ test('demonstrates the submitted PM batch acknowledgement review workflow', asyn
   await expect(page).toHaveURL(
     new RegExp(`/app/preventive-maintenance-forms/${formId}/review`),
   )
+  const reviewUrl = page.url()
 
   // 4. Confirm the whole-batch context and submitted lifecycle status.
   await expect(
@@ -270,7 +271,7 @@ test('demonstrates the submitted PM batch acknowledgement review workflow', asyn
   await expect(summaryValue('Scheduled')).toHaveText('1')
   await expect(summaryValue('Inspected')).toHaveText('1')
   await expect(summaryValue('Completed on time')).toHaveText('1')
-  await expect(summaryValue('On-time compliance')).toHaveText('100%')
+  await expect(summaryValue('Compliance rate')).toHaveText('100%')
   await expect(summaryValue('Field-work completion')).toHaveText(/Jul 28, 2026/)
   await expect(summaryValue('Submitted timestamp')).toHaveText(/Jul 29, 2026/)
   const acknowledgementCard = page
@@ -312,9 +313,7 @@ test('demonstrates the submitted PM batch acknowledgement review workflow', asyn
   await expect(page).toHaveURL(
     new RegExp(`/app/preventive-maintenance-forms/${formId}/review`),
   )
-  await expect(page).toHaveURL(/assetCategory=fire-extinguisher/)
-  await expect(page).toHaveURL(/pmCycle=2026-07/)
-  await expect(page).toHaveURL(/department=GSD/)
+  await expect(page).toHaveURL(reviewUrl)
 
   // 9. Open the complete PM form in read-only mode.
   await page.getByRole('link', { name: 'View full PM form' }).click()

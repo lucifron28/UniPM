@@ -8,6 +8,7 @@ import 'preventive_maintenance_form_specs.dart';
 import 'preventive_maintenance_models.dart';
 import 'preventive_maintenance_repository.dart';
 import 'inspection_completion_sheet.dart';
+import 'pm_cycle_presentation.dart';
 
 enum PreventiveMaintenanceDraftAction { scanNextAsset }
 
@@ -724,7 +725,7 @@ class _PreventiveMaintenanceDraftPageState
       children: [
         if (widget.controller.errorMessage != null)
           _InlineError(message: widget.controller.errorMessage!),
-        _FormMetadata(form: form),
+        _FormMetadata(form: form, pmCycle: canonicalBatchCycle),
         const SizedBox(height: 16),
         if (!canEdit)
           Card(
@@ -1019,9 +1020,10 @@ class _DraftReferences {
 }
 
 class _FormMetadata extends StatelessWidget {
-  const _FormMetadata({required this.form});
+  const _FormMetadata({required this.form, required this.pmCycle});
 
   final PreventiveMaintenanceForm form;
+  final String? pmCycle;
 
   @override
   Widget build(BuildContext context) {
@@ -1043,7 +1045,10 @@ class _FormMetadata extends StatelessWidget {
             Text('Asset category: ${displayAssetCategory(form.assetCategory)}'),
             Text('Building: ${form.building ?? 'Not recorded'}'),
             Text('Department: ${form.department ?? 'Not recorded'}'),
-            if (form.pmCycle != null) Text('PM cycle: ${form.pmCycle}'),
+            if (pmCycle != null) ...[
+              Text('PM cycle: ${formatPmCycle(pmCycle)}'),
+              Text('Due date: ${formatPmCycleDueDate(pmCycle)}'),
+            ],
             Text('Period: ${form.periodType}'),
             if (form.quarter != null) Text('Quarter: ${form.quarter}'),
             if (form.semester != null) Text('Semester: ${form.semester}'),
@@ -1181,10 +1186,13 @@ class _ScannedAssetInspectionCardState
                 asset: asset,
                 assetNumberLabel: spec.assetNumberLabel,
               ),
-              if (widget.schedule.pmCycle != null) ...[
-                const SizedBox(height: 8),
-                Text('PM cycle: ${widget.schedule.pmCycle}'),
-              ],
+              const SizedBox(height: 8),
+              Text(
+                'PM cycle: ${formatPmCycle(widget.schedule.canonicalPmCycle)}',
+              ),
+              Text(
+                'Due date: ${formatPmCycleDueDate(widget.schedule.canonicalPmCycle)}',
+              ),
               const SizedBox(height: 12),
               TextFormField(
                 key: const Key('new-inspection-date'),
@@ -1541,6 +1549,7 @@ class _InspectionRowEditorState extends State<_InspectionRowEditor> {
 
   @override
   Widget build(BuildContext context) {
+    final pmCycle = widget.schedule?.canonicalPmCycle ?? widget.form.pmCycle;
     return Card(
       color: widget.highlighted
           ? Theme.of(context).colorScheme.primaryContainer
@@ -1563,9 +1572,8 @@ class _InspectionRowEditorState extends State<_InspectionRowEditor> {
               Text(
                 'Department: ${widget.schedule?.asset?.department ?? widget.form.department ?? 'Not recorded'}',
               ),
-              Text(
-                'PM cycle: ${widget.schedule?.pmCycle ?? widget.form.pmCycle ?? 'Not recorded'}',
-              ),
+              Text('PM cycle: ${formatPmCycle(pmCycle)}'),
+              Text('Due date: ${formatPmCycleDueDate(pmCycle)}'),
               if (widget.schedule != null)
                 Text('Schedule status: ${widget.schedule!.status}'),
               if (widget.schedule?.asset != null)

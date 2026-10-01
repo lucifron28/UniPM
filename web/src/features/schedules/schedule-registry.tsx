@@ -25,7 +25,8 @@ import {
 } from '@/features/schedules/schedule-queries'
 import {
   fromDateTimeLocal,
-  formatScheduleDate,
+  formatPmCycle,
+  formatPmCycleDueDate,
   toDateTimeLocal,
 } from '@/features/schedules/schedule-presentation'
 
@@ -76,9 +77,13 @@ const createColumns = (search: ScheduleSearch) => [
       </div>
     ),
   }),
+  columnHelper.accessor('pmCycle', {
+    header: 'Scheduled month',
+    cell: ({ getValue }) => formatPmCycle(getValue()),
+  }),
   columnHelper.accessor('scheduleDate', {
-    header: 'Date',
-    cell: ({ getValue }) => formatScheduleDate(getValue()),
+    header: 'Due date',
+    cell: ({ row }) => formatPmCycleDueDate(row.original.pmCycle),
   }),
   columnHelper.accessor('periodType', { header: 'Period' }),
   columnHelper.display({
@@ -212,8 +217,8 @@ export function ScheduleRegistry({
             Schedules
           </h1>
           <p className="mt-2 max-w-2xl text-[var(--text-secondary)]">
-            Browse recorded schedule dates and statuses. The interface does not
-            infer overdue state or change workflow status.
+            Browse scheduled PM months, due dates, and recorded statuses. The
+            interface does not infer overdue state or change workflow status.
           </p>
         </div>
         {canCreate && (
@@ -492,8 +497,9 @@ export function ScheduleRegistry({
                     </Badge>
                   </div>
                   <p className="text-sm text-[var(--text-secondary)]">
-                    {formatScheduleDate(schedule.scheduleDate)} /{' '}
-                    {schedule.periodType}
+                    Scheduled month: {formatPmCycle(schedule.pmCycle)}
+                    <br />
+                    Due date: {formatPmCycleDueDate(schedule.pmCycle)}
                   </p>
                   <Link
                     to="/app/schedules/$scheduleId"

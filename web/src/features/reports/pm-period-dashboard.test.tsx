@@ -14,6 +14,10 @@ import {
   PmPeriodDashboardPresentation,
   type PmPeriodDashboardSearch,
 } from './pm-period-dashboard'
+import {
+  formatPmCycle,
+  formatPmCycleDueDate,
+} from '@/features/schedules/schedule-presentation'
 
 type PeriodState = 'Future' | 'Active' | 'Closed'
 
@@ -128,7 +132,8 @@ describe('PM period dashboard period terminology', () => {
     expectMetricLabel('Remaining')
     expectMetricValue('Scheduled', '5')
     expectMetricValue('Remaining', '2')
-    expectMetricValue('On-time compliance', 'Not measurable yet')
+    expectMetricLabel('Compliance rate')
+    expectMetricValue('Compliance rate', 'Not measurable yet')
     expect(
       screen.getByText('Not measurable yet', { exact: true }),
     ).toBeInTheDocument()
@@ -147,8 +152,10 @@ describe('PM period dashboard period terminology', () => {
     renderState('Active')
 
     expectMetricLabel('Progress')
+    expectMetricLabel('Compliance rate')
     expectMetricLabel('Remaining')
     expectMetricValue('Progress', '60%')
+    expectMetricValue('Compliance rate', 'Not measurable yet')
     expectMetricValue('Remaining', '2')
     expect(
       screen.getByText('Not measurable yet', { exact: true }),
@@ -178,7 +185,7 @@ describe('PM period dashboard period terminology', () => {
     expectMetricValue('Remaining', '0')
     expectMetricValue('Operational', '2')
     expectMetricValue('Non-operational', '1')
-    expectMetricValue('On-time compliance', '50%')
+    expectMetricValue('Compliance rate', '50%')
     expect(screen.getByText('50%', { exact: true })).toBeInTheDocument()
     expect(
       screen.getByRole('columnheader', { name: 'Not completed' }),
@@ -186,6 +193,11 @@ describe('PM period dashboard period terminology', () => {
     expect(
       screen.queryByRole('columnheader', { name: 'Remaining' }),
     ).not.toBeInTheDocument()
+  })
+
+  it('formats a cycle-derived leap-February month and deadline', () => {
+    expect(formatPmCycle('2028-02')).toBe('February 2028')
+    expect(formatPmCycleDueDate('2028-02')).toBe('Feb 29, 2028')
   })
 
   it('routes acknowledged batches to read-only form detail', async () => {

@@ -8,4 +8,9 @@
 export interface AssetCategoryResponse {
   code: string
   displayName: string
+  /**
+   * @nullable
+   * @items.pattern ^-?(?:0|[1-9]\d*)$
+   */
+  scheduledMonths?: (number | string)[] | null
 }

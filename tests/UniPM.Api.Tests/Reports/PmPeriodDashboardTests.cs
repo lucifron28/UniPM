@@ -316,6 +316,28 @@ public sealed class PmPeriodDashboardTests
     }
 
     [Fact]
+    public async Task Cancelled_schedules_are_excluded_from_the_official_compliance_denominator()
+    {
+        var response = await GetClosedDashboardAsync(CreateQuery(), context =>
+        {
+            SeedClosedScenario(context);
+            var asset = CreateAsset("FE-CANCELLED", "CCMS");
+            var schedule = CreateSchedule(asset, PmCycle);
+            schedule.Status = ScheduleStatusCatalog.Cancelled;
+            context.Assets.Add(asset);
+            context.PreventiveMaintenanceSchedules.Add(schedule);
+            context.InspectionRecords.Add(CreateInspection(
+                schedule, asset, AtManila(2026, 6, 20), true));
+        });
+
+        Assert.Equal(5, response.Scheduled);
+        Assert.Equal(2, response.CompletedOnTime);
+        Assert.Equal(40m, response.OnTimeCompliancePercent);
+        Assert.Equal(60m, response.ProgressPercent);
+        Assert.DoesNotContain(response.Assets, asset => asset.AssetCode == "FE-CANCELLED");
+    }
+
+    [Fact]
     public async Task Acknowledgement_date_never_affects_compliance()
     {
         var response = await GetClosedDashboardAsync(CreateQuery());

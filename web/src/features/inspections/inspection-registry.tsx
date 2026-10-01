@@ -21,6 +21,10 @@ import {
 } from '@/features/inspections/inspection-presentation'
 import { useSchedules } from '@/features/schedules/schedule-queries'
 import {
+  formatPmCycle,
+  formatPmCycleDueDate,
+} from '@/features/schedules/schedule-presentation'
+import {
   RegistryLoadingPanel,
   RegistryResultsPanel,
 } from '@/features/shared/registry-results-panel'
@@ -69,14 +73,23 @@ const createColumns = (search: InspectionSearch) => [
     },
   }),
   columnHelper.accessor('scheduleId', {
-    header: 'Schedule',
+    header: 'Scheduled month / due date',
     cell: ({ getValue, table }) => {
       const schedule = table.options.meta?.schedules.get(getValue())
-      return schedule ? formatInspectionDate(schedule.scheduleDate) : getValue()
+      return schedule ? (
+        <div>
+          <p>{formatPmCycle(schedule.pmCycle)}</p>
+          <p className="text-xs text-[var(--text-neutral)]">
+            Due date: {formatPmCycleDueDate(schedule.pmCycle)}
+          </p>
+        </div>
+      ) : (
+        getValue()
+      )
     },
   }),
   columnHelper.accessor('dateInspected', {
-    header: 'Inspected',
+    header: 'Actual inspection date',
     cell: ({ getValue }) => formatInspectionDate(getValue()),
   }),
   columnHelper.accessor('isOperational', {
@@ -114,7 +127,7 @@ const createColumns = (search: InspectionSearch) => [
 declare module '@tanstack/react-table' {
   interface TableMeta<TData extends RowData> {
     assets?: Map<string, { assetCode: string; assetCategory: string }>
-    schedules: Map<string, { scheduleDate: string }>
+    schedules: Map<string, { pmCycle?: string | undefined }>
     rowData?: TData
   }
 }
@@ -161,7 +174,7 @@ export function InspectionRegistry({
       new Map(
         (schedules.data ?? []).map((schedule) => [
           schedule.id,
-          { scheduleDate: schedule.scheduleDate },
+          { pmCycle: schedule.pmCycle },
         ]),
       ),
     [schedules.data],
@@ -302,7 +315,8 @@ export function InspectionRegistry({
             {(schedules.data ?? []).map((schedule) => (
               <option key={schedule.id} value={schedule.id}>
                 {schedule.asset?.assetCode ?? schedule.assetId} -{' '}
-                {formatInspectionDate(schedule.scheduleDate)}
+                {formatPmCycle(schedule.pmCycle)} · Due{' '}
+                {formatPmCycleDueDate(schedule.pmCycle)}
               </option>
             ))}
           </select>
@@ -460,6 +474,7 @@ export function InspectionRegistry({
                       {asset?.assetCode ?? inspection.assetId}
                     </p>
                     <p className="text-sm text-[var(--text-secondary)]">
+                      Actual inspection date:{' '}
                       {formatInspectionDate(inspection.dateInspected)}
                     </p>
                   </div>

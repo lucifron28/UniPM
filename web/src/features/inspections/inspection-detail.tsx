@@ -13,7 +13,10 @@ import {
   inspectionOutcome,
 } from '@/features/inspections/inspection-presentation'
 import { useSchedule } from '@/features/schedules/schedule-queries'
-import { formatScheduleDate } from '@/features/schedules/schedule-presentation'
+import {
+  formatPmCycle,
+  formatPmCycleDueDate,
+} from '@/features/schedules/schedule-presentation'
 import type { PmAcknowledgementReviewContext } from '@/features/preventive-maintenance-forms/pm-acknowledgement-review'
 
 const uuidPattern =
@@ -138,7 +141,7 @@ export function InspectionDetail({
   const record = inspection.data
   const assetLabel = asset.data?.assetCode ?? record.assetId
   const scheduleLabel = schedule.data
-    ? formatScheduleDate(schedule.data.scheduleDate)
+    ? formatPmCycle(schedule.data.pmCycle)
     : record.scheduleId
   const hasWaterWorkItems =
     record.dateAccomplished != null ||
@@ -190,7 +193,7 @@ export function InspectionDetail({
             Inspection {record.id}
           </h1>
           <p className="mt-2 text-[var(--text-secondary)]">
-            Recorded {formatInspectionDate(record.dateInspected)}
+            Actual inspection date: {formatInspectionDate(record.dateInspected)}
           </p>
         </div>
         <Badge
@@ -218,7 +221,7 @@ export function InspectionDetail({
         </div>
         <div>
           <dt className="text-xs font-semibold tracking-[0.08em] text-[var(--text-neutral)] uppercase">
-            Schedule
+            Scheduled month
           </dt>
           <dd className="mt-1 text-sm">
             <Link
@@ -230,9 +233,13 @@ export function InspectionDetail({
             </Link>
           </dd>
         </div>
+        <DetailItem
+          label="Due date"
+          value={formatPmCycleDueDate(schedule.data?.pmCycle)}
+        />
         <DetailItem label="Inspector user ID" value={record.inspectorUserId} />
         <DetailItem
-          label="Date inspected"
+          label="Actual inspection date"
           value={formatInspectionDate(record.dateInspected)}
         />
         <DetailItem

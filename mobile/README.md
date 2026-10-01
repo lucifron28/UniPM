@@ -73,6 +73,19 @@ reuses a compatible Draft, chooses between multiple compatible Drafts, or
 resumes an existing inspection row. An inspection row is created only when the
 worker saves it in the existing editor.
 
+`PmCycle` identifies the institutional scheduled month and year as `YYYY-MM`.
+Mobile schedule displays should show that cycle separately and derive its due
+date from the cycle's civil month-end in fixed Asia/Manila `+08:00` time, not
+from `ScheduleDate`. New schedule records store that month-end deadline in
+`ScheduleDate`; historical values remain unchanged and may not match it. The
+due date is not a planned visit date and must not shift with the device's time
+zone. The actual inspection date and `InspectionRecord.CompletedAt` come from
+field work.
+Mobile batch cards show **Progress**, inspected schedules divided by
+scheduled assets. **Compliance rate** remains a GSD reporting measure,
+completed inspections on or before the deadline divided by eligible
+non-cancelled scheduled assets; it does not belong in the Inspector mobile UI.
+
 From the scanned asset details, the worker can open read-only **Maintenance
 history**. The client requests `/api/v1/inspections/history/{assetId}` using
 the exact backend asset ID and displays only the records returned by that
