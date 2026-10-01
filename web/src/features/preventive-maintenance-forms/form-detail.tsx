@@ -63,11 +63,14 @@ function HandoffRow({
     <article className="rounded-xl border border-[var(--border-soft)] bg-white p-5 shadow-sm">
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
         <div>
-          <p className="text-sm font-semibold text-[var(--text-primary)]">
-            Inspection {row.inspectionId}
-          </p>
+          <h3 className="text-sm font-semibold text-[var(--text-primary)]">
+            {row.assetCode}
+          </h3>
           <p className="mt-1 text-xs text-[var(--text-neutral)]">
-            {formatFormDate(row.inspectionDate)}
+            {row.assetDeviceNumber
+              ? `Device number: ${row.assetDeviceNumber} · `
+              : ''}
+            Actual inspection date: {formatFormDate(row.inspectionDate)}
           </p>
         </div>
         <Badge
@@ -85,7 +88,6 @@ function HandoffRow({
           label="Asset/device number"
           value={row.assetDeviceNumber ?? 'Unresolved'}
         />
-        <DetailItem label="Asset code" value={row.assetCode} />
         <DetailItem label="Location" value={row.location ?? ''} />
         <DetailItem
           label="Skilled worker"
@@ -96,6 +98,14 @@ function HandoffRow({
           value={row.skilledWorkerUserId}
         />
       </dl>
+      <details className="mt-4 text-xs text-[var(--text-neutral)]">
+        <summary className="cursor-pointer font-semibold">
+          Technical identifiers
+        </summary>
+        <dl className="mt-3 grid gap-3 sm:grid-cols-3">
+          <DetailItem label="Inspection ID" value={row.inspectionId} />
+        </dl>
+      </details>
       <div className="mt-5 grid gap-4 border-t border-[var(--border-soft)] pt-4 sm:grid-cols-2">
         <div>
           <h3 className="text-xs font-semibold tracking-[0.08em] text-[var(--text-neutral)] uppercase">

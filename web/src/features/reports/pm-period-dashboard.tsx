@@ -533,8 +533,7 @@ function AssetRows({
                 <td className="space-y-1 px-3 py-3 text-[var(--text-secondary)]">
                   <p>{formatFormStatus(asset.formStatus)}</p>
                   <p className="text-xs text-[var(--text-neutral)]">
-                    {asset.formId ? `Form ${asset.formId}` : 'No form linked'}
-                    {' · '}
+                    Acknowledgement:{' '}
                     {formatAcknowledgementStatus(
                       asset.formId,
                       asset.formStatus,

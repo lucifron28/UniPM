@@ -344,6 +344,13 @@ describe('preventive-maintenance form review', () => {
     expect(screen.getByText('Acknowledged')).toBeInTheDocument()
     expect(screen.getAllByText('Main Building / GSD')).toHaveLength(3)
     expect(screen.getAllByText('Inspection rows')).toHaveLength(3)
+    expect(screen.queryByText(formId)).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('77777777-7777-4777-8777-777777777777'),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('88888888-8888-4888-8888-888888888888'),
+    ).not.toBeInTheDocument()
     expect(
       screen.getByRole('link', { name: 'GSD-SUBMITTED-001' }),
     ).toHaveAttribute(
@@ -443,6 +450,22 @@ describe('preventive-maintenance form review', () => {
         name: 'Corrective-action findings',
       }),
     ).toBeInTheDocument()
+    const handoffHeading = screen.getByRole('heading', { name: 'FE-001' })
+    expect(handoffHeading).toBeInTheDocument()
+    const handoffCard = handoffHeading.closest('article')
+    if (!(handoffCard instanceof HTMLElement)) {
+      throw new Error('Corrective-action finding card was not found')
+    }
+    expect(handoffCard).toHaveTextContent('Actual inspection date:')
+    const handoff = within(handoffCard)
+    const technicalSummary = handoff.getByText('Technical identifiers')
+    const technicalDetails = technicalSummary.closest('details')
+    if (!(technicalDetails instanceof HTMLDetailsElement)) {
+      throw new Error('Technical identifiers details section was not found')
+    }
+    expect(technicalDetails).not.toHaveAttribute('open')
+    fireEvent.click(technicalSummary)
+    expect(within(technicalDetails).getByText(inspectionId)).toBeInTheDocument()
     expect(screen.getAllByText('Not operational')).toHaveLength(2)
     expect(screen.getByText('Unresolved')).toBeInTheDocument()
     expect(screen.getByText('FE-001')).toBeInTheDocument()

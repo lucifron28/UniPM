@@ -49,9 +49,6 @@ function FormSummary({ form }: { form: PreventiveMaintenanceForm }) {
           >
             {form.fileNumber ?? 'Unsubmitted form'}
           </Link>
-          <p className="mt-1 text-xs break-all text-[var(--text-neutral)]">
-            {form.id}
-          </p>
         </div>
         <FormStatus status={form.status} />
       </div>

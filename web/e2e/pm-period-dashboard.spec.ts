@@ -382,6 +382,7 @@ const assetColumnIndexes = {
   inspection: 4,
   timeliness: 5,
   condition: 6,
+  form: 7,
 } as const
 
 const officialMetricLabels = [
@@ -750,6 +751,11 @@ test.describe('PM period dashboard', () => {
     await expect(notCompletedRow).toHaveCount(1)
     await expect(assetCell(onTimeRow, 'timeliness')).toHaveText(
       /^Completed on time$/,
+    )
+    await expect(assetCell(onTimeRow, 'form')).toContainText('Acknowledgement:')
+    await expect(assetCell(onTimeRow, 'form')).toContainText('Acknowledged')
+    await expect(assetCell(onTimeRow, 'form')).not.toContainText(
+      assetIds.onTime,
     )
     await expect(assetCell(lateRow, 'timeliness')).toHaveText(
       /^Completed late$/,
