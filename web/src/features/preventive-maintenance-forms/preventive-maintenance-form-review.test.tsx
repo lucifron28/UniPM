@@ -748,8 +748,12 @@ describe('preventive-maintenance form review', () => {
       )
       expect(
         await screen.findByRole('heading', {
-          name: `Inspection ${inspectionId}`,
+          name: 'FE-TEST-001',
+          level: 1,
         }),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('heading', { name: 'Record information' }),
       ).toBeInTheDocument()
       await waitFor(() => {
         expect(router.state.location.pathname).toBe(
