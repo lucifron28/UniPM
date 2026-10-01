@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../auth/auth_models.dart';
@@ -21,14 +23,15 @@ class HomePage extends StatefulWidget {
   });
 
   final AuthUser user;
-  final VoidCallback? onScanQr;
-  final VoidCallback? onEnterAssetCode;
-  final VoidCallback? onSearchAssets;
-  final ValueChanged<PmBatchScope>? onStartBatch;
-  final VoidCallback? onOpenPreventiveMaintenance;
+  final FutureOr<void> Function()? onScanQr;
+  final FutureOr<void> Function()? onEnterAssetCode;
+  final FutureOr<void> Function()? onSearchAssets;
+  final FutureOr<void> Function(PmBatchScope)? onStartBatch;
+  final FutureOr<void> Function()? onOpenPreventiveMaintenance;
   final PreventiveMaintenanceRepository? preventiveMaintenanceRepository;
-  final ValueChanged<String>? onOpenForm;
-  final ValueChanged<PreventiveMaintenanceForm>? onOpenAcknowledgement;
+  final FutureOr<void> Function(String)? onOpenForm;
+  final FutureOr<void> Function(PreventiveMaintenanceForm)?
+  onOpenAcknowledgement;
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -74,6 +77,17 @@ class _HomePageState extends State<HomePage> {
         _isLoadingBatches = false;
         _batchError = 'Could not load active batches.';
       });
+    }
+  }
+
+  Future<void> _runChildWorkflow(
+    FutureOr<void> Function()? openWorkflow,
+  ) async {
+    if (openWorkflow == null) return;
+    try {
+      await openWorkflow();
+    } finally {
+      if (mounted) await _loadBatches();
     }
   }
 
@@ -240,18 +254,20 @@ class _HomePageState extends State<HomePage> {
         .toList(growable: false);
   }
 
-  void _startBatch(_AssignedPmBatch batch) {
+  Future<void> _startBatch(_AssignedPmBatch batch) async {
     final callback = widget.onStartBatch;
     if (callback != null) {
-      callback(
-        PmBatchScope(
-          department: batch.department,
-          assetCategory: batch.assetCategory,
-          pmCycle: batch.pmCycle,
+      await _runChildWorkflow(
+        () => callback(
+          PmBatchScope(
+            department: batch.department,
+            assetCategory: batch.assetCategory,
+            pmCycle: batch.pmCycle,
+          ),
         ),
       );
     } else {
-      widget.onScanQr?.call();
+      await _runChildWorkflow(widget.onScanQr);
     }
   }
 
@@ -332,7 +348,9 @@ class _HomePageState extends State<HomePage> {
                   title: 'Scan QR',
                   subtitle: 'Fastest path',
                   isPrimary: true,
-                  onTap: widget.onScanQr,
+                  onTap: widget.onScanQr == null
+                      ? null
+                      : () => _runChildWorkflow(widget.onScanQr),
                 ),
               ),
               const SizedBox(width: 12),
@@ -343,7 +361,9 @@ class _HomePageState extends State<HomePage> {
                   title: 'Enter Code',
                   subtitle: 'Damaged QR',
                   isPrimary: false,
-                  onTap: widget.onEnterAssetCode,
+                  onTap: widget.onEnterAssetCode == null
+                      ? null
+                      : () => _runChildWorkflow(widget.onEnterAssetCode),
                 ),
               ),
             ],
@@ -362,7 +382,9 @@ class _HomePageState extends State<HomePage> {
                 style: TextStyle(fontSize: 12),
               ),
               trailing: const Icon(Icons.chevron_right, size: 20),
-              onTap: widget.onSearchAssets,
+              onTap: widget.onSearchAssets == null
+                  ? null
+                  : () => _runChildWorkflow(widget.onSearchAssets),
             ),
           ),
           const SizedBox(height: 28),
@@ -476,8 +498,16 @@ class _HomePageState extends State<HomePage> {
                       totalCount: total,
                       building: draft.building,
                       actionLabel: 'Continue PM batch',
-                      onAction: () => widget.onOpenForm?.call(draft.id),
-                      onTap: () => widget.onOpenForm?.call(draft.id),
+                      onAction: widget.onOpenForm == null
+                          ? null
+                          : () => _runChildWorkflow(
+                              () => widget.onOpenForm!(draft.id),
+                            ),
+                      onTap: widget.onOpenForm == null
+                          ? null
+                          : () => _runChildWorkflow(
+                              () => widget.onOpenForm!(draft.id),
+                            ),
                     ),
                   );
                 }),
@@ -537,9 +567,16 @@ class _HomePageState extends State<HomePage> {
                         totalCount: form.inspections.length,
                         building: form.building,
                         actionLabel: 'Capture Signature',
-                        onAction: () =>
-                            widget.onOpenAcknowledgement?.call(form),
-                        onTap: () => widget.onOpenAcknowledgement?.call(form),
+                        onAction: widget.onOpenAcknowledgement == null
+                            ? null
+                            : () => _runChildWorkflow(
+                                () => widget.onOpenAcknowledgement!(form),
+                              ),
+                        onTap: widget.onOpenAcknowledgement == null
+                            ? null
+                            : () => _runChildWorkflow(
+                                () => widget.onOpenAcknowledgement!(form),
+                              ),
                       ),
                     );
                   }),
@@ -560,7 +597,8 @@ class _HomePageState extends State<HomePage> {
                   'Create, resume, submit, and acknowledge PM forms.',
                 ),
                 trailing: const Icon(Icons.chevron_right),
-                onTap: widget.onOpenPreventiveMaintenance,
+                onTap: () =>
+                    _runChildWorkflow(widget.onOpenPreventiveMaintenance),
               ),
             ),
         ],
