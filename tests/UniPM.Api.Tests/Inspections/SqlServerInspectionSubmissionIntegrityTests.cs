@@ -27,11 +27,36 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
         await using var context = database.CreateContext();
         await context.Database.MigrateAsync(PreviousMigration);
 
-        var schedule = AddAssetAndSchedule(context);
-        await context.SaveChangesAsync();
+        var now = DateTimeOffset.UtcNow;
+        var assetId = Guid.NewGuid();
+        var assetCode = $"SQL-{Guid.NewGuid():N}"[..20];
+        var assetCategory = "fire-extinguisher";
+        var assetStatus = "Active";
+        var schedule = new PreventiveMaintenanceSchedule
+        {
+            Id = Guid.NewGuid(),
+            AssetId = assetId,
+            ScheduleDate = now,
+            PeriodType = "Quarter",
+            Status = ScheduleStatusCatalog.Due,
+            Quarter = "Q1",
+            Year = now.Year,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
         var first = CreateInspection(schedule);
         var second = CreateInspection(schedule);
         await context.Database.ExecuteSqlInterpolatedAsync($"""
+            INSERT INTO [Assets]
+                ([Id], [AssetCode], [AssetCategory], [Status], [CreatedAt], [UpdatedAt])
+            VALUES
+                ({assetId}, {assetCode}, {assetCategory}, {assetStatus}, {now}, {now});
+
+            INSERT INTO [PreventiveMaintenanceSchedules]
+                ([Id], [AssetId], [ScheduleDate], [PeriodType], [Status], [Quarter], [Year], [CreatedAt], [UpdatedAt])
+            VALUES
+                ({schedule.Id}, {schedule.AssetId}, {schedule.ScheduleDate}, {schedule.PeriodType}, {schedule.Status}, {schedule.Quarter}, {schedule.Year}, {schedule.CreatedAt}, {schedule.UpdatedAt});
+
             INSERT INTO [InspectionRecords]
                 ([Id], [ScheduleId], [AssetId], [InspectorUserId], [DateInspected], [IsOperational], [CreatedAt], [UpdatedAt])
             VALUES
@@ -60,7 +85,7 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
         await using (var context = database.CreateContext())
         {
             await context.Database.MigrateAsync();
-            var schedule = AddAssetAndSchedule(context);
+            var schedule = AddAssetAndSchedule(context, cycleMonth: 8);
             await context.SaveChangesAsync();
             scheduleId = schedule.Id;
 
@@ -119,13 +144,35 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
     }
 
     [SqlServerFact]
-    public async Task Acknowledging_submitted_form_completes_schedules_and_projects_search_documents()
+    public async Task Acknowledging_submitted_form_preserves_completed_schedule_status_and_completion_times()
     {
         await using var database = await SqlServerTestDatabase.CreateAsync(RequireSqlServerConnection());
         await using var application = new SqlServerInspectionApplicationFactory(
             database.ConnectionString,
             AuthRoleCatalog.Gsd);
         var formId = await application.SeedSubmittedFormAsync();
+        var completedAtBeforeAcknowledgement = new Dictionary<Guid, DateTimeOffset?>();
+        await using (var context = database.CreateContext())
+        {
+            var scheduleIds = await context.InspectionRecords
+                .Where(record => record.PreventiveMaintenanceFormId == formId)
+                .Select(record => record.ScheduleId)
+                .ToListAsync();
+            var schedulesBeforeAcknowledgement = await context.PreventiveMaintenanceSchedules
+                .Where(schedule => scheduleIds.Contains(schedule.Id))
+                .ToListAsync();
+            Assert.Equal(2, schedulesBeforeAcknowledgement.Count);
+            Assert.All(schedulesBeforeAcknowledgement, schedule =>
+            {
+                Assert.Equal(ScheduleStatusCatalog.Completed, schedule.Status);
+                Assert.NotNull(schedule.CompletedAt);
+            });
+            foreach (var schedule in schedulesBeforeAcknowledgement)
+            {
+                completedAtBeforeAcknowledgement.Add(schedule.Id, schedule.CompletedAt);
+            }
+        }
+
         using var client = application.CreateClient();
 
         var response = await client.PostAsJsonAsync(
@@ -162,13 +209,18 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
         Assert.All(schedules, schedule =>
         {
             Assert.Equal(ScheduleStatusCatalog.Completed, schedule.Status);
-            Assert.NotNull(schedule.CompletedAt);
+            Assert.Equal(completedAtBeforeAcknowledgement[schedule.Id], schedule.CompletedAt);
         });
     }
 
-    private static PreventiveMaintenanceSchedule AddAssetAndSchedule(ApplicationDbContext context)
+    private static PreventiveMaintenanceSchedule AddAssetAndSchedule(
+        ApplicationDbContext context,
+        int cycleMonth = 2,
+        bool completed = false)
     {
         var now = DateTimeOffset.UtcNow;
+        var year = now.Year;
+        var pmCycle = $"{year:D4}-{cycleMonth:D2}";
         var asset = new Asset
         {
             Id = Guid.NewGuid(),
@@ -185,12 +237,13 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
         {
             Id = Guid.NewGuid(),
             AssetId = asset.Id,
-            ScheduleDate = now,
-            PmCycle = $"{now.Year:D4}-{now.Month:D2}",
+            ScheduleDate = PreventiveMaintenanceCycle.DeadlineForCycle(pmCycle),
+            PmCycle = pmCycle,
             PeriodType = "Quarter",
-            Status = "Due",
-            Quarter = "Q1",
-            Year = 2026,
+            Status = completed ? ScheduleStatusCatalog.Completed : ScheduleStatusCatalog.Due,
+            Quarter = $"Q{((cycleMonth - 1) / 3) + 1}",
+            Year = year,
+            CompletedAt = completed ? now : null,
             CreatedAt = now,
             UpdatedAt = now
         };
@@ -261,8 +314,8 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
                 DisplayName = "SQL Form Submitter",
                 IsActive = true
             });
-            var firstSchedule = AddAssetAndSchedule(context);
-            var secondSchedule = AddAssetAndSchedule(context);
+            var firstSchedule = AddAssetAndSchedule(context, cycleMonth: 2, completed: true);
+            var secondSchedule = AddAssetAndSchedule(context, cycleMonth: 5, completed: true);
             var now = DateTimeOffset.UtcNow;
             var forms = new[]
             {
@@ -292,8 +345,8 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
                 DisplayName = "SQL Form Acknowledger",
                 IsActive = true
             });
-            var firstSchedule = AddAssetAndSchedule(context);
-            var secondSchedule = AddAssetAndSchedule(context);
+            var firstSchedule = AddAssetAndSchedule(context, cycleMonth: 11, completed: true);
+            var secondSchedule = AddAssetAndSchedule(context, cycleMonth: 11, completed: true);
             var now = DateTimeOffset.UtcNow;
             var form = new PreventiveMaintenanceForm
             {
@@ -301,9 +354,10 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
                 AssetCategory = "fire-extinguisher",
                 Building = "Test Building",
                 Department = "GSD",
+                PmCycle = firstSchedule.PmCycle,
                 PeriodType = "Quarter",
-                Quarter = "Q1",
-                Year = 2026,
+                Quarter = firstSchedule.Quarter,
+                Year = firstSchedule.Year,
                 Status = PreventiveMaintenanceFormStatusCatalog.Submitted,
                 CreatedByUserId = TestAuthenticationHandler.UserId,
                 SubmittedByUserId = TestAuthenticationHandler.UserId,
@@ -333,6 +387,7 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
             AssetId = schedule.AssetId,
             InspectorUserId = TestAuthenticationHandler.UserId,
             DateInspected = now,
+            CompletedAt = now,
             IsOperational = true,
             Remarks = "Native SQL acknowledgement test row",
             CreatedAt = now,
@@ -349,9 +404,10 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
             AssetCategory = "fire-extinguisher",
             Building = "Test Building",
             Department = "GSD",
+            PmCycle = schedule.PmCycle,
             PeriodType = "Quarter",
-            Quarter = "Q1",
-            Year = 2026,
+            Quarter = schedule.Quarter,
+            Year = schedule.Year,
             Status = PreventiveMaintenanceFormStatusCatalog.Draft,
             CreatedByUserId = TestAuthenticationHandler.UserId,
             CreatedAt = now,
@@ -365,6 +421,7 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
             AssetId = schedule.AssetId,
             InspectorUserId = TestAuthenticationHandler.UserId,
             DateInspected = now,
+            CompletedAt = now,
             IsOperational = true,
             CreatedAt = now,
             UpdatedAt = now

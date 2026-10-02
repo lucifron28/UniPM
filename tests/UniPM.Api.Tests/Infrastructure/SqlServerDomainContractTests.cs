@@ -19,26 +19,29 @@ public sealed class SqlServerDomainContractTests
         await using (var context = database.CreateContext())
         {
             await context.Database.MigrateAsync(PreviousMigration);
-            context.Assets.Add(new Asset
-            {
-                Id = Guid.NewGuid(),
-                AssetCode = " fe-001 ",
-                AssetCategory = " FIRE-ALARM ",
-                QrCodeValue = " qr-001 ",
-                Status = " active "
-            });
-            context.PreventiveMaintenanceSchedules.Add(new PreventiveMaintenanceSchedule
-            {
-                Id = Guid.NewGuid(),
-                AssetId = context.Assets.Local.Single().Id,
-                ScheduleDate = DateTimeOffset.UtcNow,
-                PeriodType = " quarter ",
-                Status = " due ",
-                Quarter = " q1 ",
-                Semester = " first ",
-                AcademicYear = " 2025-2026 "
-            });
-            await context.SaveChangesAsync();
+            var now = DateTimeOffset.UtcNow;
+            var assetId = Guid.NewGuid();
+            var scheduleId = Guid.NewGuid();
+            var assetCode = " fe-001 ";
+            var assetCategory = " FIRE-ALARM ";
+            var qrCodeValue = " qr-001 ";
+            var assetStatus = " active ";
+            var periodType = " quarter ";
+            var scheduleStatus = " due ";
+            var quarter = " q1 ";
+            var semester = " first ";
+            var academicYear = " 2025-2026 ";
+            await context.Database.ExecuteSqlInterpolatedAsync($"""
+                INSERT INTO [Assets]
+                    ([Id], [AssetCode], [AssetCategory], [QrCodeValue], [Status], [CreatedAt], [UpdatedAt])
+                VALUES
+                    ({assetId}, {assetCode}, {assetCategory}, {qrCodeValue}, {assetStatus}, {now}, {now});
+
+                INSERT INTO [PreventiveMaintenanceSchedules]
+                    ([Id], [AssetId], [ScheduleDate], [PeriodType], [Status], [Quarter], [Semester], [AcademicYear], [CreatedAt], [UpdatedAt])
+                VALUES
+                    ({scheduleId}, {assetId}, {now}, {periodType}, {scheduleStatus}, {quarter}, {semester}, {academicYear}, {now}, {now});
+                """);
         }
 
         await using (var context = database.CreateContext())
@@ -284,15 +287,18 @@ public sealed class SqlServerDomainContractTests
         await using (var context = database.CreateContext())
         {
             await context.Database.MigrateAsync(PreviousMigration);
-            context.Assets.Add(new Asset
-            {
-                Id = Guid.NewGuid(),
-                AssetCode = " fe\r\n\r\n001 ",
-                AssetCategory = "fire-alarm",
-                QrCodeValue = " qr\r0001 ",
-                Status = "Active"
-            });
-            await context.SaveChangesAsync();
+            var now = DateTimeOffset.UtcNow;
+            var assetId = Guid.NewGuid();
+            var assetCode = " fe\r\n\r\n001 ";
+            var assetCategory = "fire-alarm";
+            var qrCodeValue = " qr\r0001 ";
+            var assetStatus = "Active";
+            await context.Database.ExecuteSqlInterpolatedAsync($"""
+                INSERT INTO [Assets]
+                    ([Id], [AssetCode], [AssetCategory], [QrCodeValue], [Status], [CreatedAt], [UpdatedAt])
+                VALUES
+                    ({assetId}, {assetCode}, {assetCategory}, {qrCodeValue}, {assetStatus}, {now}, {now});
+                """);
         }
 
         await using (var context = database.CreateContext())
@@ -379,44 +385,60 @@ public sealed class SqlServerDomainContractTests
 
         await AssertPreflightFailureAsync(
             baseConnectionString,
-            context => context.Assets.Add(new Asset
+            async context =>
             {
-                Id = Guid.NewGuid(),
-                AssetCode = "DB-101",
-                AssetCategory = "unsupported-category",
-                Status = "Active"
-            }),
+                var now = DateTimeOffset.UtcNow;
+                var assetId = Guid.NewGuid();
+                var assetCode = "DB-101";
+                var assetCategory = "unsupported-category";
+                var assetStatus = "Active";
+                await context.Database.ExecuteSqlInterpolatedAsync($"""
+                    INSERT INTO [Assets]
+                        ([Id], [AssetCode], [AssetCategory], [Status], [CreatedAt], [UpdatedAt])
+                    VALUES
+                        ({assetId}, {assetCode}, {assetCategory}, {assetStatus}, {now}, {now});
+                    """);
+            },
             "unsupported code");
 
         await AssertPreflightFailureAsync(
             baseConnectionString,
-            context => context.Assets.Add(new Asset
+            async context =>
             {
-                Id = Guid.NewGuid(),
-                AssetCode = "DB-102",
-                AssetCategory = "fire-alarm",
-                Status = "Active",
-                Building = new string('x', 257)
-            }),
+                var now = DateTimeOffset.UtcNow;
+                var assetId = Guid.NewGuid();
+                var assetCode = "DB-102";
+                var assetCategory = "fire-alarm";
+                var assetStatus = "Active";
+                var building = new string('x', 257);
+                await context.Database.ExecuteSqlInterpolatedAsync($"""
+                    INSERT INTO [Assets]
+                        ([Id], [AssetCode], [AssetCategory], [Building], [Status], [CreatedAt], [UpdatedAt])
+                    VALUES
+                        ({assetId}, {assetCode}, {assetCategory}, {building}, {assetStatus}, {now}, {now});
+                    """);
+            },
             "exceeds its maximum length");
 
         await AssertPreflightFailureAsync(
             baseConnectionString,
-            context => context.Assets.AddRange(
-                new Asset
-                {
-                    Id = Guid.NewGuid(),
-                    AssetCode = "DB-103",
-                    AssetCategory = "fire-alarm",
-                    Status = "Active"
-                },
-                new Asset
-                {
-                    Id = Guid.NewGuid(),
-                    AssetCode = " db-103 ",
-                    AssetCategory = "fire-alarm",
-                    Status = "Active"
-                }),
+            async context =>
+            {
+                var now = DateTimeOffset.UtcNow;
+                var firstAssetId = Guid.NewGuid();
+                var secondAssetId = Guid.NewGuid();
+                var firstAssetCode = "DB-103";
+                var secondAssetCode = " db-103 ";
+                var assetCategory = "fire-alarm";
+                var assetStatus = "Active";
+                await context.Database.ExecuteSqlInterpolatedAsync($"""
+                    INSERT INTO [Assets]
+                        ([Id], [AssetCode], [AssetCategory], [Status], [CreatedAt], [UpdatedAt])
+                    VALUES
+                        ({firstAssetId}, {firstAssetCode}, {assetCategory}, {assetStatus}, {now}, {now}),
+                        ({secondAssetId}, {secondAssetCode}, {assetCategory}, {assetStatus}, {now}, {now});
+                    """);
+            },
             "canonical asset codes are duplicated");
     }
 
@@ -450,14 +472,13 @@ public sealed class SqlServerDomainContractTests
 
     private static async Task AssertPreflightFailureAsync(
         string baseConnectionString,
-        Action<ApplicationDbContext> addRecords,
+        Func<ApplicationDbContext, Task> insertHistoricalRows,
         string expectedMessage)
     {
         await using var database = await SqlServerTestDatabase.CreateAsync(baseConnectionString);
         await using var context = database.CreateContext();
         await context.Database.MigrateAsync(PreviousMigration);
-        addRecords(context);
-        await context.SaveChangesAsync();
+        await insertHistoricalRows(context);
 
         var exception = await Assert.ThrowsAnyAsync<Exception>(
             () => context.Database.MigrateAsync());
