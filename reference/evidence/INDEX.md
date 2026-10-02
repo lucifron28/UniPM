@@ -16,6 +16,7 @@ record's evidence level and tested/source commit.
 
 | ID | Type | Title | Status | Evidence level | Tested/source commit | Record | Note |
 |---|---|---|---|---|---|---|---|
+| TEST-048 | test-run | Authentication browser evaluation synchronization | executed | locally-executed | `ea87c2b` | [record](test-runs/TEST-048-auth-browser-evaluation-synchronization.md) | Chromium promise-collection diagnosis; final test 20 repeats, 43 browser and 171 unit tests passed; one live test skipped; format/lint/typecheck/build passed. |
 | TEST-047 | test-run | PM task badge and readable record label verification | executed | locally-executed | `56b2697` mobile; `94268bb` web | [record](test-runs/TEST-047-pm-badges-readable-record-labels.md) | Seven Flutter, 22 web unit and four Chromium tests passed; formatting, analyzer, lint, typecheck and build passed; device/live checks not verified. |
 | IMP-039 | implementation | Contextual web navigation and mobile workflow usability | reviewed | source-inspected | `b54a503` | [record](implementation/IMP-039-contextual-navigation-mobile-ux.md) | Typed local return context, detail ID hierarchy, mobile refresh and task/action usability; workflows retained. |
 | TEST-046 | test-run | Web contextual navigation and mobile UX verification | executed | locally-executed | `b54a503`; execution identities in record | [record](test-runs/TEST-046-contextual-navigation-mobile-ux.md) | 171 web unit, 32 browser and 114 focused Flutter tests covered across runs; format/lint/typecheck/build/analyzer passed; devices not verified. |
