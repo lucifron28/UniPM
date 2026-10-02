@@ -712,6 +712,7 @@ describe('preventive-maintenance form review', () => {
         }),
       ).toBeInTheDocument()
       expect(screen.getByText('Awaiting acknowledgement')).toBeInTheDocument()
+      expect(screen.getByText('Compliance rate')).toBeInTheDocument()
       expect(screen.getByText('100%')).toBeInTheDocument()
       expect(screen.getByText('Pressure is low.')).toBeInTheDocument()
       expect(

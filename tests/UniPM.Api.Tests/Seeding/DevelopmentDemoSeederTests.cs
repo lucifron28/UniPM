@@ -5,7 +5,9 @@ using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 using UniPM.Api.Data;
 using UniPM.Api.Data.Seeding;
+using UniPM.Api.Features.ReferenceData;
 using UniPM.Api.Features.Reports;
+using UniPM.Api.Features.Schedules;
 using UniPM.Api.Models;
 using DemoQrWriter = DemoQrGenerator::UniPM.DemoQrGenerator.DemoQrWriter;
 
@@ -24,13 +26,13 @@ public sealed class DevelopmentDemoSeederTests
         var first = await seeder.SeedAsync();
         var second = await seeder.SeedAsync();
 
-        Assert.Equal(new DevelopmentDemoSeedResult(9, 9, 6, 2, 1), first);
+        Assert.Equal(new DevelopmentDemoSeedResult(9, 9, 5, 2, 1), first);
         Assert.Equal(first, second);
 
         await using var context = factory.CreateDbContext();
         Assert.Equal(9, await context.Assets.CountAsync());
         Assert.Equal(9, await context.PreventiveMaintenanceSchedules.CountAsync());
-        Assert.Equal(6, await context.InspectionRecords.CountAsync());
+        Assert.Equal(5, await context.InspectionRecords.CountAsync());
         Assert.Equal(2, await context.PreventiveMaintenanceForms.CountAsync());
         Assert.Equal(1, await context.PreventiveMaintenanceAcknowledgements.CountAsync());
 
@@ -38,13 +40,24 @@ public sealed class DevelopmentDemoSeederTests
             .Where(asset => asset.Scenario == "scenario-a")
             .Select(asset => asset.Id)
             .ToHashSet();
-        var scenarioASchedules = await context.PreventiveMaintenanceSchedules
-            .Where(schedule => scenarioAAssetIds.Contains(schedule.AssetId))
+        var schedules = await context.PreventiveMaintenanceSchedules
+            .Include(schedule => schedule.Asset)
             .ToListAsync();
+        Assert.Equal(9, schedules.Count);
+        Assert.All(schedules, schedule =>
+        {
+            Assert.True(PreventiveMaintenanceCycle.TryParse(schedule.PmCycle, out _, out var month));
+            Assert.True(CpmpScheduleFrequency.IsValid(schedule.Asset!.AssetCategory, month));
+            Assert.Equal(PreventiveMaintenanceCycle.DeadlineForCycle(schedule.PmCycle), schedule.ScheduleDate);
+        });
+
+        var scenarioASchedules = schedules
+            .Where(schedule => scenarioAAssetIds.Contains(schedule.AssetId))
+            .ToList();
         Assert.Equal(3, scenarioASchedules.Count);
         Assert.All(scenarioASchedules, schedule =>
         {
-            Assert.Equal("2026-09", schedule.PmCycle);
+            Assert.Equal("2026-11", schedule.PmCycle);
             Assert.Equal("Due", schedule.Status);
             Assert.Equal(inspectorId, schedule.AssignedToUserId);
         });
@@ -54,6 +67,7 @@ public sealed class DevelopmentDemoSeederTests
         var submitted = await context.PreventiveMaintenanceForms
             .SingleAsync(form => form.Id == DevelopmentDemoCatalog.FormIds[0]);
         Assert.Equal("Submitted", submitted.Status);
+        Assert.Equal("2026-08", submitted.PmCycle);
         Assert.Null(await context.PreventiveMaintenanceAcknowledgements
             .SingleOrDefaultAsync(acknowledgement => acknowledgement.FormId == submitted.Id));
 
@@ -68,13 +82,57 @@ public sealed class DevelopmentDemoSeederTests
         Assert.Equal(2, period.CompletedOnTime);
         Assert.Equal(1, period.CompletedLate);
         Assert.Equal(66.67m, period.OnTimeCompliancePercent);
+        Assert.Equal(100m, period.ProgressPercent);
         Assert.Contains(period.Batches, batch => batch.FormStatus == "Submitted");
+
+        var futurePeriod = await dashboard.GetPeriodAsync(
+            new PmPeriodDashboardQuery("2026-11", "fire-extinguisher", "CCMS", null, null, null),
+            CancellationToken.None);
+        Assert.Equal("Future", futurePeriod.PeriodState);
+        Assert.False(futurePeriod.ComplianceMeasurable);
+        Assert.Null(futurePeriod.OnTimeCompliancePercent);
+        Assert.Equal(0m, futurePeriod.ProgressPercent);
+
+        var acknowledgedPeriod = await dashboard.GetPeriodAsync(
+            new PmPeriodDashboardQuery("2026-06", "emergency-light", null, null, null, null),
+            CancellationToken.None);
+        Assert.Equal(3, acknowledgedPeriod.Scheduled);
+        Assert.Equal(2, acknowledgedPeriod.Inspected);
+        Assert.Equal(1, acknowledgedPeriod.CompletedOnTime);
+        Assert.Equal(1, acknowledgedPeriod.CompletedLate);
+        Assert.Equal(1, acknowledgedPeriod.NotCompleted);
+        Assert.Equal(33.33m, acknowledgedPeriod.OnTimeCompliancePercent);
+        Assert.Equal(66.67m, acknowledgedPeriod.ProgressPercent);
+        Assert.Contains(acknowledgedPeriod.Batches, batch =>
+            batch.Department == "STUDENT AFFAIRS OFFICE"
+            && batch.Scheduled == 2
+            && batch.Inspected == 2
+            && batch.FormStatus == "Acknowledged");
 
         var acknowledged = await context.PreventiveMaintenanceForms
             .SingleAsync(form => form.Id == DevelopmentDemoCatalog.FormIds[1]);
         Assert.Equal("Acknowledged", acknowledged.Status);
-        Assert.NotNull(await context.PreventiveMaintenanceAcknowledgements
-            .SingleOrDefaultAsync(acknowledgement => acknowledgement.FormId == acknowledged.Id));
+        Assert.Equal("2026-06", acknowledged.PmCycle);
+        Assert.Equal(2, await context.InspectionRecords.CountAsync(
+            inspection => inspection.PreventiveMaintenanceFormId == acknowledged.Id));
+        var onTimeEmergencyInspection = await context.InspectionRecords.SingleAsync(
+            inspection => inspection.ScheduleId == DevelopmentDemoCatalog.ScheduleIds[6]);
+        var lateEmergencyInspection = await context.InspectionRecords.SingleAsync(
+            inspection => inspection.ScheduleId == DevelopmentDemoCatalog.ScheduleIds[7]);
+        var onTimeDate = new DateTimeOffset(2026, 6, 20, 10, 0, 0, TimeSpan.FromHours(8));
+        var lateDate = new DateTimeOffset(2026, 7, 3, 10, 0, 0, TimeSpan.FromHours(8));
+        Assert.Equal(onTimeDate, onTimeEmergencyInspection.DateInspected);
+        Assert.Equal(onTimeDate, onTimeEmergencyInspection.CompletedAt);
+        Assert.Equal(lateDate, lateEmergencyInspection.DateInspected);
+        Assert.Equal(lateDate, lateEmergencyInspection.CompletedAt);
+        var acknowledgement = await context.PreventiveMaintenanceAcknowledgements
+            .SingleAsync(item => item.FormId == acknowledged.Id);
+        var submittedAt = new DateTimeOffset(2026, 7, 3, 11, 0, 0, TimeSpan.FromHours(8));
+        Assert.Equal(
+            new DateTimeOffset(2026, 7, 26, 9, 0, 0, TimeSpan.FromHours(8)),
+            acknowledgement.AcknowledgedAt);
+        Assert.Equal(submittedAt, acknowledged.SubmittedAt);
+        Assert.True(acknowledgement.AcknowledgedAt > submittedAt);
 
         var distinctQrValues = await context.Assets
             .Where(asset => scenarioAAssetIds.Contains(asset.Id))
@@ -113,7 +171,7 @@ public sealed class DevelopmentDemoSeederTests
         var first = await seeder.ResetAsync();
         var second = await seeder.ResetAsync();
 
-        Assert.Equal(new DevelopmentDemoResetResult(9, 9, 6, 2, 1), first);
+        Assert.Equal(new DevelopmentDemoResetResult(9, 9, 5, 2, 1), first);
         Assert.Equal(new DevelopmentDemoResetResult(0, 0, 0, 0, 0), second);
         await using var verificationContext = factory.CreateDbContext();
         Assert.NotNull(await verificationContext.Assets.FindAsync(unrelatedAssetId));
@@ -138,7 +196,7 @@ public sealed class DevelopmentDemoSeederTests
 
         var reset = await seeder.ResetAsync();
 
-        Assert.Equal(new DevelopmentDemoResetResult(9, 9, 6, 3, 1), reset);
+        Assert.Equal(new DevelopmentDemoResetResult(9, 9, 5, 3, 1), reset);
         await using (var resetContext = factory.CreateDbContext())
         {
             Assert.Null(await resetContext.PreventiveMaintenanceForms.FindAsync(abandonedFormId));
@@ -234,7 +292,7 @@ public sealed class DevelopmentDemoSeederTests
         await using var context = factory.CreateDbContext();
         Assert.Equal(9, await context.Assets.CountAsync());
         Assert.Equal(9, await context.PreventiveMaintenanceSchedules.CountAsync());
-        Assert.Equal(6, await context.InspectionRecords.CountAsync());
+        Assert.Equal(5, await context.InspectionRecords.CountAsync());
         Assert.Equal(2, await context.PreventiveMaintenanceForms.CountAsync());
         Assert.Equal(1, await context.PreventiveMaintenanceAcknowledgements.CountAsync());
         Assert.False(await context.PreventiveMaintenanceForms.AnyAsync(form =>

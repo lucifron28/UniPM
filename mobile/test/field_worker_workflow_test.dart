@@ -10,6 +10,29 @@ import 'package:mobile/features/preventive_maintenance/preventive_maintenance_re
 
 const testUserId = '11111111-1111-4111-8111-111111111111';
 
+int _cycleYear(String pmCycle) => int.parse(pmCycle.substring(0, 4));
+int _cycleMonth(String pmCycle) => int.parse(pmCycle.substring(5, 7));
+
+String _quarterForCycle(String pmCycle) =>
+    'Q${((_cycleMonth(pmCycle) - 1) ~/ 3) + 1}';
+
+String _academicYearForCycle(String pmCycle) {
+  final year = _cycleYear(pmCycle);
+  final startYear = _cycleMonth(pmCycle) >= 7 ? year : year - 1;
+  return '$startYear-${startYear + 1}';
+}
+
+DateTime _deadlineForCycle(String pmCycle) => DateTime.utc(
+  _cycleYear(pmCycle),
+  _cycleMonth(pmCycle) + 1,
+  0,
+  15,
+  59,
+  59,
+  999,
+  999,
+);
+
 AuthUser createTestUser({List<String> roles = const ['Inspector']}) => AuthUser(
   id: testUserId,
   email: 'inspector@university.edu.test',
@@ -22,7 +45,7 @@ PreventiveMaintenanceForm createTestForm({
   String status = 'Draft',
   String assetCategory = 'fire-extinguisher',
   String department = 'College of Science',
-  String pmCycle = '2026-06',
+  String pmCycle = '2026-05',
   int rowCount = 2,
 }) => PreventiveMaintenanceForm(
   id: id,
@@ -32,10 +55,10 @@ PreventiveMaintenanceForm createTestForm({
   department: department,
   pmCycle: pmCycle,
   periodType: 'Quarter',
-  quarter: 'Q2',
+  quarter: _quarterForCycle(pmCycle),
   semester: null,
-  year: 2026,
-  academicYear: '2025-2026',
+  year: _cycleYear(pmCycle),
+  academicYear: _academicYearForCycle(pmCycle),
   status: status,
   createdByUserId: testUserId,
   submittedByUserId: status == 'Submitted' ? testUserId : null,
@@ -66,18 +89,18 @@ ScheduleOption createTestSchedule({
   required String assetCode,
   String assetCategory = 'fire-extinguisher',
   String department = 'College of Science',
-  String pmCycle = '2026-06',
+  String pmCycle = '2026-05',
 }) => ScheduleOption(
   id: id,
   assetId: assetId,
-  scheduleDate: DateTime(2026, 6, 15),
+  scheduleDate: _deadlineForCycle(pmCycle),
   pmCycle: pmCycle,
   periodType: 'Quarter',
   status: 'Due',
-  quarter: 'Q2',
+  quarter: _quarterForCycle(pmCycle),
   semester: null,
-  year: 2026,
-  academicYear: '2025-2026',
+  year: _cycleYear(pmCycle),
+  academicYear: _academicYearForCycle(pmCycle),
   assignedToUserId: testUserId,
   asset: ScheduleAssetOption(
     id: assetId,
@@ -260,7 +283,7 @@ void main() {
                   assetCode: 'FE-CS-005',
                   department: 'College of Science',
                   assetCategory: 'fire-extinguisher',
-                  pmCycle: '2026-06',
+                  pmCycle: '2026-05',
                   completedCount: 4,
                   totalCount: 6,
                   onNextAsset: () => nextAssetCalled = true,
@@ -313,7 +336,7 @@ void main() {
         assetId: 'asset-uuid',
         assetCode: 'FE-01',
         department: 'Engineering',
-        pmCycle: '2026-06',
+        pmCycle: '2026-05',
       );
 
       final grouping = PreventiveMaintenanceGrouping.fromAssetAndSchedule(
@@ -325,21 +348,21 @@ void main() {
         id: 'form-1',
         department: 'Engineering',
         assetCategory: 'fire-extinguisher',
-        pmCycle: '2026-06',
+        pmCycle: '2026-05',
       );
 
       final differentCycleForm = createTestForm(
         id: 'form-2',
         department: 'Engineering',
         assetCategory: 'fire-extinguisher',
-        pmCycle: '2026-09',
+        pmCycle: '2026-08',
       );
 
       final differentDeptForm = createTestForm(
         id: 'form-3',
         department: 'Nursing',
         assetCategory: 'fire-extinguisher',
-        pmCycle: '2026-06',
+        pmCycle: '2026-05',
       );
 
       expect(grouping.matches(matchingForm), isTrue);

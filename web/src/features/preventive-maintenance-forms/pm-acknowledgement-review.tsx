@@ -192,7 +192,7 @@ function Summary({
           value={formatNumber(batch.completedOnTime)}
         />
         <DetailItem
-          label="On-time compliance"
+          label="Compliance rate"
           value={formatPercent(batch.onTimeCompliancePercent)}
         />
         <DetailItem

@@ -85,7 +85,7 @@ public static class DevelopmentDemoCatalog
             "DEMO-EL-003",
             "emergency-light",
             "Administration Building",
-            "Student Affairs Office",
+            "Campus Facilities",
             "Third Floor Exit Hall",
             "UNIPM-DEMO-EL-003")
     ];
@@ -115,8 +115,7 @@ public static class DevelopmentDemoCatalog
         Guid.Parse("24000000-0000-4000-8000-000000000002"),
         Guid.Parse("24000000-0000-4000-8000-000000000003"),
         Guid.Parse("34000000-0000-4000-8000-000000000001"),
-        Guid.Parse("34000000-0000-4000-8000-000000000002"),
-        Guid.Parse("34000000-0000-4000-8000-000000000003")
+        Guid.Parse("34000000-0000-4000-8000-000000000002")
     ];
 
     internal static Guid AcknowledgementId { get; } =

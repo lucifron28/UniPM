@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using UniPM.Api.Features.PreventiveMaintenanceForms;
+using UniPM.Api.Features.ReferenceData;
 using UniPM.Api.Features.Schedules;
 using UniPM.Api.Models;
 
@@ -106,18 +107,28 @@ internal sealed class DevelopmentDemoSeeder(
         {
             var asset = DevelopmentDemoCatalog.Assets[index];
             var scheduleId = DevelopmentDemoCatalog.ScheduleIds[index];
-            var scheduleDate = asset.Scenario switch
+            var pmCycle = asset.Scenario switch
             {
-                "scenario-a" => AtManila(2026, 9, 15, 8),
-                "scenario-b" => AtManila(2026, 8, 15, 8),
-                _ => AtManila(2026, 7, 15, 8)
+                "scenario-a" => "2026-11",
+                "scenario-b" => "2026-08",
+                "scenario-c" => "2026-06",
+                _ => throw new InvalidOperationException($"Unsupported demo scenario '{asset.Scenario}'.")
             };
+            if (!PreventiveMaintenanceCycle.TryParse(pmCycle, out var year, out var month)
+                || !CpmpScheduleFrequency.IsValid(asset.AssetCategory, month))
+            {
+                throw new InvalidOperationException(
+                    $"Demo PM cycle '{pmCycle}' is invalid for asset category '{asset.AssetCategory}'.");
+            }
+
+            var scheduleDate = PreventiveMaintenanceCycle.DeadlineForCycle(pmCycle);
             DateTimeOffset? completedAt = asset.Scenario switch
             {
                 "scenario-b" when index == 3 => AtManila(2026, 8, 20, 10),
                 "scenario-b" when index == 4 => AtManila(2026, 8, 27, 11),
                 "scenario-b" => AtManila(2026, 9, 2, 9),
-                "scenario-c" => AtManila(2026, 7, 20 + (index - 6), 10),
+                "scenario-c" when index == 6 => AtManila(2026, 6, 20, 10),
+                "scenario-c" when index == 7 => AtManila(2026, 7, 3, 10),
                 _ => null
             };
 
@@ -126,10 +137,10 @@ internal sealed class DevelopmentDemoSeeder(
                 Id = scheduleId,
                 AssetId = asset.Id,
                 ScheduleDate = scheduleDate,
-                PmCycle = scheduleDate.ToString("yyyy-MM"),
+                PmCycle = pmCycle,
                 PeriodType = "Quarter",
-                Quarter = "Q3",
-                Year = 2026,
+                Quarter = $"Q{(month - 1) / 3 + 1}",
+                Year = year,
                 AcademicYear = "2026-2027",
                 Status = completedAt is null ? ScheduleStatusCatalog.Due : ScheduleStatusCatalog.Completed,
                 AssignedToUserId = inspectorId,
@@ -161,7 +172,7 @@ internal sealed class DevelopmentDemoSeeder(
             SubmittedByUserId = inspectorId,
             FieldWorkCompletedAt = AtManila(2026, 9, 2, 9),
             SubmittedAt = AtManila(2026, 9, 2, 10),
-            CreatedAt = AtManila(2026, 8, 15, 8),
+            CreatedAt = AtManila(2026, 8, 20, 8),
             UpdatedAt = AtManila(2026, 9, 2, 10)
         };
     }
@@ -171,21 +182,21 @@ internal sealed class DevelopmentDemoSeeder(
         return new PreventiveMaintenanceForm
         {
             Id = DevelopmentDemoCatalog.FormIds[1],
-            FileNumber = "PM-2026-DEMO-0701",
+            FileNumber = "PM-2026-DEMO-0601",
             AssetCategory = "emergency-light",
             Building = "Administration Building",
             Department = "Student Affairs Office",
-            PmCycle = "2026-07",
+            PmCycle = "2026-06",
             PeriodType = "Quarter",
-            Quarter = "Q3",
+            Quarter = "Q2",
             Year = 2026,
             AcademicYear = "2026-2027",
             Status = PreventiveMaintenanceFormStatusCatalog.Acknowledged,
             CreatedByUserId = inspectorId,
             SubmittedByUserId = inspectorId,
-            FieldWorkCompletedAt = AtManila(2026, 7, 22, 10),
-            SubmittedAt = AtManila(2026, 7, 22, 11),
-            CreatedAt = AtManila(2026, 7, 15, 8),
+            FieldWorkCompletedAt = AtManila(2026, 7, 3, 10),
+            SubmittedAt = AtManila(2026, 7, 3, 11),
+            CreatedAt = AtManila(2026, 6, 20, 8),
             UpdatedAt = AtManila(2026, 7, 26, 9)
         };
     }
@@ -200,9 +211,8 @@ internal sealed class DevelopmentDemoSeeder(
             AtManila(2026, 8, 20, 10),
             AtManila(2026, 8, 27, 11),
             AtManila(2026, 9, 2, 9),
-            AtManila(2026, 7, 20, 10),
-            AtManila(2026, 7, 21, 10),
-            AtManila(2026, 7, 22, 10)
+            AtManila(2026, 6, 20, 10),
+            AtManila(2026, 7, 3, 10)
         };
         var remarks = new[]
         {
@@ -210,8 +220,7 @@ internal sealed class DevelopmentDemoSeeder(
             "Safety pin seal is worn and should be replaced.",
             "Mounting bracket is loose near the archives room entrance.",
             "Emergency light passed the simulated power interruption test.",
-            "Battery duration was below the expected inspection interval.",
-            "Exit illumination remained stable during the test."
+            "Battery duration was below the expected inspection interval."
         };
         var recommendations = new[]
         {
@@ -219,15 +228,15 @@ internal sealed class DevelopmentDemoSeeder(
             "Replace the tamper seal during corrective servicing.",
             "Secure or replace the mounting bracket.",
             null,
-            "Schedule battery replacement and repeat the duration test.",
-            null
+            "Schedule battery replacement and repeat the duration test."
         };
-        var operational = new[] { false, true, false, true, false, true };
+        var operational = new[] { false, true, false, true, false };
+        var assetIndexes = new[] { 3, 4, 5, 6, 7 };
         var inspections = new List<InspectionRecord>();
 
-        for (var index = 0; index < DevelopmentDemoCatalog.InspectionIds.Count; index++)
+        for (var index = 0; index < assetIndexes.Length; index++)
         {
-            var assetIndex = index + 3;
+            var assetIndex = assetIndexes[index];
             inspections.Add(new InspectionRecord
             {
                 Id = DevelopmentDemoCatalog.InspectionIds[index],
@@ -306,7 +315,12 @@ internal sealed class DevelopmentDemoSeeder(
         }
 
         var formIds = DevelopmentDemoCatalog.FormIds.ToHashSet();
-        var fileNumbers = new[] { "PM-2026-DEMO-0801", "PM-2026-DEMO-0701" };
+        var fileNumbers = new[]
+        {
+            "PM-2026-DEMO-0801",
+            "PM-2026-DEMO-0601",
+            "PM-2026-DEMO-0701"
+        };
         var formConflicts = await context.PreventiveMaintenanceForms
             .AsNoTracking()
             .Where(form => form.FileNumber != null && fileNumbers.Contains(form.FileNumber))

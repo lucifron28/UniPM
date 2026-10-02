@@ -5,6 +5,7 @@ using UniPM.Api.Features;
 using UniPM.Api.Models;
 using UniPM.Api.Features.Auth;
 using UniPM.Api.Features.Assets;
+using UniPM.Api.Features.ReferenceData;
 
 namespace UniPM.Api.Features.Schedules;
 
@@ -52,6 +53,20 @@ public static class SchedulesEndpoints
                 return ApiErrors.NotFound("Asset not found.");
             }
 
+            var pmCycle = dto.ResolvePmCycle();
+            PreventiveMaintenanceCycle.TryParse(pmCycle, out _, out var cycleMonth);
+            var scheduledMonths = CpmpScheduleFrequency.GetMonths(asset.AssetCategory);
+            if (!CpmpScheduleFrequency.IsValid(asset.AssetCategory, cycleMonth))
+            {
+                var message = scheduledMonths.Count == 0
+                    ? "A CPMP schedule frequency is not defined for this asset category."
+                    : $"PM cycle month must be one of {string.Join(", ", scheduledMonths.Select(month => month.ToString("00")))} for this asset category.";
+                return ApiErrors.Validation(new Dictionary<string, string[]>
+                {
+                    [nameof(dto.PmCycle)] = [message]
+                });
+            }
+
             if (asset.Status != AssetStatusCatalog.Active)
             {
                 return ApiErrors.Validation(new Dictionary<string, string[]>
@@ -69,7 +84,6 @@ public static class SchedulesEndpoints
             }
 
             var now = DateTimeOffset.UtcNow;
-            var pmCycle = PreventiveMaintenanceCycle.FromScheduleDate(dto.ScheduleDate);
             PreventiveMaintenanceCycle.TryParse(pmCycle, out var year, out var month);
             var quarter = $"Q{((month - 1) / 3) + 1}";
             var periodType = SchedulePeriodTypeCatalog.TryNormalize(
@@ -83,7 +97,7 @@ public static class SchedulesEndpoints
                 Id = Guid.NewGuid(),
                 AssetId = dto.AssetId,
                 Asset = asset,
-                ScheduleDate = dto.ScheduleDate,
+                ScheduleDate = PreventiveMaintenanceCycle.DeadlineForCycle(pmCycle),
                 PmCycle = pmCycle,
                 PeriodType = periodType,
                 Quarter = periodType == SchedulePeriodTypeCatalog.Quarter ? quarter : null,
@@ -451,7 +465,8 @@ public sealed record ScheduleAssetResponse(
 public class CreateScheduleDto
 {
     public Guid AssetId { get; set; }
-    public DateTimeOffset ScheduleDate { get; set; }
+    public DateTimeOffset? ScheduleDate { get; set; }
+    public string? PmCycle { get; set; }
     public string PeriodType { get; set; } = string.Empty;
     public string? Quarter { get; set; }
     public int? Year { get; set; }
@@ -465,9 +480,16 @@ public class CreateScheduleDto
             errors.Add(nameof(AssetId), ["Asset ID is required."]);
         }
 
-        if (ScheduleDate == default)
+        var hasPmCycle = !string.IsNullOrWhiteSpace(PmCycle);
+        var hasScheduleDate = ScheduleDate.HasValue && ScheduleDate.Value != default;
+        if (ScheduleDate.HasValue && ScheduleDate.Value == default)
         {
-            errors.Add(nameof(ScheduleDate), ["Schedule date is required."]);
+            errors[nameof(ScheduleDate)] = ["Schedule date must be valid."];
+        }
+
+        if (!hasPmCycle && !hasScheduleDate)
+        {
+            errors[nameof(ScheduleDate)] = ["Provide a schedule date or PM cycle."];
         }
 
         var hasSupportedPeriodType = SchedulePeriodTypeCatalog.TryNormalize(
@@ -487,16 +509,32 @@ public class CreateScheduleDto
             errors.Add(nameof(Quarter), ["Quarter must be one of Q1, Q2, Q3, or Q4."]);
         }
 
-        if (ScheduleDate != default)
+        string? cycleForValidation = null;
+        if (hasPmCycle)
         {
-            var pmCycle = PreventiveMaintenanceCycle.FromScheduleDate(ScheduleDate);
-            PreventiveMaintenanceCycle.TryParse(pmCycle, out var cycleYear, out var cycleMonth);
+            if (!PreventiveMaintenanceCycle.TryParse(PmCycle, out _, out _))
+            {
+                errors[nameof(PmCycle)] = ["PM cycle must use the yyyy-MM format."];
+            }
+            else
+            {
+                cycleForValidation = PmCycle!.Trim();
+            }
+        }
+        else if (hasScheduleDate)
+        {
+            cycleForValidation = PreventiveMaintenanceCycle.FromScheduleDate(ScheduleDate!.Value);
+        }
+
+        if (cycleForValidation is not null
+            && PreventiveMaintenanceCycle.TryParse(cycleForValidation, out var cycleYear, out var cycleMonth))
+        {
             var expectedQuarter = $"Q{((cycleMonth - 1) / 3) + 1}";
             var maxPlanningYear = DateTimeOffset.UtcNow.Year + 5;
             var yearErrors = new List<string>();
             if (Year is not null && Year != cycleYear)
             {
-                yearErrors.Add("Year must match the schedule date's PM cycle.");
+                yearErrors.Add("Year must match the PM cycle.");
             }
 
             if (cycleYear < 2000 || cycleYear > maxPlanningYear)
@@ -514,7 +552,15 @@ public class CreateScheduleDto
                 && normalizedQuarter is not null
                 && normalizedQuarter != expectedQuarter)
             {
-                errors[nameof(Quarter)] = ["Quarter must match the schedule date's PM cycle."];
+                errors[nameof(Quarter)] = ["Quarter must match the PM cycle."];
+            }
+
+            if (hasPmCycle && hasScheduleDate
+                && !PreventiveMaintenanceCycle.Matches(
+                    cycleForValidation,
+                    PreventiveMaintenanceCycle.FromScheduleDate(ScheduleDate!.Value)))
+            {
+                errors[nameof(PmCycle)] = ["PM cycle must match the schedule date's PM cycle in Asia/Manila time."];
             }
         }
 
@@ -524,5 +570,20 @@ public class CreateScheduleDto
         }
 
         return errors;
+    }
+
+    internal string ResolvePmCycle()
+    {
+        if (!string.IsNullOrWhiteSpace(PmCycle))
+        {
+            return PmCycle.Trim();
+        }
+
+        if (ScheduleDate is { } scheduleDate && scheduleDate != default)
+        {
+            return PreventiveMaintenanceCycle.FromScheduleDate(scheduleDate);
+        }
+
+        throw new InvalidOperationException("A valid PM cycle is required before a schedule can be created.");
     }
 }

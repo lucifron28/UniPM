@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { useState } from 'react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
@@ -41,6 +41,12 @@ const asset = {
   status: 'Active',
   createdAt: '2026-07-22T00:00:00Z',
   updatedAt: '2026-07-22T00:00:00Z',
+}
+const fireAlarmAsset = {
+  ...asset,
+  id: '99999999-9999-4999-8999-999999999999',
+  assetCode: 'FA-001',
+  assetCategory: 'fire-alarm',
 }
 const schedule = {
   id: scheduleId,
@@ -110,6 +116,20 @@ function mockReferences(roles = ['GSD']) {
         : HttpResponse.json({}, { status: 403 }),
     ),
     http.get(`${base}/assets`, () => HttpResponse.json([asset])),
+    http.get(`${base}/reference-data/asset-categories`, () =>
+      HttpResponse.json([
+        {
+          code: 'fire-extinguisher',
+          displayName: 'Fire extinguishers',
+          scheduledMonths: [2, 5, 8, 11],
+        },
+        {
+          code: 'fire-alarm',
+          displayName: 'Fire alarms',
+          scheduledMonths: [6, 12],
+        },
+      ]),
+    ),
     http.get(`${base}/reference-data/schedule-statuses`, () =>
       HttpResponse.json([
         { code: 'Due', displayName: 'Due' },
@@ -337,45 +357,93 @@ describe('schedule workflows', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('derives year and quarter from the date and clears quarter for annual schedules', async () => {
+  it('clears the selected month when the asset category changes', async () => {
+    server.use(
+      http.get(`${base}/assets`, () =>
+        HttpResponse.json([asset, fireAlarmAsset]),
+      ),
+    )
+
+    renderWithProviders(<ScheduleCreate />)
+    const actor = userEvent.setup()
+    const assetSelect = await screen.findByLabelText('Asset')
+    const monthSelect = screen.getByLabelText('Scheduled month')
+    const yearInput = screen.getByLabelText('Scheduled year')
+    await actor.selectOptions(assetSelect, assetId)
+    await actor.type(yearInput, '2026')
+    await actor.selectOptions(monthSelect, '8')
+    expect(monthSelect).toHaveValue('8')
+    expect(screen.getByLabelText('Due date')).toHaveValue('Aug 31, 2026')
+
+    await actor.selectOptions(assetSelect, fireAlarmAsset.id)
+    expect(monthSelect).toHaveValue('')
+    expect(
+      [...(monthSelect as HTMLSelectElement).options].map(
+        (option) => option.value,
+      ),
+    ).toEqual(['', '6', '12'])
+    expect(screen.getByLabelText('Due date')).toHaveValue(
+      'Choose a scheduled year and month',
+    )
+  })
+
+  it('creates a schedule from the selected cycle without an exact date', async () => {
     let requestBody: unknown
     server.use(
+      http.get(`${base}/assets`, () => HttpResponse.json([asset])),
       http.post(`${base}/schedules`, async ({ request }) => {
         requestBody = await request.json()
-        return HttpResponse.json({
-          ...schedule,
-          periodType: 'Annual',
-          quarter: null,
-        })
+        return HttpResponse.json(schedule)
       }),
     )
     renderWithProviders(<ScheduleCreate />)
     const actor = userEvent.setup()
-    await screen.findByLabelText('Asset')
-    fireEvent.change(screen.getByLabelText('Asset'), {
-      target: { value: assetId },
-    })
-    fireEvent.change(screen.getByLabelText('Schedule date'), {
-      target: { value: '2026-08-01' },
-    })
-    expect(screen.getByLabelText('Year')).toHaveValue(2026)
-    expect(screen.getByLabelText('Quarter')).toHaveValue('Q3')
-    fireEvent.change(screen.getByLabelText('Period type'), {
-      target: { value: 'Annual' },
-    })
-    expect(screen.queryByLabelText('Quarter')).not.toBeInTheDocument()
+    await actor.selectOptions(await screen.findByLabelText('Asset'), assetId)
+    await actor.type(screen.getByLabelText('Scheduled year'), '2026')
+    await actor.selectOptions(screen.getByLabelText('Scheduled month'), '8')
+    expect(screen.getByLabelText('Due date')).toHaveValue('Aug 31, 2026')
+    expect(screen.queryByLabelText('Schedule date')).not.toBeInTheDocument()
+    expect(document.querySelector('input[type="date"]')).toBeNull()
     await actor.click(screen.getByRole('button', { name: 'Create schedule' }))
     await vi.waitFor(() =>
       expect(requestBody).toMatchObject({
         assetId,
-        periodType: 'Annual',
-        quarter: null,
+        pmCycle: '2026-08',
+        periodType: 'Quarter',
+        quarter: 'Q3',
         year: 2026,
       }),
     )
     expect(Object.keys(requestBody as object).sort()).toEqual(
-      ['assetId', 'periodType', 'quarter', 'scheduleDate', 'year'].sort(),
+      ['assetId', 'periodType', 'quarter', 'pmCycle', 'year'].sort(),
     )
+  })
+
+  it('blocks schedule creation when the category response has no allowed months', async () => {
+    let postCalled = false
+    server.use(
+      http.get(`${base}/reference-data/asset-categories`, () =>
+        HttpResponse.json([
+          { code: 'fire-extinguisher', displayName: 'Fire extinguishers' },
+        ]),
+      ),
+      http.post(`${base}/schedules`, () => {
+        postCalled = true
+        return HttpResponse.json(schedule)
+      }),
+    )
+
+    renderWithProviders(<ScheduleCreate />)
+    const actor = userEvent.setup()
+    await actor.selectOptions(await screen.findByLabelText('Asset'), assetId)
+    expect(screen.getByLabelText('Scheduled month')).toBeDisabled()
+    expect(
+      screen.getByText(
+        /Allowed PM months are unavailable for this asset category/,
+      ),
+    ).toBeInTheDocument()
+    await actor.click(screen.getByRole('button', { name: 'Create schedule' }))
+    expect(postCalled).toBe(false)
   })
 
   it('offers only active assets with a department for scheduling', async () => {

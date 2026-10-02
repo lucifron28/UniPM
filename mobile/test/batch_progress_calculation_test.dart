@@ -22,6 +22,29 @@ const testInspection1Id = '55555555-5555-4555-8555-555555555551';
 const testAsset1Id = '66666666-6666-4666-8666-666666666661';
 const testAsset2Id = '66666666-6666-4666-8666-666666666662';
 const testLocationAttemptId = '77777777-7777-4777-8777-777777777777';
+
+int _cycleYear(String pmCycle) => int.parse(pmCycle.substring(0, 4));
+int _cycleMonth(String pmCycle) => int.parse(pmCycle.substring(5, 7));
+
+String _quarterForCycle(String pmCycle) =>
+    'Q${((_cycleMonth(pmCycle) - 1) ~/ 3) + 1}';
+
+String _academicYearForCycle(String pmCycle) {
+  final year = _cycleYear(pmCycle);
+  final startYear = _cycleMonth(pmCycle) >= 7 ? year : year - 1;
+  return '$startYear-${startYear + 1}';
+}
+
+DateTime _deadlineForCycle(String pmCycle) => DateTime.utc(
+  _cycleYear(pmCycle),
+  _cycleMonth(pmCycle) + 1,
+  0,
+  15,
+  59,
+  59,
+  999,
+  999,
+);
 AuthUser testUser({List<String> roles = const ['Inspector']}) => AuthUser(
   id: testInspectorId,
   email: 'inspector@example.test',
@@ -52,34 +75,37 @@ ScheduleOption makeSchedule({
   required String id,
   required String assetCode,
   String status = 'Due',
-  String? pmCycle = '2026-06',
+  String? pmCycle = '2026-05',
   DateTime? scheduleDate,
   String periodType = 'Quarter',
   String? quarter = 'Q2',
   String department = 'GSD',
   String assetCategory = 'fire-extinguisher',
   String? assignedToUserId,
-}) => ScheduleOption(
-  id: id,
-  assetId: '88888888-8888-4888-8888-888888888888',
-  scheduleDate: scheduleDate ?? DateTime.utc(2026, 6, 15),
-  pmCycle: pmCycle,
-  periodType: periodType,
-  status: status,
-  quarter: quarter,
-  semester: null,
-  year: 2026,
-  academicYear: '2025-2026',
-  assignedToUserId: assignedToUserId,
-  asset: ScheduleAssetOption(
-    id: '88888888-8888-4888-8888-888888888888',
-    assetCode: assetCode,
-    assetCategory: assetCategory,
-    building: 'Main Building',
-    department: department,
-    location: 'Floor 1',
-  ),
-);
+}) {
+  final cycleForDate = pmCycle ?? '2026-05';
+  return ScheduleOption(
+    id: id,
+    assetId: '88888888-8888-4888-8888-888888888888',
+    scheduleDate: scheduleDate ?? _deadlineForCycle(cycleForDate),
+    pmCycle: pmCycle,
+    periodType: periodType,
+    status: status,
+    quarter: periodType == 'Quarter' ? _quarterForCycle(cycleForDate) : quarter,
+    semester: null,
+    year: _cycleYear(cycleForDate),
+    academicYear: _academicYearForCycle(cycleForDate),
+    assignedToUserId: assignedToUserId,
+    asset: ScheduleAssetOption(
+      id: '88888888-8888-4888-8888-888888888888',
+      assetCode: assetCode,
+      assetCategory: assetCategory,
+      building: 'Main Building',
+      department: department,
+      location: 'Floor 1',
+    ),
+  );
+}
 
 PreventiveMaintenanceInspection makeInspection({
   required String id,
@@ -106,22 +132,24 @@ PreventiveMaintenanceForm makeForm({
   String status = 'Draft',
   String assetCategory = 'fire-extinguisher',
   String department = 'GSD',
-  String? pmCycle = '2026-06',
+  String? pmCycle = '2026-05',
   List<PreventiveMaintenanceInspection> inspections = const [],
 }) {
+  final cycleForForm = pmCycle ?? '2026-05';
   final now = DateTime.utc(2026, 6, 15);
   return PreventiveMaintenanceForm(
     id: id,
-    fileNumber: 'PM-2026-06-001',
+    fileNumber:
+        'PM-${_cycleYear(cycleForForm)}-${_cycleMonth(cycleForForm).toString().padLeft(2, '0')}-001',
     assetCategory: assetCategory,
     building: null,
     department: department,
     pmCycle: pmCycle,
     periodType: 'Quarter',
-    quarter: 'Q2',
+    quarter: _quarterForCycle(cycleForForm),
     semester: null,
-    year: 2026,
-    academicYear: '2025-2026',
+    year: _cycleYear(cycleForForm),
+    academicYear: _academicYearForCycle(cycleForForm),
     status: status,
     createdByUserId: testInspectorId,
     submittedByUserId: null,
@@ -300,8 +328,8 @@ void main() {
       final json = {
         'id': '11111111-1111-4111-8111-111111111111',
         'assetId': '22222222-2222-4222-8222-222222222222',
-        'scheduleDate': '2026-06-15T00:00:00.000Z',
-        'pmCycle': '2026-06',
+        'scheduleDate': '2026-05-31T15:59:59.9999999Z',
+        'pmCycle': '2026-05',
         'periodType': 'Quarter',
         'status': 'Due',
         'quarter': 'Q2',
@@ -321,7 +349,7 @@ void main() {
 
       final option = ScheduleOption.fromJson(json);
       expect(option.assignedToUserId, testAssignedUserId);
-      expect(option.pmCycle, '2026-06');
+      expect(option.pmCycle, '2026-05');
       expect(option.status, 'Due');
     });
 
@@ -329,7 +357,7 @@ void main() {
       final json = {
         'id': '11111111-1111-4111-8111-111111111111',
         'assetId': '22222222-2222-4222-8222-222222222222',
-        'scheduleDate': '2026-06-15T00:00:00.000Z',
+        'scheduleDate': '2026-05-31T15:59:59.9999999Z',
         'periodType': 'Quarter',
         'status': 'Due',
         'quarter': 'Q2',
@@ -543,14 +571,15 @@ void main() {
             id: testSchedule2Id,
             assetCode: 'FE-002',
             pmCycle: null,
-            scheduleDate: DateTime.utc(2026, 5, 31, 16),
+            scheduleDate: _deadlineForCycle('2026-05'),
             periodType: 'Annual',
             quarter: null,
           ),
           makeSchedule(
             id: testSchedule3Id,
             assetCode: 'FE-003',
-            pmCycle: '2026-07',
+            pmCycle: '2026-08',
+            quarter: 'Q3',
           ),
           makeSchedule(
             id: testCancelledScheduleId,
@@ -561,6 +590,7 @@ void main() {
             id: testOtherBatchScheduleId,
             assetCode: 'FE-005',
             pmCycle: '2026-08',
+            quarter: 'Q3',
           ),
         ],
       );
@@ -609,7 +639,7 @@ void main() {
               assetCode: 'FE-100',
               department: 'GSD',
               assetCategory: 'fire-extinguisher',
-              pmCycle: '2026-06',
+              pmCycle: '2026-05',
               completedCount: 3,
               totalCount: 10,
               onNextAsset: () => nextAssetTapped = true,
@@ -622,7 +652,8 @@ void main() {
       expect(find.text('Inspection Recorded'), findsOneWidget);
       expect(find.text('Asset FE-100 successfully inspected.'), findsOneWidget);
       expect(find.text('Department: GSD'), findsOneWidget);
-      expect(find.text('2026-06'), findsOneWidget);
+      expect(find.text('PM cycle: May 2026'), findsOneWidget);
+      expect(find.text('Due date: May 31, 2026'), findsOneWidget);
       expect(find.text('3 of 10 assets inspected'), findsOneWidget);
       expect(find.text('30%'), findsOneWidget);
 
@@ -641,7 +672,7 @@ void main() {
               assetCode: 'FE-101',
               department: 'GSD',
               assetCategory: 'fire-extinguisher',
-              pmCycle: '2026-06',
+              pmCycle: '2026-05',
               completedCount: 5,
               totalCount: 5,
               onNextAsset: () {},
@@ -664,7 +695,7 @@ void main() {
           id: testSchedule1Id,
           assetCode: 'FE-001',
           status: 'Due',
-          pmCycle: '2026-06',
+          pmCycle: '2026-05',
           assignedToUserId: testInspectorId,
         );
         final repository = TestProgressRepository(
@@ -690,7 +721,8 @@ void main() {
         // Check PM Cycle and schedule status in asset PM detail card
         expect(find.byKey(const Key('selected-pm-schedule')), findsOneWidget);
         expect(find.byKey(const Key('schedule-pm-cycle')), findsOneWidget);
-        expect(find.text('PM Cycle: 2026-06'), findsOneWidget);
+        expect(find.text('PM cycle: May 2026'), findsOneWidget);
+        expect(find.text('Due date: May 31, 2026'), findsOneWidget);
         expect(find.byKey(const Key('schedule-status')), findsOneWidget);
         expect(find.text('Schedule status: Due'), findsOneWidget);
 
@@ -708,7 +740,7 @@ void main() {
           id: testSchedule1Id,
           assetCode: 'FE-001',
           status: 'Ongoing',
-          pmCycle: '2026-06',
+          pmCycle: '2026-05',
           assignedToUserId: testInspectorId,
         );
         final existingInspection = makeInspection(
@@ -718,7 +750,7 @@ void main() {
         final existingDraftForm = makeForm(
           id: testFormId,
           status: 'Draft',
-          pmCycle: '2026-06',
+          pmCycle: '2026-05',
           inspections: [existingInspection],
         );
 
@@ -745,7 +777,8 @@ void main() {
         // Check PM Cycle and schedule status in asset PM detail card
         expect(find.byKey(const Key('selected-pm-schedule')), findsOneWidget);
         expect(find.byKey(const Key('schedule-pm-cycle')), findsOneWidget);
-        expect(find.text('PM Cycle: 2026-06'), findsOneWidget);
+        expect(find.text('PM cycle: May 2026'), findsOneWidget);
+        expect(find.text('Due date: May 31, 2026'), findsOneWidget);
         expect(find.byKey(const Key('schedule-status')), findsOneWidget);
         expect(find.text('Schedule status: Ongoing'), findsOneWidget);
 

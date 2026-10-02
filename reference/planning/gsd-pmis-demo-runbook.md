@@ -128,7 +128,8 @@ not split the batch.
 1. In the web application, show the asset records and their QR identifiers.
 2. Show the two Due schedules linked to the selected assets and confirm that
    they share the same canonical batch: department, asset category, and
-   `PmCycle`.
+   `PmCycle`. The selected month is the PM period. The displayed due date is
+   its month-end deadline, not the planned inspection day.
 3. On mobile, scan or enter the first asset QR identifier.
 4. Start a preventive-maintenance Draft and add the first inspection row.
 5. Add a second same-category asset row to the same form.
@@ -152,6 +153,28 @@ not split the batch.
 
 Run a short second walkthrough for a water drinking station. Show Date
 Accomplished and the carbon-filter, sediment-filter, and UV-light work items.
+
+## PM cycles and dashboard timing
+
+The scoped CPMP schedule months are February, May, August, and November for
+fire extinguishers and water drinking stations, and June and December for fire
+alarms and emergency lights. The selected month gives the `YYYY-MM` PM cycle.
+UniPM derives the deadline from the final instant of that month in
+Asia/Manila time. `InspectionRecord.CompletedAt` remains the actual field-work
+completion time.
+
+Explain the dashboard measures separately:
+
+- **Progress** is inspected divided by scheduled.
+- **Compliance rate** is completed on or before the month-end deadline divided
+  by all eligible non-cancelled scheduled assets in the selected official
+  scope.
+
+Before a period's deadline, its Compliance rate is not final yet. Progress may
+still be measurable. After the period closes, late completions and unfinished
+assets count against Compliance rate. The November Scenario A period is open
+before its November 30 deadline, while the August and June examples are closed.
+Acknowledgement does not change Compliance rate or Progress.
 
 ## File-number explanation
 
@@ -180,9 +203,11 @@ Proceed with the GSD demonstration only when:
 
 - the web and mobile applications use the same current API contract;
 - the selected assets and schedules are available;
+- the schedules show a selected CPMP month and its derived month-end due date;
 - the walkthrough schedules share one department, asset category, and `PmCycle`;
 - completed inspection rows have `InspectionRecord.CompletedAt` values and
   linked schedules are completed before form acknowledgement;
+- actual inspection dates are field-work dates and may differ from due dates;
 - submission assigns a provisional UniPM file number;
 - acknowledgement records receipt/noting, does not alter execution or compliance
   timestamps, and does not complete schedules;

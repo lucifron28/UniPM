@@ -26,7 +26,7 @@ public sealed class ScheduleQueryEndpointsTests
         var targetSchedule = await CreateScheduleAsync(
             client,
             fireExtinguisher.Id,
-            new DateTimeOffset(2026, 1, 15, 8, 0, 0, TimeSpan.Zero),
+            new DateTimeOffset(2026, 2, 15, 8, 0, 0, TimeSpan.Zero),
             " quarter ",
             " q1 ",
             2026);
@@ -34,13 +34,13 @@ public sealed class ScheduleQueryEndpointsTests
         await CreateScheduleAsync(
             client,
             emergencyLight.Id,
-            new DateTimeOffset(2026, 4, 15, 8, 0, 0, TimeSpan.Zero),
+            new DateTimeOffset(2026, 6, 15, 8, 0, 0, TimeSpan.Zero),
             "Quarter",
             "Q2",
             2026);
 
-        var from = Uri.EscapeDataString("2026-01-01T00:00:00Z");
-        var to = Uri.EscapeDataString("2026-03-31T23:59:59Z");
+        var from = Uri.EscapeDataString("2026-02-01T00:00:00Z");
+        var to = Uri.EscapeDataString("2026-02-28T23:59:59Z");
         var response = await client.GetAsync(
             $"/api/v1/schedules?assetId={fireExtinguisher.Id}&status=Due&from={from}&to={to}&quarter=Q1&year=2026");
 
@@ -68,7 +68,7 @@ public sealed class ScheduleQueryEndpointsTests
         var createdSchedule = await CreateScheduleAsync(
             client,
             asset.Id,
-            new DateTimeOffset(2026, 7, 1, 8, 0, 0, TimeSpan.Zero),
+            new DateTimeOffset(2026, 8, 1, 8, 0, 0, TimeSpan.Zero),
             "Quarter",
             "Q3",
             2026);
@@ -145,7 +145,7 @@ public sealed class ScheduleQueryEndpointsTests
         var response = await client.PostAsJsonAsync("/api/v1/schedules/", new
         {
             assetId = asset.Id,
-            scheduleDate = new DateTimeOffset(2026, 9, 1, 0, 0, 0, TimeSpan.FromHours(8)),
+            scheduleDate = new DateTimeOffset(2026, 8, 1, 0, 0, 0, TimeSpan.FromHours(8)),
             periodType = "Quarter"
         });
 
@@ -177,7 +177,7 @@ public sealed class ScheduleQueryEndpointsTests
         var response = await client.PostAsJsonAsync("/api/v1/schedules/", new
         {
             assetId,
-            scheduleDate = new DateTimeOffset(2026, 9, 1, 0, 0, 0, TimeSpan.FromHours(8)),
+            scheduleDate = new DateTimeOffset(2026, 11, 1, 0, 0, 0, TimeSpan.FromHours(8)),
             periodType = "Quarter"
         });
 
@@ -193,7 +193,7 @@ public sealed class ScheduleQueryEndpointsTests
         await using var application = new TestApplicationFactory();
         var client = application.CreateClient();
         var asset = await CreateAssetAsync(client, "FE-TEMPORAL", "fire-extinguisher");
-        var scheduleDate = new DateTimeOffset(2027, 1, 1, 0, 30, 0, TimeSpan.FromHours(14));
+        var scheduleDate = new DateTimeOffset(2026, 6, 1, 0, 30, 0, TimeSpan.FromHours(14));
 
         var created = await client.PostAsJsonAsync("/api/v1/schedules/", new
         {
@@ -204,9 +204,10 @@ public sealed class ScheduleQueryEndpointsTests
         created.EnsureSuccessStatusCode();
         var schedule = await created.Content.ReadFromJsonAsync<ScheduleResponse>();
         Assert.NotNull(schedule);
-        Assert.Equal("2026-12", schedule.PmCycle);
+        Assert.Equal("2026-05", schedule.PmCycle);
         Assert.Equal(2026, schedule.Year);
-        Assert.Equal("Q4", schedule.Quarter);
+        Assert.Equal("Q2", schedule.Quarter);
+        Assert.Equal(Deadline(2026, 5, 31), schedule.ScheduleDate);
 
         var conflicting = await client.PostAsJsonAsync("/api/v1/schedules/", new
         {
@@ -232,7 +233,7 @@ public sealed class ScheduleQueryEndpointsTests
             client,
             "FE-ANNUAL",
             "fire-extinguisher");
-        var scheduleDate = new DateTimeOffset(2027, 1, 1, 0, 30, 0, TimeSpan.FromHours(14));
+        var scheduleDate = new DateTimeOffset(2026, 6, 1, 0, 30, 0, TimeSpan.FromHours(14));
 
         var response = await client.PostAsJsonAsync("/api/v1/schedules/", new
         {
@@ -245,7 +246,7 @@ public sealed class ScheduleQueryEndpointsTests
         response.EnsureSuccessStatusCode();
         var schedule = await response.Content.ReadFromJsonAsync<ScheduleResponse>();
         Assert.NotNull(schedule);
-        Assert.Equal("2026-12", schedule.PmCycle);
+        Assert.Equal("2026-05", schedule.PmCycle);
         Assert.Equal(2026, schedule.Year);
         Assert.Null(schedule.Quarter);
     }
@@ -266,7 +267,7 @@ public sealed class ScheduleQueryEndpointsTests
             assetId = asset.Id,
             scheduleDate = new DateTimeOffset(
                 unsupportedYear,
-                1,
+                11,
                 1,
                 0,
                 0,
@@ -283,6 +284,140 @@ public sealed class ScheduleQueryEndpointsTests
         Assert.Contains(
             problem.Errors["Year"],
             message => message.Contains(maxPlanningYear.ToString()));
+    }
+
+    [Theory]
+    [InlineData("fire-extinguisher", "2026-02", "Quarter", 28, "Q1")]
+    [InlineData("fire-alarm", "2026-06", "Semester", 30, null)]
+    [InlineData("emergency-light", "2026-12", "Semester", 31, null)]
+    [InlineData("water-drinking-station", "2026-11", "Quarter", 30, "Q4")]
+    public async Task Create_schedule_accepts_a_valid_cpmp_cycle_and_derives_its_deadline(
+        string assetCategory,
+        string pmCycle,
+        string periodType,
+        int lastDay,
+        string? quarter)
+    {
+        await using var application = new TestApplicationFactory();
+        var client = application.CreateClient();
+        var asset = await CreateAssetAsync(client, $"CYCLE-{Guid.NewGuid():N}"[..12], assetCategory);
+
+        var response = await client.PostAsJsonAsync("/api/v1/schedules/", new
+        {
+            assetId = asset.Id,
+            pmCycle,
+            periodType
+        });
+
+        response.EnsureSuccessStatusCode();
+        var schedule = await response.Content.ReadFromJsonAsync<ScheduleResponse>();
+        Assert.NotNull(schedule);
+        Assert.Equal(pmCycle, schedule.PmCycle);
+        Assert.Equal(2026, schedule.Year);
+        Assert.Equal(quarter, schedule.Quarter);
+        Assert.Equal(Deadline(2026, int.Parse(pmCycle[^2..]), lastDay), schedule.ScheduleDate);
+    }
+
+    [Theory]
+    [InlineData("fire-extinguisher", "2026-06")]
+    [InlineData("fire-alarm", "2026-05")]
+    [InlineData("emergency-light", "2026-08")]
+    [InlineData("water-drinking-station", "2026-06")]
+    public async Task Create_schedule_rejects_a_cycle_month_outside_the_asset_category_frequency(
+        string assetCategory,
+        string pmCycle)
+    {
+        await using var application = new TestApplicationFactory();
+        var client = application.CreateClient();
+        var asset = await CreateAssetAsync(client, $"INVALID-{Guid.NewGuid():N}"[..12], assetCategory);
+
+        var response = await client.PostAsJsonAsync("/api/v1/schedules/", new
+        {
+            assetId = asset.Id,
+            pmCycle,
+            periodType = "Quarter"
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>();
+        Assert.NotNull(problem);
+        Assert.Contains("PmCycle", problem.Errors.Keys);
+        Assert.Contains(problem.Errors["PmCycle"], message => message.Contains("PM cycle month"));
+    }
+
+    [Theory]
+    [InlineData("fire-extinguisher", "2028-02", 29)]
+    [InlineData("fire-alarm", "2026-06", 30)]
+    [InlineData("fire-alarm", "2026-12", 31)]
+    public async Task Create_schedule_uses_the_calendar_month_end_for_the_pm_cycle(
+        string assetCategory,
+        string pmCycle,
+        int lastDay)
+    {
+        await using var application = new TestApplicationFactory();
+        var client = application.CreateClient();
+        var asset = await CreateAssetAsync(client, $"MONTH-{Guid.NewGuid():N}"[..12], assetCategory);
+
+        var response = await client.PostAsJsonAsync("/api/v1/schedules/", new
+        {
+            assetId = asset.Id,
+            pmCycle,
+            periodType = "Semester"
+        });
+
+        response.EnsureSuccessStatusCode();
+        var schedule = await response.Content.ReadFromJsonAsync<ScheduleResponse>();
+        Assert.NotNull(schedule);
+        Assert.Equal(Deadline(int.Parse(pmCycle[..4]), int.Parse(pmCycle[^2..]), lastDay), schedule.ScheduleDate);
+    }
+
+    [Fact]
+    public async Task Create_schedule_rejects_invalid_or_inconsistent_pm_cycles()
+    {
+        await using var application = new TestApplicationFactory();
+        var client = application.CreateClient();
+        var asset = await CreateAssetAsync(client, "FE-CYCLE-MISMATCH", "fire-extinguisher");
+
+        var invalid = await client.PostAsJsonAsync("/api/v1/schedules/", new
+        {
+            assetId = asset.Id,
+            pmCycle = "2026-13",
+            periodType = "Quarter"
+        });
+        var mismatch = await client.PostAsJsonAsync("/api/v1/schedules/", new
+        {
+            assetId = asset.Id,
+            pmCycle = "2026-02",
+            scheduleDate = new DateTimeOffset(2026, 5, 15, 8, 0, 0, TimeSpan.FromHours(8)),
+            periodType = "Quarter"
+        });
+        var matching = await client.PostAsJsonAsync("/api/v1/schedules/", new
+        {
+            assetId = asset.Id,
+            pmCycle = "2026-02",
+            scheduleDate = new DateTimeOffset(2026, 2, 15, 8, 0, 0, TimeSpan.FromHours(8)),
+            periodType = "Quarter"
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, invalid.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, mismatch.StatusCode);
+        matching.EnsureSuccessStatusCode();
+        var matchingSchedule = await matching.Content.ReadFromJsonAsync<ScheduleResponse>();
+        Assert.NotNull(matchingSchedule);
+        Assert.Equal("2026-02", matchingSchedule.PmCycle);
+        Assert.Equal(Deadline(2026, 2, 28), matchingSchedule.ScheduleDate);
+        var invalidProblem = await invalid.Content.ReadFromJsonAsync<ValidationProblemDetails>();
+        var mismatchProblem = await mismatch.Content.ReadFromJsonAsync<ValidationProblemDetails>();
+        Assert.NotNull(invalidProblem);
+        Assert.NotNull(mismatchProblem);
+        Assert.Contains("PmCycle", invalidProblem.Errors.Keys);
+        Assert.Contains("PmCycle", mismatchProblem.Errors.Keys);
+    }
+
+    private static DateTimeOffset Deadline(int year, int month, int lastDay)
+    {
+        return new DateTimeOffset(year, month, lastDay, 23, 59, 59, TimeSpan.FromHours(8))
+            .AddTicks(TimeSpan.TicksPerSecond - 1);
     }
 
     private static async Task<AssetResponse> CreateAssetAsync(

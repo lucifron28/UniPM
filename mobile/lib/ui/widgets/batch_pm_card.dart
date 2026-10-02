@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+
 import '../app_colors.dart';
 import '../display_labels.dart';
+import '../../features/preventive_maintenance/pm_cycle_presentation.dart';
 import 'status_badge.dart';
 import 'pm_progress_indicator.dart';
 
@@ -35,6 +37,11 @@ class BatchPmCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final formattedCycle = formatPmCycle(pmCycle);
+    final cycleLabel = formattedCycle == 'Not recorded'
+        ? 'Cycle: $pmCycle'
+        : 'PM cycle: $formattedCycle';
+
     return Card(
       child: InkWell(
         onTap: onTap,
@@ -79,13 +86,16 @@ class BatchPmCard extends StatelessWidget {
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.surfaceMuted,
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
-                      'Cycle: $pmCycle',
+                      cycleLabel,
                       style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
@@ -108,6 +118,14 @@ class BatchPmCard extends StatelessWidget {
                     ),
                   ],
                 ],
+              ),
+              const SizedBox(height: 14),
+              Text(
+                'Due date: ${formatPmCycleDueDate(pmCycle)}',
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textSecondary,
+                ),
               ),
               const SizedBox(height: 14),
               PmProgressIndicator(

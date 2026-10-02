@@ -15,12 +15,16 @@ M1 is finished and merged. M2 is finished and merged. M3 is current.
 
 ## Preventive-Maintenance Workflow
 
-1. GSD creates and manages a preventive-maintenance schedule.
+1. GSD selects a year and a CPMP-approved preventive-maintenance month for
+   the asset category. UniPM stores that `YYYY-MM` PM cycle and derives the
+   deadline from the final instant of that month in Asia/Manila time.
 2. A skilled worker conducts the inspection.
 3. One digital form represents one department PM batch and contains multiple
    asset inspection rows. The authoritative batch identity is department,
-   asset category, and the canonical PM cycle derived from the schedule date
-   as `YYYY-MM` (for example, `2026-06`). Building does not split a batch.
+   asset category, and the selected PM cycle as `YYYY-MM` (for example,
+   `2026-06`). For new schedules, `ScheduleDate` stores the month-end deadline
+   and does not name the planned inspection day. Existing historical records
+   remain unchanged. Building does not split a batch.
 4. Completing an asset inspection records an authoritative field-work
    completion timestamp and completes that asset's linked PM schedule. Schedule
    completion does not wait for form submission or acknowledgement.
@@ -45,13 +49,12 @@ The PM execution lifecycle and form lifecycle are separate:
 
 For PM-period reporting, the deadline is the last instant of the calendar month
 represented by `PmCycle`, evaluated in the institutional Asia/Manila fixed
-`+08:00` calendar. Before that deadline, on-time compliance is not measurable
-and remains null, not zero. After the deadline, on-time compliance is
-completed-on-time schedules divided by all eligible non-cancelled scheduled
-assets in the selected scope. Completion and timeliness use only
-`InspectionRecord.CompletedAt`; inspection progress is a separate
-inspected/scheduled measure. Acknowledgement remains independent and cannot
-change execution compliance.
+`+08:00` calendar. Before that deadline, Compliance rate is not measurable and
+remains null, not zero. After the deadline, Compliance rate is inspections
+completed on or before the deadline divided by all eligible non-cancelled
+scheduled assets in the selected scope. Completion and timeliness use only
+`InspectionRecord.CompletedAt`. Progress remains a separate
+inspected/scheduled measure. Acknowledgement cannot change either measure.
 
 An acknowledged form is not required for on-time PM execution. Asset condition
 is `Operational` or `Non-operational`; `Completed` is a schedule state, not an

@@ -216,15 +216,15 @@ public sealed class InspectionQueryEndpointsTests
         var firstSchedule = await CreateScheduleAsync(
             client,
             firstAsset.Id,
-            new DateTimeOffset(2026, 1, 10, 8, 0, 0, TimeSpan.FromHours(8)));
+            new DateTimeOffset(2026, 2, 10, 8, 0, 0, TimeSpan.FromHours(8)));
         var secondSchedule = await CreateScheduleAsync(
             client,
             firstAsset.Id,
-            new DateTimeOffset(2026, 2, 10, 8, 0, 0, TimeSpan.FromHours(8)));
+            new DateTimeOffset(2026, 5, 10, 8, 0, 0, TimeSpan.FromHours(8)));
         var thirdSchedule = await CreateScheduleAsync(
             client,
             secondAsset.Id,
-            new DateTimeOffset(2026, 3, 10, 8, 0, 0, TimeSpan.FromHours(8)));
+            new DateTimeOffset(2026, 6, 10, 8, 0, 0, TimeSpan.FromHours(8)));
 
         var firstInspection = await CreateInspectionAsync(
             application,
@@ -286,7 +286,7 @@ public sealed class InspectionQueryEndpointsTests
             assetId,
             scheduleDate,
             periodType = "Quarter",
-            quarter = "Q1",
+            quarter = $"Q{((scheduleDate.ToOffset(TimeSpan.FromHours(8)).Month - 1) / 3) + 1}",
             year = 2026
         });
 

@@ -544,8 +544,8 @@ class _FakePmRepository
         ScheduleOption(
           id: _scheduleId,
           assetId: _assetId,
-          scheduleDate: DateTime.utc(2026, 9, 26),
-          pmCycle: '2026-09',
+          scheduleDate: DateTime.utc(2026, 8, 31, 15, 59, 59, 999, 999),
+          pmCycle: '2026-08',
           periodType: 'Quarter',
           status: 'Due',
           quarter: 'Q3',

@@ -41,7 +41,7 @@ export const scheduleSchema = z
     // Keep parsing older cached fixtures that predate the canonical PM cycle field.
     pmCycle: z
       .string()
-      .regex(/^\d{4}-\d{2}$/)
+      .regex(/^\d{4}-(0[1-9]|1[0-2])$/)
       .optional(),
     periodType: z.enum(schedulePeriodTypeCodes),
     status: z.enum(scheduleStatusCodes),
@@ -125,55 +125,62 @@ export type ScheduleQuarterReference = z.infer<
 export const createScheduleSchema = z
   .object({
     assetId: z.string().uuid('Choose an asset.'),
-    scheduleDate: z.string().date('Choose a schedule date.'),
-    periodType: z.enum(schedulePeriodTypeCodes, {
-      message: 'Choose a maintenance period.',
-    }),
-    quarter: z.enum(scheduleQuarterCodes).optional(),
     year: z.preprocess(
       (value) => (value === '' || value === null ? undefined : value),
       z.coerce.number().int('Year must be a whole number.').optional(),
     ),
+    month: z.preprocess(
+      (value) => (value === '' || value === null ? undefined : value),
+      z.coerce.number().int('Choose a scheduled month.').optional(),
+    ),
+    allowedMonths: z.array(z.number().int().min(1).max(12)).default([]),
   })
   .superRefine((value, context) => {
-    const year = Number(value.scheduleDate.slice(0, 4))
-    const month = Number(value.scheduleDate.slice(5, 7))
-    const quarter = `Q${Math.floor((month - 1) / 3) + 1}`
     const maxPlanningYear = new Date().getUTCFullYear() + 5
 
-    if (year < 2000 || year > maxPlanningYear) {
+    if (value.year === undefined) {
+      context.addIssue({
+        code: 'custom',
+        path: ['year'],
+        message: 'Choose a scheduled year.',
+      })
+    } else if (value.year < 2000 || value.year > maxPlanningYear) {
       context.addIssue({
         code: 'custom',
         path: ['year'],
         message: `Year must be between 2000 and ${maxPlanningYear}.`,
       })
     }
-    if (value.year !== undefined && value.year !== year) {
+
+    if (value.month === undefined || value.month < 1 || value.month > 12) {
       context.addIssue({
         code: 'custom',
-        path: ['year'],
-        message: 'Year must match the schedule date.',
+        path: ['month'],
+        message: 'Choose a scheduled month.',
       })
+      return
     }
-    if (
-      value.periodType === 'Quarter' &&
-      value.quarter !== undefined &&
-      value.quarter !== quarter
-    ) {
+
+    if (value.allowedMonths.length === 0) {
       context.addIssue({
         code: 'custom',
-        path: ['quarter'],
-        message: 'Quarter must match the schedule date.',
+        path: ['month'],
+        message: 'Allowed PM months are unavailable for this asset category.',
+      })
+    } else if (!value.allowedMonths.includes(value.month)) {
+      context.addIssue({
+        code: 'custom',
+        path: ['month'],
+        message: 'Choose a PM month allowed for this asset category.',
       })
     }
   })
 
 export type CreateScheduleValues = {
   assetId: string
-  scheduleDate: string
-  periodType: (typeof schedulePeriodTypeCodes)[number]
-  quarter?: (typeof scheduleQuarterCodes)[number] | undefined
   year?: number | string | undefined
+  month?: number | string | undefined
+  allowedMonths: number[]
 }
 
 type ScheduleResponseCompat = Omit<ScheduleResponse, 'pmCycle'> & {
@@ -210,16 +217,13 @@ export function toCreateScheduleDto(
   values: CreateScheduleValues,
 ): CreateScheduleDto {
   const parsed = createScheduleSchema.parse(values)
-  const year = Number(parsed.scheduleDate.slice(0, 4))
-  const month = Number(parsed.scheduleDate.slice(5, 7))
+  const month = Number(parsed.month)
+  const pmCycle = `${parsed.year}-${String(month).padStart(2, '0')}`
   return {
     assetId: parsed.assetId,
-    scheduleDate: new Date(`${parsed.scheduleDate}T00:00:00Z`).toISOString(),
-    periodType: parsed.periodType,
-    quarter:
-      parsed.periodType === 'Quarter'
-        ? `Q${Math.floor((month - 1) / 3) + 1}`
-        : null,
-    year,
+    pmCycle,
+    periodType: 'Quarter',
+    quarter: `Q${Math.floor((month - 1) / 3) + 1}`,
+    year: Number(parsed.year),
   }
 }

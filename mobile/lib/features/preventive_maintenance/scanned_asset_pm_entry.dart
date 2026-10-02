@@ -9,6 +9,7 @@ import 'inspection_location_capture.dart';
 import 'preventive_maintenance_models.dart';
 import 'preventive_maintenance_page.dart';
 import 'preventive_maintenance_repository.dart';
+import 'pm_cycle_presentation.dart';
 
 class ScannedAssetPmEntry extends StatefulWidget {
   const ScannedAssetPmEntry({
@@ -648,6 +649,7 @@ class _ScheduleSummary extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
+      key: const Key('selected-pm-schedule'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
@@ -656,15 +658,15 @@ class _ScheduleSummary extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         Text(
-          '${_dateText(schedule.scheduleDate)} · ${schedule.periodType}',
-          key: const Key('selected-pm-schedule'),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          'PM Cycle: ${schedule.pmCycle ?? 'N/A'}',
+          'PM cycle: ${formatPmCycle(schedule.canonicalPmCycle)}',
           key: const Key('schedule-pm-cycle'),
         ),
         const SizedBox(height: 4),
+        Text(
+          'Due date: ${formatPmCycleDueDate(schedule.canonicalPmCycle)}',
+          key: const Key('schedule-due-date'),
+        ),
+        const SizedBox(height: 6),
         Text(
           'Schedule status: ${schedule.status}',
           key: const Key('schedule-status'),
@@ -675,7 +677,7 @@ class _ScheduleSummary extends StatelessWidget {
 }
 
 String _scheduleLabel(ScheduleOption schedule) =>
-    '${_dateText(schedule.scheduleDate)} · ${schedule.periodType} · ${schedule.status}';
+    '${formatPmCycle(schedule.canonicalPmCycle)} · ${schedule.status}';
 
 String _dateText(DateTime value) {
   final local = value.toLocal();

@@ -22,10 +22,10 @@ public sealed class ScheduleBatchAssignmentEndpointsTests
         var workerId = await application.SeedUserAsync("worker", AuthRoleCatalog.Inspector);
         var supervisorId = await application.SeedUserAsync("supervisor", AuthRoleCatalog.Supervisor);
 
-        var first = await CreateScheduleAsync(client, "GSD", "Main Building", new DateTimeOffset(2026, 9, 1, 8, 0, 0, TimeSpan.FromHours(8)));
-        var second = await CreateScheduleAsync(client, " gsd ", "Annex", new DateTimeOffset(2026, 9, 9, 8, 0, 0, TimeSpan.FromHours(8)));
-        var otherDepartment = await CreateScheduleAsync(client, "Library", "Library", new DateTimeOffset(2026, 9, 1, 8, 0, 0, TimeSpan.FromHours(8)));
-        var otherCycle = await CreateScheduleAsync(client, "GSD", "Main Building", new DateTimeOffset(2026, 10, 1, 8, 0, 0, TimeSpan.FromHours(8)));
+        var first = await CreateScheduleAsync(client, "GSD", "Main Building", new DateTimeOffset(2026, 11, 1, 8, 0, 0, TimeSpan.FromHours(8)));
+        var second = await CreateScheduleAsync(client, " gsd ", "Annex", new DateTimeOffset(2026, 11, 9, 8, 0, 0, TimeSpan.FromHours(8)));
+        var otherDepartment = await CreateScheduleAsync(client, "Library", "Library", new DateTimeOffset(2026, 11, 1, 8, 0, 0, TimeSpan.FromHours(8)));
+        var otherCycle = await CreateScheduleAsync(client, "GSD", "Main Building", new DateTimeOffset(2026, 2, 1, 8, 0, 0, TimeSpan.FromHours(8)));
 
         var response = await client.PutAsJsonAsync($"/api/v1/schedules/{first.Id}/assignment", new
         {
@@ -38,7 +38,7 @@ public sealed class ScheduleBatchAssignmentEndpointsTests
         Assert.NotNull(assignedBatch);
         Assert.Equal("GSD", assignedBatch.Department, ignoreCase: true);
         Assert.Equal("fire-extinguisher", assignedBatch.AssetCategory);
-        Assert.Equal("2026-09", assignedBatch.PmCycle);
+        Assert.Equal("2026-11", assignedBatch.PmCycle);
         Assert.Equal(workerId, assignedBatch.WorkerUserId);
         Assert.Equal(supervisorId, assignedBatch.SupervisorUserId);
         Assert.Equivalent(new[] { first.Id, second.Id }, assignedBatch.ScheduleIds);

@@ -36,13 +36,27 @@ that password in this file, screenshots, or recordings.
 Development account. When reusing a demo database, use the password already
 configured for those accounts.
 
+## PM cycles and deadlines
+
+The schedule month is the institutional PM period, not a selected visit day.
+UniPM stores its `YYYY-MM` cycle and derives `ScheduleDate` as the final
+instant of that month in Asia/Manila time. Actual inspection timestamps record
+when field work happens.
+
+The scoped CPMP months are:
+
+- Fire extinguishers and water drinking stations: February, May, August, and November.
+- Fire alarms and emergency lights: June and December.
+
 ## Demo scenarios
 
 ### A. Live mobile workflow
 
 The Inspector's **My PM Tasks** list contains three Due fire-extinguisher
-schedules for CCMS and PM cycle `2026-09`. They have no inspections or form at
-the start of the demo.
+schedules for CCMS and PM cycle `2026-11`. Their due date is November 30, 2026.
+They have no inspections or form at the start of the demo. November is still
+open before its deadline, so Compliance rate is not final yet; Progress is
+`0%`.
 
 | Asset code | QR payload | Location |
 | --- | --- | --- |
@@ -56,25 +70,40 @@ and whole-form submission.
 ### B. Submitted acknowledgement review
 
 The Library fire-extinguisher batch for `2026-08` contains three completed
-inspections in one Submitted form. Two were completed on time and one was late.
-The dashboard therefore shows:
+inspections in one Submitted form. Its due date was August 31, 2026. Two
+inspections were completed on or before the deadline and one was completed
+late. The dashboard therefore shows:
 
 - Scheduled: `3`
 - Inspected: `3`
 - On time: `2`
 - Late: `1`
-- On-time compliance: `66.67%`
+- Compliance rate: `66.67%` (`2 / 3`)
+- Progress: `100%` (`3 / 3`)
 - Batch state: awaiting acknowledgement
+
+Compliance rate is completed on or before the month-end deadline divided by
+all eligible non-cancelled scheduled assets in the selected official scope.
+Progress is inspected divided by scheduled. Form acknowledgement does not
+change either measure.
 
 The asset codes are `DEMO-LIB-FE-001`, `DEMO-LIB-FE-002`, and
 `DEMO-LIB-FE-003`.
 
 ### C. Acknowledged official history
 
-The Student Affairs Office emergency-light batch for `2026-07` contains three
-completed inspections in an Acknowledged form. Its fictional acknowledgement
-was captured after field work and submission. These three rows are projected
-into official history; the Submitted Library rows are not.
+The Student Affairs Office emergency-light batch for `2026-06` had two
+scheduled assets and a June 30, 2026 due date. One inspection was completed on
+June 20 and one was completed late on July 3. The Acknowledged form contains
+both rows. Its fictional acknowledgement was captured on July 7, after field
+work and submission. Those two rows are projected into official history; the
+Submitted Library rows are not. `DEMO-EL-003` is in the separate Campus
+Facilities department and remains uncompleted for the same PM cycle.
+
+The category-wide closed-period dashboard shows Scheduled `3`, Inspected `2`,
+On time `1`, Late `1`, Not completed `1`, Compliance rate `33.33%` (`1 / 3`),
+and Progress `66.67%` (`2 / 3`). The acknowledgement date does not change
+these values.
 
 The asset codes are `DEMO-EL-001`, `DEMO-EL-002`, and `DEMO-EL-003`.
 
@@ -136,5 +165,5 @@ dotnet run --project tools/UniPM.DemoQrGenerator -- --output reference/demo/qr
 
 The pristine state has three Due Scenario A schedules and no Scenario A
 inspections; one Submitted and unacknowledged Scenario B form; and one
-Acknowledged Scenario C form with three official-history documents and no
+Acknowledged Scenario C form with two official-history documents and no
 embeddings.
