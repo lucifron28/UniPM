@@ -152,14 +152,14 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
             AuthRoleCatalog.Gsd);
         var formId = await application.SeedSubmittedFormAsync();
         var completedAtBeforeAcknowledgement = new Dictionary<Guid, DateTimeOffset?>();
-        await using (var context = database.CreateContext())
+        await using (var beforeContext = database.CreateContext())
         {
-            var scheduleIds = await context.InspectionRecords
+            var beforeScheduleIds = await beforeContext.InspectionRecords
                 .Where(record => record.PreventiveMaintenanceFormId == formId)
                 .Select(record => record.ScheduleId)
                 .ToListAsync();
-            var schedulesBeforeAcknowledgement = await context.PreventiveMaintenanceSchedules
-                .Where(schedule => scheduleIds.Contains(schedule.Id))
+            var schedulesBeforeAcknowledgement = await beforeContext.PreventiveMaintenanceSchedules
+                .Where(schedule => beforeScheduleIds.Contains(schedule.Id))
                 .ToListAsync();
             Assert.Equal(2, schedulesBeforeAcknowledgement.Count);
             Assert.All(schedulesBeforeAcknowledgement, schedule =>
