@@ -3,20 +3,24 @@
 ## Project Identity
 
 UniPM is a web and mobile preventive-maintenance information system for a
-university General Services Department. This branch (`validation/pmis-only-gsd`)
-is the PMIS-only GSD validation baseline: the confirmed preventive-maintenance
+university General Services Department. This retirement branch preserves the PMIS-only GSD validation baseline: the confirmed preventive-maintenance
 workflow is demonstrated without any AI feature so GSD can validate workflows,
 forms, reports, and remaining operational needs before a replacement innovation
 is selected.
 
-Maintenance-history RAG was previously implemented and evaluated as controlled
-development work. On this branch it is historical, inactive infrastructure: it
-is preserved for understanding and rollback, not active product behavior. Do
-not implement new RAG work, and do not implement a replacement innovation (AI
-report consolidation, schema-driven/versioned PM protocols, Document AI/OCR,
-natural-language analytics, process mining, predictive maintenance, or WMS/RPA
-automation) on this branch — none is approved yet. Future innovation work
-requires a separate approved task and branch after GSD validation.
+Maintenance-history RAG has been retired. Its review endpoint, summary
+provider, maintenance retrieval/fusion, projection, rebuild commands,
+benchmark, and experiment runners are removed.
+
+Historical migrations, API descriptions, ADRs, experiments, and verification
+records remain as evidence of prior work. The separate fictional
+ReferenceDocument foundation, Full-Text Search, section embeddings, and shared
+provider-neutral embedding components remain.
+
+Schema-constrained natural-language analytics remains a planned post-validation
+direction, pending professor/adviser confirmation. It is not implemented or
+approved for this branch; any implementation requires a separate approved task
+and branch after GSD validation.
 
 The safety rules below still apply to any code path that could contact an
 external AI provider, and chatbot-style open-ended AI behavior remains
@@ -81,12 +85,12 @@ These are non-negotiable.
 6. AI output is always assistive and must be returned or displayed with the source records used.
 7. Source records remain the evidence. The generated summary is only a review shortcut.
 
-## AI Sanitizer Safety Rule For Preserved AI Code (Historical/Inactive)
+## Historical sanitizer boundary and future AI work
 
 The full privacy masking/token-map pipeline was deferred during the evaluated
-RAG work. If any preserved AI path is ever re-enabled through a separately
+RAG work. If any AI path is introduced through a separately
 approved post-GSD decision, basic sanitization is mandatory before any external
-provider call. The preserved `PrivacySanitizerService` provides:
+provider call. The retired `PrivacySanitizerService` provided:
 
 - email masking, for example `user@example.com` -> `[EMAIL_1]`
 - Philippine-style phone/mobile number masking where practical, for example `0917-123-4567` -> `[PHONE_1]`
@@ -96,7 +100,7 @@ provider call. The preserved `PrivacySanitizerService` provides:
 - no token-map persistence
 - no full AI provider payload logging
 
-The current sanitizer is pattern-based token masking and pseudonymization, not
+The retired sanitizer used pattern-based token masking and pseudonymization, not
 anonymization. It does not identify or mask arbitrary free-text personal names;
 synthetic names in fixture data do not demonstrate protection for real names.
 Do not send real or unscreened institutional text to a remote summary provider
@@ -114,13 +118,13 @@ Stronger privacy handling later may include:
 Use the terms token masking, pseudonymization, and prompt sanitization. Do not
 describe the MVP sanitizer as anonymization.
 
-## Vector Storage Rule For Preserved Retrieval Code (Historical/Inactive)
+## Reference embedding storage and historical retrieval
 
 SQL Server 2019 is the minimum supported target database and no separate vector
 database should be introduced.
 
-In the preserved retrieval infrastructure, embeddings are stored as versioned
-serialized values alongside relational search-document metadata. The backend
+In the retained reference-document foundation, embeddings are stored as versioned
+serialized values alongside relational reference-section metadata. The backend
 filters a bounded candidate set in SQL Server and calculates cosine similarity
 in application memory. Native SQL Server vector features are not required for UniPM.
 
@@ -256,12 +260,11 @@ multi-row preventive-maintenance forms covering the full
 history, and GSD-only corrective-action handoff preparation. No endpoint
 requires an AI provider.
 
-The preserved `/api/v1/maintenance-review` contract is historical and inactive:
-it is mapped into the runtime only when `MaintenanceReview:Enabled` is
-explicitly true, and committed configuration keeps it false, so the published
-OpenAPI contract and generated web client contain no maintenance-review
-operation. Its sources remain in the repository for later retirement decisions
-(a future `refactor/retire-maintenance-history-rag` branch).
+The retired `/api/v1/maintenance-review` route, configuration, services,
+maintenance retrieval/fusion, and derived storage no longer exist. The
+ReferenceDocument foundation and shared embedding components remain.
+Historical evidence and migrations are preserved; older RAG sections below
+describe prior work and safety rules for separately approved future work.
 
 The RAG-assisted inspection-history analysis capability described in
 [`reference/planning/rag-assisted-inspection-history-analysis.md`](reference/planning/rag-assisted-inspection-history-analysis.md)
@@ -291,16 +294,13 @@ Priority order on this branch is the GSD validation phase:
 7. Record findings and defer all innovation selection until a separate
    approved decision and branch.
 
-The deterministic synthetic fixture, test-only retrieval evaluation manifest,
-Development-only seed/reset commands, reset dependency protection, inspection
-list/detail reads, the v1.0 maintenance issue lexicon, the rebuildable
-`MaintenanceSearchDocument` projection, lexical and semantic channels, the
-separate retrieval benchmark, internal RRF fusion, the committed
+The deterministic synthetic fixture, Development-only seed/reset commands,
+reset dependency protection, inspection list/detail reads, the committed
 engineering-evidence workflow, and opt-in observability metrics are complete.
 IdentityCore persistence, JWT login/current-user routes, Development user
 seeding, and coarse policy protection are also complete. Inspection-submission
-integrity, retrieval/test folder organization, explicit documentation of the
-MVP sanitizer's free-text-name limitation, the React web foundation, browser
+integrity, explicit documentation of the historical MVP sanitizer's
+free-text-name limitation, the React web foundation, browser
 authentication integration, asset registry, preventive maintenance schedule
 workflows, read-only inspection review, multi-asset form drafting, form
 submission, whole-form acknowledgement, acknowledged-only history publication,
@@ -348,18 +348,21 @@ Unblocked areas:
   - Fire alarm systems
   - Emergency lights
   - Water drinking stations
-- Preserved inactive retrieval/review infrastructure:
-  - synthetic fixture data and acknowledged-row evidence rules;
-  - lexical, semantic, and fused retrieval, embeddings, summaries, sanitizer;
-  - none of these are exposed by the validation runtime;
-  - do not extend them without a separately approved post-GSD decision.
+- ReferenceDocument foundation:
+  - fictional metadata, ordered sections, applicability, and provenance;
+  - reference Full-Text Search, section embeddings, and shared embedding provider;
+  - institutional ingestion and exposure remain separately approved work.
+- Maintenance-history RAG:
+  - runtime, tooling, tests, and derived storage retired;
+  - historical evidence and migrations preserved;
+  - replacement innovation requires a separately approved post-GSD decision.
 
-## Historical RAG Behavior Boundaries (Preserved Code)
+## Historical RAG behavior boundaries
 
 These boundaries governed the previously evaluated maintenance-review feature
 and remain the required safety shape for any future approved AI-assisted work.
-They are not active work items on this branch. The preserved feature followed
-this shape:
+They are not active work items on this branch. The former feature followed this
+shape:
 
 `current finding -> retrieval -> source selection -> sanitization -> source-bounded summary -> source display -> human verification`
 

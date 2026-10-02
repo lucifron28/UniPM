@@ -14,8 +14,8 @@ promise that every institutional workflow is finalized.
 | Mobile | Flutter Android-first client with memory-only authentication and Draft form workflow, maintained by a separate partner-owned workstream |
 | Proposed deployment target | ASP.NET Core hosted through IIS with native Windows SQL Server |
 | Docker | Optional development tooling for the retained SQL Server 2025 experiment |
-| Historical semantic retrieval | Preserved versioned serialized embeddings, bounded SQL candidates, application-side cosine similarity; inactive in the current runtime |
-| Historical fusion | Preserved internal Reciprocal Rank Fusion with deterministic component traceability; not published |
+| Maintenance-history RAG | Runtime, tooling, and derived storage retired; historical evidence retained |
+| ReferenceDocument foundation | Fictional metadata/sections, Full-Text Search, shared provider-neutral embeddings retained |
 
 The capstone was evaluated as a local prototype. IIS deployment, public HTTPS
 exposure, production workload testing, final secret management, and final
@@ -75,25 +75,32 @@ Submission assigns a provisional file number. Acknowledgement records the
 department-head signatory as form data captured through the skilled worker's
 authenticated session. It records receipt/noting, does not alter execution or
 compliance timestamps, and does not complete linked schedules. It makes
-completed rows eligible for acknowledged-only official history. Preserved
-retrieval/RAG infrastructure and its search-document projection are historical
-and inactive, not published by the current runtime. The GSD-only corrective
+completed rows eligible for acknowledged-only official history. Maintenance-history
+RAG and its search projection are retired. Historical evidence remains. The GSD-only corrective
 handoff is a read model for manual follow-up; UniPM does not create or track RMRFs or
 integrate directly with the Work Management System. Its `AssetDeviceNumber`
 field remains nullable until an institutional device-number source is confirmed;
 the API does not substitute `AssetCode` for that unresolved value.
 
-### Historical Maintenance Review and Reference Data
+### Reference data and retired maintenance review
 
-- The historical `POST /maintenance-review` contract is preserved for reference
-  but is not part of the current published runtime or generated web client.
-- Reference-data routes provide the controlled categories and schedule values
-  used by clients.
-- Health and readiness routes expose operational checks; metrics are opt-in.
+- `/maintenance-review` no longer exists, even when a legacy enable flag is set.
+- Reference-data routes continue to provide controlled client values.
+- Health/readiness and opt-in HTTP/runtime metrics remain.
 
-The preserved maintenance-review path performed bounded fused retrieval and
-returned selected source records. It does not implement the planned analytical
-service and is not actively published.
+Maintenance-history RAG has been retired. Its review endpoint, summary
+provider, maintenance retrieval/fusion, projection, rebuild commands,
+benchmark, and experiment runners are removed.
+
+Historical migrations, API descriptions, ADRs, experiments, and verification
+records remain as evidence of prior work. The separate fictional
+ReferenceDocument foundation, Full-Text Search, section embeddings, and shared
+provider-neutral embedding components remain.
+
+Schema-constrained natural-language analytics remains a planned post-validation
+direction, pending professor/adviser confirmation. It is not implemented or
+approved for this branch; any implementation requires a separate approved task
+and branch after GSD validation.
 
 ## Authorization Boundary
 
@@ -132,8 +139,10 @@ architecture remain undecided pending a separate approved decision.
 
 - The previous RAG-assisted inspection-history analysis direction is historical
   and inactive, and is not published by the current runtime.
-- Natural-language analytics is a planned post-validation direction pending
-  professor/adviser confirmation, not a current implementation requirement.
+- Schema-constrained natural-language analytics is a planned post-validation
+  direction pending professor/adviser confirmation. It is not implemented or
+  approved; any implementation requires a separate approved task and branch
+  after GSD validation.
 - Approved institutional CPMP, checklist, form, and SOP ingestion and
   retrieval remain pending authorization and ingestion decisions.
 - OEM retrieval is excluded from the evaluated MVP.

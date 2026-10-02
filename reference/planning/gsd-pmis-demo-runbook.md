@@ -11,9 +11,10 @@ Use fictional records and a dedicated demo database. Do not enter real
 personnel, asset, signature, or maintenance data during the rehearsal or
 recording.
 
-Maintenance-history RAG is historical and inactive, so this runbook does not
-demonstrate it. Natural-language analytics is a planned direction pending
-professor/adviser confirmation and is also outside the walkthrough.
+Maintenance-history RAG is retired, so this runbook does not demonstrate it.
+Schema-constrained natural-language analytics remains a planned post-validation
+direction, pending professor/adviser confirmation. It is not implemented or
+approved for this branch and is outside the walkthrough.
 
 ## Demonstration environment
 
@@ -38,7 +39,6 @@ $env:ASPNETCORE_URLS = "http://0.0.0.0:5099"
 $env:ConnectionStrings__DefaultConnection =
   "Server=.;Database=UniPM_GsdDemo_20260913;Integrated Security=True;Encrypt=False;TrustServerCertificate=True;"
 $env:UNIPM_DEV_USER_PASSWORD = "<temporary-local-password>"
-$env:MaintenanceReview__Enabled = "false"
 $env:Embeddings__Enabled = "false"
 ```
 

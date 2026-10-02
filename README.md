@@ -6,8 +6,8 @@ multi-asset preventive-maintenance forms. The current validation baseline
 focuses on the preventive-maintenance information system while further GSD
 requirements are being validated: core PMIS workflows run without any AI
 provider configuration. Maintenance-history RAG was previously implemented
-and evaluated as controlled development work and is not exposed by this
-validation baseline.
+and evaluated as controlled development work. Its implementation and storage
+are now retired; historical evidence remains in this repository.
 
 ## License
 
@@ -46,21 +46,13 @@ The capstone evaluates UniPM as a local development prototype. IIS deployment,
 public HTTPS exposure, and production workload verification are outside the
 evaluated scope.
 
-The database contains the initial `Asset`, `PreventiveMaintenanceSchedule`, and
-`InspectionRecord` schema plus the rebuildable `MaintenanceSearchDocument`
-projection. SQL Server Full-Text Search retrieves lexical candidates from
-`MaintenanceSearchDocument.SearchText`. Versioned serialized embedding vectors
-are stored with relational document metadata; the backend filters a bounded SQL
-candidate set and calculates cosine similarity in application memory. Semantic
-retrieval was implemented as an internal channel of the previously evaluated
-maintenance-history review feature; its embedding provider is disabled by
-default and inactive here. When embeddings were unavailable, the preserved
-system reported degradation and used the lexical channel without labeling the
-hybrid. Inspectable Reciprocal Rank Fusion combines eligible lexical and
-semantic results. Native SQL Server vector features and a separate vector
-database are not required.
-These retrieval channels persist as inactive infrastructure in this
-validation baseline and are not exposed through any public runtime path.
+The database retains assets, schedules, inspection records, PM forms,
+acknowledgements, and the separate ReferenceDocument foundation. The
+`RetireMaintenanceHistoryRagStorage` migration removes the maintenance
+search projection and embeddings, its Full-Text index, and the dedicated
+`UniPMMaintenanceRetrieval` catalog. `UniPMReferenceRetrieval` and all
+reference-document tables remain. SQL Server native vector features and a
+separate vector database are not required.
 
 ## Current API Surface
 
@@ -95,8 +87,8 @@ completion is recorded in each `InspectionRecord.CompletedAt` and completes the
 linked schedule before form submission. Acknowledgement records receipt/noting,
 does not alter execution or compliance timestamps, does not complete schedules,
 and makes completed rows eligible for acknowledged-only official history. Draft
-and Submitted rows are not official history or retrieval evidence. Preserved
-retrieval/RAG infrastructure is historical and inactive, not actively published
+and Submitted rows are not official history or retrieval evidence. Retired
+retrieval/RAG behavior is documented only as historical evidence
 by the current runtime.
 Signatory names, positions, signatures, signature data, and signature checksums
 never enter retrieval, embeddings, prompts, or the corrective-handoff response.
@@ -172,23 +164,8 @@ dotnet run --project server -- --seed-development-users
 For a named SQL Server instance, replace `Server=.` with
 `Server=localhost\INSTANCE_NAME`.
 
-That is everything the PMIS validation build needs. The commands below belong
-to the preserved, inactive retrieval infrastructure and are NOT required for
-ordinary PMIS operation:
-
-```powershell
-# Historical/inactive retrieval tooling (not needed for the PMIS validation build):
-dotnet run --project server -- --rebuild-maintenance-search-documents
-dotnet run --project server -- --rebuild-maintenance-embeddings
-```
-
-For a named SQL Server instance, replace `Server=.` with
-`Server=localhost\INSTANCE_NAME`. Rebuild embeddings only when they are
-explicitly enabled and configured:
-
-```powershell
-dotnet run --project server -- --rebuild-maintenance-embeddings
-```
+The PMIS runtime needs no AI provider configuration. Maintenance-history
+projection and embedding rebuild commands have been removed.
 
 Verify the database installation and compatibility level:
 
@@ -235,18 +212,24 @@ The optional legacy SQL Server 2025 Docker Compose experiment is documented in
 not the local baseline, is not required for IIS deployment, and must not reuse a
 SQL Server 2019 data volume.
 
-## Maintenance History Review Status
+## Maintenance history RAG retirement
 
-Maintenance-history RAG was previously implemented and evaluated as
-controlled development work; see `reference/evidence/` and
-[`reference/api/maintenance-review-v0.1.md`](reference/api/maintenance-review-v0.1.md)
-for what was built at the time. In the current PMIS-only validation baseline,
-the review endpoint is mapped into the runtime contract only when
-`MaintenanceReview:Enabled` is explicitly true, and committed configuration
-keeps it disabled, so the published OpenAPI contract and the generated web
-client contain no maintenance-review operation. Retrieval, fusion, embedding,
-and summary sources remain preserved in the repository pending cleanup
-decisions after GSD validates the PMIS direction.
+Maintenance-history RAG has been retired. Its review endpoint, summary
+provider, maintenance retrieval/fusion, projection, rebuild commands,
+benchmark, and experiment runners are removed.
+
+Historical migrations, API descriptions, ADRs, experiments, and verification
+records remain as evidence of prior work. The separate fictional
+ReferenceDocument foundation, Full-Text Search, section embeddings, and shared
+provider-neutral embedding components remain.
+
+Schema-constrained natural-language analytics remains a planned post-validation
+direction, pending professor/adviser confirmation. It is not implemented or
+approved for this branch; any implementation requires a separate approved task
+and branch after GSD validation.
+
+See the historical [API description](reference/api/maintenance-review-v0.1.md)
+and [engineering evidence](reference/evidence/INDEX.md) for prior results.
 
 ## Historical Planning Record: Inspection-History Analysis (Not Active)
 
@@ -325,25 +308,11 @@ $env:ConnectionStrings__DefaultConnection =
 dotnet ef database update --project server
 ```
 
-The lexical retrieval migration creates the dedicated SQL Server Full-Text
-catalog and `SearchText` index. Full-Text Search must be installed; migration
-failure is explicit when it is unavailable. After applying a migration that
-changes source or projection data, rebuild the searchable projection:
-
-```powershell
-dotnet run --project server -- --rebuild-maintenance-search-documents
-```
-
-When embeddings are explicitly enabled and configured, rebuild them after the
-search-document projection:
-
-```powershell
-dotnet run --project server -- --rebuild-maintenance-embeddings
-```
-
-The domain-contract migration canonicalizes copied metadata in existing
-`MaintenanceSearchDocument` rows but does not regenerate `SearchText`; use the
-rebuild command above after applying it.
+Historical migrations remain unchanged. Apply the new retirement migration
+through the normal EF migration path. It removes only maintenance RAG
+projection storage. Rollback recreates the schema, but does not recover
+retired projection rows or vectors. Core PM and reference-document data
+are preserved. Full-Text Search remains required by the reference foundation.
 
 ## SQL Server 2019 Compatibility Verification
 
@@ -385,7 +354,6 @@ dotnet run --project server -- --seed-development-users
 dotnet run --project server -- --seed-reference-documents
 dotnet run --project server -- --reset-reference-documents
 dotnet run --project server -- --reset-synthetic-seed
-dotnet run --project server -- --rebuild-maintenance-search-documents
 ```
 
 `--seed-synthetic` deterministically upserts 20 fixture assets, 34 schedules,
@@ -393,9 +361,7 @@ and 30 inspections. `--reset-synthetic-seed` removes only records whose IDs
 belong to the fixture, in inspection, schedule, then asset order. Reset refuses
 to continue if unrelated records depend on fixture-owned assets or schedules.
 Seed/reset neither runs during normal API startup nor succeeds outside
-Development. The rebuild command is explicit, transactional on SQL Server,
-idempotent, and does not start HTTP hosting. Supplying more than one
-maintenance command flag is rejected without executing an operation.
+Development.
 
 `--seed-reference-documents` creates a separate, fictional development corpus
 for future approved institutional-procedure evidence retrieval. It upserts only
@@ -412,91 +378,29 @@ The fixture uses five deterministic synthetic actor IDs for assignee and
 inspector references. Development user seeding reuses those IDs so the fixture
 and authentication scaffold remain aligned.
 
-The operational fixture is version `1.1.0`. The retrieval evaluation manifest
-is version `1.1.0`, is copied only to test output, and remains test-only: it is
-not loaded by the API, persisted, indexed, embedded, included in prompts, or
-returned by ordinary DTOs. Both files are fictional and based only on visible
-Page 1 blank-form fields; Page 2, completed samples, and official institutional
-reference lists remain provisional. The confirmed digital acknowledgement and
-corrective-handoff boundaries do not make unobserved physical-form fields final
-production contracts.
+The operational synthetic fixture remains version `1.1.0`. PM seed/reset
+commands preserve their fixture ownership and dependency protection. They
+no longer build or delete a maintenance RAG projection. Inspection reads,
+acknowledged-only official history, and corrective handoff remain PMIS
+features.
 
-Inspection list/detail reads and maintenance issue normalization are complete.
-The preserved internal lexical FTS retriever is historical and inactive. It
-searches only the rebuildable `MaintenanceSearchDocument.SearchText` projection
-and returns source-traceable inspection metadata. It is not a standalone public
-search endpoint. Internal fused retrieval and the previously implemented
-maintenance-review endpoint are not exposed by the current runtime.
-Domain-contract hardening is
-complete: stable persisted codes have feature-owned
-catalogs, canonical API/storage values, SQL Server constraints, and migration
-preflight checks. The preserved semantic retrieval channel belongs to the
-evaluated maintenance-history review workflow. It stored only document
-embeddings, never query vectors, and does not affect core PM workflows. The
-preserved internal fused retrieval used RRF with K=60, candidate
-depth 20, output limit 10, deterministic ordering, component-rank traceability,
-and explicit semantic degradation. The retrieval benchmark supports lexical,
-semantic, and fused channels, but real semantic and fused model-quality evidence
-remain pending a configured provider. Opt-in observability metrics and the local
-technical-health monitoring profile and coarse authentication scaffold are
-complete. EXP-002 executed the DeepSeek V4 summary experiment on fictional data
-with developer-reviewed ratings; it did not establish production readiness.
-Tagalog and Taglish language fit was weak, and five outputs violated the citation
-contract. Inspection-submission integrity, retrieval/test layout organization,
-and explicit free-text-name sanitizer limitation documentation are complete.
-The web foundation and browser authentication integration are implemented and
-merged; the Flutter mobile foundation, initial Draft form workflow, and
-whole-form submission are also implemented and merged in a separate
-partner-owned workstream. The reference-document foundation is
-implemented and merged as a fictional metadata and sectioning foundation; approved
-institutional source authorization and ingestion remain pending, and OEM
-retrieval is excluded from the evaluated MVP. EXP-003 executed a local offline
-Granite multilingual embedding baseline on the fictional maintenance fixture;
-it is controlled development evidence only and does not make Granite a
-deployment dependency or establish real institutional performance.
+Maintenance-history RAG has been retired. Its review endpoint, summary
+provider, maintenance retrieval/fusion, projection, rebuild commands,
+benchmark, and experiment runners are removed.
 
-Embeddings are disabled by default. Remote providers are rejected unless
-`Embeddings:AllowRemoteProvider` is explicitly enabled after a separate
-privacy review. The current semantic MVP uses a provider-neutral
-OpenAI-compatible adapter and application-layer cosine similarity; it does not
-introduce a separate vector database or claim model-quality results.
+Historical migrations, API descriptions, ADRs, experiments, and verification
+records remain as evidence of prior work. The separate fictional
+ReferenceDocument foundation, Full-Text Search, section embeddings, and shared
+provider-neutral embedding components remain.
 
-## Retrieval Benchmark
+Schema-constrained natural-language analytics remains a planned post-validation
+direction, pending professor/adviser confirmation. It is not implemented or
+approved for this branch; any implementation requires a separate approved task
+and branch after GSD validation.
 
-The test-only evaluation manifest is version `1.1.0` and contains 24 bounded
-queries across the four synthetic asset categories, English, Tagalog, and
-Taglish. It includes cold-start asset context and expected inspection IDs, but
-it is never loaded by the API or included in operational seed, search,
-embedding, prompt, or DTO paths.
-
-Run the standalone benchmark against a reachable SQL Server using the required
-connection-string environment variable:
-
-```powershell
-$env:UNIPM_SQLSERVER_TEST_CONNECTION =
-  "Server=.;Database=master;Integrated Security=True;Encrypt=True;TrustServerCertificate=True;"
-dotnet run --project .\tools\UniPM.RetrievalBenchmark -- --channels lexical
-dotnet run --project .\tools\UniPM.RetrievalBenchmark -- --channels semantic
-dotnet run --project .\tools\UniPM.RetrievalBenchmark -- --channels lexical,semantic --output artifacts\retrieval-benchmark
-dotnet run --project .\tools\UniPM.RetrievalBenchmark -- --channels fused --output artifacts\retrieval-benchmark-fused
-```
-
-Each run creates a temporary database, applies migrations, loads the synthetic
-fixture, rebuilds the projection, waits for SQL Server Full-Text population,
-and writes deterministic JSON and Markdown reports. The temporary database is
-dropped by default. Set `UNIPM_BENCHMARK_KEEP_DATABASE=true` only for local
-inspection. Semantic runs additionally require the configured embedding
-environment contract; provider failures are reported as benchmark failures,
-not silently scored as empty retrieval.
-
-Reports include Hit@1, Hit@5, Precision@5, Recall@5, Recall@10, reciprocal
-rank, first relevant rank, macro averages, and language/category/scenario
-slices. Fused reports preserve RRF metadata, FusionScore, and component ranks.
-Fused benchmarking requires both SQL Server Full-Text Search and real semantic
-provider configuration; degraded fused responses fail evaluation. Context
-selection, insufficient-evidence handling, sanitization, summaries, and the
-historical review contract are separate from benchmark scoring and are not
-published by the current runtime.
+Reference embeddings remain disabled by default. Remote providers require
+explicit configuration and a separate privacy review; ordinary PM workflows
+make no embedding or summary calls.
 
 ## Optional Docker Development Tooling
 
@@ -533,10 +437,8 @@ Then use:
 Grafana provisions the `unipm-prometheus` datasource and the
 `unipm-system-health` dashboard automatically. The sample credentials in
 `.env.sqlserver2025.example` are local-development placeholders and must be
-changed. The dashboard covers API/runtime and retrieval technical health; it is
-not the future React maintenance KPI dashboard. Projection and embedding rebuild
-commands report their results through command output and evidence records until
-durable job telemetry is designed.
+changed. The dashboard covers HTTP and runtime technical health. Maintenance
+RAG instruments and panels are removed. It does not measure maintenance KPIs.
 
 For IIS, enable `Observability__MetricsEnabled` only when network or
 reverse-proxy policy restricts access to `/metrics`. Prometheus and Grafana
@@ -558,14 +460,11 @@ Run the Windows-first backend capture workflow with PowerShell:
 ```powershell
 .\scripts\evidence\Invoke-BackendVerification.ps1
 .\scripts\evidence\Invoke-BackendVerification.ps1 -Configuration Release -RunSqlServerTests
-.\scripts\evidence\Invoke-BackendVerification.ps1 -RunSqlServerTests -BenchmarkChannels lexical
-.\scripts\evidence\Invoke-BackendVerification.ps1 -RunSqlServerTests -BenchmarkChannels lexical,semantic
 ```
 
 The script writes timestamped, ignored artifacts with safe environment metadata,
 logs, TRX results, a machine-readable summary, and SHA-256 hashes. SQL Server
-and real semantic-provider verification are opt-in and fail clearly when their
-configuration is unavailable. Run the local observability evidence capture
+verification is opt-in and fails clearly when its configuration is unavailable. Run the local observability evidence capture
 with:
 
 ```powershell
@@ -576,20 +475,8 @@ The reviewed local result is recorded in TEST-002. It does not claim IIS
 deployment, production uptime, alert effectiveness, long-term retention, real
 traffic, or retrieval-quality improvement.
 
-Run the DeepSeek summary experiment only from a clean implementation commit with
-the API key supplied through the process environment:
-
-```powershell
-$env:UNIPM_SUMMARY_API_KEY = "<secret>"
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\evidence\Invoke-DeepSeekSummaryExperiment.ps1
-```
-
-The runner fixes the provider to `deepseek`, model to `deepseek-v4-flash`, and
-thinking mode to `disabled`, uses only fictional seeded data, and never retains
-the API key, JWT, authorization header, connection string, raw prompt, token
-map, or complete provider payload. EXP-002 is executed with retained fictional
-outputs and developer-reviewed ratings; it remains an experimental baseline, not
-a production-readiness result.
+The retired summary experiments and benchmark results remain under
+`reference/evidence/`. Their runners are no longer available.
 
 ## Project References
 
@@ -597,6 +484,6 @@ a production-readiness result.
 - [`PROJECT.md`](PROJECT.md)
 - [`reference/planning/current-priorities.md`](reference/planning/current-priorities.md)
 - [Run UniPM locally](reference/guides/tutorials/getting-started.md)
-- [Run the local stack and rebuild retrieval data](reference/guides/how-to/run-local-stack.md)
+- [Run the local stack](reference/guides/how-to/run-local-stack.md)
 - [System capabilities reference](reference/guides/reference/system-capabilities.md)
 - [Architecture and RAG boundaries](reference/guides/explanation/architecture-and-rag-boundaries.md)

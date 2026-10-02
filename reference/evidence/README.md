@@ -120,20 +120,16 @@ Use the Windows-first capture script:
 ```powershell
 .\scripts\evidence\Invoke-BackendVerification.ps1
 .\scripts\evidence\Invoke-BackendVerification.ps1 -Configuration Release -RunSqlServerTests
-.\scripts\evidence\Invoke-BackendVerification.ps1 -RunSqlServerTests -BenchmarkChannels lexical
-.\scripts\evidence\Invoke-BackendVerification.ps1 -RunSqlServerTests -BenchmarkChannels lexical,semantic
-.\scripts\evidence\Invoke-BackendVerification.ps1 -RunSqlServerTests -BenchmarkChannels fused
 ```
 
 The script writes raw logs and generated reports under ignored
 `artifacts/evidence/<utc-timestamp>-<short-sha>/`. It records safe metadata,
 parses TRX counters when present, writes `verification-summary.json`, and
 generates `SHA256SUMS.txt`. It never records the SQL connection value, API key,
-embedding endpoint, request body, or provider response body. SQL tests require
-`UNIPM_SQLSERVER_TEST_CONNECTION`. Semantic benchmark execution requires the
-existing real-provider configuration and never silently falls back to lexical
-or deterministic mode. Fused benchmarking requires both channels and fails
-when semantic retrieval degrades.
+embedding endpoint, request body, or provider response body. The maintenance RAG
+benchmark and experiment runners have been retired. Historical records and
+baselines remain unchanged. SQL tests require
+`UNIPM_SQLSERVER_TEST_CONNECTION`.
 
 For the optional local observability profile, use:
 
