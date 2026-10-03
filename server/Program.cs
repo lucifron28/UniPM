@@ -137,6 +137,7 @@ builder.Services.AddScoped<IInstitutionalReferenceEmbeddingIndexer, Institutiona
 builder.Services.AddScoped<ILexicalInstitutionalReferenceRetriever, SqlServerLexicalInstitutionalReferenceRetriever>();
 builder.Services.AddScoped<ISemanticInstitutionalReferenceRetriever, SqlServerSemanticInstitutionalReferenceRetriever>();
 builder.Services.AddScoped<PmPeriodDashboardService>();
+builder.Services.AddScoped<PmAnalyticsService>();
 
 var app = builder.Build();
 
