@@ -3,7 +3,7 @@ id: EXP-004
 type: experiment
 title: Local PM analytics interpretation evaluation
 status: executed
-recordedAtUtc: 2026-10-03T22:17:09Z
+recordedAtUtc: 2026-10-03T22:19:46Z
 testedCommit: 92c056c46defe0f79ce5533bd04c1d5a299c1322
 sourceBranch: feature/nla-interpretation-evaluation
 evidenceLevel: locally-executed
@@ -285,9 +285,10 @@ institutional acceptance, or production readiness. No remote model,
 unscreened institutional text, database-backed analytics execution, or
 real-user behavior was evaluated.
 
-This record remains a draft pending evidence review. The existing strict
-rule-based behavior, authorization, independent validation, and canonical
-query safeguards remain authoritative regardless of model scores. See
+This record documents executed interpretation experiments. It does not
+establish release readiness. The existing strict rule-based behavior,
+authorization, independent validation, and canonical query safeguards remain
+authoritative regardless of model scores. See
 [TEST-058](../test-runs/TEST-058-guarded-pm-analytics-interpretation-verification.md)
 and [the approved planning phase](../../planning/schema-constrained-nla.md).
 
