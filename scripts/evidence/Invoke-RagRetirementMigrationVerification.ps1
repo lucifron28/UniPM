@@ -59,6 +59,8 @@ $run = [ordered]@{
     checks = [ordered]@{}
     failedAt = $null
     failureType = $null
+    sqlErrorNumber = $null
+    failureMessage = $null
     databaseDropped = $false
     databaseIdAbsent = $false
     environmentRestored = $false
@@ -115,7 +117,7 @@ function Get-TableState {
     foreach ($table in $trackedTables) {
         $query = @"
 SELECT
-    (SELECT COUNT_BIG(*) FROM dbo.[$($table.Name)]) AS RowCount,
+    (SELECT COUNT_BIG(*) FROM dbo.[$($table.Name)]) AS [RowCount],
     COALESCE((
         SELECT STRING_AGG(CONVERT(nvarchar(36), [$($table.Key)]), N',')
             WITHIN GROUP (ORDER BY [$($table.Key)])
@@ -617,10 +619,26 @@ catch {
     $run.status = 'failed'
     $run.failedAt = $currentStage
     $run.failureType = $_.Exception.GetType().FullName
+    $diagnosticException = $_.Exception
+    $sqlException = $diagnosticException
+    while ($null -ne $sqlException -and $sqlException -isnot [System.Data.SqlClient.SqlException]) {
+        $sqlException = $sqlException.InnerException
+    }
+    if ($null -ne $sqlException) {
+        $run.sqlErrorNumber = $sqlException.Number
+        $diagnosticMessage = $sqlException.Message
+    }
+    else {
+        $diagnosticMessage = $diagnosticException.Message
+    }
+    $diagnosticMessage = $diagnosticMessage -replace '(?i)(Server|Data Source|Database|Initial Catalog|Password|Pwd)\s*=\s*[^;,\r\n]+', '$1=[redacted]'
+    $diagnosticMessage = $diagnosticMessage.Replace($databaseName, '[owned-db]').Replace('localhost', '[local-server]')
+    $run.failureMessage = $diagnosticMessage
 }
 finally {
     [Environment]::SetEnvironmentVariable($connectionVariable, $previousConnectionString, 'Process')
-    $run.environmentRestored = [Environment]::GetEnvironmentVariable($connectionVariable, 'Process') -ceq $previousConnectionString
+    $restoredConnectionString = [Environment]::GetEnvironmentVariable($connectionVariable, 'Process')
+    $run.environmentRestored = ([string]::IsNullOrEmpty($restoredConnectionString) -and [string]::IsNullOrEmpty($previousConnectionString)) -or $restoredConnectionString -ceq $previousConnectionString
 
     if ($databaseCreated -and $databaseName -match '^UniPMRetirement_[0-9a-f]{32}$') {
         try {
@@ -640,6 +658,21 @@ finally {
                 $run.status = 'failed'
                 $run.failedAt = 'cleanup-disposable-database'
                 $run.failureType = $_.Exception.GetType().FullName
+                $diagnosticException = $_.Exception
+                $sqlException = $diagnosticException
+                while ($null -ne $sqlException -and $sqlException -isnot [System.Data.SqlClient.SqlException]) {
+                    $sqlException = $sqlException.InnerException
+                }
+                if ($null -ne $sqlException) {
+                    $run.sqlErrorNumber = $sqlException.Number
+                    $diagnosticMessage = $sqlException.Message
+                }
+                else {
+                    $diagnosticMessage = $diagnosticException.Message
+                }
+                $diagnosticMessage = $diagnosticMessage -replace '(?i)(Server|Data Source|Database|Initial Catalog|Password|Pwd)\s*=\s*[^;,\r\n]+', '$1=[redacted]'
+                $diagnosticMessage = $diagnosticMessage.Replace($databaseName, '[owned-db]').Replace('localhost', '[local-server]')
+                $run.failureMessage = $diagnosticMessage
             }
         }
     }
@@ -662,6 +695,8 @@ finally {
         "Disposable database dropped: $($run.databaseDropped)"
         "Disposable database ID absent after drop: $($run.databaseIdAbsent)"
         "Process environment restored: $($run.environmentRestored)"
+        "SQL error number: $($run.sqlErrorNumber)"
+        "Failure: $($run.failureMessage)"
         "Summary: artifacts/rag-retirement/$timestamp-$shortCommit/migration-verification.json"
     ) | Set-Content -LiteralPath $logPath -Encoding utf8
 }
