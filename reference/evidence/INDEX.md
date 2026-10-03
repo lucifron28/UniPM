@@ -16,6 +16,7 @@ record's evidence level and tested/source commit.
 
 | ID | Type | Title | Status | Evidence level | Tested/source commit | Record | Note |
 |---|---|---|---|---|---|---|---|
+| TEST-054 | test-run | Maintenance-history RAG retirement integration verification | executed | locally-executed | `7cbb092` | [record](test-runs/TEST-054-maintenance-history-rag-retirement-integration.md) | Release build, migration, HTTP smoke, EF check, focused backend/SQL 62/62, and full backend 259/0/1-skip passed; CI is not claimed. |
 | TEST-053 | test-run | Field-worker mobile UX integration verification | executed | locally-executed | `3f9b704` | [record](test-runs/TEST-053-field-worker-mobile-ux-integration.md) | Build and focused backend, Web, and Flutter checks passed; native SQL, device, full-suite, and UX-head CI are not claimed. |
 | TEST-052 | test-run | Inspector assigned-schedule read verification | executed | locally-executed | `ab29344` | [record](test-runs/TEST-052-inspector-assigned-schedule-read-verification.md) | Backend focused 48/48, full 395 passed/41 skipped, and Flutter 55/55; native SQL and CI are not claimed. |
 | TEST-051 | test-run | Schedule read authorization verification | executed | locally-executed | `1634fdb`; backend `cfb582c` | [record](test-runs/TEST-051-schedule-read-authorization-verification.md) | Backend focused/full and web contract checks passed; Flutter bootstrap stalled, native SQL and CI are not claimed. |
