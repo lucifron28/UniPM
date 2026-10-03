@@ -96,6 +96,156 @@ public sealed class ScheduleQueryEndpointsTests
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
+    [Theory]
+    [InlineData(AuthRoleCatalog.Gsd)]
+    [InlineData(AuthRoleCatalog.Supervisor)]
+    public async Task Gsd_and_supervisors_can_list_and_read_all_schedules(string role)
+    {
+        await using var application = new TestApplicationFactory([role]);
+        using var client = application.CreateClient();
+        var assignedSchedule = await application.SeedScheduleAsync(TestAuthenticationHandler.UserId);
+        var anotherInspectorsSchedule = await application.SeedScheduleAsync(Guid.NewGuid());
+        var unassignedSchedule = await application.SeedScheduleAsync(null);
+
+        var listResponse = await client.GetAsync("/api/v1/schedules");
+        Assert.Equal(HttpStatusCode.OK, listResponse.StatusCode);
+        var schedules = await listResponse.Content.ReadFromJsonAsync<List<ScheduleResponse>>();
+        Assert.NotNull(schedules);
+        Assert.Equal(
+            new[] { assignedSchedule.Id, anotherInspectorsSchedule.Id, unassignedSchedule.Id }
+                .OrderBy(id => id),
+            schedules.Select(schedule => schedule.Id).OrderBy(id => id));
+
+        Assert.Equal(
+            HttpStatusCode.OK,
+            (await client.GetAsync($"/api/v1/schedules/{assignedSchedule.Id}")).StatusCode);
+        Assert.Equal(
+            HttpStatusCode.OK,
+            (await client.GetAsync($"/api/v1/schedules/{anotherInspectorsSchedule.Id}")).StatusCode);
+        Assert.Equal(
+            HttpStatusCode.OK,
+            (await client.GetAsync($"/api/v1/schedules/{unassignedSchedule.Id}")).StatusCode);
+    }
+
+    [Fact]
+    public async Task Inspectors_can_list_and_read_only_schedules_assigned_to_them()
+    {
+        await using var application = new TestApplicationFactory([AuthRoleCatalog.Inspector]);
+        using var client = application.CreateClient();
+        var assignedSchedule = await application.SeedScheduleAsync(TestAuthenticationHandler.UserId);
+        var anotherInspectorsSchedule = await application.SeedScheduleAsync(Guid.NewGuid());
+        var unassignedSchedule = await application.SeedScheduleAsync(null);
+
+        var listResponse = await client.GetAsync("/api/v1/schedules");
+        Assert.Equal(HttpStatusCode.OK, listResponse.StatusCode);
+        var schedules = await listResponse.Content.ReadFromJsonAsync<List<ScheduleResponse>>();
+        Assert.NotNull(schedules);
+        Assert.Equal(assignedSchedule.Id, Assert.Single(schedules).Id);
+
+        var assignedFilter = await client.GetFromJsonAsync<List<ScheduleResponse>>(
+            $"/api/v1/schedules?assetId={assignedSchedule.AssetId}");
+        Assert.NotNull(assignedFilter);
+        Assert.Equal(assignedSchedule.Id, Assert.Single(assignedFilter).Id);
+
+        var otherInspectorFilter = await client.GetFromJsonAsync<List<ScheduleResponse>>(
+            $"/api/v1/schedules?assetId={anotherInspectorsSchedule.AssetId}");
+        var unassignedFilter = await client.GetFromJsonAsync<List<ScheduleResponse>>(
+            $"/api/v1/schedules?assetId={unassignedSchedule.AssetId}");
+        Assert.NotNull(otherInspectorFilter);
+        Assert.NotNull(unassignedFilter);
+        Assert.Empty(otherInspectorFilter);
+        Assert.Empty(unassignedFilter);
+
+        Assert.Equal(
+            HttpStatusCode.OK,
+            (await client.GetAsync($"/api/v1/schedules/{assignedSchedule.Id}")).StatusCode);
+        Assert.Equal(
+            HttpStatusCode.NotFound,
+            (await client.GetAsync($"/api/v1/schedules/{anotherInspectorsSchedule.Id}")).StatusCode);
+        Assert.Equal(
+            HttpStatusCode.NotFound,
+            (await client.GetAsync($"/api/v1/schedules/{unassignedSchedule.Id}")).StatusCode);
+    }
+
+    [Fact]
+    public async Task Supervisor_with_inspector_role_can_read_all_schedules()
+    {
+        await using var application = new TestApplicationFactory(
+            [AuthRoleCatalog.Inspector, AuthRoleCatalog.Supervisor]);
+        using var client = application.CreateClient();
+        var assignedToAnotherInspector = await application.SeedScheduleAsync(Guid.NewGuid());
+        var unassignedSchedule = await application.SeedScheduleAsync(null);
+
+        var schedules = await client.GetFromJsonAsync<List<ScheduleResponse>>("/api/v1/schedules");
+
+        Assert.NotNull(schedules);
+        Assert.Equal(
+            new[] { assignedToAnotherInspector.Id, unassignedSchedule.Id }.OrderBy(id => id),
+            schedules.Select(schedule => schedule.Id).OrderBy(id => id));
+        Assert.Equal(
+            HttpStatusCode.OK,
+            (await client.GetAsync($"/api/v1/schedules/{unassignedSchedule.Id}")).StatusCode);
+    }
+
+    [Fact]
+    public async Task Schedule_list_and_detail_require_authentication()
+    {
+        await using var application = new TestApplicationFactory(anonymous: true);
+        using var client = application.CreateClient();
+
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/api/v1/schedules")).StatusCode);
+        Assert.Equal(
+            HttpStatusCode.Unauthorized,
+            (await client.GetAsync($"/api/v1/schedules/{Guid.NewGuid()}")).StatusCode);
+    }
+
+    [Theory]
+    [InlineData(AuthRoleCatalog.Admin)]
+    [InlineData(AuthRoleCatalog.DepartmentHead)]
+    public async Task Unrelated_roles_cannot_list_or_read_schedules(string role)
+    {
+        await using var application = new TestApplicationFactory([role]);
+        using var client = application.CreateClient();
+
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/api/v1/schedules")).StatusCode);
+        Assert.Equal(
+            HttpStatusCode.Forbidden,
+            (await client.GetAsync($"/api/v1/schedules/{Guid.NewGuid()}")).StatusCode);
+    }
+
+    [Fact]
+    public async Task Authenticated_user_without_a_role_cannot_list_or_read_schedules()
+    {
+        await using var application = new TestApplicationFactory([]);
+        using var client = application.CreateClient();
+
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/api/v1/schedules")).StatusCode);
+        Assert.Equal(
+            HttpStatusCode.Forbidden,
+            (await client.GetAsync($"/api/v1/schedules/{Guid.NewGuid()}")).StatusCode);
+    }
+
+    [Theory]
+    [InlineData(AuthRoleCatalog.Gsd)]
+    [InlineData(AuthRoleCatalog.Supervisor)]
+    public async Task Schedule_creation_remains_available_to_gsd_and_supervisors(string role)
+    {
+        await using var application = new TestApplicationFactory([role]);
+        using var client = application.CreateClient();
+        var assetId = await application.SeedAssetAsync();
+
+        var response = await client.PostAsJsonAsync("/api/v1/schedules", new
+        {
+            assetId,
+            pmCycle = "2026-08",
+            periodType = "Quarter",
+            quarter = "Q3",
+            year = 2026
+        });
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+    }
+
     [Fact]
     public async Task List_schedules_rejects_invalid_date_range()
     {
@@ -465,7 +615,9 @@ public sealed class ScheduleQueryEndpointsTests
         return schedule;
     }
 
-    private sealed class TestApplicationFactory : WebApplicationFactory<Program>
+    private sealed class TestApplicationFactory(
+        string[]? roles = null,
+        bool anonymous = false) : WebApplicationFactory<Program>
     {
         private readonly string _databaseName = $"unipm-schedules-{Guid.NewGuid()}";
 
@@ -473,7 +625,11 @@ public sealed class ScheduleQueryEndpointsTests
         {
             builder.ConfigureServices(services =>
             {
-                services.AddTestAuthentication(AuthRoleCatalog.Gsd);
+                if (!anonymous)
+                {
+                    services.AddTestAuthentication(roles ?? [AuthRoleCatalog.Gsd]);
+                }
+
                 services.RemoveAll<IDbContextFactory<ApplicationDbContext>>();
                 services.RemoveAll<DbContextOptions<ApplicationDbContext>>();
 
@@ -481,7 +637,59 @@ public sealed class ScheduleQueryEndpointsTests
                     options.UseInMemoryDatabase(_databaseName));
             });
         }
+
+        public async Task<Guid> SeedAssetAsync()
+        {
+            var assetId = Guid.NewGuid();
+            var now = DateTimeOffset.UtcNow;
+            await using var context = await Services
+                .GetRequiredService<IDbContextFactory<ApplicationDbContext>>()
+                .CreateDbContextAsync();
+            context.Assets.Add(new Asset
+            {
+                Id = assetId,
+                AssetCode = $"READ-{Guid.NewGuid():N}",
+                AssetCategory = "fire-extinguisher",
+                Building = "Main",
+                Department = "GSD",
+                Location = "Lobby",
+                Status = "Active",
+                CreatedAt = now,
+                UpdatedAt = now
+            });
+            await context.SaveChangesAsync();
+            return assetId;
+        }
+
+        public async Task<ScheduleFixture> SeedScheduleAsync(Guid? assignedUserId)
+        {
+            var assetId = await SeedAssetAsync();
+            var scheduleId = Guid.NewGuid();
+            var now = DateTimeOffset.UtcNow;
+            await using var context = await Services
+                .GetRequiredService<IDbContextFactory<ApplicationDbContext>>()
+                .CreateDbContextAsync();
+            context.PreventiveMaintenanceSchedules.Add(new PreventiveMaintenanceSchedule
+            {
+                Id = scheduleId,
+                AssetId = assetId,
+                ScheduleDate = new DateTimeOffset(2026, 8, 31, 23, 59, 59, TimeSpan.FromHours(8))
+                    .AddTicks(TimeSpan.TicksPerSecond - 1),
+                PmCycle = "2026-08",
+                PeriodType = "Quarter",
+                Status = "Due",
+                Quarter = "Q3",
+                Year = 2026,
+                AssignedToUserId = assignedUserId,
+                CreatedAt = now,
+                UpdatedAt = now
+            });
+            await context.SaveChangesAsync();
+            return new ScheduleFixture(scheduleId, assetId);
+        }
     }
+
+    private sealed record ScheduleFixture(Guid Id, Guid AssetId);
 
     private sealed record AssetResponse(
         Guid Id,

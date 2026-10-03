@@ -22,6 +22,8 @@ public sealed class ScheduleOpenApiContractTests : IClassFixture<WebApplicationF
         AssertCreateScheduleRequestSupportsPmCycle(document.RootElement, paths);
         AssertArrayOperation(paths, "/api/v1/schedules", "get", "ListSchedules", "ScheduleResponse");
         AssertOperation(paths, "/api/v1/schedules/{id}", "get", "GetSchedule", "200", "ScheduleResponse");
+        AssertAuthorizationResponses(paths.GetProperty("/api/v1/schedules").GetProperty("get"));
+        AssertAuthorizationResponses(paths.GetProperty("/api/v1/schedules/{id}").GetProperty("get"));
         AssertArrayOperation(paths, "/api/v1/reference-data/schedule-statuses", "get", "ListScheduleStatuses", "ScheduleReferenceResponse");
         AssertArrayOperation(paths, "/api/v1/reference-data/schedule-period-types", "get", "ListSchedulePeriodTypes", "ScheduleReferenceResponse");
         AssertArrayOperation(paths, "/api/v1/reference-data/schedule-quarters", "get", "ListScheduleQuarters", "ScheduleReferenceResponse");
@@ -91,5 +93,12 @@ public sealed class ScheduleOpenApiContractTests : IClassFixture<WebApplicationF
         Assert.Equal(
             $"#/components/schemas/{itemSchemaName}",
             schema.GetProperty("items").GetProperty("$ref").GetString());
+    }
+
+    private static void AssertAuthorizationResponses(JsonElement operation)
+    {
+        var responses = operation.GetProperty("responses");
+        Assert.True(responses.TryGetProperty("401", out _));
+        Assert.True(responses.TryGetProperty("403", out _));
     }
 }
