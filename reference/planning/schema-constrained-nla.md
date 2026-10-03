@@ -118,3 +118,55 @@ text. A future interpreter replacement requires separate approval and must
 produce the same typed plan, pass the same allowlist, and preserve these source,
 scope, access, and privacy rules. Open-ended chatbot answers and autonomous
 maintenance decisions remain out of scope.
+
+## Approved guarded interpreter phase
+
+The finite question grammar and provider boundary above record the original
+`feature/schema-constrained-nla` phase. The separately approved
+`feature/nla-interpretation-evaluation` follow-up changes question
+interpretation only. It keeps the existing four metrics, four asset categories,
+CPMP cycle rules, PM-period dashboard source, result definitions, and
+`/api/v1/analytics/pm/query` execution contract.
+
+The follow-up adds GSD-only `POST /api/v1/analytics/pm/interpret`. It returns a
+typed `Valid`, `NeedsClarification`, or `Unsupported` result and does not run
+analytics. A `Valid` result includes a normalized plan and a backend-generated
+`canonicalQuestion`. Before returning it, the API validates the plan, requires
+an explicit four-digit year and month, checks the category-month pair against
+the CPMP schedule rules, and round-trips the canonical question through the
+existing strict parser and validator. The caller can use the returned canonical
+question in a request to the unchanged query endpoint.
+
+`NeedsClarification` has no plan and identifies one or more of `Metric`,
+`AssetCategory`, `Year`, `Month`, `Department`, or `GroupBy`. The interpreter
+does not supply a current year, choose between conflicting values, add an
+unrequested department filter or grouping, or repair an unsupported cycle.
+Comparisons and unsupported groupings return `Unsupported`. Model output must
+match a strict JSON schema and the backend allowlists; unknown members or
+values produce a fixed `InvalidOutput` provider failure instead of an
+executable plan.
+
+The strict rule-based interpreter remains the default. Its
+`NaturalLanguageAnalytics:Enabled` setting defaults to false, so the default
+path sends no HTTP request. When explicitly enabled, the only model adapter is
+local Ollama on an HTTP loopback address; its client disables redirects. This
+phase adds no remote provider. The question is limited to 512 characters. The
+adapter allows at most 100 model calls per process, a 1 to 60 second timeout,
+1 to 1024 output tokens, and a response body up to 16 KiB. The request contains
+a fixed instruction and the masked question, not operational records.
+
+Masking covers email addresses, Philippine-style phone numbers, and employee,
+student, staff, or personnel identifiers that match the implemented patterns.
+It does not detect arbitrary personal names. Do not treat it as name
+anonymization or send real or unscreened institutional questions to a remote
+provider. The follow-up adds no metrics, calculations, database access, RAG,
+institutional sources, or autonomous maintenance decisions. For `Progress`,
+the interpretation labels rate questions as `Percent` and explicit inspection
+count questions as `Count`; existing measures supply the numerator. The other
+three metrics retain their existing percentage or count presentation.
+
+Provider unavailability, timeout, and malformed output are separate safe 503
+responses with fixed codes. The interpreter does not return provider bodies
+or use raw model output as an error message. Focused API tests do not establish
+model quality. Synthetic model-evaluation results belong in a separate record
+after that evaluation runs.
