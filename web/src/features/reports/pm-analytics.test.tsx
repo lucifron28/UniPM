@@ -198,36 +198,57 @@ describe('PM analytics panel', () => {
     ).toBeInTheDocument()
   })
 
-  it('uses an empty-scope message when there are no eligible schedules', async () => {
-    testState.queryPmAnalytics.mockResolvedValue(
-      makeResponse({
-        plan: {
-          metric: 'OnTimeCompliance',
-          assetCategory: 'fire-extinguisher',
-          pmCycle: '2026-11',
-          department: null,
-          groupBy: 'None',
-        },
-        result: {
-          department: null,
-          numerator: 0,
-          denominator: 0,
-          value: null,
-          unit: 'Percent',
-          isMeasurable: false,
-        },
-        sources: [],
-        totalSourceCount: 0,
-      }),
-    )
-    render(<PmAnalyticsPanel />)
+  it.each([
+    {
+      metric: 'OnTimeCompliance',
+      unit: 'Percent',
+      question:
+        'Show on-time compliance for fire extinguishers in November 2026',
+    },
+    {
+      metric: 'CompletedLate',
+      unit: 'Count',
+      question: 'Show late inspections for fire extinguishers in November 2026',
+    },
+    {
+      metric: 'NonOperational',
+      unit: 'Count',
+      question:
+        'Show non-operational assets for fire extinguishers in November 2026',
+    },
+  ] as const)(
+    'uses an empty-scope message for $metric when there are no eligible schedules',
+    async ({ metric, unit, question }) => {
+      testState.queryPmAnalytics.mockResolvedValue(
+        makeResponse({
+          plan: {
+            metric,
+            assetCategory: 'fire-extinguisher',
+            pmCycle: '2026-11',
+            department: null,
+            groupBy: 'None',
+          },
+          result: {
+            department: null,
+            numerator: 0,
+            denominator: 0,
+            value: null,
+            unit,
+            isMeasurable: false,
+          },
+          sources: [],
+          totalSourceCount: 0,
+        }),
+      )
+      render(<PmAnalyticsPanel />)
 
-    submitQuestion(
-      'Show on-time compliance for fire extinguishers in November 2026',
-    )
+      submitQuestion(question)
 
-    expect(await screen.findByText('No eligible schedules')).toBeInTheDocument()
-  })
+      expect(
+        await screen.findByText('No eligible schedules'),
+      ).toBeInTheDocument()
+    },
+  )
 
   it('shows a safe error and clears results when the question changes', async () => {
     testState.queryPmAnalytics
