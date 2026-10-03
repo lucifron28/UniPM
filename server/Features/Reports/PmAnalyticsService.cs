@@ -148,13 +148,16 @@ internal sealed class PmAnalyticsService(PmPeriodDashboardService dashboardServi
         int count,
         int scheduled)
     {
+        var isMeasurable = scheduled > 0;
+        decimal? value = isMeasurable ? count : null;
+
         return new PmAnalyticsMeasureResponse(
             department,
             count,
             scheduled,
-            count,
+            value,
             "Count",
-            true);
+            isMeasurable);
     }
 
     private static decimal ToPercent(int numerator, int denominator)

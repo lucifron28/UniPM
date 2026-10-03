@@ -74,7 +74,10 @@ and its denominator is nonzero. Completed-late counts inspections completed
 after the deadline. Non-operational counts completed inspections recorded as
 non-operational. Counts stay counts; the response does not present them as
 percentages. Draft and Submitted forms do not remove completed field work from
-these operational measures. These results are not official maintenance
+these operational measures. Count metrics are measurable only when at least one
+eligible schedule is in scope. When schedules exist but no matching event
+occurs, the value is numeric zero; when no schedules are in scope, the value is
+null and `IsMeasurable` is false. These results are not official maintenance
 history.
 
 Department, when supplied, narrows the authoritative totals. Grouping by

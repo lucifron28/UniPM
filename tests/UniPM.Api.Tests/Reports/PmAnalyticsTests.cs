@@ -200,6 +200,45 @@ public sealed class PmAnalyticsTests
         Assert.False(payload.Result.IsMeasurable);
     }
 
+    [Theory]
+    [InlineData("Show late inspections for fire-extinguisher in 2026-11")]
+    [InlineData("Show non-operational assets for fire-extinguisher in 2026-11")]
+    public async Task Count_metrics_are_unmeasurable_when_scope_has_no_schedules(string question)
+    {
+        await using var application = TestApplicationFactory.AuthenticatedAt(
+            ClosedPeriodNow,
+            AuthRoleCatalog.Gsd);
+        using var client = application.CreateClient();
+
+        var payload = await QueryPayloadAsync(client, question);
+
+        Assert.Equal(0, payload.Result.Numerator);
+        Assert.Equal(0, payload.Result.Denominator);
+        Assert.Null(payload.Result.Value);
+        Assert.Equal("Count", payload.Result.Unit);
+        Assert.False(payload.Result.IsMeasurable);
+    }
+
+    [Theory]
+    [InlineData("Show late inspections for fire-extinguisher in 2026-11")]
+    [InlineData("Show non-operational assets for fire-extinguisher in 2026-11")]
+    public async Task Count_metrics_report_measurable_zero_when_schedules_have_no_matching_events(string question)
+    {
+        await using var application = TestApplicationFactory.AuthenticatedAt(
+            ClosedPeriodNow,
+            AuthRoleCatalog.Gsd);
+        using var client = application.CreateClient();
+        await SeedSchedulesAsync(application, 1);
+
+        var payload = await QueryPayloadAsync(client, question);
+
+        Assert.Equal(0, payload.Result.Numerator);
+        Assert.Equal(1, payload.Result.Denominator);
+        Assert.Equal(0m, payload.Result.Value);
+        Assert.Equal("Count", payload.Result.Unit);
+        Assert.True(payload.Result.IsMeasurable);
+    }
+
     [Fact]
     public async Task Metrics_use_dashboard_scope_groups_and_safe_bounded_sources()
     {
@@ -384,8 +423,6 @@ public sealed class PmAnalyticsTests
             cancelledSchedule);
         context.PreventiveMaintenanceForms.AddRange(draftForm, submittedForm);
         context.InspectionRecords.AddRange(
-            CreateInspection(gsdFirstSchedule, gsdFirstAsset, deadline.AddTicks(-1), false, draftForm.Id,
-                "PRIVATE-REMARKS-MARKER", "PRIVATE-ACTIONS-MARKER"),
             CreateInspection(gsdFirstSchedule, gsdFirstAsset, deadline, true, draftForm.Id,
                 "PRIVATE-REMARKS-MARKER", "PRIVATE-ACTIONS-MARKER"),
             CreateInspection(gsdSecondSchedule, gsdSecondAsset, deadline.AddTicks(1), false, submittedForm.Id),
