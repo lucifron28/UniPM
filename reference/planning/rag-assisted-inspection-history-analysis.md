@@ -2,13 +2,19 @@
 
 ## Status
 
-- **Status:** Planned capability; not implemented
+- **Status:** Historical planning direction; never implemented and no longer active
 - **Preferred working title:** UniPM: A Preventive Maintenance System with
   RAG-Assisted Inspection History Analysis for University General Services
 - **Title approval:** Pending adviser and panel approval
 - **Requirements source:** [GSD Head Interview - Confirmed Project Direction](https://app.notion.com/p/3ae92377e48b81cc8948d7b199ed7d2f)
 
-This planned capability analyzes acknowledged preventive-maintenance inspection
+Maintenance-history RAG has been retired. This document preserves the earlier
+analysis proposal, not an active roadmap or an approved replacement innovation.
+Schema-constrained natural-language analytics is a separate planned
+post-validation direction, pending professor/adviser confirmation. It is not
+implemented or approved.
+
+The historical proposal analyzes acknowledged preventive-maintenance inspection
 records. It does not represent the complete maintenance lifecycle, including
 repairs, parts, costs, labor, downtime, RMRFs, work orders, or corrective-work
 execution.
@@ -61,10 +67,10 @@ Every output must include:
 
 ## Relationship To The Implemented Review Contract
 
-`POST /api/v1/maintenance-review` is the currently implemented, explicitly
-enabled, authenticated, source-bounded review/summarization contract. It
-retrieves related acknowledged-history evidence for a current finding and may
-return an optional source-cited summary.
+`POST /api/v1/maintenance-review` was the explicitly enabled, authenticated,
+source-bounded review/summarization contract. It retrieved related acknowledged
+history for a current finding and could return an optional source-cited summary.
+Its route and implementation have now been removed.
 
 This planned analysis capability is broader and remains separate. It requires
 deterministic fact computation, scope/date-range reporting, source locators,

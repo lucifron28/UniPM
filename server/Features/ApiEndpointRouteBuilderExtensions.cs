@@ -1,7 +1,6 @@
 using UniPM.Api.Features.Assets;
 using UniPM.Api.Features.Auth;
 using UniPM.Api.Features.Inspections;
-using UniPM.Api.Features.MaintenanceReview;
 using UniPM.Api.Features.PreventiveMaintenanceForms;
 using UniPM.Api.Features.ReferenceData;
 using UniPM.Api.Features.Reports;
@@ -11,9 +10,7 @@ namespace UniPM.Api.Features;
 
 public static class ApiEndpointRouteBuilderExtensions
 {
-    public static IEndpointRouteBuilder MapApiEndpoints(
-        this IEndpointRouteBuilder endpoints,
-        bool maintenanceReviewEnabled)
+    public static IEndpointRouteBuilder MapApiEndpoints(this IEndpointRouteBuilder endpoints)
     {
         var api = endpoints.MapGroup("/api/v1");
 
@@ -25,10 +22,6 @@ public static class ApiEndpointRouteBuilderExtensions
         api.MapInspectionsEndpoints();
         api.MapPreventiveMaintenanceFormEndpoints();
         api.MapPmPeriodDashboardEndpoints();
-        if (maintenanceReviewEnabled)
-        {
-            api.MapMaintenanceReviewEndpoints();
-        }
 
         return endpoints;
     }

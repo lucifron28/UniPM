@@ -16,6 +16,7 @@ record's evidence level and tested/source commit.
 
 | ID | Type | Title | Status | Evidence level | Tested/source commit | Record | Note |
 |---|---|---|---|---|---|---|---|
+| TEST-054 | test-run | Maintenance-history RAG retirement integration verification | executed | locally-executed | `7cbb092` | [record](test-runs/TEST-054-maintenance-history-rag-retirement-integration.md) | Release build, migration, HTTP smoke, EF check, focused backend/SQL 62/62, and full backend 259/0/1-skip passed; CI is not claimed. |
 | TEST-053 | test-run | Field-worker mobile UX integration verification | executed | locally-executed | `3f9b704` | [record](test-runs/TEST-053-field-worker-mobile-ux-integration.md) | Build and focused backend, Web, and Flutter checks passed; native SQL, device, full-suite, and UX-head CI are not claimed. |
 | TEST-052 | test-run | Inspector assigned-schedule read verification | executed | locally-executed | `ab29344` | [record](test-runs/TEST-052-inspector-assigned-schedule-read-verification.md) | Backend focused 48/48, full 395 passed/41 skipped, and Flutter 55/55; native SQL and CI are not claimed. |
 | TEST-051 | test-run | Schedule read authorization verification | executed | locally-executed | `1634fdb`; backend `cfb582c` | [record](test-runs/TEST-051-schedule-read-authorization-verification.md) | Backend focused/full and web contract checks passed; Flutter bootstrap stalled, native SQL and CI are not claimed. |
@@ -123,21 +124,28 @@ record's evidence level and tested/source commit.
 | TEST-043 | test-run | Final pre-acceptance integration verification | executed | locally-executed | `c2fe175` + `abafc874`; `177b5e6` + `5d08c539` | [record](test-runs/TEST-043-pre-acceptance-integration-verification.md) | Schedule API 11/11 and web 17/17 passed. Initial navigation patch identity was not retained; final rerun passed 5 with 11 skipped on the identified patch. ESLint, typecheck, formatting, and scoped diff check passed; later navigation commit `67cdb44` was not rerun. |
 | IMP-038 | implementation | Mobile CPMP cycle and due-date presentation | reviewed | source-inspected | `e87a229` | [record](implementation/IMP-038-mobile-cpmp-cycle-presentation.md) | Canonical month/year, civil month-end, preserved field workflow and progress terminology. |
 | TEST-045 | test-run | Mobile CPMP presentation and workflow verification | executed | locally-executed | `e87a229` | [record](test-runs/TEST-045-mobile-cpmp-presentation.md) | 103 focused tests, analyzer and changed-file formatting passed; seven unchanged formatting baseline files; physical/iOS not verified. |
+| IMP-040 | implementation | Maintenance-history RAG retirement in the PMIS validation branch | reviewed | source-inspected | `f2a1eae` | [record](implementation/IMP-040-maintenance-history-rag-retirement.md) | Active maintenance-review runtime and tooling retired; ReferenceDocument foundation and historical evidence retained. |
+| TEST-049 | test-run | Maintenance-history RAG retirement and PMIS verification | executed | locally-executed | `f2a1eae` | [record](test-runs/TEST-049-maintenance-history-rag-retirement-verification.md) | Backend 248 passed/0 failed/1 optional-provider skip; web unit/build/lint/typecheck passed. Populated migration, runtime, generated-drift, and Playwright checks remain unverified; local formatting failed. |
+| TEST-050 | test-run | Maintenance-history RAG retirement follow-up verification | executed | locally-executed | `73c2d4531d8b5bbf5bb4ba2e9681ed0b028bad4b` | [record](test-runs/TEST-050-maintenance-history-rag-retirement-follow-up-verification.md) | HTTP retirement smoke, populated Up/Down/Up preservation, focused SQL 4/4, backend 248/0/1 optional-provider skip, and EF model consistency passed; local execution record, exact-head CI reported separately. |
 
-## Pending Evidence
+## Pending evidence
 
-- Independent semantic model-quality baseline on real institutional records:
-  pending approved data, a labeled evaluation set, and review protocol.
-- Lexicon normalization accuracy baseline: pending an independent labeled
-  dataset and executable precision/recall/F1 evaluator.
-- Fused retrieval quality baseline: pending a configured real provider and an
-  executed fused benchmark; TEST-004 contains the latest orchestration evidence
-  only.
-- Independent generated-summary faithfulness evaluation: pending a labeled
-  evaluation set and review protocol.
+- Independent semantic model-quality baseline for the retained institutional
+  ReferenceDocument retrieval: pending approved data, a labeled evaluation set,
+  and review protocol.
 - Production authentication deployment verification: pending configured IIS
   hosting, institutional secret management, and final RBAC decisions.
 - IIS deployment verification: pending a configured Windows Server deployment.
 - Physical-device and iOS verification for the pre-acceptance hardening remain
   unverified. Native SQL coverage was skipped in TEST-042 because no test
   connection was configured.
+
+### Historical RAG evaluations retired with the feature
+
+- Maintenance-history RAG lexicon-normalization accuracy evaluation: deferred
+  historically and retired with the feature; not current PMIS work.
+- Maintenance-history RAG fused-retrieval quality evaluation: deferred
+  historically and retired with the feature. TEST-004 remains orchestration
+  evidence only; no current fused-quality evaluation is planned.
+- Maintenance-history RAG generated-summary faithfulness evaluation: deferred
+  historically and retired with the feature; not current PMIS work.

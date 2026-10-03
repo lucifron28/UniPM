@@ -22,12 +22,6 @@ public sealed class SyntheticMaintenanceCommandParserTests
             SyntheticMaintenanceCommand.Reset,
             SyntheticMaintenanceCommandParser.Parse(["--reset-synthetic-seed"]));
         Assert.Equal(
-            SyntheticMaintenanceCommand.Rebuild,
-            SyntheticMaintenanceCommandParser.Parse(["--rebuild-maintenance-search-documents"]));
-        Assert.Equal(
-            SyntheticMaintenanceCommand.RebuildEmbeddings,
-            SyntheticMaintenanceCommandParser.Parse(["--rebuild-maintenance-embeddings"]));
-        Assert.Equal(
             SyntheticMaintenanceCommand.RebuildInstitutionalReferenceEmbeddings,
             SyntheticMaintenanceCommandParser.Parse(["--rebuild-institutional-reference-embeddings"]));
         Assert.Equal(
@@ -51,20 +45,22 @@ public sealed class SyntheticMaintenanceCommandParserTests
     }
 
     [Fact]
-    public void Parse_rejects_multiple_maintenance_commands()
+    public void Parse_ignores_retired_maintenance_rebuild_commands()
+    {
+        Assert.Equal(
+            SyntheticMaintenanceCommand.None,
+            SyntheticMaintenanceCommandParser.Parse(["--rebuild-maintenance-search-documents"]));
+        Assert.Equal(
+            SyntheticMaintenanceCommand.None,
+            SyntheticMaintenanceCommandParser.Parse(["--rebuild-maintenance-embeddings"]));
+    }
+
+    [Fact]
+    public void Parse_rejects_multiple_commands()
     {
         Assert.Equal(
             SyntheticMaintenanceCommand.Ambiguous,
             SyntheticMaintenanceCommandParser.Parse(["--seed-synthetic", "--reset-synthetic-seed"]));
-        Assert.Equal(
-            SyntheticMaintenanceCommand.Ambiguous,
-            SyntheticMaintenanceCommandParser.Parse(["--seed-synthetic", "--rebuild-maintenance-search-documents"]));
-        Assert.Equal(
-            SyntheticMaintenanceCommand.Ambiguous,
-            SyntheticMaintenanceCommandParser.Parse(["--reset-synthetic-seed", "--rebuild-maintenance-search-documents"]));
-        Assert.Equal(
-            SyntheticMaintenanceCommand.Ambiguous,
-            SyntheticMaintenanceCommandParser.Parse(["--rebuild-maintenance-search-documents", "--rebuild-maintenance-embeddings"]));
         Assert.Equal(
             SyntheticMaintenanceCommand.Ambiguous,
             SyntheticMaintenanceCommandParser.Parse(["--seed-development-users", "--seed-synthetic"]));
@@ -73,8 +69,7 @@ public sealed class SyntheticMaintenanceCommandParserTests
             SyntheticMaintenanceCommandParser.Parse([
                 "--seed-synthetic",
                 "--reset-synthetic-seed",
-                "--rebuild-maintenance-search-documents",
-                "--rebuild-maintenance-embeddings"]));
+                "--seed-reference-documents"]));
         Assert.Equal(
             SyntheticMaintenanceCommand.Ambiguous,
             SyntheticMaintenanceCommandParser.Parse(["--seed-reference-documents", "--seed-synthetic"]));
@@ -82,6 +77,6 @@ public sealed class SyntheticMaintenanceCommandParserTests
             SyntheticMaintenanceCommand.Ambiguous,
             SyntheticMaintenanceCommandParser.Parse([
                 "--rebuild-institutional-reference-embeddings",
-                "--rebuild-maintenance-embeddings"]));
+                "--seed-reference-documents"]));
     }
 }

@@ -1,18 +1,16 @@
 # Maintenance Review API v0.1
 
-> Historical/inactive contract. This document records the bounded
-> maintenance-review implementation from the previous evaluated development
-> phase. The current PMIS runtime does not publish `POST
-> /api/v1/maintenance-review`; committed configuration keeps it disabled and
-> the generated web client contains no operation for it.
+> Retired historical contract. The implementation, route, options, summary
+> provider, and maintenance retrieval storage have been removed. This document
+> describes the prior development phase. It does not describe an available API.
 
 ## Historical Safety Boundary
 
 The historical `POST /api/v1/maintenance-review` path was assistive and
 source-bounded.
-It is disabled by default through `MaintenanceReview:Enabled=false`. When
+It was disabled by default through `MaintenanceReview:Enabled=false`. When
 enabled in any environment, JWT bearer authentication and the
-`CanReviewMaintenanceHistory` policy are required. The policy currently allows
+`CanReviewMaintenanceHistory` policy were required. The policy allowed
 `GSD`, `Supervisor`, and `DepartmentHead`; `Admin` alone is not sufficient.
 No review-history table, prompt storage, summary storage, or token-map storage
 is part of this contract.

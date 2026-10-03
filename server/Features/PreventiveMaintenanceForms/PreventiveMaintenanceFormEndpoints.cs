@@ -9,7 +9,6 @@ using UniPM.Api.Data;
 using UniPM.Api.Features;
 using UniPM.Api.Features.Auth;
 using UniPM.Api.Features.ReferenceData;
-using UniPM.Api.Features.Retrieval;
 using UniPM.Api.Features.Schedules;
 using UniPM.Api.Models;
 
@@ -299,7 +298,6 @@ public static class PreventiveMaintenanceFormEndpoints
             AcknowledgePreventiveMaintenanceFormDto dto,
             ClaimsPrincipal principal,
             IDbContextFactory<ApplicationDbContext> factory,
-            MaintenanceSearchDocumentProjector projector,
             CancellationToken cancellationToken) =>
         {
             var errors = dto.Validate(out var signatureBytes);
@@ -371,10 +369,6 @@ public static class PreventiveMaintenanceFormEndpoints
             try
             {
                 await context.SaveChangesAsync(cancellationToken);
-                await projector.RebuildAsync(
-                    context,
-                    form.Inspections.Select(inspection => inspection.Id).ToHashSet(),
-                    cancellationToken);
 
                 if (transaction is not null)
                 {

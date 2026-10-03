@@ -21,8 +21,8 @@ $env:ConnectionStrings__DefaultConnection =
 
 The script applies migrations, creates or repairs the Development users,
 restores the deterministic demo scenarios, and regenerates the QR files. It is
-safe to run again. It does not enable the inactive maintenance-review feature
-or contact an AI provider.
+safe to run again. Maintenance-history RAG is retired, and this preparation
+does not contact an AI provider.
 
 The login accounts are:
 

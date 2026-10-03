@@ -3,12 +3,10 @@ using System.Net.Http.Json;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using UniPM.Api.Data;
 using UniPM.Api.Features.Auth;
-using UniPM.Api.Features.MaintenanceReview;
 using UniPM.Api.Models;
 
 namespace UniPM.Api.Tests;
@@ -31,7 +29,6 @@ public sealed class AuthorizationPolicyTests
     [Theory]
     [InlineData("/api/v1/assets/")]
     [InlineData("/api/v1/schedules/")]
-    [InlineData("/api/v1/maintenance-review")]
     public async Task Admin_only_user_is_forbidden_from_operational_endpoints(string route)
     {
         await using var application = new PolicyApplicationFactory(AuthRoleCatalog.Admin);
@@ -83,25 +80,6 @@ public sealed class AuthorizationPolicyTests
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
     }
 
-    [Theory]
-    [InlineData(AuthRoleCatalog.Gsd)]
-    [InlineData(AuthRoleCatalog.Supervisor)]
-    [InlineData(AuthRoleCatalog.DepartmentHead)]
-    public async Task Approved_operational_roles_can_use_maintenance_review(string role)
-    {
-        await using var application = new PolicyApplicationFactory(role);
-        using var client = application.CreateClient();
-
-        var response = await client.PostAsJsonAsync("/api/v1/maintenance-review", new
-        {
-            assetId = Guid.NewGuid(),
-            findingText = "low pressure",
-            generateSummary = false
-        });
-
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-    }
-
     private static object AssetRequest(string code) => new
     {
         assetCode = code,
@@ -119,11 +97,6 @@ public sealed class AuthorizationPolicyTests
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseEnvironment("Development");
-            builder.ConfigureAppConfiguration((_, configuration) =>
-                configuration.AddInMemoryCollection(new Dictionary<string, string?>
-                {
-                    ["MaintenanceReview:Enabled"] = "true"
-                }));
             builder.ConfigureServices(services =>
             {
                 services.AddTestAuthentication(roles);
@@ -131,8 +104,6 @@ public sealed class AuthorizationPolicyTests
                 services.RemoveAll<DbContextOptions<ApplicationDbContext>>();
                 services.AddDbContextFactory<ApplicationDbContext>(options =>
                     options.UseInMemoryDatabase(databaseName));
-                services.RemoveAll<IMaintenanceReviewService>();
-                services.AddSingleton<IMaintenanceReviewService, SuccessfulReviewService>();
             });
         }
 
@@ -184,32 +155,4 @@ public sealed class AuthorizationPolicyTests
         }
     }
 
-    private sealed class SuccessfulReviewService : IMaintenanceReviewService
-    {
-        public Task<MaintenanceReviewResponse> ReviewAsync(
-            MaintenanceReviewRequest request,
-            CancellationToken cancellationToken = default)
-            => Task.FromResult(new MaintenanceReviewResponse(
-                new MaintenanceReviewAssetResponse(
-                    request.AssetId,
-                    "TEST-001",
-                    "fire-extinguisher",
-                    "Test Building",
-                    "GSD",
-                    "Test Room"),
-                ["low_pressure"],
-                "same_asset_history_found",
-                false,
-                new MaintenanceReviewRetrievalStatusResponse(
-                    true,
-                    1,
-                    "success",
-                    "unavailable",
-                    "rrf",
-                    60),
-                "not_requested",
-                null,
-                [],
-                []));
-    }
 }

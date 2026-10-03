@@ -7,7 +7,6 @@ using UniPM.Api.Data;
 using UniPM.Api.Data.Seeding;
 using UniPM.Api.Features.ReferenceData;
 using UniPM.Api.Features.Reports;
-using UniPM.Api.Features.Retrieval;
 using UniPM.Api.Features.Schedules;
 using UniPM.Api.Models;
 using DemoQrWriter = DemoQrGenerator::UniPM.DemoQrGenerator.DemoQrWriter;
@@ -134,8 +133,6 @@ public sealed class DevelopmentDemoSeederTests
             acknowledgement.AcknowledgedAt);
         Assert.Equal(submittedAt, acknowledged.SubmittedAt);
         Assert.True(acknowledgement.AcknowledgedAt > submittedAt);
-        Assert.Equal(2, await context.MaintenanceSearchDocuments.CountAsync());
-        Assert.Equal(0, await context.MaintenanceSearchDocumentEmbeddings.CountAsync());
 
         var distinctQrValues = await context.Assets
             .Where(asset => scenarioAAssetIds.Contains(asset.Id))
@@ -183,7 +180,6 @@ public sealed class DevelopmentDemoSeederTests
         Assert.Equal(0, await verificationContext.PreventiveMaintenanceSchedules.CountAsync());
         Assert.Equal(0, await verificationContext.InspectionRecords.CountAsync());
         Assert.Equal(1, await verificationContext.PreventiveMaintenanceForms.CountAsync());
-        Assert.Equal(0, await verificationContext.MaintenanceSearchDocuments.CountAsync());
     }
 
     [Fact]
@@ -255,16 +251,7 @@ public sealed class DevelopmentDemoSeederTests
     }
 
     private static DevelopmentDemoSeeder CreateSeeder(TestContextFactory factory)
-    {
-        var lexiconLoader = new MaintenanceIssueLexiconLoader(new MaintenanceIssueLexiconOptions());
-        var projector = new MaintenanceSearchDocumentProjector(
-            factory,
-            new MaintenanceIssueNormalizer(lexiconLoader));
-        return new DevelopmentDemoSeeder(
-            factory,
-            projector,
-            new TestHostEnvironment(Environments.Development));
-    }
+        => new(factory, new TestHostEnvironment(Environments.Development));
 
     private static async Task AddEmptyScenarioADraftAsync(
         TestContextFactory factory,

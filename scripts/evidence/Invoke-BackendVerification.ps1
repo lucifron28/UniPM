@@ -5,11 +5,7 @@ param(
 
     [string]$OutputRoot = (Join-Path (Get-Location) 'artifacts/evidence'),
 
-    [switch]$RunSqlServerTests,
-
-    [string[]]$BenchmarkChannels = @('none'),
-
-    [switch]$KeepBenchmarkDatabase
+    [switch]$RunSqlServerTests
 )
 
 $ErrorActionPreference = 'Stop'
@@ -18,24 +14,6 @@ $stageRecords = [System.Collections.Generic.List[object]]::new()
 $scriptErrors = [System.Collections.Generic.List[string]]::new()
 $overallExitCode = 0
 $worktreeClean = $false
-$benchmarkChannelArgument = $null
-
-$normalizedChannels = @($BenchmarkChannels |
-    ForEach-Object { $_ -split ',' } |
-    ForEach-Object { $_.Trim().ToLowerInvariant() } |
-    Select-Object -Unique)
-if ($normalizedChannels.Count -eq 0) {
-    throw 'At least one benchmark channel must be selected.'
-}
-$unsupportedChannels = @($normalizedChannels | Where-Object { $_ -notin @('none', 'lexical', 'semantic', 'fused') })
-if ($unsupportedChannels.Count -gt 0) {
-    throw "Unsupported benchmark channel(s): $($unsupportedChannels -join ', ')"
-}
-if ($normalizedChannels.Count -gt 1 -and $normalizedChannels -contains 'none') {
-    throw 'BenchmarkChannels none cannot be combined with another channel.'
-}
-$BenchmarkChannels = $normalizedChannels
-$benchmarkChannelArgument = $BenchmarkChannels -join ','
 
 function Get-RepositoryValue {
     param([string[]]$Arguments)
@@ -183,25 +161,6 @@ function Get-TrxCounters {
     }
 }
 
-function Assert-SemanticConfiguration {
-    $missing = [System.Collections.Generic.List[string]]::new()
-    if ($env:UNIPM_EMBEDDINGS_ENABLED -ne 'true') { $missing.Add('UNIPM_EMBEDDINGS_ENABLED=true') }
-    foreach ($name in @(
-        'UNIPM_EMBEDDINGS_PROVIDER_KEY',
-        'UNIPM_EMBEDDINGS_BASE_ADDRESS',
-        'UNIPM_EMBEDDINGS_MODEL',
-        'UNIPM_EMBEDDINGS_DIMENSIONS'
-    )) {
-        if ([string]::IsNullOrWhiteSpace((Get-Item -Path "Env:$name" -ErrorAction SilentlyContinue).Value)) {
-            $missing.Add($name)
-        }
-    }
-
-    if ($missing.Count -gt 0) {
-        throw "Semantic benchmark configuration is incomplete. Missing: $($missing -join ', ')"
-    }
-}
-
 try {
     $repoRoot = Get-RepositoryValue @('rev-parse', '--show-toplevel')
     if (-not (Test-Path -LiteralPath (Join-Path $repoRoot 'UniPM.slnx')) -or
@@ -237,11 +196,6 @@ try {
         gitVersion = Get-OptionalCommandValue 'git' @('--version')
         dockerVersion = $dockerVersion
         sqlServerConfigurationPresent = -not [string]::IsNullOrWhiteSpace($env:UNIPM_SQLSERVER_TEST_CONNECTION)
-        embeddingConfigurationPresent = $env:UNIPM_EMBEDDINGS_ENABLED -eq 'true'
-        embeddingProviderKey = $env:UNIPM_EMBEDDINGS_PROVIDER_KEY
-        embeddingModelKey = $env:UNIPM_EMBEDDINGS_MODEL
-        embeddingDimensions = $env:UNIPM_EMBEDDINGS_DIMENSIONS
-        selectedBenchmarkChannels = $benchmarkChannelArgument
         worktreeClean = $worktreeClean
     }
     $environment | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $artifactRoot 'environment.json') -Encoding utf8
@@ -301,58 +255,6 @@ try {
         Add-SkippedStage -Name 'sqlserver-tests' -Reason 'Not requested.'
     }
 
-    $benchmarkRequested = -not ($BenchmarkChannels.Count -eq 1 -and $BenchmarkChannels[0] -eq 'none')
-    if (-not $benchmarkRequested) {
-        Add-SkippedStage -Name 'retrieval-benchmark' -Reason 'BenchmarkChannels was none.'
-    }
-    elseif (-not $restoreSucceeded -or -not $buildSucceeded) {
-        $script:overallExitCode = 1
-        Add-SkippedStage -Name 'retrieval-benchmark' -Reason 'Restore or build did not complete successfully; running --no-build could use stale binaries.'
-    }
-    elseif ([string]::IsNullOrWhiteSpace($env:UNIPM_SQLSERVER_TEST_CONNECTION)) {
-        $script:overallExitCode = 1
-        Add-SkippedStage -Name 'retrieval-benchmark' -Reason 'UNIPM_SQLSERVER_TEST_CONNECTION is required for the retrieval benchmark.'
-    }
-    else {
-        $benchmarkConfigurationValid = $true
-        if ($BenchmarkChannels -contains 'semantic' -or $BenchmarkChannels -contains 'fused') {
-            try {
-                Assert-SemanticConfiguration
-            }
-            catch {
-                $benchmarkConfigurationValid = $false
-                $script:overallExitCode = 1
-                Add-SkippedStage -Name 'retrieval-benchmark' -Reason $_.Exception.Message
-            }
-        }
-
-        if ($benchmarkConfigurationValid) {
-            $benchmarkRoot = Join-Path $artifactRoot 'benchmark'
-            New-Item -ItemType Directory -Force -Path $benchmarkRoot | Out-Null
-            $previousKeepDatabase = $env:UNIPM_BENCHMARK_KEEP_DATABASE
-            try {
-                if ($KeepBenchmarkDatabase) {
-                    $env:UNIPM_BENCHMARK_KEEP_DATABASE = 'true'
-                }
-                else {
-                    Remove-Item Env:UNIPM_BENCHMARK_KEEP_DATABASE -ErrorAction SilentlyContinue
-                }
-
-                Invoke-Stage -Name 'retrieval-benchmark' -FilePath 'dotnet' -Arguments @(
-                    'run', '--project', '.\tools\UniPM.RetrievalBenchmark', '--configuration', $Configuration, '--no-build', '--',
-                    '--channels', $benchmarkChannelArgument, '--output', $benchmarkRoot
-                ) -LogPath (Join-Path $artifactRoot 'benchmark.log') -Description 'Run the selected retrieval benchmark channel(s)' | Out-Null
-            }
-            finally {
-                if ($null -eq $previousKeepDatabase) {
-                    Remove-Item Env:UNIPM_BENCHMARK_KEEP_DATABASE -ErrorAction SilentlyContinue
-                }
-                else {
-                    $env:UNIPM_BENCHMARK_KEEP_DATABASE = $previousKeepDatabase
-                }
-            }
-        }
-    }
 }
 catch {
     $script:overallExitCode = 1

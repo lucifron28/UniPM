@@ -1,9 +1,7 @@
 using System.Net;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using UniPM.Api.Observability;
 
 namespace UniPM.Api.Tests.Observability;
 
@@ -48,68 +46,6 @@ public sealed class ObservabilityEndpointTests : IClassFixture<WebApplicationFac
         Assert.DoesNotContain("/metrics", content, StringComparison.Ordinal);
         Assert.DoesNotContain("/health/live", content, StringComparison.Ordinal);
         Assert.DoesNotContain("connection-string", content, StringComparison.OrdinalIgnoreCase);
-    }
-
-    [Fact]
-    public async Task Metrics_exports_custom_retrieval_families_with_bounded_labels()
-    {
-        await using var application = new MetricsEnabledApplicationFactory();
-        using var client = application.CreateClient();
-        var metrics = application.Services.GetRequiredService<UniPMMetrics>();
-
-        // The Prometheus exporter subscribes when its endpoint is first requested.
-        // Prime it so the measurements below cannot be lost to test-order timing.
-        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/metrics")).StatusCode);
-
-        metrics.RecordRetrieval("lexical", "success", 3, 0.25);
-        metrics.RecordRetrieval("fused", "degraded", 1, 0.5);
-
-        var (response, content) = await GetMetricsContainingAsync(
-            client,
-            "unipm_retrieval_requests_total{",
-            CancellationToken.None);
-
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Matches(
-            "(?m)^unipm_retrieval_requests_total\\{[^}]*channel=\"lexical\",outcome=\"success\"\\} 1$",
-            content);
-        Assert.Matches(
-            "(?m)^unipm_retrieval_requests_total\\{[^}]*channel=\"fused\",outcome=\"degraded\"\\} 1$",
-            content);
-        Assert.Matches(
-            "(?m)^unipm_retrieval_duration_seconds_bucket\\{[^}]*channel=\"lexical\",le=\"0.25\"\\} 1$",
-            content);
-        Assert.Contains(
-            "unipm_retrieval_results_sum{otel_scope_name=\"UniPM.Api\",otel_scope_version=\"1.0.0\",channel=\"lexical\"} 3",
-            content,
-            StringComparison.Ordinal);
-        Assert.DoesNotContain("unipm_embedding", content, StringComparison.Ordinal);
-        Assert.DoesNotContain("unipm_search_projection", content, StringComparison.Ordinal);
-        Assert.DoesNotContain("private-maintenance-query", content, StringComparison.Ordinal);
-    }
-
-    private static async Task<(HttpResponseMessage Response, string Content)> GetMetricsContainingAsync(
-        HttpClient client,
-        string expectedFragment,
-        CancellationToken cancellationToken)
-    {
-        HttpResponseMessage? latestResponse = null;
-        string latestContent = string.Empty;
-
-        for (var attempt = 0; attempt < 10; attempt++)
-        {
-            latestResponse?.Dispose();
-            latestResponse = await client.GetAsync("/metrics", cancellationToken);
-            latestContent = await latestResponse.Content.ReadAsStringAsync(cancellationToken);
-            if (latestContent.Contains(expectedFragment, StringComparison.Ordinal))
-            {
-                return (latestResponse, latestContent);
-            }
-
-            await Task.Delay(TimeSpan.FromMilliseconds(50), cancellationToken);
-        }
-
-        return (latestResponse!, latestContent);
     }
 
     private sealed class MetricsEnabledApplicationFactory : WebApplicationFactory<Program>

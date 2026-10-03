@@ -21,7 +21,7 @@ and does not modify the retained optional SQL Server 2025 Docker environment.
 
 ## EF And Migration Boundary
 
-All UniPM runtime, design-time, benchmark, and SQL Server integration-test
+Current UniPM runtime, design-time, and SQL Server integration-test
 contexts use `SqlServerCompatibility.UseUniPmSqlServer`. It explicitly selects
 EF SQL Server compatibility level `150`.
 
@@ -53,19 +53,23 @@ The runner maps the dedicated 2019 connection to the general SQL integration
 variable only while it executes the complete suite. Do not substitute
 `UNIPM_SQLSERVER_TEST_CONNECTION` for the dedicated readiness-test variable.
 
-Then confirm major version 15, compatibility level 150, Full-Text installation,
-the `UniPMMaintenanceRetrieval` catalog, and the enabled search-document index.
-Run the deterministic semantic and fused SQL suites to prove persistence,
-stale-embedding rejection, app-layer cosine, and degradation orchestration.
+For the retired maintenance-history RAG implementation, confirm major version
+15, compatibility level 150, and Full-Text installation. Confirm the maintenance
+search tables and `UniPMMaintenanceRetrieval` catalog are absent, while the
+ReferenceDocument tables, `UniPMReferenceRetrieval` catalog, and section index
+remain. This retirement check is separate from the earlier TEST-022 platform
+run below. The retired maintenance semantic and fused suites are no longer
+executable.
 
-## Current Result
+## Prior Platform Result (TEST-022)
 
-**EXECUTED (development compatibility evidence)** on a native Windows SQL
-Server 2019 Developer instance with Full-Text Search. Major version 15,
-compatibility level 150, migration, seed, projection rebuild, Full-Text
-catalog/index, `CONTAINSTABLE`, and the 310-pass SQL-enabled solution suite
-completed successfully. See TEST-022 for the exact tested commit and bounded
-claims.
+TEST-022 records a completed development compatibility run on its tested
+commit, before maintenance-history RAG retirement. That run covered major
+version 15, compatibility level 150, migrations, synthetic seeding, projection
+rebuild, Full-Text catalog/index, `CONTAINSTABLE`, and the 310-pass SQL-enabled
+solution suite. It does not verify the retirement migration, removal of
+maintenance search storage, or preservation of ReferenceDocument storage. See
+TEST-022 for the exact tested commit and bounded claims.
 
 This result does not establish workload fitness or IIS production readiness.
 ADR-013 separately adopts SQL Server 2019 as the minimum supported platform.

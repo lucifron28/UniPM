@@ -3,7 +3,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using UniPM.Api.Features.PreventiveMaintenanceForms;
 using UniPM.Api.Features.ReferenceData;
-using UniPM.Api.Features.Retrieval;
 using UniPM.Api.Features.Schedules;
 using UniPM.Api.Models;
 
@@ -11,7 +10,6 @@ namespace UniPM.Api.Data.Seeding;
 
 internal sealed class DevelopmentDemoSeeder(
     IDbContextFactory<ApplicationDbContext> contextFactory,
-    MaintenanceSearchDocumentProjector searchDocumentProjector,
     IHostEnvironment environment)
 {
     private static readonly TimeSpan ManilaOffset = TimeSpan.FromHours(8);
@@ -69,13 +67,6 @@ internal sealed class DevelopmentDemoSeeder(
         });
 
         await context.SaveChangesAsync(cancellationToken);
-        await searchDocumentProjector.RebuildAsync(
-            context,
-            inspections
-                .Where(inspection => inspection.PreventiveMaintenanceFormId == acknowledgedForm.Id)
-                .Select(inspection => inspection.Id)
-                .ToHashSet(),
-            cancellationToken);
 
         if (transaction is not null)
         {
@@ -396,13 +387,6 @@ internal sealed class DevelopmentDemoSeeder(
                 "Demo reset refused because a demo form contains a non-demo inspection row.");
         }
 
-        var inspectionIds = ownedInspections.Select(inspection => inspection.Id).ToHashSet();
-        var embeddings = await context.MaintenanceSearchDocumentEmbeddings
-            .Where(embedding => inspectionIds.Contains(embedding.InspectionId))
-            .ToListAsync(cancellationToken);
-        var documents = await context.MaintenanceSearchDocuments
-            .Where(document => inspectionIds.Contains(document.InspectionId))
-            .ToListAsync(cancellationToken);
         var acknowledgements = await context.PreventiveMaintenanceAcknowledgements
             .Where(acknowledgement => formIds.Contains(acknowledgement.FormId))
             .ToListAsync(cancellationToken);
@@ -416,8 +400,6 @@ internal sealed class DevelopmentDemoSeeder(
             .Where(asset => assetIds.Contains(asset.Id))
             .ToListAsync(cancellationToken);
 
-        context.MaintenanceSearchDocumentEmbeddings.RemoveRange(embeddings);
-        context.MaintenanceSearchDocuments.RemoveRange(documents);
         context.PreventiveMaintenanceAcknowledgements.RemoveRange(acknowledgements);
         context.InspectionRecords.RemoveRange(ownedInspections);
         context.PreventiveMaintenanceForms.RemoveRange(forms);

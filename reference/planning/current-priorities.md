@@ -1,7 +1,7 @@
 # Current Priorities - PMIS Validation Baseline
 
 Read `AGENTS.md` first. These priorities apply to the
-`feature/pm-acknowledgement-review` branch.
+`refactor/retire-maintenance-history-rag` branch.
 
 ## Milestone status
 
@@ -19,10 +19,19 @@ The active priority order is now:
 5. record findings;
 6. defer all optional capability and innovation work until separately approved.
 
-Maintenance-history RAG was previously implemented and evaluated as controlled
-development work. On this branch it is historical, inactive infrastructure:
-preserved for understanding and rollback, excluded from the validation
-runtime, and not to be extended.
+Maintenance-history RAG has been retired. Its review endpoint, summary
+provider, maintenance retrieval/fusion, projection, rebuild commands,
+benchmark, and experiment runners are removed.
+
+Historical migrations, API descriptions, ADRs, experiments, and verification
+records remain as evidence of prior work. The separate fictional
+ReferenceDocument foundation, Full-Text Search, section embeddings, and shared
+provider-neutral embedding components remain.
+
+Schema-constrained natural-language analytics remains a planned post-validation
+direction, pending professor/adviser confirmation. It is not implemented or
+approved for this branch; any implementation requires a separate approved task
+and branch after GSD validation.
 
 The canonical PM batch is `Department + Asset Category + PmCycle`; building
 does not split a batch. PM execution completion comes from
@@ -41,32 +50,19 @@ schedules.
 - Inspection list/detail: done.
 - Operational synthetic fixture: completed at version `1.1.0`.
 - Development seed/reset commands: completed and Development-only.
-- Retrieval evaluation manifest: completed at version `1.1.0` and test-only,
-  with 24 bounded benchmark queries.
-- Internal RRF fusion: complete as bounded, deterministic, inspectable
-  orchestration; real fused quality evidence remains pending.
-- Maintenance issue lexicon: done at version `1.0.0`.
-- `MaintenanceSearchDocument`: done as a persisted, rebuildable projection.
+- Maintenance-history RAG runtime, tooling, tests, and projection storage: retired.
+- Historical RAG experiments and benchmarks: retained as evidence.
+
 - Domain contracts: done for stable categories, statuses, schedule codes, and
   seed-only actor tokens, with canonical storage and SQL Server migration checks.
-- SQL Server FTS retrieval: preserved historical/inactive infrastructure over
-  `MaintenanceSearchDocument.SearchText`. It is not published by the current
-  runtime.
-- Semantic retrieval: preserved historical/inactive infrastructure over cached
-  `MaintenanceSearchDocument` embeddings. It is not published by the current
-  runtime.
-- Retrieval benchmark: lexical baseline executed and preserved; semantic and
-  fused orchestration are implemented and deterministically tested, while real
-  semantic/fused model-quality evidence remains pending a configured provider.
-- Observability metrics: complete with opt-in `/metrics`, bounded custom
-  instruments, optional local Prometheus/Grafana provisioning, and TEST-002
-  local Docker evidence. Production monitoring remains unclaimed.
+- ReferenceDocument Full-Text Search and shared embedding foundation: retained.
+- Observability: opt-in HTTP/runtime metrics retained; maintenance RAG metrics retired.
+
 - Engineering-evidence workflow: complete with source-inspected chronology,
   architecture decisions, a fresh backend test record, and an executed lexical
   baseline.
-- Source-bounded maintenance review and summarization: historical/inactive
-  provider-neutral development work preserved for reference; it is not
-  published by the current runtime.
+- Source-bounded maintenance review and summarization: runtime implementation
+  retired; historical design, API descriptions, and evidence remain.
 - Authentication scaffolding: complete with IdentityCore, JWT bearer access
   tokens, five provisional roles, Development user seeding, and policy-
   protected operational writes.
@@ -94,8 +90,7 @@ schedules.
   submission. Acknowledgement records separate receipt/noting, does not alter
   execution or compliance timestamps, and does not complete schedules. It makes
   completed rows eligible for acknowledged-only official history. It does not
-  activate the preserved maintenance-history retrieval infrastructure, which
-  remains historical and inactive and is not actively published. Corrective-action
+  activate maintenance-history retrieval, which has been retired. Corrective-action
   handoff
   preparation ends before manual WMS encoding; UniPM does not process RMRFs or
   integrate with the WMS.
@@ -103,8 +98,10 @@ schedules.
   never implemented, and no longer an active direction. Its design record is
   preserved unchanged in
   [`rag-assisted-inspection-history-analysis.md`](rag-assisted-inspection-history-analysis.md).
-- Natural-language analytics is a planned direction pending professor/adviser
-  confirmation after GSD validation; it is not implemented on this branch.
+- Schema-constrained natural-language analytics is a planned post-validation
+  direction, pending professor/adviser confirmation. It is not implemented or
+  approved; any implementation requires a separate approved task and branch
+  after GSD validation.
 - Flutter mobile field workflow: implemented and merged in the partner-owned
   workstream, including memory-only authentication, QR-based asset entry,
   acknowledged-only official asset history, the four supplied authoritative
@@ -121,9 +118,9 @@ schedules.
 
 The active boundary for this branch is documented in
 [`mvp-definition.md`](mvp-definition.md): the PMIS-only GSD validation
-baseline. The previously implemented `POST /api/v1/maintenance-review`
-capability is historical and inactive and is not actively published (mapped only
-when explicitly enabled; disabled in committed configuration).
+baseline. The retired `POST /api/v1/maintenance-review` route is absent from the
+runtime, including when a legacy enable flag is configured. Its historical
+description and evidence remain in the repository.
 
 ## Immediate Task Order
 
@@ -159,11 +156,11 @@ the fictional 24-query maintenance fixture. It is controlled development
 evidence only; it does not establish real institutional performance or make
 Granite a required deployment dependency.
 
-The maintenance-review endpoint remained disabled by default and required
-authorization when enabled. Real semantic and fused model-quality evidence
-remained pending; EXP-002 does not change those limits. The implemented
-maintenance-review endpoint was distinct from the planned RAG-assisted
-inspection-history analysis capability, which was never implemented.
+During the earlier implementation, the maintenance-review endpoint was
+disabled by default and required authorization when enabled. Real semantic and
+fused model-quality evidence remained pending; EXP-002 did not change those
+limits. That endpoint was distinct from the RAG-assisted inspection-history
+analysis proposal, which was never implemented and is no longer active.
 
 ## Historical Risk-First Order (Implementation Phase, Completed)
 
@@ -251,35 +248,37 @@ Completed implementation:
 
 Inspection list/detail reads must preserve the confirmed form lifecycle: Draft
 and Submitted form rows remain outside official history. Acknowledged form rows
-are eligible for official history; preserved retrieval eligibility is historical
-and inactive.
+are eligible for official history. The former retrieval eligibility behavior is
+historical and inactive.
 
-## Task 3: Maintenance Issue Lexicon And Search Document
+## Task 3 (Historical, Retired): Maintenance Issue Lexicon And Search Document
 
-Goal: normalize maintenance language before retrieval work becomes provider- or
-model-dependent.
+The earlier task aimed to normalize maintenance language before retrieval work
+became provider- or model-dependent. Its lexicon, projection, and retrieval
+implementation have since been retired.
 
-With inspection list/detail and lexicon v1.0 complete:
+Earlier completed scope included:
 
-Completed scope includes a small versioned JSON lexicon from the synthetic
-fixture and visible form vocabulary, inspectable English/Tagalog/Taglish aliases,
+A small versioned JSON lexicon from the synthetic fixture and visible form
+vocabulary, inspectable English/Tagalog/Taglish aliases,
 required category-bounded matching, deterministic scoring, and narrow negation
-handling. Evaluation labels remain outside the resource and runtime code.
+handling. Evaluation labels stayed outside the resource and runtime search
+content.
 
-The projection uses only approved operational source fields. Evaluation labels
-remain outside the projection and all runtime search content.
+The retired projection used approved operational source fields. Evaluation
+labels remained outside the projection and runtime search content.
 
-The projection is now persisted one-per-inspection, derives issue keys from
-remarks using lexicon v1.0, retains recommendations as raw searchable text,
-tracks source and asset timestamps, and supports explicit transactional rebuild.
-Lexical SQL Server FTS now searches only this projection through an internal
-bounded retriever with controlled metadata filters and source-traceable results.
-The semantic channel now caches one normalized embedding per document,
-invalidates stale rows, and ranks bounded SQL Server candidates with
-application-layer cosine similarity. Query embeddings are transient, and the
-evaluation manifest remains outside runtime code.
+The former projection stored one document per inspection, derived issue keys
+from remarks using lexicon v1.0, retained recommendations as searchable text,
+tracked source and asset timestamps, and supported transactional rebuilds. The
+lexical SQL Server FTS retriever searched this projection with bounded
+controlled filters and source-traceable results. The semantic channel cached
+one normalized embedding per document, invalidated stale rows, and ranked
+bounded SQL candidates with application-layer cosine similarity. Query
+embeddings were transient.
 
-Do not treat the lexicon as a diagnosis system or invent official GSD wording.
+The lexicon was not a diagnosis system and did not establish official GSD
+wording.
 
 ## Task 4 (Historical, Completed): Thin Retrieval MVP
 
@@ -321,10 +320,10 @@ remain prohibited everywhere in the codebase.
 
 ## Task 5 (Historical, Completed): Retrieval Evaluation Benchmark
 
-Goal: measure lexical, semantic, and fused retrieval on the
-fictional dataset.
+The task measured lexical, semantic, and fused retrieval on the fictional
+dataset.
 
-Completed scope:
+Completed scope included:
 
 - versioned test-only manifest `1.1.0` with 24 bounded queries;
 - English, Tagalog, and Taglish coverage across all four asset categories;
@@ -337,13 +336,14 @@ Completed scope:
 - Hit@1, Hit@5, Precision@5, Recall@5, Recall@10, reciprocal rank, first
   relevant rank, macro averages, and language/category/scenario slices.
 
-Run lexical, semantic, fused, or valid channel combinations with
-`tools/UniPM.RetrievalBenchmark`. Semantic and fused execution require the
-configured embedding provider; it is not replaced with fake production scores.
+The benchmark project and runner have since been retired with maintenance
+retrieval. Historical reports and approved evidence remain in the
+[evidence archive](../evidence/INDEX.md); no current benchmark command is
+available.
 
-The benchmark remains separate from the maintenance-review context-selection,
-sanitization, and source-bounded summarization path. RRF does not combine raw
-lexical and semantic scores.
+The benchmark evaluated retrieval separately from the former maintenance-review
+context-selection, sanitization, and source-bounded summarization path. RRF did
+not combine raw lexical and semantic scores.
 
 Do not claim synthetic benchmark performance proves production performance.
 
@@ -405,14 +405,12 @@ directly.
 - The operational fixture is fictional and provisional, not a production import
   contract.
 - Evaluation annotations are test-only and never runtime operational data.
-- Preserved semantic retrieval could degrade to an explicitly reported lexical
-  fallback when embeddings were unavailable; both channels are inactive on
-  this validation branch.
-- SQL Server 2019 remains the relational and FTS store. Versioned serialized
-  embeddings are stored with relational metadata, bounded candidates are
-  filtered in SQL, and cosine similarity is calculated by the backend. Do not
-  introduce Pinecone, Qdrant, Weaviate, Chroma, Milvus, another vector DB, or a
-  native SQL vector-feature requirement.
+- Maintenance-history lexical/semantic retrieval, its degradation path, and
+  derived storage were retired. The separate ReferenceDocument foundation and
+  shared provider-neutral embedding components remain.
+- SQL Server 2019 remains the supported relational and Full-Text Search store.
+  Do not introduce a separate vector database or require native SQL vector
+  features for the PMIS baseline.
 - No LLM output may approve, diagnose, change status, create a handoff, or make
   an official maintenance decision.
 

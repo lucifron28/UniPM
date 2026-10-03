@@ -27,17 +27,21 @@ innovation — AI report consolidation, schema-driven/versioned PM protocols,
 Document AI/OCR, natural-language analytics, process mining, predictive
 maintenance, or WMS automation — is claimed, approved, or included here.
 
-Natural-language analytics remains a planned direction pending
-professor/adviser confirmation after GSD validation. It is not part of this
-branch.
+Schema-constrained natural-language analytics remains a planned post-validation
+direction, pending professor/adviser confirmation. It is not implemented or
+approved for this branch.
 
-Maintenance-history RAG was previously implemented and evaluated as controlled
-development work. It is preserved in the repository as historical/inactive
-infrastructure and is excluded from this validation runtime: the
-maintenance-review endpoint is mapped only when explicitly enabled, committed
-configuration keeps it disabled, and the published OpenAPI contract and
-generated web client contain no maintenance-review operation. It is not actively
-published by the current runtime.
+Maintenance-history RAG has been retired. Its review endpoint, summary
+provider, maintenance retrieval/fusion, projection, rebuild commands,
+benchmark, and experiment runners are removed.
+
+Historical migrations, API descriptions, ADRs, experiments, and verification
+records remain as evidence of prior work. The separate fictional
+ReferenceDocument foundation, Full-Text Search, section embeddings, and shared
+provider-neutral embedding components remain.
+
+Any natural-language analytics implementation requires a separate approved
+task and branch after GSD validation.
 
 The selected asset categories are fire extinguishers, fire alarm systems,
 emergency lights, and water drinking stations. One preventive-maintenance form
@@ -181,7 +185,6 @@ RAG-Assisted Inspection History Analysis for University General Services".
 That definition is preserved verbatim in git history (see `main`) and its
 planning companion remains at
 [`rag-assisted-inspection-history-analysis.md`](rag-assisted-inspection-history-analysis.md).
-The implemented maintenance-review endpoint and retrieval infrastructure from
-that phase remain in this repository, inactive, pending the post-validation
-retirement decision (`refactor/retire-maintenance-history-rag`). Nothing in
-this document revives or extends that work.
+That maintenance-review implementation and derived storage are retired on
+`refactor/retire-maintenance-history-rag`. Historical evidence and migrations
+remain. This retirement does not approve a replacement innovation.

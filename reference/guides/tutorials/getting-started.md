@@ -62,7 +62,6 @@ dotnet build .\UniPM.slnx -c Release --no-restore
 dotnet ef database update --project server
 dotnet run --project server -- --seed-synthetic
 dotnet run --project server -- --seed-development-users
-dotnet run --project server -- --rebuild-maintenance-search-documents
 ```
 
 The synthetic data is fictional and intended for development and verification.
@@ -70,12 +69,9 @@ The seed creates 20 assets, 34 schedules, and 30 inspections. Development-user
 seeding creates the five provisional roles used by the local authentication
 scaffold.
 
-Embeddings are disabled by default. Only run the embedding rebuild after a
-separately configured provider has been reviewed:
-
-```powershell
-dotnet run --project server -- --rebuild-maintenance-embeddings
-```
+Maintenance-history RAG and its rebuild commands have been retired. These
+PMIS workflows need no AI provider. The separate ReferenceDocument foundation
+remains.
 
 ## 3. Start the API
 

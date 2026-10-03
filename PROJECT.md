@@ -5,17 +5,33 @@
 - **Test**: `dotnet test .\UniPM.slnx --no-build` (or `dotnet test`)
 - **Native database baseline**: SQL Server 2019, Full-Text Search, compatibility level `150`.
 - **Migration Update**: set a process-only Windows Authentication
-  `ConnectionStrings__DefaultConnection`, run `dotnet ef database update --project server`. The
-  `--rebuild-maintenance-search-documents` / `--rebuild-maintenance-embeddings`
-  commands belong to the preserved inactive retrieval tooling and are not
-  needed for ordinary PMIS operation.
+  `ConnectionStrings__DefaultConnection`, run
+  `dotnet ef database update --project server`. Maintenance-history rebuild
+  commands have been retired.
 - **Optional legacy Docker 2025 experiment**: `docker compose --env-file .env.sqlserver2025 -f docker-compose.sqlserver2025.yml up --build -d`
 - **Optional legacy Docker stop**: `docker compose --env-file .env.sqlserver2025 -f docker-compose.sqlserver2025.yml down`
 
 ## Active Context
-- **Active work**: `feature/pm-acknowledgement-review` / M3. M1 and M2 are
-  finished and merged; this branch carries the current PM acknowledgement
-  review and validation documentation.
+
+Maintenance-history RAG has been retired. Its review endpoint, summary
+provider, maintenance retrieval/fusion, projection, rebuild commands,
+benchmark, and experiment runners are removed.
+
+Historical migrations, API descriptions, ADRs, experiments, and verification
+records remain as evidence of prior work. The separate fictional
+ReferenceDocument foundation, Full-Text Search, section embeddings, and shared
+provider-neutral embedding components remain.
+
+Schema-constrained natural-language analytics remains a planned post-validation
+direction, pending professor/adviser confirmation. It is not implemented or
+approved for this branch; any implementation requires a separate approved task
+and branch after GSD validation.
+
+Older completed RAG entries below describe historical work only.
+
+- **Active work**: `refactor/retire-maintenance-history-rag`. Retire the old
+  maintenance-history RAG implementation and derived storage while preserving
+  the confirmed PMIS validation workflows and ReferenceDocument foundation.
 - **Proposed architecture**: ASP.NET Core API hosted on IIS + native Windows
   SQL Server 2019 with Full-Text Search. Docker is optional development
   tooling only. IIS deployment is not part of the evaluated capstone result.
@@ -32,26 +48,18 @@
     The standalone submission endpoint was removed by the official-inspection-
     boundary refactor; inspection-row creation and editing occur only through
     Draft preventive-maintenance forms.
-  - Versioned maintenance issue lexicon with deterministic multilingual
-    normalization and category-bounded matching.
-  - Rebuildable `MaintenanceSearchDocument` projection with deterministic
-    normalized issue keys, source traceability, and explicit refresh commands.
+  - Historical maintenance retrieval work implemented a versioned issue
+    lexicon, a source-traceable search projection, lexical and semantic
+    retrieval, and fused ranking. Those runtime and derived-storage components
+    were later retired; historical evidence remains.
   - Domain-contract catalogs, canonical code storage, SQL Server constraints,
     filtered QR uniqueness, and ordered migration preflight checks.
   - Reference-data categories, validation contracts, health checks, backend tests,
     and CI.
-  - Fictional synthetic maintenance fixture, retrieval evaluation manifest, and
-    Development-only seed/reset commands.
-  - Preserved historical/inactive SQL Server Full-Text Search over
-    `MaintenanceSearchDocument.SearchText` with bounded prefix-query
-    construction, controlled filters, and source-traceable lexical results.
-  - Preserved historical/inactive semantic retrieval over a one-to-one SQL
-    Server embedding cache for `MaintenanceSearchDocument`, with explicit batch
-    rebuilds and bounded application-layer cosine similarity. The embedding
-    provider is optional and degradable; query embeddings are never persisted.
-  - Reset dependency protection, strict fixture-property loading, exact
-    evaluation correspondence tests, case-insensitive uniqueness checks, and
-    unambiguous maintenance-command handling.
+  - Fictional synthetic maintenance fixture and Development-only seed/reset
+    commands.
+  - Reset dependency protection, strict fixture-property loading, and
+    case-insensitive uniqueness checks for the synthetic fixture.
   - IdentityCore persistence with Guid users and roles, JWT access tokens,
     refresh-session rotation, Development user seeding, and provisional
     operational authorization policies.
@@ -87,8 +95,8 @@
 
 ## Synthetic Seed Commands
 
-Run seed/reset only with `ASPNETCORE_ENVIRONMENT=Development`; the rebuild
-command requires a configured, reachable database:
+Run migration, seed, and reset commands only against a configured, reachable
+database. Run seed/reset only with `ASPNETCORE_ENVIRONMENT=Development`:
 
 ```powershell
 $env:ASPNETCORE_ENVIRONMENT = "Development"
@@ -96,9 +104,6 @@ dotnet run --project server -- --migrate-database
 dotnet run --project server -- --seed-synthetic
 dotnet run --project server -- --seed-development-users
 dotnet run --project server -- --reset-synthetic-seed
-# Historical/inactive retrieval tooling - not required for the PMIS validation build:
-dotnet run --project server -- --rebuild-maintenance-search-documents
-dotnet run --project server -- --rebuild-maintenance-embeddings
 ```
 
 Seeding deterministically upserts 20 synthetic assets, 34 schedules, and 30
@@ -107,75 +112,59 @@ records, refusing to proceed when unrelated dependent records would block safe
 deletion. The fixture is fictional, provisional, and based only on visible
 Page 1 blank forms; it is not a production import contract.
 
-The rebuild command refreshes one search document per persisted inspection from
-approved operational fields. It is explicit, transactional on SQL Server, and
-does not run during normal API startup.
+## Retired Maintenance-History Retrieval (Historical Work)
 
-## Retrieval Architecture (Historical/Inactive Infrastructure)
+Lexical, semantic, and fused retrieval were implemented for the earlier
+maintenance-history review feature. Their runtime and derived storage have
+since been removed from this branch; historical evidence remains. Core
+preventive-maintenance workflows do not require embeddings or an LLM.
 
-The preserved lexical, semantic, and fused retrieval channels served the
-previously evaluated maintenance-history review feature. They remain in the
-source tree for history and rollback, but the validation runtime does not
-expose them. Core preventive-maintenance workflows must never depend on
-embeddings or an LLM being available — on this branch they never contact them.
+The lexical channel used an internal SQL Server Full-Text Search service over
+the `MaintenanceSearchDocument.SearchText` projection, with bounded prefix
+queries and controlled filters. Fusion and the maintenance-review layer
+consumed its ranked results separately.
 
-The lexical channel is implemented as an internal SQL Server Full-Text Search
-service over the persisted `MaintenanceSearchDocument.SearchText` projection.
-It does not search source entities independently and does not implement
-embeddings or benchmark orchestration; fusion and the maintenance-review layer
-consume its ranked results separately.
+Semantic retrieval was an internal channel of the evaluated review workflow.
+It stored versioned serialized embeddings alongside relational document
+metadata, filtered a bounded SQL candidate set, and calculated cosine
+similarity in application code. Query vectors were transient. The maintenance
+embedding cache and its rebuild command have been removed. This historical
+implementation required neither native SQL Server vector features nor a
+separate vector database.
 
-Semantic retrieval was implemented as an internal channel of the evaluated
-maintenance-history review workflow. Document embeddings belong to
-`MaintenanceSearchDocumentEmbeddings`, are invalidated when `SearchText`
-changes, and are regenerated only by the explicit embedding rebuild command.
-Query vectors are generated transiently and are never stored. The current MVP
-stores versioned serialized embeddings alongside relational document metadata,
-filters a bounded SQL candidate set, and uses application-layer cosine
-similarity. It requires neither native SQL Server vector features nor a separate
-vector database. The embedding provider is disabled by default and remote providers require an
-explicit configuration flag and privacy review.
+The internal fused retriever combined lexical and semantic rankings with
+Reciprocal Rank Fusion using K=60. It preserved component ranks and channel
+values, deduplicated by inspection ID, applied deterministic tie-breaking, and
+reported semantic degradation. It had bounded result and candidate limits and
+no public endpoint.
 
-Internal fused retrieval combines the lexical and semantic ranked outputs with
-Reciprocal Rank Fusion using K=60. It preserves one-based component ranks and
-raw channel values, deduplicates by inspection ID, applies deterministic
-tie-breaking, and reports semantic degradation without exposing provider or
-query details. Fused retrieval is bounded to a default output of 10 and a
-default candidate depth of 20, with a maximum of 100. It has no public endpoint
-and does not implement context boosts, thresholds, source selection,
-sanitization, or summaries.
+## Maintenance Review (Retired Historical Work)
 
-## Maintenance Review (Historical/Inactive On This Branch)
+The authenticated maintenance-review endpoint and its supporting services were
+implemented and evaluated as controlled development work. They were later
+removed from this branch. The historical API description and evaluation records
+remain available as evidence. The former review used at most two fused
+retrieval passes, deterministic context tiers, request-scoped sanitization,
+source records alongside summary status, and no persistence of review data,
+prompts, summaries, or token maps. It made no autonomous maintenance decisions.
 
-The source-bounded maintenance-review loop was implemented as an explicitly
-enabled, authenticated endpoint and evaluated as controlled development work.
-In the current PMIS-only validation baseline the endpoint is mapped into the
-runtime contract only when explicitly enabled, so ordinary GSD workflows
-never contact retrieval, embeddings, or a summary provider. Where its sources
-remain preserved, behavior is unchanged: at most two fused retrieval passes,
-deterministic context tiers, request-scoped sanitization, original source
-records beside every summary status, no persistence of review data, prompts,
-summaries, or token maps, and no autonomous maintenance decisions.
+The retired MVP sanitizer used pattern-based token masking and pseudonymization
+for email, supported Philippine mobile numbers, and labeled IDs. It did not
+generally identify free-text personal names, and synthetic names did not prove
+protection for real institutional text. The former endpoint returned original
+source records to authorized callers for verification; that authorization
+boundary did not make the response anonymous.
 
-MVP prompt sanitization is pattern-based token masking and pseudonymization for
-email, supported Philippine mobile numbers, and labeled IDs. It does not
-generally identify free-text personal names, and synthetic names do not prove
-protection for real institutional text. Original source records are returned to
-authorized callers for verification; that authorization boundary does not make
-the response anonymous. Remote-provider use with real or unscreened
-institutional text requires a separately approved privacy process or stronger
-sanitization.
-
-The provider-neutral adapter now supports an optional thinking-mode field. A
-test-only 12-case English, Tagalog, and Taglish manifest and a secret-safe fresh-
-stack runner exist for `deepseek-v4-flash` with thinking disabled. Automated
-provider-contract and failure tests pass. EXP-002 executed a real-provider run
-using fictional data, retained fictional generated text, and developer-reviewed
-ratings. It is experimental only: it does not establish production readiness,
-and does not establish real institutional multilingual embedding quality.
-EXP-003 executed a local offline Granite baseline against the fictional
-maintenance retrieval fixture; it is controlled development evidence only and
-does not make Granite a required deployment dependency.
+The former provider-neutral adapter supported an optional thinking-mode field.
+A test-only 12-case English, Tagalog, and Taglish manifest and a secret-safe
+runner were used for `deepseek-v4-flash` with thinking disabled. The associated
+provider-contract and failure tests passed during that implementation phase.
+EXP-002 recorded a real-provider run with fictional data, generated text, and
+developer-reviewed ratings; it did not establish production readiness or real
+institutional multilingual embedding quality. EXP-003 recorded a local offline
+Granite baseline against the fictional maintenance retrieval fixture. These
+experiments remain development evidence only; Granite is not a deployment
+dependency.
 
 ## Validation Baseline Definition
 
@@ -186,9 +175,9 @@ registry with QR lookup, schedules, multi-row preventive-maintenance forms,
 the confirmed `Draft -> Submitted -> Acknowledged` lifecycle,
 acknowledged-only official history, deterministic reports already implemented,
 corrective-handoff preparation, and the web/mobile PMIS workflows. Core PMIS
-workflows do not depend on AI; maintenance-review is inactive by default;
-retrieval/embedding/summary infrastructure is preserved temporarily for
-history and rollback. No replacement innovation is approved yet. The previous
+workflows do not depend on AI. Maintenance-history RAG, its runtime, tooling,
+tests, and derived storage have been retired; historical documentation, evidence,
+and migrations remain. No replacement innovation is approved yet. The previous
 RAG-inclusive evaluated-MVP definition remains preserved in git history and is
 summarized as a historical record inside that file.
 
@@ -214,9 +203,10 @@ this branch.
    source authorization, final RBAC, audit rules, and other unresolved policy
    decisions deferred until then.
 
-Natural-language analytics remains a planned post-validation direction pending
-professor/adviser confirmation. It is not an implementation requirement on the
-current branch.
+Schema-constrained natural-language analytics remains a planned post-validation
+direction, pending professor/adviser confirmation. It is not implemented or
+approved for this branch; any implementation requires a separate approved task
+and branch after GSD validation.
 
 ## Engineering Evidence
 

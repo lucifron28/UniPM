@@ -25,8 +25,6 @@ $environmentNames = @(
     'UNIPM_JWT_SIGNING_KEY',
     'UNIPM_JWT_ACCESS_TOKEN_MINUTES',
     'UNIPM_DEV_USER_PASSWORD',
-    'UNIPM_MAINTENANCE_REVIEW_ENABLED',
-    'UNIPM_SUMMARY_ENABLED',
     'UNIPM_EMBEDDINGS_ENABLED')
 
 function Invoke-GitValue {
@@ -197,8 +195,6 @@ try {
         'UNIPM_DEV_USER_PASSWORD',
         "AuthEvidence!9$([Guid]::NewGuid().ToString('N'))",
         'Process')
-    [Environment]::SetEnvironmentVariable('UNIPM_MAINTENANCE_REVIEW_ENABLED', 'true', 'Process')
-    [Environment]::SetEnvironmentVariable('UNIPM_SUMMARY_ENABLED', 'false', 'Process')
     [Environment]::SetEnvironmentVariable('UNIPM_EMBEDDINGS_ENABLED', 'false', 'Process')
 
     Invoke-Stage 'compose-config' {
@@ -239,10 +235,6 @@ try {
     Invoke-Stage 'development-user-seed' {
         docker compose --env-file $composeEnvironmentPath -f $composeFilePath exec -T unipm-api dotnet UniPM.Api.dll --seed-development-users
         if ($LASTEXITCODE -ne 0) { throw "Development user seed failed with exit code $LASTEXITCODE." }
-    }
-    Invoke-Stage 'rebuild-search-documents' {
-        docker compose --env-file $composeEnvironmentPath -f $composeFilePath exec -T unipm-api dotnet UniPM.Api.dll --rebuild-maintenance-search-documents
-        if ($LASTEXITCODE -ne 0) { throw "Search-document rebuild failed with exit code $LASTEXITCODE." }
     }
     Invoke-Stage 'login-and-me' {
         $password = [Environment]::GetEnvironmentVariable('UNIPM_DEV_USER_PASSWORD', 'Process')
@@ -318,30 +310,6 @@ try {
         $inspection = Invoke-ApiRequest -Method POST -Uri 'http://localhost:5000/api/v1/inspections/' -Body $inspectionBody -AccessToken $tokens['Inspector']
         Add-Check -Name 'inspection-submit' -Role 'Inspector' -ActualStatus $inspection.StatusCode -ExpectedStatus 201
 
-        # Deterministic fictional FA-003 fixture ID, never a production record.
-        $reviewBody = @{
-            assetId = '7bfa4436-d0f1-5997-9310-6dafbc8183fe'
-            findingText = 'hindi nagrerespond ang smoke detector'
-            generateSummary = $false
-        } | ConvertTo-Json -Compress
-        $review = $null
-        $reviewPayload = $null
-        for ($attempt = 0; $attempt -lt 15; $attempt++) {
-            $review = Invoke-ApiRequest -Method POST -Uri 'http://localhost:5000/api/v1/maintenance-review' -Body $reviewBody -AccessToken $tokens['DepartmentHead']
-            $reviewPayload = $review.Content | ConvertFrom-Json
-            if ($review.StatusCode -eq 200 -and @($reviewPayload.sourceRecords).Count -gt 0) {
-                break
-            }
-            Start-Sleep -Seconds 1
-        }
-        Add-Check -Name 'maintenance-review' -Role 'DepartmentHead' -ActualStatus $review.StatusCode -ExpectedStatus 200 -Facts @{
-            sourceCount = @($reviewPayload.sourceRecords).Count
-            evidenceStatus = $reviewPayload.evidenceStatus
-            summaryStatus = $reviewPayload.summaryStatus
-        }
-        if (@($reviewPayload.sourceRecords).Count -lt 1) {
-            throw 'Authorized maintenance review returned no source records.'
-        }
     }
 
     [ordered]@{

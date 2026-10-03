@@ -1,11 +1,8 @@
-# Run the Local Stack and Rebuild Historical Retrieval Data
+# Run the local stack
 
-Use this guide when the API needs a repeatable local database setup, fictional
-maintenance data, or refreshed lexical and semantic projections.
-
-The retrieval rebuild commands and maintenance-review notes below document
-preserved historical/inactive infrastructure. They are not part of the current
-published PMIS runtime.
+Use this guide for a repeatable PMIS database setup and fictional maintenance data.
+Maintenance-history RAG and both maintenance rebuild commands are retired.
+The ReferenceDocument foundation and shared embedding components remain.
 
 ## Use the Supported Database Baseline
 
@@ -43,27 +40,15 @@ Run these commands from the repository root:
 dotnet ef database update --project server
 dotnet run --project server -- --seed-synthetic
 dotnet run --project server -- --seed-development-users
-dotnet run --project server -- --rebuild-maintenance-search-documents
 ```
 
 The commands are explicit and do not run automatically during normal API
 startup. Synthetic seeding is Development-only and owns only its deterministic
 fixture records. It creates 20 assets, 34 schedules, and 30 inspections.
 
-The search-document rebuild is transactional on SQL Server and rebuilds the
-inspectable projection used by lexical retrieval. It does not load the
-test-only evaluation manifest.
-
-Run the embedding rebuild only when embeddings are intentionally enabled and a
-provider has been configured:
-
-```powershell
-dotnet run --project server -- --rebuild-maintenance-embeddings
-```
-
-Query vectors are transient. Serialized document embeddings are versioned and
-stored with relational metadata; the backend calculates bounded cosine
-similarity in memory.
+Seeding no longer creates maintenance search documents or embeddings.
+Applying `RetireMaintenanceHistoryRagStorage` removes that derived storage
+while preserving PM records and reference-document storage.
 
 ## Start and Check the API
 
@@ -113,10 +98,14 @@ experiment.
 
 - Core form workflows do not depend on embeddings or an LLM.
 - Draft and Submitted form rows are excluded from official history. Acknowledged
-  rows are eligible for official history; preserved retrieval remains inactive.
+  rows are eligible for official history; maintenance RAG has been retired.
 - Signature and signatory fields never enter retrieval documents, embeddings,
   prompts, or corrective-handoff responses.
-- The planned inspection-history analysis is not implemented, and the historical
+- The RAG-assisted inspection-history analysis proposal is historical, was never
+  implemented, and is no longer active. Schema-constrained natural-language
+  analytics is a separate planned post-validation direction pending
+  professor/adviser confirmation; it is not implemented or approved and
+  requires a separate approved task after GSD validation. The historical
   maintenance-review contract is not published by the current runtime.
 - IIS production deployment, final RBAC, audit persistence, institutional source
   authorization, and offline-sync architecture remain unverified or deferred.
