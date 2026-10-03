@@ -5,7 +5,6 @@ import {
   type PointerEvent,
   type RefObject,
 } from 'react'
-import { Link } from '@tanstack/react-router'
 import { ApiError } from '@/api/problem-details'
 import type { PreventiveMaintenanceAcknowledgementResponse } from '@/api/generated/models/preventiveMaintenanceAcknowledgementResponse'
 import { Badge } from '@/components/ui/badge'
@@ -33,6 +32,11 @@ import {
 } from '@/features/preventive-maintenance-forms/form-presentation'
 import type { PmAcknowledgementReviewContext } from '@/features/preventive-maintenance-forms/pm-acknowledgement-review'
 import type { PmPeriodDashboardSearch } from '@/features/reports/pm-period-dashboard'
+import { DetailBackLink } from '@/features/shared/detail-back-link'
+import type {
+  DetailReturnContext,
+  DetailReturnFallback,
+} from '@/features/shared/detail-navigation'
 
 const uuidPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -59,11 +63,14 @@ function HandoffRow({
     <article className="rounded-xl border border-[var(--border-soft)] bg-white p-5 shadow-sm">
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
         <div>
-          <p className="text-sm font-semibold text-[var(--text-primary)]">
-            Inspection {row.inspectionId}
-          </p>
+          <h3 className="text-sm font-semibold text-[var(--text-primary)]">
+            {row.assetCode}
+          </h3>
           <p className="mt-1 text-xs text-[var(--text-neutral)]">
-            {formatFormDate(row.inspectionDate)}
+            {row.assetDeviceNumber
+              ? `Device number: ${row.assetDeviceNumber} · `
+              : ''}
+            Actual inspection date: {formatFormDate(row.inspectionDate)}
           </p>
         </div>
         <Badge
@@ -81,7 +88,6 @@ function HandoffRow({
           label="Asset/device number"
           value={row.assetDeviceNumber ?? 'Unresolved'}
         />
-        <DetailItem label="Asset code" value={row.assetCode} />
         <DetailItem label="Location" value={row.location ?? ''} />
         <DetailItem
           label="Skilled worker"
@@ -92,6 +98,14 @@ function HandoffRow({
           value={row.skilledWorkerUserId}
         />
       </dl>
+      <details className="mt-4 text-xs text-[var(--text-neutral)]">
+        <summary className="cursor-pointer font-semibold">
+          Technical identifiers
+        </summary>
+        <dl className="mt-3 grid gap-3 sm:grid-cols-3">
+          <DetailItem label="Inspection ID" value={row.inspectionId} />
+        </dl>
+      </details>
       <div className="mt-5 grid gap-4 border-t border-[var(--border-soft)] pt-4 sm:grid-cols-2">
         <div>
           <h3 className="text-xs font-semibold tracking-[0.08em] text-[var(--text-neutral)] uppercase">
@@ -650,11 +664,13 @@ export function FormDetail({
   readOnly = false,
   reviewContext,
   dashboardSearch,
+  returnContext,
 }: {
   formId: string
   readOnly?: boolean | undefined
   reviewContext?: PmAcknowledgementReviewContext | undefined
   dashboardSearch?: PmPeriodDashboardSearch | undefined
+  returnContext?: DetailReturnContext | undefined
 }) {
   const [acknowledgement, setAcknowledgement] =
     useState<PreventiveMaintenanceAcknowledgementResponse | null>(null)
@@ -666,6 +682,31 @@ export function FormDetail({
   const handoff = useCorrectiveMaintenanceHandoff(
     formId,
     isGsd && form.data?.status === 'Acknowledged',
+  )
+  const returnFallback: DetailReturnFallback = reviewContext
+    ? {
+        kind: 'batchReview',
+        formId: reviewContext.reviewFormId,
+        search: {
+          department: reviewContext.department,
+          assetCategory: reviewContext.assetCategory,
+          year: reviewContext.year,
+          pmCycle: reviewContext.pmCycle,
+          condition: reviewContext.condition,
+          timeliness: reviewContext.timeliness,
+          search: reviewContext.search,
+        },
+      }
+    : readOnly && dashboardSearch
+      ? { kind: 'dashboard', search: dashboardSearch }
+      : { kind: 'formRegistry' }
+
+  const backLink = (
+    <DetailBackLink
+      context={returnContext}
+      fallback={returnFallback}
+      className="inline-flex min-h-10 items-center text-sm font-semibold text-[var(--primary)] hover:underline focus-visible:rounded focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:outline-none"
+    />
   )
 
   if (currentUser.isPending) {
@@ -682,8 +723,12 @@ export function FormDetail({
 
   if (currentUser.isError || !currentUser.data) {
     return (
-      <Card role="alert" className="border-[var(--warning)] shadow-none">
-        Form access is temporarily unavailable.
+      <Card
+        role="alert"
+        className="space-y-4 border-[var(--warning)] shadow-none"
+      >
+        <p>Form access is temporarily unavailable.</p>
+        {backLink}
       </Card>
     )
   }
@@ -698,6 +743,7 @@ export function FormDetail({
           Preventive-maintenance form review is available to GSD and Inspector
           users.
         </p>
+        <div className="mt-4">{backLink}</div>
       </Card>
     )
   }
@@ -711,6 +757,7 @@ export function FormDetail({
         <p className="mt-2 text-sm text-[var(--text-secondary)]">
           The form link is invalid. No form request was made.
         </p>
+        <div className="mt-4">{backLink}</div>
       </Card>
     )
   }
@@ -754,6 +801,7 @@ export function FormDetail({
             Retry
           </Button>
         )}
+        <div className="mt-4">{backLink}</div>
       </Card>
     )
   }
@@ -765,39 +813,7 @@ export function FormDetail({
       aria-labelledby="form-detail-title"
       className="max-w-6xl space-y-6"
     >
-      {readOnly && reviewContext ? (
-        <Link
-          to="/app/preventive-maintenance-forms/$formId/review"
-          params={{ formId: reviewContext.reviewFormId }}
-          search={{
-            department: reviewContext.department,
-            assetCategory: reviewContext.assetCategory,
-            year: reviewContext.year,
-            pmCycle: reviewContext.pmCycle,
-            condition: reviewContext.condition,
-            timeliness: reviewContext.timeliness,
-            search: reviewContext.search,
-          }}
-          className="text-sm font-semibold text-[var(--primary)] hover:underline"
-        >
-          Back to batch review
-        </Link>
-      ) : readOnly && dashboardSearch ? (
-        <Link
-          to="/app/dashboard"
-          search={dashboardSearch}
-          className="text-sm font-semibold text-[var(--primary)] hover:underline"
-        >
-          Back to PM dashboard
-        </Link>
-      ) : (
-        <Link
-          to="/app/preventive-maintenance-forms"
-          className="text-sm font-semibold text-[var(--primary)] hover:underline"
-        >
-          Back to form review
-        </Link>
-      )}
+      {backLink}
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
         <div>
           <p className="text-sm font-semibold tracking-[0.08em] text-[var(--primary)] uppercase">
@@ -809,9 +825,6 @@ export function FormDetail({
           >
             {record.fileNumber ?? 'Unsubmitted form'}
           </h1>
-          <p className="mt-2 text-sm break-all text-[var(--text-secondary)]">
-            {record.id}
-          </p>
         </div>
         <Badge className={formStatusClass(record.status)}>
           {formStatusLabel(record.status)}
@@ -822,11 +835,6 @@ export function FormDetail({
         <DetailItem label="Building" value={record.building ?? ''} />
         <DetailItem label="Department" value={record.department ?? ''} />
         <DetailItem label="Period" value={formatFormPeriod(record)} />
-        <DetailItem label="Created by user ID" value={record.createdByUserId} />
-        <DetailItem
-          label="Submitted by user ID"
-          value={record.submittedByUserId ?? ''}
-        />
         <DetailItem
           label="Submitted"
           value={formatFormDate(record.submittedAt)}
@@ -885,6 +893,20 @@ export function FormDetail({
       {isGsd && record.status === 'Acknowledged' && (
         <CorrectiveHandoff query={handoff} />
       )}
+      <Card className="shadow-none">
+        <h2 className="font-semibold">Record information</h2>
+        <dl className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <DetailItem label="Form record ID" value={record.id} />
+          <DetailItem
+            label="Created by user ID"
+            value={record.createdByUserId}
+          />
+          <DetailItem
+            label="Submitted by user ID"
+            value={record.submittedByUserId ?? ''}
+          />
+        </dl>
+      </Card>
     </section>
   )
 }

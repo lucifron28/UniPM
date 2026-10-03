@@ -323,15 +323,20 @@ test('a stale refresh cannot overwrite the cookie from a later logout and login'
     )
   })
   await staleRefreshStarted
-  await page.evaluate(() =>
-    window.eval(`import('/src/features/auth/auth-session-service.ts').then((module) => {
+  await page.evaluate(() => {
+    window.eval(`window.__startLogoutAndLogin = import('/src/features/auth/auth-session-service.ts').then((module) => {
       window.__logoutDuringRefresh = module.logout()
       window.__loginAfterLogout = module.authenticate({
         email: 'fictional.inspector@example.test',
         password: 'Synthetic Browser Password'
       })
       return true
-    })`),
+    })`)
+  })
+  await page.waitForFunction(() =>
+    window.eval(
+      'Boolean(window.__logoutDuringRefresh && window.__loginAfterLogout)',
+    ),
   )
   releaseStaleRefresh()
   await staleResponseHandled
@@ -346,10 +351,15 @@ test('a stale refresh cannot overwrite the cookie from a later logout and login'
   )
   expect(refreshCookie?.value).toBe('session-b')
 
-  await page.evaluate(() =>
+  // Start synchronously, then let Playwright poll the retained async operation.
+  // Chromium can collect a promise returned directly from an evaluated import.
+  await page.evaluate(() => {
     window.eval(
-      "import('/src/features/auth/auth-session-service.ts').then((module) => module.refreshAccessToken(module.getSessionGeneration()))",
-    ),
+      "window.__sessionBRefresh = import('/src/features/auth/auth-session-service.ts').then((module) => module.refreshAccessToken(module.getSessionGeneration()))",
+    )
+  })
+  await page.waitForFunction(() =>
+    window.eval('window.__sessionBRefresh.then(() => true)'),
   )
   refreshCookie = (await context.cookies()).find(
     (cookie) => cookie.name === 'unipm_refresh',

@@ -215,6 +215,17 @@ class _AssetDetails extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 24),
+        if (preventiveMaintenanceRepository != null && user != null) ...[
+          ScannedAssetPmEntry(
+            key: ValueKey('pm-entry-${asset.id}'),
+            asset: asset,
+            repository: preventiveMaintenanceRepository!,
+            user: user!,
+            batchScope: batchScope,
+            onScanNextAsset: onScanNextAsset,
+          ),
+          const SizedBox(height: 24),
+        ],
         if (assetMaintenanceHistoryRepository != null) ...[
           OutlinedButton.icon(
             key: const Key('view-asset-history'),
@@ -233,18 +244,7 @@ class _AssetDetails extends StatelessWidget {
           ),
           const SizedBox(height: 24),
         ],
-        if (preventiveMaintenanceRepository != null && user != null) ...[
-          ScannedAssetPmEntry(
-            key: ValueKey('pm-entry-${asset.id}'),
-            asset: asset,
-            repository: preventiveMaintenanceRepository!,
-            user: user!,
-            batchScope: batchScope,
-            onScanNextAsset: onScanNextAsset,
-          ),
-          const SizedBox(height: 24),
-        ],
-        FilledButton.icon(
+        OutlinedButton.icon(
           key: const Key('scan-another-asset-qr'),
           onPressed: onScanAnother,
           icon: const Icon(Icons.qr_code_scanner),

@@ -124,7 +124,10 @@ const createColumns = (search: ScheduleSearch) => [
       <Link
         to="/app/schedules/$scheduleId"
         params={{ scheduleId: row.original.id }}
-        search={search}
+        search={{
+          ...search,
+          returnContext: { kind: 'scheduleRegistry', search },
+        }}
         className="font-semibold text-[var(--primary)] hover:underline"
       >
         View details
@@ -504,7 +507,10 @@ export function ScheduleRegistry({
                   <Link
                     to="/app/schedules/$scheduleId"
                     params={{ scheduleId: schedule.id }}
-                    search={search}
+                    search={{
+                      ...search,
+                      returnContext: { kind: 'scheduleRegistry', search },
+                    }}
                     className="inline-block font-semibold text-[var(--primary)] hover:underline"
                   >
                     View details

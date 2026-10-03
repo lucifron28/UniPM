@@ -344,11 +344,18 @@ describe('preventive-maintenance form review', () => {
     expect(screen.getByText('Acknowledged')).toBeInTheDocument()
     expect(screen.getAllByText('Main Building / GSD')).toHaveLength(3)
     expect(screen.getAllByText('Inspection rows')).toHaveLength(3)
+    expect(screen.queryByText(formId)).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('77777777-7777-4777-8777-777777777777'),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('88888888-8888-4888-8888-888888888888'),
+    ).not.toBeInTheDocument()
     expect(
       screen.getByRole('link', { name: 'GSD-SUBMITTED-001' }),
     ).toHaveAttribute(
       'href',
-      '/app/preventive-maintenance-forms/77777777-7777-4777-8777-777777777777',
+      '/app/preventive-maintenance-forms/77777777-7777-4777-8777-777777777777?returnContext=%7B%22kind%22%3A%22formRegistry%22%7D',
     )
   })
 
@@ -443,6 +450,22 @@ describe('preventive-maintenance form review', () => {
         name: 'Corrective-action findings',
       }),
     ).toBeInTheDocument()
+    const handoffHeading = screen.getByRole('heading', { name: 'FE-001' })
+    expect(handoffHeading).toBeInTheDocument()
+    const handoffCard = handoffHeading.closest('article')
+    if (!(handoffCard instanceof HTMLElement)) {
+      throw new Error('Corrective-action finding card was not found')
+    }
+    expect(handoffCard).toHaveTextContent('Actual inspection date:')
+    const handoff = within(handoffCard)
+    const technicalSummary = handoff.getByText('Technical identifiers')
+    const technicalDetails = technicalSummary.closest('details')
+    if (!(technicalDetails instanceof HTMLDetailsElement)) {
+      throw new Error('Technical identifiers details section was not found')
+    }
+    expect(technicalDetails).not.toHaveAttribute('open')
+    fireEvent.click(technicalSummary)
+    expect(within(technicalDetails).getByText(inspectionId)).toBeInTheDocument()
     expect(screen.getAllByText('Not operational')).toHaveLength(2)
     expect(screen.getByText('Unresolved')).toBeInTheDocument()
     expect(screen.getByText('FE-001')).toBeInTheDocument()
@@ -748,8 +771,12 @@ describe('preventive-maintenance form review', () => {
       )
       expect(
         await screen.findByRole('heading', {
-          name: `Inspection ${inspectionId}`,
+          name: 'FE-TEST-001',
+          level: 1,
         }),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByRole('heading', { name: 'Record information' }),
       ).toBeInTheDocument()
       await waitFor(() => {
         expect(router.state.location.pathname).toBe(
@@ -758,6 +785,11 @@ describe('preventive-maintenance form review', () => {
         expect(router.state.location.search).toEqual({
           ...dashboardSearch,
           reviewFormId: formId,
+          returnContext: {
+            kind: 'batchReview',
+            formId,
+            search: dashboardSearch,
+          },
         })
       })
 
@@ -771,7 +803,10 @@ describe('preventive-maintenance form review', () => {
         expect(router.state.location.pathname).toBe(
           `/app/preventive-maintenance-forms/${formId}/review`,
         )
-        expect(router.state.location.search).toEqual(dashboardSearch)
+        expect(router.state.location.search).toEqual({
+          ...dashboardSearch,
+          returnContext: { kind: 'dashboard', search: dashboardSearch },
+        })
       })
 
       fireEvent.click(
@@ -810,6 +845,11 @@ describe('preventive-maintenance form review', () => {
           readonly: true,
           ...dashboardSearch,
           reviewFormId: formId,
+          returnContext: {
+            kind: 'batchReview',
+            formId,
+            search: dashboardSearch,
+          },
         })
       })
 
@@ -823,7 +863,10 @@ describe('preventive-maintenance form review', () => {
         expect(router.state.location.pathname).toBe(
           `/app/preventive-maintenance-forms/${formId}/review`,
         )
-        expect(router.state.location.search).toEqual(dashboardSearch)
+        expect(router.state.location.search).toEqual({
+          ...dashboardSearch,
+          returnContext: { kind: 'dashboard', search: dashboardSearch },
+        })
       })
       fireEvent.click(
         screen.getByRole('link', { name: 'Back to PM dashboard' }),
@@ -854,6 +897,10 @@ describe('preventive-maintenance form review', () => {
       expect(router.state.location.search).toEqual({
         readonly: true,
         ...allDepartmentDashboardSearch,
+        returnContext: {
+          kind: 'dashboard',
+          search: allDepartmentDashboardSearch,
+        },
       })
     })
 
@@ -888,6 +935,11 @@ describe('preventive-maintenance form review', () => {
         readonly: true,
         ...reviewSearch,
         reviewFormId: formId,
+        returnContext: {
+          kind: 'batchReview',
+          formId,
+          search: reviewSearch,
+        },
       })
     })
 
@@ -896,7 +948,10 @@ describe('preventive-maintenance form review', () => {
       name: 'Review before acknowledgement',
     })
     await waitFor(() => {
-      expect(router.state.location.search).toEqual(reviewSearch)
+      expect(router.state.location.search).toEqual({
+        ...reviewSearch,
+        returnContext: { kind: 'dashboard', search: reviewSearch },
+      })
     })
     fireEvent.click(screen.getByRole('link', { name: 'Back to PM dashboard' }))
     await waitFor(() => {

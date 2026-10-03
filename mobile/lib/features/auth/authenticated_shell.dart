@@ -213,8 +213,8 @@ class AuthenticatedShell extends StatelessWidget {
         onOpenPreventiveMaintenance:
             (controller.user?.roles.contains('GSD') == true &&
                 preventiveMaintenanceRepository != null)
-            ? () {
-                Navigator.of(context).push(
+            ? () async {
+                await Navigator.of(context).push<void>(
                   MaterialPageRoute<void>(
                     builder: (_) => PreventiveMaintenancePage(
                       repository: preventiveMaintenanceRepository!,

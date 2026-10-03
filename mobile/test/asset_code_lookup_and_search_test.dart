@@ -13,6 +13,7 @@ import 'package:mobile/features/assets/asset_repository.dart';
 import 'package:mobile/features/assets/asset_search_page.dart';
 import 'package:mobile/features/qr_scanner/qr_scanner_controller.dart';
 import 'package:mobile/features/qr_scanner/qr_scanner_page.dart';
+import 'package:mobile/ui/widgets/asset_summary_card.dart';
 import 'package:mobile/ui/widgets/status_badge.dart';
 
 const testAssetId = '22222222-2222-4222-8222-222222222222';
@@ -44,6 +45,7 @@ Map<String, dynamic> assetToMap(Asset asset) => <String, dynamic>{
   'location': asset.location,
   'qrCodeValue': asset.qrCodeValue,
   'status': asset.status,
+  'hasVerificationLocation': false,
   'createdAt': '2026-08-01T00:00:00Z',
   'updatedAt': '2026-08-01T00:00:00Z',
 };
@@ -252,6 +254,59 @@ void main() {
         expect(find.text('FE-001'), findsOneWidget);
       },
     );
+
+    testWidgets('clear search icon clears the query and restores results', (
+      tester,
+    ) async {
+      final assets = [
+        createTestAsset(code: 'FE-CLEAR-001'),
+        createTestAsset(code: 'FA-CLEAR-002', category: 'fire-alarm'),
+      ];
+      final repository = FakeSearchAssetRepository(assets: assets);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: AssetSearchPage(
+            repository: repository,
+            initialQuery: 'FE-CLEAR-001',
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.descendant(
+          of: find.byType(AssetSummaryCard),
+          matching: find.text('FE-CLEAR-001'),
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('FA-CLEAR-002'), findsNothing);
+      await tester.enterText(
+        find.byKey(const Key('asset-search-input')),
+        'FA-CLEAR-002',
+      );
+      expect(find.byIcon(Icons.clear), findsOneWidget);
+
+      await tester.tap(find.byIcon(Icons.clear));
+      await tester.pumpAndSettle();
+
+      expect(find.byIcon(Icons.clear), findsNothing);
+      expect(
+        find.descendant(
+          of: find.byType(AssetSummaryCard),
+          matching: find.text('FE-CLEAR-001'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byType(AssetSummaryCard),
+          matching: find.text('FA-CLEAR-002'),
+        ),
+        findsOneWidget,
+      );
+    });
 
     testWidgets('search page explains when results reach the 30-item cap', (
       tester,

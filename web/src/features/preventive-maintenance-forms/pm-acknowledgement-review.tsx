@@ -24,11 +24,18 @@ import {
   formatFormPeriod,
 } from '@/features/preventive-maintenance-forms/form-presentation'
 import { usePmPeriodDashboard } from '@/features/reports/pm-period-dashboard-queries'
+import { DetailBackLink } from '@/features/shared/detail-back-link'
+import type {
+  DetailReturnContext,
+  DetailReturnFallback,
+} from '@/features/shared/detail-navigation'
 
 const uuidPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
-export type PmAcknowledgementReviewSearch = PmPeriodDashboardSearch
+export type PmAcknowledgementReviewSearch = PmPeriodDashboardSearch & {
+  returnContext?: DetailReturnContext | undefined
+}
 
 export type PmAcknowledgementReviewContext = PmPeriodDashboardSearch & {
   reviewFormId: string
@@ -109,10 +116,14 @@ function ReviewError({
   title,
   message,
   retry,
+  context,
+  fallback,
 }: {
   title: string
   message: string
   retry?: (() => void) | undefined
+  context?: DetailReturnContext | undefined
+  fallback: DetailReturnFallback
 }) {
   return (
     <Card role="alert" className="border-[var(--warning)] p-6 shadow-none">
@@ -124,13 +135,8 @@ function ReviewError({
             Retry
           </Button>
         )}
-        <Button
-          asChild
-          className="bg-white text-[var(--text-primary)] hover:bg-[var(--page-background)]"
-        >
-          <Link to="/app/preventive-maintenance-forms">
-            Return to form review
-          </Link>
+        <Button asChild variant="secondary">
+          <DetailBackLink context={context} fallback={fallback} />
         </Button>
       </div>
     </Card>
@@ -295,7 +301,22 @@ function AssetReviewList({
                       <Link
                         to="/app/inspections/$inspectionId"
                         params={{ inspectionId: asset.inspectionId }}
-                        search={reviewContext}
+                        search={{
+                          ...reviewContext,
+                          returnContext: {
+                            kind: 'batchReview',
+                            formId: reviewContext.reviewFormId,
+                            search: {
+                              department: reviewContext.department,
+                              assetCategory: reviewContext.assetCategory,
+                              year: reviewContext.year,
+                              pmCycle: reviewContext.pmCycle,
+                              condition: reviewContext.condition,
+                              timeliness: reviewContext.timeliness,
+                              search: reviewContext.search,
+                            },
+                          },
+                        }}
                         className="font-semibold text-[var(--primary)] underline-offset-2 hover:underline focus-visible:rounded focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:outline-none"
                       >
                         View inspection detail
@@ -327,6 +348,7 @@ export function PmAcknowledgementReview({
   const currentUser = useCurrentUser()
   const canReview = canReviewPreventiveMaintenanceForms(currentUser.data?.roles)
   const validId = uuidPattern.test(formId)
+  const { returnContext, ...dashboardSearch } = search
   const formQuery = usePreventiveMaintenanceForm(formId, canReview && validId)
   const formRecord =
     canReview && validId && formQuery.isSuccess && !formQuery.isError
@@ -364,6 +386,8 @@ export function PmAcknowledgementReview({
   if (currentUser.isError || !currentUser.data) {
     return (
       <ReviewError
+        context={returnContext}
+        fallback={{ kind: 'dashboard', search: dashboardSearch }}
         title="Review access unavailable"
         message="The signed-in reviewer details could not be loaded."
       />
@@ -373,6 +397,8 @@ export function PmAcknowledgementReview({
   if (!canReview) {
     return (
       <ReviewError
+        context={returnContext}
+        fallback={{ kind: 'dashboard', search: dashboardSearch }}
         title="Access restricted"
         message="Preventive-maintenance acknowledgement review is available to GSD and Inspector users."
       />
@@ -382,6 +408,8 @@ export function PmAcknowledgementReview({
   if (!validId) {
     return (
       <ReviewError
+        context={returnContext}
+        fallback={{ kind: 'dashboard', search: dashboardSearch }}
         title="Review not found"
         message="The submitted form link is invalid. No form request was made."
       />
@@ -407,6 +435,8 @@ export function PmAcknowledgementReview({
       formQuery.error instanceof ApiError && formQuery.error.status === 404
     return (
       <ReviewError
+        context={returnContext}
+        fallback={{ kind: 'dashboard', search: dashboardSearch }}
         title={notFound ? 'Form not found' : 'Form unavailable'}
         message={
           notFound
@@ -435,6 +465,8 @@ export function PmAcknowledgementReview({
   if (dashboardQuery.isError || !dashboardQuery.data) {
     return (
       <ReviewError
+        context={returnContext}
+        fallback={{ kind: 'dashboard', search: dashboardSearch }}
         title="Batch summary unavailable"
         message="The backend batch summary could not be loaded for this form."
         retry={() => void dashboardQuery.refetch()}
@@ -455,6 +487,8 @@ export function PmAcknowledgementReview({
   if (!batch) {
     return (
       <ReviewError
+        context={returnContext}
+        fallback={{ kind: 'dashboard', search: dashboardSearch }}
         title="Batch review unavailable"
         message="The backend did not return a batch linked to this submitted form."
       />
@@ -463,7 +497,7 @@ export function PmAcknowledgementReview({
 
   const isSubmitted = form.status === 'Submitted'
   const reviewContext: PmAcknowledgementReviewContext = {
-    ...search,
+    ...dashboardSearch,
     reviewFormId: form.id,
   }
 
@@ -472,13 +506,10 @@ export function PmAcknowledgementReview({
       aria-labelledby="pm-acknowledgement-review-title"
       className="max-w-7xl space-y-5"
     >
-      <Link
-        to="/app/dashboard"
-        search={search}
-        className="text-sm font-semibold text-[var(--primary)] hover:underline"
-      >
-        Back to PM dashboard
-      </Link>
+      <DetailBackLink
+        context={returnContext}
+        fallback={{ kind: 'dashboard', search: dashboardSearch }}
+      />
       <Summary batch={batch} form={form} />
       <div className="flex flex-wrap gap-3">
         <Link
@@ -487,6 +518,11 @@ export function PmAcknowledgementReview({
           search={{
             readonly: true,
             ...reviewContext,
+            returnContext: {
+              kind: 'batchReview',
+              formId: form.id,
+              search: dashboardSearch,
+            },
           }}
           className="inline-flex min-h-10 items-center justify-center rounded-lg bg-[var(--primary)] px-4 py-2 text-sm font-semibold text-white hover:bg-[var(--primary-active)] focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:outline-none"
         >

@@ -2,6 +2,10 @@ import { createFileRoute } from '@tanstack/react-router'
 import { z } from 'zod'
 import { FormDetail } from '@/features/preventive-maintenance-forms/form-detail'
 import type { PmAcknowledgementReviewContext } from '@/features/preventive-maintenance-forms/pm-acknowledgement-review'
+import {
+  parseDetailReturnContext,
+  type DetailReturnContext,
+} from '@/features/shared/detail-navigation'
 
 const searchSchema = z.object({
   readonly: z.coerce.boolean().optional(),
@@ -20,14 +24,24 @@ const searchSchema = z.object({
     .enum(['OnTime', 'Late', 'Scheduled', 'Pending', 'NotCompleted'])
     .optional(),
   search: z.string().trim().max(256).optional(),
+  returnContext: z.unknown().optional(),
 })
 
 export const Route = createFileRoute(
   '/app/preventive-maintenance-forms/$formId/',
 )({
-  validateSearch: (search) => {
+  validateSearch: (
+    search,
+  ): Omit<z.infer<typeof searchSchema>, 'returnContext'> & {
+    returnContext?: DetailReturnContext | undefined
+  } => {
     const parsed = searchSchema.safeParse(search)
-    return parsed.success ? parsed.data : {}
+    return parsed.success
+      ? {
+          ...parsed.data,
+          returnContext: parseDetailReturnContext(parsed.data.returnContext),
+        }
+      : {}
   },
   component: FormDetailPage,
 })
@@ -56,6 +70,7 @@ function FormDetailPage() {
       formId={formId}
       readOnly={search.readonly}
       reviewContext={reviewContext}
+      returnContext={search.returnContext}
       dashboardSearch={
         search.readonly && !reviewContext ? dashboardSearch : undefined
       }

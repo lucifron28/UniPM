@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../auth/auth_models.dart';
@@ -21,14 +23,15 @@ class HomePage extends StatefulWidget {
   });
 
   final AuthUser user;
-  final VoidCallback? onScanQr;
-  final VoidCallback? onEnterAssetCode;
-  final VoidCallback? onSearchAssets;
-  final ValueChanged<PmBatchScope>? onStartBatch;
-  final VoidCallback? onOpenPreventiveMaintenance;
+  final FutureOr<void> Function()? onScanQr;
+  final FutureOr<void> Function()? onEnterAssetCode;
+  final FutureOr<void> Function()? onSearchAssets;
+  final FutureOr<void> Function(PmBatchScope)? onStartBatch;
+  final FutureOr<void> Function()? onOpenPreventiveMaintenance;
   final PreventiveMaintenanceRepository? preventiveMaintenanceRepository;
-  final ValueChanged<String>? onOpenForm;
-  final ValueChanged<PreventiveMaintenanceForm>? onOpenAcknowledgement;
+  final FutureOr<void> Function(String)? onOpenForm;
+  final FutureOr<void> Function(PreventiveMaintenanceForm)?
+  onOpenAcknowledgement;
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -74,6 +77,17 @@ class _HomePageState extends State<HomePage> {
         _isLoadingBatches = false;
         _batchError = 'Could not load active batches.';
       });
+    }
+  }
+
+  Future<void> _runChildWorkflow(
+    FutureOr<void> Function()? openWorkflow,
+  ) async {
+    if (openWorkflow == null) return;
+    try {
+      await openWorkflow();
+    } finally {
+      if (mounted) await _loadBatches();
     }
   }
 
@@ -214,8 +228,121 @@ class _HomePageState extends State<HomePage> {
     return batches;
   }
 
+  int _statusOrder(String status) => switch (status.toLowerCase()) {
+    'overdue' => 0,
+    'ongoing' || 'in progress' => 1,
+    _ => 2,
+  };
+
+  int _comparePmCycles(String left, String right) {
+    final cyclePattern = RegExp(r'^([0-9]{4})-(0[1-9]|1[0-2])$');
+    final leftMatch = cyclePattern.firstMatch(left);
+    final rightMatch = cyclePattern.firstMatch(right);
+    if (leftMatch != null && rightMatch != null) {
+      final yearOrder = leftMatch.group(1)!.compareTo(rightMatch.group(1)!);
+      if (yearOrder != 0) return yearOrder;
+      return leftMatch.group(2)!.compareTo(rightMatch.group(2)!);
+    }
+    if (leftMatch != null) return -1;
+    if (rightMatch != null) return 1;
+    return left.toLowerCase().compareTo(right.toLowerCase());
+  }
+
   List<_AssignedPmBatch> get _assignedBatches =>
       _groupSchedules(_assignedSchedules);
+  List<_HomePmTask> get _orderedPmTasks {
+    final tasks = <_HomePmTask>[
+      ..._activeDrafts.map((draft) {
+        final cycle = _resolvePmCycle(
+          pmCycle: draft.pmCycle,
+          periodType: draft.periodType,
+          year: draft.year,
+        );
+        return _HomePmTask(
+          status: 'In Progress',
+          pmCycle: cycle,
+          department: draft.department ?? 'General Department',
+          assetCategory: draft.assetCategory,
+          card: _draftCard(draft, cycle),
+        );
+      }),
+      ..._unstartedAssignedBatches.map(
+        (batch) => _HomePmTask(
+          status: batch.status,
+          pmCycle: batch.pmCycle,
+          department: batch.department,
+          assetCategory: batch.assetCategory,
+          card: _assignedBatchCard(batch),
+        ),
+      ),
+    ];
+    tasks.sort((left, right) {
+      final statusOrder = _statusOrder(
+        left.status,
+      ).compareTo(_statusOrder(right.status));
+      if (statusOrder != 0) return statusOrder;
+
+      final cycleOrder = _comparePmCycles(left.pmCycle, right.pmCycle);
+      if (cycleOrder != 0) return cycleOrder;
+
+      final departmentOrder = left.department.toLowerCase().compareTo(
+        right.department.toLowerCase(),
+      );
+      if (departmentOrder != 0) return departmentOrder;
+      return left.assetCategory.toLowerCase().compareTo(
+        right.assetCategory.toLowerCase(),
+      );
+    });
+    return tasks;
+  }
+
+  Widget _draftCard(PreventiveMaintenanceForm draft, String cycle) {
+    final total = _calculateTotalForDraft(draft);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: BatchPmCard(
+        key: ValueKey('draft-card-${draft.id}'),
+        department: draft.department ?? 'General Department',
+        assetCategory: draft.assetCategory,
+        pmCycle: cycle,
+        status: 'In Progress',
+        completedCount: draft.inspections.length,
+        totalCount: total,
+        building: draft.building,
+        actionLabel: 'Continue PM batch',
+        onAction: widget.onOpenForm == null
+            ? null
+            : () => _runChildWorkflow(() => widget.onOpenForm!(draft.id)),
+        onTap: widget.onOpenForm == null
+            ? null
+            : () => _runChildWorkflow(() => widget.onOpenForm!(draft.id)),
+      ),
+    );
+  }
+
+  Widget _assignedBatchCard(_AssignedPmBatch batch) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: BatchPmCard(
+        key: ValueKey(
+          'assigned-batch-${_canonicalBatchKey(batch.department, batch.assetCategory, batch.pmCycle)}',
+        ),
+        department: batch.department,
+        assetCategory: batch.assetCategory,
+        pmCycle: batch.pmCycle,
+        status: batch.status,
+        completedCount: 0,
+        totalCount: batch.totalCount,
+        building: batch.building,
+        actionLabel: (widget.onStartBatch != null || widget.onScanQr != null)
+            ? 'Start inspection'
+            : null,
+        onAction: () => _startBatch(batch),
+        onTap: () => _startBatch(batch),
+      ),
+    );
+  }
+
   List<_AssignedPmBatch> get _unstartedAssignedBatches {
     final draftKeys = _activeDrafts.map((d) {
       return _canonicalBatchKey(
@@ -240,18 +367,20 @@ class _HomePageState extends State<HomePage> {
         .toList(growable: false);
   }
 
-  void _startBatch(_AssignedPmBatch batch) {
+  Future<void> _startBatch(_AssignedPmBatch batch) async {
     final callback = widget.onStartBatch;
     if (callback != null) {
-      callback(
-        PmBatchScope(
-          department: batch.department,
-          assetCategory: batch.assetCategory,
-          pmCycle: batch.pmCycle,
+      await _runChildWorkflow(
+        () => callback(
+          PmBatchScope(
+            department: batch.department,
+            assetCategory: batch.assetCategory,
+            pmCycle: batch.pmCycle,
+          ),
         ),
       );
     } else {
-      widget.onScanQr?.call();
+      await _runChildWorkflow(widget.onScanQr);
     }
   }
 
@@ -332,7 +461,9 @@ class _HomePageState extends State<HomePage> {
                   title: 'Scan QR',
                   subtitle: 'Fastest path',
                   isPrimary: true,
-                  onTap: widget.onScanQr,
+                  onTap: widget.onScanQr == null
+                      ? null
+                      : () => _runChildWorkflow(widget.onScanQr),
                 ),
               ),
               const SizedBox(width: 12),
@@ -343,7 +474,9 @@ class _HomePageState extends State<HomePage> {
                   title: 'Enter Code',
                   subtitle: 'Damaged QR',
                   isPrimary: false,
-                  onTap: widget.onEnterAssetCode,
+                  onTap: widget.onEnterAssetCode == null
+                      ? null
+                      : () => _runChildWorkflow(widget.onEnterAssetCode),
                 ),
               ),
             ],
@@ -362,7 +495,9 @@ class _HomePageState extends State<HomePage> {
                 style: TextStyle(fontSize: 12),
               ),
               trailing: const Icon(Icons.chevron_right, size: 20),
-              onTap: widget.onSearchAssets,
+              onTap: widget.onSearchAssets == null
+                  ? null
+                  : () => _runChildWorkflow(widget.onSearchAssets),
             ),
           ),
           const SizedBox(height: 28),
@@ -457,56 +592,8 @@ class _HomePageState extends State<HomePage> {
                   ),
                 )
               else ...[
-                // Active Drafts
-                ..._activeDrafts.map((draft) {
-                  final total = _calculateTotalForDraft(draft);
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: BatchPmCard(
-                      key: ValueKey('draft-card-${draft.id}'),
-                      department: draft.department ?? 'General Department',
-                      assetCategory: draft.assetCategory,
-                      pmCycle: _resolvePmCycle(
-                        pmCycle: draft.pmCycle,
-                        periodType: draft.periodType,
-                        year: draft.year,
-                      ),
-                      status: 'In Progress',
-                      completedCount: draft.inspections.length,
-                      totalCount: total,
-                      building: draft.building,
-                      actionLabel: 'Continue PM batch',
-                      onAction: () => widget.onOpenForm?.call(draft.id),
-                      onTap: () => widget.onOpenForm?.call(draft.id),
-                    ),
-                  );
-                }),
-
-                // Assigned PM Batches without existing drafts
-                ..._unstartedAssignedBatches.map((batch) {
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: BatchPmCard(
-                      key: ValueKey(
-                        'assigned-batch-${_canonicalBatchKey(batch.department, batch.assetCategory, batch.pmCycle)}',
-                      ),
-                      department: batch.department,
-                      assetCategory: batch.assetCategory,
-                      pmCycle: batch.pmCycle,
-                      status: batch.status,
-                      completedCount: 0,
-                      totalCount: batch.totalCount,
-                      building: batch.building,
-                      actionLabel:
-                          (widget.onStartBatch != null ||
-                              widget.onScanQr != null)
-                          ? 'Start inspection'
-                          : null,
-                      onAction: () => _startBatch(batch),
-                      onTap: () => _startBatch(batch),
-                    ),
-                  );
-                }),
+                // Field-work tasks ordered by urgency, then PM cycle.
+                ..._orderedPmTasks.map((task) => task.card),
 
                 // Awaiting Acknowledgement
                 if (_awaitingAck.isNotEmpty) ...[
@@ -537,9 +624,16 @@ class _HomePageState extends State<HomePage> {
                         totalCount: form.inspections.length,
                         building: form.building,
                         actionLabel: 'Capture Signature',
-                        onAction: () =>
-                            widget.onOpenAcknowledgement?.call(form),
-                        onTap: () => widget.onOpenAcknowledgement?.call(form),
+                        onAction: widget.onOpenAcknowledgement == null
+                            ? null
+                            : () => _runChildWorkflow(
+                                () => widget.onOpenAcknowledgement!(form),
+                              ),
+                        onTap: widget.onOpenAcknowledgement == null
+                            ? null
+                            : () => _runChildWorkflow(
+                                () => widget.onOpenAcknowledgement!(form),
+                              ),
                       ),
                     );
                   }),
@@ -560,7 +654,8 @@ class _HomePageState extends State<HomePage> {
                   'Create, resume, submit, and acknowledge PM forms.',
                 ),
                 trailing: const Icon(Icons.chevron_right),
-                onTap: widget.onOpenPreventiveMaintenance,
+                onTap: () =>
+                    _runChildWorkflow(widget.onOpenPreventiveMaintenance),
               ),
             ),
         ],
@@ -629,6 +724,22 @@ class _QuickActionCard extends StatelessWidget {
       ),
     );
   }
+}
+
+class _HomePmTask {
+  const _HomePmTask({
+    required this.status,
+    required this.pmCycle,
+    required this.department,
+    required this.assetCategory,
+    required this.card,
+  });
+
+  final String status;
+  final String pmCycle;
+  final String department;
+  final String assetCategory;
+  final Widget card;
 }
 
 class _AssignedPmBatch {
