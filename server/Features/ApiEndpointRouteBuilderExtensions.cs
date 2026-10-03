@@ -22,6 +22,7 @@ public static class ApiEndpointRouteBuilderExtensions
         api.MapInspectionsEndpoints();
         api.MapPreventiveMaintenanceFormEndpoints();
         api.MapPmPeriodDashboardEndpoints();
+        api.MapPmAnalyticsEndpoints();
 
         return endpoints;
     }

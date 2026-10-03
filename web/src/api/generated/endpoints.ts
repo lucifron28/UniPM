@@ -45,6 +45,8 @@ import type {
   ListSchedulesParams,
   LoginRequest,
   LoginResponse,
+  PmAnalyticsQuestionRequest,
+  PmAnalyticsResponse,
   PmPeriodDashboardCycleGroupResponse,
   PmPeriodDashboardResponse,
   PreventiveMaintenanceAcknowledgementResponse,
@@ -4461,4 +4463,89 @@ export function useGetPmPeriodDashboard<
   > & { queryKey: DataTag<QueryKey, TData, TError> }
 
   return withQueryKey(query, queryOptions.queryKey)
+}
+
+/**
+ * @summary Runs a deterministic query over supported preventive-maintenance metrics
+ */
+export const queryPmAnalytics = (
+  pmAnalyticsQuestionRequest: PmAnalyticsQuestionRequest,
+  signal?: AbortSignal,
+) => {
+  return customInstance<PmAnalyticsResponse>({
+    url: `/api/v1/analytics/pm/query`,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    data: pmAnalyticsQuestionRequest,
+    signal,
+  })
+}
+
+export const getQueryPmAnalyticsMutationOptions = <
+  TError = ValidationProblemDetails | ProblemDetails,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof queryPmAnalytics>>,
+    TError,
+    { data: PmAnalyticsQuestionRequest },
+    TContext
+  >
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof queryPmAnalytics>>,
+  TError,
+  { data: PmAnalyticsQuestionRequest },
+  TContext
+> => {
+  const mutationKey = ['queryPmAnalytics']
+  const { mutation: mutationOptions } = options
+    ? options.mutation &&
+      'mutationKey' in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey } }
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof queryPmAnalytics>>,
+    { data: PmAnalyticsQuestionRequest }
+  > = (props) => {
+    const { data } = props ?? {}
+
+    return queryPmAnalytics(data)
+  }
+
+  return { mutationFn, ...mutationOptions }
+}
+
+export type QueryPmAnalyticsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof queryPmAnalytics>>
+>
+export type QueryPmAnalyticsMutationBody = PmAnalyticsQuestionRequest
+export type QueryPmAnalyticsMutationError =
+  ValidationProblemDetails | ProblemDetails
+
+/**
+ * @summary Runs a deterministic query over supported preventive-maintenance metrics
+ */
+export const useQueryPmAnalytics = <
+  TError = ValidationProblemDetails | ProblemDetails,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof queryPmAnalytics>>,
+      TError,
+      { data: PmAnalyticsQuestionRequest },
+      TContext
+    >
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof queryPmAnalytics>>,
+  TError,
+  { data: PmAnalyticsQuestionRequest },
+  TContext
+> => {
+  return useMutation(getQueryPmAnalyticsMutationOptions(options), queryClient)
 }

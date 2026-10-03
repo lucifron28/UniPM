@@ -1838,6 +1838,65 @@
           }
         }
       }
+    },
+    "/api/v1/analytics/pm/query": {
+      "post": {
+        "tags": ["PM Analytics"],
+        "summary": "Runs a deterministic query over supported preventive-maintenance metrics",
+        "operationId": "QueryPmAnalytics",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PmAnalyticsQuestionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PmAnalyticsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2568,6 +2627,188 @@
           },
           "user": {
             "$ref": "#/components/schemas/AuthUserResponse"
+          }
+        }
+      },
+      "PmAnalyticsMeasureResponse": {
+        "required": [
+          "department",
+          "numerator",
+          "denominator",
+          "value",
+          "unit",
+          "isMeasurable"
+        ],
+        "type": "object",
+        "properties": {
+          "department": {
+            "type": ["null", "string"]
+          },
+          "numerator": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "denominator": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "value": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": ["null", "number", "string"],
+            "format": "double"
+          },
+          "unit": {
+            "type": "string"
+          },
+          "isMeasurable": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PmAnalyticsPlanResponse": {
+        "required": [
+          "metric",
+          "assetCategory",
+          "pmCycle",
+          "department",
+          "groupBy"
+        ],
+        "type": "object",
+        "properties": {
+          "metric": {
+            "type": "string"
+          },
+          "assetCategory": {
+            "type": "string"
+          },
+          "pmCycle": {
+            "type": "string"
+          },
+          "department": {
+            "type": ["null", "string"]
+          },
+          "groupBy": {
+            "type": "string"
+          }
+        }
+      },
+      "PmAnalyticsQuestionRequest": {
+        "required": ["question"],
+        "type": "object",
+        "properties": {
+          "question": {
+            "type": ["null", "string"]
+          }
+        },
+        "additionalProperties": false
+      },
+      "PmAnalyticsResponse": {
+        "required": [
+          "plan",
+          "deadline",
+          "periodState",
+          "result",
+          "groups",
+          "sources",
+          "totalSourceCount",
+          "sourcesTruncated",
+          "scopeNote"
+        ],
+        "type": "object",
+        "properties": {
+          "plan": {
+            "$ref": "#/components/schemas/PmAnalyticsPlanResponse"
+          },
+          "deadline": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "periodState": {
+            "type": "string"
+          },
+          "result": {
+            "$ref": "#/components/schemas/PmAnalyticsMeasureResponse"
+          },
+          "groups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PmAnalyticsMeasureResponse"
+            }
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PmAnalyticsSourceResponse"
+            }
+          },
+          "totalSourceCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "sourcesTruncated": {
+            "type": "boolean"
+          },
+          "scopeNote": {
+            "type": "string"
+          }
+        }
+      },
+      "PmAnalyticsSourceResponse": {
+        "required": [
+          "scheduleId",
+          "assetId",
+          "inspectionId",
+          "assetCode",
+          "department",
+          "pmCycle",
+          "deadline",
+          "inspectionCompletedAt",
+          "timeliness",
+          "condition",
+          "formStatus"
+        ],
+        "type": "object",
+        "properties": {
+          "scheduleId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "assetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "inspectionId": {
+            "type": ["null", "string"],
+            "format": "uuid"
+          },
+          "assetCode": {
+            "type": "string"
+          },
+          "department": {
+            "type": ["null", "string"]
+          },
+          "pmCycle": {
+            "type": "string"
+          },
+          "deadline": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "inspectionCompletedAt": {
+            "type": ["null", "string"],
+            "format": "date-time"
+          },
+          "timeliness": {
+            "type": "string"
+          },
+          "condition": {
+            "type": "string"
+          },
+          "formStatus": {
+            "type": ["null", "string"]
           }
         }
       },
@@ -3399,6 +3640,9 @@
     },
     {
       "name": "PM Period Dashboard"
+    },
+    {
+      "name": "PM Analytics"
     }
   ]
 }

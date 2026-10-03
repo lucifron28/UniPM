@@ -15,6 +15,7 @@ import {
   usePmPeriodDashboard,
   usePmPeriodDashboardCycles,
 } from '@/features/reports/pm-period-dashboard-queries'
+import { PmAnalyticsPanel } from '@/features/reports/pm-analytics'
 import {
   formatPmCycle,
   formatPmCycleDueDate,
@@ -880,6 +881,7 @@ export function PmPeriodDashboard({
   return (
     <section aria-labelledby="dashboard-title" className="max-w-7xl space-y-5">
       <DashboardHeader />
+      <PmAnalyticsPanel />
 
       {showGeneratedReport ? (
         <>
