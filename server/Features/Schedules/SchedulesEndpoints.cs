@@ -342,7 +342,10 @@ public static class SchedulesEndpoints
         .WithName("ListSchedules")
         .WithSummary("Lists preventive maintenance schedules using supported filters")
         .Produces<IReadOnlyList<ScheduleResponse>>(StatusCodes.Status200OK)
-        .Produces<Microsoft.AspNetCore.Mvc.ValidationProblemDetails>(StatusCodes.Status400BadRequest);
+        .Produces<Microsoft.AspNetCore.Mvc.ValidationProblemDetails>(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .RequireAuthorization(AuthPolicyCatalog.CanReadSchedules);
 
         group.MapGet("/{id}", async (
             Guid id,
@@ -362,7 +365,10 @@ public static class SchedulesEndpoints
         .WithName("GetSchedule")
         .WithSummary("Gets a preventive maintenance schedule by its identifier")
         .Produces<ScheduleResponse>(StatusCodes.Status200OK)
-        .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status404NotFound);
+        .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .RequireAuthorization(AuthPolicyCatalog.CanReadSchedules);
 
         return endpoints;
     }
