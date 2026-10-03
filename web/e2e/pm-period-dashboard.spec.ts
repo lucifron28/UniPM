@@ -897,6 +897,9 @@ test.describe('PM period dashboard', () => {
       results.getByText('Non-operational assets', { exact: true }),
     ).toBeVisible()
     await expect(results.getByText('3 shown of 3')).toBeVisible()
+    await expect(
+      results.getByText(/Deadline: Nov 30, 2026.*11:59 PM.*GMT\+8/),
+    ).toBeVisible()
     await expect(results.getByText('Form status')).toBeVisible()
     await expect(results.getByText('Draft', { exact: true })).toBeVisible()
     await expect(

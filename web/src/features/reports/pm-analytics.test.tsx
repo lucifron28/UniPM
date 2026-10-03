@@ -141,7 +141,7 @@ describe('PM analytics panel', () => {
     ).toBeInTheDocument()
     expect(screen.getByText('3 shown of 3')).toBeInTheDocument()
     expect(
-      screen.getByText(/Deadline: 30 Nov 2026.*11:59 PM.*GMT\+8/),
+      screen.getByText(/Deadline: Nov 30, 2026.*11:59 PM.*GMT\+8/),
     ).toBeInTheDocument()
     expect(
       screen.getByText(
