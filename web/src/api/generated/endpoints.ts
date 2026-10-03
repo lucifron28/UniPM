@@ -2234,7 +2234,7 @@ export const getListSchedulesQueryKey = (params?: ListSchedulesParams) => {
 
 export const getListSchedulesQueryOptions = <
   TData = Awaited<ReturnType<typeof listSchedules>>,
-  TError = ValidationProblemDetails,
+  TError = ValidationProblemDetails | void,
 >(
   params?: ListSchedulesParams,
   options?: {
@@ -2261,11 +2261,11 @@ export const getListSchedulesQueryOptions = <
 export type ListSchedulesQueryResult = NonNullable<
   Awaited<ReturnType<typeof listSchedules>>
 >
-export type ListSchedulesQueryError = ValidationProblemDetails
+export type ListSchedulesQueryError = ValidationProblemDetails | void
 
 export function useListSchedules<
   TData = Awaited<ReturnType<typeof listSchedules>>,
-  TError = ValidationProblemDetails,
+  TError = ValidationProblemDetails | void,
 >(
   params: undefined | ListSchedulesParams,
   options: {
@@ -2287,7 +2287,7 @@ export function useListSchedules<
 }
 export function useListSchedules<
   TData = Awaited<ReturnType<typeof listSchedules>>,
-  TError = ValidationProblemDetails,
+  TError = ValidationProblemDetails | void,
 >(
   params?: ListSchedulesParams,
   options?: {
@@ -2309,7 +2309,7 @@ export function useListSchedules<
 }
 export function useListSchedules<
   TData = Awaited<ReturnType<typeof listSchedules>>,
-  TError = ValidationProblemDetails,
+  TError = ValidationProblemDetails | void,
 >(
   params?: ListSchedulesParams,
   options?: {
@@ -2327,7 +2327,7 @@ export function useListSchedules<
 
 export function useListSchedules<
   TData = Awaited<ReturnType<typeof listSchedules>>,
-  TError = ValidationProblemDetails,
+  TError = ValidationProblemDetails | void,
 >(
   params?: ListSchedulesParams,
   options?: {
@@ -2455,7 +2455,7 @@ export const getGetScheduleQueryKey = (id: string) => {
 
 export const getGetScheduleQueryOptions = <
   TData = Awaited<ReturnType<typeof getSchedule>>,
-  TError = ProblemDetails,
+  TError = void | ProblemDetails,
 >(
   id: string,
   options?: {
@@ -2487,11 +2487,11 @@ export const getGetScheduleQueryOptions = <
 export type GetScheduleQueryResult = NonNullable<
   Awaited<ReturnType<typeof getSchedule>>
 >
-export type GetScheduleQueryError = ProblemDetails
+export type GetScheduleQueryError = void | ProblemDetails
 
 export function useGetSchedule<
   TData = Awaited<ReturnType<typeof getSchedule>>,
-  TError = ProblemDetails,
+  TError = void | ProblemDetails,
 >(
   id: string,
   options: {
@@ -2513,7 +2513,7 @@ export function useGetSchedule<
 }
 export function useGetSchedule<
   TData = Awaited<ReturnType<typeof getSchedule>>,
-  TError = ProblemDetails,
+  TError = void | ProblemDetails,
 >(
   id: string,
   options?: {
@@ -2535,7 +2535,7 @@ export function useGetSchedule<
 }
 export function useGetSchedule<
   TData = Awaited<ReturnType<typeof getSchedule>>,
-  TError = ProblemDetails,
+  TError = void | ProblemDetails,
 >(
   id: string,
   options?: {
@@ -2553,7 +2553,7 @@ export function useGetSchedule<
 
 export function useGetSchedule<
   TData = Awaited<ReturnType<typeof getSchedule>>,
-  TError = ProblemDetails,
+  TError = void | ProblemDetails,
 >(
   id: string,
   options?: {

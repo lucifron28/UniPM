@@ -79,6 +79,22 @@ public sealed class ScheduleBatchAssignmentEndpointsTests
                 new { workerUserId = workerId, supervisorUserId = supervisorId })).StatusCode);
     }
 
+    [Fact]
+    public async Task Supervisors_cannot_assign_schedule_batches()
+    {
+        await using var application = new TestApplicationFactory(AuthRoleCatalog.Supervisor);
+        using var client = application.CreateClient();
+
+        Assert.Equal(
+            HttpStatusCode.Forbidden,
+            (await client.GetAsync("/api/v1/schedules/assignment-options")).StatusCode);
+        Assert.Equal(
+            HttpStatusCode.Forbidden,
+            (await client.PutAsJsonAsync(
+                $"/api/v1/schedules/{Guid.NewGuid()}/assignment",
+                new { workerUserId = Guid.NewGuid(), supervisorUserId = Guid.NewGuid() })).StatusCode);
+    }
+
     private static async Task<ScheduleRef> CreateScheduleAsync(
         HttpClient client,
         string department,
