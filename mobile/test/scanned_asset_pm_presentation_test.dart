@@ -7,6 +7,7 @@ import 'package:mobile/features/preventive_maintenance/preventive_maintenance_mo
 import 'package:mobile/features/preventive_maintenance/preventive_maintenance_repository.dart';
 import 'package:mobile/features/preventive_maintenance/scanned_asset_pm_entry.dart';
 import 'package:mobile/ui/widgets/batch_pm_card.dart';
+import 'package:mobile/ui/widgets/status_badge.dart';
 
 const _assetId = '11111111-1111-4111-8111-111111111111';
 const _novemberScheduleId = '22222222-2222-4222-8222-222222222222';
@@ -208,6 +209,67 @@ void main() {
     expect(find.text('Awaiting acknowledgement'), findsOneWidget);
   });
 
+  testWidgets(
+    'batch cards map schedule urgency and preserve form status badges',
+    (tester) async {
+      const cases =
+          <({String status, String label, StatusBadgeVariant variant})>[
+            (
+              status: 'Overdue',
+              label: 'Overdue',
+              variant: StatusBadgeVariant.overdue,
+            ),
+            (
+              status: 'Ongoing',
+              label: 'Ongoing',
+              variant: StatusBadgeVariant.ongoing,
+            ),
+            (status: 'Due', label: 'Due', variant: StatusBadgeVariant.due),
+            (
+              status: 'In Progress',
+              label: 'In Progress',
+              variant: StatusBadgeVariant.ongoing,
+            ),
+            (
+              status: 'Draft',
+              label: 'Draft',
+              variant: StatusBadgeVariant.draft,
+            ),
+            (
+              status: 'Submitted',
+              label: 'Awaiting acknowledgement',
+              variant: StatusBadgeVariant.submitted,
+            ),
+            (
+              status: 'Acknowledged',
+              label: 'Acknowledged',
+              variant: StatusBadgeVariant.acknowledged,
+            ),
+          ];
+
+      for (final scenario in cases) {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: BatchPmCard(
+                department: 'GSD',
+                assetCategory: 'fire-extinguisher',
+                pmCycle: '2026-11',
+                status: scenario.status,
+                completedCount: 1,
+                totalCount: 2,
+              ),
+            ),
+          ),
+        );
+
+        final badge = tester.widget<StatusBadge>(find.byType(StatusBadge));
+        expect(badge.label, scenario.label);
+        expect(badge.variant, scenario.variant);
+        expect(find.text(scenario.label), findsOneWidget);
+      }
+    },
+  );
   testWidgets('completion sheet shows cycle deadline and retained progress', (
     tester,
   ) async {

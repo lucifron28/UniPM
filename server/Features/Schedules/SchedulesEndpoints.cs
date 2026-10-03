@@ -1,3 +1,5 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using UniPM.Api.Data;
@@ -247,9 +249,24 @@ public static class SchedulesEndpoints
             DateTimeOffset? to,
             string? quarter,
             int? year,
+            ClaimsPrincipal user,
             IDbContextFactory<ApplicationDbContext> factory,
             CancellationToken cancellationToken) =>
         {
+            Guid? assignedUserId = null;
+            if (!user.IsInRole(AuthRoleCatalog.Gsd)
+                && !user.IsInRole(AuthRoleCatalog.Supervisor))
+            {
+                if (!Guid.TryParse(
+                        user.FindFirst(JwtRegisteredClaimNames.Sub)?.Value,
+                        out var authenticatedUserId))
+                {
+                    return Results.Forbid();
+                }
+
+                assignedUserId = authenticatedUserId;
+            }
+
             if (from is not null && to is not null && from > to)
             {
                 return ApiErrors.Validation(new Dictionary<string, string[]>
@@ -260,6 +277,11 @@ public static class SchedulesEndpoints
 
             await using var context = await factory.CreateDbContextAsync(cancellationToken);
             var query = context.PreventiveMaintenanceSchedules.AsNoTracking();
+
+            if (assignedUserId is not null)
+            {
+                query = query.Where(schedule => schedule.AssignedToUserId == assignedUserId.Value);
+            }
 
             if (assetId is not null)
             {
@@ -342,16 +364,33 @@ public static class SchedulesEndpoints
         .WithName("ListSchedules")
         .WithSummary("Lists preventive maintenance schedules using supported filters")
         .Produces<IReadOnlyList<ScheduleResponse>>(StatusCodes.Status200OK)
-        .Produces<Microsoft.AspNetCore.Mvc.ValidationProblemDetails>(StatusCodes.Status400BadRequest);
+        .Produces<Microsoft.AspNetCore.Mvc.ValidationProblemDetails>(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .RequireAuthorization(AuthPolicyCatalog.CanReadSchedules);
 
         group.MapGet("/{id}", async (
             Guid id,
+            ClaimsPrincipal user,
             IDbContextFactory<ApplicationDbContext> factory,
             CancellationToken cancellationToken) =>
         {
             await using var context = await factory.CreateDbContextAsync(cancellationToken);
-            var schedule = await context.PreventiveMaintenanceSchedules
-                .AsNoTracking()
+            var query = context.PreventiveMaintenanceSchedules.AsNoTracking();
+            if (!user.IsInRole(AuthRoleCatalog.Gsd)
+                && !user.IsInRole(AuthRoleCatalog.Supervisor))
+            {
+                if (!Guid.TryParse(
+                        user.FindFirst(JwtRegisteredClaimNames.Sub)?.Value,
+                        out var authenticatedUserId))
+                {
+                    return Results.Forbid();
+                }
+
+                query = query.Where(schedule => schedule.AssignedToUserId == authenticatedUserId);
+            }
+
+            var schedule = await query
                 .Include(schedule => schedule.Asset)
                 .FirstOrDefaultAsync(schedule => schedule.Id == id, cancellationToken);
 
@@ -362,7 +401,10 @@ public static class SchedulesEndpoints
         .WithName("GetSchedule")
         .WithSummary("Gets a preventive maintenance schedule by its identifier")
         .Produces<ScheduleResponse>(StatusCodes.Status200OK)
-        .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status404NotFound);
+        .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .RequireAuthorization(AuthPolicyCatalog.CanReadSchedules);
 
         return endpoints;
     }

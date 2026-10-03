@@ -115,7 +115,10 @@ const createColumns = (search: InspectionSearch) => [
       <Link
         to="/app/inspections/$inspectionId"
         params={{ inspectionId: row.original.id }}
-        search={search}
+        search={{
+          ...search,
+          returnContext: { kind: 'inspectionRegistry', search },
+        }}
         className="font-semibold text-[var(--primary)] hover:underline"
       >
         View details
@@ -490,7 +493,10 @@ export function InspectionRegistry({
                 <Link
                   to="/app/inspections/$inspectionId"
                   params={{ inspectionId: inspection.id }}
-                  search={search}
+                  search={{
+                    ...search,
+                    returnContext: { kind: 'inspectionRegistry', search },
+                  }}
                   className="text-sm font-semibold text-[var(--primary)] hover:underline"
                 >
                   View details

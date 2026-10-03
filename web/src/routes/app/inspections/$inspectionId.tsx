@@ -1,6 +1,10 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { z } from 'zod'
 import { InspectionDetail } from '@/features/inspections/inspection-detail'
+import {
+  parseDetailReturnContext,
+  type DetailReturnContext,
+} from '@/features/shared/detail-navigation'
 import type { InspectionSearch } from '@/features/inspections/inspection-registry'
 import type { PmAcknowledgementReviewContext } from '@/features/preventive-maintenance-forms/pm-acknowledgement-review'
 
@@ -33,12 +37,22 @@ const searchSchema = z.object({
     .enum(['OnTime', 'Late', 'Scheduled', 'Pending', 'NotCompleted'])
     .optional(),
   search: z.string().trim().max(256).optional(),
+  returnContext: z.unknown().optional(),
 })
 
 export const Route = createFileRoute('/app/inspections/$inspectionId')({
-  validateSearch: (search) => {
+  validateSearch: (
+    search,
+  ): Omit<z.infer<typeof searchSchema>, 'returnContext'> & {
+    returnContext?: DetailReturnContext | undefined
+  } => {
     const parsed = searchSchema.safeParse(search)
-    return parsed.success ? parsed.data : {}
+    return parsed.success
+      ? {
+          ...parsed.data,
+          returnContext: parseDetailReturnContext(parsed.data.returnContext),
+        }
+      : {}
   },
   component: InspectionDetailPage,
 })
@@ -46,6 +60,7 @@ export const Route = createFileRoute('/app/inspections/$inspectionId')({
 function InspectionDetailPage() {
   const { inspectionId } = Route.useParams()
   const search = Route.useSearch()
+  const { returnContext } = search
   const registrySearch: InspectionSearch = {
     assetId: search.assetId,
     scheduleId: search.scheduleId,
@@ -72,6 +87,7 @@ function InspectionDetailPage() {
       inspectionId={inspectionId}
       reviewContext={reviewContext}
       registrySearch={registrySearch}
+      returnContext={returnContext}
     />
   )
 }

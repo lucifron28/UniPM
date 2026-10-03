@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link } from '@tanstack/react-router'
 import { ZodError } from 'zod'
 import {
   getAssetVerificationLocation,
@@ -26,6 +25,11 @@ import { AssetQrLabel } from '@/features/assets/asset-qr-label'
 import type { AssetSearch } from '@/features/assets/asset-registry'
 import { useCurrentUser } from '@/features/auth/current-user'
 import { InspectionHistory } from '@/features/inspections/inspection-history'
+import { DetailBackLink } from '@/features/shared/detail-back-link'
+import type {
+  DetailReturnContext,
+  DetailReturnFallback,
+} from '@/features/shared/detail-navigation'
 import { toast } from 'sonner'
 
 function DetailItem({ label, value }: { label: string; value: string | null }) {
@@ -231,10 +235,16 @@ function AssetVerificationLocationForm({
 export function AssetDetail({
   assetId,
   registrySearch = {},
+  returnContext,
 }: {
   assetId: string
   registrySearch?: AssetSearch
+  returnContext?: DetailReturnContext | undefined
 }) {
+  const returnFallback: DetailReturnFallback = {
+    kind: 'assetRegistry',
+    search: registrySearch,
+  }
   const isValidId =
     /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
       assetId,
@@ -258,9 +268,7 @@ export function AssetDetail({
           The asset link is invalid. No registry request was made.
         </p>
         <Button asChild variant="secondary" className="mt-5">
-          <Link to="/app/assets" search={registrySearch}>
-            Return to assets
-          </Link>
+          <DetailBackLink context={returnContext} fallback={returnFallback} />
         </Button>
       </Card>
     )
@@ -298,9 +306,10 @@ export function AssetDetail({
               Retry
             </Button>
             <Button asChild variant="secondary">
-              <Link to="/app/assets" search={registrySearch}>
-                Return to assets
-              </Link>
+              <DetailBackLink
+                context={returnContext}
+                fallback={returnFallback}
+              />
             </Button>
           </div>
         </Card>
@@ -318,9 +327,10 @@ export function AssetDetail({
               This record may no longer be available.
             </p>
             <Button asChild variant="secondary" className="mt-5">
-              <Link to="/app/assets" search={registrySearch}>
-                Return to assets
-              </Link>
+              <DetailBackLink
+                context={returnContext}
+                fallback={returnFallback}
+              />
             </Button>
           </Card>
         )
@@ -342,9 +352,10 @@ export function AssetDetail({
                 Retry
               </Button>
               <Button asChild variant="secondary">
-                <Link to="/app/assets" search={registrySearch}>
-                  Return to assets
-                </Link>
+                <DetailBackLink
+                  context={returnContext}
+                  fallback={returnFallback}
+                />
               </Button>
             </div>
           </Card>
@@ -366,9 +377,7 @@ export function AssetDetail({
             Retry
           </Button>
           <Button asChild variant="secondary">
-            <Link to="/app/assets" search={registrySearch}>
-              Return to assets
-            </Link>
+            <DetailBackLink context={returnContext} fallback={returnFallback} />
           </Button>
         </div>
       </Card>
@@ -385,13 +394,11 @@ export function AssetDetail({
       aria-labelledby="asset-detail-title"
       className="max-w-5xl space-y-6"
     >
-      <Link
-        to="/app/assets"
-        search={registrySearch}
-        className="text-sm font-semibold text-[var(--primary)] hover:underline"
-      >
-        Back to assets
-      </Link>
+      <DetailBackLink
+        context={returnContext}
+        fallback={returnFallback}
+        className="inline-flex min-h-10 items-center text-sm font-semibold text-[var(--primary)] hover:underline focus-visible:rounded focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:outline-none"
+      />
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
         <div>
           <p className="text-sm font-semibold tracking-[0.08em] text-[var(--primary)] uppercase">
@@ -438,7 +445,12 @@ export function AssetDetail({
       {currentUser.data?.roles.includes('GSD') && (
         <AssetVerificationLocationEditor key={record.id} asset={record} />
       )}
-      <InspectionHistory assetId={record.id} />
+      <InspectionHistory
+        assetId={record.id}
+        assetCode={record.assetCode}
+        returnContext={returnContext}
+        fallback={returnFallback}
+      />
     </section>
   )
 }

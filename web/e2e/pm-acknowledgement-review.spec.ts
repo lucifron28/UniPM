@@ -306,7 +306,10 @@ test('demonstrates the submitted PM batch acknowledgement review workflow', asyn
   // 7. Follow the row inspection ID and 8. return with the stable review query.
   await page.getByRole('link', { name: 'View inspection detail' }).click()
   await expect(
-    page.getByRole('heading', { name: `Inspection ${inspectionId}` }),
+    page.getByRole('heading', { name: 'FE-TEST-001', level: 1 }),
+  ).toBeVisible()
+  await expect(
+    page.getByRole('heading', { name: 'Record information' }),
   ).toBeVisible()
   await expect(page.getByText('Arrange', { exact: false })).toHaveCount(0)
   await page.getByRole('link', { name: 'Back to batch review' }).click()
