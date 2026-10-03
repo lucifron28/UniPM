@@ -801,4 +801,132 @@ test.describe('PM period dashboard', () => {
       pageDimensions.viewportWidth,
     )
   })
+
+  test('shows a GSD-scoped PM analytics result with source navigation', async ({
+    page,
+  }) => {
+    await mockDashboardApi(page)
+    const analyticsRequests: unknown[] = []
+    await page.route('**/api/v1/analytics/pm/query', async (route) => {
+      analyticsRequests.push(route.request().postDataJSON())
+      await route.fulfill(
+        jsonResponse({
+          plan: {
+            metric: 'NonOperational',
+            assetCategory: 'fire-extinguisher',
+            pmCycle: '2026-11',
+            department: null,
+            groupBy: 'None',
+          },
+          deadline: '2026-11-30T15:59:59.999Z',
+          periodState: 'Closed',
+          result: {
+            department: null,
+            numerator: 1,
+            denominator: 3,
+            value: 1,
+            unit: 'Count',
+            isMeasurable: true,
+          },
+          groups: [],
+          sources: [
+            {
+              scheduleId: assetIds.onTime,
+              assetId: assetIds.onTime,
+              inspectionId: assetIds.onTime,
+              assetCode: 'FE-001',
+              department: 'GSD',
+              pmCycle: '2026-11',
+              deadline: '2026-11-30T15:59:59.999Z',
+              inspectionCompletedAt: '2026-12-01T04:00:00Z',
+              timeliness: 'Late',
+              condition: 'NonOperational',
+              formStatus: 'Draft',
+            },
+            {
+              scheduleId: assetIds.pending,
+              assetId: assetIds.pending,
+              inspectionId: null,
+              assetCode: 'FE-002',
+              department: 'GSD',
+              pmCycle: '2026-11',
+              deadline: '2026-11-30T15:59:59.999Z',
+              inspectionCompletedAt: null,
+              timeliness: 'NotCompleted',
+              condition: 'NotInspected',
+              formStatus: null,
+            },
+            {
+              scheduleId: assetIds.notCompleted,
+              assetId: assetIds.notCompleted,
+              inspectionId: null,
+              assetCode: 'FE-003',
+              department: 'GSD',
+              pmCycle: '2026-11',
+              deadline: '2026-11-30T15:59:59.999Z',
+              inspectionCompletedAt: null,
+              timeliness: 'NotCompleted',
+              condition: 'NotInspected',
+              formStatus: null,
+            },
+          ],
+          totalSourceCount: 3,
+          sourcesTruncated: false,
+          scopeNote:
+            'These are live PM results for the selected scope, not acknowledged-only official history.',
+        }),
+      )
+    })
+
+    // This legacy dashboard cycle checks that the question sets its own scope.
+    await page.goto(
+      '/app/dashboard?assetCategory=fire-extinguisher&year=2026&pmCycle=2026-07',
+    )
+    await expect(
+      page.getByRole('heading', { name: 'Ask about PM results' }),
+    ).toBeVisible()
+    await page
+      .getByRole('textbox', { name: 'Question' })
+      .fill(
+        'Show non-operational assets for fire extinguishers in November 2026',
+      )
+    await page.getByRole('button', { name: 'Show result' }).click()
+
+    const results = page.getByRole('region', { name: 'PM result' })
+    await expect(
+      results.getByText('Non-operational assets', { exact: true }),
+    ).toBeVisible()
+    await expect(results.getByText('3 shown of 3')).toBeVisible()
+    await expect(results.getByText('Form status')).toBeVisible()
+    await expect(results.getByText('Draft', { exact: true })).toBeVisible()
+    await expect(
+      results.getByText('Not inspected', { exact: true }),
+    ).toHaveCount(2)
+    await expect
+      .poll(() => analyticsRequests)
+      .toEqual([
+        {
+          question:
+            'Show non-operational assets for fire extinguishers in November 2026',
+        },
+      ])
+
+    const sourceLink = results.getByRole('link', {
+      name: 'FE-001',
+      exact: true,
+    })
+    await expect(sourceLink).toHaveAttribute(
+      'href',
+      `/app/assets/${assetIds.onTime}?returnContext=${encodeURIComponent(
+        JSON.stringify({
+          kind: 'dashboard',
+          search: {
+            assetCategory: 'fire-extinguisher',
+            year: 2026,
+            pmCycle: '2026-11',
+          },
+        }),
+      )}`,
+    )
+  })
 })
