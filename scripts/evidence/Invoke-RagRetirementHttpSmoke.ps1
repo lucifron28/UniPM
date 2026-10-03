@@ -52,6 +52,7 @@ $cleanupResultPath = Join-Path $artifactDirectory 'cleanup.json'
 $apiStdoutPath = Join-Path $artifactDirectory 'api.stdout.log'
 $apiStderrPath = Join-Path $artifactDirectory 'api.stderr.log'
 $migrationLogPath = Join-Path $artifactDirectory 'migration.log'
+$developmentUserSeedLogPath = Join-Path $artifactDirectory 'development-user-seed.log'
 $bodyTempPaths = [System.Collections.Generic.List[string]]::new()
 $environmentNames = @(
     'ASPNETCORE_ENVIRONMENT',
@@ -79,7 +80,8 @@ $environmentNames = @(
     'UNIPM_JWT_SIGNING_KEY',
     'UNIPM_JWT_ACCESS_TOKEN_MINUTES',
     'UNIPM_AUTH_REFRESH_TOKEN_DAYS',
-    'UNIPM_WEB_ORIGIN'
+    'UNIPM_WEB_ORIGIN',
+    'UNIPM_DEV_USER_PASSWORD'
 )
 $previousEnvironment = @{}
 foreach ($name in $environmentNames) {
@@ -90,6 +92,12 @@ $databaseCreateAttempted = $false
 $databaseCreatedByHarness = $false
 $apiProcess = $null
 $apiProcessStartTimeUtc = $null
+$fixturePassword = $null
+$loginRequestBody = $null
+$loginHttpResponse = $null
+$loginResponse = $null
+$accessToken = $null
+$loginStatusCode = $null
 $listener = $null
 $databaseName = $script:DatabaseName
 $smokeResultWritten = $false
@@ -123,7 +131,9 @@ $smokeResult = [ordered]@{
         }
         schedules = [ordered]@{
             path = '/api/v1/schedules/'
-            statusCode = $null
+            anonymousStatusCode = $null
+            loginStatusCode = $null
+            authenticatedStatusCode = $null
             bodyIsEmptyJsonArray = $false
             itemCount = $null
         }
@@ -183,7 +193,7 @@ function Get-SqlInt {
 }
 
 function Invoke-Http {
-    param([string]$Method, [string]$Path, [string]$JsonBody)
+    param([string]$Method, [string]$Path, [string]$JsonBody, [string]$BearerToken)
     $bodyPath = Join-Path $script:ArtifactDirectory ([Guid]::NewGuid().ToString('N') + '.body')
     $script:BodyTempPaths.Add($bodyPath)
     $curlArgs = @(
@@ -193,6 +203,9 @@ function Invoke-Http {
     )
     if ($PSBoundParameters.ContainsKey('JsonBody')) {
         $curlArgs += @('--header', 'Content-Type: application/json', '--data-binary', $JsonBody)
+    }
+    if (-not [string]::IsNullOrWhiteSpace($BearerToken)) {
+        $curlArgs += @('--header', ('Authorization: Bearer ' + $BearerToken))
     }
     $curlArgs += $script:BaseUrl + $Path
     $curlOutput = @(& $script:CurlPath @curlArgs 2>&1)
@@ -307,16 +320,24 @@ try {
     $script:BaseUrl = 'http://127.0.0.1:' + $port
     [Environment]::SetEnvironmentVariable('ASPNETCORE_URLS', $script:BaseUrl, 'Process')
 
+    $fixturePassword = 'T3st-' + [Guid]::NewGuid().ToString('N') + '!'
+    [Environment]::SetEnvironmentVariable('UNIPM_DEV_USER_PASSWORD', $fixturePassword, 'Process')
     Push-Location $serverDirectory
     try {
         $migrationOutput = @(& $script:DotnetPath $apiDll '--migrate-database' 2>&1)
         $migrationExitCode = $LASTEXITCODE
         $migrationOutput | Set-Content -LiteralPath $migrationLogPath -Encoding UTF8
+        if ($migrationExitCode -eq 0) {
+            $seedOutput = @(& $script:DotnetPath $apiDll '--seed-development-users' 2>&1)
+            $seedExitCode = $LASTEXITCODE
+            $seedOutput | Set-Content -LiteralPath $developmentUserSeedLogPath -Encoding UTF8
+        }
     }
     finally {
         Pop-Location
     }
     if ($migrationExitCode -ne 0) { throw 'Database migrations failed.' }
+    if ($seedExitCode -ne 0) { throw 'Development user seeding failed.' }
 
     $apiProcess = Start-Process -FilePath $script:DotnetPath -ArgumentList @('bin/Release/net10.0/UniPM.Api.dll') -WorkingDirectory $serverDirectory -PassThru -WindowStyle Hidden -RedirectStandardOutput $apiStdoutPath -RedirectStandardError $apiStderrPath
     $apiProcessStartTimeUtc = $apiProcess.StartTime.ToUniversalTime()
@@ -347,7 +368,32 @@ try {
     $reviewGet = Invoke-Http -Method 'GET' -Path '/api/v1/maintenance-review'
     $reviewPost = Invoke-Http -Method 'POST' -Path '/api/v1/maintenance-review' -JsonBody '{}'
     $openApiResponse = Invoke-Http -Method 'GET' -Path '/openapi/v1.json'
-    $schedules = Invoke-Http -Method 'GET' -Path '/api/v1/schedules/'
+    $anonymousSchedules = Invoke-Http -Method 'GET' -Path '/api/v1/schedules/'
+
+    $loginRequestBody = ConvertTo-Json -InputObject @{
+        email = 'gsd@unipm.local'
+        password = $fixturePassword
+    } -Compress
+    try {
+        $loginHttpResponse = Invoke-WebRequest -Uri ($script:BaseUrl + '/api/v1/auth/login') `
+            -Method 'POST' -ContentType 'application/json' -Headers @{ Accept = 'application/json' } `
+            -Body $loginRequestBody -TimeoutSec 8 -UseBasicParsing -ErrorAction Stop
+        $loginStatusCode = [int]$loginHttpResponse.StatusCode
+        $smokeResult.responses.schedules.loginStatusCode = $loginStatusCode
+        $loginResponse = ConvertFrom-Json -InputObject $loginHttpResponse.Content -ErrorAction Stop
+    }
+    catch {
+        if ($_.Exception.Response -and $_.Exception.Response.StatusCode) {
+            $loginStatusCode = [int]$_.Exception.Response.StatusCode
+        }
+        if ($null -ne $loginStatusCode) { $smokeResult.responses.schedules.loginStatusCode = $loginStatusCode }
+        throw 'GSD fixture login failed.'
+    }
+    $smokeResult.responses.schedules.loginStatusCode = $loginStatusCode
+    if ($loginStatusCode -ne 200) { throw 'GSD fixture login returned an unexpected status.' }
+    $accessToken = [string]$loginResponse.accessToken
+    if ([string]::IsNullOrWhiteSpace($accessToken)) { throw 'GSD fixture login did not return an access token.' }
+    $authenticatedSchedules = Invoke-Http -Method 'GET' -Path '/api/v1/schedules/' -BearerToken $accessToken
 
     $smokeResult.responses.liveHealth.statusCode = $live.StatusCode
     $smokeResult.responses.liveHealth.body = $live.Body.Trim()
@@ -370,8 +416,9 @@ try {
     $smokeResult.responses.openApi.maintenanceReviewPathCount = $reviewPaths.Count
     $smokeResult.responses.openApi.maintenanceReviewOperationCount = $reviewOperationCount
 
-    $emptyJsonArray = $schedules.Body.Trim() -match '^\[\s*\]$'
-    $smokeResult.responses.schedules.statusCode = $schedules.StatusCode
+    $emptyJsonArray = $authenticatedSchedules.Body.Trim() -match '^\[\s*\]$'
+    $smokeResult.responses.schedules.anonymousStatusCode = $anonymousSchedules.StatusCode
+    $smokeResult.responses.schedules.authenticatedStatusCode = $authenticatedSchedules.StatusCode
     $smokeResult.responses.schedules.bodyIsEmptyJsonArray = $emptyJsonArray
     if ($emptyJsonArray) { $smokeResult.responses.schedules.itemCount = 0 }
 
@@ -381,7 +428,9 @@ try {
         $ready.StatusCode -eq 200 -and $ready.Body.Trim() -eq 'Healthy' -and
         $reviewGet.StatusCode -eq 404 -and $reviewPost.StatusCode -eq 404 -and
         $openApiResponse.StatusCode -eq 200 -and $reviewPaths.Count -eq 0 -and $reviewOperationCount -eq 0 -and
-        $schedules.StatusCode -eq 200 -and $emptyJsonArray -and
+        $anonymousSchedules.StatusCode -eq 401 -and
+        $loginStatusCode -eq 200 -and
+        $authenticatedSchedules.StatusCode -eq 200 -and $emptyJsonArray -and
         $smokeResult.databaseCompatibilityLevel -eq 150 -and $fullTextInstalled -eq 1 -and
         -not $providerCredentialsSet -and $legacyFlagsSet
     )
@@ -468,12 +517,18 @@ finally {
     foreach ($name in $environmentNames) {
         [Environment]::SetEnvironmentVariable($name, $previousEnvironment[$name], 'Process')
     }
+    $accessToken = $null
+    $loginResponse = $null
+    $loginHttpResponse = $null
+    $loginRequestBody = $null
+    $fixturePassword = $null
     foreach ($path in $bodyTempPaths) {
         if (Test-Path -LiteralPath $path -PathType Leaf) { Remove-Item -LiteralPath $path -Force }
     }
     Sanitize-Log -Path $apiStdoutPath
     Sanitize-Log -Path $apiStderrPath
     Sanitize-Log -Path $migrationLogPath
+    Sanitize-Log -Path $developmentUserSeedLogPath
 
     $cleanupResult.cleanupConfirmed = $cleanupResult.processStopped -and $databaseCleanupConfirmed
     try { Write-JsonFile -Path $cleanupResultPath -Value $cleanupResult }
