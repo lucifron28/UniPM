@@ -16,6 +16,7 @@ record's evidence level and tested/source commit.
 
 | ID | Type | Title | Status | Evidence level | Tested/source commit | Record | Note |
 |---|---|---|---|---|---|---|---|
+| TEST-055 | test-run | Formal PMIS testing baseline | executed | ci-executed | `7e4476c` | [record](test-runs/TEST-055-formal-pmis-testing-baseline.md) | Baseline tag and backend/Web CI passed; local retirement execution remains attributed to TEST-054; no institutional acceptance is claimed. |
 | TEST-054 | test-run | Maintenance-history RAG retirement integration verification | executed | locally-executed | `7cbb092` | [record](test-runs/TEST-054-maintenance-history-rag-retirement-integration.md) | Release build, migration, HTTP smoke, EF check, focused backend/SQL 62/62, and full backend 259/0/1-skip passed; CI is not claimed. |
 | TEST-053 | test-run | Field-worker mobile UX integration verification | executed | locally-executed | `3f9b704` | [record](test-runs/TEST-053-field-worker-mobile-ux-integration.md) | Build and focused backend, Web, and Flutter checks passed; native SQL, device, full-suite, and UX-head CI are not claimed. |
 | TEST-052 | test-run | Inspector assigned-schedule read verification | executed | locally-executed | `ab29344` | [record](test-runs/TEST-052-inspector-assigned-schedule-read-verification.md) | Backend focused 48/48, full 395 passed/41 skipped, and Flutter 55/55; native SQL and CI are not claimed. |
