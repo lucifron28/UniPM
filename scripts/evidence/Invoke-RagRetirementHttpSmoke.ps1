@@ -271,12 +271,13 @@ try {
     [Environment]::SetEnvironmentVariable('Summary__ApiKey', '', 'Process')
     foreach ($name in @(
         'ASPNETCORE_URLS', 'Jwt__Issuer', 'Jwt__Audience', 'Jwt__SigningKey',
-        'Jwt__AccessTokenMinutes', 'UNIPM_JWT_ISSUER', 'UNIPM_JWT_AUDIENCE',
+        'UNIPM_JWT_ISSUER', 'UNIPM_JWT_AUDIENCE',
         'UNIPM_JWT_SIGNING_KEY', 'UNIPM_JWT_ACCESS_TOKEN_MINUTES',
         'UNIPM_AUTH_REFRESH_TOKEN_DAYS', 'UNIPM_WEB_ORIGIN'
     )) {
         [Environment]::SetEnvironmentVariable($name, '', 'Process')
     }
+    [Environment]::SetEnvironmentVariable('Jwt__AccessTokenMinutes', '15', 'Process')
     $credentialNames = @(
         'Embeddings__ProviderKey', 'Embeddings__BaseAddress', 'Embeddings__Model', 'Embeddings__ApiKey',
         'Summary__ProviderKey', 'Summary__BaseAddress', 'Summary__ApiKey'
