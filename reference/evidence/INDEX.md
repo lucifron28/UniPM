@@ -16,6 +16,7 @@ record's evidence level and tested/source commit.
 
 | ID | Type | Title | Status | Evidence level | Tested/source commit | Record | Note |
 |---|---|---|---|---|---|---|---|
+| TEST-056 | test-run | Schema-constrained PM analytics web verification | draft | locally-executed | 699424a (web); ed18896 (OpenAPI source); 01150b5 (contract) | [record](test-runs/TEST-056-schema-constrained-pm-analytics-verification.md) | Typecheck passed; focused Vitest and local browser are NOT VERIFIED; CI is pending. |
 | TEST-055 | test-run | Formal PMIS testing baseline | executed | ci-executed | `7e4476c` | [record](test-runs/TEST-055-formal-pmis-testing-baseline.md) | Baseline tag and backend/Web CI passed; local retirement execution remains attributed to TEST-054; no institutional acceptance is claimed. |
 | TEST-054 | test-run | Maintenance-history RAG retirement integration verification | executed | locally-executed | `7cbb092` | [record](test-runs/TEST-054-maintenance-history-rag-retirement-integration.md) | Release build, migration, HTTP smoke, EF check, focused backend/SQL 62/62, and full backend 259/0/1-skip passed; CI is not claimed. |
 | TEST-053 | test-run | Field-worker mobile UX integration verification | executed | locally-executed | `3f9b704` | [record](test-runs/TEST-053-field-worker-mobile-ux-integration.md) | Build and focused backend, Web, and Flutter checks passed; native SQL, device, full-suite, and UX-head CI are not claimed. |
