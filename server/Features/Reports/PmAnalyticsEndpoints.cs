@@ -50,6 +50,79 @@ public static class PmAnalyticsEndpoints
         .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized)
         .Produces<ProblemDetails>(StatusCodes.Status403Forbidden);
 
+        group.MapPost("/pm/interpret", async (
+            PmAnalyticsInterpretationRequest request,
+            INaturalLanguageAnalyticsInterpreter interpreter,
+            CancellationToken cancellationToken) =>
+        {
+            if (string.IsNullOrWhiteSpace(request.Question)
+                || request.Question.Length > 512
+                || request.Question.Any(char.IsControl))
+            {
+                return ApiErrors.Validation(new Dictionary<string, string[]>
+                {
+                    [nameof(request.Question)] = ["Question must be non-empty, at most 512 characters, and contain no control characters."]
+                });
+            }
+
+            PmAnalyticsInterpretationResult result;
+            try
+            {
+                result = await interpreter.InterpretAsync(request.Question, cancellationToken);
+            }
+            catch (NaturalLanguageAnalyticsProviderException exception)
+            {
+                var failure = exception.Failure switch
+                {
+                    NaturalLanguageAnalyticsProviderFailure.Timeout => "Timeout",
+                    NaturalLanguageAnalyticsProviderFailure.InvalidOutput => "InvalidOutput",
+                    _ => "ProviderUnavailable"
+                };
+                return Results.Problem(
+                    statusCode: StatusCodes.Status503ServiceUnavailable,
+                    title: "Natural language analytics is unavailable.",
+                    detail: "The question could not be interpreted safely.",
+                    extensions: new Dictionary<string, object?> { ["code"] = failure });
+            }
+
+            PmAnalyticsPlanResponse? planResponse = null;
+            string? canonicalQuestion = null;
+            if (result.Status == PmAnalyticsInterpretationStatus.Valid)
+            {
+                if (!PmAnalyticsPlanValidator.TryNormalize(result.Plan, out var plan, out _)
+                    || !PmAnalyticsCanonicalQuestion.TryCreate(plan, out canonicalQuestion))
+                {
+                    return Results.Problem(
+                        statusCode: StatusCodes.Status503ServiceUnavailable,
+                        title: "Natural language analytics is unavailable.",
+                        detail: "The question could not be interpreted safely.",
+                        extensions: new Dictionary<string, object?> { ["code"] = "InvalidOutput" });
+                }
+
+                planResponse = new PmAnalyticsPlanResponse(
+                    plan.Metric.ToString(),
+                    plan.AssetCategory,
+                    plan.PmCycle,
+                    plan.Department,
+                    plan.GroupBy.ToString());
+            }
+
+            return Results.Ok(new PmAnalyticsInterpretationResponse(
+                result.Status.ToString(),
+                planResponse,
+                result.ClarificationFields.Select(field => field.ToString()).ToArray(),
+                result.Presentation?.ToString(),
+                result.Code,
+                canonicalQuestion));
+        })
+        .WithName("InterpretPmAnalyticsQuestion")
+        .WithSummary("Interprets a preventive-maintenance analytics question without running it")
+        .Produces<PmAnalyticsInterpretationResponse>(StatusCodes.Status200OK)
+        .Produces<ValidationProblemDetails>(StatusCodes.Status400BadRequest)
+        .Produces<ProblemDetails>(StatusCodes.Status503ServiceUnavailable)
+        .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized)
+        .Produces<ProblemDetails>(StatusCodes.Status403Forbidden);
+
         return endpoints;
     }
 }
