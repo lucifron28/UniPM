@@ -583,7 +583,7 @@ test.describe('PM period dashboard', () => {
     await expect(report).toContainText('UniPM')
     await expect(report).toContainText('June 2026')
     await expect(report).toContainText('All departments')
-    await expect(page.locator('form')).toBeHidden()
+    await expect(page.locator('form:visible')).toHaveCount(0)
     await expect(
       page.getByRole('button', {
         name: 'Export dashboard',
