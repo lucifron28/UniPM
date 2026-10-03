@@ -98,25 +98,93 @@ public sealed class ScheduleQueryEndpointsTests
 
     [Theory]
     [InlineData(AuthRoleCatalog.Gsd)]
-    [InlineData(AuthRoleCatalog.Inspector)]
     [InlineData(AuthRoleCatalog.Supervisor)]
-    public async Task Gsd_inspector_and_supervisor_can_list_and_read_schedules(string role)
+    public async Task Gsd_and_supervisors_can_list_and_read_all_schedules(string role)
     {
         await using var application = new TestApplicationFactory([role]);
         using var client = application.CreateClient();
-        var scheduleId = await application.SeedScheduleAsync(TestAuthenticationHandler.UserId);
+        var assignedSchedule = await application.SeedScheduleAsync(TestAuthenticationHandler.UserId);
+        var anotherInspectorsSchedule = await application.SeedScheduleAsync(Guid.NewGuid());
+        var unassignedSchedule = await application.SeedScheduleAsync(null);
 
         var listResponse = await client.GetAsync("/api/v1/schedules");
-        var detailResponse = await client.GetAsync($"/api/v1/schedules/{scheduleId}");
-
         Assert.Equal(HttpStatusCode.OK, listResponse.StatusCode);
         var schedules = await listResponse.Content.ReadFromJsonAsync<List<ScheduleResponse>>();
         Assert.NotNull(schedules);
-        Assert.Equal(scheduleId, Assert.Single(schedules).Id);
-        Assert.Equal(HttpStatusCode.OK, detailResponse.StatusCode);
-        var schedule = await detailResponse.Content.ReadFromJsonAsync<ScheduleResponse>();
-        Assert.NotNull(schedule);
-        Assert.Equal(scheduleId, schedule.Id);
+        Assert.Equal(
+            new[] { assignedSchedule.Id, anotherInspectorsSchedule.Id, unassignedSchedule.Id }
+                .OrderBy(id => id),
+            schedules.Select(schedule => schedule.Id).OrderBy(id => id));
+
+        Assert.Equal(
+            HttpStatusCode.OK,
+            (await client.GetAsync($"/api/v1/schedules/{assignedSchedule.Id}")).StatusCode);
+        Assert.Equal(
+            HttpStatusCode.OK,
+            (await client.GetAsync($"/api/v1/schedules/{anotherInspectorsSchedule.Id}")).StatusCode);
+        Assert.Equal(
+            HttpStatusCode.OK,
+            (await client.GetAsync($"/api/v1/schedules/{unassignedSchedule.Id}")).StatusCode);
+    }
+
+    [Fact]
+    public async Task Inspectors_can_list_and_read_only_schedules_assigned_to_them()
+    {
+        await using var application = new TestApplicationFactory([AuthRoleCatalog.Inspector]);
+        using var client = application.CreateClient();
+        var assignedSchedule = await application.SeedScheduleAsync(TestAuthenticationHandler.UserId);
+        var anotherInspectorsSchedule = await application.SeedScheduleAsync(Guid.NewGuid());
+        var unassignedSchedule = await application.SeedScheduleAsync(null);
+
+        var listResponse = await client.GetAsync("/api/v1/schedules");
+        Assert.Equal(HttpStatusCode.OK, listResponse.StatusCode);
+        var schedules = await listResponse.Content.ReadFromJsonAsync<List<ScheduleResponse>>();
+        Assert.NotNull(schedules);
+        Assert.Equal(assignedSchedule.Id, Assert.Single(schedules).Id);
+
+        var assignedFilter = await client.GetFromJsonAsync<List<ScheduleResponse>>(
+            $"/api/v1/schedules?assetId={assignedSchedule.AssetId}");
+        Assert.NotNull(assignedFilter);
+        Assert.Equal(assignedSchedule.Id, Assert.Single(assignedFilter).Id);
+
+        var otherInspectorFilter = await client.GetFromJsonAsync<List<ScheduleResponse>>(
+            $"/api/v1/schedules?assetId={anotherInspectorsSchedule.AssetId}");
+        var unassignedFilter = await client.GetFromJsonAsync<List<ScheduleResponse>>(
+            $"/api/v1/schedules?assetId={unassignedSchedule.AssetId}");
+        Assert.NotNull(otherInspectorFilter);
+        Assert.NotNull(unassignedFilter);
+        Assert.Empty(otherInspectorFilter);
+        Assert.Empty(unassignedFilter);
+
+        Assert.Equal(
+            HttpStatusCode.OK,
+            (await client.GetAsync($"/api/v1/schedules/{assignedSchedule.Id}")).StatusCode);
+        Assert.Equal(
+            HttpStatusCode.NotFound,
+            (await client.GetAsync($"/api/v1/schedules/{anotherInspectorsSchedule.Id}")).StatusCode);
+        Assert.Equal(
+            HttpStatusCode.NotFound,
+            (await client.GetAsync($"/api/v1/schedules/{unassignedSchedule.Id}")).StatusCode);
+    }
+
+    [Fact]
+    public async Task Supervisor_with_inspector_role_can_read_all_schedules()
+    {
+        await using var application = new TestApplicationFactory(
+            [AuthRoleCatalog.Inspector, AuthRoleCatalog.Supervisor]);
+        using var client = application.CreateClient();
+        var assignedToAnotherInspector = await application.SeedScheduleAsync(Guid.NewGuid());
+        var unassignedSchedule = await application.SeedScheduleAsync(null);
+
+        var schedules = await client.GetFromJsonAsync<List<ScheduleResponse>>("/api/v1/schedules");
+
+        Assert.NotNull(schedules);
+        Assert.Equal(
+            new[] { assignedToAnotherInspector.Id, unassignedSchedule.Id }.OrderBy(id => id),
+            schedules.Select(schedule => schedule.Id).OrderBy(id => id));
+        Assert.Equal(
+            HttpStatusCode.OK,
+            (await client.GetAsync($"/api/v1/schedules/{unassignedSchedule.Id}")).StatusCode);
     }
 
     [Fact]
@@ -593,7 +661,7 @@ public sealed class ScheduleQueryEndpointsTests
             return assetId;
         }
 
-        public async Task<Guid> SeedScheduleAsync(Guid assignedUserId)
+        public async Task<ScheduleFixture> SeedScheduleAsync(Guid? assignedUserId)
         {
             var assetId = await SeedAssetAsync();
             var scheduleId = Guid.NewGuid();
@@ -617,9 +685,11 @@ public sealed class ScheduleQueryEndpointsTests
                 UpdatedAt = now
             });
             await context.SaveChangesAsync();
-            return scheduleId;
+            return new ScheduleFixture(scheduleId, assetId);
         }
     }
+
+    private sealed record ScheduleFixture(Guid Id, Guid AssetId);
 
     private sealed record AssetResponse(
         Guid Id,
