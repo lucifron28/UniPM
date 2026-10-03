@@ -16,7 +16,7 @@ internal sealed class OllamaNaturalLanguageAnalyticsInterpreter(
 {
     private const int MaximumCallsPerProcess = 100;
     private const int HardMaximumResponseBytes = 16 * 1024;
-    internal const string PromptVersion = "pm-analytics-interpretation-v2";
+    internal const string PromptVersion = "pm-analytics-interpretation-v3";
     internal const int GenerationTemperature = 0;
     internal const int GenerationSeed = 42;
     internal const int ContextTokens = 4096;
@@ -236,6 +236,8 @@ internal sealed class OllamaNaturalLanguageAnalyticsInterpreter(
             "A plan pmCycle must be canonical yyyy-MM with a four-digit year and valid two-digit month copied from an explicit year and month in the question. Never infer a year, month, or current date.",
             "Use department null unless an exact department filter is explicitly requested. Use groupBy None unless grouping by department is explicitly requested. Grouping by department does not create a department filter.",
             "Use only Progress, OnTimeCompliance, CompletedLate, or NonOperational and the four supported asset categories. Comparisons and unsupported grouping are Unsupported. Do not add filters or grouping that the user did not request.",
+            "Interpret metric and category cues by meaning. Clear synonyms and abbreviations in English, Filipino, or Taglish count; exact enum words are not required.",
+            "When no single supported metric is clear, return NeedsClarification with Metric instead of defaulting to Progress. For category, return NeedsClarification with AssetCategory if it is missing or ambiguous among supported categories. Return Unsupported for a clearly named asset type outside the supported set; never substitute the closest supported category.",
             "Progress is Percent for progress or rate questions and Count only for an explicit count request, including English how-many/number/count phrasing or Filipino ilan/ilang/bilang phrasing about inspected assets or inspections. CompletedLate and NonOperational are Count; OnTimeCompliance is Percent.",
             "The following synthetic examples illustrate output shape only. Do not copy their values unless they match the actual question.",
             "Valid example question: Show progress for fire alarm systems in June 2027",
