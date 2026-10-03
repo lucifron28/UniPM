@@ -4,6 +4,7 @@
   </Folder>
   <Folder Name="/tools/">
     <Project Path="tools/UniPM.DemoQrGenerator/UniPM.DemoQrGenerator.csproj" />
+    <Project Path="tools/UniPM.PmAnalytics.InterpretationEval/UniPM.PmAnalytics.InterpretationEval.csproj" />
   </Folder>
   <Project Path="server/server.csproj" />
 </Solution>
