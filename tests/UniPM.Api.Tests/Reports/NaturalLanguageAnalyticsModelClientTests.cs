@@ -163,7 +163,6 @@ public sealed class NaturalLanguageAnalyticsModelClientTests
         Assert.Null(response.Usage?.CacheMissPromptTokens);
     }
 
-    [Fact]
     [Theory]
     [InlineData(HttpStatusCode.Unauthorized, "ProviderAuthenticationRejected")]
     [InlineData(HttpStatusCode.TooManyRequests, "ProviderQuotaOrBillingRejected")]
