@@ -13,9 +13,11 @@ namespace UniPM.PmAnalytics.InterpretationEval;
 internal static class Program
 {
     private const string V1DatasetRelativePath = "reference/evaluation/pm-analytics-interpretation/v1/cases.jsonl";
-    private const string V2DatasetRelativePath = "reference/evaluation/pm-analytics-interpretation/v2/cases.jsonl";
+    private const string V2DevDatasetRelativePath = "reference/evaluation/pm-analytics-interpretation/v2/dev.jsonl";
+    private const string V2HeldoutDatasetRelativePath = "reference/evaluation/pm-analytics-interpretation/v2/heldout.jsonl";
     private const string ManifestFileName = "split-manifest.md";
-    private const string V2DatasetSha256 = "510bf8c4998f33828b2b58f7a00d74d47c32333ba6c1ccaa184e1bacdee3cfa6";
+    private const string V2DevDatasetSha256 = "f98d505d6c2ac2f1b3372109e50b949fd2211b7b36af3104536451d4406f2533";
+    private const string V2HeldoutDatasetSha256 = "c39307b5e4f76cf84b4a7d6880e180c2a652fa74bad29f741c8f07d1123c908b";
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,
@@ -54,10 +56,11 @@ internal static class Program
             arguments.SourceSha = await GitSourceShaVerifier.VerifyAsync(
                 root,
                 arguments.SourceSha);
+            var defaultDatasetRelativePath = arguments.DatasetVersion == "v2"
+                ? arguments.Split == "dev" ? V2DevDatasetRelativePath : V2HeldoutDatasetRelativePath
+                : V1DatasetRelativePath;
             var datasetPath = arguments.DatasetPath is null
-                ? Path.Combine(root, arguments.DatasetVersion == "v2"
-                    ? V2DatasetRelativePath
-                    : V1DatasetRelativePath)
+                ? Path.Combine(root, defaultDatasetRelativePath)
                 : Path.GetFullPath(arguments.DatasetPath);
             var selection = await ReadCasesAsync(datasetPath, arguments.Split, arguments.DatasetVersion);
             var naturalLanguageOptions = new NaturalLanguageAnalyticsOptions
@@ -199,7 +202,7 @@ internal static class Program
         }
     }
 
-    private static async Task<IReadOnlyList<CaseOutcome>> EvaluateAsync(
+    internal static async Task<IReadOnlyList<CaseOutcome>> EvaluateAsync(
         INaturalLanguageAnalyticsInterpreter interpreter,
         IReadOnlyList<EvaluationCase> cases,
         NaturalLanguageAnalyticsModelClientRunLedger? apiRunLedger = null)
@@ -809,6 +812,13 @@ internal static class Program
         string datasetVersion = "v1")
     {
         ValidateDatasetExecutionAllowed(datasetVersion, split);
+
+        if (datasetVersion == "v2")
+        {
+            var expectedSha256 = split == "dev" ? V2DevDatasetSha256 : V2HeldoutDatasetSha256;
+            return await ReadV2SplitFileAsync(datasetPath, split, expectedSha256);
+        }
+
         if (!File.Exists(datasetPath))
         {
             throw new EvaluationSetupException("DatasetNotFound");
@@ -817,14 +827,7 @@ internal static class Program
         var bytes = await File.ReadAllBytesAsync(datasetPath);
         var sha256 = Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
         var manifestPath = Path.Combine(Path.GetDirectoryName(datasetPath)!, ManifestFileName);
-        if (datasetVersion == "v2")
-        {
-            EnsureV2Manifest(manifestPath, sha256);
-        }
-        else
-        {
-            EnsureManifestHash(manifestPath, sha256);
-        }
+        EnsureManifestHash(manifestPath, sha256);
 
         string text;
         try
@@ -876,17 +879,84 @@ internal static class Program
             allCases.Add(item);
         }
 
-        if (datasetVersion == "v2")
-        {
-            ValidateV2Distribution(allCases);
-        }
-        else
-        {
-            ValidateV1Distribution(allCases, split);
-        }
+        ValidateV1Distribution(allCases, split);
 
         var selected = allCases.Where(item => item.Split == split).ToArray();
         return new DatasetSelection(selected, sha256);
+    }
+
+    internal static async Task<DatasetSelection> ReadV2SplitFileAsync(
+        string datasetPath,
+        string split,
+        string expectedSha256)
+    {
+        if (split is not ("dev" or "heldout"))
+        {
+            throw new EvaluationSetupException("InvalidDatasetSelection");
+        }
+
+        if (!File.Exists(datasetPath))
+        {
+            throw new EvaluationSetupException("DatasetNotFound");
+        }
+
+        var bytes = await File.ReadAllBytesAsync(datasetPath);
+        var sha256 = Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
+        var manifestPath = Path.Combine(Path.GetDirectoryName(datasetPath)!, ManifestFileName);
+        EnsureV2Manifest(manifestPath, split, sha256, expectedSha256);
+
+        string text;
+        try
+        {
+            text = new UTF8Encoding(false, true).GetString(bytes);
+        }
+        catch (DecoderFallbackException)
+        {
+            throw new EvaluationSetupException("DatasetEncodingInvalid");
+        }
+
+        var cases = new List<EvaluationCase>();
+        var ids = new HashSet<string>(StringComparer.Ordinal);
+        var familySplits = new Dictionary<string, string>(StringComparer.Ordinal);
+        var lineNumber = 0;
+        foreach (var line in text.Split('\n'))
+        {
+            lineNumber++;
+            if (string.IsNullOrWhiteSpace(line))
+            {
+                continue;
+            }
+
+            EvaluationCase? item;
+            try
+            {
+                item = JsonSerializer.Deserialize<EvaluationCase>(line, JsonOptions);
+            }
+            catch (JsonException)
+            {
+                throw new EvaluationSetupException($"DatasetJsonInvalidAtLine{lineNumber}");
+            }
+
+            if (item is null
+                || string.IsNullOrWhiteSpace(item.CaseId)
+                || string.IsNullOrWhiteSpace(item.FamilyId)
+                || string.IsNullOrWhiteSpace(item.Question)
+                || item.Expected is null
+                || item.Split != split
+                || item.Language is not ("en" or "fil" or "taglish")
+                || item.CaseClass is not ("valid" or "needs-clarification" or "unsupported" or "adversarial")
+                || !ids.Add(item.CaseId))
+            {
+                throw new EvaluationSetupException($"DatasetCaseInvalidAtLine{lineNumber}");
+            }
+
+            RecordFamilySplit(item.FamilyId, item.Split, familySplits);
+            ValidateExpected(item, lineNumber);
+            cases.Add(item);
+        }
+
+        ValidateV2Distribution(cases, split);
+        return new DatasetSelection(cases, sha256);
     }
 
     internal static void ValidateDatasetExecutionAllowed(string datasetVersion, string split)
@@ -938,101 +1008,97 @@ internal static class Program
         }
     }
 
-    internal static void ValidateV2Distribution(IReadOnlyList<EvaluationCase> cases)
+    internal static void ValidateV2Distribution(IReadOnlyList<EvaluationCase> cases, string split)
     {
-        if (cases.Count != 90)
+        if (split is not ("dev" or "heldout"))
+        {
+            throw new EvaluationSetupException("InvalidDatasetSelection");
+        }
+
+        var families = cases.GroupBy(item => item.FamilyId, StringComparer.Ordinal).ToArray();
+        var expectedCases = split == "dev" ? 60 : 30;
+        var expectedFamilies = split == "dev" ? 20 : 10;
+        if (cases.Count != expectedCases)
         {
             throw new EvaluationSetupException("UnexpectedV2DatasetCount");
         }
 
-        var families = cases.GroupBy(item => item.FamilyId, StringComparer.Ordinal).ToArray();
-        if (families.Length != 30
+        if (families.Length != expectedFamilies
             || families.Any(family => family.Count() != 3
                 || family.Select(item => item.Language).Distinct(StringComparer.Ordinal).Count() != 3
-                || family.Any(item => item.Split != family.First().Split)))
+                || family.Any(item => item.Split != split)))
         {
             throw new EvaluationSetupException("UnexpectedV2FamilyDistribution");
         }
 
-        var familySplitCounts = families.GroupBy(family => family.First().Split, StringComparer.Ordinal)
+        var expectedClasses = split == "dev"
+            ? new Dictionary<string, int>(StringComparer.Ordinal)
+            {
+                ["valid"] = 15,
+                ["needs-clarification"] = 15,
+                ["unsupported"] = 15,
+                ["adversarial"] = 15
+            }
+            : new Dictionary<string, int>(StringComparer.Ordinal)
+            {
+                ["valid"] = 6,
+                ["needs-clarification"] = 15,
+                ["unsupported"] = 6,
+                ["adversarial"] = 3
+            };
+        var classCounts = cases.GroupBy(item => item.CaseClass, StringComparer.Ordinal)
             .ToDictionary(group => group.Key, group => group.Count(), StringComparer.Ordinal);
-        if (familySplitCounts.GetValueOrDefault("dev") != 20
-            || familySplitCounts.GetValueOrDefault("heldout") != 10)
+        var expectedControls = split == "dev" ? 3 : 1;
+        var controlCount = cases.Count(item => item.CaseTag == "strict-template-control");
+        if (classCounts.Count != expectedClasses.Count
+            || expectedClasses.Any(pair => classCounts.GetValueOrDefault(pair.Key) != pair.Value)
+            || controlCount != expectedControls)
         {
-            throw new EvaluationSetupException("UnexpectedV2FamilySplitDistribution");
+            throw new EvaluationSetupException("UnexpectedV2SplitDistribution");
         }
 
-        foreach (var split in new[] { "dev", "heldout" })
+        var expectedStatuses = split == "dev"
+            ? new Dictionary<string, int>(StringComparer.Ordinal)
         {
-            var selected = cases.Where(item => item.Split == split).ToArray();
-            var expectedCases = split == "dev" ? 60 : 30;
-            var expectedClasses = split == "dev"
-                ? new Dictionary<string, int>(StringComparer.Ordinal)
-                {
-                    ["valid"] = 15,
-                    ["needs-clarification"] = 15,
-                    ["unsupported"] = 15,
-                    ["adversarial"] = 15
-                }
-                : new Dictionary<string, int>(StringComparer.Ordinal)
-                {
-                    ["valid"] = 6,
-                    ["needs-clarification"] = 15,
-                    ["unsupported"] = 6,
-                    ["adversarial"] = 3
-                };
-            var classCounts = selected.GroupBy(item => item.CaseClass, StringComparer.Ordinal)
-                .ToDictionary(group => group.Key, group => group.Count(), StringComparer.Ordinal);
-            var controlCount = selected.Count(item => item.CaseTag == "strict-template-control");
-            var expectedControls = split == "dev" ? 3 : 1;
-            if (selected.Length != expectedCases
-                || classCounts.Count != expectedClasses.Count
-                || expectedClasses.Any(pair => classCounts.GetValueOrDefault(pair.Key) != pair.Value)
-                || controlCount != expectedControls)
-            {
-                throw new EvaluationSetupException("UnexpectedV2SplitDistribution");
+                ["Valid"] = 15,
+                ["NeedsClarification"] = 15,
+                ["Unsupported"] = 30
             }
-
-            var expectedStatuses = split == "dev"
-                ? new Dictionary<string, int>(StringComparer.Ordinal)
-                {
-                    ["Valid"] = 15,
-                    ["NeedsClarification"] = 15,
-                    ["Unsupported"] = 30
-                }
-                : new Dictionary<string, int>(StringComparer.Ordinal)
-                {
-                    ["Valid"] = 6,
-                    ["NeedsClarification"] = 15,
-                    ["Unsupported"] = 9
-                };
-            var statusCounts = selected.GroupBy(item => item.Expected.Status, StringComparer.Ordinal)
-                .ToDictionary(group => group.Key, group => group.Count(), StringComparer.Ordinal);
-            if (expectedStatuses.Any(pair => statusCounts.GetValueOrDefault(pair.Key) != pair.Value)
-                || statusCounts.Count != expectedStatuses.Count)
+            : new Dictionary<string, int>(StringComparer.Ordinal)
             {
-                throw new EvaluationSetupException("UnexpectedV2StatusDistribution");
-            }
+                ["Valid"] = 6,
+                ["NeedsClarification"] = 15,
+                ["Unsupported"] = 9
+            };
+        var statusCounts = cases.GroupBy(item => item.Expected.Status, StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.Count(), StringComparer.Ordinal);
+        if (expectedStatuses.Any(pair => statusCounts.GetValueOrDefault(pair.Key) != pair.Value)
+            || statusCounts.Count != expectedStatuses.Count)
+        {
+            throw new EvaluationSetupException("UnexpectedV2StatusDistribution");
+        }
 
-            foreach (var language in new[] { "en", "fil", "taglish" })
+        foreach (var language in new[] { "en", "fil", "taglish" })
+        {
+            if (cases.Count(item => item.Language == language) != expectedCases / 3)
             {
-                if (selected.Count(item => item.Language == language) != expectedCases / 3)
-                {
-                    throw new EvaluationSetupException("UnexpectedV2LanguageDistribution");
-                }
+                throw new EvaluationSetupException("UnexpectedV2LanguageDistribution");
             }
         }
 
-        var developmentValid = cases.Where(item => item.Split == "dev" && item.Expected.Status == "Valid").ToArray();
-        var expectedMetrics = new[] { "Progress", "OnTimeCompliance", "CompletedLate", "NonOperational" };
-        var expectedCategories = new[]
+        if (split == "dev")
         {
-            "fire-extinguisher", "fire-alarm", "emergency-light", "water-drinking-station"
-        };
-        if (!expectedMetrics.All(metric => developmentValid.Any(item => item.Expected.Plan?.Metric == metric))
-            || !expectedCategories.All(category => developmentValid.Any(item => item.Expected.Plan?.AssetCategory == category)))
-        {
-            throw new EvaluationSetupException("MissingV2DevelopmentPlanCoverage");
+            var developmentValid = cases.Where(item => item.Expected.Status == "Valid").ToArray();
+            var expectedMetrics = new[] { "Progress", "OnTimeCompliance", "CompletedLate", "NonOperational" };
+            var expectedCategories = new[]
+            {
+                "fire-extinguisher", "fire-alarm", "emergency-light", "water-drinking-station"
+            };
+            if (!expectedMetrics.All(metric => developmentValid.Any(item => item.Expected.Plan?.Metric == metric))
+                || !expectedCategories.All(category => developmentValid.Any(item => item.Expected.Plan?.AssetCategory == category)))
+            {
+                throw new EvaluationSetupException("MissingV2DevelopmentPlanCoverage");
+            }
         }
     }
 
@@ -1151,7 +1217,11 @@ internal static class Program
         }
     }
 
-    private static void EnsureV2Manifest(string manifestPath, string sha256)
+    private static void EnsureV2Manifest(
+        string manifestPath,
+        string split,
+        string sha256,
+        string expectedSha256)
     {
         if (!File.Exists(manifestPath))
         {
@@ -1169,11 +1239,13 @@ internal static class Program
 
         var match = Regex.Match(
             manifest,
-            @"Current cases SHA-256 \(UTF-8 without BOM, LF line endings\):\s*(?<digest>[0-9a-f]{64})",
+            split == "dev"
+                ? @"Development cases SHA-256 \(UTF-8 without BOM, LF line endings\):\s*(?<digest>[0-9a-f]{64})"
+                : @"Held-out cases SHA-256 \(UTF-8 without BOM, LF line endings\):\s*(?<digest>[0-9a-f]{64})",
             RegexOptions.CultureInvariant);
         if (!match.Success
             || match.Groups["digest"].Value != sha256
-            || sha256 != V2DatasetSha256)
+            || sha256 != expectedSha256)
         {
             throw new EvaluationSetupException("DatasetDigestMismatch");
         }

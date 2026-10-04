@@ -9,9 +9,11 @@ This directory contains a new synthetic draft corpus for comparing interpretatio
 
 **Review status: provisional.** No Filipino or Taglish question or label has received human review. This coding pass does not validate language quality. The corpus and the family partition remain proposed, and the held-out set has not been evaluated. Do not cite results from this provisional corpus as unbiased held-out evidence.
 
+The held-out partition was frozen before model comparison and was not submitted to candidate models, scored, inspected for model-specific failures, or used for prompt/model tuning before final held-out evaluation. This is a protocol statement, not a claim that nobody has ever seen the held-out wording.
+
 ## Size and proposed split
 
-The corpus has 90 questions in 30 intent families. Each family has one English, one Filipino, and one Taglish draft. The three language siblings always share a proposed split. This gives exactly 30 questions per language and makes leakage checks simple.
+The corpus has 90 questions in 30 intent families across separate `dev.jsonl` and `heldout.jsonl` files. Each family has one English, one Filipino, and one Taglish draft. The three language siblings always share a proposed split. This gives exactly 30 questions per language and makes leakage checks simple.
 
 The proposed partition has 20 development families (60 questions) and 10 held-out families (30 questions). Sixty development questions are small enough to run repeatedly across the rule baseline and two API providers, while 90 individual questions remain practical for a person to review. The held-out portion is reserved for a future one-time evaluation after the human review and freeze conditions in the experiment plan are met.
 
@@ -30,11 +32,11 @@ Every split contains all three languages in equal numbers:
 | Development | 20 | 20 | 20 |
 | Held-out, not evaluated | 10 | 10 | 10 |
 
-The family assignment and current data-file digest appear in [split-manifest.md](split-manifest.md). They describe a proposed partition, not a final freeze. Human corrections require a new reviewed snapshot and recalculated digest before any held-out use.
+The family assignment and per-file digests appear in [split-manifest.md](split-manifest.md). They describe a proposed partition, not a final freeze. Human corrections require a new reviewed snapshot and recalculated digests before any held-out use.
 
 ## Case format and expected contract
 
-[cases.jsonl](cases.jsonl) follows the v1 evaluator's JSONL input shape: `caseId`, `familyId`, `split`, `language`, `caseClass`, `question`, `expected`, and the optional `caseTag`. The expected object contains `status`, `plan`, `clarificationFields`, and `presentation`.
+Both [dev.jsonl](dev.jsonl) and [heldout.jsonl](heldout.jsonl) follow the v1 evaluator's JSONL input shape: `caseId`, `familyId`, `split`, `language`, `caseClass`, `question`, `expected`, and the optional `caseTag`. The expected object contains `status`, `plan`, `clarificationFields`, and `presentation`. The evaluator reads and hashes only the selected split file. A development run does not open the held-out file.
 
 A Valid case has the complete existing plan:
 - metric: `Progress`, `OnTimeCompliance`, `CompletedLate`, or `NonOperational`;
@@ -60,7 +62,7 @@ The expected labels are synthetic and developer-authored. In particular, the Fil
 ## Use limits
 
 - Use the development partition for any future tuning before freeze.
-- Do not evaluate the held-out partition in this goal. It has not been human-reviewed, frozen, or authorized for evaluation.
+- Do not evaluate the held-out partition in this goal. Its file has not been human-reviewed or authorized for evaluation, and the CLI gate remains closed.
 - Never split a family's language siblings across partitions.
 - Do not treat provider output as authoritative analytics. The model interprets a question; the existing validator and deterministic analytics remain authoritative.
 - Do not claim Filipino or Taglish validation, institutional terminology coverage, or production suitability from this synthetic corpus.

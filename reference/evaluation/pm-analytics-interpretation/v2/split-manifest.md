@@ -5,10 +5,12 @@ status: provisional
 
 # Proposed split manifest
 
-This manifest records the current proposed family partition and the digest of the current `cases.jsonl` snapshot. It is not a final freeze. The language labels have not received human review, the held-out partition is not authorized for evaluation, and no held-out evaluation has run.
+This manifest records the current proposed family partition and separate digests for its development and held-out files. It is not a final freeze. The language labels have not received human review, the held-out partition is not authorized for evaluation, and no held-out evaluation has run.
 
-- Dataset: `cases.jsonl`
-- Current cases SHA-256 (UTF-8 without BOM, LF line endings): 510bf8c4998f33828b2b58f7a00d74d47c32333ba6c1ccaa184e1bacdee3cfa6
+- Development dataset: `dev.jsonl`
+- Development cases SHA-256 (UTF-8 without BOM, LF line endings): f98d505d6c2ac2f1b3372109e50b949fd2211b7b36af3104536451d4406f2533
+- Held-out dataset: `heldout.jsonl`
+- Held-out cases SHA-256 (UTF-8 without BOM, LF line endings): c39307b5e4f76cf84b4a7d6880e180c2a652fa74bad29f741c8f07d1123c908b
 - Proposed split: 60 development / 30 held-out cases
 - Proposed family split: 20 development / 10 held-out families
 - Family is the split unit; each family has one English, one Filipino, and one Taglish case.
@@ -40,4 +42,4 @@ Expected status counts within each language:
 | Development | Each of English, Filipino, and Taglish | 5 | 5 | 5 | 5 | 10 | 20 |
 | Held-out, not evaluated | Each of English, Filipino, and Taglish | 2 | 5 | 2 | 1 | 3 | 10 |
 
-The current SHA-256 is a provenance aid for review and later change detection. After human review, the corpus owner must decide whether to retain or revise this split, freeze the reviewed cases and evaluation inputs, and record a new digest before any held-out run.
+Each SHA-256 is a provenance check for its own split file. The evaluator hashes and opens only the selected file. Its operational gate still blocks held-out runs. After human review, the corpus owner must decide whether to retain or revise this split, freeze the reviewed cases and evaluation inputs, and record new digests before any held-out run.
