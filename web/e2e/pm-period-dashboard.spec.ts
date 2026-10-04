@@ -807,6 +807,27 @@ test.describe('PM period dashboard', () => {
   }) => {
     await mockDashboardApi(page)
     const analyticsRequests: unknown[] = []
+    const interpretationRequests: unknown[] = []
+    await page.route('**/api/v1/analytics/pm/interpret', async (route) => {
+      interpretationRequests.push(route.request().postDataJSON())
+      await route.fulfill(
+        jsonResponse({
+          status: 'Valid',
+          plan: {
+            metric: 'NonOperational',
+            assetCategory: 'fire-extinguisher',
+            pmCycle: '2026-11',
+            department: null,
+            groupBy: 'None',
+          },
+          clarificationFields: [],
+          presentation: 'Count',
+          code: null,
+          canonicalQuestion:
+            'Show non-operational assets for fire-extinguisher in 2026-11',
+        }),
+      )
+    })
     await page.route('**/api/v1/analytics/pm/query', async (route) => {
       analyticsRequests.push(route.request().postDataJSON())
       await route.fulfill(
@@ -906,11 +927,19 @@ test.describe('PM period dashboard', () => {
       results.getByText('Not inspected', { exact: true }),
     ).toHaveCount(2)
     await expect
-      .poll(() => analyticsRequests)
+      .poll(() => interpretationRequests)
       .toEqual([
         {
           question:
             'Show non-operational assets for fire extinguishers in November 2026',
+        },
+      ])
+    await expect
+      .poll(() => analyticsRequests)
+      .toEqual([
+        {
+          question:
+            'Show non-operational assets for fire-extinguisher in 2026-11',
         },
       ])
 

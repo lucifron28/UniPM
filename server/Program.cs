@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Options;
 using UniPM.Api.Data;
 using UniPM.Api.Data.Seeding;
 using UniPM.Api.Features;
@@ -138,6 +139,21 @@ builder.Services.AddScoped<ILexicalInstitutionalReferenceRetriever, SqlServerLex
 builder.Services.AddScoped<ISemanticInstitutionalReferenceRetriever, SqlServerSemanticInstitutionalReferenceRetriever>();
 builder.Services.AddScoped<PmPeriodDashboardService>();
 builder.Services.AddScoped<PmAnalyticsService>();
+builder.Services.Configure<NaturalLanguageAnalyticsOptions>(
+    builder.Configuration.GetSection(NaturalLanguageAnalyticsOptions.SectionName));
+builder.Services.AddScoped<RuleBasedNaturalLanguageAnalyticsInterpreter>();
+builder.Services
+    .AddHttpClient<OllamaNaturalLanguageAnalyticsInterpreter>(client =>
+    {
+        client.Timeout = Timeout.InfiniteTimeSpan;
+    })
+    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+    {
+        AllowAutoRedirect = false
+    });
+builder.Services.AddScoped<INaturalLanguageAnalyticsInterpreter>(serviceProvider =>
+    serviceProvider.GetRequiredService<ConfiguredNaturalLanguageAnalyticsInterpreter>());
+builder.Services.AddScoped<ConfiguredNaturalLanguageAnalyticsInterpreter>();
 
 var app = builder.Build();
 

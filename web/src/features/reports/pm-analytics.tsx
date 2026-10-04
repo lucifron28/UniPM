@@ -1,10 +1,14 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link } from '@tanstack/react-router'
-import { queryPmAnalytics } from '@/api/generated/endpoints'
+import {
+  interpretPmAnalyticsQuestion,
+  queryPmAnalytics,
+} from '@/api/generated/endpoints'
 import type {
   PmAnalyticsMeasureResponse,
   PmAnalyticsResponse,
   PmAnalyticsSourceResponse,
+  PmAnalyticsInterpretationResponse,
 } from '@/api/generated/models'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -20,6 +24,15 @@ const metricDescriptions: Record<string, string> = {
   CompletedLate: 'Completed inspections recorded after the cycle deadline.',
   NonOperational:
     'Completed inspections recorded with a non-operational condition.',
+}
+
+const clarificationPrompts: Record<string, string> = {
+  Metric: 'Which PM measure should be used?',
+  AssetCategory: 'Which supported asset category should be included?',
+  Year: 'Which year should be used?',
+  Month: 'Which month should be used?',
+  Department: 'Which department should be used?',
+  GroupBy: 'Should the results be grouped by department?',
 }
 
 function formatCategory(value: string) {
@@ -73,7 +86,11 @@ function formatDate(value: string | null | undefined) {
   }).format(date)
 }
 
-function formatValue(measure: PmAnalyticsMeasureResponse, periodState: string) {
+function formatValue(
+  measure: PmAnalyticsMeasureResponse,
+  periodState: string,
+  useProgressCount: boolean,
+) {
   if (!measure.isMeasurable || measure.value == null) {
     if (measure.denominator === 0) return 'No eligible schedules'
     if (measure.unit.toLowerCase() === 'percent' && periodState !== 'Closed') {
@@ -82,12 +99,13 @@ function formatValue(measure: PmAnalyticsMeasureResponse, periodState: string) {
     return 'Not measurable yet'
   }
 
-  const value =
-    typeof measure.value === 'number'
+  const value = useProgressCount
+    ? measure.numerator.toLocaleString()
+    : typeof measure.value === 'number'
       ? measure.value.toLocaleString()
       : measure.value
   const unit = measure.unit.toLowerCase()
-  if (unit === 'count') return value
+  if (unit === 'count' || useProgressCount) return value
   return unit === 'percent' || unit === 'percentage'
     ? `${value}%`
     : `${value} ${measure.unit}`
@@ -97,10 +115,12 @@ function MeasureResult({
   label,
   measure,
   periodState,
+  useProgressCount,
 }: {
   label: string
   measure: PmAnalyticsMeasureResponse
   periodState: string
+  useProgressCount: boolean
 }) {
   return (
     <div className="rounded-lg border border-[var(--border-soft)] p-4">
@@ -108,7 +128,7 @@ function MeasureResult({
         {label}
       </dt>
       <dd className="mt-2 text-xl font-bold text-[var(--text-primary)]">
-        {formatValue(measure, periodState)}
+        {formatValue(measure, periodState, useProgressCount)}
       </dd>
       <p className="mt-1 text-xs text-[var(--text-secondary)]">
         {measure.numerator.toLocaleString()} of{' '}
@@ -173,27 +193,45 @@ function SourceRecord({
 
 export function PmAnalyticsPanel() {
   const currentUser = useCurrentUser()
+  const currentUserId = currentUser.data?.id ?? null
+  const hasGsdRole = currentUser.data?.roles.includes('GSD') ?? false
+
+  if (!hasGsdRole || !currentUserId) return null
+
+  return <PmAnalyticsQuestionPanel key={currentUserId} />
+}
+
+function PmAnalyticsQuestionPanel() {
   const [question, setQuestion] = useState('')
   const [response, setResponse] = useState<PmAnalyticsResponse | null>(null)
+  const [interpretation, setInterpretation] =
+    useState<PmAnalyticsInterpretationResponse | null>(null)
+  const [presentation, setPresentation] = useState<string | null>(null)
   const [isPending, setIsPending] = useState(false)
+  const [isInterpreting, setIsInterpreting] = useState(false)
   const [hasError, setHasError] = useState(false)
   const requestId = useRef(0)
+  const controller = useRef<AbortController | null>(null)
 
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    return () => {
       requestId.current += 1
-    },
-    [],
-  )
-
-  if (!currentUser.data?.roles.includes('GSD')) return null
+      controller.current?.abort()
+      controller.current = null
+    }
+  }, [])
 
   const handleQuestionChange = (value: string) => {
     requestId.current += 1
+    controller.current?.abort()
+    controller.current = null
     setQuestion(value)
     setResponse(null)
+    setInterpretation(null)
+    setPresentation(null)
     setHasError(false)
     setIsPending(false)
+    setIsInterpreting(false)
   }
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -201,21 +239,68 @@ export function PmAnalyticsPanel() {
     const submittedQuestion = question.trim()
     if (!submittedQuestion) return
 
+    controller.current?.abort()
+    const activeController = new AbortController()
+    controller.current = activeController
     requestId.current += 1
     const currentRequestId = requestId.current
+    const isCurrentRequest = () =>
+      requestId.current === currentRequestId && !activeController.signal.aborted
+
     setResponse(null)
+    setInterpretation(null)
+    setPresentation(null)
     setHasError(false)
     setIsPending(true)
+    setIsInterpreting(true)
 
     try {
-      const result = await queryPmAnalytics({ question: submittedQuestion })
-      if (requestId.current === currentRequestId) setResponse(result)
+      const interpreted = await interpretPmAnalyticsQuestion(
+        { question: submittedQuestion },
+        activeController.signal,
+      )
+      if (!isCurrentRequest()) return
+
+      if (interpreted.status === 'NeedsClarification') {
+        setInterpretation(interpreted)
+        return
+      }
+      if (interpreted.status === 'Unsupported') {
+        setInterpretation(interpreted)
+        return
+      }
+      if (
+        interpreted.status !== 'Valid' ||
+        !interpreted.canonicalQuestion?.trim() ||
+        (interpreted.presentation !== 'Count' &&
+          interpreted.presentation !== 'Percent')
+      ) {
+        throw new Error('Invalid interpretation response')
+      }
+
+      setIsInterpreting(false)
+      const result = await queryPmAnalytics(
+        { question: interpreted.canonicalQuestion },
+        activeController.signal,
+      )
+      if (!isCurrentRequest()) return
+
+      setInterpretation(interpreted)
+      setPresentation(interpreted.presentation)
+      setResponse(result)
     } catch {
-      if (requestId.current === currentRequestId) setHasError(true)
+      if (isCurrentRequest()) setHasError(true)
     } finally {
-      if (requestId.current === currentRequestId) setIsPending(false)
+      if (isCurrentRequest()) {
+        controller.current = null
+        setIsPending(false)
+        setIsInterpreting(false)
+      }
     }
   }
+
+  const progressCount =
+    response?.plan.metric === 'Progress' && presentation === 'Count'
 
   return (
     <Card className="p-4 shadow-none sm:p-5 print:hidden">
@@ -225,7 +310,8 @@ export function PmAnalyticsPanel() {
         </h2>
         <p className="mt-1 text-sm text-[var(--text-secondary)]">
           Ask about progress, on-time compliance, late inspections, or
-          non-operational assets. Use one asset category and an explicit month.
+          non-operational assets. Use one asset category and an explicit month
+          and year.
         </p>
         <form
           className="mt-4 space-y-3"
@@ -255,20 +341,53 @@ export function PmAnalyticsPanel() {
             </p>
           </div>
           <Button type="submit" disabled={isPending || !question.trim()}>
-            {isPending ? 'Reading PM results' : 'Show result'}
+            {isPending
+              ? isInterpreting
+                ? 'Checking question'
+                : 'Reading PM results'
+              : 'Show result'}
           </Button>
         </form>
       </div>
 
       {isPending && (
         <p role="status" className="mt-4 text-sm text-[var(--text-secondary)]">
-          Reading the selected PM records.
+          {isInterpreting
+            ? 'Checking the question scope.'
+            : 'Reading the selected PM records.'}
         </p>
       )}
       {hasError && (
         <p role="alert" className="mt-4 text-sm text-[var(--error)]">
           This question could not be answered. Check that it uses one supported
-          measure, category, and month.
+          measure, category, and explicit month and year.
+        </p>
+      )}
+      {interpretation?.status === 'NeedsClarification' && (
+        <section
+          aria-labelledby="pm-analytics-clarification-title"
+          className="mt-4"
+        >
+          <h3
+            id="pm-analytics-clarification-title"
+            className="font-semibold text-[var(--text-primary)]"
+          >
+            Please clarify the question
+          </h3>
+          <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-[var(--text-secondary)]">
+            {interpretation.clarificationFields
+              .map((field) => clarificationPrompts[field])
+              .filter((prompt): prompt is string => Boolean(prompt))
+              .map((prompt) => (
+                <li key={prompt}>{prompt}</li>
+              ))}
+          </ul>
+        </section>
+      )}
+      {interpretation?.status === 'Unsupported' && (
+        <p role="status" className="mt-4 text-sm text-[var(--text-secondary)]">
+          This question is outside the supported PM measures. Try one measure,
+          one asset category, and one explicit month and year.
         </p>
       )}
       {response && (
@@ -285,8 +404,10 @@ export function PmAnalyticsPanel() {
               PM result
             </h3>
             <p className="mt-1 text-sm text-[var(--text-secondary)]">
-              {formatMetric(response.plan.metric)} for{' '}
-              {formatCategory(response.plan.assetCategory)} in{' '}
+              {progressCount
+                ? 'Inspected assets'
+                : formatMetric(response.plan.metric)}{' '}
+              for {formatCategory(response.plan.assetCategory)} in{' '}
               {formatPmCycle(response.plan.pmCycle)}
               {response.plan.department ? `, ${response.plan.department}` : ''}
               {response.plan.groupBy === 'Department'
@@ -299,7 +420,9 @@ export function PmAnalyticsPanel() {
               {formatDate(response.deadline)}
             </p>
             <p className="mt-2 text-sm text-[var(--text-secondary)]">
-              {metricDescriptions[response.plan.metric]}
+              {progressCount
+                ? 'Count of scheduled assets with completed inspections.'
+                : metricDescriptions[response.plan.metric]}
             </p>
             <p className="mt-2 text-sm text-[var(--text-secondary)]">
               {response.scopeNote}
@@ -308,9 +431,14 @@ export function PmAnalyticsPanel() {
 
           <dl className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <MeasureResult
-              label={formatMetric(response.plan.metric)}
+              label={
+                progressCount
+                  ? 'Inspected assets (count)'
+                  : formatMetric(response.plan.metric)
+              }
               measure={response.result}
               periodState={response.periodState}
+              useProgressCount={progressCount}
             />
             {response.groups.map((group, index) => (
               <MeasureResult
@@ -318,6 +446,7 @@ export function PmAnalyticsPanel() {
                 label={group.department ?? 'Department not recorded'}
                 measure={group}
                 periodState={response.periodState}
+                useProgressCount={progressCount}
               />
             ))}
           </dl>
