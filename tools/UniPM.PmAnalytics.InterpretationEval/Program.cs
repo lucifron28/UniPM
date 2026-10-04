@@ -1256,7 +1256,7 @@ internal static class Program
         var directory = new DirectoryInfo(Environment.CurrentDirectory);
         while (directory is not null)
         {
-            if (File.Exists(Path.Combine(directory.FullName, DatasetRelativePath)))
+            if (File.Exists(Path.Combine(directory.FullName, V1DatasetRelativePath)))
             {
                 return directory.FullName;
             }
