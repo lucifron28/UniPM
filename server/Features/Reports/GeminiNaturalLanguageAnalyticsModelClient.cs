@@ -57,13 +57,13 @@ internal sealed class GeminiNaturalLanguageAnalyticsModelClient(
         var promptTokens = GetLong(usageMetadata, "promptTokenCount");
         var candidateTokens = GetLong(usageMetadata, "candidatesTokenCount");
         var reasoningTokens = GetLong(usageMetadata, "thoughtsTokenCount");
-        var completionTokens = candidateTokens.HasValue
+        long? completionTokens = candidateTokens.HasValue
             && reasoningTokens.HasValue
             && candidateTokens.Value <= long.MaxValue - reasoningTokens.Value
                 ? candidateTokens.Value + reasoningTokens.Value
                 : null;
         var cachedTokens = GetLong(usageMetadata, "cachedContentTokenCount");
-        var cacheMissTokens = promptTokens.HasValue && cachedTokens.HasValue
+        long? cacheMissTokens = promptTokens.HasValue && cachedTokens.HasValue
             && cachedTokens.Value <= promptTokens.Value
             ? promptTokens.Value - cachedTokens.Value
             : null;
