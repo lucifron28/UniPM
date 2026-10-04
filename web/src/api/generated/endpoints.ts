@@ -45,6 +45,8 @@ import type {
   ListSchedulesParams,
   LoginRequest,
   LoginResponse,
+  PmAnalyticsInterpretationRequest,
+  PmAnalyticsInterpretationResponse,
   PmAnalyticsQuestionRequest,
   PmAnalyticsResponse,
   PmPeriodDashboardCycleGroupResponse,
@@ -4548,4 +4550,93 @@ export const useQueryPmAnalytics = <
   TContext
 > => {
   return useMutation(getQueryPmAnalyticsMutationOptions(options), queryClient)
+}
+
+/**
+ * @summary Interprets a preventive-maintenance analytics question without running it
+ */
+export const interpretPmAnalyticsQuestion = (
+  pmAnalyticsInterpretationRequest: PmAnalyticsInterpretationRequest,
+  signal?: AbortSignal,
+) => {
+  return customInstance<PmAnalyticsInterpretationResponse>({
+    url: `/api/v1/analytics/pm/interpret`,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    data: pmAnalyticsInterpretationRequest,
+    signal,
+  })
+}
+
+export const getInterpretPmAnalyticsQuestionMutationOptions = <
+  TError = ValidationProblemDetails | ProblemDetails,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof interpretPmAnalyticsQuestion>>,
+    TError,
+    { data: PmAnalyticsInterpretationRequest },
+    TContext
+  >
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof interpretPmAnalyticsQuestion>>,
+  TError,
+  { data: PmAnalyticsInterpretationRequest },
+  TContext
+> => {
+  const mutationKey = ['interpretPmAnalyticsQuestion']
+  const { mutation: mutationOptions } = options
+    ? options.mutation &&
+      'mutationKey' in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey } }
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof interpretPmAnalyticsQuestion>>,
+    { data: PmAnalyticsInterpretationRequest }
+  > = (props) => {
+    const { data } = props ?? {}
+
+    return interpretPmAnalyticsQuestion(data)
+  }
+
+  return { mutationFn, ...mutationOptions }
+}
+
+export type InterpretPmAnalyticsQuestionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof interpretPmAnalyticsQuestion>>
+>
+export type InterpretPmAnalyticsQuestionMutationBody =
+  PmAnalyticsInterpretationRequest
+export type InterpretPmAnalyticsQuestionMutationError =
+  ValidationProblemDetails | ProblemDetails
+
+/**
+ * @summary Interprets a preventive-maintenance analytics question without running it
+ */
+export const useInterpretPmAnalyticsQuestion = <
+  TError = ValidationProblemDetails | ProblemDetails,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof interpretPmAnalyticsQuestion>>,
+      TError,
+      { data: PmAnalyticsInterpretationRequest },
+      TContext
+    >
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof interpretPmAnalyticsQuestion>>,
+  TError,
+  { data: PmAnalyticsInterpretationRequest },
+  TContext
+> => {
+  return useMutation(
+    getInterpretPmAnalyticsQuestionMutationOptions(options),
+    queryClient,
+  )
 }

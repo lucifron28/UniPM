@@ -15,7 +15,7 @@ using UniPM.Api.Models;
 
 namespace UniPM.Api.Tests;
 
-public sealed class PmAnalyticsTests
+public sealed partial class PmAnalyticsTests
 {
     private const string PmCycle = "2026-11";
     private const string AssetCategory = "fire-extinguisher";
@@ -535,24 +535,37 @@ public sealed class PmAnalyticsTests
         private TestApplicationFactory(
             bool authenticated,
             DateTimeOffset now,
-            params string[] roles)
+            string[] roles,
+            INaturalLanguageAnalyticsInterpreter? interpreter = null)
         {
             _authenticated = authenticated;
             _now = now;
             _roles = roles;
+            _interpreter = interpreter;
         }
 
         private readonly bool _authenticated;
         private readonly DateTimeOffset _now;
         private readonly string[] _roles;
+        private readonly INaturalLanguageAnalyticsInterpreter? _interpreter;
 
         public static TestApplicationFactory Unauthenticated()
-            => new(false, ClosedPeriodNow);
+            => new(false, ClosedPeriodNow, []);
+
+        public static TestApplicationFactory UnauthenticatedWithInterpreter(
+            INaturalLanguageAnalyticsInterpreter interpreter)
+            => new(false, ClosedPeriodNow, [], interpreter);
 
         public static TestApplicationFactory AuthenticatedAt(
             DateTimeOffset now,
             params string[] roles)
             => new(true, now, roles);
+
+        public static TestApplicationFactory AuthenticatedWithInterpreter(
+            DateTimeOffset now,
+            INaturalLanguageAnalyticsInterpreter interpreter,
+            params string[] roles)
+            => new(true, now, roles, interpreter);
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
@@ -570,6 +583,11 @@ public sealed class PmAnalyticsTests
                     options.UseInMemoryDatabase(_databaseName));
                 services.RemoveAll<TimeProvider>();
                 services.AddSingleton<TimeProvider>(new FixedTimeProvider(_now));
+                if (_interpreter is not null)
+                {
+                    services.RemoveAll<INaturalLanguageAnalyticsInterpreter>();
+                    services.AddSingleton(_interpreter);
+                }
             });
         }
     }

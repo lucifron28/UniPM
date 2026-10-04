@@ -6,7 +6,7 @@
   },
   "servers": [
     {
-      "url": "http://localhost:5254/"
+      "url": "http://127.0.0.1:53541/"
     }
   ],
   "paths": {
@@ -1897,6 +1897,75 @@
           }
         }
       }
+    },
+    "/api/v1/analytics/pm/interpret": {
+      "post": {
+        "tags": ["PM Analytics"],
+        "summary": "Interprets a preventive-maintenance analytics question without running it",
+        "operationId": "InterpretPmAnalyticsQuestion",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PmAnalyticsInterpretationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PmAnalyticsInterpretationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2627,6 +2696,57 @@
           },
           "user": {
             "$ref": "#/components/schemas/AuthUserResponse"
+          }
+        }
+      },
+      "PmAnalyticsInterpretationRequest": {
+        "required": ["question"],
+        "type": "object",
+        "properties": {
+          "question": {
+            "type": ["null", "string"]
+          }
+        },
+        "additionalProperties": false
+      },
+      "PmAnalyticsInterpretationResponse": {
+        "required": [
+          "status",
+          "plan",
+          "clarificationFields",
+          "presentation",
+          "code",
+          "canonicalQuestion"
+        ],
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "plan": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PmAnalyticsPlanResponse"
+              }
+            ]
+          },
+          "clarificationFields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "presentation": {
+            "type": ["null", "string"]
+          },
+          "code": {
+            "type": ["null", "string"]
+          },
+          "canonicalQuestion": {
+            "type": ["null", "string"]
           }
         }
       },
