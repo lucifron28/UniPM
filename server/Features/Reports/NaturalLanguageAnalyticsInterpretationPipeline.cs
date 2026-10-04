@@ -1,5 +1,6 @@
 using UniPM.Api.Features.Schedules;
 using UniPM.Api.Features.ReferenceData;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 
 namespace UniPM.Api.Features.Reports;
@@ -174,13 +175,19 @@ internal sealed class RuleBasedNaturalLanguageAnalyticsInterpreter()
 internal sealed class ConfiguredNaturalLanguageAnalyticsInterpreter(
     IOptionsMonitor<NaturalLanguageAnalyticsOptions> options,
     RuleBasedNaturalLanguageAnalyticsInterpreter ruleBased,
-    OllamaNaturalLanguageAnalyticsInterpreter ollama)
+    OllamaNaturalLanguageAnalyticsInterpreter ollama,
+    IHostEnvironment environment)
     : INaturalLanguageAnalyticsInterpreter
 {
     public Task<PmAnalyticsInterpretationResult> InterpretAsync(
         string question,
         CancellationToken cancellationToken)
     {
+        if (!environment.IsDevelopment())
+        {
+            return ruleBased.InterpretAsync(question, cancellationToken);
+        }
+
         bool enabled;
         try
         {

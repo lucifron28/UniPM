@@ -2,6 +2,8 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
+using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using UniPM.Api.Features.Reports;
 
@@ -175,7 +177,8 @@ public sealed class NaturalLanguageAnalyticsInterpretationTests
         var disabled = new ConfiguredNaturalLanguageAnalyticsInterpreter(
             disabledOptions,
             new RuleBasedNaturalLanguageAnalyticsInterpreter(),
-            new OllamaNaturalLanguageAnalyticsInterpreter(client, disabledOptions));
+            new OllamaNaturalLanguageAnalyticsInterpreter(client, disabledOptions),
+            new TestHostEnvironment(Environments.Development));
         var strictQuestion = "Show progress for fire-extinguisher in 2026-11";
         var baselineResult = await disabled.InterpretAsync(strictQuestion, CancellationToken.None);
         Assert.Equal(PmAnalyticsInterpretationStatus.Valid, baselineResult.Status);
@@ -195,6 +198,58 @@ public sealed class NaturalLanguageAnalyticsInterpretationTests
 
         Assert.Equal(NaturalLanguageAnalyticsProviderFailure.ProviderUnavailable, exception.Failure);
         Assert.Equal(0, handler.RequestCount);
+    }
+
+    [Fact]
+    public async Task Configured_interpreter_uses_Ollama_when_enabled_in_development()
+    {
+        const string modelOutput = "{\"status\":\"Valid\",\"plan\":{\"metric\":\"Progress\",\"assetCategory\":\"fire-extinguisher\",\"pmCycle\":\"2026-11\",\"department\":null,\"groupBy\":\"None\"},\"clarificationFields\":[],\"presentation\":\"Percent\"}";
+        var response = JsonSerializer.Serialize(new
+        {
+            message = new { role = "assistant", content = modelOutput },
+            done = true
+        });
+        var handler = new StubResponseHandler(response);
+        using var client = new HttpClient(handler);
+        var options = new FixedOptionsMonitor<NaturalLanguageAnalyticsOptions>(
+            new NaturalLanguageAnalyticsOptions { Enabled = true });
+        var interpreter = new ConfiguredNaturalLanguageAnalyticsInterpreter(
+            options,
+            new RuleBasedNaturalLanguageAnalyticsInterpreter(),
+            new OllamaNaturalLanguageAnalyticsInterpreter(client, options),
+            new TestHostEnvironment(Environments.Development));
+
+        var result = await interpreter.InterpretAsync(
+            "Show progress for fire-extinguisher in 2026-11",
+            CancellationToken.None);
+
+        Assert.Equal(PmAnalyticsInterpretationStatus.Valid, result.Status);
+        Assert.Equal(1, handler.RequestCount);
+    }
+
+    [Theory]
+    [InlineData("Production")]
+    [InlineData("Staging")]
+    public async Task Configured_interpreter_uses_rule_based_when_enabled_outside_development(
+        string environmentName)
+    {
+        var handler = new StubResponseHandler("{}");
+        using var client = new HttpClient(handler);
+        var options = new CountingOptionsMonitor<NaturalLanguageAnalyticsOptions>(
+            new NaturalLanguageAnalyticsOptions { Enabled = true });
+        var interpreter = new ConfiguredNaturalLanguageAnalyticsInterpreter(
+            options,
+            new RuleBasedNaturalLanguageAnalyticsInterpreter(),
+            new OllamaNaturalLanguageAnalyticsInterpreter(client, options),
+            new TestHostEnvironment(environmentName));
+
+        var result = await interpreter.InterpretAsync(
+            "Show progress for fire-extinguisher in 2026-11",
+            CancellationToken.None);
+
+        Assert.Equal(PmAnalyticsInterpretationStatus.Valid, result.Status);
+        Assert.Equal(0, handler.RequestCount);
+        Assert.Equal(0, options.CurrentValueReads);
     }
 
     [Fact]
@@ -353,6 +408,36 @@ public sealed class NaturalLanguageAnalyticsInterpretationTests
         public TOptions Get(string? name) => CurrentValue;
 
         public IDisposable? OnChange(Action<TOptions, string?> listener) => null;
+    }
+
+    private sealed class CountingOptionsMonitor<TOptions>(TOptions currentValue) : IOptionsMonitor<TOptions>
+        where TOptions : class
+    {
+        internal int CurrentValueReads { get; private set; }
+
+        public TOptions CurrentValue
+        {
+            get
+            {
+                CurrentValueReads++;
+                return currentValue;
+            }
+        }
+
+        public TOptions Get(string? name) => CurrentValue;
+
+        public IDisposable? OnChange(Action<TOptions, string?> listener) => null;
+    }
+
+    private sealed class TestHostEnvironment(string environmentName) : IHostEnvironment
+    {
+        public string EnvironmentName { get; set; } = environmentName;
+
+        public string ApplicationName { get; set; } = "UniPM.Api.Tests";
+
+        public string ContentRootPath { get; set; } = AppContext.BaseDirectory;
+
+        public IFileProvider ContentRootFileProvider { get; set; } = new NullFileProvider();
     }
 
     private sealed class StubResponseHandler(
