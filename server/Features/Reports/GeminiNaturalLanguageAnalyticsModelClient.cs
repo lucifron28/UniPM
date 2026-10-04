@@ -7,7 +7,8 @@ internal sealed class GeminiNaturalLanguageAnalyticsModelClient(
     NaturalLanguageAnalyticsModelClientRunLedger ledger,
     HttpMessageHandler? handler = null,
     Func<TimeSpan, CancellationToken, Task>? retryDelay = null,
-    Func<int>? retryJitterMilliseconds = null)
+    Func<int>? retryJitterMilliseconds = null,
+    string? modelId = null)
     : NaturalLanguageAnalyticsApiModelClientBase(
         apiKey,
         ledger,
@@ -16,19 +17,18 @@ internal sealed class GeminiNaturalLanguageAnalyticsModelClient(
         retryJitterMilliseconds)
 {
     internal const string ConfiguredModelId = "gemini-3.8-flash";
+    internal const string FlashLiteModelId = "gemini-3.5-flash-lite";
     internal const string ThinkingLevel = "low";
     internal const string ApiKeyEnvironmentVariable = "GEMINI_API_KEY";
 
-    private static readonly Uri GenerateContentEndpoint = new(
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent",
-        UriKind.Absolute);
+    private readonly string _modelId = ResolveModelId(modelId);
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     public override string Provider => "Gemini";
 
-    public override string ModelId => ConfiguredModelId;
+    public override string ModelId => _modelId;
 
-    protected override Uri Endpoint => GenerateContentEndpoint;
+    protected override Uri Endpoint => CreateEndpoint(_modelId);
 
     protected override byte[] CreateRequestBody(string sanitizedQuestion)
         => JsonSerializer.SerializeToUtf8Bytes(new
@@ -109,6 +109,19 @@ internal sealed class GeminiNaturalLanguageAnalyticsModelClient(
 
     protected override void SetAuthentication(HttpRequestMessage request, string apiKey)
         => request.Headers.TryAddWithoutValidation("x-goog-api-key", apiKey);
+
+    private static string ResolveModelId(string? modelId)
+    {
+        var selected = modelId ?? ConfiguredModelId;
+        return selected is ConfiguredModelId or FlashLiteModelId
+            ? selected
+            : throw new ArgumentException("Unsupported Gemini model.", nameof(modelId));
+    }
+
+    private static Uri CreateEndpoint(string selectedModelId)
+        => new(
+            $"https://generativelanguage.googleapis.com/v1beta/models/{selectedModelId}:generateContent",
+            UriKind.Absolute);
 
     private static bool IsThought(JsonElement element)
         => element.ValueKind == JsonValueKind.Object

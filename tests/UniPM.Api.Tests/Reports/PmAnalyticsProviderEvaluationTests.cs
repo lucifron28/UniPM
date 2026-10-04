@@ -195,6 +195,167 @@ public sealed class PmAnalyticsProviderEvaluationTests
         Assert.Contains("require --dataset-version v2", error, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("gemini", "gemini-3.8-flash", "Gemini", "low")]
+    [InlineData("gemini", "gemini-3.5-flash-lite", "Gemini", "low")]
+    [InlineData("deepseek", "deepseek-flash", "DeepSeek", "disabled")]
+    [InlineData("deepseek", "deepseek-v4-pro", "DeepSeek", "disabled")]
+    public void Cloud_model_selection_accepts_only_explicit_supported_pairs(
+        string mode,
+        string model,
+        string provider,
+        string reasoning)
+    {
+        var resolved = EvalProgram.TryResolveProviderModel(mode, model, out var selection);
+
+        Assert.True(resolved);
+        Assert.NotNull(selection);
+        Assert.Equal(mode, selection.Mode);
+        Assert.Equal(provider, selection.Provider);
+        Assert.Equal(model, selection.ModelId);
+        Assert.Equal(reasoning, selection.ReasoningSetting);
+        Assert.Equal("2026-10-05", selection.PricingProfile.CheckedDateLocal);
+        Assert.Equal($"{model}-", selection.PricingProfile.Id[..(model.Length + 1)]);
+        if (mode == "gemini")
+        {
+            Assert.Equal("v1beta", selection.ApiVersion);
+            Assert.Null(selection.Temperature);
+        }
+        else
+        {
+            Assert.Null(selection.ApiVersion);
+            Assert.Equal(0d, selection.Temperature);
+        }
+    }
+
+    [Theory]
+    [InlineData("gemini", "gemini-3.8-flash")]
+    [InlineData("gemini", "gemini-3.5-flash-lite")]
+    [InlineData("deepseek", "deepseek-flash")]
+    [InlineData("deepseek", "deepseek-v4-pro")]
+    public void Cloud_cli_accepts_the_explicit_model_id_for_post_source_check_selection(
+        string mode,
+        string model)
+    {
+        var accepted = EvalProgram.TryParseArguments(
+            [
+                "--split", "dev",
+                "--mode", mode,
+                "--dataset-version", "v2",
+                "--source-sha", new string('a', 40),
+                "--model", model
+            ],
+            out var arguments,
+            out var error);
+
+        Assert.True(accepted, error);
+        Assert.Equal(model, arguments.Model);
+        Assert.True(EvalProgram.TryResolveProviderModel(arguments.Mode, arguments.Model, out _));
+    }
+
+    [Fact]
+    public void Cloud_cli_does_not_invent_a_default_model_when_model_is_omitted()
+    {
+        var accepted = EvalProgram.TryParseArguments(
+            [
+                "--split", "dev",
+                "--mode", "gemini",
+                "--dataset-version", "v2",
+                "--source-sha", new string('a', 40)
+            ],
+            out var arguments,
+            out var error);
+
+        Assert.True(accepted, error);
+        Assert.Equal(string.Empty, arguments.Model);
+        Assert.False(EvalProgram.TryResolveProviderModel(arguments.Mode, arguments.Model, out _));
+    }
+
+    [Theory]
+    [InlineData("gemini", null)]
+    [InlineData("gemini", "")]
+    [InlineData("gemini", "deepseek-flash")]
+    [InlineData("gemini", "gemini-unknown")]
+    [InlineData("deepseek", null)]
+    [InlineData("deepseek", "gemini-3.8-flash")]
+    [InlineData("deepseek", "deepseek-unknown")]
+    [InlineData("ollama", "gemini-3.8-flash")]
+    public void Cloud_model_selection_rejects_missing_unknown_and_wrong_provider_pairs(
+        string mode,
+        string? model)
+    {
+        Assert.False(EvalProgram.TryResolveProviderModel(mode, model, out var selection));
+        Assert.Null(selection);
+    }
+
+    [Fact]
+    public void Candidate_pricing_profiles_are_reported_and_used_for_cost_estimates()
+    {
+        var expected = new (string Mode, string Model, decimal Cost)[]
+        {
+            ("gemini", "gemini-3.8-flash", 0.000123m),
+            ("gemini", "gemini-3.5-flash-lite", 0.0000692m),
+            ("deepseek", "deepseek-flash", 0.00004224m),
+            ("deepseek", "deepseek-v4-pro", 0.00016016m)
+        };
+
+        foreach (var candidate in expected)
+        {
+            Assert.True(EvalProgram.TryResolveProviderModel(candidate.Mode, candidate.Model, out var selection));
+            var pricingProfile = Assert.IsType<EvalProgram.ProviderRateProfile>(selection?.PricingProfile);
+            var run = Snapshot(new NaturalLanguageAnalyticsModelCallObservation(
+                HttpSucceeded: true,
+                HasText: true,
+                Usage: new NaturalLanguageAnalyticsProviderUsage(
+                    PromptTokens: 100,
+                    CompletionTokens: 20,
+                    DurationNanoseconds: 1_000,
+                    CachedPromptTokens: 40,
+                    CacheMissPromptTokens: 60,
+                    ReasoningTokens: 7),
+                LatencyMilliseconds: 10,
+                ReportedModelVersion: candidate.Model,
+                SystemFingerprint: null,
+                SafeErrorCode: null));
+
+            var accounting = EvalProgram.BuildApiUsageAccounting(pricingProfile, run);
+
+            Assert.Equal(candidate.Cost, accounting.EstimatedCostUsd);
+            Assert.Equal("complete", accounting.CostStatus);
+            Assert.Contains(pricingProfile.Id, accounting.CostBasis, StringComparison.Ordinal);
+            Assert.Contains(pricingProfile.SourceUrl, accounting.CostBasis, StringComparison.Ordinal);
+
+            var caseItem = ValidCase("V01", "Progress", "Percent");
+            var outcome = EvalProgram.ScoreCase(
+                caseItem,
+                Result(
+                    PmAnalyticsInterpretationStatus.Valid,
+                    Plan(PmAnalyticsMetric.Progress),
+                    presentation: PmAnalyticsPresentation.Percent),
+                10);
+            var report = BuildReport(
+                [caseItem],
+                [outcome],
+                new EvalProgram.ProviderRunConfiguration(
+                    selection!.Provider,
+                    selection.ModelId,
+                    selection.ApiVersion,
+                    selection.ReasoningSetting,
+                    selection.Temperature,
+                    pricingProfile),
+                run);
+            var reportedProfile = Assert.IsType<EvalProgram.ProviderRateProfile>(
+                report.V2!.ProviderRun!.PricingProfile);
+
+            Assert.Equal(pricingProfile.Id, reportedProfile.Id);
+            Assert.Equal(pricingProfile.CheckedDateLocal, reportedProfile.CheckedDateLocal);
+            Assert.Equal(pricingProfile.InputUsdPerMillion, reportedProfile.InputUsdPerMillion);
+            Assert.Equal(pricingProfile.CachedInputUsdPerMillion, reportedProfile.CachedInputUsdPerMillion);
+            Assert.Equal(pricingProfile.OutputUsdPerMillion, reportedProfile.OutputUsdPerMillion);
+            Assert.Equal(pricingProfile.SourceUrl, reportedProfile.SourceUrl);
+        }
+    }
+
     [Fact]
     public void Scores_keep_presentation_separate_and_use_expected_class_denominators()
     {

@@ -8,7 +8,8 @@ internal sealed class DeepSeekNaturalLanguageAnalyticsModelClient(
     NaturalLanguageAnalyticsModelClientRunLedger ledger,
     HttpMessageHandler? handler = null,
     Func<TimeSpan, CancellationToken, Task>? retryDelay = null,
-    Func<int>? retryJitterMilliseconds = null)
+    Func<int>? retryJitterMilliseconds = null,
+    string? modelId = null)
     : NaturalLanguageAnalyticsApiModelClientBase(
         apiKey,
         ledger,
@@ -17,9 +18,11 @@ internal sealed class DeepSeekNaturalLanguageAnalyticsModelClient(
         retryJitterMilliseconds)
 {
     internal const string ConfiguredModelId = "deepseek-flash";
+    internal const string V4ProModelId = "deepseek-v4-pro";
     internal const int GenerationTemperature = 0;
     internal const string ApiKeyEnvironmentVariable = "DEEPSEEK_API_KEY";
 
+    private readonly string _modelId = ResolveModelId(modelId);
     private static readonly Uri ChatCompletionsEndpoint = new(
         "https://api.deepseek.com/chat/completions",
         UriKind.Absolute);
@@ -27,14 +30,14 @@ internal sealed class DeepSeekNaturalLanguageAnalyticsModelClient(
 
     public override string Provider => "DeepSeek";
 
-    public override string ModelId => ConfiguredModelId;
+    public override string ModelId => _modelId;
 
     protected override Uri Endpoint => ChatCompletionsEndpoint;
 
     protected override byte[] CreateRequestBody(string sanitizedQuestion)
         => JsonSerializer.SerializeToUtf8Bytes(new
         {
-            model = ConfiguredModelId,
+            model = _modelId,
             messages = new object[]
             {
                 new
@@ -103,6 +106,14 @@ internal sealed class DeepSeekNaturalLanguageAnalyticsModelClient(
 
     protected override void SetAuthentication(HttpRequestMessage request, string apiKey)
         => request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+
+    private static string ResolveModelId(string? modelId)
+    {
+        var selected = modelId ?? ConfiguredModelId;
+        return selected is ConfiguredModelId or V4ProModelId
+            ? selected
+            : throw new ArgumentException("Unsupported DeepSeek model.", nameof(modelId));
+    }
 
     private static JsonElement? GetObject(JsonElement? parent, string name)
         => parent is { ValueKind: JsonValueKind.Object } value

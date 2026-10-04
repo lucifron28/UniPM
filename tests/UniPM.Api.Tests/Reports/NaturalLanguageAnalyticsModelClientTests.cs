@@ -12,8 +12,11 @@ public sealed class NaturalLanguageAnalyticsModelClientTests
         {"status":"Valid","plan":{"metric":"Progress","assetCategory":"fire-extinguisher","pmCycle":"2026-11","department":null,"groupBy":"None"},"clarificationFields":[],"presentation":"Percent"}
         """;
 
-    [Fact]
-    public async Task Gemini_uses_fixed_structured_output_request_and_normalizes_usage()
+    [Theory]
+    [InlineData("gemini-3.8-flash")]
+    [InlineData("gemini-3.5-flash-lite")]
+    public async Task Gemini_uses_the_selected_model_in_its_fixed_structured_output_request_and_normalizes_usage(
+        string selectedModel)
     {
         var handler = new StubHandler("""
             {
@@ -24,19 +27,27 @@ public sealed class NaturalLanguageAnalyticsModelClientTests
                 "thoughtsTokenCount": 2,
                 "cachedContentTokenCount": 20
               },
-              "modelVersion": "gemini-3.8-flash-002"
+              "modelVersion": "__MODEL_VERSION__"
             }
-            """.Replace("\"__OUTPUT__\"", JsonSerializer.Serialize(ValidOutput), StringComparison.Ordinal));
+            """
+            .Replace("\"__OUTPUT__\"", JsonSerializer.Serialize(ValidOutput), StringComparison.Ordinal)
+            .Replace("\"__MODEL_VERSION__\"", JsonSerializer.Serialize($"{selectedModel}-001"), StringComparison.Ordinal));
         var ledger = new NaturalLanguageAnalyticsModelClientRunLedger();
-        using var client = new GeminiNaturalLanguageAnalyticsModelClient("synthetic-key", ledger, handler);
+        using var client = new GeminiNaturalLanguageAnalyticsModelClient(
+            "synthetic-key",
+            ledger,
+            handler,
+            modelId: selectedModel);
 
         var response = await client.GenerateAsync(
             "Show progress for fire-extinguisher in 2026-11",
             CancellationToken.None);
 
         Assert.Equal("Gemini", client.Provider);
-        Assert.Equal("gemini-3.8-flash", client.ModelId);
-        Assert.Equal("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent", handler.RequestUri?.ToString());
+        Assert.Equal(selectedModel, client.ModelId);
+        Assert.Equal(
+            $"https://generativelanguage.googleapis.com/v1beta/models/{selectedModel}:generateContent",
+            handler.RequestUri?.ToString());
         Assert.Equal(HttpMethod.Post, handler.RequestMethod);
         Assert.Equal("synthetic-key", handler.GoogleApiKey);
         using var request = JsonDocument.Parse(handler.RequestBody!);
@@ -63,7 +74,7 @@ public sealed class NaturalLanguageAnalyticsModelClientTests
         Assert.Equal(0, snapshot.Retries);
         Assert.Equal(1, snapshot.HttpSuccessResponses);
         var call = Assert.Single(snapshot.Calls);
-        Assert.Equal("gemini-3.8-flash-002", call.ReportedModelVersion);
+        Assert.Equal($"{selectedModel}-001", call.ReportedModelVersion);
         Assert.Null(call.SystemFingerprint);
     }
 
@@ -94,12 +105,15 @@ public sealed class NaturalLanguageAnalyticsModelClientTests
         Assert.Null(response.Usage?.CacheMissPromptTokens);
     }
 
-    [Fact]
-    public async Task DeepSeek_uses_fixed_json_mode_and_reports_cache_and_reasoning_usage()
+    [Theory]
+    [InlineData("deepseek-flash")]
+    [InlineData("deepseek-v4-pro")]
+    public async Task DeepSeek_uses_the_selected_model_in_its_fixed_json_request_and_reports_usage(
+        string selectedModel)
     {
         var handler = new StubHandler("""
             {
-              "model": "deepseek-flash",
+              "model": "__MODEL__",
               "system_fingerprint": "fp-test_001",
               "choices": [{ "message": { "content": "__OUTPUT__" } }],
               "usage": {
@@ -110,20 +124,26 @@ public sealed class NaturalLanguageAnalyticsModelClientTests
                 "completion_tokens_details": { "reasoning_tokens": 3 }
               }
             }
-            """.Replace("\"__OUTPUT__\"", JsonSerializer.Serialize(ValidOutput), StringComparison.Ordinal));
+            """
+            .Replace("\"__OUTPUT__\"", JsonSerializer.Serialize(ValidOutput), StringComparison.Ordinal)
+            .Replace("\"__MODEL__\"", JsonSerializer.Serialize(selectedModel), StringComparison.Ordinal));
         var ledger = new NaturalLanguageAnalyticsModelClientRunLedger();
-        using var client = new DeepSeekNaturalLanguageAnalyticsModelClient("synthetic-key", ledger, handler);
+        using var client = new DeepSeekNaturalLanguageAnalyticsModelClient(
+            "synthetic-key",
+            ledger,
+            handler,
+            modelId: selectedModel);
 
         var response = await client.GenerateAsync("Show progress for fire-extinguisher in 2026-11", CancellationToken.None);
 
         Assert.Equal("DeepSeek", client.Provider);
-        Assert.Equal("deepseek-flash", client.ModelId);
+        Assert.Equal(selectedModel, client.ModelId);
         Assert.Equal("https://api.deepseek.com/chat/completions", handler.RequestUri?.ToString());
         Assert.Equal("Bearer", handler.AuthorizationScheme);
         Assert.Equal("synthetic-key", handler.AuthorizationParameter);
         using var request = JsonDocument.Parse(handler.RequestBody!);
         var root = request.RootElement;
-        Assert.Equal("deepseek-flash", root.GetProperty("model").GetString());
+        Assert.Equal(selectedModel, root.GetProperty("model").GetString());
         Assert.False(root.GetProperty("stream").GetBoolean());
         Assert.Equal(1024, root.GetProperty("max_tokens").GetInt32());
         Assert.Equal(0, root.GetProperty("temperature").GetInt32());
@@ -136,7 +156,7 @@ public sealed class NaturalLanguageAnalyticsModelClientTests
         Assert.Equal(75L, response.Usage?.CacheMissPromptTokens);
         Assert.Equal(3L, response.Usage?.ReasoningTokens);
         var call = Assert.Single(ledger.Snapshot().Calls);
-        Assert.Equal("deepseek-flash", call.ReportedModelVersion);
+        Assert.Equal(selectedModel, call.ReportedModelVersion);
         Assert.Equal("fp-test_001", call.SystemFingerprint);
     }
 

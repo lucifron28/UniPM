@@ -18,6 +18,69 @@ internal static class Program
     private const string ManifestFileName = "split-manifest.md";
     private const string V2DevDatasetSha256 = "f98d505d6c2ac2f1b3372109e50b949fd2211b7b36af3104536451d4406f2533";
     private const string V2HeldoutDatasetSha256 = "c39307b5e4f76cf84b4a7d6880e180c2a652fa74bad29f741c8f07d1123c908b";
+    private static readonly ProviderModelSelection[] ProviderModelSelections =
+    [
+        new(
+            "gemini",
+            "Gemini",
+            GeminiNaturalLanguageAnalyticsModelClient.ConfiguredModelId,
+            "v1beta",
+            "low",
+            null,
+            new ProviderRateProfile(
+                "gemini-3.8-flash-standard-2026-10-05",
+                "2026-10-05",
+                0.75m,
+                0.075m,
+                3.75m,
+                "Standard paid rates; introductory pricing through 2026-12-31. Cached input uses the published cache rate when usage attribution is consistent.",
+                "https://ai.google.dev/gemini-api/docs/pricing")),
+        new(
+            "gemini",
+            "Gemini",
+            GeminiNaturalLanguageAnalyticsModelClient.FlashLiteModelId,
+            "v1beta",
+            "low",
+            null,
+            new ProviderRateProfile(
+                "gemini-3.5-flash-lite-standard-2026-10-05",
+                "2026-10-05",
+                0.30m,
+                0.03m,
+                2.50m,
+                "Standard paid rates. Cached input uses the published cache rate when usage attribution is consistent.",
+                "https://ai.google.dev/gemini-api/docs/pricing")),
+        new(
+            "deepseek",
+            "DeepSeek",
+            DeepSeekNaturalLanguageAnalyticsModelClient.ConfiguredModelId,
+            null,
+            "disabled",
+            0d,
+            new ProviderRateProfile(
+                "deepseek-flash-peak-2026-10-05",
+                "2026-10-05",
+                0.30m,
+                0.006m,
+                1.20m,
+                "Peak rates used as a conservative upper bound. Cached input uses the published cache-hit rate when usage attribution is consistent; otherwise all input uses the cache-miss rate.",
+                "https://api-docs.deepseek.com/quick_start/pricing/")),
+        new(
+            "deepseek",
+            "DeepSeek",
+            DeepSeekNaturalLanguageAnalyticsModelClient.V4ProModelId,
+            null,
+            "disabled",
+            0d,
+            new ProviderRateProfile(
+                "deepseek-v4-pro-peak-2026-10-05",
+                "2026-10-05",
+                1.32m,
+                0.044m,
+                3.96m,
+                "Peak rates used as a conservative upper bound. Cached input uses the published cache-hit rate when usage attribution is consistent; otherwise all input uses the cache-miss rate.",
+                "https://api-docs.deepseek.com/quick_start/pricing/"))
+    ];
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,
@@ -56,6 +119,13 @@ internal static class Program
             arguments.SourceSha = await GitSourceShaVerifier.VerifyAsync(
                 root,
                 arguments.SourceSha);
+            ProviderModelSelection? selectedProviderModel = null;
+            if (arguments.Mode is "gemini" or "deepseek"
+                && !TryResolveProviderModel(arguments.Mode, arguments.Model, out selectedProviderModel))
+            {
+                throw new EvaluationSetupException("InvalidProviderModelSelection");
+            }
+
             var defaultDatasetRelativePath = arguments.DatasetVersion == "v2"
                 ? arguments.Split == "dev" ? V2DevDatasetRelativePath : V2HeldoutDatasetRelativePath
                 : V1DatasetRelativePath;
@@ -117,27 +187,37 @@ internal static class Program
                     INaturalLanguageAnalyticsModelClient modelClient;
                     if (arguments.Mode == "gemini")
                     {
-                        var geminiClient = new GeminiNaturalLanguageAnalyticsModelClient(apiKey, apiRunLedger);
+                        var providerModel = selectedProviderModel!;
+                        var geminiClient = new GeminiNaturalLanguageAnalyticsModelClient(
+                            apiKey,
+                            apiRunLedger,
+                            modelId: providerModel.ModelId);
                         apiModelClient = geminiClient;
                         modelClient = geminiClient;
                         providerRunConfiguration = new ProviderRunConfiguration(
                             geminiClient.Provider,
                             geminiClient.ModelId,
-                            "v1beta",
-                            "low",
-                            null);
+                            providerModel.ApiVersion,
+                            providerModel.ReasoningSetting,
+                            providerModel.Temperature,
+                            providerModel.PricingProfile);
                     }
                     else
                     {
-                        var deepSeekClient = new DeepSeekNaturalLanguageAnalyticsModelClient(apiKey, apiRunLedger);
+                        var providerModel = selectedProviderModel!;
+                        var deepSeekClient = new DeepSeekNaturalLanguageAnalyticsModelClient(
+                            apiKey,
+                            apiRunLedger,
+                            modelId: providerModel.ModelId);
                         apiModelClient = deepSeekClient;
                         modelClient = deepSeekClient;
                         providerRunConfiguration = new ProviderRunConfiguration(
                             deepSeekClient.Provider,
                             deepSeekClient.ModelId,
-                            null,
-                            "disabled",
-                            0d);
+                            providerModel.ApiVersion,
+                            providerModel.ReasoningSetting,
+                            providerModel.Temperature,
+                            providerModel.PricingProfile);
                     }
 
                     interpreter = new ModelNaturalLanguageAnalyticsInterpreter(modelClient);
@@ -353,9 +433,13 @@ internal static class Program
         };
 
         var modelResponses = outcomes.Where(item => item.ProviderUsage is not null).ToArray();
-        var apiUsage = apiRun is null
-            ? null
-            : BuildApiUsageAccounting(providerRunConfiguration!.Provider, apiRun);
+        ProviderUsageAccounting? apiUsage = null;
+        if (apiRun is not null)
+        {
+            apiUsage = providerRunConfiguration?.PricingProfile is { } pricingProfile
+                ? BuildApiUsageAccounting(pricingProfile, apiRun)
+                : BuildApiUsageAccounting(providerRunConfiguration!.Provider, apiRun);
+        }
         var usageTotals = apiUsage?.Totals ?? BuildCaseUsageTotals(modelResponses);
         var latency = executed.Select(item => item.LatencyMilliseconds).Order().ToArray();
         var providerErrors = outcomes.Count(item => item.ProviderError is not null);
@@ -465,6 +549,20 @@ internal static class Program
     internal static ProviderUsageAccounting BuildApiUsageAccounting(
         string provider,
         NaturalLanguageAnalyticsModelClientRunSnapshot run)
+        => BuildApiUsageAccounting(
+            run,
+            CalculateProviderCost(provider, run.Calls, run.Attempts));
+
+    internal static ProviderUsageAccounting BuildApiUsageAccounting(
+        ProviderRateProfile pricingProfile,
+        NaturalLanguageAnalyticsModelClientRunSnapshot run)
+        => BuildApiUsageAccounting(
+            run,
+            CalculateProviderCost(pricingProfile, run.Calls, run.Attempts));
+
+    private static ProviderUsageAccounting BuildApiUsageAccounting(
+        NaturalLanguageAnalyticsModelClientRunSnapshot run,
+        ProviderCostEstimate cost)
     {
         var calls = run.Calls;
         var promptValues = calls.Where(call => call.Usage?.PromptTokens is >= 0)
@@ -483,7 +581,6 @@ internal static class Program
         var promptComplete = CompleteValues(calls, run.Attempts, usage => usage?.PromptTokens);
         var completionComplete = CompleteValues(calls, run.Attempts, usage => usage?.CompletionTokens);
         var durationComplete = CompleteValues(calls, run.Attempts, usage => usage?.DurationNanoseconds);
-        var cost = CalculateProviderCost(provider, calls, run.Attempts);
         return new ProviderUsageAccounting(
             new UsageTotals(
                 promptComplete ? SafeSum(promptValues) : null,
@@ -594,6 +691,54 @@ internal static class Program
             basis);
     }
 
+    internal static ProviderCostEstimate CalculateProviderCost(
+        ProviderRateProfile pricingProfile,
+        IReadOnlyList<NaturalLanguageAnalyticsModelCallObservation> calls,
+        int attempts)
+    {
+        var basis = $"{pricingProfile.Id}, checked locally on {pricingProfile.CheckedDateLocal} (Asia/Shanghai). "
+            + $"Input ${pricingProfile.InputUsdPerMillion:0.######}/M, cached input ${pricingProfile.CachedInputUsdPerMillion:0.######}/M, "
+            + $"output ${pricingProfile.OutputUsdPerMillion:0.######}/M. {pricingProfile.BillingBasis} Source: {pricingProfile.SourceUrl}";
+        if (attempts <= 0 || calls.Count != attempts
+            || calls.Any(call => !call.HttpSucceeded
+                || call.Usage?.PromptTokens is not >= 0
+                || call.Usage?.CompletionTokens is not >= 0))
+        {
+            return new ProviderCostEstimate(
+                null,
+                "incomplete",
+                $"Usage is incomplete; estimated cost is unavailable. {basis}");
+        }
+
+        decimal total = 0;
+        foreach (var call in calls)
+        {
+            var usage = call.Usage!;
+            var prompt = usage.PromptTokens!.Value;
+            var cached = usage.CachedPromptTokens;
+            var cacheMiss = usage.CacheMissPromptTokens;
+            if (cached is >= 0 && cacheMiss is >= 0
+                && cached.Value <= prompt
+                && cacheMiss.Value == prompt - cached.Value)
+            {
+                total += cached.Value * (pricingProfile.CachedInputUsdPerMillion / 1_000_000m);
+                total += cacheMiss.Value * (pricingProfile.InputUsdPerMillion / 1_000_000m);
+            }
+            else
+            {
+                total += prompt * (pricingProfile.InputUsdPerMillion / 1_000_000m);
+            }
+
+            total += usage.CompletionTokens!.Value
+                * (pricingProfile.OutputUsdPerMillion / 1_000_000m);
+        }
+
+        return new ProviderCostEstimate(
+            Math.Round(total, 8, MidpointRounding.AwayFromZero),
+            "complete",
+            basis);
+    }
+
     private static V2ReportMetadata BuildV2ReportMetadata(
         IReadOnlyList<EvaluationCase> cases,
         IReadOnlyList<CaseOutcome> outcomes,
@@ -691,7 +836,10 @@ internal static class Program
                     call.SystemFingerprint,
                     call.SafeErrorCode,
                     call.Usage,
-                    call.HttpStatusCode)).ToArray());
+                    call.HttpStatusCode)).ToArray(),
+                configuration.PricingProfile is { } rateProfile
+                    ? rateProfile
+                    : null);
         }
 
         return new V2ReportMetadata(
@@ -1350,6 +1498,17 @@ internal static class Program
         throw new EvaluationSetupException("RepositoryRootNotFound");
     }
 
+    internal static bool TryResolveProviderModel(
+        string? mode,
+        string? model,
+        out ProviderModelSelection? selection)
+    {
+        selection = ProviderModelSelections.FirstOrDefault(candidate =>
+            string.Equals(candidate.Mode, mode, StringComparison.Ordinal)
+            && string.Equals(candidate.ModelId, model, StringComparison.Ordinal));
+        return selection is not null;
+    }
+
     internal static bool TryParseArguments(
         string[] args,
         out EvaluationArguments arguments,
@@ -1422,9 +1581,9 @@ internal static class Program
                 return false;
             }
 
-            if (values.ContainsKey("--model") || values.ContainsKey("--base-address"))
+            if (values.ContainsKey("--base-address"))
             {
-                error = "Cloud provider model and endpoint settings are fixed by the evaluator.";
+                error = "Cloud provider endpoints are fixed by the evaluator.";
                 return false;
             }
         }
@@ -1445,7 +1604,8 @@ internal static class Program
         arguments.Mode = mode;
         arguments.DatasetVersion = datasetVersion;
         arguments.SourceSha = sourceSha;
-        arguments.Model = values.GetValueOrDefault("--model") ?? "qwen3:4b-instruct";
+        arguments.Model = values.GetValueOrDefault("--model")
+            ?? (mode is "gemini" or "deepseek" ? string.Empty : "qwen3:4b-instruct");
         arguments.BaseAddress = values.GetValueOrDefault("--base-address") ?? "http://127.0.0.1:11434/";
         arguments.DatasetPath = values.GetValueOrDefault("--dataset");
         arguments.OutputPath = values.GetValueOrDefault("--output");
@@ -1458,9 +1618,11 @@ internal static class Program
     private const string Usage = """
         PM analytics interpretation evaluator
         Required: --split dev|heldout --mode rule-based|ollama|gemini|deepseek --source-sha <full-commit-sha>
-        Optional: --dataset-version v1|v2 --model <local-model-tag> --base-address <loopback-ollama-url>
+        Optional: --dataset-version v1|v2 --base-address <loopback-ollama-url>
                   --dataset <cases.jsonl> --output <report.json>
 
+        Ollama accepts --model <local-model-tag>. Gemini and DeepSeek require --model with one of:
+        gemini-3.8-flash, gemini-3.5-flash-lite, deepseek-flash, deepseek-v4-pro.
         Dataset v2 is provisional and development-only. Gemini and DeepSeek read keys from GEMINI_API_KEY
         and DEEPSEEK_API_KEY respectively; held-out v2 evaluation is disabled.
         """;
@@ -1687,12 +1849,31 @@ internal static class Program
         string Status,
         string Basis);
 
+    internal sealed record ProviderRateProfile(
+        string Id,
+        string CheckedDateLocal,
+        decimal InputUsdPerMillion,
+        decimal CachedInputUsdPerMillion,
+        decimal OutputUsdPerMillion,
+        string BillingBasis,
+        string SourceUrl);
+
+    internal sealed record ProviderModelSelection(
+        string Mode,
+        string Provider,
+        string ModelId,
+        string? ApiVersion,
+        string ReasoningSetting,
+        double? Temperature,
+        ProviderRateProfile PricingProfile);
+
     internal sealed record ProviderRunConfiguration(
         string Provider,
         string Model,
         string? ApiVersion,
         string ReasoningSetting,
-        double? Temperature);
+        double? Temperature,
+        ProviderRateProfile? PricingProfile = null);
 
     internal sealed record ProviderRunSummary(
         string Provider,
@@ -1734,7 +1915,9 @@ internal static class Program
         string CostStatus,
         string CostBasis,
         LatencyScores ProviderLatency,
-        IReadOnlyList<ProviderCallSummary> Calls);
+        IReadOnlyList<ProviderCallSummary> Calls,
+        [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        ProviderRateProfile? PricingProfile = null);
 
     internal sealed record ProviderCallSummary(
         int Attempt,
