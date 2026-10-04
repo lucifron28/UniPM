@@ -155,6 +155,11 @@ adapter allows at most 100 model calls per process, a 1 to 60 second timeout,
 1 to 1024 output tokens, and a response body up to 16 KiB. The request contains
 a fixed instruction and the masked question, not operational records.
 
+The configured interpreter selects Ollama only when the ASP.NET Core
+environment is `Development` and the feature setting is enabled. `Staging` and
+`Production` use the deterministic rule-based interpreter even if the setting
+is enabled, without reading the experimental setting.
+
 Masking covers email addresses, Philippine-style phone numbers, and employee,
 student, staff, or personnel identifiers that match the implemented patterns.
 It does not detect arbitrary personal names. Do not treat it as name
@@ -170,3 +175,16 @@ responses with fixed codes. The interpreter does not return provider bodies
 or use raw model output as an error message. Focused API tests do not establish
 model quality. Synthetic model-evaluation results belong in a separate record
 after that evaluation runs.
+
+Before the evaluator reads the corpus, fetches Ollama metadata, creates a
+provider client, or writes a report, it runs native Git at the discovered
+repository root and requires `rev-parse --verify HEAD^{commit}` to match the
+supplied source SHA. Setup failures return a fixed code, and the report records
+the verified HEAD. This verifies the checkout commit; it does not attest that
+a prebuilt evaluator binary came from that commit or that the working tree is
+clean.
+
+The focused gate and source-revision checks are recorded in
+[TEST-059](../evidence/test-runs/TEST-059-pm-analytics-environment-and-evaluator-provenance.md).
+That run used an identified working patch at the recorded base commit; it does
+not verify commits created after the run.
