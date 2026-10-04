@@ -19,6 +19,8 @@ From the repository root, provide the exact full source commit SHA.
 
 Optional arguments are shown by --help. The default report path is under ignored artifacts/evaluation/pm-analytics-interpretation/. The local model must already be installed; the tool does not download or start Ollama.
 
+Before it reads the corpus, fetches model metadata, creates a provider client, or writes a report, the evaluator runs native Git at the discovered repository root and compares `rev-parse --verify HEAD^{commit}` with `--source-sha`. A mismatch, unavailable Git command, or unavailable repository revision stops setup with a fixed code. The report records the verified HEAD. This checks the checkout commit; it does not attest that a prebuilt evaluator binary came from that commit or that the working tree is clean.
+
 A zero exit code means a report was written. It is not a quality threshold or pass claim.
 
 ## Report interpretation

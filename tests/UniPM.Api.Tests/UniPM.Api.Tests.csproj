@@ -22,6 +22,7 @@
     <ProjectReference Include="..\..\server\server.csproj" />
     <ProjectReference Include="..\..\tools\UniPM.DemoQrGenerator\UniPM.DemoQrGenerator.csproj"
                       Aliases="DemoQrGenerator" />
+    <ProjectReference Include="..\..\tools\UniPM.PmAnalytics.InterpretationEval\UniPM.PmAnalytics.InterpretationEval.csproj" />
   </ItemGroup>
 
   <ItemGroup>

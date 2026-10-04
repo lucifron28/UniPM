@@ -11,4 +11,7 @@
     <ProjectReference Include="../../server/server.csproj" />
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="UniPM.Api.Tests" />
+  </ItemGroup>
 </Project>

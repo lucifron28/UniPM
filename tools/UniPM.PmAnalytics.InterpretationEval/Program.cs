@@ -38,6 +38,9 @@ internal static class Program
         try
         {
             var root = FindRepositoryRoot();
+            arguments.SourceSha = await GitSourceShaVerifier.VerifyAsync(
+                root,
+                arguments.SourceSha);
             var datasetPath = arguments.DatasetPath is null
                 ? Path.Combine(root, DatasetRelativePath)
                 : Path.GetFullPath(arguments.DatasetPath);
@@ -114,6 +117,11 @@ internal static class Program
             {
                 client?.Dispose();
             }
+        }
+        catch (GitSourceShaVerificationException exception)
+        {
+            Console.Error.WriteLine($"Evaluation setup failed: {exception.Code}");
+            return 2;
         }
         catch (EvaluationSetupException exception)
         {
