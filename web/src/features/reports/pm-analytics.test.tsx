@@ -6,14 +6,19 @@ import { PmAnalyticsPanel } from './pm-analytics'
 
 const testState = vi.hoisted(() => ({
   roles: ['GSD'] as string[],
+  userId: '88888888-8888-4888-8888-888888888888',
+  interpretPmAnalyticsQuestion: vi.fn(),
   queryPmAnalytics: vi.fn(),
 }))
 
 vi.mock('@/features/auth/current-user', () => ({
-  useCurrentUser: () => ({ data: { roles: testState.roles } }),
+  useCurrentUser: () => ({
+    data: { id: testState.userId, roles: testState.roles },
+  }),
 }))
 
 vi.mock('@/api/generated/endpoints', () => ({
+  interpretPmAnalyticsQuestion: testState.interpretPmAnalyticsQuestion,
   queryPmAnalytics: testState.queryPmAnalytics,
 }))
 
@@ -99,6 +104,25 @@ function makeResponse(
   }
 }
 
+function makeInterpretation(overrides: Record<string, unknown> = {}) {
+  return {
+    status: 'Valid',
+    plan: {
+      metric: 'NonOperational',
+      assetCategory: 'fire-extinguisher',
+      pmCycle: '2026-11',
+      department: null,
+      groupBy: 'None',
+    },
+    clarificationFields: [],
+    presentation: 'Count',
+    code: null,
+    canonicalQuestion:
+      'Show non-operational assets for fire-extinguisher in 2026-11',
+    ...overrides,
+  }
+}
+
 function submitQuestion(
   question = 'Show non-operational assets for fire extinguishers in November 2026',
 ) {
@@ -111,6 +135,11 @@ function submitQuestion(
 describe('PM analytics panel', () => {
   beforeEach(() => {
     testState.roles = ['GSD']
+    testState.userId = '88888888-8888-4888-8888-888888888888'
+    testState.interpretPmAnalyticsQuestion.mockReset()
+    testState.interpretPmAnalyticsQuestion.mockResolvedValue(
+      makeInterpretation(),
+    )
     testState.queryPmAnalytics.mockReset()
   })
 
@@ -122,6 +151,7 @@ describe('PM analytics panel', () => {
     expect(
       screen.queryByRole('heading', { name: 'Ask about PM results' }),
     ).toBeNull()
+    expect(testState.interpretPmAnalyticsQuestion).not.toHaveBeenCalled()
     expect(testState.queryPmAnalytics).not.toHaveBeenCalled()
   })
 
@@ -161,9 +191,37 @@ describe('PM analytics panel', () => {
       2,
     )
     expect(screen.getByText('1', { exact: true })).toBeInTheDocument()
+    expect(testState.interpretPmAnalyticsQuestion).toHaveBeenCalledWith(
+      {
+        question:
+          'Show non-operational assets for fire extinguishers in November 2026',
+      },
+      expect.any(AbortSignal),
+    )
+    expect(testState.queryPmAnalytics).toHaveBeenCalledWith(
+      {
+        question:
+          'Show non-operational assets for fire-extinguisher in 2026-11',
+      },
+      expect.any(AbortSignal),
+    )
   })
 
   it('explains why active-cycle compliance is not yet measurable', async () => {
+    testState.interpretPmAnalyticsQuestion.mockResolvedValueOnce(
+      makeInterpretation({
+        plan: {
+          metric: 'OnTimeCompliance',
+          assetCategory: 'fire-extinguisher',
+          pmCycle: '2026-11',
+          department: null,
+          groupBy: 'None',
+        },
+        presentation: 'Percent',
+        canonicalQuestion:
+          'Show on-time compliance for fire-extinguisher in 2026-11',
+      }),
+    )
     testState.queryPmAnalytics.mockResolvedValue(
       makeResponse({
         plan: {
@@ -219,6 +277,26 @@ describe('PM analytics panel', () => {
   ] as const)(
     'uses an empty-scope message for $metric when there are no eligible schedules',
     async ({ metric, unit, question }) => {
+      testState.interpretPmAnalyticsQuestion.mockResolvedValueOnce(
+        makeInterpretation({
+          plan: {
+            metric,
+            assetCategory: 'fire-extinguisher',
+            pmCycle: '2026-11',
+            department: null,
+            groupBy: 'None',
+          },
+          presentation: unit === 'Count' ? 'Count' : 'Percent',
+          canonicalQuestion: {
+            OnTimeCompliance:
+              'Show on-time compliance for fire-extinguisher in 2026-11',
+            CompletedLate:
+              'Show late inspections for fire-extinguisher in 2026-11',
+            NonOperational:
+              'Show non-operational assets for fire-extinguisher in 2026-11',
+          }[metric],
+        }),
+      )
       testState.queryPmAnalytics.mockResolvedValue(
         makeResponse({
           plan: {
@@ -273,30 +351,144 @@ describe('PM analytics panel', () => {
     expect(screen.queryByText('Unsupported question')).toBeNull()
   })
 
-  it('ignores an old response after the question is edited', async () => {
-    let resolveFirst: ((response: PmAnalyticsResponse) => void) | undefined
-    testState.queryPmAnalytics.mockReturnValueOnce(
-      new Promise<PmAnalyticsResponse>((resolve) => {
-        resolveFirst = resolve
+  it('asks fixed clarification questions without querying PM records', async () => {
+    testState.interpretPmAnalyticsQuestion.mockResolvedValueOnce(
+      makeInterpretation({
+        status: 'NeedsClarification',
+        plan: null,
+        clarificationFields: ['Year', 'Month'],
+        presentation: null,
+        canonicalQuestion: null,
       }),
     )
     render(<PmAnalyticsPanel />)
 
+    submitQuestion('Show progress for fire extinguishers in November')
+
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Please clarify the question',
+      }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Which year should be used?')).toBeInTheDocument()
+    expect(screen.getByText('Which month should be used?')).toBeInTheDocument()
+    expect(testState.queryPmAnalytics).not.toHaveBeenCalled()
+  })
+
+  it('explains unsupported questions without querying PM records', async () => {
+    testState.interpretPmAnalyticsQuestion.mockResolvedValueOnce(
+      makeInterpretation({
+        status: 'Unsupported',
+        plan: null,
+        clarificationFields: [],
+        presentation: null,
+        canonicalQuestion: null,
+      }),
+    )
+    render(<PmAnalyticsPanel />)
+
+    submitQuestion('Compare inspections and budget for November 2026')
+
+    expect(
+      await screen.findByText(
+        'This question is outside the supported PM measures. Try one measure, one asset category, and one explicit month and year.',
+      ),
+    ).toBeInTheDocument()
+    expect(testState.queryPmAnalytics).not.toHaveBeenCalled()
+  })
+
+  it('shows a safe provider error without exposing details or querying records', async () => {
+    testState.interpretPmAnalyticsQuestion.mockRejectedValueOnce(
+      new Error('private provider response'),
+    )
+    render(<PmAnalyticsPanel />)
+
+    submitQuestion()
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'This question could not be answered.',
+    )
+    expect(screen.queryByText('private provider response')).toBeNull()
+    expect(testState.queryPmAnalytics).not.toHaveBeenCalled()
+  })
+
+  it('shows progress count presentation using the inspected-assets numerator', async () => {
+    testState.interpretPmAnalyticsQuestion.mockResolvedValueOnce(
+      makeInterpretation({
+        plan: {
+          metric: 'Progress',
+          assetCategory: 'fire-extinguisher',
+          pmCycle: '2026-11',
+          department: null,
+          groupBy: 'None',
+        },
+        presentation: 'Count',
+        canonicalQuestion: 'Show progress for fire-extinguisher in 2026-11',
+      }),
+    )
+    testState.queryPmAnalytics.mockResolvedValueOnce(
+      makeResponse({
+        plan: {
+          metric: 'Progress',
+          assetCategory: 'fire-extinguisher',
+          pmCycle: '2026-11',
+          department: null,
+          groupBy: 'None',
+        },
+        result: {
+          department: null,
+          numerator: 2,
+          denominator: 3,
+          value: 66.7,
+          unit: 'Percent',
+          isMeasurable: true,
+        },
+      }),
+    )
+    render(<PmAnalyticsPanel />)
+
+    submitQuestion(
+      'How many fire extinguishers were inspected in November 2026?',
+    )
+
+    expect(
+      await screen.findByText(
+        'Count of scheduled assets with completed inspections.',
+      ),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Inspected assets (count)')).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'Inspected assets for Fire Extinguisher in November 2026.',
+      ),
+    ).toBeInTheDocument()
+    expect(screen.getByText('2', { exact: true })).toBeInTheDocument()
+    expect(screen.queryByText('66.7%')).toBeNull()
+  })
+
+  it('ignores an interpretation from a previous user identity', async () => {
+    let resolveInterpretation:
+      ((response: ReturnType<typeof makeInterpretation>) => void) | undefined
+    testState.interpretPmAnalyticsQuestion.mockReturnValueOnce(
+      new Promise<ReturnType<typeof makeInterpretation>>((resolve) => {
+        resolveInterpretation = resolve
+      }),
+    )
+    const { rerender } = render(<PmAnalyticsPanel />)
+
     submitQuestion()
     expect(await screen.findByRole('status')).toBeInTheDocument()
-    fireEvent.change(screen.getByRole('textbox', { name: 'Question' }), {
-      target: {
-        value: 'Show progress for fire extinguishers in November 2026',
-      },
-    })
+    testState.userId = '99999999-9999-4999-8999-999999999999'
+    rerender(<PmAnalyticsPanel />)
 
     await act(async () => {
-      resolveFirst?.(makeResponse())
+      resolveInterpretation?.(makeInterpretation())
     })
 
     await waitFor(() => {
       expect(screen.queryByRole('heading', { name: 'PM result' })).toBeNull()
       expect(screen.queryByRole('status')).toBeNull()
+      expect(testState.queryPmAnalytics).not.toHaveBeenCalled()
     })
   })
 })
