@@ -110,7 +110,7 @@ internal static class NaturalLanguageAnalyticsQuestionGuard
         + @"|\b(?:sql|raw query|database query|select\s+.{1,40}\s+from|delete\s+from|drop\s+table|update\s+\w+\s+set)\b"
         + @"|\b(?:api[\s_-]*keys?|secrets?|passwords?|credentials?|(?:access|auth)\s*tokens?|private\s+data|personal\s+data|employee\s+records?|student\s+records?|personnel\s+records?|email\s+addresses?|phone\s+numbers?|contact\s+details?|pribadong\s+datos|personal\s+na\s+impormasyon|lihim|sikreto)\b"
         + @"|\b(?:reveal|show|expose|export|print|send|ibunyag|ilabas|ipakita)(?:me)?api[\s_-]*keys?\b"
-        + @"|\bignore\b.{0,50}\b(?:role checks?|authorization|authentication|permissions?|access control|login checks?)\b"
+        + @"|\b(?:ignore|disregard|override|forget|balewalain|isantabi)\b.{0,50}\b(?:role checks?|authorization|authentication|permissions?|access control|login checks?)\b"
         + @"|\b(?:bypass|circumvent|skip|evade|override|lampasan|iwasan)\b.{0,50}\b(?:authorization|authentication|permissions?|access control|login|roles?|pahintulot|pagpapatunay)\b"
         + @"|\b(?:without|walang)\b.{0,20}\b(?:authorization|authentication|permission|login|pahintulot)\b"
         + @"|\b(?:change|update|delete|drop|remove|edit|modify|create|approve|complete|close|baguhin|burahin|palitan|aprubahan|kumpletuhin|isara)\b.{0,60}\b(?:schedule|inspection|asset|maintenance record|pm record|records?|iskedyul|inspeksyon|tala|asset status)\b"
