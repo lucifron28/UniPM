@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using UniPM.Api.Features.Reports;
@@ -57,7 +58,9 @@ public sealed class NaturalLanguageAnalyticsModelClientTests
         Assert.True(response.Usage?.DurationNanoseconds is > 0);
 
         var snapshot = ledger.Snapshot();
+        Assert.Equal(1, snapshot.LogicalCalls);
         Assert.Equal(1, snapshot.Attempts);
+        Assert.Equal(0, snapshot.Retries);
         Assert.Equal(1, snapshot.HttpSuccessResponses);
         var call = Assert.Single(snapshot.Calls);
         Assert.Equal("gemini-3.8-flash-002", call.ReportedModelVersion);
@@ -164,8 +167,12 @@ public sealed class NaturalLanguageAnalyticsModelClientTests
     }
 
     [Theory]
-    [InlineData(HttpStatusCode.Unauthorized, "ProviderAuthenticationRejected")]
-    [InlineData(HttpStatusCode.TooManyRequests, "ProviderQuotaOrBillingRejected")]
+    [InlineData(HttpStatusCode.BadRequest, "Http400RequestRejected")]
+    [InlineData(HttpStatusCode.Unauthorized, "Http401AuthenticationRejected")]
+    [InlineData(HttpStatusCode.PaymentRequired, "Http402BillingRejected")]
+    [InlineData(HttpStatusCode.Forbidden, "Http403PermissionDenied")]
+    [InlineData(HttpStatusCode.NotFound, "Http404NotFound")]
+    [InlineData(HttpStatusCode.UnprocessableEntity, "Http422ValidationRejected")]
     public async Task Permanent_provider_failure_stops_without_retry_and_keeps_error_safe(
         HttpStatusCode statusCode,
         string safeCode)
@@ -184,9 +191,178 @@ public sealed class NaturalLanguageAnalyticsModelClientTests
         Assert.DoesNotContain("provider body", exception.Message, StringComparison.Ordinal);
         Assert.Equal(1, handler.RequestCount);
         var snapshot = ledger.Snapshot();
+        Assert.Equal(1, snapshot.LogicalCalls);
         Assert.Equal(1, snapshot.Attempts);
+        Assert.Equal(0, snapshot.Retries);
         Assert.Equal(1, snapshot.ProviderFailures);
         Assert.Equal(safeCode, snapshot.TerminalFailureCode);
+        Assert.Equal((int)statusCode, Assert.Single(snapshot.Calls).HttpStatusCode);
+    }
+
+    [Fact]
+    public async Task Transient_statuses_retry_twice_then_succeed_with_separate_call_and_attempt_counts()
+    {
+        var delays = new List<TimeSpan>();
+        var handler = new ScriptedHandler(
+            () => ErrorResponse(HttpStatusCode.RequestTimeout),
+            () => ErrorResponse(HttpStatusCode.TooManyRequests),
+            SuccessResponse);
+        var ledger = new NaturalLanguageAnalyticsModelClientRunLedger();
+        using var client = CreateDeepSeekClient(handler, ledger, delays.Add);
+
+        var response = await client.GenerateAsync("synthetic question", CancellationToken.None);
+
+        Assert.Equal(ValidOutput, response.Content);
+        Assert.Equal(new[] { TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(2) }, delays);
+        Assert.Equal(3, handler.RequestCount);
+        var snapshot = ledger.Snapshot();
+        Assert.Equal(1, snapshot.LogicalCalls);
+        Assert.Equal(3, snapshot.Attempts);
+        Assert.Equal(2, snapshot.Retries);
+        Assert.Equal(2, snapshot.ProviderFailures);
+        Assert.Null(snapshot.TerminalFailureCode);
+        Assert.Equal(new int?[] { 408, 429, 200 }, snapshot.Calls.Select(call => call.HttpStatusCode));
+        Assert.Equal(new[] { "Http408RequestTimeout", "Http429RateLimited", null },
+            snapshot.Calls.Select(call => call.SafeErrorCode));
+    }
+
+    [Fact]
+    public async Task Permanent_status_on_http_exception_is_classified_without_retry()
+    {
+        var handler = new ScriptedHandler(
+            () => throw new HttpRequestException(
+                "private response details",
+                inner: null,
+                statusCode: HttpStatusCode.Forbidden),
+            SuccessResponse);
+        var ledger = new NaturalLanguageAnalyticsModelClientRunLedger();
+        using var client = CreateDeepSeekClient(handler, ledger);
+
+        var exception = await Assert.ThrowsAsync<NaturalLanguageAnalyticsProviderException>(() =>
+            client.GenerateAsync("synthetic question", CancellationToken.None));
+
+        Assert.Equal(NaturalLanguageAnalyticsProviderFailure.ProviderUnavailable, exception.Failure);
+        Assert.DoesNotContain("private response details", exception.Message, StringComparison.Ordinal);
+        Assert.Equal(1, handler.RequestCount);
+        var snapshot = ledger.Snapshot();
+        Assert.Equal(1, snapshot.LogicalCalls);
+        Assert.Equal(1, snapshot.Attempts);
+        Assert.Equal(0, snapshot.Retries);
+        Assert.Equal("Http403PermissionDenied", snapshot.TerminalFailureCode);
+        Assert.Equal(403, Assert.Single(snapshot.Calls).HttpStatusCode);
+    }
+
+    [Fact]
+    public async Task Exhausted_transient_retries_stop_later_logical_calls()
+    {
+        var handler = new ScriptedHandler(
+            () => ErrorResponse(HttpStatusCode.ServiceUnavailable),
+            () => ErrorResponse(HttpStatusCode.ServiceUnavailable),
+            () => ErrorResponse(HttpStatusCode.ServiceUnavailable));
+        var ledger = new NaturalLanguageAnalyticsModelClientRunLedger();
+        using var client = CreateDeepSeekClient(handler, ledger);
+
+        var exception = await Assert.ThrowsAsync<NaturalLanguageAnalyticsProviderException>(() =>
+            client.GenerateAsync("synthetic question", CancellationToken.None));
+        var stoppedException = await Assert.ThrowsAsync<NaturalLanguageAnalyticsProviderException>(() =>
+            client.GenerateAsync("another synthetic question", CancellationToken.None));
+
+        Assert.Equal(NaturalLanguageAnalyticsProviderFailure.ProviderUnavailable, exception.Failure);
+        Assert.Equal(exception.Message, stoppedException.Message);
+        Assert.Equal(3, handler.RequestCount);
+        var snapshot = ledger.Snapshot();
+        Assert.Equal(1, snapshot.LogicalCalls);
+        Assert.Equal(3, snapshot.Attempts);
+        Assert.Equal(2, snapshot.Retries);
+        Assert.Equal(3, snapshot.ProviderFailures);
+        Assert.Equal("Http5xxServerError", snapshot.TerminalFailureCode);
+    }
+
+    [Fact]
+    public async Task Retry_after_within_bound_is_honored()
+    {
+        var delays = new List<TimeSpan>();
+        var handler = new ScriptedHandler(
+            () => ErrorResponse(HttpStatusCode.TooManyRequests, TimeSpan.FromSeconds(3)),
+            SuccessResponse);
+        using var client = CreateDeepSeekClient(handler, new NaturalLanguageAnalyticsModelClientRunLedger(), delays.Add);
+
+        await client.GenerateAsync("synthetic question", CancellationToken.None);
+
+        Assert.Equal(new[] { TimeSpan.FromSeconds(3) }, delays);
+        Assert.Equal(2, handler.RequestCount);
+    }
+
+    [Fact]
+    public async Task Retry_after_above_bound_stops_without_retrying_early()
+    {
+        var delays = new List<TimeSpan>();
+        var handler = new ScriptedHandler(
+            () => ErrorResponse(HttpStatusCode.TooManyRequests, TimeSpan.FromSeconds(6)),
+            SuccessResponse);
+        var ledger = new NaturalLanguageAnalyticsModelClientRunLedger();
+        using var client = CreateDeepSeekClient(handler, ledger, delays.Add);
+
+        await Assert.ThrowsAsync<NaturalLanguageAnalyticsProviderException>(() =>
+            client.GenerateAsync("synthetic question", CancellationToken.None));
+
+        Assert.Empty(delays);
+        Assert.Equal(1, handler.RequestCount);
+        var snapshot = ledger.Snapshot();
+        Assert.Equal("RetryAfterExceedsBound", snapshot.TerminalFailureCode);
+        Assert.Equal("Http429RateLimited", Assert.Single(snapshot.Calls).SafeErrorCode);
+        Assert.Equal(429, Assert.Single(snapshot.Calls).HttpStatusCode);
+    }
+
+    [Fact]
+    public async Task Transport_failure_retries_without_exposing_exception_text()
+    {
+        var delays = new List<TimeSpan>();
+        var handler = new ScriptedHandler(
+            () => throw new HttpRequestException("private transport details"),
+            SuccessResponse);
+        var ledger = new NaturalLanguageAnalyticsModelClientRunLedger();
+        using var client = CreateDeepSeekClient(handler, ledger, delays.Add);
+
+        var response = await client.GenerateAsync("synthetic question", CancellationToken.None);
+
+        Assert.Equal(ValidOutput, response.Content);
+        Assert.Equal(new[] { TimeSpan.FromSeconds(1) }, delays);
+        Assert.Equal(2, handler.RequestCount);
+        var snapshot = ledger.Snapshot();
+        Assert.Equal(1, snapshot.LogicalCalls);
+        Assert.Equal(2, snapshot.Attempts);
+        Assert.Equal(1, snapshot.Retries);
+        Assert.Equal("TransportUnavailable", snapshot.Calls[0].SafeErrorCode);
+        Assert.DoesNotContain("private transport details", snapshot.Calls[0].SafeErrorCode!, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Caller_cancellation_during_retry_wait_stops_without_another_attempt()
+    {
+        using var cancellation = new CancellationTokenSource();
+        var handler = new ScriptedHandler(() => ErrorResponse(HttpStatusCode.ServiceUnavailable));
+        var ledger = new NaturalLanguageAnalyticsModelClientRunLedger();
+        using var client = new DeepSeekNaturalLanguageAnalyticsModelClient(
+            "synthetic-key",
+            ledger,
+            handler,
+            (delay, token) =>
+            {
+                cancellation.Cancel();
+                return Task.Delay(delay, token);
+            },
+            () => 0);
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            client.GenerateAsync("synthetic question", cancellation.Token));
+
+        Assert.Equal(1, handler.RequestCount);
+        var snapshot = ledger.Snapshot();
+        Assert.Equal(1, snapshot.LogicalCalls);
+        Assert.Equal(1, snapshot.Attempts);
+        Assert.Equal(0, snapshot.Retries);
+        Assert.Equal("CallerCancelled", snapshot.TerminalFailureCode);
     }
 
     [Fact]
@@ -194,17 +370,19 @@ public sealed class NaturalLanguageAnalyticsModelClientTests
     {
         var handler = new ImmediateTimeoutHandler();
         var ledger = new NaturalLanguageAnalyticsModelClientRunLedger();
-        using var client = new DeepSeekNaturalLanguageAnalyticsModelClient("synthetic-key", ledger, handler);
+        using var client = CreateDeepSeekClient(handler, ledger);
 
         var exception = await Assert.ThrowsAsync<NaturalLanguageAnalyticsProviderException>(() =>
             client.GenerateAsync("synthetic question", CancellationToken.None));
 
         Assert.Equal(NaturalLanguageAnalyticsProviderFailure.Timeout, exception.Failure);
-        Assert.Equal(1, handler.RequestCount);
+        Assert.Equal(3, handler.RequestCount);
         var snapshot = ledger.Snapshot();
-        Assert.Equal(1, snapshot.Attempts);
-        Assert.Equal(1, snapshot.ProviderFailures);
-        Assert.Equal("ProviderTimeout", snapshot.TerminalFailureCode);
+        Assert.Equal(1, snapshot.LogicalCalls);
+        Assert.Equal(3, snapshot.Attempts);
+        Assert.Equal(2, snapshot.Retries);
+        Assert.Equal(3, snapshot.ProviderFailures);
+        Assert.Equal("TransportTimeout", snapshot.TerminalFailureCode);
     }
 
     [Fact]
@@ -230,6 +408,33 @@ public sealed class NaturalLanguageAnalyticsModelClientTests
         var call = Assert.Single(ledger.Snapshot().Calls);
         Assert.Equal(30L, call.Usage?.PromptTokens);
         Assert.Equal(7L, call.Usage?.CompletionTokens);
+        Assert.Equal(1, handler.RequestCount);
+        Assert.Equal(1, ledger.Snapshot().Attempts);
+        Assert.Equal(0, ledger.Snapshot().Retries);
+    }
+
+    [Fact]
+    public async Task Malformed_successful_provider_envelope_is_not_retried()
+    {
+        var handler = new ScriptedHandler(
+            () => new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("{", Encoding.UTF8, "application/json")
+            },
+            SuccessResponse);
+        var ledger = new NaturalLanguageAnalyticsModelClientRunLedger();
+        using var client = CreateDeepSeekClient(handler, ledger);
+
+        var exception = await Assert.ThrowsAsync<NaturalLanguageAnalyticsProviderException>(() =>
+            client.GenerateAsync("synthetic question", CancellationToken.None));
+
+        Assert.Equal(NaturalLanguageAnalyticsProviderFailure.InvalidOutput, exception.Failure);
+        Assert.Equal(1, handler.RequestCount);
+        var snapshot = ledger.Snapshot();
+        Assert.Equal(1, snapshot.LogicalCalls);
+        Assert.Equal(1, snapshot.Attempts);
+        Assert.Equal(0, snapshot.Retries);
+        Assert.Equal(200, Assert.Single(snapshot.Calls).HttpStatusCode);
     }
 
     [Fact]
@@ -268,6 +473,65 @@ public sealed class NaturalLanguageAnalyticsModelClientTests
     [InlineData("", null)]
     public void Ledger_metadata_accepts_only_bounded_ascii_identifiers(string value, string? expected)
         => Assert.Equal(expected, NaturalLanguageAnalyticsApiModelClientBase.SafeMetadata(value));
+
+    private static DeepSeekNaturalLanguageAnalyticsModelClient CreateDeepSeekClient(
+        HttpMessageHandler handler,
+        NaturalLanguageAnalyticsModelClientRunLedger ledger,
+        Action<TimeSpan>? recordDelay = null)
+        => new(
+            "synthetic-key",
+            ledger,
+            handler,
+            (delay, cancellationToken) =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                recordDelay?.Invoke(delay);
+                return Task.CompletedTask;
+            },
+            () => 0);
+
+    private static HttpResponseMessage ErrorResponse(
+        HttpStatusCode statusCode,
+        TimeSpan? retryAfter = null)
+    {
+        var response = new HttpResponseMessage(statusCode)
+        {
+            Content = new StringContent("provider error body is not retained", Encoding.UTF8, "application/json")
+        };
+        if (retryAfter is TimeSpan delay)
+        {
+            response.Headers.RetryAfter = new RetryConditionHeaderValue(delay);
+        }
+
+        return response;
+    }
+
+    private static HttpResponseMessage SuccessResponse()
+    {
+        var envelope = JsonSerializer.Serialize(new
+        {
+            choices = new[] { new { message = new { content = ValidOutput } } },
+            usage = new { prompt_tokens = 10, completion_tokens = 5 }
+        });
+        return new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(envelope, Encoding.UTF8, "application/json")
+        };
+    }
+
+    private sealed class ScriptedHandler(params Func<HttpResponseMessage>[] responses) : HttpMessageHandler
+    {
+        internal int RequestCount { get; private set; }
+
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var response = responses[RequestCount++]();
+            return Task.FromResult(response);
+        }
+    }
 
     private sealed class StubHandler(
         string responseBody,

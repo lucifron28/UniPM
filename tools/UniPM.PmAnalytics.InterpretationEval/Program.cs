@@ -654,8 +654,18 @@ internal static class Program
                 NaturalLanguageAnalyticsApiModelClientBase.TimeoutSeconds,
                 NaturalLanguageAnalyticsApiModelClientBase.MaximumOutputTokens,
                 NaturalLanguageAnalyticsApiModelClientBase.MaximumResponseBytes,
-                NaturalLanguageAnalyticsModelClientRunLedger.MaximumRequests,
+                NaturalLanguageAnalyticsApiModelClientBase.RetryPolicyVersion,
+                NaturalLanguageAnalyticsApiModelClientBase.FirstRetryBackoffSeconds,
+                NaturalLanguageAnalyticsApiModelClientBase.SecondRetryBackoffSeconds,
+                NaturalLanguageAnalyticsApiModelClientBase.MinimumJitterMilliseconds,
+                NaturalLanguageAnalyticsApiModelClientBase.MaximumJitterMilliseconds,
+                NaturalLanguageAnalyticsModelClientRunLedger.MaximumLogicalCalls,
+                NaturalLanguageAnalyticsModelClientRunLedger.MaximumAttempts,
+                NaturalLanguageAnalyticsModelClientRunLedger.MaximumRetriesPerLogicalCall,
+                NaturalLanguageAnalyticsApiModelClientBase.MaximumRetryAfterSeconds,
+                apiRun.LogicalCalls,
                 apiRun.Attempts,
+                apiRun.Retries,
                 outcomes.Count(item => item.NotExecuted),
                 apiRun.HttpSuccessResponses,
                 apiRun.ResponsesWithText,
@@ -680,7 +690,8 @@ internal static class Program
                     call.ReportedModelVersion,
                     call.SystemFingerprint,
                     call.SafeErrorCode,
-                    call.Usage)).ToArray());
+                    call.Usage,
+                    call.HttpStatusCode)).ToArray());
         }
 
         return new V2ReportMetadata(
@@ -1695,8 +1706,18 @@ internal static class Program
         int TimeoutSeconds,
         int MaximumOutputTokens,
         int MaximumResponseBytes,
-        int MaximumRequests,
+        string RetryPolicyVersion,
+        int FirstRetryBackoffSeconds,
+        int SecondRetryBackoffSeconds,
+        int MinimumJitterMilliseconds,
+        int MaximumJitterMilliseconds,
+        int MaximumLogicalCalls,
+        int MaximumHttpAttempts,
+        int MaximumRetriesPerLogicalCall,
+        int MaximumRetryAfterSeconds,
+        int LogicalCalls,
         int ActualAttempts,
+        int Retries,
         int NotExecutedCases,
         int HttpSuccessResponses,
         int ResponsesWithText,
@@ -1723,7 +1744,8 @@ internal static class Program
         string? ReportedModelVersion,
         string? SystemFingerprint,
         string? SafeErrorCode,
-        NaturalLanguageAnalyticsProviderUsage? Usage);
+        NaturalLanguageAnalyticsProviderUsage? Usage,
+        int? HttpStatusCode);
 
     internal sealed record CaseScoreBreakdown(
         int Cases,

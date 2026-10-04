@@ -6,8 +6,15 @@ namespace UniPM.Api.Features.Reports;
 internal sealed class DeepSeekNaturalLanguageAnalyticsModelClient(
     string apiKey,
     NaturalLanguageAnalyticsModelClientRunLedger ledger,
-    HttpMessageHandler? handler = null)
-    : NaturalLanguageAnalyticsApiModelClientBase(apiKey, ledger, handler)
+    HttpMessageHandler? handler = null,
+    Func<TimeSpan, CancellationToken, Task>? retryDelay = null,
+    Func<int>? retryJitterMilliseconds = null)
+    : NaturalLanguageAnalyticsApiModelClientBase(
+        apiKey,
+        ledger,
+        handler,
+        retryDelay,
+        retryJitterMilliseconds)
 {
     internal const string ConfiguredModelId = "deepseek-flash";
     internal const int GenerationTemperature = 0;

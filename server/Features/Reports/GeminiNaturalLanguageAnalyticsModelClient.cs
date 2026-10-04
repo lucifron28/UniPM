@@ -5,8 +5,15 @@ namespace UniPM.Api.Features.Reports;
 internal sealed class GeminiNaturalLanguageAnalyticsModelClient(
     string apiKey,
     NaturalLanguageAnalyticsModelClientRunLedger ledger,
-    HttpMessageHandler? handler = null)
-    : NaturalLanguageAnalyticsApiModelClientBase(apiKey, ledger, handler)
+    HttpMessageHandler? handler = null,
+    Func<TimeSpan, CancellationToken, Task>? retryDelay = null,
+    Func<int>? retryJitterMilliseconds = null)
+    : NaturalLanguageAnalyticsApiModelClientBase(
+        apiKey,
+        ledger,
+        handler,
+        retryDelay,
+        retryJitterMilliseconds)
 {
     internal const string ConfiguredModelId = "gemini-3.8-flash";
     internal const string ThinkingLevel = "low";

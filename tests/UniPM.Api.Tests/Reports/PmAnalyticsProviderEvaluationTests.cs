@@ -278,6 +278,15 @@ public sealed class PmAnalyticsProviderEvaluationTests
         Assert.True(report.V2!.EvaluationComplete);
         Assert.True(report.V2.ProviderRun!.UsageComplete);
         Assert.Equal(7L, report.V2.ProviderRun.ReasoningTokens);
+        Assert.Equal("bounded-transient-v1", report.V2.ProviderRun.RetryPolicyVersion);
+        Assert.Equal(1, report.V2.ProviderRun.FirstRetryBackoffSeconds);
+        Assert.Equal(2, report.V2.ProviderRun.SecondRetryBackoffSeconds);
+        Assert.Equal(0, report.V2.ProviderRun.MinimumJitterMilliseconds);
+        Assert.Equal(250, report.V2.ProviderRun.MaximumJitterMilliseconds);
+        Assert.Equal(5, report.V2.ProviderRun.MaximumRetryAfterSeconds);
+        Assert.Equal(60, report.V2.ProviderRun.MaximumLogicalCalls);
+        Assert.Equal(180, report.V2.ProviderRun.MaximumHttpAttempts);
+        Assert.Equal(2, report.V2.ProviderRun.MaximumRetriesPerLogicalCall);
     }
 
     [Fact]
@@ -325,6 +334,75 @@ public sealed class PmAnalyticsProviderEvaluationTests
         Assert.Null(negativeUsage.EstimatedCostUsd);
         Assert.False(negativeUsage.BaseUsageComplete);
         Assert.Equal("incomplete", negativeUsage.CostStatus);
+    }
+
+    [Fact]
+    public void Recovered_transient_attempts_keep_provider_cost_incomplete_without_usage_metadata()
+    {
+        var run = new NaturalLanguageAnalyticsModelClientRunSnapshot(
+            LogicalCalls: 1,
+            Attempts: 2,
+            Retries: 1,
+            HttpSuccessResponses: 1,
+            ResponsesWithText: 1,
+            ProviderFailures: 1,
+            TerminalFailureCode: null,
+            Calls:
+            [
+                new NaturalLanguageAnalyticsModelCallObservation(
+                    false,
+                    false,
+                    null,
+                    12,
+                    null,
+                    null,
+                    "Http5xxServerError",
+                    503),
+                new NaturalLanguageAnalyticsModelCallObservation(
+                    true,
+                    true,
+                    new NaturalLanguageAnalyticsProviderUsage(100, 20, 2_000),
+                    18,
+                    "deepseek-flash",
+                    null,
+                    null)
+            ]);
+
+        var accounting = EvalProgram.BuildApiUsageAccounting("deepseek", run);
+
+        Assert.False(accounting.BaseUsageComplete);
+        Assert.Null(accounting.EstimatedCostUsd);
+        Assert.Equal("incomplete", accounting.CostStatus);
+        Assert.Equal(1, accounting.Totals.PromptTokenResponses);
+        Assert.Null(accounting.Totals.PromptTokens);
+
+        var item = ValidCase("V01", "Progress", presentation: "Count");
+        var result = Result(
+            PmAnalyticsInterpretationStatus.Valid,
+            Plan(PmAnalyticsMetric.Progress),
+            presentation: PmAnalyticsPresentation.Count) with
+        {
+            Usage = new NaturalLanguageAnalyticsProviderUsage(100, 20, 2_000)
+        };
+        var outcome = EvalProgram.ScoreCase(
+            item,
+            result,
+            18);
+        var report = BuildReport(
+            [item],
+            [outcome],
+            new EvalProgram.ProviderRunConfiguration("deepseek", "deepseek-flash", null, "disabled", 0),
+            run);
+
+        Assert.Equal(2, report.Execution.ProviderAttempts);
+        Assert.Equal(0, report.Execution.ProviderErrors);
+        Assert.True(report.V2!.EvaluationComplete);
+        Assert.Equal(1, report.V2.ProviderRun!.LogicalCalls);
+        Assert.Equal(2, report.V2.ProviderRun.ActualAttempts);
+        Assert.Equal(1, report.V2.ProviderRun.Retries);
+        Assert.Equal(1, report.V2.ProviderRun.ProviderFailures);
+        Assert.False(report.V2.ProviderRun.UsageComplete);
+        Assert.Equal("incomplete", report.V2.ProviderRun.CostStatus);
     }
 
     private static EvalProgram.EvaluationReport BuildReport(
@@ -400,6 +478,8 @@ public sealed class PmAnalyticsProviderEvaluationTests
         params NaturalLanguageAnalyticsModelCallObservation[] calls)
         => new(
             calls.Length,
+            calls.Length,
+            0,
             calls.Count(call => call.HttpSucceeded),
             calls.Count(call => call.HttpSucceeded && call.HasText),
             calls.Count(call => !call.HttpSucceeded),

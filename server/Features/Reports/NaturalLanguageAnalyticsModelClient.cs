@@ -19,17 +19,22 @@ internal sealed record NaturalLanguageAnalyticsModelResponse(
 
 internal sealed class NaturalLanguageAnalyticsModelClientRunLedger
 {
-    internal const int MaximumRequests = 60;
+    internal const int MaximumLogicalCalls = 60;
+    internal const int MaximumRetriesPerLogicalCall = 2;
+    internal const int MaximumAttempts = MaximumLogicalCalls * (MaximumRetriesPerLogicalCall + 1);
+    internal const int MaximumRequests = MaximumLogicalCalls;
 
     private readonly object _sync = new();
     private readonly List<NaturalLanguageAnalyticsModelCallObservation> _observations = [];
+    private int _logicalCalls;
     private int _attempts;
+    private int _retries;
     private int _httpSuccessResponses;
     private int _responsesWithText;
     private int _providerFailures;
     private string? _terminalFailureCode;
 
-    internal void BeginAttempt()
+    internal void BeginLogicalCall()
     {
         lock (_sync)
         {
@@ -39,15 +44,47 @@ internal sealed class NaturalLanguageAnalyticsModelClientRunLedger
                     NaturalLanguageAnalyticsProviderFailure.ProviderUnavailable);
             }
 
-            if (_attempts >= MaximumRequests)
+            if (_logicalCalls >= MaximumLogicalCalls)
             {
-                _terminalFailureCode = "RequestBudgetExhausted";
+                _terminalFailureCode = "LogicalCallBudgetExhausted";
                 throw new NaturalLanguageAnalyticsProviderException(
                     NaturalLanguageAnalyticsProviderFailure.ProviderUnavailable);
             }
 
+            _logicalCalls++;
+        }
+    }
+
+    internal void BeginAttempt(bool isRetry)
+    {
+        lock (_sync)
+        {
+            if (_terminalFailureCode is not null)
+            {
+                throw new NaturalLanguageAnalyticsProviderException(
+                    NaturalLanguageAnalyticsProviderFailure.ProviderUnavailable);
+            }
+
+            if (_attempts >= MaximumAttempts)
+            {
+                _terminalFailureCode = "HttpAttemptBudgetExhausted";
+                throw new NaturalLanguageAnalyticsProviderException(
+                    NaturalLanguageAnalyticsProviderFailure.ProviderUnavailable);
+            }
+
+            if (isRetry)
+            {
+                _retries++;
+            }
+
             _attempts++;
         }
+    }
+
+    internal void BeginAttempt()
+    {
+        BeginLogicalCall();
+        BeginAttempt(isRetry: false);
     }
 
     internal void RecordHttpSuccess(
@@ -55,7 +92,8 @@ internal sealed class NaturalLanguageAnalyticsModelClientRunLedger
         bool hasText,
         double latencyMilliseconds,
         string? reportedModelVersion,
-        string? systemFingerprint)
+        string? systemFingerprint,
+        int? httpStatusCode = null)
     {
         lock (_sync)
         {
@@ -72,21 +110,24 @@ internal sealed class NaturalLanguageAnalyticsModelClientRunLedger
                 Math.Round(latencyMilliseconds, 2),
                 reportedModelVersion,
                 systemFingerprint,
-                null));
+                null,
+                httpStatusCode));
         }
     }
 
     internal void RecordProviderFailure(
         string safeCode,
         double latencyMilliseconds,
-        bool stopRun)
+        bool stopRun,
+        string? terminalCode = null,
+        int? httpStatusCode = null)
     {
         lock (_sync)
         {
             _providerFailures++;
             if (stopRun)
             {
-                _terminalFailureCode ??= safeCode;
+                _terminalFailureCode ??= terminalCode ?? safeCode;
             }
 
             _observations.Add(new NaturalLanguageAnalyticsModelCallObservation(
@@ -96,7 +137,16 @@ internal sealed class NaturalLanguageAnalyticsModelClientRunLedger
                 Math.Round(latencyMilliseconds, 2),
                 null,
                 null,
-                safeCode));
+                safeCode,
+                httpStatusCode));
+        }
+    }
+
+    internal void MarkTerminalFailure(string safeCode)
+    {
+        lock (_sync)
+        {
+            _terminalFailureCode ??= safeCode;
         }
     }
 
@@ -105,7 +155,9 @@ internal sealed class NaturalLanguageAnalyticsModelClientRunLedger
         lock (_sync)
         {
             return new NaturalLanguageAnalyticsModelClientRunSnapshot(
+                _logicalCalls,
                 _attempts,
+                _retries,
                 _httpSuccessResponses,
                 _responsesWithText,
                 _providerFailures,
@@ -122,10 +174,13 @@ internal sealed record NaturalLanguageAnalyticsModelCallObservation(
     double LatencyMilliseconds,
     string? ReportedModelVersion,
     string? SystemFingerprint,
-    string? SafeErrorCode);
+    string? SafeErrorCode,
+    int? HttpStatusCode = null);
 
 internal sealed record NaturalLanguageAnalyticsModelClientRunSnapshot(
+    int LogicalCalls,
     int Attempts,
+    int Retries,
     int HttpSuccessResponses,
     int ResponsesWithText,
     int ProviderFailures,
