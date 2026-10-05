@@ -5,9 +5,9 @@ status: provisional
 
 # Proposed split manifest
 
-This manifest records the current proposed family partition and separate digests for its development and held-out files. It is not a final freeze. The language labels have not received human review, the held-out partition is not authorized for evaluation, and no held-out evaluation has run.
+This manifest records the preserved v2 family partition and separate digests for its development and held-out files. It is not a final English evaluation freeze. An AI-assisted recommendation found 29 of 30 English cases semantically consistent with the current contract; C09 remains pending an `FE` domain decision. No independent human review is recorded, the held-out partition is not authorized for evaluation, and no held-out evaluation has run.
 
-English is the formally supported natural-language analytics input for the current UniPM scope. Filipino and Taglish are included as exploratory development and robustness cases, not as production-supported language claims. This distinction does not say that the interpreter technically rejects either language.
+The current UniPM natural-language analytics scope is limited to English input. This is not an institutional language-policy approval or model-readiness claim. Filipino and Taglish are exploratory development and robustness cases, not validated language claims. This distinction does not say that the interpreter technically rejects either language. English cases are the required review surface; Filipino and Taglish are optional exploratory review slices if UniPM later seeks stronger multilingual claims or plans to publish those slices as validated evidence.
 
 - Development dataset: `dev.jsonl`
 - Development cases SHA-256 (UTF-8 without BOM, LF line endings): f98d505d6c2ac2f1b3372109e50b949fd2211b7b36af3104536451d4406f2533
@@ -44,4 +44,4 @@ Expected status counts within each language:
 | Development | Each of English, Filipino, and Taglish | 5 | 5 | 5 | 5 | 10 | 20 |
 | Held-out, not evaluated | Each of English, Filipino, and Taglish | 2 | 5 | 2 | 1 | 3 | 10 |
 
-Each SHA-256 is a provenance check for its own split file. The evaluator hashes and opens only the selected file. Its operational gate still blocks held-out runs. After human review, the corpus owner must decide whether to retain or revise this split, freeze the reviewed cases and evaluation inputs, and record new digests before any held-out run.
+Each SHA-256 is a provenance check for its own split file. The evaluator hashes and opens only the selected file. Its operational gate still blocks held-out runs. Preserve v2, including its questions, labels, hashes, and historical results. A future final English evaluation belongs in a separately authorized v3 corpus. Before its held-out use, review and freeze its labels and evaluation inputs, maintain family-disjoint development and held-out partitions, and record new digests.

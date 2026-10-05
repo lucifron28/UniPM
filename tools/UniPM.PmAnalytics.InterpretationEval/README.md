@@ -7,9 +7,18 @@ The evaluator's historical v1 modes are:
 - rule-based runs the deterministic strict-template parser as a control baseline. It does not measure multilingual model quality.
 - ollama calls the production Ollama interpreter using a preloaded local model. It is restricted to HTTP loopback on port 11434, requires a matching local model tag, and never downloads a model.
 
-The historical v1 corpus remains the default and is preserved as prior evidence. Dataset v2 is a separate, provisional 90-case corpus (60 development cases and 30 proposed held-out cases) with language siblings grouped by family. English is the formally supported natural-language analytics input for the current UniPM scope. Filipino and Taglish are exploratory robustness cases in v2, not production-support claims; this does not mean the interpreter technically rejects those inputs. The labels remain provisional, and independent human language review is pending. See the [v2 human-review guide](../../reference/evaluation/pm-analytics-interpretation/v2/human-review-guide.md). V2 held-out execution is rejected before Git, corpus, credential, or provider access.
+The historical v1 corpus remains the default and is preserved as prior evidence. Dataset v2 is a separate, provisional 90-case corpus (60 development cases and 30 proposed held-out cases) with language siblings grouped by family. The current UniPM natural-language analytics scope is limited to English input. This is a scope statement, not an institutional language-policy approval or model-readiness claim. Filipino and Taglish are exploratory robustness cases in v2, not validated language claims; this does not mean the interpreter technically rejects those inputs. An AI-assisted English pre-review recommended 29 of 30 cases as semantically consistent with the current contract; C09 remains pending a domain decision about `FE`. This recommendation is not independent human validation. English is the required review surface; Filipino and Taglish review is optional exploratory work if UniPM later seeks stronger multilingual claims or plans to publish those slices as validated evidence. See the [v2 human-review guide](../../reference/evaluation/pm-analytics-interpretation/v2/human-review-guide.md). V2 held-out execution is rejected before Git, corpus, credential, or provider access.
 
-Gemini and DeepSeek modes use the same sanitized-question interpreter, prompt, output contract, deterministic grounding, plan validator, and evaluator. They are available only with `--dataset-version v2 --split dev`; neither provider can run against v1. Their model, endpoint, output limit, timeout, and request budget are fixed, so `--model` and `--base-address` are rejected for these modes. Gemini reads `GEMINI_API_KEY` from the process environment and uses `gemini-3.8-flash` with low thinking; DeepSeek reads `DEEPSEEK_API_KEY` and uses `deepseek-flash` with thinking disabled and temperature zero. Keys must not be passed on the command line. Each run is limited to 60 requests, a 60-second timeout, 1,024 output tokens, and a 16 KiB response; the API clients do not retry.
+Gemini and DeepSeek modes use the same sanitized-question interpreter, prompt, output contract, deterministic grounding, plan validator, and evaluator. They are available only with `--dataset-version v2 --split dev`; neither provider can run against v1. Both cloud modes require `--model` with an exact allowlisted ID:
+
+| Mode | Allowed `--model` values |
+|---|---|
+| `gemini` | `gemini-3.8-flash`, `gemini-3.5-flash-lite` |
+| `deepseek` | `deepseek-flash`, `deepseek-v4-pro` |
+
+Other model IDs are rejected. Cloud endpoints are fixed, so `--base-address` is rejected for both modes. Gemini reads `GEMINI_API_KEY` from the process environment and uses low thinking; DeepSeek reads `DEEPSEEK_API_KEY`, disables thinking, and uses temperature zero. Keys must not be passed on the command line.
+
+Each cloud condition allows at most 60 logical provider calls. A logical call can use an initial HTTP attempt and at most two retries, so 60 calls can make at most 180 physical HTTP attempts; the evaluator may stop earlier on a terminal failure. Each logical call has one shared 60-second deadline across its attempts and retry delays. The client retries transient HTTP 408, 429, and 5xx responses and qualifying transport failures. It does not retry permanent client failures or successful HTTP responses with malformed or schema-invalid model output. Retry delays use 1 second for the first retry and 2 seconds for the second, each with 0 to 250 ms jitter. A `Retry-After` delay is honored only up to 5 seconds, using the greater of that delay and the bounded backoff; a longer delay stops the retry instead of being shortened. Each request remains limited to 1,024 output tokens and a 16 KiB response body. These limits do not guarantee that every condition reaches 60 logical calls.
 
 Always select exactly one split. Development is for the approved development run. Held-out evaluation must use the frozen implementation and model configuration; do not tune or rerun against held-out results. The evaluator checks the case file SHA-256 against the split manifest before any interpretation starts.
 
@@ -23,9 +32,13 @@ From the repository root, provide the exact full source commit SHA.
 
     dotnet run --project tools/UniPM.PmAnalytics.InterpretationEval -- --dataset-version v2 --mode rule-based --split dev --source-sha <full-commit-sha>
 
-    dotnet run --project tools/UniPM.PmAnalytics.InterpretationEval -- --dataset-version v2 --mode gemini --split dev --source-sha <full-commit-sha>
+    dotnet run --project tools/UniPM.PmAnalytics.InterpretationEval -- --dataset-version v2 --mode gemini --split dev --source-sha <full-commit-sha> --model gemini-3.8-flash
 
-    dotnet run --project tools/UniPM.PmAnalytics.InterpretationEval -- --dataset-version v2 --mode deepseek --split dev --source-sha <full-commit-sha>
+    dotnet run --project tools/UniPM.PmAnalytics.InterpretationEval -- --dataset-version v2 --mode gemini --split dev --source-sha <full-commit-sha> --model gemini-3.5-flash-lite
+
+    dotnet run --project tools/UniPM.PmAnalytics.InterpretationEval -- --dataset-version v2 --mode deepseek --split dev --source-sha <full-commit-sha> --model deepseek-flash
+
+    dotnet run --project tools/UniPM.PmAnalytics.InterpretationEval -- --dataset-version v2 --mode deepseek --split dev --source-sha <full-commit-sha> --model deepseek-v4-pro
 
 Optional arguments are shown by --help. The default report path is under ignored artifacts/evaluation/pm-analytics-interpretation/. The local model must already be installed; the tool does not download or start Ollama.
 

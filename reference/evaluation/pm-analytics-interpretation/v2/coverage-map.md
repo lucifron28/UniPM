@@ -7,11 +7,11 @@ status: provisional
 
 Case IDs use `<familyId>-<proposedSplit>-<language>`, with language values `en`, `fil`, and `taglish`. Each listed family therefore identifies exactly three sibling cases. Every row below is provisional and awaits human review.
 
-English is the formally supported natural-language analytics input for the current UniPM scope. Filipino and Taglish are exploratory robustness slices in this corpus; the table describes evaluation data, not additional product language commitments.
+The current UniPM natural-language analytics scope is limited to English input. This is a scope statement, not institutional approval or model-readiness evidence. Filipino and Taglish are optional exploratory robustness slices. Their inclusion does not make them technically unsupported or add a product language commitment.
 
 | Coverage dimension | Exact family IDs / case IDs | Notes |
 |---|---|---|
-| English, Filipino, and Taglish corpus slices | F01-F07, C01-C10, U01-U07, A01-A06 | Every family contains one case in each language. There are 30 cases per language; Filipino and Taglish are exploratory, not production-support claims. |
+| English, Filipino, and Taglish corpus slices | F01-F07, C01-C10, U01-U07, A01-A06 | Every family contains one case in each language. There are 30 cases per language. English is the required review surface; Filipino and Taglish need optional exploratory review only for stronger multilingual claims or publication as validated evidence. |
 | Natural free phrasing | F01-F07, C01-C10, U01-U07, A01-A06 | All questions are free phrasing except the four English strict-template controls listed below. |
 | Strict-template controls | `nla2-F02-dev-en`, `nla2-F03-dev-en`, `nla2-F04-dev-en`, `nla2-F06-heldout-en` | The tag appears only on the English Valid case in each family. Their Filipino and Taglish siblings remain free phrasing in the same family split. Three controls are in development and one in held-out. |
 | Count versus percentage wording | F01, F05, F02 | F01 explicitly asks for a Progress count; F05 explicitly asks for a Progress percentage; F02 uses OnTimeCompliance percentage. |
@@ -55,4 +55,4 @@ Expected status counts within each language:
 | Development | Each of English, Filipino, and Taglish | 5 | 5 | 5 | 5 | 10 | 20 |
 | Held-out, not evaluated | Each of English, Filipino, and Taglish | 2 | 5 | 2 | 1 | 3 | 10 |
 
-The four supported metrics, all four supported categories, a department filter, and department grouping are present in development. This map establishes only intended synthetic coverage. It does not establish label correctness or language validation.
+The four supported metrics, all four supported categories, a department filter, and department grouping are present in development. An AI-assisted English pre-review recommended 29 of 30 English cases as semantically consistent with the current contract; C09 remains pending an `FE` domain decision. This map and recommendation do not establish independent human validation, label correctness, model readiness, or Filipino/Taglish validation. See the [human-review guide](human-review-guide.md).
