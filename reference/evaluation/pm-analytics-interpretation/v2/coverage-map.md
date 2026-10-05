@@ -7,9 +7,11 @@ status: provisional
 
 Case IDs use `<familyId>-<proposedSplit>-<language>`, with language values `en`, `fil`, and `taglish`. Each listed family therefore identifies exactly three sibling cases. Every row below is provisional and awaits human review.
 
-| Required coverage | Exact family IDs / case IDs | Notes |
+English is the formally supported natural-language analytics input for the current UniPM scope. Filipino and Taglish are exploratory robustness slices in this corpus; the table describes evaluation data, not additional product language commitments.
+
+| Coverage dimension | Exact family IDs / case IDs | Notes |
 |---|---|---|
-| English, Filipino, and Taglish | F01-F07, C01-C10, U01-U07, A01-A06 | Every family contains one case in each language. There are 30 cases per language. |
+| English, Filipino, and Taglish corpus slices | F01-F07, C01-C10, U01-U07, A01-A06 | Every family contains one case in each language. There are 30 cases per language; Filipino and Taglish are exploratory, not production-support claims. |
 | Natural free phrasing | F01-F07, C01-C10, U01-U07, A01-A06 | All questions are free phrasing except the four English strict-template controls listed below. |
 | Strict-template controls | `nla2-F02-dev-en`, `nla2-F03-dev-en`, `nla2-F04-dev-en`, `nla2-F06-heldout-en` | The tag appears only on the English Valid case in each family. Their Filipino and Taglish siblings remain free phrasing in the same family split. Three controls are in development and one in held-out. |
 | Count versus percentage wording | F01, F05, F02 | F01 explicitly asks for a Progress count; F05 explicitly asks for a Progress percentage; F02 uses OnTimeCompliance percentage. |

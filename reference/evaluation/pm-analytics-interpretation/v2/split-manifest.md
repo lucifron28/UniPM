@@ -7,6 +7,8 @@ status: provisional
 
 This manifest records the current proposed family partition and separate digests for its development and held-out files. It is not a final freeze. The language labels have not received human review, the held-out partition is not authorized for evaluation, and no held-out evaluation has run.
 
+English is the formally supported natural-language analytics input for the current UniPM scope. Filipino and Taglish are included as exploratory development and robustness cases, not as production-supported language claims. This distinction does not say that the interpreter technically rejects either language.
+
 - Development dataset: `dev.jsonl`
 - Development cases SHA-256 (UTF-8 without BOM, LF line endings): f98d505d6c2ac2f1b3372109e50b949fd2211b7b36af3104536451d4406f2533
 - Held-out dataset: `heldout.jsonl`

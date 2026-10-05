@@ -20,6 +20,12 @@ dashboard. It adds no route or navigation item. The dashboard remains the
 source of schedule and inspection measures. The analytics request adapts a
 question into the same bounded category, cycle, and department scope.
 
+English is the formally supported natural-language analytics input for the
+current UniPM scope. Filipino and Taglish appeared in the v2 development work
+as exploratory robustness cases, not as production-supported language claims.
+This describes the validation scope; it does not claim that the interpreter
+technically rejects those inputs.
+
 ## Supported question form
 
 Accept only a finite form, with a maximum question length of 512 characters:

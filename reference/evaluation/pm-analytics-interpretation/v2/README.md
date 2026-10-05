@@ -5,9 +5,11 @@ status: provisional
 
 # PM analytics interpretation evaluation v2
 
-This directory contains a new synthetic draft corpus for comparing interpretation of natural English, Filipino, and Taglish PM analytics questions. It uses only the current typed analytics contract. It adds no metric, category, grouping, reporting formula, scheduling rule, database behavior, or workflow.
+This directory contains a synthetic draft corpus for evaluating English, Filipino, and Taglish questions against the current typed analytics contract. It adds no metric, category, grouping, reporting formula, scheduling rule, database behavior, or workflow.
 
-**Review status: provisional.** No Filipino or Taglish question or label has received human review. This coding pass does not validate language quality. The corpus and the family partition remain proposed, and the held-out set has not been evaluated. Do not cite results from this provisional corpus as unbiased held-out evidence.
+English is the formally supported natural-language analytics input for the current UniPM scope. Filipino and Taglish appear in development experiments as exploratory robustness cases and are not claimed as production-supported languages. This is a product-scope distinction, not a claim that the interface technically rejects those inputs.
+
+**Review status: provisional.** The labels are developer-authored, and no independent human language review has been completed. This coding pass does not validate language quality. The corpus and the family partition remain proposed, and the held-out set has not been evaluated. Do not cite results from this provisional corpus as unbiased held-out evidence. See the [human-review guide](human-review-guide.md) before annotating any row.
 
 The held-out partition was frozen before model comparison and was not submitted to candidate models, scored, inspected for model-specific failures, or used for prompt/model tuning before final held-out evaluation. This is a protocol statement, not a claim that nobody has ever seen the held-out wording.
 
@@ -57,7 +59,7 @@ The four category codes above are the complete supported category set. A clearly
 
 `FE` appears only as an unapproved abbreviation in the clarification cases. It is not added to the category vocabulary. Its meaning needs domain confirmation before any future experiment treats it as an approved alias.
 
-The expected labels are synthetic and developer-authored. In particular, the Filipino and Taglish variants need fluent-speaker review. [human-review.csv](human-review.csv) contains one row per question with the question, expected status, every plan field, clarification fields, notes, and blank reviewer-decision and reviewer-correction columns. No reviewer decision has been entered.
+The expected labels are synthetic and developer-authored. [human-review.csv](human-review.csv) contains one row per question with the question, expected status, every plan field, clarification fields, notes, and reviewer-decision and reviewer-correction columns. Both reviewer columns are blank. The [human-review guide](human-review-guide.md) describes the English and exploratory Filipino/Taglish review criteria, known wording candidates, and the `FE` domain question.
 
 ## Use limits
 
