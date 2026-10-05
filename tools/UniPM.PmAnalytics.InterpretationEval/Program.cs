@@ -3,6 +3,7 @@ using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Options;
 using UniPM.Api.Features.Reports;
@@ -11,8 +12,75 @@ namespace UniPM.PmAnalytics.InterpretationEval;
 
 internal static class Program
 {
-    private const string DatasetRelativePath = "reference/evaluation/pm-analytics-interpretation/v1/cases.jsonl";
+    private const string V1DatasetRelativePath = "reference/evaluation/pm-analytics-interpretation/v1/cases.jsonl";
+    private const string V2DevDatasetRelativePath = "reference/evaluation/pm-analytics-interpretation/v2/dev.jsonl";
+    private const string V2HeldoutDatasetRelativePath = "reference/evaluation/pm-analytics-interpretation/v2/heldout.jsonl";
     private const string ManifestFileName = "split-manifest.md";
+    private const string V2DevDatasetSha256 = "f98d505d6c2ac2f1b3372109e50b949fd2211b7b36af3104536451d4406f2533";
+    private const string V2HeldoutDatasetSha256 = "c39307b5e4f76cf84b4a7d6880e180c2a652fa74bad29f741c8f07d1123c908b";
+    private static readonly ProviderModelSelection[] ProviderModelSelections =
+    [
+        new(
+            "gemini",
+            "Gemini",
+            GeminiNaturalLanguageAnalyticsModelClient.ConfiguredModelId,
+            "v1beta",
+            "low",
+            null,
+            new ProviderRateProfile(
+                "gemini-3.8-flash-standard-2026-10-05",
+                "2026-10-05",
+                0.75m,
+                0.075m,
+                3.75m,
+                "Standard paid rates; introductory pricing through 2026-12-31. Cached input uses the published cache rate when usage attribution is consistent.",
+                "https://ai.google.dev/gemini-api/docs/pricing")),
+        new(
+            "gemini",
+            "Gemini",
+            GeminiNaturalLanguageAnalyticsModelClient.FlashLiteModelId,
+            "v1beta",
+            "low",
+            null,
+            new ProviderRateProfile(
+                "gemini-3.5-flash-lite-standard-2026-10-05",
+                "2026-10-05",
+                0.30m,
+                0.03m,
+                2.50m,
+                "Standard paid rates. Cached input uses the published cache rate when usage attribution is consistent.",
+                "https://ai.google.dev/gemini-api/docs/pricing")),
+        new(
+            "deepseek",
+            "DeepSeek",
+            DeepSeekNaturalLanguageAnalyticsModelClient.ConfiguredModelId,
+            null,
+            "disabled",
+            0d,
+            new ProviderRateProfile(
+                "deepseek-flash-peak-2026-10-05",
+                "2026-10-05",
+                0.30m,
+                0.006m,
+                1.20m,
+                "Peak rates used as a conservative upper bound. Cached input uses the published cache-hit rate when usage attribution is consistent; otherwise all input uses the cache-miss rate.",
+                "https://api-docs.deepseek.com/quick_start/pricing/")),
+        new(
+            "deepseek",
+            "DeepSeek",
+            DeepSeekNaturalLanguageAnalyticsModelClient.V4ProModelId,
+            null,
+            "disabled",
+            0d,
+            new ProviderRateProfile(
+                "deepseek-v4-pro-peak-2026-10-05",
+                "2026-10-05",
+                1.32m,
+                0.044m,
+                3.96m,
+                "Peak rates used as a conservative upper bound. Cached input uses the published cache-hit rate when usage attribution is consistent; otherwise all input uses the cache-miss rate.",
+                "https://api-docs.deepseek.com/quick_start/pricing/"))
+    ];
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,
@@ -37,14 +105,34 @@ internal static class Program
 
         try
         {
+            ValidateDatasetExecutionAllowed(arguments.DatasetVersion, arguments.Split);
+        }
+        catch (EvaluationSetupException exception)
+        {
+            Console.Error.WriteLine($"Evaluation setup failed: {exception.Code}");
+            return 2;
+        }
+
+        try
+        {
             var root = FindRepositoryRoot();
             arguments.SourceSha = await GitSourceShaVerifier.VerifyAsync(
                 root,
                 arguments.SourceSha);
+            ProviderModelSelection? selectedProviderModel = null;
+            if (arguments.Mode is "gemini" or "deepseek"
+                && !TryResolveProviderModel(arguments.Mode, arguments.Model, out selectedProviderModel))
+            {
+                throw new EvaluationSetupException("InvalidProviderModelSelection");
+            }
+
+            var defaultDatasetRelativePath = arguments.DatasetVersion == "v2"
+                ? arguments.Split == "dev" ? V2DevDatasetRelativePath : V2HeldoutDatasetRelativePath
+                : V1DatasetRelativePath;
             var datasetPath = arguments.DatasetPath is null
-                ? Path.Combine(root, DatasetRelativePath)
+                ? Path.Combine(root, defaultDatasetRelativePath)
                 : Path.GetFullPath(arguments.DatasetPath);
-            var selection = await ReadCasesAsync(datasetPath, arguments.Split);
+            var selection = await ReadCasesAsync(datasetPath, arguments.Split, arguments.DatasetVersion);
             var naturalLanguageOptions = new NaturalLanguageAnalyticsOptions
             {
                 Enabled = arguments.Mode == "ollama",
@@ -56,6 +144,9 @@ internal static class Program
             };
 
             HttpClient? client = null;
+            IDisposable? apiModelClient = null;
+            NaturalLanguageAnalyticsModelClientRunLedger? apiRunLedger = null;
+            ProviderRunConfiguration? providerRunConfiguration = null;
             try
             {
                 INaturalLanguageAnalyticsInterpreter interpreter;
@@ -64,7 +155,7 @@ internal static class Program
                 {
                     interpreter = new RuleBasedNaturalLanguageAnalyticsInterpreter();
                 }
-                else
+                else if (arguments.Mode == "ollama")
                 {
                     var address = ValidateLoopbackAddress(arguments.BaseAddress);
                     client = new HttpClient(new SocketsHttpHandler
@@ -81,9 +172,59 @@ internal static class Program
                         client,
                         new FixedOptionsMonitor<NaturalLanguageAnalyticsOptions>(naturalLanguageOptions));
                 }
+                else
+                {
+                    apiRunLedger = new NaturalLanguageAnalyticsModelClientRunLedger();
+                    var apiKeyEnvironmentVariable = arguments.Mode == "gemini"
+                        ? "GEMINI_API_KEY"
+                        : "DEEPSEEK_API_KEY";
+                    var apiKey = Environment.GetEnvironmentVariable(apiKeyEnvironmentVariable);
+                    if (string.IsNullOrWhiteSpace(apiKey))
+                    {
+                        throw new EvaluationSetupException("ProviderApiKeyMissing");
+                    }
+
+                    INaturalLanguageAnalyticsModelClient modelClient;
+                    if (arguments.Mode == "gemini")
+                    {
+                        var providerModel = selectedProviderModel!;
+                        var geminiClient = new GeminiNaturalLanguageAnalyticsModelClient(
+                            apiKey,
+                            apiRunLedger,
+                            modelId: providerModel.ModelId);
+                        apiModelClient = geminiClient;
+                        modelClient = geminiClient;
+                        providerRunConfiguration = new ProviderRunConfiguration(
+                            geminiClient.Provider,
+                            geminiClient.ModelId,
+                            providerModel.ApiVersion,
+                            providerModel.ReasoningSetting,
+                            providerModel.Temperature,
+                            providerModel.PricingProfile);
+                    }
+                    else
+                    {
+                        var providerModel = selectedProviderModel!;
+                        var deepSeekClient = new DeepSeekNaturalLanguageAnalyticsModelClient(
+                            apiKey,
+                            apiRunLedger,
+                            modelId: providerModel.ModelId);
+                        apiModelClient = deepSeekClient;
+                        modelClient = deepSeekClient;
+                        providerRunConfiguration = new ProviderRunConfiguration(
+                            deepSeekClient.Provider,
+                            deepSeekClient.ModelId,
+                            providerModel.ApiVersion,
+                            providerModel.ReasoningSetting,
+                            providerModel.Temperature,
+                            providerModel.PricingProfile);
+                    }
+
+                    interpreter = new ModelNaturalLanguageAnalyticsInterpreter(modelClient);
+                }
 
                 var startedAt = DateTimeOffset.UtcNow;
-                var outcomes = await EvaluateAsync(interpreter, selection.Cases);
+                var outcomes = await EvaluateAsync(interpreter, selection.Cases, apiRunLedger);
                 var completedAt = DateTimeOffset.UtcNow;
                 var report = BuildReport(
                     arguments,
@@ -92,15 +233,20 @@ internal static class Program
                     model,
                     naturalLanguageOptions,
                     startedAt,
-                    completedAt);
+                    completedAt,
+                    providerRunConfiguration,
+                    apiRunLedger?.Snapshot());
 
+                var reportPrefix = arguments.DatasetVersion == "v1"
+                    ? arguments.Split
+                    : $"{arguments.DatasetVersion}-{arguments.Mode}-{arguments.Split}";
                 var outputPath = Path.GetFullPath(arguments.OutputPath ??
                     Path.Combine(
                         root,
                         "artifacts",
                         "evaluation",
                         "pm-analytics-interpretation",
-                        $"{arguments.Split}-{startedAt:yyyyMMdd'T'HHmmss'Z'}.json"));
+                        $"{reportPrefix}-{startedAt:yyyyMMdd'T'HHmmss'Z'}.json"));
                 Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
                 await File.WriteAllTextAsync(
                     outputPath,
@@ -116,6 +262,7 @@ internal static class Program
             finally
             {
                 client?.Dispose();
+                apiModelClient?.Dispose();
             }
         }
         catch (GitSourceShaVerificationException exception)
@@ -135,13 +282,20 @@ internal static class Program
         }
     }
 
-    private static async Task<IReadOnlyList<CaseOutcome>> EvaluateAsync(
+    internal static async Task<IReadOnlyList<CaseOutcome>> EvaluateAsync(
         INaturalLanguageAnalyticsInterpreter interpreter,
-        IReadOnlyList<EvaluationCase> cases)
+        IReadOnlyList<EvaluationCase> cases,
+        NaturalLanguageAnalyticsModelClientRunLedger? apiRunLedger = null)
     {
         var outcomes = new List<CaseOutcome>(cases.Count);
         foreach (var item in cases)
         {
+            if (apiRunLedger?.Snapshot().TerminalFailureCode is not null)
+            {
+                outcomes.Add(CaseOutcome.NotExecutedCase(item));
+                continue;
+            }
+
             var stopwatch = Stopwatch.StartNew();
             try
             {
@@ -172,7 +326,7 @@ internal static class Program
         return outcomes;
     }
 
-    private static CaseOutcome ScoreCase(
+    internal static CaseOutcome ScoreCase(
         EvaluationCase item,
         PmAnalyticsInterpretationResult result,
         double latencyMilliseconds)
@@ -249,22 +403,24 @@ internal static class Program
             expected.Status != "Valid" && (result.Plan is not null || result.Presentation is not null));
     }
 
-    private static EvaluationReport BuildReport(
+    internal static EvaluationReport BuildReport(
         EvaluationArguments arguments,
         DatasetSelection selection,
         IReadOnlyList<CaseOutcome> outcomes,
         ModelMetadata? model,
         NaturalLanguageAnalyticsOptions configuration,
         DateTimeOffset startedAt,
-        DateTimeOffset completedAt)
+        DateTimeOffset completedAt,
+        ProviderRunConfiguration? providerRunConfiguration = null,
+        NaturalLanguageAnalyticsModelClientRunSnapshot? apiRun = null)
     {
         var cases = selection.Cases;
-        var valid = cases.Where(item => item.Expected.Status == "Valid").ToArray();
-        var clarifications = cases.Where(item => item.Expected.Status == "NeedsClarification").ToArray();
-        var unsupported = cases.Where(item => item.Expected.Status == "Unsupported").ToArray();
-        var strictControls = outcomes.Where(item => item.CaseTag == "strict-template-control").ToArray();
-        var freePhrasing = outcomes.Where(item =>
-            item.ExpectedStatus == "Valid" && item.CaseTag != "strict-template-control").ToArray();
+        var executed = outcomes.Where(item => !item.NotExecuted).ToArray();
+        var valid = executed.Where(item => item.ExpectedStatus == "Valid").ToArray();
+        var clarifications = executed.Where(item => item.ExpectedStatus == "NeedsClarification").ToArray();
+        var unsupported = executed.Where(item => item.ExpectedStatus == "Unsupported").ToArray();
+        var strictControls = executed.Where(item => item.CaseTag == "strict-template-control").ToArray();
+        var freePhrasing = valid.Where(item => item.CaseTag != "strict-template-control").ToArray();
 
         var validFieldScores = new Dictionary<string, MetricScore>(StringComparer.Ordinal)
         {
@@ -277,13 +433,15 @@ internal static class Program
         };
 
         var modelResponses = outcomes.Where(item => item.ProviderUsage is not null).ToArray();
-        var promptTokens = modelResponses.Where(item => item.ProviderUsage!.PromptTokens.HasValue)
-            .Select(item => item.ProviderUsage!.PromptTokens!.Value).ToArray();
-        var completionTokens = modelResponses.Where(item => item.ProviderUsage!.CompletionTokens.HasValue)
-            .Select(item => item.ProviderUsage!.CompletionTokens!.Value).ToArray();
-        var providerDurations = modelResponses.Where(item => item.ProviderUsage!.DurationNanoseconds.HasValue)
-            .Select(item => item.ProviderUsage!.DurationNanoseconds!.Value).ToArray();
-        var latency = outcomes.Select(item => item.LatencyMilliseconds).Order().ToArray();
+        ProviderUsageAccounting? apiUsage = null;
+        if (apiRun is not null)
+        {
+            apiUsage = providerRunConfiguration?.PricingProfile is { } pricingProfile
+                ? BuildApiUsageAccounting(pricingProfile, apiRun)
+                : BuildApiUsageAccounting(providerRunConfiguration!.Provider, apiRun);
+        }
+        var usageTotals = apiUsage?.Totals ?? BuildCaseUsageTotals(modelResponses);
+        var latency = executed.Select(item => item.LatencyMilliseconds).Order().ToArray();
         var providerErrors = outcomes.Count(item => item.ProviderError is not null);
         var guardedCases = outcomes.Count(item =>
             item.ProviderUsage is null && item.ProviderError is null && item.EvaluatorError is null);
@@ -301,10 +459,23 @@ internal static class Program
                 configuration.TimeoutSeconds,
                 configuration.MaxOutputTokens,
                 configuration.MaxResponseBytes)
+            : providerRunConfiguration is not null
+                ? new ModelConfiguration(
+                    providerRunConfiguration.Model,
+                    null,
+                    null,
+                    ModelNaturalLanguageAnalyticsInterpreter.PromptVersion,
+                    ModelNaturalLanguageAnalyticsInterpreter.PromptFingerprint,
+                    providerRunConfiguration.Temperature,
+                    null,
+                    null,
+                    NaturalLanguageAnalyticsApiModelClientBase.TimeoutSeconds,
+                    NaturalLanguageAnalyticsApiModelClientBase.MaximumOutputTokens,
+                    NaturalLanguageAnalyticsApiModelClientBase.MaximumResponseBytes)
             : null;
 
         return new EvaluationReport(
-            1,
+            arguments.DatasetVersion == "v2" ? 2 : 1,
             arguments.Split,
             arguments.Mode,
             arguments.SourceSha,
@@ -314,15 +485,15 @@ internal static class Program
             modelConfiguration,
             new ExecutionCounts(
                 cases.Count,
-                outcomes.Count(item => item.EvaluatorError is null),
-                modelResponses.Length + providerErrors,
-                modelResponses.Length,
+                outcomes.Count(item => item.EvaluatorError is null && !item.NotExecuted),
+                apiRun?.Attempts ?? modelResponses.Length + providerErrors,
+                apiRun?.ResponsesWithText ?? modelResponses.Length,
                 providerErrors,
                 outcomes.Count(item => item.EvaluatorError is not null),
                 arguments.Mode == "ollama" ? guardedCases : null,
                 arguments.Mode == "rule-based" ? guardedCases : null),
             new OverallScores(
-                Score(outcomes.Count(item => item.StatusCorrect), cases.Count),
+                Score(executed.Count(item => item.StatusCorrect), executed.Length),
                 Score(outcomes.Count(item => item.CompletePlanCorrect == true), valid.Length),
                 validFieldScores,
                 Score(outcomes.Count(item => item.ClarificationFieldsExact == true), clarifications.Length),
@@ -333,9 +504,9 @@ internal static class Program
                 Score(strictControls.Count(item => item.CompletePlanCorrect == true), strictControls.Length),
                 Score(freePhrasing.Count(item => item.StatusCorrect), freePhrasing.Length),
                 Score(freePhrasing.Count(item => item.CompletePlanCorrect == true), freePhrasing.Length)),
-            BuildGroups(outcomes, item => item.Language),
-            BuildGroups(outcomes, item => item.CaseClass),
-            BuildGroups(outcomes.Where(item => item.ExpectedStatus == "Valid"), item =>
+            BuildGroups(executed, item => item.Language),
+            BuildGroups(executed, item => item.CaseClass),
+            BuildGroups(valid, item =>
                 item.CaseTag == "strict-template-control" ? "strict-template-control" : "free-phrasing"),
             BuildConfusion(outcomes),
             BuildProviderErrors(outcomes),
@@ -343,15 +514,382 @@ internal static class Program
                 latency.Length,
                 Percentile(latency, 0.50),
                 Percentile(latency, 0.95)),
+            usageTotals,
+            outcomes)
+        {
+            V2 = arguments.DatasetVersion == "v2"
+                ? BuildV2ReportMetadata(
+                    cases,
+                    outcomes,
+                    providerRunConfiguration,
+                    apiRun,
+                    apiUsage)
+                : null
+        };
+    }
+
+    private static UsageTotals BuildCaseUsageTotals(IReadOnlyList<CaseOutcome> modelResponses)
+    {
+        var promptTokens = modelResponses.Where(item => item.ProviderUsage!.PromptTokens.HasValue)
+            .Select(item => item.ProviderUsage!.PromptTokens!.Value).ToArray();
+        var completionTokens = modelResponses.Where(item => item.ProviderUsage!.CompletionTokens.HasValue)
+            .Select(item => item.ProviderUsage!.CompletionTokens!.Value).ToArray();
+        var providerDurations = modelResponses.Where(item => item.ProviderUsage!.DurationNanoseconds.HasValue)
+            .Select(item => item.ProviderUsage!.DurationNanoseconds!.Value).ToArray();
+        return new UsageTotals(
+            SumIfComplete(promptTokens, modelResponses.Count),
+            promptTokens.Length,
+            SumIfComplete(completionTokens, modelResponses.Count),
+            completionTokens.Length,
+            SumIfComplete(providerDurations, modelResponses.Count),
+            providerDurations.Length,
+            null);
+    }
+
+    internal static ProviderUsageAccounting BuildApiUsageAccounting(
+        string provider,
+        NaturalLanguageAnalyticsModelClientRunSnapshot run)
+        => BuildApiUsageAccounting(
+            run,
+            CalculateProviderCost(provider, run.Calls, run.Attempts));
+
+    internal static ProviderUsageAccounting BuildApiUsageAccounting(
+        ProviderRateProfile pricingProfile,
+        NaturalLanguageAnalyticsModelClientRunSnapshot run)
+        => BuildApiUsageAccounting(
+            run,
+            CalculateProviderCost(pricingProfile, run.Calls, run.Attempts));
+
+    private static ProviderUsageAccounting BuildApiUsageAccounting(
+        NaturalLanguageAnalyticsModelClientRunSnapshot run,
+        ProviderCostEstimate cost)
+    {
+        var calls = run.Calls;
+        var promptValues = calls.Where(call => call.Usage?.PromptTokens is >= 0)
+            .Select(call => call.Usage!.PromptTokens!.Value).ToArray();
+        var completionValues = calls.Where(call => call.Usage?.CompletionTokens is >= 0)
+            .Select(call => call.Usage!.CompletionTokens!.Value).ToArray();
+        var durationValues = calls.Where(call => call.Usage?.DurationNanoseconds is >= 0)
+            .Select(call => call.Usage!.DurationNanoseconds!.Value).ToArray();
+        var cachedValues = calls.Where(call => call.Usage?.CachedPromptTokens is >= 0)
+            .Select(call => call.Usage!.CachedPromptTokens!.Value).ToArray();
+        var cacheMissValues = calls.Where(call => call.Usage?.CacheMissPromptTokens is >= 0)
+            .Select(call => call.Usage!.CacheMissPromptTokens!.Value).ToArray();
+        var reasoningValues = calls.Where(call => call.Usage?.ReasoningTokens is >= 0)
+            .Select(call => call.Usage!.ReasoningTokens!.Value).ToArray();
+
+        var promptComplete = CompleteValues(calls, run.Attempts, usage => usage?.PromptTokens);
+        var completionComplete = CompleteValues(calls, run.Attempts, usage => usage?.CompletionTokens);
+        var durationComplete = CompleteValues(calls, run.Attempts, usage => usage?.DurationNanoseconds);
+        return new ProviderUsageAccounting(
             new UsageTotals(
-                SumIfComplete(promptTokens, modelResponses.Length),
-                promptTokens.Length,
-                SumIfComplete(completionTokens, modelResponses.Length),
-                completionTokens.Length,
-                SumIfComplete(providerDurations, modelResponses.Length),
-                providerDurations.Length,
-                null),
-            outcomes);
+                promptComplete ? SafeSum(promptValues) : null,
+                promptValues.Length,
+                completionComplete ? SafeSum(completionValues) : null,
+                completionValues.Length,
+                durationComplete ? SafeSum(durationValues) : null,
+                durationValues.Length,
+                cost.EstimatedCostUsd),
+            CompleteValues(calls, run.Attempts, usage => usage?.CachedPromptTokens)
+                ? SafeSum(cachedValues)
+                : null,
+            cachedValues.Length,
+            CompleteValues(calls, run.Attempts, usage => usage?.CacheMissPromptTokens)
+                ? SafeSum(cacheMissValues)
+                : null,
+            cacheMissValues.Length,
+            CompleteValues(calls, run.Attempts, usage => usage?.ReasoningTokens)
+                ? SafeSum(reasoningValues)
+                : null,
+            reasoningValues.Length,
+            promptComplete && completionComplete,
+            cost.Status,
+            cost.Basis,
+            cost.EstimatedCostUsd);
+    }
+
+    private static bool CompleteValues(
+        IReadOnlyList<NaturalLanguageAnalyticsModelCallObservation> calls,
+        int attempts,
+        Func<NaturalLanguageAnalyticsProviderUsage?, long?> select)
+        => attempts > 0
+            && calls.Count == attempts
+            && calls.All(call => call.HttpSucceeded
+                && select(call.Usage) is long value
+                && value >= 0);
+
+    private static long? SafeSum(IReadOnlyList<long> values)
+    {
+        long sum = 0;
+        foreach (var value in values)
+        {
+            if (value < 0 || long.MaxValue - sum < value)
+            {
+                return null;
+            }
+
+            sum += value;
+        }
+
+        return sum;
+    }
+
+    internal static ProviderCostEstimate CalculateProviderCost(
+        string provider,
+        IReadOnlyList<NaturalLanguageAnalyticsModelCallObservation> calls,
+        int attempts)
+    {
+        if (attempts <= 0 || calls.Count != attempts
+            || calls.Any(call => !call.HttpSucceeded
+                || call.Usage?.PromptTokens is not >= 0
+                || call.Usage?.CompletionTokens is not >= 0))
+        {
+            return new ProviderCostEstimate(null, "incomplete", "Usage is incomplete; estimated cost is unavailable.");
+        }
+
+        decimal total = 0;
+        foreach (var call in calls)
+        {
+            var usage = call.Usage!;
+            var prompt = usage.PromptTokens!.Value;
+            var completion = usage.CompletionTokens!.Value;
+            if (provider.Equals("gemini", StringComparison.OrdinalIgnoreCase))
+            {
+                total += prompt * (0.75m / 1_000_000m);
+                total += completion * (3.75m / 1_000_000m);
+            }
+            else if (provider.Equals("deepseek", StringComparison.OrdinalIgnoreCase))
+            {
+                var cached = usage.CachedPromptTokens;
+                var cacheMiss = usage.CacheMissPromptTokens;
+                if (cached is >= 0 && cacheMiss is >= 0
+                    && cached.Value <= prompt
+                    && cacheMiss.Value == prompt - cached.Value)
+                {
+                    total += cached.Value * (0.006m / 1_000_000m);
+                    total += cacheMiss.Value * (0.30m / 1_000_000m);
+                }
+                else
+                {
+                    total += prompt * (0.30m / 1_000_000m);
+                }
+
+                total += completion * (1.20m / 1_000_000m);
+            }
+            else
+            {
+                return new ProviderCostEstimate(null, "unavailable", "No cost profile is defined for this provider.");
+            }
+        }
+
+        var basis = provider.Equals("gemini", StringComparison.OrdinalIgnoreCase)
+            ? "Pricing profile checked 2026-10-04; standard full-input rate upper bound through 2026-12-31. Billed completion tokens already include reasoning; no cache discount applied."
+            : "Pricing profile checked 2026-10-04; peak upper bound at $0.30/M cache-miss input, $0.006/M cache-hit input, and $1.20/M output. When cache attribution is unavailable, all input is priced as cache misses.";
+        return new ProviderCostEstimate(
+            Math.Round(total, 8, MidpointRounding.AwayFromZero),
+            "complete",
+            basis);
+    }
+
+    internal static ProviderCostEstimate CalculateProviderCost(
+        ProviderRateProfile pricingProfile,
+        IReadOnlyList<NaturalLanguageAnalyticsModelCallObservation> calls,
+        int attempts)
+    {
+        var basis = $"{pricingProfile.Id}, checked locally on {pricingProfile.CheckedDateLocal} (Asia/Shanghai). "
+            + $"Input ${pricingProfile.InputUsdPerMillion:0.######}/M, cached input ${pricingProfile.CachedInputUsdPerMillion:0.######}/M, "
+            + $"output ${pricingProfile.OutputUsdPerMillion:0.######}/M. {pricingProfile.BillingBasis} Source: {pricingProfile.SourceUrl}";
+        if (attempts <= 0 || calls.Count != attempts
+            || calls.Any(call => !call.HttpSucceeded
+                || call.Usage?.PromptTokens is not >= 0
+                || call.Usage?.CompletionTokens is not >= 0))
+        {
+            return new ProviderCostEstimate(
+                null,
+                "incomplete",
+                $"Usage is incomplete; estimated cost is unavailable. {basis}");
+        }
+
+        decimal total = 0;
+        foreach (var call in calls)
+        {
+            var usage = call.Usage!;
+            var prompt = usage.PromptTokens!.Value;
+            var cached = usage.CachedPromptTokens;
+            var cacheMiss = usage.CacheMissPromptTokens;
+            if (cached is >= 0 && cacheMiss is >= 0
+                && cached.Value <= prompt
+                && cacheMiss.Value == prompt - cached.Value)
+            {
+                total += cached.Value * (pricingProfile.CachedInputUsdPerMillion / 1_000_000m);
+                total += cacheMiss.Value * (pricingProfile.InputUsdPerMillion / 1_000_000m);
+            }
+            else
+            {
+                total += prompt * (pricingProfile.InputUsdPerMillion / 1_000_000m);
+            }
+
+            total += usage.CompletionTokens!.Value
+                * (pricingProfile.OutputUsdPerMillion / 1_000_000m);
+        }
+
+        return new ProviderCostEstimate(
+            Math.Round(total, 8, MidpointRounding.AwayFromZero),
+            "complete",
+            basis);
+    }
+
+    private static V2ReportMetadata BuildV2ReportMetadata(
+        IReadOnlyList<EvaluationCase> cases,
+        IReadOnlyList<CaseOutcome> outcomes,
+        ProviderRunConfiguration? configuration,
+        NaturalLanguageAnalyticsModelClientRunSnapshot? apiRun,
+        ProviderUsageAccounting? usage)
+    {
+        var executed = outcomes.Where(item => !item.NotExecuted).ToArray();
+        var byLanguage = executed
+            .GroupBy(item => item.Language, StringComparer.Ordinal)
+            .OrderBy(group => group.Key, StringComparer.Ordinal)
+            .ToDictionary(
+                group => group.Key,
+                group => BuildScoreBreakdown(group),
+                StringComparer.Ordinal);
+        var byInputStyle = executed
+            .Where(item => item.ExpectedStatus == "Valid")
+            .GroupBy(item => item.CaseTag == "strict-template-control"
+                ? "strict-template-control"
+                : "free-phrasing", StringComparer.Ordinal)
+            .OrderBy(group => group.Key, StringComparer.Ordinal)
+            .ToDictionary(
+                group => group.Key,
+                group => BuildScoreBreakdown(group),
+                StringComparer.Ordinal);
+        var byExpectedStatus = executed
+            .GroupBy(item => item.ExpectedStatus, StringComparer.Ordinal)
+            .OrderBy(group => group.Key, StringComparer.Ordinal)
+            .ToDictionary(
+                group => group.Key,
+                group => BuildScoreBreakdown(group),
+                StringComparer.Ordinal);
+        var byExpectedMetric = executed
+            .Where(item => item.ExpectedPlan is not null)
+            .GroupBy(item => item.ExpectedPlan!.Metric, StringComparer.Ordinal)
+            .OrderBy(group => group.Key, StringComparer.Ordinal)
+            .Select(group => new MetricBreakdown(
+                group.Key,
+                BuildScoreBreakdown(group)))
+            .ToArray();
+        var adversarial = executed.Where(item => item.CaseClass == "adversarial").ToArray();
+        ProviderRunSummary? providerRun = null;
+        if (configuration is not null && apiRun is not null && usage is not null)
+        {
+            var latencies = apiRun.Calls.Select(call => call.LatencyMilliseconds).Order().ToArray();
+            var runEvaluationComplete = outcomes.Count == cases.Count
+                && outcomes.All(item => !item.NotExecuted && item.EvaluatorError is null)
+                && apiRun.TerminalFailureCode is null;
+            providerRun = new ProviderRunSummary(
+                configuration.Provider,
+                configuration.Model,
+                configuration.ApiVersion,
+                ModelNaturalLanguageAnalyticsInterpreter.PromptVersion,
+                ModelNaturalLanguageAnalyticsInterpreter.PromptFingerprint,
+                1,
+                configuration.Temperature,
+                configuration.ReasoningSetting,
+                NaturalLanguageAnalyticsApiModelClientBase.TimeoutSeconds,
+                NaturalLanguageAnalyticsApiModelClientBase.MaximumOutputTokens,
+                NaturalLanguageAnalyticsApiModelClientBase.MaximumResponseBytes,
+                NaturalLanguageAnalyticsApiModelClientBase.RetryPolicyVersion,
+                NaturalLanguageAnalyticsApiModelClientBase.FirstRetryBackoffSeconds,
+                NaturalLanguageAnalyticsApiModelClientBase.SecondRetryBackoffSeconds,
+                NaturalLanguageAnalyticsApiModelClientBase.MinimumJitterMilliseconds,
+                NaturalLanguageAnalyticsApiModelClientBase.MaximumJitterMilliseconds,
+                NaturalLanguageAnalyticsModelClientRunLedger.MaximumLogicalCalls,
+                NaturalLanguageAnalyticsModelClientRunLedger.MaximumAttempts,
+                NaturalLanguageAnalyticsModelClientRunLedger.MaximumRetriesPerLogicalCall,
+                NaturalLanguageAnalyticsApiModelClientBase.MaximumRetryAfterSeconds,
+                apiRun.LogicalCalls,
+                apiRun.Attempts,
+                apiRun.Retries,
+                outcomes.Count(item => item.NotExecuted),
+                apiRun.HttpSuccessResponses,
+                apiRun.ResponsesWithText,
+                apiRun.ProviderFailures,
+                apiRun.TerminalFailureCode,
+                runEvaluationComplete,
+                usage.BaseUsageComplete,
+                usage.CachedPromptTokens,
+                usage.CachedPromptTokenResponses,
+                usage.CacheMissPromptTokens,
+                usage.CacheMissPromptTokenResponses,
+                usage.ReasoningTokens,
+                usage.ReasoningTokenResponses,
+                usage.CostStatus,
+                usage.CostBasis,
+                new LatencyScores(latencies.Length, Percentile(latencies, 0.50), Percentile(latencies, 0.95)),
+                apiRun.Calls.Select((call, index) => new ProviderCallSummary(
+                    index + 1,
+                    call.HttpSucceeded,
+                    call.HasText,
+                    call.LatencyMilliseconds,
+                    call.ReportedModelVersion,
+                    call.SystemFingerprint,
+                    call.SafeErrorCode,
+                    call.Usage,
+                    call.HttpStatusCode)).ToArray(),
+                configuration.PricingProfile is { } rateProfile
+                    ? rateProfile
+                    : null);
+        }
+
+        return new V2ReportMetadata(
+            "v2",
+            "provisional",
+            false,
+            false,
+            outcomes.Count == cases.Count
+                && outcomes.All(item => !item.NotExecuted && item.EvaluatorError is null)
+                && apiRun?.TerminalFailureCode is null,
+            60,
+            30,
+            20,
+            10,
+            cases.Count,
+            executed.Length,
+            outcomes.Count(item => item.NotExecuted),
+            byLanguage,
+            byInputStyle,
+            byExpectedStatus,
+            byExpectedMetric,
+            Score(adversarial.Count(item => item.UnsupportedRejected == true), adversarial.Length),
+            providerRun);
+    }
+
+    private static CaseScoreBreakdown BuildScoreBreakdown(IEnumerable<CaseOutcome> selected)
+    {
+        var outcomes = selected.Where(item => !item.NotExecuted).ToArray();
+        var valid = outcomes.Where(item => item.ExpectedStatus == "Valid").ToArray();
+        var clarifications = outcomes.Where(item => item.ExpectedStatus == "NeedsClarification").ToArray();
+        var unsupported = outcomes.Where(item => item.ExpectedStatus == "Unsupported").ToArray();
+        var adversarial = outcomes.Where(item => item.CaseClass == "adversarial").ToArray();
+        var fields = new Dictionary<string, MetricScore>(StringComparer.Ordinal)
+        {
+            ["metric"] = Score(valid.Count(item => item.FieldCorrectness?.Metric == true), valid.Length),
+            ["assetCategory"] = Score(valid.Count(item => item.FieldCorrectness?.AssetCategory == true), valid.Length),
+            ["pmCycle"] = Score(valid.Count(item => item.FieldCorrectness?.PmCycle == true), valid.Length),
+            ["department"] = Score(valid.Count(item => item.FieldCorrectness?.Department == true), valid.Length),
+            ["groupBy"] = Score(valid.Count(item => item.FieldCorrectness?.GroupBy == true), valid.Length),
+            ["presentation"] = Score(valid.Count(item => item.FieldCorrectness?.Presentation == true), valid.Length)
+        };
+        return new CaseScoreBreakdown(
+            outcomes.Length,
+            Score(outcomes.Count(item => item.StatusCorrect), outcomes.Length),
+            Score(valid.Count(item => item.CompletePlanCorrect == true), valid.Length),
+            fields,
+            Score(clarifications.Count(item => item.ClarificationFieldsExact == true), clarifications.Length),
+            Score(unsupported.Count(item => item.UnsupportedRejected == true), unsupported.Length),
+            Score(adversarial.Count(item => item.UnsupportedRejected == true), adversarial.Length),
+            outcomes.Count(item => item.NonValidExecutableOutput));
     }
 
     private static IReadOnlyList<GroupScores> BuildGroups(
@@ -362,7 +900,9 @@ internal static class Program
             .Select(group => new GroupScores(
                 group.Key,
                 group.Count(),
-                group.Count(item => item.ProviderError is null && item.EvaluatorError is null),
+                group.Count(item => item.ProviderError is null
+                    && item.EvaluatorError is null
+                    && !item.NotExecuted),
                 group.Count(item => item.ProviderError is not null),
                 group.Count(item => item.EvaluatorError is not null),
                 Score(group.Count(item => item.StatusCorrect), group.Count()))
@@ -416,6 +956,7 @@ internal static class Program
             : code is "ComparisonNotSupported"
                 or "GroupingNotSupported"
                 or "RequestNotSupported"
+                or "UnsafeRequestNotSupported"
                 or "QuestionNotSupported"
                 or "UnsupportedPmCycle"
                 or "UnsafeDepartment"
@@ -424,8 +965,19 @@ internal static class Program
                 ? code
                 : "Other";
 
-    private static async Task<DatasetSelection> ReadCasesAsync(string datasetPath, string split)
+    internal static async Task<DatasetSelection> ReadCasesAsync(
+        string datasetPath,
+        string split,
+        string datasetVersion = "v1")
     {
+        ValidateDatasetExecutionAllowed(datasetVersion, split);
+
+        if (datasetVersion == "v2")
+        {
+            var expectedSha256 = split == "dev" ? V2DevDatasetSha256 : V2HeldoutDatasetSha256;
+            return await ReadV2SplitFileAsync(datasetPath, split, expectedSha256);
+        }
+
         if (!File.Exists(datasetPath))
         {
             throw new EvaluationSetupException("DatasetNotFound");
@@ -481,23 +1033,125 @@ internal static class Program
                 throw new EvaluationSetupException($"DatasetCaseInvalidAtLine{lineNumber}");
             }
 
-            if (familySplits.TryGetValue(item.FamilyId, out var familySplit)
-                && familySplit != item.Split)
-            {
-                throw new EvaluationSetupException("FamilyCrossesSplits");
-            }
-
-            familySplits[item.FamilyId] = item.Split;
+            RecordFamilySplit(item.FamilyId, item.Split, familySplits);
             ValidateExpected(item, lineNumber);
             allCases.Add(item);
         }
 
-        if (allCases.Count != 100)
+        ValidateV1Distribution(allCases, split);
+
+        var selected = allCases.Where(item => item.Split == split).ToArray();
+        return new DatasetSelection(selected, sha256);
+    }
+
+    internal static async Task<DatasetSelection> ReadV2SplitFileAsync(
+        string datasetPath,
+        string split,
+        string expectedSha256)
+    {
+        if (split is not ("dev" or "heldout"))
+        {
+            throw new EvaluationSetupException("InvalidDatasetSelection");
+        }
+
+        if (!File.Exists(datasetPath))
+        {
+            throw new EvaluationSetupException("DatasetNotFound");
+        }
+
+        var bytes = await File.ReadAllBytesAsync(datasetPath);
+        var sha256 = Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
+        var manifestPath = Path.Combine(Path.GetDirectoryName(datasetPath)!, ManifestFileName);
+        EnsureV2Manifest(manifestPath, split, sha256, expectedSha256);
+
+        string text;
+        try
+        {
+            text = new UTF8Encoding(false, true).GetString(bytes);
+        }
+        catch (DecoderFallbackException)
+        {
+            throw new EvaluationSetupException("DatasetEncodingInvalid");
+        }
+
+        var cases = new List<EvaluationCase>();
+        var ids = new HashSet<string>(StringComparer.Ordinal);
+        var familySplits = new Dictionary<string, string>(StringComparer.Ordinal);
+        var lineNumber = 0;
+        foreach (var line in text.Split('\n'))
+        {
+            lineNumber++;
+            if (string.IsNullOrWhiteSpace(line))
+            {
+                continue;
+            }
+
+            EvaluationCase? item;
+            try
+            {
+                item = JsonSerializer.Deserialize<EvaluationCase>(line, JsonOptions);
+            }
+            catch (JsonException)
+            {
+                throw new EvaluationSetupException($"DatasetJsonInvalidAtLine{lineNumber}");
+            }
+
+            if (item is null
+                || string.IsNullOrWhiteSpace(item.CaseId)
+                || string.IsNullOrWhiteSpace(item.FamilyId)
+                || string.IsNullOrWhiteSpace(item.Question)
+                || item.Expected is null
+                || item.Split != split
+                || item.Language is not ("en" or "fil" or "taglish")
+                || item.CaseClass is not ("valid" or "needs-clarification" or "unsupported" or "adversarial")
+                || !ids.Add(item.CaseId))
+            {
+                throw new EvaluationSetupException($"DatasetCaseInvalidAtLine{lineNumber}");
+            }
+
+            RecordFamilySplit(item.FamilyId, item.Split, familySplits);
+            ValidateExpected(item, lineNumber);
+            cases.Add(item);
+        }
+
+        ValidateV2Distribution(cases, split);
+        return new DatasetSelection(cases, sha256);
+    }
+
+    internal static void ValidateDatasetExecutionAllowed(string datasetVersion, string split)
+    {
+        if (datasetVersion is not ("v1" or "v2") || split is not ("dev" or "heldout"))
+        {
+            throw new EvaluationSetupException("InvalidDatasetSelection");
+        }
+
+        if (datasetVersion == "v2" && split == "heldout")
+        {
+            throw new EvaluationSetupException("V2HeldoutNotAuthorized");
+        }
+    }
+
+    internal static void RecordFamilySplit(
+        string familyId,
+        string split,
+        IDictionary<string, string> familySplits)
+    {
+        if (familySplits.TryGetValue(familyId, out var familySplit) && familySplit != split)
+        {
+            throw new EvaluationSetupException("FamilyCrossesSplits");
+        }
+
+        familySplits[familyId] = split;
+    }
+
+    private static void ValidateV1Distribution(IReadOnlyList<EvaluationCase> cases, string split)
+    {
+        if (cases.Count != 100)
         {
             throw new EvaluationSetupException("UnexpectedDatasetCount");
         }
 
-        var selected = allCases.Where(item => item.Split == split).ToArray();
+        var selected = cases.Where(item => item.Split == split).ToArray();
         var expectedCount = split == "dev" ? 60 : 40;
         var expectedPerClass = split == "dev" ? 15 : 10;
         var classCounts = selected.GroupBy(item => item.CaseClass, StringComparer.Ordinal)
@@ -511,8 +1165,100 @@ internal static class Program
         {
             throw new EvaluationSetupException("UnexpectedSplitDistribution");
         }
+    }
 
-        return new DatasetSelection(selected, sha256);
+    internal static void ValidateV2Distribution(IReadOnlyList<EvaluationCase> cases, string split)
+    {
+        if (split is not ("dev" or "heldout"))
+        {
+            throw new EvaluationSetupException("InvalidDatasetSelection");
+        }
+
+        var families = cases.GroupBy(item => item.FamilyId, StringComparer.Ordinal).ToArray();
+        var expectedCases = split == "dev" ? 60 : 30;
+        var expectedFamilies = split == "dev" ? 20 : 10;
+        if (cases.Count != expectedCases)
+        {
+            throw new EvaluationSetupException("UnexpectedV2DatasetCount");
+        }
+
+        if (families.Length != expectedFamilies
+            || families.Any(family => family.Count() != 3
+                || family.Select(item => item.Language).Distinct(StringComparer.Ordinal).Count() != 3
+                || family.Any(item => item.Split != split)))
+        {
+            throw new EvaluationSetupException("UnexpectedV2FamilyDistribution");
+        }
+
+        var expectedClasses = split == "dev"
+            ? new Dictionary<string, int>(StringComparer.Ordinal)
+            {
+                ["valid"] = 15,
+                ["needs-clarification"] = 15,
+                ["unsupported"] = 15,
+                ["adversarial"] = 15
+            }
+            : new Dictionary<string, int>(StringComparer.Ordinal)
+            {
+                ["valid"] = 6,
+                ["needs-clarification"] = 15,
+                ["unsupported"] = 6,
+                ["adversarial"] = 3
+            };
+        var classCounts = cases.GroupBy(item => item.CaseClass, StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.Count(), StringComparer.Ordinal);
+        var expectedControls = split == "dev" ? 3 : 1;
+        var controlCount = cases.Count(item => item.CaseTag == "strict-template-control");
+        if (classCounts.Count != expectedClasses.Count
+            || expectedClasses.Any(pair => classCounts.GetValueOrDefault(pair.Key) != pair.Value)
+            || controlCount != expectedControls)
+        {
+            throw new EvaluationSetupException("UnexpectedV2SplitDistribution");
+        }
+
+        var expectedStatuses = split == "dev"
+            ? new Dictionary<string, int>(StringComparer.Ordinal)
+        {
+                ["Valid"] = 15,
+                ["NeedsClarification"] = 15,
+                ["Unsupported"] = 30
+            }
+            : new Dictionary<string, int>(StringComparer.Ordinal)
+            {
+                ["Valid"] = 6,
+                ["NeedsClarification"] = 15,
+                ["Unsupported"] = 9
+            };
+        var statusCounts = cases.GroupBy(item => item.Expected.Status, StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.Count(), StringComparer.Ordinal);
+        if (expectedStatuses.Any(pair => statusCounts.GetValueOrDefault(pair.Key) != pair.Value)
+            || statusCounts.Count != expectedStatuses.Count)
+        {
+            throw new EvaluationSetupException("UnexpectedV2StatusDistribution");
+        }
+
+        foreach (var language in new[] { "en", "fil", "taglish" })
+        {
+            if (cases.Count(item => item.Language == language) != expectedCases / 3)
+            {
+                throw new EvaluationSetupException("UnexpectedV2LanguageDistribution");
+            }
+        }
+
+        if (split == "dev")
+        {
+            var developmentValid = cases.Where(item => item.Expected.Status == "Valid").ToArray();
+            var expectedMetrics = new[] { "Progress", "OnTimeCompliance", "CompletedLate", "NonOperational" };
+            var expectedCategories = new[]
+            {
+                "fire-extinguisher", "fire-alarm", "emergency-light", "water-drinking-station"
+            };
+            if (!expectedMetrics.All(metric => developmentValid.Any(item => item.Expected.Plan?.Metric == metric))
+                || !expectedCategories.All(category => developmentValid.Any(item => item.Expected.Plan?.AssetCategory == category)))
+            {
+                throw new EvaluationSetupException("MissingV2DevelopmentPlanCoverage");
+            }
+        }
     }
 
     private static void ValidateExpected(EvaluationCase item, int lineNumber)
@@ -630,6 +1376,40 @@ internal static class Program
         }
     }
 
+    private static void EnsureV2Manifest(
+        string manifestPath,
+        string split,
+        string sha256,
+        string expectedSha256)
+    {
+        if (!File.Exists(manifestPath))
+        {
+            throw new EvaluationSetupException("SplitManifestNotFound");
+        }
+
+        var manifest = File.ReadAllText(manifestPath);
+        if (!Regex.IsMatch(
+                manifest,
+                @"\A---\s*\r?\nid:\s*NLA-INTERPRETATION-V2-SPLIT\s*\r?\nstatus:\s*provisional\s*\r?\n---",
+                RegexOptions.CultureInvariant))
+        {
+            throw new EvaluationSetupException("V2ManifestNotProvisional");
+        }
+
+        var match = Regex.Match(
+            manifest,
+            split == "dev"
+                ? @"Development cases SHA-256 \(UTF-8 without BOM, LF line endings\):\s*(?<digest>[0-9a-f]{64})"
+                : @"Held-out cases SHA-256 \(UTF-8 without BOM, LF line endings\):\s*(?<digest>[0-9a-f]{64})",
+            RegexOptions.CultureInvariant);
+        if (!match.Success
+            || match.Groups["digest"].Value != sha256
+            || sha256 != expectedSha256)
+        {
+            throw new EvaluationSetupException("DatasetDigestMismatch");
+        }
+    }
+
     private static async Task<ModelMetadata> ReadModelMetadataAsync(HttpClient client, string model)
     {
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
@@ -707,7 +1487,7 @@ internal static class Program
         var directory = new DirectoryInfo(Environment.CurrentDirectory);
         while (directory is not null)
         {
-            if (File.Exists(Path.Combine(directory.FullName, DatasetRelativePath)))
+            if (File.Exists(Path.Combine(directory.FullName, V1DatasetRelativePath)))
             {
                 return directory.FullName;
             }
@@ -718,7 +1498,18 @@ internal static class Program
         throw new EvaluationSetupException("RepositoryRootNotFound");
     }
 
-    private static bool TryParseArguments(
+    internal static bool TryResolveProviderModel(
+        string? mode,
+        string? model,
+        out ProviderModelSelection? selection)
+    {
+        selection = ProviderModelSelections.FirstOrDefault(candidate =>
+            string.Equals(candidate.Mode, mode, StringComparison.Ordinal)
+            && string.Equals(candidate.ModelId, model, StringComparison.Ordinal));
+        return selection is not null;
+    }
+
+    internal static bool TryParseArguments(
         string[] args,
         out EvaluationArguments arguments,
         out string error)
@@ -748,7 +1539,8 @@ internal static class Program
 
         var allowed = new HashSet<string>(StringComparer.Ordinal)
         {
-            "--split", "--mode", "--source-sha", "--model", "--base-address", "--dataset", "--output"
+            "--split", "--mode", "--source-sha", "--model", "--base-address", "--dataset", "--output",
+            "--dataset-version"
         };
         if (values.Keys.Any(key => !allowed.Contains(key)))
         {
@@ -767,9 +1559,37 @@ internal static class Program
             return false;
         }
 
-        if (!values.TryGetValue("--mode", out var mode) || mode is not ("rule-based" or "ollama"))
+        var datasetVersion = values.GetValueOrDefault("--dataset-version") ?? "v1";
+        if (datasetVersion is not ("v1" or "v2"))
         {
-            error = "Specify --mode rule-based or --mode ollama.";
+            error = "Specify --dataset-version v1 or v2.";
+            return false;
+        }
+
+        if (!values.TryGetValue("--mode", out var mode)
+            || mode is not ("rule-based" or "ollama" or "gemini" or "deepseek"))
+        {
+            error = "Specify --mode rule-based, ollama, gemini, or deepseek.";
+            return false;
+        }
+
+        if (mode is "gemini" or "deepseek")
+        {
+            if (datasetVersion != "v2")
+            {
+                error = "Gemini and DeepSeek modes require --dataset-version v2.";
+                return false;
+            }
+
+            if (values.ContainsKey("--base-address"))
+            {
+                error = "Cloud provider endpoints are fixed by the evaluator.";
+                return false;
+            }
+        }
+        else if (datasetVersion == "v2" && mode == "ollama")
+        {
+            error = "Ollama mode remains on dataset version v1.";
             return false;
         }
 
@@ -782,8 +1602,10 @@ internal static class Program
 
         arguments.Split = split;
         arguments.Mode = mode;
+        arguments.DatasetVersion = datasetVersion;
         arguments.SourceSha = sourceSha;
-        arguments.Model = values.GetValueOrDefault("--model") ?? "qwen3:4b-instruct";
+        arguments.Model = values.GetValueOrDefault("--model")
+            ?? (mode is "gemini" or "deepseek" ? string.Empty : "qwen3:4b-instruct");
         arguments.BaseAddress = values.GetValueOrDefault("--base-address") ?? "http://127.0.0.1:11434/";
         arguments.DatasetPath = values.GetValueOrDefault("--dataset");
         arguments.OutputPath = values.GetValueOrDefault("--output");
@@ -795,16 +1617,22 @@ internal static class Program
 
     private const string Usage = """
         PM analytics interpretation evaluator
-        Required: --split dev|heldout --mode rule-based|ollama --source-sha <full-commit-sha>
-        Optional: --model <local-model-tag> --base-address <loopback-ollama-url>
+        Required: --split dev|heldout --mode rule-based|ollama|gemini|deepseek --source-sha <full-commit-sha>
+        Optional: --dataset-version v1|v2 --base-address <loopback-ollama-url>
                   --dataset <cases.jsonl> --output <report.json>
+
+        Ollama accepts --model <local-model-tag>. Gemini and DeepSeek require --model with one of:
+        gemini-3.8-flash, gemini-3.5-flash-lite, deepseek-flash, deepseek-v4-pro.
+        Dataset v2 is provisional and development-only. Gemini and DeepSeek read keys from GEMINI_API_KEY
+        and DEEPSEEK_API_KEY respectively; held-out v2 evaluation is disabled.
         """;
 
-    private sealed class EvaluationArguments
+    internal sealed class EvaluationArguments
     {
         public bool ShowHelp { get; set; }
         public string Split { get; set; } = string.Empty;
         public string Mode { get; set; } = string.Empty;
+        public string DatasetVersion { get; set; } = "v1";
         public string SourceSha { get; set; } = string.Empty;
         public string Model { get; set; } = string.Empty;
         public string BaseAddress { get; set; } = string.Empty;
@@ -812,7 +1640,7 @@ internal static class Program
         public string? OutputPath { get; set; }
     }
 
-    private sealed record EvaluationCase(
+    internal sealed record EvaluationCase(
         string CaseId,
         string FamilyId,
         string Split,
@@ -822,27 +1650,27 @@ internal static class Program
         ExpectedLabel Expected,
         string? CaseTag);
 
-    private sealed record ExpectedLabel(
+    internal sealed record ExpectedLabel(
         string Status,
         ExpectedPlan? Plan,
         string[] ClarificationFields,
         string? Presentation);
 
-    private sealed record ExpectedPlan(
+    internal sealed record ExpectedPlan(
         string Metric,
         string AssetCategory,
         string PmCycle,
         string? Department,
         string GroupBy);
 
-    private sealed record SafePlan(
+    internal sealed record SafePlan(
         string Metric,
         string AssetCategory,
         string PmCycle,
         string? Department,
         string GroupBy);
 
-    private sealed record FieldScores(
+    internal sealed record FieldScores(
         bool Metric,
         bool AssetCategory,
         bool PmCycle,
@@ -850,7 +1678,7 @@ internal static class Program
         bool GroupBy,
         bool Presentation);
 
-    private sealed record CaseOutcome(
+    internal sealed record CaseOutcome(
         string CaseId,
         string Split,
         string Language,
@@ -873,7 +1701,9 @@ internal static class Program
         FieldScores? FieldCorrectness,
         bool? ClarificationFieldsExact,
         bool? UnsupportedRejected,
-        bool NonValidExecutableOutput)
+        bool NonValidExecutableOutput,
+        [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+        bool NotExecuted = false)
     {
         public static CaseOutcome Failure(
             EvaluationCase item,
@@ -906,13 +1736,16 @@ internal static class Program
                 item.Expected.Status == "NeedsClarification" ? false : null,
                 item.Expected.Status == "Unsupported" ? false : null,
                 false);
+
+        public static CaseOutcome NotExecutedCase(EvaluationCase item)
+            => Failure(item, providerError: null, evaluatorError: null, 0) with { NotExecuted = true };
     }
 
-    private sealed record DatasetSelection(IReadOnlyList<EvaluationCase> Cases, string Sha256);
+    internal sealed record DatasetSelection(IReadOnlyList<EvaluationCase> Cases, string Sha256);
 
-    private sealed record MetricScore(int Correct, int Denominator, decimal? Rate);
+    internal sealed record MetricScore(int Correct, int Denominator, decimal? Rate);
 
-    private sealed record GroupScores(
+    internal sealed record GroupScores(
         string Group,
         int Cases,
         int Interpreted,
@@ -920,7 +1753,7 @@ internal static class Program
         int EvaluatorErrors,
         MetricScore StatusAccuracy);
 
-    private sealed record OverallScores(
+    internal sealed record OverallScores(
         MetricScore StatusAccuracy,
         MetricScore CompletePlanAccuracyOnExpectedValid,
         IReadOnlyDictionary<string, MetricScore> ValidFieldAccuracy,
@@ -928,18 +1761,18 @@ internal static class Program
         MetricScore UnsupportedRejectionOnExpectedUnsupported,
         int NonValidExecutableOutputCount);
 
-    private sealed record InputStyleScores(
+    internal sealed record InputStyleScores(
         MetricScore StrictTemplateControlStatusAccuracy,
         MetricScore StrictTemplateControlPlanAccuracy,
         MetricScore FreePhrasingValidStatusAccuracy,
         MetricScore FreePhrasingValidPlanAccuracy);
 
-    private sealed record LatencyScores(
+    internal sealed record LatencyScores(
         int SampleCount,
         double? P50Milliseconds,
         double? P95Milliseconds);
 
-    private sealed record UsageTotals(
+    internal sealed record UsageTotals(
         long? PromptTokens,
         int PromptTokenResponses,
         long? CompletionTokens,
@@ -948,9 +1781,9 @@ internal static class Program
         int ProviderDurationResponses,
         decimal? Cost);
 
-    private sealed record ModelMetadata(string Model, string Digest, string RuntimeVersion);
+    internal sealed record ModelMetadata(string Model, string Digest, string RuntimeVersion);
 
-    private sealed record ModelConfiguration(
+    internal sealed record ModelConfiguration(
         string? Model,
         string? ModelDigest,
         string? RuntimeVersion,
@@ -963,7 +1796,7 @@ internal static class Program
         int? MaxOutputTokens,
         int? MaxResponseBytes);
 
-    private sealed record ExecutionCounts(
+    internal sealed record ExecutionCounts(
         int Cases,
         int EvaluatedCases,
         int ProviderAttempts,
@@ -973,7 +1806,7 @@ internal static class Program
         int? GuardedCases,
         int? RuleBasedCases);
 
-    private sealed record EvaluationReport(
+    internal sealed record EvaluationReport(
         int SchemaVersion,
         string Split,
         string Mode,
@@ -992,7 +1825,142 @@ internal static class Program
         IReadOnlyDictionary<string, int> ProviderFailureCounts,
         LatencyScores Latency,
         UsageTotals Usage,
-        IReadOnlyList<CaseOutcome> Cases);
+        IReadOnlyList<CaseOutcome> Cases)
+    {
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public V2ReportMetadata? V2 { get; init; }
+    }
+
+    internal sealed record ProviderUsageAccounting(
+        UsageTotals Totals,
+        long? CachedPromptTokens,
+        int CachedPromptTokenResponses,
+        long? CacheMissPromptTokens,
+        int CacheMissPromptTokenResponses,
+        long? ReasoningTokens,
+        int ReasoningTokenResponses,
+        bool BaseUsageComplete,
+        string CostStatus,
+        string CostBasis,
+        decimal? EstimatedCostUsd);
+
+    internal sealed record ProviderCostEstimate(
+        decimal? EstimatedCostUsd,
+        string Status,
+        string Basis);
+
+    internal sealed record ProviderRateProfile(
+        string Id,
+        string CheckedDateLocal,
+        decimal InputUsdPerMillion,
+        decimal CachedInputUsdPerMillion,
+        decimal OutputUsdPerMillion,
+        string BillingBasis,
+        string SourceUrl);
+
+    internal sealed record ProviderModelSelection(
+        string Mode,
+        string Provider,
+        string ModelId,
+        string? ApiVersion,
+        string ReasoningSetting,
+        double? Temperature,
+        ProviderRateProfile PricingProfile);
+
+    internal sealed record ProviderRunConfiguration(
+        string Provider,
+        string Model,
+        string? ApiVersion,
+        string ReasoningSetting,
+        double? Temperature,
+        ProviderRateProfile? PricingProfile = null);
+
+    internal sealed record ProviderRunSummary(
+        string Provider,
+        string Model,
+        string? ApiVersion,
+        string PromptVersion,
+        string PromptFingerprint,
+        int SchemaVersion,
+        double? Temperature,
+        string ReasoningSetting,
+        int TimeoutSeconds,
+        int MaximumOutputTokens,
+        int MaximumResponseBytes,
+        string RetryPolicyVersion,
+        int FirstRetryBackoffSeconds,
+        int SecondRetryBackoffSeconds,
+        int MinimumJitterMilliseconds,
+        int MaximumJitterMilliseconds,
+        int MaximumLogicalCalls,
+        int MaximumHttpAttempts,
+        int MaximumRetriesPerLogicalCall,
+        int MaximumRetryAfterSeconds,
+        int LogicalCalls,
+        int ActualAttempts,
+        int Retries,
+        int NotExecutedCases,
+        int HttpSuccessResponses,
+        int ResponsesWithText,
+        int ProviderFailures,
+        string? TerminalFailureCode,
+        bool EvaluationComplete,
+        bool UsageComplete,
+        long? CachedPromptTokens,
+        int CachedPromptTokenResponses,
+        long? CacheMissPromptTokens,
+        int CacheMissPromptTokenResponses,
+        long? ReasoningTokens,
+        int ReasoningTokenResponses,
+        string CostStatus,
+        string CostBasis,
+        LatencyScores ProviderLatency,
+        IReadOnlyList<ProviderCallSummary> Calls,
+        [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        ProviderRateProfile? PricingProfile = null);
+
+    internal sealed record ProviderCallSummary(
+        int Attempt,
+        bool HttpSucceeded,
+        bool HasText,
+        double LatencyMilliseconds,
+        string? ReportedModelVersion,
+        string? SystemFingerprint,
+        string? SafeErrorCode,
+        NaturalLanguageAnalyticsProviderUsage? Usage,
+        int? HttpStatusCode);
+
+    internal sealed record CaseScoreBreakdown(
+        int Cases,
+        MetricScore StatusAccuracy,
+        MetricScore CompletePlanAccuracyOnExpectedValid,
+        IReadOnlyDictionary<string, MetricScore> ValidFieldAccuracy,
+        MetricScore ExactClarificationFieldsOnExpectedClarification,
+        MetricScore UnsupportedRejectionOnExpectedUnsupported,
+        MetricScore AdversarialRejection,
+        int NonValidExecutableOutputCount);
+
+    internal sealed record MetricBreakdown(string Metric, CaseScoreBreakdown Scores);
+
+    internal sealed record V2ReportMetadata(
+        string DatasetVersion,
+        string DatasetStatus,
+        bool HumanReviewCompleted,
+        bool HeldoutEvaluationAuthorized,
+        bool EvaluationComplete,
+        int ProposedDevelopmentCases,
+        int ProposedHeldoutCases,
+        int ProposedDevelopmentFamilies,
+        int ProposedHeldoutFamilies,
+        int PlannedCases,
+        int EvaluatedCases,
+        int NotExecutedCases,
+        IReadOnlyDictionary<string, CaseScoreBreakdown> ByLanguage,
+        IReadOnlyDictionary<string, CaseScoreBreakdown> ByInputStyle,
+        IReadOnlyDictionary<string, CaseScoreBreakdown> ByExpectedStatus,
+        IReadOnlyList<MetricBreakdown> ByExpectedMetric,
+        MetricScore AdversarialRejection,
+        ProviderRunSummary? ProviderRun);
 
     private sealed class FixedOptionsMonitor<TOptions>(TOptions value) : IOptionsMonitor<TOptions>
         where TOptions : class
@@ -1004,7 +1972,7 @@ internal static class Program
         public IDisposable? OnChange(Action<TOptions, string?> listener) => null;
     }
 
-    private sealed class EvaluationSetupException(string code) : Exception
+    internal sealed class EvaluationSetupException(string code) : Exception
     {
         public string Code { get; } = code;
     }

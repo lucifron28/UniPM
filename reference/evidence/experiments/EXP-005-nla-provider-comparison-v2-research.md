@@ -1,0 +1,47 @@
+---
+id: EXP-005
+title: NLA provider comparison v2 research
+type: experiment
+status: draft
+evidenceLevel: source-inspected
+recordedAtUtc: 2026-10-04T09:44:23Z
+sourceBranch: experiment/nla-provider-comparison-v2
+inspectedCommit: 444cd7fcca8a48468638c6d46c817e82583107a1
+---
+
+# EXP-005: NLA provider comparison v2 research
+
+**Status:** Source-inspected; no model evaluation performed
+
+**Sources checked:** 2026-10-04
+
+**Scope:** Candidate selection and controls for a bounded, synthetic-only natural-language analytics interpretation experiment. This record does not authorize production use or establish language quality.
+
+## Direct evaluation candidates
+
+| Candidate | Current API and structured output | Controls and cost notes |
+|---|---|---|
+| Google Gemini 3.8 Flash | Use model ID `gemini-3.8-flash` with the Generate Content REST API (`POST /v1beta/models/{model}:generateContent`). The model is listed as stable, with a 1,048,576-token input and 65,536-token output limit. Structured output accepts a JSON Schema subset; provider-side schema constraints still require the same local parser and validator used for every candidate. | Set thinking to `low`; `minimal` is unsupported. The 3.8 migration guide says to omit `temperature`, `top_p`, and `top_k`, so its sampling behavior cannot be exactly matched to DeepSeek. Through 2026-12-31, paid standard rates are $0.75/1M input and $3.75/1M output; from 2027-01-01 they become $1.50 and $7.50. Output billing includes thinking tokens. Implicit caching is on for eligible Gemini 2.5+ requests but has no guaranteed savings; inspect returned cache usage. **Filipino/Tagalog/Taglish interpretation evidence:** NOT FOUND in inspected first-party model/API sources. The model card reports a multilingual safety evaluation, which is not language-task quality evidence. ([Model page](https://ai.google.dev/gemini-api/docs/models/gemini-3.8-flash), [model card](https://deepmind.google/models/model-cards/gemini-3-8-flash/), [Generate Content API](https://ai.google.dev/api/generate-content), [structured output](https://ai.google.dev/gemini-api/docs/structured-output), [3.8 migration and pricing](https://ai.google.dev/gemini-api/docs/generate-content/latest-model), [pricing](https://ai.google.dev/gemini-api/docs/pricing), [caching](https://ai.google.dev/gemini-api/docs/caching)) |
+| DeepSeek V4.1 Flash | Use model ID `deepseek-flash` at `https://api.deepseek.com/chat/completions` with bearer authentication. DeepSeek’s 2026-09-10 release note maps this ID to V4.1 Flash and retires the prior V4 Flash names. Its JSON Output mode requests `response_format: {"type":"json_object"}`; it does not accept the same JSON Schema constraint as Gemini, so local strict parsing and validation remain required. The provider warns that JSON mode can occasionally return empty content. | Set thinking to disabled and cap `max_tokens` at 1,024. The endpoint accepts temperature 0–2 outside thinking mode, but no seed-based reproducibility guarantee was found. Current price per 1M tokens is peak: $0.30 cache-miss input, $0.006 cache-hit input, and $1.20 output; off-peak rates are half. Peak hours are 01:00–04:00 and 06:00–10:00 UTC Monday–Friday, excluding Chinese public holidays. Report cache-hit/miss and output tokens separately; use peak cache-miss input for any conservative estimate when timing or cache accounting is incomplete. **Filipino/Tagalog/Taglish interpretation evidence:** NOT FOUND in inspected first-party model/API sources; the published model benchmarks inspected were not Filipino intent-parsing evaluations. ([release note](https://api-docs.deepseek.com/updates/), [official model card](https://huggingface.co/deepseek-ai/DeepSeek-V4.1-Flash), [Chat Completions API](https://api-docs.deepseek.com/api/create-chat-completion/), [JSON Output](https://api-docs.deepseek.com/guides/json_mode/), [pricing](https://api-docs.deepseek.com/quick_start/pricing/), [context caching](https://api-docs.deepseek.com/guides/kv_cache/)) |
+
+The providers do not offer identical decoding controls or schema enforcement. Keep the natural-language instructions and semantic response schema equivalent, use the same local validation and scoring pipeline, and report the provider-specific controls as part of the experiment rather than describing the runs as perfectly deterministic or protocol-identical. Record returned model/version metadata (`modelVersion` where available; DeepSeek `model` and `system_fingerprint`) alongside the requested ID because stable aliases can still resolve to updated service implementations.
+
+Google rate limits are per project and model-specific across RPM, input TPM, and RPD; exact applicable limits depend on account tier and are shown in AI Studio. DeepSeek publishes account concurrency limits (2,500 concurrent requests for `deepseek-flash`) rather than an equivalent small-run RPM guarantee. Neither published limit verifies this account’s available quota or successful generation. ([Google rate limits](https://ai.google.dev/gemini-api/docs/rate-limits), [DeepSeek limits](https://api-docs.deepseek.com/quick_start/rate_limit/))
+
+## Privacy and bounded-request controls
+
+Use fictional synthetic questions only. Google states that paid-service prompts and responses are logged for a limited period for abuse monitoring, while paid-tier content is not used to improve products; free-tier content may be used for improvement. If using the stateful Interactions API, explicitly set `store=false`; do not enable search grounding, tools, uploads, or persistent context. Google points workloads requiring guaranteed zero retention to Vertex AI. ([Gemini pricing and data use](https://ai.google.dev/gemini-api/docs/pricing), [Gemini zero-data-retention guidance](https://ai.google.dev/gemini-api/docs/zdr))
+
+DeepSeek’s open-platform terms place responsibility for submitted inputs and downstream-user privacy disclosures on the developer. The current privacy policy describes collecting prompt/input content and says service data is stored in China, but it also says its policy does not govern personal-data processing for end users of downstream developer applications. I found no API-specific zero-retention or no-training commitment in the inspected docs. Treat API retention and training treatment for developer inputs as unresolved; do not send operational UniPM records, real people’s information, or other institutional data. ([Open Platform terms](https://cdn.deepseek.com/policies/en-US/deepseek-open-platform-terms-of-service.html), [privacy policy](https://cdn.deepseek.com/policies/en-US/deepseek-privacy-policy.html))
+
+For a future authorized development run, keep each candidate to at most 60 synthetic development requests, cap output at 1,024 tokens and response bodies at 16 KiB, disable redirects, set a 60-second timeout, and do not retry. Stop the run on authentication, billing/quota, or malformed-request failures instead of turning infrastructure failures into semantic misses. Estimate cost from returned input/cache/output (including reasoning where separately reported) usage and the dated provider rates; mark estimates as estimates, never as invoice totals. Actual available account tier, generation permission, credits, and limits remain unverified here.
+
+## Literature-based / NOT experimentally evaluated in UniPM
+
+The primary FILBENCH paper evaluates 27 models across Filipino, Tagalog, and Cebuano with cultural knowledge, classical NLP, reading comprehension, and generation tasks. Its reported aggregate results include Llama 4 Maverick at 67.67, Qwen2.5-72B-Instruct at 63.08, and SEA-LION v3 70B at 61.07. These are literature context only: they do not measure this project’s NLA plan extraction or unsupported-query behavior. The paper’s abstract/text reports GPT-4o as 72.23 while its Table 2 reports 72.73, so that value is omitted from the comparison. Large 70B/72B weights and Llama 4 Maverick’s 400B total parameters are outside the stated 16-GB local test setup; no separate hosting account for these models was verified. The Qwen2.5 card states support for 29+ languages without naming Filipino; the SEA-LION v3 70B-IT card lists Filipino among supported languages. Neither card establishes quality on this project’s task. ([FILBENCH paper, EMNLP 2025](https://aclanthology.org/2025.emnlp-main.127.pdf), [Qwen2.5-72B official card](https://huggingface.co/Qwen/Qwen2.5-72B-Instruct), [SEA-LION v3 70B-IT card](https://huggingface.co/aisingapore/Llama-SEA-LION-v3-70B-IT), [Meta Llama 4 model details](https://ai.meta.com/blog/llama-4-multimodal-intelligence/))
+
+For schema behavior, JSONSchemaBench evaluates six constrained-generation systems over 10,000 real-world JSON Schemas. It provides useful context for separating structural compliance from semantic interpretation, but it is not evidence that a model understands Filipino/Taglish analytics intent. ([JSONSchemaBench paper](https://arxiv.org/abs/2501.10868))
+
+## Account discovery and experiment status
+
+Root reported a read-only authenticated DeepSeek model-list request on 2026-10-04 that included `deepseek-flash` (display name `DeepSeek-V4.1-Flash`, context 1,048,576, maximum output 393,216). This is discovery evidence only: no generation call, credit/balance check, quota test, or provider quality result was made. Gemini account access was not verified. No model runs or benchmark results are reported by this research record.
