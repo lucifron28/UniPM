@@ -193,6 +193,60 @@ describe('schedule workflows', () => {
     ).toBe(true)
   })
 
+  it('explains schedule read authorization failures and keeps retry controls', async () => {
+    mockReferences(['Admin'])
+    server.use(
+      http.get(`${base}/schedules`, () =>
+        HttpResponse.json(null, { status: 403 }),
+      ),
+    )
+
+    renderWithProviders(
+      <ScheduleRegistry search={{ page: 1 }} onSearchChange={vi.fn()} />,
+    )
+
+    const accessMessages = await screen.findAllByText(
+      /Schedule reads require a GSD, Inspector, or Supervisor role\./,
+    )
+    expect(accessMessages).toHaveLength(2)
+    expect(
+      screen.getAllByText(
+        /Admin is a technical system administration role and cannot read operational schedules\./,
+      ),
+    ).toHaveLength(2)
+    expect(screen.getByRole('button', { name: 'Retry summary' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeEnabled()
+  })
+
+  it('keeps retry for transient schedule list failures', async () => {
+    let attempts = 0
+    server.use(
+      http.get(`${base}/schedules`, () => {
+        attempts++
+        return attempts === 1
+          ? HttpResponse.json(null, { status: 500 })
+          : HttpResponse.json([schedule])
+      }),
+    )
+
+    renderWithProviders(
+      <ScheduleRegistry search={{ page: 1 }} onSearchChange={vi.fn()} />,
+    )
+
+    const retry = await screen.findByRole('button', { name: 'Retry' })
+    expect(
+      screen.getByText('The schedule registry could not be loaded.'),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByText(
+        /Schedule reads require a GSD, Inspector, or Supervisor role\./,
+      ),
+    ).not.toBeInTheDocument()
+
+    await userEvent.setup().click(retry)
+    expect(await screen.findAllByText('FE-001')).not.toHaveLength(0)
+  })
+
   it('keeps the schedule filter and pagination focus after changing pages', async () => {
     const records = Array.from({ length: 11 }, (_, index) => ({
       ...schedule,
