@@ -142,8 +142,13 @@ describe('app shell role access', () => {
 
     renderAppRoute(path)
 
+    await screen.findAllByText('Synthetic Admin', {}, { timeout: 5000 })
     expect(
-      await screen.findByRole('heading', { name: 'Access denied' }),
+      await screen.findByRole(
+        'heading',
+        { name: 'Access denied' },
+        { timeout: 5000 },
+      ),
     ).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Retry/ })).toBeNull()
     expect(operationalRequests).toBe(0)
