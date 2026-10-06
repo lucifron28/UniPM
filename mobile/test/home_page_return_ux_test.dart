@@ -609,6 +609,7 @@ void main() {
 
     final startInspection = find.text('Start inspection');
     await tester.ensureVisible(startInspection);
+    await tester.pumpAndSettle();
     await tester.tap(startInspection);
     await tester.pumpAndSettle();
 
@@ -646,6 +647,7 @@ void main() {
 
     final continueBatch = find.text('Continue PM batch').first;
     await tester.ensureVisible(continueBatch);
+    await tester.pumpAndSettle();
     await tester.tap(continueBatch);
     await tester.pumpAndSettle();
 
