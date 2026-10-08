@@ -62,11 +62,12 @@ internal sealed class DevelopmentDemoSeeder(
             SignatureData = SignatureBase64,
             SignatureContentType = "image/png",
             SignatureChecksum = Convert.ToHexString(SHA256.HashData(signatureBytes)),
-            CapturedByUserId = gsdId,
+            CapturedByUserId = inspectorId,
             AcknowledgedAt = AtManila(2026, 7, 26, 9)
         });
 
         await context.SaveChangesAsync(cancellationToken);
+        var history = await CpmpDemoHistorySeeder.SeedAsync(context, inspectorId, cancellationToken);
 
         if (transaction is not null)
         {
@@ -74,11 +75,11 @@ internal sealed class DevelopmentDemoSeeder(
         }
 
         return new DevelopmentDemoSeedResult(
-            DevelopmentDemoCatalog.Assets.Count,
-            schedules.Count,
-            inspections.Count,
-            2,
-            1);
+            DevelopmentDemoCatalog.Assets.Count + history.Assets,
+            schedules.Count + history.Schedules,
+            inspections.Count + history.Inspections,
+            2 + history.Forms,
+            1 + history.Acknowledgements);
     }
 
     internal async Task<DevelopmentDemoResetResult> ResetAsync(
