@@ -21,7 +21,8 @@ internal static class CpmpDemoHistorySeeder
         var supervisorId = await context.Users.Where(user => user.Email == "supervisor@unipm.local")
             .Select(user => (Guid?)user.Id).SingleOrDefaultAsync(cancellationToken);
         var categories = new[] { "fire-extinguisher", "fire-alarm", "emergency-light", "water-drinking-station" };
-        var departments = new[] { "CCMS", "Library" };
+        // Separate fictional departments avoid adding rows to existing submitted demo batches.
+        var departments = new[] { "Demo CCMS", "Demo Library" };
         var assetCount = 0;
         var scheduleCount = 0;
         var inspectionCount = 0;
@@ -39,7 +40,7 @@ internal static class CpmpDemoHistorySeeder
             var assets = new List<Asset>();
             for (var index = 1; index <= 2; index++)
             {
-                var code = $"CPMP-DEMO-{department.ToUpperInvariant()}-{prefix}-{index:00}";
+                var code = $"CPMP-DEMO-{department.ToUpperInvariant().Replace(' ', '-')}-{prefix}-{index:00}";
                 var id = Id(code);
                 var asset = await context.Assets.SingleOrDefaultAsync(row => row.Id == id, cancellationToken);
                 if (asset is null)
@@ -49,7 +50,7 @@ internal static class CpmpDemoHistorySeeder
                     asset = new Asset
                     {
                         Id = id, AssetCode = code, AssetCategory = category, Department = department,
-                        Building = department == "CCMS" ? "CCMS Building" : "University Library",
+                        Building = department == "Demo CCMS" ? "CCMS Building" : "University Library",
                         Location = $"Fictional demo area {index}", Status = "Active",
                         QrCodeValue = AssetQrCodeValue.Create(category, id),
                         CreatedAt = At(2025, 1, 1), UpdatedAt = At(2025, 1, 1)
