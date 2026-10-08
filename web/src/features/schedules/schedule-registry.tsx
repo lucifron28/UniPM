@@ -7,6 +7,7 @@ import {
   getCoreRowModel,
   useReactTable,
 } from '@tanstack/react-table'
+import { ApiError } from '@/api/problem-details'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
@@ -38,6 +39,13 @@ export type ScheduleSearch = {
   quarter?: NonNullable<Schedule['quarter']> | undefined
   year?: number | undefined
   page?: number | undefined
+}
+
+const scheduleAccessDeniedMessage =
+  'Schedule reads require a GSD, Inspector, or Supervisor role. Admin is a technical system administration role and cannot read operational schedules.'
+
+function isScheduleAccessDenied(error: unknown) {
+  return error instanceof ApiError && error.status === 403
 }
 
 function SummaryCard({ label, count }: { label: string; count: number }) {
@@ -247,7 +255,9 @@ export function ScheduleRegistry({
       ) : allSchedules.isError || statuses.isError ? (
         <Card role="alert" className="border-[var(--error)] p-4 shadow-none">
           <p className="font-semibold text-[var(--error)]">
-            Schedule summary is currently unavailable.
+            {allSchedules.isError && isScheduleAccessDenied(allSchedules.error)
+              ? scheduleAccessDeniedMessage
+              : 'Schedule summary is currently unavailable.'}
           </p>
           <Button
             type="button"
@@ -419,7 +429,9 @@ export function ScheduleRegistry({
             Schedules unavailable
           </h2>
           <p className="mt-2 text-sm text-[var(--text-secondary)]">
-            The schedule registry could not be loaded.
+            {isScheduleAccessDenied(filteredSchedules.error)
+              ? scheduleAccessDeniedMessage
+              : 'The schedule registry could not be loaded.'}
           </p>
           <Button
             type="button"

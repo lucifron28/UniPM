@@ -34,8 +34,10 @@ body {
   box-sizing: border-box;
 }
 
-a {
-  color: inherit;
+@layer base {
+  a {
+    color: inherit;
+  }
 }
 
 button,
