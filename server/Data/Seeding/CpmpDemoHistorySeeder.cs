@@ -217,6 +217,14 @@ internal static class CpmpDemoHistorySeeder
         }
     }
 
-    private static Guid Id(string key) => new(SHA256.HashData(Encoding.UTF8.GetBytes($"unipm-cpmp-demo-v2:{key}"))[..16]);
+    private static Guid Id(string key)
+    {
+        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes($"unipm-cpmp-demo-v2:{key}"))[..16];
+        // Guid uses little-endian bytes for the version field. Emit a valid
+        // RFC UUID so client contract validation accepts these stable IDs.
+        bytes[7] = (byte)((bytes[7] & 0x0f) | 0x40);
+        bytes[8] = (byte)((bytes[8] & 0x3f) | 0x80);
+        return new Guid(bytes);
+    }
     private static DateTimeOffset At(int year, int month, int day) => new(year, month, day, 10, 0, 0, Manila);
 }
