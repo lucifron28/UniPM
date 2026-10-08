@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 
 enum DeviceLocationAccuracyMode {
@@ -176,11 +177,20 @@ class GeolocatorDeviceLocationPlatform implements DeviceLocationPlatform {
         timeLimit: timeout,
       ),
     ).timeout(timeout);
+    // geolocator_android 5.0.3 copies accuracy into AndroidPosition but
+    // drops hasAccuracy. Its native mapper omits unavailable accuracy, which
+    // becomes zero, so only a positive finite Android value is recoverable.
+    final hasAccuracy =
+        position.hasAccuracy ||
+        (!kIsWeb &&
+            defaultTargetPlatform == TargetPlatform.android &&
+            position.accuracy.isFinite &&
+            position.accuracy > 0);
     return DeviceLocationCoordinates(
       latitude: position.latitude,
       longitude: position.longitude,
-      accuracyMeters: position.hasAccuracy ? position.accuracy : null,
-      hasAccuracy: position.hasAccuracy,
+      accuracyMeters: hasAccuracy ? position.accuracy : null,
+      hasAccuracy: hasAccuracy,
       devicePositionTimestamp: position.timestamp,
       isMocked: position.isMocked,
     );
