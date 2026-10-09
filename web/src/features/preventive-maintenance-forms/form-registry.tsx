@@ -34,6 +34,16 @@ export type FormSearch = {
   page?: number | undefined
 }
 
+const emptyForms: PreventiveMaintenanceForm[] = []
+
+type FormRegistryProps = {
+  search: FormSearch
+  onSearchChange: (
+    next: FormSearch,
+    options?: { replace?: boolean; preserveScroll?: boolean },
+  ) => void
+}
+
 function AccessState({ title, message }: { title: string; message: string }) {
   return (
     <Card role="alert" className="border-[var(--warning)] shadow-none">
@@ -123,16 +133,214 @@ function FormSummary({
   )
 }
 
-export function FormRegistry({
+function FormRegistryFilters({
   search,
+  categories,
+  departments,
+  cycles,
+  optionsPending,
+  optionsError,
+  formsError,
   onSearchChange,
+  onRefreshForms,
+  onRetryOptions,
 }: {
   search: FormSearch
-  onSearchChange: (
-    next: FormSearch,
-    options?: { replace?: boolean; preserveScroll?: boolean },
-  ) => void
+  categories: string[]
+  departments: string[]
+  cycles: string[]
+  optionsPending: boolean
+  optionsError: boolean
+  formsError: boolean
+  onSearchChange: FormRegistryProps['onSearchChange']
+  onRefreshForms: () => void
+  onRetryOptions: () => void
 }) {
+  const [draft, setDraft] = useState<FormSearch>(() => ({
+    status: search.status,
+    assetCategory: search.assetCategory,
+    department: search.department,
+    pmCycle: search.pmCycle,
+    search: search.search,
+  }))
+  const apply = () =>
+    onSearchChange(
+      {
+        status: draft.status || undefined,
+        assetCategory: draft.assetCategory || undefined,
+        department: draft.department?.trim() || undefined,
+        pmCycle: draft.pmCycle || undefined,
+        search: draft.search?.trim() || undefined,
+        page: 1,
+      },
+      { preserveScroll: true },
+    )
+  const clear = () => {
+    setDraft({})
+    onSearchChange({ page: 1 }, { preserveScroll: true })
+  }
+
+  return (
+    <Card className="p-4 shadow-none">
+      <form
+        className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-5"
+        onSubmit={(event) => {
+          event.preventDefault()
+          apply()
+        }}
+      >
+        <Input
+          aria-label="Search forms"
+          placeholder="File number, building, or asset details"
+          value={draft.search ?? ''}
+          maxLength={256}
+          onChange={(event) =>
+            setDraft((current) => ({
+              ...current,
+              search: event.target.value,
+            }))
+          }
+          className="xl:col-span-2"
+        />
+        <select
+          aria-label="Form status"
+          value={draft.status ?? ''}
+          onChange={(event) =>
+            setDraft((current) => ({
+              ...current,
+              status: (event.target.value || undefined) as
+                PreventiveMaintenanceForm['status'] | undefined,
+            }))
+          }
+          className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
+        >
+          <option value="">All statuses</option>
+          {preventiveMaintenanceFormStatusCodes.map((status) => (
+            <option key={status} value={status}>
+              {formStatusLabel(status)}
+            </option>
+          ))}
+        </select>
+        <select
+          aria-label="Asset category"
+          value={draft.assetCategory ?? ''}
+          disabled={optionsPending && categories.length === 0}
+          onChange={(event) =>
+            setDraft((current) => ({
+              ...current,
+              assetCategory: event.target.value || undefined,
+            }))
+          }
+          className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
+        >
+          <option value="">All asset categories</option>
+          {assetCategoryCodes
+            .filter((category) => categories.includes(category))
+            .map((category) => (
+              <option key={category} value={category}>
+                {category.replaceAll('-', ' ')}
+              </option>
+            ))}
+        </select>
+        <select
+          aria-label="Department"
+          value={draft.department ?? ''}
+          disabled={optionsPending && departments.length === 0}
+          onChange={(event) =>
+            setDraft((current) => ({
+              ...current,
+              department: event.target.value || undefined,
+            }))
+          }
+          className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
+        >
+          <option value="">All departments</option>
+          {departments.map((department) => (
+            <option key={department} value={department}>
+              {department}
+            </option>
+          ))}
+        </select>
+        <select
+          aria-label="PM cycle"
+          value={draft.pmCycle ?? ''}
+          disabled={optionsPending && cycles.length === 0}
+          onChange={(event) =>
+            setDraft((current) => ({
+              ...current,
+              pmCycle: event.target.value || undefined,
+            }))
+          }
+          className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
+        >
+          <option value="">All PM cycles</option>
+          {cycles.map((cycle) => (
+            <option key={cycle} value={cycle}>
+              {formatPmCycle(cycle)}
+            </option>
+          ))}
+        </select>
+        <div className="flex flex-wrap gap-2 xl:col-span-5">
+          <Button type="submit">Apply filters</Button>
+          <Button type="button" variant="secondary" onClick={clear}>
+            Clear filters
+          </Button>
+          <Button type="button" variant="secondary" onClick={onRefreshForms}>
+            Refresh forms
+          </Button>
+        </div>
+      </form>
+      {(search.status ||
+        search.assetCategory ||
+        search.department ||
+        search.pmCycle ||
+        search.search) && (
+        <p
+          className="mt-4 text-sm text-[var(--text-secondary)]"
+          aria-live="polite"
+        >
+          Active filters:{' '}
+          {[
+            search.status,
+            search.assetCategory,
+            search.department,
+            search.pmCycle,
+            search.search,
+          ]
+            .filter(Boolean)
+            .join(' · ')}
+        </p>
+      )}
+      {formsError && (
+        <div
+          className="mt-3 flex flex-wrap items-center gap-3 text-sm text-[var(--error)]"
+          role="alert"
+        >
+          <span>Preventive-maintenance forms could not be loaded.</span>
+          <Button type="button" onClick={onRefreshForms}>
+            Retry
+          </Button>
+          <Button type="button" variant="secondary" onClick={clear}>
+            Clear filters
+          </Button>
+        </div>
+      )}
+      {optionsError && (
+        <div
+          className="mt-3 flex items-center gap-3 text-sm text-[var(--error)]"
+          role="alert"
+        >
+          <span>Filter options could not be loaded.</span>
+          <Button type="button" onClick={onRetryOptions}>
+            Retry options
+          </Button>
+        </div>
+      )}
+    </Card>
+  )
+}
+
+export function FormRegistry({ search, onSearchChange }: FormRegistryProps) {
   const currentUser = useCurrentUser()
   const canReview = canReviewPreventiveMaintenanceForms(currentUser.data?.roles)
   const filters = useMemo(
@@ -153,14 +361,7 @@ export function FormRegistry({
   )
   const allForms = usePreventiveMaintenanceForms({}, canReview)
   const forms = usePreventiveMaintenanceForms(filters, canReview)
-  const [draft, setDraft] = useState<FormSearch>(() => ({
-    status: search.status,
-    assetCategory: search.assetCategory,
-    department: search.department,
-    pmCycle: search.pmCycle,
-    search: search.search,
-  }))
-  const rows = forms.data ?? []
+  const rows = forms.data ?? emptyForms
   const optionRows = allForms.data ?? rows
   const categories = useMemo(
     () => [...new Set(optionRows.map((form) => form.assetCategory))].sort(),
@@ -198,22 +399,6 @@ export function FormRegistry({
   )
 
   useEffect(() => {
-    setDraft({
-      status: search.status,
-      assetCategory: search.assetCategory,
-      department: search.department,
-      pmCycle: search.pmCycle,
-      search: search.search,
-    })
-  }, [
-    search.status,
-    search.assetCategory,
-    search.department,
-    search.pmCycle,
-    search.search,
-  ])
-
-  useEffect(() => {
     if (
       forms.isSuccess &&
       !forms.isPlaceholderData &&
@@ -233,22 +418,6 @@ export function FormRegistry({
     search,
   ])
 
-  const apply = () =>
-    onSearchChange(
-      {
-        status: draft.status || undefined,
-        assetCategory: draft.assetCategory || undefined,
-        department: draft.department?.trim() || undefined,
-        pmCycle: draft.pmCycle || undefined,
-        search: draft.search?.trim() || undefined,
-        page: 1,
-      },
-      { preserveScroll: true },
-    )
-  const clear = () => {
-    setDraft({})
-    onSearchChange({ page: 1 }, { preserveScroll: true })
-  }
   const changePage = (nextPage: number) => {
     onSearchChange(
       { ...search, page: nextPage > 1 ? nextPage : undefined },
@@ -328,166 +497,25 @@ export function FormRegistry({
           source rows. Field workflow actions remain outside this web module.
         </p>
       </div>
-      <Card className="p-4 shadow-none">
-        <form
-          className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-5"
-          onSubmit={(event) => {
-            event.preventDefault()
-            apply()
-          }}
-        >
-          <Input
-            aria-label="Search forms"
-            placeholder="File number, building, or asset details"
-            value={draft.search ?? ''}
-            maxLength={256}
-            onChange={(event) =>
-              setDraft((current) => ({
-                ...current,
-                search: event.target.value,
-              }))
-            }
-            className="xl:col-span-2"
-          />
-          <select
-            aria-label="Form status"
-            value={draft.status ?? ''}
-            onChange={(event) =>
-              setDraft((current) => ({
-                ...current,
-                status: (event.target.value || undefined) as
-                  PreventiveMaintenanceForm['status'] | undefined,
-              }))
-            }
-            className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
-          >
-            <option value="">All statuses</option>
-            {preventiveMaintenanceFormStatusCodes.map((status) => (
-              <option key={status} value={status}>
-                {formStatusLabel(status)}
-              </option>
-            ))}
-          </select>
-          <select
-            aria-label="Asset category"
-            value={draft.assetCategory ?? ''}
-            disabled={allForms.isPending && categories.length === 0}
-            onChange={(event) =>
-              setDraft((current) => ({
-                ...current,
-                assetCategory: event.target.value || undefined,
-              }))
-            }
-            className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
-          >
-            <option value="">All asset categories</option>
-            {assetCategoryCodes
-              .filter((category) => categories.includes(category))
-              .map((category) => (
-                <option key={category} value={category}>
-                  {category.replaceAll('-', ' ')}
-                </option>
-              ))}
-          </select>
-          <select
-            aria-label="Department"
-            value={draft.department ?? ''}
-            disabled={allForms.isPending && departments.length === 0}
-            onChange={(event) =>
-              setDraft((current) => ({
-                ...current,
-                department: event.target.value || undefined,
-              }))
-            }
-            className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
-          >
-            <option value="">All departments</option>
-            {departments.map((department) => (
-              <option key={department} value={department}>
-                {department}
-              </option>
-            ))}
-          </select>
-          <select
-            aria-label="PM cycle"
-            value={draft.pmCycle ?? ''}
-            disabled={allForms.isPending && cycles.length === 0}
-            onChange={(event) =>
-              setDraft((current) => ({
-                ...current,
-                pmCycle: event.target.value || undefined,
-              }))
-            }
-            className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
-          >
-            <option value="">All PM cycles</option>
-            {cycles.map((cycle) => (
-              <option key={cycle} value={cycle}>
-                {formatPmCycle(cycle)}
-              </option>
-            ))}
-          </select>
-          <div className="flex flex-wrap gap-2 xl:col-span-5">
-            <Button type="submit">Apply filters</Button>
-            <Button type="button" variant="secondary" onClick={clear}>
-              Clear filters
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => void forms.refetch()}
-            >
-              Refresh forms
-            </Button>
-          </div>
-        </form>
-        {(search.status ||
-          search.assetCategory ||
-          search.department ||
-          search.pmCycle ||
-          search.search) && (
-          <p
-            className="mt-4 text-sm text-[var(--text-secondary)]"
-            aria-live="polite"
-          >
-            Active filters:{' '}
-            {[
-              search.status,
-              search.assetCategory,
-              search.department,
-              search.pmCycle,
-              search.search,
-            ]
-              .filter(Boolean)
-              .join(' · ')}
-          </p>
-        )}
-        {forms.isError && (
-          <div
-            className="mt-3 flex flex-wrap items-center gap-3 text-sm text-[var(--error)]"
-            role="alert"
-          >
-            <span>Preventive-maintenance forms could not be loaded.</span>
-            <Button type="button" onClick={() => void forms.refetch()}>
-              Retry
-            </Button>
-            <Button type="button" variant="secondary" onClick={clear}>
-              Clear filters
-            </Button>
-          </div>
-        )}
-        {allForms.isError && (
-          <div
-            className="mt-3 flex items-center gap-3 text-sm text-[var(--error)]"
-            role="alert"
-          >
-            <span>Filter options could not be loaded.</span>
-            <Button type="button" onClick={() => void allForms.refetch()}>
-              Retry options
-            </Button>
-          </div>
-        )}
-      </Card>
+      <FormRegistryFilters
+        key={JSON.stringify([
+          search.status,
+          search.assetCategory,
+          search.department,
+          search.pmCycle,
+          search.search,
+        ])}
+        search={search}
+        categories={categories}
+        departments={departments}
+        cycles={cycles}
+        optionsPending={allForms.isPending}
+        optionsError={allForms.isError}
+        formsError={forms.isError}
+        onSearchChange={onSearchChange}
+        onRefreshForms={() => void forms.refetch()}
+        onRetryOptions={() => void allForms.refetch()}
+      />
       {rows.length === 0 && (
         <p
           className="min-h-5 text-sm text-[var(--text-neutral)]"

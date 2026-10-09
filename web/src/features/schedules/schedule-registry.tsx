@@ -33,6 +33,7 @@ import {
   fromDateTimeLocal,
   formatPmCycle,
   formatPmCycleDueDate,
+  getCurrentManilaYear,
   toDateTimeLocal,
 } from '@/features/schedules/schedule-presentation'
 
@@ -77,15 +78,6 @@ function statusVariant(
   if (status === 'Overdue') return 'danger'
   if (status === 'Due' || status === 'Ongoing') return 'warning'
   return 'neutral'
-}
-
-export function getCurrentManilaYear(now = new Date()) {
-  return Number(
-    new Intl.DateTimeFormat('en', {
-      timeZone: 'Asia/Manila',
-      year: 'numeric',
-    }).format(now),
-  )
 }
 
 const createColumns = (search: ScheduleSearch) => [

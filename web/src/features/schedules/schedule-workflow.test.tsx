@@ -15,10 +15,10 @@ import { toast } from 'sonner'
 import { ScheduleCreate } from '@/features/schedules/schedule-create'
 import { ScheduleDetail } from '@/features/schedules/schedule-detail'
 import {
-  getCurrentManilaYear,
   ScheduleRegistry,
   type ScheduleSearch,
 } from '@/features/schedules/schedule-registry'
+import { getCurrentManilaYear } from '@/features/schedules/schedule-presentation'
 import { useAuthStore } from '@/stores/auth-store'
 import { server } from '@/test/server'
 

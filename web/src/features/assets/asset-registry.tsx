@@ -34,6 +34,7 @@ export type AssetSearch = {
 type AssetRow = Asset & { category: AssetCategory | undefined }
 
 const columnHelper = createColumnHelper<AssetRow>()
+const emptyAssets: Asset[] = []
 
 const createColumns = (search: AssetSearch) => [
   columnHelper.accessor('assetCode', { header: 'Asset code' }),
@@ -151,7 +152,7 @@ export function AssetRegistry({
     [categories.data],
   )
 
-  const records = filteredAssets.data ?? []
+  const records = filteredAssets.data ?? emptyAssets
   const pageSize = 10
   const pageCount = Math.max(1, Math.ceil(records.length / pageSize))
   const requestedPage = search.page ?? 1
