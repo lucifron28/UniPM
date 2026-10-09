@@ -6,7 +6,6 @@
  */
 import type { ScheduleAssigneeOption } from './scheduleAssigneeOption'
 
-export interface ScheduleAssignmentOptionsResponse {
+export interface ScheduleWorkerAssignmentOptionsResponse {
   workers: ScheduleAssigneeOption[]
-  supervisors: ScheduleAssigneeOption[]
 }

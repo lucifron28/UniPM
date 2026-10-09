@@ -677,19 +677,54 @@
     },
     "/api/v1/schedules/assignment-options": {
       "get": {
-        "tags": ["Schedules"],
-        "summary": "Lists active Inspector and Supervisor accounts for GSD batch assignment",
-        "operationId": "ListScheduleAssignmentOptions",
+        "tags": [
+          "Schedules"
+        ],
+        "summary": "Lists active Inspectors for Supervisor batch assignment",
+        "operationId": "ListScheduleWorkerAssignmentOptions",
         "responses": {
           "200": {
             "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ScheduleAssignmentOptionsResponse"
+                  "$ref": "#/components/schemas/ScheduleWorkerAssignmentOptionsResponse"
                 }
               }
             }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      }
+    },
+    "/api/v1/schedules/supervisor-assignment-options": {
+      "get": {
+        "tags": [
+          "Schedules"
+        ],
+        "summary": "Lists active Supervisors for GSD batch assignment",
+        "operationId": "ListScheduleSupervisorAssignmentOptions",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleSupervisorAssignmentOptionsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         }
       }
@@ -881,9 +916,11 @@
     },
     "/api/v1/schedules/{id}/assignment": {
       "put": {
-        "tags": ["Schedules"],
-        "summary": "Assigns the schedules in one department, category, and PM cycle batch",
-        "operationId": "AssignScheduleBatch",
+        "tags": [
+          "Schedules"
+        ],
+        "summary": "Assigns an Inspector to a PM batch owned by the authenticated Supervisor",
+        "operationId": "AssignScheduleBatchWorker",
         "parameters": [
           {
             "name": "id",
@@ -899,7 +936,85 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/AssignScheduleBatchDto"
+                "$ref": "#/components/schemas/AssignScheduleWorkerDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleAssignmentBatchResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/schedules/{id}/supervisor-assignment": {
+      "put": {
+        "tags": [
+          "Schedules"
+        ],
+        "summary": "Assigns a Supervisor to all schedules in one PM batch",
+        "operationId": "AssignScheduleBatchSupervisor",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignScheduleSupervisorDto"
               }
             }
           },
@@ -2244,14 +2359,19 @@
           }
         }
       },
-      "AssignScheduleBatchDto": {
+      "AssignScheduleSupervisorDto": {
+        "type": "object",
+        "properties": {
+          "supervisorUserId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "AssignScheduleWorkerDto": {
         "type": "object",
         "properties": {
           "workerUserId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "supervisorUserId": {
             "type": "string",
             "format": "uuid"
           }
@@ -3662,11 +3782,17 @@
             "type": "string"
           },
           "workerUserId": {
-            "type": "string",
+            "type": [
+              "null",
+              "string"
+            ],
             "format": "uuid"
           },
           "workerDisplayName": {
-            "type": "string"
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "supervisorUserId": {
             "type": "string",
@@ -3684,17 +3810,27 @@
           }
         }
       },
-      "ScheduleAssignmentOptionsResponse": {
-        "required": ["workers", "supervisors"],
+      "ScheduleSupervisorAssignmentOptionsResponse": {
+        "required": [
+          "supervisors"
+        ],
         "type": "object",
         "properties": {
-          "workers": {
+          "supervisors": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/ScheduleAssigneeOption"
             }
-          },
-          "supervisors": {
+          }
+        }
+      },
+      "ScheduleWorkerAssignmentOptionsResponse": {
+        "required": [
+          "workers"
+        ],
+        "type": "object",
+        "properties": {
+          "workers": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/ScheduleAssigneeOption"

@@ -11,6 +11,7 @@ import {
   RouterProvider,
 } from '@tanstack/react-router'
 import { configureApiRuntime } from '@/api/http-client'
+import { toast } from 'sonner'
 import { ScheduleCreate } from '@/features/schedules/schedule-create'
 import { ScheduleDetail } from '@/features/schedules/schedule-detail'
 import {
@@ -106,13 +107,19 @@ function renderWithProviders(ui: React.ReactNode) {
 function mockReferences(roles = ['GSD']) {
   server.use(
     http.get(`${base}/auth/me`, () => HttpResponse.json({ ...user, roles })),
-    http.get(`${base}/schedules/assignment-options`, () =>
+    http.get(`${base}/schedules/supervisor-assignment-options`, () =>
       roles.includes('GSD')
         ? HttpResponse.json({
-            workers: [{ id: workerId, displayName: 'Fictional Inspector' }],
             supervisors: [
               { id: supervisorId, displayName: 'Fictional Supervisor' },
             ],
+          })
+        : HttpResponse.json({}, { status: 403 }),
+    ),
+    http.get(`${base}/schedules/assignment-options`, () =>
+      roles.includes('Supervisor')
+        ? HttpResponse.json({
+            workers: [{ id: workerId, displayName: 'Fictional Inspector' }],
           })
         : HttpResponse.json({}, { status: 403 }),
     ),
@@ -151,7 +158,9 @@ function mockReferences(roles = ['GSD']) {
 
 describe('schedule workflows', () => {
   beforeEach(() => {
+    vi.restoreAllMocks()
     setupAuth()
+    vi.spyOn(toast, 'success')
     mockReferences()
   })
 
@@ -438,11 +447,57 @@ describe('schedule workflows', () => {
     expect(await screen.findByText('Schedule record error')).toBeInTheDocument()
   })
 
-  it('lets GSD assign the full department, category, and cycle batch', async () => {
+  it('lets GSD assign the Supervisor stage for the full department, category, and cycle batch', async () => {
     let requestBody: unknown
     server.use(
       http.get(`${base}/schedules/${scheduleId}`, () =>
         HttpResponse.json(schedule),
+      ),
+      http.put(
+        `${base}/schedules/${scheduleId}/supervisor-assignment`,
+        async ({ request }) => {
+          requestBody = await request.json()
+          return HttpResponse.json({
+            department: 'GSD',
+            assetCategory: 'fire-extinguisher',
+            pmCycle: '2026-08',
+            workerUserId: null,
+            workerDisplayName: null,
+            supervisorUserId: supervisorId,
+            supervisorDisplayName: 'Fictional Supervisor',
+            scheduleIds: [scheduleId, assetId],
+          })
+        },
+      ),
+    )
+
+    renderWithProviders(<ScheduleDetail scheduleId={scheduleId} />)
+    const actor = userEvent.setup()
+    expect(await screen.findByLabelText('Supervisor (oversight)')).toBeVisible()
+    await actor.selectOptions(
+      screen.getByLabelText('Supervisor (oversight)'),
+      supervisorId,
+    )
+    await actor.click(
+      screen.getByRole('button', {
+        name: 'Assign Supervisor to entire batch',
+      }),
+    )
+
+    await waitFor(() =>
+      expect(toast.success).toHaveBeenCalledWith(
+        'Supervisor assignment saved for 2 schedules.',
+      ),
+    )
+    expect(requestBody).toEqual({ supervisorUserId: supervisorId })
+    expect(screen.queryByLabelText('Skilled worker (Inspector)')).toBeNull()
+  })
+
+  it('lets only the assigned Supervisor choose an Inspector for the batch', async () => {
+    let requestBody: unknown
+    server.use(
+      http.get(`${base}/schedules/${scheduleId}`, () =>
+        HttpResponse.json({ ...schedule, assignedSupervisorUserId: user.id }),
       ),
       http.put(
         `${base}/schedules/${scheduleId}/assignment`,
@@ -454,44 +509,75 @@ describe('schedule workflows', () => {
             pmCycle: '2026-08',
             workerUserId: workerId,
             workerDisplayName: 'Fictional Inspector',
-            supervisorUserId: supervisorId,
-            supervisorDisplayName: 'Fictional Supervisor',
-            scheduleIds: [scheduleId, assetId],
+            supervisorUserId: user.id,
+            supervisorDisplayName: 'GSD User',
+            scheduleIds: [scheduleId],
           })
         },
       ),
     )
 
+    mockReferences(['Supervisor'])
     renderWithProviders(<ScheduleDetail scheduleId={scheduleId} />)
     const actor = userEvent.setup()
-    const worker = await screen.findByLabelText('Skilled worker (Inspector)')
-    await actor.selectOptions(worker, workerId)
     await actor.selectOptions(
-      screen.getByLabelText('Supervisor (oversight)'),
-      supervisorId,
+      await screen.findByLabelText('Skilled worker (Inspector)'),
+      workerId,
     )
     await actor.click(
-      screen.getByRole('button', { name: 'Assign entire batch' }),
+      screen.getByRole('button', { name: 'Assign Inspector to entire batch' }),
     )
 
+    await waitFor(() =>
+      expect(toast.success).toHaveBeenCalledWith(
+        'Inspector assignment saved for 1 schedule.',
+      ),
+    )
+    expect(requestBody).toEqual({ workerUserId: workerId })
+    expect(screen.queryByLabelText('Supervisor (oversight)')).toBeNull()
+  })
+
+  it('hides Inspector assignment from a Supervisor who does not own the batch', async () => {
+    let optionsRequested = false
+    mockReferences(['Supervisor'])
+    server.use(
+      http.get(`${base}/schedules/${scheduleId}`, () =>
+        HttpResponse.json({
+          ...schedule,
+          assignedSupervisorUserId: supervisorId,
+        }),
+      ),
+      http.get(`${base}/schedules/assignment-options`, () => {
+        optionsRequested = true
+        return HttpResponse.json({ workers: [] })
+      }),
+    )
+
+    renderWithProviders(<ScheduleDetail scheduleId={scheduleId} />)
+
     expect(
-      await screen.findByText(/Assigned 2 schedule\(s\) for GSD/),
+      await screen.findByText(
+        'Only the Supervisor assigned to this PM batch can assign or update its Inspector.',
+      ),
     ).toBeVisible()
-    expect(requestBody).toEqual({
-      workerUserId: workerId,
-      supervisorUserId: supervisorId,
-    })
+    expect(screen.queryByLabelText('Skilled worker (Inspector)')).toBeNull()
+    expect(optionsRequested).toBe(false)
   })
 
   it('does not load assignment options or show assignment controls to Inspectors', async () => {
     mockReferences(['Inspector'])
-    let optionsRequested = false
+    let supervisorOptionsRequested = false
+    let workerOptionsRequested = false
     server.use(
       http.get(`${base}/schedules/${scheduleId}`, () =>
         HttpResponse.json(schedule),
       ),
       http.get(`${base}/schedules/assignment-options`, () => {
-        optionsRequested = true
+        workerOptionsRequested = true
+        return HttpResponse.json({}, { status: 403 })
+      }),
+      http.get(`${base}/schedules/supervisor-assignment-options`, () => {
+        supervisorOptionsRequested = true
         return HttpResponse.json({}, { status: 403 })
       }),
     )
@@ -501,7 +587,8 @@ describe('schedule workflows', () => {
     await screen.findByText('Batch assignment')
     expect(screen.queryByLabelText('Skilled worker (Inspector)')).toBeNull()
     expect(screen.queryByLabelText('Supervisor (oversight)')).toBeNull()
-    expect(optionsRequested).toBe(false)
+    expect(supervisorOptionsRequested).toBe(false)
+    expect(workerOptionsRequested).toBe(false)
   })
 
   it('denies an Admin-only user and does not render a create action', async () => {

@@ -25,7 +25,8 @@ import type {
   AssetCategoryResponse,
   AssetResponse,
   AssetVerificationLocationResponse,
-  AssignScheduleBatchDto,
+  AssignScheduleSupervisorDto,
+  AssignScheduleWorkerDto,
   AuthUserResponse,
   CorrectiveMaintenanceHandoffResponse,
   CreateAssetDto,
@@ -57,10 +58,11 @@ import type {
   PreventiveMaintenanceFormResponse,
   ProblemDetails,
   ScheduleAssignmentBatchResponse,
-  ScheduleAssignmentOptionsResponse,
   ScheduleGenerationResult,
   ScheduleReferenceResponse,
   ScheduleResponse,
+  ScheduleSupervisorAssignmentOptionsResponse,
+  ScheduleWorkerAssignmentOptionsResponse,
   UpdateAssetVerificationLocationDto,
   UpdateDraftInspectionRowDto,
   ValidationProblemDetails,
@@ -1990,116 +1992,27 @@ export function useGetAssetByQr<
 }
 
 /**
- * @summary Ensures missing CPMP schedules for one calendar year
+ * @summary Lists active Inspectors for Supervisor batch assignment
  */
-export const generatePreventiveMaintenanceSchedules = (
-  generateScheduleCyclesDto: GenerateScheduleCyclesDto,
-  signal?: AbortSignal,
-) => {
-  return customInstance<ScheduleGenerationResult>({
-    url: `/api/v1/schedules/generate`,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    data: generateScheduleCyclesDto,
-    signal,
-  })
-}
-
-export const getGeneratePreventiveMaintenanceSchedulesMutationOptions = <
-  TError = ValidationProblemDetails | ProblemDetails,
-  TContext = unknown,
->(options?: {
-  mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof generatePreventiveMaintenanceSchedules>>,
-    TError,
-    { data: GenerateScheduleCyclesDto },
-    TContext
-  >
-}): UseMutationOptions<
-  Awaited<ReturnType<typeof generatePreventiveMaintenanceSchedules>>,
-  TError,
-  { data: GenerateScheduleCyclesDto },
-  TContext
-> => {
-  const mutationKey = ['generatePreventiveMaintenanceSchedules']
-  const { mutation: mutationOptions } = options
-    ? options.mutation &&
-      'mutationKey' in options.mutation &&
-      options.mutation.mutationKey
-      ? options
-      : { ...options, mutation: { ...options.mutation, mutationKey } }
-    : { mutation: { mutationKey } }
-
-  const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof generatePreventiveMaintenanceSchedules>>,
-    { data: GenerateScheduleCyclesDto }
-  > = (props) => {
-    const { data } = props ?? {}
-
-    return generatePreventiveMaintenanceSchedules(data)
-  }
-
-  return { mutationFn, ...mutationOptions }
-}
-
-export type GeneratePreventiveMaintenanceSchedulesMutationResult = NonNullable<
-  Awaited<ReturnType<typeof generatePreventiveMaintenanceSchedules>>
->
-export type GeneratePreventiveMaintenanceSchedulesMutationBody =
-  GenerateScheduleCyclesDto
-export type GeneratePreventiveMaintenanceSchedulesMutationError =
-  ValidationProblemDetails | ProblemDetails
-
-/**
- * @summary Ensures missing CPMP schedules for one calendar year
- */
-export const useGeneratePreventiveMaintenanceSchedules = <
-  TError = ValidationProblemDetails | ProblemDetails,
-  TContext = unknown,
->(
-  options?: {
-    mutation?: UseMutationOptions<
-      Awaited<ReturnType<typeof generatePreventiveMaintenanceSchedules>>,
-      TError,
-      { data: GenerateScheduleCyclesDto },
-      TContext
-    >
-  },
-  queryClient?: QueryClient,
-): UseMutationResult<
-  Awaited<ReturnType<typeof generatePreventiveMaintenanceSchedules>>,
-  TError,
-  { data: GenerateScheduleCyclesDto },
-  TContext
-> => {
-  return useMutation(
-    getGeneratePreventiveMaintenanceSchedulesMutationOptions(options),
-    queryClient,
-  )
-}
-
-/**
- * @summary Lists active Inspector and Supervisor accounts for GSD batch assignment
- */
-export const listScheduleAssignmentOptions = (signal?: AbortSignal) => {
-  return customInstance<ScheduleAssignmentOptionsResponse>({
+export const listScheduleWorkerAssignmentOptions = (signal?: AbortSignal) => {
+  return customInstance<ScheduleWorkerAssignmentOptionsResponse>({
     url: `/api/v1/schedules/assignment-options`,
     method: 'GET',
     signal,
   })
 }
 
-export const getListScheduleAssignmentOptionsQueryKey = () => {
+export const getListScheduleWorkerAssignmentOptionsQueryKey = () => {
   return [`/api/v1/schedules/assignment-options`] as const
 }
 
-export const getListScheduleAssignmentOptionsQueryOptions = <
-  TData = Awaited<ReturnType<typeof listScheduleAssignmentOptions>>,
-  TError = unknown,
+export const getListScheduleWorkerAssignmentOptionsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listScheduleWorkerAssignmentOptions>>,
+  TError = void,
 >(options?: {
   query?: Partial<
     UseQueryOptions<
-      Awaited<ReturnType<typeof listScheduleAssignmentOptions>>,
+      Awaited<ReturnType<typeof listScheduleWorkerAssignmentOptions>>,
       TError,
       TData
     >
@@ -2108,41 +2021,41 @@ export const getListScheduleAssignmentOptionsQueryOptions = <
   const { query: queryOptions } = options ?? {}
 
   const queryKey =
-    queryOptions?.queryKey ?? getListScheduleAssignmentOptionsQueryKey()
+    queryOptions?.queryKey ?? getListScheduleWorkerAssignmentOptionsQueryKey()
 
   const queryFn: QueryFunction<
-    Awaited<ReturnType<typeof listScheduleAssignmentOptions>>
-  > = ({ signal }) => listScheduleAssignmentOptions(signal)
+    Awaited<ReturnType<typeof listScheduleWorkerAssignmentOptions>>
+  > = ({ signal }) => listScheduleWorkerAssignmentOptions(signal)
 
   return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
-    Awaited<ReturnType<typeof listScheduleAssignmentOptions>>,
+    Awaited<ReturnType<typeof listScheduleWorkerAssignmentOptions>>,
     TError,
     TData
   > & { queryKey: DataTag<QueryKey, TData, TError> }
 }
 
-export type ListScheduleAssignmentOptionsQueryResult = NonNullable<
-  Awaited<ReturnType<typeof listScheduleAssignmentOptions>>
+export type ListScheduleWorkerAssignmentOptionsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listScheduleWorkerAssignmentOptions>>
 >
-export type ListScheduleAssignmentOptionsQueryError = unknown
+export type ListScheduleWorkerAssignmentOptionsQueryError = void
 
-export function useListScheduleAssignmentOptions<
-  TData = Awaited<ReturnType<typeof listScheduleAssignmentOptions>>,
-  TError = unknown,
+export function useListScheduleWorkerAssignmentOptions<
+  TData = Awaited<ReturnType<typeof listScheduleWorkerAssignmentOptions>>,
+  TError = void,
 >(
   options: {
     query: Partial<
       UseQueryOptions<
-        Awaited<ReturnType<typeof listScheduleAssignmentOptions>>,
+        Awaited<ReturnType<typeof listScheduleWorkerAssignmentOptions>>,
         TError,
         TData
       >
     > &
       Pick<
         DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof listScheduleAssignmentOptions>>,
+          Awaited<ReturnType<typeof listScheduleWorkerAssignmentOptions>>,
           TError,
-          Awaited<ReturnType<typeof listScheduleAssignmentOptions>>
+          Awaited<ReturnType<typeof listScheduleWorkerAssignmentOptions>>
         >,
         'initialData'
       >
@@ -2151,23 +2064,23 @@ export function useListScheduleAssignmentOptions<
 ): DefinedUseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>
 }
-export function useListScheduleAssignmentOptions<
-  TData = Awaited<ReturnType<typeof listScheduleAssignmentOptions>>,
-  TError = unknown,
+export function useListScheduleWorkerAssignmentOptions<
+  TData = Awaited<ReturnType<typeof listScheduleWorkerAssignmentOptions>>,
+  TError = void,
 >(
   options?: {
     query?: Partial<
       UseQueryOptions<
-        Awaited<ReturnType<typeof listScheduleAssignmentOptions>>,
+        Awaited<ReturnType<typeof listScheduleWorkerAssignmentOptions>>,
         TError,
         TData
       >
     > &
       Pick<
         UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof listScheduleAssignmentOptions>>,
+          Awaited<ReturnType<typeof listScheduleWorkerAssignmentOptions>>,
           TError,
-          Awaited<ReturnType<typeof listScheduleAssignmentOptions>>
+          Awaited<ReturnType<typeof listScheduleWorkerAssignmentOptions>>
         >,
         'initialData'
       >
@@ -2176,14 +2089,14 @@ export function useListScheduleAssignmentOptions<
 ): UseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>
 }
-export function useListScheduleAssignmentOptions<
-  TData = Awaited<ReturnType<typeof listScheduleAssignmentOptions>>,
-  TError = unknown,
+export function useListScheduleWorkerAssignmentOptions<
+  TData = Awaited<ReturnType<typeof listScheduleWorkerAssignmentOptions>>,
+  TError = void,
 >(
   options?: {
     query?: Partial<
       UseQueryOptions<
-        Awaited<ReturnType<typeof listScheduleAssignmentOptions>>,
+        Awaited<ReturnType<typeof listScheduleWorkerAssignmentOptions>>,
         TError,
         TData
       >
@@ -2194,17 +2107,17 @@ export function useListScheduleAssignmentOptions<
   queryKey: DataTag<QueryKey, TData, TError>
 }
 /**
- * @summary Lists active Inspector and Supervisor accounts for GSD batch assignment
+ * @summary Lists active Inspectors for Supervisor batch assignment
  */
 
-export function useListScheduleAssignmentOptions<
-  TData = Awaited<ReturnType<typeof listScheduleAssignmentOptions>>,
-  TError = unknown,
+export function useListScheduleWorkerAssignmentOptions<
+  TData = Awaited<ReturnType<typeof listScheduleWorkerAssignmentOptions>>,
+  TError = void,
 >(
   options?: {
     query?: Partial<
       UseQueryOptions<
-        Awaited<ReturnType<typeof listScheduleAssignmentOptions>>,
+        Awaited<ReturnType<typeof listScheduleWorkerAssignmentOptions>>,
         TError,
         TData
       >
@@ -2214,7 +2127,158 @@ export function useListScheduleAssignmentOptions<
 ): UseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>
 } {
-  const queryOptions = getListScheduleAssignmentOptionsQueryOptions(options)
+  const queryOptions =
+    getListScheduleWorkerAssignmentOptionsQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+
+  return withQueryKey(query, queryOptions.queryKey)
+}
+
+/**
+ * @summary Lists active Supervisors for GSD batch assignment
+ */
+export const listScheduleSupervisorAssignmentOptions = (
+  signal?: AbortSignal,
+) => {
+  return customInstance<ScheduleSupervisorAssignmentOptionsResponse>({
+    url: `/api/v1/schedules/supervisor-assignment-options`,
+    method: 'GET',
+    signal,
+  })
+}
+
+export const getListScheduleSupervisorAssignmentOptionsQueryKey = () => {
+  return [`/api/v1/schedules/supervisor-assignment-options`] as const
+}
+
+export const getListScheduleSupervisorAssignmentOptionsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listScheduleSupervisorAssignmentOptions>>,
+  TError = void,
+>(options?: {
+  query?: Partial<
+    UseQueryOptions<
+      Awaited<ReturnType<typeof listScheduleSupervisorAssignmentOptions>>,
+      TError,
+      TData
+    >
+  >
+}) => {
+  const { query: queryOptions } = options ?? {}
+
+  const queryKey =
+    queryOptions?.queryKey ??
+    getListScheduleSupervisorAssignmentOptionsQueryKey()
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listScheduleSupervisorAssignmentOptions>>
+  > = ({ signal }) => listScheduleSupervisorAssignmentOptions(signal)
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listScheduleSupervisorAssignmentOptions>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListScheduleSupervisorAssignmentOptionsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listScheduleSupervisorAssignmentOptions>>
+>
+export type ListScheduleSupervisorAssignmentOptionsQueryError = void
+
+export function useListScheduleSupervisorAssignmentOptions<
+  TData = Awaited<ReturnType<typeof listScheduleSupervisorAssignmentOptions>>,
+  TError = void,
+>(
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listScheduleSupervisorAssignmentOptions>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listScheduleSupervisorAssignmentOptions>>,
+          TError,
+          Awaited<ReturnType<typeof listScheduleSupervisorAssignmentOptions>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useListScheduleSupervisorAssignmentOptions<
+  TData = Awaited<ReturnType<typeof listScheduleSupervisorAssignmentOptions>>,
+  TError = void,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listScheduleSupervisorAssignmentOptions>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listScheduleSupervisorAssignmentOptions>>,
+          TError,
+          Awaited<ReturnType<typeof listScheduleSupervisorAssignmentOptions>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useListScheduleSupervisorAssignmentOptions<
+  TData = Awaited<ReturnType<typeof listScheduleSupervisorAssignmentOptions>>,
+  TError = void,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listScheduleSupervisorAssignmentOptions>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+/**
+ * @summary Lists active Supervisors for GSD batch assignment
+ */
+
+export function useListScheduleSupervisorAssignmentOptions<
+  TData = Awaited<ReturnType<typeof listScheduleSupervisorAssignmentOptions>>,
+  TError = void,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listScheduleSupervisorAssignmentOptions>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+} {
+  const queryOptions =
+    getListScheduleSupervisorAssignmentOptionsQueryOptions(options)
 
   const query = useQuery(queryOptions, queryClient) as UseQueryResult<
     TData,
@@ -2446,39 +2510,39 @@ export function useListSchedules<
 }
 
 /**
- * @summary Assigns the schedules in one department, category, and PM cycle batch
+ * @summary Assigns an Inspector to a PM batch owned by the authenticated Supervisor
  */
-export const assignScheduleBatch = (
+export const assignScheduleBatchWorker = (
   id: string,
-  assignScheduleBatchDto: AssignScheduleBatchDto,
+  assignScheduleWorkerDto: AssignScheduleWorkerDto,
   signal?: AbortSignal,
 ) => {
   return customInstance<ScheduleAssignmentBatchResponse>({
     url: `/api/v1/schedules/${id}/assignment`,
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    data: assignScheduleBatchDto,
+    data: assignScheduleWorkerDto,
     signal,
   })
 }
 
-export const getAssignScheduleBatchMutationOptions = <
+export const getAssignScheduleBatchWorkerMutationOptions = <
   TError = ValidationProblemDetails | void | ProblemDetails,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof assignScheduleBatch>>,
+    Awaited<ReturnType<typeof assignScheduleBatchWorker>>,
     TError,
-    { id: string; data: AssignScheduleBatchDto },
+    { id: string; data: AssignScheduleWorkerDto },
     TContext
   >
 }): UseMutationOptions<
-  Awaited<ReturnType<typeof assignScheduleBatch>>,
+  Awaited<ReturnType<typeof assignScheduleBatchWorker>>,
   TError,
-  { id: string; data: AssignScheduleBatchDto },
+  { id: string; data: AssignScheduleWorkerDto },
   TContext
 > => {
-  const mutationKey = ['assignScheduleBatch']
+  const mutationKey = ['assignScheduleBatchWorker']
   const { mutation: mutationOptions } = options
     ? options.mutation &&
       'mutationKey' in options.mutation &&
@@ -2488,48 +2552,138 @@ export const getAssignScheduleBatchMutationOptions = <
     : { mutation: { mutationKey } }
 
   const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof assignScheduleBatch>>,
-    { id: string; data: AssignScheduleBatchDto }
+    Awaited<ReturnType<typeof assignScheduleBatchWorker>>,
+    { id: string; data: AssignScheduleWorkerDto }
   > = (props) => {
     const { id, data } = props ?? {}
 
-    return assignScheduleBatch(id, data)
+    return assignScheduleBatchWorker(id, data)
   }
 
   return { mutationFn, ...mutationOptions }
 }
 
-export type AssignScheduleBatchMutationResult = NonNullable<
-  Awaited<ReturnType<typeof assignScheduleBatch>>
+export type AssignScheduleBatchWorkerMutationResult = NonNullable<
+  Awaited<ReturnType<typeof assignScheduleBatchWorker>>
 >
-export type AssignScheduleBatchMutationBody = AssignScheduleBatchDto
-export type AssignScheduleBatchMutationError =
+export type AssignScheduleBatchWorkerMutationBody = AssignScheduleWorkerDto
+export type AssignScheduleBatchWorkerMutationError =
   ValidationProblemDetails | void | ProblemDetails
 
 /**
- * @summary Assigns the schedules in one department, category, and PM cycle batch
+ * @summary Assigns an Inspector to a PM batch owned by the authenticated Supervisor
  */
-export const useAssignScheduleBatch = <
+export const useAssignScheduleBatchWorker = <
   TError = ValidationProblemDetails | void | ProblemDetails,
   TContext = unknown,
 >(
   options?: {
     mutation?: UseMutationOptions<
-      Awaited<ReturnType<typeof assignScheduleBatch>>,
+      Awaited<ReturnType<typeof assignScheduleBatchWorker>>,
       TError,
-      { id: string; data: AssignScheduleBatchDto },
+      { id: string; data: AssignScheduleWorkerDto },
       TContext
     >
   },
   queryClient?: QueryClient,
 ): UseMutationResult<
-  Awaited<ReturnType<typeof assignScheduleBatch>>,
+  Awaited<ReturnType<typeof assignScheduleBatchWorker>>,
   TError,
-  { id: string; data: AssignScheduleBatchDto },
+  { id: string; data: AssignScheduleWorkerDto },
   TContext
 > => {
   return useMutation(
-    getAssignScheduleBatchMutationOptions(options),
+    getAssignScheduleBatchWorkerMutationOptions(options),
+    queryClient,
+  )
+}
+
+/**
+ * @summary Assigns a Supervisor to all schedules in one PM batch
+ */
+export const assignScheduleBatchSupervisor = (
+  id: string,
+  assignScheduleSupervisorDto: AssignScheduleSupervisorDto,
+  signal?: AbortSignal,
+) => {
+  return customInstance<ScheduleAssignmentBatchResponse>({
+    url: `/api/v1/schedules/${id}/supervisor-assignment`,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    data: assignScheduleSupervisorDto,
+    signal,
+  })
+}
+
+export const getAssignScheduleBatchSupervisorMutationOptions = <
+  TError = ValidationProblemDetails | void | ProblemDetails,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof assignScheduleBatchSupervisor>>,
+    TError,
+    { id: string; data: AssignScheduleSupervisorDto },
+    TContext
+  >
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof assignScheduleBatchSupervisor>>,
+  TError,
+  { id: string; data: AssignScheduleSupervisorDto },
+  TContext
+> => {
+  const mutationKey = ['assignScheduleBatchSupervisor']
+  const { mutation: mutationOptions } = options
+    ? options.mutation &&
+      'mutationKey' in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey } }
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof assignScheduleBatchSupervisor>>,
+    { id: string; data: AssignScheduleSupervisorDto }
+  > = (props) => {
+    const { id, data } = props ?? {}
+
+    return assignScheduleBatchSupervisor(id, data)
+  }
+
+  return { mutationFn, ...mutationOptions }
+}
+
+export type AssignScheduleBatchSupervisorMutationResult = NonNullable<
+  Awaited<ReturnType<typeof assignScheduleBatchSupervisor>>
+>
+export type AssignScheduleBatchSupervisorMutationBody =
+  AssignScheduleSupervisorDto
+export type AssignScheduleBatchSupervisorMutationError =
+  ValidationProblemDetails | void | ProblemDetails
+
+/**
+ * @summary Assigns a Supervisor to all schedules in one PM batch
+ */
+export const useAssignScheduleBatchSupervisor = <
+  TError = ValidationProblemDetails | void | ProblemDetails,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof assignScheduleBatchSupervisor>>,
+      TError,
+      { id: string; data: AssignScheduleSupervisorDto },
+      TContext
+    >
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof assignScheduleBatchSupervisor>>,
+  TError,
+  { id: string; data: AssignScheduleSupervisorDto },
+  TContext
+> => {
+  return useMutation(
+    getAssignScheduleBatchSupervisorMutationOptions(options),
     queryClient,
   )
 }
@@ -4748,6 +4902,95 @@ export const useInterpretPmAnalyticsQuestion = <
 > => {
   return useMutation(
     getInterpretPmAnalyticsQuestionMutationOptions(options),
+    queryClient,
+  )
+}
+
+/**
+ * @summary Ensures missing CPMP schedules for one calendar year
+ */
+export const generatePreventiveMaintenanceSchedules = (
+  generateScheduleCyclesDto: GenerateScheduleCyclesDto,
+  signal?: AbortSignal,
+) => {
+  return customInstance<ScheduleGenerationResult>({
+    url: `/api/v1/schedules/generate`,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    data: generateScheduleCyclesDto,
+    signal,
+  })
+}
+
+export const getGeneratePreventiveMaintenanceSchedulesMutationOptions = <
+  TError = ValidationProblemDetails | ProblemDetails,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof generatePreventiveMaintenanceSchedules>>,
+    TError,
+    { data: GenerateScheduleCyclesDto },
+    TContext
+  >
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof generatePreventiveMaintenanceSchedules>>,
+  TError,
+  { data: GenerateScheduleCyclesDto },
+  TContext
+> => {
+  const mutationKey = ['generatePreventiveMaintenanceSchedules']
+  const { mutation: mutationOptions } = options
+    ? options.mutation &&
+      'mutationKey' in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey } }
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof generatePreventiveMaintenanceSchedules>>,
+    { data: GenerateScheduleCyclesDto }
+  > = (props) => {
+    const { data } = props ?? {}
+
+    return generatePreventiveMaintenanceSchedules(data)
+  }
+
+  return { mutationFn, ...mutationOptions }
+}
+
+export type GeneratePreventiveMaintenanceSchedulesMutationResult = NonNullable<
+  Awaited<ReturnType<typeof generatePreventiveMaintenanceSchedules>>
+>
+export type GeneratePreventiveMaintenanceSchedulesMutationBody =
+  GenerateScheduleCyclesDto
+export type GeneratePreventiveMaintenanceSchedulesMutationError =
+  ValidationProblemDetails | ProblemDetails
+
+/**
+ * @summary Ensures missing CPMP schedules for one calendar year
+ */
+export const useGeneratePreventiveMaintenanceSchedules = <
+  TError = ValidationProblemDetails | ProblemDetails,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof generatePreventiveMaintenanceSchedules>>,
+      TError,
+      { data: GenerateScheduleCyclesDto },
+      TContext
+    >
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof generatePreventiveMaintenanceSchedules>>,
+  TError,
+  { data: GenerateScheduleCyclesDto },
+  TContext
+> => {
+  return useMutation(
+    getGeneratePreventiveMaintenanceSchedulesMutationOptions(options),
     queryClient,
   )
 }
