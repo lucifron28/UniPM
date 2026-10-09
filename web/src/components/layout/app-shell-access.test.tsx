@@ -108,12 +108,15 @@ describe('app shell role access and layout', () => {
     expect(sidebar.className).toContain('lg:h-screen')
     expect(sidebar.className).toContain('lg:overflow-hidden')
 
-    const [desktopNav, mobileNav] = screen.getAllByRole('navigation', {
+    const navs = screen.getAllByRole('navigation', {
       name: 'Primary',
     })
+    expect(navs).toHaveLength(2)
+    const desktopNav = navs[0]!
+    const mobileNav = navs[1]!
     expect(desktopNav.className).toContain('min-h-0')
     expect(desktopNav.className).toContain('overflow-y-auto')
-    expect(mobileNav.className).toContain('overflow-x-auto')
+    expect(mobileNav.className).toContain('flex-wrap')
 
     const footer = sidebar.lastElementChild
     expect(footer?.className).toContain('shrink-0')

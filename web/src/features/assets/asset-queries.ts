@@ -16,13 +16,14 @@ import {
 
 export type AssetServerFilters = Pick<
   ListAssetsParams,
-  'assetCategory' | 'status' | 'building' | 'department'
+  'assetCategory' | 'status' | 'building' | 'department' | 'search'
 >
 
 export function useAssets(filters: AssetServerFilters = {}) {
   return useQuery({
     queryKey: getListAssetsQueryKey(filters),
     queryFn: ({ signal }) => listAssets(filters, signal).then(parseAssets),
+    placeholderData: (previousData) => previousData,
   })
 }
 

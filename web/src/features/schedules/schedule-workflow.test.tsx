@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import { useState } from 'react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
@@ -191,6 +191,70 @@ describe('schedule workflows', () => {
           url.searchParams.get('to') === '2026-08-31T23:59:59.000Z',
       ),
     ).toBe(true)
+  })
+
+  it('applies the combined schedule filters only after submission and keeps them in the detail return', async () => {
+    const urls: URL[] = []
+    server.use(
+      http.get(`${base}/schedules`, ({ request }) => {
+        urls.push(new URL(request.url))
+        return HttpResponse.json([schedule])
+      }),
+    )
+
+    function FilterHarness() {
+      const [search, setSearch] = useState<ScheduleSearch>({})
+      return (
+        <ScheduleRegistry
+          search={search}
+          onSearchChange={(next) => setSearch(next)}
+        />
+      )
+    }
+
+    renderWithProviders(<FilterHarness />)
+    const actor = userEvent.setup()
+    const detailLinks = await screen.findAllByRole('link', {
+      name: 'View details',
+    })
+    expect(detailLinks).toHaveLength(2)
+    expect(urls).toHaveLength(1)
+
+    await actor.type(
+      screen.getByRole('textbox', { name: 'Search schedules' }),
+      'FE-001',
+    )
+    await actor.selectOptions(
+      screen.getByLabelText('Asset category'),
+      'fire-alarm',
+    )
+    await actor.selectOptions(screen.getByLabelText('Department'), 'GSD')
+    expect(urls).toHaveLength(1)
+
+    await actor.click(screen.getByRole('button', { name: 'Apply filters' }))
+    await waitFor(() => {
+      expect(
+        urls.some((url) => url.searchParams.get('search') === 'FE-001'),
+      ).toBe(true)
+    })
+    const applied = urls.find(
+      (url) => url.searchParams.get('search') === 'FE-001',
+    )
+    expect(applied?.searchParams.get('assetCategory')).toBe('fire-alarm')
+    expect(applied?.searchParams.get('department')).toBe('GSD')
+
+    const href = screen
+      .getAllByRole('link', { name: 'View details' })[0]!
+      .getAttribute('href')
+    const returnContext = JSON.parse(
+      new URL(href!, 'http://localhost').searchParams.get('returnContext')!,
+    )
+    expect(returnContext.search).toMatchObject({
+      assetCategory: 'fire-alarm',
+      department: 'GSD',
+      search: 'FE-001',
+      page: 1,
+    })
   })
 
   it('explains schedule read authorization failures and keeps retry controls', async () => {

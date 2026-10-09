@@ -33,6 +33,7 @@ export function useSchedules(filters: ScheduleServerFilters = {}) {
     queryKey: getListSchedulesQueryKey(filters),
     queryFn: ({ signal }) =>
       listSchedules(filters, signal).then(parseSchedules),
+    placeholderData: (previousData) => previousData,
   })
 }
 

@@ -5,23 +5,28 @@ import {
   getGetPmPeriodDashboardQueryKey,
   getGetPreventiveMaintenanceFormQueryKey,
   getListPreventiveMaintenanceFormsQueryKey,
-  getPreventiveMaintenanceForm,
   listPreventiveMaintenanceForms,
+  getPreventiveMaintenanceForm,
   useAcknowledgePreventiveMaintenanceForm,
 } from '@/api/generated/endpoints'
+import type { ListPreventiveMaintenanceFormsParams } from '@/api/generated/models'
 import {
   parseCorrectiveMaintenanceHandoff,
   parsePreventiveMaintenanceForm,
   parsePreventiveMaintenanceForms,
 } from '@/features/preventive-maintenance-forms/form-contract'
 
-export function usePreventiveMaintenanceForms(enabled = true) {
+export function usePreventiveMaintenanceForms(
+  filters: ListPreventiveMaintenanceFormsParams = {},
+  enabled = true,
+) {
   return useQuery({
-    queryKey: getListPreventiveMaintenanceFormsQueryKey(),
+    queryKey: getListPreventiveMaintenanceFormsQueryKey(filters),
     queryFn: ({ signal }) =>
-      listPreventiveMaintenanceForms(signal).then(
+      listPreventiveMaintenanceForms(filters, signal).then(
         parsePreventiveMaintenanceForms,
       ),
+    placeholderData: (previousData) => previousData,
     enabled,
   })
 }

@@ -53,7 +53,11 @@ export function DetailBackLink({
       )
     case 'formRegistry':
       return (
-        <Link to="/app/preventive-maintenance-forms" className={className}>
+        <Link
+          to="/app/preventive-maintenance-forms"
+          search={target.search}
+          className={className}
+        >
           {target.label}
         </Link>
       )

@@ -15,10 +15,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import type { Asset, AssetCategory } from '@/features/assets/asset-contract'
 import { assetStatusCodes } from '@/features/assets/asset-contract'
 import { useAssetCategories, useAssets } from '@/features/assets/asset-queries'
-import {
-  assetSearchText,
-  categoryLabel,
-} from '@/features/assets/asset-presentation'
+import { categoryLabel } from '@/features/assets/asset-presentation'
 import { useCurrentUser } from '@/features/auth/current-user'
 import {
   RegistryLoadingPanel,
@@ -125,15 +122,27 @@ export function AssetRegistry({
     ...(search.status ? { status: search.status } : {}),
     ...(search.building ? { building: search.building } : {}),
     ...(search.department ? { department: search.department } : {}),
+    ...(search.text ? { search: search.text } : {}),
   }
   const filteredAssets = useAssets(serverFilters)
   const [text, setText] = useState(search.text ?? '')
   const [building, setBuilding] = useState(search.building ?? '')
   const [department, setDepartment] = useState(search.department ?? '')
+  const [assetCategory, setAssetCategory] = useState<
+    Asset['assetCategory'] | ''
+  >(search.assetCategory ?? '')
+  const [status, setStatus] = useState<Asset['status'] | ''>(
+    search.status ?? '',
+  )
 
   useEffect(() => setText(search.text ?? ''), [search.text])
   useEffect(() => setBuilding(search.building ?? ''), [search.building])
   useEffect(() => setDepartment(search.department ?? ''), [search.department])
+  useEffect(
+    () => setAssetCategory(search.assetCategory ?? ''),
+    [search.assetCategory],
+  )
+  useEffect(() => setStatus(search.status ?? ''), [search.status])
 
   const canCreate = currentUser.data?.roles.includes('GSD') ?? false
   const categoryByCode = useMemo(
@@ -142,21 +151,14 @@ export function AssetRegistry({
     [categories.data],
   )
 
-  const committedText = (search.text ?? '').trim().toLocaleLowerCase()
-  const textFiltered = useMemo(() => {
-    const records = filteredAssets.data ?? []
-    return records.filter((asset) =>
-      assetSearchText(asset).includes(committedText),
-    )
-  }, [filteredAssets.data, committedText])
-
+  const records = filteredAssets.data ?? []
   const pageSize = 10
-  const pageCount = Math.max(1, Math.ceil(textFiltered.length / pageSize))
+  const pageCount = Math.max(1, Math.ceil(records.length / pageSize))
   const requestedPage = search.page ?? 1
   const page = Math.min(Math.max(requestedPage, 1), pageCount)
   const pageData = useMemo(
-    () => textFiltered.slice((page - 1) * pageSize, page * pageSize),
-    [textFiltered, page, pageSize],
+    () => records.slice((page - 1) * pageSize, page * pageSize),
+    [records, page, pageSize],
   )
 
   const changePage = (nextPage: number) => {
@@ -167,16 +169,27 @@ export function AssetRegistry({
   }
 
   useEffect(() => {
-    if (filteredAssets.isSuccess && search.page && search.page > pageCount) {
+    if (
+      filteredAssets.isSuccess &&
+      !filteredAssets.isPlaceholderData &&
+      search.page &&
+      search.page > pageCount
+    ) {
       onSearchChange(
         {
           ...search,
           page: pageCount > 1 ? pageCount : undefined,
         },
-        { replace: true },
+        { replace: true, preserveScroll: true },
       )
     }
-  }, [filteredAssets.isSuccess, search, pageCount, onSearchChange])
+  }, [
+    filteredAssets.isSuccess,
+    filteredAssets.isPlaceholderData,
+    search,
+    pageCount,
+    onSearchChange,
+  ])
 
   const tableColumns = useMemo(() => createColumns(search), [search])
   const tableData = useMemo(
@@ -221,13 +234,26 @@ export function AssetRegistry({
   )
 
   const apply = () =>
-    onSearchChange({
-      ...search,
-      text: text.trim() || undefined,
-      building: building || undefined,
-      department: department || undefined,
-      page: 1,
-    })
+    onSearchChange(
+      {
+        assetCategory: assetCategory || undefined,
+        status: status || undefined,
+        text: text.trim() || undefined,
+        building: building || undefined,
+        department: department || undefined,
+        page: 1,
+      },
+      { preserveScroll: true },
+    )
+
+  const clear = () => {
+    setText('')
+    setBuilding('')
+    setDepartment('')
+    setAssetCategory('')
+    setStatus('')
+    onSearchChange({ page: 1 }, { preserveScroll: true })
+  }
 
   return (
     <section aria-labelledby="assets-title" className="space-y-6">
@@ -317,6 +343,7 @@ export function AssetRegistry({
             <Input
               id="asset-search"
               value={text}
+              maxLength={256}
               onChange={(event) => setText(event.target.value)}
               placeholder="Asset code, QR, building, department, or location"
               className="pl-9"
@@ -342,16 +369,13 @@ export function AssetRegistry({
           ) : (
             <select
               aria-label="Asset category"
-              value={search.assetCategory ?? ''}
+              value={assetCategory}
               onChange={(event) =>
-                onSearchChange({
-                  ...search,
-                  assetCategory: (event.target.value || undefined) as
-                    Asset['assetCategory'] | undefined,
-                  page: 1,
-                })
+                setAssetCategory(
+                  (event.target.value || '') as Asset['assetCategory'] | '',
+                )
               }
-              className="min-h-10 rounded-lg border border-[var(--border-soft)] bg-white px-3 text-sm"
+              className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
             >
               <option value="">All categories</option>
               {(categories.data ?? []).map((category) => (
@@ -363,16 +387,11 @@ export function AssetRegistry({
           )}
           <select
             aria-label="Asset status"
-            value={search.status ?? ''}
+            value={status}
             onChange={(event) =>
-              onSearchChange({
-                ...search,
-                status: (event.target.value || undefined) as
-                  Asset['status'] | undefined,
-                page: 1,
-              })
+              setStatus((event.target.value || '') as Asset['status'] | '')
             }
-            className="min-h-10 rounded-lg border border-[var(--border-soft)] bg-white px-3 text-sm"
+            className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
           >
             <option value="">All statuses</option>
             {assetStatusCodes.map((status) => (
@@ -385,7 +404,7 @@ export function AssetRegistry({
             aria-label="Building"
             value={building}
             onChange={(event) => setBuilding(event.target.value)}
-            className="min-h-10 rounded-lg border border-[var(--border-soft)] bg-white px-3 text-sm"
+            className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
           >
             <option value="">All buildings</option>
             {buildings.map((value) => (
@@ -396,7 +415,7 @@ export function AssetRegistry({
             aria-label="Department"
             value={department}
             onChange={(event) => setDepartment(event.target.value)}
-            className="min-h-10 rounded-lg border border-[var(--border-soft)] bg-white px-3 text-sm"
+            className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
           >
             <option value="">All departments</option>
             {departments.map((value) => (
@@ -405,17 +424,8 @@ export function AssetRegistry({
           </select>
           <div className="flex gap-2 xl:col-span-6">
             <Button type="submit">Apply filters</Button>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => {
-                setText('')
-                setBuilding('')
-                setDepartment('')
-                onSearchChange({ page: 1 })
-              }}
-            >
-              Clear
+            <Button type="button" variant="secondary" onClick={clear}>
+              Clear filters
             </Button>
           </div>
         </form>
@@ -442,6 +452,16 @@ export function AssetRegistry({
         )}
       </Card>
 
+      {records.length === 0 &&
+        filteredAssets.isFetching &&
+        !filteredAssets.isPending && (
+          <p
+            className="min-h-5 text-sm text-[var(--text-neutral)]"
+            role="status"
+          >
+            Updating results...
+          </p>
+        )}
       {filteredAssets.isPending ? (
         <RegistryLoadingPanel
           breakpoint="lg"
@@ -478,7 +498,7 @@ export function AssetRegistry({
             There are currently no assets registered in the system repository.
           </p>
         </Card>
-      ) : textFiltered.length === 0 ? (
+      ) : records.length === 0 ? (
         <Card className="p-6 text-center shadow-none">
           <h2 className="text-lg font-semibold text-[var(--text-primary)]">
             No assets match the current filters.
@@ -492,6 +512,7 @@ export function AssetRegistry({
           label="Assets"
           breakpoint="lg"
           viewportSize="compact"
+          isUpdating={filteredAssets.isFetching}
           desktopContent={
             <table className="w-full text-left text-sm">
               <thead className="border-b border-[var(--border-soft)] bg-[var(--page-background)]">
@@ -598,7 +619,7 @@ export function AssetRegistry({
           pagination={{
             page,
             pageSize,
-            total: textFiltered.length,
+            total: records.length,
             onPageChange: changePage,
           }}
         />

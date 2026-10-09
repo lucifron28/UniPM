@@ -5,6 +5,7 @@ import {
   waitFor,
   within,
 } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import {
   createMemoryHistory,
@@ -334,16 +335,17 @@ describe('preventive-maintenance form review', () => {
       ),
     )
 
-    renderWithProviders(<FormRegistry />)
+    renderWithProviders(<FormRegistry search={{}} onSearchChange={vi.fn()} />)
 
     expect(
       await screen.findByRole('heading', { name: 'Form review' }),
     ).toBeInTheDocument()
-    expect(screen.getByText('Draft')).toBeInTheDocument()
-    expect(screen.getByText('Awaiting acknowledgement')).toBeInTheDocument()
-    expect(screen.getByText('Acknowledged')).toBeInTheDocument()
-    expect(screen.getAllByText('Main Building / GSD')).toHaveLength(3)
-    expect(screen.getAllByText('Inspection rows')).toHaveLength(3)
+    expect(screen.getAllByText('Draft')).toHaveLength(3)
+    expect(screen.getAllByText('Awaiting acknowledgement')).toHaveLength(3)
+    expect(screen.getAllByText('Acknowledged')).toHaveLength(3)
+    // jsdom includes both responsive lists: three forms rendered twice.
+    expect(screen.getAllByText('Main Building / GSD')).toHaveLength(6)
+    expect(screen.getAllByText('Inspection rows')).toHaveLength(6)
     expect(screen.queryByText(formId)).not.toBeInTheDocument()
     expect(
       screen.queryByText('77777777-7777-4777-8777-777777777777'),
@@ -352,11 +354,109 @@ describe('preventive-maintenance form review', () => {
       screen.queryByText('88888888-8888-4888-8888-888888888888'),
     ).not.toBeInTheDocument()
     expect(
-      screen.getByRole('link', { name: 'GSD-SUBMITTED-001' }),
+      screen.getAllByRole('link', { name: 'GSD-SUBMITTED-001' })[0],
     ).toHaveAttribute(
       'href',
       '/app/preventive-maintenance-forms/77777777-7777-4777-8777-777777777777?returnContext=%7B%22kind%22%3A%22formRegistry%22%7D',
     )
+  })
+
+  it('applies combined form filters and preserves them through the detail link', async () => {
+    const requests: URL[] = []
+    const submittedForm = { ...form('Submitted'), pmCycle: '2026-07' }
+    server.use(
+      http.get(meUrl, () => HttpResponse.json(currentUser(['GSD']))),
+      http.get(formsUrl, ({ request }) => {
+        requests.push(new URL(request.url))
+        return HttpResponse.json([submittedForm])
+      }),
+    )
+
+    const router = renderAppRouter('/app/preventive-maintenance-forms')
+    const actor = userEvent.setup()
+    await screen.findAllByRole('link', { name: 'GSD-SUBMITTED-001' })
+    expect(requests).toHaveLength(1)
+
+    await actor.type(
+      screen.getByRole('textbox', { name: 'Search forms' }),
+      'FE-TEST',
+    )
+    await actor.selectOptions(screen.getByLabelText('Form status'), 'Submitted')
+    await actor.selectOptions(
+      screen.getByLabelText('Asset category'),
+      'fire-extinguisher',
+    )
+    await actor.selectOptions(screen.getByLabelText('Department'), 'GSD')
+    await actor.selectOptions(screen.getByLabelText('PM cycle'), '2026-07')
+    expect(requests).toHaveLength(1)
+
+    await actor.click(screen.getByRole('button', { name: 'Apply filters' }))
+    await waitFor(() => {
+      expect(
+        requests.some((url) => url.searchParams.get('search') === 'FE-TEST'),
+      ).toBe(true)
+      expect(router.state.location.search).toMatchObject({
+        status: 'Submitted',
+        assetCategory: 'fire-extinguisher',
+        department: 'GSD',
+        pmCycle: '2026-07',
+        search: 'FE-TEST',
+        page: 1,
+      })
+    })
+    const applied = requests.find(
+      (url) => url.searchParams.get('search') === 'FE-TEST',
+    )
+    expect(applied?.searchParams.get('status')).toBe('Submitted')
+    expect(applied?.searchParams.get('assetCategory')).toBe('fire-extinguisher')
+    expect(applied?.searchParams.get('department')).toBe('GSD')
+    expect(applied?.searchParams.get('pmCycle')).toBe('2026-07')
+
+    const href = screen
+      .getAllByRole('link', { name: 'GSD-SUBMITTED-001' })[0]!
+      .getAttribute('href')
+    const returnContext = JSON.parse(
+      new URL(href!, 'http://localhost').searchParams.get('returnContext')!,
+    )
+    expect(returnContext).toEqual({
+      kind: 'formRegistry',
+      search: {
+        status: 'Submitted',
+        assetCategory: 'fire-extinguisher',
+        department: 'GSD',
+        pmCycle: '2026-07',
+        search: 'FE-TEST',
+        page: 1,
+      },
+    })
+  })
+
+  it('keeps form filters mounted for a recoverable list failure', async () => {
+    let attempts = 0
+    server.use(
+      http.get(meUrl, () => HttpResponse.json(currentUser(['GSD']))),
+      http.get(formsUrl, () => {
+        attempts += 1
+        return attempts === 1
+          ? HttpResponse.json({}, { status: 503 })
+          : HttpResponse.json([form('Submitted')])
+      }),
+    )
+
+    renderWithProviders(<FormRegistry search={{}} onSearchChange={vi.fn()} />)
+
+    expect(
+      await screen.findByText(
+        'Preventive-maintenance forms could not be loaded.',
+      ),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('textbox', { name: 'Search forms' }),
+    ).toBeInTheDocument()
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Retry' }))
+    expect(
+      await screen.findAllByRole('link', { name: 'GSD-SUBMITTED-001' }),
+    ).toHaveLength(2)
   })
 
   it('renders human-readable row context and water-station work items', async () => {
@@ -970,9 +1070,10 @@ describe('preventive-maintenance form review', () => {
     )
     const router = renderAppRouter('/app/preventive-maintenance-forms')
 
-    fireEvent.click(
-      await screen.findByRole('link', { name: 'GSD-SUBMITTED-001' }),
-    )
+    const formLinks = await screen.findAllByRole('link', {
+      name: 'GSD-SUBMITTED-001',
+    })
+    fireEvent.click(formLinks[0]!)
     expect(
       await screen.findByRole('heading', { name: 'Inspection rows' }),
     ).toBeInTheDocument()
