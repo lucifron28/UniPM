@@ -39,9 +39,60 @@ body {
   a {
     color: inherit;
   }
+
+  nav[aria-label='Primary'] a {
+    transition:
+      background-color 150ms ease-out,
+      color 150ms ease-out,
+      box-shadow 150ms ease-out,
+      transform 100ms ease-out;
+  }
+
+  nav[aria-label='Primary'] a:focus-visible {
+    outline: none;
+    box-shadow:
+      0 0 0 2px var(--sidebar-background),
+      0 0 0 4px var(--primary);
+  }
+
+  nav[aria-label='Primary'] a:active {
+    transform: scale(0.99);
+  }
+
+  [role='region'][aria-label$=' table'] thead {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+
+  [role='region'][aria-label$=' table'] tbody tr {
+    transition: background-color 120ms ease-out;
+  }
+
+  [role='region'][aria-label$=' table'] tbody tr:hover {
+    background-color: var(--page-background);
+  }
 }
 
 button,
 input {
   font: inherit;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-delay: 0s !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-delay: 0s !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  button:active,
+  a:active {
+    transform: none !important;
+  }
 }
