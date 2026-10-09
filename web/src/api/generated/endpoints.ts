@@ -42,6 +42,7 @@ import type {
   ListAssetsParams,
   ListInspectionsParams,
   ListPmPeriodDashboardCyclesParams,
+  ListPreventiveMaintenanceFormsParams,
   ListSchedulesParams,
   LoginRequest,
   LoginResponse,
@@ -3210,40 +3211,52 @@ export const useCreatePreventiveMaintenanceFormDraft = <
 }
 
 /**
- * @summary Lists preventive-maintenance forms
+ * @summary Lists preventive-maintenance forms using supported status and metadata filters
  */
-export const listPreventiveMaintenanceForms = (signal?: AbortSignal) => {
+export const listPreventiveMaintenanceForms = (
+  params?: ListPreventiveMaintenanceFormsParams,
+  signal?: AbortSignal,
+) => {
   return customInstance<PreventiveMaintenanceFormResponse[]>({
     url: `/api/v1/preventive-maintenance-forms`,
     method: 'GET',
+    params,
     signal,
   })
 }
 
-export const getListPreventiveMaintenanceFormsQueryKey = () => {
-  return [`/api/v1/preventive-maintenance-forms`] as const
+export const getListPreventiveMaintenanceFormsQueryKey = (
+  params?: ListPreventiveMaintenanceFormsParams,
+) => {
+  return [
+    `/api/v1/preventive-maintenance-forms`,
+    ...(params ? [params] : []),
+  ] as const
 }
 
 export const getListPreventiveMaintenanceFormsQueryOptions = <
   TData = Awaited<ReturnType<typeof listPreventiveMaintenanceForms>>,
-  TError = unknown,
->(options?: {
-  query?: Partial<
-    UseQueryOptions<
-      Awaited<ReturnType<typeof listPreventiveMaintenanceForms>>,
-      TError,
-      TData
+  TError = ValidationProblemDetails,
+>(
+  params?: ListPreventiveMaintenanceFormsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listPreventiveMaintenanceForms>>,
+        TError,
+        TData
+      >
     >
-  >
-}) => {
+  },
+) => {
   const { query: queryOptions } = options ?? {}
 
   const queryKey =
-    queryOptions?.queryKey ?? getListPreventiveMaintenanceFormsQueryKey()
+    queryOptions?.queryKey ?? getListPreventiveMaintenanceFormsQueryKey(params)
 
   const queryFn: QueryFunction<
     Awaited<ReturnType<typeof listPreventiveMaintenanceForms>>
-  > = ({ signal }) => listPreventiveMaintenanceForms(signal)
+  > = ({ signal }) => listPreventiveMaintenanceForms(params, signal)
 
   return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
     Awaited<ReturnType<typeof listPreventiveMaintenanceForms>>,
@@ -3255,12 +3268,13 @@ export const getListPreventiveMaintenanceFormsQueryOptions = <
 export type ListPreventiveMaintenanceFormsQueryResult = NonNullable<
   Awaited<ReturnType<typeof listPreventiveMaintenanceForms>>
 >
-export type ListPreventiveMaintenanceFormsQueryError = unknown
+export type ListPreventiveMaintenanceFormsQueryError = ValidationProblemDetails
 
 export function useListPreventiveMaintenanceForms<
   TData = Awaited<ReturnType<typeof listPreventiveMaintenanceForms>>,
-  TError = unknown,
+  TError = ValidationProblemDetails,
 >(
+  params: undefined | ListPreventiveMaintenanceFormsParams,
   options: {
     query: Partial<
       UseQueryOptions<
@@ -3284,8 +3298,9 @@ export function useListPreventiveMaintenanceForms<
 }
 export function useListPreventiveMaintenanceForms<
   TData = Awaited<ReturnType<typeof listPreventiveMaintenanceForms>>,
-  TError = unknown,
+  TError = ValidationProblemDetails,
 >(
+  params?: ListPreventiveMaintenanceFormsParams,
   options?: {
     query?: Partial<
       UseQueryOptions<
@@ -3309,8 +3324,9 @@ export function useListPreventiveMaintenanceForms<
 }
 export function useListPreventiveMaintenanceForms<
   TData = Awaited<ReturnType<typeof listPreventiveMaintenanceForms>>,
-  TError = unknown,
+  TError = ValidationProblemDetails,
 >(
+  params?: ListPreventiveMaintenanceFormsParams,
   options?: {
     query?: Partial<
       UseQueryOptions<
@@ -3325,13 +3341,14 @@ export function useListPreventiveMaintenanceForms<
   queryKey: DataTag<QueryKey, TData, TError>
 }
 /**
- * @summary Lists preventive-maintenance forms
+ * @summary Lists preventive-maintenance forms using supported status and metadata filters
  */
 
 export function useListPreventiveMaintenanceForms<
   TData = Awaited<ReturnType<typeof listPreventiveMaintenanceForms>>,
-  TError = unknown,
+  TError = ValidationProblemDetails,
 >(
+  params?: ListPreventiveMaintenanceFormsParams,
   options?: {
     query?: Partial<
       UseQueryOptions<
@@ -3345,7 +3362,10 @@ export function useListPreventiveMaintenanceForms<
 ): UseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>
 } {
-  const queryOptions = getListPreventiveMaintenanceFormsQueryOptions(options)
+  const queryOptions = getListPreventiveMaintenanceFormsQueryOptions(
+    params,
+    options,
+  )
 
   const query = useQuery(queryOptions, queryClient) as UseQueryResult<
     TData,

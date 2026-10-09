@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using UniPM.Api.Data;
 using UniPM.Api.Features;
+using UniPM.Api.Features.ReferenceData;
 using UniPM.Api.Models;
 
 namespace UniPM.Api.Features.Inspections;
@@ -45,6 +46,9 @@ public static class InspectionsEndpoints
             bool? isOperational,
             DateTimeOffset? dateFrom,
             DateTimeOffset? dateTo,
+            string? department,
+            string? assetCategory,
+            string? search,
             IDbContextFactory<ApplicationDbContext> factory,
             CancellationToken cancellationToken) =>
         {
@@ -54,6 +58,35 @@ public static class InspectionsEndpoints
                 {
                     [nameof(dateFrom)] = ["Date from must be earlier than or equal to date to."]
                 });
+            }
+
+            var normalizedDepartment = string.IsNullOrWhiteSpace(department)
+                ? null
+                : department.Trim();
+            var normalizedSearch = string.IsNullOrWhiteSpace(search)
+                ? null
+                : search.Trim();
+            var normalizedCategory = string.Empty;
+            var validationErrors = new Dictionary<string, string[]>();
+            if (normalizedDepartment?.Length > 256)
+            {
+                validationErrors[nameof(department)] = ["Department must be 256 characters or fewer."];
+            }
+
+            if (normalizedSearch?.Length > 256)
+            {
+                validationErrors[nameof(search)] = ["Search must be 256 characters or fewer."];
+            }
+
+            if (!string.IsNullOrWhiteSpace(assetCategory)
+                && !AssetCategoryCatalog.TryNormalize(assetCategory, out normalizedCategory))
+            {
+                validationErrors[nameof(assetCategory)] = ["Asset category must be one of the selected UniPM study scope categories."];
+            }
+
+            if (validationErrors.Count > 0)
+            {
+                return ApiErrors.Validation(validationErrors);
             }
 
             await using var context = await factory.CreateDbContextAsync(cancellationToken);
@@ -85,6 +118,36 @@ public static class InspectionsEndpoints
             if (dateTo is not null)
             {
                 query = query.Where(inspection => inspection.DateInspected <= dateTo.Value);
+            }
+
+            if (normalizedDepartment is not null)
+            {
+                var departmentKey = normalizedDepartment.ToUpperInvariant();
+                query = query.Where(inspection =>
+                    inspection.Asset != null
+                    && inspection.Asset.Department != null
+                    && inspection.Asset.Department.ToUpper() == departmentKey);
+            }
+
+            if (!string.IsNullOrWhiteSpace(assetCategory))
+            {
+                query = query.Where(inspection =>
+                    inspection.Asset != null
+                    && inspection.Asset.AssetCategory == normalizedCategory);
+            }
+
+            if (normalizedSearch is not null)
+            {
+                var searchKey = normalizedSearch.ToUpperInvariant();
+                query = query.Where(inspection =>
+                    (inspection.Asset != null && (
+                        inspection.Asset.AssetCode.Contains(searchKey)
+                        || inspection.Asset.AssetCategory.ToUpper().Contains(searchKey)
+                        || (inspection.Asset.Building != null && inspection.Asset.Building.ToUpper().Contains(searchKey))
+                        || (inspection.Asset.Department != null && inspection.Asset.Department.ToUpper().Contains(searchKey))
+                        || (inspection.Asset.Location != null && inspection.Asset.Location.ToUpper().Contains(searchKey))))
+                    || (inspection.Remarks != null && inspection.Remarks.ToUpper().Contains(searchKey))
+                    || (inspection.ActionsRecommendations != null && inspection.ActionsRecommendations.ToUpper().Contains(searchKey)));
             }
 
             var inspections = await query

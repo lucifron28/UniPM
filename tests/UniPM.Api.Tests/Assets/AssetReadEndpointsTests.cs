@@ -8,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using UniPM.Api.Data;
 using UniPM.Api.Features.Auth;
+using UniPM.Api.Models;
 
 namespace UniPM.Api.Tests;
 
@@ -229,6 +230,50 @@ public sealed class AssetReadEndpointsTests
         Assert.Single(limitedAssets);
     }
 
+    [Fact]
+    public async Task List_assets_combines_filters_and_searches_the_advertised_qr_field()
+    {
+        await using var application = new TestApplicationFactory();
+        var client = application.CreateClient();
+        var target = await CreateAssetAsync(
+            client,
+            "FILTER-001",
+            "fire-extinguisher",
+            "Science",
+            "Chemistry",
+            "Lab 1");
+        await application.SetQrCodeAsync(target.Id, "QR-LABEL-001");
+        await CreateAssetAsync(
+            client,
+            "FILTER-002",
+            "emergency-light",
+            "Science",
+            "Chemistry",
+            "Lab 2");
+
+        var response = await client.GetAsync(
+            "/api/v1/assets?assetCategory=fire-extinguisher&department=Chemistry&search=QR-LABEL-001");
+
+        response.EnsureSuccessStatusCode();
+        var assets = await response.Content.ReadFromJsonAsync<List<AssetResponse>>();
+        Assert.NotNull(assets);
+        Assert.Equal(target.Id, Assert.Single(assets).Id);
+    }
+
+    [Fact]
+    public async Task List_assets_rejects_oversized_search_and_department_filters()
+    {
+        await using var application = new TestApplicationFactory();
+        var client = application.CreateClient();
+        var oversized = new string('x', 257);
+
+        var searchResponse = await client.GetAsync($"/api/v1/assets?search={oversized}");
+        var departmentResponse = await client.GetAsync($"/api/v1/assets?department={oversized}");
+
+        Assert.Equal(HttpStatusCode.BadRequest, searchResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, departmentResponse.StatusCode);
+    }
+
     private static async Task<AssetResponse> CreateAssetAsync(
         HttpClient client,
         string assetCode,
@@ -268,6 +313,16 @@ public sealed class AssetReadEndpointsTests
                 services.AddDbContextFactory<ApplicationDbContext>(options =>
                     options.UseInMemoryDatabase(_databaseName));
             });
+        }
+
+        public async Task SetQrCodeAsync(Guid assetId, string qrCodeValue)
+        {
+            await using var context = await Services
+                .GetRequiredService<IDbContextFactory<ApplicationDbContext>>()
+                .CreateDbContextAsync();
+            var asset = await context.Assets.SingleAsync(candidate => candidate.Id == assetId);
+            asset.QrCodeValue = qrCodeValue;
+            await context.SaveChangesAsync();
         }
     }
 

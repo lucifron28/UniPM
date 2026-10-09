@@ -11,4 +11,7 @@ export type ListInspectionsParams = {
   isOperational?: boolean
   dateFrom?: string
   dateTo?: string
+  department?: string
+  assetCategory?: string
+  search?: string
 }

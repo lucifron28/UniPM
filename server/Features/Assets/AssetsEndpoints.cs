@@ -157,6 +157,28 @@ public static class AssetsEndpoints
             IDbContextFactory<ApplicationDbContext> factory,
             CancellationToken cancellationToken) =>
         {
+            var normalizedDepartment = string.IsNullOrWhiteSpace(department)
+                ? null
+                : department.Trim();
+            var normalizedSearch = string.IsNullOrWhiteSpace(search)
+                ? null
+                : search.Trim();
+            var validationErrors = new Dictionary<string, string[]>();
+            if (normalizedDepartment?.Length > 256)
+            {
+                validationErrors[nameof(department)] = ["Department must be 256 characters or fewer."];
+            }
+
+            if (normalizedSearch?.Length > 256)
+            {
+                validationErrors[nameof(search)] = ["Search must be 256 characters or fewer."];
+            }
+
+            if (validationErrors.Count > 0)
+            {
+                return ApiErrors.Validation(validationErrors);
+            }
+
             await using var context = await factory.CreateDbContextAsync(cancellationToken);
             var query = context.Assets.AsNoTracking();
 
@@ -192,20 +214,21 @@ public static class AssetsEndpoints
                 query = query.Where(asset => asset.Building != null && asset.Building.ToUpper() == normalizedBuilding);
             }
 
-            if (!string.IsNullOrWhiteSpace(department))
+            if (normalizedDepartment is not null)
             {
-                var normalizedDepartment = department.Trim().ToUpper();
-                query = query.Where(asset => asset.Department != null && asset.Department.ToUpper() == normalizedDepartment);
+                var departmentKey = normalizedDepartment.ToUpperInvariant();
+                query = query.Where(asset => asset.Department != null && asset.Department.ToUpper() == departmentKey);
             }
 
-            if (!string.IsNullOrWhiteSpace(search))
+            if (normalizedSearch is not null)
             {
-                var normalizedSearch = search.Trim().ToUpper();
+                var searchKey = normalizedSearch.ToUpperInvariant();
                 query = query.Where(asset =>
-                    asset.AssetCode.Contains(normalizedSearch) ||
-                    (asset.Building != null && asset.Building.ToUpper().Contains(normalizedSearch)) ||
-                    (asset.Department != null && asset.Department.ToUpper().Contains(normalizedSearch)) ||
-                    (asset.Location != null && asset.Location.ToUpper().Contains(normalizedSearch)));
+                    asset.AssetCode.Contains(searchKey) ||
+                    (asset.QrCodeValue != null && asset.QrCodeValue.ToUpper().Contains(searchKey)) ||
+                    (asset.Building != null && asset.Building.ToUpper().Contains(searchKey)) ||
+                    (asset.Department != null && asset.Department.ToUpper().Contains(searchKey)) ||
+                    (asset.Location != null && asset.Location.ToUpper().Contains(searchKey)));
             }
 
             var orderedQuery = query.OrderBy(asset => asset.AssetCode);

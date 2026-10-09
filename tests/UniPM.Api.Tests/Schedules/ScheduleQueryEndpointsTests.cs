@@ -59,6 +59,37 @@ public sealed class ScheduleQueryEndpointsTests
     }
 
     [Fact]
+    public async Task List_schedules_combines_department_category_and_keyword_filters()
+    {
+        await using var application = new TestApplicationFactory();
+        var client = application.CreateClient();
+        var targetAsset = await CreateAssetAsync(client, "FE-QUERY-001", "fire-extinguisher");
+        var otherAsset = await CreateAssetAsync(client, "EL-QUERY-001", "emergency-light");
+        var target = await CreateScheduleAsync(
+            client,
+            targetAsset.Id,
+            new DateTimeOffset(2026, 2, 15, 8, 0, 0, TimeSpan.Zero),
+            "Quarter",
+            "Q1",
+            2026);
+        await CreateScheduleAsync(
+            client,
+            otherAsset.Id,
+            new DateTimeOffset(2026, 6, 15, 8, 0, 0, TimeSpan.Zero),
+            "Semester",
+            null,
+            2026);
+
+        var response = await client.GetAsync(
+            "/api/v1/schedules?department=GSD&assetCategory=fire-extinguisher&search=FE-QUERY-001");
+
+        response.EnsureSuccessStatusCode();
+        var schedules = await response.Content.ReadFromJsonAsync<List<ScheduleResponse>>();
+        Assert.NotNull(schedules);
+        Assert.Equal(target.Id, Assert.Single(schedules).Id);
+    }
+
+    [Fact]
     public async Task Get_schedule_by_id_returns_schedule_response_with_asset_summary()
     {
         await using var application = new TestApplicationFactory();
@@ -168,6 +199,21 @@ public sealed class ScheduleQueryEndpointsTests
     }
 
     [Fact]
+    public async Task Inspector_combined_registry_filters_remain_limited_to_assigned_schedules()
+    {
+        await using var application = new TestApplicationFactory([AuthRoleCatalog.Inspector]);
+        using var client = application.CreateClient();
+        var assigned = await application.SeedScheduleAsync(TestAuthenticationHandler.UserId);
+        await application.SeedScheduleAsync(Guid.NewGuid());
+
+        var schedules = await client.GetFromJsonAsync<List<ScheduleResponse>>(
+            "/api/v1/schedules?department=GSD&assetCategory=fire-extinguisher&search=READ-");
+
+        Assert.NotNull(schedules);
+        Assert.Equal(assigned.Id, Assert.Single(schedules).Id);
+    }
+
+    [Fact]
     public async Task Supervisor_with_inspector_role_can_read_all_schedules()
     {
         await using var application = new TestApplicationFactory(
@@ -271,9 +317,14 @@ public sealed class ScheduleQueryEndpointsTests
 
         var statusResponse = await client.GetAsync("/api/v1/schedules?status=Paused");
         var quarterResponse = await client.GetAsync("/api/v1/schedules?quarter=Q5");
+        var oversized = new string('x', 257);
+        var searchResponse = await client.GetAsync($"/api/v1/schedules?search={oversized}");
+        var departmentResponse = await client.GetAsync($"/api/v1/schedules?department={oversized}");
 
         Assert.Equal(HttpStatusCode.BadRequest, statusResponse.StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, quarterResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, searchResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, departmentResponse.StatusCode);
     }
 
     [Theory]
@@ -596,7 +647,7 @@ public sealed class ScheduleQueryEndpointsTests
         Guid assetId,
         DateTimeOffset scheduleDate,
         string periodType,
-        string quarter,
+        string? quarter,
         int year)
     {
         var response = await client.PostAsJsonAsync("/api/v1/schedules/", new

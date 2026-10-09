@@ -249,6 +249,9 @@ public static class SchedulesEndpoints
             DateTimeOffset? to,
             string? quarter,
             int? year,
+            string? department,
+            string? assetCategory,
+            string? search,
             ClaimsPrincipal user,
             IDbContextFactory<ApplicationDbContext> factory,
             CancellationToken cancellationToken) =>
@@ -273,6 +276,35 @@ public static class SchedulesEndpoints
                 {
                     [nameof(from)] = ["From date must be earlier than or equal to to date."]
                 });
+            }
+
+            var normalizedDepartment = string.IsNullOrWhiteSpace(department)
+                ? null
+                : department.Trim();
+            var normalizedSearch = string.IsNullOrWhiteSpace(search)
+                ? null
+                : search.Trim();
+            var normalizedCategory = string.Empty;
+            var validationErrors = new Dictionary<string, string[]>();
+            if (normalizedDepartment?.Length > 256)
+            {
+                validationErrors[nameof(department)] = ["Department must be 256 characters or fewer."];
+            }
+
+            if (normalizedSearch?.Length > 256)
+            {
+                validationErrors[nameof(search)] = ["Search must be 256 characters or fewer."];
+            }
+
+            if (!string.IsNullOrWhiteSpace(assetCategory)
+                && !AssetCategoryCatalog.TryNormalize(assetCategory, out normalizedCategory))
+            {
+                validationErrors[nameof(assetCategory)] = ["Asset category must be one of the selected UniPM study scope categories."];
+            }
+
+            if (validationErrors.Count > 0)
+            {
+                return ApiErrors.Validation(validationErrors);
             }
 
             await using var context = await factory.CreateDbContextAsync(cancellationToken);
@@ -327,6 +359,35 @@ public static class SchedulesEndpoints
             if (year is not null)
             {
                 query = query.Where(schedule => schedule.Year == year.Value);
+            }
+
+            if (normalizedDepartment is not null)
+            {
+                var departmentKey = normalizedDepartment.ToUpperInvariant();
+                query = query.Where(schedule =>
+                    schedule.Asset != null
+                    && schedule.Asset.Department != null
+                    && schedule.Asset.Department.ToUpper() == departmentKey);
+            }
+
+            if (!string.IsNullOrWhiteSpace(assetCategory))
+            {
+                query = query.Where(schedule =>
+                    schedule.Asset != null
+                    && schedule.Asset.AssetCategory == normalizedCategory);
+            }
+
+            if (normalizedSearch is not null)
+            {
+                var searchKey = normalizedSearch.ToUpperInvariant();
+                query = query.Where(schedule =>
+                    schedule.PmCycle != null && schedule.PmCycle.ToUpper().Contains(searchKey)
+                    || (schedule.Asset != null && (
+                        schedule.Asset.AssetCode.Contains(searchKey)
+                        || schedule.Asset.AssetCategory.ToUpper().Contains(searchKey)
+                        || (schedule.Asset.Building != null && schedule.Asset.Building.ToUpper().Contains(searchKey))
+                        || (schedule.Asset.Department != null && schedule.Asset.Department.ToUpper().Contains(searchKey))
+                        || (schedule.Asset.Location != null && schedule.Asset.Location.ToUpper().Contains(searchKey)))));
             }
 
             var schedules = await query
