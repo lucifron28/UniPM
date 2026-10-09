@@ -620,12 +620,47 @@ public static class PreventiveMaintenanceFormEndpoints
                 return ApiErrors.Conflict("Only draft forms can be edited.");
             }
 
+            var schedulePreview = await context.PreventiveMaintenanceSchedules
+                .AsNoTracking()
+                .Include(candidate => candidate.Asset)
+                .SingleOrDefaultAsync(candidate => candidate.Id == dto.ScheduleId, cancellationToken);
+            if (schedulePreview is null)
+            {
+                return ApiErrors.NotFound("Schedule not found.");
+            }
+
+            if (!ScheduleBatchIdentity.TryCreate(schedulePreview, out var batchIdentity))
+            {
+                return ApiErrors.Conflict("The schedule needs a department and valid PM cycle before inspection work can start.");
+            }
+
+            await using var mutationLock = await ScheduleBatchMutationLockLease.AcquireAsync(
+                context,
+                batchIdentity,
+                cancellationToken);
+            if (!mutationLock.Acquired)
+            {
+                return ApiErrors.Conflict("This PM batch is being updated. Try again shortly.");
+            }
+
+            await context.Entry(form).ReloadAsync(cancellationToken);
+            if (!IsDraft(form))
+            {
+                return ApiErrors.Conflict("Only draft forms can be edited.");
+            }
+
             var schedule = await context.PreventiveMaintenanceSchedules
                 .Include(candidate => candidate.Asset)
                 .SingleOrDefaultAsync(candidate => candidate.Id == dto.ScheduleId, cancellationToken);
             if (schedule is null)
             {
                 return ApiErrors.NotFound("Schedule not found.");
+            }
+
+            if (!ScheduleBatchIdentity.TryCreate(schedule, out var currentBatchIdentity)
+                || currentBatchIdentity != batchIdentity)
+            {
+                return ApiErrors.Conflict("The schedule's PM batch changed while inspection work was being prepared. Refresh and try again.");
             }
 
             var scheduleAccess = await authorizationService.AuthorizeAsync(
@@ -677,7 +712,8 @@ public static class PreventiveMaintenanceFormEndpoints
                 return ApiErrors.Conflict("Schedule already has a recorded inspection.");
             }
 
-            if (!PreventiveMaintenanceFormBatchPolicy.IsEligibleScheduleStatus(schedule.Status))
+            if (!PreventiveMaintenanceFormBatchPolicy.IsEligibleScheduleStatus(schedule.Status)
+                || schedule.CompletedAt is not null)
             {
                 return ApiErrors.Conflict("Only Due, Ongoing, or Overdue schedules can be added to a draft form.");
             }
@@ -734,6 +770,7 @@ public static class PreventiveMaintenanceFormEndpoints
             try
             {
                 await context.SaveChangesAsync(cancellationToken);
+                await mutationLock.CommitAsync(cancellationToken);
             }
             catch (DbUpdateException exception) when (DatabaseConstraintViolation.IsUniqueConstraint(exception))
             {

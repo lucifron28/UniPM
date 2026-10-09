@@ -1,9 +1,13 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Data.Common;
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using UniPM.Api.Data;
@@ -144,6 +148,197 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
     }
 
     [SqlServerFact]
+    public async Task Supervisor_reassignment_wins_lock_before_inspection_start_and_inspector_is_reauthorized()
+    {
+        await using var database = await SqlServerTestDatabase.CreateAsync(RequireSqlServerConnection());
+        await using var seedApplication = new SqlServerInspectionApplicationFactory(
+            database.ConnectionString,
+            AuthRoleCatalog.Gsd);
+        var scenario = await seedApplication.SeedBatchMutationScenarioAsync();
+        var mutationGate = new ScheduleMutationCommandGate();
+
+        await using var gsdApplication = new SqlServerInspectionApplicationFactory(
+            database.ConnectionString,
+            mutationGate,
+            AuthRoleCatalog.Gsd);
+        await using var inspectorApplication = new SqlServerInspectionApplicationFactory(
+            database.ConnectionString,
+            AuthRoleCatalog.Inspector);
+        using var gsdClient = gsdApplication.CreateClient();
+        using var inspectorClient = inspectorApplication.CreateClient();
+
+        var assignmentTask = gsdClient.PutAsJsonAsync(
+            $"/api/v1/schedules/{scenario.ScheduleId}/supervisor-assignment",
+            new { supervisorUserId = scenario.NewSupervisorId });
+        await mutationGate.WaitForScheduleUpdateAsync();
+        var inspectionTask = inspectorClient.PostAsJsonAsync(
+            $"/api/v1/preventive-maintenance-forms/{scenario.FormId}/inspections",
+            NewInspectionRequest(scenario.ScheduleId, TestAuthenticationHandler.UserId));
+        try
+        {
+            await WaitForApplicationLockWaitAsync(
+                database.ConnectionString,
+                expectedWaiters: 1,
+                competingMutation: inspectionTask);
+        }
+        finally
+        {
+            mutationGate.ReleaseScheduleUpdate();
+        }
+
+        using var assignmentResponse = await assignmentTask;
+        using var inspectionResponse = await inspectionTask;
+        Assert.Equal(HttpStatusCode.OK, assignmentResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, inspectionResponse.StatusCode);
+
+        await using var verificationContext = database.CreateContext();
+        var schedule = await verificationContext.PreventiveMaintenanceSchedules.SingleAsync(
+            candidate => candidate.Id == scenario.ScheduleId);
+        Assert.Equal(scenario.NewSupervisorId, schedule.AssignedSupervisorUserId);
+        Assert.Null(schedule.AssignedToUserId);
+        Assert.Equal(ScheduleStatusCatalog.Due, schedule.Status);
+        Assert.Empty(await verificationContext.InspectionRecords
+            .Where(inspection => inspection.ScheduleId == scenario.ScheduleId)
+            .ToListAsync());
+    }
+
+    [SqlServerFact]
+    public async Task Inspection_start_wins_lock_before_supervisor_reassignment_and_assignment_is_rejected()
+    {
+        await using var database = await SqlServerTestDatabase.CreateAsync(RequireSqlServerConnection());
+        await using var seedApplication = new SqlServerInspectionApplicationFactory(
+            database.ConnectionString,
+            AuthRoleCatalog.Gsd);
+        var scenario = await seedApplication.SeedBatchMutationScenarioAsync();
+        var mutationGate = new ScheduleMutationCommandGate();
+
+        await using var gsdApplication = new SqlServerInspectionApplicationFactory(
+            database.ConnectionString,
+            AuthRoleCatalog.Gsd);
+        await using var inspectorApplication = new SqlServerInspectionApplicationFactory(
+            database.ConnectionString,
+            mutationGate,
+            AuthRoleCatalog.Inspector);
+        using var gsdClient = gsdApplication.CreateClient();
+        using var inspectorClient = inspectorApplication.CreateClient();
+
+        var inspectionTask = inspectorClient.PostAsJsonAsync(
+            $"/api/v1/preventive-maintenance-forms/{scenario.FormId}/inspections",
+            NewInspectionRequest(scenario.ScheduleId, TestAuthenticationHandler.UserId));
+        await mutationGate.WaitForScheduleUpdateAsync();
+        var assignmentTask = gsdClient.PutAsJsonAsync(
+            $"/api/v1/schedules/{scenario.ScheduleId}/supervisor-assignment",
+            new { supervisorUserId = scenario.NewSupervisorId });
+        try
+        {
+            await WaitForApplicationLockWaitAsync(
+                database.ConnectionString,
+                expectedWaiters: 1,
+                competingMutation: assignmentTask);
+        }
+        finally
+        {
+            mutationGate.ReleaseScheduleUpdate();
+        }
+
+        using var inspectionResponse = await inspectionTask;
+        using var assignmentResponse = await assignmentTask;
+        Assert.Equal(HttpStatusCode.Created, inspectionResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, assignmentResponse.StatusCode);
+
+        await using var verificationContext = database.CreateContext();
+        var schedule = await verificationContext.PreventiveMaintenanceSchedules.SingleAsync(
+            candidate => candidate.Id == scenario.ScheduleId);
+        Assert.Equal(scenario.ExistingSupervisorId, schedule.AssignedSupervisorUserId);
+        Assert.Equal(TestAuthenticationHandler.UserId, schedule.AssignedToUserId);
+        Assert.Equal(ScheduleStatusCatalog.Completed, schedule.Status);
+        Assert.NotNull(schedule.CompletedAt);
+        Assert.Single(await verificationContext.InspectionRecords
+            .Where(inspection => inspection.ScheduleId == scenario.ScheduleId)
+            .ToListAsync());
+    }
+
+    private static object NewInspectionRequest(Guid scheduleId, Guid inspectorUserId)
+    {
+        return new
+        {
+            scheduleId,
+            inspectorUserId,
+            dateInspected = DateTimeOffset.UtcNow,
+            isOperational = true,
+            remarks = "Serialized schedule mutation test"
+        };
+    }
+
+    private static async Task WaitForApplicationLockWaitAsync(
+        string connectionString,
+        int expectedWaiters,
+        Task<HttpResponseMessage> competingMutation)
+    {
+        var timeout = DateTimeOffset.UtcNow.AddSeconds(5);
+        while (DateTimeOffset.UtcNow < timeout)
+        {
+            await using var connection = new SqlConnection(connectionString);
+            await connection.OpenAsync();
+            await using var command = connection.CreateCommand();
+            command.CommandText = """
+                SELECT COUNT(DISTINCT locks.request_session_id)
+                FROM sys.dm_tran_locks AS locks
+                INNER JOIN sys.dm_exec_requests AS requests
+                    ON requests.session_id = locks.request_session_id
+                WHERE locks.resource_type = N'APPLICATION'
+                    AND locks.resource_database_id = DB_ID()
+                    AND locks.request_mode = N'X'
+                    AND locks.request_status = N'WAIT'
+                    AND requests.wait_type LIKE N'LCK_M_%';
+                """;
+            var waiters = Convert.ToInt32(
+                await command.ExecuteScalarAsync(),
+                System.Globalization.CultureInfo.InvariantCulture);
+            if (waiters >= expectedWaiters)
+            {
+                return;
+            }
+
+            await Task.Delay(TimeSpan.FromMilliseconds(25));
+        }
+
+        var mutationState = competingMutation.IsCompletedSuccessfully
+            ? $"HTTP {(int)competingMutation.Result.StatusCode}"
+            : competingMutation.Status.ToString();
+        var lockState = await GetApplicationLockStateAsync(connectionString);
+        throw new TimeoutException(
+            $"Expected {expectedWaiters} HTTP mutations waiting for the SQL Server schedule-batch application lock; competing mutation={mutationState}; application locks={lockState}.");
+    }
+
+    private static async Task<string> GetApplicationLockStateAsync(string connectionString)
+    {
+        await using var connection = new SqlConnection(connectionString);
+        await connection.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT COALESCE(locks.request_status, N'none'),
+                COALESCE(locks.request_mode, N'none'),
+                COALESCE(requests.wait_type, N'none'),
+                COUNT(*)
+            FROM sys.dm_tran_locks AS locks
+            LEFT JOIN sys.dm_exec_requests AS requests
+                ON requests.session_id = locks.request_session_id
+            WHERE locks.resource_type = N'APPLICATION'
+                AND locks.resource_database_id = DB_ID()
+            GROUP BY locks.request_status, locks.request_mode, requests.wait_type;
+            """;
+        await using var reader = await command.ExecuteReaderAsync();
+        var states = new List<string>();
+        while (await reader.ReadAsync())
+        {
+            states.Add($"{reader.GetString(0)}/{reader.GetString(1)}/{reader.GetString(2)}={reader.GetInt32(3)}");
+        }
+
+        return states.Count == 0 ? "none-visible" : string.Join(',', states);
+    }
+
+    [SqlServerFact]
     public async Task Acknowledging_submitted_form_preserves_completed_schedule_status_and_completion_times()
     {
         await using var database = await SqlServerTestDatabase.CreateAsync(RequireSqlServerConnection());
@@ -278,10 +473,20 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
     {
         private readonly string connectionString;
         private readonly string[] roles;
+        private readonly ScheduleMutationCommandGate? mutationGate;
 
         public SqlServerInspectionApplicationFactory(string connectionString, params string[] roles)
+            : this(connectionString, null, roles)
+        {
+        }
+
+        public SqlServerInspectionApplicationFactory(
+            string connectionString,
+            ScheduleMutationCommandGate? mutationGate,
+            params string[] roles)
         {
             this.connectionString = connectionString;
+            this.mutationGate = mutationGate;
             this.roles = roles.Length == 0 ? [AuthRoleCatalog.Inspector] : roles;
         }
 
@@ -293,7 +498,14 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
                 services.AddTestAuthentication(roles);
                 services.RemoveAll<IDbContextFactory<ApplicationDbContext>>();
                 services.RemoveAll<DbContextOptions<ApplicationDbContext>>();
-                services.AddDbContextFactory<ApplicationDbContext>(options => options.UseUniPmSqlServer(connectionString));
+                services.AddDbContextFactory<ApplicationDbContext>(options =>
+                {
+                    options.UseUniPmSqlServer(connectionString);
+                    if (mutationGate is not null)
+                    {
+                        options.AddInterceptors(mutationGate);
+                    }
+                });
             });
         }
 
@@ -326,6 +538,108 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
             context.PreventiveMaintenanceForms.AddRange(forms);
             await context.SaveChangesAsync();
             return forms.Select(form => form.Id).ToArray();
+        }
+
+        public async Task<BatchMutationScenario> SeedBatchMutationScenarioAsync()
+        {
+            await using var scope = Services.CreateAsyncScope();
+            var contextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
+            await using var context = await contextFactory.CreateDbContextAsync();
+            await context.Database.MigrateAsync();
+
+            var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
+            foreach (var role in new[] { AuthRoleCatalog.Inspector, AuthRoleCatalog.Supervisor })
+            {
+                if (!await roleManager.RoleExistsAsync(role))
+                {
+                    Assert.True((await roleManager.CreateAsync(new IdentityRole<Guid>(role))).Succeeded);
+                }
+            }
+
+            var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+            var actor = new ApplicationUser
+            {
+                Id = TestAuthenticationHandler.UserId,
+                UserName = $"sql-batch-inspector-{Guid.NewGuid():N}@unipm.local",
+                Email = $"sql-batch-inspector-{Guid.NewGuid():N}@unipm.local",
+                EmailConfirmed = true,
+                DisplayName = "SQL Batch Inspector",
+                IsActive = true
+            };
+            Assert.True((await userManager.CreateAsync(actor, "Demo-Account-123!")).Succeeded);
+            Assert.True((await userManager.AddToRoleAsync(actor, AuthRoleCatalog.Inspector)).Succeeded);
+
+            var existingSupervisor = await CreateActiveUserAsync(userManager, "existing-supervisor", AuthRoleCatalog.Supervisor);
+            var newSupervisor = await CreateActiveUserAsync(userManager, "new-supervisor", AuthRoleCatalog.Supervisor);
+            var now = DateTimeOffset.UtcNow;
+            var asset = new Asset
+            {
+                Id = Guid.NewGuid(),
+                AssetCode = $"RACE-{Guid.NewGuid():N}"[..20],
+                AssetCategory = "fire-extinguisher",
+                Building = "Race Test Building",
+                Department = "RACE-TEST",
+                Location = "Ground Floor",
+                Status = "Active",
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+            var schedule = new PreventiveMaintenanceSchedule
+            {
+                Id = Guid.NewGuid(),
+                AssetId = asset.Id,
+                Asset = asset,
+                ScheduleDate = PreventiveMaintenanceCycle.DeadlineForCycle("2026-08"),
+                PmCycle = "2026-08",
+                PeriodType = "Quarter",
+                Quarter = "Q3",
+                Year = 2026,
+                Status = ScheduleStatusCatalog.Due,
+                AssignedToUserId = actor.Id,
+                AssignedSupervisorUserId = existingSupervisor.Id,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+            var form = new PreventiveMaintenanceForm
+            {
+                Id = Guid.NewGuid(),
+                AssetCategory = asset.AssetCategory,
+                Building = asset.Building,
+                Department = asset.Department,
+                PmCycle = schedule.PmCycle,
+                PeriodType = schedule.PeriodType,
+                Quarter = schedule.Quarter,
+                Year = schedule.Year,
+                Status = PreventiveMaintenanceFormStatusCatalog.Draft,
+                CreatedByUserId = actor.Id,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+            context.Assets.Add(asset);
+            context.PreventiveMaintenanceSchedules.Add(schedule);
+            context.PreventiveMaintenanceForms.Add(form);
+            await context.SaveChangesAsync();
+            return new BatchMutationScenario(schedule.Id, asset.Id, form.Id, existingSupervisor.Id, newSupervisor.Id);
+        }
+
+        private static async Task<ApplicationUser> CreateActiveUserAsync(
+            UserManager<ApplicationUser> userManager,
+            string suffix,
+            string role)
+        {
+            var email = $"sql-{suffix}-{Guid.NewGuid():N}@unipm.local";
+            var user = new ApplicationUser
+            {
+                Id = Guid.NewGuid(),
+                UserName = email,
+                Email = email,
+                EmailConfirmed = true,
+                DisplayName = suffix,
+                IsActive = true
+            };
+            Assert.True((await userManager.CreateAsync(user, "Demo-Account-123!")).Succeeded);
+            Assert.True((await userManager.AddToRoleAsync(user, role)).Succeeded);
+            return user;
         }
 
         public async Task<Guid> SeedSubmittedFormAsync()
@@ -374,6 +688,60 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
             return form.Id;
         }
     }
+
+    private sealed class ScheduleMutationCommandGate : DbCommandInterceptor
+    {
+        private readonly TaskCompletionSource commandReached = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly TaskCompletionSource releaseCommand = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private int paused;
+
+        public async Task WaitForScheduleUpdateAsync()
+        {
+            await commandReached.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        }
+
+        public void ReleaseScheduleUpdate() => releaseCommand.TrySetResult();
+
+        public override async ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(
+            DbCommand command,
+            CommandEventData eventData,
+            InterceptionResult<DbDataReader> result,
+            CancellationToken cancellationToken = default)
+        {
+            await PauseBeforeScheduleUpdateAsync(command.CommandText, cancellationToken);
+            return result;
+        }
+
+        public override async ValueTask<InterceptionResult<int>> NonQueryExecutingAsync(
+            DbCommand command,
+            CommandEventData eventData,
+            InterceptionResult<int> result,
+            CancellationToken cancellationToken = default)
+        {
+            await PauseBeforeScheduleUpdateAsync(command.CommandText, cancellationToken);
+            return result;
+        }
+
+        private async Task PauseBeforeScheduleUpdateAsync(string commandText, CancellationToken cancellationToken)
+        {
+            if (Regex.IsMatch(
+                    commandText,
+                    @"\bUPDATE\s+(?:\[dbo\]\.)?\[PreventiveMaintenanceSchedules\]",
+                    RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)
+                && Interlocked.CompareExchange(ref paused, 1, 0) == 0)
+            {
+                commandReached.TrySetResult();
+                await releaseCommand.Task.WaitAsync(cancellationToken);
+            }
+        }
+    }
+
+    private sealed record BatchMutationScenario(
+        Guid ScheduleId,
+        Guid AssetId,
+        Guid FormId,
+        Guid ExistingSupervisorId,
+        Guid NewSupervisorId);
 
     private static InspectionRecord CreateFormInspection(
         PreventiveMaintenanceForm form,

@@ -28,12 +28,13 @@ public sealed class PreventiveMaintenanceFormDraftEndpointsTests
         using var client = application.CreateClient();
         await application.EnsureAuthenticatedUserAsync();
         var asset = await CreateAssetAsync(client, "FE-FORM-001", "fire-extinguisher");
+        var secondAsset = await CreateAssetAsync(client, "FE-FORM-002", "fire-extinguisher");
         var firstSchedule = await CreateScheduleAsync(client, asset.Id, 2);
-        var secondSchedule = await CreateScheduleAsync(client, asset.Id, 2, day: 11);
+        var secondSchedule = await CreateScheduleAsync(client, secondAsset.Id, 2, day: 11);
 
         var form = await CreateFormAsync(client, asset.AssetCategory);
         var firstRow = await AddInspectionRowAsync(client, form.Id, firstSchedule.Id, "First draft row");
-        await AddInspectionRowAsync(client, form.Id, secondSchedule.Id, "Second draft row");
+        var secondRow = await AddInspectionRowAsync(client, form.Id, secondSchedule.Id, "Second draft row");
 
         var response = await client.GetAsync($"/api/v1/preventive-maintenance-forms/{form.Id}");
 
@@ -44,11 +45,12 @@ public sealed class PreventiveMaintenanceFormDraftEndpointsTests
         Assert.Null(persisted.FieldWorkCompletedAt);
         Assert.Equal(2, persisted.Inspections.Count);
         Assert.Equal(asset.AssetCode, firstRow.AssetCode);
+        Assert.Equal(secondAsset.AssetCode, secondRow.AssetCode);
         Assert.Equal(asset.Location, firstRow.Location);
         Assert.Equal("Form Drafts User", firstRow.SkilledWorkerIdentity);
         Assert.All(persisted.Inspections, row =>
         {
-            Assert.Equal(asset.AssetCode, row.AssetCode);
+            Assert.Contains(row.AssetCode, new[] { asset.AssetCode, secondAsset.AssetCode });
             Assert.Equal(asset.Location, row.Location);
             Assert.Equal("Form Drafts User", row.SkilledWorkerIdentity);
         });
