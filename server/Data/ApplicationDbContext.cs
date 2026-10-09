@@ -15,6 +15,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
 {
     public DbSet<Asset> Assets => Set<Asset>();
     public DbSet<PreventiveMaintenanceSchedule> PreventiveMaintenanceSchedules => Set<PreventiveMaintenanceSchedule>();
+    public DbSet<ScheduleEnrollmentDeferral> ScheduleEnrollmentDeferrals => Set<ScheduleEnrollmentDeferral>();
     public DbSet<InspectionRecord> InspectionRecords => Set<InspectionRecord>();
     public DbSet<InspectionWmsReferral> InspectionWmsReferrals => Set<InspectionWmsReferral>();
     public DbSet<InspectionWmsReferralAudit> InspectionWmsReferralAudits => Set<InspectionWmsReferralAudit>();
@@ -132,6 +133,40 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
                 "CK_Schedules_AcademicYear_Format",
                 "[AcademicYear] IS NULL OR [AcademicYear] LIKE '[0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9]'");
         });
+
+        var scheduleEnrollmentDeferral = modelBuilder.Entity<ScheduleEnrollmentDeferral>();
+        scheduleEnrollmentDeferral.ToTable("ScheduleEnrollmentDeferrals", table =>
+        {
+            table.HasCheckConstraint(
+                "CK_ScheduleEnrollmentDeferrals_PmCycle_Format",
+                "LEN([PmCycle]) = 7 AND [PmCycle] LIKE '[0-9][0-9][0-9][0-9]-[0-1][0-9]' AND RIGHT([PmCycle], 2) BETWEEN '01' AND '12'");
+            table.HasCheckConstraint(
+                "CK_ScheduleEnrollmentDeferrals_NextEligiblePmCycle_Format",
+                "LEN([NextEligiblePmCycle]) = 7 AND [NextEligiblePmCycle] LIKE '[0-9][0-9][0-9][0-9]-[0-1][0-9]' AND RIGHT([NextEligiblePmCycle], 2) BETWEEN '01' AND '12'");
+            table.HasCheckConstraint(
+                "CK_ScheduleEnrollmentDeferrals_ReasonCode_Allowed",
+                "[ReasonCode] IN ('BatchAssigned', 'WorkInProgress', 'CycleCompleted', 'CycleCancelled', 'InspectionStarted', 'FormSubmitted', 'FormAcknowledged')");
+        });
+        scheduleEnrollmentDeferral.HasKey(entity => new { entity.AssetId, entity.PmCycle });
+        scheduleEnrollmentDeferral.Property(entity => entity.PmCycle)
+            .HasMaxLength(PreventiveMaintenanceCycle.Length);
+        scheduleEnrollmentDeferral.Property(entity => entity.DepartmentAtDeferral)
+            .HasMaxLength(AssetCodeValue.MetadataMaxLength)
+            .IsRequired();
+        scheduleEnrollmentDeferral.Property(entity => entity.AssetCategoryAtDeferral)
+            .HasMaxLength(64)
+            .IsRequired();
+        scheduleEnrollmentDeferral.Property(entity => entity.ReasonCode)
+            .HasMaxLength(64)
+            .IsRequired();
+        scheduleEnrollmentDeferral.Property(entity => entity.NextEligiblePmCycle)
+            .HasMaxLength(PreventiveMaintenanceCycle.Length)
+            .IsRequired();
+        scheduleEnrollmentDeferral.HasIndex(entity => new { entity.DeferredAt, entity.AssetId });
+        scheduleEnrollmentDeferral.HasOne<Asset>()
+            .WithMany()
+            .HasForeignKey(entity => entity.AssetId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         var inspection = modelBuilder.Entity<InspectionRecord>();
         inspection.Property(entity => entity.Remarks)

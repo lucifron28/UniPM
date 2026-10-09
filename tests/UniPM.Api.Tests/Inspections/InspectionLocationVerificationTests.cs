@@ -244,7 +244,7 @@ public sealed class InspectionLocationVerificationTests
         Assert.Equal(325, persistedAttempt.AcquisitionDurationMs);
         Assert.Equal(ScheduleStatusCatalog.Completed,
             (await context.PreventiveMaintenanceSchedules.SingleAsync(row => row.Id == firstSchedule.Id)).Status);
-        Assert.Equal(ScheduleStatusCatalog.Due,
+        Assert.Equal(secondSchedule.Status,
             (await context.PreventiveMaintenanceSchedules.SingleAsync(row => row.Id == secondSchedule.Id)).Status);
 
         inspection.InspectorUserId = otherInspectorId;
@@ -366,7 +366,7 @@ public sealed class InspectionLocationVerificationTests
         {
             var factory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
             await using var context = await factory.CreateDbContextAsync();
-            Assert.Equal(ScheduleStatusCatalog.Due,
+            Assert.Equal(preStartSchedule.Status,
                 (await context.PreventiveMaintenanceSchedules.SingleAsync(row => row.Id == preStartSchedule.Id)).Status);
             Assert.Equal(ScheduleStatusCatalog.Completed,
                 (await context.PreventiveMaintenanceSchedules.SingleAsync(row => row.Id == resumeSchedule.Id)).Status);
@@ -630,7 +630,8 @@ public sealed class InspectionLocationVerificationTests
         Guid AssetId = default,
         DateTimeOffset ScheduleDate = default,
         string PeriodType = "",
-        int? Year = null);
+        int? Year = null,
+        string Status = "");
 
     private sealed record PreventiveMaintenanceFormResponse(Guid Id, string AssetCategory);
 

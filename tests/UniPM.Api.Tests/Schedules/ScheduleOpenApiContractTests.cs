@@ -27,6 +27,19 @@ public sealed class ScheduleOpenApiContractTests : IClassFixture<ScheduleOpenApi
         AssertOperation(paths, "/api/v1/schedules/{id}", "get", "GetSchedule", "200", "ScheduleResponse");
         AssertAuthorizationResponses(paths.GetProperty("/api/v1/schedules").GetProperty("get"));
         AssertAuthorizationResponses(paths.GetProperty("/api/v1/schedules/{id}").GetProperty("get"));
+        AssertOperation(
+            paths,
+            "/api/v1/schedules/enrollment-deferrals",
+            "get",
+            "ListScheduleEnrollmentDeferrals",
+            "200",
+            "ScheduleEnrollmentDeferralPage");
+        AssertAuthorizationResponses(paths.GetProperty("/api/v1/schedules/enrollment-deferrals").GetProperty("get"));
+        var generationResult = document.RootElement.GetProperty("components")
+            .GetProperty("schemas")
+            .GetProperty("ScheduleGenerationResult")
+            .GetProperty("properties");
+        Assert.True(generationResult.TryGetProperty("deferredSchedules", out _));
         AssertArrayOperation(paths, "/api/v1/reference-data/schedule-statuses", "get", "ListScheduleStatuses", "ScheduleReferenceResponse");
         AssertArrayOperation(paths, "/api/v1/reference-data/schedule-period-types", "get", "ListSchedulePeriodTypes", "ScheduleReferenceResponse");
         AssertArrayOperation(paths, "/api/v1/reference-data/schedule-quarters", "get", "ListScheduleQuarters", "ScheduleReferenceResponse");

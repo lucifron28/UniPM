@@ -123,6 +123,9 @@ function mockReferences(roles = ['GSD']) {
           })
         : HttpResponse.json({}, { status: 403 }),
     ),
+    http.get(`${base}/schedules/enrollment-deferrals`, () =>
+      HttpResponse.json({ page: 1, pageSize: 10, total: 0, items: [] }),
+    ),
     http.get(`${base}/assets`, () => HttpResponse.json([asset])),
     http.get(`${base}/reference-data/asset-categories`, () =>
       HttpResponse.json([
@@ -183,6 +186,7 @@ describe('schedule workflows', () => {
           eligibleAssets: 5,
           existingSchedules: 8,
           createdSchedules: 4,
+          deferredSchedules: 0,
         })
       }),
     )
@@ -211,7 +215,7 @@ describe('schedule workflows', () => {
     await actor.click(getGenerateButton())
 
     const resultMessage = await screen.findByText(
-      `Year ${currentYear}: created 4 missing schedules; 8 already existed.`,
+      `Year ${currentYear}: created 4 schedules; 8 already existed; 0 deferred for GSD review.`,
     )
     expect(resultMessage).toHaveAttribute('role', 'status')
     expect(submittedYear).toBe(currentYear)

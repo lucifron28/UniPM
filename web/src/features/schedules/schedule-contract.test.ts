@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { ZodError } from 'zod'
+import { getCurrentManilaYear } from '@/features/schedules/schedule-presentation'
 import {
   createScheduleSchema,
   parseSchedule,
@@ -43,10 +44,11 @@ describe('schedule contracts', () => {
   })
 
   it('builds a PM cycle from the selected year and allowed month', () => {
+    const currentYear = getCurrentManilaYear()
     expect(
       createScheduleSchema.safeParse({
         assetId: schedule.assetId,
-        year: 2026,
+        year: currentYear,
         month: 8,
         allowedMonths: [2, 5, 8, 11],
       }).success,
@@ -54,23 +56,24 @@ describe('schedule contracts', () => {
     expect(
       toCreateScheduleDto({
         assetId: schedule.assetId,
-        year: 2027,
-        month: 1,
-        allowedMonths: [1, 4, 7, 10],
+        year: currentYear,
+        month: 11,
+        allowedMonths: [2, 5, 8, 11],
       }),
     ).toMatchObject({
-      pmCycle: '2027-01',
+      pmCycle: `${currentYear}-11`,
       periodType: 'Quarter',
-      year: 2027,
-      quarter: 'Q1',
+      year: currentYear,
+      quarter: 'Q4',
     })
   })
 
   it('rejects months that are absent from the category reference data', () => {
+    const currentYear = getCurrentManilaYear()
     expect(
       createScheduleSchema.safeParse({
         assetId: schedule.assetId,
-        year: 2026,
+        year: currentYear,
         month: 9,
         allowedMonths: [2, 5, 8, 11],
       }).success,
@@ -79,18 +82,18 @@ describe('schedule contracts', () => {
     expect(
       createScheduleSchema.safeParse({
         assetId: schedule.assetId,
-        year: 2026,
+        year: currentYear,
         month: 8,
         allowedMonths: [],
       }).success,
     ).toBe(false)
   })
 
-  it('rejects an out-of-range selected year', () => {
-    const unsupportedYear = new Date().getUTCFullYear() + 6
+  it('rejects past and future schedule years', () => {
+    const currentYear = getCurrentManilaYear()
     const result = createScheduleSchema.safeParse({
       assetId: schedule.assetId,
-      year: unsupportedYear,
+      year: currentYear - 1,
       month: 8,
       allowedMonths: [2, 5, 8, 11],
     })
@@ -101,6 +104,15 @@ describe('schedule contracts', () => {
         result.error.issues.some((issue) => issue.path[0] === 'year'),
       ).toBe(true)
     }
+
+    expect(
+      createScheduleSchema.safeParse({
+        assetId: schedule.assetId,
+        year: currentYear + 1,
+        month: 8,
+        allowedMonths: [2, 5, 8, 11],
+      }).success,
+    ).toBe(false)
   })
 
   it.each([

@@ -31,7 +31,15 @@ public static class SchedulesEndpoints
                 return ApiErrors.Validation(validationErrors);
             }
 
-            var result = await scheduleGenerator.EnsureYearAsync(dto.Year, now, cancellationToken);
+            ScheduleGenerationResult result;
+            try
+            {
+                result = await scheduleGenerator.EnsureYearAsync(dto.Year, now, cancellationToken);
+            }
+            catch (ScheduleBatchMutationConflictException)
+            {
+                return ApiErrors.Conflict("A PM batch changed during schedule recovery. Retry generation.");
+            }
             return Results.Ok(result);
         })
         .WithName("GeneratePreventiveMaintenanceSchedules")
@@ -40,6 +48,48 @@ public static class SchedulesEndpoints
         .Produces<Microsoft.AspNetCore.Mvc.ValidationProblemDetails>(StatusCodes.Status400BadRequest)
         .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status401Unauthorized)
         .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status403Forbidden)
+        .RequireAuthorization(AuthPolicyCatalog.CanGenerateSchedules);
+
+        group.MapGet("/enrollment-deferrals", async (
+            int? page,
+            int? pageSize,
+            IDbContextFactory<ApplicationDbContext> factory,
+            CancellationToken cancellationToken) =>
+        {
+            var size = Math.Clamp(pageSize ?? 25, 1, 100);
+            await using var context = await factory.CreateDbContextAsync(cancellationToken);
+            var query = context.ScheduleEnrollmentDeferrals.AsNoTracking();
+            var total = await query.CountAsync(cancellationToken);
+            var pageCount = Math.Max(1, (int)Math.Ceiling((double)total / size));
+            var pageNumber = Math.Clamp(page ?? 1, 1, pageCount);
+            var items = await query
+                .OrderByDescending(item => item.DeferredAt)
+                .ThenBy(item => item.DepartmentAtDeferral)
+                .ThenBy(item => item.PmCycle)
+                .Skip((pageNumber - 1) * size)
+                .Take(size)
+                .Join(context.Assets.AsNoTracking(),
+                    deferral => deferral.AssetId,
+                    asset => asset.Id,
+                    (deferral, asset) => new ScheduleEnrollmentDeferralResponse(
+                        deferral.AssetId,
+                        asset.AssetCode,
+                        deferral.DepartmentAtDeferral,
+                        deferral.AssetCategoryAtDeferral,
+                        deferral.PmCycle,
+                        deferral.NextEligiblePmCycle,
+                        deferral.ReasonCode,
+                        ScheduleEnrollmentDeferralReason.GetDescription(deferral.ReasonCode),
+                        "Needs GSD scheduling review",
+                        deferral.DeferredAt))
+                .ToListAsync(cancellationToken);
+            return Results.Ok(new ScheduleEnrollmentDeferralPage(pageNumber, size, total, items));
+        })
+        .WithName("ListScheduleEnrollmentDeferrals")
+        .WithSummary("Lists asset cycles deferred for GSD scheduling review")
+        .Produces<ScheduleEnrollmentDeferralPage>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
         .RequireAuthorization(AuthPolicyCatalog.CanGenerateSchedules);
 
         group.MapGet("/supervisor-assignment-options", async (
@@ -82,7 +132,8 @@ public static class SchedulesEndpoints
             TimeProvider timeProvider,
             CancellationToken cancellationToken) =>
         {
-            var validationErrors = dto.Validate();
+            var validationErrors = dto.Validate(
+                PreventiveMaintenanceCycle.ToInstitutionalTime(timeProvider.GetUtcNow()).Year);
             if (validationErrors.Count > 0)
             {
                 return ApiErrors.Validation(validationErrors);
@@ -109,15 +160,6 @@ public static class SchedulesEndpoints
                 });
             }
 
-            var duplicateCycle = await context.PreventiveMaintenanceSchedules
-                .AnyAsync(schedule => schedule.AssetId == dto.AssetId
-                    && schedule.PmCycle == pmCycle,
-                    cancellationToken);
-            if (duplicateCycle)
-            {
-                return ApiErrors.Conflict("A schedule already exists for this asset and PM cycle.");
-            }
-
             if (asset.Status != AssetStatusCatalog.Active)
             {
                 return ApiErrors.Validation(new Dictionary<string, string[]>
@@ -136,32 +178,84 @@ public static class SchedulesEndpoints
 
             var now = timeProvider.GetUtcNow();
             PreventiveMaintenanceCycle.TryParse(pmCycle, out var year, out var month);
+            if (year != PreventiveMaintenanceCycle.ToInstitutionalTime(now).Year)
+            {
+                return ApiErrors.Validation(new Dictionary<string, string[]>
+                {
+                    [nameof(dto.Year)] = ["Ordinary schedule creation is limited to the current institutional calendar year."]
+                });
+            }
+
             var quarter = $"Q{((month - 1) / 3) + 1}";
             var periodType = SchedulePeriodTypeCatalog.TryNormalize(
                 dto.PeriodType,
                 out var normalizedPeriodType)
                 ? normalizedPeriodType
                 : throw new InvalidOperationException("Validated schedule period type was not canonicalizable.");
+            var deadline = PreventiveMaintenanceCycle.DeadlineForCycle(pmCycle);
 
             var schedule = new PreventiveMaintenanceSchedule
             {
                 Id = Guid.NewGuid(),
                 AssetId = dto.AssetId,
                 Asset = asset,
-                ScheduleDate = PreventiveMaintenanceCycle.DeadlineForCycle(pmCycle),
+                ScheduleDate = deadline,
                 PmCycle = pmCycle,
                 PeriodType = periodType,
                 Quarter = periodType == SchedulePeriodTypeCatalog.Quarter ? quarter : null,
                 Year = year,
-                Status = ScheduleStatusCatalog.Due,
+                Status = deadline < PreventiveMaintenanceCycle.ToInstitutionalTime(now)
+                    ? ScheduleStatusCatalog.Overdue
+                    : ScheduleStatusCatalog.Due,
                 CreatedAt = now,
                 UpdatedAt = now
             };
 
-            context.PreventiveMaintenanceSchedules.Add(schedule);
+            Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction? transaction = null;
+            if (string.Equals(context.Database.ProviderName, "Microsoft.EntityFrameworkCore.SqlServer", StringComparison.Ordinal))
+            {
+                transaction = await context.Database.BeginTransactionAsync(cancellationToken);
+            }
+
+            await using var transactionScope = transaction;
             try
             {
+                if (!ScheduleBatchIdentity.TryCreate(asset.Department, asset.AssetCategory, pmCycle, out var identity))
+                {
+                    return ApiErrors.Validation(new Dictionary<string, string[]>
+                    {
+                        [nameof(dto.AssetId)] = ["The asset needs a department and supported category before it can be scheduled."]
+                    });
+                }
+
+                await using var mutationLock = await ScheduleBatchMutationLockLease.AcquireAsync(
+                    context, identity, cancellationToken, transaction);
+                if (!mutationLock.Acquired)
+                {
+                    return ApiErrors.Conflict("The PM batch changed while the schedule was being created. Retry the request.");
+                }
+
+                var duplicateCycle = await context.PreventiveMaintenanceSchedules
+                    .AnyAsync(candidate => candidate.AssetId == dto.AssetId
+                        && candidate.PmCycle == pmCycle,
+                        cancellationToken);
+                if (duplicateCycle)
+                {
+                    return ApiErrors.Conflict("A schedule already exists for this asset and PM cycle.");
+                }
+
+                if (await PreventiveMaintenanceScheduleGenerationService.GetBatchLockReasonAsync(
+                        context, identity, cancellationToken) is not null)
+                {
+                    return ApiErrors.Conflict("This PM batch is already assigned or has inspection evidence, so it cannot accept another schedule.");
+                }
+
+                context.PreventiveMaintenanceSchedules.Add(schedule);
                 await context.SaveChangesAsync(cancellationToken);
+                if (transaction is not null)
+                {
+                    await transaction.CommitAsync(cancellationToken);
+                }
             }
             catch (DbUpdateException exception)
                 when (DatabaseConstraintViolation.IsUniqueConstraint(
@@ -169,6 +263,10 @@ public static class SchedulesEndpoints
                     PreventiveMaintenanceScheduleGenerationService.UniqueIndexName))
             {
                 return ApiErrors.Conflict("A schedule already exists for this asset and PM cycle.");
+            }
+            catch (ScheduleBatchMutationConflictException)
+            {
+                return ApiErrors.Conflict("The PM batch changed while the schedule was being created. Retry the request.");
             }
 
             return Results.Created($"/api/v1/schedules/{schedule.Id}", ScheduleResponse.FromSchedule(schedule));
@@ -792,7 +890,7 @@ public class CreateScheduleDto
     public string? Quarter { get; set; }
     public int? Year { get; set; }
 
-    internal Dictionary<string, string[]> Validate()
+    internal Dictionary<string, string[]> Validate(int currentInstitutionalYear)
     {
         var errors = new Dictionary<string, string[]>();
 
@@ -851,16 +949,15 @@ public class CreateScheduleDto
             && PreventiveMaintenanceCycle.TryParse(cycleForValidation, out var cycleYear, out var cycleMonth))
         {
             var expectedQuarter = $"Q{((cycleMonth - 1) / 3) + 1}";
-            var maxPlanningYear = DateTimeOffset.UtcNow.Year + 5;
             var yearErrors = new List<string>();
             if (Year is not null && Year != cycleYear)
             {
                 yearErrors.Add("Year must match the PM cycle.");
             }
 
-            if (cycleYear < 2000 || cycleYear > maxPlanningYear)
+            if (cycleYear != currentInstitutionalYear)
             {
-                yearErrors.Add($"Year must be between 2000 and {maxPlanningYear}.");
+                yearErrors.Add($"Ordinary schedule creation is limited to the current institutional calendar year ({currentInstitutionalYear}).");
             }
 
             if (yearErrors.Count > 0)
@@ -916,11 +1013,29 @@ public sealed class GenerateScheduleCyclesDto
     internal Dictionary<string, string[]> Validate(int currentInstitutionalYear)
     {
         var errors = new Dictionary<string, string[]>();
-        if (Year is < 2000 || Year > currentInstitutionalYear)
+        if (Year != currentInstitutionalYear)
         {
-            errors[nameof(Year)] = [$"Year must be between 2000 and {currentInstitutionalYear}."];
+            errors[nameof(Year)] = [$"Schedule generation is limited to the current institutional calendar year ({currentInstitutionalYear})."];
         }
 
         return errors;
     }
 }
+
+public sealed record ScheduleEnrollmentDeferralResponse(
+    Guid AssetId,
+    string AssetCode,
+    string Department,
+    string AssetCategory,
+    string DeferredPmCycle,
+    string NextEligiblePmCycle,
+    string ReasonCode,
+    string Reason,
+    string Status,
+    DateTimeOffset DeferredAt);
+
+public sealed record ScheduleEnrollmentDeferralPage(
+    int Page,
+    int PageSize,
+    int Total,
+    IReadOnlyList<ScheduleEnrollmentDeferralResponse> Items);

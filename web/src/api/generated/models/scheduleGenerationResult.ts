@@ -14,4 +14,6 @@ export interface ScheduleGenerationResult {
   existingSchedules: number | string
   /** @pattern ^-?(?:0|[1-9]\d*)$ */
   createdSchedules: number | string
+  /** @pattern ^-?(?:0|[1-9]\d*)$ */
+  deferredSchedules: number | string
 }

@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Data.Common;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
@@ -12,7 +13,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using UniPM.Api.Data;
 using UniPM.Api.Features.Auth;
+using UniPM.Api.Features.Assets;
 using UniPM.Api.Features.PreventiveMaintenanceForms;
+using UniPM.Api.Features.ReferenceData;
 using UniPM.Api.Features.Schedules;
 using UniPM.Api.Models;
 
@@ -107,6 +110,77 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
 
         await using var verificationContext = database.CreateContext();
         Assert.Equal(1, await verificationContext.InspectionRecords.CountAsync(inspection => inspection.ScheduleId == scheduleId));
+    }
+
+    [SqlServerFact]
+    public async Task Schedule_unique_index_rejects_duplicate_asset_cycle_rows()
+    {
+        await using var database = await SqlServerTestDatabase.CreateAsync(RequireSqlServerConnection());
+        await using var context = database.CreateContext();
+        await context.Database.MigrateAsync();
+        var first = AddAssetAndSchedule(context, cycleMonth: 2);
+        await context.SaveChangesAsync();
+
+        context.PreventiveMaintenanceSchedules.Add(new PreventiveMaintenanceSchedule
+        {
+            Id = Guid.NewGuid(),
+            AssetId = first.AssetId,
+            ScheduleDate = first.ScheduleDate,
+            PmCycle = first.PmCycle,
+            PeriodType = first.PeriodType,
+            Quarter = first.Quarter,
+            Year = first.Year,
+            Status = ScheduleStatusCatalog.Due,
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow
+        });
+
+        await Assert.ThrowsAsync<DbUpdateException>(() => context.SaveChangesAsync());
+        Assert.Equal(1, await context.PreventiveMaintenanceSchedules
+            .CountAsync(schedule => schedule.AssetId == first.AssetId && schedule.PmCycle == first.PmCycle));
+    }
+
+    [SqlServerFact]
+    public async Task Concurrent_generation_creates_only_one_schedule_per_asset_cycle()
+    {
+        await using var database = await SqlServerTestDatabase.CreateAsync(RequireSqlServerConnection());
+        var year = PreventiveMaintenanceCycle.ToInstitutionalTime(DateTimeOffset.UtcNow).Year;
+        var asset = new Asset
+        {
+            Id = Guid.NewGuid(),
+            AssetCode = $"GEN-RACE-{Guid.NewGuid():N}"[..20],
+            AssetCategory = "fire-extinguisher",
+            Building = "Generation Race Test",
+            Department = "GEN-RACE-TEST",
+            Location = "Test location",
+            Status = AssetStatusCatalog.Active,
+            CreatedAt = DateTimeOffset.UtcNow.AddYears(-1),
+            UpdatedAt = DateTimeOffset.UtcNow.AddYears(-1)
+        };
+        await using (var context = database.CreateContext())
+        {
+            await context.Database.MigrateAsync();
+            context.Assets.Add(asset);
+            await context.SaveChangesAsync();
+        }
+
+        await using var application = new SqlServerInspectionApplicationFactory(
+            database.ConnectionString,
+            AuthRoleCatalog.Gsd);
+        using var client = application.CreateClient();
+        var responses = await Task.WhenAll(
+            client.PostAsJsonAsync("/api/v1/schedules/generate", new { year }),
+            client.PostAsJsonAsync("/api/v1/schedules/generate", new { year }));
+        using var firstResponse = responses[0];
+        using var secondResponse = responses[1];
+        Assert.Equal(HttpStatusCode.OK, firstResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, secondResponse.StatusCode);
+        await using var verify = database.CreateContext();
+        var schedules = await verify.PreventiveMaintenanceSchedules
+            .Where(schedule => schedule.AssetId == asset.Id && schedule.PmCycle.StartsWith($"{year:D4}-"))
+            .ToListAsync();
+        Assert.Equal(4, schedules.Count);
+        Assert.Equal(4, schedules.Select(schedule => schedule.PmCycle).Distinct(StringComparer.Ordinal).Count());
     }
 
     [SqlServerFact]
@@ -344,6 +418,188 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
         Assert.Single(await verificationContext.InspectionRecords
             .Where(inspection => inspection.ScheduleId == scenario.ScheduleId)
             .ToListAsync());
+    }
+
+    [SqlServerFact]
+    public async Task Registration_and_recovery_wait_for_assignment_then_defer_locked_cycle()
+    {
+        await using var database = await SqlServerTestDatabase.CreateAsync(RequireSqlServerConnection());
+        await using var seedApplication = new SqlServerInspectionApplicationFactory(
+            database.ConnectionString,
+            AuthRoleCatalog.Gsd);
+        var institutionalYear = PreventiveMaintenanceCycle.ToInstitutionalTime(DateTimeOffset.UtcNow).Year;
+        var scenario = await seedApplication.SeedBatchMutationScenarioAsync(
+            $"{institutionalYear:D4}-12",
+            "fire-alarm");
+        var mutationGate = new ScheduleMutationCommandGate();
+
+        await using var application = new SqlServerInspectionApplicationFactory(
+            database.ConnectionString,
+            mutationGate,
+            AuthRoleCatalog.Gsd);
+        using var client = application.CreateClient();
+        var assignmentTask = client.PutAsJsonAsync(
+            $"/api/v1/schedules/{scenario.ScheduleId}/supervisor-assignment",
+            new { supervisorUserId = scenario.NewSupervisorId });
+        await mutationGate.WaitForScheduleUpdateAsync();
+
+        var registrationTask = client.PostAsJsonAsync("/api/v1/assets/", new
+        {
+            assetCode = $"RACE-NEW-{Guid.NewGuid():N}"[..20],
+            assetCategory = "fire-alarm",
+            department = "RACE-TEST",
+            building = "Race Test Building",
+            location = "Ground Floor"
+        });
+        var generationTask = client.PostAsJsonAsync(
+            "/api/v1/schedules/generate",
+            new { year = institutionalYear });
+        try
+        {
+            await WaitForApplicationLockWaitAsync(
+                database.ConnectionString,
+                expectedWaiters: 2,
+                competingMutation: registrationTask);
+        }
+        finally
+        {
+            mutationGate.ReleaseScheduleUpdate();
+        }
+
+        using var assignmentResponse = await assignmentTask;
+        using var registrationResponse = await registrationTask;
+        using var generationResponse = await generationTask;
+        Assert.Equal(HttpStatusCode.OK, assignmentResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.Created, registrationResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, generationResponse.StatusCode);
+
+        using var assetDocument = JsonDocument.Parse(await registrationResponse.Content.ReadAsStringAsync());
+        var newAssetId = assetDocument.RootElement.GetProperty("id").GetGuid();
+        await using var context = database.CreateContext();
+        var newAssetCycles = await context.PreventiveMaintenanceSchedules
+            .Where(schedule => schedule.AssetId == newAssetId)
+            .Select(schedule => schedule.PmCycle)
+            .ToListAsync();
+        Assert.DoesNotContain($"{institutionalYear:D4}-12", newAssetCycles);
+        var deferral = await context.ScheduleEnrollmentDeferrals
+            .SingleAsync(item => item.AssetId == newAssetId
+                && item.PmCycle == $"{institutionalYear:D4}-12");
+        Assert.Equal("BatchAssigned", deferral.ReasonCode);
+        var existingSchedule = await context.PreventiveMaintenanceSchedules
+            .SingleAsync(schedule => schedule.Id == scenario.ScheduleId);
+        Assert.Equal(scenario.NewSupervisorId, existingSchedule.AssignedSupervisorUserId);
+        Assert.Null(existingSchedule.AssignedToUserId);
+    }
+
+    [SqlServerFact]
+    public async Task Manual_schedule_creation_commits_the_schedule_with_its_batch_lock()
+    {
+        await using var database = await SqlServerTestDatabase.CreateAsync(RequireSqlServerConnection());
+        await using var application = new SqlServerInspectionApplicationFactory(
+            database.ConnectionString,
+            AuthRoleCatalog.Gsd);
+        using var client = application.CreateClient();
+        var institutionalYear = PreventiveMaintenanceCycle.ToInstitutionalTime(DateTimeOffset.UtcNow).Year;
+        var asset = new Asset
+        {
+            Id = Guid.NewGuid(),
+            AssetCode = $"MANUAL-CREATE-{Guid.NewGuid():N}"[..20],
+            AssetCategory = "fire-alarm",
+            Building = "Manual Schedule Test",
+            Department = "MANUAL-SCHEDULE-TEST",
+            Location = "Ground Floor",
+            Status = AssetStatusCatalog.Active,
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow
+        };
+        await using (var seedContext = database.CreateContext())
+        {
+            seedContext.Assets.Add(asset);
+            await seedContext.SaveChangesAsync();
+        }
+
+        using var response = await client.PostAsJsonAsync("/api/v1/schedules/", new
+        {
+            assetId = asset.Id,
+            pmCycle = $"{institutionalYear:D4}-12",
+            periodType = "Semester"
+        });
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        await using var verificationContext = database.CreateContext();
+        Assert.True(await verificationContext.PreventiveMaintenanceSchedules
+            .AnyAsync(schedule => schedule.AssetId == asset.Id
+                && schedule.PmCycle == $"{institutionalYear:D4}-12"));
+    }
+
+    [SqlServerFact]
+    public async Task Manual_schedule_creation_waits_for_assignment_and_rejects_locked_batch()
+    {
+        await using var database = await SqlServerTestDatabase.CreateAsync(RequireSqlServerConnection());
+        await using var seedApplication = new SqlServerInspectionApplicationFactory(
+            database.ConnectionString,
+            AuthRoleCatalog.Gsd);
+        var institutionalYear = PreventiveMaintenanceCycle.ToInstitutionalTime(DateTimeOffset.UtcNow).Year;
+        var pmCycle = $"{institutionalYear:D4}-12";
+        var scenario = await seedApplication.SeedBatchMutationScenarioAsync(pmCycle, "fire-alarm");
+        var lateAsset = new Asset
+        {
+            Id = Guid.NewGuid(),
+            AssetCode = $"RACE-MANUAL-{Guid.NewGuid():N}"[..20],
+            AssetCategory = "fire-alarm",
+            Building = "Race Test Building",
+            Department = "RACE-TEST",
+            Location = "Ground Floor",
+            Status = AssetStatusCatalog.Active,
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow
+        };
+        await using (var seedContext = database.CreateContext())
+        {
+            seedContext.Assets.Add(lateAsset);
+            await seedContext.SaveChangesAsync();
+        }
+
+        var mutationGate = new ScheduleMutationCommandGate();
+        await using var application = new SqlServerInspectionApplicationFactory(
+            database.ConnectionString,
+            mutationGate,
+            AuthRoleCatalog.Gsd);
+        using var client = application.CreateClient();
+
+        var assignmentTask = client.PutAsJsonAsync(
+            $"/api/v1/schedules/{scenario.ScheduleId}/supervisor-assignment",
+            new { supervisorUserId = scenario.NewSupervisorId });
+        await mutationGate.WaitForScheduleUpdateAsync();
+        var scheduleCreationTask = client.PostAsJsonAsync("/api/v1/schedules/", new
+        {
+            assetId = lateAsset.Id,
+            pmCycle,
+            periodType = "Semester"
+        });
+        try
+        {
+            await WaitForApplicationLockWaitAsync(
+                database.ConnectionString,
+                expectedWaiters: 1,
+                competingMutation: scheduleCreationTask);
+        }
+        finally
+        {
+            mutationGate.ReleaseScheduleUpdate();
+        }
+
+        using var assignmentResponse = await assignmentTask;
+        using var scheduleCreationResponse = await scheduleCreationTask;
+        Assert.Equal(HttpStatusCode.OK, assignmentResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, scheduleCreationResponse.StatusCode);
+
+        await using var verificationContext = database.CreateContext();
+        Assert.False(await verificationContext.PreventiveMaintenanceSchedules
+            .AnyAsync(schedule => schedule.AssetId == lateAsset.Id && schedule.PmCycle == pmCycle));
+        var assignedSchedule = await verificationContext.PreventiveMaintenanceSchedules
+            .SingleAsync(schedule => schedule.Id == scenario.ScheduleId);
+        Assert.Equal(scenario.NewSupervisorId, assignedSchedule.AssignedSupervisorUserId);
     }
 
     private static object NewInspectionRequest(Guid scheduleId, Guid inspectorUserId)
@@ -643,7 +899,9 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
             return forms.Select(form => form.Id).ToArray();
         }
 
-        public async Task<BatchMutationScenario> SeedBatchMutationScenarioAsync()
+        public async Task<BatchMutationScenario> SeedBatchMutationScenarioAsync(
+            string pmCycle = "2026-08",
+            string assetCategory = "fire-extinguisher")
         {
             await using var scope = Services.CreateAsyncScope();
             var contextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
@@ -679,7 +937,7 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
             {
                 Id = Guid.NewGuid(),
                 AssetCode = $"RACE-{Guid.NewGuid():N}"[..20],
-                AssetCategory = "fire-extinguisher",
+                AssetCategory = assetCategory,
                 Building = "Race Test Building",
                 Department = "RACE-TEST",
                 Location = "Ground Floor",
@@ -687,16 +945,22 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
                 CreatedAt = now,
                 UpdatedAt = now
             };
+            PreventiveMaintenanceCycle.TryParse(pmCycle, out var year, out var month);
+            var periodType = CpmpScheduleFrequency.GetMonths(assetCategory).Count == 4
+                ? SchedulePeriodTypeCatalog.Quarter
+                : SchedulePeriodTypeCatalog.Semester;
             var schedule = new PreventiveMaintenanceSchedule
             {
                 Id = Guid.NewGuid(),
                 AssetId = asset.Id,
                 Asset = asset,
-                ScheduleDate = PreventiveMaintenanceCycle.DeadlineForCycle("2026-08"),
-                PmCycle = "2026-08",
-                PeriodType = "Quarter",
-                Quarter = "Q3",
-                Year = 2026,
+                ScheduleDate = PreventiveMaintenanceCycle.DeadlineForCycle(pmCycle),
+                PmCycle = pmCycle,
+                PeriodType = periodType,
+                Quarter = periodType == SchedulePeriodTypeCatalog.Quarter
+                    ? $"Q{((month - 1) / 3) + 1}"
+                    : null,
+                Year = year,
                 Status = ScheduleStatusCatalog.Due,
                 AssignedToUserId = actor.Id,
                 AssignedSupervisorUserId = existingSupervisor.Id,

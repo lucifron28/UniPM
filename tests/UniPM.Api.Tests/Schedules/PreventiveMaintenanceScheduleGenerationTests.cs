@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
@@ -58,9 +59,89 @@ public sealed class PreventiveMaintenanceScheduleGenerationTests
     }
 
     [Fact]
-    public async Task Requested_year_recovery_respects_registration_date_and_is_idempotent()
+    public async Task Registration_enrolls_asset_in_an_untouched_existing_batch()
     {
         var now = new DateTimeOffset(2026, 8, 15, 4, 0, 0, TimeSpan.Zero);
+        await using var application = new TestApplicationFactory(AuthRoleCatalog.Gsd, now);
+        using var client = application.CreateClient();
+        var existingAsset = await application.SeedAssetAsync(
+            "GEN-FE-BATCH-BASE",
+            "fire-extinguisher",
+            new DateTimeOffset(2020, 1, 1, 0, 0, 0, TimeSpan.FromHours(8)),
+            department: "CCMS");
+        await application.SeedScheduleAsync(
+            existingAsset.Id, "2026-08", ScheduleStatusCatalog.Due, null, null, null);
+
+        using var response = await client.PostAsJsonAsync("/api/v1/assets/", new
+        {
+            assetCode = "GEN-FE-BATCH-NEW",
+            assetCategory = "fire-extinguisher",
+            department = "CCMS",
+            building = "Main",
+            location = "Lobby"
+        });
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var asset = await response.Content.ReadFromJsonAsync<AssetRef>();
+        Assert.NotNull(asset);
+        Assert.Equal(["2026-08", "2026-11"],
+            (await application.ReadSchedulesAsync(asset.Id)).Select(schedule => schedule.PmCycle));
+        Assert.Empty(await application.ReadDeferralsAsync(asset.Id));
+    }
+
+    [Fact]
+    public async Task Yearly_recovery_defers_missing_asset_when_its_pm_batch_is_locked()
+    {
+        var now = new DateTimeOffset(2026, 8, 15, 4, 0, 0, TimeSpan.Zero);
+        await using var application = new TestApplicationFactory(AuthRoleCatalog.Gsd, now);
+        using var client = application.CreateClient();
+        var lockedAsset = await application.SeedAssetAsync(
+            "GEN-RECOVERY-LOCKED",
+            "fire-extinguisher",
+            new DateTimeOffset(2020, 1, 1, 0, 0, 0, TimeSpan.FromHours(8)),
+            department: "CCMS");
+        var missingAsset = await application.SeedAssetAsync(
+            "GEN-RECOVERY-MISSING",
+            "fire-extinguisher",
+            new DateTimeOffset(2020, 1, 1, 0, 0, 0, TimeSpan.FromHours(8)),
+            department: "CCMS");
+        await application.SeedScheduleAsync(
+            lockedAsset.Id,
+            "2026-08",
+            ScheduleStatusCatalog.Due,
+            assignedToUserId: null,
+            assignedSupervisorUserId: Guid.NewGuid(),
+            completedAt: null);
+
+        using var response = await client.PostAsJsonAsync(
+            "/api/v1/schedules/generate",
+            new { year = 2026 });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.DoesNotContain(
+            await application.ReadSchedulesAsync(missingAsset.Id),
+            schedule => schedule.PmCycle == "2026-08");
+        Assert.Contains(
+            await application.ReadSchedulesAsync(missingAsset.Id),
+            schedule => schedule.PmCycle == "2026-11");
+        var deferral = Assert.Single(await application.ReadDeferralsAsync(missingAsset.Id));
+        Assert.Equal("2026-08", deferral.PmCycle);
+        Assert.Equal("BatchAssigned", deferral.ReasonCode);
+        Assert.Equal("2026-11", deferral.NextEligiblePmCycle);
+
+        var scheduleSnapshots = await application.ReadScheduleSnapshotsAsync(missingAsset.Id);
+        using var repeated = await client.PostAsJsonAsync(
+            "/api/v1/schedules/generate",
+            new { year = 2026 });
+        Assert.Equal(HttpStatusCode.OK, repeated.StatusCode);
+        Assert.Equal(scheduleSnapshots, await application.ReadScheduleSnapshotsAsync(missingAsset.Id));
+        Assert.Single(await application.ReadDeferralsAsync(missingAsset.Id));
+    }
+
+    [Fact]
+    public async Task Requested_year_recovery_respects_registration_date_and_is_idempotent()
+    {
+        var now = new DateTimeOffset(2026, 10, 9, 4, 0, 0, TimeSpan.Zero);
         await using var application = new TestApplicationFactory(AuthRoleCatalog.Gsd, now);
         using var client = application.CreateClient();
         var asset = await application.SeedAssetAsync(
@@ -68,18 +149,18 @@ public sealed class PreventiveMaintenanceScheduleGenerationTests
             "water-drinking-station",
             new DateTimeOffset(2024, 1, 1, 0, 0, 0, TimeSpan.FromHours(8)));
 
-        using var response = await client.PostAsJsonAsync("/api/v1/schedules/generate", new { year = 2025 });
+        using var response = await client.PostAsJsonAsync("/api/v1/schedules/generate", new { year = 2026 });
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var first = await response.Content.ReadFromJsonAsync<GenerationResult>();
         Assert.NotNull(first);
-        Assert.Equal(2025, first.Year);
+        Assert.Equal(2026, first.Year);
         Assert.Equal(1, first.EligibleAssets);
-        Assert.Equal(4, first.CreatedSchedules);
+        Assert.Equal(1, first.CreatedSchedules);
         Assert.Equal(0, first.ExistingSchedules);
 
         var generated = await application.ReadSchedulesAsync(asset.Id);
-        Assert.Equal(["2025-02", "2025-05", "2025-08", "2025-11"], generated.Select(item => item.PmCycle));
-        Assert.All(generated, schedule => Assert.Equal("Overdue", schedule.Status));
+        Assert.Equal(["2026-11"], generated.Select(item => item.PmCycle));
+        Assert.Equal("Due", Assert.Single(generated).Status);
         Assert.All(generated, schedule =>
         {
             Assert.Equal("Quarter", schedule.PeriodType);
@@ -87,19 +168,19 @@ public sealed class PreventiveMaintenanceScheduleGenerationTests
             Assert.Null(schedule.AcademicYear);
         });
 
-        using var secondResponse = await client.PostAsJsonAsync("/api/v1/schedules/generate", new { year = 2025 });
+        using var secondResponse = await client.PostAsJsonAsync("/api/v1/schedules/generate", new { year = 2026 });
         secondResponse.EnsureSuccessStatusCode();
         var second = await secondResponse.Content.ReadFromJsonAsync<GenerationResult>();
         Assert.NotNull(second);
         Assert.Equal(0, second.CreatedSchedules);
-        Assert.Equal(4, second.ExistingSchedules);
-        Assert.Equal(4, (await application.ReadSchedulesAsync(asset.Id)).Count);
+        Assert.Equal(1, second.ExistingSchedules);
+        Assert.Single(await application.ReadSchedulesAsync(asset.Id));
     }
 
     [Fact]
     public async Task Generation_uses_each_cpmp_frequency_and_preserves_ineligible_or_existing_records()
     {
-        var now = new DateTimeOffset(2026, 12, 31, 16, 0, 0, TimeSpan.Zero);
+        var now = new DateTimeOffset(2026, 1, 1, 4, 0, 0, TimeSpan.Zero);
         await using var application = new TestApplicationFactory(AuthRoleCatalog.Gsd, now);
         using var client = application.CreateClient();
 
@@ -124,7 +205,7 @@ public sealed class PreventiveMaintenanceScheduleGenerationTests
 
         var workerId = Guid.NewGuid();
         var supervisorId = Guid.NewGuid();
-        var completedAt = new DateTimeOffset(2026, 2, 28, 12, 0, 0, TimeSpan.FromHours(8));
+        var completedAt = new DateTimeOffset(2025, 12, 31, 12, 0, 0, TimeSpan.FromHours(8));
         await application.SeedScheduleAsync(
             fireExtinguisher.Id, "2026-02", "Completed", workerId, supervisorId, completedAt);
         await application.SeedScheduleAsync(
@@ -145,7 +226,7 @@ public sealed class PreventiveMaintenanceScheduleGenerationTests
         Assert.Equal("Cancelled", feCycles[1].Status);
         Assert.All(feCycles.Skip(2), schedule =>
         {
-            Assert.Equal("Overdue", schedule.Status);
+            Assert.Equal("Due", schedule.Status);
             Assert.Equal("Quarter", schedule.PeriodType);
             Assert.Equal($"Q{((int.Parse(schedule.PmCycle[^2..]) - 1) / 3) + 1}", schedule.Quarter);
             Assert.Null(schedule.AssignedToUserId);
@@ -161,7 +242,7 @@ public sealed class PreventiveMaintenanceScheduleGenerationTests
                 Assert.Null(schedule.Quarter);
                 Assert.Null(schedule.Semester);
                 Assert.Null(schedule.AcademicYear);
-                Assert.Equal("Overdue", schedule.Status);
+                Assert.Equal("Due", schedule.Status);
             });
             Assert.Equal(new DateTimeOffset(2026, 6, 30, 23, 59, 59, 999, TimeSpan.FromHours(8)).AddTicks(9999), schedules[0].ScheduleDate);
             Assert.Equal(new DateTimeOffset(2026, 12, 31, 23, 59, 59, 999, TimeSpan.FromHours(8)).AddTicks(9999), schedules[1].ScheduleDate);
@@ -184,12 +265,12 @@ public sealed class PreventiveMaintenanceScheduleGenerationTests
             .ToList();
         Assert.Equal(existingSchedulesBefore, existingSchedulesAfter);
 
-        using var leapYearResponse = await client.PostAsJsonAsync("/api/v1/schedules/generate", new { year = 2024 });
-        Assert.Equal(HttpStatusCode.OK, leapYearResponse.StatusCode);
+        var historicalBefore = await application.ReadScheduleSnapshotsAsync(fireExtinguisher.Id);
+        using var historicalRequest = await client.PostAsJsonAsync("/api/v1/schedules/generate", new { year = 2024 });
+        Assert.Equal(HttpStatusCode.BadRequest, historicalRequest.StatusCode);
         var leapYearSchedules = await application.ReadSchedulesAsync(fireExtinguisher.Id);
-        Assert.Contains(leapYearSchedules, schedule =>
-            schedule.PmCycle == "2024-02"
-            && schedule.ScheduleDate == new DateTimeOffset(2024, 2, 29, 23, 59, 59, 999, TimeSpan.FromHours(8)).AddTicks(9999));
+        Assert.DoesNotContain(leapYearSchedules, schedule => schedule.PmCycle.StartsWith("2024-", StringComparison.Ordinal));
+        Assert.Equal(historicalBefore, await application.ReadScheduleSnapshotsAsync(fireExtinguisher.Id));
     }
 
     [Fact]
@@ -210,6 +291,157 @@ public sealed class PreventiveMaintenanceScheduleGenerationTests
         using var gsdClient = gsd.CreateClient();
         using var future = await gsdClient.PostAsJsonAsync("/api/v1/schedules/generate", new { year = 2027 });
         Assert.Equal(HttpStatusCode.BadRequest, future.StatusCode);
+        using var historical = await gsdClient.PostAsJsonAsync("/api/v1/schedules/generate", new { year = 2025 });
+        Assert.Equal(HttpStatusCode.BadRequest, historical.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("supervisor", "Due", true, false, null, null, "BatchAssigned")]
+    [InlineData("inspector", "Due", false, true, null, null, "BatchAssigned")]
+    [InlineData("inspection-started", "Ongoing", false, false, null, null, "WorkInProgress")]
+    [InlineData("inspection-recorded", "Due", false, false, null, null, "InspectionStarted")]
+    [InlineData("completed", "Completed", false, false, null, null, "CycleCompleted")]
+    [InlineData("cancelled", "Cancelled", false, false, null, null, "CycleCancelled")]
+    [InlineData("submitted", "Completed", false, false, null, "Submitted", "FormSubmitted")]
+    [InlineData("acknowledged", "Completed", false, false, null, "Acknowledged", "FormAcknowledged")]
+    public async Task Registration_defers_locked_cycle_and_recovery_does_not_recreate_it(
+        string stage,
+        string status,
+        bool assignedSupervisor,
+        bool assignedInspector,
+        DateTimeOffset? completedAt,
+        string? formStatus,
+        string expectedReason)
+    {
+        var now = new DateTimeOffset(2026, 8, 15, 4, 0, 0, TimeSpan.Zero);
+        await using var application = new TestApplicationFactory(AuthRoleCatalog.Gsd, now);
+        using var client = application.CreateClient();
+        var existingAsset = await application.SeedAssetAsync(
+            $"GEN-LOCK-{stage}",
+            "fire-extinguisher",
+            new DateTimeOffset(2020, 1, 1, 0, 0, 0, TimeSpan.FromHours(8)));
+        Guid? supervisorId = assignedSupervisor ? Guid.NewGuid() : null;
+        Guid? workerId = assignedInspector ? Guid.NewGuid() : null;
+        var completion = status == "Completed"
+            ? completedAt ?? now
+            : completedAt;
+        var scheduleId = await application.SeedScheduleAsync(
+            existingAsset.Id,
+            "2026-08",
+            status,
+            workerId,
+            supervisorId,
+            completion);
+
+        if (stage is "inspection-started" or "inspection-recorded")
+        {
+            await application.SeedInspectionAsync(existingAsset.Id, scheduleId, now);
+        }
+
+        if (formStatus is not null)
+        {
+            await application.SeedFormAsync("fire-extinguisher", "GSD", "2026-08", formStatus, now);
+        }
+
+        using var response = await client.PostAsJsonAsync("/api/v1/assets/", new
+        {
+            assetCode = $"GEN-NEW-{stage}",
+            assetCategory = "fire-extinguisher",
+            department = "GSD",
+            building = "Main",
+            location = "Lobby"
+        });
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var asset = await response.Content.ReadFromJsonAsync<AssetRef>();
+        Assert.NotNull(asset);
+
+        var schedules = await application.ReadSchedulesAsync(asset.Id);
+        Assert.DoesNotContain(schedules, schedule => schedule.PmCycle == "2026-08");
+        Assert.Contains(schedules, schedule => schedule.PmCycle == "2026-11");
+        var deferred = await application.ReadDeferralsAsync(asset.Id);
+        var single = Assert.Single(deferred);
+        Assert.Equal("2026-08", single.PmCycle);
+        Assert.Equal(expectedReason, single.ReasonCode);
+        Assert.Equal("2026-11", single.NextEligiblePmCycle);
+
+        using var reviewResponse = await client.GetAsync(
+            "/api/v1/schedules/enrollment-deferrals?page=2147483647");
+        Assert.Equal(HttpStatusCode.OK, reviewResponse.StatusCode);
+        using var reviewPage = await JsonDocument.ParseAsync(await reviewResponse.Content.ReadAsStreamAsync());
+        Assert.Equal(1, reviewPage.RootElement.GetProperty("page").GetInt32());
+        var reviewItem = Assert.Single(reviewPage.RootElement.GetProperty("items").EnumerateArray());
+        Assert.Equal("2026-08", reviewItem.GetProperty("deferredPmCycle").GetString());
+        Assert.Equal(expectedReason, reviewItem.GetProperty("reasonCode").GetString());
+        Assert.Equal("Needs GSD scheduling review", reviewItem.GetProperty("status").GetString());
+
+        var before = await application.ReadScheduleSnapshotsAsync(asset.Id);
+        using var recovery = await client.PostAsJsonAsync("/api/v1/schedules/generate", new { year = 2026 });
+        Assert.Equal(HttpStatusCode.OK, recovery.StatusCode);
+        Assert.Equal(before, await application.ReadScheduleSnapshotsAsync(asset.Id));
+        Assert.Single(await application.ReadDeferralsAsync(asset.Id));
+
+        var unchangedExisting = await application.ReadSchedulesAsync(existingAsset.Id);
+        Assert.Equal(status, Assert.Single(unchangedExisting, schedule => schedule.PmCycle == "2026-08").Status);
+    }
+
+    [Fact]
+    public async Task Enrollment_deferral_review_is_not_available_to_supervisors()
+    {
+        await using var application = new TestApplicationFactory(
+            AuthRoleCatalog.Supervisor,
+            new DateTimeOffset(2026, 8, 15, 4, 0, 0, TimeSpan.Zero));
+        using var client = application.CreateClient();
+
+        using var response = await client.GetAsync("/api/v1/schedules/enrollment-deferrals");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Manual_schedule_creation_rejects_past_and_future_years()
+    {
+        await using var application = new TestApplicationFactory(
+            AuthRoleCatalog.Gsd,
+            new DateTimeOffset(2026, 8, 15, 4, 0, 0, TimeSpan.Zero));
+        using var client = application.CreateClient();
+        var asset = await application.SeedAssetAsync(
+            "GEN-FE-YEAR-GUARD",
+            "fire-extinguisher",
+            new DateTimeOffset(2020, 1, 1, 0, 0, 0, TimeSpan.FromHours(8)));
+
+        foreach (var cycle in new[] { "2025-11", "2027-02" })
+        {
+            using var response = await client.PostAsJsonAsync("/api/v1/schedules/", new
+            {
+                assetId = asset.Id,
+                pmCycle = cycle,
+                periodType = "Quarter",
+                quarter = cycle.EndsWith("11", StringComparison.Ordinal) ? "Q4" : "Q1"
+            });
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        }
+
+        using var overdue = await client.PostAsJsonAsync("/api/v1/schedules/", new
+        {
+            assetId = asset.Id,
+            pmCycle = "2026-05",
+            periodType = "Quarter",
+            quarter = "Q2"
+        });
+        Assert.Equal(HttpStatusCode.Created, overdue.StatusCode);
+        using var overdueDocument = JsonDocument.Parse(await overdue.Content.ReadAsStringAsync());
+        Assert.Equal("Overdue", overdueDocument.RootElement.GetProperty("status").GetString());
+
+        using var due = await client.PostAsJsonAsync("/api/v1/schedules/", new
+        {
+            assetId = asset.Id,
+            pmCycle = "2026-11",
+            periodType = "Quarter",
+            quarter = "Q4"
+        });
+        Assert.Equal(HttpStatusCode.Created, due.StatusCode);
+        using var dueDocument = JsonDocument.Parse(await due.Content.ReadAsStringAsync());
+        Assert.Equal("Due", dueDocument.RootElement.GetProperty("status").GetString());
     }
 
     [Fact]
@@ -248,7 +480,7 @@ public sealed class PreventiveMaintenanceScheduleGenerationTests
                 options,
                 factory,
                 timeProvider,
-                expectedCount: 8,
+                expectedCount: 4,
                 TimeSpan.FromSeconds(3));
         }
         finally
@@ -261,12 +493,10 @@ public sealed class PreventiveMaintenanceScheduleGenerationTests
             .AsNoTracking()
             .OrderBy(schedule => schedule.PmCycle)
             .ToListAsync();
-        Assert.Equal(8, schedules.Count);
+        Assert.Equal(4, schedules.Count);
         Assert.DoesNotContain(schedules, schedule => schedule.PmCycle.StartsWith("2025-", StringComparison.Ordinal));
-        Assert.Equal(4, schedules.Count(schedule => schedule.PmCycle.StartsWith("2026-", StringComparison.Ordinal)));
         Assert.Equal(4, schedules.Count(schedule => schedule.PmCycle.StartsWith("2027-", StringComparison.Ordinal)));
-        Assert.All(schedules.Where(schedule => schedule.PmCycle.StartsWith("2026-", StringComparison.Ordinal)),
-            schedule => Assert.Equal("Overdue", schedule.Status));
+        Assert.DoesNotContain(schedules, schedule => schedule.PmCycle.StartsWith("2026-", StringComparison.Ordinal));
         Assert.All(schedules.Where(schedule => schedule.PmCycle.StartsWith("2027-", StringComparison.Ordinal)),
             schedule => Assert.Equal("Due", schedule.Status));
         Assert.True(factory.CreateAttempts >= 3);
@@ -352,7 +582,7 @@ public sealed class PreventiveMaintenanceScheduleGenerationTests
             return new AssetRef(asset.Id);
         }
 
-        public async Task SeedScheduleAsync(
+        public async Task<Guid> SeedScheduleAsync(
             Guid assetId,
             string pmCycle,
             string status,
@@ -364,7 +594,7 @@ public sealed class PreventiveMaintenanceScheduleGenerationTests
             await using var context = await Services
                 .GetRequiredService<IDbContextFactory<ApplicationDbContext>>()
                 .CreateDbContextAsync();
-            context.PreventiveMaintenanceSchedules.Add(new PreventiveMaintenanceSchedule
+            var schedule = new PreventiveMaintenanceSchedule
             {
                 Id = Guid.NewGuid(),
                 AssetId = assetId,
@@ -377,6 +607,58 @@ public sealed class PreventiveMaintenanceScheduleGenerationTests
                 AssignedToUserId = assignedToUserId,
                 AssignedSupervisorUserId = assignedSupervisorUserId,
                 CompletedAt = completedAt,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+            context.PreventiveMaintenanceSchedules.Add(schedule);
+            await context.SaveChangesAsync();
+            return schedule.Id;
+        }
+
+        public async Task SeedInspectionAsync(Guid assetId, Guid scheduleId, DateTimeOffset now)
+        {
+            await using var context = await Services
+                .GetRequiredService<IDbContextFactory<ApplicationDbContext>>()
+                .CreateDbContextAsync();
+            context.InspectionRecords.Add(new InspectionRecord
+            {
+                Id = Guid.NewGuid(),
+                ScheduleId = scheduleId,
+                AssetId = assetId,
+                InspectorUserId = Guid.NewGuid(),
+                DateInspected = now,
+                IsOperational = true,
+                CreatedAt = now,
+                UpdatedAt = now
+            });
+            await context.SaveChangesAsync();
+        }
+
+        public async Task SeedFormAsync(
+            string assetCategory,
+            string department,
+            string pmCycle,
+            string status,
+            DateTimeOffset now)
+        {
+            PreventiveMaintenanceCycle.TryParse(pmCycle, out var year, out var month);
+            await using var context = await Services
+                .GetRequiredService<IDbContextFactory<ApplicationDbContext>>()
+                .CreateDbContextAsync();
+            context.PreventiveMaintenanceForms.Add(new PreventiveMaintenanceForm
+            {
+                Id = Guid.NewGuid(),
+                AssetCategory = assetCategory,
+                Department = department,
+                PmCycle = pmCycle,
+                PeriodType = SchedulePeriodTypeCatalog.Quarter,
+                Quarter = $"Q{((month - 1) / 3) + 1}",
+                Year = year,
+                Status = status,
+                CreatedByUserId = Guid.NewGuid(),
+                SubmittedByUserId = status == "Draft" ? null : Guid.NewGuid(),
+                SubmittedAt = status == "Draft" ? null : now,
+                FieldWorkCompletedAt = status == "Draft" ? null : now,
                 CreatedAt = now,
                 UpdatedAt = now
             });
@@ -432,6 +714,18 @@ public sealed class PreventiveMaintenanceScheduleGenerationTests
                     schedule.UpdatedAt))
                 .ToListAsync();
         }
+
+        public async Task<List<ScheduleEnrollmentDeferral>> ReadDeferralsAsync(Guid assetId)
+        {
+            await using var context = await Services
+                .GetRequiredService<IDbContextFactory<ApplicationDbContext>>()
+                .CreateDbContextAsync();
+            return await context.ScheduleEnrollmentDeferrals
+                .AsNoTracking()
+                .Where(deferral => deferral.AssetId == assetId)
+                .OrderBy(deferral => deferral.PmCycle)
+                .ToListAsync();
+        }
     }
 
     private sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider
@@ -473,7 +767,8 @@ public sealed class PreventiveMaintenanceScheduleGenerationTests
         int Year,
         int EligibleAssets,
         int ExistingSchedules,
-        int CreatedSchedules);
+        int CreatedSchedules,
+        int DeferredSchedules = 0);
 
     private sealed class FailOnceDbContextFactory(DbContextOptions<ApplicationDbContext> options)
         : IDbContextFactory<ApplicationDbContext>

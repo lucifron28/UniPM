@@ -143,6 +143,13 @@ async function mockScheduleApi(page: Page, roles = ['GSD']) {
         body: JSON.stringify({ workers: [] }),
       })
     }
+    if (pathname === '/api/v1/schedules/enrollment-deferrals') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ page: 1, pageSize: 10, total: 0, items: [] }),
+      })
+    }
     if (pathname.endsWith(`/${scheduleId}`)) {
       return route.fulfill({
         status: 200,
@@ -208,13 +215,18 @@ test.describe('Schedule workflows', () => {
         assetCode: `FE-${String(index + 1).padStart(3, '0')}`,
       },
     }))
-    await page.route('**/api/v1/schedules**', (route) =>
-      route.fulfill({
+    await page.route('**/api/v1/schedules**', (route) => {
+      const pathname = new URL(route.request().url()).pathname
+      return route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify(records),
-      }),
-    )
+        body: JSON.stringify(
+          pathname === '/api/v1/schedules/enrollment-deferrals'
+            ? { page: 1, pageSize: 10, total: 0, items: [] }
+            : records,
+        ),
+      })
+    })
     await page.setViewportSize({ width: 1280, height: 600 })
     await page.goto('/app/schedules?status=Due&quarter=Q3&year=2026')
     // Longer CPMP cells must preserve the viewport even with enlarged text.

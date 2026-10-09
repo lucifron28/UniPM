@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using UniPM.Api.Data;
 using UniPM.Api.Features.Assets;
+using UniPM.Api.Features.PreventiveMaintenanceForms;
 using UniPM.Api.Features.ReferenceData;
 using UniPM.Api.Models;
 
@@ -10,7 +11,8 @@ public sealed record ScheduleGenerationResult(
     int Year,
     int EligibleAssets,
     int ExistingSchedules,
-    int CreatedSchedules);
+    int CreatedSchedules,
+    int DeferredSchedules);
 
 public sealed class PreventiveMaintenanceScheduleGenerationService(
     IDbContextFactory<ApplicationDbContext> contextFactory)
@@ -22,7 +24,8 @@ public sealed class PreventiveMaintenanceScheduleGenerationService(
         ApplicationDbContext context,
         Asset asset,
         DateTimeOffset now,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction? transaction = null)
     {
         if (!IsEligible(asset))
         {
@@ -31,16 +34,85 @@ public sealed class PreventiveMaintenanceScheduleGenerationService(
 
         var institutionalNow = PreventiveMaintenanceCycle.ToInstitutionalTime(now);
         var months = CpmpScheduleFrequency.GetMonths(asset.AssetCategory);
-        var existingCycles = await context.PreventiveMaintenanceSchedules
-            .AsNoTracking()
-            .Where(schedule => schedule.AssetId == asset.Id)
-            .Select(schedule => schedule.PmCycle)
-            .ToListAsync(cancellationToken);
-        var existing = existingCycles.ToHashSet(StringComparer.Ordinal);
-        var missing = BuildMissingSchedules(asset, institutionalNow.Year, institutionalNow.Month, now, months, existing);
+        var cycles = months
+            .Where(month => month >= Math.Max(institutionalNow.Month,
+                PreventiveMaintenanceCycle.ToInstitutionalTime(asset.CreatedAt).Year == institutionalNow.Year
+                    ? PreventiveMaintenanceCycle.ToInstitutionalTime(asset.CreatedAt).Month
+                    : 1))
+            .Select(month => $"{institutionalNow.Year:D4}-{month:D2}")
+            .ToArray();
+        var identities = cycles
+            .Select(cycle => ScheduleBatchIdentity.TryCreate(
+                asset.Department, asset.AssetCategory, cycle, out var identity) ? identity : (ScheduleBatchIdentity?)null)
+            .Where(identity => identity is not null)
+            .Select(identity => identity!.Value)
+            .OrderBy(identity => identity.Department, StringComparer.Ordinal)
+            .ThenBy(identity => identity.AssetCategory, StringComparer.Ordinal)
+            .ThenBy(identity => identity.PmCycle, StringComparer.Ordinal)
+            .ToArray();
 
-        context.PreventiveMaintenanceSchedules.AddRange(missing);
-        return missing.Count;
+        if (transaction is null
+            && string.Equals(context.Database.ProviderName, "Microsoft.EntityFrameworkCore.SqlServer", StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("Asset enrollment must hold one transaction for its batch locks.");
+        }
+
+        var leases = new List<ScheduleBatchMutationLockLease>(identities.Length);
+        try
+        {
+            foreach (var identity in identities)
+            {
+                var lease = await ScheduleBatchMutationLockLease.AcquireAsync(
+                    context, identity, cancellationToken, transaction);
+                if (!lease.Acquired)
+                {
+                    throw new ScheduleBatchMutationConflictException();
+                }
+
+                leases.Add(lease);
+            }
+
+            var existingCycles = await context.PreventiveMaintenanceSchedules
+                .AsNoTracking()
+                .Where(schedule => schedule.AssetId == asset.Id)
+                .Select(schedule => schedule.PmCycle)
+                .ToListAsync(cancellationToken);
+            var existing = existingCycles.ToHashSet(StringComparer.Ordinal);
+            var deferredCycles = await context.ScheduleEnrollmentDeferrals
+                .AsNoTracking()
+                .Where(deferral => deferral.AssetId == asset.Id)
+                .Select(deferral => deferral.PmCycle)
+                .ToListAsync(cancellationToken);
+            var deferred = deferredCycles.ToHashSet(StringComparer.Ordinal);
+            var created = 0;
+
+            foreach (var identity in identities)
+            {
+                if (existing.Contains(identity.PmCycle) || deferred.Contains(identity.PmCycle))
+                {
+                    continue;
+                }
+
+                var lockReason = await GetBatchLockReasonAsync(context, identity, cancellationToken);
+                if (lockReason is not null)
+                {
+                    context.ScheduleEnrollmentDeferrals.Add(CreateDeferral(asset, identity.PmCycle, now, lockReason));
+                    continue;
+                }
+
+                context.PreventiveMaintenanceSchedules.Add(CreateSchedule(asset, identity.PmCycle, now));
+                created++;
+            }
+
+            return created;
+        }
+        finally
+        {
+            foreach (var lease in leases.AsEnumerable().Reverse())
+            {
+                await lease.DisposeAsync();
+            }
+        }
     }
 
     public async Task<ScheduleGenerationResult> EnsureYearAsync(
@@ -49,133 +121,272 @@ public sealed class PreventiveMaintenanceScheduleGenerationService(
         CancellationToken cancellationToken)
     {
         var institutionalNow = PreventiveMaintenanceCycle.ToInstitutionalTime(now);
-        if (year is < 2000 || year > institutionalNow.Year)
+        if (year != institutionalNow.Year)
         {
-            throw new ArgumentOutOfRangeException(nameof(year), "Schedule generation supports years from 2000 through the current institutional year.");
+            throw new ArgumentOutOfRangeException(nameof(year), "Schedule generation is limited to the current institutional calendar year.");
         }
 
+        await using var readContext = await contextFactory.CreateDbContextAsync(cancellationToken);
+        var eligibleAssets = await readContext.Assets
+            .AsNoTracking()
+            .Where(asset => asset.Status == AssetStatusCatalog.Active
+                && asset.Department != null
+                && asset.Department.Trim() != string.Empty)
+            .ToListAsync(cancellationToken);
+        var eligible = eligibleAssets.Where(IsEligible)
+            .Where(asset => PreventiveMaintenanceCycle.ToInstitutionalTime(asset.CreatedAt).Year <= year)
+            .ToArray();
+
+        var work = eligible
+            .SelectMany(asset =>
+            {
+                var created = PreventiveMaintenanceCycle.ToInstitutionalTime(asset.CreatedAt);
+                var firstEligibleMonth = Math.Max(
+                    institutionalNow.Month,
+                    created.Year == year ? created.Month : 1);
+                return CpmpScheduleFrequency.GetMonths(asset.AssetCategory)
+                    .Where(month => month >= firstEligibleMonth)
+                    .Select(month => (Asset: asset, Cycle: $"{year:D4}-{month:D2}"));
+            })
+            .GroupBy(item =>
+            {
+                ScheduleBatchIdentity.TryCreate(
+                    item.Asset.Department, item.Asset.AssetCategory, item.Cycle, out var identity);
+                return identity;
+            })
+            .OrderBy(group => group.Key.Department, StringComparer.Ordinal)
+            .ThenBy(group => group.Key.AssetCategory, StringComparer.Ordinal)
+            .ThenBy(group => group.Key.PmCycle, StringComparer.Ordinal)
+            .ToArray();
+
+        var existingCount = 0;
+        var createdCount = 0;
+        var deferredCount = 0;
+        foreach (var batch in work)
+        {
+            var result = await EnsureBatchAsync(batch.Key, batch.Select(item => item.Asset.Id).ToArray(), now, cancellationToken);
+            existingCount += result.Existing;
+            createdCount += result.Created;
+            deferredCount += result.Deferred;
+        }
+
+        return new ScheduleGenerationResult(year, eligible.Length, existingCount, createdCount, deferredCount);
+    }
+
+    private async Task<BatchGenerationResult> EnsureBatchAsync(
+        ScheduleBatchIdentity identity,
+        Guid[] candidateAssetIds,
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
+    {
         for (var attempt = 0; attempt < MaxUniqueConflictRetries; attempt++)
         {
             await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
+            await using var lease = await ScheduleBatchMutationLockLease.AcquireAsync(
+                context, identity, cancellationToken);
+            if (!lease.Acquired)
+            {
+                throw new ScheduleBatchMutationConflictException();
+            }
+
+            var assets = await context.Assets
+                .Where(asset => candidateAssetIds.Contains(asset.Id)
+                    && asset.Status == AssetStatusCatalog.Active
+                    && asset.Department != null
+                    && asset.Department.Trim().ToUpper() == identity.Department
+                    && asset.AssetCategory.Trim().ToUpper() == identity.AssetCategory)
+                .ToListAsync(cancellationToken);
+            if (assets.Count == 0)
+            {
+                await lease.CommitAsync(cancellationToken);
+                return default;
+            }
+
+            var existingAssetIds = await context.PreventiveMaintenanceSchedules
+                .Where(schedule => schedule.PmCycle == identity.PmCycle
+                    && candidateAssetIds.Contains(schedule.AssetId))
+                .Select(schedule => schedule.AssetId)
+                .ToListAsync(cancellationToken);
+            var existing = existingAssetIds.ToHashSet();
+            var deferredAssetIds = await context.ScheduleEnrollmentDeferrals
+                .Where(deferral => deferral.PmCycle == identity.PmCycle
+                    && candidateAssetIds.Contains(deferral.AssetId))
+                .Select(deferral => deferral.AssetId)
+                .ToListAsync(cancellationToken);
+            var deferred = deferredAssetIds.ToHashSet();
+            var missing = assets.Where(asset => !existing.Contains(asset.Id) && !deferred.Contains(asset.Id)).ToArray();
+            var lockReason = missing.Length > 0
+                ? await GetBatchLockReasonAsync(context, identity, cancellationToken)
+                : null;
+            var created = 0;
+            var newDeferrals = 0;
+            foreach (var asset in missing)
+            {
+                if (lockReason is not null)
+                {
+                    context.ScheduleEnrollmentDeferrals.Add(CreateDeferral(asset, identity.PmCycle, now, lockReason));
+                    newDeferrals++;
+                }
+                else
+                {
+                    context.PreventiveMaintenanceSchedules.Add(CreateSchedule(asset, identity.PmCycle, now));
+                    created++;
+                }
+            }
+
             try
             {
-                return await EnsureYearOnceAsync(context, year, now, cancellationToken);
+                await context.SaveChangesAsync(cancellationToken);
+                await lease.CommitAsync(cancellationToken);
+                return new BatchGenerationResult(existing.Count, created, deferred.Count + newDeferrals);
             }
             catch (DbUpdateException exception)
                 when (DatabaseConstraintViolation.IsUniqueConstraint(exception, UniqueIndexName)
                     && attempt + 1 < MaxUniqueConflictRetries)
             {
-                // A concurrent run inserted one or more cycles. The next fresh context reloads
-                // the authoritative set and retries only the cycles that remain missing.
+                // Reload the authoritative schedule set under the same per-batch lock.
+            }
+            catch (DbUpdateException exception)
+                when (DatabaseConstraintViolation.IsUniqueConstraint(exception)
+                    && attempt + 1 < MaxUniqueConflictRetries)
+            {
+                // A concurrent registration inserted one of this batch's rows.
             }
         }
 
         throw new InvalidOperationException("Schedule generation could not settle after concurrent inserts.");
     }
 
-    private static async Task<ScheduleGenerationResult> EnsureYearOnceAsync(
+    internal static async Task<string?> GetBatchLockReasonAsync(
         ApplicationDbContext context,
-        int year,
-        DateTimeOffset now,
+        ScheduleBatchIdentity identity,
         CancellationToken cancellationToken)
     {
-        var assets = await context.Assets
-            .AsNoTracking()
-            .Where(asset => asset.Status == AssetStatusCatalog.Active
-                && asset.Department != null
-                && asset.Department.Trim() != string.Empty)
+        var schedules = await context.PreventiveMaintenanceSchedules
+            .Include(schedule => schedule.Asset)
+            .Where(schedule => schedule.PmCycle == identity.PmCycle
+                && schedule.Asset != null
+                && schedule.Asset.Department != null
+                && schedule.Asset.Department.Trim().ToUpper() == identity.Department
+                && schedule.Asset.AssetCategory.Trim().ToUpper() == identity.AssetCategory)
             .ToListAsync(cancellationToken);
 
-        var eligible = assets
-            .Where(IsEligible)
-            .Where(asset => PreventiveMaintenanceCycle.ToInstitutionalTime(asset.CreatedAt).Year <= year)
-            .ToArray();
-        if (eligible.Length == 0)
+        var formStatus = await context.PreventiveMaintenanceForms
+            .Where(form =>
+                (form.Status == PreventiveMaintenanceFormStatusCatalog.Submitted
+                    || form.Status == PreventiveMaintenanceFormStatusCatalog.Acknowledged)
+                && form.PmCycle == identity.PmCycle
+                && form.Department != null
+                && form.Department.Trim().ToUpper() == identity.Department
+                && form.AssetCategory.Trim().ToUpper() == identity.AssetCategory)
+            .Select(form => form.Status)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (formStatus == PreventiveMaintenanceFormStatusCatalog.Acknowledged)
         {
-            return new ScheduleGenerationResult(year, 0, 0, 0);
+            return ScheduleEnrollmentDeferralReason.FormAcknowledged;
         }
 
-        var assetIds = eligible.Select(asset => asset.Id).ToArray();
-        var existingCycles = await context.PreventiveMaintenanceSchedules
-            .AsNoTracking()
-            .Where(schedule => assetIds.Contains(schedule.AssetId)
-                && schedule.PmCycle.StartsWith(year.ToString(System.Globalization.CultureInfo.InvariantCulture)))
-            .Select(schedule => new { schedule.AssetId, schedule.PmCycle })
-            .ToListAsync(cancellationToken);
-        var generated = new List<PreventiveMaintenanceSchedule>();
-        var expectedCycleCount = 0;
-        foreach (var asset in eligible)
+        if (formStatus == PreventiveMaintenanceFormStatusCatalog.Submitted)
         {
-            var months = CpmpScheduleFrequency.GetMonths(asset.AssetCategory);
-            var assetCreatedAt = PreventiveMaintenanceCycle.ToInstitutionalTime(asset.CreatedAt);
-            var alreadyPresent = existingCycles
-                .Where(schedule => schedule.AssetId == asset.Id)
-                .Select(schedule => schedule.PmCycle)
-                .ToHashSet(StringComparer.Ordinal);
-            expectedCycleCount += months.Count(month => assetCreatedAt.Year < year || month >= assetCreatedAt.Month);
-            generated.AddRange(BuildMissingSchedules(asset, year, 1, now, months, alreadyPresent));
+            return ScheduleEnrollmentDeferralReason.FormSubmitted;
         }
 
-        context.PreventiveMaintenanceSchedules.AddRange(generated);
-        if (generated.Count > 0)
+        if (schedules.Any(schedule => schedule.AssignedSupervisorUserId is not null
+            || schedule.AssignedToUserId is not null
+            || schedule.CompletedAt is not null
+            || !string.Equals(schedule.Status, ScheduleStatusCatalog.Due, StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(schedule.Status, ScheduleStatusCatalog.Overdue, StringComparison.OrdinalIgnoreCase)))
         {
-            await context.SaveChangesAsync(cancellationToken);
+            var assigned = schedules.Any(schedule => schedule.AssignedSupervisorUserId is not null
+                || schedule.AssignedToUserId is not null);
+            if (assigned)
+            {
+                return ScheduleEnrollmentDeferralReason.BatchAssigned;
+            }
+
+            if (schedules.Any(schedule => string.Equals(
+                    schedule.Status, ScheduleStatusCatalog.Ongoing, StringComparison.OrdinalIgnoreCase)))
+            {
+                return ScheduleEnrollmentDeferralReason.WorkInProgress;
+            }
+
+            if (schedules.Any(schedule => string.Equals(
+                    schedule.Status, ScheduleStatusCatalog.Cancelled, StringComparison.OrdinalIgnoreCase)))
+            {
+                return ScheduleEnrollmentDeferralReason.CycleCancelled;
+            }
+
+            if (schedules.Any(schedule => schedule.CompletedAt is not null
+                || string.Equals(schedule.Status, ScheduleStatusCatalog.Completed, StringComparison.OrdinalIgnoreCase)))
+            {
+                return ScheduleEnrollmentDeferralReason.CycleCompleted;
+            }
         }
 
-        return new ScheduleGenerationResult(
-            year,
-            eligible.Length,
-            Math.Max(0, expectedCycleCount - generated.Count),
-            generated.Count);
+        var scheduleIds = schedules.Select(schedule => schedule.Id).ToArray();
+        var hasInspection = await context.InspectionRecords.AnyAsync(
+            inspection => scheduleIds.Contains(inspection.ScheduleId),
+            cancellationToken);
+        if (hasInspection)
+        {
+            return ScheduleEnrollmentDeferralReason.InspectionStarted;
+        }
+
+        return null;
     }
 
-    private static List<PreventiveMaintenanceSchedule> BuildMissingSchedules(
+    internal static ScheduleEnrollmentDeferral CreateDeferral(
         Asset asset,
-        int year,
-        int firstMonth,
+        string deferredCycle,
         DateTimeOffset now,
-        IReadOnlyList<int> months,
-        IReadOnlySet<string> existingCycles)
+        string reasonCode)
     {
-        var assetCreatedAt = PreventiveMaintenanceCycle.ToInstitutionalTime(asset.CreatedAt);
-        var institutionalNow = PreventiveMaintenanceCycle.ToInstitutionalTime(now);
-        var result = new List<PreventiveMaintenanceSchedule>();
-
-        foreach (var month in months)
+        var months = CpmpScheduleFrequency.GetMonths(asset.AssetCategory);
+        PreventiveMaintenanceCycle.TryParse(deferredCycle, out var year, out var month);
+        var next = months.FirstOrDefault(candidate => candidate > month);
+        var nextYear = year;
+        if (next == 0)
         {
-            if (month < firstMonth || assetCreatedAt.Year > year
-                || (assetCreatedAt.Year == year && month < assetCreatedAt.Month))
-            {
-                continue;
-            }
-
-            var pmCycle = $"{year:D4}-{month:D2}";
-            if (existingCycles.Contains(pmCycle))
-            {
-                continue;
-            }
-
-            var deadline = PreventiveMaintenanceCycle.DeadlineForCycle(pmCycle);
-            var isQuarterly = months.Count == 4;
-            var quarter = $"Q{((month - 1) / 3) + 1}";
-            result.Add(new PreventiveMaintenanceSchedule
-            {
-                Id = Guid.NewGuid(),
-                AssetId = asset.Id,
-                ScheduleDate = deadline,
-                PmCycle = pmCycle,
-                PeriodType = isQuarterly ? SchedulePeriodTypeCatalog.Quarter : SchedulePeriodTypeCatalog.Semester,
-                Quarter = isQuarterly ? quarter : null,
-                // Semester labels remain unset because current PM cycles do not define academic terms.
-                Semester = null,
-                Year = year,
-                Status = deadline < institutionalNow ? ScheduleStatusCatalog.Overdue : ScheduleStatusCatalog.Due,
-                CreatedAt = now,
-                UpdatedAt = now
-            });
+            next = months[0];
+            nextYear++;
         }
 
-        return result;
+        return new ScheduleEnrollmentDeferral
+        {
+            AssetId = asset.Id,
+            PmCycle = deferredCycle,
+            DepartmentAtDeferral = asset.Department!.Trim().ToUpperInvariant(),
+            AssetCategoryAtDeferral = asset.AssetCategory,
+            ReasonCode = reasonCode,
+            DeferredAt = now,
+            NextEligiblePmCycle = $"{nextYear:D4}-{next:D2}"
+        };
+    }
+
+    internal static PreventiveMaintenanceSchedule CreateSchedule(
+        Asset asset,
+        string pmCycle,
+        DateTimeOffset now)
+    {
+        PreventiveMaintenanceCycle.TryParse(pmCycle, out var year, out var month);
+        var months = CpmpScheduleFrequency.GetMonths(asset.AssetCategory);
+        var deadline = PreventiveMaintenanceCycle.DeadlineForCycle(pmCycle);
+        var institutionalNow = PreventiveMaintenanceCycle.ToInstitutionalTime(now);
+        var quarterly = months.Count == 4;
+        return new PreventiveMaintenanceSchedule
+        {
+            Id = Guid.NewGuid(),
+            AssetId = asset.Id,
+            Asset = asset,
+            ScheduleDate = deadline,
+            PmCycle = pmCycle,
+            PeriodType = quarterly ? SchedulePeriodTypeCatalog.Quarter : SchedulePeriodTypeCatalog.Semester,
+            Quarter = quarterly ? $"Q{((month - 1) / 3) + 1}" : null,
+            Year = year,
+            Status = deadline < institutionalNow ? ScheduleStatusCatalog.Overdue : ScheduleStatusCatalog.Due,
+            CreatedAt = now,
+            UpdatedAt = now
+        };
     }
 
     private static bool IsEligible(Asset asset)
@@ -184,4 +395,6 @@ public sealed class PreventiveMaintenanceScheduleGenerationService(
             && !string.IsNullOrWhiteSpace(asset.Department)
             && CpmpScheduleFrequency.GetMonths(asset.AssetCategory).Count > 0;
     }
+
+    private readonly record struct BatchGenerationResult(int Existing, int Created, int Deferred);
 }

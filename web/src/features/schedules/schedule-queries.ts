@@ -7,6 +7,7 @@ import {
   getGetPmPeriodDashboardQueryKey,
   getGetScheduleQueryKey,
   getListPmPeriodDashboardCyclesQueryKey,
+  getListScheduleEnrollmentDeferralsQueryKey,
   getListScheduleSupervisorAssignmentOptionsQueryKey,
   getListScheduleWorkerAssignmentOptionsQueryKey,
   getListSchedulePeriodTypesQueryKey,
@@ -18,6 +19,7 @@ import {
   listScheduleWorkerAssignmentOptions,
   listSchedulePeriodTypes,
   listScheduleQuarters,
+  listScheduleEnrollmentDeferrals,
   listScheduleStatuses,
   listSchedules,
 } from '@/api/generated/endpoints'
@@ -50,6 +52,16 @@ export function useSchedule(scheduleId: string, enabled = true) {
     queryFn: ({ signal }) =>
       getSchedule(scheduleId, signal).then(parseSchedule),
     enabled,
+  })
+}
+
+export function useScheduleEnrollmentDeferrals(page = 1, enabled = true) {
+  const params = { page, pageSize: 10 }
+  return useQuery({
+    queryKey: getListScheduleEnrollmentDeferralsQueryKey(params),
+    queryFn: ({ signal }) => listScheduleEnrollmentDeferrals(params, signal),
+    enabled,
+    placeholderData: (previousData) => previousData,
   })
 }
 
@@ -91,6 +103,9 @@ export function useAssignScheduleBatchSupervisor() {
         }),
         queryClient.invalidateQueries({
           queryKey: getListSchedulesQueryKey(),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: getListScheduleEnrollmentDeferralsQueryKey(),
         }),
       ])
     },

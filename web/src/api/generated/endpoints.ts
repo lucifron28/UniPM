@@ -47,6 +47,7 @@ import type {
   ListInspectionsParams,
   ListPmPeriodDashboardCyclesParams,
   ListPreventiveMaintenanceFormsParams,
+  ListScheduleEnrollmentDeferralsParams,
   ListSchedulesParams,
   LoginRequest,
   LoginResponse,
@@ -60,6 +61,7 @@ import type {
   PreventiveMaintenanceFormResponse,
   ProblemDetails,
   ScheduleAssignmentBatchResponse,
+  ScheduleEnrollmentDeferralPage,
   ScheduleGenerationResult,
   ScheduleReferenceResponse,
   ScheduleResponse,
@@ -5244,4 +5246,169 @@ export const useGeneratePreventiveMaintenanceSchedules = <
     getGeneratePreventiveMaintenanceSchedulesMutationOptions(options),
     queryClient,
   )
+}
+
+/**
+ * @summary Lists asset cycles deferred for GSD scheduling review
+ */
+export const listScheduleEnrollmentDeferrals = (
+  params?: ListScheduleEnrollmentDeferralsParams,
+  signal?: AbortSignal,
+) => {
+  return customInstance<ScheduleEnrollmentDeferralPage>({
+    url: `/api/v1/schedules/enrollment-deferrals`,
+    method: 'GET',
+    params,
+    signal,
+  })
+}
+
+export const getListScheduleEnrollmentDeferralsQueryKey = (
+  params?: ListScheduleEnrollmentDeferralsParams,
+) => {
+  return [
+    `/api/v1/schedules/enrollment-deferrals`,
+    ...(params ? [params] : []),
+  ] as const
+}
+
+export const getListScheduleEnrollmentDeferralsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>,
+  TError = void,
+>(
+  params?: ListScheduleEnrollmentDeferralsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>,
+        TError,
+        TData
+      >
+    >
+  },
+) => {
+  const { query: queryOptions } = options ?? {}
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListScheduleEnrollmentDeferralsQueryKey(params)
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>
+  > = ({ signal }) => listScheduleEnrollmentDeferrals(params, signal)
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListScheduleEnrollmentDeferralsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>
+>
+export type ListScheduleEnrollmentDeferralsQueryError = void
+
+export function useListScheduleEnrollmentDeferrals<
+  TData = Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>,
+  TError = void,
+>(
+  params: undefined | ListScheduleEnrollmentDeferralsParams,
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>,
+          TError,
+          Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useListScheduleEnrollmentDeferrals<
+  TData = Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>,
+  TError = void,
+>(
+  params?: ListScheduleEnrollmentDeferralsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>,
+          TError,
+          Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useListScheduleEnrollmentDeferrals<
+  TData = Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>,
+  TError = void,
+>(
+  params?: ListScheduleEnrollmentDeferralsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+/**
+ * @summary Lists asset cycles deferred for GSD scheduling review
+ */
+
+export function useListScheduleEnrollmentDeferrals<
+  TData = Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>,
+  TError = void,
+>(
+  params?: ListScheduleEnrollmentDeferralsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+} {
+  const queryOptions = getListScheduleEnrollmentDeferralsQueryOptions(
+    params,
+    options,
+  )
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+
+  return withQueryKey(query, queryOptions.queryKey)
 }

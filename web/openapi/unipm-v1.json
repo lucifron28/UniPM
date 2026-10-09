@@ -2358,6 +2358,49 @@
           }
         }
       }
+    },
+    "/api/v1/schedules/enrollment-deferrals": {
+      "get": {
+        "tags": ["Schedules"],
+        "summary": "Lists asset cycles deferred for GSD scheduling review",
+        "operationId": "ListScheduleEnrollmentDeferrals",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleEnrollmentDeferralPage"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -4175,7 +4218,8 @@
           "year",
           "eligibleAssets",
           "existingSchedules",
-          "createdSchedules"
+          "createdSchedules",
+          "deferredSchedules"
         ],
         "type": "object",
         "properties": {
@@ -4198,6 +4242,84 @@
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": ["integer", "string"],
             "format": "int32"
+          },
+          "deferredSchedules": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          }
+        }
+      },
+      "ScheduleEnrollmentDeferralPage": {
+        "required": ["page", "pageSize", "total", "items"],
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "total": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScheduleEnrollmentDeferralResponse"
+            }
+          }
+        }
+      },
+      "ScheduleEnrollmentDeferralResponse": {
+        "required": [
+          "assetId",
+          "assetCode",
+          "department",
+          "assetCategory",
+          "deferredPmCycle",
+          "nextEligiblePmCycle",
+          "reasonCode",
+          "reason",
+          "status",
+          "deferredAt"
+        ],
+        "type": "object",
+        "properties": {
+          "assetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "assetCode": {
+            "type": "string"
+          },
+          "department": {
+            "type": "string"
+          },
+          "assetCategory": {
+            "type": "string"
+          },
+          "deferredPmCycle": {
+            "type": "string"
+          },
+          "nextEligiblePmCycle": {
+            "type": "string"
+          },
+          "reasonCode": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "deferredAt": {
+            "type": "string",
+            "format": "date-time"
           }
         }
       },
