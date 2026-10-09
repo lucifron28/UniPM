@@ -56,6 +56,11 @@ describe('schedule enrollment deferral review', () => {
     expect(screen.getByText('FE-LOCKED-01')).toBeInTheDocument()
     expect(screen.getByText('August 2026')).toBeInTheDocument()
     expect(screen.getByText('November 2026')).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        /If the next eligible cycle is in a future year, it is a planning marker\./,
+      ),
+    ).toBeInTheDocument()
     expect(screen.getByText('Needs GSD scheduling review')).toBeInTheDocument()
     expect(
       screen.getByText(

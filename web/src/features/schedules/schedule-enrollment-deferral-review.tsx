@@ -62,8 +62,10 @@ export function ScheduleEnrollmentDeferralReview() {
             Asset enrollment needs GSD review
           </h2>
           <p className="mt-1 max-w-3xl text-sm text-[var(--text-secondary)]">
-            These assets could not join a PM batch after work began. Review the
-            deferred cycle and next eligible CPMP cycle below.
+            These assets could not join a PM batch after work began. GSD should
+            review the deferred cycle. If the next eligible cycle is in a future
+            year, it is a planning marker. UniPM generates its schedule when
+            that year begins.
           </p>
         </div>
         <Badge variant="warning">
