@@ -677,9 +677,7 @@
     },
     "/api/v1/schedules/assignment-options": {
       "get": {
-        "tags": [
-          "Schedules"
-        ],
+        "tags": ["Schedules"],
         "summary": "Lists active Inspectors for Supervisor batch assignment",
         "operationId": "ListScheduleWorkerAssignmentOptions",
         "responses": {
@@ -704,9 +702,7 @@
     },
     "/api/v1/schedules/supervisor-assignment-options": {
       "get": {
-        "tags": [
-          "Schedules"
-        ],
+        "tags": ["Schedules"],
         "summary": "Lists active Supervisors for GSD batch assignment",
         "operationId": "ListScheduleSupervisorAssignmentOptions",
         "responses": {
@@ -916,9 +912,7 @@
     },
     "/api/v1/schedules/{id}/assignment": {
       "put": {
-        "tags": [
-          "Schedules"
-        ],
+        "tags": ["Schedules"],
         "summary": "Assigns an Inspector to a PM batch owned by the authenticated Supervisor",
         "operationId": "AssignScheduleBatchWorker",
         "parameters": [
@@ -994,9 +988,7 @@
     },
     "/api/v1/schedules/{id}/supervisor-assignment": {
       "put": {
-        "tags": [
-          "Schedules"
-        ],
+        "tags": ["Schedules"],
         "summary": "Assigns a Supervisor to all schedules in one PM batch",
         "operationId": "AssignScheduleBatchSupervisor",
         "parameters": [
@@ -1241,9 +1233,7 @@
     },
     "/api/v1/inspections": {
       "get": {
-        "tags": [
-          "Inspections"
-        ],
+        "tags": ["Inspections"],
         "summary": "Lists inspection records using supported metadata filters",
         "operationId": "ListInspections",
         "parameters": [
@@ -1384,9 +1374,7 @@
     },
     "/api/v1/inspections/{id}/wms-referral": {
       "get": {
-        "tags": [
-          "Inspections"
-        ],
+        "tags": ["Inspections"],
         "summary": "Gets the manually recorded WMS PM number and its change audit",
         "operationId": "GetInspectionWmsReferral",
         "parameters": [
@@ -1430,9 +1418,7 @@
         }
       },
       "put": {
-        "tags": [
-          "Inspections"
-        ],
+        "tags": ["Inspections"],
         "summary": "Records or corrects the external WMS PM number without changing the inspection",
         "operationId": "UpdateInspectionWmsReferral",
         "parameters": [
@@ -2604,47 +2590,29 @@
             "format": "date-time"
           },
           "assetDeviceNumber": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "assetCode": {
             "type": "string"
           },
           "location": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "findingOrRemarks": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "isOperational": {
             "type": "boolean"
           },
           "recommendedCorrectiveAction": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "wmsPmNumber": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "wmsReferralRevision": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "followUpStatus": {
@@ -2658,10 +2626,7 @@
             "format": "uuid"
           },
           "skilledWorkerIdentity": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           }
         }
       },
@@ -3093,16 +3058,10 @@
             "type": "boolean"
           },
           "remarks": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "actionsRecommendations": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "createdAt": {
             "type": "string",
@@ -3113,42 +3072,24 @@
             "format": "date-time"
           },
           "dateAccomplished": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "date-time"
           },
           "waterReplaceCarbonFilter": {
-            "type": [
-              "null",
-              "boolean"
-            ]
+            "type": ["null", "boolean"]
           },
           "waterReplaceSedimentFilter": {
-            "type": [
-              "null",
-              "boolean"
-            ]
+            "type": ["null", "boolean"]
           },
           "waterCheckUvLight": {
-            "type": [
-              "null",
-              "boolean"
-            ]
+            "type": ["null", "boolean"]
           },
           "externalPmNumber": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "wmsReferralRevision": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32",
             "default": 0
           },
@@ -3991,17 +3932,11 @@
             "type": "string"
           },
           "workerUserId": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "uuid"
           },
           "workerDisplayName": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "supervisorUserId": {
             "type": "string",
@@ -4020,9 +3955,7 @@
         }
       },
       "ScheduleSupervisorAssignmentOptionsResponse": {
-        "required": [
-          "supervisors"
-        ],
+        "required": ["supervisors"],
         "type": "object",
         "properties": {
           "supervisors": {
@@ -4034,9 +3967,7 @@
         }
       },
       "ScheduleWorkerAssignmentOptionsResponse": {
-        "required": [
-          "workers"
-        ],
+        "required": ["workers"],
         "type": "object",
         "properties": {
           "workers": {
@@ -4281,20 +4212,14 @@
         "type": "object",
         "properties": {
           "previousExternalPmNumber": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "newExternalPmNumber": {
             "type": "string"
           },
           "revision": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "changedByUserId": {
@@ -4331,55 +4256,34 @@
             "type": "string"
           },
           "externalPmNumber": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "revision": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "recordedByUserId": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "uuid"
           },
           "recordedAt": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "date-time"
           },
           "lastUpdatedByUserId": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "uuid"
           },
           "lastUpdatedAt": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "date-time"
           },
           "canRecordReferral": {
             "type": "boolean"
           },
           "eligibilityMessage": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "audit": {
             "type": "array",
@@ -4411,10 +4315,7 @@
           },
           "revision": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "recordedByUserId": {
@@ -4446,10 +4347,7 @@
           },
           "expectedRevision": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           }
         }
