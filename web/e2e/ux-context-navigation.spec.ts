@@ -352,7 +352,7 @@ async function tabToLink(page: Page, linkName: string) {
       return link
     }
   }
-  throw new Error('The back link was not reachable by keyboard Tab navigation.')
+  throw new Error('The link was not reachable by keyboard Tab navigation.')
 }
 
 const dashboardViewports = [
@@ -461,6 +461,20 @@ for (const viewport of dashboardViewports) {
     },
   )
 }
+
+test('shows a visible focus indicator on the active desktop navigation link', async ({
+  page,
+}) => {
+  await installApi(page)
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('/app/dashboard')
+
+  const dashboardLink = await tabToLink(page, 'Dashboard')
+  await expect(dashboardLink).toHaveCSS('outline-style', 'solid')
+  await expect(dashboardLink).toHaveCSS('outline-color', 'rgb(87, 0, 0)')
+  await expect(dashboardLink).toHaveCSS('outline-width', '2px')
+})
+
 test('returns to filtered, paged assets and keeps the back link keyboard reachable on mobile', async ({
   page,
 }) => {

@@ -44,15 +44,12 @@ body {
     transition:
       background-color 150ms ease-out,
       color 150ms ease-out,
-      box-shadow 150ms ease-out,
       transform 100ms ease-out;
   }
 
   nav[aria-label='Primary'] a:focus-visible {
-    outline: none;
-    box-shadow:
-      0 0 0 2px var(--sidebar-background),
-      0 0 0 4px var(--primary);
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
   }
 
   nav[aria-label='Primary'] a:active {
