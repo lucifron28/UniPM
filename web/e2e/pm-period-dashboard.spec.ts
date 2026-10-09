@@ -337,6 +337,15 @@ async function mockDashboardApi(page: Page) {
   )
   await page.route('**/api/v1/assets/**', (route) => {
     const url = new URL(route.request().url())
+    if (url.pathname.endsWith('/verification-location')) {
+      return route.fulfill(
+        jsonResponse({
+          verificationLatitude: null,
+          verificationLongitude: null,
+          verificationRadiusMeters: null,
+        }),
+      )
+    }
     if (url.pathname.endsWith(`/${assetIds.onTime}`)) {
       return route.fulfill(
         jsonResponse({
