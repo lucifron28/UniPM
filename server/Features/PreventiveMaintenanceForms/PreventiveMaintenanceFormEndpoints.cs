@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore.Storage;
 using UniPM.Api.Data;
 using UniPM.Api.Features;
 using UniPM.Api.Features.Auth;
+using UniPM.Api.Features.Inspections;
 using UniPM.Api.Features.ReferenceData;
 using UniPM.Api.Features.Schedules;
 using UniPM.Api.Models;
@@ -527,8 +528,9 @@ public static class PreventiveMaintenanceFormEndpoints
             var sourceRows = await context.InspectionRecords
                 .AsNoTracking()
                 .Where(inspection => inspection.PreventiveMaintenanceFormId == form.Id
-                    && inspection.ActionsRecommendations != null
-                    && inspection.ActionsRecommendations != "")
+                    && ((inspection.ActionsRecommendations != null
+                            && inspection.ActionsRecommendations != "")
+                        || !inspection.IsOperational))
                 .OrderBy(inspection => inspection.DateInspected)
                 .ThenBy(inspection => inspection.Id)
                 .Select(inspection => new CorrectiveMaintenanceHandoffSourceRow(
@@ -539,7 +541,15 @@ public static class PreventiveMaintenanceFormEndpoints
                     inspection.Asset.Location,
                     inspection.Remarks,
                     inspection.IsOperational,
-                    inspection.ActionsRecommendations!,
+                    inspection.ActionsRecommendations,
+                    inspection.CompletedAt,
+                    inspection.WmsReferral == null ? null : inspection.WmsReferral.ExternalPmNumber,
+                    inspection.WmsReferral == null ? 0 : inspection.WmsReferral.Revision,
+                    inspection.WmsReferral != null
+                        ? InspectionFollowUpStatusCatalog.ReferredToWms
+                        : inspection.IsOperational
+                            ? InspectionFollowUpStatusCatalog.NoReferralRequired
+                            : InspectionFollowUpStatusCatalog.CorrectiveFollowUpPending,
                     inspection.InspectorUserId))
                 .ToListAsync(cancellationToken);
 
@@ -565,6 +575,10 @@ public static class PreventiveMaintenanceFormEndpoints
                     row.FindingOrRemarks,
                     row.IsOperational,
                     row.RecommendedCorrectiveAction,
+                    row.WmsPmNumber,
+                    row.WmsReferralRevision,
+                    row.FollowUpStatus,
+                    !row.IsOperational && row.CompletedAt is not null,
                     row.InspectorUserId,
                     users.GetValueOrDefault(row.InspectorUserId)))
                 .ToList();
@@ -576,7 +590,7 @@ public static class PreventiveMaintenanceFormEndpoints
                 form.Department,
                 form.Building,
                 form.AssetCategory,
-                rows.Count > 0,
+                rows.Any(row => !string.IsNullOrWhiteSpace(row.RecommendedCorrectiveAction)),
                 rows));
         })
         .RequireAuthorization(AuthPolicyCatalog.CanAccessCorrectiveMaintenanceHandoff)
@@ -1621,7 +1635,11 @@ public sealed record CorrectiveMaintenanceHandoffRowResponse(
     string? Location,
     string? FindingOrRemarks,
     bool IsOperational,
-    string RecommendedCorrectiveAction,
+    string? RecommendedCorrectiveAction,
+    string? WmsPmNumber,
+    int WmsReferralRevision,
+    string FollowUpStatus,
+    bool CanRecordWmsReferral,
     Guid SkilledWorkerUserId,
     string? SkilledWorkerIdentity);
 
@@ -1633,7 +1651,11 @@ internal sealed record CorrectiveMaintenanceHandoffSourceRow(
     string? Location,
     string? FindingOrRemarks,
     bool IsOperational,
-    string RecommendedCorrectiveAction,
+    string? RecommendedCorrectiveAction,
+    DateTimeOffset? CompletedAt,
+    string? WmsPmNumber,
+    int WmsReferralRevision,
+    string FollowUpStatus,
     Guid InspectorUserId);
 
 internal static class PreventiveMaintenanceFormEndpointsAcademicYear

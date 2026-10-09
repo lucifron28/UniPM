@@ -11,4 +11,5 @@ public static class AuthPolicyCatalog
     public const string CanManagePreventiveMaintenanceForms = nameof(CanManagePreventiveMaintenanceForms);
     public const string CanInspectPreventiveMaintenanceSchedule = nameof(CanInspectPreventiveMaintenanceSchedule);
     public const string CanAccessCorrectiveMaintenanceHandoff = nameof(CanAccessCorrectiveMaintenanceHandoff);
+    public const string CanManageWmsReferral = nameof(CanManageWmsReferral);
 }

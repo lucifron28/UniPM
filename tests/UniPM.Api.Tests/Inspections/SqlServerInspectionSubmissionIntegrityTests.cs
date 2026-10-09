@@ -110,6 +110,94 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
     }
 
     [SqlServerFact]
+    public async Task Concurrent_wms_referral_first_writes_return_one_conflict_and_one_audit_row()
+    {
+        await using var database = await SqlServerTestDatabase.CreateAsync(RequireSqlServerConnection());
+        var writeGate = new WmsReferralSaveGate();
+        await using var application = new SqlServerInspectionApplicationFactory(
+            database.ConnectionString,
+            mutationGate: null,
+            wmsReferralWriteGate: writeGate,
+            roles: [AuthRoleCatalog.Gsd]);
+        var inspectionId = await application.SeedAcknowledgedNonOperationalInspectionAsync();
+        writeGate.Arm();
+        using var firstClient = application.CreateClient();
+        using var secondClient = application.CreateClient();
+
+        var requests = Task.WhenAll(
+            firstClient.PutAsJsonAsync(
+                $"/api/v1/inspections/{inspectionId}/wms-referral",
+                new { externalPmNumber = "WMS-PM-RACE-A", expectedRevision = 0 }),
+            secondClient.PutAsJsonAsync(
+                $"/api/v1/inspections/{inspectionId}/wms-referral",
+                new { externalPmNumber = "WMS-PM-RACE-B", expectedRevision = 0 }));
+        try
+        {
+            await writeGate.WaitForBothSavesAsync();
+        }
+        finally
+        {
+            writeGate.ReleaseSaves();
+        }
+
+        var responses = await requests;
+
+        Assert.Equal(1, responses.Count(response => response.StatusCode == HttpStatusCode.OK));
+        Assert.Equal(1, responses.Count(response => response.StatusCode == HttpStatusCode.Conflict));
+        await using var context = database.CreateContext();
+        var referral = await context.InspectionWmsReferrals.SingleAsync(row => row.InspectionId == inspectionId);
+        Assert.Equal(1, referral.Revision);
+        Assert.Equal(1, await context.InspectionWmsReferralAudits.CountAsync(row => row.InspectionId == inspectionId));
+        Assert.Contains(referral.ExternalPmNumber, new[] { "WMS-PM-RACE-A", "WMS-PM-RACE-B" });
+    }
+
+    [SqlServerFact]
+    public async Task Concurrent_wms_referral_corrections_return_one_conflict_without_extra_audit_history()
+    {
+        await using var database = await SqlServerTestDatabase.CreateAsync(RequireSqlServerConnection());
+        var writeGate = new WmsReferralSaveGate();
+        await using var application = new SqlServerInspectionApplicationFactory(
+            database.ConnectionString,
+            mutationGate: null,
+            wmsReferralWriteGate: writeGate,
+            roles: [AuthRoleCatalog.Gsd]);
+        var inspectionId = await application.SeedAcknowledgedNonOperationalInspectionAsync();
+        using var firstClient = application.CreateClient();
+        using var secondClient = application.CreateClient();
+        var initial = await firstClient.PutAsJsonAsync(
+            $"/api/v1/inspections/{inspectionId}/wms-referral",
+            new { externalPmNumber = "WMS-PM-RACE-INITIAL", expectedRevision = 0 });
+        Assert.Equal(HttpStatusCode.OK, initial.StatusCode);
+        writeGate.Arm();
+
+        var requests = Task.WhenAll(
+            firstClient.PutAsJsonAsync(
+                $"/api/v1/inspections/{inspectionId}/wms-referral",
+                new { externalPmNumber = "WMS-PM-RACE-CORRECTION-A", expectedRevision = 1 }),
+            secondClient.PutAsJsonAsync(
+                $"/api/v1/inspections/{inspectionId}/wms-referral",
+                new { externalPmNumber = "WMS-PM-RACE-CORRECTION-B", expectedRevision = 1 }));
+        try
+        {
+            await writeGate.WaitForBothSavesAsync();
+        }
+        finally
+        {
+            writeGate.ReleaseSaves();
+        }
+
+        var responses = await requests;
+
+        Assert.Equal(1, responses.Count(response => response.StatusCode == HttpStatusCode.OK));
+        Assert.Equal(1, responses.Count(response => response.StatusCode == HttpStatusCode.Conflict));
+        await using var context = database.CreateContext();
+        var referral = await context.InspectionWmsReferrals.SingleAsync(row => row.InspectionId == inspectionId);
+        Assert.Equal(2, referral.Revision);
+        Assert.Equal(2, await context.InspectionWmsReferralAudits.CountAsync(row => row.InspectionId == inspectionId));
+        Assert.Contains(referral.ExternalPmNumber, new[] { "WMS-PM-RACE-CORRECTION-A", "WMS-PM-RACE-CORRECTION-B" });
+    }
+
+    [SqlServerFact]
     public async Task Concurrent_form_submissions_assign_distinct_provisional_file_numbers()
     {
         await using var database = await SqlServerTestDatabase.CreateAsync(RequireSqlServerConnection());
@@ -474,9 +562,10 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
         private readonly string connectionString;
         private readonly string[] roles;
         private readonly ScheduleMutationCommandGate? mutationGate;
+        private readonly WmsReferralSaveGate? wmsReferralWriteGate;
 
         public SqlServerInspectionApplicationFactory(string connectionString, params string[] roles)
-            : this(connectionString, null, roles)
+            : this(connectionString, null, null, roles)
         {
         }
 
@@ -484,9 +573,19 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
             string connectionString,
             ScheduleMutationCommandGate? mutationGate,
             params string[] roles)
+            : this(connectionString, mutationGate, null, roles)
+        {
+        }
+
+        public SqlServerInspectionApplicationFactory(
+            string connectionString,
+            ScheduleMutationCommandGate? mutationGate,
+            WmsReferralSaveGate? wmsReferralWriteGate,
+            params string[] roles)
         {
             this.connectionString = connectionString;
             this.mutationGate = mutationGate;
+            this.wmsReferralWriteGate = wmsReferralWriteGate;
             this.roles = roles.Length == 0 ? [AuthRoleCatalog.Inspector] : roles;
         }
 
@@ -504,6 +603,10 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
                     if (mutationGate is not null)
                     {
                         options.AddInterceptors(mutationGate);
+                    }
+                    if (wmsReferralWriteGate is not null)
+                    {
+                        options.AddInterceptors(wmsReferralWriteGate);
                     }
                 });
             });
@@ -687,6 +790,86 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
             await context.SaveChangesAsync();
             return form.Id;
         }
+
+        public async Task<Guid> SeedAcknowledgedNonOperationalInspectionAsync()
+        {
+            await using var scope = Services.CreateAsyncScope();
+            var contextFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
+            await using var context = await contextFactory.CreateDbContextAsync();
+            await context.Database.MigrateAsync();
+
+            var now = DateTimeOffset.UtcNow;
+            var asset = new Asset
+            {
+                Id = Guid.NewGuid(),
+                AssetCode = $"WMS-RACE-{Guid.NewGuid():N}"[..20],
+                AssetCategory = "fire-extinguisher",
+                Building = "WMS Race Test",
+                Department = "GSD",
+                Location = "Test Location",
+                Status = "Active",
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+            var schedule = new PreventiveMaintenanceSchedule
+            {
+                Id = Guid.NewGuid(),
+                AssetId = asset.Id,
+                ScheduleDate = PreventiveMaintenanceCycle.DeadlineForCycle("2026-08"),
+                PmCycle = "2026-08",
+                PeriodType = "Quarter",
+                Quarter = "Q3",
+                Year = 2026,
+                Status = ScheduleStatusCatalog.Completed,
+                CompletedAt = now.AddMinutes(-1),
+                CreatedAt = now.AddDays(-1),
+                UpdatedAt = now.AddMinutes(-1)
+            };
+            var form = new PreventiveMaintenanceForm
+            {
+                Id = Guid.NewGuid(),
+                AssetCategory = asset.AssetCategory,
+                Building = asset.Building,
+                Department = asset.Department,
+                PmCycle = schedule.PmCycle,
+                PeriodType = schedule.PeriodType,
+                Quarter = schedule.Quarter,
+                Year = schedule.Year,
+                Status = PreventiveMaintenanceFormStatusCatalog.Acknowledged,
+                CreatedByUserId = TestAuthenticationHandler.UserId,
+                CreatedAt = now.AddDays(-1),
+                UpdatedAt = now.AddMinutes(-1)
+            };
+            var inspection = new InspectionRecord
+            {
+                Id = Guid.NewGuid(),
+                ScheduleId = schedule.Id,
+                AssetId = asset.Id,
+                PreventiveMaintenanceFormId = form.Id,
+                InspectorUserId = TestAuthenticationHandler.UserId,
+                DateInspected = now.AddDays(-1),
+                CompletedAt = now.AddMinutes(-1),
+                IsOperational = false,
+                Remarks = "WMS concurrent correction test",
+                CreatedAt = now.AddDays(-1),
+                UpdatedAt = now.AddMinutes(-1)
+            };
+            context.Assets.Add(asset);
+            context.PreventiveMaintenanceSchedules.Add(schedule);
+            context.PreventiveMaintenanceForms.Add(form);
+            context.PreventiveMaintenanceAcknowledgements.Add(new PreventiveMaintenanceAcknowledgement
+            {
+                Id = Guid.NewGuid(),
+                FormId = form.Id,
+                SignatoryName = "Demo Signatory",
+                SignatoryPosition = "Department Head",
+                CapturedByUserId = TestAuthenticationHandler.UserId,
+                AcknowledgedAt = now.AddMinutes(-1)
+            });
+            context.InspectionRecords.Add(inspection);
+            await context.SaveChangesAsync();
+            return inspection.Id;
+        }
     }
 
     private sealed class ScheduleMutationCommandGate : DbCommandInterceptor
@@ -733,6 +916,41 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
                 commandReached.TrySetResult();
                 await releaseCommand.Task.WaitAsync(cancellationToken);
             }
+        }
+    }
+
+    private sealed class WmsReferralSaveGate : SaveChangesInterceptor
+    {
+        private readonly TaskCompletionSource bothSavesReached = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly TaskCompletionSource releaseSaves = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private int armed;
+        private int arrived;
+
+        public void Arm() => Interlocked.Exchange(ref armed, 1);
+
+        public Task WaitForBothSavesAsync() => bothSavesReached.Task.WaitAsync(TimeSpan.FromSeconds(15));
+
+        public void ReleaseSaves() => releaseSaves.TrySetResult();
+
+        public override async ValueTask<InterceptionResult<int>> SavingChangesAsync(
+            DbContextEventData eventData,
+            InterceptionResult<int> result,
+            CancellationToken cancellationToken = default)
+        {
+            if (Volatile.Read(ref armed) == 0)
+            {
+                return result;
+            }
+
+            if (Interlocked.Increment(ref arrived) == 2)
+            {
+                bothSavesReached.TrySetResult();
+            }
+
+            await Task.WhenAny(bothSavesReached.Task, releaseSaves.Task)
+                .WaitAsync(TimeSpan.FromSeconds(15), cancellationToken);
+            await releaseSaves.Task.WaitAsync(TimeSpan.FromSeconds(15), cancellationToken);
+            return result;
         }
     }
 
