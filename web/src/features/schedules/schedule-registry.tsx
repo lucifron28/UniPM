@@ -465,7 +465,7 @@ export function ScheduleRegistry({
 
       <Card className="p-4 shadow-none">
         <form
-          className="grid gap-3 md:grid-cols-2 xl:grid-cols-4"
+          className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4"
           onSubmit={(event) => {
             event.preventDefault()
             apply()

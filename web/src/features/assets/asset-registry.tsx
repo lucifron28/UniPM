@@ -326,7 +326,7 @@ export function AssetRegistry({
 
       <Card className="p-4 shadow-none">
         <form
-          className="grid gap-3 md:grid-cols-2 xl:grid-cols-6"
+          className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-6"
           onSubmit={(event) => {
             event.preventDefault()
             apply()
