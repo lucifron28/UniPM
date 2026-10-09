@@ -15,6 +15,7 @@ using OpenTelemetry.Metrics;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.OpenApi;
 using UniPM.Api.Features.Auth;
+using UniPM.Api.Features.Schedules;
 
 var maintenanceCommand = SyntheticMaintenanceCommandParser.Parse(args);
 var builder = WebApplication.CreateBuilder(args);
@@ -129,6 +130,12 @@ builder.Services.AddScoped<SyntheticMaintenanceSeeder>();
 builder.Services.AddScoped<DevelopmentDemoSeeder>();
 builder.Services.AddScoped<ReferenceDocumentRegistrationService>();
 builder.Services.AddScoped<SyntheticReferenceDocumentSeeder>();
+builder.Services.AddScoped<PreventiveMaintenanceScheduleGenerationService>();
+if (maintenanceCommand == SyntheticMaintenanceCommand.None
+    && builder.Configuration.GetValue("PreventiveMaintenanceScheduleGeneration:WorkerEnabled", true))
+{
+    builder.Services.AddHostedService<PreventiveMaintenanceScheduleGenerationWorker>();
+}
 builder.Services.Configure<EmbeddingOptions>(builder.Configuration.GetSection(EmbeddingOptions.SectionName));
 builder.Services.Configure<PreventiveMaintenanceFormSubmissionOptions>(
     builder.Configuration.GetSection(PreventiveMaintenanceFormSubmissionOptions.SectionName));

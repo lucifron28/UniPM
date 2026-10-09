@@ -69,6 +69,7 @@ public sealed class AssetOpenApiContractTests : IClassFixture<AssetOpenApiContra
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseEnvironment("Development");
+            builder.DisableScheduleGenerationWorker();
         }
     }
 }

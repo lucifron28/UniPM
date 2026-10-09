@@ -80,8 +80,10 @@ public sealed class ScheduleQueryEndpointsTests
             null,
             2026);
 
+        var from = Uri.EscapeDataString("2026-02-01T00:00:00Z");
+        var to = Uri.EscapeDataString("2026-02-28T23:59:59Z");
         var response = await client.GetAsync(
-            "/api/v1/schedules?department=GSD&assetCategory=fire-extinguisher&search=FE-QUERY-001");
+            $"/api/v1/schedules?department=GSD&assetCategory=fire-extinguisher&search=FE-QUERY-001&year=2026&from={from}&to={to}");
 
         response.EnsureSuccessStatusCode();
         var schedules = await response.Content.ReadFromJsonAsync<List<ScheduleResponse>>();
@@ -490,8 +492,8 @@ public sealed class ScheduleQueryEndpointsTests
     [Theory]
     [InlineData("fire-extinguisher", "2026-02", "Quarter", 28, "Q1")]
     [InlineData("fire-alarm", "2026-06", "Semester", 30, null)]
-    [InlineData("emergency-light", "2026-12", "Semester", 31, null)]
-    [InlineData("water-drinking-station", "2026-11", "Quarter", 30, "Q4")]
+    [InlineData("emergency-light", "2026-06", "Semester", 30, null)]
+    [InlineData("water-drinking-station", "2026-08", "Quarter", 31, "Q3")]
     public async Task Create_schedule_accepts_a_valid_cpmp_cycle_and_derives_its_deadline(
         string assetCategory,
         string pmCycle,
@@ -549,7 +551,7 @@ public sealed class ScheduleQueryEndpointsTests
     [Theory]
     [InlineData("fire-extinguisher", "2028-02", 29)]
     [InlineData("fire-alarm", "2026-06", 30)]
-    [InlineData("fire-alarm", "2026-12", 31)]
+    [InlineData("fire-alarm", "2027-12", 31)]
     public async Task Create_schedule_uses_the_calendar_month_end_for_the_pm_cycle(
         string assetCategory,
         string pmCycle,
@@ -674,6 +676,7 @@ public sealed class ScheduleQueryEndpointsTests
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
+            builder.DisableScheduleGenerationWorker();
             builder.ConfigureServices(services =>
             {
                 if (!anonymous)
@@ -686,6 +689,9 @@ public sealed class ScheduleQueryEndpointsTests
 
                 services.AddDbContextFactory<ApplicationDbContext>(options =>
                     options.UseInMemoryDatabase(_databaseName));
+                services.RemoveAll<TimeProvider>();
+                services.AddSingleton<TimeProvider>(new FixedTimeProvider(
+                    new DateTimeOffset(2026, 10, 9, 8, 0, 0, TimeSpan.FromHours(8))));
             });
         }
 
@@ -778,4 +784,11 @@ public sealed class ScheduleQueryEndpointsTests
         string? Building,
         string? Department,
         string? Location);
+
+    private sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider
+    {
+        private readonly DateTimeOffset _now = now.ToUniversalTime();
+
+        public override DateTimeOffset GetUtcNow() => _now;
+    }
 }

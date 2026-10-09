@@ -22,9 +22,9 @@ public sealed class ScheduleBatchAssignmentEndpointsTests
         var workerId = await application.SeedUserAsync("worker", AuthRoleCatalog.Inspector);
         var supervisorId = await application.SeedUserAsync("supervisor", AuthRoleCatalog.Supervisor);
 
-        var first = await CreateScheduleAsync(client, "GSD", "Main Building", new DateTimeOffset(2026, 11, 1, 8, 0, 0, TimeSpan.FromHours(8)));
-        var second = await CreateScheduleAsync(client, " gsd ", "Annex", new DateTimeOffset(2026, 11, 9, 8, 0, 0, TimeSpan.FromHours(8)));
-        var otherDepartment = await CreateScheduleAsync(client, "Library", "Library", new DateTimeOffset(2026, 11, 1, 8, 0, 0, TimeSpan.FromHours(8)));
+        var first = await CreateScheduleAsync(client, "GSD", "Main Building", new DateTimeOffset(2026, 8, 1, 8, 0, 0, TimeSpan.FromHours(8)));
+        var second = await CreateScheduleAsync(client, " gsd ", "Annex", new DateTimeOffset(2026, 8, 9, 8, 0, 0, TimeSpan.FromHours(8)));
+        var otherDepartment = await CreateScheduleAsync(client, "Library", "Library", new DateTimeOffset(2026, 8, 1, 8, 0, 0, TimeSpan.FromHours(8)));
         var otherCycle = await CreateScheduleAsync(client, "GSD", "Main Building", new DateTimeOffset(2026, 2, 1, 8, 0, 0, TimeSpan.FromHours(8)));
 
         var response = await client.PutAsJsonAsync($"/api/v1/schedules/{first.Id}/assignment", new
@@ -38,7 +38,7 @@ public sealed class ScheduleBatchAssignmentEndpointsTests
         Assert.NotNull(assignedBatch);
         Assert.Equal("GSD", assignedBatch.Department, ignoreCase: true);
         Assert.Equal("fire-extinguisher", assignedBatch.AssetCategory);
-        Assert.Equal("2026-11", assignedBatch.PmCycle);
+        Assert.Equal("2026-08", assignedBatch.PmCycle);
         Assert.Equal(workerId, assignedBatch.WorkerUserId);
         Assert.Equal(supervisorId, assignedBatch.SupervisorUserId);
         Assert.Equivalent(new[] { first.Id, second.Id }, assignedBatch.ScheduleIds);
@@ -139,6 +139,9 @@ public sealed class ScheduleBatchAssignmentEndpointsTests
                 services.RemoveAll<DbContextOptions<ApplicationDbContext>>();
                 services.AddDbContextFactory<ApplicationDbContext>(options =>
                     options.UseInMemoryDatabase(databaseName));
+                services.RemoveAll<TimeProvider>();
+                services.AddSingleton<TimeProvider>(new FixedTimeProvider(
+                    new DateTimeOffset(2026, 10, 9, 8, 0, 0, TimeSpan.FromHours(8))));
             });
         }
 
@@ -194,4 +197,11 @@ public sealed class ScheduleBatchAssignmentEndpointsTests
         Guid SupervisorUserId,
         string SupervisorDisplayName,
         IReadOnlyList<Guid> ScheduleIds);
+
+    private sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider
+    {
+        private readonly DateTimeOffset _now = now.ToUniversalTime();
+
+        public override DateTimeOffset GetUtcNow() => _now;
+    }
 }

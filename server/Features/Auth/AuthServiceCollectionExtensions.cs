@@ -82,6 +82,9 @@ internal static class AuthServiceCollectionExtensions
                 AuthPolicyCatalog.CanManageSchedules,
                 policy => policy.RequireRole(AuthRoleCatalog.Gsd, AuthRoleCatalog.Supervisor));
             options.AddPolicy(
+                AuthPolicyCatalog.CanGenerateSchedules,
+                policy => policy.RequireRole(AuthRoleCatalog.Gsd));
+            options.AddPolicy(
                 AuthPolicyCatalog.CanReadSchedules,
                 policy => policy
                     .RequireAuthenticatedUser()

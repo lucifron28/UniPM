@@ -4,6 +4,7 @@ using UniPM.Api.Features;
 using UniPM.Api.Features.ReferenceData;
 using UniPM.Api.Models;
 using UniPM.Api.Features.Auth;
+using UniPM.Api.Features.Schedules;
 
 namespace UniPM.Api.Features.Assets;
 
@@ -16,6 +17,8 @@ public static class AssetsEndpoints
         group.MapPost("/", async (
             CreateAssetDto dto,
             IDbContextFactory<ApplicationDbContext> factory,
+            PreventiveMaintenanceScheduleGenerationService scheduleGenerator,
+            TimeProvider timeProvider,
             CancellationToken cancellationToken) =>
         {
             var validationErrors = dto.Validate();
@@ -36,7 +39,7 @@ public static class AssetsEndpoints
                 return ApiErrors.Conflict($"Asset code '{assetCode}' already exists.");
             }
 
-            var now = DateTimeOffset.UtcNow;
+            var now = timeProvider.GetUtcNow();
             var asset = new Asset
             {
                 Id = Guid.NewGuid(),
@@ -56,9 +59,21 @@ public static class AssetsEndpoints
             asset.QrCodeValue = AssetQrCodeValue.Create(asset.AssetCategory, asset.Id);
 
             context.Assets.Add(asset);
+            await scheduleGenerator.AddCurrentYearUpcomingCyclesAsync(
+                context,
+                asset,
+                now,
+                cancellationToken);
             try
             {
                 await context.SaveChangesAsync(cancellationToken);
+            }
+            catch (DbUpdateException exception)
+                when (DatabaseConstraintViolation.IsUniqueConstraint(
+                    exception,
+                    PreventiveMaintenanceScheduleGenerationService.UniqueIndexName))
+            {
+                return ApiErrors.Conflict("A preventive-maintenance cycle already exists for this asset.");
             }
             catch (DbUpdateException exception) when (DatabaseConstraintViolation.IsUniqueConstraint(exception))
             {

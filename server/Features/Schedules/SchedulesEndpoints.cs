@@ -17,6 +17,31 @@ public static class SchedulesEndpoints
     {
         var group = endpoints.MapGroup("/schedules").WithTags("Schedules");
 
+        group.MapPost("/generate", async (
+            GenerateScheduleCyclesDto dto,
+            PreventiveMaintenanceScheduleGenerationService scheduleGenerator,
+            TimeProvider timeProvider,
+            CancellationToken cancellationToken) =>
+        {
+            var now = timeProvider.GetUtcNow();
+            var institutionalNow = PreventiveMaintenanceCycle.ToInstitutionalTime(now);
+            var validationErrors = dto.Validate(institutionalNow.Year);
+            if (validationErrors.Count > 0)
+            {
+                return ApiErrors.Validation(validationErrors);
+            }
+
+            var result = await scheduleGenerator.EnsureYearAsync(dto.Year, now, cancellationToken);
+            return Results.Ok(result);
+        })
+        .WithName("GeneratePreventiveMaintenanceSchedules")
+        .WithSummary("Ensures missing CPMP schedules for one calendar year")
+        .Produces<ScheduleGenerationResult>(StatusCodes.Status200OK)
+        .Produces<Microsoft.AspNetCore.Mvc.ValidationProblemDetails>(StatusCodes.Status400BadRequest)
+        .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status401Unauthorized)
+        .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status403Forbidden)
+        .RequireAuthorization(AuthPolicyCatalog.CanGenerateSchedules);
+
         group.MapGet("/assignment-options", async (
             UserManager<ApplicationUser> userManager) =>
         {
@@ -40,6 +65,7 @@ public static class SchedulesEndpoints
         group.MapPost("/", async (
             CreateScheduleDto dto,
             IDbContextFactory<ApplicationDbContext> factory,
+            TimeProvider timeProvider,
             CancellationToken cancellationToken) =>
         {
             var validationErrors = dto.Validate();
@@ -69,6 +95,15 @@ public static class SchedulesEndpoints
                 });
             }
 
+            var duplicateCycle = await context.PreventiveMaintenanceSchedules
+                .AnyAsync(schedule => schedule.AssetId == dto.AssetId
+                    && schedule.PmCycle == pmCycle,
+                    cancellationToken);
+            if (duplicateCycle)
+            {
+                return ApiErrors.Conflict("A schedule already exists for this asset and PM cycle.");
+            }
+
             if (asset.Status != AssetStatusCatalog.Active)
             {
                 return ApiErrors.Validation(new Dictionary<string, string[]>
@@ -85,7 +120,7 @@ public static class SchedulesEndpoints
                 });
             }
 
-            var now = DateTimeOffset.UtcNow;
+            var now = timeProvider.GetUtcNow();
             PreventiveMaintenanceCycle.TryParse(pmCycle, out var year, out var month);
             var quarter = $"Q{((month - 1) / 3) + 1}";
             var periodType = SchedulePeriodTypeCatalog.TryNormalize(
@@ -110,7 +145,17 @@ public static class SchedulesEndpoints
             };
 
             context.PreventiveMaintenanceSchedules.Add(schedule);
-            await context.SaveChangesAsync(cancellationToken);
+            try
+            {
+                await context.SaveChangesAsync(cancellationToken);
+            }
+            catch (DbUpdateException exception)
+                when (DatabaseConstraintViolation.IsUniqueConstraint(
+                    exception,
+                    PreventiveMaintenanceScheduleGenerationService.UniqueIndexName))
+            {
+                return ApiErrors.Conflict("A schedule already exists for this asset and PM cycle.");
+            }
 
             return Results.Created($"/api/v1/schedules/{schedule.Id}", ScheduleResponse.FromSchedule(schedule));
         })
@@ -121,6 +166,7 @@ public static class SchedulesEndpoints
         .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status401Unauthorized)
         .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status403Forbidden)
         .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status404NotFound)
+        .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status409Conflict)
         .RequireAuthorization(AuthPolicyCatalog.CanManageSchedules);
 
         group.MapPut("/{id:guid}/assignment", async (
@@ -688,5 +734,21 @@ public class CreateScheduleDto
         }
 
         throw new InvalidOperationException("A valid PM cycle is required before a schedule can be created.");
+    }
+}
+
+public sealed class GenerateScheduleCyclesDto
+{
+    public int Year { get; set; }
+
+    internal Dictionary<string, string[]> Validate(int currentInstitutionalYear)
+    {
+        var errors = new Dictionary<string, string[]>();
+        if (Year is < 2000 || Year > currentInstitutionalYear)
+        {
+            errors[nameof(Year)] = [$"Year must be between 2000 and {currentInstitutionalYear}."];
+        }
+
+        return errors;
     }
 }

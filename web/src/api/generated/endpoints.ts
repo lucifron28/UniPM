@@ -34,6 +34,7 @@ import type {
   CreateScheduleDto,
   DraftInspectionRowDto,
   DraftInspectionRowResponse,
+  GenerateScheduleCyclesDto,
   GetPmPeriodDashboardParams,
   HttpValidationProblemDetails,
   InspectionHistoryResponse,
@@ -57,6 +58,7 @@ import type {
   ProblemDetails,
   ScheduleAssignmentBatchResponse,
   ScheduleAssignmentOptionsResponse,
+  ScheduleGenerationResult,
   ScheduleReferenceResponse,
   ScheduleResponse,
   UpdateAssetVerificationLocationDto,
@@ -1985,6 +1987,95 @@ export function useGetAssetByQr<
   > & { queryKey: DataTag<QueryKey, TData, TError> }
 
   return withQueryKey(query, queryOptions.queryKey)
+}
+
+/**
+ * @summary Ensures missing CPMP schedules for one calendar year
+ */
+export const generatePreventiveMaintenanceSchedules = (
+  generateScheduleCyclesDto: GenerateScheduleCyclesDto,
+  signal?: AbortSignal,
+) => {
+  return customInstance<ScheduleGenerationResult>({
+    url: `/api/v1/schedules/generate`,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    data: generateScheduleCyclesDto,
+    signal,
+  })
+}
+
+export const getGeneratePreventiveMaintenanceSchedulesMutationOptions = <
+  TError = ValidationProblemDetails | ProblemDetails,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof generatePreventiveMaintenanceSchedules>>,
+    TError,
+    { data: GenerateScheduleCyclesDto },
+    TContext
+  >
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof generatePreventiveMaintenanceSchedules>>,
+  TError,
+  { data: GenerateScheduleCyclesDto },
+  TContext
+> => {
+  const mutationKey = ['generatePreventiveMaintenanceSchedules']
+  const { mutation: mutationOptions } = options
+    ? options.mutation &&
+      'mutationKey' in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey } }
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof generatePreventiveMaintenanceSchedules>>,
+    { data: GenerateScheduleCyclesDto }
+  > = (props) => {
+    const { data } = props ?? {}
+
+    return generatePreventiveMaintenanceSchedules(data)
+  }
+
+  return { mutationFn, ...mutationOptions }
+}
+
+export type GeneratePreventiveMaintenanceSchedulesMutationResult = NonNullable<
+  Awaited<ReturnType<typeof generatePreventiveMaintenanceSchedules>>
+>
+export type GeneratePreventiveMaintenanceSchedulesMutationBody =
+  GenerateScheduleCyclesDto
+export type GeneratePreventiveMaintenanceSchedulesMutationError =
+  ValidationProblemDetails | ProblemDetails
+
+/**
+ * @summary Ensures missing CPMP schedules for one calendar year
+ */
+export const useGeneratePreventiveMaintenanceSchedules = <
+  TError = ValidationProblemDetails | ProblemDetails,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof generatePreventiveMaintenanceSchedules>>,
+      TError,
+      { data: GenerateScheduleCyclesDto },
+      TContext
+    >
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof generatePreventiveMaintenanceSchedules>>,
+  TError,
+  { data: GenerateScheduleCyclesDto },
+  TContext
+> => {
+  return useMutation(
+    getGeneratePreventiveMaintenanceSchedulesMutationOptions(options),
+    queryClient,
+  )
 }
 
 /**
