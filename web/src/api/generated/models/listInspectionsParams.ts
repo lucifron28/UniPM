@@ -14,4 +14,5 @@ export type ListInspectionsParams = {
   department?: string
   assetCategory?: string
   search?: string
+  wmsReferralStatus?: string
 }

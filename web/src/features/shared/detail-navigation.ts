@@ -5,6 +5,7 @@ import {
 } from '@/features/assets/asset-contract'
 import type { AssetSearch } from '@/features/assets/asset-registry'
 import type { InspectionSearch } from '@/features/inspections/inspection-registry'
+import { inspectionFollowUpStatusCodes } from '@/features/inspections/inspection-contract'
 import type { FormSearch } from '@/features/preventive-maintenance-forms/form-registry'
 import { preventiveMaintenanceFormStatusCodes } from '@/features/preventive-maintenance-forms/form-contract'
 import {
@@ -120,6 +121,7 @@ const inspectionSearchSchema = z.object({
   department: z.string().trim().max(256).optional(),
   search: z.string().trim().max(256).optional(),
   isOperational: z.boolean().optional(),
+  wmsReferralStatus: z.enum(inspectionFollowUpStatusCodes).optional(),
   dateFrom: z.string().datetime({ offset: true }).optional(),
   dateTo: z.string().datetime({ offset: true }).optional(),
   page: pageSchema,

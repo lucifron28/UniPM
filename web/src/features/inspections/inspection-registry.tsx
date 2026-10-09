@@ -16,7 +16,10 @@ import type { Asset } from '@/features/assets/asset-contract'
 import { assetCategoryCodes } from '@/features/assets/asset-contract'
 import { useAssetCategories, useAssets } from '@/features/assets/asset-queries'
 import { categoryLabel } from '@/features/assets/asset-presentation'
-import type { Inspection } from '@/features/inspections/inspection-contract'
+import type {
+  Inspection,
+  InspectionFollowUpStatus,
+} from '@/features/inspections/inspection-contract'
 import { useInspections } from '@/features/inspections/inspection-queries'
 import {
   excerpt,
@@ -44,6 +47,7 @@ export type InspectionSearch = {
   department?: string | undefined
   search?: string | undefined
   isOperational?: boolean | undefined
+  wmsReferralStatus?: InspectionFollowUpStatus | undefined
   dateFrom?: string | undefined
   dateTo?: string | undefined
   page?: number | undefined
@@ -115,6 +119,33 @@ const createColumns = (search: InspectionSearch) => [
     header: 'Recommendation',
     cell: ({ getValue }) => excerpt(getValue()),
   }),
+  columnHelper.accessor('correctiveFollowUpStatus', {
+    header: 'Corrective follow-up',
+    cell: ({ getValue, row }) => (
+      <div>
+        <Badge
+          variant={
+            getValue() === 'ReferredToWms'
+              ? 'success'
+              : getValue() === 'CorrectiveFollowUpPending'
+                ? 'warning'
+                : 'neutral'
+          }
+        >
+          {getValue() === 'ReferredToWms'
+            ? 'Referred to WMS'
+            : getValue() === 'CorrectiveFollowUpPending'
+              ? 'Corrective follow-up pending'
+              : 'No referral required'}
+        </Badge>
+        {row.original.externalPmNumber && (
+          <p className="mt-1 text-xs text-[var(--text-secondary)]">
+            WMS PM: {row.original.externalPmNumber}
+          </p>
+        )}
+      </div>
+    ),
+  }),
   columnHelper.display({
     id: 'action',
     header: 'Action',
@@ -163,6 +194,7 @@ export function InspectionRegistry({
     department: search.department,
     search: search.search,
     isOperational: search.isOperational,
+    wmsReferralStatus: search.wmsReferralStatus,
     dateFrom: search.dateFrom,
     dateTo: search.dateTo,
   }))
@@ -175,6 +207,7 @@ export function InspectionRegistry({
       department: search.department,
       search: search.search,
       isOperational: search.isOperational,
+      wmsReferralStatus: search.wmsReferralStatus,
       dateFrom: search.dateFrom,
       dateTo: search.dateTo,
     })
@@ -185,6 +218,7 @@ export function InspectionRegistry({
     search.department,
     search.search,
     search.isOperational,
+    search.wmsReferralStatus,
     search.dateFrom,
     search.dateTo,
   ])
@@ -198,6 +232,9 @@ export function InspectionRegistry({
     ...(search.isOperational === undefined
       ? {}
       : { isOperational: search.isOperational }),
+    ...(search.wmsReferralStatus
+      ? { wmsReferralStatus: search.wmsReferralStatus }
+      : {}),
     ...(search.dateFrom ? { dateFrom: search.dateFrom } : {}),
     ...(search.dateTo ? { dateTo: search.dateTo } : {}),
   })
@@ -372,7 +409,7 @@ export function InspectionRegistry({
 
       <Card className="p-4 shadow-none">
         <form
-          className="grid gap-3 md:grid-cols-2 xl:grid-cols-4"
+          className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4"
           onSubmit={(event) => {
             event.preventDefault()
             apply()
@@ -380,7 +417,7 @@ export function InspectionRegistry({
         >
           <Input
             aria-label="Search inspections"
-            placeholder="Asset code, location, remarks, or recommendation"
+            placeholder="Asset code, location, remarks, recommendation, or WMS PM number"
             value={draft.search ?? ''}
             maxLength={256}
             onChange={(event) =>
@@ -493,6 +530,25 @@ export function InspectionRegistry({
             <option value="">All recorded results</option>
             <option value="true">Operational</option>
             <option value="false">Not operational</option>
+          </select>
+          <select
+            aria-label="Corrective follow-up status"
+            value={draft.wmsReferralStatus ?? ''}
+            onChange={(event) =>
+              setDraft((current) => ({
+                ...current,
+                wmsReferralStatus: (event.target.value || undefined) as
+                  InspectionFollowUpStatus | undefined,
+              }))
+            }
+            className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
+          >
+            <option value="">All follow-up statuses</option>
+            <option value="NoReferralRequired">No referral required</option>
+            <option value="CorrectiveFollowUpPending">
+              Corrective follow-up pending
+            </option>
+            <option value="ReferredToWms">Referred to WMS</option>
           </select>
           <label className="grid gap-1 text-xs font-semibold text-[var(--text-secondary)]">
             Inspected from
@@ -664,6 +720,28 @@ export function InspectionRegistry({
                 <p className="text-sm text-[var(--text-secondary)]">
                   {excerpt(inspection.remarks)}
                 </p>
+                <Badge
+                  variant={
+                    inspection.correctiveFollowUpStatus === 'ReferredToWms'
+                      ? 'success'
+                      : inspection.correctiveFollowUpStatus ===
+                          'CorrectiveFollowUpPending'
+                        ? 'warning'
+                        : 'neutral'
+                  }
+                >
+                  {inspection.correctiveFollowUpStatus === 'ReferredToWms'
+                    ? 'Referred to WMS'
+                    : inspection.correctiveFollowUpStatus ===
+                        'CorrectiveFollowUpPending'
+                      ? 'Corrective follow-up pending'
+                      : 'No referral required'}
+                </Badge>
+                {inspection.externalPmNumber && (
+                  <p className="text-sm text-[var(--text-secondary)]">
+                    WMS PM: {inspection.externalPmNumber}
+                  </p>
+                )}
                 <Link
                   to="/app/inspections/$inspectionId"
                   params={{ inspectionId: inspection.id }}

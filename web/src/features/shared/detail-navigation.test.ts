@@ -47,11 +47,21 @@ describe('detail return navigation', () => {
     expect(
       resolveDetailReturn(undefined, {
         kind: 'inspectionRegistry',
-        search: { assetId, isOperational: false, page: 4 },
+        search: {
+          assetId,
+          isOperational: false,
+          wmsReferralStatus: 'ReferredToWms',
+          page: 4,
+        },
       }),
     ).toMatchObject({
       kind: 'inspectionRegistry',
-      search: { assetId, isOperational: false, page: 4 },
+      search: {
+        assetId,
+        isOperational: false,
+        wmsReferralStatus: 'ReferredToWms',
+        page: 4,
+      },
       label: 'Back to inspections',
     })
     expect(

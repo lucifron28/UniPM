@@ -6,6 +6,8 @@ import {
   type DetailReturnContext,
 } from '@/features/shared/detail-navigation'
 import type { InspectionSearch } from '@/features/inspections/inspection-registry'
+import { assetCategoryCodes } from '@/features/assets/asset-contract'
+import { inspectionFollowUpStatusCodes } from '@/features/inspections/inspection-contract'
 import type { PmAcknowledgementReviewContext } from '@/features/preventive-maintenance-forms/pm-acknowledgement-review'
 
 const searchSchema = z.object({
@@ -19,12 +21,13 @@ const searchSchema = z.object({
       z.literal('false').transform(() => false),
     ])
     .optional(),
+  wmsReferralStatus: z.enum(inspectionFollowUpStatusCodes).optional(),
   dateFrom: z.string().datetime({ offset: true }).optional(),
   dateTo: z.string().datetime({ offset: true }).optional(),
   page: z.coerce.number().int().positive().max(10000).optional(),
   reviewFormId: z.string().uuid().optional(),
   department: z.string().trim().max(256).optional(),
-  assetCategory: z.string().trim().max(128).optional(),
+  assetCategory: z.enum(assetCategoryCodes).optional(),
   pmCycle: z
     .string()
     .regex(/^\d{4}-\d{2}$/)
@@ -65,8 +68,12 @@ function InspectionDetailPage() {
     assetId: search.assetId,
     scheduleId: search.scheduleId,
     isOperational: search.isOperational,
+    wmsReferralStatus: search.wmsReferralStatus,
     dateFrom: search.dateFrom,
     dateTo: search.dateTo,
+    department: search.department,
+    assetCategory: search.assetCategory,
+    search: search.search,
     page: search.page,
   }
   const reviewContext: PmAcknowledgementReviewContext | undefined =

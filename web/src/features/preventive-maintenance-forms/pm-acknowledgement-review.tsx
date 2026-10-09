@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { ApiError } from '@/api/problem-details'
+import { assetCategoryCodes } from '@/features/assets/asset-contract'
 import type { PmPeriodDashboardSearch } from '@/features/reports/pm-period-dashboard'
 import type {
   PmPeriodDashboardAssetRowResponse,
@@ -303,6 +304,10 @@ function AssetReviewList({
                         params={{ inspectionId: asset.inspectionId }}
                         search={{
                           ...reviewContext,
+                          assetCategory: assetCategoryCodes.find(
+                            (category) =>
+                              category === reviewContext.assetCategory,
+                          ),
                           returnContext: {
                             kind: 'batchReview',
                             formId: reviewContext.reviewFormId,

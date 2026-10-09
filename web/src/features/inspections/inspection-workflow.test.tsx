@@ -71,6 +71,9 @@ const inspection = {
   isOperational: false,
   remarks: 'Low pressure <script>not executable</script>.',
   actionsRecommendations: 'Arrange a pressure check.',
+  externalPmNumber: 'WMS-PM-777',
+  wmsReferralRevision: 1,
+  correctiveFollowUpStatus: 'ReferredToWms',
   createdAt: '2026-07-22T01:00:00Z',
   updatedAt: '2026-07-22T01:00:00Z',
 }
@@ -200,7 +203,7 @@ describe('inspection review workflows', () => {
 
     await actor.type(
       screen.getByRole('textbox', { name: 'Search inspections' }),
-      'pressure',
+      'WMS-PM-777',
     )
     await actor.selectOptions(
       screen.getByLabelText('Asset category'),
@@ -211,20 +214,25 @@ describe('inspection review workflows', () => {
       screen.getByLabelText('Recorded operational result'),
       'false',
     )
+    await actor.selectOptions(
+      screen.getByLabelText('Corrective follow-up status'),
+      'ReferredToWms',
+    )
     expect(urls).toHaveLength(1)
 
     await actor.click(screen.getByRole('button', { name: 'Apply filters' }))
     await waitFor(() => {
       expect(
-        urls.some((url) => url.searchParams.get('search') === 'pressure'),
+        urls.some((url) => url.searchParams.get('search') === 'WMS-PM-777'),
       ).toBe(true)
     })
     const applied = urls.find(
-      (url) => url.searchParams.get('search') === 'pressure',
+      (url) => url.searchParams.get('search') === 'WMS-PM-777',
     )
     expect(applied?.searchParams.get('assetCategory')).toBe('fire-extinguisher')
     expect(applied?.searchParams.get('department')).toBe('GSD')
     expect(applied?.searchParams.get('isOperational')).toBe('false')
+    expect(applied?.searchParams.get('wmsReferralStatus')).toBe('ReferredToWms')
 
     const href = screen
       .getAllByRole('link', { name: 'View details' })[0]!
@@ -235,8 +243,9 @@ describe('inspection review workflows', () => {
     expect(returnContext.search).toMatchObject({
       assetCategory: 'fire-extinguisher',
       department: 'GSD',
-      search: 'pressure',
+      search: 'WMS-PM-777',
       isOperational: false,
+      wmsReferralStatus: 'ReferredToWms',
       page: 1,
     })
   })

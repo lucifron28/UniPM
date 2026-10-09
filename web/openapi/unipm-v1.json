@@ -1241,7 +1241,9 @@
     },
     "/api/v1/inspections": {
       "get": {
-        "tags": ["Inspections"],
+        "tags": [
+          "Inspections"
+        ],
         "summary": "Lists inspection records using supported metadata filters",
         "operationId": "ListInspections",
         "parameters": [
@@ -1304,6 +1306,13 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "wmsReferralStatus",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -1362,6 +1371,130 @@
           },
           "404": {
             "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inspections/{id}/wms-referral": {
+      "get": {
+        "tags": [
+          "Inspections"
+        ],
+        "summary": "Gets the manually recorded WMS PM number and its change audit",
+        "operationId": "GetInspectionWmsReferral",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InspectionWmsReferralDetailResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Inspections"
+        ],
+        "summary": "Records or corrects the external WMS PM number without changing the inspection",
+        "operationId": "UpdateInspectionWmsReferral",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateInspectionWmsReferralDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InspectionWmsReferralResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
             "content": {
               "application/json": {
                 "schema": {
@@ -2453,6 +2586,10 @@
           "findingOrRemarks",
           "isOperational",
           "recommendedCorrectiveAction",
+          "wmsPmNumber",
+          "wmsReferralRevision",
+          "followUpStatus",
+          "canRecordWmsReferral",
           "skilledWorkerUserId",
           "skilledWorkerIdentity"
         ],
@@ -2467,29 +2604,64 @@
             "format": "date-time"
           },
           "assetDeviceNumber": {
-            "type": ["null", "string"]
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "assetCode": {
             "type": "string"
           },
           "location": {
-            "type": ["null", "string"]
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "findingOrRemarks": {
-            "type": ["null", "string"]
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "isOperational": {
             "type": "boolean"
           },
           "recommendedCorrectiveAction": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "wmsPmNumber": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "wmsReferralRevision": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "followUpStatus": {
             "type": "string"
+          },
+          "canRecordWmsReferral": {
+            "type": "boolean"
           },
           "skilledWorkerUserId": {
             "type": "string",
             "format": "uuid"
           },
           "skilledWorkerIdentity": {
-            "type": ["null", "string"]
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -2921,10 +3093,16 @@
             "type": "boolean"
           },
           "remarks": {
-            "type": ["null", "string"]
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "actionsRecommendations": {
-            "type": ["null", "string"]
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "createdAt": {
             "type": "string",
@@ -2935,17 +3113,48 @@
             "format": "date-time"
           },
           "dateAccomplished": {
-            "type": ["null", "string"],
+            "type": [
+              "null",
+              "string"
+            ],
             "format": "date-time"
           },
           "waterReplaceCarbonFilter": {
-            "type": ["null", "boolean"]
+            "type": [
+              "null",
+              "boolean"
+            ]
           },
           "waterReplaceSedimentFilter": {
-            "type": ["null", "boolean"]
+            "type": [
+              "null",
+              "boolean"
+            ]
           },
           "waterCheckUvLight": {
-            "type": ["null", "boolean"]
+            "type": [
+              "null",
+              "boolean"
+            ]
+          },
+          "externalPmNumber": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "wmsReferralRevision": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32",
+            "default": 0
+          },
+          "correctiveFollowUpStatus": {
+            "type": "string",
+            "default": "NoReferralRequired"
           }
         }
       },
@@ -4057,6 +4266,190 @@
           "createdSchedules": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": ["integer", "string"],
+            "format": "int32"
+          }
+        }
+      },
+      "InspectionWmsReferralAuditResponse": {
+        "required": [
+          "previousExternalPmNumber",
+          "newExternalPmNumber",
+          "revision",
+          "changedByUserId",
+          "changedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "previousExternalPmNumber": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "newExternalPmNumber": {
+            "type": "string"
+          },
+          "revision": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "changedByUserId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "changedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "InspectionWmsReferralDetailResponse": {
+        "required": [
+          "inspectionId",
+          "followUpStatus",
+          "externalPmNumber",
+          "revision",
+          "recordedByUserId",
+          "recordedAt",
+          "lastUpdatedByUserId",
+          "lastUpdatedAt",
+          "canRecordReferral",
+          "eligibilityMessage",
+          "audit"
+        ],
+        "type": "object",
+        "properties": {
+          "inspectionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "followUpStatus": {
+            "type": "string"
+          },
+          "externalPmNumber": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "revision": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "recordedByUserId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "recordedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "lastUpdatedByUserId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "lastUpdatedAt": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "date-time"
+          },
+          "canRecordReferral": {
+            "type": "boolean"
+          },
+          "eligibilityMessage": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "audit": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InspectionWmsReferralAuditResponse"
+            }
+          }
+        }
+      },
+      "InspectionWmsReferralResponse": {
+        "required": [
+          "inspectionId",
+          "externalPmNumber",
+          "revision",
+          "recordedByUserId",
+          "recordedAt",
+          "lastUpdatedByUserId",
+          "lastUpdatedAt",
+          "followUpStatus"
+        ],
+        "type": "object",
+        "properties": {
+          "inspectionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "externalPmNumber": {
+            "type": "string"
+          },
+          "revision": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "recordedByUserId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "recordedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastUpdatedByUserId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "lastUpdatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "followUpStatus": {
+            "type": "string"
+          }
+        }
+      },
+      "UpdateInspectionWmsReferralDto": {
+        "type": "object",
+        "properties": {
+          "externalPmNumber": {
+            "type": "string"
+          },
+          "expectedRevision": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
             "format": "int32"
           }
         }

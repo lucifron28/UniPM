@@ -41,6 +41,8 @@ import type {
   InspectionHistoryResponse,
   InspectionLocationAttemptResponse,
   InspectionResponse,
+  InspectionWmsReferralDetailResponse,
+  InspectionWmsReferralResponse,
   ListAssetsParams,
   ListInspectionsParams,
   ListPmPeriodDashboardCyclesParams,
@@ -65,6 +67,7 @@ import type {
   ScheduleWorkerAssignmentOptionsResponse,
   UpdateAssetVerificationLocationDto,
   UpdateDraftInspectionRowDto,
+  UpdateInspectionWmsReferralDto,
   ValidationProblemDetails,
 } from './models'
 
@@ -3364,6 +3367,254 @@ export function useGetInspection<
   > & { queryKey: DataTag<QueryKey, TData, TError> }
 
   return withQueryKey(query, queryOptions.queryKey)
+}
+
+/**
+ * @summary Gets the manually recorded WMS PM number and its change audit
+ */
+export const getInspectionWmsReferral = (id: string, signal?: AbortSignal) => {
+  return customInstance<InspectionWmsReferralDetailResponse>({
+    url: `/api/v1/inspections/${id}/wms-referral`,
+    method: 'GET',
+    signal,
+  })
+}
+
+export const getGetInspectionWmsReferralQueryKey = (id: string) => {
+  return [`/api/v1/inspections/${id}/wms-referral`] as const
+}
+
+export const getGetInspectionWmsReferralQueryOptions = <
+  TData = Awaited<ReturnType<typeof getInspectionWmsReferral>>,
+  TError = void | ProblemDetails,
+>(
+  id: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getInspectionWmsReferral>>,
+        TError,
+        TData
+      >
+    >
+  },
+) => {
+  const { query: queryOptions } = options ?? {}
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetInspectionWmsReferralQueryKey(id)
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getInspectionWmsReferral>>
+  > = ({ signal }) => getInspectionWmsReferral(id, signal)
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: id !== null && id !== undefined,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getInspectionWmsReferral>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetInspectionWmsReferralQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getInspectionWmsReferral>>
+>
+export type GetInspectionWmsReferralQueryError = void | ProblemDetails
+
+export function useGetInspectionWmsReferral<
+  TData = Awaited<ReturnType<typeof getInspectionWmsReferral>>,
+  TError = void | ProblemDetails,
+>(
+  id: string,
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getInspectionWmsReferral>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getInspectionWmsReferral>>,
+          TError,
+          Awaited<ReturnType<typeof getInspectionWmsReferral>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useGetInspectionWmsReferral<
+  TData = Awaited<ReturnType<typeof getInspectionWmsReferral>>,
+  TError = void | ProblemDetails,
+>(
+  id: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getInspectionWmsReferral>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getInspectionWmsReferral>>,
+          TError,
+          Awaited<ReturnType<typeof getInspectionWmsReferral>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useGetInspectionWmsReferral<
+  TData = Awaited<ReturnType<typeof getInspectionWmsReferral>>,
+  TError = void | ProblemDetails,
+>(
+  id: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getInspectionWmsReferral>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+/**
+ * @summary Gets the manually recorded WMS PM number and its change audit
+ */
+
+export function useGetInspectionWmsReferral<
+  TData = Awaited<ReturnType<typeof getInspectionWmsReferral>>,
+  TError = void | ProblemDetails,
+>(
+  id: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getInspectionWmsReferral>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+} {
+  const queryOptions = getGetInspectionWmsReferralQueryOptions(id, options)
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+
+  return withQueryKey(query, queryOptions.queryKey)
+}
+
+/**
+ * @summary Records or corrects the external WMS PM number without changing the inspection
+ */
+export const updateInspectionWmsReferral = (
+  id: string,
+  updateInspectionWmsReferralDto: UpdateInspectionWmsReferralDto,
+  signal?: AbortSignal,
+) => {
+  return customInstance<InspectionWmsReferralResponse>({
+    url: `/api/v1/inspections/${id}/wms-referral`,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    data: updateInspectionWmsReferralDto,
+    signal,
+  })
+}
+
+export const getUpdateInspectionWmsReferralMutationOptions = <
+  TError = ValidationProblemDetails | void | ProblemDetails,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateInspectionWmsReferral>>,
+    TError,
+    { id: string; data: UpdateInspectionWmsReferralDto },
+    TContext
+  >
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateInspectionWmsReferral>>,
+  TError,
+  { id: string; data: UpdateInspectionWmsReferralDto },
+  TContext
+> => {
+  const mutationKey = ['updateInspectionWmsReferral']
+  const { mutation: mutationOptions } = options
+    ? options.mutation &&
+      'mutationKey' in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey } }
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateInspectionWmsReferral>>,
+    { id: string; data: UpdateInspectionWmsReferralDto }
+  > = (props) => {
+    const { id, data } = props ?? {}
+
+    return updateInspectionWmsReferral(id, data)
+  }
+
+  return { mutationFn, ...mutationOptions }
+}
+
+export type UpdateInspectionWmsReferralMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateInspectionWmsReferral>>
+>
+export type UpdateInspectionWmsReferralMutationBody =
+  UpdateInspectionWmsReferralDto
+export type UpdateInspectionWmsReferralMutationError =
+  ValidationProblemDetails | void | ProblemDetails
+
+/**
+ * @summary Records or corrects the external WMS PM number without changing the inspection
+ */
+export const useUpdateInspectionWmsReferral = <
+  TError = ValidationProblemDetails | void | ProblemDetails,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof updateInspectionWmsReferral>>,
+      TError,
+      { id: string; data: UpdateInspectionWmsReferralDto },
+      TContext
+    >
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof updateInspectionWmsReferral>>,
+  TError,
+  { id: string; data: UpdateInspectionWmsReferralDto },
+  TContext
+> => {
+  return useMutation(
+    getUpdateInspectionWmsReferralMutationOptions(options),
+    queryClient,
+  )
 }
 
 /**

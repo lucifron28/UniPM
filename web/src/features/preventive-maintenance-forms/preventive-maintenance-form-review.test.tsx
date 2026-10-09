@@ -198,6 +198,9 @@ function installDashboardNavigationHandlers(
         isOperational: false,
         remarks: 'Pressure is low.',
         actionsRecommendations: 'Inspect and recharge the unit.',
+        externalPmNumber: null,
+        wmsReferralRevision: 0,
+        correctiveFollowUpStatus: 'CorrectiveFollowUpPending',
         createdAt: timestamps.createdAt,
         updatedAt: timestamps.updatedAt,
       }),
@@ -488,6 +491,7 @@ describe('preventive-maintenance form review', () => {
     expect(screen.getByText('Main Building lobby')).toBeInTheDocument()
     expect(screen.getByText('Synthetic Inspector')).toBeInTheDocument()
     expect(screen.getByText('Awaiting acknowledgement')).toBeInTheDocument()
+    expect(screen.getByText(/Corrective follow-up pending/)).toBeInTheDocument()
     expect(screen.getByText('Recommendation')).toBeInTheDocument()
     expect(
       screen.getByText('Water drinking station work items'),
@@ -535,6 +539,10 @@ describe('preventive-maintenance form review', () => {
               findingOrRemarks: 'Pressure is low.',
               isOperational: false,
               recommendedCorrectiveAction: 'Inspect and recharge the unit.',
+              wmsPmNumber: null,
+              wmsReferralRevision: 0,
+              followUpStatus: 'CorrectiveFollowUpPending',
+              canRecordWmsReferral: true,
               skilledWorkerUserId: inspectorId,
               skilledWorkerIdentity: 'Synthetic Reviewer',
             },
@@ -577,6 +585,140 @@ describe('preventive-maintenance form review', () => {
     expect(
       screen.queryByRole('heading', { name: 'Acknowledge submitted form' }),
     ).not.toBeInTheDocument()
+  })
+
+  it('records and audits a supplied WMS PM number for a completed non-operational row', async () => {
+    let externalPmNumber: string | null = null
+    let revision = 0
+    let referralReadCount = 0
+    let submittedBody: Record<string, unknown> | undefined
+    const referralUrl = `*/api/v1/inspections/${inspectionId}/wms-referral`
+    const referralAudit = () =>
+      revision === 0
+        ? []
+        : [
+            {
+              previousExternalPmNumber: null,
+              newExternalPmNumber: externalPmNumber,
+              revision,
+              changedByUserId: inspectorId,
+              changedAt: '2026-08-02T03:00:00Z',
+            },
+          ]
+
+    server.use(
+      http.get(meUrl, () => HttpResponse.json(currentUser(['GSD']))),
+      http.get(`${formsUrl}/${formId}`, () =>
+        HttpResponse.json(form('Acknowledged')),
+      ),
+      http.get(`${formsUrl}/${formId}/corrective-handoff`, () =>
+        HttpResponse.json({
+          formId,
+          fileNumber: 'GSD-ACKNOWLEDGED-001',
+          acknowledgedAt: '2026-07-29T02:00:00Z',
+          department: 'GSD',
+          building: 'Main Building',
+          assetCategory: 'fire-extinguisher',
+          hasCorrectiveActionRows: false,
+          rows: [
+            {
+              inspectionId,
+              inspectionDate: '2026-07-28T02:00:00Z',
+              assetDeviceNumber: null,
+              assetCode: 'FE-001',
+              location: 'Room 101',
+              findingOrRemarks: 'Pressure is low.',
+              isOperational: false,
+              recommendedCorrectiveAction: null,
+              wmsPmNumber: externalPmNumber,
+              wmsReferralRevision: revision,
+              followUpStatus: revision
+                ? 'ReferredToWms'
+                : 'CorrectiveFollowUpPending',
+              canRecordWmsReferral: true,
+              skilledWorkerUserId: inspectorId,
+              skilledWorkerIdentity: 'Synthetic Reviewer',
+            },
+          ],
+        }),
+      ),
+      http.put(referralUrl, async ({ request }) => {
+        submittedBody = (await request.json()) as Record<string, unknown>
+        externalPmNumber = String(submittedBody.externalPmNumber)
+        revision += 1
+        return HttpResponse.json({
+          inspectionId,
+          externalPmNumber,
+          revision,
+          recordedByUserId: inspectorId,
+          recordedAt: '2026-08-02T03:00:00Z',
+          lastUpdatedByUserId: inspectorId,
+          lastUpdatedAt: '2026-08-02T03:00:00Z',
+          followUpStatus: 'ReferredToWms',
+        })
+      }),
+      http.get(referralUrl, () => {
+        referralReadCount += 1
+        return HttpResponse.json({
+          inspectionId,
+          followUpStatus: revision
+            ? 'ReferredToWms'
+            : 'CorrectiveFollowUpPending',
+          externalPmNumber,
+          revision,
+          recordedByUserId: revision ? inspectorId : null,
+          recordedAt: revision ? '2026-08-02T03:00:00Z' : null,
+          lastUpdatedByUserId: revision ? inspectorId : null,
+          lastUpdatedAt: revision ? '2026-08-02T03:00:00Z' : null,
+          canRecordReferral: true,
+          eligibilityMessage: null,
+          audit: referralAudit(),
+        })
+      }),
+    )
+
+    renderWithProviders(<FormDetail formId={formId} />)
+    const actor = userEvent.setup()
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Corrective-action findings',
+      }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'FE-001' })).toBeInTheDocument()
+    expect(
+      screen.getByText('Recommended corrective action'),
+    ).toBeInTheDocument()
+    expect(referralReadCount).toBe(0)
+
+    await actor.type(
+      screen.getByRole('textbox', { name: 'WMS PM number for FE-001' }),
+      ' WMS-PM-042 ',
+    )
+    await actor.click(
+      screen.getByRole('button', { name: 'Save WMS PM number' }),
+    )
+    await waitFor(() => {
+      expect(submittedBody).toEqual({
+        externalPmNumber: 'WMS-PM-042',
+        expectedRevision: 0,
+      })
+    })
+    expect(
+      await screen.findByText('External WMS PM number: WMS-PM-042'),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Referred to WMS')).toBeInTheDocument()
+    expect(referralReadCount).toBe(0)
+
+    await actor.click(
+      screen.getByRole('button', { name: 'View WMS PM number history' }),
+    )
+    expect(
+      await screen.findByText(/Initial reference recorded\s*→\s*WMS-PM-042/),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(new RegExp(`User ${inspectorId} ·`)),
+    ).toBeInTheDocument()
+    expect(referralReadCount).toBe(1)
   })
 
   it('does not offer acknowledgement for a Draft form', async () => {
