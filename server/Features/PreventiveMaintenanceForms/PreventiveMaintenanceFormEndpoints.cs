@@ -643,6 +643,29 @@ public static class PreventiveMaintenanceFormEndpoints
                 return ApiErrors.NotFound("Schedule not found.");
             }
 
+            var previewScheduleAccess = await authorizationService.AuthorizeAsync(
+                principal,
+                schedulePreview,
+                AuthPolicyCatalog.CanInspectPreventiveMaintenanceSchedule);
+            if (!previewScheduleAccess.Succeeded)
+            {
+                return Results.Forbid();
+            }
+
+            if (schedulePreview.Asset is null)
+            {
+                return ApiErrors.NotFound("Asset not found.");
+            }
+
+            form.Department = PreventiveMaintenanceFormBatchPolicy.NormalizeDepartment(form.Department);
+            if (!PreventiveMaintenanceFormBatchPolicy.HasResolvedDepartment(form, schedulePreview))
+            {
+                return ApiErrors.Validation(new Dictionary<string, string[]>
+                {
+                    [nameof(dto.ScheduleId)] = ["A PM form batch requires a department on both the form and scheduled asset."]
+                });
+            }
+
             if (!ScheduleBatchIdentity.TryCreate(schedulePreview, out var batchIdentity))
             {
                 return ApiErrors.Conflict("The schedule needs a department and valid PM cycle before inspection work can start.");
