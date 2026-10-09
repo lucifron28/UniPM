@@ -269,6 +269,20 @@ export function InspectionDetail({
           value={inspectionOutcome(record.isOperational)}
         />
         <DetailItem
+          label="Corrective follow-up"
+          value={
+            record.correctiveFollowUpStatus === 'ReferredToWms'
+              ? 'Referred to WMS'
+              : record.correctiveFollowUpStatus === 'CorrectiveFollowUpPending'
+                ? 'Corrective follow-up pending'
+                : 'No referral required'
+          }
+        />
+        <DetailItem
+          label="External WMS PM number"
+          value={record.externalPmNumber ?? ''}
+        />
+        <DetailItem
           label="Created"
           value={formatInspectionDate(record.createdAt)}
         />

@@ -6,6 +6,7 @@ import {
   type RefObject,
 } from 'react'
 import { ApiError } from '@/api/problem-details'
+import { toast } from 'sonner'
 import type { PreventiveMaintenanceAcknowledgementResponse } from '@/api/generated/models/preventiveMaintenanceAcknowledgementResponse'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -21,7 +22,9 @@ import {
 import {
   useCorrectiveMaintenanceHandoff,
   useAcknowledgePreventiveMaintenanceFormMutation,
+  useInspectionWmsReferral,
   usePreventiveMaintenanceForm,
+  useUpdateInspectionWmsReferralMutation,
 } from '@/features/preventive-maintenance-forms/form-queries'
 import {
   formStatusClass,
@@ -55,10 +58,50 @@ function DetailItem({ label, value }: { label: string; value: string }) {
 }
 
 function HandoffRow({
+  formId,
   row,
 }: {
+  formId: string
   row: CorrectiveMaintenanceHandoff['rows'][number]
 }) {
+  const [showHistory, setShowHistory] = useState(false)
+  const [externalPmNumber, setExternalPmNumber] = useState(
+    row.wmsPmNumber ?? '',
+  )
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const referral = useInspectionWmsReferral(row.inspectionId, showHistory)
+  const mutation = useUpdateInspectionWmsReferralMutation(formId)
+
+  async function saveReferral(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const normalizedNumber = externalPmNumber.trim()
+    if (!normalizedNumber) {
+      setErrorMessage('Enter the WMS PM number supplied by GSD.')
+      return
+    }
+    setErrorMessage(null)
+    try {
+      const saved = await mutation.mutateAsync({
+        id: row.inspectionId,
+        data: {
+          externalPmNumber: normalizedNumber,
+          expectedRevision: Number(row.wmsReferralRevision),
+        },
+      })
+      setExternalPmNumber(saved.externalPmNumber)
+      toast.success('WMS PM reference saved.')
+    } catch (error) {
+      const conflict = error instanceof ApiError && error.status === 409
+      const message = conflict
+        ? 'This referral changed or is no longer eligible. The latest details were refreshed; review them before trying again.'
+        : error instanceof ApiError && error.status === 400
+          ? 'The WMS PM number must contain 1–128 characters.'
+          : 'The WMS PM reference could not be saved. Try again.'
+      if (conflict) toast.error(message)
+      setErrorMessage(message)
+    }
+  }
+
   return (
     <article className="rounded-xl border border-[var(--border-soft)] bg-white p-5 shadow-sm">
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
@@ -124,6 +167,135 @@ function HandoffRow({
           </p>
         </div>
       </div>
+      <div className="mt-5 border-t border-[var(--border-soft)] pt-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-semibold tracking-[0.08em] text-[var(--text-neutral)] uppercase">
+            Corrective follow-up
+          </span>
+          <Badge
+            variant={
+              row.followUpStatus === 'ReferredToWms'
+                ? 'success'
+                : row.followUpStatus === 'CorrectiveFollowUpPending'
+                  ? 'warning'
+                  : 'neutral'
+            }
+          >
+            {row.followUpStatus === 'ReferredToWms'
+              ? 'Referred to WMS'
+              : row.followUpStatus === 'CorrectiveFollowUpPending'
+                ? 'Corrective follow-up pending'
+                : 'No referral required'}
+          </Badge>
+        </div>
+        {row.wmsPmNumber && (
+          <p className="mt-2 text-sm text-[var(--text-secondary)]">
+            External WMS PM number: {row.wmsPmNumber}
+          </p>
+        )}
+        {row.canRecordWmsReferral ? (
+          <form
+            className="mt-3 flex flex-col gap-2 sm:flex-row"
+            onSubmit={(event) => void saveReferral(event)}
+          >
+            <label className="flex-1 text-sm font-semibold text-[var(--text-primary)]">
+              {row.wmsPmNumber
+                ? 'Correct WMS PM number'
+                : 'Record WMS PM number'}
+              <input
+                aria-label={`WMS PM number for ${row.assetCode}`}
+                className="mt-1 min-h-10 w-full rounded-lg border border-[var(--border-control)] px-3 font-normal outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary-active)]"
+                value={externalPmNumber}
+                maxLength={128}
+                disabled={mutation.isPending}
+                onChange={(event) => {
+                  setExternalPmNumber(event.target.value)
+                  setErrorMessage(null)
+                }}
+              />
+            </label>
+            <Button
+              type="submit"
+              className="self-end"
+              disabled={mutation.isPending}
+            >
+              {mutation.isPending
+                ? 'Saving...'
+                : row.wmsPmNumber
+                  ? 'Save correction'
+                  : 'Save WMS PM number'}
+            </Button>
+          </form>
+        ) : (
+          <p className="mt-2 text-sm text-[var(--text-secondary)]">
+            A WMS PM number is not required or this inspection is not eligible
+            for a referral.
+          </p>
+        )}
+        {errorMessage && (
+          <p className="mt-2 text-sm text-[var(--error)]" role="alert">
+            {errorMessage}
+          </p>
+        )}
+        <Button
+          type="button"
+          variant="secondary"
+          className="mt-3"
+          aria-expanded={showHistory}
+          aria-controls={`wms-history-${row.inspectionId}`}
+          onClick={() => setShowHistory((current) => !current)}
+        >
+          {showHistory
+            ? 'Hide WMS PM number history'
+            : 'View WMS PM number history'}
+        </Button>
+        {showHistory && (
+          <div id={`wms-history-${row.inspectionId}`} className="mt-3">
+            {referral.isPending ? (
+              <p role="status" className="text-sm text-[var(--text-secondary)]">
+                Loading referral history...
+              </p>
+            ) : referral.isError ? (
+              <div role="alert" className="text-sm text-[var(--error)]">
+                <p>WMS PM number history is unavailable.</p>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="mt-2"
+                  onClick={() => void referral.refetch()}
+                >
+                  Retry history
+                </Button>
+              </div>
+            ) : (
+              <ol className="space-y-2 text-sm text-[var(--text-secondary)]">
+                {referral.data?.audit.length === 0 ? (
+                  <li>No WMS PM number changes have been recorded.</li>
+                ) : (
+                  referral.data?.audit.map((entry) => (
+                    <li
+                      key={entry.revision}
+                      className="rounded-lg bg-[var(--surface-muted)] p-3"
+                    >
+                      <p className="font-semibold text-[var(--text-primary)]">
+                        {entry.previousExternalPmNumber
+                          ? `Corrected from ${entry.previousExternalPmNumber}`
+                          : 'Initial reference recorded'}
+                        {' → '}
+                        {entry.newExternalPmNumber}
+                      </p>
+                      <p className="mt-1 text-xs">
+                        User {entry.changedByUserId} ·{' '}
+                        {formatFormDate(entry.changedAt)}
+                      </p>
+                    </li>
+                  ))
+                )}
+              </ol>
+            )}
+          </div>
+        )}
+      </div>
     </article>
   )
 }
@@ -185,7 +357,8 @@ function CorrectiveHandoff({
         </h2>
         <p className="mt-1 text-sm text-[var(--text-secondary)]">
           This read model prepares acknowledged findings for later human-led
-          follow-up. It does not create or track an RMRF or WMS handoff.
+          follow-up. GSD can record a supplied WMS PM number as a separate
+          reference; UniPM does not create or manage external WMS or RMRF work.
         </p>
       </div>
       <Card className="grid gap-4 shadow-none sm:grid-cols-2 lg:grid-cols-4">
@@ -201,18 +374,18 @@ function CorrectiveHandoff({
         <DetailItem label="Building" value={handoff.building ?? ''} />
         <DetailItem label="Asset category" value={handoff.assetCategory} />
         <DetailItem
-          label="Corrective-action rows"
+          label="Follow-up rows"
           value={String(handoff.rows.length)}
         />
       </Card>
-      {!handoff.hasCorrectiveActionRows || handoff.rows.length === 0 ? (
+      {handoff.rows.length === 0 ? (
         <Card className="shadow-none">
           <h3 className="font-semibold text-[var(--text-primary)]">
-            No corrective-action rows
+            No follow-up rows
           </h3>
           <p className="mt-1 text-sm text-[var(--text-secondary)]">
-            This acknowledged form has no rows with a recommended corrective
-            action.
+            This acknowledged form has no non-operational findings or rows with
+            a recommended corrective action.
           </p>
         </Card>
       ) : (
@@ -222,7 +395,11 @@ function CorrectiveHandoff({
           aria-label="Corrective-action findings"
         >
           {handoff.rows.map((row) => (
-            <HandoffRow key={row.inspectionId} row={row} />
+            <HandoffRow
+              key={`${row.inspectionId}:${row.wmsReferralRevision}:${row.wmsPmNumber ?? ''}`}
+              formId={handoff.formId}
+              row={row}
+            />
           ))}
         </div>
       )}
@@ -230,7 +407,13 @@ function CorrectiveHandoff({
   )
 }
 
-function InspectionRow({ row }: { row: PreventiveMaintenanceInspectionRow }) {
+function InspectionRow({
+  row,
+  showWmsPending,
+}: {
+  row: PreventiveMaintenanceInspectionRow
+  showWmsPending: boolean
+}) {
   const hasWaterWorkItems =
     row.dateAccomplished !== null ||
     row.waterReplaceCarbonFilter !== null ||
@@ -260,6 +443,12 @@ function InspectionRow({ row }: { row: PreventiveMaintenanceInspectionRow }) {
           {inspectionConditionLabel(row.isOperational)}
         </Badge>
       </div>
+      {showWmsPending && (
+        <p role="status" className="mt-4 text-sm text-[var(--warning)]">
+          Corrective follow-up pending. A WMS PM number can be recorded after
+          field work is complete and the form is acknowledged.
+        </p>
+      )}
       <dl className="mt-5 grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
         <DetailItem label="Asset code" value={row.assetCode ?? ''} />
         <DetailItem label="Location" value={row.location ?? ''} />
@@ -876,7 +1065,15 @@ export function FormDetail({
         ) : (
           <div className="space-y-3" role="list" aria-label="Inspection rows">
             {record.inspections.map((row) => (
-              <InspectionRow key={row.id} row={row} />
+              <InspectionRow
+                key={row.id}
+                row={row}
+                showWmsPending={
+                  isGsd &&
+                  record.status !== 'Acknowledged' &&
+                  !row.isOperational
+                }
+              />
             ))}
           </div>
         )}

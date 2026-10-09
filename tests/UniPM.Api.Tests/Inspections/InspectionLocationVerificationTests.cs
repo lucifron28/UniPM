@@ -170,8 +170,9 @@ public sealed class InspectionLocationVerificationTests
         using var client = application.CreateClient();
         await application.SeedUserAsync(TestAuthenticationHandler.UserId, "Location Inspector");
         var asset = await CreateAssetAsync(client, "LOC-LINK-001", 0, 0, 100);
+        var secondAsset = await CreateAssetAsync(client, "LOC-LINK-002", 0, 0, 100);
         var firstSchedule = await CreateScheduleAsync(client, asset.Id, 10);
-        var secondSchedule = await CreateScheduleAsync(client, asset.Id, 11);
+        var secondSchedule = await CreateScheduleAsync(client, secondAsset.Id, 11);
 
         var attemptResponse = await client.PostAsJsonAsync(
             $"/api/v1/schedules/{firstSchedule.Id}/location-verification-attempts",
@@ -310,11 +311,14 @@ public sealed class InspectionLocationVerificationTests
         await using var application = new TestApplicationFactory(AuthRoleCatalog.Gsd);
         using var client = application.CreateClient();
         await application.SeedUserAsync(TestAuthenticationHandler.UserId, "Location Inspector");
-        var asset = await CreateAssetAsync(client, "LOC-STATUS-001", 0, 0, 100);
-        var preStartSchedule = await CreateScheduleAsync(client, asset.Id, 12);
-        var resumeSchedule = await CreateScheduleAsync(client, asset.Id, 13);
-        var canceledSchedule = await CreateScheduleAsync(client, asset.Id, 14);
-        var completedSchedule = await CreateScheduleAsync(client, asset.Id, 15);
+        var preStartAsset = await CreateAssetAsync(client, "LOC-STATUS-001", 0, 0, 100);
+        var resumeAsset = await CreateAssetAsync(client, "LOC-STATUS-002", 0, 0, 100);
+        var canceledAsset = await CreateAssetAsync(client, "LOC-STATUS-003", 0, 0, 100);
+        var completedAsset = await CreateAssetAsync(client, "LOC-STATUS-004", 0, 0, 100);
+        var preStartSchedule = await CreateScheduleAsync(client, preStartAsset.Id, 12);
+        var resumeSchedule = await CreateScheduleAsync(client, resumeAsset.Id, 13);
+        var canceledSchedule = await CreateScheduleAsync(client, canceledAsset.Id, 14);
+        var completedSchedule = await CreateScheduleAsync(client, completedAsset.Id, 15);
 
         await using (var scope = application.Services.CreateAsyncScope())
         {
@@ -340,7 +344,7 @@ public sealed class InspectionLocationVerificationTests
             ValidLocationAttemptDto());
         Assert.Equal(HttpStatusCode.OK, initialAttempt.StatusCode);
         var attempt = (await initialAttempt.Content.ReadFromJsonAsync<InspectionLocationAttemptResponse>())!;
-        var form = await CreateFormAsync(client, asset.AssetCategory);
+        var form = await CreateFormAsync(client, resumeAsset.AssetCategory);
         var row = await AddInspectionRowAsync(client, form.Id, resumeSchedule.Id, attempt.Id);
         Assert.Equal(HttpStatusCode.Created, row.StatusCode);
 
@@ -469,6 +473,16 @@ public sealed class InspectionLocationVerificationTests
 
     private static async Task<ScheduleResponse> CreateScheduleAsync(HttpClient client, Guid assetId, int day)
     {
+        var schedules = await client.GetFromJsonAsync<List<ScheduleResponse>>("/api/v1/schedules/");
+        var existingSchedule = schedules?.FirstOrDefault(schedule =>
+            schedule.AssetId == assetId
+            && schedule.ScheduleDate.Year == 2026
+            && schedule.ScheduleDate.Month == 2);
+        if (existingSchedule is not null)
+        {
+            return existingSchedule;
+        }
+
         var response = await client.PostAsJsonAsync("/api/v1/schedules/", new
         {
             assetId,
@@ -611,7 +625,12 @@ public sealed class InspectionLocationVerificationTests
         DateTimeOffset UpdatedAt,
         bool HasVerificationLocation);
 
-    private sealed record ScheduleResponse(Guid Id);
+    private sealed record ScheduleResponse(
+        Guid Id,
+        Guid AssetId = default,
+        DateTimeOffset ScheduleDate = default,
+        string PeriodType = "",
+        int? Year = null);
 
     private sealed record PreventiveMaintenanceFormResponse(Guid Id, string AssetCategory);
 

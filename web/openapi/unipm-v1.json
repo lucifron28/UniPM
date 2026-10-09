@@ -678,18 +678,49 @@
     "/api/v1/schedules/assignment-options": {
       "get": {
         "tags": ["Schedules"],
-        "summary": "Lists active Inspector and Supervisor accounts for GSD batch assignment",
-        "operationId": "ListScheduleAssignmentOptions",
+        "summary": "Lists active Inspectors for Supervisor batch assignment",
+        "operationId": "ListScheduleWorkerAssignmentOptions",
         "responses": {
           "200": {
             "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ScheduleAssignmentOptionsResponse"
+                  "$ref": "#/components/schemas/ScheduleWorkerAssignmentOptionsResponse"
                 }
               }
             }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      }
+    },
+    "/api/v1/schedules/supervisor-assignment-options": {
+      "get": {
+        "tags": ["Schedules"],
+        "summary": "Lists active Supervisors for GSD batch assignment",
+        "operationId": "ListScheduleSupervisorAssignmentOptions",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleSupervisorAssignmentOptionsResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         }
       }
@@ -759,6 +790,16 @@
                 }
               }
             }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
           }
         }
       },
@@ -813,6 +854,27 @@
               "type": ["integer", "string"],
               "format": "int32"
             }
+          },
+          {
+            "name": "department",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "assetCategory",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -851,8 +913,8 @@
     "/api/v1/schedules/{id}/assignment": {
       "put": {
         "tags": ["Schedules"],
-        "summary": "Assigns the schedules in one department, category, and PM cycle batch",
-        "operationId": "AssignScheduleBatch",
+        "summary": "Assigns an Inspector to a PM batch owned by the authenticated Supervisor",
+        "operationId": "AssignScheduleBatchWorker",
         "parameters": [
           {
             "name": "id",
@@ -868,7 +930,83 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/AssignScheduleBatchDto"
+                "$ref": "#/components/schemas/AssignScheduleWorkerDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleAssignmentBatchResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/schedules/{id}/supervisor-assignment": {
+      "put": {
+        "tags": ["Schedules"],
+        "summary": "Assigns a Supervisor to all schedules in one PM batch",
+        "operationId": "AssignScheduleBatchSupervisor",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignScheduleSupervisorDto"
               }
             }
           },
@@ -1137,6 +1275,34 @@
               "type": "string",
               "format": "date-time"
             }
+          },
+          {
+            "name": "department",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "assetCategory",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "wmsReferralStatus",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -1206,6 +1372,126 @@
         }
       }
     },
+    "/api/v1/inspections/{id}/wms-referral": {
+      "get": {
+        "tags": ["Inspections"],
+        "summary": "Gets the manually recorded WMS PM number and its change audit",
+        "operationId": "GetInspectionWmsReferral",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InspectionWmsReferralDetailResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["Inspections"],
+        "summary": "Records or corrects the external WMS PM number without changing the inspection",
+        "operationId": "UpdateInspectionWmsReferral",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateInspectionWmsReferralDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InspectionWmsReferralResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/preventive-maintenance-forms": {
       "post": {
         "tags": ["Preventive Maintenance Forms"],
@@ -1252,8 +1538,45 @@
       },
       "get": {
         "tags": ["Preventive Maintenance Forms"],
-        "summary": "Lists preventive-maintenance forms",
+        "summary": "Lists preventive-maintenance forms using supported status and metadata filters",
         "operationId": "ListPreventiveMaintenanceForms",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "assetCategory",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "department",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "pmCycle",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -1264,6 +1587,16 @@
                   "items": {
                     "$ref": "#/components/schemas/PreventiveMaintenanceFormResponse"
                   }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
@@ -1966,6 +2299,65 @@
           }
         }
       }
+    },
+    "/api/v1/schedules/generate": {
+      "post": {
+        "tags": ["Schedules"],
+        "summary": "Ensures missing CPMP schedules for one calendar year",
+        "operationId": "GeneratePreventiveMaintenanceSchedules",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateScheduleCyclesDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleGenerationResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2086,14 +2478,19 @@
           }
         }
       },
-      "AssignScheduleBatchDto": {
+      "AssignScheduleSupervisorDto": {
+        "type": "object",
+        "properties": {
+          "supervisorUserId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "AssignScheduleWorkerDto": {
         "type": "object",
         "properties": {
           "workerUserId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "supervisorUserId": {
             "type": "string",
             "format": "uuid"
           }
@@ -2175,6 +2572,10 @@
           "findingOrRemarks",
           "isOperational",
           "recommendedCorrectiveAction",
+          "wmsPmNumber",
+          "wmsReferralRevision",
+          "followUpStatus",
+          "canRecordWmsReferral",
           "skilledWorkerUserId",
           "skilledWorkerIdentity"
         ],
@@ -2204,7 +2605,21 @@
             "type": "boolean"
           },
           "recommendedCorrectiveAction": {
+            "type": ["null", "string"]
+          },
+          "wmsPmNumber": {
+            "type": ["null", "string"]
+          },
+          "wmsReferralRevision": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "followUpStatus": {
             "type": "string"
+          },
+          "canRecordWmsReferral": {
+            "type": "boolean"
           },
           "skilledWorkerUserId": {
             "type": "string",
@@ -2668,6 +3083,19 @@
           },
           "waterCheckUvLight": {
             "type": ["null", "boolean"]
+          },
+          "externalPmNumber": {
+            "type": ["null", "string"]
+          },
+          "wmsReferralRevision": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32",
+            "default": 0
+          },
+          "correctiveFollowUpStatus": {
+            "type": "string",
+            "default": "NoReferralRequired"
           }
         }
       },
@@ -3504,11 +3932,11 @@
             "type": "string"
           },
           "workerUserId": {
-            "type": "string",
+            "type": ["null", "string"],
             "format": "uuid"
           },
           "workerDisplayName": {
-            "type": "string"
+            "type": ["null", "string"]
           },
           "supervisorUserId": {
             "type": "string",
@@ -3526,17 +3954,23 @@
           }
         }
       },
-      "ScheduleAssignmentOptionsResponse": {
-        "required": ["workers", "supervisors"],
+      "ScheduleSupervisorAssignmentOptionsResponse": {
+        "required": ["supervisors"],
         "type": "object",
         "properties": {
-          "workers": {
+          "supervisors": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/ScheduleAssigneeOption"
             }
-          },
-          "supervisors": {
+          }
+        }
+      },
+      "ScheduleWorkerAssignmentOptionsResponse": {
+        "required": ["workers"],
+        "type": "object",
+        "properties": {
+          "workers": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/ScheduleAssigneeOption"
@@ -3723,6 +4157,198 @@
                 "type": "string"
               }
             }
+          }
+        }
+      },
+      "GenerateScheduleCyclesDto": {
+        "type": "object",
+        "properties": {
+          "year": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          }
+        }
+      },
+      "ScheduleGenerationResult": {
+        "required": [
+          "year",
+          "eligibleAssets",
+          "existingSchedules",
+          "createdSchedules"
+        ],
+        "type": "object",
+        "properties": {
+          "year": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "eligibleAssets": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "existingSchedules": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "createdSchedules": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          }
+        }
+      },
+      "InspectionWmsReferralAuditResponse": {
+        "required": [
+          "previousExternalPmNumber",
+          "newExternalPmNumber",
+          "revision",
+          "changedByUserId",
+          "changedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "previousExternalPmNumber": {
+            "type": ["null", "string"]
+          },
+          "newExternalPmNumber": {
+            "type": "string"
+          },
+          "revision": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "changedByUserId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "changedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "InspectionWmsReferralDetailResponse": {
+        "required": [
+          "inspectionId",
+          "followUpStatus",
+          "externalPmNumber",
+          "revision",
+          "recordedByUserId",
+          "recordedAt",
+          "lastUpdatedByUserId",
+          "lastUpdatedAt",
+          "canRecordReferral",
+          "eligibilityMessage",
+          "audit"
+        ],
+        "type": "object",
+        "properties": {
+          "inspectionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "followUpStatus": {
+            "type": "string"
+          },
+          "externalPmNumber": {
+            "type": ["null", "string"]
+          },
+          "revision": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "recordedByUserId": {
+            "type": ["null", "string"],
+            "format": "uuid"
+          },
+          "recordedAt": {
+            "type": ["null", "string"],
+            "format": "date-time"
+          },
+          "lastUpdatedByUserId": {
+            "type": ["null", "string"],
+            "format": "uuid"
+          },
+          "lastUpdatedAt": {
+            "type": ["null", "string"],
+            "format": "date-time"
+          },
+          "canRecordReferral": {
+            "type": "boolean"
+          },
+          "eligibilityMessage": {
+            "type": ["null", "string"]
+          },
+          "audit": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InspectionWmsReferralAuditResponse"
+            }
+          }
+        }
+      },
+      "InspectionWmsReferralResponse": {
+        "required": [
+          "inspectionId",
+          "externalPmNumber",
+          "revision",
+          "recordedByUserId",
+          "recordedAt",
+          "lastUpdatedByUserId",
+          "lastUpdatedAt",
+          "followUpStatus"
+        ],
+        "type": "object",
+        "properties": {
+          "inspectionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "externalPmNumber": {
+            "type": "string"
+          },
+          "revision": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "recordedByUserId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "recordedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastUpdatedByUserId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "lastUpdatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "followUpStatus": {
+            "type": "string"
+          }
+        }
+      },
+      "UpdateInspectionWmsReferralDto": {
+        "type": "object",
+        "properties": {
+          "externalPmNumber": {
+            "type": "string"
+          },
+          "expectedRevision": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
           }
         }
       }

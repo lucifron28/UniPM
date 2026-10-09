@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { CalendarPlus } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
 import {
@@ -7,11 +7,16 @@ import {
   getCoreRowModel,
   useReactTable,
 } from '@tanstack/react-table'
+import { ApiError } from '@/api/problem-details'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useAssets } from '@/features/assets/asset-queries'
+import type { Asset } from '@/features/assets/asset-contract'
+import { useAssetCategories, useAssets } from '@/features/assets/asset-queries'
+import { assetCategoryCodes } from '@/features/assets/asset-contract'
+import { categoryLabel } from '@/features/assets/asset-presentation'
 import { useCurrentUser } from '@/features/auth/current-user'
 import {
   RegistryLoadingPanel,
@@ -19,6 +24,7 @@ import {
 } from '@/features/shared/registry-results-panel'
 import type { Schedule } from '@/features/schedules/schedule-contract'
 import {
+  useGenerateSchedules,
   useScheduleQuarters,
   useSchedules,
   useScheduleStatuses,
@@ -27,17 +33,28 @@ import {
   fromDateTimeLocal,
   formatPmCycle,
   formatPmCycleDueDate,
+  getCurrentManilaYear,
   toDateTimeLocal,
 } from '@/features/schedules/schedule-presentation'
 
 export type ScheduleSearch = {
   assetId?: string | undefined
+  assetCategory?: Asset['assetCategory'] | undefined
+  department?: string | undefined
+  search?: string | undefined
   status?: Schedule['status'] | undefined
   from?: string | undefined
   to?: string | undefined
   quarter?: NonNullable<Schedule['quarter']> | undefined
   year?: number | undefined
   page?: number | undefined
+}
+
+const scheduleAccessDeniedMessage =
+  'Schedule reads require a GSD, Inspector, or Supervisor role. Admin is a technical system administration role and cannot read operational schedules.'
+
+function isScheduleAccessDenied(error: unknown) {
+  return error instanceof ApiError && error.status === 403
 }
 
 function SummaryCard({ label, count }: { label: string; count: number }) {
@@ -147,12 +164,61 @@ export function ScheduleRegistry({
   ) => void
 }) {
   const currentUser = useCurrentUser()
+  const scheduleGeneration = useGenerateSchedules()
+  const currentManilaYear = getCurrentManilaYear()
+  const [generationYear, setGenerationYear] = useState(() =>
+    String(currentManilaYear),
+  )
+  const [generationMessage, setGenerationMessage] = useState<string | null>(
+    null,
+  )
+  const [generationFailed, setGenerationFailed] = useState(false)
   const assets = useAssets()
+  const categories = useAssetCategories()
   const statuses = useScheduleStatuses()
   const quarters = useScheduleQuarters()
   const allSchedules = useSchedules()
+  const [draft, setDraft] = useState<Omit<ScheduleSearch, 'page'>>(() => ({
+    assetId: search.assetId,
+    assetCategory: search.assetCategory,
+    department: search.department,
+    search: search.search,
+    status: search.status,
+    from: search.from,
+    to: search.to,
+    quarter: search.quarter,
+    year: search.year,
+  }))
+
+  useEffect(() => {
+    setDraft({
+      assetId: search.assetId,
+      assetCategory: search.assetCategory,
+      department: search.department,
+      search: search.search,
+      status: search.status,
+      from: search.from,
+      to: search.to,
+      quarter: search.quarter,
+      year: search.year,
+    })
+  }, [
+    search.assetId,
+    search.assetCategory,
+    search.department,
+    search.search,
+    search.status,
+    search.from,
+    search.to,
+    search.quarter,
+    search.year,
+  ])
+
   const filteredSchedules = useSchedules({
     ...(search.assetId ? { assetId: search.assetId } : {}),
+    ...(search.assetCategory ? { assetCategory: search.assetCategory } : {}),
+    ...(search.department ? { department: search.department } : {}),
+    ...(search.search ? { search: search.search } : {}),
     ...(search.status ? { status: search.status } : {}),
     ...(search.from ? { from: search.from } : {}),
     ...(search.to ? { to: search.to } : {}),
@@ -164,6 +230,12 @@ export function ScheduleRegistry({
     currentUser.data?.roles.some(
       (role) => role === 'GSD' || role === 'Supervisor',
     ) ?? false
+  const canGenerate = currentUser.data?.roles.includes('GSD') ?? false
+  const parsedGenerationYear = Number(generationYear)
+  const generationYearIsValid =
+    /^\d{4}$/.test(generationYear) &&
+    parsedGenerationYear >= 2000 &&
+    parsedGenerationYear <= currentManilaYear
   const pageSize = 10
   const records = useMemo(
     () => filteredSchedules.data ?? [],
@@ -176,6 +248,24 @@ export function ScheduleRegistry({
     () => records.slice((page - 1) * pageSize, page * pageSize),
     [records, page],
   )
+
+  const departments = useMemo(
+    () =>
+      [
+        ...new Set(
+          (assets.data ?? [])
+            .map((asset) => asset.department)
+            .filter((value): value is string => Boolean(value)),
+        ),
+      ].sort(),
+    [assets.data],
+  )
+  const categoryByCode = useMemo(
+    () =>
+      new Map(categories.data?.map((category) => [category.code, category])),
+    [categories.data],
+  )
+  const dateRangeIsValid = !draft.from || !draft.to || draft.from <= draft.to
 
   const changePage = (nextPage: number) => {
     onSearchChange(
@@ -195,16 +285,41 @@ export function ScheduleRegistry({
   })
 
   useEffect(() => {
-    if (filteredSchedules.isSuccess && search.page && search.page > pageCount) {
+    if (
+      filteredSchedules.isSuccess &&
+      !filteredSchedules.isPlaceholderData &&
+      search.page &&
+      search.page > pageCount
+    ) {
       onSearchChange(
         { ...search, page: pageCount > 1 ? pageCount : undefined },
-        { replace: true },
+        { replace: true, preserveScroll: true },
       )
     }
-  }, [filteredSchedules.isSuccess, onSearchChange, pageCount, search])
+  }, [
+    filteredSchedules.isSuccess,
+    filteredSchedules.isPlaceholderData,
+    onSearchChange,
+    pageCount,
+    search,
+  ])
 
-  const setFilter = (next: Partial<ScheduleSearch>) =>
-    onSearchChange({ ...search, ...next, page: 1 })
+  const apply = () => {
+    if (!dateRangeIsValid) return
+    onSearchChange(
+      {
+        ...draft,
+        search: draft.search?.trim() || undefined,
+        page: 1,
+      },
+      { preserveScroll: true },
+    )
+  }
+
+  const clear = () => {
+    setDraft({})
+    onSearchChange({ page: 1 }, { preserveScroll: true })
+  }
 
   return (
     <section aria-labelledby="schedules-title" className="space-y-6">
@@ -224,15 +339,76 @@ export function ScheduleRegistry({
             interface does not infer overdue state or change workflow status.
           </p>
         </div>
-        {canCreate && (
-          <Button asChild>
-            <Link to="/app/schedules/new">
-              <CalendarPlus aria-hidden="true" className="mr-2 size-4" />
-              Add schedule
-            </Link>
-          </Button>
+        {(canCreate || canGenerate) && (
+          <div className="flex flex-wrap items-end gap-3">
+            {canGenerate && (
+              <form
+                className="flex flex-wrap items-end gap-2"
+                onSubmit={(event) => {
+                  event.preventDefault()
+                  if (!generationYearIsValid) return
+                  setGenerationMessage(null)
+                  setGenerationFailed(false)
+                  scheduleGeneration.mutate(parsedGenerationYear, {
+                    onSuccess: (result) => {
+                      setGenerationFailed(false)
+                      setGenerationMessage(
+                        `Year ${result.year}: created ${result.createdSchedules} missing schedules; ${result.existingSchedules} already existed.`,
+                      )
+                    },
+                    onError: () => {
+                      setGenerationFailed(true)
+                      setGenerationMessage(
+                        'Schedule generation failed. Try again.',
+                      )
+                    },
+                  })
+                }}
+              >
+                <label className="grid gap-1 text-xs font-semibold text-[var(--text-secondary)]">
+                  Generation year
+                  <Input
+                    type="number"
+                    min={2000}
+                    max={currentManilaYear}
+                    step={1}
+                    value={generationYear}
+                    aria-label="Generation year"
+                    onChange={(event) => setGenerationYear(event.target.value)}
+                    className="h-10 w-28 px-3"
+                  />
+                </label>
+                <Button
+                  type="submit"
+                  disabled={
+                    !generationYearIsValid || scheduleGeneration.isPending
+                  }
+                >
+                  {scheduleGeneration.isPending
+                    ? 'Generating…'
+                    : 'Generate missing schedules'}
+                </Button>
+              </form>
+            )}
+            {canCreate && (
+              <Button asChild>
+                <Link to="/app/schedules/new">
+                  <CalendarPlus aria-hidden="true" className="mr-2 size-4" />
+                  Add schedule
+                </Link>
+              </Button>
+            )}
+          </div>
         )}
       </div>
+      {canGenerate && generationMessage && (
+        <p
+          className={`-mt-4 text-sm ${generationFailed ? 'text-[var(--error)]' : 'text-[var(--text-secondary)]'}`}
+          role={generationFailed ? 'alert' : 'status'}
+        >
+          {generationMessage}
+        </p>
+      )}
 
       {allSchedules.isPending || statuses.isPending ? (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3" role="status">
@@ -247,7 +423,9 @@ export function ScheduleRegistry({
       ) : allSchedules.isError || statuses.isError ? (
         <Card role="alert" className="border-[var(--error)] p-4 shadow-none">
           <p className="font-semibold text-[var(--error)]">
-            Schedule summary is currently unavailable.
+            {allSchedules.isError && isScheduleAccessDenied(allSchedules.error)
+              ? scheduleAccessDeniedMessage
+              : 'Schedule summary is currently unavailable.'}
           </p>
           <Button
             type="button"
@@ -278,15 +456,37 @@ export function ScheduleRegistry({
       )}
 
       <Card className="p-4 shadow-none">
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <form
+          className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4"
+          onSubmit={(event) => {
+            event.preventDefault()
+            apply()
+          }}
+        >
+          <Input
+            aria-label="Search schedules"
+            placeholder="Asset code, location, department, or PM cycle"
+            value={draft.search ?? ''}
+            maxLength={256}
+            onChange={(event) =>
+              setDraft((current) => ({
+                ...current,
+                search: event.target.value,
+              }))
+            }
+            className="xl:col-span-2"
+          />
           <select
             aria-label="Asset"
-            value={search.assetId ?? ''}
+            value={draft.assetId ?? ''}
             disabled={assets.isError}
             onChange={(event) =>
-              setFilter({ assetId: event.target.value || undefined })
+              setDraft((current) => ({
+                ...current,
+                assetId: event.target.value || undefined,
+              }))
             }
-            className="min-h-10 rounded-lg border border-[var(--border-soft)] bg-white px-3 text-sm"
+            className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
           >
             <option value="">All assets</option>
             {(assets.data ?? []).map((asset) => (
@@ -296,16 +496,56 @@ export function ScheduleRegistry({
             ))}
           </select>
           <select
+            aria-label="Asset category"
+            value={draft.assetCategory ?? ''}
+            disabled={categories.isError}
+            onChange={(event) =>
+              setDraft((current) => ({
+                ...current,
+                assetCategory: (event.target.value || undefined) as
+                  Asset['assetCategory'] | undefined,
+              }))
+            }
+            className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
+          >
+            <option value="">All asset categories</option>
+            {assetCategoryCodes.map((categoryCode) => (
+              <option key={categoryCode} value={categoryCode}>
+                {categoryLabel(categoryByCode.get(categoryCode), categoryCode)}
+              </option>
+            ))}
+          </select>
+          <select
+            aria-label="Department"
+            value={draft.department ?? ''}
+            disabled={assets.isError}
+            onChange={(event) =>
+              setDraft((current) => ({
+                ...current,
+                department: event.target.value || undefined,
+              }))
+            }
+            className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
+          >
+            <option value="">All departments</option>
+            {departments.map((department) => (
+              <option key={department} value={department}>
+                {department}
+              </option>
+            ))}
+          </select>
+          <select
             aria-label="Schedule status"
-            value={search.status ?? ''}
+            value={draft.status ?? ''}
             disabled={statuses.isError}
             onChange={(event) =>
-              setFilter({
+              setDraft((current) => ({
+                ...current,
                 status: (event.target.value || undefined) as
                   Schedule['status'] | undefined,
-              })
+              }))
             }
-            className="min-h-10 rounded-lg border border-[var(--border-soft)] bg-white px-3 text-sm"
+            className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
           >
             <option value="">All statuses</option>
             {(statuses.data ?? []).map((status) => (
@@ -318,35 +558,42 @@ export function ScheduleRegistry({
             From
             <input
               type="datetime-local"
-              value={toDateTimeLocal(search.from)}
+              value={toDateTimeLocal(draft.from)}
               onChange={(event) =>
-                setFilter({ from: fromDateTimeLocal(event.target.value) })
+                setDraft((current) => ({
+                  ...current,
+                  from: fromDateTimeLocal(event.target.value),
+                }))
               }
-              className="min-h-10 rounded-lg border border-[var(--border-soft)] bg-white px-3 text-sm font-normal"
+              className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm font-normal"
             />
           </label>
           <label className="grid gap-1 text-xs font-semibold text-[var(--text-secondary)]">
             To
             <input
               type="datetime-local"
-              value={toDateTimeLocal(search.to)}
+              value={toDateTimeLocal(draft.to)}
               onChange={(event) =>
-                setFilter({ to: fromDateTimeLocal(event.target.value) })
+                setDraft((current) => ({
+                  ...current,
+                  to: fromDateTimeLocal(event.target.value),
+                }))
               }
-              className="min-h-10 rounded-lg border border-[var(--border-soft)] bg-white px-3 text-sm font-normal"
+              className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm font-normal"
             />
           </label>
           <select
             aria-label="Quarter"
-            value={search.quarter ?? ''}
+            value={draft.quarter ?? ''}
             disabled={quarters.isError}
             onChange={(event) =>
-              setFilter({
+              setDraft((current) => ({
+                ...current,
                 quarter: (event.target.value || undefined) as
                   NonNullable<Schedule['quarter']> | undefined,
-              })
+              }))
             }
-            className="min-h-10 rounded-lg border border-[var(--border-soft)] bg-white px-3 text-sm"
+            className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
           >
             <option value="">All quarters</option>
             {(quarters.data ?? []).map((quarter) => (
@@ -361,28 +608,36 @@ export function ScheduleRegistry({
               type="number"
               min="2000"
               max={new Date().getUTCFullYear() + 5}
-              value={search.year ?? ''}
+              value={draft.year ?? ''}
               onChange={(event) =>
-                setFilter({
+                setDraft((current) => ({
+                  ...current,
                   year: event.target.value
                     ? Number(event.target.value)
                     : undefined,
-                })
+                }))
               }
-              className="min-h-10 rounded-lg border border-[var(--border-soft)] bg-white px-3 text-sm font-normal"
+              className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm font-normal"
             />
           </label>
-          <div className="flex items-end">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => onSearchChange({ page: 1 })}
-            >
+          <div className="flex flex-wrap items-end gap-2 xl:col-span-4">
+            <Button type="submit" disabled={!dateRangeIsValid}>
+              Apply filters
+            </Button>
+            <Button type="button" variant="secondary" onClick={clear}>
               Clear filters
             </Button>
           </div>
-        </div>
-        {(assets.isError || statuses.isError || quarters.isError) && (
+        </form>
+        {!dateRangeIsValid && (
+          <p className="mt-3 text-sm text-[var(--error)]" role="alert">
+            The start date must be before or equal to the end date.
+          </p>
+        )}
+        {(assets.isError ||
+          categories.isError ||
+          statuses.isError ||
+          quarters.isError) && (
           <div
             className="mt-3 flex flex-wrap gap-3 text-sm text-[var(--error)]"
             role="alert"
@@ -390,6 +645,11 @@ export function ScheduleRegistry({
             {assets.isError && (
               <Button type="button" onClick={() => void assets.refetch()}>
                 Retry asset options
+              </Button>
+            )}
+            {categories.isError && (
+              <Button type="button" onClick={() => void categories.refetch()}>
+                Retry category options
               </Button>
             )}
             {statuses.isError && (
@@ -406,6 +666,16 @@ export function ScheduleRegistry({
         )}
       </Card>
 
+      {records.length === 0 &&
+        filteredSchedules.isFetching &&
+        !filteredSchedules.isPending && (
+          <p
+            className="min-h-5 text-sm text-[var(--text-neutral)]"
+            role="status"
+          >
+            Updating results...
+          </p>
+        )}
       {filteredSchedules.isPending ? (
         <RegistryLoadingPanel breakpoint="md" viewportSize="standard">
           <span className="sr-only">Loading schedules...</span>
@@ -419,7 +689,9 @@ export function ScheduleRegistry({
             Schedules unavailable
           </h2>
           <p className="mt-2 text-sm text-[var(--text-secondary)]">
-            The schedule registry could not be loaded.
+            {isScheduleAccessDenied(filteredSchedules.error)
+              ? scheduleAccessDeniedMessage
+              : 'The schedule registry could not be loaded.'}
           </p>
           <Button
             type="button"
@@ -447,6 +719,7 @@ export function ScheduleRegistry({
           label="Schedules"
           breakpoint="md"
           viewportSize="standard"
+          isUpdating={filteredSchedules.isFetching}
           desktopContent={
             <table className="w-full min-w-[760px] text-left text-sm">
               <thead className="bg-[var(--page-background)] text-xs tracking-wide text-[var(--text-neutral)] uppercase">

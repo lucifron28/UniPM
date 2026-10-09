@@ -5,6 +5,15 @@ export function formatScheduleDate(value: string) {
   }).format(new Date(value))
 }
 
+export function getCurrentManilaYear(now = new Date()) {
+  return Number(
+    new Intl.DateTimeFormat('en', {
+      timeZone: 'Asia/Manila',
+      year: 'numeric',
+    }).format(now),
+  )
+}
+
 const pmCyclePattern = /^(\d{4})-(0[1-9]|1[0-2])$/
 
 function getPmCycleParts(value: string | null | undefined) {

@@ -1,4 +1,4 @@
-import { Link, Outlet } from '@tanstack/react-router'
+import { Link, Outlet, useRouterState } from '@tanstack/react-router'
 import {
   Boxes,
   CalendarDays,
@@ -8,10 +8,17 @@ import {
 } from 'lucide-react'
 import { Alert } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { BrandMark } from '@/components/brand-mark'
 import { LogoutButton } from '@/features/auth/logout-button'
 import { useCurrentUser } from '@/features/auth/current-user'
 import { Skeleton } from '@/components/ui/skeleton'
+import {
+  canReadSchedules,
+  canReviewForms,
+  getRequiredAppRoles,
+  hasAnyRole,
+} from '@/features/auth/app-route-access'
 
 function initials(displayName: string) {
   return displayName
@@ -81,18 +88,28 @@ export function UserIdentity() {
 
 export function AppShell() {
   const currentUser = useCurrentUser()
-  const canReviewForms =
-    currentUser.data?.roles.some(
-      (role) => role === 'GSD' || role === 'Inspector',
-    ) ?? false
+  const pathname = useRouterState({
+    select: (state) => state.location.pathname,
+  })
+  const roles = currentUser.isSuccess ? currentUser.data.roles : []
+  const requiredRoles = getRequiredAppRoles(pathname)
+  const isRoleRestrictedRoute = requiredRoles !== null
+  const hasPageAccess =
+    requiredRoles === null ||
+    (currentUser.isSuccess && hasAnyRole(roles, requiredRoles))
+  const showSchedules = currentUser.isSuccess && canReadSchedules(roles)
+  const showFormReview = currentUser.isSuccess && canReviewForms(roles)
 
   return (
     <div className="min-h-screen bg-[var(--page-background)] lg:grid lg:grid-cols-[15.5rem_1fr]">
-      <aside className="hidden border-r border-[var(--border-soft)] bg-[var(--sidebar-background)] lg:flex lg:min-h-screen lg:flex-col">
+      <aside className="hidden border-r border-[var(--border-soft)] bg-[var(--sidebar-background)] lg:sticky lg:top-0 lg:flex lg:h-screen lg:min-h-0 lg:flex-col lg:self-start lg:overflow-hidden">
         <div className="border-b border-[var(--border-soft)] px-6 py-5">
           <BrandMark compact />
         </div>
-        <nav aria-label="Primary" className="flex-1 p-4">
+        <nav
+          aria-label="Primary"
+          className="min-h-0 flex-1 overflow-y-auto p-4"
+        >
           <Link
             to="/app/dashboard"
             activeProps={{
@@ -123,21 +140,23 @@ export function AppShell() {
             <Boxes aria-hidden="true" className="size-5" />
             Assets
           </Link>
-          <Link
-            to="/app/schedules"
-            activeProps={{
-              'aria-current': 'page',
-              className:
-                'mt-1 flex items-center gap-3 rounded-lg bg-[var(--primary-active)] px-4 py-3 text-sm font-semibold text-white shadow-sm',
-            }}
-            inactiveProps={{
-              className:
-                'mt-1 flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-semibold text-[var(--text-secondary)] hover:bg-[var(--page-background)]',
-            }}
-          >
-            <CalendarDays aria-hidden="true" className="size-5" />
-            Schedules
-          </Link>
+          {showSchedules && (
+            <Link
+              to="/app/schedules"
+              activeProps={{
+                'aria-current': 'page',
+                className:
+                  'mt-1 flex items-center gap-3 rounded-lg bg-[var(--primary-active)] px-4 py-3 text-sm font-semibold text-white shadow-sm',
+              }}
+              inactiveProps={{
+                className:
+                  'mt-1 flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-semibold text-[var(--text-secondary)] hover:bg-[var(--page-background)]',
+              }}
+            >
+              <CalendarDays aria-hidden="true" className="size-5" />
+              Schedules
+            </Link>
+          )}
           <Link
             to="/app/inspections"
             activeProps={{
@@ -153,7 +172,7 @@ export function AppShell() {
             <ClipboardCheck aria-hidden="true" className="size-5" />
             Inspections
           </Link>
-          {canReviewForms && (
+          {showFormReview && (
             <Link
               to="/app/preventive-maintenance-forms"
               activeProps={{
@@ -171,7 +190,7 @@ export function AppShell() {
             </Link>
           )}
         </nav>
-        <div className="space-y-4 border-t border-[var(--border-soft)] p-4">
+        <div className="shrink-0 space-y-4 border-t border-[var(--border-soft)] p-4">
           <UserIdentity />
           <LogoutButton />
         </div>
@@ -197,7 +216,7 @@ export function AppShell() {
         <div className="border-b border-[var(--border-soft)] bg-white px-4 py-2.5 lg:hidden">
           <nav
             aria-label="Primary"
-            className="flex items-center gap-2 overflow-x-auto"
+            className="flex flex-wrap items-center gap-2"
           >
             <Link
               to="/app/dashboard"
@@ -229,21 +248,23 @@ export function AppShell() {
               <Boxes aria-hidden="true" className="size-4" />
               Assets
             </Link>
-            <Link
-              to="/app/schedules"
-              activeProps={{
-                'aria-current': 'page',
-                className:
-                  'flex items-center gap-2 rounded-lg bg-[var(--primary-active)] px-3 py-2 text-xs font-semibold text-white shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]',
-              }}
-              inactiveProps={{
-                className:
-                  'flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--page-background)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]',
-              }}
-            >
-              <CalendarDays aria-hidden="true" className="size-4" />
-              Schedules
-            </Link>
+            {showSchedules && (
+              <Link
+                to="/app/schedules"
+                activeProps={{
+                  'aria-current': 'page',
+                  className:
+                    'flex items-center gap-2 rounded-lg bg-[var(--primary-active)] px-3 py-2 text-xs font-semibold text-white shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]',
+                }}
+                inactiveProps={{
+                  className:
+                    'flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold text-[var(--text-secondary)] hover:bg-[var(--page-background)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]',
+                }}
+              >
+                <CalendarDays aria-hidden="true" className="size-4" />
+                Schedules
+              </Link>
+            )}
             <Link
               to="/app/inspections"
               activeProps={{
@@ -259,7 +280,7 @@ export function AppShell() {
               <ClipboardCheck aria-hidden="true" className="size-4" />
               Inspections
             </Link>
-            {canReviewForms && (
+            {showFormReview && (
               <Link
                 to="/app/preventive-maintenance-forms"
                 activeProps={{
@@ -284,7 +305,53 @@ export function AppShell() {
         </div>
 
         <main className="px-4 py-8 sm:px-6 lg:px-10 lg:py-10">
-          <Outlet />
+          {isRoleRestrictedRoute && currentUser.isPending ? (
+            <div role="status" className="text-sm text-[var(--text-neutral)]">
+              Checking page access…
+            </div>
+          ) : isRoleRestrictedRoute &&
+            (currentUser.isError || !currentUser.data) ? (
+            <section
+              aria-labelledby="app-access-error-title"
+              className="mx-auto max-w-2xl rounded-xl border border-[var(--border-soft)] bg-white p-6 shadow-sm"
+            >
+              <h1
+                id="app-access-error-title"
+                className="text-xl font-semibold text-[var(--text-primary)]"
+              >
+                Unable to verify access
+              </h1>
+              <p className="mt-2 text-sm text-[var(--text-secondary)]">
+                Your account roles could not be loaded. Try checking access
+                again.
+              </p>
+              <Button
+                type="button"
+                className="mt-4"
+                onClick={() => void currentUser.refetch()}
+              >
+                Retry access check
+              </Button>
+            </section>
+          ) : isRoleRestrictedRoute && !hasPageAccess ? (
+            <section
+              aria-labelledby="app-access-denied-title"
+              className="mx-auto max-w-2xl rounded-xl border border-[var(--border-soft)] bg-white p-6 shadow-sm"
+            >
+              <h1
+                id="app-access-denied-title"
+                className="text-xl font-semibold text-[var(--text-primary)]"
+              >
+                Access denied
+              </h1>
+              <p className="mt-2 text-sm text-[var(--text-secondary)]">
+                This page requires one of these roles:{' '}
+                {requiredRoles?.join(', ')}.
+              </p>
+            </section>
+          ) : (
+            <Outlet />
+          )}
         </main>
       </div>
     </div>

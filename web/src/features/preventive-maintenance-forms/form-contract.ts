@@ -1,8 +1,19 @@
 import { z } from 'zod'
 import type {
   CorrectiveMaintenanceHandoffResponse,
+  InspectionWmsReferralDetailResponse,
   PreventiveMaintenanceFormResponse,
 } from '@/api/generated/models'
+
+const wmsRevision = z.union([
+  z.number().int().nonnegative(),
+  z.string().regex(/^\d+$/).transform(Number),
+])
+const correctiveFollowUpStatus = z.enum([
+  'NoReferralRequired',
+  'CorrectiveFollowUpPending',
+  'ReferredToWms',
+])
 
 export const preventiveMaintenanceFormStatusCodes = [
   'Draft',
@@ -86,7 +97,11 @@ const handoffRowSchema = z
     location: optionalText,
     findingOrRemarks: optionalText,
     isOperational: z.boolean(),
-    recommendedCorrectiveAction: z.string().trim().min(1),
+    recommendedCorrectiveAction: optionalText,
+    wmsPmNumber: optionalText,
+    wmsReferralRevision: wmsRevision,
+    followUpStatus: correctiveFollowUpStatus,
+    canRecordWmsReferral: z.boolean(),
     skilledWorkerUserId: z.string().uuid(),
     skilledWorkerIdentity: optionalText,
   })
@@ -107,6 +122,34 @@ const handoffSchema = z
 
 export type CorrectiveMaintenanceHandoff = z.infer<typeof handoffSchema>
 
+export const inspectionWmsReferralDetailSchema = z
+  .object({
+    inspectionId: z.string().uuid(),
+    followUpStatus: correctiveFollowUpStatus,
+    externalPmNumber: optionalText,
+    revision: wmsRevision,
+    recordedByUserId: z.string().uuid().nullable(),
+    recordedAt: z.string().datetime({ offset: true }).nullable(),
+    lastUpdatedByUserId: z.string().uuid().nullable(),
+    lastUpdatedAt: z.string().datetime({ offset: true }).nullable(),
+    canRecordReferral: z.boolean(),
+    eligibilityMessage: optionalText,
+    audit: z.array(
+      z.object({
+        previousExternalPmNumber: optionalText,
+        newExternalPmNumber: z.string().max(128),
+        revision: wmsRevision,
+        changedByUserId: z.string().uuid(),
+        changedAt: z.string().datetime({ offset: true }),
+      }),
+    ),
+  })
+  .strict()
+
+export type InspectionWmsReferralDetail = z.infer<
+  typeof inspectionWmsReferralDetailSchema
+>
+
 export function parsePreventiveMaintenanceForms(
   values: PreventiveMaintenanceFormResponse[],
 ) {
@@ -123,6 +166,12 @@ export function parseCorrectiveMaintenanceHandoff(
   value: CorrectiveMaintenanceHandoffResponse,
 ) {
   return handoffSchema.parse(value)
+}
+
+export function parseInspectionWmsReferralDetail(
+  value: InspectionWmsReferralDetailResponse,
+) {
+  return inspectionWmsReferralDetailSchema.parse(value)
 }
 
 export function canReviewPreventiveMaintenanceForms(

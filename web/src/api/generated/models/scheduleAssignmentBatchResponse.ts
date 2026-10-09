@@ -9,8 +9,10 @@ export interface ScheduleAssignmentBatchResponse {
   department: string
   assetCategory: string
   pmCycle: string
-  workerUserId: string
-  workerDisplayName: string
+  /** @nullable */
+  workerUserId: string | null
+  /** @nullable */
+  workerDisplayName: string | null
   supervisorUserId: string
   supervisorDisplayName: string
   scheduleIds: string[]

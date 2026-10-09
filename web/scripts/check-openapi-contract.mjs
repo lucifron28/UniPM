@@ -81,6 +81,20 @@ const inspectionOperations = [
     '200',
     'InspectionHistoryResponse',
   ],
+  [
+    '/api/v1/inspections/{id}/wms-referral',
+    'get',
+    'GetInspectionWmsReferral',
+    '200',
+    'InspectionWmsReferralDetailResponse',
+  ],
+  [
+    '/api/v1/inspections/{id}/wms-referral',
+    'put',
+    'UpdateInspectionWmsReferral',
+    '200',
+    'InspectionWmsReferralResponse',
+  ],
 ]
 
 const preventiveMaintenanceFormOperations = [
@@ -215,7 +229,11 @@ for (const [
     )
   }
 
-  if (operationId === 'GetInspection') {
+  if (
+    operationId === 'GetInspection' ||
+    operationId === 'GetInspectionWmsReferral' ||
+    operationId === 'UpdateInspectionWmsReferral'
+  ) {
     if (schema.$ref !== `#/components/schemas/${schemaName}`) {
       throw new Error(
         `Required inspection operation ${operationId} must return ${schemaName}.`,
@@ -227,6 +245,46 @@ for (const [
   ) {
     throw new Error(
       `Required inspection operation ${operationId} must return ${schemaName}[].`,
+    )
+  }
+}
+
+const inspectionListParameters =
+  snapshot.paths?.['/api/v1/inspections']?.get?.parameters ?? []
+if (
+  !inspectionListParameters.some(
+    (parameter) => parameter.name === 'wmsReferralStatus',
+  )
+) {
+  throw new Error('ListInspections is missing the WMS follow-up status filter.')
+}
+
+const wmsReferralPut =
+  snapshot.paths?.['/api/v1/inspections/{id}/wms-referral']?.put
+const wmsReferralPutRequest =
+  wmsReferralPut?.requestBody?.content?.['application/json']?.schema
+if (
+  wmsReferralPutRequest?.$ref !==
+  '#/components/schemas/UpdateInspectionWmsReferralDto'
+) {
+  throw new Error(
+    'UpdateInspectionWmsReferral is missing its revisioned JSON request DTO.',
+  )
+}
+for (const status of ['400', '401', '403', '404', '409']) {
+  if (!wmsReferralPut?.responses?.[status]) {
+    throw new Error(
+      `UpdateInspectionWmsReferral is missing its ${status} response.`,
+    )
+  }
+}
+
+const wmsReferralGet =
+  snapshot.paths?.['/api/v1/inspections/{id}/wms-referral']?.get
+for (const status of ['401', '403', '404']) {
+  if (!wmsReferralGet?.responses?.[status]) {
+    throw new Error(
+      `GetInspectionWmsReferral is missing its ${status} response.`,
     )
   }
 }
@@ -359,6 +417,9 @@ const inspectionFields = [
   'isOperational',
   'remarks',
   'actionsRecommendations',
+  'externalPmNumber',
+  'wmsReferralRevision',
+  'correctiveFollowUpStatus',
 ]
 const inspectionProperties =
   snapshot.components?.schemas?.InspectionResponse?.properties
@@ -368,6 +429,39 @@ if (
 ) {
   throw new Error(
     'InspectionResponse is missing one or more required public fields.',
+  )
+}
+
+const referralRequestFields = ['externalPmNumber', 'expectedRevision']
+const referralRequestProperties =
+  snapshot.components?.schemas?.UpdateInspectionWmsReferralDto?.properties
+if (
+  !referralRequestProperties ||
+  referralRequestFields.some((field) => !referralRequestProperties[field])
+) {
+  throw new Error(
+    'UpdateInspectionWmsReferralDto is missing number or expectedRevision.',
+  )
+}
+
+const referralResponseFields = [
+  'inspectionId',
+  'externalPmNumber',
+  'revision',
+  'recordedByUserId',
+  'recordedAt',
+  'lastUpdatedByUserId',
+  'lastUpdatedAt',
+  'followUpStatus',
+]
+const referralResponseProperties =
+  snapshot.components?.schemas?.InspectionWmsReferralResponse?.properties
+if (
+  !referralResponseProperties ||
+  referralResponseFields.some((field) => !referralResponseProperties[field])
+) {
+  throw new Error(
+    'InspectionWmsReferralResponse is missing required audit fields.',
   )
 }
 
@@ -399,6 +493,24 @@ if (
   )
 }
 
+const handoffRowFields = [
+  'wmsPmNumber',
+  'wmsReferralRevision',
+  'followUpStatus',
+  'canRecordWmsReferral',
+]
+const handoffRowProperties =
+  snapshot.components?.schemas?.CorrectiveMaintenanceHandoffRowResponse
+    ?.properties
+if (
+  !handoffRowProperties ||
+  handoffRowFields.some((field) => !handoffRowProperties[field])
+) {
+  throw new Error(
+    'Corrective handoff rows are missing the WMS reference state.',
+  )
+}
+
 const pmDashboardBatchFields = [
   'onTimeCompliancePercent',
   'fieldWorkCompletedAt',
@@ -427,5 +539,5 @@ if (
 }
 
 console.log(
-  'OpenAPI auth, asset, schedule, inspection, and preventive-maintenance form contract sanity check passed.',
+  'OpenAPI auth, asset, schedule, inspection, WMS referral, and preventive-maintenance form contract sanity check passed.',
 )

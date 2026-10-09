@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import { useState } from 'react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -71,6 +71,9 @@ const inspection = {
   isOperational: false,
   remarks: 'Low pressure <script>not executable</script>.',
   actionsRecommendations: 'Arrange a pressure check.',
+  externalPmNumber: 'WMS-PM-777',
+  wmsReferralRevision: 1,
+  correctiveFollowUpStatus: 'ReferredToWms',
   createdAt: '2026-07-22T01:00:00Z',
   updatedAt: '2026-07-22T01:00:00Z',
 }
@@ -109,6 +112,11 @@ function mockInspectionApi() {
   })
   server.use(
     http.get(`${base}/assets`, () => HttpResponse.json([asset])),
+    http.get(`${base}/reference-data/asset-categories`, () =>
+      HttpResponse.json([
+        { code: 'fire-extinguisher', displayName: 'Fire extinguishers' },
+      ]),
+    ),
     http.get(`${base}/assets/${assetId}`, () => HttpResponse.json(asset)),
     http.get(`${base}/schedules`, () => HttpResponse.json([schedule])),
     http.get(`${base}/schedules/${scheduleId}`, () =>
@@ -163,6 +171,83 @@ describe('inspection review workflows', () => {
     )
     expect(filtered?.searchParams.get('page')).toBeNull()
     expect(filtered?.searchParams.get('building')).toBeNull()
+  })
+
+  it('applies combined inspection filters only after submission and preserves them in detail links', async () => {
+    const urls: URL[] = []
+    mockInspectionApi()
+    server.use(
+      http.get(`${base}/inspections`, ({ request }) => {
+        urls.push(new URL(request.url))
+        return HttpResponse.json([inspection])
+      }),
+    )
+
+    function FilterHarness() {
+      const [search, setSearch] = useState<InspectionSearch>({})
+      return (
+        <InspectionRegistry
+          search={search}
+          onSearchChange={(next) => setSearch(next)}
+        />
+      )
+    }
+
+    renderWithProviders(<FilterHarness />)
+    const actor = userEvent.setup()
+    const detailLinks = await screen.findAllByRole('link', {
+      name: 'View details',
+    })
+    expect(detailLinks).toHaveLength(2)
+    expect(urls).toHaveLength(1)
+
+    await actor.type(
+      screen.getByRole('textbox', { name: 'Search inspections' }),
+      'WMS-PM-777',
+    )
+    await actor.selectOptions(
+      screen.getByLabelText('Asset category'),
+      'fire-extinguisher',
+    )
+    await actor.selectOptions(screen.getByLabelText('Department'), 'GSD')
+    await actor.selectOptions(
+      screen.getByLabelText('Recorded operational result'),
+      'false',
+    )
+    await actor.selectOptions(
+      screen.getByLabelText('Corrective follow-up status'),
+      'ReferredToWms',
+    )
+    expect(urls).toHaveLength(1)
+
+    await actor.click(screen.getByRole('button', { name: 'Apply filters' }))
+    await waitFor(() => {
+      expect(
+        urls.some((url) => url.searchParams.get('search') === 'WMS-PM-777'),
+      ).toBe(true)
+    })
+    const applied = urls.find(
+      (url) => url.searchParams.get('search') === 'WMS-PM-777',
+    )
+    expect(applied?.searchParams.get('assetCategory')).toBe('fire-extinguisher')
+    expect(applied?.searchParams.get('department')).toBe('GSD')
+    expect(applied?.searchParams.get('isOperational')).toBe('false')
+    expect(applied?.searchParams.get('wmsReferralStatus')).toBe('ReferredToWms')
+
+    const href = screen
+      .getAllByRole('link', { name: 'View details' })[0]!
+      .getAttribute('href')
+    const returnContext = JSON.parse(
+      new URL(href!, 'http://localhost').searchParams.get('returnContext')!,
+    )
+    expect(returnContext.search).toMatchObject({
+      assetCategory: 'fire-extinguisher',
+      department: 'GSD',
+      search: 'WMS-PM-777',
+      isOperational: false,
+      wmsReferralStatus: 'ReferredToWms',
+      page: 1,
+    })
   })
 
   it('moves to the second client-side page without resetting the filters', async () => {

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import { useState } from 'react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
@@ -11,12 +11,14 @@ import {
   RouterProvider,
 } from '@tanstack/react-router'
 import { configureApiRuntime } from '@/api/http-client'
+import { toast } from 'sonner'
 import { ScheduleCreate } from '@/features/schedules/schedule-create'
 import { ScheduleDetail } from '@/features/schedules/schedule-detail'
 import {
   ScheduleRegistry,
   type ScheduleSearch,
 } from '@/features/schedules/schedule-registry'
+import { getCurrentManilaYear } from '@/features/schedules/schedule-presentation'
 import { useAuthStore } from '@/stores/auth-store'
 import { server } from '@/test/server'
 
@@ -105,13 +107,19 @@ function renderWithProviders(ui: React.ReactNode) {
 function mockReferences(roles = ['GSD']) {
   server.use(
     http.get(`${base}/auth/me`, () => HttpResponse.json({ ...user, roles })),
-    http.get(`${base}/schedules/assignment-options`, () =>
+    http.get(`${base}/schedules/supervisor-assignment-options`, () =>
       roles.includes('GSD')
         ? HttpResponse.json({
-            workers: [{ id: workerId, displayName: 'Fictional Inspector' }],
             supervisors: [
               { id: supervisorId, displayName: 'Fictional Supervisor' },
             ],
+          })
+        : HttpResponse.json({}, { status: 403 }),
+    ),
+    http.get(`${base}/schedules/assignment-options`, () =>
+      roles.includes('Supervisor')
+        ? HttpResponse.json({
+            workers: [{ id: workerId, displayName: 'Fictional Inspector' }],
           })
         : HttpResponse.json({}, { status: 403 }),
     ),
@@ -150,8 +158,78 @@ function mockReferences(roles = ['GSD']) {
 
 describe('schedule workflows', () => {
   beforeEach(() => {
+    vi.restoreAllMocks()
     setupAuth()
+    vi.spyOn(toast, 'success')
     mockReferences()
+  })
+
+  it('uses the Manila calendar year even before UTC reaches the new year', () => {
+    expect(getCurrentManilaYear(new Date('2025-12-31T16:30:00.000Z'))).toBe(
+      2026,
+    )
+  })
+
+  it('lets GSD generate missing cycles for a bounded year and reports the result', async () => {
+    const currentYear = getCurrentManilaYear()
+    let submittedYear: number | undefined
+    server.use(
+      http.get(`${base}/schedules`, () => HttpResponse.json([schedule])),
+      http.post(`${base}/schedules/generate`, async ({ request }) => {
+        const body = (await request.json()) as { year: number }
+        submittedYear = body.year
+        return HttpResponse.json({
+          year: body.year,
+          eligibleAssets: 5,
+          existingSchedules: 8,
+          createdSchedules: 4,
+        })
+      }),
+    )
+
+    renderWithProviders(
+      <ScheduleRegistry search={{ page: 1 }} onSearchChange={vi.fn()} />,
+    )
+    const actor = userEvent.setup()
+    const yearInput = await screen.findByRole('spinbutton', {
+      name: 'Generation year',
+    })
+    const getGenerateButton = () =>
+      screen.getByRole('button', { name: 'Generate missing schedules' })
+
+    expect(yearInput).toHaveValue(currentYear)
+    expect(yearInput).toHaveAttribute('max', String(currentYear))
+    expect(getGenerateButton()).toBeEnabled()
+
+    await actor.clear(yearInput)
+    await actor.type(yearInput, String(currentYear + 1))
+    expect(getGenerateButton()).toBeDisabled()
+    expect(submittedYear).toBeUndefined()
+
+    await actor.clear(yearInput)
+    await actor.type(yearInput, String(currentYear))
+    await actor.click(getGenerateButton())
+
+    const resultMessage = await screen.findByText(
+      `Year ${currentYear}: created 4 missing schedules; 8 already existed.`,
+    )
+    expect(resultMessage).toHaveAttribute('role', 'status')
+    expect(submittedYear).toBe(currentYear)
+  })
+
+  it('does not expose schedule generation to Supervisors', async () => {
+    mockReferences(['Supervisor'])
+    server.use(
+      http.get(`${base}/schedules`, () => HttpResponse.json([schedule])),
+    )
+    renderWithProviders(
+      <ScheduleRegistry search={{ page: 1 }} onSearchChange={vi.fn()} />,
+    )
+
+    await screen.findAllByText('FE-001')
+    expect(
+      screen.queryByRole('button', { name: 'Generate missing schedules' }),
+    ).not.toBeInTheDocument()
   })
 
   it('keeps summary unfiltered while sending supported registry filters', async () => {
@@ -191,6 +269,95 @@ describe('schedule workflows', () => {
           url.searchParams.get('to') === '2026-08-31T23:59:59.000Z',
       ),
     ).toBe(true)
+  })
+
+  it('applies the combined schedule filters only after submission and keeps them in the detail return', async () => {
+    const urls: URL[] = []
+    server.use(
+      http.get(`${base}/schedules`, ({ request }) => {
+        urls.push(new URL(request.url))
+        return HttpResponse.json([schedule])
+      }),
+    )
+
+    function FilterHarness() {
+      const [search, setSearch] = useState<ScheduleSearch>({})
+      return (
+        <ScheduleRegistry
+          search={search}
+          onSearchChange={(next) => setSearch(next)}
+        />
+      )
+    }
+
+    renderWithProviders(<FilterHarness />)
+    const actor = userEvent.setup()
+    const detailLinks = await screen.findAllByRole('link', {
+      name: 'View details',
+    })
+    expect(detailLinks).toHaveLength(2)
+    expect(urls).toHaveLength(1)
+
+    await actor.type(
+      screen.getByRole('textbox', { name: 'Search schedules' }),
+      'FE-001',
+    )
+    await actor.selectOptions(
+      screen.getByLabelText('Asset category'),
+      'fire-alarm',
+    )
+    await actor.selectOptions(screen.getByLabelText('Department'), 'GSD')
+    expect(urls).toHaveLength(1)
+
+    await actor.click(screen.getByRole('button', { name: 'Apply filters' }))
+    await waitFor(() => {
+      expect(
+        urls.some((url) => url.searchParams.get('search') === 'FE-001'),
+      ).toBe(true)
+    })
+    const applied = urls.find(
+      (url) => url.searchParams.get('search') === 'FE-001',
+    )
+    expect(applied?.searchParams.get('assetCategory')).toBe('fire-alarm')
+    expect(applied?.searchParams.get('department')).toBe('GSD')
+
+    const href = screen
+      .getAllByRole('link', { name: 'View details' })[0]!
+      .getAttribute('href')
+    const returnContext = JSON.parse(
+      new URL(href!, 'http://localhost').searchParams.get('returnContext')!,
+    )
+    expect(returnContext.search).toMatchObject({
+      assetCategory: 'fire-alarm',
+      department: 'GSD',
+      search: 'FE-001',
+      page: 1,
+    })
+  })
+
+  it('explains schedule read authorization failures and keeps retry controls', async () => {
+    mockReferences(['Admin'])
+    server.use(
+      http.get(`${base}/schedules`, () =>
+        HttpResponse.json(null, { status: 403 }),
+      ),
+    )
+
+    renderWithProviders(
+      <ScheduleRegistry search={{ page: 1 }} onSearchChange={vi.fn()} />,
+    )
+
+    const accessMessages = await screen.findAllByText(
+      /Schedule reads require a GSD, Inspector, or Supervisor role\./,
+    )
+    expect(accessMessages).toHaveLength(2)
+    expect(
+      screen.getAllByText(
+        /Admin is a technical system administration role and cannot read operational schedules\./,
+      ),
+    ).toHaveLength(2)
+    expect(screen.getByRole('button', { name: 'Retry summary' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeEnabled()
   })
 
   it('keeps the schedule filter and pagination focus after changing pages', async () => {
@@ -280,11 +447,57 @@ describe('schedule workflows', () => {
     expect(await screen.findByText('Schedule record error')).toBeInTheDocument()
   })
 
-  it('lets GSD assign the full department, category, and cycle batch', async () => {
+  it('lets GSD assign the Supervisor stage for the full department, category, and cycle batch', async () => {
     let requestBody: unknown
     server.use(
       http.get(`${base}/schedules/${scheduleId}`, () =>
         HttpResponse.json(schedule),
+      ),
+      http.put(
+        `${base}/schedules/${scheduleId}/supervisor-assignment`,
+        async ({ request }) => {
+          requestBody = await request.json()
+          return HttpResponse.json({
+            department: 'GSD',
+            assetCategory: 'fire-extinguisher',
+            pmCycle: '2026-08',
+            workerUserId: null,
+            workerDisplayName: null,
+            supervisorUserId: supervisorId,
+            supervisorDisplayName: 'Fictional Supervisor',
+            scheduleIds: [scheduleId, assetId],
+          })
+        },
+      ),
+    )
+
+    renderWithProviders(<ScheduleDetail scheduleId={scheduleId} />)
+    const actor = userEvent.setup()
+    expect(await screen.findByLabelText('Supervisor (oversight)')).toBeVisible()
+    await actor.selectOptions(
+      screen.getByLabelText('Supervisor (oversight)'),
+      supervisorId,
+    )
+    await actor.click(
+      screen.getByRole('button', {
+        name: 'Assign Supervisor to entire batch',
+      }),
+    )
+
+    await waitFor(() =>
+      expect(toast.success).toHaveBeenCalledWith(
+        'Supervisor assignment saved for 2 schedules.',
+      ),
+    )
+    expect(requestBody).toEqual({ supervisorUserId: supervisorId })
+    expect(screen.queryByLabelText('Skilled worker (Inspector)')).toBeNull()
+  })
+
+  it('lets only the assigned Supervisor choose an Inspector for the batch', async () => {
+    let requestBody: unknown
+    server.use(
+      http.get(`${base}/schedules/${scheduleId}`, () =>
+        HttpResponse.json({ ...schedule, assignedSupervisorUserId: user.id }),
       ),
       http.put(
         `${base}/schedules/${scheduleId}/assignment`,
@@ -296,44 +509,75 @@ describe('schedule workflows', () => {
             pmCycle: '2026-08',
             workerUserId: workerId,
             workerDisplayName: 'Fictional Inspector',
-            supervisorUserId: supervisorId,
-            supervisorDisplayName: 'Fictional Supervisor',
-            scheduleIds: [scheduleId, assetId],
+            supervisorUserId: user.id,
+            supervisorDisplayName: 'GSD User',
+            scheduleIds: [scheduleId],
           })
         },
       ),
     )
 
+    mockReferences(['Supervisor'])
     renderWithProviders(<ScheduleDetail scheduleId={scheduleId} />)
     const actor = userEvent.setup()
-    const worker = await screen.findByLabelText('Skilled worker (Inspector)')
-    await actor.selectOptions(worker, workerId)
     await actor.selectOptions(
-      screen.getByLabelText('Supervisor (oversight)'),
-      supervisorId,
+      await screen.findByLabelText('Skilled worker (Inspector)'),
+      workerId,
     )
     await actor.click(
-      screen.getByRole('button', { name: 'Assign entire batch' }),
+      screen.getByRole('button', { name: 'Assign Inspector to entire batch' }),
     )
 
+    await waitFor(() =>
+      expect(toast.success).toHaveBeenCalledWith(
+        'Inspector assignment saved for 1 schedule.',
+      ),
+    )
+    expect(requestBody).toEqual({ workerUserId: workerId })
+    expect(screen.queryByLabelText('Supervisor (oversight)')).toBeNull()
+  })
+
+  it('hides Inspector assignment from a Supervisor who does not own the batch', async () => {
+    let optionsRequested = false
+    mockReferences(['Supervisor'])
+    server.use(
+      http.get(`${base}/schedules/${scheduleId}`, () =>
+        HttpResponse.json({
+          ...schedule,
+          assignedSupervisorUserId: supervisorId,
+        }),
+      ),
+      http.get(`${base}/schedules/assignment-options`, () => {
+        optionsRequested = true
+        return HttpResponse.json({ workers: [] })
+      }),
+    )
+
+    renderWithProviders(<ScheduleDetail scheduleId={scheduleId} />)
+
     expect(
-      await screen.findByText(/Assigned 2 schedule\(s\) for GSD/),
+      await screen.findByText(
+        'Only the Supervisor assigned to this PM batch can assign or update its Inspector.',
+      ),
     ).toBeVisible()
-    expect(requestBody).toEqual({
-      workerUserId: workerId,
-      supervisorUserId: supervisorId,
-    })
+    expect(screen.queryByLabelText('Skilled worker (Inspector)')).toBeNull()
+    expect(optionsRequested).toBe(false)
   })
 
   it('does not load assignment options or show assignment controls to Inspectors', async () => {
     mockReferences(['Inspector'])
-    let optionsRequested = false
+    let supervisorOptionsRequested = false
+    let workerOptionsRequested = false
     server.use(
       http.get(`${base}/schedules/${scheduleId}`, () =>
         HttpResponse.json(schedule),
       ),
       http.get(`${base}/schedules/assignment-options`, () => {
-        optionsRequested = true
+        workerOptionsRequested = true
+        return HttpResponse.json({}, { status: 403 })
+      }),
+      http.get(`${base}/schedules/supervisor-assignment-options`, () => {
+        supervisorOptionsRequested = true
         return HttpResponse.json({}, { status: 403 })
       }),
     )
@@ -343,7 +587,8 @@ describe('schedule workflows', () => {
     await screen.findByText('Batch assignment')
     expect(screen.queryByLabelText('Skilled worker (Inspector)')).toBeNull()
     expect(screen.queryByLabelText('Supervisor (oversight)')).toBeNull()
-    expect(optionsRequested).toBe(false)
+    expect(supervisorOptionsRequested).toBe(false)
+    expect(workerOptionsRequested).toBe(false)
   })
 
   it('denies an Admin-only user and does not render a create action', async () => {

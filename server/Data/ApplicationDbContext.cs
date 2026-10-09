@@ -16,6 +16,8 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     public DbSet<Asset> Assets => Set<Asset>();
     public DbSet<PreventiveMaintenanceSchedule> PreventiveMaintenanceSchedules => Set<PreventiveMaintenanceSchedule>();
     public DbSet<InspectionRecord> InspectionRecords => Set<InspectionRecord>();
+    public DbSet<InspectionWmsReferral> InspectionWmsReferrals => Set<InspectionWmsReferral>();
+    public DbSet<InspectionWmsReferralAudit> InspectionWmsReferralAudits => Set<InspectionWmsReferralAudit>();
     public DbSet<InspectionLocationAttempt> InspectionLocationAttempts => Set<InspectionLocationAttempt>();
     public DbSet<PreventiveMaintenanceForm> PreventiveMaintenanceForms => Set<PreventiveMaintenanceForm>();
     public DbSet<PreventiveMaintenanceAcknowledgement> PreventiveMaintenanceAcknowledgements => Set<PreventiveMaintenanceAcknowledgement>();
@@ -100,6 +102,9 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             .HasMaxLength(16);
         schedule.Property(entity => entity.AcademicYear)
             .HasMaxLength(16);
+        schedule.HasIndex(entity => new { entity.AssetId, entity.PmCycle })
+            .IsUnique()
+            .HasDatabaseName(PreventiveMaintenanceScheduleGenerationService.UniqueIndexName);
         schedule.HasIndex(entity => new { entity.AssetId, entity.Status, entity.ScheduleDate });
         schedule.HasIndex(entity => new { entity.Status, entity.ScheduleDate });
         schedule.HasOne<ApplicationUser>()
@@ -143,6 +148,49 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             .IsUnique()
             .HasFilter("[LocationAttemptId] IS NOT NULL")
             .HasDatabaseName("IX_InspectionRecords_LocationAttemptId");
+
+        var wmsReferral = modelBuilder.Entity<InspectionWmsReferral>();
+        wmsReferral.HasKey(entity => entity.InspectionId);
+        wmsReferral.Property(entity => entity.ExternalPmNumber)
+            .HasMaxLength(128)
+            .IsRequired();
+        wmsReferral.Property(entity => entity.Revision)
+            .IsConcurrencyToken();
+        wmsReferral.HasOne(entity => entity.Inspection)
+            .WithOne(inspection => inspection.WmsReferral)
+            .HasForeignKey<InspectionWmsReferral>(entity => entity.InspectionId)
+            .OnDelete(DeleteBehavior.NoAction);
+        wmsReferral.ToTable("InspectionWmsReferrals", table =>
+        {
+            table.HasCheckConstraint(
+                "CK_InspectionWmsReferrals_Revision_Positive",
+                "[Revision] > 0");
+            table.HasCheckConstraint(
+                "CK_InspectionWmsReferrals_Number_NotBlank",
+                "LEN(LTRIM(RTRIM([ExternalPmNumber]))) > 0");
+        });
+
+        var wmsReferralAudit = modelBuilder.Entity<InspectionWmsReferralAudit>();
+        wmsReferralAudit.Property(entity => entity.PreviousExternalPmNumber)
+            .HasMaxLength(128);
+        wmsReferralAudit.Property(entity => entity.NewExternalPmNumber)
+            .HasMaxLength(128)
+            .IsRequired();
+        wmsReferralAudit.HasIndex(entity => new { entity.InspectionId, entity.Revision })
+            .IsUnique();
+        wmsReferralAudit.HasOne(entity => entity.Inspection)
+            .WithMany()
+            .HasForeignKey(entity => entity.InspectionId)
+            .OnDelete(DeleteBehavior.NoAction);
+        wmsReferralAudit.ToTable("InspectionWmsReferralAudits", table =>
+        {
+            table.HasCheckConstraint(
+                "CK_InspectionWmsReferralAudits_Revision_Positive",
+                "[Revision] > 0");
+            table.HasCheckConstraint(
+                "CK_InspectionWmsReferralAudits_Number_NotBlank",
+                "LEN(LTRIM(RTRIM([NewExternalPmNumber]))) > 0");
+        });
 
         inspection
             .HasOne(entity => entity.PreventiveMaintenanceForm)

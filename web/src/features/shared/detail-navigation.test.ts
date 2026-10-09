@@ -47,11 +47,21 @@ describe('detail return navigation', () => {
     expect(
       resolveDetailReturn(undefined, {
         kind: 'inspectionRegistry',
-        search: { assetId, isOperational: false, page: 4 },
+        search: {
+          assetId,
+          isOperational: false,
+          wmsReferralStatus: 'ReferredToWms',
+          page: 4,
+        },
       }),
     ).toMatchObject({
       kind: 'inspectionRegistry',
-      search: { assetId, isOperational: false, page: 4 },
+      search: {
+        assetId,
+        isOperational: false,
+        wmsReferralStatus: 'ReferredToWms',
+        page: 4,
+      },
       label: 'Back to inspections',
     })
     expect(
@@ -151,8 +161,33 @@ describe('detail return navigation', () => {
       resolveDetailReturn({ kind: 'formRegistry' }, { kind: 'dashboard' }),
     ).toEqual({
       kind: 'formRegistry',
+      search: {},
       label: 'Back to form review',
     })
+    const formSearch = {
+      status: 'Submitted' as const,
+      assetCategory: 'fire-extinguisher' as const,
+      department: 'GSD',
+      pmCycle: '2026-07',
+      search: 'FE-01',
+      page: 2,
+    }
+    expect(
+      resolveDetailReturn(
+        { kind: 'formRegistry', search: formSearch },
+        { kind: 'dashboard' },
+      ),
+    ).toEqual({
+      kind: 'formRegistry',
+      search: formSearch,
+      label: 'Back to form review',
+    })
+    expect(
+      parseDetailReturnContext({
+        kind: 'formRegistry',
+        search: { pmCycle: '2026-13' },
+      }),
+    ).toBeUndefined()
   })
 
   it('rejects malformed origins and caps repeated detail ancestry', () => {

@@ -2,9 +2,11 @@ using System.Security.Claims;
 using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using UniPM.Api.Features.Auth;
+using UniPM.Api.Features.Schedules;
 
 namespace UniPM.Api.Tests;
 
@@ -16,6 +18,14 @@ internal static class TestAuthenticationExtensions
         this IServiceCollection services,
         params string[] roles)
     {
+        var scheduleWorker = services.FirstOrDefault(descriptor =>
+            descriptor.ServiceType == typeof(IHostedService)
+            && descriptor.ImplementationType == typeof(PreventiveMaintenanceScheduleGenerationWorker));
+        if (scheduleWorker is not null)
+        {
+            services.Remove(scheduleWorker);
+        }
+
         services.AddSingleton(new TestAuthenticationRoles(roles));
         return services
             .AddAuthentication(options =>

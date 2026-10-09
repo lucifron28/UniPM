@@ -477,6 +477,82 @@ namespace UniPM.Api.Migrations
                     b.ToTable("InspectionRecords");
                 });
 
+            modelBuilder.Entity("UniPM.Api.Models.InspectionWmsReferral", b =>
+                {
+                    b.Property<Guid>("InspectionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ExternalPmNumber")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTimeOffset>("LastUpdatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("LastUpdatedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("RecordedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("RecordedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Revision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("int");
+
+                    b.HasKey("InspectionId");
+
+                    b.ToTable("InspectionWmsReferrals", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_InspectionWmsReferrals_Number_NotBlank", "LEN(LTRIM(RTRIM([ExternalPmNumber]))) > 0");
+
+                            t.HasCheckConstraint("CK_InspectionWmsReferrals_Revision_Positive", "[Revision] > 0");
+                        });
+                });
+
+            modelBuilder.Entity("UniPM.Api.Models.InspectionWmsReferralAudit", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("ChangedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("ChangedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("InspectionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("NewExternalPmNumber")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<string>("PreviousExternalPmNumber")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<int>("Revision")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InspectionId", "Revision")
+                        .IsUnique();
+
+                    b.ToTable("InspectionWmsReferralAudits", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_InspectionWmsReferralAudits_Number_NotBlank", "LEN(LTRIM(RTRIM([NewExternalPmNumber]))) > 0");
+
+                            t.HasCheckConstraint("CK_InspectionWmsReferralAudits_Revision_Positive", "[Revision] > 0");
+                        });
+                });
+
             modelBuilder.Entity("UniPM.Api.Models.PreventiveMaintenanceAcknowledgement", b =>
                 {
                     b.Property<Guid>("Id")
@@ -694,6 +770,10 @@ namespace UniPM.Api.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("AssignedSupervisorUserId");
+
+                    b.HasIndex("AssetId", "PmCycle")
+                        .IsUnique()
+                        .HasDatabaseName("UX_Schedules_AssetId_PmCycle");
 
                     b.HasIndex("Status", "ScheduleDate");
 
@@ -1103,6 +1183,28 @@ namespace UniPM.Api.Migrations
                     b.Navigation("Schedule");
                 });
 
+            modelBuilder.Entity("UniPM.Api.Models.InspectionWmsReferral", b =>
+                {
+                    b.HasOne("UniPM.Api.Models.InspectionRecord", "Inspection")
+                        .WithOne("WmsReferral")
+                        .HasForeignKey("UniPM.Api.Models.InspectionWmsReferral", "InspectionId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Inspection");
+                });
+
+            modelBuilder.Entity("UniPM.Api.Models.InspectionWmsReferralAudit", b =>
+                {
+                    b.HasOne("UniPM.Api.Models.InspectionRecord", "Inspection")
+                        .WithMany()
+                        .HasForeignKey("InspectionId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Inspection");
+                });
+
             modelBuilder.Entity("UniPM.Api.Models.PreventiveMaintenanceAcknowledgement", b =>
                 {
                     b.HasOne("UniPM.Api.Models.PreventiveMaintenanceForm", "Form")
@@ -1189,6 +1291,11 @@ namespace UniPM.Api.Migrations
                     b.Navigation("ReplacedBySession");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("UniPM.Api.Models.InspectionRecord", b =>
+                {
+                    b.Navigation("WmsReferral");
                 });
 
             modelBuilder.Entity("UniPM.Api.Models.PreventiveMaintenanceForm", b =>

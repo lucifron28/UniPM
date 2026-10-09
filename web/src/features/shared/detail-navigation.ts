@@ -5,6 +5,9 @@ import {
 } from '@/features/assets/asset-contract'
 import type { AssetSearch } from '@/features/assets/asset-registry'
 import type { InspectionSearch } from '@/features/inspections/inspection-registry'
+import { inspectionFollowUpStatusCodes } from '@/features/inspections/inspection-contract'
+import type { FormSearch } from '@/features/preventive-maintenance-forms/form-registry'
+import { preventiveMaintenanceFormStatusCodes } from '@/features/preventive-maintenance-forms/form-contract'
 import {
   scheduleQuarterCodes,
   scheduleStatusCodes,
@@ -17,7 +20,7 @@ export type DetailReturnContext =
   | { kind: 'assetRegistry'; search?: AssetSearch | undefined }
   | { kind: 'inspectionRegistry'; search?: InspectionSearch | undefined }
   | { kind: 'scheduleRegistry'; search?: ScheduleSearch | undefined }
-  | { kind: 'formRegistry' }
+  | { kind: 'formRegistry'; search?: FormSearch | undefined }
   | {
       kind: 'batchReview'
       formId: string
@@ -58,7 +61,7 @@ export type DetailReturnTarget =
   | { kind: 'assetRegistry'; search: AssetSearch; label: string }
   | { kind: 'inspectionRegistry'; search: InspectionSearch; label: string }
   | { kind: 'scheduleRegistry'; search: ScheduleSearch; label: string }
-  | { kind: 'formRegistry'; label: string }
+  | { kind: 'formRegistry'; search: FormSearch; label: string }
   | {
       kind: 'batchReview'
       formId: string
@@ -114,13 +117,20 @@ const assetSearchSchema = z.object({
 const inspectionSearchSchema = z.object({
   assetId: z.string().uuid().optional(),
   scheduleId: z.string().uuid().optional(),
+  assetCategory: z.enum(assetCategoryCodes).optional(),
+  department: z.string().trim().max(256).optional(),
+  search: z.string().trim().max(256).optional(),
   isOperational: z.boolean().optional(),
+  wmsReferralStatus: z.enum(inspectionFollowUpStatusCodes).optional(),
   dateFrom: z.string().datetime({ offset: true }).optional(),
   dateTo: z.string().datetime({ offset: true }).optional(),
   page: pageSchema,
 })
 const scheduleSearchSchema = z.object({
   assetId: z.string().uuid().optional(),
+  assetCategory: z.enum(assetCategoryCodes).optional(),
+  department: z.string().trim().max(256).optional(),
+  search: z.string().trim().max(256).optional(),
   status: z.enum(scheduleStatusCodes).optional(),
   from: z.string().datetime({ offset: true }).optional(),
   to: z.string().datetime({ offset: true }).optional(),
@@ -131,6 +141,17 @@ const scheduleSearchSchema = z.object({
     .min(2000)
     .max(new Date().getUTCFullYear() + 5)
     .optional(),
+  page: pageSchema,
+})
+const formSearchSchema = z.object({
+  status: z.enum(preventiveMaintenanceFormStatusCodes).optional(),
+  assetCategory: z.enum(assetCategoryCodes).optional(),
+  department: z.string().trim().max(256).optional(),
+  pmCycle: z
+    .string()
+    .regex(/^(?!0000)\d{4}-(0[1-9]|1[0-2])$/)
+    .optional(),
+  search: z.string().trim().max(256).optional(),
   page: pageSchema,
 })
 
@@ -158,7 +179,10 @@ const detailReturnContextSchema: z.ZodType<DetailReturnContext> = z.lazy(
         kind: z.literal('scheduleRegistry'),
         search: scheduleSearchSchema.optional(),
       }),
-      z.object({ kind: z.literal('formRegistry') }),
+      z.object({
+        kind: z.literal('formRegistry'),
+        search: formSearchSchema.optional(),
+      }),
       z.object({
         kind: z.literal('batchReview'),
         formId: z.string().uuid(),
@@ -346,7 +370,11 @@ export function resolveDetailReturn(
         label: 'Back to schedules',
       }
     case 'formRegistry':
-      return { kind: origin.kind, label: 'Back to form review' }
+      return {
+        kind: origin.kind,
+        search: origin.search ?? {},
+        label: 'Back to form review',
+      }
     case 'batchReview':
       return {
         kind: origin.kind,

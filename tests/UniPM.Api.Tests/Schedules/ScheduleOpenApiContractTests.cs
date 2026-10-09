@@ -1,13 +1,14 @@
 using System.Text.Json;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace UniPM.Api.Tests;
 
-public sealed class ScheduleOpenApiContractTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class ScheduleOpenApiContractTests : IClassFixture<ScheduleOpenApiContractTests.TestApplicationFactory>
 {
     private readonly HttpClient _client;
 
-    public ScheduleOpenApiContractTests(WebApplicationFactory<Program> factory)
+    public ScheduleOpenApiContractTests(TestApplicationFactory factory)
     {
         _client = factory.CreateClient();
     }
@@ -19,6 +20,8 @@ public sealed class ScheduleOpenApiContractTests : IClassFixture<WebApplicationF
         var paths = document.RootElement.GetProperty("paths");
 
         AssertOperation(paths, "/api/v1/schedules", "post", "CreateSchedule", "201", "ScheduleResponse");
+        Assert.True(paths.GetProperty("/api/v1/schedules").GetProperty("post")
+            .GetProperty("responses").TryGetProperty("409", out _));
         AssertCreateScheduleRequestSupportsPmCycle(document.RootElement, paths);
         AssertArrayOperation(paths, "/api/v1/schedules", "get", "ListSchedules", "ScheduleResponse");
         AssertOperation(paths, "/api/v1/schedules/{id}", "get", "GetSchedule", "200", "ScheduleResponse");
@@ -100,5 +103,13 @@ public sealed class ScheduleOpenApiContractTests : IClassFixture<WebApplicationF
         var responses = operation.GetProperty("responses");
         Assert.True(responses.TryGetProperty("401", out _));
         Assert.True(responses.TryGetProperty("403", out _));
+    }
+
+    public sealed class TestApplicationFactory : WebApplicationFactory<Program>
+    {
+        protected override void ConfigureWebHost(IWebHostBuilder builder)
+        {
+            builder.DisableScheduleGenerationWorker();
+        }
     }
 }

@@ -4,6 +4,7 @@ using UniPM.Api.Features;
 using UniPM.Api.Features.ReferenceData;
 using UniPM.Api.Models;
 using UniPM.Api.Features.Auth;
+using UniPM.Api.Features.Schedules;
 
 namespace UniPM.Api.Features.Assets;
 
@@ -16,6 +17,8 @@ public static class AssetsEndpoints
         group.MapPost("/", async (
             CreateAssetDto dto,
             IDbContextFactory<ApplicationDbContext> factory,
+            PreventiveMaintenanceScheduleGenerationService scheduleGenerator,
+            TimeProvider timeProvider,
             CancellationToken cancellationToken) =>
         {
             var validationErrors = dto.Validate();
@@ -36,7 +39,7 @@ public static class AssetsEndpoints
                 return ApiErrors.Conflict($"Asset code '{assetCode}' already exists.");
             }
 
-            var now = DateTimeOffset.UtcNow;
+            var now = timeProvider.GetUtcNow();
             var asset = new Asset
             {
                 Id = Guid.NewGuid(),
@@ -56,9 +59,21 @@ public static class AssetsEndpoints
             asset.QrCodeValue = AssetQrCodeValue.Create(asset.AssetCategory, asset.Id);
 
             context.Assets.Add(asset);
+            await scheduleGenerator.AddCurrentYearUpcomingCyclesAsync(
+                context,
+                asset,
+                now,
+                cancellationToken);
             try
             {
                 await context.SaveChangesAsync(cancellationToken);
+            }
+            catch (DbUpdateException exception)
+                when (DatabaseConstraintViolation.IsUniqueConstraint(
+                    exception,
+                    PreventiveMaintenanceScheduleGenerationService.UniqueIndexName))
+            {
+                return ApiErrors.Conflict("A preventive-maintenance cycle already exists for this asset.");
             }
             catch (DbUpdateException exception) when (DatabaseConstraintViolation.IsUniqueConstraint(exception))
             {
@@ -157,6 +172,28 @@ public static class AssetsEndpoints
             IDbContextFactory<ApplicationDbContext> factory,
             CancellationToken cancellationToken) =>
         {
+            var normalizedDepartment = string.IsNullOrWhiteSpace(department)
+                ? null
+                : department.Trim();
+            var normalizedSearch = string.IsNullOrWhiteSpace(search)
+                ? null
+                : search.Trim();
+            var validationErrors = new Dictionary<string, string[]>();
+            if (normalizedDepartment?.Length > 256)
+            {
+                validationErrors[nameof(department)] = ["Department must be 256 characters or fewer."];
+            }
+
+            if (normalizedSearch?.Length > 256)
+            {
+                validationErrors[nameof(search)] = ["Search must be 256 characters or fewer."];
+            }
+
+            if (validationErrors.Count > 0)
+            {
+                return ApiErrors.Validation(validationErrors);
+            }
+
             await using var context = await factory.CreateDbContextAsync(cancellationToken);
             var query = context.Assets.AsNoTracking();
 
@@ -192,20 +229,21 @@ public static class AssetsEndpoints
                 query = query.Where(asset => asset.Building != null && asset.Building.ToUpper() == normalizedBuilding);
             }
 
-            if (!string.IsNullOrWhiteSpace(department))
+            if (normalizedDepartment is not null)
             {
-                var normalizedDepartment = department.Trim().ToUpper();
-                query = query.Where(asset => asset.Department != null && asset.Department.ToUpper() == normalizedDepartment);
+                var departmentKey = normalizedDepartment.ToUpperInvariant();
+                query = query.Where(asset => asset.Department != null && asset.Department.ToUpper() == departmentKey);
             }
 
-            if (!string.IsNullOrWhiteSpace(search))
+            if (normalizedSearch is not null)
             {
-                var normalizedSearch = search.Trim().ToUpper();
+                var searchKey = normalizedSearch.ToUpperInvariant();
                 query = query.Where(asset =>
-                    asset.AssetCode.Contains(normalizedSearch) ||
-                    (asset.Building != null && asset.Building.ToUpper().Contains(normalizedSearch)) ||
-                    (asset.Department != null && asset.Department.ToUpper().Contains(normalizedSearch)) ||
-                    (asset.Location != null && asset.Location.ToUpper().Contains(normalizedSearch)));
+                    asset.AssetCode.Contains(searchKey) ||
+                    (asset.QrCodeValue != null && asset.QrCodeValue.ToUpper().Contains(searchKey)) ||
+                    (asset.Building != null && asset.Building.ToUpper().Contains(searchKey)) ||
+                    (asset.Department != null && asset.Department.ToUpper().Contains(searchKey)) ||
+                    (asset.Location != null && asset.Location.ToUpper().Contains(searchKey)));
             }
 
             var orderedQuery = query.OrderBy(asset => asset.AssetCode);

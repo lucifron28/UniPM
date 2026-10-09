@@ -16,6 +16,8 @@ record's evidence level and tested/source commit.
 
 | ID | Type | Title | Status | Evidence level | Tested/source commit | Record | Note |
 |---|---|---|---|---|---|---|---|
+| TEST-060 | test-run | CPMP scheduling, assignment, registry, and WMS remediation verification | executed | locally-executed | `a8f05d75e26993606953e3da97bb6b437ccf9794`; per-run identities in record | [record](test-runs/TEST-060-pre-evaluation-remediation.md) | Backend, web, live role-chain, and Flutter identities are separated; native migration snapshots lack a retained source fingerprint; CI and physical-device acceptance remain unverified. |
+| IMP-044 | implementation | CPMP scheduling, two-stage assignment, registry filters, and WMS referrals | reviewed | source-inspected | `b181800762c44c1b3233c0302ef48aa249c6bb9d` | [record](implementation/IMP-044-pre-evaluation-cpmp-and-wms-remediation.md) | Summarizes the isolated remediation commit series and the unresolved WDS frequency discrepancy. |
 | TEST-059 | test-run | PM analytics environment and evaluator provenance verification | executed | locally-executed | `79ab459` + patch `d675c1fc` | [record](test-runs/TEST-059-pm-analytics-environment-and-evaluator-provenance.md) | Focused Release filter passed 23/23 on the identified working patch; initial compile-only attempt ran no tests. Later commits and exact-head CI are not claimed. |
 | TEST-058 | test-run | Guarded PM analytics interpretation verification | executed | locally-executed | `c0d1cd8d32374756c775b2dae0b596cdbb1f18cb` | [record](test-runs/TEST-058-guarded-pm-analytics-interpretation-verification.md) | Focused Release run passed 60, skipped one SQL Server fact, and failed none. The initial sandbox launch was NOT EXECUTED; no live model, native SQL rerun, real JWT, or browser result is claimed. |
 | TEST-057 | test-run | Schema-constrained PM analytics SQL Server and empty-count verification | executed | locally-executed | `684252040c961d8e5f8c89a23d91de55f9d16a63` | [record](test-runs/TEST-057-schema-constrained-pm-analytics-sql-and-empty-count-verification.md) | Native SQL Server 2019 analytics filter passed 40/40; focused empty-count web tests passed 8/8. Real authentication, browser E2E, and full-suite verification are not claimed. |
@@ -145,6 +147,9 @@ record's evidence level and tested/source commit.
 - Physical-device and iOS verification for the pre-acceptance hardening remain
   unverified. Native SQL coverage was skipped in TEST-042 because no test
   connection was configured.
+- GSD confirmation of Water Drinking Station frequency remains pending. The
+  operative CPMP table lists February/May/August/November; revision history
+  lists June/December. TEST-060 records the page references and current behavior.
 
 ### Historical RAG evaluations retired with the feature
 

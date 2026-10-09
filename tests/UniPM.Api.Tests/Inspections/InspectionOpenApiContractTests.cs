@@ -1,13 +1,14 @@
 using System.Text.Json;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace UniPM.Api.Tests;
 
-public sealed class InspectionOpenApiContractTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class InspectionOpenApiContractTests : IClassFixture<InspectionOpenApiContractTests.TestApplicationFactory>
 {
     private readonly HttpClient _client;
 
-    public InspectionOpenApiContractTests(WebApplicationFactory<Program> factory)
+    public InspectionOpenApiContractTests(TestApplicationFactory factory)
     {
         _client = factory.CreateClient();
     }
@@ -60,5 +61,13 @@ public sealed class InspectionOpenApiContractTests : IClassFixture<WebApplicatio
         Assert.Equal(
             $"#/components/schemas/{itemSchemaName}",
             schema.GetProperty("items").GetProperty("$ref").GetString());
+    }
+
+    public sealed class TestApplicationFactory : WebApplicationFactory<Program>
+    {
+        protected override void ConfigureWebHost(IWebHostBuilder builder)
+        {
+            builder.DisableScheduleGenerationWorker();
+        }
     }
 }
