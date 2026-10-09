@@ -14,6 +14,7 @@ import { configureApiRuntime } from '@/api/http-client'
 import { ScheduleCreate } from '@/features/schedules/schedule-create'
 import { ScheduleDetail } from '@/features/schedules/schedule-detail'
 import {
+  getCurrentManilaYear,
   ScheduleRegistry,
   type ScheduleSearch,
 } from '@/features/schedules/schedule-registry'
@@ -152,6 +153,74 @@ describe('schedule workflows', () => {
   beforeEach(() => {
     setupAuth()
     mockReferences()
+  })
+
+  it('uses the Manila calendar year even before UTC reaches the new year', () => {
+    expect(getCurrentManilaYear(new Date('2025-12-31T16:30:00.000Z'))).toBe(
+      2026,
+    )
+  })
+
+  it('lets GSD generate missing cycles for a bounded year and reports the result', async () => {
+    const currentYear = getCurrentManilaYear()
+    let submittedYear: number | undefined
+    server.use(
+      http.get(`${base}/schedules`, () => HttpResponse.json([schedule])),
+      http.post(`${base}/schedules/generate`, async ({ request }) => {
+        const body = (await request.json()) as { year: number }
+        submittedYear = body.year
+        return HttpResponse.json({
+          year: body.year,
+          eligibleAssets: 5,
+          existingSchedules: 8,
+          createdSchedules: 4,
+        })
+      }),
+    )
+
+    renderWithProviders(
+      <ScheduleRegistry search={{ page: 1 }} onSearchChange={vi.fn()} />,
+    )
+    const actor = userEvent.setup()
+    const yearInput = await screen.findByRole('spinbutton', {
+      name: 'Generation year',
+    })
+    const getGenerateButton = () =>
+      screen.getByRole('button', { name: 'Generate missing schedules' })
+
+    expect(yearInput).toHaveValue(currentYear)
+    expect(yearInput).toHaveAttribute('max', String(currentYear))
+    expect(getGenerateButton()).toBeEnabled()
+
+    await actor.clear(yearInput)
+    await actor.type(yearInput, String(currentYear + 1))
+    expect(getGenerateButton()).toBeDisabled()
+    expect(submittedYear).toBeUndefined()
+
+    await actor.clear(yearInput)
+    await actor.type(yearInput, String(currentYear))
+    await actor.click(getGenerateButton())
+
+    const resultMessage = await screen.findByText(
+      `Year ${currentYear}: created 4 missing schedules; 8 already existed.`,
+    )
+    expect(resultMessage).toHaveAttribute('role', 'status')
+    expect(submittedYear).toBe(currentYear)
+  })
+
+  it('does not expose schedule generation to Supervisors', async () => {
+    mockReferences(['Supervisor'])
+    server.use(
+      http.get(`${base}/schedules`, () => HttpResponse.json([schedule])),
+    )
+    renderWithProviders(
+      <ScheduleRegistry search={{ page: 1 }} onSearchChange={vi.fn()} />,
+    )
+
+    await screen.findAllByText('FE-001')
+    expect(
+      screen.queryByRole('button', { name: 'Generate missing schedules' }),
+    ).not.toBeInTheDocument()
   })
 
   it('keeps summary unfiltered while sending supported registry filters', async () => {

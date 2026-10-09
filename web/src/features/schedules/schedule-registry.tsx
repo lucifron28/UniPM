@@ -24,6 +24,7 @@ import {
 } from '@/features/shared/registry-results-panel'
 import type { Schedule } from '@/features/schedules/schedule-contract'
 import {
+  useGenerateSchedules,
   useScheduleQuarters,
   useSchedules,
   useScheduleStatuses,
@@ -76,6 +77,15 @@ function statusVariant(
   if (status === 'Overdue') return 'danger'
   if (status === 'Due' || status === 'Ongoing') return 'warning'
   return 'neutral'
+}
+
+export function getCurrentManilaYear(now = new Date()) {
+  return Number(
+    new Intl.DateTimeFormat('en', {
+      timeZone: 'Asia/Manila',
+      year: 'numeric',
+    }).format(now),
+  )
 }
 
 const createColumns = (search: ScheduleSearch) => [
@@ -162,6 +172,15 @@ export function ScheduleRegistry({
   ) => void
 }) {
   const currentUser = useCurrentUser()
+  const scheduleGeneration = useGenerateSchedules()
+  const currentManilaYear = getCurrentManilaYear()
+  const [generationYear, setGenerationYear] = useState(() =>
+    String(currentManilaYear),
+  )
+  const [generationMessage, setGenerationMessage] = useState<string | null>(
+    null,
+  )
+  const [generationFailed, setGenerationFailed] = useState(false)
   const assets = useAssets()
   const categories = useAssetCategories()
   const statuses = useScheduleStatuses()
@@ -219,6 +238,12 @@ export function ScheduleRegistry({
     currentUser.data?.roles.some(
       (role) => role === 'GSD' || role === 'Supervisor',
     ) ?? false
+  const canGenerate = currentUser.data?.roles.includes('GSD') ?? false
+  const parsedGenerationYear = Number(generationYear)
+  const generationYearIsValid =
+    /^\d{4}$/.test(generationYear) &&
+    parsedGenerationYear >= 2000 &&
+    parsedGenerationYear <= currentManilaYear
   const pageSize = 10
   const records = useMemo(
     () => filteredSchedules.data ?? [],
@@ -322,15 +347,76 @@ export function ScheduleRegistry({
             interface does not infer overdue state or change workflow status.
           </p>
         </div>
-        {canCreate && (
-          <Button asChild>
-            <Link to="/app/schedules/new">
-              <CalendarPlus aria-hidden="true" className="mr-2 size-4" />
-              Add schedule
-            </Link>
-          </Button>
+        {(canCreate || canGenerate) && (
+          <div className="flex flex-wrap items-end gap-3">
+            {canGenerate && (
+              <form
+                className="flex flex-wrap items-end gap-2"
+                onSubmit={(event) => {
+                  event.preventDefault()
+                  if (!generationYearIsValid) return
+                  setGenerationMessage(null)
+                  setGenerationFailed(false)
+                  scheduleGeneration.mutate(parsedGenerationYear, {
+                    onSuccess: (result) => {
+                      setGenerationFailed(false)
+                      setGenerationMessage(
+                        `Year ${result.year}: created ${result.createdSchedules} missing schedules; ${result.existingSchedules} already existed.`,
+                      )
+                    },
+                    onError: () => {
+                      setGenerationFailed(true)
+                      setGenerationMessage(
+                        'Schedule generation failed. Try again.',
+                      )
+                    },
+                  })
+                }}
+              >
+                <label className="grid gap-1 text-xs font-semibold text-[var(--text-secondary)]">
+                  Generation year
+                  <Input
+                    type="number"
+                    min={2000}
+                    max={currentManilaYear}
+                    step={1}
+                    value={generationYear}
+                    aria-label="Generation year"
+                    onChange={(event) => setGenerationYear(event.target.value)}
+                    className="h-10 w-28 px-3"
+                  />
+                </label>
+                <Button
+                  type="submit"
+                  disabled={
+                    !generationYearIsValid || scheduleGeneration.isPending
+                  }
+                >
+                  {scheduleGeneration.isPending
+                    ? 'Generating…'
+                    : 'Generate missing schedules'}
+                </Button>
+              </form>
+            )}
+            {canCreate && (
+              <Button asChild>
+                <Link to="/app/schedules/new">
+                  <CalendarPlus aria-hidden="true" className="mr-2 size-4" />
+                  Add schedule
+                </Link>
+              </Button>
+            )}
+          </div>
         )}
       </div>
+      {canGenerate && generationMessage && (
+        <p
+          className={`-mt-4 text-sm ${generationFailed ? 'text-[var(--error)]' : 'text-[var(--text-secondary)]'}`}
+          role={generationFailed ? 'alert' : 'status'}
+        >
+          {generationMessage}
+        </p>
+      )}
 
       {allSchedules.isPending || statuses.isPending ? (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3" role="status">

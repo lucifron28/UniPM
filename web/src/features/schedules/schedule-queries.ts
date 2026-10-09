@@ -1,7 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   assignScheduleBatch,
+  generatePreventiveMaintenanceSchedules,
+  getGetPmPeriodDashboardQueryKey,
   getGetScheduleQueryKey,
+  getListPmPeriodDashboardCyclesQueryKey,
   getListScheduleAssignmentOptionsQueryKey,
   getListSchedulePeriodTypesQueryKey,
   getListScheduleQuartersQueryKey,
@@ -74,6 +77,28 @@ export function useAssignScheduleBatch() {
         }),
         queryClient.invalidateQueries({
           queryKey: getListSchedulesQueryKey(),
+        }),
+      ])
+    },
+  })
+}
+
+export function useGenerateSchedules() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (year: number) =>
+      generatePreventiveMaintenanceSchedules({ year }),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: getListSchedulesQueryKey(),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: getListPmPeriodDashboardCyclesQueryKey(),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: getGetPmPeriodDashboardQueryKey(),
         }),
       ])
     },
