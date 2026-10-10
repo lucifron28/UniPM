@@ -13,6 +13,7 @@ namespace UniPM.Api.Tests;
 public sealed class SqlServerDomainContractTests
 {
     private const string PreviousMigration = "20260710170229_AddMaintenanceSearchDocuments";
+    private const string PreviousDeferralMigration = "20261009041512_AddInspectionWmsReferralTracking";
 
     [SqlServerFact]
     public async Task Migration_preflight_canonicalizes_existing_codes_before_constraints()
@@ -155,7 +156,7 @@ public sealed class SqlServerDomainContractTests
     }
 
     [SqlServer2019Fact]
-    public async Task Sql_Server_2019_review_migration_round_trips_and_concurrent_recovery_is_idempotent()
+    public async Task Sql_Server_2019_deferral_migrations_round_trip_and_recovery_is_idempotent()
     {
         var baseConnectionString = RequireSqlServer2019Connection();
         await using (var server = new SqlConnection(baseConnectionString))
@@ -171,7 +172,7 @@ public sealed class SqlServerDomainContractTests
 
         await using var database = await SqlServerTestDatabase.CreateAsync(baseConnectionString);
         await using (var master = new SqlConnection(new SqlConnectionStringBuilder(database.ConnectionString)
-                     { InitialCatalog = "master" }.ConnectionString))
+        { InitialCatalog = "master" }.ConnectionString))
         {
             await master.OpenAsync();
             await using var command = master.CreateCommand();
@@ -254,9 +255,10 @@ public sealed class SqlServerDomainContractTests
 
         await using (var context = database.CreateContext())
         {
-            await context.Database.MigrateAsync("20261009182058_AddScheduleEnrollmentDeferrals");
+            await context.Database.MigrateAsync(PreviousDeferralMigration);
             context.AddRange(asset, schedule, form, inspection, acknowledgement);
             await context.SaveChangesAsync();
+            await context.Database.MigrateAsync("20261009182058_AddScheduleEnrollmentDeferrals");
             await context.Database.ExecuteSqlInterpolatedAsync($"""
                 INSERT INTO [ScheduleEnrollmentDeferrals]
                     ([AssetId], [PmCycle], [DepartmentAtDeferral], [AssetCategoryAtDeferral], [ReasonCode], [DeferredAt], [NextEligiblePmCycle])
@@ -289,7 +291,37 @@ public sealed class SqlServerDomainContractTests
 
         await using (var context = database.CreateContext())
         {
+            await context.Database.MigrateAsync(PreviousDeferralMigration);
+        }
+        await AssertOperationalRecordsPreservedAsync();
+        await using (var connection = new SqlConnection(database.ConnectionString))
+        {
+            await connection.OpenAsync();
+            await using var command = connection.CreateCommand();
+            command.CommandText = "SELECT COUNT(*) FROM sys.tables WHERE object_id = OBJECT_ID(N'dbo.ScheduleEnrollmentDeferrals');";
+            Assert.Equal(0, Convert.ToInt32(await command.ExecuteScalarAsync()));
+        }
+
+        await using (var context = database.CreateContext())
+        {
+            await context.Database.MigrateAsync("20261009182058_AddScheduleEnrollmentDeferrals");
+            var emptyDeferrals = await context.ScheduleEnrollmentDeferrals.CountAsync();
+            Assert.Equal(0, emptyDeferrals);
+        }
+        await using (var connection = new SqlConnection(database.ConnectionString))
+        {
+            await connection.OpenAsync();
+            await using var command = connection.CreateCommand();
+            command.CommandText = "SELECT COUNT(*) FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.ScheduleEnrollmentDeferrals') AND name IN (N'AssetId', N'PmCycle', N'NextEligiblePmCycle');";
+            Assert.Equal(3, Convert.ToInt32(await command.ExecuteScalarAsync()));
+        }
+        await AssertOperationalRecordsPreservedAsync();
+
+        await using (var context = database.CreateContext())
+        {
             await context.Database.MigrateAsync();
+            context.ScheduleEnrollmentDeferrals.Add(deferral);
+            await context.SaveChangesAsync();
         }
         await AssertRecordsPreservedAsync();
 
@@ -315,6 +347,13 @@ public sealed class SqlServerDomainContractTests
         Assert.All(await finalContext.ScheduleEnrollmentDeferrals
             .Where(item => item.AssetId == asset.Id)
             .ToArrayAsync(), item => Assert.Null(item.ReviewedAt));
+
+        await using (var duplicateContext = database.CreateContext())
+        {
+            duplicateContext.ScheduleEnrollmentDeferrals.Add(deferral);
+            await Assert.ThrowsAsync<DbUpdateException>(() => duplicateContext.SaveChangesAsync());
+        }
+        Assert.Equal(1, await finalContext.ScheduleEnrollmentDeferrals.CountAsync(item => item.AssetId == asset.Id));
 
         async Task AssertRecordsPreservedAsync()
         {

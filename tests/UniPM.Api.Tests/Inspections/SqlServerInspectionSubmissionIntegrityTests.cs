@@ -494,6 +494,125 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
         Assert.Null(existingSchedule.AssignedToUserId);
     }
 
+    [SqlServer2019Fact]
+    public async Task Gsd_sql_deferral_review_is_atomic_audited_filterable_and_paginated()
+    {
+        var connectionString = RequireSqlServer2019Connection();
+        await using var database = await SqlServerTestDatabase.CreateAsync(connectionString);
+        await using (var master = new SqlConnection(new SqlConnectionStringBuilder(database.ConnectionString)
+        { InitialCatalog = "master" }.ConnectionString))
+        {
+            await master.OpenAsync();
+            await using var command = master.CreateCommand();
+            var databaseName = new SqlConnectionStringBuilder(database.ConnectionString).InitialCatalog;
+            command.CommandText = $"ALTER DATABASE [{databaseName}] SET COMPATIBILITY_LEVEL = 150;";
+            await command.ExecuteNonQueryAsync();
+        }
+
+        var asset = new Asset
+        {
+            Id = Guid.NewGuid(),
+            AssetCode = $"SQL-DEFERRAL-{Guid.NewGuid():N}"[..20].ToUpperInvariant(),
+            AssetCategory = "fire-extinguisher",
+            Building = "Deferral Review Test",
+            Department = "CCMS",
+            Location = "Synthetic test area",
+            Status = AssetStatusCatalog.Active,
+            CreatedAt = new DateTimeOffset(2020, 1, 1, 0, 0, 0, TimeSpan.FromHours(8)),
+            UpdatedAt = DateTimeOffset.UtcNow
+        };
+        var deferredAt = new DateTimeOffset(2026, 10, 1, 0, 0, 0, TimeSpan.FromHours(8));
+        var deferrals = new[]
+        {
+            CreateDeferral("2026-02", "2026-05", deferredAt),
+            CreateDeferral("2026-05", "2026-08", deferredAt.AddDays(1)),
+            CreateDeferral("2026-08", "2026-11", deferredAt.AddDays(2))
+        };
+
+        await using (var seedContext = database.CreateContext())
+        {
+            await seedContext.Database.MigrateAsync();
+            seedContext.Assets.Add(asset);
+            seedContext.ScheduleEnrollmentDeferrals.AddRange(deferrals);
+            await seedContext.SaveChangesAsync();
+        }
+
+        await using var application = new SqlServerInspectionApplicationFactory(
+            database.ConnectionString,
+            AuthRoleCatalog.Gsd);
+        using var client = application.CreateClient();
+        var reviewPath = $"/api/v1/schedules/enrollment-deferrals/{asset.Id}/2026-02/review";
+        var reviewResponses = await Task.WhenAll(
+            client.PostAsJsonAsync(reviewPath, new { note = "Reviewed concurrently A" }),
+            client.PostAsJsonAsync(reviewPath, new { note = "Reviewed concurrently B" }));
+        try
+        {
+            Assert.Single(reviewResponses, response => response.StatusCode == HttpStatusCode.NoContent);
+            Assert.Single(reviewResponses, response => response.StatusCode == HttpStatusCode.Conflict);
+        }
+        finally
+        {
+            foreach (var response in reviewResponses)
+            {
+                response.Dispose();
+            }
+        }
+
+        await using (var verificationContext = database.CreateContext())
+        {
+            var reviewed = await verificationContext.ScheduleEnrollmentDeferrals
+                .SingleAsync(item => item.AssetId == asset.Id && item.PmCycle == "2026-02");
+            Assert.NotNull(reviewed.ReviewedAt);
+            Assert.Equal((Guid?)TestAuthenticationHandler.UserId, reviewed.ReviewedByUserId);
+            Assert.True(reviewed.ReviewNote is "Reviewed concurrently A" or "Reviewed concurrently B");
+        }
+
+        using var firstPendingResponse = await client.GetAsync(
+            "/api/v1/schedules/enrollment-deferrals?status=NeedsReview&assetCategory=fire-extinguisher&department=ccms&page=1&pageSize=1");
+        Assert.Equal(HttpStatusCode.OK, firstPendingResponse.StatusCode);
+        using var firstPendingPage = await JsonDocument.ParseAsync(await firstPendingResponse.Content.ReadAsStreamAsync());
+        Assert.Equal(2, firstPendingPage.RootElement.GetProperty("total").GetInt32());
+        Assert.Equal(2, firstPendingPage.RootElement.GetProperty("pendingCount").GetInt32());
+        Assert.Equal(1, firstPendingPage.RootElement.GetProperty("reviewedCount").GetInt32());
+        Assert.Equal("2026-08", Assert.Single(firstPendingPage.RootElement.GetProperty("items").EnumerateArray())
+            .GetProperty("deferredPmCycle").GetString());
+
+        using var secondPendingResponse = await client.GetAsync(
+            "/api/v1/schedules/enrollment-deferrals?status=NeedsReview&assetCategory=fire-extinguisher&department=CCMS&page=2&pageSize=1");
+        Assert.Equal(HttpStatusCode.OK, secondPendingResponse.StatusCode);
+        using var secondPendingPage = await JsonDocument.ParseAsync(await secondPendingResponse.Content.ReadAsStreamAsync());
+        Assert.Equal(2, secondPendingPage.RootElement.GetProperty("total").GetInt32());
+        Assert.Equal("2026-05", Assert.Single(secondPendingPage.RootElement.GetProperty("items").EnumerateArray())
+            .GetProperty("deferredPmCycle").GetString());
+
+        using var reviewedResponse = await client.GetAsync(
+            "/api/v1/schedules/enrollment-deferrals?status=Reviewed&assetCategory=fire-extinguisher&department=CCMS&pageSize=1");
+        Assert.Equal(HttpStatusCode.OK, reviewedResponse.StatusCode);
+        using var reviewedPage = await JsonDocument.ParseAsync(await reviewedResponse.Content.ReadAsStreamAsync());
+        Assert.Equal(1, reviewedPage.RootElement.GetProperty("total").GetInt32());
+        Assert.Equal(2, reviewedPage.RootElement.GetProperty("pendingCount").GetInt32());
+        Assert.Equal(1, reviewedPage.RootElement.GetProperty("reviewedCount").GetInt32());
+        var reviewedItem = Assert.Single(reviewedPage.RootElement.GetProperty("items").EnumerateArray());
+        Assert.Equal("2026-02", reviewedItem.GetProperty("deferredPmCycle").GetString());
+        Assert.Equal("Reviewed", reviewedItem.GetProperty("status").GetString());
+        Assert.Equal(TestAuthenticationHandler.UserId, reviewedItem.GetProperty("reviewedByUserId").GetGuid());
+
+        ScheduleEnrollmentDeferral CreateDeferral(
+            string pmCycle,
+            string nextEligiblePmCycle,
+            DateTimeOffset timestamp)
+            => new()
+            {
+                AssetId = asset.Id,
+                PmCycle = pmCycle,
+                DepartmentAtDeferral = "CCMS",
+                AssetCategoryAtDeferral = "fire-extinguisher",
+                ReasonCode = "BatchAssigned",
+                DeferredAt = timestamp,
+                NextEligiblePmCycle = nextEligiblePmCycle
+            };
+    }
+
     [SqlServerFact]
     public async Task Manual_schedule_creation_commits_the_schedule_with_its_batch_lock()
     {
@@ -815,6 +934,11 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
     private static string RequireSqlServerConnection()
     {
         return Environment.GetEnvironmentVariable("UNIPM_SQLSERVER_TEST_CONNECTION")!;
+    }
+
+    private static string RequireSqlServer2019Connection()
+    {
+        return Environment.GetEnvironmentVariable("UNIPM_SQLSERVER2019_TEST_CONNECTION")!;
     }
 
     private sealed class SqlServerInspectionApplicationFactory : WebApplicationFactory<Program>
