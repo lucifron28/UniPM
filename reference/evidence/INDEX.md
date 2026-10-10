@@ -16,6 +16,7 @@ record's evidence level and tested/source commit.
 
 | ID | Type | Title | Status | Evidence level | Tested/source commit | Record | Note |
 |---|---|---|---|---|---|---|---|
+| TEST-067 | test-run | Pre-evaluation exact-head GitHub CI | executed | ci-executed | f1fd7c798e61fdc4f54221fc1c7dfa32e62ceb6d | [record](test-runs/TEST-067-exact-head-github-ci.md) | Backend CI and both push/PR Web CI passed on the exact PR head; draft PR remained unmerged. |
 | TEST-066 | test-run | Pre-evaluation web and browser verification | executed | locally-executed | ecadf495fcfa482a6012f4fa378237596ed5fa35 | [record](test-runs/TEST-066-pre-evaluation-web-and-browser-verification.md) | Web checks passed; Playwright 46/46 including responsive and live role-chain workflow. GSD acceptance, full accessibility audit, Flutter, and exact-head CI are separate. |
 | TEST-065 | test-run | Pre-evaluation backend and SQL Server verification | executed | locally-executed | 5d68d8e39a884a085dc99dd448ac9b9d865ebc03 | [record](test-runs/TEST-065-pre-evaluation-backend-and-sqlserver-verification.md) | Release build and 384 backend tests passed with one optional skip; native SQL Server 2019 filter 37/37 passed, compatibility 150. |
 | IMP-048 | implementation | GSD schedule coverage review and effective-date boundary | reviewed | source-inspected | ecadf495fcfa482a6012f4fa378237596ed5fa35 | [record](implementation/IMP-048-gsd-schedule-coverage-review.md) | Coverage and deferral review are GSD-only; optional effective date remains unset by default pending GSD approval. |

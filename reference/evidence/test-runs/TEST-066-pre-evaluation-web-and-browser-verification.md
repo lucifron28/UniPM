@@ -76,4 +76,4 @@ Playwright, and disposable-resource cleanup logs. Raw logs are not committed.
 The browser checks are not a complete WCAG audit or screen-reader review. GSD
 acceptance, a temporary deployment, physical-device acceptance, and Flutter
 verification were not performed. No mobile source changed in this batch.
-Exact-head GitHub CI had not yet been checked when this record was written.
+Exact-head GitHub CI later passed at f1fd7c798e61fdc4f54221fc1c7dfa32e62ceb6d; see TEST-067.
