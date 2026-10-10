@@ -132,6 +132,7 @@ public sealed class ReferenceDocumentSqlServerTests
         var seeder = new SyntheticReferenceDocumentSeeder(factory, new ReferenceDocumentRegistrationService(factory));
         await seeder.SeedAsync();
         Assert.True(await WaitForContainsAsync(database.ConnectionString, "panel"));
+        Assert.True(await WaitForContainsAsync(database.ConnectionString, "authorized personnel"));
 
         var retriever = new SqlServerLexicalInstitutionalReferenceRetriever(factory);
         var results = await retriever.SearchAsync(new InstitutionalReferenceSearchRequest(
