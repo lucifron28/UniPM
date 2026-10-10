@@ -9,7 +9,7 @@ import {
   RouterProvider,
 } from '@tanstack/react-router'
 import { http, HttpResponse } from 'msw'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { configureApiRuntime } from '@/api/http-client'
 import { InspectionDetail } from '@/features/inspections/inspection-detail'
 import { InspectionHistory } from '@/features/inspections/inspection-history'
@@ -74,6 +74,7 @@ const inspection = {
   externalPmNumber: 'WMS-PM-777',
   wmsReferralRevision: 1,
   correctiveFollowUpStatus: 'ReferredToWms',
+  hasPhotoEvidence: false,
   createdAt: '2026-07-22T01:00:00Z',
   updatedAt: '2026-07-22T01:00:00Z',
 }
@@ -86,6 +87,8 @@ const history = [
     actionsRecommendations: inspection.actionsRecommendations,
   },
 ]
+
+afterEach(() => vi.unstubAllGlobals())
 
 function renderWithProviders(ui: React.ReactNode) {
   const client = new QueryClient({
@@ -311,6 +314,51 @@ describe('inspection review workflows', () => {
       await screen.findByRole('link', { name: 'FE-001' }),
     ).toBeInTheDocument()
     expect(screen.getByText('Recommendation')).toBeInTheDocument()
+    expect(screen.getByText('Inspection photo evidence')).toBeInTheDocument()
+    expect(screen.getByText('No photo evidence recorded.')).toBeInTheDocument()
+  })
+
+  it('shows a private photo thumbnail with an authorized larger preview', async () => {
+    const createObjectUrl = vi.fn(() => 'blob:inspection-photo')
+    const NativeURL = URL
+    class TestURL extends NativeURL {
+      static createObjectURL = createObjectUrl
+      static revokeObjectURL = vi.fn()
+    }
+    vi.stubGlobal('URL', TestURL)
+    mockInspectionApi()
+    server.use(
+      http.get(`${base}/inspections/${inspectionId}`, () =>
+        HttpResponse.json({ ...inspection, hasPhotoEvidence: true }),
+      ),
+      http.get(
+        `${base}/inspections/${inspectionId}/photo`,
+        () =>
+          new HttpResponse(new Uint8Array([0xff, 0xd8]), {
+            headers: { 'Content-Type': 'image/jpeg' },
+          }),
+      ),
+    )
+    renderWithProviders(<InspectionDetail inspectionId={inspectionId} />)
+
+    const thumbnail = await screen.findByRole('button', {
+      name: 'Open inspection photo preview',
+    })
+    expect(createObjectUrl).toHaveBeenCalledOnce()
+    expect(
+      screen.getByRole('img', { name: 'Inspection photo thumbnail' }),
+    ).toHaveAttribute('src', 'blob:inspection-photo')
+    await userEvent.setup().click(thumbnail)
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(
+      await screen.findByRole('img', {
+        name: 'Photo captured for this inspection',
+      }),
+    ).toHaveAttribute('src', 'blob:inspection-photo')
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: 'Close photo preview' }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('renders compact asset history and an honest unavailable state', async () => {

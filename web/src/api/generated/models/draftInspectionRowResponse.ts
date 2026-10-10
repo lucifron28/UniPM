@@ -16,6 +16,7 @@ export interface DraftInspectionRowResponse {
   /** @nullable */
   completedAt: string | null
   isOperational: boolean
+  hasPhotoEvidence?: boolean
   /** @nullable */
   remarks: string | null
   /** @nullable */

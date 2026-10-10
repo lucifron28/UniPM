@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { ZodError } from 'zod'
 import { ApiError } from '@/api/problem-details'
@@ -6,7 +7,10 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAsset } from '@/features/assets/asset-queries'
-import { useInspection } from '@/features/inspections/inspection-queries'
+import {
+  useInspection,
+  useInspectionPhotoEvidence,
+} from '@/features/inspections/inspection-queries'
 import type { InspectionSearch } from '@/features/inspections/inspection-registry'
 import {
   formatInspectionDate,
@@ -68,6 +72,119 @@ function DetailError({
           <DetailBackLink context={context} fallback={fallback} />
         </Button>
       </div>
+    </Card>
+  )
+}
+
+function InspectionPhotoEvidencePanel({
+  inspectionId,
+  hasPhotoEvidence,
+}: {
+  inspectionId: string
+  hasPhotoEvidence: boolean
+}) {
+  const [showPreview, setShowPreview] = useState(false)
+  const photo = useInspectionPhotoEvidence(inspectionId, hasPhotoEvidence)
+  const [photoObjectUrl, setPhotoObjectUrl] = useState<
+    { blob: Blob; url: string } | undefined
+  >()
+  const photoUrl =
+    hasPhotoEvidence && photoObjectUrl && photo.data === photoObjectUrl.blob
+      ? photoObjectUrl.url
+      : undefined
+
+  useEffect(() => {
+    if (!hasPhotoEvidence || !photo.data) return
+    const url = URL.createObjectURL(photo.data)
+    // Object URLs are browser-managed handles that this component must retain.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setPhotoObjectUrl({ blob: photo.data, url })
+    return () => URL.revokeObjectURL(url)
+  }, [hasPhotoEvidence, photo.data])
+
+  return (
+    <Card className="space-y-3 shadow-none">
+      <h2 className="font-semibold">Inspection photo evidence</h2>
+      {!hasPhotoEvidence ? (
+        <p className="text-sm text-[var(--text-secondary)]">
+          No photo evidence recorded.
+        </p>
+      ) : (
+        <>
+          {photo.isPending && (
+            <p role="status" className="text-sm text-[var(--text-secondary)]">
+              Loading private photo evidence...
+            </p>
+          )}
+          {photo.isError && (
+            <div role="alert" className="space-y-2">
+              <p className="text-sm text-[var(--error)]">
+                The private photo could not be loaded.
+              </p>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => void photo.refetch()}
+              >
+                Retry photo
+              </Button>
+            </div>
+          )}
+          {photoUrl && (
+            <div className="flex flex-wrap items-center gap-4">
+              <button
+                type="button"
+                aria-label="Open inspection photo preview"
+                onClick={() => setShowPreview(true)}
+                className="overflow-hidden rounded-md border border-[var(--border-soft)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
+              >
+                <img
+                  src={photoUrl}
+                  alt="Inspection photo thumbnail"
+                  className="h-32 w-32 object-cover"
+                />
+              </button>
+              <p className="text-sm text-[var(--text-secondary)]">
+                Select the thumbnail to view the photo.
+              </p>
+            </div>
+          )}
+          {showPreview && photoUrl && (
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="inspection-photo-preview-title"
+              onKeyDown={(event) => {
+                if (event.key === 'Escape') setShowPreview(false)
+              }}
+              className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4"
+            >
+              <div className="w-full max-w-5xl space-y-3 rounded-lg bg-white p-4 shadow-xl">
+                <div className="flex items-center justify-between gap-3">
+                  <h3
+                    id="inspection-photo-preview-title"
+                    className="font-semibold text-[var(--text-primary)]"
+                  >
+                    Inspection photo evidence
+                  </h3>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => setShowPreview(false)}
+                  >
+                    Close photo preview
+                  </Button>
+                </div>
+                <img
+                  src={photoUrl}
+                  alt="Photo captured for this inspection"
+                  className="mx-auto max-h-[80vh] max-w-full rounded-md border object-contain"
+                />
+              </div>
+            </div>
+          )}
+        </>
+      )}
     </Card>
   )
 }
@@ -339,6 +456,11 @@ export function InspectionDetail({
           </dl>
         </Card>
       )}
+
+      <InspectionPhotoEvidencePanel
+        inspectionId={record.id}
+        hasPhotoEvidence={record.hasPhotoEvidence}
+      />
 
       <Card className="space-y-5 shadow-none">
         <div>

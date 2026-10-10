@@ -57,6 +57,7 @@ const inspection = {
   inspectorUserId: session.user.id,
   dateInspected: '2026-07-22T01:00:00Z',
   isOperational: false,
+  hasPhotoEvidence: false,
   remarks: 'Low pressure recorded during inspection.',
   actionsRecommendations: 'Arrange a pressure check.',
   externalPmNumber: null,

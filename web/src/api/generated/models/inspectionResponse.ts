@@ -31,4 +31,5 @@ export interface InspectionResponse {
   /** @pattern ^-?(?:0|[1-9]\d*)$ */
   wmsReferralRevision?: number | string
   correctiveFollowUpStatus?: string
+  hasPhotoEvidence?: boolean
 }

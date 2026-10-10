@@ -24,6 +24,7 @@ export const inspectionSchema = z
     inspectorUserId: z.string().uuid(),
     dateInspected: z.string().datetime({ offset: true }),
     isOperational: z.boolean(),
+    hasPhotoEvidence: z.boolean(),
     remarks: sourceText,
     actionsRecommendations: sourceText,
     dateAccomplished: z
