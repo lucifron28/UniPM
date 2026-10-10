@@ -16,6 +16,7 @@ record's evidence level and tested/source commit.
 
 | ID | Type | Title | Status | Evidence level | Tested/source commit | Record | Note |
 |---|---|---|---|---|---|---|---|
+| TEST-070 | test-run | CPMP Water Drinking Station frequency clarification | executed | locally-executed | 84347dfa21267e2528aa0647261e20c56a58cd6c | [record](test-runs/TEST-070-cpmp-frequency-clarification.md) | Direct review confirms the manual's Section 2.4.2 table and Section 2.7 revision-history entry conflict; the existing frequency and focused test match the operative table. The inconsistency is documented, not treated as a release blocker. |
 | TEST-069 | test-run | Schedule recovery across application restart verification | executed | locally-executed | 09d1cfa10377df788783089235bad7d52b14a049 | [record](test-runs/TEST-069-schedule-recovery-restart-verification.md) | Release build and full backend passed 386/0/1 optional skip; all 39 SQL Server-tagged tests passed, including SQL-backed host restart recovery. |
 | TEST-068 | test-run | Final pre-evaluation backend and SQL Server verification | executed | locally-executed | 473dcbcecc8570e692a1f7a86c743b6d5b57fa8f | [record](test-runs/TEST-068-final-pre-evaluation-backend-and-sqlserver-verification.md) | Release build and 385 backend tests passed with one optional skip; 38 SQL/Full-Text tests passed, including migration round-trip and deferral concurrency. |
 | TEST-067 | test-run | Pre-evaluation exact-head GitHub CI | executed | ci-executed | f1fd7c798e61fdc4f54221fc1c7dfa32e62ceb6d | [record](test-runs/TEST-067-exact-head-github-ci.md) | Backend CI and both push/PR Web CI passed on the exact PR head; draft PR remained unmerged. |
@@ -30,7 +31,7 @@ record's evidence level and tested/source commit.
 | TEST-061 | test-run | CPMP batch-lock deferral and pre-evaluation UX verification | executed | locally-executed | bd41690; formatter and diff checks at ec7a7d6 | [record](test-runs/TEST-061-pre-evaluation-ux-motion.md) | Backend 338 passed/37 skipped; Web 207 unit tests, 44 Playwright passed/1 skipped; SQL-specific cases skipped, exact-head CI checked separately. |
 | TEST-060 | test-run | CPMP scheduling, assignment, registry, and WMS remediation verification | executed | locally-executed | `a8f05d75e26993606953e3da97bb6b437ccf9794`; per-run identities in record | [record](test-runs/TEST-060-pre-evaluation-remediation.md) | Backend, web, live role-chain, and Flutter identities are separated; native migration snapshots lack a retained source fingerprint; CI and physical-device acceptance remain unverified. |
 | IMP-045 | implementation | CPMP batch-lock enrollment deferral and pre-evaluation UX refinements | reviewed | source-inspected | ec7a7d6 | [record](implementation/IMP-045-pre-evaluation-ux-motion.md) | Transaction persistence correction and lock-aware enrollment; SQL Server execution remains unverified locally. |
-| IMP-044 | implementation | CPMP scheduling, two-stage assignment, registry filters, and WMS referrals | reviewed | source-inspected | `b181800762c44c1b3233c0302ef48aa249c6bb9d` | [record](implementation/IMP-044-pre-evaluation-cpmp-and-wms-remediation.md) | Summarizes the isolated remediation commit series and the unresolved WDS frequency discrepancy. |
+| IMP-044 | implementation | CPMP scheduling, two-stage assignment, registry filters, and WMS referrals | reviewed | source-inspected | `b181800762c44c1b3233c0302ef48aa249c6bb9d` | [record](implementation/IMP-044-pre-evaluation-cpmp-and-wms-remediation.md) | Current implementation follows the operative Section 2.4.2 WDS frequency; the Section 2.7 inconsistency remains documented. TEST-070 records the owner decision and focused test. |
 | TEST-059 | test-run | PM analytics environment and evaluator provenance verification | executed | locally-executed | `79ab459` + patch `d675c1fc` | [record](test-runs/TEST-059-pm-analytics-environment-and-evaluator-provenance.md) | Focused Release filter passed 23/23 on the identified working patch; initial compile-only attempt ran no tests. Later commits and exact-head CI are not claimed. |
 | TEST-058 | test-run | Guarded PM analytics interpretation verification | executed | locally-executed | `c0d1cd8d32374756c775b2dae0b596cdbb1f18cb` | [record](test-runs/TEST-058-guarded-pm-analytics-interpretation-verification.md) | Focused Release run passed 60, skipped one SQL Server fact, and failed none. The initial sandbox launch was NOT EXECUTED; no live model, native SQL rerun, real JWT, or browser result is claimed. |
 | TEST-057 | test-run | Schema-constrained PM analytics SQL Server and empty-count verification | executed | locally-executed | `684252040c961d8e5f8c89a23d91de55f9d16a63` | [record](test-runs/TEST-057-schema-constrained-pm-analytics-sql-and-empty-count-verification.md) | Native SQL Server 2019 analytics filter passed 40/40; focused empty-count web tests passed 8/8. Real authentication, browser E2E, and full-suite verification are not claimed. |
@@ -160,9 +161,21 @@ record's evidence level and tested/source commit.
 - Physical-device and iOS verification for the pre-acceptance hardening remain
   unverified. Native SQL coverage was skipped in TEST-042 because no test
   connection was configured.
-- GSD confirmation of Water Drinking Station frequency remains pending. The
-  operative CPMP table lists February/May/August/November; revision history
-  lists June/December. TEST-060 records the page references and current behavior.
+- GSD approval of `ScheduleGeneration:EffectiveDate` and GSD/staging acceptance
+  remain pending. Temporary deployment, production configuration, physical
+  device/iOS behavior, complete WCAG coverage, and screen-reader review also
+  remain unverified. These are separate from the CPMP frequency selection.
+
+### Resolved CPMP schedule interpretation
+
+On 2026-10-10, the project owner selected the operative schedule table in CPMP
+Section 2.4.2 (PDF page 3): Water Drinking Stations are scheduled in February,
+May, August, and November. Section 2.7 (PDF page 19) describes June and
+December for the same category, so the manual remains internally inconsistent
+and has not been corrected. The repository implementation and focused test
+match Section 2.4.2. TEST-070 records the source review and test. TEST-060,
+TEST-068, and TEST-069 retain their historical status as recorded at the time;
+the frequency discrepancy is no longer a current implementation blocker.
 
 ### Historical RAG evaluations retired with the feature
 

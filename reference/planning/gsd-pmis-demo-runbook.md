@@ -163,6 +163,15 @@ UniPM derives the deadline from the final instant of that month in
 Asia/Manila time. `InspectionRecord.CompletedAt` remains the actual field-work
 completion time.
 
+This category schedule follows Section 2.4.2 of the CPMP manual (PDF page 3).
+Section 2.7 (PDF page 19) separately describes Water Drinking Stations as
+scheduled in June and December. UniPM follows the operative Section 2.4.2
+table, so the Water Drinking Station months are February, May, August, and
+November. The two sections remain inconsistent in the manual; this decision
+does not claim that the manual has been corrected. GSD approval of the
+schedule-generation effective date, staging acceptance, physical-device
+testing, and deployment verification remain separate pending items.
+
 Explain the dashboard measures separately:
 
 - **Progress** is inspected divided by scheduled.
