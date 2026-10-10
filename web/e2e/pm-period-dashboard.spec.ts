@@ -2,7 +2,7 @@ import { expect, test, type Locator, type Page } from '@playwright/test'
 
 const session = {
   accessToken: 'fictional-pm-dashboard-token',
-  expiresAtUtc: '2026-08-01T12:00:00Z',
+  expiresAtUtc: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
   user: {
     id: '22222222-2222-4222-8222-222222222222',
     email: 'fictional.gsd@example.test',
@@ -24,20 +24,20 @@ const cycles = [
     assetCategory: 'fire-extinguisher',
     year: 2026,
     cycles: [
-      { pmCycle: '2026-01', scheduled: 1 },
-      { pmCycle: '2026-06', scheduled: 3 },
-      { pmCycle: '2026-07', scheduled: 4 },
+      { pmCycle: '2026-05', scheduled: 3 },
+      { pmCycle: '2026-08', scheduled: 4 },
+      { pmCycle: '2026-11', scheduled: 1 },
     ],
   },
   {
     assetCategory: 'fire-extinguisher',
     year: 2025,
-    cycles: [{ pmCycle: '2025-12', scheduled: 2 }],
+    cycles: [{ pmCycle: '2025-11', scheduled: 2 }],
   },
   {
     assetCategory: 'fire-alarm',
     year: 2026,
-    cycles: [{ pmCycle: '2026-03', scheduled: 2 }],
+    cycles: [{ pmCycle: '2026-06', scheduled: 2 }],
   },
 ]
 
@@ -51,7 +51,17 @@ function jsonResponse(body: unknown) {
 
 function deadlineFor(pmCycle: string) {
   const [year, month] = pmCycle.split('-').map(Number)
-  return new Date(Date.UTC(year, month, 0, 16)).toISOString()
+  return new Date(Date.UTC(year, month, 0, 15, 59, 59, 999)).toISOString()
+}
+
+function dateInCycle(pmCycle: string, day: number) {
+  const [year, month] = pmCycle.split('-').map(Number)
+  return new Date(Date.UTC(year, month - 1, day, 8)).toISOString()
+}
+
+function dateAfterCycle(pmCycle: string, day: number) {
+  const [year, month] = pmCycle.split('-').map(Number)
+  return new Date(Date.UTC(year, month, day, 8)).toISOString()
 }
 
 function makeAssetRow({
@@ -89,7 +99,7 @@ function makeAssetRow({
     location: assetCode === 'FE-003' ? 'Second floor' : 'Lobby',
     department,
     pmCycle,
-    scheduleDate: `${pmCycle}-01T00:00:00+00:00`,
+    scheduleDate: deadlineFor(pmCycle),
     deadline: deadlineFor(pmCycle),
     scheduleStatus: 'Scheduled',
     executionStatus,
@@ -100,12 +110,12 @@ function makeAssetRow({
     formId: isInspected ? id : null,
     formStatus,
     isAcknowledged,
-    acknowledgedAt: isAcknowledged ? '2026-07-30T08:00:00Z' : null,
+    acknowledgedAt: isAcknowledged ? dateAfterCycle(pmCycle, 30) : null,
   }
 }
 
 function fixtureAssets(pmCycle: string) {
-  if (pmCycle === '2026-01') {
+  if (pmCycle === '2026-11') {
     return [
       makeAssetRow({
         id: assetIds.future,
@@ -120,7 +130,7 @@ function fixtureAssets(pmCycle: string) {
     ]
   }
 
-  if (pmCycle === '2026-06') {
+  if (pmCycle === '2026-05') {
     return [
       makeAssetRow({
         id: assetIds.onTime,
@@ -131,7 +141,7 @@ function fixtureAssets(pmCycle: string) {
         condition: 'Operational',
         executionStatus: 'Completed',
         isInspected: true,
-        inspectionCompletedAt: '2026-06-20T08:00:00Z',
+        inspectionCompletedAt: dateInCycle(pmCycle, 20),
         formStatus: 'Acknowledged',
         isAcknowledged: true,
       }),
@@ -144,7 +154,7 @@ function fixtureAssets(pmCycle: string) {
         condition: 'NonOperational',
         executionStatus: 'Completed',
         isInspected: true,
-        inspectionCompletedAt: '2026-06-30T08:00:00Z',
+        inspectionCompletedAt: dateAfterCycle(pmCycle, 2),
         formStatus: 'Submitted',
       }),
       makeAssetRow({
@@ -170,7 +180,7 @@ function fixtureAssets(pmCycle: string) {
       condition: 'Operational',
       executionStatus: 'Completed',
       isInspected: true,
-      inspectionCompletedAt: '2026-07-20T08:00:00Z',
+      inspectionCompletedAt: dateInCycle(pmCycle, 20),
       formStatus: 'Acknowledged',
       isAcknowledged: true,
     }),
@@ -183,7 +193,7 @@ function fixtureAssets(pmCycle: string) {
       condition: 'NonOperational',
       executionStatus: 'Completed',
       isInspected: true,
-      inspectionCompletedAt: '2026-07-30T08:00:00Z',
+      inspectionCompletedAt: dateAfterCycle(pmCycle, 2),
       formStatus: 'Submitted',
     }),
     makeAssetRow({
@@ -200,7 +210,7 @@ function fixtureAssets(pmCycle: string) {
 }
 
 function dashboardFixture(url: URL) {
-  const pmCycle = url.searchParams.get('pmCycle') ?? '2026-07'
+  const pmCycle = url.searchParams.get('pmCycle') ?? '2026-08'
   const assetCategory =
     url.searchParams.get('assetCategory') ?? 'fire-extinguisher'
   const department = url.searchParams.get('department')
@@ -208,9 +218,9 @@ function dashboardFixture(url: URL) {
   const timeliness = url.searchParams.get('timeliness')
   const search = url.searchParams.get('search')?.toLowerCase()
   const periodState =
-    pmCycle === '2026-01'
+    pmCycle === '2026-11'
       ? 'Future'
-      : pmCycle === '2026-06'
+      : pmCycle === '2026-05'
         ? 'Active'
         : 'Closed'
 
@@ -297,7 +307,7 @@ function dashboardFixture(url: URL) {
         formId: null,
         formStatus: 'Submitted',
         fileNumber: 'PM-2026-001',
-        submittedAt: '2026-07-30T08:00:00Z',
+        submittedAt: dateAfterCycle(pmCycle, 30),
         isAcknowledged: false,
         acknowledgedAt: null,
       },
@@ -308,7 +318,6 @@ function dashboardFixture(url: URL) {
 
 async function mockDashboardApi(page: Page) {
   const requests: URL[] = []
-
   await page.route('**/api/v1/auth/refresh', (route) =>
     route.fulfill(jsonResponse(session)),
   )
@@ -326,6 +335,18 @@ async function mockDashboardApi(page: Page) {
   })
   await page.route('**/api/v1/pm-period-dashboard/cycles**', (route) =>
     route.fulfill(jsonResponse(cycles)),
+  )
+  await page.route('**/api/v1/schedules/enrollment-deferrals**', (route) =>
+    route.fulfill(
+      jsonResponse({
+        page: 1,
+        pageSize: 10,
+        total: 0,
+        pendingCount: 0,
+        reviewedCount: 0,
+        items: [],
+      }),
+    ),
   )
   await page.route('**/api/v1/reference-data/asset-categories', (route) =>
     route.fulfill(
@@ -459,11 +480,11 @@ async function generateDashboard(page: Page) {
 }
 
 test.describe('PM period dashboard', () => {
-  test('filters and exports the generated June report', async ({ page }) => {
+  test('filters and exports the generated May report', async ({ page }) => {
     const requests = await mockDashboardApi(page)
-    const juneScope = {
+    const mayScope = {
       assetCategory: 'fire-extinguisher',
-      pmCycle: '2026-06',
+      pmCycle: '2026-05',
     }
     await page.addInitScript(() => {
       window.print = () => {
@@ -476,10 +497,10 @@ test.describe('PM period dashboard', () => {
       page.getByRole('button', { name: 'Generate dashboard' }),
     ).toBeDisabled()
     expect(requests).toHaveLength(0)
-    await selectDashboardPeriod(page, 'June')
+    await selectDashboardPeriod(page, 'May')
     expect(requests).toHaveLength(0)
     await generateDashboard(page)
-    await expectRequest(requests, juneScope)
+    await expectRequest(requests, mayScope)
 
     const report = page.locator('.pm-dashboard-report')
     const assets = assetTable(page).getByRole('link')
@@ -493,13 +514,13 @@ test.describe('PM period dashboard', () => {
     ).toBeVisible()
     const onTimeRow = assetRow(page, 'FE-001')
     await expect(assetCell(onTimeRow, 'scheduledMonth')).toContainText(
-      'June 2026',
+      'May 2026',
     )
     await expect(assetCell(onTimeRow, 'scheduledMonth')).toContainText(
-      'Due date: Jun 30, 2026',
+      'Due date: May 31, 2026',
     )
     await expect(assetCell(onTimeRow, 'inspection')).toContainText(
-      'Actual inspection date: Jun 20, 2026',
+      'Actual inspection date: May 20, 2026',
     )
     const metrics = await readOfficialMetrics(page)
     expect(metrics).toEqual([
@@ -516,7 +537,7 @@ test.describe('PM period dashboard', () => {
 
     await page.getByLabel('Condition').selectOption('NonOperational')
     await expectRequest(requests, {
-      ...juneScope,
+      ...mayScope,
       condition: 'NonOperational',
     })
     await expect(page).toHaveURL(/condition=NonOperational/)
@@ -532,7 +553,7 @@ test.describe('PM period dashboard', () => {
       .toBe(false)
     await page.getByLabel('Timeliness / status').selectOption('Late')
     await expectRequest(requests, {
-      ...juneScope,
+      ...mayScope,
       timeliness: 'Late',
     })
     await expect(page).toHaveURL(/timeliness=Late/)
@@ -549,7 +570,7 @@ test.describe('PM period dashboard', () => {
     await page.getByLabel('Search assets').fill('FE-001')
     await page.getByRole('button', { name: 'Apply search' }).click()
     await expectRequest(requests, {
-      ...juneScope,
+      ...mayScope,
       search: 'FE-001',
     })
     await expect(page).toHaveURL(/search=FE-001/)
@@ -562,7 +583,7 @@ test.describe('PM period dashboard', () => {
       .toBe('Operational')
     await page.getByLabel('Timeliness / status').selectOption('OnTime')
     await expectRequest(requests, {
-      ...juneScope,
+      ...mayScope,
       condition: 'Operational',
       timeliness: 'OnTime',
       search: 'FE-001',
@@ -590,7 +611,7 @@ test.describe('PM period dashboard', () => {
     ])
     await expect(filterSummary).toContainText('narrow asset rows only')
     await expect(report).toContainText('UniPM')
-    await expect(report).toContainText('June 2026')
+    await expect(report).toContainText('May 2026')
     await expect(report).toContainText('All departments')
     await expect(page.locator('form:visible')).toHaveCount(0)
     await expect(
@@ -625,7 +646,7 @@ test.describe('PM period dashboard', () => {
 
     await page.getByLabel('Department').selectOption('OPS')
     await expectRequest(requests, {
-      ...juneScope,
+      ...mayScope,
       department: 'OPS',
     })
     await expect(metricCard(page, 'Scheduled')).toContainText('2')
@@ -637,11 +658,11 @@ test.describe('PM period dashboard', () => {
   }) => {
     const requests = await mockDashboardApi(page)
     await page.goto(
-      '/app/dashboard?assetCategory=fire-extinguisher&year=2026&pmCycle=2026-07',
+      '/app/dashboard?assetCategory=fire-extinguisher&year=2026&pmCycle=2026-08',
     )
     await expectRequest(requests, {
       assetCategory: 'fire-extinguisher',
-      pmCycle: '2026-07',
+      pmCycle: '2026-08',
     })
     await expect(page.locator('.pm-dashboard-report')).toBeVisible()
     await expect(metricCard(page, 'Scheduled')).toContainText('4')
@@ -652,7 +673,7 @@ test.describe('PM period dashboard', () => {
       search: {
         assetCategory: 'fire-extinguisher',
         year: 2026,
-        pmCycle: '2026-07',
+        pmCycle: '2026-08',
       },
     }
     await expect(assetLink).toHaveAttribute(
@@ -667,7 +688,7 @@ test.describe('PM period dashboard', () => {
     await page.getByRole('link', { name: 'Back to PM dashboard' }).click()
     await expect(page).toHaveURL(/assetCategory=fire-extinguisher/)
     await expect(page).toHaveURL(/year=2026/)
-    await expect(page).toHaveURL(/pmCycle=2026-07/)
+    await expect(page).toHaveURL(/pmCycle=2026-08/)
   })
 
   test('presents Future, Active, and Closed states and contains tables on mobile', async ({
@@ -675,11 +696,11 @@ test.describe('PM period dashboard', () => {
   }) => {
     const requests = await mockDashboardApi(page)
     await page.goto(
-      '/app/dashboard?assetCategory=fire-extinguisher&year=2026&pmCycle=2026-01',
+      '/app/dashboard?assetCategory=fire-extinguisher&year=2026&pmCycle=2026-11',
     )
     await expectRequest(requests, {
       assetCategory: 'fire-extinguisher',
-      pmCycle: '2026-01',
+      pmCycle: '2026-11',
     })
     await expect(page.locator('.pm-dashboard-report')).toBeVisible()
     await expect(
@@ -708,12 +729,12 @@ test.describe('PM period dashboard', () => {
 
     const futureRequestCount = requests.length
     await page.getByRole('button', { name: 'Change selection' }).click()
-    await selectDashboardPeriod(page, 'June')
+    await selectDashboardPeriod(page, 'May')
     expect(requests).toHaveLength(futureRequestCount)
     await generateDashboard(page)
     await expectRequest(requests, {
       assetCategory: 'fire-extinguisher',
-      pmCycle: '2026-06',
+      pmCycle: '2026-05',
     })
     await expect(
       page.getByText('Active', { exact: true }).first(),
@@ -742,12 +763,12 @@ test.describe('PM period dashboard', () => {
 
     const activeRequestCount = requests.length
     await page.getByRole('button', { name: 'Change selection' }).click()
-    await selectDashboardPeriod(page, 'July')
+    await selectDashboardPeriod(page, 'August')
     expect(requests).toHaveLength(activeRequestCount)
     await generateDashboard(page)
     await expectRequest(requests, {
       assetCategory: 'fire-extinguisher',
-      pmCycle: '2026-07',
+      pmCycle: '2026-08',
     })
     await expect(
       page.getByText('Closed', { exact: true }).first(),
@@ -785,8 +806,21 @@ test.describe('PM period dashboard', () => {
       metricCard(page, 'Compliance rate').locator('p').nth(1),
     ).toHaveText('50%')
 
-    await page.setViewportSize({ width: 375, height: 667 })
     const scheduledAssetsTable = assetTable(page)
+    await page.setViewportSize({ width: 768, height: 1024 })
+    await expect(scheduledAssetsTable).toBeVisible()
+    const tabletPageDimensions = await page.evaluate(() => ({
+      viewportWidth: window.innerWidth,
+      documentWidth: Math.max(
+        document.documentElement.scrollWidth,
+        document.body.scrollWidth,
+      ),
+    }))
+    expect(tabletPageDimensions.documentWidth).toBeLessThanOrEqual(
+      tabletPageDimensions.viewportWidth,
+    )
+
+    await page.setViewportSize({ width: 375, height: 667 })
     await expect(scheduledAssetsTable).toHaveCount(1)
     await expect(scheduledAssetsTable).toBeVisible()
     await expect(scheduledAssetsTable).toHaveAccessibleName(
@@ -910,7 +944,7 @@ test.describe('PM period dashboard', () => {
 
     // This legacy dashboard cycle checks that the question sets its own scope.
     await page.goto(
-      '/app/dashboard?assetCategory=fire-extinguisher&year=2026&pmCycle=2026-07',
+      '/app/dashboard?assetCategory=fire-extinguisher&year=2026&pmCycle=2026-08',
     )
     await expect(
       page.getByRole('heading', { name: 'Ask about PM results' }),

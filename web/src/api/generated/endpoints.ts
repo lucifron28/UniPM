@@ -47,6 +47,8 @@ import type {
   ListInspectionsParams,
   ListPmPeriodDashboardCyclesParams,
   ListPreventiveMaintenanceFormsParams,
+  ListScheduleCoverageReviewParams,
+  ListScheduleEnrollmentDeferralsParams,
   ListSchedulesParams,
   LoginRequest,
   LoginResponse,
@@ -60,6 +62,9 @@ import type {
   PreventiveMaintenanceFormResponse,
   ProblemDetails,
   ScheduleAssignmentBatchResponse,
+  ScheduleCoverageReviewPage,
+  ScheduleEnrollmentDeferralPage,
+  ScheduleEnrollmentDeferralReviewRequest,
   ScheduleGenerationResult,
   ScheduleReferenceResponse,
   ScheduleResponse,
@@ -5242,6 +5247,447 @@ export const useGeneratePreventiveMaintenanceSchedules = <
 > => {
   return useMutation(
     getGeneratePreventiveMaintenanceSchedulesMutationOptions(options),
+    queryClient,
+  )
+}
+
+/**
+ * @summary Lists past CPMP cycles missing both a schedule and a deferral for GSD review
+ */
+export const listScheduleCoverageReview = (
+  params?: ListScheduleCoverageReviewParams,
+  signal?: AbortSignal,
+) => {
+  return customInstance<ScheduleCoverageReviewPage>({
+    url: `/api/v1/schedules/coverage-review`,
+    method: 'GET',
+    params,
+    signal,
+  })
+}
+
+export const getListScheduleCoverageReviewQueryKey = (
+  params?: ListScheduleCoverageReviewParams,
+) => {
+  return [
+    `/api/v1/schedules/coverage-review`,
+    ...(params ? [params] : []),
+  ] as const
+}
+
+export const getListScheduleCoverageReviewQueryOptions = <
+  TData = Awaited<ReturnType<typeof listScheduleCoverageReview>>,
+  TError = void,
+>(
+  params?: ListScheduleCoverageReviewParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listScheduleCoverageReview>>,
+        TError,
+        TData
+      >
+    >
+  },
+) => {
+  const { query: queryOptions } = options ?? {}
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListScheduleCoverageReviewQueryKey(params)
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listScheduleCoverageReview>>
+  > = ({ signal }) => listScheduleCoverageReview(params, signal)
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listScheduleCoverageReview>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListScheduleCoverageReviewQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listScheduleCoverageReview>>
+>
+export type ListScheduleCoverageReviewQueryError = void
+
+export function useListScheduleCoverageReview<
+  TData = Awaited<ReturnType<typeof listScheduleCoverageReview>>,
+  TError = void,
+>(
+  params: undefined | ListScheduleCoverageReviewParams,
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listScheduleCoverageReview>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listScheduleCoverageReview>>,
+          TError,
+          Awaited<ReturnType<typeof listScheduleCoverageReview>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useListScheduleCoverageReview<
+  TData = Awaited<ReturnType<typeof listScheduleCoverageReview>>,
+  TError = void,
+>(
+  params?: ListScheduleCoverageReviewParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listScheduleCoverageReview>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listScheduleCoverageReview>>,
+          TError,
+          Awaited<ReturnType<typeof listScheduleCoverageReview>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useListScheduleCoverageReview<
+  TData = Awaited<ReturnType<typeof listScheduleCoverageReview>>,
+  TError = void,
+>(
+  params?: ListScheduleCoverageReviewParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listScheduleCoverageReview>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+/**
+ * @summary Lists past CPMP cycles missing both a schedule and a deferral for GSD review
+ */
+
+export function useListScheduleCoverageReview<
+  TData = Awaited<ReturnType<typeof listScheduleCoverageReview>>,
+  TError = void,
+>(
+  params?: ListScheduleCoverageReviewParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listScheduleCoverageReview>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+} {
+  const queryOptions = getListScheduleCoverageReviewQueryOptions(
+    params,
+    options,
+  )
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+
+  return withQueryKey(query, queryOptions.queryKey)
+}
+
+/**
+ * @summary Lists deferred asset cycles and their GSD review status
+ */
+export const listScheduleEnrollmentDeferrals = (
+  params?: ListScheduleEnrollmentDeferralsParams,
+  signal?: AbortSignal,
+) => {
+  return customInstance<ScheduleEnrollmentDeferralPage>({
+    url: `/api/v1/schedules/enrollment-deferrals`,
+    method: 'GET',
+    params,
+    signal,
+  })
+}
+
+export const getListScheduleEnrollmentDeferralsQueryKey = (
+  params?: ListScheduleEnrollmentDeferralsParams,
+) => {
+  return [
+    `/api/v1/schedules/enrollment-deferrals`,
+    ...(params ? [params] : []),
+  ] as const
+}
+
+export const getListScheduleEnrollmentDeferralsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>,
+  TError = ValidationProblemDetails | void,
+>(
+  params?: ListScheduleEnrollmentDeferralsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>,
+        TError,
+        TData
+      >
+    >
+  },
+) => {
+  const { query: queryOptions } = options ?? {}
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListScheduleEnrollmentDeferralsQueryKey(params)
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>
+  > = ({ signal }) => listScheduleEnrollmentDeferrals(params, signal)
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListScheduleEnrollmentDeferralsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>
+>
+export type ListScheduleEnrollmentDeferralsQueryError =
+  ValidationProblemDetails | void
+
+export function useListScheduleEnrollmentDeferrals<
+  TData = Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>,
+  TError = ValidationProblemDetails | void,
+>(
+  params: undefined | ListScheduleEnrollmentDeferralsParams,
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>,
+          TError,
+          Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useListScheduleEnrollmentDeferrals<
+  TData = Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>,
+  TError = ValidationProblemDetails | void,
+>(
+  params?: ListScheduleEnrollmentDeferralsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>,
+          TError,
+          Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useListScheduleEnrollmentDeferrals<
+  TData = Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>,
+  TError = ValidationProblemDetails | void,
+>(
+  params?: ListScheduleEnrollmentDeferralsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+/**
+ * @summary Lists deferred asset cycles and their GSD review status
+ */
+
+export function useListScheduleEnrollmentDeferrals<
+  TData = Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>,
+  TError = ValidationProblemDetails | void,
+>(
+  params?: ListScheduleEnrollmentDeferralsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+} {
+  const queryOptions = getListScheduleEnrollmentDeferralsQueryOptions(
+    params,
+    options,
+  )
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+
+  return withQueryKey(query, queryOptions.queryKey)
+}
+
+/**
+ * @summary Marks one deferred asset cycle as reviewed by GSD
+ */
+export const reviewScheduleEnrollmentDeferral = (
+  assetId: string,
+  pmCycle: string,
+  scheduleEnrollmentDeferralReviewRequest: ScheduleEnrollmentDeferralReviewRequest,
+  signal?: AbortSignal,
+) => {
+  return customInstance<void>({
+    url: `/api/v1/schedules/enrollment-deferrals/${assetId}/${pmCycle}/review`,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    data: scheduleEnrollmentDeferralReviewRequest,
+    signal,
+  })
+}
+
+export const getReviewScheduleEnrollmentDeferralMutationOptions = <
+  TError = void,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof reviewScheduleEnrollmentDeferral>>,
+    TError,
+    {
+      assetId: string
+      pmCycle: string
+      data: ScheduleEnrollmentDeferralReviewRequest
+    },
+    TContext
+  >
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof reviewScheduleEnrollmentDeferral>>,
+  TError,
+  {
+    assetId: string
+    pmCycle: string
+    data: ScheduleEnrollmentDeferralReviewRequest
+  },
+  TContext
+> => {
+  const mutationKey = ['reviewScheduleEnrollmentDeferral']
+  const { mutation: mutationOptions } = options
+    ? options.mutation &&
+      'mutationKey' in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey } }
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof reviewScheduleEnrollmentDeferral>>,
+    {
+      assetId: string
+      pmCycle: string
+      data: ScheduleEnrollmentDeferralReviewRequest
+    }
+  > = (props) => {
+    const { assetId, pmCycle, data } = props ?? {}
+
+    return reviewScheduleEnrollmentDeferral(assetId, pmCycle, data)
+  }
+
+  return { mutationFn, ...mutationOptions }
+}
+
+export type ReviewScheduleEnrollmentDeferralMutationResult = NonNullable<
+  Awaited<ReturnType<typeof reviewScheduleEnrollmentDeferral>>
+>
+export type ReviewScheduleEnrollmentDeferralMutationBody =
+  ScheduleEnrollmentDeferralReviewRequest
+export type ReviewScheduleEnrollmentDeferralMutationError = void
+
+/**
+ * @summary Marks one deferred asset cycle as reviewed by GSD
+ */
+export const useReviewScheduleEnrollmentDeferral = <
+  TError = void,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof reviewScheduleEnrollmentDeferral>>,
+      TError,
+      {
+        assetId: string
+        pmCycle: string
+        data: ScheduleEnrollmentDeferralReviewRequest
+      },
+      TContext
+    >
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof reviewScheduleEnrollmentDeferral>>,
+  TError,
+  {
+    assetId: string
+    pmCycle: string
+    data: ScheduleEnrollmentDeferralReviewRequest
+  },
+  TContext
+> => {
+  return useMutation(
+    getReviewScheduleEnrollmentDeferralMutationOptions(options),
     queryClient,
   )
 }

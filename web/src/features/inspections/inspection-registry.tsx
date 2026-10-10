@@ -669,7 +669,7 @@ export function InspectionRegistry({
                 {table.getHeaderGroups().map((headerGroup) => (
                   <tr key={headerGroup.id}>
                     {headerGroup.headers.map((header) => (
-                      <th key={header.id} className="px-5 py-3">
+                      <th key={header.id} scope="col" className="px-5 py-3">
                         {header.isPlaceholder
                           ? null
                           : flexRender(

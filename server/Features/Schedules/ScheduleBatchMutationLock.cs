@@ -14,13 +14,12 @@ internal readonly record struct ScheduleBatchIdentity(
     string PmCycle)
 {
     internal static bool TryCreate(
-        PreventiveMaintenanceSchedule schedule,
+        string? department,
+        string? assetCategory,
+        string? pmCycle,
         out ScheduleBatchIdentity identity)
     {
         identity = default;
-        var department = schedule.Asset?.Department;
-        var assetCategory = schedule.Asset?.AssetCategory;
-        var pmCycle = PreventiveMaintenanceCycle.ForSchedule(schedule);
         if (string.IsNullOrWhiteSpace(department)
             || string.IsNullOrWhiteSpace(assetCategory)
             || !PreventiveMaintenanceCycle.TryParse(pmCycle, out _, out _))
@@ -31,8 +30,19 @@ internal readonly record struct ScheduleBatchIdentity(
         identity = new ScheduleBatchIdentity(
             department.Trim().ToUpperInvariant(),
             assetCategory.Trim().ToUpperInvariant(),
-            pmCycle);
+            pmCycle!);
         return true;
+    }
+
+    internal static bool TryCreate(
+        PreventiveMaintenanceSchedule schedule,
+        out ScheduleBatchIdentity identity)
+    {
+        return TryCreate(
+            schedule.Asset?.Department,
+            schedule.Asset?.AssetCategory,
+            PreventiveMaintenanceCycle.ForSchedule(schedule),
+            out identity);
     }
 
     internal string CreateLockResource()
@@ -48,11 +58,16 @@ internal sealed class ScheduleBatchMutationLockLease : IAsyncDisposable
 {
     private const int LockTimeoutMilliseconds = 5000;
     private readonly IDbContextTransaction? transaction;
+    private readonly bool ownsTransaction;
 
-    private ScheduleBatchMutationLockLease(IDbContextTransaction? transaction, bool acquired)
+    private ScheduleBatchMutationLockLease(
+        IDbContextTransaction? transaction,
+        bool acquired,
+        bool ownsTransaction)
     {
         this.transaction = transaction;
         Acquired = acquired;
+        this.ownsTransaction = ownsTransaction;
     }
 
     internal bool Acquired { get; }
@@ -60,17 +75,19 @@ internal sealed class ScheduleBatchMutationLockLease : IAsyncDisposable
     internal static async Task<ScheduleBatchMutationLockLease> AcquireAsync(
         ApplicationDbContext context,
         ScheduleBatchIdentity identity,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        IDbContextTransaction? transaction = null)
     {
         if (!string.Equals(
                 context.Database.ProviderName,
                 "Microsoft.EntityFrameworkCore.SqlServer",
                 StringComparison.Ordinal))
         {
-            return new ScheduleBatchMutationLockLease(null, acquired: true);
+            return new ScheduleBatchMutationLockLease(null, acquired: true, ownsTransaction: false);
         }
 
-        var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
+        var ownsTransaction = transaction is null;
+        transaction ??= await context.Database.BeginTransactionAsync(cancellationToken);
         try
         {
             await using var command = context.Database.GetDbConnection().CreateCommand();
@@ -104,26 +121,43 @@ internal sealed class ScheduleBatchMutationLockLease : IAsyncDisposable
                 System.Globalization.CultureInfo.InvariantCulture);
             if (result >= 0)
             {
-                return new ScheduleBatchMutationLockLease(transaction, acquired: true);
+                return new ScheduleBatchMutationLockLease(
+                    transaction, acquired: true, ownsTransaction: ownsTransaction);
             }
 
-            await transaction.DisposeAsync();
-            return new ScheduleBatchMutationLockLease(null, acquired: false);
+            if (ownsTransaction)
+            {
+                await transaction.DisposeAsync();
+            }
+
+            return new ScheduleBatchMutationLockLease(null, acquired: false, ownsTransaction: false);
         }
         catch
         {
-            await transaction.DisposeAsync();
+            if (ownsTransaction)
+            {
+                await transaction.DisposeAsync();
+            }
+
             throw;
         }
     }
 
     internal Task CommitAsync(CancellationToken cancellationToken)
     {
-        return transaction?.CommitAsync(cancellationToken) ?? Task.CompletedTask;
+        return ownsTransaction && transaction is not null
+            ? transaction.CommitAsync(cancellationToken)
+            : Task.CompletedTask;
     }
 
     public ValueTask DisposeAsync()
     {
-        return transaction?.DisposeAsync() ?? ValueTask.CompletedTask;
+        return ownsTransaction && transaction is not null
+            ? transaction.DisposeAsync()
+            : ValueTask.CompletedTask;
     }
+}
+
+internal sealed class ScheduleBatchMutationConflictException : Exception
+{
 }

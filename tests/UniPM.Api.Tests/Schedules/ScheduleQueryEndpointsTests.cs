@@ -42,7 +42,7 @@ public sealed class ScheduleQueryEndpointsTests
         var from = Uri.EscapeDataString("2026-02-01T00:00:00Z");
         var to = Uri.EscapeDataString("2026-02-28T23:59:59Z");
         var response = await client.GetAsync(
-            $"/api/v1/schedules?assetId={fireExtinguisher.Id}&status=Due&from={from}&to={to}&quarter=Q1&year=2026");
+            $"/api/v1/schedules?assetId={fireExtinguisher.Id}&status=Overdue&from={from}&to={to}&quarter=Q1&year=2026");
 
         response.EnsureSuccessStatusCode();
         var schedules = await response.Content.ReadFromJsonAsync<List<ScheduleResponse>>();
@@ -51,6 +51,7 @@ public sealed class ScheduleQueryEndpointsTests
         var schedule = Assert.Single(schedules);
         Assert.Equal(targetSchedule.Id, schedule.Id);
         Assert.Equal(fireExtinguisher.Id, schedule.AssetId);
+        Assert.Equal("Overdue", schedule.Status);
         Assert.Equal("Quarter", schedule.PeriodType);
         Assert.Equal("Q1", schedule.Quarter);
         Assert.Equal(2026, schedule.Year);
@@ -455,7 +456,7 @@ public sealed class ScheduleQueryEndpointsTests
     }
 
     [Fact]
-    public async Task Create_schedule_rejects_derived_year_outside_planning_range_without_year_input()
+    public async Task Create_schedule_rejects_derived_year_outside_current_institutional_year_without_year_input()
     {
         await using var application = new TestApplicationFactory();
         var client = application.CreateClient();
@@ -463,7 +464,7 @@ public sealed class ScheduleQueryEndpointsTests
             client,
             "FE-FUTURE-YEAR",
             "fire-extinguisher");
-        var unsupportedYear = DateTimeOffset.UtcNow.Year + 6;
+        var unsupportedYear = 2027;
 
         var response = await client.PostAsJsonAsync("/api/v1/schedules/", new
         {
@@ -483,10 +484,9 @@ public sealed class ScheduleQueryEndpointsTests
         var problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>();
         Assert.NotNull(problem);
         Assert.Contains("Year", problem.Errors.Keys);
-        var maxPlanningYear = DateTimeOffset.UtcNow.Year + 5;
         Assert.Contains(
             problem.Errors["Year"],
-            message => message.Contains(maxPlanningYear.ToString()));
+            message => message.Contains("current institutional calendar year"));
     }
 
     [Theory]
@@ -557,13 +557,15 @@ public sealed class ScheduleQueryEndpointsTests
         string pmCycle,
         int lastDay)
     {
-        await using var application = new TestApplicationFactory();
+        var cycleYear = int.Parse(pmCycle[..4]);
+        await using var application = new TestApplicationFactory(
+            now: new DateTimeOffset(cycleYear, 10, 9, 8, 0, 0, TimeSpan.FromHours(8)));
         var client = application.CreateClient();
-        var asset = await CreateAssetAsync(client, $"MONTH-{Guid.NewGuid():N}"[..12], assetCategory);
+        var assetId = await application.SeedAssetAsync(assetCategory);
 
         var response = await client.PostAsJsonAsync("/api/v1/schedules/", new
         {
-            assetId = asset.Id,
+            assetId,
             pmCycle,
             periodType = "Semester"
         });
@@ -670,7 +672,8 @@ public sealed class ScheduleQueryEndpointsTests
 
     private sealed class TestApplicationFactory(
         string[]? roles = null,
-        bool anonymous = false) : WebApplicationFactory<Program>
+        bool anonymous = false,
+        DateTimeOffset? now = null) : WebApplicationFactory<Program>
     {
         private readonly string _databaseName = $"unipm-schedules-{Guid.NewGuid()}";
 
@@ -691,11 +694,11 @@ public sealed class ScheduleQueryEndpointsTests
                     options.UseInMemoryDatabase(_databaseName));
                 services.RemoveAll<TimeProvider>();
                 services.AddSingleton<TimeProvider>(new FixedTimeProvider(
-                    new DateTimeOffset(2026, 10, 9, 8, 0, 0, TimeSpan.FromHours(8))));
+                    now ?? new DateTimeOffset(2026, 10, 9, 8, 0, 0, TimeSpan.FromHours(8))));
             });
         }
 
-        public async Task<Guid> SeedAssetAsync()
+        public async Task<Guid> SeedAssetAsync(string assetCategory = "fire-extinguisher")
         {
             var assetId = Guid.NewGuid();
             var now = DateTimeOffset.UtcNow;
@@ -706,7 +709,7 @@ public sealed class ScheduleQueryEndpointsTests
             {
                 Id = assetId,
                 AssetCode = $"READ-{Guid.NewGuid():N}",
-                AssetCategory = "fire-extinguisher",
+                AssetCategory = assetCategory,
                 Building = "Main",
                 Department = "GSD",
                 Location = "Lobby",

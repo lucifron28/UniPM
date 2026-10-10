@@ -95,8 +95,11 @@ export function RegistryResultsPanel({
         className={'hidden overflow-hidden p-0 shadow-none ' + desktopClassName}
       >
         <div
+          role="region"
+          aria-label={label + ' table'}
+          tabIndex={0}
           className={
-            'overflow-auto ' +
+            'overflow-auto focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:outline-none focus-visible:ring-inset ' +
             registryDesktopViewportClassName(breakpoint, viewportSize)
           }
         >

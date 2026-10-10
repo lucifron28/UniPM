@@ -7,6 +7,8 @@ import {
   getGetPmPeriodDashboardQueryKey,
   getGetScheduleQueryKey,
   getListPmPeriodDashboardCyclesQueryKey,
+  getListScheduleCoverageReviewQueryKey,
+  getListScheduleEnrollmentDeferralsQueryKey,
   getListScheduleSupervisorAssignmentOptionsQueryKey,
   getListScheduleWorkerAssignmentOptionsQueryKey,
   getListSchedulePeriodTypesQueryKey,
@@ -16,13 +18,19 @@ import {
   getSchedule,
   listScheduleSupervisorAssignmentOptions,
   listScheduleWorkerAssignmentOptions,
+  listScheduleCoverageReview,
   listSchedulePeriodTypes,
   listScheduleQuarters,
+  listScheduleEnrollmentDeferrals,
+  reviewScheduleEnrollmentDeferral,
   listScheduleStatuses,
   listSchedules,
 } from '@/api/generated/endpoints'
 import type {
   ListSchedulesParams,
+  ListScheduleCoverageReviewParams,
+  ListScheduleEnrollmentDeferralsParams,
+  ScheduleEnrollmentDeferralReviewRequest,
   ScheduleReferenceResponse,
 } from '@/api/generated/models'
 import {
@@ -50,6 +58,51 @@ export function useSchedule(scheduleId: string, enabled = true) {
     queryFn: ({ signal }) =>
       getSchedule(scheduleId, signal).then(parseSchedule),
     enabled,
+  })
+}
+
+export function useScheduleEnrollmentDeferrals(
+  page = 1,
+  enabled = true,
+  filters: Omit<ListScheduleEnrollmentDeferralsParams, 'page'> = {},
+) {
+  const params = { page, pageSize: 10, ...filters }
+  return useQuery({
+    queryKey: getListScheduleEnrollmentDeferralsQueryKey(params),
+    queryFn: ({ signal }) => listScheduleEnrollmentDeferrals(params, signal),
+    enabled,
+    placeholderData: (previousData) => previousData,
+  })
+}
+
+export function useScheduleCoverageReview(page = 1, enabled = true) {
+  const params: ListScheduleCoverageReviewParams = { page, pageSize: 10 }
+  return useQuery({
+    queryKey: getListScheduleCoverageReviewQueryKey(params),
+    queryFn: ({ signal }) => listScheduleCoverageReview(params, signal),
+    enabled,
+    placeholderData: (previousData) => previousData,
+  })
+}
+
+export function useReviewScheduleEnrollmentDeferral() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({
+      assetId,
+      pmCycle,
+      request,
+    }: {
+      assetId: string
+      pmCycle: string
+      request: ScheduleEnrollmentDeferralReviewRequest
+    }) => reviewScheduleEnrollmentDeferral(assetId, pmCycle, request),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: getListScheduleEnrollmentDeferralsQueryKey(),
+      })
+    },
   })
 }
 
@@ -91,6 +144,9 @@ export function useAssignScheduleBatchSupervisor() {
         }),
         queryClient.invalidateQueries({
           queryKey: getListSchedulesQueryKey(),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: getListScheduleEnrollmentDeferralsQueryKey(),
         }),
       ])
     },

@@ -9,7 +9,7 @@ const pmCycle = '2026-08'
 
 const session = {
   accessToken: 'fictional-ux-context-token',
-  expiresAtUtc: '2030-01-01T12:00:00Z',
+  expiresAtUtc: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
   user: {
     id: userId,
     email: 'fictional.gsd@example.test',
@@ -352,7 +352,7 @@ async function tabToLink(page: Page, linkName: string) {
       return link
     }
   }
-  throw new Error('The back link was not reachable by keyboard Tab navigation.')
+  throw new Error('The link was not reachable by keyboard Tab navigation.')
 }
 
 const dashboardViewports = [
@@ -461,6 +461,38 @@ for (const viewport of dashboardViewports) {
     },
   )
 }
+
+test('shows a visible focus indicator on the active desktop navigation link', async ({
+  page,
+}) => {
+  await installApi(page)
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('/app/dashboard')
+
+  const dashboardLink = await tabToLink(page, 'Dashboard')
+  await expect(dashboardLink).toHaveCSS('outline-style', 'solid')
+  await expect(dashboardLink).toHaveCSS('outline-color', 'rgb(87, 0, 0)')
+  await expect(dashboardLink).toHaveCSS('outline-width', '2px')
+
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  expect(
+    await page.evaluate(
+      () => window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+    ),
+  ).toBe(true)
+  const transitionSeconds = await dashboardLink.evaluate((element) =>
+    window
+      .getComputedStyle(element)
+      .transitionDuration.split(',')
+      .map((duration) => {
+        const value = Number.parseFloat(duration)
+        return duration.trim().endsWith('ms') ? value / 1000 : value
+      }),
+  )
+  expect(Math.max(...transitionSeconds)).toBeLessThanOrEqual(0.00001)
+  await expect(dashboardLink).toHaveCSS('outline-style', 'solid')
+})
+
 test('returns to filtered, paged assets and keeps the back link keyboard reachable on mobile', async ({
   page,
 }) => {

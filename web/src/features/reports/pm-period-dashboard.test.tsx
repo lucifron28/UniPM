@@ -1,11 +1,14 @@
 import { render, screen, within } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import {
   createMemoryHistory,
   createRootRoute,
   createRouter,
   RouterProvider,
 } from '@tanstack/react-router'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { http, HttpResponse } from 'msw'
+import { configureApiRuntime, resetApiRuntimeForTests } from '@/api/http-client'
 import type {
   PmPeriodDashboardBatchResponse,
   PmPeriodDashboardResponse,
@@ -18,6 +21,9 @@ import {
   formatPmCycle,
   formatPmCycleDueDate,
 } from '@/features/schedules/schedule-presentation'
+import { PmPeriodDashboard } from './pm-period-dashboard'
+import { useAuthStore } from '@/stores/auth-store'
+import { server } from '@/test/server'
 
 type PeriodState = 'Future' | 'Active' | 'Closed'
 
@@ -125,6 +131,11 @@ function expectMetricValue(label: string, value: string) {
 }
 
 describe('PM period dashboard period terminology', () => {
+  afterEach(() => {
+    useAuthStore.getState().clearSession()
+    resetApiRuntimeForTests()
+  })
+
   it('uses Remaining and not Not completed for Future periods', () => {
     renderState('Future')
 
@@ -198,6 +209,74 @@ describe('PM period dashboard period terminology', () => {
   it('formats a cycle-derived leap-February month and deadline', () => {
     expect(formatPmCycle('2028-02')).toBe('February 2028')
     expect(formatPmCycleDueDate('2028-02')).toBe('Feb 29, 2028')
+  })
+
+  it('shows deferred enrollment counts separately from PM period metrics', async () => {
+    useAuthStore.getState().establishSession('synthetic-gsd-dashboard-token')
+    configureApiRuntime({
+      getAccessToken: () => useAuthStore.getState().accessToken,
+      getSessionGeneration: () => 0,
+      refreshAccessToken: async () => null,
+      onTerminalUnauthorized: () => undefined,
+    })
+    server.use(
+      http.get('*/api/v1/auth/me', () =>
+        HttpResponse.json({
+          id: '11111111-1111-4111-8111-111111111111',
+          email: 'gsd@example.test',
+          displayName: 'GSD Personnel',
+          roles: ['GSD'],
+        }),
+      ),
+      http.get('*/api/v1/pm-period-dashboard/cycles', () =>
+        HttpResponse.json([]),
+      ),
+      http.get('*/api/v1/schedules/enrollment-deferrals', () =>
+        HttpResponse.json({
+          page: 1,
+          pageSize: 1,
+          total: 3,
+          pendingCount: '2',
+          reviewedCount: '1',
+          items: [],
+        }),
+      ),
+    )
+
+    const rootRoute = createRootRoute({
+      component: () => (
+        <PmPeriodDashboard search={{}} onSearchChange={vi.fn()} />
+      ),
+    })
+    const router = createRouter({
+      routeTree: rootRoute,
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    })
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>,
+    )
+
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Deferred enrollment across all PM periods',
+      }),
+    ).toBeInTheDocument()
+    expect(screen.getByText(/2 need review · 1 reviewed/)).toBeInTheDocument()
+    expect(screen.getByText(/not completed maintenance/)).toBeInTheDocument()
+    expect(
+      screen.getByRole('link', { name: 'Review deferred cycles' }),
+    ).toHaveAttribute(
+      'href',
+      expect.stringContaining('#schedule-enrollment-deferrals'),
+    )
+    expect(screen.getByText('No PM periods are scheduled')).toBeInTheDocument()
+    expect(screen.queryByText('Compliance rate')).not.toBeInTheDocument()
   })
 
   it('routes acknowledged batches to read-only form detail', async () => {

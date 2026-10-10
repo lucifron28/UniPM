@@ -27,6 +27,7 @@ import {
   formatMonthName,
   formatPmCycle,
   formatPmCycleDueDate,
+  getCurrentManilaYear,
 } from '@/features/schedules/schedule-presentation'
 
 type FieldName = keyof CreateScheduleValues
@@ -54,6 +55,7 @@ export function ScheduleCreate() {
     (asset) => asset.status === 'Active' && Boolean(asset.department?.trim()),
   )
   const assetCategories = categories.data ?? []
+  const currentManilaYear = getCurrentManilaYear()
   const summaryRef = useRef<HTMLDivElement>(null)
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const [submitError, setSubmitError] = useState<string | null>(null)
@@ -322,8 +324,8 @@ export function ScheduleCreate() {
                         <Input
                           id="year"
                           type="number"
-                          min="2000"
-                          max={new Date().getUTCFullYear() + 5}
+                          min={currentManilaYear}
+                          max={currentManilaYear}
                           value={field.state.value ?? ''}
                           aria-invalid={fieldErrors.year ? true : undefined}
                           aria-describedby={

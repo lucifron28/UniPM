@@ -16,6 +16,8 @@ import {
   usePmPeriodDashboardCycles,
 } from '@/features/reports/pm-period-dashboard-queries'
 import { PmAnalyticsPanel } from '@/features/reports/pm-analytics'
+import { useCurrentUser } from '@/features/auth/current-user'
+import { useScheduleEnrollmentDeferrals } from '@/features/schedules/schedule-queries'
 import {
   formatPmCycle,
   formatPmCycleDueDate,
@@ -673,6 +675,69 @@ function DashboardMetrics({
   )
 }
 
+function DeferredEnrollmentDashboardSummary() {
+  const currentUser = useCurrentUser()
+  const canReview = currentUser.data?.roles.includes('GSD') ?? false
+  const deferrals = useScheduleEnrollmentDeferrals(1, canReview, {
+    pageSize: 1,
+  })
+
+  if (!canReview) return null
+  if (deferrals.isPending) {
+    return (
+      <p className="text-sm text-[var(--text-neutral)]" role="status">
+        Checking deferred enrollment…
+      </p>
+    )
+  }
+  if (deferrals.isError) {
+    return (
+      <Card role="alert" className="border-[var(--error)] p-4 shadow-none">
+        <p className="font-semibold text-[var(--error)]">
+          Deferred enrollment totals are unavailable.
+        </p>
+        <Button
+          type="button"
+          className="mt-3"
+          onClick={() => void deferrals.refetch()}
+        >
+          Retry deferred totals
+        </Button>
+      </Card>
+    )
+  }
+
+  const pendingCount = Number(deferrals.data.pendingCount)
+  const reviewedCount = Number(deferrals.data.reviewedCount)
+  if (pendingCount + reviewedCount === 0) return null
+
+  return (
+    <Card
+      aria-labelledby="dashboard-deferred-enrollment-title"
+      className="flex flex-wrap items-center justify-between gap-4 border-[color-mix(in_srgb,var(--warning)_35%,white)] p-4 shadow-none"
+    >
+      <div>
+        <h2
+          id="dashboard-deferred-enrollment-title"
+          className="font-semibold text-[var(--text-primary)]"
+        >
+          Deferred enrollment across all PM periods
+        </h2>
+        <p className="mt-1 text-sm text-[var(--text-secondary)]">
+          {pendingCount} need review · {reviewedCount} reviewed. Deferred cycles
+          have no schedule and are not completed maintenance. They stay outside
+          the scheduled and compliance totals.
+        </p>
+      </div>
+      <Button asChild variant="secondary">
+        <Link to="/app/schedules" hash="schedule-enrollment-deferrals">
+          Review deferred cycles
+        </Link>
+      </Button>
+    </Card>
+  )
+}
+
 export function PmPeriodDashboardPresentation({
   dashboard,
   showBatch = true,
@@ -839,6 +904,7 @@ export function PmPeriodDashboard({
         className="max-w-7xl space-y-5"
       >
         <DashboardHeader />
+        <DeferredEnrollmentDashboardSummary />
         <CyclesLoading />
       </section>
     )
@@ -851,6 +917,7 @@ export function PmPeriodDashboard({
         className="max-w-7xl space-y-5"
       >
         <DashboardHeader />
+        <DeferredEnrollmentDashboardSummary />
         <QueryError
           message="PM period options could not be loaded."
           onRetry={() => void cyclesQuery.refetch()}
@@ -866,6 +933,7 @@ export function PmPeriodDashboard({
         className="max-w-7xl space-y-5"
       >
         <DashboardHeader />
+        <DeferredEnrollmentDashboardSummary />
         <Card className="p-6 shadow-none">
           <h2 className="text-lg font-semibold text-[var(--text-primary)]">
             No PM periods are scheduled
@@ -881,6 +949,7 @@ export function PmPeriodDashboard({
   return (
     <section aria-labelledby="dashboard-title" className="max-w-7xl space-y-5">
       <DashboardHeader />
+      <DeferredEnrollmentDashboardSummary />
       <PmAnalyticsPanel />
 
       {showGeneratedReport ? (
