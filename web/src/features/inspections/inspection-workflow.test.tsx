@@ -10,7 +10,7 @@ import {
 } from '@tanstack/react-router'
 import { http, HttpResponse } from 'msw'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { configureApiRuntime } from '@/api/http-client'
+import { configureApiRuntime, httpClient } from '@/api/http-client'
 import { InspectionDetail } from '@/features/inspections/inspection-detail'
 import { InspectionHistory } from '@/features/inspections/inspection-history'
 import {
@@ -88,7 +88,10 @@ const history = [
   },
 ]
 
-afterEach(() => vi.unstubAllGlobals())
+afterEach(() => {
+  vi.restoreAllMocks()
+  vi.unstubAllGlobals()
+})
 
 function renderWithProviders(ui: React.ReactNode) {
   const client = new QueryClient({
@@ -320,6 +323,19 @@ describe('inspection review workflows', () => {
 
   it('shows a private photo thumbnail with an authorized larger preview', async () => {
     const createObjectUrl = vi.fn(() => 'blob:inspection-photo')
+    const photoPath = `/api/v1/inspections/${inspectionId}/photo`
+    const originalGet = httpClient.get.bind(httpClient)
+    const photoRequest = vi
+      .spyOn(httpClient, 'get')
+      .mockImplementation((url, config) =>
+        url === photoPath
+          ? Promise.resolve({
+              data: new Blob(['photo preview fixture'], {
+                type: 'image/jpeg',
+              }),
+            } as never)
+          : originalGet(url, config),
+      )
     const NativeURL = URL
     class TestURL extends NativeURL {
       static createObjectURL = createObjectUrl
@@ -331,13 +347,6 @@ describe('inspection review workflows', () => {
       http.get(`${base}/inspections/${inspectionId}`, () =>
         HttpResponse.json({ ...inspection, hasPhotoEvidence: true }),
       ),
-      http.get(
-        `${base}/inspections/${inspectionId}/photo`,
-        () =>
-          new HttpResponse('photo preview fixture', {
-            headers: { 'Content-Type': 'image/jpeg' },
-          }),
-      ),
     )
     renderWithProviders(<InspectionDetail inspectionId={inspectionId} />)
 
@@ -345,6 +354,10 @@ describe('inspection review workflows', () => {
       name: 'Open inspection photo preview',
     })
     expect(createObjectUrl).toHaveBeenCalledOnce()
+    expect(photoRequest).toHaveBeenCalledWith(
+      photoPath,
+      expect.objectContaining({ responseType: 'blob' }),
+    )
     expect(
       screen.getByRole('img', { name: 'Inspection photo thumbnail' }),
     ).toHaveAttribute('src', 'blob:inspection-photo')
