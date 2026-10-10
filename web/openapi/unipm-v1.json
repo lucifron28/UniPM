@@ -2361,9 +2361,7 @@
     },
     "/api/v1/schedules/coverage-review": {
       "get": {
-        "tags": [
-          "Schedules"
-        ],
+        "tags": ["Schedules"],
         "summary": "Lists past CPMP cycles missing both a schedule and a deferral for GSD review",
         "operationId": "ListScheduleCoverageReview",
         "parameters": [
@@ -2372,10 +2370,7 @@
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
+              "type": ["integer", "string"],
               "format": "int32"
             }
           },
@@ -2384,10 +2379,7 @@
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
+              "type": ["integer", "string"],
               "format": "int32"
             }
           }
@@ -2587,45 +2579,27 @@
         }
       },
       "ScheduleCoverageReviewPage": {
-        "required": [
-          "year",
-          "page",
-          "pageSize",
-          "total",
-          "items"
-        ],
+        "required": ["year", "page", "pageSize", "total", "items"],
         "type": "object",
         "properties": {
           "year": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "page": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "pageSize": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "total": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "items": {
