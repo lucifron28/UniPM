@@ -17,7 +17,6 @@ import { server } from '@/test/server'
 
 const assetId = '11111111-1111-4111-8111-111111111111'
 const assetUrl = `http://localhost:5000/api/v1/assets/${assetId}`
-const verificationLocationUrl = `${assetUrl}/verification-location`
 const categoriesUrl =
   'http://localhost:5000/api/v1/reference-data/asset-categories'
 const meUrl = 'http://localhost:5000/api/v1/auth/me'
@@ -41,12 +40,6 @@ const sampleAsset = {
   status: 'Active',
   createdAt: '2026-07-19T00:00:00Z',
   updatedAt: '2026-07-19T00:00:00Z',
-}
-
-const emptyVerificationLocation = {
-  verificationLatitude: null,
-  verificationLongitude: null,
-  verificationRadiusMeters: null,
 }
 
 function setupAuth() {
@@ -87,9 +80,6 @@ describe('AssetDetail feature component', () => {
     server.use(
       http.get(meUrl, () => HttpResponse.json(gsdUser)),
       http.get(categoriesUrl, () => HttpResponse.json([])),
-      http.get(verificationLocationUrl, () =>
-        HttpResponse.json(emptyVerificationLocation),
-      ),
       http.get(
         `http://localhost:5000/api/v1/inspections/history/${assetId}`,
         () => HttpResponse.json([]),
@@ -236,46 +226,8 @@ describe('AssetDetail feature component', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('allows GSD to save the optional verification location through the generated API client', async () => {
-    let submitted: Record<string, unknown> | undefined
-    server.use(
-      http.get(assetUrl, () => HttpResponse.json(sampleAsset)),
-      http.put(verificationLocationUrl, async ({ request }) => {
-        submitted = (await request.json()) as Record<string, unknown>
-        return HttpResponse.json(submitted)
-      }),
-    )
-
-    renderWithProviders(<AssetDetail assetId={assetId} />)
-    const actor = userEvent.setup()
-    await actor.clear(await screen.findByLabelText('Latitude'))
-    await actor.type(screen.getByLabelText('Latitude'), '14.5995')
-    await actor.type(screen.getByLabelText('Longitude'), '120.9842')
-    await actor.type(screen.getByLabelText('Radius (meters)'), '25')
-    await actor.click(screen.getByRole('button', { name: 'Save location' }))
-
-    await vi.waitFor(() => {
-      expect(submitted).toEqual({
-        verificationLatitude: 14.5995,
-        verificationLongitude: 120.9842,
-        verificationRadiusMeters: 25,
-      })
-    })
-    expect(toast.success).toHaveBeenCalledWith('Verification location saved.')
-  })
-
-  it('does not expose verification configuration to non-GSD users', async () => {
-    server.use(
-      http.get(meUrl, () =>
-        HttpResponse.json({
-          id: '22222222-2222-4222-8222-222222222222',
-          email: 'inspector@example.test',
-          displayName: 'Inspector User',
-          roles: ['Inspector'],
-        }),
-      ),
-      http.get(assetUrl, () => HttpResponse.json(sampleAsset)),
-    )
+  it('does not render the retired GPS configuration controls', async () => {
+    server.use(http.get(assetUrl, () => HttpResponse.json(sampleAsset)))
 
     renderWithProviders(<AssetDetail assetId={assetId} />)
 
@@ -288,6 +240,8 @@ describe('AssetDetail feature component', () => {
       }),
     ).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Latitude')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Longitude')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Radius (meters)')).not.toBeInTheDocument()
   })
 
   it('keeps registry search context on the return link', async () => {

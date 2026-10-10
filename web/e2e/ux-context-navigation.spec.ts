@@ -65,6 +65,7 @@ const inspection = {
   inspectorUserId: userId,
   dateInspected: '2026-08-28T02:00:00Z',
   isOperational: false,
+  hasPhotoEvidence: false,
   remarks: 'Pressure is low.',
   actionsRecommendations: 'Arrange a pressure check.',
   createdAt: '2026-08-28T02:00:00Z',

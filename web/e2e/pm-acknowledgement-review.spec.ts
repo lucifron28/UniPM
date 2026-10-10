@@ -183,6 +183,7 @@ async function mockApi(page: import('@playwright/test').Page) {
         inspectorUserId: reviewerId,
         dateInspected: '2026-08-28T02:00:00Z',
         isOperational: false,
+        hasPhotoEvidence: false,
         remarks: 'Pressure is low.',
         actionsRecommendations: 'Inspect and recharge the unit.',
         externalPmNumber: null,

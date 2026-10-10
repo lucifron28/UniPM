@@ -17,6 +17,7 @@ docker-compose.*.override.yml
 **/[Bb]in/
 **/[Oo]bj/
 **/[Ll]ogs/
+server/App_Data/InspectionPhotos/
 *.user
 *.suo
 *.cache

@@ -394,7 +394,8 @@ public static class InspectionsEndpoints
                         ? InspectionFollowUpStatusCatalog.ReferredToWms
                         : inspection.IsOperational
                             ? InspectionFollowUpStatusCatalog.NoReferralRequired
-                            : InspectionFollowUpStatusCatalog.CorrectiveFollowUpPending))
+                            : InspectionFollowUpStatusCatalog.CorrectiveFollowUpPending,
+                    inspection.PhotoEvidence != null))
                 .ToListAsync(cancellationToken);
 
             return Results.Ok(inspections);
@@ -413,6 +414,7 @@ public static class InspectionsEndpoints
             var inspection = await context.InspectionRecords
                 .AsNoTracking()
                 .Include(candidate => candidate.WmsReferral)
+                .Include(candidate => candidate.PhotoEvidence)
                 .WhereOfficial()
                 .FirstOrDefaultAsync(candidate => candidate.Id == id, cancellationToken);
 
@@ -447,7 +449,8 @@ public sealed record InspectionResponse(
     bool? WaterCheckUvLight = null,
     string? ExternalPmNumber = null,
     int WmsReferralRevision = 0,
-    string CorrectiveFollowUpStatus = InspectionFollowUpStatusCatalog.NoReferralRequired)
+    string CorrectiveFollowUpStatus = InspectionFollowUpStatusCatalog.NoReferralRequired,
+    bool HasPhotoEvidence = false)
 {
     internal static InspectionResponse FromInspection(InspectionRecord inspection)
     {
@@ -470,7 +473,8 @@ public sealed record InspectionResponse(
             inspection.WmsReferral?.Revision ?? 0,
             InspectionFollowUpStatusCatalog.For(
                 inspection.IsOperational,
-                inspection.WmsReferral is not null));
+                inspection.WmsReferral is not null),
+            inspection.PhotoEvidence is not null);
     }
 }
 

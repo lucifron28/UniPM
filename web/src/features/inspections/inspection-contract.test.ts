@@ -12,6 +12,7 @@ const inspection = {
   inspectorUserId: '44444444-4444-4444-8444-444444444444',
   dateInspected: '2026-07-22T01:00:00Z',
   isOperational: false,
+  hasPhotoEvidence: true,
   remarks: 'Low pressure recorded.',
   actionsRecommendations: 'Arrange a pressure check.',
   dateAccomplished: '2026-07-22T02:00:00Z',
@@ -30,6 +31,7 @@ describe('inspection contracts', () => {
     const parsedInspection = parseInspection(inspection)
     expect(parsedInspection.scheduleId).toBe(inspection.scheduleId)
     expect(parsedInspection.waterReplaceCarbonFilter).toBe(true)
+    expect(parsedInspection.hasPhotoEvidence).toBe(true)
     expect(() =>
       parseInspection({ ...inspection, remarksEmbedding: [0.1] } as never),
     ).toThrow(ZodError)
