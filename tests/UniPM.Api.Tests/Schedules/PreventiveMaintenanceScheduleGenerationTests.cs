@@ -227,6 +227,38 @@ public sealed class PreventiveMaintenanceScheduleGenerationTests
             await application.ReadSchedulesAsync(deferredCycleAsset.Id),
             schedule => schedule.PmCycle == "2026-05");
         Assert.Single(await application.ReadDeferralsAsync(deferredCycleAsset.Id));
+        var recentlyRegisteredAsset = await application.SeedAssetAsync(
+            "GEN-COVERAGE-RECENT",
+            "fire-extinguisher",
+            new DateTimeOffset(2026, 7, 20, 0, 0, 0, TimeSpan.FromHours(8)));
+
+        using var coverageResponse = await client.GetAsync(
+            "/api/v1/schedules/coverage-review?pageSize=100");
+        Assert.Equal(HttpStatusCode.OK, coverageResponse.StatusCode);
+        var coverage = await coverageResponse.Content.ReadFromJsonAsync<CoverageReviewPage>();
+        Assert.NotNull(coverage);
+        Assert.Equal(2026, coverage.Year);
+        Assert.Equal(4, coverage.Total);
+        Assert.Contains(coverage.Items, item =>
+            item.AssetId == asset.Id && item.PmCycle == "2026-02"
+            && item.Reason.Contains("approved coverage start date is not configured", StringComparison.Ordinal));
+        Assert.DoesNotContain(coverage.Items, item => item.AssetId == existingCycleAsset.Id
+            && item.PmCycle == "2026-02");
+        Assert.DoesNotContain(coverage.Items, item => item.AssetId == deferredCycleAsset.Id
+            && item.PmCycle == "2026-05");
+        Assert.DoesNotContain(coverage.Items, item => item.AssetId == recentlyRegisteredAsset.Id);
+    }
+
+    [Fact]
+    public async Task Schedule_coverage_review_is_restricted_to_gsd()
+    {
+        var now = new DateTimeOffset(2026, 8, 15, 4, 0, 0, TimeSpan.Zero);
+        await using var application = new TestApplicationFactory(AuthRoleCatalog.Inspector, now);
+        using var client = application.CreateClient();
+
+        using var response = await client.GetAsync("/api/v1/schedules/coverage-review");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
     [Fact]
@@ -254,6 +286,11 @@ public sealed class PreventiveMaintenanceScheduleGenerationTests
         Assert.Equal(0, result.CyclesRequiringGsdCoverageReview);
         Assert.Equal(["2026-05", "2026-08", "2026-11"],
             (await application.ReadSchedulesAsync(asset.Id)).Select(schedule => schedule.PmCycle));
+        using var coverageResponse = await client.GetAsync("/api/v1/schedules/coverage-review");
+        Assert.Equal(HttpStatusCode.OK, coverageResponse.StatusCode);
+        var coverage = await coverageResponse.Content.ReadFromJsonAsync<CoverageReviewPage>();
+        Assert.NotNull(coverage);
+        Assert.Empty(coverage.Items);
     }
 
     [Fact]
@@ -1012,6 +1049,21 @@ public sealed class PreventiveMaintenanceScheduleGenerationTests
         int CreatedSchedules,
         int DeferredSchedules = 0,
         int CyclesRequiringGsdCoverageReview = 0);
+
+    private sealed record CoverageReviewPage(
+        int Year,
+        int Page,
+        int PageSize,
+        int Total,
+        IReadOnlyList<CoverageReviewItem> Items);
+
+    private sealed record CoverageReviewItem(
+        Guid AssetId,
+        string AssetCode,
+        string Department,
+        string AssetCategory,
+        string PmCycle,
+        string Reason);
 
     private sealed class FailOnceDbContextFactory(DbContextOptions<ApplicationDbContext> options)
         : IDbContextFactory<ApplicationDbContext>

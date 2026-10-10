@@ -7,6 +7,7 @@ import {
   getGetPmPeriodDashboardQueryKey,
   getGetScheduleQueryKey,
   getListPmPeriodDashboardCyclesQueryKey,
+  getListScheduleCoverageReviewQueryKey,
   getListScheduleEnrollmentDeferralsQueryKey,
   getListScheduleSupervisorAssignmentOptionsQueryKey,
   getListScheduleWorkerAssignmentOptionsQueryKey,
@@ -17,6 +18,7 @@ import {
   getSchedule,
   listScheduleSupervisorAssignmentOptions,
   listScheduleWorkerAssignmentOptions,
+  listScheduleCoverageReview,
   listSchedulePeriodTypes,
   listScheduleQuarters,
   listScheduleEnrollmentDeferrals,
@@ -26,6 +28,7 @@ import {
 } from '@/api/generated/endpoints'
 import type {
   ListSchedulesParams,
+  ListScheduleCoverageReviewParams,
   ListScheduleEnrollmentDeferralsParams,
   ScheduleEnrollmentDeferralReviewRequest,
   ScheduleReferenceResponse,
@@ -67,6 +70,16 @@ export function useScheduleEnrollmentDeferrals(
   return useQuery({
     queryKey: getListScheduleEnrollmentDeferralsQueryKey(params),
     queryFn: ({ signal }) => listScheduleEnrollmentDeferrals(params, signal),
+    enabled,
+    placeholderData: (previousData) => previousData,
+  })
+}
+
+export function useScheduleCoverageReview(page = 1, enabled = true) {
+  const params: ListScheduleCoverageReviewParams = { page, pageSize: 10 }
+  return useQuery({
+    queryKey: getListScheduleCoverageReviewQueryKey(params),
+    queryFn: ({ signal }) => listScheduleCoverageReview(params, signal),
     enabled,
     placeholderData: (previousData) => previousData,
   })

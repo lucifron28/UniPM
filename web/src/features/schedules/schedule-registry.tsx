@@ -30,6 +30,7 @@ import {
   useScheduleStatuses,
 } from '@/features/schedules/schedule-queries'
 import { ScheduleEnrollmentDeferralReview } from '@/features/schedules/schedule-enrollment-deferral-review'
+import { ScheduleCoverageReview } from '@/features/schedules/schedule-coverage-review'
 import {
   fromDateTimeLocal,
   formatPmCycle,
@@ -418,6 +419,7 @@ export function ScheduleRegistry({
         </p>
       )}
 
+      {canGenerate && <ScheduleCoverageReview />}
       {canGenerate && <ScheduleEnrollmentDeferralReview />}
 
       {allSchedules.isPending || statuses.isPending ? (

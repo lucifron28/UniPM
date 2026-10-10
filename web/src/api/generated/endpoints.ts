@@ -47,6 +47,7 @@ import type {
   ListInspectionsParams,
   ListPmPeriodDashboardCyclesParams,
   ListPreventiveMaintenanceFormsParams,
+  ListScheduleCoverageReviewParams,
   ListScheduleEnrollmentDeferralsParams,
   ListSchedulesParams,
   LoginRequest,
@@ -61,6 +62,7 @@ import type {
   PreventiveMaintenanceFormResponse,
   ProblemDetails,
   ScheduleAssignmentBatchResponse,
+  ScheduleCoverageReviewPage,
   ScheduleEnrollmentDeferralPage,
   ScheduleEnrollmentDeferralReviewRequest,
   ScheduleGenerationResult,
@@ -5247,6 +5249,171 @@ export const useGeneratePreventiveMaintenanceSchedules = <
     getGeneratePreventiveMaintenanceSchedulesMutationOptions(options),
     queryClient,
   )
+}
+
+/**
+ * @summary Lists past CPMP cycles missing both a schedule and a deferral for GSD review
+ */
+export const listScheduleCoverageReview = (
+  params?: ListScheduleCoverageReviewParams,
+  signal?: AbortSignal,
+) => {
+  return customInstance<ScheduleCoverageReviewPage>({
+    url: `/api/v1/schedules/coverage-review`,
+    method: 'GET',
+    params,
+    signal,
+  })
+}
+
+export const getListScheduleCoverageReviewQueryKey = (
+  params?: ListScheduleCoverageReviewParams,
+) => {
+  return [
+    `/api/v1/schedules/coverage-review`,
+    ...(params ? [params] : []),
+  ] as const
+}
+
+export const getListScheduleCoverageReviewQueryOptions = <
+  TData = Awaited<ReturnType<typeof listScheduleCoverageReview>>,
+  TError = void,
+>(
+  params?: ListScheduleCoverageReviewParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listScheduleCoverageReview>>,
+        TError,
+        TData
+      >
+    >
+  },
+) => {
+  const { query: queryOptions } = options ?? {}
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListScheduleCoverageReviewQueryKey(params)
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listScheduleCoverageReview>>
+  > = ({ signal }) => listScheduleCoverageReview(params, signal)
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listScheduleCoverageReview>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListScheduleCoverageReviewQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listScheduleCoverageReview>>
+>
+export type ListScheduleCoverageReviewQueryError = void
+
+export function useListScheduleCoverageReview<
+  TData = Awaited<ReturnType<typeof listScheduleCoverageReview>>,
+  TError = void,
+>(
+  params: undefined | ListScheduleCoverageReviewParams,
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listScheduleCoverageReview>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listScheduleCoverageReview>>,
+          TError,
+          Awaited<ReturnType<typeof listScheduleCoverageReview>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useListScheduleCoverageReview<
+  TData = Awaited<ReturnType<typeof listScheduleCoverageReview>>,
+  TError = void,
+>(
+  params?: ListScheduleCoverageReviewParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listScheduleCoverageReview>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listScheduleCoverageReview>>,
+          TError,
+          Awaited<ReturnType<typeof listScheduleCoverageReview>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useListScheduleCoverageReview<
+  TData = Awaited<ReturnType<typeof listScheduleCoverageReview>>,
+  TError = void,
+>(
+  params?: ListScheduleCoverageReviewParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listScheduleCoverageReview>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+/**
+ * @summary Lists past CPMP cycles missing both a schedule and a deferral for GSD review
+ */
+
+export function useListScheduleCoverageReview<
+  TData = Awaited<ReturnType<typeof listScheduleCoverageReview>>,
+  TError = void,
+>(
+  params?: ListScheduleCoverageReviewParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listScheduleCoverageReview>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+} {
+  const queryOptions = getListScheduleCoverageReviewQueryOptions(
+    params,
+    options,
+  )
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+
+  return withQueryKey(query, queryOptions.queryKey)
 }
 
 /**

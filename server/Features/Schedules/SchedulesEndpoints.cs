@@ -50,6 +50,38 @@ public static class SchedulesEndpoints
         .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status403Forbidden)
         .RequireAuthorization(AuthPolicyCatalog.CanGenerateSchedules);
 
+        group.MapGet("/coverage-review", async (
+            int? page,
+            int? pageSize,
+            PreventiveMaintenanceScheduleGenerationService scheduleGenerator,
+            TimeProvider timeProvider,
+            CancellationToken cancellationToken) =>
+        {
+            var coverage = await scheduleGenerator.GetCoverageReviewAsync(
+                timeProvider.GetUtcNow(),
+                cancellationToken);
+            var size = Math.Clamp(pageSize ?? 25, 1, 100);
+            var total = coverage.Items.Count;
+            var pageCount = Math.Max(1, (int)Math.Ceiling((double)total / size));
+            var pageNumber = Math.Clamp(page ?? 1, 1, pageCount);
+            var items = coverage.Items
+                .Skip((pageNumber - 1) * size)
+                .Take(size)
+                .ToArray();
+            return Results.Ok(new ScheduleCoverageReviewPage(
+                coverage.Year,
+                pageNumber,
+                size,
+                total,
+                items));
+        })
+        .WithName("ListScheduleCoverageReview")
+        .WithSummary("Lists past CPMP cycles missing both a schedule and a deferral for GSD review")
+        .Produces<ScheduleCoverageReviewPage>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .RequireAuthorization(AuthPolicyCatalog.CanGenerateSchedules);
+
         group.MapGet("/enrollment-deferrals", async (
             int? page,
             int? pageSize,
@@ -1004,6 +1036,13 @@ public sealed record ScheduleWorkerAssignmentOptionsResponse(
 
 public sealed record ScheduleSupervisorAssignmentOptionsResponse(
     IReadOnlyList<ScheduleAssigneeOption> Supervisors);
+
+public sealed record ScheduleCoverageReviewPage(
+    int Year,
+    int Page,
+    int PageSize,
+    int Total,
+    IReadOnlyList<ScheduleCoverageReviewItem> Items);
 
 public sealed record ScheduleAssignmentBatchResponse(
     string Department,

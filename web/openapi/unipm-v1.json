@@ -2359,6 +2359,59 @@
         }
       }
     },
+    "/api/v1/schedules/coverage-review": {
+      "get": {
+        "tags": [
+          "Schedules"
+        ],
+        "summary": "Lists past CPMP cycles missing both a schedule and a deferral for GSD review",
+        "operationId": "ListScheduleCoverageReview",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleCoverageReviewPage"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      }
+    },
     "/api/v1/schedules/enrollment-deferrals": {
       "get": {
         "tags": ["Schedules"],
@@ -2501,6 +2554,88 @@
   },
   "components": {
     "schemas": {
+      "ScheduleCoverageReviewItem": {
+        "required": [
+          "assetId",
+          "assetCode",
+          "department",
+          "assetCategory",
+          "pmCycle",
+          "reason"
+        ],
+        "type": "object",
+        "properties": {
+          "assetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "assetCode": {
+            "type": "string"
+          },
+          "department": {
+            "type": "string"
+          },
+          "assetCategory": {
+            "type": "string"
+          },
+          "pmCycle": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
+      },
+      "ScheduleCoverageReviewPage": {
+        "required": [
+          "year",
+          "page",
+          "pageSize",
+          "total",
+          "items"
+        ],
+        "type": "object",
+        "properties": {
+          "year": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "page": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "pageSize": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "total": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScheduleCoverageReviewItem"
+            }
+          }
+        }
+      },
       "AcknowledgePreventiveMaintenanceFormDto": {
         "type": "object",
         "properties": {

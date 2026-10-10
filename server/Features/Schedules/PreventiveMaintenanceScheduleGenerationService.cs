@@ -17,6 +17,14 @@ public sealed record ScheduleGenerationResult(
     int DeferredSchedules,
     int CyclesRequiringGsdCoverageReview);
 
+public sealed record ScheduleCoverageReviewItem(
+    Guid AssetId,
+    string AssetCode,
+    string Department,
+    string AssetCategory,
+    string PmCycle,
+    string Reason);
+
 public sealed class PreventiveMaintenanceScheduleGenerationService
 {
     public const string UniqueIndexName = "UX_Schedules_AssetId_PmCycle";
@@ -177,40 +185,12 @@ public sealed class PreventiveMaintenanceScheduleGenerationService
             })
             .ToArray();
 
-        var uncoveredPastCycles = effectiveDate is null
-            ? applicableCycles.Where(item => item.Month < institutionalNow.Month).ToArray()
-            : [];
-
-        var existingAndDeferredKeys = new HashSet<(Guid AssetId, string PmCycle)>();
-        if (uncoveredPastCycles.Length > 0)
-        {
-            var uncoveredPmCycles = uncoveredPastCycles
-                .Select(item => item.Cycle)
-                .Distinct(StringComparer.Ordinal)
-                .ToArray();
-            foreach (var assetIds in eligible.Select(asset => asset.Id).Chunk(PastCycleLookupBatchSize))
-            {
-                var existingKeys = await readContext.PreventiveMaintenanceSchedules
-                    .AsNoTracking()
-                    .Where(schedule => assetIds.Contains(schedule.AssetId)
-                        && uncoveredPmCycles.Contains(schedule.PmCycle))
-                    .Select(schedule => new { schedule.AssetId, schedule.PmCycle })
-                    .ToListAsync(cancellationToken);
-                var deferredKeys = await readContext.ScheduleEnrollmentDeferrals
-                    .AsNoTracking()
-                    .Where(deferral => assetIds.Contains(deferral.AssetId)
-                        && uncoveredPmCycles.Contains(deferral.PmCycle))
-                    .Select(deferral => new { deferral.AssetId, deferral.PmCycle })
-                    .ToListAsync(cancellationToken);
-                existingAndDeferredKeys.UnionWith(
-                    existingKeys.Select(item => (item.AssetId, item.PmCycle)));
-                existingAndDeferredKeys.UnionWith(
-                    deferredKeys.Select(item => (item.AssetId, item.PmCycle)));
-            }
-        }
-
-        var coverageReviewCount = uncoveredPastCycles.Count(item =>
-            !existingAndDeferredKeys.Contains((item.Asset.Id, item.Cycle)));
+        var coverageReviewItems = await FindCoverageReviewItemsAsync(
+            readContext,
+            eligible,
+            year,
+            institutionalNow.Month,
+            cancellationToken);
 
         var work = applicableCycles
             .Where(item => effectiveDate is not null
@@ -245,7 +225,101 @@ public sealed class PreventiveMaintenanceScheduleGenerationService
             existingCount,
             createdCount,
             deferredCount,
-            coverageReviewCount);
+            coverageReviewItems.Length);
+    }
+
+    public async Task<(int Year, IReadOnlyList<ScheduleCoverageReviewItem> Items)> GetCoverageReviewAsync(
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
+    {
+        var institutionalNow = PreventiveMaintenanceCycle.ToInstitutionalTime(now);
+        await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
+        var eligible = await context.Assets
+            .AsNoTracking()
+            .Where(asset => asset.Status == AssetStatusCatalog.Active
+                && asset.Department != null
+                && asset.Department.Trim() != string.Empty)
+            .ToListAsync(cancellationToken);
+        var eligibleAssets = eligible
+            .Where(IsEligible)
+            .Where(asset => PreventiveMaintenanceCycle.ToInstitutionalTime(asset.CreatedAt).Year <= institutionalNow.Year)
+            .ToArray();
+        var items = await FindCoverageReviewItemsAsync(
+            context,
+            eligibleAssets,
+            institutionalNow.Year,
+            institutionalNow.Month,
+            cancellationToken);
+        return (institutionalNow.Year, items);
+    }
+
+    private async Task<ScheduleCoverageReviewItem[]> FindCoverageReviewItemsAsync(
+        ApplicationDbContext context,
+        Asset[] eligible,
+        int year,
+        int currentMonth,
+        CancellationToken cancellationToken)
+    {
+        if (effectiveDate is not null || currentMonth <= 1)
+        {
+            return [];
+        }
+
+        var uncoveredPastCycles = eligible
+            .SelectMany(asset =>
+            {
+                var created = PreventiveMaintenanceCycle.ToInstitutionalTime(asset.CreatedAt);
+                var firstRegistrationMonth = created.Year == year ? created.Month : 1;
+                return CpmpScheduleFrequency.GetMonths(asset.AssetCategory)
+                    .Where(month => month >= firstRegistrationMonth && month < currentMonth)
+                    .Select(month => (Asset: asset, PmCycle: $"{year:D4}-{month:D2}"));
+            })
+            .ToArray();
+        if (uncoveredPastCycles.Length == 0)
+        {
+            return [];
+        }
+
+        var pmCycles = uncoveredPastCycles
+            .Select(item => item.PmCycle)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        var existingAndDeferredKeys = new HashSet<(Guid AssetId, string PmCycle)>();
+        foreach (var assetIds in eligible.Select(asset => asset.Id).Chunk(PastCycleLookupBatchSize))
+        {
+            var existingKeys = await context.PreventiveMaintenanceSchedules
+                .AsNoTracking()
+                .Where(schedule => assetIds.Contains(schedule.AssetId)
+                    && pmCycles.Contains(schedule.PmCycle))
+                .Select(schedule => new { schedule.AssetId, schedule.PmCycle })
+                .ToListAsync(cancellationToken);
+            var deferredKeys = await context.ScheduleEnrollmentDeferrals
+                .AsNoTracking()
+                .Where(deferral => assetIds.Contains(deferral.AssetId)
+                    && pmCycles.Contains(deferral.PmCycle))
+                .Select(deferral => new { deferral.AssetId, deferral.PmCycle })
+                .ToListAsync(cancellationToken);
+            existingAndDeferredKeys.UnionWith(
+                existingKeys.Select(item => (item.AssetId, item.PmCycle)));
+            existingAndDeferredKeys.UnionWith(
+                deferredKeys.Select(item => (item.AssetId, item.PmCycle)));
+        }
+
+        const string reason = "No schedule or enrollment deferral exists for this past PM cycle, and the approved coverage start date is not configured.";
+        return uncoveredPastCycles
+            .Where(item => !existingAndDeferredKeys.Contains((item.Asset.Id, item.PmCycle)))
+            .Select(item => new ScheduleCoverageReviewItem(
+                item.Asset.Id,
+                item.Asset.AssetCode,
+                item.Asset.Department!.Trim(),
+                item.Asset.AssetCategory,
+                item.PmCycle,
+                reason))
+            .OrderBy(item => item.Department, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(item => item.AssetCategory, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(item => item.PmCycle, StringComparer.Ordinal)
+            .ThenBy(item => item.AssetCode, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
     }
 
     private bool IsWithinApprovedCoverage(string pmCycle)
