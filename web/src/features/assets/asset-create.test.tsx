@@ -396,7 +396,7 @@ describe('AssetCreate feature component', () => {
     })
   })
 
-  it('submits configured verification values as numbers', async () => {
+  it('omits the retired verification coordinates from asset registration', async () => {
     let submitted: Record<string, unknown> | undefined
     server.use(
       http.get(meUrl, () =>
@@ -418,61 +418,17 @@ describe('AssetCreate feature component', () => {
     const actor = userEvent.setup()
     await screen.findByLabelText('Asset code')
     await fillRequiredAssetFields(actor, 'FE-998')
-    fireEvent.change(screen.getByLabelText('Verification latitude'), {
-      target: { value: '14.5995' },
-    })
-    fireEvent.change(screen.getByLabelText('Verification longitude'), {
-      target: { value: '120.9842' },
-    })
-    fireEvent.change(screen.getByLabelText('Verification radius (meters)'), {
-      target: { value: '25' },
-    })
+    expect(screen.queryByLabelText(/verification latitude/i)).toBeNull()
+    expect(screen.queryByLabelText(/verification longitude/i)).toBeNull()
+    expect(screen.queryByLabelText(/verification radius/i)).toBeNull()
     await actor.click(screen.getByRole('button', { name: 'Create asset' }))
 
     await vi.waitFor(() => {
-      expect(submitted).toMatchObject({
-        verificationLatitude: 14.5995,
-        verificationLongitude: 120.9842,
-        verificationRadiusMeters: 25,
-      })
+      expect(submitted).toMatchObject({ assetCode: 'FE-998' })
+      expect(submitted).not.toHaveProperty('verificationLatitude')
+      expect(submitted).not.toHaveProperty('verificationLongitude')
+      expect(submitted).not.toHaveProperty('verificationRadiusMeters')
     })
-  })
-
-  it('rejects partial verification configuration before sending the create request', async () => {
-    let attempts = 0
-    server.use(
-      http.get(meUrl, () =>
-        HttpResponse.json({
-          id: '11111111-1111-4111-8111-111111111111',
-          email: 'gsd@example.test',
-          displayName: 'GSD Admin',
-          roles: ['GSD'],
-        }),
-      ),
-      http.get(categoriesUrl, () => HttpResponse.json(sampleCategories)),
-      http.post(createUrl, () => {
-        attempts += 1
-        return HttpResponse.json(createdAsset)
-      }),
-    )
-
-    renderWithProviders(<AssetCreate />)
-    const actor = userEvent.setup()
-    await screen.findByLabelText('Asset code')
-    await fillRequiredAssetFields(actor, 'FE-997')
-    fireEvent.change(screen.getByLabelText('Verification latitude'), {
-      target: { value: '14.5995' },
-    })
-    await actor.click(screen.getByRole('button', { name: 'Create asset' }))
-
-    expect(
-      (
-        await screen.findAllByText(
-          'Enter latitude, longitude, and radius together.',
-        )
-      ).length,
-    ).toBe(2)
-    expect(attempts).toBe(0)
   })
 
   it('disables submit button to prevent duplicate submission while pending', async () => {
