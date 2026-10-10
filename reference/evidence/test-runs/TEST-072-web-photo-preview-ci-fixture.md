@@ -3,8 +3,8 @@ id: TEST-072
 type: test-run
 title: Web photo preview CI fixture correction
 status: executed
-recordedAtUtc: 2026-10-10T18:07:42Z
-testedCommit: f6464bd77b8a7d9e83cc0d103cdc52ee26d8c528
+recordedAtUtc: 2026-10-10T18:12:39Z
+testedCommit: 9e237c8312cc079e962a6fb996eda92dddd8b23f
 sourceBranch: feat/inspection-photo-evidence
 evidenceLevel: locally-executed
 ---
@@ -21,10 +21,10 @@ changed.
 
 ## Execution identity
 
-- Tested source commit: `f6464bd77b8a7d9e83cc0d103cdc52ee26d8c528`.
+- Tested source commit: `9e237c8312cc079e962a6fb996eda92dddd8b23f`.
 - Branch: `feat/inspection-photo-evidence`.
 - Repository: `lucifron28/UniPM`.
-- Previous failing CI head: `496c30438ccb092672465a2123cdb99c9b18d74b`.
+- Previous failing CI heads: `496c30438ccb092672465a2123cdb99c9b18d74b`, `e317ab199595e8cb00dc3348deec4f2f371933c7`, and `99e5563fda9a02f3c593661e825fa05294114757`.
 
 ## Commands and results
 
@@ -42,8 +42,14 @@ which produced a completed photo query in local verification.
 
 The follow-up Web CI runs 194 and 195 on `e317ab199595e8cb00dc3348deec4f2f371933c7`
 stopped at `format:check`; Prettier required a line-wrap adjustment in the
-fixture. That formatting correction is included in the tested commit above.
-The focused test and full web unit suite pass on that commit.
+fixture. That formatting correction is included in the current tested commit.
+
+Web CI runs 196 and 197 on `99e5563fda9a02f3c593661e825fa05294114757` passed
+formatting but failed the same photo test with the same `object.stream` error
+for the `ArrayBuffer` body. The UI test does not decode image pixels, so its
+MSW response now uses a plain string body with the `image/jpeg` media type. This
+avoids binary-body adaptation in the JSDOM/Undici test path. The focused test,
+full web unit suite, and format check pass locally on the current tested commit.
 
 ## Remaining verification
 
