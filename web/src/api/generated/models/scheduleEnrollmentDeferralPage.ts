@@ -7,8 +7,15 @@
 import type { ScheduleEnrollmentDeferralResponse } from './scheduleEnrollmentDeferralResponse'
 
 export interface ScheduleEnrollmentDeferralPage {
-  page: number
-  pageSize: number
-  total: number
+  /** @pattern ^-?(?:0|[1-9]\d*)$ */
+  page: number | string
+  /** @pattern ^-?(?:0|[1-9]\d*)$ */
+  pageSize: number | string
+  /** @pattern ^-?(?:0|[1-9]\d*)$ */
+  total: number | string
+  /** @pattern ^-?(?:0|[1-9]\d*)$ */
+  pendingCount: number | string
+  /** @pattern ^-?(?:0|[1-9]\d*)$ */
+  reviewedCount: number | string
   items: ScheduleEnrollmentDeferralResponse[]
 }

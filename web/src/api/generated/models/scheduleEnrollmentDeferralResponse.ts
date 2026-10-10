@@ -16,4 +16,12 @@ export interface ScheduleEnrollmentDeferralResponse {
   reason: string
   status: string
   deferredAt: string
+  /** @nullable */
+  reviewedAt: string | null
+  /** @nullable */
+  reviewedByUserId: string | null
+  /** @nullable */
+  reviewedByDisplayName: string | null
+  /** @nullable */
+  reviewNote: string | null
 }

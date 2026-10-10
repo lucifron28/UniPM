@@ -6,6 +6,16 @@
  */
 
 export type ListScheduleEnrollmentDeferralsParams = {
-  page?: number
-  pageSize?: number
+  /**
+   * @pattern ^-?(?:0|[1-9]\d*)$
+   */
+  page?: number | string
+  /**
+   * @pattern ^-?(?:0|[1-9]\d*)$
+   */
+  pageSize?: number | string
+  status?: string
+  pmCycle?: string
+  assetCategory?: string
+  department?: string
 }

@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using System.Globalization;
 using UniPM.Api.Data;
 using UniPM.Api.Features.Assets;
 using UniPM.Api.Features.PreventiveMaintenanceForms;
@@ -12,13 +14,39 @@ public sealed record ScheduleGenerationResult(
     int EligibleAssets,
     int ExistingSchedules,
     int CreatedSchedules,
-    int DeferredSchedules);
+    int DeferredSchedules,
+    int CyclesRequiringGsdCoverageReview);
 
-public sealed class PreventiveMaintenanceScheduleGenerationService(
-    IDbContextFactory<ApplicationDbContext> contextFactory)
+public sealed class PreventiveMaintenanceScheduleGenerationService
 {
     public const string UniqueIndexName = "UX_Schedules_AssetId_PmCycle";
     private const int MaxUniqueConflictRetries = 3;
+    private const int PastCycleLookupBatchSize = 500;
+    private readonly IDbContextFactory<ApplicationDbContext> contextFactory;
+    private readonly DateOnly? effectiveDate;
+
+    public PreventiveMaintenanceScheduleGenerationService(
+        IDbContextFactory<ApplicationDbContext> contextFactory,
+        IOptions<ScheduleGenerationOptions>? options = null)
+    {
+        this.contextFactory = contextFactory;
+        var configuredDate = options?.Value.EffectiveDate;
+        if (!string.IsNullOrWhiteSpace(configuredDate))
+        {
+            if (!DateOnly.TryParseExact(
+                    configuredDate,
+                    "yyyy-MM-dd",
+                    CultureInfo.InvariantCulture,
+                    DateTimeStyles.None,
+                    out var parsedDate))
+            {
+                throw new InvalidOperationException(
+                    "ScheduleGeneration:EffectiveDate must use yyyy-MM-dd and requires GSD approval.");
+            }
+
+            effectiveDate = parsedDate;
+        }
+    }
 
     public async Task<int> AddCurrentYearUpcomingCyclesAsync(
         ApplicationDbContext context,
@@ -34,12 +62,13 @@ public sealed class PreventiveMaintenanceScheduleGenerationService(
 
         var institutionalNow = PreventiveMaintenanceCycle.ToInstitutionalTime(now);
         var months = CpmpScheduleFrequency.GetMonths(asset.AssetCategory);
+        var assetCreated = PreventiveMaintenanceCycle.ToInstitutionalTime(asset.CreatedAt);
         var cycles = months
-            .Where(month => month >= Math.Max(institutionalNow.Month,
-                PreventiveMaintenanceCycle.ToInstitutionalTime(asset.CreatedAt).Year == institutionalNow.Year
-                    ? PreventiveMaintenanceCycle.ToInstitutionalTime(asset.CreatedAt).Month
-                    : 1))
+            .Where(month => month >= Math.Max(
+                institutionalNow.Month,
+                assetCreated.Year == institutionalNow.Year ? assetCreated.Month : 1))
             .Select(month => $"{institutionalNow.Year:D4}-{month:D2}")
+            .Where(IsWithinApprovedCoverage)
             .ToArray();
         var identities = cycles
             .Select(cycle => ScheduleBatchIdentity.TryCreate(
@@ -137,17 +166,57 @@ public sealed class PreventiveMaintenanceScheduleGenerationService(
             .Where(asset => PreventiveMaintenanceCycle.ToInstitutionalTime(asset.CreatedAt).Year <= year)
             .ToArray();
 
-        var work = eligible
+        var applicableCycles = eligible
             .SelectMany(asset =>
             {
                 var created = PreventiveMaintenanceCycle.ToInstitutionalTime(asset.CreatedAt);
-                var firstEligibleMonth = Math.Max(
-                    institutionalNow.Month,
-                    created.Year == year ? created.Month : 1);
+                var firstRegistrationMonth = created.Year == year ? created.Month : 1;
                 return CpmpScheduleFrequency.GetMonths(asset.AssetCategory)
-                    .Where(month => month >= firstEligibleMonth)
-                    .Select(month => (Asset: asset, Cycle: $"{year:D4}-{month:D2}"));
+                    .Where(month => month >= firstRegistrationMonth)
+                    .Select(month => (Asset: asset, Cycle: $"{year:D4}-{month:D2}", Month: month));
             })
+            .ToArray();
+
+        var uncoveredPastCycles = effectiveDate is null
+            ? applicableCycles.Where(item => item.Month < institutionalNow.Month).ToArray()
+            : [];
+
+        var existingAndDeferredKeys = new HashSet<(Guid AssetId, string PmCycle)>();
+        if (uncoveredPastCycles.Length > 0)
+        {
+            var uncoveredPmCycles = uncoveredPastCycles
+                .Select(item => item.Cycle)
+                .Distinct(StringComparer.Ordinal)
+                .ToArray();
+            foreach (var assetIds in eligible.Select(asset => asset.Id).Chunk(PastCycleLookupBatchSize))
+            {
+                var existingKeys = await readContext.PreventiveMaintenanceSchedules
+                    .AsNoTracking()
+                    .Where(schedule => assetIds.Contains(schedule.AssetId)
+                        && uncoveredPmCycles.Contains(schedule.PmCycle))
+                    .Select(schedule => new { schedule.AssetId, schedule.PmCycle })
+                    .ToListAsync(cancellationToken);
+                var deferredKeys = await readContext.ScheduleEnrollmentDeferrals
+                    .AsNoTracking()
+                    .Where(deferral => assetIds.Contains(deferral.AssetId)
+                        && uncoveredPmCycles.Contains(deferral.PmCycle))
+                    .Select(deferral => new { deferral.AssetId, deferral.PmCycle })
+                    .ToListAsync(cancellationToken);
+                existingAndDeferredKeys.UnionWith(
+                    existingKeys.Select(item => (item.AssetId, item.PmCycle)));
+                existingAndDeferredKeys.UnionWith(
+                    deferredKeys.Select(item => (item.AssetId, item.PmCycle)));
+            }
+        }
+
+        var coverageReviewCount = uncoveredPastCycles.Count(item =>
+            !existingAndDeferredKeys.Contains((item.Asset.Id, item.Cycle)));
+
+        var work = applicableCycles
+            .Where(item => effectiveDate is not null
+                ? IsWithinApprovedCoverage(item.Cycle)
+                : item.Month >= institutionalNow.Month)
+            .Select(item => (item.Asset, item.Cycle))
             .GroupBy(item =>
             {
                 ScheduleBatchIdentity.TryCreate(
@@ -170,7 +239,25 @@ public sealed class PreventiveMaintenanceScheduleGenerationService(
             deferredCount += result.Deferred;
         }
 
-        return new ScheduleGenerationResult(year, eligible.Length, existingCount, createdCount, deferredCount);
+        return new ScheduleGenerationResult(
+            year,
+            eligible.Length,
+            existingCount,
+            createdCount,
+            deferredCount,
+            coverageReviewCount);
+    }
+
+    private bool IsWithinApprovedCoverage(string pmCycle)
+    {
+        if (effectiveDate is null)
+        {
+            return true;
+        }
+
+        var deadline = PreventiveMaintenanceCycle.ToInstitutionalTime(
+            PreventiveMaintenanceCycle.DeadlineForCycle(pmCycle));
+        return DateOnly.FromDateTime(deadline.DateTime) >= effectiveDate.Value;
     }
 
     private async Task<BatchGenerationResult> EnsureBatchAsync(

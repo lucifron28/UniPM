@@ -1,3 +1,5 @@
+using UniPM.Api.Models;
+
 namespace UniPM.Api.Features.Schedules;
 
 internal static class ScheduleEnrollmentDeferralReason
@@ -24,4 +26,36 @@ internal static class ScheduleEnrollmentDeferralReason
         FormAcknowledged => "The batch form had already been acknowledged.",
         _ => "The existing PM batch was locked against additional enrollment."
     };
+}
+
+internal static class ScheduleEnrollmentDeferralStatusCatalog
+{
+    internal const string NeedsReview = "NeedsReview";
+    internal const string Reviewed = "Reviewed";
+
+    internal static bool TryNormalize(string? value, out string status)
+    {
+        status = string.Empty;
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+        if (string.Equals(value.Trim(), NeedsReview, StringComparison.OrdinalIgnoreCase))
+        {
+            status = NeedsReview;
+            return true;
+        }
+
+        if (string.Equals(value.Trim(), Reviewed, StringComparison.OrdinalIgnoreCase))
+        {
+            status = Reviewed;
+            return true;
+        }
+
+        return false;
+    }
+
+    internal static string ToLabel(ScheduleEnrollmentDeferral deferral) =>
+        deferral.ReviewedAt is null ? "Needs review" : "Reviewed";
 }

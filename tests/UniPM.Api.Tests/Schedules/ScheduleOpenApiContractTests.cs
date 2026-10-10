@@ -35,11 +35,31 @@ public sealed class ScheduleOpenApiContractTests : IClassFixture<ScheduleOpenApi
             "200",
             "ScheduleEnrollmentDeferralPage");
         AssertAuthorizationResponses(paths.GetProperty("/api/v1/schedules/enrollment-deferrals").GetProperty("get"));
+        var deferralReview = paths
+            .GetProperty("/api/v1/schedules/enrollment-deferrals/{assetId}/{pmCycle}/review")
+            .GetProperty("post");
+        Assert.Equal("ReviewScheduleEnrollmentDeferral", deferralReview.GetProperty("operationId").GetString());
+        Assert.True(deferralReview.GetProperty("responses").TryGetProperty("204", out _));
+        AssertAuthorizationResponses(deferralReview);
+        var schemas = document.RootElement.GetProperty("components").GetProperty("schemas");
+        var deferralProperties = schemas
+            .GetProperty("ScheduleEnrollmentDeferralResponse")
+            .GetProperty("properties");
+        Assert.True(deferralProperties.TryGetProperty("reviewedAt", out _));
+        Assert.True(deferralProperties.TryGetProperty("reviewedByUserId", out _));
+        Assert.True(deferralProperties.TryGetProperty("reviewedByDisplayName", out _));
+        Assert.True(deferralProperties.TryGetProperty("reviewNote", out _));
+        var deferralPageProperties = schemas
+            .GetProperty("ScheduleEnrollmentDeferralPage")
+            .GetProperty("properties");
+        Assert.True(deferralPageProperties.TryGetProperty("pendingCount", out _));
+        Assert.True(deferralPageProperties.TryGetProperty("reviewedCount", out _));
         var generationResult = document.RootElement.GetProperty("components")
             .GetProperty("schemas")
             .GetProperty("ScheduleGenerationResult")
             .GetProperty("properties");
         Assert.True(generationResult.TryGetProperty("deferredSchedules", out _));
+        Assert.True(generationResult.TryGetProperty("cyclesRequiringGsdCoverageReview", out _));
         AssertArrayOperation(paths, "/api/v1/reference-data/schedule-statuses", "get", "ListScheduleStatuses", "ScheduleReferenceResponse");
         AssertArrayOperation(paths, "/api/v1/reference-data/schedule-period-types", "get", "ListSchedulePeriodTypes", "ScheduleReferenceResponse");
         AssertArrayOperation(paths, "/api/v1/reference-data/schedule-quarters", "get", "ListScheduleQuarters", "ScheduleReferenceResponse");

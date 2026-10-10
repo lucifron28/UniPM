@@ -53,12 +53,80 @@ public static class SchedulesEndpoints
         group.MapGet("/enrollment-deferrals", async (
             int? page,
             int? pageSize,
+            string? status,
+            string? pmCycle,
+            string? assetCategory,
+            string? department,
             IDbContextFactory<ApplicationDbContext> factory,
             CancellationToken cancellationToken) =>
         {
+            var errors = new Dictionary<string, string[]>();
+            string? normalizedStatus = null;
+            if (!string.IsNullOrWhiteSpace(status))
+            {
+                if (!ScheduleEnrollmentDeferralStatusCatalog.TryNormalize(status, out var parsedStatus))
+                {
+                    errors[nameof(status)] = ["Status must be NeedsReview or Reviewed."];
+                }
+                else
+                {
+                    normalizedStatus = parsedStatus;
+                }
+            }
+
+            string? normalizedCycle = null;
+            if (!string.IsNullOrWhiteSpace(pmCycle))
+            {
+                if (!PreventiveMaintenanceCycle.TryParse(pmCycle, out _, out _))
+                {
+                    errors[nameof(pmCycle)] = ["PM cycle must use the yyyy-MM format."];
+                }
+                else
+                {
+                    normalizedCycle = pmCycle.Trim();
+                }
+            }
+
+            string? normalizedCategory = null;
+            if (!string.IsNullOrWhiteSpace(assetCategory))
+            {
+                if (!AssetCategoryCatalog.TryNormalize(assetCategory, out var parsedCategory))
+                {
+                    errors[nameof(assetCategory)] = ["Asset category must be one of the selected UniPM study scope categories."];
+                }
+                else
+                {
+                    normalizedCategory = parsedCategory;
+                }
+            }
+
+            var normalizedDepartment = string.IsNullOrWhiteSpace(department)
+                ? null
+                : department.Trim().ToUpperInvariant();
+            if (errors.Count > 0)
+            {
+                return ApiErrors.Validation(errors);
+            }
+
             var size = Math.Clamp(pageSize ?? 25, 1, 100);
             await using var context = await factory.CreateDbContextAsync(cancellationToken);
-            var query = context.ScheduleEnrollmentDeferrals.AsNoTracking();
+            var allStatusQuery = context.ScheduleEnrollmentDeferrals
+                .AsNoTracking()
+                .Where(deferral => normalizedCycle == null || deferral.PmCycle == normalizedCycle)
+                .Where(deferral => normalizedCategory == null || deferral.AssetCategoryAtDeferral == normalizedCategory)
+                .Where(deferral => normalizedDepartment == null || deferral.DepartmentAtDeferral == normalizedDepartment);
+            var pendingCount = await allStatusQuery.CountAsync(
+                deferral => deferral.ReviewedAt == null,
+                cancellationToken);
+            var reviewedCount = await allStatusQuery.CountAsync(
+                deferral => deferral.ReviewedAt != null,
+                cancellationToken);
+            var query = normalizedStatus switch
+            {
+                ScheduleEnrollmentDeferralStatusCatalog.NeedsReview => allStatusQuery.Where(deferral => deferral.ReviewedAt == null),
+                ScheduleEnrollmentDeferralStatusCatalog.Reviewed => allStatusQuery.Where(deferral => deferral.ReviewedAt != null),
+                _ => allStatusQuery
+            };
             var total = await query.CountAsync(cancellationToken);
             var pageCount = Math.Max(1, (int)Math.Ceiling((double)total / size));
             var pageNumber = Math.Clamp(page ?? 1, 1, pageCount);
@@ -71,25 +139,127 @@ public static class SchedulesEndpoints
                 .Join(context.Assets.AsNoTracking(),
                     deferral => deferral.AssetId,
                     asset => asset.Id,
-                    (deferral, asset) => new ScheduleEnrollmentDeferralResponse(
-                        deferral.AssetId,
-                        asset.AssetCode,
-                        deferral.DepartmentAtDeferral,
-                        deferral.AssetCategoryAtDeferral,
-                        deferral.PmCycle,
-                        deferral.NextEligiblePmCycle,
-                        deferral.ReasonCode,
-                        ScheduleEnrollmentDeferralReason.GetDescription(deferral.ReasonCode),
-                        "Needs GSD scheduling review",
-                        deferral.DeferredAt))
+                    (deferral, asset) => new { Deferral = deferral, Asset = asset })
+                .GroupJoin(context.Users.AsNoTracking(),
+                    item => item.Deferral.ReviewedByUserId,
+                    reviewer => (Guid?)reviewer.Id,
+                    (item, reviewers) => new { item.Deferral, item.Asset, Reviewers = reviewers })
+                .SelectMany(item => item.Reviewers.DefaultIfEmpty(),
+                    (item, reviewer) => new ScheduleEnrollmentDeferralResponse(
+                        item.Deferral.AssetId,
+                        item.Asset.AssetCode,
+                        item.Deferral.DepartmentAtDeferral,
+                        item.Deferral.AssetCategoryAtDeferral,
+                        item.Deferral.PmCycle,
+                        item.Deferral.NextEligiblePmCycle,
+                        item.Deferral.ReasonCode,
+                        ScheduleEnrollmentDeferralReason.GetDescription(item.Deferral.ReasonCode),
+                        ScheduleEnrollmentDeferralStatusCatalog.ToLabel(item.Deferral),
+                        item.Deferral.DeferredAt,
+                        item.Deferral.ReviewedAt,
+                        item.Deferral.ReviewedByUserId,
+                        reviewer == null ? null : reviewer.DisplayName,
+                        item.Deferral.ReviewNote))
                 .ToListAsync(cancellationToken);
-            return Results.Ok(new ScheduleEnrollmentDeferralPage(pageNumber, size, total, items));
+            return Results.Ok(new ScheduleEnrollmentDeferralPage(
+                pageNumber,
+                size,
+                total,
+                pendingCount,
+                reviewedCount,
+                items));
         })
         .WithName("ListScheduleEnrollmentDeferrals")
-        .WithSummary("Lists asset cycles deferred for GSD scheduling review")
+        .WithSummary("Lists deferred asset cycles and their GSD review status")
         .Produces<ScheduleEnrollmentDeferralPage>(StatusCodes.Status200OK)
+        .Produces<Microsoft.AspNetCore.Mvc.ValidationProblemDetails>(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden)
+        .RequireAuthorization(AuthPolicyCatalog.CanGenerateSchedules);
+
+        group.MapPost("/enrollment-deferrals/{assetId:guid}/{pmCycle}/review", async (
+            Guid assetId,
+            string pmCycle,
+            ScheduleEnrollmentDeferralReviewRequest request,
+            HttpContext httpContext,
+            IDbContextFactory<ApplicationDbContext> factory,
+            TimeProvider timeProvider,
+            CancellationToken cancellationToken) =>
+        {
+            if (!PreventiveMaintenanceCycle.TryParse(pmCycle, out _, out _))
+            {
+                return ApiErrors.Validation(new Dictionary<string, string[]>
+                {
+                    [nameof(pmCycle)] = ["PM cycle must use the yyyy-MM format."]
+                });
+            }
+
+            if (request.Note?.Length > ScheduleEnrollmentDeferralReviewRequest.MaximumNoteLength)
+            {
+                return ApiErrors.Validation(new Dictionary<string, string[]>
+                {
+                    [nameof(request.Note)] = [$"Review note must not exceed {ScheduleEnrollmentDeferralReviewRequest.MaximumNoteLength} characters."]
+                });
+            }
+
+            var reviewerId = httpContext.User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+            if (!Guid.TryParse(reviewerId, out var reviewerGuid))
+            {
+                return Results.Unauthorized();
+            }
+
+            var normalizedNote = string.IsNullOrWhiteSpace(request.Note) ? null : request.Note.Trim();
+            await using var context = await factory.CreateDbContextAsync(cancellationToken);
+            var deferralQuery = context.ScheduleEnrollmentDeferrals
+                .Where(deferral => deferral.AssetId == assetId && deferral.PmCycle == pmCycle);
+            var reviewedAt = timeProvider.GetUtcNow();
+
+            if (context.Database.IsRelational())
+            {
+                var updated = await deferralQuery
+                    .Where(deferral => deferral.ReviewedAt == null)
+                    .ExecuteUpdateAsync(setters => setters
+                        .SetProperty(deferral => deferral.ReviewedAt, reviewedAt)
+                        .SetProperty(deferral => deferral.ReviewedByUserId, (Guid?)reviewerGuid)
+                        .SetProperty(deferral => deferral.ReviewNote, normalizedNote),
+                        cancellationToken);
+                if (updated == 0)
+                {
+                    var exists = await deferralQuery.AnyAsync(cancellationToken);
+                    return exists
+                        ? ApiErrors.Conflict("This deferred cycle has already been reviewed.")
+                        : Results.NotFound();
+                }
+            }
+            else
+            {
+                var deferral = await deferralQuery.SingleOrDefaultAsync(cancellationToken);
+                if (deferral is null)
+                {
+                    return Results.NotFound();
+                }
+
+                if (deferral.ReviewedAt is not null)
+                {
+                    return ApiErrors.Conflict("This deferred cycle has already been reviewed.");
+                }
+
+                deferral.ReviewedAt = reviewedAt;
+                deferral.ReviewedByUserId = reviewerGuid;
+                deferral.ReviewNote = normalizedNote;
+                await context.SaveChangesAsync(cancellationToken);
+            }
+
+            return Results.NoContent();
+        })
+        .WithName("ReviewScheduleEnrollmentDeferral")
+        .WithSummary("Marks one deferred asset cycle as reviewed by GSD")
+        .Produces(StatusCodes.Status204NoContent)
+        .Produces(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces(StatusCodes.Status404NotFound)
+        .Produces(StatusCodes.Status409Conflict)
         .RequireAuthorization(AuthPolicyCatalog.CanGenerateSchedules);
 
         group.MapGet("/supervisor-assignment-options", async (
@@ -1032,10 +1202,21 @@ public sealed record ScheduleEnrollmentDeferralResponse(
     string ReasonCode,
     string Reason,
     string Status,
-    DateTimeOffset DeferredAt);
+    DateTimeOffset DeferredAt,
+    DateTimeOffset? ReviewedAt,
+    Guid? ReviewedByUserId,
+    string? ReviewedByDisplayName,
+    string? ReviewNote);
 
 public sealed record ScheduleEnrollmentDeferralPage(
     int Page,
     int PageSize,
     int Total,
+    int PendingCount,
+    int ReviewedCount,
     IReadOnlyList<ScheduleEnrollmentDeferralResponse> Items);
+
+public sealed record ScheduleEnrollmentDeferralReviewRequest(string? Note)
+{
+    public const int MaximumNoteLength = 1000;
+}

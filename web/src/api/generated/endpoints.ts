@@ -62,6 +62,7 @@ import type {
   ProblemDetails,
   ScheduleAssignmentBatchResponse,
   ScheduleEnrollmentDeferralPage,
+  ScheduleEnrollmentDeferralReviewRequest,
   ScheduleGenerationResult,
   ScheduleReferenceResponse,
   ScheduleResponse,
@@ -5249,7 +5250,7 @@ export const useGeneratePreventiveMaintenanceSchedules = <
 }
 
 /**
- * @summary Lists asset cycles deferred for GSD scheduling review
+ * @summary Lists deferred asset cycles and their GSD review status
  */
 export const listScheduleEnrollmentDeferrals = (
   params?: ListScheduleEnrollmentDeferralsParams,
@@ -5274,7 +5275,7 @@ export const getListScheduleEnrollmentDeferralsQueryKey = (
 
 export const getListScheduleEnrollmentDeferralsQueryOptions = <
   TData = Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>,
-  TError = void,
+  TError = ValidationProblemDetails | void,
 >(
   params?: ListScheduleEnrollmentDeferralsParams,
   options?: {
@@ -5306,11 +5307,12 @@ export const getListScheduleEnrollmentDeferralsQueryOptions = <
 export type ListScheduleEnrollmentDeferralsQueryResult = NonNullable<
   Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>
 >
-export type ListScheduleEnrollmentDeferralsQueryError = void
+export type ListScheduleEnrollmentDeferralsQueryError =
+  ValidationProblemDetails | void
 
 export function useListScheduleEnrollmentDeferrals<
   TData = Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>,
-  TError = void,
+  TError = ValidationProblemDetails | void,
 >(
   params: undefined | ListScheduleEnrollmentDeferralsParams,
   options: {
@@ -5336,7 +5338,7 @@ export function useListScheduleEnrollmentDeferrals<
 }
 export function useListScheduleEnrollmentDeferrals<
   TData = Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>,
-  TError = void,
+  TError = ValidationProblemDetails | void,
 >(
   params?: ListScheduleEnrollmentDeferralsParams,
   options?: {
@@ -5362,7 +5364,7 @@ export function useListScheduleEnrollmentDeferrals<
 }
 export function useListScheduleEnrollmentDeferrals<
   TData = Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>,
-  TError = void,
+  TError = ValidationProblemDetails | void,
 >(
   params?: ListScheduleEnrollmentDeferralsParams,
   options?: {
@@ -5379,12 +5381,12 @@ export function useListScheduleEnrollmentDeferrals<
   queryKey: DataTag<QueryKey, TData, TError>
 }
 /**
- * @summary Lists asset cycles deferred for GSD scheduling review
+ * @summary Lists deferred asset cycles and their GSD review status
  */
 
 export function useListScheduleEnrollmentDeferrals<
   TData = Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>,
-  TError = void,
+  TError = ValidationProblemDetails | void,
 >(
   params?: ListScheduleEnrollmentDeferralsParams,
   options?: {
@@ -5411,4 +5413,114 @@ export function useListScheduleEnrollmentDeferrals<
   > & { queryKey: DataTag<QueryKey, TData, TError> }
 
   return withQueryKey(query, queryOptions.queryKey)
+}
+
+/**
+ * @summary Marks one deferred asset cycle as reviewed by GSD
+ */
+export const reviewScheduleEnrollmentDeferral = (
+  assetId: string,
+  pmCycle: string,
+  scheduleEnrollmentDeferralReviewRequest: ScheduleEnrollmentDeferralReviewRequest,
+  signal?: AbortSignal,
+) => {
+  return customInstance<void>({
+    url: `/api/v1/schedules/enrollment-deferrals/${assetId}/${pmCycle}/review`,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    data: scheduleEnrollmentDeferralReviewRequest,
+    signal,
+  })
+}
+
+export const getReviewScheduleEnrollmentDeferralMutationOptions = <
+  TError = void,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof reviewScheduleEnrollmentDeferral>>,
+    TError,
+    {
+      assetId: string
+      pmCycle: string
+      data: ScheduleEnrollmentDeferralReviewRequest
+    },
+    TContext
+  >
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof reviewScheduleEnrollmentDeferral>>,
+  TError,
+  {
+    assetId: string
+    pmCycle: string
+    data: ScheduleEnrollmentDeferralReviewRequest
+  },
+  TContext
+> => {
+  const mutationKey = ['reviewScheduleEnrollmentDeferral']
+  const { mutation: mutationOptions } = options
+    ? options.mutation &&
+      'mutationKey' in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey } }
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof reviewScheduleEnrollmentDeferral>>,
+    {
+      assetId: string
+      pmCycle: string
+      data: ScheduleEnrollmentDeferralReviewRequest
+    }
+  > = (props) => {
+    const { assetId, pmCycle, data } = props ?? {}
+
+    return reviewScheduleEnrollmentDeferral(assetId, pmCycle, data)
+  }
+
+  return { mutationFn, ...mutationOptions }
+}
+
+export type ReviewScheduleEnrollmentDeferralMutationResult = NonNullable<
+  Awaited<ReturnType<typeof reviewScheduleEnrollmentDeferral>>
+>
+export type ReviewScheduleEnrollmentDeferralMutationBody =
+  ScheduleEnrollmentDeferralReviewRequest
+export type ReviewScheduleEnrollmentDeferralMutationError = void
+
+/**
+ * @summary Marks one deferred asset cycle as reviewed by GSD
+ */
+export const useReviewScheduleEnrollmentDeferral = <
+  TError = void,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof reviewScheduleEnrollmentDeferral>>,
+      TError,
+      {
+        assetId: string
+        pmCycle: string
+        data: ScheduleEnrollmentDeferralReviewRequest
+      },
+      TContext
+    >
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof reviewScheduleEnrollmentDeferral>>,
+  TError,
+  {
+    assetId: string
+    pmCycle: string
+    data: ScheduleEnrollmentDeferralReviewRequest
+  },
+  TContext
+> => {
+  return useMutation(
+    getReviewScheduleEnrollmentDeferralMutationOptions(options),
+    queryClient,
+  )
 }

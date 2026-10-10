@@ -147,7 +147,14 @@ async function mockScheduleApi(page: Page, roles = ['GSD']) {
       return route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ page: 1, pageSize: 10, total: 0, items: [] }),
+        body: JSON.stringify({
+          page: 1,
+          pageSize: 10,
+          total: 0,
+          pendingCount: 0,
+          reviewedCount: 0,
+          items: [],
+        }),
       })
     }
     if (pathname.endsWith(`/${scheduleId}`)) {
@@ -222,7 +229,14 @@ test.describe('Schedule workflows', () => {
         contentType: 'application/json',
         body: JSON.stringify(
           pathname === '/api/v1/schedules/enrollment-deferrals'
-            ? { page: 1, pageSize: 10, total: 0, items: [] }
+            ? {
+                page: 1,
+                pageSize: 10,
+                total: 0,
+                pendingCount: 0,
+                reviewedCount: 0,
+                items: [],
+              }
             : records,
         ),
       })

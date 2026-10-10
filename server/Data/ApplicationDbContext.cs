@@ -55,7 +55,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             .WithMany()
             .HasForeignKey(entity => entity.ReplacedBySessionId)
             .OnDelete(DeleteBehavior.NoAction);
-        
+
         var asset = modelBuilder.Entity<Asset>();
         asset.Property(entity => entity.AssetCode)
             .HasMaxLength(AssetCodeValue.MaxLength);
@@ -146,7 +146,12 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             table.HasCheckConstraint(
                 "CK_ScheduleEnrollmentDeferrals_ReasonCode_Allowed",
                 "[ReasonCode] IN ('BatchAssigned', 'WorkInProgress', 'CycleCompleted', 'CycleCancelled', 'InspectionStarted', 'FormSubmitted', 'FormAcknowledged')");
+            table.HasCheckConstraint(
+                "CK_ScheduleEnrollmentDeferrals_ReviewState",
+                "([ReviewedAt] IS NULL AND [ReviewedByUserId] IS NULL) OR ([ReviewedAt] IS NOT NULL AND [ReviewedByUserId] IS NOT NULL)");
         });
+        scheduleEnrollmentDeferral.Property(deferral => deferral.ReviewNote).HasMaxLength(1000);
+        scheduleEnrollmentDeferral.HasIndex(deferral => new { deferral.ReviewedAt, deferral.DeferredAt });
         scheduleEnrollmentDeferral.HasKey(entity => new { entity.AssetId, entity.PmCycle });
         scheduleEnrollmentDeferral.Property(entity => entity.PmCycle)
             .HasMaxLength(PreventiveMaintenanceCycle.Length);
@@ -323,7 +328,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             .WithMany()
             .HasForeignKey(i => i.ScheduleId)
             .OnDelete(DeleteBehavior.NoAction);
-            
+
         inspection
             .HasOne(i => i.Asset)
             .WithMany()

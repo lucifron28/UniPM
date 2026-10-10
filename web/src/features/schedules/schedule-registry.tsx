@@ -351,9 +351,18 @@ export function ScheduleRegistry({
                   scheduleGeneration.mutate(parsedGenerationYear, {
                     onSuccess: (result) => {
                       setGenerationFailed(false)
-                      setGenerationMessage(
-                        `Year ${result.year}: created ${result.createdSchedules} schedules; ${result.existingSchedules} already existed; ${result.deferredSchedules} deferred for GSD review.`,
+                      const summary =
+                        `Year ${result.year}: created ${result.createdSchedules} schedules; ` +
+                        `${result.existingSchedules} already existed; ` +
+                        `${result.deferredSchedules} deferred for GSD review.`
+                      const coverageReviewCount = Number(
+                        result.cyclesRequiringGsdCoverageReview,
                       )
+                      const coverageReview =
+                        coverageReviewCount > 0
+                          ? ` ${coverageReviewCount} earlier current-year cycle${coverageReviewCount === 1 ? '' : 's'} remain uncreated until GSD confirms the approved scheduling coverage start date.`
+                          : ''
+                      setGenerationMessage(summary + coverageReview)
                     },
                     onError: () => {
                       setGenerationFailed(true)

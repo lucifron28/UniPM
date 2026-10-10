@@ -20,11 +20,14 @@ import {
   listSchedulePeriodTypes,
   listScheduleQuarters,
   listScheduleEnrollmentDeferrals,
+  reviewScheduleEnrollmentDeferral,
   listScheduleStatuses,
   listSchedules,
 } from '@/api/generated/endpoints'
 import type {
   ListSchedulesParams,
+  ListScheduleEnrollmentDeferralsParams,
+  ScheduleEnrollmentDeferralReviewRequest,
   ScheduleReferenceResponse,
 } from '@/api/generated/models'
 import {
@@ -55,13 +58,38 @@ export function useSchedule(scheduleId: string, enabled = true) {
   })
 }
 
-export function useScheduleEnrollmentDeferrals(page = 1, enabled = true) {
-  const params = { page, pageSize: 10 }
+export function useScheduleEnrollmentDeferrals(
+  page = 1,
+  enabled = true,
+  filters: Omit<ListScheduleEnrollmentDeferralsParams, 'page'> = {},
+) {
+  const params = { page, pageSize: 10, ...filters }
   return useQuery({
     queryKey: getListScheduleEnrollmentDeferralsQueryKey(params),
     queryFn: ({ signal }) => listScheduleEnrollmentDeferrals(params, signal),
     enabled,
     placeholderData: (previousData) => previousData,
+  })
+}
+
+export function useReviewScheduleEnrollmentDeferral() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({
+      assetId,
+      pmCycle,
+      request,
+    }: {
+      assetId: string
+      pmCycle: string
+      request: ScheduleEnrollmentDeferralReviewRequest
+    }) => reviewScheduleEnrollmentDeferral(assetId, pmCycle, request),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: getListScheduleEnrollmentDeferralsQueryKey(),
+      })
+    },
   })
 }
 

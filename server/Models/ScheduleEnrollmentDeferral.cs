@@ -13,4 +13,7 @@ public sealed class ScheduleEnrollmentDeferral
     public string ReasonCode { get; set; } = string.Empty;
     public DateTimeOffset DeferredAt { get; set; }
     public string NextEligiblePmCycle { get; set; } = string.Empty;
+    public DateTimeOffset? ReviewedAt { get; set; }
+    public Guid? ReviewedByUserId { get; set; }
+    public string? ReviewNote { get; set; }
 }
