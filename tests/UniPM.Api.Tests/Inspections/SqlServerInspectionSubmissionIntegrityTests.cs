@@ -742,23 +742,24 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
         int expectedWaiters,
         Task<HttpResponseMessage> competingMutation)
     {
-        var timeout = DateTimeOffset.UtcNow.AddSeconds(5);
+        await using var connection = new SqlConnection(connectionString);
+        await connection.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT COUNT(DISTINCT locks.request_session_id)
+            FROM sys.dm_tran_locks AS locks
+            INNER JOIN sys.dm_exec_requests AS requests
+                ON requests.session_id = locks.request_session_id
+            WHERE locks.resource_type = N'APPLICATION'
+                AND locks.resource_database_id = DB_ID()
+                AND locks.request_mode = N'X'
+                AND locks.request_owner_type = N'TRANSACTION'
+                AND locks.request_status = N'WAIT'
+                AND requests.wait_type LIKE N'LCK_M_%';
+            """;
+        var timeout = DateTimeOffset.UtcNow.AddSeconds(4);
         while (DateTimeOffset.UtcNow < timeout)
         {
-            await using var connection = new SqlConnection(connectionString);
-            await connection.OpenAsync();
-            await using var command = connection.CreateCommand();
-            command.CommandText = """
-                SELECT COUNT(DISTINCT locks.request_session_id)
-                FROM sys.dm_tran_locks AS locks
-                INNER JOIN sys.dm_exec_requests AS requests
-                    ON requests.session_id = locks.request_session_id
-                WHERE locks.resource_type = N'APPLICATION'
-                    AND locks.resource_database_id = DB_ID()
-                    AND locks.request_mode = N'X'
-                    AND locks.request_status = N'WAIT'
-                    AND requests.wait_type LIKE N'LCK_M_%';
-                """;
             var waiters = Convert.ToInt32(
                 await command.ExecuteScalarAsync(),
                 System.Globalization.CultureInfo.InvariantCulture);
