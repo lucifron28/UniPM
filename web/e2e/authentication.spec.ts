@@ -7,7 +7,7 @@ const fictionalCredentials = {
 }
 const fictionalSession = {
   accessToken: 'synthetic-browser-access-token',
-  expiresAtUtc: '2026-07-18T12:00:00Z',
+  expiresAtUtc: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
   user: {
     id: '11111111-1111-4111-8111-111111111111',
     email: fictionalCredentials.email,

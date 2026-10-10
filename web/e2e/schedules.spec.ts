@@ -4,7 +4,7 @@ const assetId = '22222222-2222-4222-8222-222222222222'
 const scheduleId = '11111111-1111-4111-8111-111111111111'
 const gsdSession = {
   accessToken: 'fictional-gsd-schedule-token',
-  expiresAtUtc: '2026-08-01T12:00:00Z',
+  expiresAtUtc: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
   user: {
     id: '33333333-3333-4333-8333-333333333333',
     email: 'fictional.gsd@example.test',
@@ -157,6 +157,19 @@ async function mockScheduleApi(page: Page, roles = ['GSD']) {
         }),
       })
     }
+    if (pathname === '/api/v1/schedules/coverage-review') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          year: 2026,
+          page: 1,
+          pageSize: 10,
+          total: 0,
+          items: [],
+        }),
+      })
+    }
     if (pathname.endsWith(`/${scheduleId}`)) {
       return route.fulfill({
         status: 200,
@@ -237,7 +250,15 @@ test.describe('Schedule workflows', () => {
                 reviewedCount: 0,
                 items: [],
               }
-            : records,
+            : pathname === '/api/v1/schedules/coverage-review'
+              ? {
+                  year: 2026,
+                  page: 1,
+                  pageSize: 10,
+                  total: 0,
+                  items: [],
+                }
+              : records,
         ),
       })
     })
