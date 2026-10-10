@@ -331,12 +331,10 @@ describe('inspection review workflows', () => {
       http.get(`${base}/inspections/${inspectionId}`, () =>
         HttpResponse.json({ ...inspection, hasPhotoEvidence: true }),
       ),
-      http.get(
-        `${base}/inspections/${inspectionId}/photo`,
-        () =>
-          HttpResponse.arrayBuffer(new Uint8Array([0xff, 0xd8]).buffer, {
-            headers: { 'Content-Type': 'image/jpeg' },
-          }),
+      http.get(`${base}/inspections/${inspectionId}/photo`, () =>
+        HttpResponse.arrayBuffer(new Uint8Array([0xff, 0xd8]).buffer, {
+          headers: { 'Content-Type': 'image/jpeg' },
+        }),
       ),
     )
     renderWithProviders(<InspectionDetail inspectionId={inspectionId} />)
