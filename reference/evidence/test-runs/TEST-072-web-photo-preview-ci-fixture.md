@@ -57,7 +57,9 @@ and format check pass locally on the tested commit.
 
 ## Remaining verification
 
-Exact-head Backend CI and Web CI for the next evidence-updated pushed head are
-pending. Native SQL Server migration execution, physical camera behavior, iOS
-build, staging acceptance, deployment, and production file-storage backup and
-retention remain NOT VERIFIED as recorded in [TEST-071](TEST-071-inspection-photo-evidence-and-gps-removal.md).
+Exact-head CI for the pushed PR head is recorded in
+[TEST-073](TEST-073-photo-preview-exact-head-ci.md). Any later source or
+evidence commit needs its own exact-head workflow verification. Native SQL
+Server migration execution, physical camera behavior, iOS build, staging
+acceptance, deployment, and production file-storage backup and retention remain
+NOT VERIFIED as recorded in [TEST-071](TEST-071-inspection-photo-evidence-and-gps-removal.md).
