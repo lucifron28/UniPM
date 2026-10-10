@@ -334,7 +334,7 @@ describe('inspection review workflows', () => {
       http.get(
         `${base}/inspections/${inspectionId}/photo`,
         () =>
-          new HttpResponse(new Uint8Array([0xff, 0xd8]), {
+          HttpResponse.arrayBuffer(new Uint8Array([0xff, 0xd8]).buffer, {
             headers: { 'Content-Type': 'image/jpeg' },
           }),
       ),
