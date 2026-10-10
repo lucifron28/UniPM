@@ -565,11 +565,16 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
             building = "Race Test Building",
             location = "Ground Floor"
         });
-        var generationTask = client.PostAsJsonAsync(
-            "/api/v1/schedules/generate",
-            new { year = institutionalYear });
+        Task<HttpResponseMessage> generationTask;
         try
         {
+            await WaitForApplicationLockWaitAsync(
+                database.ConnectionString,
+                expectedWaiters: 1,
+                competingMutation: registrationTask);
+            generationTask = client.PostAsJsonAsync(
+                "/api/v1/schedules/generate",
+                new { year = institutionalYear });
             await WaitForApplicationLockWaitAsync(
                 database.ConnectionString,
                 expectedWaiters: 2,
