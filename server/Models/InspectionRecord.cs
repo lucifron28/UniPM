@@ -11,6 +11,7 @@ public class InspectionRecord
     public Guid? PreventiveMaintenanceFormId { get; set; }
     public PreventiveMaintenanceForm? PreventiveMaintenanceForm { get; set; }
     public InspectionWmsReferral? WmsReferral { get; set; }
+    public InspectionPhotoEvidence? PhotoEvidence { get; set; }
     
     public Guid AssetId { get; set; }
     public Asset? Asset { get; set; }

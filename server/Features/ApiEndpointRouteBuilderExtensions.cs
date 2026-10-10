@@ -20,6 +20,7 @@ public static class ApiEndpointRouteBuilderExtensions
         api.MapSchedulesEndpoints();
         api.MapInspectionLocationVerificationEndpoints();
         api.MapInspectionsEndpoints();
+        api.MapInspectionPhotoEvidenceEndpoints();
         api.MapPreventiveMaintenanceFormEndpoints();
         api.MapPmPeriodDashboardEndpoints();
         api.MapPmAnalyticsEndpoints();
