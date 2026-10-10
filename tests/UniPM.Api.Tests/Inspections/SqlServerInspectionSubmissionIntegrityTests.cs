@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using UniPM.Api.Data;
@@ -310,6 +311,116 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
             Assert.Equal(PreventiveMaintenanceFormStatusCatalog.Submitted, form.Status);
             Assert.NotNull(form.FileNumber);
         });
+    }
+
+    [SqlServer2019Fact]
+    public async Task Application_restart_rechecks_schedule_recovery_without_duplicate_schedules()
+    {
+        var database = await SqlServerTestDatabase.CreateAsync(RequireSqlServer2019Connection());
+        await using (database)
+        {
+            await using (var master = new SqlConnection(new SqlConnectionStringBuilder(database.ConnectionString)
+            { InitialCatalog = "master" }.ConnectionString))
+            {
+                await master.OpenAsync();
+                await using var command = master.CreateCommand();
+                var databaseName = new SqlConnectionStringBuilder(database.ConnectionString).InitialCatalog;
+                command.CommandText = $"ALTER DATABASE [{databaseName}] SET COMPATIBILITY_LEVEL = 150;";
+                await command.ExecuteNonQueryAsync();
+            }
+
+            var now = DateTimeOffset.UtcNow;
+            var asset = new Asset
+            {
+                Id = Guid.NewGuid(),
+                AssetCode = $"RESTART-{Guid.NewGuid():N}"[..20].ToUpperInvariant(),
+                AssetCategory = "fire-alarm",
+                Building = "Application Restart Test",
+                Department = "RESTART-TEST",
+                Location = "Synthetic test area",
+                Status = AssetStatusCatalog.Active,
+                CreatedAt = new DateTimeOffset(2020, 1, 1, 0, 0, 0, TimeSpan.FromHours(8)),
+                UpdatedAt = now
+            };
+
+            await using (var context = database.CreateContext())
+            {
+                await context.Database.MigrateAsync();
+                context.Assets.Add(asset);
+                await context.SaveChangesAsync();
+            }
+
+            PreventiveMaintenanceSchedule[] schedulesAfterFirstStart;
+            await using (var application = new SqlServerScheduleRecoveryApplicationFactory(database.ConnectionString))
+            {
+                using var client = application.CreateClient();
+                using var live = await client.GetAsync("/health/live");
+                using var ready = await client.GetAsync("/health/ready");
+                Assert.Equal(HttpStatusCode.OK, live.StatusCode);
+                Assert.Equal(HttpStatusCode.OK, ready.StatusCode);
+                await WaitForScheduleCountAsync(minimumCount: 1);
+            }
+
+            await using (var context = database.CreateContext())
+            {
+                schedulesAfterFirstStart = await context.PreventiveMaintenanceSchedules
+                    .Where(schedule => schedule.AssetId == asset.Id)
+                    .OrderBy(schedule => schedule.PmCycle)
+                    .ToArrayAsync();
+                Assert.NotEmpty(schedulesAfterFirstStart);
+                context.PreventiveMaintenanceSchedules.Remove(schedulesAfterFirstStart[0]);
+                await context.SaveChangesAsync();
+            }
+
+            await using (var application = new SqlServerScheduleRecoveryApplicationFactory(database.ConnectionString))
+            {
+                using var client = application.CreateClient();
+                using var live = await client.GetAsync("/health/live");
+                using var ready = await client.GetAsync("/health/ready");
+                Assert.Equal(HttpStatusCode.OK, live.StatusCode);
+                Assert.Equal(HttpStatusCode.OK, ready.StatusCode);
+                await WaitForScheduleCountAsync(
+                    minimumCount: schedulesAfterFirstStart.Length,
+                    expectedCycle: schedulesAfterFirstStart[0].PmCycle,
+                    exactCount: schedulesAfterFirstStart.Length);
+            }
+
+            await using var verification = database.CreateContext();
+            var schedulesAfterRestart = await verification.PreventiveMaintenanceSchedules
+                .Where(schedule => schedule.AssetId == asset.Id)
+                .OrderBy(schedule => schedule.PmCycle)
+                .ToArrayAsync();
+            Assert.Equal(schedulesAfterFirstStart.Length, schedulesAfterRestart.Length);
+            Assert.Single(schedulesAfterRestart, schedule => schedule.PmCycle == schedulesAfterFirstStart[0].PmCycle);
+            Assert.Equal(
+                schedulesAfterFirstStart.Skip(1).Select(schedule => schedule.Id).OrderBy(id => id),
+                schedulesAfterRestart
+                    .Where(schedule => schedule.PmCycle != schedulesAfterFirstStart[0].PmCycle)
+                    .Select(schedule => schedule.Id)
+                    .OrderBy(id => id));
+
+            async Task WaitForScheduleCountAsync(int minimumCount, string? expectedCycle = null, int? exactCount = null)
+            {
+                var deadline = DateTimeOffset.UtcNow.AddSeconds(15);
+                while (DateTimeOffset.UtcNow < deadline)
+                {
+                    await using var context = database.CreateContext();
+                    var schedules = await context.PreventiveMaintenanceSchedules
+                        .Where(schedule => schedule.AssetId == asset.Id)
+                        .ToArrayAsync();
+                    if (schedules.Length >= minimumCount
+                        && (exactCount is null || schedules.Length == exactCount)
+                        && (expectedCycle is null || schedules.Any(schedule => schedule.PmCycle == expectedCycle)))
+                    {
+                        return;
+                    }
+
+                    await Task.Delay(TimeSpan.FromMilliseconds(100));
+                }
+
+                throw new TimeoutException("Schedule recovery did not reach the expected state after application startup.");
+            }
+        }
     }
 
     [SqlServerFact]
@@ -940,6 +1051,21 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
     private static string RequireSqlServer2019Connection()
     {
         return Environment.GetEnvironmentVariable("UNIPM_SQLSERVER2019_TEST_CONNECTION")!;
+    }
+
+    private sealed class SqlServerScheduleRecoveryApplicationFactory(string connectionString)
+        : WebApplicationFactory<Program>
+    {
+        protected override void ConfigureWebHost(IWebHostBuilder builder)
+        {
+            builder.UseEnvironment("Development");
+            builder.ConfigureAppConfiguration((_, configuration) =>
+                configuration.AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["ConnectionStrings:DefaultConnection"] = connectionString,
+                    ["PreventiveMaintenanceScheduleGeneration:WorkerEnabled"] = "true"
+                }));
+        }
     }
 
     private sealed class SqlServerInspectionApplicationFactory : WebApplicationFactory<Program>
