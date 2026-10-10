@@ -131,8 +131,8 @@ public sealed class ReferenceDocumentSqlServerTests
 
         var seeder = new SyntheticReferenceDocumentSeeder(factory, new ReferenceDocumentRegistrationService(factory));
         await seeder.SeedAsync();
-        Assert.True(await WaitForContainsAsync(database.ConnectionString, "panel"));
-        Assert.True(await WaitForContainsAsync(database.ConnectionString, "authorized personnel"));
+        Assert.True(await WaitForContainsAsync(database.ConnectionString, "panel", "FIC-SAF-001"));
+        Assert.True(await WaitForContainsAsync(database.ConnectionString, "authorized personnel", "FIC-REC-001"));
 
         var retriever = new SqlServerLexicalInstitutionalReferenceRetriever(factory);
         var results = await retriever.SearchAsync(new InstitutionalReferenceSearchRequest(
@@ -184,7 +184,7 @@ public sealed class ReferenceDocumentSqlServerTests
             await context.SaveChangesAsync();
         }
 
-        Assert.True(await WaitForContainsAsync(database.ConnectionString, "pressure"));
+        Assert.True(await WaitForContainsAsync(database.ConnectionString, "pressure", "FIC-SAF-001"));
         await seeder.ResetAsync();
 
         await using var verification = factory.CreateDbContext();
@@ -482,7 +482,7 @@ public sealed class ReferenceDocumentSqlServerTests
             GeneratedAt = DateTimeOffset.UtcNow
         };
 
-    private static async Task<bool> WaitForContainsAsync(string connectionString, string term)
+    private static async Task<bool> WaitForContainsAsync(string connectionString, string term, string sourceKey)
     {
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
         try
@@ -493,8 +493,15 @@ public sealed class ReferenceDocumentSqlServerTests
                 await connection.OpenAsync(timeout.Token);
                 await using var command = connection.CreateCommand();
                 command.CommandType = CommandType.Text;
-                command.CommandText = "SELECT COUNT(*) FROM CONTAINSTABLE(dbo.ReferenceDocumentSections, (Heading, SectionText), @term);";
+                command.CommandText = """
+                    SELECT COUNT(*)
+                    FROM CONTAINSTABLE(dbo.ReferenceDocumentSections, (Heading, SectionText), @term) AS matches
+                    INNER JOIN dbo.ReferenceDocumentSections AS section ON section.Id = matches.[KEY]
+                    INNER JOIN dbo.ReferenceDocuments AS document ON document.Id = section.ReferenceDocumentId
+                    WHERE document.SourceKey = @sourceKey;
+                    """;
                 command.Parameters.AddWithValue("@term", $"\"{term}\"");
+                command.Parameters.AddWithValue("@sourceKey", sourceKey);
                 if (Convert.ToInt32(await command.ExecuteScalarAsync(timeout.Token)) > 0)
                 {
                     return true;
