@@ -166,7 +166,10 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
 
         await using var application = new SqlServerInspectionApplicationFactory(
             database.ConnectionString,
-            AuthRoleCatalog.Gsd);
+            AuthRoleCatalog.Gsd)
+        {
+            ScheduleGenerationEffectiveDate = $"{year:D4}-01-01"
+        };
         using var client = application.CreateClient();
         var responses = await Task.WhenAll(
             client.PostAsJsonAsync("/api/v1/schedules/generate", new { year }),
@@ -514,6 +517,7 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
         };
         await using (var seedContext = database.CreateContext())
         {
+            await seedContext.Database.MigrateAsync();
             seedContext.Assets.Add(asset);
             await seedContext.SaveChangesAsync();
         }
@@ -820,6 +824,8 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
         private readonly ScheduleMutationCommandGate? mutationGate;
         private readonly WmsReferralSaveGate? wmsReferralWriteGate;
 
+        public string? ScheduleGenerationEffectiveDate { get; init; }
+
         public SqlServerInspectionApplicationFactory(string connectionString, params string[] roles)
             : this(connectionString, null, null, roles)
         {
@@ -851,6 +857,11 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
             builder.ConfigureServices(services =>
             {
                 services.AddTestAuthentication(roles);
+                if (ScheduleGenerationEffectiveDate is not null)
+                {
+                    services.PostConfigure<ScheduleGenerationOptions>(options =>
+                        options.EffectiveDate = ScheduleGenerationEffectiveDate);
+                }
                 services.RemoveAll<IDbContextFactory<ApplicationDbContext>>();
                 services.RemoveAll<DbContextOptions<ApplicationDbContext>>();
                 services.AddDbContextFactory<ApplicationDbContext>(options =>
