@@ -128,7 +128,7 @@ export function ScheduleCoverageReview() {
         <div className="flex gap-2">
           <Button
             type="button"
-            variant="outline"
+            variant="secondary"
             disabled={page <= 1 || coverage.isFetching}
             onClick={() => setPage((current) => Math.max(1, current - 1))}
           >
@@ -136,7 +136,7 @@ export function ScheduleCoverageReview() {
           </Button>
           <Button
             type="button"
-            variant="outline"
+            variant="secondary"
             disabled={page >= pageCount || coverage.isFetching}
             onClick={() =>
               setPage((current) => Math.min(pageCount, current + 1))
