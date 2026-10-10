@@ -3,7 +3,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/auth/auth_models.dart';
 import 'package:mobile/features/assets/asset_models.dart';
 import 'package:mobile/features/preventive_maintenance/inspection_completion_sheet.dart';
-import 'package:mobile/features/preventive_maintenance/inspection_location_capture.dart';
 import 'package:mobile/features/preventive_maintenance/preventive_maintenance_models.dart';
 import 'package:mobile/features/preventive_maintenance/preventive_maintenance_page.dart';
 import 'package:mobile/features/preventive_maintenance/preventive_maintenance_repository.dart';
@@ -21,7 +20,6 @@ const testOtherBatchScheduleId = '44444444-4444-4444-8444-444444444445';
 const testInspection1Id = '55555555-5555-4555-8555-555555555551';
 const testAsset1Id = '66666666-6666-4666-8666-666666666661';
 const testAsset2Id = '66666666-6666-4666-8666-666666666662';
-const testLocationAttemptId = '77777777-7777-4777-8777-777777777777';
 
 int _cycleYear(String pmCycle) => int.parse(pmCycle.substring(0, 4));
 int _cycleMonth(String pmCycle) => int.parse(pmCycle.substring(5, 7));
@@ -58,7 +56,6 @@ Asset testAsset({
   String status = 'Active',
   String department = 'GSD',
   String assetCategory = 'fire-extinguisher',
-  bool hasVerificationLocation = false,
 }) => Asset(
   id: id,
   assetCode: assetCode,
@@ -68,7 +65,6 @@ Asset testAsset({
   location: 'Floor 1',
   qrCodeValue: 'QR-$assetCode',
   status: status,
-  hasVerificationLocation: hasVerificationLocation,
 );
 
 ScheduleOption makeSchedule({
@@ -160,15 +156,13 @@ PreventiveMaintenanceForm makeForm({
   );
 }
 
-class TestProgressRepository
-    implements PreventiveMaintenanceRepository, LocationVerificationRepository {
+class TestProgressRepository implements PreventiveMaintenanceRepository {
   TestProgressRepository({required this.forms, required this.schedules});
 
   List<PreventiveMaintenanceForm> forms;
   List<ScheduleOption> schedules;
   AddInspectionInput? lastAddedInput;
   int createFormCount = 0;
-  int locationAttemptCount = 0;
 
   @override
   Future<List<PreventiveMaintenanceForm>> listForms() async => forms;
@@ -183,31 +177,6 @@ class TestProgressRepository
   ) async {
     createFormCount++;
     throw UnimplementedError();
-  }
-
-  @override
-  Future<LocationVerificationAttempt> createLocationVerificationAttempt(
-    String scheduleId, {
-    required double latitude,
-    required double longitude,
-    required bool hasAccuracy,
-    required double? accuracyMeters,
-    required DateTime? devicePositionTimestamp,
-    required bool isMocked,
-    required String accuracyMode,
-    required int acquisitionDurationMs,
-  }) async {
-    locationAttemptCount++;
-    return LocationVerificationAttempt(
-      id: testLocationAttemptId,
-      outcome: LocationVerificationOutcome.notConfigured,
-      accuracyMeters: accuracyMeters,
-      hasAccuracy: hasAccuracy,
-      devicePositionTimestamp: devicePositionTimestamp,
-      isMocked: isMocked,
-      accuracyMode: accuracyMode,
-      acquisitionDurationMs: acquisitionDurationMs,
-    );
   }
 
   @override
@@ -279,37 +248,6 @@ class TestProgressRepository
 
   @override
   Future<void> deleteInspection(String formId, String inspectionId) async {}
-}
-
-class TestLocationPlatform implements DeviceLocationPlatform {
-  int positionCallCount = 0;
-
-  @override
-  Future<bool> isLocationServiceEnabled() async => true;
-
-  @override
-  Future<DeviceLocationPermission> checkPermission() async =>
-      DeviceLocationPermission.granted;
-
-  @override
-  Future<DeviceLocationPermission> requestPermission() async =>
-      DeviceLocationPermission.granted;
-
-  @override
-  Future<DeviceLocationAccuracyMode> getAccuracyMode() async =>
-      DeviceLocationAccuracyMode.precise;
-
-  @override
-  Future<DeviceLocationCoordinates> getCurrentPosition({
-    required Duration timeout,
-  }) async {
-    positionCallCount++;
-    return const DeviceLocationCoordinates(
-      latitude: 14.6,
-      longitude: 120.98,
-      accuracyMeters: 5,
-    );
-  }
 }
 
 Future<void> scrollTo(
@@ -790,7 +728,7 @@ void main() {
     );
 
     testWidgets(
-      'resumes a Completed schedule Draft without creating a location attempt',
+      'resumes a Completed schedule Draft without a location prompt',
       (tester) async {
         final schedule = makeSchedule(
           id: testSchedule1Id,
@@ -808,23 +746,14 @@ void main() {
           forms: [existingDraft],
           schedules: [schedule],
         );
-        final platform = TestLocationPlatform();
-
         await tester.pumpWidget(
           MaterialApp(
             home: Scaffold(
               body: SingleChildScrollView(
                 child: ScannedAssetPmEntry(
-                  asset: testAsset(
-                    id: schedule.assetId,
-                    assetCode: 'FE-001',
-                    hasVerificationLocation: true,
-                  ),
+                  asset: testAsset(id: schedule.assetId, assetCode: 'FE-001'),
                   repository: repository,
                   user: testUser(),
-                  locationCapture: InspectionLocationCapture(
-                    platform: platform,
-                  ),
                 ),
               ),
             ),
@@ -838,12 +767,7 @@ void main() {
         await tester.tap(find.byKey(const Key('resume-pm')));
         await tester.pumpAndSettle();
 
-        expect(
-          find.byKey(const Key('location-verification-dialog')),
-          findsNothing,
-        );
-        expect(platform.positionCallCount, 0);
-        expect(repository.locationAttemptCount, 0);
+        expect(find.text('Verifying location...'), findsNothing);
         expect(repository.createFormCount, 0);
         expect(find.text('Resume inspection row'), findsOneWidget);
       },
@@ -888,7 +812,7 @@ void main() {
       },
     );
 
-    testWidgets('Start still captures and records a location attempt', (
+    testWidgets('Start inspection does not require location access', (
       tester,
     ) async {
       final schedule = makeSchedule(
@@ -901,21 +825,14 @@ void main() {
         forms: [],
         schedules: [schedule],
       );
-      final platform = TestLocationPlatform();
-
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
             body: SingleChildScrollView(
               child: ScannedAssetPmEntry(
-                asset: testAsset(
-                  id: schedule.assetId,
-                  assetCode: 'FE-001',
-                  hasVerificationLocation: true,
-                ),
+                asset: testAsset(id: schedule.assetId, assetCode: 'FE-001'),
                 repository: repository,
                 user: testUser(),
-                locationCapture: InspectionLocationCapture(platform: platform),
               ),
             ),
           ),
@@ -926,15 +843,11 @@ void main() {
       await tester.tap(find.byKey(const Key('start-pm')));
       await tester.pumpAndSettle();
 
-      expect(platform.positionCallCount, 1);
-      expect(repository.locationAttemptCount, 1);
       expect(
         find.byKey(const Key('location-verification-dialog')),
-        findsOneWidget,
+        findsNothing,
       );
-      await tester.binding.handlePopRoute();
-      await tester.pumpAndSettle();
-      expect(repository.createFormCount, 0);
+      expect(repository.createFormCount, 1);
     });
   });
 }

@@ -8,6 +8,8 @@ import 'preventive_maintenance_form_specs.dart';
 import 'preventive_maintenance_models.dart';
 import 'preventive_maintenance_repository.dart';
 import 'inspection_completion_sheet.dart';
+import 'inspection_photo_evidence_card.dart';
+import 'inspection_photo_evidence_repository.dart';
 import 'pm_cycle_presentation.dart';
 
 enum PreventiveMaintenanceDraftAction { scanNextAsset }
@@ -537,14 +539,14 @@ class PreventiveMaintenanceDraftPage extends StatefulWidget {
     required this.formId,
     this.preselectedScheduleId,
     this.focusedInspectionId,
-    this.locationAttemptId,
+    this.photoCapture,
   });
 
   final PreventiveMaintenanceController controller;
   final String formId;
   final String? preselectedScheduleId;
   final String? focusedInspectionId;
-  final String? locationAttemptId;
+  final InspectionPhotoCapture? photoCapture;
 
   @override
   State<PreventiveMaintenanceDraftPage> createState() =>
@@ -555,6 +557,24 @@ class _PreventiveMaintenanceDraftPageState
     extends State<PreventiveMaintenanceDraftPage> {
   late Future<List<ScheduleOption>> schedules;
   PreventiveMaintenanceForm? submittedForm;
+  final Set<String> pendingPhotoEvidenceIds = <String>{};
+
+  InspectionPhotoEvidenceRepository? get photoEvidenceRepository {
+    final repository = widget.controller.repository;
+    if (repository is! InspectionPhotoEvidenceRepository) return null;
+    return repository as InspectionPhotoEvidenceRepository;
+  }
+
+  void _setPhotoPending(String inspectionId, bool pending) {
+    if (!mounted) return;
+    setState(() {
+      if (pending) {
+        pendingPhotoEvidenceIds.add(inspectionId);
+      } else {
+        pendingPhotoEvidenceIds.remove(inspectionId);
+      }
+    });
+  }
 
   @override
   void initState() {
@@ -792,7 +812,6 @@ class _PreventiveMaintenanceDraftPageState
             key: ValueKey('add-${form.inspections.length}'),
             schedule: scannedSchedule,
             assetCategory: form.assetCategory,
-            locationAttemptId: widget.locationAttemptId,
             inspectorUserId: widget.controller.user.id,
             isSaving: widget.controller.isSaving,
             onAdd: (input) async {
@@ -927,7 +946,15 @@ class _PreventiveMaintenanceDraftPageState
             editable: canEdit,
             onSave: (input) =>
                 widget.controller.updateInspection(row.id, input),
-            onDelete: () => widget.controller.deleteInspection(row.id),
+            photoRepository: photoEvidenceRepository,
+            photoCapture: widget.photoCapture,
+            onPhotoPendingChanged: (pending) =>
+                _setPhotoPending(row.id, pending),
+            onDelete: () async {
+              final deleted = await widget.controller.deleteInspection(row.id);
+              if (deleted) _setPhotoPending(row.id, false);
+              return deleted;
+            },
           ),
         ),
         if (canEdit) ...[
@@ -945,6 +972,7 @@ class _PreventiveMaintenanceDraftPageState
                 .length,
             eligibleScheduleCount: eligibleScheduleIds.length,
             completedWithoutDraftCount: completedWithoutDraftCount,
+            hasPendingPhotoEvidence: pendingPhotoEvidenceIds.isNotEmpty,
             onSubmit: _confirmSubmit,
           ),
         ],
@@ -969,12 +997,15 @@ class _PreventiveMaintenanceDraftPageState
   }
 
   Future<void> _confirmSubmit() async {
+    final submittingWithoutPhoto = pendingPhotoEvidenceIds.isNotEmpty;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Submit preventive-maintenance form?'),
-        content: const Text(
-          'After submission, this form and its inspection rows cannot be edited. The backend will assign a provisional file number.',
+        content: Text(
+          submittingWithoutPhoto
+              ? 'One or more captured photos were not saved. You can still submit the completed inspection without those photos. After submission, the form and its inspection rows cannot be edited.'
+              : 'After submission, this form and its inspection rows cannot be edited. The backend will assign a provisional file number.',
         ),
         actions: [
           TextButton(
@@ -982,9 +1013,15 @@ class _PreventiveMaintenanceDraftPageState
             child: const Text('Cancel'),
           ),
           FilledButton(
-            key: const Key('confirm-submit-form'),
+            key: Key(
+              submittingWithoutPhoto
+                  ? 'confirm-submit-without-photo'
+                  : 'confirm-submit-form',
+            ),
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Submit form'),
+            child: Text(
+              submittingWithoutPhoto ? 'Submit without photos' : 'Submit form',
+            ),
           ),
         ],
       ),
@@ -1067,7 +1104,6 @@ class _ScannedAssetInspectionCard extends StatefulWidget {
     super.key,
     required this.schedule,
     required this.assetCategory,
-    this.locationAttemptId,
     required this.inspectorUserId,
     required this.isSaving,
     required this.onAdd,
@@ -1075,7 +1111,6 @@ class _ScannedAssetInspectionCard extends StatefulWidget {
 
   final ScheduleOption schedule;
   final String assetCategory;
-  final String? locationAttemptId;
   final String inspectorUserId;
   final bool isSaving;
   final Future<bool> Function(AddInspectionInput input) onAdd;
@@ -1127,7 +1162,6 @@ class _ScannedAssetInspectionCardState
     final added = await widget.onAdd(
       AddInspectionInput(
         scheduleId: widget.schedule.id,
-        locationAttemptId: widget.locationAttemptId,
         inspectorUserId: widget.inspectorUserId,
         dateInspected: date,
         dateAccomplished: widget.assetCategory == 'water-drinking-station'
@@ -1356,6 +1390,9 @@ class _InspectionRowEditor extends StatefulWidget {
     required this.editable,
     required this.onSave,
     required this.onDelete,
+    required this.photoRepository,
+    required this.photoCapture,
+    required this.onPhotoPendingChanged,
   });
 
   final PreventiveMaintenanceInspection row;
@@ -1367,6 +1404,9 @@ class _InspectionRowEditor extends StatefulWidget {
   final bool editable;
   final Future<bool> Function(UpdateInspectionInput input) onSave;
   final Future<bool> Function() onDelete;
+  final InspectionPhotoEvidenceRepository? photoRepository;
+  final InspectionPhotoCapture? photoCapture;
+  final ValueChanged<bool> onPhotoPendingChanged;
 
   @override
   State<_InspectionRowEditor> createState() => _InspectionRowEditorState();
@@ -1381,6 +1421,7 @@ class _SubmitFormCard extends StatelessWidget {
     required this.completedScheduleCount,
     required this.eligibleScheduleCount,
     required this.completedWithoutDraftCount,
+    required this.hasPendingPhotoEvidence,
     required this.onSubmit,
   });
 
@@ -1391,6 +1432,7 @@ class _SubmitFormCard extends StatelessWidget {
   final int completedScheduleCount;
   final int eligibleScheduleCount;
   final int completedWithoutDraftCount;
+  final bool hasPendingPhotoEvidence;
   final VoidCallback onSubmit;
 
   bool get canSubmit =>
@@ -1440,6 +1482,12 @@ class _SubmitFormCard extends StatelessWidget {
                 const Text(
                   'A Completed schedule has no row in this Draft. Contact GSD to review the batch.',
                 ),
+            ],
+            if (hasPendingPhotoEvidence) ...[
+              const SizedBox(height: 8),
+              const Text(
+                'A captured photo is not saved. You can still submit the completed inspection without it.',
+              ),
             ],
             const SizedBox(height: 12),
             FilledButton(
@@ -1645,6 +1693,21 @@ class _InspectionRowEditorState extends State<_InspectionRowEditor> {
                 maxLines: 3,
                 decoration: const InputDecoration(labelText: 'Recommendation'),
               ),
+              if (widget.photoRepository != null) ...[
+                const SizedBox(height: 12),
+                InspectionPhotoEvidenceCard(
+                  inspectionId: widget.row.id,
+                  assetCode: widget.row.assetCode ?? 'Asset code unavailable',
+                  conditionLabel: isOperational
+                      ? 'Operational'
+                      : 'Non-operational',
+                  hasSavedPhoto: widget.row.hasPhotoEvidence,
+                  editable: widget.editable,
+                  repository: widget.photoRepository!,
+                  onPendingStateChanged: widget.onPhotoPendingChanged,
+                  capturePhoto: widget.photoCapture ?? captureInspectionPhoto,
+                ),
+              ],
               if (widget.editable) ...[
                 const SizedBox(height: 12),
                 Wrap(

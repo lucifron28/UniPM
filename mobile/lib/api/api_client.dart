@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 
@@ -68,12 +69,41 @@ class ApiClient {
     await _request('DELETE', path);
   }
 
+  Future<Uint8List> getBytes(String path) async {
+    final response = await _request('GET', path, accept: 'image/jpeg');
+    return response.bodyBytes;
+  }
+
+  Future<void> putBytes(
+    String path,
+    Uint8List bytes, {
+    required String contentType,
+  }) async {
+    await _request(
+      'PUT',
+      path,
+      rawBody: bytes,
+      contentType: contentType,
+      accept: 'application/json',
+    );
+  }
+
   Future<http.Response> _request(
     String method,
     String path, {
     Map<String, dynamic>? body,
+    Uint8List? rawBody,
+    String? contentType,
+    String accept = 'application/json',
   }) async {
-    final response = await _send(method, path, body: body);
+    final response = await _send(
+      method,
+      path,
+      body: body,
+      rawBody: rawBody,
+      contentType: contentType,
+      accept: accept,
+    );
     final protectedUnauthorized =
         response.statusCode == 401 && !_isTokenFreeAuthPath(path);
     if (protectedUnauthorized) {
@@ -88,6 +118,9 @@ class ApiClient {
     String method,
     String path, {
     Map<String, dynamic>? body,
+    Uint8List? rawBody,
+    String? contentType,
+    String accept = 'application/json',
   }) async {
     if (baseUrl == null) {
       throw const ApiException(
@@ -98,8 +131,12 @@ class ApiClient {
     final request = http.Request(method, _resolve(path));
     request.followRedirects = false;
     request.maxRedirects = 0;
-    request.headers['Accept'] = 'application/json';
-    if (body != null) {
+    request.headers['Accept'] = accept;
+    if (rawBody != null) {
+      request.headers['Content-Type'] =
+          contentType ?? 'application/octet-stream';
+      request.bodyBytes = rawBody;
+    } else if (body != null) {
       request.headers['Content-Type'] = 'application/json';
       request.body = jsonEncode(body);
     }

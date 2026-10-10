@@ -1,4 +1,7 @@
+import 'dart:typed_data';
+
 import '../../api/api_client.dart';
+import 'inspection_photo_evidence_repository.dart';
 import 'preventive_maintenance_models.dart';
 
 abstract interface class PreventiveMaintenanceRepository {
@@ -28,22 +31,10 @@ abstract interface class PreventiveMaintenanceRepository {
   Future<void> deleteInspection(String formId, String inspectionId);
 }
 
-abstract interface class LocationVerificationRepository {
-  Future<LocationVerificationAttempt> createLocationVerificationAttempt(
-    String scheduleId, {
-    required double latitude,
-    required double longitude,
-    required bool hasAccuracy,
-    required double? accuracyMeters,
-    required DateTime? devicePositionTimestamp,
-    required bool isMocked,
-    required String accuracyMode,
-    required int acquisitionDurationMs,
-  });
-}
-
 class ApiPreventiveMaintenanceRepository
-    implements PreventiveMaintenanceRepository, LocationVerificationRepository {
+    implements
+        PreventiveMaintenanceRepository,
+        InspectionPhotoEvidenceRepository {
   const ApiPreventiveMaintenanceRepository(this._client);
 
   final ApiClient _client;
@@ -117,36 +108,6 @@ class ApiPreventiveMaintenanceRepository
   }
 
   @override
-  Future<LocationVerificationAttempt> createLocationVerificationAttempt(
-    String scheduleId, {
-    required double latitude,
-    required double longitude,
-    required bool hasAccuracy,
-    required double? accuracyMeters,
-    required DateTime? devicePositionTimestamp,
-    required bool isMocked,
-    required String accuracyMode,
-    required int acquisitionDurationMs,
-  }) async {
-    final json = await _client.postJson(
-      '/api/v1/schedules/${Uri.encodeComponent(scheduleId)}/location-verification-attempts',
-      <String, dynamic>{
-        'latitude': latitude,
-        'longitude': longitude,
-        'accuracyMeters': accuracyMeters,
-        'hasAccuracy': hasAccuracy,
-        'devicePositionTimestamp': devicePositionTimestamp
-            ?.toUtc()
-            .toIso8601String(),
-        'isMocked': isMocked,
-        'accuracyMode': accuracyMode,
-        'acquisitionDurationMs': acquisitionDurationMs,
-      },
-    );
-    return LocationVerificationAttempt.fromJson(json);
-  }
-
-  @override
   Future<List<ReferenceOption>> listAssetCategories() =>
       _getReferences('/api/v1/reference-data/asset-categories');
 
@@ -167,7 +128,6 @@ class ApiPreventiveMaintenanceRepository
       '/api/v1/preventive-maintenance-forms/$formId/inspections',
       _inspectionBody(
         scheduleId: input.scheduleId,
-        locationAttemptId: input.locationAttemptId,
         inspectorUserId: input.inspectorUserId,
         dateInspected: input.dateInspected,
         dateAccomplished: input.dateAccomplished,
@@ -212,6 +172,22 @@ class ApiPreventiveMaintenanceRepository
     '/api/v1/preventive-maintenance-forms/$formId/inspections/$inspectionId',
   );
 
+  @override
+  Future<Uint8List> getInspectionPhoto(String inspectionId) =>
+      _client.getBytes('/api/v1/inspections/$inspectionId/photo');
+
+  @override
+  Future<void> saveInspectionPhoto(String inspectionId, Uint8List jpegBytes) =>
+      _client.putBytes(
+        '/api/v1/inspections/$inspectionId/photo',
+        jpegBytes,
+        contentType: 'image/jpeg',
+      );
+
+  @override
+  Future<void> deleteInspectionPhoto(String inspectionId) =>
+      _client.deleteEmpty('/api/v1/inspections/$inspectionId/photo');
+
   Future<List<ReferenceOption>> _getReferences(String path) async {
     final values = await _client.getJsonList(path);
     return values.map(_referenceFromValue).toList(growable: false);
@@ -235,7 +211,6 @@ ReferenceOption _referenceFromValue(dynamic value) {
 
 Map<String, dynamic> _inspectionBody({
   String? scheduleId,
-  String? locationAttemptId,
   String? inspectorUserId,
   required DateTime dateInspected,
   DateTime? dateAccomplished,
@@ -248,9 +223,6 @@ Map<String, dynamic> _inspectionBody({
 }) {
   return <String, dynamic>{
     ...?scheduleId == null ? null : <String, dynamic>{'scheduleId': scheduleId},
-    ...?locationAttemptId == null
-        ? null
-        : <String, dynamic>{'locationAttemptId': locationAttemptId},
     ...?inspectorUserId == null
         ? null
         : <String, dynamic>{'inspectorUserId': inspectorUserId},
