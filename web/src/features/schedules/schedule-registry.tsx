@@ -271,7 +271,13 @@ export function ScheduleRegistry({
   const pageData = records
   const departments = filterOptions.data?.departments ?? []
   const quarterOptions = filterOptions.data?.quarters ?? []
-  const yearOptions = filterOptions.data?.years ?? []
+  const yearOptions = Array.from(
+    new Set([
+      ...(filterOptions.data?.years ?? []),
+      ...(draft.year ? [String(draft.year)] : []),
+      ...(draft.pmCycle ? [draft.pmCycle.slice(0, 4)] : []),
+    ]),
+  ).sort((left, right) => Number(right) - Number(left))
   const categoryByCode = useMemo(
     () => new Map(categories.map((category) => [category.code, category])),
     [categories],
