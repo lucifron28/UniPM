@@ -195,6 +195,7 @@ async function mockScheduleApi(page: Page, roles = ['GSD']) {
           page: 1,
           pageSize: 25,
           totalCount: 1,
+          overallCount: 1,
         }),
       })
     }
@@ -315,6 +316,7 @@ test.describe('Schedule workflows', () => {
           page: pageNumber,
           pageSize,
           totalCount: records.length,
+          overallCount: records.length,
         }),
       })
     })

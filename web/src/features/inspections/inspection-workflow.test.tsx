@@ -175,6 +175,7 @@ function mockInspectionApi() {
         page: 1,
         pageSize: 25,
         totalCount: 1,
+        overallCount: 1,
       }),
     ),
     http.get(`${base}/inspections/registry/options`, () =>
@@ -205,6 +206,7 @@ describe('inspection review workflows', () => {
           page: 1,
           pageSize: 25,
           totalCount: 1,
+          overallCount: 1,
         })
       }),
     )
@@ -271,6 +273,7 @@ describe('inspection review workflows', () => {
           page: 1,
           pageSize: 25,
           totalCount: 1,
+          overallCount: 1,
         })
       }),
     )
@@ -360,6 +363,7 @@ describe('inspection review workflows', () => {
           page,
           pageSize,
           totalCount: records.length,
+          overallCount: records.length,
         })
       }),
     )

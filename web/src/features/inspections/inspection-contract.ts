@@ -118,6 +118,7 @@ const inspectionRegistryPageSchema = z
     page: z.coerce.number().int().positive(),
     pageSize: z.coerce.number().int().positive(),
     totalCount: z.coerce.number().int().nonnegative(),
+    overallCount: z.coerce.number().int().nonnegative(),
   })
   .strict()
 

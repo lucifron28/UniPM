@@ -933,7 +933,7 @@ export function InspectionRegistry({
       <p className="text-sm text-[var(--text-secondary)]" aria-live="polite">
         Filtered results: {totalCount.toLocaleString()} · Overall acknowledged
         inspection records:{' '}
-        {summary.data?.totalCount.toLocaleString() ?? 'Loading'}
+        {registry.data?.overallCount.toLocaleString() ?? 'Loading'}
       </p>
       {registry.isPending ? (
         <RegistryLoadingPanel breakpoint="md" viewportSize="standard">

@@ -190,6 +190,7 @@ async function mockInspectionApi(page: Page) {
         page: 1,
         pageSize: 25,
         totalCount: 1,
+        overallCount: 1,
       }),
     }),
   )
@@ -269,6 +270,7 @@ test.describe('Inspection review workflows', () => {
           page: pageNumber,
           pageSize,
           totalCount: records.length,
+          overallCount: records.length,
         }),
       })
     })

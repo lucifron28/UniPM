@@ -110,6 +110,7 @@ function scheduleRegistryHandlers(items = [schedule]) {
         page,
         pageSize,
         totalCount: registryItems.length,
+        overallCount: registryItems.length,
       })
     }),
     http.get(`${base}/schedules/registry/options`, () =>
@@ -327,6 +328,7 @@ describe('schedule workflows', () => {
           page: 1,
           pageSize: 25,
           totalCount: 1,
+          overallCount: 1,
         })
       }),
     )
@@ -375,6 +377,7 @@ describe('schedule workflows', () => {
           page: 1,
           pageSize: 25,
           totalCount: 1,
+          overallCount: 1,
         })
       }),
     )
@@ -480,6 +483,7 @@ describe('schedule workflows', () => {
           page,
           pageSize,
           totalCount: records.length,
+          overallCount: records.length,
         })
       }),
     )

@@ -3,6 +3,7 @@ import { ZodError } from 'zod'
 import {
   parseInspection,
   parseInspectionHistory,
+  parseInspectionRegistryPage,
 } from '@/features/inspections/inspection-contract'
 
 const inspection = {
@@ -27,6 +28,18 @@ const inspection = {
 }
 
 describe('inspection contracts', () => {
+  it('parses the complete inspection registry page response', () => {
+    expect(
+      parseInspectionRegistryPage({
+        items: [],
+        page: 1,
+        pageSize: 25,
+        totalCount: 3,
+        overallCount: 42,
+      }).overallCount,
+    ).toBe(42)
+  })
+
   it('parses public inspection and history responses while rejecting private fields', () => {
     const parsedInspection = parseInspection(inspection)
     expect(parsedInspection.scheduleId).toBe(inspection.scheduleId)
