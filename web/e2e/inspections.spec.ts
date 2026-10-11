@@ -3,6 +3,11 @@ import { expect, test, type Page } from '@playwright/test'
 const inspectionId = '11111111-1111-4111-8111-111111111111'
 const scheduleId = '22222222-2222-4222-8222-222222222222'
 const assetId = '33333333-3333-4333-8333-333333333333'
+const inspectionRegistryRoute = /\/api\/v1\/inspections\/registry(?:\?.*)?$/
+const inspectionRegistryOptionsRoute =
+  /\/api\/v1\/inspections\/registry\/options(?:\?.*)?$/
+const inspectionRegistrySummaryRoute =
+  /\/api\/v1\/inspections\/registry\/summary(?:\?.*)?$/
 const session = {
   accessToken: 'fictional-inspection-token',
   expiresAtUtc: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
@@ -76,11 +81,23 @@ const history = [
   },
 ]
 const registryInspection = {
-  ...inspection,
+  id: inspection.id,
+  scheduleId: inspection.scheduleId,
+  assetId: inspection.assetId,
+  dateInspected: inspection.dateInspected,
+  isOperational: inspection.isOperational,
+  remarks: inspection.remarks,
+  actionsRecommendations: inspection.actionsRecommendations,
+  createdAt: inspection.createdAt,
+  updatedAt: inspection.updatedAt,
   dateAccomplished: null,
   waterReplaceCarbonFilter: null,
   waterReplaceSedimentFilter: null,
   waterCheckUvLight: null,
+  externalPmNumber: inspection.externalPmNumber,
+  wmsReferralRevision: inspection.wmsReferralRevision,
+  correctiveFollowUpStatus: inspection.correctiveFollowUpStatus,
+  hasPhotoEvidence: inspection.hasPhotoEvidence,
   asset: {
     id: assetId,
     assetCode: asset.assetCode,
@@ -181,7 +198,7 @@ async function mockInspectionApi(page: Page) {
       body: JSON.stringify(inspection),
     }),
   )
-  await page.route('**/api/v1/inspections/registry', (route) =>
+  await page.route(inspectionRegistryRoute, (route) =>
     route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -194,14 +211,14 @@ async function mockInspectionApi(page: Page) {
       }),
     }),
   )
-  await page.route('**/api/v1/inspections/registry/options', (route) =>
+  await page.route(inspectionRegistryOptionsRoute, (route) =>
     route.fulfill({
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify(registryOptions),
     }),
   )
-  await page.route('**/api/v1/inspections/registry/summary', (route) =>
+  await page.route(inspectionRegistrySummaryRoute, (route) =>
     route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -257,7 +274,7 @@ test.describe('Inspection review workflows', () => {
       id: `10000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
       remarks: `Finding ${index + 1}`,
     }))
-    await page.route('**/api/v1/inspections/registry', (route) => {
+    await page.route(inspectionRegistryRoute, (route) => {
       const params = new URL(route.request().url()).searchParams
       const pageNumber = Number(params.get('page') ?? 1)
       const pageSize = Number(params.get('pageSize') ?? 25)
@@ -274,7 +291,7 @@ test.describe('Inspection review workflows', () => {
         }),
       })
     })
-    await page.route('**/api/v1/inspections/registry/summary', (route) =>
+    await page.route(inspectionRegistrySummaryRoute, (route) =>
       route.fulfill({
         status: 200,
         contentType: 'application/json',
