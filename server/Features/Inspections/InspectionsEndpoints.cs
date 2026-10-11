@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
@@ -5,6 +6,7 @@ using UniPM.Api.Data;
 using UniPM.Api.Features;
 using UniPM.Api.Features.Auth;
 using UniPM.Api.Features.PreventiveMaintenanceForms;
+using UniPM.Api.Features.Schedules;
 using UniPM.Api.Features.ReferenceData;
 using UniPM.Api.Models;
 
@@ -237,6 +239,256 @@ public static class InspectionsEndpoints
         .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status404NotFound)
         .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status409Conflict);
 
+        group.MapGet("/registry", async (
+            Guid? assetId,
+            Guid? scheduleId,
+            bool? isOperational,
+            DateTimeOffset? dateFrom,
+            DateTimeOffset? dateTo,
+            int? year,
+            string? quarter,
+            string? pmCycle,
+            string? department,
+            string? assetCategory,
+            string? search,
+            string? wmsReferralStatus,
+            int? page,
+            int? pageSize,
+            IDbContextFactory<ApplicationDbContext> factory,
+            CancellationToken cancellationToken) =>
+        {
+            var pageNumber = page ?? 1;
+            var size = pageSize ?? 25;
+            var validationErrors = ValidateInspectionRegistryFilters(
+                dateFrom,
+                dateTo,
+                year,
+                quarter,
+                pmCycle,
+                department,
+                assetCategory,
+                search,
+                wmsReferralStatus,
+                pageNumber,
+                size,
+                out var normalizedQuarter,
+                out var normalizedPmCycle,
+                out var normalizedDepartment,
+                out var normalizedCategory,
+                out var normalizedSearch,
+                out var normalizedReferralStatus);
+            if (validationErrors.Count > 0)
+            {
+                return ApiErrors.Validation(validationErrors);
+            }
+
+            await using var context = await factory.CreateDbContextAsync(cancellationToken);
+            var officialQuery = context.InspectionRecords
+                .AsNoTracking()
+                .WhereOfficial();
+            var query = ApplyInspectionRegistryFilters(
+                officialQuery,
+                assetId,
+                scheduleId,
+                isOperational,
+                dateFrom,
+                dateTo,
+                year,
+                normalizedQuarter,
+                normalizedPmCycle,
+                normalizedDepartment,
+                normalizedCategory,
+                normalizedSearch,
+                normalizedReferralStatus);
+            var overallCount = await officialQuery.CountAsync(cancellationToken);
+            var totalCount = await query.CountAsync(cancellationToken);
+            var skip = (long)(pageNumber - 1) * size;
+            List<InspectionRegistryItemResponse> items = skip > int.MaxValue
+                ? []
+                : await query
+                    .OrderByDescending(inspection => inspection.DateInspected)
+                    .ThenBy(inspection => inspection.Id)
+                    .Skip((int)skip)
+                    .Take(size)
+                    .Select(inspection => new InspectionRegistryItemResponse(
+                        inspection.Id,
+                        inspection.ScheduleId,
+                        inspection.AssetId,
+                        inspection.DateInspected,
+                        inspection.IsOperational,
+                        inspection.Remarks,
+                        inspection.ActionsRecommendations,
+                        inspection.CreatedAt,
+                        inspection.UpdatedAt,
+                        inspection.DateAccomplished,
+                        inspection.WaterReplaceCarbonFilter,
+                        inspection.WaterReplaceSedimentFilter,
+                        inspection.WaterCheckUvLight,
+                        inspection.WmsReferral == null ? null : inspection.WmsReferral.ExternalPmNumber,
+                        inspection.WmsReferral == null ? 0 : inspection.WmsReferral.Revision,
+                        inspection.WmsReferral != null
+                            ? InspectionFollowUpStatusCatalog.ReferredToWms
+                            : inspection.IsOperational
+                                ? InspectionFollowUpStatusCatalog.NoReferralRequired
+                                : InspectionFollowUpStatusCatalog.CorrectiveFollowUpPending,
+                        inspection.PhotoEvidence != null,
+                        inspection.Asset == null
+                            ? null
+                            : new InspectionRegistryAssetContext(
+                                inspection.Asset.Id,
+                                inspection.Asset.AssetCode,
+                                inspection.Asset.AssetCategory,
+                                inspection.Asset.Department,
+                                inspection.Asset.Building,
+                                inspection.Asset.Location),
+                        inspection.Schedule == null
+                            ? null
+                            : new InspectionRegistryScheduleContext(
+                                inspection.Schedule.Id,
+                                inspection.Schedule.PmCycle)))
+                    .ToListAsync(cancellationToken);
+
+            return Results.Ok(new InspectionRegistryPageResponse(
+                items,
+                pageNumber,
+                size,
+                totalCount,
+                overallCount));
+        })
+        .WithName("ListInspectionRegistry")
+        .WithSummary("Lists a bounded page of acknowledged or legacy official inspections for the web registry")
+        .Produces<InspectionRegistryPageResponse>(StatusCodes.Status200OK)
+        .Produces<Microsoft.AspNetCore.Mvc.ValidationProblemDetails>(StatusCodes.Status400BadRequest)
+        .RequireAuthorization();
+
+        group.MapGet("/registry/options", async (
+            string? assetCategory,
+            string? department,
+            IDbContextFactory<ApplicationDbContext> factory,
+            CancellationToken cancellationToken) =>
+        {
+            var normalizedDepartment = string.IsNullOrWhiteSpace(department) ? null : department.Trim();
+            var validationErrors = new Dictionary<string, string[]>();
+            string? normalizedCategory = null;
+            if (normalizedDepartment?.Length > 256)
+            {
+                validationErrors[nameof(department)] = ["Department must be 256 characters or fewer."];
+            }
+
+            if (!string.IsNullOrWhiteSpace(assetCategory))
+            {
+                if (AssetCategoryCatalog.TryNormalize(assetCategory, out var category))
+                {
+                    normalizedCategory = category;
+                }
+                else
+                {
+                    validationErrors[nameof(assetCategory)] =
+                        ["Asset category must be one of the selected UniPM study scope categories."];
+                }
+            }
+
+            if (validationErrors.Count > 0)
+            {
+                return ApiErrors.Validation(validationErrors);
+            }
+
+            await using var context = await factory.CreateDbContextAsync(cancellationToken);
+            var officialQuery = context.InspectionRecords
+                .AsNoTracking()
+                .WhereOfficial();
+            var categoryQuery = officialQuery;
+            if (normalizedCategory is not null)
+            {
+                categoryQuery = categoryQuery.Where(inspection => inspection.Asset != null
+                    && inspection.Asset.AssetCategory == normalizedCategory);
+            }
+
+            var departments = await categoryQuery
+                .Where(inspection => inspection.Asset != null && inspection.Asset.Department != null)
+                .Select(inspection => inspection.Asset!.Department!)
+                .Distinct()
+                .OrderBy(value => value)
+                .ToListAsync(cancellationToken);
+            var periodQuery = categoryQuery.Where(inspection => inspection.Schedule != null);
+            if (normalizedDepartment is not null)
+            {
+                var departmentKey = normalizedDepartment.ToUpperInvariant();
+                periodQuery = periodQuery.Where(inspection => inspection.Asset != null
+                    && inspection.Asset.Department != null
+                    && inspection.Asset.Department.ToUpper() == departmentKey);
+            }
+
+            var years = await periodQuery
+                .Where(inspection => inspection.Schedule!.PmCycle.Length == PreventiveMaintenanceCycle.Length)
+                .Select(inspection => inspection.Schedule!.PmCycle.Substring(0, 4))
+                .Distinct()
+                .OrderByDescending(value => value)
+                .ToListAsync(cancellationToken);
+
+            return Results.Ok(new InspectionRegistryOptionsResponse(
+                AssetCategoryCatalog.All,
+                ScheduleQuarterCatalog.PersistedValues,
+                [
+                    InspectionFollowUpStatusCatalog.NoReferralRequired,
+                    InspectionFollowUpStatusCatalog.CorrectiveFollowUpPending,
+                    InspectionFollowUpStatusCatalog.ReferredToWms
+                ],
+                departments,
+                years));
+        })
+        .WithName("GetInspectionRegistryOptions")
+        .WithSummary("Lists lightweight official inspection filter options")
+        .Produces<InspectionRegistryOptionsResponse>(StatusCodes.Status200OK)
+        .Produces<Microsoft.AspNetCore.Mvc.ValidationProblemDetails>(StatusCodes.Status400BadRequest)
+        .RequireAuthorization();
+
+        group.MapGet("/registry/summary", async (
+            IDbContextFactory<ApplicationDbContext> factory,
+            CancellationToken cancellationToken) =>
+        {
+            await using var context = await factory.CreateDbContextAsync(cancellationToken);
+            var groupedCounts = await context.InspectionRecords
+                .AsNoTracking()
+                .WhereOfficial()
+                .GroupBy(inspection => new
+                {
+                    inspection.IsOperational,
+                    HasWmsReferral = inspection.WmsReferral != null
+                })
+                .Select(grouping => new InspectionRegistrySummaryGroup(
+                    grouping.Key.IsOperational,
+                    grouping.Key.HasWmsReferral,
+                    grouping.Count()))
+                .ToListAsync(cancellationToken);
+            var totalCount = groupedCounts.Sum(grouping => grouping.Count);
+            var operationalCount = groupedCounts
+                .Where(grouping => grouping.IsOperational)
+                .Sum(grouping => grouping.Count);
+            var nonOperationalCount = totalCount - operationalCount;
+            var noReferralCount = groupedCounts
+                .Where(grouping => grouping.IsOperational && !grouping.HasWmsReferral)
+                .Sum(grouping => grouping.Count);
+            var pendingFollowUpCount = groupedCounts
+                .Where(grouping => !grouping.IsOperational && !grouping.HasWmsReferral)
+                .Sum(grouping => grouping.Count);
+            var referredCount = groupedCounts
+                .Where(grouping => grouping.HasWmsReferral)
+                .Sum(grouping => grouping.Count);
+
+            return Results.Ok(new InspectionRegistrySummaryResponse(
+                totalCount,
+                operationalCount,
+                nonOperationalCount,
+                noReferralCount,
+                pendingFollowUpCount,
+                referredCount));
+        })
+        .WithName("GetInspectionRegistrySummary")
+        .WithSummary("Returns overall official inspection totals")
+        .Produces<InspectionRegistrySummaryResponse>(StatusCodes.Status200OK)
+        .RequireAuthorization();
+
         group.MapGet("/", async (
             Guid? assetId,
             Guid? scheduleId,
@@ -430,7 +682,292 @@ public static class InspectionsEndpoints
         return endpoints;
     }
 
+    private static Dictionary<string, string[]> ValidateInspectionRegistryFilters(
+        DateTimeOffset? dateFrom,
+        DateTimeOffset? dateTo,
+        int? year,
+        string? quarter,
+        string? pmCycle,
+        string? department,
+        string? assetCategory,
+        string? search,
+        string? wmsReferralStatus,
+        int page,
+        int pageSize,
+        out string? normalizedQuarter,
+        out string? normalizedPmCycle,
+        out string? normalizedDepartment,
+        out string? normalizedCategory,
+        out string? normalizedSearch,
+        out string? normalizedReferralStatus)
+    {
+        normalizedQuarter = null;
+        normalizedPmCycle = null;
+        normalizedDepartment = string.IsNullOrWhiteSpace(department) ? null : department.Trim();
+        normalizedCategory = null;
+        normalizedSearch = string.IsNullOrWhiteSpace(search) ? null : search.Trim();
+        normalizedReferralStatus = null;
+        var errors = new Dictionary<string, string[]>();
+
+        if (page < 1)
+        {
+            errors[nameof(page)] = ["Page must be greater than zero."];
+        }
+
+        if (pageSize is < 1 or > 100)
+        {
+            errors[nameof(pageSize)] = ["Page size must be between 1 and 100."];
+        }
+
+        if (dateFrom is not null && dateTo is not null && dateFrom > dateTo)
+        {
+            errors[nameof(dateFrom)] = ["Date from must be earlier than or equal to date to."];
+        }
+
+        if (year is < 1 or > 9999)
+        {
+            errors[nameof(year)] = ["Year must be between 1 and 9999."];
+        }
+
+        if (!string.IsNullOrWhiteSpace(quarter))
+        {
+            if (ScheduleQuarterCatalog.TryNormalizeNullable(quarter, out var normalizedQuarterValue))
+            {
+                normalizedQuarter = normalizedQuarterValue;
+            }
+            else
+            {
+                errors[nameof(quarter)] = ["Quarter must be one of Q1, Q2, Q3, or Q4."];
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(pmCycle))
+        {
+            var value = pmCycle.Trim();
+            if (PreventiveMaintenanceCycle.TryParse(value, out _, out _))
+            {
+                normalizedPmCycle = value;
+            }
+            else
+            {
+                errors[nameof(pmCycle)] = ["PM cycle must use the yyyy-MM format."];
+            }
+        }
+
+        if (normalizedDepartment?.Length > 256)
+        {
+            errors[nameof(department)] = ["Department must be 256 characters or fewer."];
+        }
+
+        if (normalizedSearch?.Length > 256)
+        {
+            errors[nameof(search)] = ["Search must be 256 characters or fewer."];
+        }
+
+        if (!string.IsNullOrWhiteSpace(assetCategory))
+        {
+            if (AssetCategoryCatalog.TryNormalize(assetCategory, out var normalizedCategoryValue))
+            {
+                normalizedCategory = normalizedCategoryValue;
+            }
+            else
+            {
+                errors[nameof(assetCategory)] =
+                    ["Asset category must be one of the selected UniPM study scope categories."];
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(wmsReferralStatus))
+        {
+            if (InspectionFollowUpStatusCatalog.TryNormalize(wmsReferralStatus, out var status))
+            {
+                normalizedReferralStatus = status;
+            }
+            else
+            {
+                errors[nameof(wmsReferralStatus)] =
+                    ["WMS referral status must be NoReferralRequired, CorrectiveFollowUpPending, or ReferredToWms."];
+            }
+        }
+
+        return errors;
+    }
+
+    private static IQueryable<InspectionRecord> ApplyInspectionRegistryFilters(
+        IQueryable<InspectionRecord> query,
+        Guid? assetId,
+        Guid? scheduleId,
+        bool? isOperational,
+        DateTimeOffset? dateFrom,
+        DateTimeOffset? dateTo,
+        int? year,
+        string? quarter,
+        string? pmCycle,
+        string? department,
+        string? assetCategory,
+        string? search,
+        string? wmsReferralStatus)
+    {
+        if (assetId is not null)
+        {
+            query = query.Where(inspection => inspection.AssetId == assetId.Value);
+        }
+
+        if (scheduleId is not null)
+        {
+            query = query.Where(inspection => inspection.ScheduleId == scheduleId.Value);
+        }
+
+        if (isOperational is not null)
+        {
+            query = query.Where(inspection => inspection.IsOperational == isOperational.Value);
+        }
+
+        if (dateFrom is not null)
+        {
+            query = query.Where(inspection => inspection.DateInspected >= dateFrom.Value);
+        }
+
+        if (dateTo is not null)
+        {
+            query = query.Where(inspection => inspection.DateInspected <= dateTo.Value);
+        }
+
+        if (year is not null)
+        {
+            var yearKey = year.Value.ToString("D4", CultureInfo.InvariantCulture);
+            query = query.Where(inspection => inspection.Schedule != null
+                && inspection.Schedule.PmCycle.Length == PreventiveMaintenanceCycle.Length
+                && inspection.Schedule.PmCycle.Substring(0, 4) == yearKey);
+        }
+
+        if (quarter is not null)
+        {
+            var quarterMonths = quarter switch
+            {
+                ScheduleQuarterCatalog.Q1 => new[] { "01", "02", "03" },
+                ScheduleQuarterCatalog.Q2 => new[] { "04", "05", "06" },
+                ScheduleQuarterCatalog.Q3 => new[] { "07", "08", "09" },
+                ScheduleQuarterCatalog.Q4 => new[] { "10", "11", "12" },
+                _ => Array.Empty<string>()
+            };
+            query = query.Where(inspection => inspection.Schedule != null
+                && inspection.Schedule.PmCycle.Length == PreventiveMaintenanceCycle.Length
+                && quarterMonths.Contains(inspection.Schedule.PmCycle.Substring(5, 2)));
+        }
+
+        if (pmCycle is not null)
+        {
+            query = query.Where(inspection => inspection.Schedule != null
+                && inspection.Schedule.PmCycle == pmCycle);
+        }
+
+        if (department is not null)
+        {
+            var departmentKey = department.ToUpperInvariant();
+            query = query.Where(inspection => inspection.Asset != null
+                && inspection.Asset.Department != null
+                && inspection.Asset.Department.ToUpper() == departmentKey);
+        }
+
+        if (assetCategory is not null)
+        {
+            query = query.Where(inspection => inspection.Asset != null
+                && inspection.Asset.AssetCategory == assetCategory);
+        }
+
+        if (search is not null)
+        {
+            var searchKey = search.ToUpperInvariant();
+            query = query.Where(inspection =>
+                (inspection.Asset != null && (
+                    inspection.Asset.AssetCode.Contains(searchKey)
+                    || inspection.Asset.AssetCategory.ToUpper().Contains(searchKey)
+                    || (inspection.Asset.Building != null && inspection.Asset.Building.ToUpper().Contains(searchKey))
+                    || (inspection.Asset.Department != null && inspection.Asset.Department.ToUpper().Contains(searchKey))
+                    || (inspection.Asset.Location != null && inspection.Asset.Location.ToUpper().Contains(searchKey))))
+                || (inspection.Schedule != null && inspection.Schedule.PmCycle.ToUpper().Contains(searchKey))
+                || (inspection.Remarks != null && inspection.Remarks.ToUpper().Contains(searchKey))
+                || (inspection.ActionsRecommendations != null && inspection.ActionsRecommendations.ToUpper().Contains(searchKey))
+                || (inspection.WmsReferral != null && inspection.WmsReferral.ExternalPmNumber.ToUpper().Contains(searchKey)));
+        }
+
+        if (wmsReferralStatus is not null)
+        {
+            query = wmsReferralStatus switch
+            {
+                InspectionFollowUpStatusCatalog.NoReferralRequired => query.Where(inspection =>
+                    inspection.IsOperational && inspection.WmsReferral == null),
+                InspectionFollowUpStatusCatalog.CorrectiveFollowUpPending => query.Where(inspection =>
+                    !inspection.IsOperational && inspection.WmsReferral == null),
+                InspectionFollowUpStatusCatalog.ReferredToWms => query.Where(inspection =>
+                    inspection.WmsReferral != null),
+                _ => query
+            };
+        }
+
+        return query;
+    }
+
 }
+
+public sealed record InspectionRegistryPageResponse(
+    IReadOnlyList<InspectionRegistryItemResponse> Items,
+    int Page,
+    int PageSize,
+    int TotalCount,
+    int OverallCount);
+
+public sealed record InspectionRegistryItemResponse(
+    Guid Id,
+    Guid ScheduleId,
+    Guid AssetId,
+    DateTimeOffset DateInspected,
+    bool IsOperational,
+    string? Remarks,
+    string? ActionsRecommendations,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset UpdatedAt,
+    DateTimeOffset? DateAccomplished,
+    bool? WaterReplaceCarbonFilter,
+    bool? WaterReplaceSedimentFilter,
+    bool? WaterCheckUvLight,
+    string? ExternalPmNumber,
+    int WmsReferralRevision,
+    string CorrectiveFollowUpStatus,
+    bool HasPhotoEvidence,
+    InspectionRegistryAssetContext? Asset,
+    InspectionRegistryScheduleContext? Schedule);
+
+public sealed record InspectionRegistryAssetContext(
+    Guid Id,
+    string AssetCode,
+    string AssetCategory,
+    string? Department,
+    string? Building,
+    string? Location);
+
+public sealed record InspectionRegistryScheduleContext(Guid Id, string PmCycle);
+
+public sealed record InspectionRegistryOptionsResponse(
+    IReadOnlyList<AssetCategoryResponse> Categories,
+    IReadOnlyList<string> Quarters,
+    IReadOnlyList<string> WmsReferralStatuses,
+    IReadOnlyList<string> Departments,
+    IReadOnlyList<string> Years);
+
+public sealed record InspectionRegistrySummaryResponse(
+    int TotalCount,
+    int OperationalCount,
+    int NonOperationalCount,
+    int NoReferralCount,
+    int PendingFollowUpCount,
+    int ReferredCount);
+
+internal sealed record InspectionRegistrySummaryGroup(
+    bool IsOperational,
+    bool HasWmsReferral,
+    int Count);
 
 public sealed record InspectionResponse(
     Guid Id,
