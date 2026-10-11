@@ -41,6 +41,7 @@ export type AssetSearch = {
 type AssetRow = Asset & { category: AssetCategory | undefined }
 
 const columnHelper = createColumnHelper<AssetRow>()
+const EMPTY_FILTER_OPTIONS: string[] = []
 
 const createColumns = (search: AssetSearch) => [
   columnHelper.accessor('assetCode', { header: 'Asset code' }),
@@ -260,8 +261,8 @@ export function AssetRegistry({
     getCoreRowModel: getCoreRowModel(),
   })
 
-  const buildings = filterOptions.data?.buildings ?? []
-  const departments = filterOptions.data?.departments ?? []
+  const buildings = filterOptions.data?.buildings ?? EMPTY_FILTER_OPTIONS
+  const departments = filterOptions.data?.departments ?? EMPTY_FILTER_OPTIONS
 
   useEffect(() => {
     if (

@@ -9,6 +9,8 @@ import {
 import { categoryLabel } from '@/features/assets/asset-presentation'
 import type { Asset } from '@/features/assets/asset-contract'
 
+const EMPTY_ASSETS: Asset[] = []
+
 function assetLabel(asset: Asset) {
   return [asset.assetCode, asset.department, asset.building, asset.location]
     .filter(Boolean)
@@ -30,7 +32,11 @@ export function AssetPicker({
   const [searchText, setSearchText] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [isOpen, setIsOpen] = useState(false)
-  const [activeIndex, setActiveIndex] = useState(-1)
+  const [activeOption, setActiveOption] = useState<{
+    scope: string
+    options: Asset[]
+    index: number
+  } | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const assets = useAssets({
     limit: 20,
@@ -39,7 +45,12 @@ export function AssetPicker({
     ...(debouncedSearch ? { search: debouncedSearch } : {}),
   })
   const categories = useAssetCategories()
-  const options = assets.data ?? []
+  const options = assets.data ?? EMPTY_ASSETS
+  const scope = `${assetCategory ?? ''}\u0000${department ?? ''}\u0000${debouncedSearch}`
+  const activeIndex =
+    activeOption?.scope === scope && activeOption.options === options
+      ? activeOption.index
+      : -1
   const isSearchSettling = searchText.trim() !== debouncedSearch
   const resultsAreCurrent = !assets.isPlaceholderData && !isSearchSettling
   const selectedFromOptions = options.find((asset) => asset.id === value)
@@ -70,25 +81,11 @@ export function AssetPicker({
     return () => window.clearTimeout(timeout)
   }, [searchText])
 
-  useEffect(() => {
-    setActiveIndex(-1)
-  }, [assetCategory, assets.data, department, debouncedSearch])
-
-  useEffect(() => {
-    if (!value || !selectedAssetIsIncompatible) return
-    setNotice(
-      'The selected asset was cleared because it does not match the selected category or department.',
-    )
-    setSearchText('')
-    setActiveIndex(-1)
-    onChange(undefined)
-  }, [onChange, selectedAssetIsIncompatible, value])
-
   const chooseAsset = (asset: Asset) => {
     setNotice(null)
     setSearchText('')
     setDebouncedSearch('')
-    setActiveIndex(-1)
+    setActiveOption(null)
     setIsOpen(false)
     onChange(asset.id)
   }
@@ -98,12 +95,16 @@ export function AssetPicker({
       event.preventDefault()
       setIsOpen(true)
       if (resultsAreCurrent && options.length > 0) {
-        setActiveIndex((index) => Math.min(index + 1, options.length - 1))
+        setActiveOption({
+          scope,
+          options,
+          index: Math.min(activeIndex + 1, options.length - 1),
+        })
       }
     } else if (event.key === 'ArrowUp') {
       event.preventDefault()
       if (resultsAreCurrent && options.length > 0) {
-        setActiveIndex((index) => Math.max(index - 1, 0))
+        setActiveOption({ scope, options, index: Math.max(activeIndex - 1, 0) })
       }
     } else if (
       event.key === 'Enter' &&
@@ -115,7 +116,7 @@ export function AssetPicker({
       chooseAsset(options[activeIndex])
     } else if (event.key === 'Escape') {
       setIsOpen(false)
-      setActiveIndex(-1)
+      setActiveOption(null)
     }
   }
 
@@ -154,12 +155,12 @@ export function AssetPicker({
           onFocus={() => setIsOpen(true)}
           onBlur={() => {
             setIsOpen(false)
-            setActiveIndex(-1)
+            setActiveOption(null)
           }}
           onChange={(event) => {
             setSearchText(event.target.value)
             setNotice(null)
-            setActiveIndex(-1)
+            setActiveOption(null)
             setIsOpen(true)
             if (value) onChange(undefined)
           }}
@@ -173,6 +174,7 @@ export function AssetPicker({
               setSearchText('')
               setDebouncedSearch('')
               setNotice(null)
+              setActiveOption(null)
             }}
             className="rounded-lg border border-[var(--border-control)] px-3 text-sm font-semibold text-[var(--text-secondary)] hover:bg-[var(--page-background)]"
           >
@@ -187,6 +189,12 @@ export function AssetPicker({
       {notice && (
         <p className="text-sm text-[var(--text-secondary)]" role="status">
           {notice}
+        </p>
+      )}
+      {value && selectedAssetIsIncompatible && (
+        <p className="text-sm text-[var(--error)]" role="alert">
+          The selected asset does not match the current category or department.
+          Clear it or choose a matching asset before applying these filters.
         </p>
       )}
       {value && !selectedAsset && selectedDetail.isError && (
@@ -222,7 +230,9 @@ export function AssetPicker({
                     tabIndex={-1}
                     aria-selected={index === activeIndex || asset.id === value}
                     onMouseDown={(event) => event.preventDefault()}
-                    onMouseEnter={() => setActiveIndex(index)}
+                    onMouseEnter={() =>
+                      setActiveOption({ scope, options, index })
+                    }
                     onClick={() => chooseAsset(asset)}
                     className={`w-full rounded-md px-3 py-2 text-left text-sm ${
                       index === activeIndex

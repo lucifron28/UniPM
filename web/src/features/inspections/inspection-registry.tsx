@@ -75,6 +75,7 @@ function SummaryCard({ label, count }: { label: string; count: number }) {
 }
 
 const columnHelper = createColumnHelper<InspectionRegistryItem>()
+const EMPTY_FILTER_OPTIONS: string[] = []
 const createColumns = (search: InspectionSearch) => [
   columnHelper.accessor('asset', {
     header: 'Asset',
@@ -214,7 +215,7 @@ export function InspectionRegistry({
     ...(draft.department ? { department: draft.department } : {}),
   })
   const categories = filterOptions.data?.categories ?? []
-  const departments = filterOptions.data?.departments ?? []
+  const departments = filterOptions.data?.departments ?? EMPTY_FILTER_OPTIONS
   const years = filterOptions.data?.years ?? []
   const summary = useInspectionRegistrySummary()
   const registry = useInspectionRegistry({
@@ -238,6 +239,19 @@ export function InspectionRegistry({
     pageSize,
   })
   const selectedAsset = useAsset(search.assetId ?? '', Boolean(search.assetId))
+  const draftSelectedAsset = useAsset(
+    draft.assetId ?? '',
+    Boolean(draft.assetId),
+  )
+  const draftAssetMatchesFilters = Boolean(
+    !draft.assetId ||
+      (draftSelectedAsset.isSuccess &&
+        (!draft.assetCategory ||
+          draftSelectedAsset.data.assetCategory === draft.assetCategory) &&
+        (!draft.department ||
+          draftSelectedAsset.data.department?.toLocaleLowerCase() ===
+            draft.department.toLocaleLowerCase())),
+  )
 
   useEffect(() => {
     setDraft({
@@ -376,7 +390,12 @@ export function InspectionRegistry({
   }, [allowedMonths, draft.pmCycle])
 
   const apply = () => {
-    if (!dateRangeIsValid || !pmCycleMatchesPeriod) return
+    if (
+      !dateRangeIsValid ||
+      !pmCycleMatchesPeriod ||
+      !draftAssetMatchesFilters
+    )
+      return
     onSearchChange(
       {
         ...draft,
@@ -668,12 +687,18 @@ export function InspectionRegistry({
               value={draft.assetCategory ?? ''}
               disabled={filterOptions.isError || filterOptions.isPending}
               onChange={(event) => {
+                const assetCategory = (event.target.value || undefined) as
+                  Asset['assetCategory'] | undefined
                 setDraft((current) => ({
                   ...current,
-                  assetCategory: (event.target.value || undefined) as
-                    Asset['assetCategory'] | undefined,
+                  assetCategory,
+                  assetId: undefined,
                 }))
-                setFilterNotice(null)
+                setFilterNotice(
+                  draft.assetId
+                    ? 'Specific asset was cleared because the category filter changed.'
+                    : null,
+                )
               }}
               className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
             >
@@ -695,8 +720,13 @@ export function InspectionRegistry({
                 setDraft((current) => ({
                   ...current,
                   department: event.target.value || undefined,
+                  assetId: undefined,
                 }))
-                setFilterNotice(null)
+                setFilterNotice(
+                  draft.assetId
+                    ? 'Specific asset was cleared because the department filter changed.'
+                    : null,
+                )
               }}
               className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
             >
@@ -888,7 +918,11 @@ export function InspectionRegistry({
           <div className="flex flex-wrap items-end gap-2 md:col-span-2 xl:col-span-4">
             <Button
               type="submit"
-              disabled={!dateRangeIsValid || !pmCycleMatchesPeriod}
+              disabled={
+                !dateRangeIsValid ||
+                !pmCycleMatchesPeriod ||
+                !draftAssetMatchesFilters
+              }
             >
               Apply filters
             </Button>
@@ -906,6 +940,13 @@ export function InspectionRegistry({
           <p className="mt-3 text-sm text-[var(--error)]" role="alert">
             The exact PM month must match the selected calendar year and
             quarter.
+          </p>
+        )}
+        {draft.assetId && !draftAssetMatchesFilters && (
+          <p className="mt-3 text-sm text-[var(--error)]" role="alert">
+            {draftSelectedAsset.isPending
+              ? 'Checking the selected asset before applying filters.'
+              : 'The selected asset could not be verified or does not match the category or department. Clear it or choose another asset.'}
           </p>
         )}
         {filterNotice && (

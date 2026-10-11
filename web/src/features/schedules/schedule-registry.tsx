@@ -26,6 +26,7 @@ import { RegistryActiveFilters } from '@/features/shared/registry-active-filters
 import type { RegistryActiveFilter } from '@/features/shared/registry-active-filters'
 import type {
   Schedule,
+  ScheduleRegistryOptions,
   ScheduleRegistryItem,
 } from '@/features/schedules/schedule-contract'
 import {
@@ -80,6 +81,8 @@ function SummaryCard({ label, count }: { label: string; count: number }) {
 }
 
 const columnHelper = createColumnHelper<ScheduleRegistryItem>()
+const EMPTY_SCHEDULE_CATEGORIES: ScheduleRegistryOptions['categories'] = []
+const EMPTY_FILTER_OPTIONS: string[] = []
 function statusVariant(
   status: Schedule['status'],
 ): 'neutral' | 'success' | 'warning' | 'danger' {
@@ -209,7 +212,8 @@ export function ScheduleRegistry({
     ...(draft.assetCategory ? { assetCategory: draft.assetCategory } : {}),
     ...(draft.department ? { department: draft.department } : {}),
   })
-  const categories = filterOptions.data?.categories ?? []
+  const categories =
+    filterOptions.data?.categories ?? EMPTY_SCHEDULE_CATEGORIES
   const summary = useScheduleRegistrySummary()
   const pageSize = 25
   const registryFilters = {
@@ -228,6 +232,19 @@ export function ScheduleRegistry({
   }
   const registry = useScheduleRegistry(registryFilters)
   const selectedAsset = useAsset(search.assetId ?? '', Boolean(search.assetId))
+  const draftSelectedAsset = useAsset(
+    draft.assetId ?? '',
+    Boolean(draft.assetId),
+  )
+  const draftAssetMatchesFilters = Boolean(
+    !draft.assetId ||
+      (draftSelectedAsset.isSuccess &&
+        (!draft.assetCategory ||
+          draftSelectedAsset.data.assetCategory === draft.assetCategory) &&
+        (!draft.department ||
+          draftSelectedAsset.data.department?.toLocaleLowerCase() ===
+            draft.department.toLocaleLowerCase())),
+  )
 
   useEffect(() => {
     setDraft({
@@ -269,11 +286,11 @@ export function ScheduleRegistry({
   const requestedPage = search.page ?? 1
   const page = Math.min(Math.max(requestedPage, 1), pageCount)
   const pageData = records
-  const departments = filterOptions.data?.departments ?? []
-  const quarterOptions = filterOptions.data?.quarters ?? []
+  const departments = filterOptions.data?.departments ?? EMPTY_FILTER_OPTIONS
+  const quarterOptions = filterOptions.data?.quarters ?? EMPTY_FILTER_OPTIONS
   const yearOptions = Array.from(
     new Set([
-      ...(filterOptions.data?.years ?? []),
+      ...(filterOptions.data?.years ?? EMPTY_FILTER_OPTIONS),
       ...(draft.year ? [String(draft.year)] : []),
       ...(draft.pmCycle ? [draft.pmCycle.slice(0, 4)] : []),
     ]),
@@ -383,7 +400,12 @@ export function ScheduleRegistry({
           draft.quarter))
 
   const apply = () => {
-    if (!dateRangeIsValid || !pmCycleMatchesPeriod) return
+    if (
+      !dateRangeIsValid ||
+      !pmCycleMatchesPeriod ||
+      !draftAssetMatchesFilters
+    )
+      return
     onSearchChange(
       {
         ...draft,
@@ -725,8 +747,16 @@ export function ScheduleRegistry({
               onChange={(event) => {
                 const assetCategory = (event.target.value || undefined) as
                   Asset['assetCategory'] | undefined
-                setDraft((current) => ({ ...current, assetCategory }))
-                setFilterNotice(null)
+                setDraft((current) => ({
+                  ...current,
+                  assetCategory,
+                  assetId: undefined,
+                }))
+                setFilterNotice(
+                  draft.assetId
+                    ? 'Specific asset was cleared because the category filter changed.'
+                    : null,
+                )
               }}
               className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
             >
@@ -748,8 +778,13 @@ export function ScheduleRegistry({
                 setDraft((current) => ({
                   ...current,
                   department: event.target.value || undefined,
+                  assetId: undefined,
                 }))
-                setFilterNotice(null)
+                setFilterNotice(
+                  draft.assetId
+                    ? 'Specific asset was cleared because the department filter changed.'
+                    : null,
+                )
               }}
               className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
             >
@@ -915,7 +950,11 @@ export function ScheduleRegistry({
           <div className="flex flex-wrap items-end gap-2 xl:col-span-4">
             <Button
               type="submit"
-              disabled={!dateRangeIsValid || !pmCycleMatchesPeriod}
+              disabled={
+                !dateRangeIsValid ||
+                !pmCycleMatchesPeriod ||
+                !draftAssetMatchesFilters
+              }
             >
               Apply filters
             </Button>
@@ -933,6 +972,13 @@ export function ScheduleRegistry({
           <p className="mt-3 text-sm text-[var(--error)]" role="alert">
             The exact PM month must match the selected calendar year and
             quarter.
+          </p>
+        )}
+        {draft.assetId && !draftAssetMatchesFilters && (
+          <p className="mt-3 text-sm text-[var(--error)]" role="alert">
+            {draftSelectedAsset.isPending
+              ? 'Checking the selected asset before applying filters.'
+              : 'The selected asset could not be verified or does not match the category or department. Clear it or choose another asset.'}
           </p>
         )}
         {filterNotice && (
