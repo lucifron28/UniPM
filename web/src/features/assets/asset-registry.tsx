@@ -669,7 +669,7 @@ export function AssetRegistry({
             Retry
           </Button>
         </Card>
-      ) : summary.data?.totalCount === 0 ? (
+      ) : records.length === 0 && summary.data?.totalCount === 0 ? (
         <Card className="p-6 text-center shadow-none">
           <h2 className="text-lg font-semibold text-[var(--text-primary)]">
             No assets are registered yet.
