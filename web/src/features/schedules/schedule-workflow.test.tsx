@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { useState } from 'react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
@@ -564,29 +564,41 @@ describe('schedule workflows', () => {
   })
 
   it('disables failed reference selectors and retries the affected data', async () => {
-    let assetAttempts = 0
+    let optionsAttempts = 0
     server.use(
-      http.get(`${base}/assets`, () => {
-        assetAttempts++
-        return assetAttempts === 1
+      http.get(`${base}/schedules/registry/options`, () => {
+        optionsAttempts++
+        return optionsAttempts === 1
           ? HttpResponse.json(null, { status: 500 })
-          : HttpResponse.json([asset])
+          : HttpResponse.json({
+              categories: [
+                {
+                  code: 'fire-extinguisher',
+                  displayName: 'Fire extinguishers',
+                  scheduledMonths: [2, 5, 8, 11],
+                },
+              ],
+              quarters: ['Q1', 'Q2', 'Q3', 'Q4'],
+              departments: ['GSD'],
+              years: ['2026'],
+            })
       }),
-      http.get(`${base}/schedules`, () => HttpResponse.json([schedule])),
     )
 
     renderWithProviders(
       <ScheduleRegistry search={{ page: 1 }} onSearchChange={vi.fn()} />,
     )
 
-    await screen.findByRole('button', { name: 'Retry asset options' })
-    const assetSelect = screen.getByLabelText('Asset')
-    expect(assetSelect).toBeDisabled()
+    await screen.findByRole('button', { name: 'Retry registry options' })
+    const categorySelect = screen.getByLabelText('Asset category')
+    expect(categorySelect).toBeDisabled()
     await userEvent
       .setup()
-      .click(screen.getByRole('button', { name: 'Retry asset options' }))
-    await vi.waitFor(() => expect(assetSelect).not.toBeDisabled())
-    expect(screen.getByRole('option', { name: 'FE-001' })).toBeInTheDocument()
+      .click(screen.getByRole('button', { name: 'Retry registry options' }))
+    await vi.waitFor(() => expect(categorySelect).not.toBeDisabled())
+    expect(
+      screen.getByRole('option', { name: 'Fire extinguishers' }),
+    ).toBeInTheDocument()
   })
 
   it('rejects an invalid detail UUID without making a schedule request', async () => {
@@ -909,13 +921,13 @@ describe('schedule workflows', () => {
     ).toBeInTheDocument()
   })
 
-  it('blocks Enter submission if the selected asset is no longer eligible', async () => {
+  it('blocks form submission if the selected asset is no longer eligible', async () => {
     let postCalled = false
     server.use(
-      ...assetLookupHandlers([asset]),
       http.get(`${base}/assets/${assetId}`, () =>
         HttpResponse.json({ ...asset, status: 'Inactive' }),
       ),
+      ...assetLookupHandlers([asset]),
       http.post(`${base}/schedules`, () => {
         postCalled = true
         return HttpResponse.json(schedule)
@@ -932,7 +944,9 @@ describe('schedule workflows', () => {
       screen.getByRole('button', { name: 'Create schedule' }),
     ).toBeDisabled()
 
-    await actor.keyboard('{Enter}')
+    fireEvent.submit(
+      screen.getByRole('button', { name: 'Create schedule' }).closest('form')!,
+    )
 
     expect(
       await screen.findByText('Choose an active asset with a department.'),
