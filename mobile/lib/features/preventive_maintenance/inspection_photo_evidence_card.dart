@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'dart:io' as io;
 import 'dart:typed_data';
@@ -387,22 +388,30 @@ class InspectionPhotoCapturePage extends StatefulWidget {
       _InspectionPhotoCapturePageState();
 }
 
-class _InspectionPhotoCapturePageState
-    extends State<InspectionPhotoCapturePage> {
+class _InspectionPhotoCapturePageState extends State<InspectionPhotoCapturePage>
+    with WidgetsBindingObserver {
   CameraController? controller;
   Uint8List? capturedPhoto;
   String? errorMessage;
   bool takingPhoto = false;
   bool initializingCamera = false;
+  AppLifecycleState appLifecycleState = AppLifecycleState.resumed;
 
   @override
   void initState() {
     super.initState();
-    _initializeCamera();
+    WidgetsBinding.instance.addObserver(this);
+    appLifecycleState =
+        WidgetsBinding.instance.lifecycleState ?? AppLifecycleState.resumed;
+    if (appLifecycleState == AppLifecycleState.resumed) {
+      _initializeCamera();
+    }
   }
 
   Future<void> _initializeCamera() async {
-    if (initializingCamera) return;
+    if (initializingCamera || appLifecycleState != AppLifecycleState.resumed) {
+      return;
+    }
     final previous = controller;
     setState(() {
       initializingCamera = true;
@@ -426,7 +435,7 @@ class _InspectionPhotoCapturePageState
         enableAudio: false,
       );
       await next.initialize();
-      if (!mounted) {
+      if (!mounted || appLifecycleState != AppLifecycleState.resumed) {
         await next.dispose();
         return;
       }
@@ -441,6 +450,21 @@ class _InspectionPhotoCapturePageState
       }
     } finally {
       if (mounted) setState(() => initializingCamera = false);
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    appLifecycleState = state;
+    if (state == AppLifecycleState.resumed) {
+      unawaited(_initializeCamera());
+      return;
+    }
+
+    final previous = controller;
+    if (previous != null) {
+      setState(() => controller = null);
+      unawaited(previous.dispose());
     }
   }
 
@@ -475,7 +499,10 @@ class _InspectionPhotoCapturePageState
 
   @override
   void dispose() {
-    controller?.dispose();
+    WidgetsBinding.instance.removeObserver(this);
+    final previous = controller;
+    controller = null;
+    if (previous != null) unawaited(previous.dispose());
     super.dispose();
   }
 
