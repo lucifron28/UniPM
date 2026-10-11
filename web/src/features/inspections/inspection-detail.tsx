@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { ZodError } from 'zod'
 import { ApiError } from '@/api/problem-details'
@@ -84,6 +84,7 @@ function InspectionPhotoEvidencePanel({
   hasPhotoEvidence: boolean
 }) {
   const [showPreview, setShowPreview] = useState(false)
+  const previewDialogRef = useRef<HTMLDialogElement>(null)
   const photo = useInspectionPhotoEvidence(inspectionId, hasPhotoEvidence)
   const [photoObjectUrl, setPhotoObjectUrl] = useState<
     { blob: Blob; url: string } | undefined
@@ -101,6 +102,13 @@ function InspectionPhotoEvidencePanel({
     setPhotoObjectUrl({ blob: photo.data, url })
     return () => URL.revokeObjectURL(url)
   }, [hasPhotoEvidence, photo.data])
+
+  useEffect(() => {
+    const dialog = previewDialogRef.current
+    if (!dialog) return
+    if (showPreview && !dialog.open) dialog.showModal()
+    if (!showPreview && dialog.open) dialog.close()
+  }, [showPreview])
 
   return (
     <Card className="space-y-3 shadow-none">
@@ -150,16 +158,30 @@ function InspectionPhotoEvidencePanel({
             </div>
           )}
           {showPreview && photoUrl && (
-            <div
-              role="dialog"
-              aria-modal="true"
+            <dialog
+              ref={previewDialogRef}
               aria-labelledby="inspection-photo-preview-title"
               onKeyDown={(event) => {
-                if (event.key === 'Escape') setShowPreview(false)
+                if (event.key !== 'Tab') return
+                const focusable =
+                  previewDialogRef.current?.querySelectorAll<HTMLElement>(
+                    'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+                  )
+                if (!focusable?.length) return
+                const first = focusable[0]
+                const last = focusable[focusable.length - 1]
+                if (event.shiftKey && document.activeElement === first) {
+                  event.preventDefault()
+                  last.focus()
+                } else if (!event.shiftKey && document.activeElement === last) {
+                  event.preventDefault()
+                  first.focus()
+                }
               }}
-              className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4"
+              onClose={() => setShowPreview(false)}
+              className="m-auto max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-5xl overflow-auto rounded-lg border-0 bg-white p-4 shadow-xl backdrop:bg-black/70"
             >
-              <div className="w-full max-w-5xl space-y-3 rounded-lg bg-white p-4 shadow-xl">
+              <div className="space-y-3">
                 <div className="flex items-center justify-between gap-3">
                   <h3
                     id="inspection-photo-preview-title"
@@ -168,9 +190,10 @@ function InspectionPhotoEvidencePanel({
                     Inspection photo evidence
                   </h3>
                   <Button
+                    autoFocus
                     type="button"
                     variant="secondary"
-                    onClick={() => setShowPreview(false)}
+                    onClick={() => previewDialogRef.current?.close()}
                   >
                     Close photo preview
                   </Button>
@@ -181,7 +204,7 @@ function InspectionPhotoEvidencePanel({
                   className="mx-auto max-h-[80vh] max-w-full rounded-md border object-contain"
                 />
               </div>
-            </div>
+            </dialog>
           )}
         </>
       )}
