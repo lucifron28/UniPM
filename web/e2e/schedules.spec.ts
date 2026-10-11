@@ -1,5 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 
+const scheduleRegistryRoute = /\/api\/v1\/schedules\/registry(?:\?.*)?$/
+
 const assetId = '22222222-2222-4222-8222-222222222222'
 const scheduleId = '11111111-1111-4111-8111-111111111111'
 const gsdSession = {
@@ -296,7 +298,7 @@ test.describe('Schedule workflows', () => {
         assetCode: `FE-${String(index + 1).padStart(3, '0')}`,
       },
     }))
-    await page.route('**/api/v1/schedules/registry', (route) => {
+    await page.route(scheduleRegistryRoute, (route) => {
       const url = new URL(route.request().url())
       const pageNumber = Number(url.searchParams.get('page') ?? 1)
       const pageSize = Number(url.searchParams.get('pageSize') ?? 25)
@@ -420,7 +422,7 @@ test.describe('Schedule workflows', () => {
     await page.goto('/app/schedules?status=Due&quarter=Q3&year=2026')
     await expect(page.getByRole('heading', { name: 'Schedules' })).toBeVisible()
     await expect(page.getByLabel('Schedule status')).toHaveValue('Due')
-    await expect(page.getByLabel('PM calendar quarter')).toHaveValue('Q3')
+    await expect(page.getByLabel('Calendar quarter')).toHaveValue('Q3')
     await page.getByRole('link', { name: 'View details' }).click()
     await expect(page).toHaveURL(new RegExp(`/app/schedules/${scheduleId}`))
     await expect(page.getByRole('heading', { name: 'FE-001' })).toBeVisible()
@@ -451,7 +453,9 @@ test.describe('Schedule workflows', () => {
       return route.fallback()
     })
     await page.goto('/app/schedules/new')
-    await page.getByLabel('Asset', { exact: true }).selectOption(assetId)
+    const assetPicker = page.getByRole('combobox', { name: 'Asset' })
+    await assetPicker.fill('FE-001')
+    await page.getByRole('option', { name: /FE-001/ }).click()
     await page.getByLabel('Scheduled year').fill('2026')
     await page.getByLabel('Scheduled month').selectOption('8')
     await expect(page.getByLabel('Due date')).toHaveValue('Aug 31, 2026')
