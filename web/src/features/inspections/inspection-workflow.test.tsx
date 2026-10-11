@@ -87,6 +87,47 @@ const history = [
     actionsRecommendations: inspection.actionsRecommendations,
   },
 ]
+const registryInspection = {
+  ...inspection,
+  dateAccomplished: null,
+  waterReplaceCarbonFilter: null,
+  waterReplaceSedimentFilter: null,
+  waterCheckUvLight: null,
+  asset: {
+    id: assetId,
+    assetCode: asset.assetCode,
+    assetCategory: asset.assetCategory,
+    building: asset.building,
+    department: asset.department,
+    location: asset.location,
+  },
+  schedule: { id: scheduleId, pmCycle: schedule.pmCycle },
+}
+const registryOptions = {
+  categories: [
+    {
+      code: 'fire-extinguisher',
+      displayName: 'Fire extinguishers',
+      scheduledMonths: [2, 5, 8, 11],
+    },
+  ],
+  quarters: ['Q1', 'Q2', 'Q3', 'Q4'],
+  wmsReferralStatuses: [
+    'NoReferralRequired',
+    'CorrectiveFollowUpPending',
+    'ReferredToWms',
+  ],
+  departments: ['GSD'],
+  years: ['2026'],
+}
+const registrySummary = {
+  totalCount: 1,
+  operationalCount: 0,
+  nonOperationalCount: 1,
+  noReferralCount: 0,
+  pendingFollowUpCount: 0,
+  referredCount: 1,
+}
 
 afterEach(() => {
   vi.restoreAllMocks()
@@ -128,6 +169,20 @@ function mockInspectionApi() {
     http.get(`${base}/schedules/${scheduleId}`, () =>
       HttpResponse.json(schedule),
     ),
+    http.get(`${base}/inspections/registry`, () =>
+      HttpResponse.json({
+        items: [registryInspection],
+        page: 1,
+        pageSize: 25,
+        totalCount: 1,
+      }),
+    ),
+    http.get(`${base}/inspections/registry/options`, () =>
+      HttpResponse.json(registryOptions),
+    ),
+    http.get(`${base}/inspections/registry/summary`, () =>
+      HttpResponse.json(registrySummary),
+    ),
     http.get(`${base}/inspections/${inspectionId}`, () =>
       HttpResponse.json(inspection),
     ),
@@ -140,11 +195,17 @@ function mockInspectionApi() {
 describe('inspection review workflows', () => {
   it('sends only supported inspection filters while preserving an unfiltered summary', async () => {
     const urls: URL[] = []
+    const onSearchChange = vi.fn()
     mockInspectionApi()
     server.use(
-      http.get(`${base}/inspections`, ({ request }) => {
+      http.get(`${base}/inspections/registry`, ({ request }) => {
         urls.push(new URL(request.url))
-        return HttpResponse.json([inspection])
+        return HttpResponse.json({
+          items: [registryInspection],
+          page: 1,
+          pageSize: 25,
+          totalCount: 1,
+        })
       }),
     )
 
@@ -154,11 +215,14 @@ describe('inspection review workflows', () => {
           assetId,
           scheduleId,
           isOperational: false,
+          year: 2026,
+          quarter: 'Q3',
+          pmCycle: '2026-08',
           dateFrom: '2026-07-01T00:00:00.000Z',
           dateTo: '2026-07-31T23:59:59.000Z',
           page: 1,
         }}
-        onSearchChange={vi.fn()}
+        onSearchChange={onSearchChange}
       />,
     )
 
@@ -172,20 +236,42 @@ describe('inspection review workflows', () => {
     )
     expect(filtered?.searchParams.get('scheduleId')).toBe(scheduleId)
     expect(filtered?.searchParams.get('isOperational')).toBe('false')
+    expect(filtered?.searchParams.get('year')).toBe('2026')
+    expect(filtered?.searchParams.get('quarter')).toBe('Q3')
+    expect(filtered?.searchParams.get('pmCycle')).toBe('2026-08')
     expect(filtered?.searchParams.get('dateFrom')).toBe(
       '2026-07-01T00:00:00.000Z',
     )
-    expect(filtered?.searchParams.get('page')).toBeNull()
+    expect(filtered?.searchParams.get('page')).toBe('1')
+    expect(filtered?.searchParams.get('pageSize')).toBe('25')
     expect(filtered?.searchParams.get('building')).toBeNull()
+    expect(
+      screen.getByText('Linked schedule: Specific schedule'),
+    ).toBeInTheDocument()
+    expect(screen.queryByLabelText('Schedule')).not.toBeInTheDocument()
+    await userEvent
+      .setup()
+      .click(
+        screen.getByRole('button', { name: 'Remove Linked schedule filter' }),
+      )
+    expect(onSearchChange).toHaveBeenCalledWith(
+      expect.objectContaining({ scheduleId: undefined, page: 1 }),
+      { preserveScroll: true },
+    )
   })
 
   it('applies combined inspection filters only after submission and preserves them in detail links', async () => {
     const urls: URL[] = []
     mockInspectionApi()
     server.use(
-      http.get(`${base}/inspections`, ({ request }) => {
+      http.get(`${base}/inspections/registry`, ({ request }) => {
         urls.push(new URL(request.url))
-        return HttpResponse.json([inspection])
+        return HttpResponse.json({
+          items: [registryInspection],
+          page: 1,
+          pageSize: 25,
+          totalCount: 1,
+        })
       }),
     )
 
@@ -221,7 +307,7 @@ describe('inspection review workflows', () => {
       'false',
     )
     await actor.selectOptions(
-      screen.getByLabelText('Corrective follow-up status'),
+      screen.getByLabelText('Corrective follow-up'),
       'ReferredToWms',
     )
     expect(urls).toHaveLength(1)
@@ -256,15 +342,26 @@ describe('inspection review workflows', () => {
     })
   })
 
-  it('moves to the second client-side page without resetting the filters', async () => {
+  it('moves to the second server page without resetting the filters', async () => {
     mockInspectionApi()
-    const records = Array.from({ length: 11 }, (_, index) => ({
-      ...inspection,
+    const records = Array.from({ length: 26 }, (_, index) => ({
+      ...registryInspection,
       id: `10000000-0000-4000-8000-${(index + 1).toString().padStart(12, '0')}`,
       remarks: `Inspection record ${index + 1}`,
     }))
     server.use(
-      http.get(`${base}/inspections`, () => HttpResponse.json(records)),
+      http.get(`${base}/inspections/registry`, ({ request }) => {
+        const url = new URL(request.url)
+        const page = Number(url.searchParams.get('page') ?? 1)
+        const pageSize = Number(url.searchParams.get('pageSize') ?? 25)
+        const start = (page - 1) * pageSize
+        return HttpResponse.json({
+          items: records.slice(start, start + pageSize),
+          page,
+          pageSize,
+          totalCount: records.length,
+        })
+      }),
     )
     const onSearchChange = vi.fn()
 
@@ -287,17 +384,17 @@ describe('inspection review workflows', () => {
 
     renderWithProviders(<PaginationHarness />)
     await screen.findAllByText('Inspection record 1')
-    expect(screen.getByText('Showing 1-10 of 11')).toBeInTheDocument()
+    expect(screen.getByText('Showing 1-25 of 26')).toBeInTheDocument()
     const next = screen.getByRole('button', { name: 'Next' })
     await userEvent.setup().click(next)
     expect(onSearchChange).toHaveBeenCalledWith(
       { assetId, isOperational: false, page: 2 },
       { preserveScroll: true },
     )
-    expect(await screen.findAllByText('Inspection record 11')).not.toHaveLength(
+    expect(await screen.findAllByText('Inspection record 26')).not.toHaveLength(
       0,
     )
-    expect(screen.getByText('Showing 11-11 of 11')).toBeInTheDocument()
+    expect(screen.getByText('Showing 26-26 of 26')).toBeInTheDocument()
     expect(next).toHaveFocus()
   })
 
