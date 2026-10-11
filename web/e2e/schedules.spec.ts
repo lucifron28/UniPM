@@ -90,17 +90,30 @@ async function mockScheduleApi(page: Page, roles = ['GSD']) {
     const parameters = requestUrl.searchParams
     if (
       route.request().method() !== 'GET' ||
-      requestUrl.pathname !== '/api/v1/assets' ||
-      parameters.get('limit') !== '20' ||
-      parameters.get('status') !== 'Active' ||
-      parameters.get('hasDepartment') !== 'true'
+      requestUrl.pathname !== '/api/v1/assets'
     ) {
       return route.fallback()
     }
+    const search = parameters.get('search')?.trim().toLocaleLowerCase()
+    const matchesAsset =
+      (!parameters.has('status') ||
+        parameters.get('status') === asset.status) &&
+      (parameters.get('hasDepartment') !== 'true' ||
+        Boolean(asset.department?.trim())) &&
+      (!search ||
+        [
+          asset.assetCode,
+          asset.assetCategory,
+          asset.building,
+          asset.department,
+          asset.location,
+        ].some((value) => value.toLocaleLowerCase().includes(search)))
+    const limit = Number(parameters.get('limit') ?? 1)
+    const results = matchesAsset ? [asset].slice(0, limit) : []
     return route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify([asset]),
+      body: JSON.stringify(results),
     })
   })
   await page.route(new RegExp(`/api/v1/assets/${assetId}$`), async (route) => {
