@@ -105,7 +105,7 @@ public sealed class ScheduleQueryEndpointsTests
         await CreateScheduleAsync(
             client,
             fireExtinguisher.Id,
-            new DateTimeOffset(2026, 12, 15, 8, 0, 0, TimeSpan.FromHours(8)),
+            new DateTimeOffset(2026, 11, 15, 8, 0, 0, TimeSpan.FromHours(8)),
             "Quarter",
             "Q4",
             2026);
@@ -134,8 +134,8 @@ public sealed class ScheduleQueryEndpointsTests
             client,
             waterStation.Id,
             new DateTimeOffset(2026, 5, 15, 8, 0, 0, TimeSpan.FromHours(8)),
-            "Semester",
-            null,
+            "Quarter",
+            "Q2",
             2026);
 
         var response = await client.GetAsync("/api/v1/schedules?quarter=Q2");
