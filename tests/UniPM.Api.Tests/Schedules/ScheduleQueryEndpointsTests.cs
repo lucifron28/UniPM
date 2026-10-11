@@ -95,7 +95,8 @@ public sealed class ScheduleQueryEndpointsTests
     [Fact]
     public async Task List_schedules_filters_quarter_from_canonical_pm_cycle_for_every_asset_category()
     {
-        await using var application = new TestApplicationFactory();
+        await using var application = new TestApplicationFactory(
+            now: new DateTimeOffset(2026, 12, 1, 8, 0, 0, TimeSpan.FromHours(8)));
         var client = application.CreateClient();
         var fireExtinguisher = await CreateAssetAsync(client, "FE-QTR-001", "fire-extinguisher");
         var fireAlarm = await CreateAssetAsync(client, "FA-QTR-001", "fire-alarm");

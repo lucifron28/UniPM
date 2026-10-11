@@ -114,30 +114,6 @@ public sealed class RegistryReadEndpointsTests
         using var client = application.CreateClient();
         await application.SeedScheduleLookupAssetsAsync();
 
-        await application.SeedScheduleRegistryAsync(TestAuthenticationHandler.UserId);
-        var schedulePage = await client.GetFromJsonAsync<ScheduleRegistryPageResponse>(
-            "/api/v1/schedules/registry?year=2026&quarter=Q2&pmCycle=2026-06&department=GSD&assetCategory=fire-alarm&pageSize=100");
-        Assert.NotNull(schedulePage);
-        Assert.Equal(102, schedulePage.TotalCount);
-        Assert.All(schedulePage.Items, item =>
-        {
-            Assert.Equal("GSD", item.Asset?.Department);
-            Assert.Equal("fire-alarm", item.Asset?.AssetCategory);
-            Assert.Equal("2026-06", item.PmCycle);
-        });
-
-        var inspectionSeed = await application.SeedInspectionRegistryAsync();
-        var inspectionPage = await client.GetFromJsonAsync<InspectionRegistryPageResponse>(
-            "/api/v1/inspections/registry?year=2026&quarter=Q2&pmCycle=2026-06&department=GSD&assetCategory=fire-alarm&pageSize=100");
-        Assert.NotNull(inspectionPage);
-        Assert.Equal(101, inspectionPage.TotalCount);
-        var lateInspection = Assert.Single(inspectionPage.Items, item =>
-            item.Id == inspectionSeed.LateInspectionId);
-        Assert.Equal(2027, lateInspection.DateInspected.Year);
-        Assert.Equal("2026-06", lateInspection.Schedule?.PmCycle);
-        Assert.Equal("GSD", lateInspection.Asset?.Department);
-        Assert.Equal("fire-alarm", lateInspection.Asset?.AssetCategory);
-
         var eligibleAssets = await client.GetFromJsonAsync<List<AssetResponse>>(
             "/api/v1/assets?status=Active&hasDepartment=true&limit=2");
         Assert.NotNull(eligibleAssets);
@@ -150,9 +126,34 @@ public sealed class RegistryReadEndpointsTests
         Assert.NotNull(assetsWithoutDepartment);
         Assert.Empty(assetsWithoutDepartment);
 
+        await application.SeedScheduleRegistryAsync(TestAuthenticationHandler.UserId);
+        var inspectionSeed = await application.SeedInspectionRegistryAsync();
+
+        var schedulePage = await client.GetFromJsonAsync<ScheduleRegistryPageResponse>(
+            "/api/v1/schedules/registry?year=2026&quarter=Q2&pmCycle=2026-06&department=GSD&assetCategory=fire-alarm&pageSize=100");
+        Assert.NotNull(schedulePage);
+        Assert.Equal(102, schedulePage.TotalCount);
+        Assert.All(schedulePage.Items, item =>
+        {
+            Assert.Equal("GSD", item.Asset?.Department);
+            Assert.Equal("fire-alarm", item.Asset?.AssetCategory);
+            Assert.Equal("2026-06", item.PmCycle);
+        });
+
+        var inspectionPage = await client.GetFromJsonAsync<InspectionRegistryPageResponse>(
+            "/api/v1/inspections/registry?year=2026&quarter=Q2&pmCycle=2026-06&department=GSD&assetCategory=fire-alarm&pageSize=100");
+        Assert.NotNull(inspectionPage);
+        Assert.Equal(101, inspectionPage.TotalCount);
+        var lateInspection = Assert.Single(inspectionPage.Items, item =>
+            item.Id == inspectionSeed.LateInspectionId);
+        Assert.Equal(2027, lateInspection.DateInspected.Year);
+        Assert.Equal("2026-06", lateInspection.Schedule?.PmCycle);
+        Assert.Equal("GSD", lateInspection.Asset?.Department);
+        Assert.Equal("fire-alarm", lateInspection.Asset?.AssetCategory);
+
         await application.SeedAssetsAsync(1_000);
         var page = await client.GetFromJsonAsync<AssetRegistryPageResponse>(
-            "/api/v1/assets/registry?assetCategory=fire-extinguisher&status=Active&building=Main%20Building&department=GSD&page=2&pageSize=25");
+            "/api/v1/assets/registry?search=REG-0&assetCategory=fire-extinguisher&status=Active&building=Main%20Building&department=GSD&page=2&pageSize=25");
         Assert.NotNull(page);
         Assert.Equal(84, page.TotalCount);
         Assert.Equal(25, page.Items.Count);
