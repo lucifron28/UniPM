@@ -7,7 +7,10 @@ import { toast } from 'sonner'
 import { ZodError } from 'zod'
 import {
   createSchedule,
+  getGetScheduleRegistryOptionsQueryKey,
+  getGetScheduleRegistrySummaryQueryKey,
   getGetScheduleQueryKey,
+  getListScheduleRegistryQueryKey,
 } from '@/api/generated/endpoints'
 import { ApiError } from '@/api/problem-details'
 import { Alert } from '@/components/ui/alert'
@@ -79,7 +82,18 @@ export function ScheduleCreate() {
       createSchedule(toCreateScheduleDto(formValues)).then(parseSchedule),
     onSuccess: async (schedule) => {
       queryClient.setQueryData(getGetScheduleQueryKey(schedule.id), schedule)
-      await queryClient.invalidateQueries({ queryKey: ['/api/v1/schedules'] })
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['/api/v1/schedules'] }),
+        queryClient.invalidateQueries({
+          queryKey: getListScheduleRegistryQueryKey(),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: getGetScheduleRegistryOptionsQueryKey(),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: getGetScheduleRegistrySummaryQueryKey(),
+        }),
+      ])
       toast.success('Schedule created.')
       void navigate({
         to: '/app/schedules/$scheduleId',

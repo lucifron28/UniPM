@@ -187,6 +187,15 @@ export function useAssignScheduleBatchSupervisor() {
           queryKey: getListSchedulesQueryKey(),
         }),
         queryClient.invalidateQueries({
+          queryKey: getListScheduleRegistryQueryKey(),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: getGetScheduleRegistryOptionsQueryKey(),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: getGetScheduleRegistrySummaryQueryKey(),
+        }),
+        queryClient.invalidateQueries({
           queryKey: getListScheduleEnrollmentDeferralsQueryKey(),
         }),
       ])
@@ -217,6 +226,15 @@ export function useAssignScheduleBatchWorker() {
         queryClient.invalidateQueries({
           queryKey: getListSchedulesQueryKey(),
         }),
+        queryClient.invalidateQueries({
+          queryKey: getListScheduleRegistryQueryKey(),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: getGetScheduleRegistryOptionsQueryKey(),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: getGetScheduleRegistrySummaryQueryKey(),
+        }),
       ])
     },
   })
@@ -232,6 +250,15 @@ export function useGenerateSchedules() {
       await Promise.all([
         queryClient.invalidateQueries({
           queryKey: getListSchedulesQueryKey(),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: getListScheduleRegistryQueryKey(),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: getGetScheduleRegistryOptionsQueryKey(),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: getGetScheduleRegistrySummaryQueryKey(),
         }),
         queryClient.invalidateQueries({
           queryKey: getListPmPeriodDashboardCyclesQueryKey(),

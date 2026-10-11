@@ -5,9 +5,15 @@ import {
   getGetCorrectiveMaintenanceHandoffQueryKey,
   getGetPmPeriodDashboardQueryKey,
   getGetInspectionQueryKey,
+  getGetInspectionRegistryOptionsQueryKey,
+  getGetInspectionRegistrySummaryQueryKey,
   getGetInspectionWmsReferralQueryKey,
   getGetPreventiveMaintenanceFormQueryKey,
   getListInspectionsQueryKey,
+  getListInspectionRegistryQueryKey,
+  getGetScheduleRegistryOptionsQueryKey,
+  getGetScheduleRegistrySummaryQueryKey,
+  getListScheduleRegistryQueryKey,
   getListPreventiveMaintenanceFormsQueryKey,
   getInspectionWmsReferral,
   listPreventiveMaintenanceForms,
@@ -22,6 +28,38 @@ import {
   parsePreventiveMaintenanceForm,
   parsePreventiveMaintenanceForms,
 } from '@/features/preventive-maintenance-forms/form-contract'
+
+function invalidateInspectionRegistryReads(
+  queryClient: ReturnType<typeof useQueryClient>,
+) {
+  return Promise.all([
+    queryClient.invalidateQueries({
+      queryKey: getListInspectionRegistryQueryKey(),
+    }),
+    queryClient.invalidateQueries({
+      queryKey: getGetInspectionRegistryOptionsQueryKey(),
+    }),
+    queryClient.invalidateQueries({
+      queryKey: getGetInspectionRegistrySummaryQueryKey(),
+    }),
+  ])
+}
+
+function invalidateScheduleRegistryReads(
+  queryClient: ReturnType<typeof useQueryClient>,
+) {
+  return Promise.all([
+    queryClient.invalidateQueries({
+      queryKey: getListScheduleRegistryQueryKey(),
+    }),
+    queryClient.invalidateQueries({
+      queryKey: getGetScheduleRegistryOptionsQueryKey(),
+    }),
+    queryClient.invalidateQueries({
+      queryKey: getGetScheduleRegistrySummaryQueryKey(),
+    }),
+  ])
+}
 
 export function usePreventiveMaintenanceForms(
   filters: ListPreventiveMaintenanceFormsParams = {},
@@ -79,19 +117,22 @@ export function useUpdateInspectionWmsReferralMutation(formId: string) {
 
   return useUpdateInspectionWmsReferral({
     mutation: {
-      onSuccess: (_response, variables) => {
-        void queryClient.invalidateQueries({
-          queryKey: getGetInspectionWmsReferralQueryKey(variables.id),
-        })
-        void queryClient.invalidateQueries({
-          queryKey: getGetInspectionQueryKey(variables.id),
-        })
-        void queryClient.invalidateQueries({
-          queryKey: getGetCorrectiveMaintenanceHandoffQueryKey(formId),
-        })
-        void queryClient.invalidateQueries({
-          queryKey: getListInspectionsQueryKey(),
-        })
+      onSuccess: async (_response, variables) => {
+        await Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: getGetInspectionWmsReferralQueryKey(variables.id),
+          }),
+          queryClient.invalidateQueries({
+            queryKey: getGetInspectionQueryKey(variables.id),
+          }),
+          queryClient.invalidateQueries({
+            queryKey: getGetCorrectiveMaintenanceHandoffQueryKey(formId),
+          }),
+          queryClient.invalidateQueries({
+            queryKey: getListInspectionsQueryKey(),
+          }),
+          invalidateInspectionRegistryReads(queryClient),
+        ])
       },
       onError: (error, variables) => {
         if (error instanceof ApiError && error.status === 409) {
@@ -125,6 +166,8 @@ export function useAcknowledgePreventiveMaintenanceFormMutation() {
         void queryClient.invalidateQueries({
           queryKey: getGetPmPeriodDashboardQueryKey(),
         })
+        void invalidateInspectionRegistryReads(queryClient)
+        void invalidateScheduleRegistryReads(queryClient)
       },
     },
   })
