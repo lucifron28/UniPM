@@ -239,6 +239,17 @@ public static class PreventiveMaintenanceFormEndpoints
             {
                 await using var context = await factory.CreateDbContextAsync(cancellationToken);
                 await using var transaction = await BeginSerializableTransactionIfRelationalAsync(context, cancellationToken);
+                var lockedForm = await LockFormForSubmissionAsync(context, id, cancellationToken);
+                if (lockedForm is null)
+                {
+                    return ApiErrors.NotFound("Preventive-maintenance form not found.");
+                }
+
+                if (!IsDraft(lockedForm))
+                {
+                    return ApiErrors.Conflict("Only draft forms can be submitted.");
+                }
+
                 var form = await context.PreventiveMaintenanceForms
                     .Include(candidate => candidate.Inspections)
                         .ThenInclude(inspection => inspection.Asset)
@@ -1250,6 +1261,26 @@ public static class PreventiveMaintenanceFormEndpoints
         return context.Database.IsRelational()
             ? await context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken)
             : null;
+    }
+
+    private static Task<PreventiveMaintenanceForm?> LockFormForSubmissionAsync(
+        ApplicationDbContext context,
+        Guid formId,
+        CancellationToken cancellationToken)
+    {
+        if (!context.Database.IsSqlServer())
+        {
+            return context.PreventiveMaintenanceForms
+                .SingleOrDefaultAsync(candidate => candidate.Id == formId, cancellationToken);
+        }
+
+        return context.PreventiveMaintenanceForms
+            .FromSqlInterpolated($"""
+                SELECT *
+                FROM [dbo].[PreventiveMaintenanceForms] WITH (UPDLOCK, HOLDLOCK)
+                WHERE [Id] = {formId}
+                """)
+            .SingleOrDefaultAsync(cancellationToken);
     }
 
     private static async Task<IDbContextTransaction?> BeginTransactionIfRelationalAsync(

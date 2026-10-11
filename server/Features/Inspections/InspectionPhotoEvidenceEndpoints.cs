@@ -1,7 +1,9 @@
 using System.IdentityModel.Tokens.Jwt;
+using System.Data;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using UniPM.Api.Data;
 using UniPM.Api.Features.Auth;
 using UniPM.Api.Features.PreventiveMaintenanceForms;
@@ -46,7 +48,7 @@ public static class InspectionPhotoEvidenceEndpoints
                 return Results.Forbid();
             }
 
-            if (inspection.PreventiveMaintenanceForm is not { Status: PreventiveMaintenanceFormStatusCatalog.Draft })
+            if (inspection.PreventiveMaintenanceForm is not { Status: PreventiveMaintenanceFormStatusCatalog.Draft } draftForm)
             {
                 return ApiErrors.Conflict("Photo evidence can only be changed while the form is a Draft.");
             }
@@ -105,44 +107,87 @@ public static class InspectionPhotoEvidenceEndpoints
                 return Results.StatusCode(StatusCodes.Status413PayloadTooLarge);
             }
 
+            // File transfer, JPEG validation, and file I/O finish before the
+            // lifecycle lock is acquired. The persisted file is staged until
+            // the SQL transaction commits the corresponding evidence row.
             var storageKey = await storage.SaveAsync(photo, cancellationToken);
-            var existing = await context.InspectionPhotoEvidence
-                .SingleOrDefaultAsync(candidate => candidate.InspectionId == id, cancellationToken);
-            var previousStorageKey = existing?.StorageKey;
-            var now = DateTimeOffset.UtcNow;
-
-            if (existing is null)
-            {
-                context.InspectionPhotoEvidence.Add(new InspectionPhotoEvidence
-                {
-                    InspectionId = inspection.Id,
-                    StorageKey = storageKey,
-                    LengthBytes = photo.Length,
-                    UploadedAt = now,
-                    Revision = 1
-                });
-            }
-            else
-            {
-                existing.StorageKey = storageKey;
-                existing.LengthBytes = photo.Length;
-                existing.UploadedAt = now;
-                existing.Revision++;
-            }
-
+            var photoPersisted = false;
+            string? previousStorageKey = null;
+            var logger = loggerFactory.CreateLogger(nameof(InspectionPhotoEvidenceEndpoints));
             try
             {
-                await context.SaveChangesAsync(cancellationToken);
+                await using var mutationContext = await factory.CreateDbContextAsync(cancellationToken);
+                await using var transaction = await BeginPhotoMutationTransactionAsync(
+                    mutationContext,
+                    cancellationToken);
+                var lockedForm = await LockPhotoMutationFormAsync(
+                    mutationContext,
+                    draftForm.Id,
+                    cancellationToken);
+                if (lockedForm is not { Status: PreventiveMaintenanceFormStatusCatalog.Draft })
+                {
+                    return ApiErrors.Conflict("Photo evidence can only be changed while the form is a Draft.");
+                }
+
+                var currentInspection = await mutationContext.InspectionRecords
+                    .SingleOrDefaultAsync(candidate => candidate.Id == id, cancellationToken);
+                if (currentInspection is null)
+                {
+                    return ApiErrors.NotFound("Inspection not found.");
+                }
+
+                if (currentInspection.InspectorUserId != actorId)
+                {
+                    return Results.Forbid();
+                }
+
+                if (currentInspection.PreventiveMaintenanceFormId != lockedForm.Id)
+                {
+                    return ApiErrors.Conflict("The inspection form changed. Refresh the inspection and retry.");
+                }
+
+                var existing = await mutationContext.InspectionPhotoEvidence
+                    .SingleOrDefaultAsync(candidate => candidate.InspectionId == id, cancellationToken);
+                previousStorageKey = existing?.StorageKey;
+                var now = DateTimeOffset.UtcNow;
+
+                if (existing is null)
+                {
+                    mutationContext.InspectionPhotoEvidence.Add(new InspectionPhotoEvidence
+                    {
+                        InspectionId = currentInspection.Id,
+                        StorageKey = storageKey,
+                        LengthBytes = photo.Length,
+                        UploadedAt = now,
+                        Revision = 1
+                    });
+                }
+                else
+                {
+                    existing.StorageKey = storageKey;
+                    existing.LengthBytes = photo.Length;
+                    existing.UploadedAt = now;
+                    existing.Revision++;
+                }
+
+                await mutationContext.SaveChangesAsync(cancellationToken);
+                if (transaction is not null)
+                {
+                    await transaction.CommitAsync(cancellationToken);
+                }
+
+                photoPersisted = true;
             }
             catch (DbUpdateConcurrencyException)
             {
-                await storage.DeleteAsync(storageKey, CancellationToken.None);
                 return ApiErrors.Conflict("Photo evidence changed. Refresh the inspection and retry.");
             }
-            catch (DbUpdateException)
+            finally
             {
-                await storage.DeleteAsync(storageKey, CancellationToken.None);
-                throw;
+                if (!photoPersisted)
+                {
+                    await TryDeleteStagedPhotoAsync(storage, storageKey, logger);
+                }
             }
 
             if (previousStorageKey is not null)
@@ -153,8 +198,7 @@ public static class InspectionPhotoEvidenceEndpoints
                 }
                 catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
                 {
-                    loggerFactory.CreateLogger(nameof(InspectionPhotoEvidenceEndpoints))
-                        .LogWarning(exception, "Could not remove a replaced inspection photo file.");
+                    logger.LogError(exception, "Could not remove a replaced inspection photo file.");
                 }
             }
 
@@ -243,19 +287,49 @@ public static class InspectionPhotoEvidenceEndpoints
                 return ApiErrors.NotFound("Inspection not found.");
             }
 
-            if (inspection.PreventiveMaintenanceForm is not { Status: PreventiveMaintenanceFormStatusCatalog.Draft })
+            if (inspection.PreventiveMaintenanceForm is not { Status: PreventiveMaintenanceFormStatusCatalog.Draft } draftForm)
             {
                 return ApiErrors.Conflict("Photo evidence can only be changed while the form is a Draft.");
             }
 
-            if (inspection.PhotoEvidence is not { } photoEvidence)
+            await using var mutationContext = await factory.CreateDbContextAsync(cancellationToken);
+            await using var transaction = await BeginPhotoMutationTransactionAsync(
+                mutationContext,
+                cancellationToken);
+            var lockedForm = await LockPhotoMutationFormAsync(
+                mutationContext,
+                draftForm.Id,
+                cancellationToken);
+            if (lockedForm is not { Status: PreventiveMaintenanceFormStatusCatalog.Draft })
+            {
+                return ApiErrors.Conflict("Photo evidence can only be changed while the form is a Draft.");
+            }
+
+            var currentInspection = await mutationContext.InspectionRecords
+                .Include(candidate => candidate.PhotoEvidence)
+                .SingleOrDefaultAsync(candidate => candidate.Id == id, cancellationToken);
+            if (currentInspection is null || currentInspection.InspectorUserId != actorId)
+            {
+                return ApiErrors.NotFound("Inspection not found.");
+            }
+
+            if (currentInspection.PreventiveMaintenanceFormId != lockedForm.Id)
+            {
+                return ApiErrors.Conflict("The inspection form changed. Refresh the inspection and retry.");
+            }
+
+            if (currentInspection.PhotoEvidence is not { } photoEvidence)
             {
                 return Results.NoContent();
             }
 
             var storageKey = photoEvidence.StorageKey;
-            context.InspectionPhotoEvidence.Remove(photoEvidence);
-            await context.SaveChangesAsync(cancellationToken);
+            mutationContext.InspectionPhotoEvidence.Remove(photoEvidence);
+            await mutationContext.SaveChangesAsync(cancellationToken);
+            if (transaction is not null)
+            {
+                await transaction.CommitAsync(cancellationToken);
+            }
 
             try
             {
@@ -295,6 +369,50 @@ public static class InspectionPhotoEvidenceEndpoints
             && (inspection.PreventiveMaintenanceFormId is null
                 || inspection.PreventiveMaintenanceForm?.Status
                     == PreventiveMaintenanceFormStatusCatalog.Acknowledged);
+    }
+
+    private static async Task<IDbContextTransaction?> BeginPhotoMutationTransactionAsync(
+        ApplicationDbContext context,
+        CancellationToken cancellationToken)
+    {
+        return context.Database.IsRelational()
+            ? await context.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted, cancellationToken)
+            : null;
+    }
+
+    private static Task<PreventiveMaintenanceForm?> LockPhotoMutationFormAsync(
+        ApplicationDbContext context,
+        Guid formId,
+        CancellationToken cancellationToken)
+    {
+        if (!context.Database.IsSqlServer())
+        {
+            return context.PreventiveMaintenanceForms
+                .SingleOrDefaultAsync(candidate => candidate.Id == formId, cancellationToken);
+        }
+
+        return context.PreventiveMaintenanceForms
+            .FromSqlInterpolated($"""
+                SELECT *
+                FROM [dbo].[PreventiveMaintenanceForms] WITH (UPDLOCK, HOLDLOCK)
+                WHERE [Id] = {formId}
+                """)
+            .SingleOrDefaultAsync(cancellationToken);
+    }
+
+    private static async Task TryDeleteStagedPhotoAsync(
+        IInspectionPhotoEvidenceStorage storage,
+        string storageKey,
+        ILogger logger)
+    {
+        try
+        {
+            await storage.DeleteAsync(storageKey, CancellationToken.None);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            logger.LogError(exception, "Could not remove inspection photo after a failed database operation.");
+        }
     }
 
     private static bool TryGetActorId(ClaimsPrincipal principal, out Guid actorId) =>
