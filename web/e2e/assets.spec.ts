@@ -1,5 +1,11 @@
 import { expect, test, type Page } from '@playwright/test'
 
+const assetRegistryRoute = /\/api\/v1\/assets\/registry(?:\?.*)?$/
+const assetRegistryOptionsRoute =
+  /\/api\/v1\/assets\/registry\/options(?:\?.*)?$/
+const assetRegistrySummaryRoute =
+  /\/api\/v1\/assets\/registry\/summary(?:\?.*)?$/
+
 const gsdSession = {
   accessToken: 'fictional-gsd-asset-token',
   expiresAtUtc: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
@@ -149,15 +155,15 @@ async function mockAssetRegistry(
     {
       code: 'emergency-light',
       displayName: 'Emergency lights',
-      scheduledMonths: [2, 5, 8, 11],
+      scheduledMonths: [6, 12],
     },
     {
       code: 'water-drinking-station',
       displayName: 'Water drinking stations',
-      scheduledMonths: [6, 12],
+      scheduledMonths: [2, 5, 8, 11],
     },
   ]
-  await page.route('**/api/v1/assets/registry', (route) => {
+  await page.route(assetRegistryRoute, (route) => {
     const params = new URL(route.request().url()).searchParams
     const search = params.get('search')?.toLowerCase()
     const filtered = assetList.filter(
@@ -188,7 +194,7 @@ async function mockAssetRegistry(
       }),
     })
   })
-  await page.route('**/api/v1/assets/registry/options', (route) =>
+  await page.route(assetRegistryOptionsRoute, (route) =>
     route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -206,7 +212,7 @@ async function mockAssetRegistry(
       }),
     }),
   )
-  await page.route('**/api/v1/assets/registry/summary', (route) => {
+  await page.route(assetRegistrySummaryRoute, (route) => {
     const categorySummary = categories.map((category) => {
       const rows = assetList.filter(
         (asset) => asset.assetCategory === category.code,
