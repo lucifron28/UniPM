@@ -1414,7 +1414,7 @@ public static class SchedulesEndpoints
                     || schedule.Asset.AssetCategory.ToUpper().Contains(searchKey)
                     || (schedule.Asset.Building != null && schedule.Asset.Building.ToUpper().Contains(searchKey))
                     || (schedule.Asset.Department != null && schedule.Asset.Department.ToUpper().Contains(searchKey))
-                    || (schedule.Asset.Location != null && schedule.Asset.Location.ToUpper().Contains(searchKey))));
+                    || (schedule.Asset.Location != null && schedule.Asset.Location.ToUpper().Contains(searchKey)))));
         }
 
         return query;
