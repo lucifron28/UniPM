@@ -124,6 +124,12 @@ const inspectionSearchSchema = z.object({
   wmsReferralStatus: z.enum(inspectionFollowUpStatusCodes).optional(),
   dateFrom: z.string().datetime({ offset: true }).optional(),
   dateTo: z.string().datetime({ offset: true }).optional(),
+  year: z.coerce.number().int().min(2000).optional(),
+  quarter: z.enum(scheduleQuarterCodes).optional(),
+  pmCycle: z
+    .string()
+    .regex(/^(?!0000)\d{4}-(0[1-9]|1[0-2])$/)
+    .optional(),
   page: pageSchema,
 })
 const scheduleSearchSchema = z.object({
@@ -140,6 +146,10 @@ const scheduleSearchSchema = z.object({
     .int()
     .min(2000)
     .max(new Date().getUTCFullYear() + 5)
+    .optional(),
+  pmCycle: z
+    .string()
+    .regex(/^(?!0000)\d{4}-(0[1-9]|1[0-2])$/)
     .optional(),
   page: pageSchema,
 })

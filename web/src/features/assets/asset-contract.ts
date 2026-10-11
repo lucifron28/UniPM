@@ -37,7 +37,7 @@ export const assetSchema = z
 
 export type Asset = z.infer<typeof assetSchema>
 
-const assetCategorySchema = z
+export const assetCategorySchema = z
   .object({
     code: z.enum(assetCategoryCodes),
     displayName: z.string().trim().min(1).max(128),
