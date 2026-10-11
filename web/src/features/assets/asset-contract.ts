@@ -1,5 +1,8 @@
 import { z } from 'zod'
 import type {
+  AssetRegistryOptionsResponse,
+  AssetRegistryPageResponse,
+  AssetRegistrySummaryResponse,
   AssetCategoryResponse,
   AssetResponse,
   CreateAssetDto,
@@ -53,6 +56,52 @@ const assetCategorySchema = z
 
 export type AssetCategory = z.infer<typeof assetCategorySchema>
 
+const assetRegistryPageSchema = z
+  .object({
+    items: z.array(assetSchema),
+    page: z.coerce.number().int().positive(),
+    pageSize: z.coerce.number().int().positive(),
+    totalCount: z.coerce.number().int().nonnegative(),
+  })
+  .strict()
+
+const assetRegistryOptionsSchema = z
+  .object({
+    categories: z.array(assetCategorySchema),
+    statuses: z.array(z.enum(assetStatusCodes)),
+    departments: z.array(z.string().trim().min(1).max(256)),
+    buildings: z.array(z.string().trim().min(1).max(256)),
+  })
+  .strict()
+
+const assetRegistryCategorySummarySchema = z
+  .object({
+    assetCategory: z.enum(assetCategoryCodes),
+    displayName: z.string().trim().min(1).max(128),
+    totalCount: z.coerce.number().int().nonnegative(),
+    activeCount: z.coerce.number().int().nonnegative(),
+    inactiveCount: z.coerce.number().int().nonnegative(),
+    retiredCount: z.coerce.number().int().nonnegative(),
+  })
+  .strict()
+
+const assetRegistrySummarySchema = z
+  .object({
+    totalCount: z.coerce.number().int().nonnegative(),
+    activeCount: z.coerce.number().int().nonnegative(),
+    inactiveCount: z.coerce.number().int().nonnegative(),
+    retiredCount: z.coerce.number().int().nonnegative(),
+    categories: z.array(assetRegistryCategorySummarySchema),
+  })
+  .strict()
+
+export type AssetRegistryPage = z.infer<typeof assetRegistryPageSchema>
+export type AssetRegistryOptions = z.infer<typeof assetRegistryOptionsSchema>
+export type AssetRegistryCategorySummary = z.infer<
+  typeof assetRegistryCategorySummarySchema
+>
+export type AssetRegistrySummary = z.infer<typeof assetRegistrySummarySchema>
+
 export const createAssetFieldSchemas = {
   assetCode: z
     .string()
@@ -90,6 +139,24 @@ export function parseAsset(value: AssetResponse): Asset {
 
 export function parseAssets(values: AssetResponse[]): Asset[] {
   return z.array(assetSchema).parse(values)
+}
+
+export function parseAssetRegistryPage(
+  value: AssetRegistryPageResponse,
+): AssetRegistryPage {
+  return assetRegistryPageSchema.parse(value)
+}
+
+export function parseAssetRegistryOptions(
+  value: AssetRegistryOptionsResponse,
+): AssetRegistryOptions {
+  return assetRegistryOptionsSchema.parse(value)
+}
+
+export function parseAssetRegistrySummary(
+  value: AssetRegistrySummaryResponse,
+): AssetRegistrySummary {
+  return assetRegistrySummarySchema.parse(value)
 }
 
 export function parseAssetCategories(
