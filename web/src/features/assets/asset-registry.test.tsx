@@ -270,7 +270,7 @@ describe('AssetRegistry feature component', () => {
     expect(screen.getByLabelText('Asset category')).toHaveValue(
       'fire-extinguisher',
     )
-    expect(screen.getByLabelText('Asset status')).toHaveValue('Active')
+    expect(screen.getByLabelText('Status')).toHaveValue('Active')
     expect(screen.getByText(/Active filters:/)).toBeInTheDocument()
     expect(
       screen.getByText(/fire-extinguisher · Active · Main Building · GSD · FE/),
@@ -284,9 +284,20 @@ describe('AssetRegistry feature component', () => {
     )
 
     const onSearchChange = vi.fn()
-    renderWithProviders(
-      <AssetRegistry search={{ page: 99 }} onSearchChange={onSearchChange} />,
-    )
+    function OutOfBoundsHarness() {
+      const [search, setSearch] = useState<AssetSearch>({ page: 99 })
+      return (
+        <AssetRegistry
+          search={search}
+          onSearchChange={(next, options) => {
+            onSearchChange(next, options)
+            setSearch(next)
+          }}
+        />
+      )
+    }
+
+    renderWithProviders(<OutOfBoundsHarness />)
 
     expect(await screen.findAllByText('FE-001')).toBeTruthy()
     expect(onSearchChange).toHaveBeenCalledWith(
@@ -460,7 +471,7 @@ describe('AssetRegistry feature component', () => {
     expect(
       await screen.findByText('Categories unavailable'),
     ).toBeInTheDocument()
-    expect(screen.getByText('All assets')).toBeInTheDocument()
+    expect(screen.getByText('Overall by asset category')).toBeInTheDocument()
 
     const actor = userEvent.setup()
     await actor.click(screen.getByRole('button', { name: 'Retry categories' }))
