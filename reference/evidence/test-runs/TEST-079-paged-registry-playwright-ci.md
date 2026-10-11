@@ -31,7 +31,7 @@ and limit filters. Production code was not changed.
 | Commit | Check | Result |
 |---|---|---|
 | `083ae228` | [Web CI run 38150020132](https://github.com/lucifron28/UniPM/actions/runs/38150020132) | Passed on Node.js 22. Format, lint, typecheck, contract, negative-contract, generated-client, and production-build stages passed. Unit tests: 210/210 across 28 files. All-files coverage: 80.77% statements, 72.35% branches, 78.61% functions, and 82.28% lines. Playwright: 47 passed, 1 skipped, 0 failed in 44.3 seconds. |
-| `083ae228` | [Backend CI run 38150024540](https://github.com/lucifron28/UniPM/actions/runs/38150024540) | Passed Release build; 364 backend tests passed, 45 optional tests skipped, and all 409 infrastructure checks passed. |
+| `083ae228` | [Backend CI run 38150024540](https://github.com/lucifron28/UniPM/actions/runs/38150024540) | Release build and CI infrastructure checks passed. Of 409 backend tests, 364 passed and 45 optional tests were skipped. |
 | `41ec9f93` | [Earlier Playwright CI run 38149340218](https://github.com/lucifron28/UniPM/actions/runs/38149340218) | 45 passed, 2 failed, 1 skipped. The schedule failures were an ambiguous Calendar quarter locator and the asset list mock returning an array for the selected-asset detail request. The two follow-up test-only commits corrected them. |
 | `b29ad4bf` and `083ae228` | Changed-file Prettier and `git diff --check` | Passed. |
 
@@ -49,5 +49,6 @@ The single Playwright skip is the existing opt-in live workflow in
 requires an owned disposable API on `localhost:5262` and
 `UNIPM_DEV_USER_PASSWORD`; that live API workflow was not verified. Remaining
 acceptance limitations include GSD/staging, physical-device, and deployment
-checks. Photo-row deletion concurrency is handled separately in PR #89 and is
-outside this task. TEST-077 and TEST-078 remain unchanged.
+checks. The previously identified photo-upload versus row-deletion concurrency
+concern remains separate and unresolved for PR #89; it was not verified or
+addressed here. TEST-077 and TEST-078 remain unchanged.
