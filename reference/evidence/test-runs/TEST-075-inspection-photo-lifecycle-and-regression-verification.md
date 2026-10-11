@@ -22,6 +22,7 @@ Verify the upload/submission race fix, SQL-backed photo lifecycle, camera lifecy
 - Focused SQL race/lifecycle run: `acd0a5e90622acb58ab1f29547f8b4890eca0d3a`.
 - PR #89 is draft and stacked on PR #88 at `eb45d5d9edf51f55a1c9264f390849cd6d2d9fe7`.
 - Backend and Flutter files did not change after the `5bbfbce` checks; later commits changed web focus handling.
+- Exact pushed PR head after the implementation and evidence commits: `50b05d38856cbf3b422e876cca3d42059b090a58`.
 
 ## Environment
 
@@ -51,6 +52,7 @@ Verify the upload/submission race fix, SQL-backed photo lifecycle, camera lifecy
 - Playwright: 47 passed, 1 skipped out of 48, including desktop and mobile preview keyboard checks.
 - EF model check passed: no pending changes since the last migration.
 - The backend Release build emitted one existing nullable warning at `PreventiveMaintenanceFormEndpoints.cs:559`, outside this change.
+- Exact-head GitHub CI passed at `50b05d38856cbf3b422e876cca3d42059b090a58`: [Backend CI run 38106100657](https://github.com/lucifron28/UniPM/actions/runs/38106100657), [Web CI push run 38106100651](https://github.com/lucifron28/UniPM/actions/runs/38106100651), and [Web CI pull-request run 38106102957](https://github.com/lucifron28/UniPM/actions/runs/38106102957). Backend build/tests and web formatting, lint, typecheck, API/client checks, unit/coverage tests, production build, and Playwright steps all succeeded.
 
 ## Failures and corrections
 
@@ -60,4 +62,4 @@ The first web focus E2E run found that Tab could move focus to the document body
 
 ## Not verified
 
-One optional backend provider test and one existing Playwright case were skipped. Exact-head GitHub CI is checked after the final push. Physical Android camera behavior, iOS, staging acceptance, deployment, production file permissions, restart persistence, backup, retention, and full WCAG/screen-reader review were not performed. No merge or deployment was performed.
+One optional backend provider test and one existing Playwright case were skipped. Physical Android camera behavior, iOS build, staging acceptance, deployment, production file permissions, restart persistence, backup, retention, and full WCAG/screen-reader review were not performed. No merge or deployment was performed.
