@@ -16,7 +16,7 @@ import {
 
 export type AssetServerFilters = Pick<
   ListAssetsParams,
-  'assetCategory' | 'status' | 'building' | 'department' | 'search'
+  'assetCategory' | 'status' | 'building' | 'department' | 'search' | 'limit'
 >
 
 export function useAssets(filters: AssetServerFilters = {}) {
