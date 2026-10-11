@@ -1,6 +1,7 @@
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -80,6 +81,89 @@ public sealed class RegistryReadEndpointsTests
             Assert.Equal("Active", asset.Status);
             Assert.False(string.IsNullOrWhiteSpace(asset.Department));
         });
+    }
+
+    [SqlServer2019Fact]
+    public async Task Sql_server_2019_registry_queries_filter_and_page_at_compatibility_level_150()
+    {
+        var baseConnectionString = Environment.GetEnvironmentVariable(
+            "UNIPM_SQLSERVER2019_TEST_CONNECTION");
+        Assert.False(string.IsNullOrWhiteSpace(baseConnectionString));
+
+        await using (var server = new SqlConnection(baseConnectionString!))
+        {
+            await server.OpenAsync();
+            await using var command = server.CreateCommand();
+            command.CommandText = "SELECT CONVERT(int, SERVERPROPERTY('ProductMajorVersion')), CONVERT(int, FULLTEXTSERVICEPROPERTY('IsFullTextInstalled'));";
+            await using var reader = await command.ExecuteReaderAsync();
+            Assert.True(await reader.ReadAsync());
+            Assert.Equal(15, reader.GetInt32(0));
+            Assert.Equal(1, reader.GetInt32(1));
+        }
+
+        await using var database = await SqlServerTestDatabase.CreateAsync(
+            baseConnectionString!);
+        await database.SetCompatibilityLevel150Async();
+        await using (var context = database.CreateContext())
+        {
+            await context.Database.MigrateAsync();
+        }
+
+        await using var application = new TestApplicationFactory(
+            sqlConnectionString: database.ConnectionString);
+        using var client = application.CreateClient();
+        await application.SeedScheduleLookupAssetsAsync();
+
+        await application.SeedScheduleRegistryAsync(TestAuthenticationHandler.UserId);
+        var schedulePage = await client.GetFromJsonAsync<ScheduleRegistryPageResponse>(
+            "/api/v1/schedules/registry?year=2026&quarter=Q2&pmCycle=2026-06&department=GSD&assetCategory=fire-alarm&pageSize=100");
+        Assert.NotNull(schedulePage);
+        Assert.Equal(102, schedulePage.TotalCount);
+        Assert.All(schedulePage.Items, item =>
+        {
+            Assert.Equal("GSD", item.Asset?.Department);
+            Assert.Equal("fire-alarm", item.Asset?.AssetCategory);
+            Assert.Equal("2026-06", item.PmCycle);
+        });
+
+        var inspectionSeed = await application.SeedInspectionRegistryAsync();
+        var inspectionPage = await client.GetFromJsonAsync<InspectionRegistryPageResponse>(
+            "/api/v1/inspections/registry?year=2026&quarter=Q2&pmCycle=2026-06&department=GSD&assetCategory=fire-alarm&pageSize=100");
+        Assert.NotNull(inspectionPage);
+        Assert.Equal(101, inspectionPage.TotalCount);
+        var lateInspection = Assert.Single(inspectionPage.Items, item =>
+            item.Id == inspectionSeed.LateInspectionId);
+        Assert.Equal(2027, lateInspection.DateInspected.Year);
+        Assert.Equal("2026-06", lateInspection.Schedule?.PmCycle);
+        Assert.Equal("GSD", lateInspection.Asset?.Department);
+        Assert.Equal("fire-alarm", lateInspection.Asset?.AssetCategory);
+
+        var eligibleAssets = await client.GetFromJsonAsync<List<AssetResponse>>(
+            "/api/v1/assets?status=Active&hasDepartment=true&limit=2");
+        Assert.NotNull(eligibleAssets);
+        Assert.Equal(
+            ["ZZZ-ELIGIBLE-00", "ZZZ-ELIGIBLE-01"],
+            eligibleAssets.Select(asset => asset.AssetCode).ToArray());
+
+        var assetsWithoutDepartment = await client.GetFromJsonAsync<List<AssetResponse>>(
+            "/api/v1/assets?status=Active&hasDepartment=true&search=AAA-NO-DEPARTMENT&limit=2");
+        Assert.NotNull(assetsWithoutDepartment);
+        Assert.Empty(assetsWithoutDepartment);
+
+        await application.SeedAssetsAsync(1_000);
+        var page = await client.GetFromJsonAsync<AssetRegistryPageResponse>(
+            "/api/v1/assets/registry?assetCategory=fire-extinguisher&status=Active&building=Main%20Building&department=GSD&page=2&pageSize=25");
+        Assert.NotNull(page);
+        Assert.Equal(84, page.TotalCount);
+        Assert.Equal(25, page.Items.Count);
+        Assert.Equal("REG-0300", page.Items[0].AssetCode);
+        Assert.Equal("REG-0588", page.Items[^1].AssetCode);
+
+        await using var verification = new SqlConnection(database.ConnectionString);
+        await verification.OpenAsync();
+        await using var verificationCommand = verification.CreateCommand();
+        verificationCommand.CommandText = "SELECT CONVERT(int, DATABASEPROPERTYEX(DB_NAME(), 'CompatibilityLevel'));";
+        Assert.Equal(150, Convert.ToInt32(await verificationCommand.ExecuteScalarAsync()));
     }
 
     [Fact]
@@ -187,7 +271,9 @@ public sealed class RegistryReadEndpointsTests
             seeded.DraftInspectionIds.Contains(item.Id));
     }
 
-    private sealed class TestApplicationFactory(string[]? roles = null)
+    private sealed class TestApplicationFactory(
+        string[]? roles = null,
+        string? sqlConnectionString = null)
         : WebApplicationFactory<Program>
     {
         private readonly string _databaseName = $"unipm-registry-reads-{Guid.NewGuid()}";
@@ -201,7 +287,16 @@ public sealed class RegistryReadEndpointsTests
                 services.RemoveAll<IDbContextFactory<ApplicationDbContext>>();
                 services.RemoveAll<DbContextOptions<ApplicationDbContext>>();
                 services.AddDbContextFactory<ApplicationDbContext>(options =>
-                    options.UseInMemoryDatabase(_databaseName));
+                {
+                    if (sqlConnectionString is null)
+                    {
+                        options.UseInMemoryDatabase(_databaseName);
+                    }
+                    else
+                    {
+                        options.UseUniPmSqlServer(sqlConnectionString);
+                    }
+                });
             });
         }
 
@@ -628,6 +723,76 @@ public sealed class RegistryReadEndpointsTests
             CreatedAt = now,
             UpdatedAt = now
         };
+    }
+
+    private sealed class SqlServerTestDatabase : IAsyncDisposable
+    {
+        private SqlServerTestDatabase(string connectionString, string databaseName)
+        {
+            ConnectionString = connectionString;
+            DatabaseName = databaseName;
+        }
+
+        public string ConnectionString { get; }
+        public string DatabaseName { get; }
+
+        public static async Task<SqlServerTestDatabase> CreateAsync(
+            string baseConnectionString)
+        {
+            var databaseName = $"UniPMRegistryReadTests_{Guid.NewGuid():N}";
+            var databaseConnection = new SqlConnectionStringBuilder(baseConnectionString)
+            {
+                InitialCatalog = databaseName
+            };
+            var masterConnection = new SqlConnectionStringBuilder(baseConnectionString)
+            {
+                InitialCatalog = "master"
+            };
+
+            await using var connection = new SqlConnection(masterConnection.ConnectionString);
+            await connection.OpenAsync();
+            await using var command = connection.CreateCommand();
+            command.CommandText = $"CREATE DATABASE [{databaseName}]";
+            await command.ExecuteNonQueryAsync();
+
+            return new SqlServerTestDatabase(databaseConnection.ConnectionString, databaseName);
+        }
+
+        public async Task SetCompatibilityLevel150Async()
+        {
+            var masterConnection = new SqlConnectionStringBuilder(ConnectionString)
+            {
+                InitialCatalog = "master"
+            };
+            await using var connection = new SqlConnection(masterConnection.ConnectionString);
+            await connection.OpenAsync();
+            await using var command = connection.CreateCommand();
+            command.CommandText = $"ALTER DATABASE [{DatabaseName}] SET COMPATIBILITY_LEVEL = 150";
+            await command.ExecuteNonQueryAsync();
+        }
+
+        public ApplicationDbContext CreateContext()
+        {
+            var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+                .UseUniPmSqlServer(ConnectionString)
+                .Options;
+            return new ApplicationDbContext(options);
+        }
+
+        public async ValueTask DisposeAsync()
+        {
+            await using var pooledConnection = new SqlConnection(ConnectionString);
+            SqlConnection.ClearPool(pooledConnection);
+            var masterConnection = new SqlConnectionStringBuilder(ConnectionString)
+            {
+                InitialCatalog = "master"
+            };
+            await using var connection = new SqlConnection(masterConnection.ConnectionString);
+            await connection.OpenAsync();
+            await using var command = connection.CreateCommand();
+            command.CommandText = $"ALTER DATABASE [{DatabaseName}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [{DatabaseName}]";
+            await command.ExecuteNonQueryAsync();
+        }
     }
 
     private sealed record InspectionSeed(Guid LateInspectionId, IReadOnlyList<Guid> DraftInspectionIds);
