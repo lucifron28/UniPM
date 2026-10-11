@@ -829,7 +829,18 @@ public static class SchedulesEndpoints
                     });
                 }
 
-                query = query.Where(schedule => schedule.Quarter == normalizedQuarter);
+                var quarterMonths = normalizedQuarter switch
+                {
+                    ScheduleQuarterCatalog.Q1 => new[] { "01", "02", "03" },
+                    ScheduleQuarterCatalog.Q2 => new[] { "04", "05", "06" },
+                    ScheduleQuarterCatalog.Q3 => new[] { "07", "08", "09" },
+                    ScheduleQuarterCatalog.Q4 => new[] { "10", "11", "12" },
+                    _ => Array.Empty<string>()
+                };
+                query = query.Where(schedule =>
+                    schedule.PmCycle != null
+                    && schedule.PmCycle.Length == PreventiveMaintenanceCycle.Length
+                    && quarterMonths.Contains(schedule.PmCycle.Substring(5, 2)));
             }
 
             if (year is not null)
