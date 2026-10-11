@@ -212,8 +212,7 @@ export function ScheduleRegistry({
     ...(draft.assetCategory ? { assetCategory: draft.assetCategory } : {}),
     ...(draft.department ? { department: draft.department } : {}),
   })
-  const categories =
-    filterOptions.data?.categories ?? EMPTY_SCHEDULE_CATEGORIES
+  const categories = filterOptions.data?.categories ?? EMPTY_SCHEDULE_CATEGORIES
   const summary = useScheduleRegistrySummary()
   const pageSize = 25
   const registryFilters = {
@@ -238,12 +237,12 @@ export function ScheduleRegistry({
   )
   const draftAssetMatchesFilters = Boolean(
     !draft.assetId ||
-      (draftSelectedAsset.isSuccess &&
-        (!draft.assetCategory ||
-          draftSelectedAsset.data.assetCategory === draft.assetCategory) &&
-        (!draft.department ||
-          draftSelectedAsset.data.department?.toLocaleLowerCase() ===
-            draft.department.toLocaleLowerCase())),
+    (draftSelectedAsset.isSuccess &&
+      (!draft.assetCategory ||
+        draftSelectedAsset.data.assetCategory === draft.assetCategory) &&
+      (!draft.department ||
+        draftSelectedAsset.data.department?.toLocaleLowerCase() ===
+          draft.department.toLocaleLowerCase())),
   )
 
   useEffect(() => {
@@ -400,11 +399,7 @@ export function ScheduleRegistry({
           draft.quarter))
 
   const apply = () => {
-    if (
-      !dateRangeIsValid ||
-      !pmCycleMatchesPeriod ||
-      !draftAssetMatchesFilters
-    )
+    if (!dateRangeIsValid || !pmCycleMatchesPeriod || !draftAssetMatchesFilters)
       return
     onSearchChange(
       {

@@ -245,12 +245,12 @@ export function InspectionRegistry({
   )
   const draftAssetMatchesFilters = Boolean(
     !draft.assetId ||
-      (draftSelectedAsset.isSuccess &&
-        (!draft.assetCategory ||
-          draftSelectedAsset.data.assetCategory === draft.assetCategory) &&
-        (!draft.department ||
-          draftSelectedAsset.data.department?.toLocaleLowerCase() ===
-            draft.department.toLocaleLowerCase())),
+    (draftSelectedAsset.isSuccess &&
+      (!draft.assetCategory ||
+        draftSelectedAsset.data.assetCategory === draft.assetCategory) &&
+      (!draft.department ||
+        draftSelectedAsset.data.department?.toLocaleLowerCase() ===
+          draft.department.toLocaleLowerCase())),
   )
 
   useEffect(() => {
@@ -390,11 +390,7 @@ export function InspectionRegistry({
   }, [allowedMonths, draft.pmCycle])
 
   const apply = () => {
-    if (
-      !dateRangeIsValid ||
-      !pmCycleMatchesPeriod ||
-      !draftAssetMatchesFilters
-    )
+    if (!dateRangeIsValid || !pmCycleMatchesPeriod || !draftAssetMatchesFilters)
       return
     onSearchChange(
       {
