@@ -78,6 +78,78 @@ const schedule = {
 const workerId = '44444444-4444-4444-8444-444444444444'
 const supervisorId = '55555555-5555-4555-8555-555555555555'
 
+function scheduleRegistryItem(item: typeof schedule) {
+  return {
+    id: item.id,
+    assetId: item.assetId,
+    scheduleDate: item.scheduleDate,
+    pmCycle: item.pmCycle,
+    periodType: item.periodType,
+    status: item.status,
+    quarter: item.quarter,
+    semester: item.semester,
+    year: item.year,
+    academicYear: item.academicYear,
+    completedAt: item.completedAt,
+    createdAt: item.createdAt,
+    updatedAt: item.updatedAt,
+    asset: item.asset,
+  }
+}
+
+function scheduleRegistryHandlers(items = [schedule]) {
+  const registryItems = items.map(scheduleRegistryItem)
+  return [
+    http.get(`${base}/schedules/registry`, ({ request }) => {
+      const params = new URL(request.url).searchParams
+      const page = Number(params.get('page') ?? 1)
+      const pageSize = Number(params.get('pageSize') ?? 25)
+      const start = (page - 1) * pageSize
+      return HttpResponse.json({
+        items: registryItems.slice(start, start + pageSize),
+        page,
+        pageSize,
+        totalCount: registryItems.length,
+      })
+    }),
+    http.get(`${base}/schedules/registry/options`, () =>
+      HttpResponse.json({
+        categories: [
+          {
+            code: 'fire-extinguisher',
+            displayName: 'Fire extinguishers',
+            scheduledMonths: [2, 5, 8, 11],
+          },
+          {
+            code: 'fire-alarm',
+            displayName: 'Fire alarm systems',
+            scheduledMonths: [6, 12],
+          },
+        ],
+        quarters: ['Q1', 'Q2', 'Q3', 'Q4'],
+        departments: ['GSD'],
+        years: ['2026'],
+      }),
+    ),
+    http.get(`${base}/schedules/registry/summary`, () =>
+      HttpResponse.json({
+        totalCount: registryItems.length,
+        dueCount: registryItems.filter((item) => item.status === 'Due').length,
+        ongoingCount: registryItems.filter((item) => item.status === 'Ongoing')
+          .length,
+        overdueCount: registryItems.filter((item) => item.status === 'Overdue')
+          .length,
+        completedCount: registryItems.filter(
+          (item) => item.status === 'Completed',
+        ).length,
+        cancelledCount: registryItems.filter(
+          (item) => item.status === 'Cancelled',
+        ).length,
+      }),
+    ),
+  ]
+}
+
 function setupAuth() {
   useAuthStore.getState().establishSession('synthetic-schedule-token')
   configureApiRuntime({
@@ -133,6 +205,7 @@ function mockReferences(roles = ['GSD']) {
         items: [],
       }),
     ),
+    ...scheduleRegistryHandlers(),
     http.get(`${base}/assets`, () => HttpResponse.json([asset])),
     http.get(`${base}/reference-data/asset-categories`, () =>
       HttpResponse.json([
@@ -247,9 +320,14 @@ describe('schedule workflows', () => {
   it('keeps summary unfiltered while sending supported registry filters', async () => {
     const urls: URL[] = []
     server.use(
-      http.get(`${base}/schedules`, ({ request }) => {
+      http.get(`${base}/schedules/registry`, ({ request }) => {
         urls.push(new URL(request.url))
-        return HttpResponse.json([schedule])
+        return HttpResponse.json({
+          items: [scheduleRegistryItem(schedule)],
+          page: 1,
+          pageSize: 25,
+          totalCount: 1,
+        })
       }),
     )
     renderWithProviders(
@@ -261,6 +339,7 @@ describe('schedule workflows', () => {
           to: '2026-08-31T23:59:59.000Z',
           quarter: 'Q3',
           year: 2026,
+          pmCycle: '2026-08',
           page: 1,
         }}
         onSearchChange={vi.fn()}
@@ -275,6 +354,9 @@ describe('schedule workflows', () => {
       true,
     )
     expect(
+      urls.some((url) => url.searchParams.get('pmCycle') === '2026-08'),
+    ).toBe(true)
+    expect(
       urls.some(
         (url) =>
           url.searchParams.get('from') === '2026-08-01T00:00:00.000Z' &&
@@ -286,9 +368,14 @@ describe('schedule workflows', () => {
   it('applies the combined schedule filters only after submission and keeps them in the detail return', async () => {
     const urls: URL[] = []
     server.use(
-      http.get(`${base}/schedules`, ({ request }) => {
+      http.get(`${base}/schedules/registry`, ({ request }) => {
         urls.push(new URL(request.url))
-        return HttpResponse.json([schedule])
+        return HttpResponse.json({
+          items: [scheduleRegistryItem(schedule)],
+          page: 1,
+          pageSize: 25,
+          totalCount: 1,
+        })
       }),
     )
 
@@ -350,7 +437,10 @@ describe('schedule workflows', () => {
   it('explains schedule read authorization failures and keeps retry controls', async () => {
     mockReferences(['Admin'])
     server.use(
-      http.get(`${base}/schedules`, () =>
+      http.get(`${base}/schedules/registry/summary`, () =>
+        HttpResponse.json(null, { status: 403 }),
+      ),
+      http.get(`${base}/schedules/registry`, () =>
         HttpResponse.json(null, { status: 403 }),
       ),
     )
@@ -373,11 +463,26 @@ describe('schedule workflows', () => {
   })
 
   it('keeps the schedule filter and pagination focus after changing pages', async () => {
-    const records = Array.from({ length: 11 }, (_, index) => ({
+    const records = Array.from({ length: 26 }, (_, index) => ({
       ...schedule,
       id: `10000000-0000-4000-8000-${(index + 1).toString().padStart(12, '0')}`,
     }))
-    server.use(http.get(`${base}/schedules`, () => HttpResponse.json(records)))
+    server.use(
+      http.get(`${base}/schedules/registry`, ({ request }) => {
+        const params = new URL(request.url).searchParams
+        const page = Number(params.get('page') ?? 1)
+        const pageSize = Number(params.get('pageSize') ?? 25)
+        const start = (page - 1) * pageSize
+        return HttpResponse.json({
+          items: records
+            .slice(start, start + pageSize)
+            .map(scheduleRegistryItem),
+          page,
+          pageSize,
+          totalCount: records.length,
+        })
+      }),
+    )
     const onSearchChange = vi.fn()
 
     function PaginationHarness() {
@@ -398,7 +503,7 @@ describe('schedule workflows', () => {
 
     renderWithProviders(<PaginationHarness />)
     await screen.findByText('Page 1 of 2')
-    expect(screen.getByText('Showing 1-10 of 11')).toBeInTheDocument()
+    expect(screen.getByText('Showing 1-25 of 26')).toBeInTheDocument()
     const next = screen.getByRole('button', { name: 'Next' })
     await userEvent.setup().click(next)
     expect(onSearchChange).toHaveBeenCalledWith(
@@ -406,7 +511,7 @@ describe('schedule workflows', () => {
       { preserveScroll: true },
     )
     expect(await screen.findByText('Page 2 of 2')).toBeInTheDocument()
-    expect(screen.getByText('Showing 11-11 of 11')).toBeInTheDocument()
+    expect(screen.getByText('Showing 26-26 of 26')).toBeInTheDocument()
     expect(next).toHaveFocus()
   })
 
