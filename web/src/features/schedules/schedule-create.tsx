@@ -18,7 +18,8 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { useAssetCategories, useAssets } from '@/features/assets/asset-queries'
+import { AssetPicker } from '@/features/assets/asset-picker'
+import { useAsset, useAssetCategories } from '@/features/assets/asset-queries'
 import { useCurrentUser } from '@/features/auth/current-user'
 import {
   createScheduleSchema,
@@ -52,10 +53,18 @@ export function ScheduleCreate() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const currentUser = useCurrentUser()
-  const assets = useAssets()
+  const [selectedAssetId, setSelectedAssetId] = useState<string>()
+  const selectedAssetDetail = useAsset(
+    selectedAssetId ?? '',
+    Boolean(selectedAssetId),
+  )
   const categories = useAssetCategories()
-  const eligibleAssets = (assets.data ?? []).filter(
-    (asset) => asset.status === 'Active' && Boolean(asset.department?.trim()),
+  const selectedAssetIsEligible = Boolean(
+    !selectedAssetId ||
+    (selectedAssetDetail.isSuccess &&
+      !selectedAssetDetail.isFetching &&
+      selectedAssetDetail.data.status === 'Active' &&
+      Boolean(selectedAssetDetail.data.department?.trim())),
   )
   const assetCategories = categories.data ?? []
   const currentManilaYear = getCurrentManilaYear()
@@ -158,7 +167,26 @@ export function ScheduleCreate() {
     onSubmit: ({ value }) => {
       setFieldErrors({})
       setSubmitError(null)
-      const parsed = createScheduleSchema.safeParse(value)
+      if (
+        value.assetId.trim() &&
+        (selectedAssetId !== value.assetId || !selectedAssetIsEligible)
+      ) {
+        setFieldErrors({ assetId: 'Choose an active asset with a department.' })
+        setSubmitError(
+          'The selected asset could not be verified as eligible for scheduling. Clear it or choose another asset.',
+        )
+        queueMicrotask(() => document.getElementById('assetId')?.focus())
+        return
+      }
+      const verifiedAllowedMonths = assetCategories.find(
+        (category) => category.code === selectedAssetDetail.data?.assetCategory,
+      )?.scheduledMonths
+      const valuesForValidation =
+        selectedAssetDetail.isSuccess &&
+        selectedAssetDetail.data.id === value.assetId
+          ? { ...value, allowedMonths: verifiedAllowedMonths ?? [] }
+          : value
+      const parsed = createScheduleSchema.safeParse(valuesForValidation)
       if (!parsed.success) {
         const errors: FieldErrors = {}
         parsed.error.issues.forEach((issue) => {
@@ -176,7 +204,7 @@ export function ScheduleCreate() {
         })
         return
       }
-      mutation.mutate(value)
+      mutation.mutate(valuesForValidation)
     },
   })
 
@@ -198,21 +226,20 @@ export function ScheduleCreate() {
     )
   }
 
-  if (assets.isError || categories.isError) {
+  if (categories.isError) {
     return (
       <Card role="alert" className="border-[var(--error)] p-6 shadow-none">
         <h1 className="text-xl font-bold">
           Schedule reference data unavailable
         </h1>
         <p className="mt-2 text-sm text-[var(--text-secondary)]">
-          Assets and CPMP month reference data are required before a schedule
-          can be created.
+          CPMP month reference data is required before a schedule can be
+          created.
         </p>
         <Button
           type="button"
           className="mt-5"
           onClick={() => {
-            void assets.refetch()
             void categories.refetch()
           }}
         >
@@ -264,45 +291,30 @@ export function ScheduleCreate() {
           <form.Field name="assetId">
             {(field) => (
               <div className="space-y-2">
-                <Label htmlFor="assetId">Asset</Label>
-                <select
+                <AssetPicker
                   id="assetId"
-                  value={field.state.value}
-                  aria-invalid={fieldErrors.assetId ? true : undefined}
-                  aria-describedby={
-                    fieldErrors.assetId ? 'assetId-error' : undefined
-                  }
-                  onChange={(event) => {
-                    const assetId = event.target.value
-                    field.handleChange(assetId)
-                    const selectedAsset = eligibleAssets.find(
-                      (asset) => asset.id === assetId,
-                    )
+                  label="Asset"
+                  value={field.state.value || undefined}
+                  eligibleForSchedule
+                  error={fieldErrors.assetId}
+                  onChange={(assetId, asset) => {
+                    field.handleChange(assetId ?? '')
+                    setSelectedAssetId(assetId)
                     const allowedMonths =
                       assetCategories.find(
-                        (category) =>
-                          category.code === selectedAsset?.assetCategory,
+                        (category) => category.code === asset?.assetCategory,
                       )?.scheduledMonths ?? []
                     form.setFieldValue('month', undefined)
                     form.setFieldValue('allowedMonths', allowedMonths)
                     clearFieldError('assetId')
                     clearFieldError('month')
                   }}
-                  className="min-h-10 w-full rounded-lg border border-[var(--border-soft)] bg-white px-3 text-sm"
-                >
-                  <option value="">Choose an asset</option>
-                  {eligibleAssets.map((asset) => (
-                    <option key={asset.id} value={asset.id}>
-                      {asset.assetCode} - {asset.assetCategory}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-xs text-[var(--text-secondary)]">
-                  Only active assets with a department can be scheduled.
-                </p>
-                {fieldErrors.assetId && (
-                  <p id="assetId-error" className="text-sm text-[var(--error)]">
-                    {fieldErrors.assetId}
+                />
+                {selectedAssetId && !selectedAssetIsEligible && (
+                  <p className="text-sm text-[var(--error)]" role="alert">
+                    {selectedAssetDetail.isPending
+                      ? 'Checking that this asset is eligible for scheduling.'
+                      : 'The selected asset could not be verified as active with a department. Clear it or choose another asset.'}
                   </p>
                 )}
               </div>
@@ -311,12 +323,15 @@ export function ScheduleCreate() {
 
           <form.Subscribe selector={(state) => state.values}>
             {(values) => {
-              const selectedAsset = eligibleAssets.find(
-                (asset) => asset.id === values.assetId,
-              )
+              const selectedAssetRecord =
+                selectedAssetDetail.data?.id === values.assetId &&
+                selectedAssetIsEligible
+                  ? selectedAssetDetail.data
+                  : undefined
               const allowedMonths =
                 assetCategories.find(
-                  (category) => category.code === selectedAsset?.assetCategory,
+                  (category) =>
+                    category.code === selectedAssetRecord?.assetCategory,
                 )?.scheduledMonths ?? []
               const year = Number(values.year)
               const month = Number(values.month)
@@ -370,7 +385,7 @@ export function ScheduleCreate() {
                           id="month"
                           value={field.state.value ?? ''}
                           disabled={
-                            !selectedAsset ||
+                            !selectedAssetRecord ||
                             categories.isPending ||
                             allowedMonths.length === 0
                           }
@@ -389,7 +404,7 @@ export function ScheduleCreate() {
                           className="min-h-10 w-full rounded-lg border border-[var(--border-soft)] bg-white px-3 text-sm"
                         >
                           <option value="">
-                            {selectedAsset
+                            {selectedAssetRecord
                               ? 'Choose an allowed PM month'
                               : 'Choose an asset first'}
                           </option>
@@ -401,7 +416,7 @@ export function ScheduleCreate() {
                               </option>
                             ))}
                         </select>
-                        {selectedAsset && allowedMonths.length === 0 && (
+                        {selectedAssetRecord && allowedMonths.length === 0 && (
                           <p className="text-sm text-[var(--error)]">
                             Allowed PM months are unavailable for this asset
                             category. A schedule cannot be created.
@@ -445,7 +460,9 @@ export function ScheduleCreate() {
             <Button
               type="submit"
               disabled={
-                mutation.isPending || assets.isPending || categories.isPending
+                mutation.isPending ||
+                categories.isPending ||
+                !selectedAssetIsEligible
               }
             >
               {mutation.isPending && (

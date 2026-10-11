@@ -21,14 +21,24 @@ export function AssetPicker({
   value,
   assetCategory,
   department,
+  eligibleForSchedule = false,
+  id,
+  label = 'Specific asset',
+  error,
   onChange,
 }: {
   value?: string | undefined
   assetCategory?: Asset['assetCategory'] | undefined
   department?: string | undefined
-  onChange: (assetId?: string) => void
+  eligibleForSchedule?: boolean
+  id?: string
+  label?: string
+  error?: string | undefined
+  onChange: (assetId?: string, asset?: Asset) => void
 }) {
   const listboxId = useId()
+  const inputId = id ?? `${listboxId}-input`
+  const errorId = id ? `${id}-error` : `${listboxId}-error`
   const [searchText, setSearchText] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [isOpen, setIsOpen] = useState(false)
@@ -37,16 +47,16 @@ export function AssetPicker({
     options: Asset[]
     index: number
   } | null>(null)
-  const [notice, setNotice] = useState<string | null>(null)
   const assets = useAssets({
     limit: 20,
+    ...(eligibleForSchedule ? { status: 'Active', hasDepartment: true } : {}),
     ...(assetCategory ? { assetCategory } : {}),
     ...(department ? { department } : {}),
     ...(debouncedSearch ? { search: debouncedSearch } : {}),
   })
   const categories = useAssetCategories()
   const options = assets.data ?? EMPTY_ASSETS
-  const scope = `${assetCategory ?? ''}\u0000${department ?? ''}\u0000${debouncedSearch}`
+  const scope = `${eligibleForSchedule}\u0000${assetCategory ?? ''}\u0000${department ?? ''}\u0000${debouncedSearch}`
   const activeIndex =
     activeOption?.scope === scope && activeOption.options === options
       ? activeOption.index
@@ -73,6 +83,11 @@ export function AssetPicker({
         selectedAsset.department?.toLocaleLowerCase() !==
           department.toLocaleLowerCase())),
   )
+  const selectedAssetIsIneligible = Boolean(
+    eligibleForSchedule &&
+    selectedAsset &&
+    (selectedAsset.status !== 'Active' || !selectedAsset.department?.trim()),
+  )
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
@@ -82,12 +97,11 @@ export function AssetPicker({
   }, [searchText])
 
   const chooseAsset = (asset: Asset) => {
-    setNotice(null)
     setSearchText('')
     setDebouncedSearch('')
     setActiveOption(null)
     setIsOpen(false)
-    onChange(asset.id)
+    onChange(asset.id, asset)
   }
 
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
@@ -123,19 +137,21 @@ export function AssetPicker({
   return (
     <div className="relative grid gap-1">
       <label
-        htmlFor={`${listboxId}-input`}
+        htmlFor={inputId}
         className="text-xs font-semibold text-[var(--text-secondary)]"
       >
-        Specific asset
+        {label}
       </label>
       <div className="flex gap-2">
         <Input
-          id={`${listboxId}-input`}
+          id={inputId}
           role="combobox"
-          aria-label="Specific asset"
+          aria-label={label}
           aria-autocomplete="list"
           aria-haspopup="listbox"
           aria-expanded={isOpen}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? errorId : undefined}
           aria-controls={
             isOpen && resultsAreCurrent && options.length > 0
               ? listboxId
@@ -159,7 +175,6 @@ export function AssetPicker({
           }}
           onChange={(event) => {
             setSearchText(event.target.value)
-            setNotice(null)
             setActiveOption(null)
             setIsOpen(true)
             if (value) onChange(undefined)
@@ -173,7 +188,6 @@ export function AssetPicker({
               onChange(undefined)
               setSearchText('')
               setDebouncedSearch('')
-              setNotice(null)
               setActiveOption(null)
             }}
             className="rounded-lg border border-[var(--border-control)] px-3 text-sm font-semibold text-[var(--text-secondary)] hover:bg-[var(--page-background)]"
@@ -183,12 +197,13 @@ export function AssetPicker({
         )}
       </div>
       <p className="text-xs text-[var(--text-neutral)]">
-        Search is limited to matching assets. Results narrow by category and
-        department.
+        {eligibleForSchedule
+          ? 'Only active assets with a department are available for scheduling.'
+          : 'Search is limited to matching assets. Results narrow by category and department.'}
       </p>
-      {notice && (
-        <p className="text-sm text-[var(--text-secondary)]" role="status">
-          {notice}
+      {error && (
+        <p id={errorId} className="text-sm text-[var(--error)]" role="alert">
+          {error}
         </p>
       )}
       {value && selectedAssetIsIncompatible && (
@@ -200,6 +215,12 @@ export function AssetPicker({
       {value && !selectedAsset && selectedDetail.isError && (
         <p className="text-sm text-[var(--text-secondary)]" role="status">
           The selected asset is unavailable in this registry.
+        </p>
+      )}
+      {value && selectedAssetIsIneligible && (
+        <p className="text-sm text-[var(--error)]" role="alert">
+          The selected asset is no longer eligible for scheduling. Clear it or
+          choose another active asset with a department.
         </p>
       )}
       {isOpen && (

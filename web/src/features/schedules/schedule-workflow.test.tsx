@@ -50,6 +50,49 @@ const fireAlarmAsset = {
   assetCode: 'FA-001',
   assetCategory: 'fire-alarm',
 }
+
+function assetLookupHandlers(
+  assets: Array<typeof asset>,
+  onLookup?: (url: URL) => void,
+) {
+  return [
+    http.get(`${base}/assets`, ({ request }) => {
+      const url = new URL(request.url)
+      onLookup?.(url)
+      const params = url.searchParams
+      const search = params.get('search')?.toLocaleLowerCase()
+      const status = params.get('status')
+      const requiresDepartment = params.get('hasDepartment') === 'true'
+      const limit = Number(params.get('limit') ?? assets.length)
+      const matchingAssets = assets.filter((candidate) => {
+        const matchesSearch =
+          !search ||
+          [
+            candidate.assetCode,
+            candidate.department,
+            candidate.building,
+            candidate.location,
+          ]
+            .filter(Boolean)
+            .some((value) => value!.toLocaleLowerCase().includes(search))
+        return (
+          (!status || candidate.status === status) &&
+          (!requiresDepartment || Boolean(candidate.department?.trim())) &&
+          matchesSearch
+        )
+      })
+      return HttpResponse.json(matchingAssets.slice(0, limit))
+    }),
+    http.get(`${base}/assets/:assetId`, ({ params }) => {
+      const selected = assets.find(
+        (candidate) => candidate.id === params.assetId,
+      )
+      return selected
+        ? HttpResponse.json(selected)
+        : HttpResponse.json({}, { status: 404 })
+    }),
+  ]
+}
 const schedule = {
   id: scheduleId,
   assetId,
@@ -207,7 +250,7 @@ function mockReferences(roles = ['GSD']) {
       }),
     ),
     ...scheduleRegistryHandlers(),
-    http.get(`${base}/assets`, () => HttpResponse.json([asset])),
+    ...assetLookupHandlers([asset]),
     http.get(`${base}/reference-data/asset-categories`, () =>
       HttpResponse.json([
         {
@@ -724,24 +767,23 @@ describe('schedule workflows', () => {
   })
 
   it('clears the selected month when the asset category changes', async () => {
-    server.use(
-      http.get(`${base}/assets`, () =>
-        HttpResponse.json([asset, fireAlarmAsset]),
-      ),
-    )
+    server.use(...assetLookupHandlers([asset, fireAlarmAsset]))
 
     renderWithProviders(<ScheduleCreate />)
     const actor = userEvent.setup()
-    const assetSelect = await screen.findByLabelText('Asset')
+    const assetPicker = await screen.findByRole('combobox', { name: 'Asset' })
     const monthSelect = screen.getByLabelText('Scheduled month')
     const yearInput = screen.getByLabelText('Scheduled year')
-    await actor.selectOptions(assetSelect, assetId)
+    await actor.type(assetPicker, 'FE-001')
+    await actor.click(await screen.findByRole('option', { name: /FE-001/ }))
     await actor.type(yearInput, '2026')
     await actor.selectOptions(monthSelect, '8')
     expect(monthSelect).toHaveValue('8')
     expect(screen.getByLabelText('Due date')).toHaveValue('Aug 31, 2026')
 
-    await actor.selectOptions(assetSelect, fireAlarmAsset.id)
+    await actor.clear(assetPicker)
+    await actor.type(assetPicker, 'FA-001')
+    await actor.click(await screen.findByRole('option', { name: /FA-001/ }))
     expect(monthSelect).toHaveValue('')
     expect(
       [...(monthSelect as HTMLSelectElement).options].map(
@@ -756,7 +798,7 @@ describe('schedule workflows', () => {
   it('creates a schedule from the selected cycle without an exact date', async () => {
     let requestBody: unknown
     server.use(
-      http.get(`${base}/assets`, () => HttpResponse.json([asset])),
+      ...assetLookupHandlers([asset]),
       http.post(`${base}/schedules`, async ({ request }) => {
         requestBody = await request.json()
         return HttpResponse.json(schedule)
@@ -764,7 +806,9 @@ describe('schedule workflows', () => {
     )
     renderWithProviders(<ScheduleCreate />)
     const actor = userEvent.setup()
-    await actor.selectOptions(await screen.findByLabelText('Asset'), assetId)
+    const assetPicker = await screen.findByRole('combobox', { name: 'Asset' })
+    await actor.type(assetPicker, 'FE-001')
+    await actor.click(await screen.findByRole('option', { name: /FE-001/ }))
     await actor.type(screen.getByLabelText('Scheduled year'), '2026')
     await actor.selectOptions(screen.getByLabelText('Scheduled month'), '8')
     expect(screen.getByLabelText('Due date')).toHaveValue('Aug 31, 2026')
@@ -801,7 +845,9 @@ describe('schedule workflows', () => {
 
     renderWithProviders(<ScheduleCreate />)
     const actor = userEvent.setup()
-    await actor.selectOptions(await screen.findByLabelText('Asset'), assetId)
+    const assetPicker = await screen.findByRole('combobox', { name: 'Asset' })
+    await actor.type(assetPicker, 'FE-001')
+    await actor.click(await screen.findByRole('option', { name: /FE-001/ }))
     expect(screen.getByLabelText('Scheduled month')).toBeDisabled()
     expect(
       screen.getByText(
@@ -812,10 +858,11 @@ describe('schedule workflows', () => {
     expect(postCalled).toBe(false)
   })
 
-  it('offers only active assets with a department for scheduling', async () => {
+  it('requests bounded searchable assets that are active and have a department', async () => {
+    let lookupUrl: URL | undefined
     server.use(
-      http.get(`${base}/assets`, () =>
-        HttpResponse.json([
+      ...assetLookupHandlers(
+        [
           asset,
           {
             ...asset,
@@ -835,20 +882,60 @@ describe('schedule workflows', () => {
             assetCode: 'FE-NO-DEPT',
             department: null,
           },
-        ]),
+        ],
+        (url) => {
+          lookupUrl = url
+        },
       ),
     )
 
     renderWithProviders(<ScheduleCreate />)
-    const select = await screen.findByLabelText('Asset')
-    expect(select).toHaveTextContent('FE-001')
-    expect(select).not.toHaveTextContent('FE-INACTIVE')
-    expect(select).not.toHaveTextContent('FE-RETIRED')
-    expect(select).not.toHaveTextContent('FE-NO-DEPT')
+    const assetPicker = await screen.findByRole('combobox', { name: 'Asset' })
+    const actor = userEvent.setup()
+    await actor.type(assetPicker, 'FE-')
+    expect(await screen.findByRole('option', { name: /FE-001/ })).toBeVisible()
+    expect(screen.queryByRole('option', { name: /FE-INACTIVE/ })).toBeNull()
+    expect(screen.queryByRole('option', { name: /FE-RETIRED/ })).toBeNull()
+    expect(screen.queryByRole('option', { name: /FE-NO-DEPT/ })).toBeNull()
+    expect(lookupUrl?.searchParams.get('search')).toBe('FE-')
+    expect(lookupUrl?.searchParams.get('status')).toBe('Active')
+    expect(lookupUrl?.searchParams.get('hasDepartment')).toBe('true')
+    expect(lookupUrl?.searchParams.get('limit')).toBe('20')
     expect(
       screen.getByText(
-        'Only active assets with a department can be scheduled.',
+        'Only active assets with a department are available for scheduling.',
       ),
     ).toBeInTheDocument()
+  })
+
+  it('blocks Enter submission if the selected asset is no longer eligible', async () => {
+    let postCalled = false
+    server.use(
+      ...assetLookupHandlers([asset]),
+      http.get(`${base}/assets/${assetId}`, () =>
+        HttpResponse.json({ ...asset, status: 'Inactive' }),
+      ),
+      http.post(`${base}/schedules`, () => {
+        postCalled = true
+        return HttpResponse.json(schedule)
+      }),
+    )
+
+    renderWithProviders(<ScheduleCreate />)
+    const actor = userEvent.setup()
+    const assetPicker = await screen.findByRole('combobox', { name: 'Asset' })
+    await actor.type(assetPicker, 'FE-001')
+    await actor.click(await screen.findByRole('option', { name: /FE-001/ }))
+    await screen.findByText(/could not be verified as active with a department/)
+    expect(
+      screen.getByRole('button', { name: 'Create schedule' }),
+    ).toBeDisabled()
+
+    await actor.keyboard('{Enter}')
+
+    expect(
+      await screen.findByText('Choose an active asset with a department.'),
+    ).toBeVisible()
+    expect(postCalled).toBe(false)
   })
 })
