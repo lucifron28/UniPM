@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import { useState } from 'react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
@@ -241,40 +241,85 @@ describe('AssetRegistry feature component', () => {
     )
   })
 
-  it('restores URL search filter parameters into form state and active filter message', async () => {
+  it('restores URL filters as readable chips and removes an active filter', async () => {
+    const records = Array.from({ length: 26 }, (_, index) => ({
+      ...sampleAssets[0]!,
+      id: `10000000-0000-4000-8000-${(index + 1).toString().padStart(12, '0')}`,
+      assetCode: `FE-${(index + 1).toString().padStart(3, '0')}`,
+    }))
     server.use(
-      ...registryHandlers(),
+      ...registryHandlers(records),
       http.get(categoriesUrl, () => HttpResponse.json(sampleCategories)),
     )
 
-    renderWithProviders(
-      <AssetRegistry
-        search={{
-          text: 'FE',
-          building: 'Main Building',
-          department: 'GSD',
-          assetCategory: 'fire-extinguisher',
-          status: 'Active',
-          page: 1,
-        }}
-        onSearchChange={vi.fn()}
-      />,
-    )
+    const onSearchChange = vi.fn()
+    function FilterHarness() {
+      const [search, setSearch] = useState<AssetSearch>({
+        text: 'FE',
+        building: 'Main Building',
+        department: 'GSD',
+        assetCategory: 'fire-extinguisher',
+        status: 'Active',
+        page: 2,
+      })
 
-    expect((await screen.findAllByText('FE-001')).length).toBeGreaterThan(0)
+      return (
+        <AssetRegistry
+          search={search}
+          onSearchChange={(next, options) => {
+            onSearchChange(next, options)
+            setSearch(next)
+          }}
+        />
+      )
+    }
+
+    renderWithProviders(<FilterHarness />)
+
+    expect((await screen.findAllByText('FE-026')).length).toBeGreaterThan(0)
     expect(
       screen.getByPlaceholderText(
         'Asset code, QR, building, department, or location',
       ),
     ).toHaveValue('FE')
-    expect(screen.getByLabelText('Asset category')).toHaveValue(
-      'fire-extinguisher',
-    )
-    expect(screen.getByLabelText('Status')).toHaveValue('Active')
-    expect(screen.getByText(/Active filters:/)).toBeInTheDocument()
     expect(
-      screen.getByText(/fire-extinguisher · Active · Main Building · GSD · FE/),
+      screen.getByText('Asset category: Fire extinguishers'),
     ).toBeInTheDocument()
+    expect(screen.getByText('Status: Active')).toBeInTheDocument()
+    expect(screen.getByText('Building: Main Building')).toBeInTheDocument()
+    expect(screen.getByText('Department: GSD')).toBeInTheDocument()
+    expect(screen.getByText('Search: FE')).toBeInTheDocument()
+
+    await userEvent
+      .setup()
+      .click(screen.getByRole('button', { name: 'Remove Search filter' }))
+
+    expect(onSearchChange).toHaveBeenCalledWith(
+      {
+        text: undefined,
+        building: 'Main Building',
+        department: 'GSD',
+        assetCategory: 'fire-extinguisher',
+        status: 'Active',
+        page: 1,
+      },
+      { preserveScroll: true },
+    )
+    await waitFor(() => {
+      expect(screen.queryByText('Search: FE')).not.toBeInTheDocument()
+      expect(
+        screen.getByPlaceholderText(
+          'Asset code, QR, building, department, or location',
+        ),
+      ).toHaveValue('')
+    })
+    expect(
+      screen.getByText('Asset category: Fire extinguishers'),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Status: Active')).toBeInTheDocument()
+    expect(screen.getByText('Building: Main Building')).toBeInTheDocument()
+    expect(screen.getByText('Department: GSD')).toBeInTheDocument()
+    expect(screen.getByText('Showing 1-25 of 26')).toBeInTheDocument()
   })
 
   it('replaces navigation when requested page is out of bounds', async () => {
