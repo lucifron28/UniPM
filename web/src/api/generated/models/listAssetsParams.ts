@@ -15,4 +15,5 @@ export type ListAssetsParams = {
    * @pattern ^-?(?:0|[1-9]\d*)$
    */
   limit?: number | string
+  hasDepartment?: boolean
 }

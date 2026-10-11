@@ -1220,7 +1220,7 @@ export const useCreateAsset = <
 }
 
 /**
- * @summary Lists assets using supported category, status, building, department, and search filters
+ * @summary Lists assets using supported category, status, location, search, and department-presence filters
  */
 export const listAssets = (params?: ListAssetsParams, signal?: AbortSignal) => {
   return customInstance<AssetResponse[]>({
@@ -1325,7 +1325,7 @@ export function useListAssets<
   queryKey: DataTag<QueryKey, TData, TError>
 }
 /**
- * @summary Lists assets using supported category, status, building, department, and search filters
+ * @summary Lists assets using supported category, status, location, search, and department-presence filters
  */
 
 export function useListAssets<

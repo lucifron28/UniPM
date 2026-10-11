@@ -324,7 +324,7 @@
       },
       "get": {
         "tags": ["Assets"],
-        "summary": "Lists assets using supported category, status, building, department, and search filters",
+        "summary": "Lists assets using supported category, status, location, search, and department-presence filters",
         "operationId": "ListAssets",
         "parameters": [
           {
@@ -369,6 +369,13 @@
               "pattern": "^-?(?:0|[1-9]\\d*)$",
               "type": ["integer", "string"],
               "format": "int32"
+            }
+          },
+          {
+            "name": "hasDepartment",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
             }
           }
         ],
