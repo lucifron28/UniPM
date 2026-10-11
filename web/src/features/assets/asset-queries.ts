@@ -56,6 +56,7 @@ export function useAssetRegistry(filters: AssetRegistryFilters = {}) {
     queryKey: getListAssetRegistryQueryKey(filters),
     queryFn: ({ signal }) =>
       listAssetRegistry(filters, signal).then(parseAssetRegistryPage),
+    placeholderData: (previousData) => previousData,
   })
 }
 
