@@ -62,6 +62,27 @@ public sealed class RegistryReadEndpointsTests
     }
 
     [Fact]
+    public async Task Schedule_asset_lookup_applies_department_eligibility_before_limit()
+    {
+        await using var application = new TestApplicationFactory();
+        using var client = application.CreateClient();
+        await application.SeedScheduleLookupAssetsAsync();
+
+        var eligibleAssets = await client.GetFromJsonAsync<List<AssetResponse>>(
+            "/api/v1/assets?status=Active&hasDepartment=true&limit=2");
+
+        Assert.NotNull(eligibleAssets);
+        Assert.Equal(
+            ["ZZZ-ELIGIBLE-00", "ZZZ-ELIGIBLE-01"],
+            eligibleAssets.Select(asset => asset.AssetCode).ToArray());
+        Assert.All(eligibleAssets, asset =>
+        {
+            Assert.Equal("Active", asset.Status);
+            Assert.False(string.IsNullOrWhiteSpace(asset.Department));
+        });
+    }
+
+    [Fact]
     public async Task Schedule_registry_pages_canonical_periods_and_preserves_inspector_scope()
     {
         await using var application = new TestApplicationFactory([AuthRoleCatalog.Inspector]);
@@ -217,6 +238,56 @@ public sealed class RegistryReadEndpointsTests
 
             await using var context = await CreateContextAsync();
             context.Assets.AddRange(assets);
+            await context.SaveChangesAsync();
+        }
+
+        public async Task SeedScheduleLookupAssetsAsync()
+        {
+            var now = DateTimeOffset.UtcNow;
+            var ineligibleAssets = Enumerable.Range(0, 32)
+                .Select(index => new Asset
+                {
+                    Id = Guid.NewGuid(),
+                    AssetCode = $"AAA-NO-DEPARTMENT-{index:D2}",
+                    AssetCategory = "fire-alarm",
+                    Building = "Main Building",
+                    Department = index % 2 == 0 ? null : "  ",
+                    Location = "Ineligible asset",
+                    Status = "Active",
+                    CreatedAt = now,
+                    UpdatedAt = now
+                })
+                .Append(new Asset
+                {
+                    Id = Guid.NewGuid(),
+                    AssetCode = "BBB-INACTIVE",
+                    AssetCategory = "fire-alarm",
+                    Building = "Main Building",
+                    Department = "GSD",
+                    Location = "Inactive asset",
+                    Status = "Inactive",
+                    CreatedAt = now,
+                    UpdatedAt = now
+                })
+                .ToList();
+            var eligibleAssets = Enumerable.Range(0, 3)
+                .Select(index => new Asset
+                {
+                    Id = Guid.NewGuid(),
+                    AssetCode = $"ZZZ-ELIGIBLE-{index:D2}",
+                    AssetCategory = "fire-alarm",
+                    Building = "Main Building",
+                    Department = "GSD",
+                    Location = "Eligible asset",
+                    Status = "Active",
+                    CreatedAt = now,
+                    UpdatedAt = now
+                })
+                .ToList();
+
+            await using var context = await CreateContextAsync();
+            context.Assets.AddRange(ineligibleAssets);
+            context.Assets.AddRange(eligibleAssets);
             await context.SaveChangesAsync();
         }
 

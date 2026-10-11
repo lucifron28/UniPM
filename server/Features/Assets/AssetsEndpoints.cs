@@ -376,6 +376,7 @@ public static class AssetsEndpoints
             string? department,
             string? search,
             int? limit,
+            bool? hasDepartment,
             IDbContextFactory<ApplicationDbContext> factory,
             CancellationToken cancellationToken) =>
         {
@@ -402,6 +403,12 @@ public static class AssetsEndpoints
                 normalizedDepartment,
                 normalizedSearch);
 
+            if (hasDepartment == true)
+            {
+                query = query.Where(asset =>
+                    asset.Department != null && asset.Department.Trim() != string.Empty);
+            }
+
             var orderedQuery = query.OrderBy(asset => asset.AssetCode);
             var maxResults = limit.HasValue ? Math.Clamp(limit.Value, 1, 100) : (int?)null;
             var finalQuery = maxResults.HasValue ? orderedQuery.Take(maxResults.Value) : orderedQuery;
@@ -426,7 +433,7 @@ public static class AssetsEndpoints
             return Results.Ok(assets);
         })
         .WithName("ListAssets")
-        .WithSummary("Lists assets using supported category, status, building, department, and search filters")
+        .WithSummary("Lists assets using supported category, status, location, search, and department-presence filters")
         .Produces<IReadOnlyList<AssetResponse>>(StatusCodes.Status200OK)
         .Produces<Microsoft.AspNetCore.Mvc.ValidationProblemDetails>(StatusCodes.Status400BadRequest);
 
