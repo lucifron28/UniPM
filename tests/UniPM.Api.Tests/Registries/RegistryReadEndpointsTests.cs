@@ -460,6 +460,7 @@ public sealed class RegistryReadEndpointsTests
                 now));
 
             var draftAsset = NewAsset("FA-DRAFT", "fire-alarm", now);
+            draftAsset.Department = "Synthetic Draft Department";
             var draftSchedule = NewSchedule(
                 draftAsset,
                 "2026-06",
@@ -475,6 +476,7 @@ public sealed class RegistryReadEndpointsTests
                 "First",
                 "Draft",
                 now);
+            draftForm.Department = "Synthetic Draft Department";
             var draftInspection = NewInspection(
                 draftSchedule,
                 draftAsset,
