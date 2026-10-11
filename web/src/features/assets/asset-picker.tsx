@@ -36,6 +36,8 @@ export function AssetPicker({
   })
   const categories = useAssetCategories()
   const options = assets.data ?? []
+  const isSearchSettling = searchText.trim() !== debouncedSearch
+  const resultsAreCurrent = !assets.isPlaceholderData && !isSearchSettling
   const selectedFromOptions = options.find((asset) => asset.id === value)
   const selectedDetail = useAsset(
     value ?? '',
@@ -63,6 +65,10 @@ export function AssetPicker({
   }, [searchText])
 
   useEffect(() => {
+    setActiveIndex(-1)
+  }, [assetCategory, assets.data, department, debouncedSearch])
+
+  useEffect(() => {
     if (!value || !selectedAssetIsIncompatible) return
     setNotice('The selected asset was cleared because it does not match the selected category or department.')
     setSearchText('')
@@ -83,11 +89,20 @@ export function AssetPicker({
     if (event.key === 'ArrowDown') {
       event.preventDefault()
       setIsOpen(true)
-      setActiveIndex((index) => Math.min(index + 1, options.length - 1))
+      if (resultsAreCurrent && options.length > 0) {
+        setActiveIndex((index) => Math.min(index + 1, options.length - 1))
+      }
     } else if (event.key === 'ArrowUp') {
       event.preventDefault()
-      setActiveIndex((index) => Math.max(index - 1, 0))
-    } else if (event.key === 'Enter' && isOpen && options[activeIndex]) {
+      if (resultsAreCurrent && options.length > 0) {
+        setActiveIndex((index) => Math.max(index - 1, 0))
+      }
+    } else if (
+      event.key === 'Enter' &&
+      isOpen &&
+      resultsAreCurrent &&
+      options[activeIndex]
+    ) {
       event.preventDefault()
       chooseAsset(options[activeIndex])
     } else if (event.key === 'Escape') {
@@ -112,16 +127,26 @@ export function AssetPicker({
           aria-autocomplete="list"
           aria-haspopup="listbox"
           aria-expanded={isOpen}
-          aria-controls={listboxId}
+          aria-controls={
+            isOpen && resultsAreCurrent && options.length > 0
+              ? listboxId
+              : undefined
+          }
           aria-activedescendant={
-            activeIndex >= 0 ? `${listboxId}-option-${activeIndex}` : undefined
+            isOpen &&
+            resultsAreCurrent &&
+            activeIndex >= 0 &&
+            options[activeIndex]
+              ? `${listboxId}-option-${activeIndex}`
+              : undefined
           }
           value={inputValue}
           maxLength={256}
           placeholder="Search by asset code or details"
           onFocus={() => setIsOpen(true)}
           onBlur={() => {
-            window.setTimeout(() => setIsOpen(false), 100)
+            setIsOpen(false)
+            setActiveIndex(-1)
           }}
           onChange={(event) => {
             setSearchText(event.target.value)
@@ -162,9 +187,9 @@ export function AssetPicker({
       )}
       {isOpen && (
         <div className="absolute top-full z-20 mt-1 max-h-64 w-full overflow-auto rounded-lg border border-[var(--border-soft)] bg-white p-1 shadow-lg">
-          {assets.isPending ? (
+          {assets.isPending || !resultsAreCurrent ? (
             <p className="px-3 py-2 text-sm text-[var(--text-neutral)]" role="status">
-              Searching assets…
+              Updating asset results…
             </p>
           ) : assets.isError ? (
             <p className="px-3 py-2 text-sm text-[var(--error)]" role="alert">
@@ -182,6 +207,7 @@ export function AssetPicker({
                     id={`${listboxId}-option-${index}`}
                     type="button"
                     role="option"
+                    tabIndex={-1}
                     aria-selected={index === activeIndex || asset.id === value}
                     onMouseDown={(event) => event.preventDefault()}
                     onMouseEnter={() => setActiveIndex(index)}
