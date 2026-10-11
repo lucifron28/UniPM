@@ -85,13 +85,38 @@ async function mockScheduleApi(page: Page, roles = ['GSD']) {
       body: JSON.stringify(session.user),
     }),
   )
-  await page.route('**/api/v1/assets**', (route) =>
-    route.fulfill({
+  await page.route(/\/api\/v1\/assets(?:\?.*)?$/, async (route) => {
+    const requestUrl = new URL(route.request().url())
+    const parameters = requestUrl.searchParams
+    if (
+      route.request().method() !== 'GET' ||
+      requestUrl.pathname !== '/api/v1/assets' ||
+      parameters.get('limit') !== '20' ||
+      parameters.get('status') !== 'Active' ||
+      parameters.get('hasDepartment') !== 'true'
+    ) {
+      return route.fallback()
+    }
+    return route.fulfill({
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify([asset]),
-    }),
-  )
+    })
+  })
+  await page.route(new RegExp(`/api/v1/assets/${assetId}$`), async (route) => {
+    const requestUrl = new URL(route.request().url())
+    if (
+      route.request().method() !== 'GET' ||
+      requestUrl.pathname !== `/api/v1/assets/${assetId}`
+    ) {
+      return route.fallback()
+    }
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(asset),
+    })
+  })
   await page.route('**/api/v1/reference-data/asset-categories', (route) =>
     route.fulfill({
       status: 200,
@@ -422,7 +447,9 @@ test.describe('Schedule workflows', () => {
     await page.goto('/app/schedules?status=Due&quarter=Q3&year=2026')
     await expect(page.getByRole('heading', { name: 'Schedules' })).toBeVisible()
     await expect(page.getByLabel('Schedule status')).toHaveValue('Due')
-    await expect(page.getByLabel('Calendar quarter')).toHaveValue('Q3')
+    await expect(
+      page.getByLabel('Calendar quarter', { exact: true }),
+    ).toHaveValue('Q3')
     await page.getByRole('link', { name: 'View details' }).click()
     await expect(page).toHaveURL(new RegExp(`/app/schedules/${scheduleId}`))
     await expect(page.getByRole('heading', { name: 'FE-001' })).toBeVisible()
