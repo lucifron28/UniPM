@@ -65,7 +65,7 @@ const createdAsset = {
   hasVerificationLocation: false,
 }
 
-const pagedAssets = Array.from({ length: 11 }, (_, index) => ({
+const pagedAssets = Array.from({ length: 26 }, (_, index) => ({
   ...assets[0],
   id: `00000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
   assetCode: `FE-${String(index + 1).padStart(3, '0')}`,
@@ -133,6 +133,107 @@ async function mockAssetRegistry(
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify(asset ?? assetList),
+    })
+  })
+  const categories = [
+    {
+      code: 'fire-extinguisher',
+      displayName: 'Fire extinguishers',
+      scheduledMonths: [2, 5, 8, 11],
+    },
+    {
+      code: 'fire-alarm',
+      displayName: 'Fire alarm systems',
+      scheduledMonths: [6, 12],
+    },
+    {
+      code: 'emergency-light',
+      displayName: 'Emergency lights',
+      scheduledMonths: [2, 5, 8, 11],
+    },
+    {
+      code: 'water-drinking-station',
+      displayName: 'Water drinking stations',
+      scheduledMonths: [6, 12],
+    },
+  ]
+  await page.route('**/api/v1/assets/registry', (route) => {
+    const params = new URL(route.request().url()).searchParams
+    const search = params.get('search')?.toLowerCase()
+    const filtered = assetList.filter(
+      (asset) =>
+        (!search ||
+          `${asset.assetCode} ${asset.building} ${asset.department} ${asset.location}`
+            .toLowerCase()
+            .includes(search)) &&
+        (!params.get('assetCategory') ||
+          asset.assetCategory === params.get('assetCategory')) &&
+        (!params.get('status') || asset.status === params.get('status')) &&
+        (!params.get('building') ||
+          asset.building === params.get('building')) &&
+        (!params.get('department') ||
+          asset.department === params.get('department')),
+    )
+    const pageNumber = Number(params.get('page') ?? 1)
+    const pageSize = Number(params.get('pageSize') ?? 25)
+    const start = (pageNumber - 1) * pageSize
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        items: filtered.slice(start, start + pageSize),
+        page: pageNumber,
+        pageSize,
+        totalCount: filtered.length,
+      }),
+    })
+  })
+  await page.route('**/api/v1/assets/registry/options', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        categories,
+        statuses: ['Active', 'Inactive', 'Retired'],
+        departments: [
+          ...new Set(
+            assetList.map((asset) => asset.department).filter(Boolean),
+          ),
+        ],
+        buildings: [
+          ...new Set(assetList.map((asset) => asset.building).filter(Boolean)),
+        ],
+      }),
+    }),
+  )
+  await page.route('**/api/v1/assets/registry/summary', (route) => {
+    const categorySummary = categories.map((category) => {
+      const rows = assetList.filter(
+        (asset) => asset.assetCategory === category.code,
+      )
+      return {
+        assetCategory: category.code,
+        displayName: category.displayName,
+        totalCount: rows.length,
+        activeCount: rows.filter((asset) => asset.status === 'Active').length,
+        inactiveCount: rows.filter((asset) => asset.status === 'Inactive')
+          .length,
+        retiredCount: rows.filter((asset) => asset.status === 'Retired').length,
+      }
+    })
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        totalCount: assetList.length,
+        activeCount: assetList.filter((asset) => asset.status === 'Active')
+          .length,
+        inactiveCount: assetList.filter((asset) => asset.status === 'Inactive')
+          .length,
+        retiredCount: assetList.filter((asset) => asset.status === 'Retired')
+          .length,
+        categories: categorySummary,
+      }),
     })
   })
 }
@@ -206,7 +307,7 @@ test.describe('Asset Registry E2E Specs', () => {
     await page.setViewportSize({ width: 1280, height: 600 })
     await page.goto('/app/assets?status=Active')
     const rows = page.getByRole('table').locator('tbody tr')
-    await expect(rows).toHaveCount(10)
+    await expect(rows).toHaveCount(25)
     const next = page.getByRole('button', { name: 'Next' })
     await next.scrollIntoViewIfNeeded()
     const scrollY = await page.evaluate(() => window.scrollY)
@@ -217,13 +318,13 @@ test.describe('Asset Registry E2E Specs', () => {
     await expect(page).toHaveURL(/page=2/)
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(scrollY)
     await expect(rows).toHaveCount(1)
-    await expect(page.getByText('FE-011').first()).toBeVisible()
+    await expect(page.getByText('FE-026').first()).toBeVisible()
     const lastPageLayout = await registryLayout(page)
     expectStableRegistryLayout(firstPageLayout, lastPageLayout)
     await page.getByRole('button', { name: 'Previous' }).click()
     await expect(page).not.toHaveURL(/page=2/)
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(scrollY)
-    await expect(rows).toHaveCount(10)
+    await expect(rows).toHaveCount(25)
     expectStableRegistryLayout(firstPageLayout, await registryLayout(page))
     await next.click()
     await expect(page).toHaveURL(/page=2/)
@@ -232,25 +333,25 @@ test.describe('Asset Registry E2E Specs', () => {
       (response) =>
         response.request().method() === 'GET' &&
         new URL(response.url()).pathname ===
-          `/api/v1/assets/${pagedAssets[10].id}`,
+          `/api/v1/assets/${pagedAssets[25].id}`,
     )
     await page
-      .getByRole('row', { name: /FE-011/ })
+      .getByRole('row', { name: /FE-026/ })
       .getByRole('link', { name: 'View details' })
       .click()
     await expect(page).toHaveURL(
-      new RegExp(`/app/assets/${pagedAssets[10].id}\\?.*status=Active.*page=2`),
+      new RegExp(`/app/assets/${pagedAssets[25].id}\\?.*status=Active.*page=2`),
     )
     const response = await detailResponse
     expect(response.status()).toBe(200)
-    expect((await response.json()).assetCode).toBe('FE-011')
+    expect((await response.json()).assetCode).toBe('FE-026')
     await expect(
-      page.getByRole('heading', { name: 'FE-011', level: 1 }),
+      page.getByRole('heading', { name: 'FE-026', level: 1 }),
     ).toBeVisible()
     await page.getByRole('link', { name: 'Back to assets' }).click()
     await expect(page).toHaveURL(/status=Active/)
     await expect(page).toHaveURL(/page=2/)
-    await expect(page.getByText('FE-011').first()).toBeVisible()
+    await expect(page.getByText('FE-026').first()).toBeVisible()
 
     await page.goto('/app/assets?status=Active&page=2')
     await expect(page).toHaveURL(/status=Active/)
@@ -264,11 +365,11 @@ test.describe('Asset Registry E2E Specs', () => {
     await page.goto('/app/assets?status=Active&page=99')
     await expect(page).toHaveURL(/page=2/)
     await expect(page).toHaveURL(/status=Active/)
-    await expect(page.getByText('FE-011').first()).toBeVisible()
+    await expect(page.getByText('FE-026').first()).toBeVisible()
 
     await page.setViewportSize({ width: 375, height: 667 })
     await page.goto('/app/assets?status=Active&page=2')
-    const mobileAsset = page.getByRole('link', { name: /FE-011/ })
+    const mobileAsset = page.getByRole('link', { name: /FE-026/ })
     await expect(mobileAsset).toBeVisible()
     await page
       .getByRole('navigation', { name: 'Assets pagination' })

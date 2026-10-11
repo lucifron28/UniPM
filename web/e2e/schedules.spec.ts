@@ -50,6 +50,22 @@ const schedule = {
     location: asset.location,
   },
 }
+const scheduleRegistryItem = {
+  id: schedule.id,
+  assetId: schedule.assetId,
+  scheduleDate: schedule.scheduleDate,
+  pmCycle: schedule.pmCycle,
+  periodType: schedule.periodType,
+  status: schedule.status,
+  quarter: schedule.quarter,
+  semester: schedule.semester,
+  year: schedule.year,
+  academicYear: schedule.academicYear,
+  completedAt: schedule.completedAt,
+  createdAt: schedule.createdAt,
+  updatedAt: schedule.updatedAt,
+  asset: schedule.asset,
+}
 
 async function mockScheduleApi(page: Page, roles = ['GSD']) {
   const session = { ...gsdSession, user: { ...gsdSession.user, roles } }
@@ -170,6 +186,50 @@ async function mockScheduleApi(page: Page, roles = ['GSD']) {
         }),
       })
     }
+    if (pathname === '/api/v1/schedules/registry') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          items: [scheduleRegistryItem],
+          page: 1,
+          pageSize: 25,
+          totalCount: 1,
+        }),
+      })
+    }
+    if (pathname === '/api/v1/schedules/registry/options') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          categories: [
+            {
+              code: 'fire-extinguisher',
+              displayName: 'Fire extinguishers',
+              scheduledMonths: [2, 5, 8, 11],
+            },
+          ],
+          quarters: ['Q1', 'Q2', 'Q3', 'Q4'],
+          departments: ['GSD'],
+          years: ['2026'],
+        }),
+      })
+    }
+    if (pathname === '/api/v1/schedules/registry/summary') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          totalCount: 1,
+          dueCount: schedule.status === 'Due' ? 1 : 0,
+          ongoingCount: 0,
+          overdueCount: 0,
+          completedCount: 0,
+          cancelledCount: 0,
+        }),
+      })
+    }
     if (pathname.endsWith(`/${scheduleId}`)) {
       return route.fulfill({
         status: 200,
@@ -227,7 +287,7 @@ test.describe('Schedule workflows', () => {
     page,
   }) => {
     await mockScheduleApi(page)
-    const records = Array.from({ length: 11 }, (_, index) => ({
+    const records = Array.from({ length: 26 }, (_, index) => ({
       ...schedule,
       id: `10000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
       asset: {
@@ -235,33 +295,47 @@ test.describe('Schedule workflows', () => {
         assetCode: `FE-${String(index + 1).padStart(3, '0')}`,
       },
     }))
-    await page.route('**/api/v1/schedules**', (route) => {
-      const pathname = new URL(route.request().url()).pathname
+    await page.route('**/api/v1/schedules/registry', (route) => {
+      const url = new URL(route.request().url())
+      const pageNumber = Number(url.searchParams.get('page') ?? 1)
+      const pageSize = Number(url.searchParams.get('pageSize') ?? 25)
+      const start = (pageNumber - 1) * pageSize
       return route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify(
-          pathname === '/api/v1/schedules/enrollment-deferrals'
-            ? {
-                page: 1,
-                pageSize: 10,
-                total: 0,
-                pendingCount: 0,
-                reviewedCount: 0,
-                items: [],
-              }
-            : pathname === '/api/v1/schedules/coverage-review'
-              ? {
-                  year: 2026,
-                  page: 1,
-                  pageSize: 10,
-                  total: 0,
-                  items: [],
-                }
-              : records,
-        ),
+        body: JSON.stringify({
+          items: records.slice(start, start + pageSize).map((item) => ({
+            ...scheduleRegistryItem,
+            id: item.id,
+            asset: {
+              ...scheduleRegistryItem.asset,
+              assetCode: item.asset.assetCode,
+            },
+          })),
+          page: pageNumber,
+          pageSize,
+          totalCount: records.length,
+        }),
       })
     })
+    await page.route('**/api/v1/schedules/registry/summary', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          totalCount: records.length,
+          dueCount: records.filter((item) => item.status === 'Due').length,
+          ongoingCount: records.filter((item) => item.status === 'Ongoing')
+            .length,
+          overdueCount: records.filter((item) => item.status === 'Overdue')
+            .length,
+          completedCount: records.filter((item) => item.status === 'Completed')
+            .length,
+          cancelledCount: records.filter((item) => item.status === 'Cancelled')
+            .length,
+        }),
+      }),
+    )
     await page.setViewportSize({ width: 1280, height: 600 })
     await page.goto('/app/schedules?status=Due&quarter=Q3&year=2026')
     // Longer CPMP cells must preserve the viewport even with enlarged text.
@@ -269,7 +343,7 @@ test.describe('Schedule workflows', () => {
       content: 'tbody td { font-size: 18px; line-height: 28px; }',
     })
     const rows = page.getByRole('table').locator('tbody tr')
-    await expect(rows).toHaveCount(10)
+    await expect(rows).toHaveCount(25)
     const next = page.getByRole('button', { name: 'Next' })
     await next.scrollIntoViewIfNeeded()
     const scrollY = await page.evaluate(() => window.scrollY)
@@ -280,14 +354,14 @@ test.describe('Schedule workflows', () => {
     await expect(page).toHaveURL(/quarter=Q3/)
     await expect(page).toHaveURL(/year=2026/)
     await expect(page).toHaveURL(/page=2/)
-    await expect(page.getByRole('cell', { name: 'FE-011' })).toBeVisible()
+    await expect(page.getByRole('cell', { name: 'FE-026' })).toBeVisible()
     await expect(rows).toHaveCount(1)
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(scrollY)
     const lastPageLayout = await registryLayout(page)
     expectStableRegistryLayout(firstPageLayout, lastPageLayout)
     await page.getByRole('button', { name: 'Previous' }).click()
     await expect(page).not.toHaveURL(/page=2/)
-    await expect(rows).toHaveCount(10)
+    await expect(rows).toHaveCount(25)
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(scrollY)
     expectStableRegistryLayout(firstPageLayout, await registryLayout(page))
 
@@ -310,7 +384,7 @@ test.describe('Schedule workflows', () => {
     await page.setViewportSize({ width: 375, height: 667 })
     await page.goto('/app/schedules?status=Due&quarter=Q3&year=2026&page=2')
     const mobileSchedule = page
-      .getByRole('heading', { name: 'FE-011' })
+      .getByRole('heading', { name: 'FE-026' })
       .locator('xpath=../../..')
     await expect(mobileSchedule).toBeVisible()
     const pagination = page.getByRole('navigation', {
@@ -344,7 +418,7 @@ test.describe('Schedule workflows', () => {
     await page.goto('/app/schedules?status=Due&quarter=Q3&year=2026')
     await expect(page.getByRole('heading', { name: 'Schedules' })).toBeVisible()
     await expect(page.getByLabel('Schedule status')).toHaveValue('Due')
-    await expect(page.getByLabel('Quarter')).toHaveValue('Q3')
+    await expect(page.getByLabel('PM calendar quarter')).toHaveValue('Q3')
     await page.getByRole('link', { name: 'View details' }).click()
     await expect(page).toHaveURL(new RegExp(`/app/schedules/${scheduleId}`))
     await expect(page.getByRole('heading', { name: 'FE-001' })).toBeVisible()
