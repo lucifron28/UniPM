@@ -1,7 +1,11 @@
 import { useEffect, useId, useMemo, useState } from 'react'
 import type { KeyboardEvent } from 'react'
 import { Input } from '@/components/ui/input'
-import { useAsset, useAssetCategories, useAssets } from '@/features/assets/asset-queries'
+import {
+  useAsset,
+  useAssetCategories,
+  useAssets,
+} from '@/features/assets/asset-queries'
 import { categoryLabel } from '@/features/assets/asset-presentation'
 import type { Asset } from '@/features/assets/asset-contract'
 
@@ -17,9 +21,9 @@ export function AssetPicker({
   department,
   onChange,
 }: {
-  value?: string
-  assetCategory?: Asset['assetCategory']
-  department?: string
+  value?: string | undefined
+  assetCategory?: Asset['assetCategory'] | undefined
+  department?: string | undefined
   onChange: (assetId?: string) => void
 }) {
   const listboxId = useId()
@@ -45,16 +49,18 @@ export function AssetPicker({
   )
   const selectedAsset = selectedFromOptions ?? selectedDetail.data
   const categoryByCode = useMemo(
-    () => new Map(categories.data?.map((category) => [category.code, category])),
+    () =>
+      new Map(categories.data?.map((category) => [category.code, category])),
     [categories.data],
   )
-  const inputValue = searchText || (selectedAsset ? assetLabel(selectedAsset) : '')
+  const inputValue =
+    searchText || (selectedAsset ? assetLabel(selectedAsset) : '')
   const selectedAssetIsIncompatible = Boolean(
     selectedAsset &&
-      ((assetCategory && selectedAsset.assetCategory !== assetCategory) ||
-        (department &&
-          selectedAsset.department?.toLocaleLowerCase() !==
-            department.toLocaleLowerCase())),
+    ((assetCategory && selectedAsset.assetCategory !== assetCategory) ||
+      (department &&
+        selectedAsset.department?.toLocaleLowerCase() !==
+          department.toLocaleLowerCase())),
   )
 
   useEffect(() => {
@@ -70,7 +76,9 @@ export function AssetPicker({
 
   useEffect(() => {
     if (!value || !selectedAssetIsIncompatible) return
-    setNotice('The selected asset was cleared because it does not match the selected category or department.')
+    setNotice(
+      'The selected asset was cleared because it does not match the selected category or department.',
+    )
     setSearchText('')
     setActiveIndex(-1)
     onChange(undefined)
@@ -173,7 +181,8 @@ export function AssetPicker({
         )}
       </div>
       <p className="text-xs text-[var(--text-neutral)]">
-        Search is limited to matching assets. Results narrow by category and department.
+        Search is limited to matching assets. Results narrow by category and
+        department.
       </p>
       {notice && (
         <p className="text-sm text-[var(--text-secondary)]" role="status">
@@ -188,7 +197,10 @@ export function AssetPicker({
       {isOpen && (
         <div className="absolute top-full z-20 mt-1 max-h-64 w-full overflow-auto rounded-lg border border-[var(--border-soft)] bg-white p-1 shadow-lg">
           {assets.isPending || !resultsAreCurrent ? (
-            <p className="px-3 py-2 text-sm text-[var(--text-neutral)]" role="status">
+            <p
+              className="px-3 py-2 text-sm text-[var(--text-neutral)]"
+              role="status"
+            >
               Updating asset results…
             </p>
           ) : assets.isError ? (

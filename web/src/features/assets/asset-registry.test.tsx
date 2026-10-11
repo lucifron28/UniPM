@@ -297,7 +297,7 @@ describe('AssetRegistry feature component', () => {
 
   it('keeps filters and leaves focus on pagination after changing pages', async () => {
     const records = Array.from({ length: 26 }, (_, index) => ({
-      ...sampleAssets[0],
+      ...sampleAssets[0]!,
       id: `10000000-0000-4000-8000-${(index + 1).toString().padStart(12, '0')}`,
       assetCode: `FE-${(index + 1).toString().padStart(3, '0')}`,
     }))

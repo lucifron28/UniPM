@@ -2,7 +2,6 @@ import { z } from 'zod'
 import type {
   InspectionHistoryResponse,
   InspectionResponse,
-  InspectionRegistryItemResponse,
   InspectionRegistryOptionsResponse,
   InspectionRegistryPageResponse,
   InspectionRegistrySummaryResponse,
