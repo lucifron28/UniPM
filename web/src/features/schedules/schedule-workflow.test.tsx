@@ -11,6 +11,7 @@ import {
   RouterProvider,
 } from '@tanstack/react-router'
 import { configureApiRuntime } from '@/api/http-client'
+import type { AssetResponse } from '@/api/generated/models'
 import { toast } from 'sonner'
 import { ScheduleCreate } from '@/features/schedules/schedule-create'
 import { ScheduleDetail } from '@/features/schedules/schedule-detail'
@@ -52,7 +53,7 @@ const fireAlarmAsset = {
 }
 
 function assetLookupHandlers(
-  assets: Array<typeof asset>,
+  assets: AssetResponse[],
   onLookup?: (url: URL) => void,
 ) {
   return [
