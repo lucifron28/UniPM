@@ -18,7 +18,11 @@ import {
 import { useAuthStore } from '@/stores/auth-store'
 import { server } from '@/test/server'
 
-const assetsWildcardUrl = 'http://localhost:5000/api/v1/assets*'
+const assetRegistryUrl = 'http://localhost:5000/api/v1/assets/registry'
+const assetRegistryOptionsUrl =
+  'http://localhost:5000/api/v1/assets/registry/options'
+const assetRegistrySummaryUrl =
+  'http://localhost:5000/api/v1/assets/registry/summary'
 const categoriesUrl =
   'http://localhost:5000/api/v1/reference-data/asset-categories'
 const meUrl = 'http://localhost:5000/api/v1/auth/me'
@@ -64,6 +68,104 @@ const sampleCategories = [
   { code: 'fire-alarm', displayName: 'Fire alarm systems' },
 ]
 
+const registryCategories = [
+  {
+    code: 'fire-extinguisher',
+    displayName: 'Fire extinguishers',
+    scheduledMonths: [2, 5, 8, 11],
+  },
+  {
+    code: 'fire-alarm',
+    displayName: 'Fire alarm systems',
+    scheduledMonths: [6, 12],
+  },
+  {
+    code: 'emergency-light',
+    displayName: 'Emergency lights',
+    scheduledMonths: [2, 5, 8, 11],
+  },
+  {
+    code: 'water-drinking-station',
+    displayName: 'Water drinking stations',
+    scheduledMonths: [6, 12],
+  },
+]
+
+function registrySummaryFor(allAssets: typeof sampleAssets) {
+  const categorySummary = registryCategories.map((category) => {
+    const assets = allAssets.filter(
+      (asset) => asset.assetCategory === category.code,
+    )
+    return {
+      assetCategory: category.code,
+      displayName: category.displayName,
+      totalCount: assets.length,
+      activeCount: assets.filter((asset) => asset.status === 'Active').length,
+      inactiveCount: assets.filter((asset) => asset.status === 'Inactive')
+        .length,
+      retiredCount: assets.filter((asset) => asset.status === 'Retired').length,
+    }
+  })
+  const summary = {
+    totalCount: allAssets.length,
+    activeCount: allAssets.filter((asset) => asset.status === 'Active').length,
+    inactiveCount: allAssets.filter((asset) => asset.status === 'Inactive')
+      .length,
+    retiredCount: allAssets.filter((asset) => asset.status === 'Retired')
+      .length,
+    categories: categorySummary,
+  }
+  return summary
+}
+
+function registryHandlers(allAssets = sampleAssets) {
+  const summary = registrySummaryFor(allAssets)
+  return [
+    http.get(assetRegistryUrl, ({ request }) => {
+      const params = new URL(request.url).searchParams
+      const search = params.get('search')?.toLowerCase()
+      const filtered = allAssets.filter(
+        (asset) =>
+          (!search ||
+            `${asset.assetCode} ${asset.building} ${asset.department} ${asset.location}`
+              .toLowerCase()
+              .includes(search)) &&
+          (!params.get('assetCategory') ||
+            asset.assetCategory === params.get('assetCategory')) &&
+          (!params.get('status') || asset.status === params.get('status')) &&
+          (!params.get('building') ||
+            asset.building === params.get('building')) &&
+          (!params.get('department') ||
+            asset.department === params.get('department')),
+      )
+      const page = Number(params.get('page') ?? 1)
+      const pageSize = Number(params.get('pageSize') ?? 25)
+      const start = (page - 1) * pageSize
+      return HttpResponse.json({
+        items: filtered.slice(start, start + pageSize),
+        page,
+        pageSize,
+        totalCount: filtered.length,
+      })
+    }),
+    http.get(assetRegistryOptionsUrl, () =>
+      HttpResponse.json({
+        categories: registryCategories,
+        statuses: ['Active', 'Inactive', 'Retired'],
+        departments: [
+          ...new Set(
+            allAssets.map((asset) => asset.department).filter(Boolean),
+          ),
+        ],
+        buildings: [
+          ...new Set(allAssets.map((asset) => asset.building).filter(Boolean)),
+        ],
+      }),
+    ),
+    http.get(assetRegistrySummaryUrl, () => HttpResponse.json(summary)),
+  ]
+}
+
 function setupAuth() {
   useAuthStore.getState().establishSession('synthetic-test-token')
   configureApiRuntime({
@@ -101,7 +203,7 @@ describe('AssetRegistry feature component', () => {
 
   it('renders assets table, summary cards, and handles filter draft state', async () => {
     server.use(
-      http.get(assetsWildcardUrl, () => HttpResponse.json(sampleAssets)),
+      ...registryHandlers(),
       http.get(categoriesUrl, () => HttpResponse.json(sampleCategories)),
     )
 
@@ -141,7 +243,7 @@ describe('AssetRegistry feature component', () => {
 
   it('restores URL search filter parameters into form state and active filter message', async () => {
     server.use(
-      http.get(assetsWildcardUrl, () => HttpResponse.json(sampleAssets)),
+      ...registryHandlers(),
       http.get(categoriesUrl, () => HttpResponse.json(sampleCategories)),
     )
 
@@ -177,7 +279,7 @@ describe('AssetRegistry feature component', () => {
 
   it('replaces navigation when requested page is out of bounds', async () => {
     server.use(
-      http.get(assetsWildcardUrl, () => HttpResponse.json(sampleAssets)),
+      ...registryHandlers(),
       http.get(categoriesUrl, () => HttpResponse.json(sampleCategories)),
     )
 
@@ -194,13 +296,13 @@ describe('AssetRegistry feature component', () => {
   })
 
   it('keeps filters and leaves focus on pagination after changing pages', async () => {
-    const records = Array.from({ length: 11 }, (_, index) => ({
+    const records = Array.from({ length: 26 }, (_, index) => ({
       ...sampleAssets[0],
       id: `10000000-0000-4000-8000-${(index + 1).toString().padStart(12, '0')}`,
       assetCode: `FE-${(index + 1).toString().padStart(3, '0')}`,
     }))
     server.use(
-      http.get(assetsWildcardUrl, () => HttpResponse.json(records)),
+      ...registryHandlers(records),
       http.get(categoriesUrl, () => HttpResponse.json(sampleCategories)),
     )
     const onSearchChange = vi.fn()
@@ -221,20 +323,20 @@ describe('AssetRegistry feature component', () => {
     renderWithProviders(<PaginationHarness />)
     await screen.findAllByText('FE-001')
     const next = screen.getByRole('button', { name: 'Next' })
-    expect(screen.getByText('Showing 1-10 of 11')).toBeInTheDocument()
+    expect(screen.getByText('Showing 1-25 of 26')).toBeInTheDocument()
     await userEvent.setup().click(next)
     expect(onSearchChange).toHaveBeenCalledWith(
       { text: 'FE', page: 2 },
       { preserveScroll: true },
     )
-    expect(await screen.findAllByText('FE-011')).not.toHaveLength(0)
-    expect(screen.getByText('Showing 11-11 of 11')).toBeInTheDocument()
+    expect(await screen.findAllByText('FE-026')).not.toHaveLength(0)
+    expect(screen.getByText('Showing 26-26 of 26')).toBeInTheDocument()
     expect(next).toHaveFocus()
   })
 
   it('resets draft inputs and triggers search reset on Clear button click', async () => {
     server.use(
-      http.get(assetsWildcardUrl, () => HttpResponse.json(sampleAssets)),
+      ...registryHandlers(),
       http.get(categoriesUrl, () => HttpResponse.json(sampleCategories)),
     )
 
@@ -266,10 +368,16 @@ describe('AssetRegistry feature component', () => {
   it('passes the combined server-side filters to the API', async () => {
     let capturedUrl: URL | null = null
     server.use(
-      http.get(assetsWildcardUrl, ({ request }) => {
+      http.get(assetRegistryUrl, ({ request }) => {
         capturedUrl = new URL(request.url)
-        return HttpResponse.json(sampleAssets)
+        return HttpResponse.json({
+          items: sampleAssets,
+          page: 1,
+          pageSize: 25,
+          totalCount: sampleAssets.length,
+        })
       }),
+      ...registryHandlers(),
       http.get(categoriesUrl, () => HttpResponse.json(sampleCategories)),
     )
 
@@ -300,9 +408,22 @@ describe('AssetRegistry feature component', () => {
   it('displays loading skeleton elements while queries are pending', async () => {
     server.use(
       http.get(meUrl, () => HttpResponse.json(gsdUser)),
-      http.get(assetsWildcardUrl, async () => {
+      http.get(assetRegistrySummaryUrl, async () => {
         await new Promise((r) => setTimeout(r, 2000))
-        return HttpResponse.json(sampleAssets)
+        return HttpResponse.json(registrySummaryFor(sampleAssets))
+      }),
+      ...registryHandlers(),
+      http.get(assetRegistryUrl, async ({ request }) => {
+        await new Promise((r) => setTimeout(r, 2000))
+        const params = new URL(request.url).searchParams
+        const page = Number(params.get('page') ?? 1)
+        const pageSize = Number(params.get('pageSize') ?? 25)
+        return HttpResponse.json({
+          items: sampleAssets,
+          page,
+          pageSize,
+          totalCount: sampleAssets.length,
+        })
       }),
       http.get(categoriesUrl, async () => {
         await new Promise((r) => setTimeout(r, 2000))
@@ -322,7 +443,7 @@ describe('AssetRegistry feature component', () => {
   it('handles category reference data failure with retry state without hiding asset totals', async () => {
     let categoryAttempts = 0
     server.use(
-      http.get(assetsWildcardUrl, () => HttpResponse.json(sampleAssets)),
+      ...registryHandlers(),
       http.get(categoriesUrl, () => {
         categoryAttempts++
         if (categoryAttempts === 1) {
@@ -351,7 +472,7 @@ describe('AssetRegistry feature component', () => {
 
   it('distinguishes empty registry from filter no-match state', async () => {
     server.use(
-      http.get(assetsWildcardUrl, () => HttpResponse.json([])),
+      ...registryHandlers([]),
       http.get(categoriesUrl, () => HttpResponse.json(sampleCategories)),
     )
 
@@ -369,12 +490,7 @@ describe('AssetRegistry feature component', () => {
 
   it('shows no-match state when filters produce zero results on non-empty registry', async () => {
     server.use(
-      http.get(assetsWildcardUrl, ({ request }) =>
-        new URL(request.url).searchParams.get('search') ===
-        'NONEXISTENT-ASSET-QUERY'
-          ? HttpResponse.json([])
-          : HttpResponse.json(sampleAssets),
-      ),
+      ...registryHandlers(),
       http.get(categoriesUrl, () => HttpResponse.json(sampleCategories)),
     )
 
@@ -392,9 +508,10 @@ describe('AssetRegistry feature component', () => {
 
   it('shows retry button on summary card failure without displaying false zeros', async () => {
     server.use(
-      http.get(assetsWildcardUrl, () =>
+      http.get(assetRegistrySummaryUrl, () =>
         HttpResponse.json(null, { status: 500 }),
       ),
+      ...registryHandlers(),
       http.get(categoriesUrl, () => HttpResponse.json(sampleCategories)),
     )
 
