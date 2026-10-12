@@ -20,6 +20,13 @@ dashboard. It adds no route or navigation item. The dashboard remains the
 source of schedule and inspection measures. The analytics request adapts a
 question into the same bounded category, cycle, and department scope.
 
+The current UniPM natural-language analytics scope is limited to English
+input. This is a scope statement, not an institutional language-policy
+approval or model-readiness claim. Filipino and Taglish appeared in the v2
+development work as exploratory robustness cases, not validated language
+claims. This describes the validation scope; it does not claim that the
+interpreter technically rejects those inputs.
+
 ## Supported question form
 
 Accept only a finite form, with a maximum question length of 512 characters:
@@ -188,3 +195,26 @@ The focused gate and source-revision checks are recorded in
 [TEST-059](../evidence/test-runs/TEST-059-pm-analytics-environment-and-evaluator-provenance.md).
 That run used an identified working patch at the recorded base commit; it does
 not verify commits created after the run.
+
+## Evaluation corpus versions
+
+The current English-scoped evaluation requires human review of the English
+cases. Filipino and Taglish review is optional exploratory work unless UniPM
+later seeks stronger multilingual claims or plans to publish those slices as
+validated evidence. An AI-assisted pre-review recommended 29 of 30 English
+cases as semantically consistent with the current contract; C09 remains
+pending a domain decision about `FE`. This recommendation is not independent
+human validation, and it does not establish model readiness.
+
+Keep `v1` as the historical local/Qwen experiment and `v2` as the preserved
+multilingual exploratory provider experiment. Do not revise v2 questions,
+labels, hashes, or historical results. Reserve `v3` for a future separately
+authorized English-focused final evaluation corpus. Do not create v3 cases or
+choose its size here. A future v3 should use reviewed English wording and
+labels, cover supported Valid metrics and categories, clarifications,
+unsupported requests, and multiple adversarial safety cases, and use
+family-disjoint development and held-out partitions. Predeclare scoring and
+model-selection criteria. Freeze reviewed labels, prompt/schema, providers and
+models, source SHA, and corpus hashes before held-out use. The current 10-case
+English v2 held-out slice is a pilot, not the sole final product-quality
+evaluation.
