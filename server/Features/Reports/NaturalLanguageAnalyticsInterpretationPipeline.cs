@@ -78,6 +78,12 @@ internal abstract class NaturalLanguageAnalyticsInterpretationPipeline
                 NaturalLanguageAnalyticsProviderFailure.InvalidOutput);
         }
 
+        if (assessment.ExplicitAssetCategory is null)
+        {
+            return NaturalLanguageAnalyticsQuestionGuard.NeedsClarification(
+                PmAnalyticsClarificationField.AssetCategory) with { Usage = candidate.Usage };
+        }
+
         if (assessment.ExplicitYear is null)
         {
             return NaturalLanguageAnalyticsQuestionGuard.NeedsClarification(
