@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore.Storage;
 using UniPM.Api.Data;
 using UniPM.Api.Features;
 using UniPM.Api.Features.Auth;
+using UniPM.Api.Features.Inspections;
 using UniPM.Api.Features.ReferenceData;
 using UniPM.Api.Features.Schedules;
 using UniPM.Api.Models;
@@ -73,12 +74,107 @@ public static class PreventiveMaintenanceFormEndpoints
         .Produces(StatusCodes.Status403Forbidden);
 
         group.MapGet("/", async (
+            string? status,
+            string? assetCategory,
+            string? department,
+            string? pmCycle,
+            string? search,
             IDbContextFactory<ApplicationDbContext> factory,
             CancellationToken cancellationToken) =>
         {
+            var normalizedDepartment = string.IsNullOrWhiteSpace(department)
+                ? null
+                : department.Trim();
+            var normalizedSearch = string.IsNullOrWhiteSpace(search)
+                ? null
+                : search.Trim();
+            var normalizedStatus = string.Empty;
+            var normalizedCategory = string.Empty;
+            var validationErrors = new Dictionary<string, string[]>();
+
+            if (!string.IsNullOrWhiteSpace(status)
+                && !PreventiveMaintenanceFormStatusCatalog.TryNormalize(status, out normalizedStatus))
+            {
+                validationErrors[nameof(status)] = ["Status must be Draft, Submitted, or Acknowledged."];
+            }
+
+            if (!string.IsNullOrWhiteSpace(assetCategory)
+                && !AssetCategoryCatalog.TryNormalize(assetCategory, out normalizedCategory))
+            {
+                validationErrors[nameof(assetCategory)] = ["Asset category must be one of the selected UniPM study scope categories."];
+            }
+
+            if (normalizedDepartment?.Length > 256)
+            {
+                validationErrors[nameof(department)] = ["Department must be 256 characters or fewer."];
+            }
+
+            if (!string.IsNullOrWhiteSpace(pmCycle)
+                && !PreventiveMaintenanceCycle.TryParse(pmCycle, out _, out _))
+            {
+                validationErrors[nameof(pmCycle)] = ["PM cycle must use the yyyy-MM format."];
+            }
+
+            if (normalizedSearch?.Length > 256)
+            {
+                validationErrors[nameof(search)] = ["Search must be 256 characters or fewer."];
+            }
+
+            if (validationErrors.Count > 0)
+            {
+                return ApiErrors.Validation(validationErrors);
+            }
+
             await using var context = await factory.CreateDbContextAsync(cancellationToken);
-            var forms = await context.PreventiveMaintenanceForms
-                .AsNoTracking()
+            var query = context.PreventiveMaintenanceForms.AsNoTracking();
+
+            if (!string.IsNullOrWhiteSpace(status))
+            {
+                query = query.Where(form => form.Status == normalizedStatus);
+            }
+
+            if (!string.IsNullOrWhiteSpace(assetCategory))
+            {
+                query = query.Where(form => form.AssetCategory == normalizedCategory);
+            }
+
+            if (normalizedDepartment is not null)
+            {
+                var departmentKey = normalizedDepartment.ToUpperInvariant();
+                query = query.Where(form =>
+                    form.Department != null
+                    && form.Department.ToUpper() == departmentKey);
+            }
+
+            if (!string.IsNullOrWhiteSpace(pmCycle))
+            {
+                var cycleKey = pmCycle.Trim();
+                query = query.Where(form => form.PmCycle == cycleKey);
+            }
+
+            if (normalizedSearch is not null)
+            {
+                var searchKey = normalizedSearch.ToUpperInvariant();
+                query = query.Where(form =>
+                    (form.FileNumber != null && form.FileNumber.ToUpper().Contains(searchKey))
+                    || form.AssetCategory.ToUpper().Contains(searchKey)
+                    || (form.Building != null && form.Building.ToUpper().Contains(searchKey))
+                    || (form.Department != null && form.Department.ToUpper().Contains(searchKey))
+                    || (form.PmCycle != null && form.PmCycle.ToUpper().Contains(searchKey))
+                    || form.PeriodType.ToUpper().Contains(searchKey)
+                    || (form.Quarter != null && form.Quarter.ToUpper().Contains(searchKey))
+                    || (form.Semester != null && form.Semester.ToUpper().Contains(searchKey))
+                    || (form.AcademicYear != null && form.AcademicYear.ToUpper().Contains(searchKey))
+                    || form.Inspections.Any(inspection =>
+                        inspection.Asset != null
+                        && (inspection.Asset.AssetCode.Contains(searchKey)
+                            || inspection.Asset.AssetCategory.ToUpper().Contains(searchKey)
+                            || (inspection.Asset.Building != null && inspection.Asset.Building.ToUpper().Contains(searchKey))
+                            || (inspection.Asset.Department != null && inspection.Asset.Department.ToUpper().Contains(searchKey))
+                            || (inspection.Asset.Location != null && inspection.Asset.Location.ToUpper().Contains(searchKey)))));
+            }
+
+            var forms = await query
                 .Include(form => form.Inspections)
                     .ThenInclude(inspection => inspection.Asset)
                 .OrderByDescending(form => form.CreatedAt)
@@ -92,8 +188,9 @@ public static class PreventiveMaintenanceFormEndpoints
                 .ToList());
         })
         .WithName("ListPreventiveMaintenanceForms")
-        .WithSummary("Lists preventive-maintenance forms")
+        .WithSummary("Lists preventive-maintenance forms using supported status and metadata filters")
         .Produces<List<PreventiveMaintenanceFormResponse>>(StatusCodes.Status200OK)
+        .Produces<Microsoft.AspNetCore.Mvc.ValidationProblemDetails>(StatusCodes.Status400BadRequest)
         .RequireAuthorization();
 
         group.MapGet("/{id}", async (
@@ -431,8 +528,9 @@ public static class PreventiveMaintenanceFormEndpoints
             var sourceRows = await context.InspectionRecords
                 .AsNoTracking()
                 .Where(inspection => inspection.PreventiveMaintenanceFormId == form.Id
-                    && inspection.ActionsRecommendations != null
-                    && inspection.ActionsRecommendations != "")
+                    && ((inspection.ActionsRecommendations != null
+                            && inspection.ActionsRecommendations != "")
+                        || !inspection.IsOperational))
                 .OrderBy(inspection => inspection.DateInspected)
                 .ThenBy(inspection => inspection.Id)
                 .Select(inspection => new CorrectiveMaintenanceHandoffSourceRow(
@@ -443,7 +541,15 @@ public static class PreventiveMaintenanceFormEndpoints
                     inspection.Asset.Location,
                     inspection.Remarks,
                     inspection.IsOperational,
-                    inspection.ActionsRecommendations!,
+                    inspection.ActionsRecommendations,
+                    inspection.CompletedAt,
+                    inspection.WmsReferral == null ? null : inspection.WmsReferral.ExternalPmNumber,
+                    inspection.WmsReferral == null ? 0 : inspection.WmsReferral.Revision,
+                    inspection.WmsReferral != null
+                        ? InspectionFollowUpStatusCatalog.ReferredToWms
+                        : inspection.IsOperational
+                            ? InspectionFollowUpStatusCatalog.NoReferralRequired
+                            : InspectionFollowUpStatusCatalog.CorrectiveFollowUpPending,
                     inspection.InspectorUserId))
                 .ToListAsync(cancellationToken);
 
@@ -469,6 +575,10 @@ public static class PreventiveMaintenanceFormEndpoints
                     row.FindingOrRemarks,
                     row.IsOperational,
                     row.RecommendedCorrectiveAction,
+                    row.WmsPmNumber,
+                    row.WmsReferralRevision,
+                    row.FollowUpStatus,
+                    !row.IsOperational && row.CompletedAt is not null,
                     row.InspectorUserId,
                     users.GetValueOrDefault(row.InspectorUserId)))
                 .ToList();
@@ -480,7 +590,7 @@ public static class PreventiveMaintenanceFormEndpoints
                 form.Department,
                 form.Building,
                 form.AssetCategory,
-                rows.Count > 0,
+                rows.Any(row => !string.IsNullOrWhiteSpace(row.RecommendedCorrectiveAction)),
                 rows));
         })
         .RequireAuthorization(AuthPolicyCatalog.CanAccessCorrectiveMaintenanceHandoff)
@@ -524,12 +634,70 @@ public static class PreventiveMaintenanceFormEndpoints
                 return ApiErrors.Conflict("Only draft forms can be edited.");
             }
 
+            var schedulePreview = await context.PreventiveMaintenanceSchedules
+                .AsNoTracking()
+                .Include(candidate => candidate.Asset)
+                .SingleOrDefaultAsync(candidate => candidate.Id == dto.ScheduleId, cancellationToken);
+            if (schedulePreview is null)
+            {
+                return ApiErrors.NotFound("Schedule not found.");
+            }
+
+            var previewScheduleAccess = await authorizationService.AuthorizeAsync(
+                principal,
+                schedulePreview,
+                AuthPolicyCatalog.CanInspectPreventiveMaintenanceSchedule);
+            if (!previewScheduleAccess.Succeeded)
+            {
+                return Results.Forbid();
+            }
+
+            if (schedulePreview.Asset is null)
+            {
+                return ApiErrors.NotFound("Asset not found.");
+            }
+
+            form.Department = PreventiveMaintenanceFormBatchPolicy.NormalizeDepartment(form.Department);
+            if (!PreventiveMaintenanceFormBatchPolicy.HasResolvedDepartment(form, schedulePreview))
+            {
+                return ApiErrors.Validation(new Dictionary<string, string[]>
+                {
+                    [nameof(dto.ScheduleId)] = ["A PM form batch requires a department on both the form and scheduled asset."]
+                });
+            }
+
+            if (!ScheduleBatchIdentity.TryCreate(schedulePreview, out var batchIdentity))
+            {
+                return ApiErrors.Conflict("The schedule needs a department and valid PM cycle before inspection work can start.");
+            }
+
+            await using var mutationLock = await ScheduleBatchMutationLockLease.AcquireAsync(
+                context,
+                batchIdentity,
+                cancellationToken);
+            if (!mutationLock.Acquired)
+            {
+                return ApiErrors.Conflict("This PM batch is being updated. Try again shortly.");
+            }
+
+            await context.Entry(form).ReloadAsync(cancellationToken);
+            if (!IsDraft(form))
+            {
+                return ApiErrors.Conflict("Only draft forms can be edited.");
+            }
+
             var schedule = await context.PreventiveMaintenanceSchedules
                 .Include(candidate => candidate.Asset)
                 .SingleOrDefaultAsync(candidate => candidate.Id == dto.ScheduleId, cancellationToken);
             if (schedule is null)
             {
                 return ApiErrors.NotFound("Schedule not found.");
+            }
+
+            if (!ScheduleBatchIdentity.TryCreate(schedule, out var currentBatchIdentity)
+                || currentBatchIdentity != batchIdentity)
+            {
+                return ApiErrors.Conflict("The schedule's PM batch changed while inspection work was being prepared. Refresh and try again.");
             }
 
             var scheduleAccess = await authorizationService.AuthorizeAsync(
@@ -581,7 +749,8 @@ public static class PreventiveMaintenanceFormEndpoints
                 return ApiErrors.Conflict("Schedule already has a recorded inspection.");
             }
 
-            if (!PreventiveMaintenanceFormBatchPolicy.IsEligibleScheduleStatus(schedule.Status))
+            if (!PreventiveMaintenanceFormBatchPolicy.IsEligibleScheduleStatus(schedule.Status)
+                || schedule.CompletedAt is not null)
             {
                 return ApiErrors.Conflict("Only Due, Ongoing, or Overdue schedules can be added to a draft form.");
             }
@@ -638,6 +807,7 @@ public static class PreventiveMaintenanceFormEndpoints
             try
             {
                 await context.SaveChangesAsync(cancellationToken);
+                await mutationLock.CommitAsync(cancellationToken);
             }
             catch (DbUpdateException exception) when (DatabaseConstraintViolation.IsUniqueConstraint(exception))
             {
@@ -1488,7 +1658,11 @@ public sealed record CorrectiveMaintenanceHandoffRowResponse(
     string? Location,
     string? FindingOrRemarks,
     bool IsOperational,
-    string RecommendedCorrectiveAction,
+    string? RecommendedCorrectiveAction,
+    string? WmsPmNumber,
+    int WmsReferralRevision,
+    string FollowUpStatus,
+    bool CanRecordWmsReferral,
     Guid SkilledWorkerUserId,
     string? SkilledWorkerIdentity);
 
@@ -1500,7 +1674,11 @@ internal sealed record CorrectiveMaintenanceHandoffSourceRow(
     string? Location,
     string? FindingOrRemarks,
     bool IsOperational,
-    string RecommendedCorrectiveAction,
+    string? RecommendedCorrectiveAction,
+    DateTimeOffset? CompletedAt,
+    string? WmsPmNumber,
+    int WmsReferralRevision,
+    string FollowUpStatus,
     Guid InspectorUserId);
 
 internal static class PreventiveMaintenanceFormEndpointsAcademicYear

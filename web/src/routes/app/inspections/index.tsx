@@ -4,6 +4,8 @@ import {
   InspectionRegistry,
   type InspectionSearch,
 } from '@/features/inspections/inspection-registry'
+import { assetCategoryCodes } from '@/features/assets/asset-contract'
+import { inspectionFollowUpStatusCodes } from '@/features/inspections/inspection-contract'
 
 const dateTime = z.string().datetime({ offset: true })
 const operationalResult = z.union([
@@ -17,7 +19,11 @@ export const inspectionSearchSchema = z
   .object({
     assetId: z.string().uuid().optional(),
     scheduleId: z.string().uuid().optional(),
+    assetCategory: z.enum(assetCategoryCodes).optional(),
+    department: z.string().trim().max(256).optional(),
+    search: z.string().trim().max(256).optional(),
     isOperational: operationalResult.optional(),
+    wmsReferralStatus: z.enum(inspectionFollowUpStatusCodes).optional(),
     dateFrom: dateTime.optional(),
     dateTo: dateTime.optional(),
     page: z.coerce.number().int().positive().max(10000).optional(),

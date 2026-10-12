@@ -1,14 +1,21 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import {
-  assignScheduleBatch,
+  assignScheduleBatchSupervisor,
+  assignScheduleBatchWorker,
+  generatePreventiveMaintenanceSchedules,
+  getGetPmPeriodDashboardQueryKey,
   getGetScheduleQueryKey,
-  getListScheduleAssignmentOptionsQueryKey,
+  getListPmPeriodDashboardCyclesQueryKey,
+  getListScheduleSupervisorAssignmentOptionsQueryKey,
+  getListScheduleWorkerAssignmentOptionsQueryKey,
   getListSchedulePeriodTypesQueryKey,
   getListScheduleQuartersQueryKey,
   getListScheduleStatusesQueryKey,
   getListSchedulesQueryKey,
   getSchedule,
-  listScheduleAssignmentOptions,
+  listScheduleSupervisorAssignmentOptions,
+  listScheduleWorkerAssignmentOptions,
   listSchedulePeriodTypes,
   listScheduleQuarters,
   listScheduleStatuses,
@@ -33,6 +40,7 @@ export function useSchedules(filters: ScheduleServerFilters = {}) {
     queryKey: getListSchedulesQueryKey(filters),
     queryFn: ({ signal }) =>
       listSchedules(filters, signal).then(parseSchedules),
+    placeholderData: (previousData) => previousData,
   })
 }
 
@@ -45,34 +53,94 @@ export function useSchedule(scheduleId: string, enabled = true) {
   })
 }
 
-export function useScheduleAssignmentOptions(enabled: boolean) {
+export function useScheduleSupervisorAssignmentOptions(enabled: boolean) {
   return useQuery({
-    queryKey: getListScheduleAssignmentOptionsQueryKey(),
-    queryFn: ({ signal }) => listScheduleAssignmentOptions(signal),
+    queryKey: getListScheduleSupervisorAssignmentOptionsQueryKey(),
+    queryFn: ({ signal }) => listScheduleSupervisorAssignmentOptions(signal),
     enabled,
   })
 }
 
-export function useAssignScheduleBatch() {
+export function useScheduleWorkerAssignmentOptions(enabled: boolean) {
+  return useQuery({
+    queryKey: getListScheduleWorkerAssignmentOptionsQueryKey(),
+    queryFn: ({ signal }) => listScheduleWorkerAssignmentOptions(signal),
+    enabled,
+  })
+}
+
+export function useAssignScheduleBatchSupervisor() {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: ({
       scheduleId,
-      workerUserId,
       supervisorUserId,
     }: {
       scheduleId: string
-      workerUserId: string
       supervisorUserId: string
-    }) => assignScheduleBatch(scheduleId, { workerUserId, supervisorUserId }),
-    onSuccess: async (_result, { scheduleId }) => {
+    }) => assignScheduleBatchSupervisor(scheduleId, { supervisorUserId }),
+    onSuccess: async (result, { scheduleId }) => {
+      const count = result.scheduleIds.length
+      toast.success(
+        `Supervisor assignment saved for ${count} schedule${count === 1 ? '' : 's'}.`,
+      )
       await Promise.all([
         queryClient.invalidateQueries({
           queryKey: getGetScheduleQueryKey(scheduleId),
         }),
         queryClient.invalidateQueries({
           queryKey: getListSchedulesQueryKey(),
+        }),
+      ])
+    },
+  })
+}
+
+export function useAssignScheduleBatchWorker() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({
+      scheduleId,
+      workerUserId,
+    }: {
+      scheduleId: string
+      workerUserId: string
+    }) => assignScheduleBatchWorker(scheduleId, { workerUserId }),
+    onSuccess: async (result, { scheduleId }) => {
+      const count = result.scheduleIds.length
+      toast.success(
+        `Inspector assignment saved for ${count} schedule${count === 1 ? '' : 's'}.`,
+      )
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: getGetScheduleQueryKey(scheduleId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: getListSchedulesQueryKey(),
+        }),
+      ])
+    },
+  })
+}
+
+export function useGenerateSchedules() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (year: number) =>
+      generatePreventiveMaintenanceSchedules({ year }),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: getListSchedulesQueryKey(),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: getListPmPeriodDashboardCyclesQueryKey(),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: getGetPmPeriodDashboardQueryKey(),
         }),
       ])
     },

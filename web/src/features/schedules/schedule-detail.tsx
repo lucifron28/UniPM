@@ -53,7 +53,9 @@ export function ScheduleDetail({
     )
   const schedule = useSchedule(scheduleId, isValidId)
   const currentUser = useCurrentUser()
-  const canAssignBatch = currentUser.data?.roles.includes('GSD') === true
+  const canAssignSupervisor = currentUser.data?.roles.includes('GSD') === true
+  const hasSupervisorRole =
+    currentUser.data?.roles.includes('Supervisor') === true
 
   if (!isValidId) {
     return (
@@ -121,6 +123,9 @@ export function ScheduleDetail({
   }
 
   const record = schedule.data
+  const canAssignWorker =
+    hasSupervisorRole &&
+    currentUser.data?.id === record.assignedSupervisorUserId
   return (
     <section
       aria-labelledby="schedule-detail-title"
@@ -226,9 +231,11 @@ export function ScheduleDetail({
       </Card>
 
       <ScheduleBatchAssignment
-        key={record.id}
+        key={`${record.id}-${record.assignedSupervisorUserId ?? ''}-${record.assignedToUserId ?? ''}`}
         schedule={record}
-        canAssign={canAssignBatch}
+        canAssignSupervisor={canAssignSupervisor}
+        canAssignWorker={canAssignWorker}
+        hasSupervisorRole={hasSupervisorRole}
       />
     </section>
   )

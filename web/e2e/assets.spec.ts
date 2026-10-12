@@ -183,6 +183,8 @@ test.describe('Asset Registry E2E Specs', () => {
     await expect(page.getByRole('heading', { name: 'Assets' })).toBeVisible()
     await expect(page.getByText('FE-001').first()).toBeVisible()
     await page.getByLabel('Asset category').selectOption('fire-alarm')
+    await expect(page).not.toHaveURL(/assetCategory=fire-alarm/)
+    await page.getByRole('button', { name: 'Apply filters' }).click()
     await expect(page).toHaveURL(/assetCategory=fire-alarm/)
     await expect(page.getByText('FA-001').first()).toBeVisible()
   })
@@ -355,7 +357,10 @@ test.describe('Asset Registry E2E Specs', () => {
     await page.goto('/app/assets/new')
 
     await expect(
-      page.getByRole('heading', { name: 'GSD access required' }),
+      page.getByRole('heading', { name: 'Access denied' }),
+    ).toBeVisible()
+    await expect(
+      page.getByText('This page requires one of these roles: GSD.'),
     ).toBeVisible()
   })
 
@@ -375,7 +380,10 @@ test.describe('Asset Registry E2E Specs', () => {
 
     await page.goto('/app/assets/new')
     await expect(
-      page.getByRole('heading', { name: 'GSD access required' }),
+      page.getByRole('heading', { name: 'Access denied' }),
+    ).toBeVisible()
+    await expect(
+      page.getByText('This page requires one of these roles: GSD.'),
     ).toBeVisible()
     expect(postCount).toBe(0)
   })

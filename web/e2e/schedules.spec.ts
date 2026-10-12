@@ -121,6 +121,7 @@ async function mockScheduleApi(page: Page, roles = ['GSD']) {
   )
   await page.route('**/api/v1/schedules**', async (route) => {
     const request = route.request()
+    const pathname = new URL(request.url()).pathname
     if (request.method() === 'POST') {
       return route.fulfill({
         status: 201,
@@ -128,7 +129,21 @@ async function mockScheduleApi(page: Page, roles = ['GSD']) {
         body: JSON.stringify(schedule),
       })
     }
-    if (new URL(request.url()).pathname.endsWith(`/${scheduleId}`)) {
+    if (pathname === '/api/v1/schedules/supervisor-assignment-options') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ supervisors: [] }),
+      })
+    }
+    if (pathname === '/api/v1/schedules/assignment-options') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ workers: [] }),
+      })
+    }
+    if (pathname.endsWith(`/${scheduleId}`)) {
       return route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -348,7 +363,10 @@ test.describe('Schedule workflows', () => {
     })
     await page.goto('/app/schedules/new')
     await expect(
-      page.getByRole('heading', { name: 'Schedule manager access required' }),
+      page.getByRole('heading', { name: 'Access denied' }),
+    ).toBeVisible()
+    await expect(
+      page.getByText('This page requires one of these roles: GSD, Supervisor.'),
     ).toBeVisible()
     expect(postCount).toBe(0)
   })

@@ -15,4 +15,7 @@ export type ListSchedulesParams = {
    * @pattern ^-?(?:0|[1-9]\d*)$
    */
   year?: number | string
+  department?: string
+  assetCategory?: string
+  search?: string
 }

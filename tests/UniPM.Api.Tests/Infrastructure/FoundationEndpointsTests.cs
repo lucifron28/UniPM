@@ -58,6 +58,7 @@ public sealed class FoundationEndpointsTests : IClassFixture<FoundationEndpoints
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
+            builder.DisableScheduleGenerationWorker();
             builder.ConfigureLogging(logging => logging.ClearProviders().AddConsole());
         }
     }

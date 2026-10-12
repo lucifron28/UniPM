@@ -141,6 +141,39 @@ public sealed class InspectionQueryEndpointsTests
     }
 
     [Fact]
+    public async Task List_inspections_combines_asset_and_remarks_filters_without_publishing_draft_rows()
+    {
+        await using var application = new TestApplicationFactory();
+        var client = application.CreateClient();
+        var scenario = await CreateScenarioAsync(application, client);
+        await SeedUnpublishedRowsAsync(application, scenario);
+
+        var response = await client.GetAsync(
+            "/api/v1/inspections?department=GSD&assetCategory=fire-extinguisher&search=follow-up");
+
+        response.EnsureSuccessStatusCode();
+        var inspections = await response.Content.ReadFromJsonAsync<List<InspectionResponse>>();
+        Assert.NotNull(inspections);
+        Assert.Equal(scenario.SecondInspection.Id, Assert.Single(inspections).Id);
+    }
+
+    [Fact]
+    public async Task List_inspections_rejects_invalid_category_and_oversized_filters()
+    {
+        await using var application = new TestApplicationFactory();
+        var client = application.CreateClient();
+        var oversized = new string('x', 257);
+
+        var categoryResponse = await client.GetAsync("/api/v1/inspections?assetCategory=hvac");
+        var searchResponse = await client.GetAsync($"/api/v1/inspections?search={oversized}");
+        var departmentResponse = await client.GetAsync($"/api/v1/inspections?department={oversized}");
+
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, categoryResponse.StatusCode);
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, searchResponse.StatusCode);
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, departmentResponse.StatusCode);
+    }
+
+    [Fact]
     public async Task List_inspections_rejects_an_invalid_date_range()
     {
         await using var application = new TestApplicationFactory();
@@ -254,6 +287,88 @@ public sealed class InspectionQueryEndpointsTests
             firstInspection,
             secondInspection,
             thirdInspection);
+    }
+
+    private static async Task SeedUnpublishedRowsAsync(
+        TestApplicationFactory application,
+        InspectionScenario scenario)
+    {
+        await using var context = await application.Services
+            .GetRequiredService<IDbContextFactory<ApplicationDbContext>>()
+            .CreateDbContextAsync();
+        var now = DateTimeOffset.UtcNow;
+        var unpublishedForms = new[]
+        {
+            new PreventiveMaintenanceForm
+            {
+                Id = Guid.NewGuid(),
+                AssetCategory = "fire-extinguisher",
+                Department = "GSD",
+                PeriodType = "Quarter",
+                Status = "Draft",
+                CreatedByUserId = TestAuthenticationHandler.UserId,
+                CreatedAt = now,
+                UpdatedAt = now
+            },
+            new PreventiveMaintenanceForm
+            {
+                Id = Guid.NewGuid(),
+                AssetCategory = "fire-extinguisher",
+                Department = "GSD",
+                PeriodType = "Quarter",
+                Status = "Submitted",
+                CreatedByUserId = TestAuthenticationHandler.UserId,
+                CreatedAt = now,
+                UpdatedAt = now
+            }
+        };
+        var unpublishedSchedules = new[]
+        {
+            new PreventiveMaintenanceSchedule
+            {
+                Id = Guid.NewGuid(),
+                AssetId = scenario.FirstAsset.Id,
+                ScheduleDate = new DateTimeOffset(2026, 8, 31, 23, 59, 59, TimeSpan.FromHours(8))
+                    .AddTicks(TimeSpan.TicksPerSecond - 1),
+                PmCycle = "2026-08",
+                PeriodType = "Quarter",
+                Status = "Due",
+                Quarter = "Q3",
+                Year = 2026,
+                CreatedAt = now,
+                UpdatedAt = now
+            },
+            new PreventiveMaintenanceSchedule
+            {
+                Id = Guid.NewGuid(),
+                AssetId = scenario.FirstAsset.Id,
+                ScheduleDate = new DateTimeOffset(2026, 11, 30, 23, 59, 59, TimeSpan.FromHours(8))
+                    .AddTicks(TimeSpan.TicksPerSecond - 1),
+                PmCycle = "2026-11",
+                PeriodType = "Quarter",
+                Status = "Due",
+                Quarter = "Q4",
+                Year = 2026,
+                CreatedAt = now,
+                UpdatedAt = now
+            }
+        };
+        context.PreventiveMaintenanceSchedules.AddRange(unpublishedSchedules);
+        context.PreventiveMaintenanceForms.AddRange(unpublishedForms);
+        context.InspectionRecords.AddRange(unpublishedForms.Select((form, index) => new InspectionRecord
+        {
+            Id = Guid.NewGuid(),
+            ScheduleId = unpublishedSchedules[index].Id,
+            PreventiveMaintenanceFormId = form.Id,
+            AssetId = scenario.FirstAsset.Id,
+            InspectorUserId = TestAuthenticationHandler.UserId,
+            DateInspected = now,
+            IsOperational = false,
+            Remarks = "Needs follow-up",
+            CreatedAt = now,
+            UpdatedAt = now
+        }));
+        await context.SaveChangesAsync();
     }
 
     private static async Task<AssetResponse> CreateAssetAsync(

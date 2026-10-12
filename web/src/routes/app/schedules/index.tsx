@@ -4,6 +4,7 @@ import {
   scheduleQuarterCodes,
   scheduleStatusCodes,
 } from '@/features/schedules/schedule-contract'
+import { assetCategoryCodes } from '@/features/assets/asset-contract'
 import {
   ScheduleRegistry,
   type ScheduleSearch,
@@ -13,6 +14,9 @@ const dateTime = z.string().datetime({ offset: true })
 const searchSchema = z
   .object({
     assetId: z.string().uuid().optional(),
+    assetCategory: z.enum(assetCategoryCodes).optional(),
+    department: z.string().trim().max(256).optional(),
+    search: z.string().trim().max(256).optional(),
     status: z.enum(scheduleStatusCodes).optional(),
     from: dateTime.optional(),
     to: dateTime.optional(),

@@ -1,27 +1,39 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { ApiError } from '@/api/problem-details'
 import {
   getCorrectiveMaintenanceHandoff,
   getGetCorrectiveMaintenanceHandoffQueryKey,
   getGetPmPeriodDashboardQueryKey,
+  getGetInspectionQueryKey,
+  getGetInspectionWmsReferralQueryKey,
   getGetPreventiveMaintenanceFormQueryKey,
+  getListInspectionsQueryKey,
   getListPreventiveMaintenanceFormsQueryKey,
-  getPreventiveMaintenanceForm,
+  getInspectionWmsReferral,
   listPreventiveMaintenanceForms,
+  getPreventiveMaintenanceForm,
   useAcknowledgePreventiveMaintenanceForm,
+  useUpdateInspectionWmsReferral,
 } from '@/api/generated/endpoints'
+import type { ListPreventiveMaintenanceFormsParams } from '@/api/generated/models'
 import {
   parseCorrectiveMaintenanceHandoff,
+  parseInspectionWmsReferralDetail,
   parsePreventiveMaintenanceForm,
   parsePreventiveMaintenanceForms,
 } from '@/features/preventive-maintenance-forms/form-contract'
 
-export function usePreventiveMaintenanceForms(enabled = true) {
+export function usePreventiveMaintenanceForms(
+  filters: ListPreventiveMaintenanceFormsParams = {},
+  enabled = true,
+) {
   return useQuery({
-    queryKey: getListPreventiveMaintenanceFormsQueryKey(),
+    queryKey: getListPreventiveMaintenanceFormsQueryKey(filters),
     queryFn: ({ signal }) =>
-      listPreventiveMaintenanceForms(signal).then(
+      listPreventiveMaintenanceForms(filters, signal).then(
         parsePreventiveMaintenanceForms,
       ),
+    placeholderData: (previousData) => previousData,
     enabled,
   })
 }
@@ -48,6 +60,50 @@ export function useCorrectiveMaintenanceHandoff(
         parseCorrectiveMaintenanceHandoff,
       ),
     enabled,
+  })
+}
+
+export function useInspectionWmsReferral(inspectionId: string, enabled = true) {
+  return useQuery({
+    queryKey: getGetInspectionWmsReferralQueryKey(inspectionId),
+    queryFn: ({ signal }) =>
+      getInspectionWmsReferral(inspectionId, signal).then(
+        parseInspectionWmsReferralDetail,
+      ),
+    enabled,
+  })
+}
+
+export function useUpdateInspectionWmsReferralMutation(formId: string) {
+  const queryClient = useQueryClient()
+
+  return useUpdateInspectionWmsReferral({
+    mutation: {
+      onSuccess: (_response, variables) => {
+        void queryClient.invalidateQueries({
+          queryKey: getGetInspectionWmsReferralQueryKey(variables.id),
+        })
+        void queryClient.invalidateQueries({
+          queryKey: getGetInspectionQueryKey(variables.id),
+        })
+        void queryClient.invalidateQueries({
+          queryKey: getGetCorrectiveMaintenanceHandoffQueryKey(formId),
+        })
+        void queryClient.invalidateQueries({
+          queryKey: getListInspectionsQueryKey(),
+        })
+      },
+      onError: (error, variables) => {
+        if (error instanceof ApiError && error.status === 409) {
+          void queryClient.invalidateQueries({
+            queryKey: getGetInspectionWmsReferralQueryKey(variables.id),
+          })
+          void queryClient.invalidateQueries({
+            queryKey: getGetCorrectiveMaintenanceHandoffQueryKey(formId),
+          })
+        }
+      },
+    },
   })
 }
 

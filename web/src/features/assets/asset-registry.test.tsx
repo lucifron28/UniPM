@@ -135,6 +135,7 @@ describe('AssetRegistry feature component', () => {
     await actor.click(screen.getByRole('button', { name: 'Apply filters' }))
     expect(onSearchChange).toHaveBeenCalledWith(
       expect.objectContaining({ text: 'FE', page: 1 }),
+      { preserveScroll: true },
     )
   })
 
@@ -188,7 +189,7 @@ describe('AssetRegistry feature component', () => {
     expect(await screen.findAllByText('FE-001')).toBeTruthy()
     expect(onSearchChange).toHaveBeenCalledWith(
       expect.objectContaining({ page: undefined }),
-      { replace: true },
+      { replace: true, preserveScroll: true },
     )
   })
 
@@ -249,9 +250,12 @@ describe('AssetRegistry feature component', () => {
     await screen.findByPlaceholderText(
       'Asset code, QR, building, department, or location',
     )
-    await actor.click(screen.getByRole('button', { name: 'Clear' }))
+    await actor.click(screen.getByRole('button', { name: 'Clear filters' }))
 
-    expect(onSearchChange).toHaveBeenCalledWith({ page: 1 })
+    expect(onSearchChange).toHaveBeenCalledWith(
+      { page: 1 },
+      { preserveScroll: true },
+    )
     expect(
       screen.getByPlaceholderText(
         'Asset code, QR, building, department, or location',
@@ -259,7 +263,7 @@ describe('AssetRegistry feature component', () => {
     ).toHaveValue('')
   })
 
-  it('passes server-side filter parameters to API without including client-side text search param', async () => {
+  it('passes the combined server-side filters to the API', async () => {
     let capturedUrl: URL | null = null
     server.use(
       http.get(assetsWildcardUrl, ({ request }) => {
@@ -289,6 +293,7 @@ describe('AssetRegistry feature component', () => {
     expect(capturedUrl!.searchParams.get('status')).toBe('Active')
     expect(capturedUrl!.searchParams.get('building')).toBe('Science Hall')
     expect(capturedUrl!.searchParams.get('department')).toBe('Maintenance')
+    expect(capturedUrl!.searchParams.get('search')).toBe('FA-002')
     expect(capturedUrl!.searchParams.get('text')).toBeNull()
   })
 
@@ -364,7 +369,12 @@ describe('AssetRegistry feature component', () => {
 
   it('shows no-match state when filters produce zero results on non-empty registry', async () => {
     server.use(
-      http.get(assetsWildcardUrl, () => HttpResponse.json(sampleAssets)),
+      http.get(assetsWildcardUrl, ({ request }) =>
+        new URL(request.url).searchParams.get('search') ===
+        'NONEXISTENT-ASSET-QUERY'
+          ? HttpResponse.json([])
+          : HttpResponse.json(sampleAssets),
+      ),
       http.get(categoriesUrl, () => HttpResponse.json(sampleCategories)),
     )
 

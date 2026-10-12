@@ -6,11 +6,11 @@ using Microsoft.Extensions.Logging;
 namespace UniPM.Api.Tests.Observability;
 
 [Collection(ObservabilityMetricsCollection.Name)]
-public sealed class ObservabilityEndpointTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class ObservabilityEndpointTests : IClassFixture<ObservabilityEndpointTests.TestApplicationFactory>
 {
     private readonly WebApplicationFactory<Program> defaultApplication;
 
-    public ObservabilityEndpointTests(WebApplicationFactory<Program> defaultApplication)
+    public ObservabilityEndpointTests(TestApplicationFactory defaultApplication)
     {
         this.defaultApplication = defaultApplication;
     }
@@ -52,8 +52,17 @@ public sealed class ObservabilityEndpointTests : IClassFixture<WebApplicationFac
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
+            builder.DisableScheduleGenerationWorker();
             builder.UseSetting("Observability:MetricsEnabled", "true");
             builder.ConfigureLogging(logging => logging.ClearProviders().AddConsole());
+        }
+    }
+
+    public sealed class TestApplicationFactory : WebApplicationFactory<Program>
+    {
+        protected override void ConfigureWebHost(IWebHostBuilder builder)
+        {
+            builder.DisableScheduleGenerationWorker();
         }
     }
 }

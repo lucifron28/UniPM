@@ -82,6 +82,9 @@ internal static class AuthServiceCollectionExtensions
                 AuthPolicyCatalog.CanManageSchedules,
                 policy => policy.RequireRole(AuthRoleCatalog.Gsd, AuthRoleCatalog.Supervisor));
             options.AddPolicy(
+                AuthPolicyCatalog.CanGenerateSchedules,
+                policy => policy.RequireRole(AuthRoleCatalog.Gsd));
+            options.AddPolicy(
                 AuthPolicyCatalog.CanReadSchedules,
                 policy => policy
                     .RequireAuthenticatedUser()
@@ -90,8 +93,11 @@ internal static class AuthServiceCollectionExtensions
                         AuthRoleCatalog.Inspector,
                         AuthRoleCatalog.Supervisor));
             options.AddPolicy(
-                AuthPolicyCatalog.CanAssignScheduleBatches,
+                AuthPolicyCatalog.CanAssignScheduleSupervisors,
                 policy => policy.RequireRole(AuthRoleCatalog.Gsd));
+            options.AddPolicy(
+                AuthPolicyCatalog.CanAssignScheduleWorkers,
+                policy => policy.RequireRole(AuthRoleCatalog.Supervisor));
             options.AddPolicy(
                 AuthPolicyCatalog.CanManagePreventiveMaintenanceForms,
                 policy => policy.RequireRole(AuthRoleCatalog.Gsd, AuthRoleCatalog.Inspector));
@@ -104,6 +110,9 @@ internal static class AuthServiceCollectionExtensions
                 });
             options.AddPolicy(
                 AuthPolicyCatalog.CanAccessCorrectiveMaintenanceHandoff,
+                policy => policy.RequireRole(AuthRoleCatalog.Gsd));
+            options.AddPolicy(
+                AuthPolicyCatalog.CanManageWmsReferral,
                 policy => policy.RequireRole(AuthRoleCatalog.Gsd));
         });
 

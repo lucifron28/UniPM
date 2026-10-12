@@ -17,8 +17,9 @@
   --text-secondary: #5a413d;
   --text-neutral: #57534e;
   --border-soft: #e7e5e4;
-  --success: #15803d;
-  --warning: #b45309;
+  --border-control: #767676;
+  --success: #166534;
+  --warning: #9a3412;
   --error: #ba1a1a;
   --information: #1d4ed8;
 }
@@ -34,8 +35,10 @@ body {
   box-sizing: border-box;
 }
 
-a {
-  color: inherit;
+@layer base {
+  a {
+    color: inherit;
+  }
 }
 
 button,

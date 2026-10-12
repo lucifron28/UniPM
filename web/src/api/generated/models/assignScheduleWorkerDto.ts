@@ -5,7 +5,6 @@
  * OpenAPI spec version: 1.0.0
  */
 
-export interface AssignScheduleBatchDto {
+export interface AssignScheduleWorkerDto {
   workerUserId?: string
-  supervisorUserId?: string
 }

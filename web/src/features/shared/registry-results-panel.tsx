@@ -18,6 +18,7 @@ type RegistryResultsPanelProps = {
   viewportSize: RegistryViewportSize
   desktopContent: ReactNode
   mobileContent: ReactNode
+  isUpdating?: boolean
   pagination?: RegistryPagination
 }
 
@@ -62,6 +63,7 @@ export function RegistryResultsPanel({
   viewportSize,
   desktopContent,
   mobileContent,
+  isUpdating = false,
   pagination,
 }: RegistryResultsPanelProps) {
   const desktopClassName =
@@ -82,6 +84,13 @@ export function RegistryResultsPanel({
 
   return (
     <section aria-label={label + ' results'} className="space-y-4">
+      <p
+        className="min-h-5 text-sm text-[var(--text-neutral)]"
+        role={isUpdating ? 'status' : undefined}
+        aria-live="polite"
+      >
+        {isUpdating ? 'Updating results...' : null}
+      </p>
       <Card
         className={'hidden overflow-hidden p-0 shadow-none ' + desktopClassName}
       >

@@ -16,7 +16,14 @@ export interface CorrectiveMaintenanceHandoffRowResponse {
   /** @nullable */
   findingOrRemarks: string | null
   isOperational: boolean
-  recommendedCorrectiveAction: string
+  /** @nullable */
+  recommendedCorrectiveAction: string | null
+  /** @nullable */
+  wmsPmNumber: string | null
+  /** @pattern ^-?(?:0|[1-9]\d*)$ */
+  wmsReferralRevision: number | string
+  followUpStatus: string
+  canRecordWmsReferral: boolean
   skilledWorkerUserId: string
   /** @nullable */
   skilledWorkerIdentity: string | null

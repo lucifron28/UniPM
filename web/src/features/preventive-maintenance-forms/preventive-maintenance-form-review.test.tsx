@@ -5,6 +5,7 @@ import {
   waitFor,
   within,
 } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import {
   createMemoryHistory,
@@ -197,6 +198,9 @@ function installDashboardNavigationHandlers(
         isOperational: false,
         remarks: 'Pressure is low.',
         actionsRecommendations: 'Inspect and recharge the unit.',
+        externalPmNumber: null,
+        wmsReferralRevision: 0,
+        correctiveFollowUpStatus: 'CorrectiveFollowUpPending',
         createdAt: timestamps.createdAt,
         updatedAt: timestamps.updatedAt,
       }),
@@ -334,16 +338,17 @@ describe('preventive-maintenance form review', () => {
       ),
     )
 
-    renderWithProviders(<FormRegistry />)
+    renderWithProviders(<FormRegistry search={{}} onSearchChange={vi.fn()} />)
 
     expect(
       await screen.findByRole('heading', { name: 'Form review' }),
     ).toBeInTheDocument()
-    expect(screen.getByText('Draft')).toBeInTheDocument()
-    expect(screen.getByText('Awaiting acknowledgement')).toBeInTheDocument()
-    expect(screen.getByText('Acknowledged')).toBeInTheDocument()
-    expect(screen.getAllByText('Main Building / GSD')).toHaveLength(3)
-    expect(screen.getAllByText('Inspection rows')).toHaveLength(3)
+    expect(screen.getAllByText('Draft')).toHaveLength(3)
+    expect(screen.getAllByText('Awaiting acknowledgement')).toHaveLength(3)
+    expect(screen.getAllByText('Acknowledged')).toHaveLength(3)
+    // jsdom includes both responsive lists: three forms rendered twice.
+    expect(screen.getAllByText('Main Building / GSD')).toHaveLength(6)
+    expect(screen.getAllByText('Inspection rows')).toHaveLength(6)
     expect(screen.queryByText(formId)).not.toBeInTheDocument()
     expect(
       screen.queryByText('77777777-7777-4777-8777-777777777777'),
@@ -352,11 +357,109 @@ describe('preventive-maintenance form review', () => {
       screen.queryByText('88888888-8888-4888-8888-888888888888'),
     ).not.toBeInTheDocument()
     expect(
-      screen.getByRole('link', { name: 'GSD-SUBMITTED-001' }),
+      screen.getAllByRole('link', { name: 'GSD-SUBMITTED-001' })[0],
     ).toHaveAttribute(
       'href',
       '/app/preventive-maintenance-forms/77777777-7777-4777-8777-777777777777?returnContext=%7B%22kind%22%3A%22formRegistry%22%7D',
     )
+  })
+
+  it('applies combined form filters and preserves them through the detail link', async () => {
+    const requests: URL[] = []
+    const submittedForm = { ...form('Submitted'), pmCycle: '2026-07' }
+    server.use(
+      http.get(meUrl, () => HttpResponse.json(currentUser(['GSD']))),
+      http.get(formsUrl, ({ request }) => {
+        requests.push(new URL(request.url))
+        return HttpResponse.json([submittedForm])
+      }),
+    )
+
+    const router = renderAppRouter('/app/preventive-maintenance-forms')
+    const actor = userEvent.setup()
+    await screen.findAllByRole('link', { name: 'GSD-SUBMITTED-001' })
+    expect(requests).toHaveLength(1)
+
+    await actor.type(
+      screen.getByRole('textbox', { name: 'Search forms' }),
+      'FE-TEST',
+    )
+    await actor.selectOptions(screen.getByLabelText('Form status'), 'Submitted')
+    await actor.selectOptions(
+      screen.getByLabelText('Asset category'),
+      'fire-extinguisher',
+    )
+    await actor.selectOptions(screen.getByLabelText('Department'), 'GSD')
+    await actor.selectOptions(screen.getByLabelText('PM cycle'), '2026-07')
+    expect(requests).toHaveLength(1)
+
+    await actor.click(screen.getByRole('button', { name: 'Apply filters' }))
+    await waitFor(() => {
+      expect(
+        requests.some((url) => url.searchParams.get('search') === 'FE-TEST'),
+      ).toBe(true)
+      expect(router.state.location.search).toMatchObject({
+        status: 'Submitted',
+        assetCategory: 'fire-extinguisher',
+        department: 'GSD',
+        pmCycle: '2026-07',
+        search: 'FE-TEST',
+        page: 1,
+      })
+    })
+    const applied = requests.find(
+      (url) => url.searchParams.get('search') === 'FE-TEST',
+    )
+    expect(applied?.searchParams.get('status')).toBe('Submitted')
+    expect(applied?.searchParams.get('assetCategory')).toBe('fire-extinguisher')
+    expect(applied?.searchParams.get('department')).toBe('GSD')
+    expect(applied?.searchParams.get('pmCycle')).toBe('2026-07')
+
+    const href = screen
+      .getAllByRole('link', { name: 'GSD-SUBMITTED-001' })[0]!
+      .getAttribute('href')
+    const returnContext = JSON.parse(
+      new URL(href!, 'http://localhost').searchParams.get('returnContext')!,
+    )
+    expect(returnContext).toEqual({
+      kind: 'formRegistry',
+      search: {
+        status: 'Submitted',
+        assetCategory: 'fire-extinguisher',
+        department: 'GSD',
+        pmCycle: '2026-07',
+        search: 'FE-TEST',
+        page: 1,
+      },
+    })
+  })
+
+  it('keeps form filters mounted for a recoverable list failure', async () => {
+    let attempts = 0
+    server.use(
+      http.get(meUrl, () => HttpResponse.json(currentUser(['GSD']))),
+      http.get(formsUrl, () => {
+        attempts += 1
+        return attempts === 1
+          ? HttpResponse.json({}, { status: 503 })
+          : HttpResponse.json([form('Submitted')])
+      }),
+    )
+
+    renderWithProviders(<FormRegistry search={{}} onSearchChange={vi.fn()} />)
+
+    expect(
+      await screen.findByText(
+        'Preventive-maintenance forms could not be loaded.',
+      ),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('textbox', { name: 'Search forms' }),
+    ).toBeInTheDocument()
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Retry' }))
+    expect(
+      await screen.findAllByRole('link', { name: 'GSD-SUBMITTED-001' }),
+    ).toHaveLength(2)
   })
 
   it('renders human-readable row context and water-station work items', async () => {
@@ -388,6 +491,7 @@ describe('preventive-maintenance form review', () => {
     expect(screen.getByText('Main Building lobby')).toBeInTheDocument()
     expect(screen.getByText('Synthetic Inspector')).toBeInTheDocument()
     expect(screen.getByText('Awaiting acknowledgement')).toBeInTheDocument()
+    expect(screen.getByText(/Corrective follow-up pending/)).toBeInTheDocument()
     expect(screen.getByText('Recommendation')).toBeInTheDocument()
     expect(
       screen.getByText('Water drinking station work items'),
@@ -435,6 +539,10 @@ describe('preventive-maintenance form review', () => {
               findingOrRemarks: 'Pressure is low.',
               isOperational: false,
               recommendedCorrectiveAction: 'Inspect and recharge the unit.',
+              wmsPmNumber: null,
+              wmsReferralRevision: 0,
+              followUpStatus: 'CorrectiveFollowUpPending',
+              canRecordWmsReferral: true,
               skilledWorkerUserId: inspectorId,
               skilledWorkerIdentity: 'Synthetic Reviewer',
             },
@@ -477,6 +585,140 @@ describe('preventive-maintenance form review', () => {
     expect(
       screen.queryByRole('heading', { name: 'Acknowledge submitted form' }),
     ).not.toBeInTheDocument()
+  })
+
+  it('records and audits a supplied WMS PM number for a completed non-operational row', async () => {
+    let externalPmNumber: string | null = null
+    let revision = 0
+    let referralReadCount = 0
+    let submittedBody: Record<string, unknown> | undefined
+    const referralUrl = `*/api/v1/inspections/${inspectionId}/wms-referral`
+    const referralAudit = () =>
+      revision === 0
+        ? []
+        : [
+            {
+              previousExternalPmNumber: null,
+              newExternalPmNumber: externalPmNumber,
+              revision,
+              changedByUserId: inspectorId,
+              changedAt: '2026-08-02T03:00:00Z',
+            },
+          ]
+
+    server.use(
+      http.get(meUrl, () => HttpResponse.json(currentUser(['GSD']))),
+      http.get(`${formsUrl}/${formId}`, () =>
+        HttpResponse.json(form('Acknowledged')),
+      ),
+      http.get(`${formsUrl}/${formId}/corrective-handoff`, () =>
+        HttpResponse.json({
+          formId,
+          fileNumber: 'GSD-ACKNOWLEDGED-001',
+          acknowledgedAt: '2026-07-29T02:00:00Z',
+          department: 'GSD',
+          building: 'Main Building',
+          assetCategory: 'fire-extinguisher',
+          hasCorrectiveActionRows: false,
+          rows: [
+            {
+              inspectionId,
+              inspectionDate: '2026-07-28T02:00:00Z',
+              assetDeviceNumber: null,
+              assetCode: 'FE-001',
+              location: 'Room 101',
+              findingOrRemarks: 'Pressure is low.',
+              isOperational: false,
+              recommendedCorrectiveAction: null,
+              wmsPmNumber: externalPmNumber,
+              wmsReferralRevision: revision,
+              followUpStatus: revision
+                ? 'ReferredToWms'
+                : 'CorrectiveFollowUpPending',
+              canRecordWmsReferral: true,
+              skilledWorkerUserId: inspectorId,
+              skilledWorkerIdentity: 'Synthetic Reviewer',
+            },
+          ],
+        }),
+      ),
+      http.put(referralUrl, async ({ request }) => {
+        submittedBody = (await request.json()) as Record<string, unknown>
+        externalPmNumber = String(submittedBody.externalPmNumber)
+        revision += 1
+        return HttpResponse.json({
+          inspectionId,
+          externalPmNumber,
+          revision,
+          recordedByUserId: inspectorId,
+          recordedAt: '2026-08-02T03:00:00Z',
+          lastUpdatedByUserId: inspectorId,
+          lastUpdatedAt: '2026-08-02T03:00:00Z',
+          followUpStatus: 'ReferredToWms',
+        })
+      }),
+      http.get(referralUrl, () => {
+        referralReadCount += 1
+        return HttpResponse.json({
+          inspectionId,
+          followUpStatus: revision
+            ? 'ReferredToWms'
+            : 'CorrectiveFollowUpPending',
+          externalPmNumber,
+          revision,
+          recordedByUserId: revision ? inspectorId : null,
+          recordedAt: revision ? '2026-08-02T03:00:00Z' : null,
+          lastUpdatedByUserId: revision ? inspectorId : null,
+          lastUpdatedAt: revision ? '2026-08-02T03:00:00Z' : null,
+          canRecordReferral: true,
+          eligibilityMessage: null,
+          audit: referralAudit(),
+        })
+      }),
+    )
+
+    renderWithProviders(<FormDetail formId={formId} />)
+    const actor = userEvent.setup()
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Corrective-action findings',
+      }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'FE-001' })).toBeInTheDocument()
+    expect(
+      screen.getByText('Recommended corrective action'),
+    ).toBeInTheDocument()
+    expect(referralReadCount).toBe(0)
+
+    await actor.type(
+      screen.getByRole('textbox', { name: 'WMS PM number for FE-001' }),
+      ' WMS-PM-042 ',
+    )
+    await actor.click(
+      screen.getByRole('button', { name: 'Save WMS PM number' }),
+    )
+    await waitFor(() => {
+      expect(submittedBody).toEqual({
+        externalPmNumber: 'WMS-PM-042',
+        expectedRevision: 0,
+      })
+    })
+    expect(
+      await screen.findByText('External WMS PM number: WMS-PM-042'),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Referred to WMS')).toBeInTheDocument()
+    expect(referralReadCount).toBe(0)
+
+    await actor.click(
+      screen.getByRole('button', { name: 'View WMS PM number history' }),
+    )
+    expect(
+      await screen.findByText(/Initial reference recorded\s*→\s*WMS-PM-042/),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(new RegExp(`User ${inspectorId} ·`)),
+    ).toBeInTheDocument()
+    expect(referralReadCount).toBe(1)
   })
 
   it('does not offer acknowledgement for a Draft form', async () => {
@@ -970,9 +1212,10 @@ describe('preventive-maintenance form review', () => {
     )
     const router = renderAppRouter('/app/preventive-maintenance-forms')
 
-    fireEvent.click(
-      await screen.findByRole('link', { name: 'GSD-SUBMITTED-001' }),
-    )
+    const formLinks = await screen.findAllByRole('link', {
+      name: 'GSD-SUBMITTED-001',
+    })
+    fireEvent.click(formLinks[0]!)
     expect(
       await screen.findByRole('heading', { name: 'Inspection rows' }),
     ).toBeInTheDocument()

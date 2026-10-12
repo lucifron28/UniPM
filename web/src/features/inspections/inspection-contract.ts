@@ -5,6 +5,16 @@ import type {
 } from '@/api/generated/models'
 
 const sourceText = z.string().max(2_000).nullable()
+export const inspectionFollowUpStatusCodes = [
+  'NoReferralRequired',
+  'CorrectiveFollowUpPending',
+  'ReferredToWms',
+] as const
+const followUpStatus = z.enum(inspectionFollowUpStatusCodes)
+const revision = z.union([
+  z.number().int().nonnegative(),
+  z.string().regex(/^\d+$/).transform(Number),
+])
 
 export const inspectionSchema = z
   .object({
@@ -24,6 +34,9 @@ export const inspectionSchema = z
     waterReplaceCarbonFilter: z.boolean().nullable().optional(),
     waterReplaceSedimentFilter: z.boolean().nullable().optional(),
     waterCheckUvLight: z.boolean().nullable().optional(),
+    externalPmNumber: z.string().max(128).nullable(),
+    wmsReferralRevision: revision,
+    correctiveFollowUpStatus: followUpStatus,
     createdAt: z.string().datetime({ offset: true }),
     updatedAt: z.string().datetime({ offset: true }),
   })
@@ -49,6 +62,7 @@ export const inspectionHistorySchema = z
 
 export type Inspection = z.infer<typeof inspectionSchema>
 export type InspectionHistory = z.infer<typeof inspectionHistorySchema>
+export type InspectionFollowUpStatus = z.infer<typeof followUpStatus>
 
 export function parseInspection(value: InspectionResponse): Inspection {
   return inspectionSchema.parse(value)

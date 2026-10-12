@@ -17,29 +17,69 @@ public static class SchedulesEndpoints
     {
         var group = endpoints.MapGroup("/schedules").WithTags("Schedules");
 
-        group.MapGet("/assignment-options", async (
+        group.MapPost("/generate", async (
+            GenerateScheduleCyclesDto dto,
+            PreventiveMaintenanceScheduleGenerationService scheduleGenerator,
+            TimeProvider timeProvider,
+            CancellationToken cancellationToken) =>
+        {
+            var now = timeProvider.GetUtcNow();
+            var institutionalNow = PreventiveMaintenanceCycle.ToInstitutionalTime(now);
+            var validationErrors = dto.Validate(institutionalNow.Year);
+            if (validationErrors.Count > 0)
+            {
+                return ApiErrors.Validation(validationErrors);
+            }
+
+            var result = await scheduleGenerator.EnsureYearAsync(dto.Year, now, cancellationToken);
+            return Results.Ok(result);
+        })
+        .WithName("GeneratePreventiveMaintenanceSchedules")
+        .WithSummary("Ensures missing CPMP schedules for one calendar year")
+        .Produces<ScheduleGenerationResult>(StatusCodes.Status200OK)
+        .Produces<Microsoft.AspNetCore.Mvc.ValidationProblemDetails>(StatusCodes.Status400BadRequest)
+        .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status401Unauthorized)
+        .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status403Forbidden)
+        .RequireAuthorization(AuthPolicyCatalog.CanGenerateSchedules);
+
+        group.MapGet("/supervisor-assignment-options", async (
             UserManager<ApplicationUser> userManager) =>
         {
-            var workers = await userManager.GetUsersInRoleAsync(AuthRoleCatalog.Inspector);
             var supervisors = await userManager.GetUsersInRoleAsync(AuthRoleCatalog.Supervisor);
-            return Results.Ok(new ScheduleAssignmentOptionsResponse(
-                workers.Where(user => user.IsActive)
-                    .OrderBy(user => user.DisplayName)
-                    .Select(user => new ScheduleAssigneeOption(user.Id, user.DisplayName))
-                    .ToArray(),
+            return Results.Ok(new ScheduleSupervisorAssignmentOptionsResponse(
                 supervisors.Where(user => user.IsActive)
                     .OrderBy(user => user.DisplayName)
                     .Select(user => new ScheduleAssigneeOption(user.Id, user.DisplayName))
                     .ToArray()));
         })
-        .WithName("ListScheduleAssignmentOptions")
-        .WithSummary("Lists active Inspector and Supervisor accounts for GSD batch assignment")
-        .Produces<ScheduleAssignmentOptionsResponse>(StatusCodes.Status200OK)
-        .RequireAuthorization(AuthPolicyCatalog.CanAssignScheduleBatches);
+        .WithName("ListScheduleSupervisorAssignmentOptions")
+        .WithSummary("Lists active Supervisors for GSD batch assignment")
+        .Produces<ScheduleSupervisorAssignmentOptionsResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .RequireAuthorization(AuthPolicyCatalog.CanAssignScheduleSupervisors);
+
+        group.MapGet("/assignment-options", async (
+            UserManager<ApplicationUser> userManager) =>
+        {
+            var workers = await userManager.GetUsersInRoleAsync(AuthRoleCatalog.Inspector);
+            return Results.Ok(new ScheduleWorkerAssignmentOptionsResponse(
+                workers.Where(user => user.IsActive)
+                    .OrderBy(user => user.DisplayName)
+                    .Select(user => new ScheduleAssigneeOption(user.Id, user.DisplayName))
+                    .ToArray()));
+        })
+        .WithName("ListScheduleWorkerAssignmentOptions")
+        .WithSummary("Lists active Inspectors for Supervisor batch assignment")
+        .Produces<ScheduleWorkerAssignmentOptionsResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .RequireAuthorization(AuthPolicyCatalog.CanAssignScheduleWorkers);
 
         group.MapPost("/", async (
             CreateScheduleDto dto,
             IDbContextFactory<ApplicationDbContext> factory,
+            TimeProvider timeProvider,
             CancellationToken cancellationToken) =>
         {
             var validationErrors = dto.Validate();
@@ -69,6 +109,15 @@ public static class SchedulesEndpoints
                 });
             }
 
+            var duplicateCycle = await context.PreventiveMaintenanceSchedules
+                .AnyAsync(schedule => schedule.AssetId == dto.AssetId
+                    && schedule.PmCycle == pmCycle,
+                    cancellationToken);
+            if (duplicateCycle)
+            {
+                return ApiErrors.Conflict("A schedule already exists for this asset and PM cycle.");
+            }
+
             if (asset.Status != AssetStatusCatalog.Active)
             {
                 return ApiErrors.Validation(new Dictionary<string, string[]>
@@ -85,7 +134,7 @@ public static class SchedulesEndpoints
                 });
             }
 
-            var now = DateTimeOffset.UtcNow;
+            var now = timeProvider.GetUtcNow();
             PreventiveMaintenanceCycle.TryParse(pmCycle, out var year, out var month);
             var quarter = $"Q{((month - 1) / 3) + 1}";
             var periodType = SchedulePeriodTypeCatalog.TryNormalize(
@@ -110,7 +159,17 @@ public static class SchedulesEndpoints
             };
 
             context.PreventiveMaintenanceSchedules.Add(schedule);
-            await context.SaveChangesAsync(cancellationToken);
+            try
+            {
+                await context.SaveChangesAsync(cancellationToken);
+            }
+            catch (DbUpdateException exception)
+                when (DatabaseConstraintViolation.IsUniqueConstraint(
+                    exception,
+                    PreventiveMaintenanceScheduleGenerationService.UniqueIndexName))
+            {
+                return ApiErrors.Conflict("A schedule already exists for this asset and PM cycle.");
+            }
 
             return Results.Created($"/api/v1/schedules/{schedule.Id}", ScheduleResponse.FromSchedule(schedule));
         })
@@ -121,11 +180,12 @@ public static class SchedulesEndpoints
         .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status401Unauthorized)
         .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status403Forbidden)
         .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status404NotFound)
+        .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status409Conflict)
         .RequireAuthorization(AuthPolicyCatalog.CanManageSchedules);
 
-        group.MapPut("/{id:guid}/assignment", async (
+        group.MapPut("/{id:guid}/supervisor-assignment", async (
             Guid id,
-            AssignScheduleBatchDto dto,
+            AssignScheduleSupervisorDto dto,
             IDbContextFactory<ApplicationDbContext> factory,
             UserManager<ApplicationUser> userManager,
             CancellationToken cancellationToken) =>
@@ -134,16 +194,6 @@ public static class SchedulesEndpoints
             if (errors.Count > 0)
             {
                 return ApiErrors.Validation(errors);
-            }
-
-            var worker = await userManager.FindByIdAsync(dto.WorkerUserId.ToString());
-            if (worker is null || !worker.IsActive
-                || !await userManager.IsInRoleAsync(worker, AuthRoleCatalog.Inspector))
-            {
-                return ApiErrors.Validation(new Dictionary<string, string[]>
-                {
-                    [nameof(dto.WorkerUserId)] = ["Choose an active Inspector account."]
-                });
             }
 
             var supervisor = await userManager.FindByIdAsync(dto.SupervisorUserId.ToString());
@@ -157,8 +207,30 @@ public static class SchedulesEndpoints
             }
 
             await using var context = await factory.CreateDbContextAsync(cancellationToken);
-            var selected = await context.PreventiveMaintenanceSchedules
+            var preview = await context.PreventiveMaintenanceSchedules
                 .AsNoTracking()
+                .Include(schedule => schedule.Asset)
+                .SingleOrDefaultAsync(schedule => schedule.Id == id, cancellationToken);
+            if (preview?.Asset is null)
+            {
+                return ApiErrors.NotFound("Schedule not found.");
+            }
+
+            if (!ScheduleBatchIdentity.TryCreate(preview, out var identity))
+            {
+                return ApiErrors.Conflict("Schedules without a department and valid PM cycle cannot be assigned as a batch.");
+            }
+
+            await using var mutationLock = await ScheduleBatchMutationLockLease.AcquireAsync(
+                context,
+                identity,
+                cancellationToken);
+            if (!mutationLock.Acquired)
+            {
+                return ApiErrors.Conflict("This PM batch is being updated. Try again shortly.");
+            }
+
+            var selected = await context.PreventiveMaintenanceSchedules
                 .Include(schedule => schedule.Asset)
                 .SingleOrDefaultAsync(schedule => schedule.Id == id, cancellationToken);
             if (selected?.Asset is null)
@@ -166,81 +238,185 @@ public static class SchedulesEndpoints
                 return ApiErrors.NotFound("Schedule not found.");
             }
 
-            if (selected.Status == ScheduleStatusCatalog.Cancelled)
+            if (!ScheduleBatchIdentity.TryCreate(selected, out var currentIdentity)
+                || currentIdentity != identity)
             {
-                return ApiErrors.Conflict("Cancelled schedules cannot be assigned.");
+                return ApiErrors.Conflict("The PM batch changed while assignment was being prepared. Refresh and try again.");
             }
 
-            var department = selected.Asset.Department?.Trim().ToUpperInvariant();
-            if (string.IsNullOrEmpty(department))
-            {
-                return ApiErrors.Conflict("Schedules without a department cannot be assigned as a batch.");
-            }
-
-            var pmCycle = PreventiveMaintenanceCycle.ForSchedule(selected);
-            var batch = await context.PreventiveMaintenanceSchedules
-                .Include(schedule => schedule.Asset)
-                .Where(schedule => schedule.PmCycle == pmCycle
-                    && schedule.Asset != null
-                    && schedule.Asset.AssetCategory == selected.Asset.AssetCategory
-                    && schedule.Asset.Department != null
-                    && schedule.Asset.Department.ToUpper() == department
-                    && schedule.Status != ScheduleStatusCatalog.Cancelled)
-                .ToListAsync(cancellationToken);
-
+            var batch = await LoadBatchAsync(context, identity, cancellationToken);
             if (batch.Count == 0)
             {
-                return ApiErrors.Conflict("No active schedules were found in this PM batch.");
+                return ApiErrors.Conflict("No schedules were found in this PM batch.");
             }
 
-            var eligibleStatuses = new[]
+            if (await HasAssignmentWorkEvidenceAsync(context, batch, cancellationToken))
             {
-                ScheduleStatusCatalog.Due,
-                ScheduleStatusCatalog.Ongoing,
-                ScheduleStatusCatalog.Overdue
-            };
-            if (batch.Any(schedule => !eligibleStatuses.Contains(schedule.Status)))
-            {
-                return ApiErrors.Conflict("A PM batch can only be assigned before its schedules are completed.");
+                return ApiErrors.Conflict("A PM batch cannot be assigned after inspection work has started or a schedule is completed or cancelled.");
             }
 
-            var scheduleIds = batch.Select(schedule => schedule.Id).ToArray();
-            if (await context.InspectionRecords.AnyAsync(
-                    inspection => scheduleIds.Contains(inspection.ScheduleId),
-                    cancellationToken))
-            {
-                return ApiErrors.Conflict("A PM batch cannot be reassigned after inspection work has started.");
-            }
-
+            var supervisorChanged = batch.Any(schedule => schedule.AssignedSupervisorUserId != supervisor.Id);
             var now = DateTimeOffset.UtcNow;
             foreach (var schedule in batch)
             {
-                schedule.AssignedToUserId = worker.Id;
                 schedule.AssignedSupervisorUserId = supervisor.Id;
+                if (supervisorChanged)
+                {
+                    schedule.AssignedToUserId = null;
+                }
+
                 schedule.UpdatedAt = now;
             }
 
             await context.SaveChangesAsync(cancellationToken);
+            await mutationLock.CommitAsync(cancellationToken);
 
+            var workerIds = batch.Select(schedule => schedule.AssignedToUserId).Distinct().ToArray();
+            var workerId = workerIds.Length == 1 ? workerIds[0] : null;
+            var worker = workerId is { } assignedWorkerId
+                ? await userManager.FindByIdAsync(assignedWorkerId.ToString())
+                : null;
+            var scheduleIds = batch.Select(schedule => schedule.Id).ToArray();
             return Results.Ok(new ScheduleAssignmentBatchResponse(
-                department,
+                identity.Department,
                 selected.Asset.AssetCategory,
-                pmCycle,
-                worker.Id,
-                worker.DisplayName,
+                identity.PmCycle,
+                workerId,
+                worker?.DisplayName,
                 supervisor.Id,
                 supervisor.DisplayName,
                 scheduleIds));
         })
-        .WithName("AssignScheduleBatch")
-        .WithSummary("Assigns the schedules in one department, category, and PM cycle batch")
+        .WithName("AssignScheduleBatchSupervisor")
+        .WithSummary("Assigns a Supervisor to all schedules in one PM batch")
         .Produces<ScheduleAssignmentBatchResponse>(StatusCodes.Status200OK)
         .Produces<Microsoft.AspNetCore.Mvc.ValidationProblemDetails>(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden)
         .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status404NotFound)
         .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status409Conflict)
-        .RequireAuthorization(AuthPolicyCatalog.CanAssignScheduleBatches);
+        .RequireAuthorization(AuthPolicyCatalog.CanAssignScheduleSupervisors);
+
+        group.MapPut("/{id:guid}/assignment", async (
+            Guid id,
+            AssignScheduleWorkerDto dto,
+            ClaimsPrincipal principal,
+            IDbContextFactory<ApplicationDbContext> factory,
+            UserManager<ApplicationUser> userManager,
+            CancellationToken cancellationToken) =>
+        {
+            var errors = dto.Validate();
+            if (errors.Count > 0)
+            {
+                return ApiErrors.Validation(errors);
+            }
+
+            if (!Guid.TryParse(principal.FindFirst(JwtRegisteredClaimNames.Sub)?.Value, out var supervisorId))
+            {
+                return Results.Forbid();
+            }
+
+            var supervisor = await userManager.FindByIdAsync(supervisorId.ToString());
+            if (supervisor is null || !supervisor.IsActive
+                || !await userManager.IsInRoleAsync(supervisor, AuthRoleCatalog.Supervisor))
+            {
+                return Results.Forbid();
+            }
+
+            var worker = await userManager.FindByIdAsync(dto.WorkerUserId.ToString());
+            if (worker is null || !worker.IsActive
+                || !await userManager.IsInRoleAsync(worker, AuthRoleCatalog.Inspector))
+            {
+                return ApiErrors.Validation(new Dictionary<string, string[]>
+                {
+                    [nameof(dto.WorkerUserId)] = ["Choose an active Inspector account."]
+                });
+            }
+
+            await using var context = await factory.CreateDbContextAsync(cancellationToken);
+            var preview = await context.PreventiveMaintenanceSchedules
+                .AsNoTracking()
+                .Include(schedule => schedule.Asset)
+                .SingleOrDefaultAsync(schedule => schedule.Id == id, cancellationToken);
+            if (preview?.Asset is null)
+            {
+                return ApiErrors.NotFound("Schedule not found.");
+            }
+
+            if (!ScheduleBatchIdentity.TryCreate(preview, out var identity))
+            {
+                return ApiErrors.Conflict("Schedules without a department and valid PM cycle cannot be assigned as a batch.");
+            }
+
+            await using var mutationLock = await ScheduleBatchMutationLockLease.AcquireAsync(
+                context,
+                identity,
+                cancellationToken);
+            if (!mutationLock.Acquired)
+            {
+                return ApiErrors.Conflict("This PM batch is being updated. Try again shortly.");
+            }
+
+            var selected = await context.PreventiveMaintenanceSchedules
+                .Include(schedule => schedule.Asset)
+                .SingleOrDefaultAsync(schedule => schedule.Id == id, cancellationToken);
+            if (selected?.Asset is null)
+            {
+                return ApiErrors.NotFound("Schedule not found.");
+            }
+
+            if (!ScheduleBatchIdentity.TryCreate(selected, out var currentIdentity)
+                || currentIdentity != identity)
+            {
+                return ApiErrors.Conflict("The PM batch changed while assignment was being prepared. Refresh and try again.");
+            }
+
+            var batch = await LoadBatchAsync(context, identity, cancellationToken);
+            if (batch.Count == 0)
+            {
+                return ApiErrors.Conflict("No schedules were found in this PM batch.");
+            }
+
+            if (batch.Any(schedule => schedule.AssignedSupervisorUserId != supervisor.Id))
+            {
+                return Results.Forbid();
+            }
+
+            if (await HasAssignmentWorkEvidenceAsync(context, batch, cancellationToken))
+            {
+                return ApiErrors.Conflict("A PM batch cannot be assigned after inspection work has started or a schedule is completed or cancelled.");
+            }
+
+            var now = DateTimeOffset.UtcNow;
+            foreach (var schedule in batch)
+            {
+                schedule.AssignedToUserId = worker.Id;
+                schedule.UpdatedAt = now;
+            }
+
+            await context.SaveChangesAsync(cancellationToken);
+            await mutationLock.CommitAsync(cancellationToken);
+
+            var scheduleIds = batch.Select(schedule => schedule.Id).ToArray();
+            return Results.Ok(new ScheduleAssignmentBatchResponse(
+                identity.Department,
+                selected.Asset.AssetCategory,
+                identity.PmCycle,
+                worker.Id,
+                worker.DisplayName,
+                supervisor.Id,
+                supervisor.DisplayName,
+                scheduleIds));
+        })
+        .WithName("AssignScheduleBatchWorker")
+        .WithSummary("Assigns an Inspector to a PM batch owned by the authenticated Supervisor")
+        .Produces<ScheduleAssignmentBatchResponse>(StatusCodes.Status200OK)
+        .Produces<Microsoft.AspNetCore.Mvc.ValidationProblemDetails>(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status404NotFound)
+        .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status409Conflict)
+        .RequireAuthorization(AuthPolicyCatalog.CanAssignScheduleWorkers);
 
         group.MapGet("/", async (
             Guid? assetId,
@@ -249,6 +425,9 @@ public static class SchedulesEndpoints
             DateTimeOffset? to,
             string? quarter,
             int? year,
+            string? department,
+            string? assetCategory,
+            string? search,
             ClaimsPrincipal user,
             IDbContextFactory<ApplicationDbContext> factory,
             CancellationToken cancellationToken) =>
@@ -273,6 +452,35 @@ public static class SchedulesEndpoints
                 {
                     [nameof(from)] = ["From date must be earlier than or equal to to date."]
                 });
+            }
+
+            var normalizedDepartment = string.IsNullOrWhiteSpace(department)
+                ? null
+                : department.Trim();
+            var normalizedSearch = string.IsNullOrWhiteSpace(search)
+                ? null
+                : search.Trim();
+            var normalizedCategory = string.Empty;
+            var validationErrors = new Dictionary<string, string[]>();
+            if (normalizedDepartment?.Length > 256)
+            {
+                validationErrors[nameof(department)] = ["Department must be 256 characters or fewer."];
+            }
+
+            if (normalizedSearch?.Length > 256)
+            {
+                validationErrors[nameof(search)] = ["Search must be 256 characters or fewer."];
+            }
+
+            if (!string.IsNullOrWhiteSpace(assetCategory)
+                && !AssetCategoryCatalog.TryNormalize(assetCategory, out normalizedCategory))
+            {
+                validationErrors[nameof(assetCategory)] = ["Asset category must be one of the selected UniPM study scope categories."];
+            }
+
+            if (validationErrors.Count > 0)
+            {
+                return ApiErrors.Validation(validationErrors);
             }
 
             await using var context = await factory.CreateDbContextAsync(cancellationToken);
@@ -327,6 +535,35 @@ public static class SchedulesEndpoints
             if (year is not null)
             {
                 query = query.Where(schedule => schedule.Year == year.Value);
+            }
+
+            if (normalizedDepartment is not null)
+            {
+                var departmentKey = normalizedDepartment.ToUpperInvariant();
+                query = query.Where(schedule =>
+                    schedule.Asset != null
+                    && schedule.Asset.Department != null
+                    && schedule.Asset.Department.ToUpper() == departmentKey);
+            }
+
+            if (!string.IsNullOrWhiteSpace(assetCategory))
+            {
+                query = query.Where(schedule =>
+                    schedule.Asset != null
+                    && schedule.Asset.AssetCategory == normalizedCategory);
+            }
+
+            if (normalizedSearch is not null)
+            {
+                var searchKey = normalizedSearch.ToUpperInvariant();
+                query = query.Where(schedule =>
+                    schedule.PmCycle != null && schedule.PmCycle.ToUpper().Contains(searchKey)
+                    || (schedule.Asset != null && (
+                        schedule.Asset.AssetCode.Contains(searchKey)
+                        || schedule.Asset.AssetCategory.ToUpper().Contains(searchKey)
+                        || (schedule.Asset.Building != null && schedule.Asset.Building.ToUpper().Contains(searchKey))
+                        || (schedule.Asset.Department != null && schedule.Asset.Department.ToUpper().Contains(searchKey))
+                        || (schedule.Asset.Location != null && schedule.Asset.Location.ToUpper().Contains(searchKey)))));
             }
 
             var schedules = await query
@@ -408,6 +645,40 @@ public static class SchedulesEndpoints
 
         return endpoints;
     }
+
+    private static Task<List<PreventiveMaintenanceSchedule>> LoadBatchAsync(
+        ApplicationDbContext context,
+        ScheduleBatchIdentity identity,
+        CancellationToken cancellationToken)
+    {
+        return context.PreventiveMaintenanceSchedules
+            .Include(schedule => schedule.Asset)
+            .Where(schedule => schedule.PmCycle == identity.PmCycle
+                && schedule.Asset != null
+                && schedule.Asset.AssetCategory.Trim().ToUpper() == identity.AssetCategory
+                && schedule.Asset.Department != null
+                && schedule.Asset.Department.Trim().ToUpper() == identity.Department)
+            .ToListAsync(cancellationToken);
+    }
+
+    private static async Task<bool> HasAssignmentWorkEvidenceAsync(
+        ApplicationDbContext context,
+        IReadOnlyCollection<PreventiveMaintenanceSchedule> batch,
+        CancellationToken cancellationToken)
+    {
+        if (batch.Any(schedule => schedule.CompletedAt is not null
+            || !string.Equals(schedule.Status, ScheduleStatusCatalog.Due, StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(schedule.Status, ScheduleStatusCatalog.Ongoing, StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(schedule.Status, ScheduleStatusCatalog.Overdue, StringComparison.OrdinalIgnoreCase)))
+        {
+            return true;
+        }
+
+        var scheduleIds = batch.Select(schedule => schedule.Id).ToArray();
+        return await context.InspectionRecords.AnyAsync(
+            inspection => scheduleIds.Contains(inspection.ScheduleId),
+            cancellationToken);
+    }
 }
 
 public sealed record ScheduleResponse(
@@ -460,24 +731,25 @@ public sealed record ScheduleResponse(
 
 public sealed record ScheduleAssigneeOption(Guid Id, string DisplayName);
 
-public sealed record ScheduleAssignmentOptionsResponse(
-    IReadOnlyList<ScheduleAssigneeOption> Workers,
+public sealed record ScheduleWorkerAssignmentOptionsResponse(
+    IReadOnlyList<ScheduleAssigneeOption> Workers);
+
+public sealed record ScheduleSupervisorAssignmentOptionsResponse(
     IReadOnlyList<ScheduleAssigneeOption> Supervisors);
 
 public sealed record ScheduleAssignmentBatchResponse(
     string Department,
     string AssetCategory,
     string PmCycle,
-    Guid WorkerUserId,
-    string WorkerDisplayName,
+    Guid? WorkerUserId,
+    string? WorkerDisplayName,
     Guid SupervisorUserId,
     string SupervisorDisplayName,
     IReadOnlyList<Guid> ScheduleIds);
 
-public sealed class AssignScheduleBatchDto
+public sealed class AssignScheduleWorkerDto
 {
     public Guid WorkerUserId { get; set; }
-    public Guid SupervisorUserId { get; set; }
 
     internal Dictionary<string, string[]> Validate()
     {
@@ -487,12 +759,19 @@ public sealed class AssignScheduleBatchDto
             errors[nameof(WorkerUserId)] = ["An Inspector must be assigned."];
         }
 
-        if (SupervisorUserId == Guid.Empty)
-        {
-            errors[nameof(SupervisorUserId)] = ["A Supervisor must be assigned."];
-        }
-
         return errors;
+    }
+}
+
+public sealed class AssignScheduleSupervisorDto
+{
+    public Guid SupervisorUserId { get; set; }
+
+    internal Dictionary<string, string[]> Validate()
+    {
+        return SupervisorUserId == Guid.Empty
+            ? new Dictionary<string, string[]> { [nameof(SupervisorUserId)] = ["A Supervisor must be assigned."] }
+            : [];
     }
 }
 
@@ -627,5 +906,21 @@ public class CreateScheduleDto
         }
 
         throw new InvalidOperationException("A valid PM cycle is required before a schedule can be created.");
+    }
+}
+
+public sealed class GenerateScheduleCyclesDto
+{
+    public int Year { get; set; }
+
+    internal Dictionary<string, string[]> Validate(int currentInstitutionalYear)
+    {
+        var errors = new Dictionary<string, string[]>();
+        if (Year is < 2000 || Year > currentInstitutionalYear)
+        {
+            errors[nameof(Year)] = [$"Year must be between 2000 and {currentInstitutionalYear}."];
+        }
+
+        return errors;
     }
 }

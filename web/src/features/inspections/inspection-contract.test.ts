@@ -18,6 +18,9 @@ const inspection = {
   waterReplaceCarbonFilter: true,
   waterReplaceSedimentFilter: false,
   waterCheckUvLight: true,
+  externalPmNumber: null,
+  wmsReferralRevision: 0,
+  correctiveFollowUpStatus: 'CorrectiveFollowUpPending',
   createdAt: '2026-07-22T01:00:00Z',
   updatedAt: '2026-07-22T01:00:00Z',
 }

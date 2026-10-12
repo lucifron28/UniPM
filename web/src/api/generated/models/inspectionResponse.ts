@@ -26,4 +26,9 @@ export interface InspectionResponse {
   waterReplaceSedimentFilter?: boolean | null
   /** @nullable */
   waterCheckUvLight?: boolean | null
+  /** @nullable */
+  externalPmNumber?: string | null
+  /** @pattern ^-?(?:0|[1-9]\d*)$ */
+  wmsReferralRevision?: number | string
+  correctiveFollowUpStatus?: string
 }

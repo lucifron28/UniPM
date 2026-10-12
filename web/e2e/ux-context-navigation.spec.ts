@@ -71,6 +71,13 @@ const inspection = {
   updatedAt: '2026-08-28T03:00:00Z',
 }
 
+const inspectionResponse = {
+  ...inspection,
+  externalPmNumber: null,
+  wmsReferralRevision: 0,
+  correctiveFollowUpStatus: 'CorrectiveFollowUpPending',
+}
+
 const history = [
   {
     id: inspectionId,
@@ -285,7 +292,7 @@ async function installApi(page: Page, assetList = [asset]) {
   await page.route('**/api/v1/inspections**', (route) => {
     const pathname = new URL(route.request().url()).pathname
     if (pathname === '/api/v1/inspections') {
-      return route.fulfill(jsonResponse([inspection]))
+      return route.fulfill(jsonResponse([inspectionResponse]))
     }
     if (pathname === '/api/v1/inspections/history/' + assetId) {
       return route.fulfill(jsonResponse(history))
@@ -294,14 +301,17 @@ async function installApi(page: Page, assetList = [asset]) {
       return route.fulfill(jsonResponse(history))
     }
     if (pathname === '/api/v1/inspections/' + inspectionId) {
-      return route.fulfill(jsonResponse(inspection))
+      return route.fulfill(jsonResponse(inspectionResponse))
     }
     return route.fulfill(jsonResponse([]))
   })
   await page.route('**/api/v1/schedules**', (route) => {
     const pathname = new URL(route.request().url()).pathname
+    if (pathname === '/api/v1/schedules/supervisor-assignment-options') {
+      return route.fulfill(jsonResponse({ supervisors: [] }))
+    }
     if (pathname === '/api/v1/schedules/assignment-options') {
-      return route.fulfill(jsonResponse({ workers: [], supervisors: [] }))
+      return route.fulfill(jsonResponse({ workers: [] }))
     }
     if (pathname === '/api/v1/schedules') {
       return route.fulfill(jsonResponse([schedule]))

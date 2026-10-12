@@ -21,6 +21,7 @@ export function useInspections(filters: InspectionServerFilters = {}) {
     queryKey: getListInspectionsQueryKey(filters),
     queryFn: ({ signal }) =>
       listInspections(filters, signal).then(parseInspections),
+    placeholderData: (previousData) => previousData,
   })
 }
 

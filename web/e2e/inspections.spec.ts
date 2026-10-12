@@ -59,6 +59,9 @@ const inspection = {
   isOperational: false,
   remarks: 'Low pressure recorded during inspection.',
   actionsRecommendations: 'Arrange a pressure check.',
+  externalPmNumber: null,
+  wmsReferralRevision: 0,
+  correctiveFollowUpStatus: 'CorrectiveFollowUpPending',
   createdAt: '2026-07-22T01:00:00Z',
   updatedAt: '2026-07-22T01:00:00Z',
 }

@@ -17,4 +17,11 @@ describe('inspection route search', () => {
       )
     },
   )
+
+  it('accepts known WMS referral statuses and drops invalid values', () => {
+    expect(
+      parseInspectionSearch({ wmsReferralStatus: 'ReferredToWms' }),
+    ).toEqual({ wmsReferralStatus: 'ReferredToWms' })
+    expect(parseInspectionSearch({ wmsReferralStatus: 'unknown' })).toEqual({})
+  })
 })
