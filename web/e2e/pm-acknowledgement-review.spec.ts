@@ -8,7 +8,7 @@ const reviewerId = '66666666-6666-4666-8666-666666666666'
 
 const session = {
   accessToken: 'fictional-pm-review-token',
-  expiresAtUtc: '2026-08-01T12:00:00Z',
+  expiresAtUtc: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
   user: {
     id: reviewerId,
     email: 'fictional.gsd@example.test',
@@ -23,7 +23,7 @@ const form = {
   assetCategory: 'fire-extinguisher',
   building: 'Main Building',
   department: 'GSD',
-  pmCycle: '2026-07',
+  pmCycle: '2026-08',
   periodType: 'Quarter',
   quarter: 'Q3',
   semester: null,
@@ -32,19 +32,19 @@ const form = {
   status: 'Submitted',
   createdByUserId: reviewerId,
   submittedByUserId: reviewerId,
-  submittedAt: '2026-07-29T01:00:00Z',
-  fieldWorkCompletedAt: '2026-07-28T03:00:00Z',
-  createdAt: '2026-07-28T00:00:00Z',
-  updatedAt: '2026-07-29T01:00:00Z',
+  submittedAt: '2026-08-29T01:00:00Z',
+  fieldWorkCompletedAt: '2026-08-28T03:00:00Z',
+  createdAt: '2026-08-28T00:00:00Z',
+  updatedAt: '2026-08-29T01:00:00Z',
   inspections: [
     {
       id: inspectionId,
       scheduleId,
       assetId,
       inspectorUserId: reviewerId,
-      dateInspected: '2026-07-28T02:00:00Z',
-      startedAt: '2026-07-28T02:00:00Z',
-      completedAt: '2026-07-28T03:00:00Z',
+      dateInspected: '2026-08-28T02:00:00Z',
+      startedAt: '2026-08-28T02:00:00Z',
+      completedAt: '2026-08-28T03:00:00Z',
       isOperational: false,
       remarks: 'Pressure is low.',
       actionsRecommendations: 'Inspect and recharge the unit.',
@@ -55,8 +55,8 @@ const form = {
       assetCode: 'FE-TEST-001',
       location: 'Main hallway',
       skilledWorkerIdentity: 'Synthetic Inspector',
-      createdAt: '2026-07-28T02:00:00Z',
-      updatedAt: '2026-07-28T03:00:00Z',
+      createdAt: '2026-08-28T02:00:00Z',
+      updatedAt: '2026-08-28T03:00:00Z',
     },
   ],
 }
@@ -64,7 +64,7 @@ const form = {
 const batch = {
   department: 'GSD',
   assetCategory: 'fire-extinguisher',
-  pmCycle: '2026-07',
+  pmCycle: '2026-08',
   scheduled: 1,
   inspected: 1,
   completedOnTime: 1,
@@ -75,8 +75,8 @@ const batch = {
   formId,
   formStatus: 'Submitted',
   fileNumber: 'PMF-2026-0001',
-  fieldWorkCompletedAt: '2026-07-28T03:00:00Z',
-  submittedAt: '2026-07-29T01:00:00Z',
+  fieldWorkCompletedAt: '2026-08-28T03:00:00Z',
+  submittedAt: '2026-08-29T01:00:00Z',
   isAcknowledged: false,
   acknowledgedAt: null,
 }
@@ -90,13 +90,13 @@ const assetRow = {
   building: 'Main Building',
   location: 'Main hallway',
   department: 'GSD',
-  pmCycle: '2026-07',
-  scheduleDate: '2026-07-01T00:00:00Z',
-  deadline: '2026-07-31T16:00:00Z',
+  pmCycle: '2026-08',
+  scheduleDate: '2026-08-31T15:59:59.999Z',
+  deadline: '2026-08-31T15:59:59.999Z',
   scheduleStatus: 'Completed',
   executionStatus: 'Completed',
   isInspected: true,
-  inspectionCompletedAt: '2026-07-28T03:00:00Z',
+  inspectionCompletedAt: '2026-08-28T03:00:00Z',
   timeliness: 'OnTime',
   condition: 'NonOperational',
   remarks: 'Pressure is low.',
@@ -108,10 +108,10 @@ const assetRow = {
 }
 
 const dashboard = {
-  pmCycle: '2026-07',
+  pmCycle: '2026-08',
   assetCategory: 'fire-extinguisher',
   department: 'GSD',
-  deadline: '2026-07-31T16:00:00Z',
+  deadline: '2026-08-31T15:59:59.999Z',
   periodState: 'Closed',
   complianceMeasurable: true,
   inspectionResultsAvailable: true,
@@ -153,9 +153,21 @@ async function mockApi(page: import('@playwright/test').Page) {
         {
           assetCategory: 'fire-extinguisher',
           year: 2026,
-          cycles: [{ pmCycle: '2026-07', scheduled: 1 }],
+          cycles: [{ pmCycle: '2026-08', scheduled: 1 }],
         },
       ]),
+    ),
+  )
+  await page.route('**/api/v1/schedules/enrollment-deferrals**', (route) =>
+    route.fulfill(
+      jsonResponse({
+        page: 1,
+        pageSize: 10,
+        total: 0,
+        pendingCount: 0,
+        reviewedCount: 0,
+        items: [],
+      }),
     ),
   )
   await page.route(
@@ -169,15 +181,15 @@ async function mockApi(page: import('@playwright/test').Page) {
         scheduleId,
         assetId,
         inspectorUserId: reviewerId,
-        dateInspected: '2026-07-28T02:00:00Z',
+        dateInspected: '2026-08-28T02:00:00Z',
         isOperational: false,
         remarks: 'Pressure is low.',
         actionsRecommendations: 'Inspect and recharge the unit.',
         externalPmNumber: null,
         wmsReferralRevision: 0,
         correctiveFollowUpStatus: 'CorrectiveFollowUpPending',
-        createdAt: '2026-07-28T02:00:00Z',
-        updatedAt: '2026-07-28T03:00:00Z',
+        createdAt: '2026-08-28T02:00:00Z',
+        updatedAt: '2026-08-28T03:00:00Z',
       }),
     ),
   )
@@ -192,8 +204,8 @@ async function mockApi(page: import('@playwright/test').Page) {
         location: 'Main hallway',
         qrCodeValue: 'UNIPM-FE-TEST-001',
         status: 'Active',
-        createdAt: '2026-07-01T00:00:00Z',
-        updatedAt: '2026-07-28T03:00:00Z',
+        createdAt: '2026-08-01T00:00:00Z',
+        updatedAt: '2026-08-28T03:00:00Z',
         hasVerificationLocation: false,
       }),
     ),
@@ -203,7 +215,7 @@ async function mockApi(page: import('@playwright/test').Page) {
       jsonResponse({
         id: scheduleId,
         assetId,
-        scheduleDate: '2026-07-01T00:00:00Z',
+        scheduleDate: '2026-08-31T15:59:59.999Z',
         periodType: 'Quarter',
         status: 'Completed',
         quarter: 'Q3',
@@ -211,9 +223,9 @@ async function mockApi(page: import('@playwright/test').Page) {
         year: 2026,
         academicYear: '2026-2027',
         assignedToUserId: reviewerId,
-        completedAt: '2026-07-28T03:00:00Z',
-        createdAt: '2026-07-01T00:00:00Z',
-        updatedAt: '2026-07-28T03:00:00Z',
+        completedAt: '2026-08-28T03:00:00Z',
+        createdAt: '2026-08-01T00:00:00Z',
+        updatedAt: '2026-08-28T03:00:00Z',
         asset: {
           id: assetId,
           assetCode: 'FE-TEST-001',
@@ -241,7 +253,7 @@ test('demonstrates the submitted PM batch acknowledgement review workflow', asyn
   ).toBeVisible()
   await page.getByRole('button', { name: 'Fire Extinguisher' }).click()
   await page.getByRole('button', { name: '2026' }).click()
-  await page.getByRole('button', { name: /July 2026/ }).click()
+  await page.getByRole('button', { name: /August 2026/ }).click()
   await page.getByRole('button', { name: 'Generate dashboard' }).click()
   await expect(page.getByRole('link', { name: 'Review batch' })).toBeVisible()
 
@@ -265,7 +277,7 @@ test('demonstrates the submitted PM batch acknowledgement review workflow', asyn
   await expect(
     summary.getByText('Fire Extinguisher', { exact: true }),
   ).toBeVisible()
-  await expect(summary.getByText('July 2026', { exact: true })).toBeVisible()
+  await expect(summary.getByText('August 2026', { exact: true })).toBeVisible()
   await expect(
     summary.getByText('Awaiting acknowledgement', { exact: true }),
   ).toBeVisible()
@@ -275,8 +287,8 @@ test('demonstrates the submitted PM batch acknowledgement review workflow', asyn
   await expect(summaryValue('Inspected')).toHaveText('1')
   await expect(summaryValue('Completed on time')).toHaveText('1')
   await expect(summaryValue('Compliance rate')).toHaveText('100%')
-  await expect(summaryValue('Field-work completion')).toHaveText(/Jul 28, 2026/)
-  await expect(summaryValue('Submitted timestamp')).toHaveText(/Jul 29, 2026/)
+  await expect(summaryValue('Field-work completion')).toHaveText(/Aug 28, 2026/)
+  await expect(summaryValue('Submitted timestamp')).toHaveText(/Aug 29, 2026/)
   const acknowledgementCard = page
     .getByRole('heading', { name: 'Acknowledge whole PM batch' })
     .locator('..')
@@ -335,7 +347,7 @@ test('demonstrates the submitted PM batch acknowledgement review workflow', asyn
 
   // 10. Confirm the review table remains contained and scrollable on mobile.
   await page.goto(
-    `/app/preventive-maintenance-forms/${formId}/review?department=GSD&assetCategory=fire-extinguisher&pmCycle=2026-07`,
+    `/app/preventive-maintenance-forms/${formId}/review?department=GSD&assetCategory=fire-extinguisher&pmCycle=2026-08`,
   )
   await page.setViewportSize({ width: 375, height: 667 })
   const table = page.getByRole('table', {

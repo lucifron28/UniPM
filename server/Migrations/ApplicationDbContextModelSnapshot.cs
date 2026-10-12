@@ -1080,6 +1080,66 @@ namespace UniPM.Api.Migrations
                     b.ToTable("RefreshSessions", (string)null);
                 });
 
+            modelBuilder.Entity("UniPM.Api.Models.ScheduleEnrollmentDeferral", b =>
+                {
+                    b.Property<Guid>("AssetId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("PmCycle")
+                        .HasMaxLength(7)
+                        .HasColumnType("nvarchar(7)");
+
+                    b.Property<string>("AssetCategoryAtDeferral")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<DateTimeOffset>("DeferredAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("DepartmentAtDeferral")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("NextEligiblePmCycle")
+                        .IsRequired()
+                        .HasMaxLength(7)
+                        .HasColumnType("nvarchar(7)");
+
+                    b.Property<string>("ReasonCode")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<string>("ReviewNote")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTimeOffset?>("ReviewedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid?>("ReviewedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("AssetId", "PmCycle");
+
+                    b.HasIndex("DeferredAt", "AssetId");
+
+                    b.HasIndex("ReviewedAt", "DeferredAt");
+
+                    b.ToTable("ScheduleEnrollmentDeferrals", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_ScheduleEnrollmentDeferrals_NextEligiblePmCycle_Format", "LEN([NextEligiblePmCycle]) = 7 AND [NextEligiblePmCycle] LIKE '[0-9][0-9][0-9][0-9]-[0-1][0-9]' AND RIGHT([NextEligiblePmCycle], 2) BETWEEN '01' AND '12'");
+
+                            t.HasCheckConstraint("CK_ScheduleEnrollmentDeferrals_PmCycle_Format", "LEN([PmCycle]) = 7 AND [PmCycle] LIKE '[0-9][0-9][0-9][0-9]-[0-1][0-9]' AND RIGHT([PmCycle], 2) BETWEEN '01' AND '12'");
+
+                            t.HasCheckConstraint("CK_ScheduleEnrollmentDeferrals_ReasonCode_Allowed", "[ReasonCode] IN ('BatchAssigned', 'WorkInProgress', 'CycleCompleted', 'CycleCancelled', 'InspectionStarted', 'FormSubmitted', 'FormAcknowledged')");
+
+                            t.HasCheckConstraint("CK_ScheduleEnrollmentDeferrals_ReviewState", "([ReviewedAt] IS NULL AND [ReviewedByUserId] IS NULL) OR ([ReviewedAt] IS NOT NULL AND [ReviewedByUserId] IS NOT NULL)");
+                        });
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
                 {
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole<System.Guid>", null)
@@ -1291,6 +1351,15 @@ namespace UniPM.Api.Migrations
                     b.Navigation("ReplacedBySession");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("UniPM.Api.Models.ScheduleEnrollmentDeferral", b =>
+                {
+                    b.HasOne("UniPM.Api.Models.Asset", null)
+                        .WithMany()
+                        .HasForeignKey("AssetId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("UniPM.Api.Models.InspectionRecord", b =>

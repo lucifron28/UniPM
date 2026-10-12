@@ -31,6 +31,13 @@ public static class AssetsEndpoints
             AssetCategoryCatalog.TryNormalize(dto.AssetCategory, out var assetCategory);
 
             await using var context = await factory.CreateDbContextAsync(cancellationToken);
+            Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction? transaction = null;
+            if (string.Equals(context.Database.ProviderName, "Microsoft.EntityFrameworkCore.SqlServer", StringComparison.Ordinal))
+            {
+                transaction = await context.Database.BeginTransactionAsync(cancellationToken);
+            }
+
+            await using var transactionScope = transaction;
             var duplicateAssetCode = await context.Assets
                 .AnyAsync(asset => asset.AssetCode == assetCode, cancellationToken);
 
@@ -59,14 +66,19 @@ public static class AssetsEndpoints
             asset.QrCodeValue = AssetQrCodeValue.Create(asset.AssetCategory, asset.Id);
 
             context.Assets.Add(asset);
-            await scheduleGenerator.AddCurrentYearUpcomingCyclesAsync(
-                context,
-                asset,
-                now,
-                cancellationToken);
             try
             {
+                await scheduleGenerator.AddCurrentYearUpcomingCyclesAsync(
+                    context,
+                    asset,
+                    now,
+                    cancellationToken,
+                    transaction);
                 await context.SaveChangesAsync(cancellationToken);
+                if (transaction is not null)
+                {
+                    await transaction.CommitAsync(cancellationToken);
+                }
             }
             catch (DbUpdateException exception)
                 when (DatabaseConstraintViolation.IsUniqueConstraint(
@@ -78,6 +90,10 @@ public static class AssetsEndpoints
             catch (DbUpdateException exception) when (DatabaseConstraintViolation.IsUniqueConstraint(exception))
             {
                 return ApiErrors.Conflict("Asset code or QR code value already exists.");
+            }
+            catch (ScheduleBatchMutationConflictException)
+            {
+                return ApiErrors.Conflict("The current PM batch changed while the asset was being enrolled. Retry the registration.");
             }
 
             return Results.Created(

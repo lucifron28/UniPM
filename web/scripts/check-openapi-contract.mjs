@@ -59,6 +59,14 @@ const scheduleOperations = [
   ],
 ]
 
+const scheduleCoverageReviewOperation = [
+  '/api/v1/schedules/coverage-review',
+  'get',
+  'ListScheduleCoverageReview',
+  '200',
+  'ScheduleCoverageReviewPage',
+]
+
 const inspectionOperations = [
   [
     '/api/v1/inspections',
@@ -206,6 +214,22 @@ for (const [
         `Required schedule operation ${operationId} must return ${schemaName}.`,
       )
     }
+  }
+}
+
+{
+  const [path, method, operationId, status, schemaName] =
+    scheduleCoverageReviewOperation
+  const operation = snapshot.paths?.[path]?.[method]
+  const schema =
+    operation?.responses?.[status]?.content?.['application/json']?.schema
+  if (
+    operation?.operationId !== operationId ||
+    schema?.$ref !== `#/components/schemas/${schemaName}`
+  ) {
+    throw new Error(
+      `Required schedule operation ${operationId} must return ${schemaName}.`,
+    )
   }
 }
 

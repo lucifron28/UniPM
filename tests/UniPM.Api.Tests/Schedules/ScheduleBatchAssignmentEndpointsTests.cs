@@ -178,7 +178,7 @@ public sealed class ScheduleBatchAssignmentEndpointsTests
     }
 
     [Fact]
-    public async Task Linked_inspection_blocks_both_assignment_stages_even_when_schedule_is_due()
+    public async Task Linked_inspection_blocks_both_assignment_stages_even_when_schedule_is_overdue()
     {
         var databaseName = $"unipm-assignment-{Guid.NewGuid():N}";
         await using var gsdApplication = new TestApplicationFactory(AuthRoleCatalog.Gsd, databaseName);
@@ -207,7 +207,7 @@ public sealed class ScheduleBatchAssignmentEndpointsTests
         var stored = await supervisorApplication.GetAssignmentsAsync();
         Assert.Null(stored[schedule.Id].WorkerId);
         Assert.Equal(supervisorId, stored[schedule.Id].SupervisorId);
-        Assert.Equal(ScheduleStatusCatalog.Due, await supervisorApplication.GetScheduleStatusAsync(schedule.Id));
+        Assert.Equal(ScheduleStatusCatalog.Overdue, await supervisorApplication.GetScheduleStatusAsync(schedule.Id));
     }
 
     [Theory]

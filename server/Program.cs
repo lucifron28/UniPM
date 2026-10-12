@@ -139,6 +139,8 @@ if (maintenanceCommand == SyntheticMaintenanceCommand.None
 builder.Services.Configure<EmbeddingOptions>(builder.Configuration.GetSection(EmbeddingOptions.SectionName));
 builder.Services.Configure<PreventiveMaintenanceFormSubmissionOptions>(
     builder.Configuration.GetSection(PreventiveMaintenanceFormSubmissionOptions.SectionName));
+builder.Services.Configure<ScheduleGenerationOptions>(
+    builder.Configuration.GetSection(ScheduleGenerationOptions.SectionName));
 builder.Services.AddSingleton<PreventiveMaintenanceFileNumberGenerator>();
 builder.Services.AddHttpClient<IEmbeddingService, OpenAiCompatibleEmbeddingService>();
 builder.Services.AddScoped<IInstitutionalReferenceEmbeddingIndexer, InstitutionalReferenceEmbeddingIndexer>();

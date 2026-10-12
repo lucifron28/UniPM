@@ -31,6 +31,13 @@ public sealed class PreventiveMaintenanceScheduleGenerationWorker(
                         "Preventive-maintenance schedule recovery checked {Year}: {CreatedSchedules} schedules added.",
                         result.Year,
                         result.CreatedSchedules);
+                    if (result.CyclesRequiringGsdCoverageReview > 0)
+                    {
+                        logger.LogWarning(
+                            "Skipped {CyclesRequiringGsdCoverageReview} missing current-year cycles before the current month because ScheduleGeneration:EffectiveDate is not configured. GSD must confirm the approved coverage date before catch-up generation.",
+                            result.CyclesRequiringGsdCoverageReview);
+                    }
+
                     lastSuccessfulCheck = institutionalDate;
                     succeeded = true;
                 }

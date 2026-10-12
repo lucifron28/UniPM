@@ -29,6 +29,8 @@ import {
   useSchedules,
   useScheduleStatuses,
 } from '@/features/schedules/schedule-queries'
+import { ScheduleEnrollmentDeferralReview } from '@/features/schedules/schedule-enrollment-deferral-review'
+import { ScheduleCoverageReview } from '@/features/schedules/schedule-coverage-review'
 import {
   fromDateTimeLocal,
   formatPmCycle,
@@ -233,9 +235,7 @@ export function ScheduleRegistry({
   const canGenerate = currentUser.data?.roles.includes('GSD') ?? false
   const parsedGenerationYear = Number(generationYear)
   const generationYearIsValid =
-    /^\d{4}$/.test(generationYear) &&
-    parsedGenerationYear >= 2000 &&
-    parsedGenerationYear <= currentManilaYear
+    /^\d{4}$/.test(generationYear) && parsedGenerationYear === currentManilaYear
   const pageSize = 10
   const records = useMemo(
     () => filteredSchedules.data ?? [],
@@ -352,9 +352,18 @@ export function ScheduleRegistry({
                   scheduleGeneration.mutate(parsedGenerationYear, {
                     onSuccess: (result) => {
                       setGenerationFailed(false)
-                      setGenerationMessage(
-                        `Year ${result.year}: created ${result.createdSchedules} missing schedules; ${result.existingSchedules} already existed.`,
+                      const summary =
+                        `Year ${result.year}: created ${result.createdSchedules} schedules; ` +
+                        `${result.existingSchedules} already existed; ` +
+                        `${result.deferredSchedules} deferred for GSD review.`
+                      const coverageReviewCount = Number(
+                        result.cyclesRequiringGsdCoverageReview,
                       )
+                      const coverageReview =
+                        coverageReviewCount > 0
+                          ? ` ${coverageReviewCount} earlier current-year cycle${coverageReviewCount === 1 ? '' : 's'} remain uncreated until GSD confirms the approved scheduling coverage start date.`
+                          : ''
+                      setGenerationMessage(summary + coverageReview)
                     },
                     onError: () => {
                       setGenerationFailed(true)
@@ -369,7 +378,7 @@ export function ScheduleRegistry({
                   Generation year
                   <Input
                     type="number"
-                    min={2000}
+                    min={currentManilaYear}
                     max={currentManilaYear}
                     step={1}
                     value={generationYear}
@@ -409,6 +418,9 @@ export function ScheduleRegistry({
           {generationMessage}
         </p>
       )}
+
+      {canGenerate && <ScheduleCoverageReview />}
+      {canGenerate && <ScheduleEnrollmentDeferralReview />}
 
       {allSchedules.isPending || statuses.isPending ? (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3" role="status">
@@ -726,7 +738,7 @@ export function ScheduleRegistry({
                 {table.getHeaderGroups().map((headerGroup) => (
                   <tr key={headerGroup.id}>
                     {headerGroup.headers.map((header) => (
-                      <th key={header.id} className="px-5 py-3">
+                      <th key={header.id} scope="col" className="px-5 py-3">
                         {header.isPlaceholder
                           ? null
                           : flexRender(

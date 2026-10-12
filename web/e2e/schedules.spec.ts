@@ -4,7 +4,7 @@ const assetId = '22222222-2222-4222-8222-222222222222'
 const scheduleId = '11111111-1111-4111-8111-111111111111'
 const gsdSession = {
   accessToken: 'fictional-gsd-schedule-token',
-  expiresAtUtc: '2026-08-01T12:00:00Z',
+  expiresAtUtc: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
   user: {
     id: '33333333-3333-4333-8333-333333333333',
     email: 'fictional.gsd@example.test',
@@ -143,6 +143,33 @@ async function mockScheduleApi(page: Page, roles = ['GSD']) {
         body: JSON.stringify({ workers: [] }),
       })
     }
+    if (pathname === '/api/v1/schedules/enrollment-deferrals') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          page: 1,
+          pageSize: 10,
+          total: 0,
+          pendingCount: 0,
+          reviewedCount: 0,
+          items: [],
+        }),
+      })
+    }
+    if (pathname === '/api/v1/schedules/coverage-review') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          year: 2026,
+          page: 1,
+          pageSize: 10,
+          total: 0,
+          items: [],
+        }),
+      })
+    }
     if (pathname.endsWith(`/${scheduleId}`)) {
       return route.fulfill({
         status: 200,
@@ -208,13 +235,33 @@ test.describe('Schedule workflows', () => {
         assetCode: `FE-${String(index + 1).padStart(3, '0')}`,
       },
     }))
-    await page.route('**/api/v1/schedules**', (route) =>
-      route.fulfill({
+    await page.route('**/api/v1/schedules**', (route) => {
+      const pathname = new URL(route.request().url()).pathname
+      return route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify(records),
-      }),
-    )
+        body: JSON.stringify(
+          pathname === '/api/v1/schedules/enrollment-deferrals'
+            ? {
+                page: 1,
+                pageSize: 10,
+                total: 0,
+                pendingCount: 0,
+                reviewedCount: 0,
+                items: [],
+              }
+            : pathname === '/api/v1/schedules/coverage-review'
+              ? {
+                  year: 2026,
+                  page: 1,
+                  pageSize: 10,
+                  total: 0,
+                  items: [],
+                }
+              : records,
+        ),
+      })
+    })
     await page.setViewportSize({ width: 1280, height: 600 })
     await page.goto('/app/schedules?status=Due&quarter=Q3&year=2026')
     // Longer CPMP cells must preserve the viewport even with enlarged text.

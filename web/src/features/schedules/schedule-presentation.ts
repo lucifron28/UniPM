@@ -61,6 +61,7 @@ export function formatScheduleDateTime(value: string | null) {
     ? new Intl.DateTimeFormat(undefined, {
         dateStyle: 'medium',
         timeStyle: 'short',
+        timeZone: 'Asia/Manila',
       }).format(new Date(value))
     : 'Not recorded'
 }

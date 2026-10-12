@@ -2358,10 +2358,258 @@
           }
         }
       }
+    },
+    "/api/v1/schedules/coverage-review": {
+      "get": {
+        "tags": ["Schedules"],
+        "summary": "Lists past CPMP cycles missing both a schedule and a deferral for GSD review",
+        "operationId": "ListScheduleCoverageReview",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": ["integer", "string"],
+              "format": "int32"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": ["integer", "string"],
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleCoverageReviewPage"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      }
+    },
+    "/api/v1/schedules/enrollment-deferrals": {
+      "get": {
+        "tags": ["Schedules"],
+        "summary": "Lists deferred asset cycles and their GSD review status",
+        "operationId": "ListScheduleEnrollmentDeferrals",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": ["integer", "string"],
+              "format": "int32"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": ["integer", "string"],
+              "format": "int32"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "pmCycle",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "assetCategory",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "department",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleEnrollmentDeferralPage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      }
+    },
+    "/api/v1/schedules/enrollment-deferrals/{assetId}/{pmCycle}/review": {
+      "post": {
+        "tags": ["Schedules"],
+        "summary": "Marks one deferred asset cycle as reviewed by GSD",
+        "operationId": "ReviewScheduleEnrollmentDeferral",
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "pmCycle",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScheduleEnrollmentDeferralReviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "ScheduleCoverageReviewItem": {
+        "required": [
+          "assetId",
+          "assetCode",
+          "department",
+          "assetCategory",
+          "pmCycle",
+          "reason"
+        ],
+        "type": "object",
+        "properties": {
+          "assetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "assetCode": {
+            "type": "string"
+          },
+          "department": {
+            "type": "string"
+          },
+          "assetCategory": {
+            "type": "string"
+          },
+          "pmCycle": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
+      },
+      "ScheduleCoverageReviewPage": {
+        "required": ["year", "page", "pageSize", "total", "items"],
+        "type": "object",
+        "properties": {
+          "year": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "page": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "pageSize": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "total": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScheduleCoverageReviewItem"
+            }
+          }
+        }
+      },
       "AcknowledgePreventiveMaintenanceFormDto": {
         "type": "object",
         "properties": {
@@ -4175,7 +4423,9 @@
           "year",
           "eligibleAssets",
           "existingSchedules",
-          "createdSchedules"
+          "createdSchedules",
+          "deferredSchedules",
+          "cyclesRequiringGsdCoverageReview"
         ],
         "type": "object",
         "properties": {
@@ -4198,6 +4448,127 @@
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": ["integer", "string"],
             "format": "int32"
+          },
+          "deferredSchedules": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "cyclesRequiringGsdCoverageReview": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          }
+        }
+      },
+      "ScheduleEnrollmentDeferralPage": {
+        "required": [
+          "page",
+          "pageSize",
+          "total",
+          "pendingCount",
+          "reviewedCount",
+          "items"
+        ],
+        "type": "object",
+        "properties": {
+          "page": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "pageSize": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "total": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "pendingCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "reviewedCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScheduleEnrollmentDeferralResponse"
+            }
+          }
+        }
+      },
+      "ScheduleEnrollmentDeferralResponse": {
+        "required": [
+          "assetId",
+          "assetCode",
+          "department",
+          "assetCategory",
+          "deferredPmCycle",
+          "nextEligiblePmCycle",
+          "reasonCode",
+          "reason",
+          "status",
+          "deferredAt",
+          "reviewedAt",
+          "reviewedByUserId",
+          "reviewedByDisplayName",
+          "reviewNote"
+        ],
+        "type": "object",
+        "properties": {
+          "assetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "assetCode": {
+            "type": "string"
+          },
+          "department": {
+            "type": "string"
+          },
+          "assetCategory": {
+            "type": "string"
+          },
+          "deferredPmCycle": {
+            "type": "string"
+          },
+          "nextEligiblePmCycle": {
+            "type": "string"
+          },
+          "reasonCode": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "deferredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "reviewedAt": {
+            "type": ["null", "string"],
+            "format": "date-time"
+          },
+          "reviewedByUserId": {
+            "type": ["null", "string"],
+            "format": "uuid"
+          },
+          "reviewedByDisplayName": {
+            "type": ["null", "string"]
+          },
+          "reviewNote": {
+            "type": ["null", "string"]
           }
         }
       },
@@ -4349,6 +4720,15 @@
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": ["integer", "string"],
             "format": "int32"
+          }
+        }
+      },
+      "ScheduleEnrollmentDeferralReviewRequest": {
+        "required": ["note"],
+        "type": "object",
+        "properties": {
+          "note": {
+            "type": ["null", "string"]
           }
         }
       }

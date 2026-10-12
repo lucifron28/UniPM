@@ -66,7 +66,17 @@ Focused backend tests cover registry filters, generated cycles and eligibility, 
 
 ## Verification status and limitations
 
-TEST-060 records execution identities and results. The WDS schedule rule remains February, May, August, and November from the operative frequency table on page 3 of the CPMP manual. The revision history on page 19 lists June and December for Water Drinking Stations. GSD confirmation is pending; implementation follows the operative table without silently changing the existing rule.
+TEST-060 records execution identities and results as of its run. The CPMP
+manual is internally inconsistent: Section 2.4.2's operative frequency table
+(PDF page 3) lists Water Drinking Stations in February, May, August, and
+November, while Section 2.7's revision history (PDF page 19) describes June
+and December. On 2026-10-10, the project owner resolved the implementation
+choice in favor of Section 2.4.2. The manual itself has not been corrected.
+The existing implementation and category-reference test match that table;
+TEST-070 records the focused verification. This is no longer a technical
+release blocker. GSD approval of the schedule-generation effective date,
+staging acceptance, physical-device testing, and deployment verification
+remain pending.
 
 The native SQL Server checks used the disposable `UniPM_PreEval_20261009_5262` database. They do not establish institutional acceptance or deployment verification. Final institutional role policy, external WMS number conventions, real GSD process acceptance, CI, and physical-device behavior remain unverified.
 

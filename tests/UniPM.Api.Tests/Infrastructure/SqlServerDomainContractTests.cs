@@ -1,7 +1,11 @@
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.Extensions.Options;
 using UniPM.Api.Data;
+using UniPM.Api.Features.Assets;
 using UniPM.Api.Features.PreventiveMaintenanceForms;
+using UniPM.Api.Features.Schedules;
 using UniPM.Api.Models;
 
 namespace UniPM.Api.Tests;
@@ -9,6 +13,7 @@ namespace UniPM.Api.Tests;
 public sealed class SqlServerDomainContractTests
 {
     private const string PreviousMigration = "20260710170229_AddMaintenanceSearchDocuments";
+    private const string PreviousDeferralMigration = "20261009041512_AddInspectionWmsReferralTracking";
 
     [SqlServerFact]
     public async Task Migration_preflight_canonicalizes_existing_codes_before_constraints()
@@ -148,6 +153,254 @@ public sealed class SqlServerDomainContractTests
         Assert.Equal(1, verificationReader.GetInt32(0));
         Assert.True(await verificationReader.NextResultAsync());
         await verificationReader.ReadAsync();
+    }
+
+    [SqlServer2019Fact]
+    public async Task Sql_Server_2019_deferral_migrations_round_trip_and_recovery_is_idempotent()
+    {
+        var baseConnectionString = RequireSqlServer2019Connection();
+        await using (var server = new SqlConnection(baseConnectionString))
+        {
+            await server.OpenAsync();
+            await using var command = server.CreateCommand();
+            command.CommandText = "SELECT CONVERT(int, SERVERPROPERTY('ProductMajorVersion')), CONVERT(int, SERVERPROPERTY('IsFullTextInstalled'));";
+            await using var reader = await command.ExecuteReaderAsync();
+            Assert.True(await reader.ReadAsync());
+            Assert.Equal(15, reader.GetInt32(0));
+            Assert.Equal(1, reader.GetInt32(1));
+        }
+
+        await using var database = await SqlServerTestDatabase.CreateAsync(baseConnectionString);
+        await using (var master = new SqlConnection(new SqlConnectionStringBuilder(database.ConnectionString)
+        { InitialCatalog = "master" }.ConnectionString))
+        {
+            await master.OpenAsync();
+            await using var command = master.CreateCommand();
+            command.CommandText = $"ALTER DATABASE [{database.DatabaseName}] SET COMPATIBILITY_LEVEL = 150;";
+            await command.ExecuteNonQueryAsync();
+        }
+
+        var now = new DateTimeOffset(2026, 12, 15, 0, 0, 0, TimeSpan.FromHours(8));
+        var asset = new Asset
+        {
+            Id = Guid.NewGuid(),
+            AssetCode = $"SQL-REVIEW-{Guid.NewGuid():N}"[..20].ToUpperInvariant(),
+            AssetCategory = "fire-extinguisher",
+            Building = "Synthetic Migration Test",
+            Department = "SQL-REVIEW-TEST",
+            Location = "Test area",
+            Status = AssetStatusCatalog.Active,
+            CreatedAt = new DateTimeOffset(2020, 1, 1, 0, 0, 0, TimeSpan.FromHours(8)),
+            UpdatedAt = now
+        };
+        var schedule = new PreventiveMaintenanceSchedule
+        {
+            Id = Guid.NewGuid(),
+            AssetId = asset.Id,
+            ScheduleDate = PreventiveMaintenanceCycle.DeadlineForCycle("2026-11"),
+            PmCycle = "2026-11",
+            PeriodType = SchedulePeriodTypeCatalog.Quarter,
+            Quarter = "Q4",
+            Year = 2026,
+            Status = ScheduleStatusCatalog.Completed,
+            CompletedAt = new DateTimeOffset(2026, 11, 20, 10, 0, 0, TimeSpan.FromHours(8)),
+            CreatedAt = asset.CreatedAt,
+            UpdatedAt = now
+        };
+        var form = NewPreventiveForm(
+            Guid.NewGuid(),
+            $"PM-SQL-{Guid.NewGuid():N}"[..16].ToUpperInvariant(),
+            PreventiveMaintenanceFormStatusCatalog.Acknowledged);
+        form.AssetCategory = asset.AssetCategory;
+        form.Department = asset.Department;
+        form.PmCycle = "2026-11";
+        form.PeriodType = SchedulePeriodTypeCatalog.Quarter;
+        form.Quarter = "Q4";
+        form.Year = 2026;
+        form.FieldWorkCompletedAt = new DateTimeOffset(2026, 11, 20, 10, 0, 0, TimeSpan.FromHours(8));
+        form.CreatedAt = asset.CreatedAt;
+        form.UpdatedAt = now;
+        var inspection = new InspectionRecord
+        {
+            Id = Guid.NewGuid(),
+            ScheduleId = schedule.Id,
+            AssetId = asset.Id,
+            PreventiveMaintenanceFormId = form.Id,
+            InspectorUserId = Guid.NewGuid(),
+            DateInspected = new DateTimeOffset(2026, 11, 20, 10, 0, 0, TimeSpan.FromHours(8)),
+            CompletedAt = new DateTimeOffset(2026, 11, 20, 10, 0, 0, TimeSpan.FromHours(8)),
+            IsOperational = true,
+            CreatedAt = asset.CreatedAt,
+            UpdatedAt = now
+        };
+        var acknowledgement = new PreventiveMaintenanceAcknowledgement
+        {
+            Id = Guid.NewGuid(),
+            FormId = form.Id,
+            SignatoryName = "Synthetic Signatory",
+            SignatoryPosition = "Department Head",
+            CapturedByUserId = Guid.NewGuid(),
+            AcknowledgedAt = now
+        };
+        var deferral = new ScheduleEnrollmentDeferral
+        {
+            AssetId = asset.Id,
+            PmCycle = "2026-08",
+            DepartmentAtDeferral = asset.Department,
+            AssetCategoryAtDeferral = asset.AssetCategory,
+            ReasonCode = "BatchAssigned",
+            DeferredAt = now,
+            NextEligiblePmCycle = "2027-02"
+        };
+
+        await using (var context = database.CreateContext())
+        {
+            await context.Database.MigrateAsync(PreviousDeferralMigration);
+            context.AddRange(asset, schedule, form, inspection, acknowledgement);
+            await context.SaveChangesAsync();
+            await context.Database.MigrateAsync("20261009182058_AddScheduleEnrollmentDeferrals");
+            await context.Database.ExecuteSqlInterpolatedAsync($"""
+                INSERT INTO [ScheduleEnrollmentDeferrals]
+                    ([AssetId], [PmCycle], [DepartmentAtDeferral], [AssetCategoryAtDeferral], [ReasonCode], [DeferredAt], [NextEligiblePmCycle])
+                VALUES
+                    ({deferral.AssetId}, {deferral.PmCycle}, {deferral.DepartmentAtDeferral}, {deferral.AssetCategoryAtDeferral},
+                     {deferral.ReasonCode}, {deferral.DeferredAt}, {deferral.NextEligiblePmCycle});
+                """);
+        }
+
+        await using (var context = database.CreateContext())
+        {
+            await context.Database.MigrateAsync();
+        }
+        await AssertRecordsPreservedAsync();
+
+        await using (var context = database.CreateContext())
+        {
+            await context.Database.MigrateAsync("20261009182058_AddScheduleEnrollmentDeferrals");
+        }
+
+        await using (var connection = new SqlConnection(database.ConnectionString))
+        {
+            await connection.OpenAsync();
+            await using var command = connection.CreateCommand();
+            command.CommandText = "SELECT COUNT(*) FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.ScheduleEnrollmentDeferrals') AND name IN (N'ReviewedAt', N'ReviewedByUserId', N'ReviewNote');";
+            Assert.Equal(0, Convert.ToInt32(await command.ExecuteScalarAsync()));
+        }
+        await AssertOperationalRecordsPreservedAsync();
+        await AssertDeferralDataPreservedBySqlAsync();
+
+        await using (var context = database.CreateContext())
+        {
+            await context.Database.MigrateAsync(PreviousDeferralMigration);
+        }
+        await AssertOperationalRecordsPreservedAsync();
+        await using (var connection = new SqlConnection(database.ConnectionString))
+        {
+            await connection.OpenAsync();
+            await using var command = connection.CreateCommand();
+            command.CommandText = "SELECT COUNT(*) FROM sys.tables WHERE object_id = OBJECT_ID(N'dbo.ScheduleEnrollmentDeferrals');";
+            Assert.Equal(0, Convert.ToInt32(await command.ExecuteScalarAsync()));
+        }
+
+        await using (var context = database.CreateContext())
+        {
+            await context.Database.MigrateAsync("20261009182058_AddScheduleEnrollmentDeferrals");
+            var emptyDeferrals = await context.ScheduleEnrollmentDeferrals.CountAsync();
+            Assert.Equal(0, emptyDeferrals);
+        }
+        await using (var connection = new SqlConnection(database.ConnectionString))
+        {
+            await connection.OpenAsync();
+            await using var command = connection.CreateCommand();
+            command.CommandText = "SELECT COUNT(*) FROM sys.columns WHERE object_id = OBJECT_ID(N'dbo.ScheduleEnrollmentDeferrals') AND name IN (N'AssetId', N'PmCycle', N'NextEligiblePmCycle');";
+            Assert.Equal(3, Convert.ToInt32(await command.ExecuteScalarAsync()));
+        }
+        await AssertOperationalRecordsPreservedAsync();
+
+        await using (var context = database.CreateContext())
+        {
+            await context.Database.MigrateAsync();
+            context.ScheduleEnrollmentDeferrals.Add(deferral);
+            await context.SaveChangesAsync();
+        }
+        await AssertRecordsPreservedAsync();
+
+        var contextOptions = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseUniPmSqlServer(database.ConnectionString)
+            .Options;
+        var factory = new PooledDbContextFactory<ApplicationDbContext>(contextOptions);
+        var generator = new PreventiveMaintenanceScheduleGenerationService(
+            factory,
+            Options.Create(new ScheduleGenerationOptions { EffectiveDate = "2020-01-01" }));
+        var results = await Task.WhenAll(
+            generator.EnsureYearAsync(2026, now, CancellationToken.None),
+            generator.EnsureYearAsync(2026, now, CancellationToken.None));
+
+        await using var finalContext = database.CreateContext();
+        Assert.Equal(3, await finalContext.PreventiveMaintenanceSchedules
+            .CountAsync(item => item.AssetId == asset.Id));
+        Assert.Equal(["2026-08"], await finalContext.ScheduleEnrollmentDeferrals
+            .Where(item => item.AssetId == asset.Id)
+            .Select(item => item.PmCycle)
+            .ToArrayAsync());
+        Assert.Equal(2, results.Sum(result => result.CreatedSchedules));
+        Assert.All(await finalContext.ScheduleEnrollmentDeferrals
+            .Where(item => item.AssetId == asset.Id)
+            .ToArrayAsync(), item => Assert.Null(item.ReviewedAt));
+
+        await using (var duplicateContext = database.CreateContext())
+        {
+            duplicateContext.ScheduleEnrollmentDeferrals.Add(deferral);
+            await Assert.ThrowsAsync<DbUpdateException>(() => duplicateContext.SaveChangesAsync());
+        }
+        Assert.Equal(1, await finalContext.ScheduleEnrollmentDeferrals.CountAsync(item => item.AssetId == asset.Id));
+
+        async Task AssertRecordsPreservedAsync()
+        {
+            await AssertOperationalRecordsPreservedAsync();
+            await using var verification = database.CreateContext();
+            var storedDeferral = await verification.ScheduleEnrollmentDeferrals.SingleAsync();
+            Assert.Equal("2026-08", storedDeferral.PmCycle);
+            Assert.Null(storedDeferral.ReviewedAt);
+            Assert.Null(storedDeferral.ReviewedByUserId);
+            Assert.Null(storedDeferral.ReviewNote);
+        }
+
+        async Task AssertOperationalRecordsPreservedAsync()
+        {
+            await using var verification = database.CreateContext();
+            Assert.Equal(asset.Id, (await verification.Assets.SingleAsync()).Id);
+            Assert.Equal(schedule.Id, (await verification.PreventiveMaintenanceSchedules.SingleAsync()).Id);
+            Assert.Equal(inspection.Id, (await verification.InspectionRecords.SingleAsync()).Id);
+            Assert.Equal(form.Id, (await verification.PreventiveMaintenanceForms.SingleAsync()).Id);
+            Assert.Equal(acknowledgement.Id, (await verification.PreventiveMaintenanceAcknowledgements.SingleAsync()).Id);
+        }
+
+        async Task AssertDeferralDataPreservedBySqlAsync()
+        {
+            await using var connection = new SqlConnection(database.ConnectionString);
+            await connection.OpenAsync();
+            await using var command = connection.CreateCommand();
+            command.CommandText = """
+                SELECT COUNT(*)
+                FROM [dbo].[ScheduleEnrollmentDeferrals]
+                WHERE [AssetId] = @assetId
+                  AND [PmCycle] = @pmCycle
+                  AND [DepartmentAtDeferral] = @department
+                  AND [AssetCategoryAtDeferral] = @assetCategory
+                  AND [ReasonCode] = @reasonCode
+                  AND [DeferredAt] = @deferredAt
+                  AND [NextEligiblePmCycle] = @nextEligiblePmCycle;
+                """;
+            command.Parameters.AddWithValue("@assetId", deferral.AssetId);
+            command.Parameters.AddWithValue("@pmCycle", deferral.PmCycle);
+            command.Parameters.AddWithValue("@department", deferral.DepartmentAtDeferral);
+            command.Parameters.AddWithValue("@assetCategory", deferral.AssetCategoryAtDeferral);
+            command.Parameters.AddWithValue("@reasonCode", deferral.ReasonCode);
+            command.Parameters.AddWithValue("@deferredAt", deferral.DeferredAt);
+            command.Parameters.AddWithValue("@nextEligiblePmCycle", deferral.NextEligiblePmCycle);
+            Assert.Equal(1, Convert.ToInt32(await command.ExecuteScalarAsync()));
+        }
     }
 
     [SqlServer2019Fact]

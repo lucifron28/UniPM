@@ -522,6 +522,7 @@ export function AssetRegistry({
                     {headerGroup.headers.map((header) => (
                       <th
                         key={header.id}
+                        scope="col"
                         className="px-4 py-3 font-semibold whitespace-nowrap text-[var(--text-primary)]"
                       >
                         {header.isPlaceholder

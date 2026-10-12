@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test'
 
 const gsdSession = {
   accessToken: 'fictional-gsd-asset-token',
-  expiresAtUtc: '2026-07-19T12:00:00Z',
+  expiresAtUtc: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
   user: {
     id: '22222222-2222-4222-8222-222222222222',
     email: 'fictional.gsd@example.test',
@@ -13,7 +13,7 @@ const gsdSession = {
 
 const nonGsdSession = {
   accessToken: 'fictional-inspector-asset-token',
-  expiresAtUtc: '2026-07-19T12:00:00Z',
+  expiresAtUtc: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
   user: {
     id: '44444444-4444-4444-8444-444444444444',
     email: 'fictional.inspector@example.test',

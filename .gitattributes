@@ -1,3 +1,4 @@
 reference/evaluation/pm-analytics-interpretation/**/cases.jsonl text eol=lf
+web/src/api/generated/** text eol=lf
 reference/evaluation/pm-analytics-interpretation/v2/dev.jsonl text eol=lf
 reference/evaluation/pm-analytics-interpretation/v2/heldout.jsonl text eol=lf

@@ -4,6 +4,7 @@ import type {
   ScheduleReferenceResponse,
   ScheduleResponse,
 } from '@/api/generated/models'
+import { getCurrentManilaYear } from '@/features/schedules/schedule-presentation'
 
 export const scheduleStatusCodes = [
   'Due',
@@ -136,7 +137,7 @@ export const createScheduleSchema = z
     allowedMonths: z.array(z.number().int().min(1).max(12)).default([]),
   })
   .superRefine((value, context) => {
-    const maxPlanningYear = new Date().getUTCFullYear() + 5
+    const currentInstitutionalYear = getCurrentManilaYear()
 
     if (value.year === undefined) {
       context.addIssue({
@@ -144,11 +145,11 @@ export const createScheduleSchema = z
         path: ['year'],
         message: 'Choose a scheduled year.',
       })
-    } else if (value.year < 2000 || value.year > maxPlanningYear) {
+    } else if (value.year !== currentInstitutionalYear) {
       context.addIssue({
         code: 'custom',
         path: ['year'],
-        message: `Year must be between 2000 and ${maxPlanningYear}.`,
+        message: `Schedule creation is limited to the current institutional year (${currentInstitutionalYear}).`,
       })
     }
 

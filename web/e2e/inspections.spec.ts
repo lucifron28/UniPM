@@ -5,7 +5,7 @@ const scheduleId = '22222222-2222-4222-8222-222222222222'
 const assetId = '33333333-3333-4333-8333-333333333333'
 const session = {
   accessToken: 'fictional-inspection-token',
-  expiresAtUtc: '2026-08-01T12:00:00Z',
+  expiresAtUtc: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
   user: {
     id: '44444444-4444-4444-8444-444444444444',
     email: 'fictional.inspector@example.test',

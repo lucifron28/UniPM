@@ -5,7 +5,11 @@ import { Link, useNavigate } from '@tanstack/react-router'
 import { LoaderCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { ZodError } from 'zod'
-import { createAsset, getGetAssetQueryKey } from '@/api/generated/endpoints'
+import {
+  createAsset,
+  getGetAssetQueryKey,
+  getListScheduleEnrollmentDeferralsQueryKey,
+} from '@/api/generated/endpoints'
 import { ApiError } from '@/api/problem-details'
 import { Alert } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -190,7 +194,12 @@ export function AssetCreate() {
     onSuccess: async (asset) => {
       queryClient.setQueryData(getGetAssetQueryKey(asset.id), asset)
       toast.success('Asset created.')
-      await queryClient.invalidateQueries({ queryKey: ['/api/v1/assets'] })
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['/api/v1/assets'] }),
+        queryClient.invalidateQueries({
+          queryKey: getListScheduleEnrollmentDeferralsQueryKey(),
+        }),
+      ])
       void navigate({
         to: '/app/assets/$assetId',
         params: { assetId: asset.id },
