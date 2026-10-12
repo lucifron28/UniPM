@@ -40,10 +40,15 @@ internal sealed record PmAnalyticsInterpretationResult(
     string? Code,
     NaturalLanguageAnalyticsProviderUsage? Usage = null);
 
+// CompletionTokens is total billed output (including any reasoning tokens); ReasoningTokens is a subset.
+// Cache counts are both null when the provider omits or inconsistently reports either bucket.
 internal sealed record NaturalLanguageAnalyticsProviderUsage(
     long? PromptTokens,
     long? CompletionTokens,
-    long? DurationNanoseconds);
+    long? DurationNanoseconds,
+    long? CachedPromptTokens = null,
+    long? CacheMissPromptTokens = null,
+    long? ReasoningTokens = null);
 
 internal enum NaturalLanguageAnalyticsProviderFailure
 {
