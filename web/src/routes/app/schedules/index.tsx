@@ -21,6 +21,10 @@ const searchSchema = z
     from: dateTime.optional(),
     to: dateTime.optional(),
     quarter: z.enum(scheduleQuarterCodes).optional(),
+    pmCycle: z
+      .string()
+      .regex(/^(?!0000)\d{4}-(0[1-9]|1[0-2])$/)
+      .optional(),
     year: z.coerce
       .number()
       .int()
@@ -30,6 +34,14 @@ const searchSchema = z
     page: z.coerce.number().int().positive().max(10000).optional(),
   })
   .refine((value) => !value.from || !value.to || value.from <= value.to)
+  .refine(
+    (value) =>
+      !value.pmCycle ||
+      ((!value.year || Number(value.pmCycle.slice(0, 4)) === value.year) &&
+        (!value.quarter ||
+          `Q${Math.floor((Number(value.pmCycle.slice(5, 7)) - 1) / 3) + 1}` ===
+            value.quarter)),
+  )
 
 export const Route = createFileRoute('/app/schedules/')({
   validateSearch: (search): ScheduleSearch => {

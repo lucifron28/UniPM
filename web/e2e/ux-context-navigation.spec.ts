@@ -272,6 +272,85 @@ async function installApi(page: Page, assetList = [asset]) {
   })
   await page.route('**/api/v1/assets**', (route) => {
     const pathname = new URL(route.request().url()).pathname
+    if (pathname === '/api/v1/assets/registry') {
+      const params = new URL(route.request().url()).searchParams
+      const query = params.get('search')?.toLowerCase()
+      const filtered = assetList.filter(
+        (record) =>
+          (!query ||
+            `${record.assetCode} ${record.building} ${record.department} ${record.location}`
+              .toLowerCase()
+              .includes(query)) &&
+          (!params.get('assetCategory') ||
+            record.assetCategory === params.get('assetCategory')) &&
+          (!params.get('status') || record.status === params.get('status')) &&
+          (!params.get('building') ||
+            record.building === params.get('building')) &&
+          (!params.get('department') ||
+            record.department === params.get('department')),
+      )
+      const pageNumber = Number(params.get('page') ?? 1)
+      const pageSize = Number(params.get('pageSize') ?? 25)
+      const start = (pageNumber - 1) * pageSize
+      return route.fulfill(
+        jsonResponse({
+          items: filtered.slice(start, start + pageSize),
+          page: pageNumber,
+          pageSize,
+          totalCount: filtered.length,
+        }),
+      )
+    }
+    if (pathname === '/api/v1/assets/registry/options') {
+      return route.fulfill(
+        jsonResponse({
+          categories: assetCategories,
+          statuses: ['Active', 'Inactive', 'Retired'],
+          departments: [
+            ...new Set(
+              assetList.map((record) => record.department).filter(Boolean),
+            ),
+          ],
+          buildings: [
+            ...new Set(
+              assetList.map((record) => record.building).filter(Boolean),
+            ),
+          ],
+        }),
+      )
+    }
+    if (pathname === '/api/v1/assets/registry/summary') {
+      const categories = assetCategories.map((category) => {
+        const rows = assetList.filter(
+          (record) => record.assetCategory === category.code,
+        )
+        return {
+          assetCategory: category.code,
+          displayName: category.displayName,
+          totalCount: rows.length,
+          activeCount: rows.filter((record) => record.status === 'Active')
+            .length,
+          inactiveCount: rows.filter((record) => record.status === 'Inactive')
+            .length,
+          retiredCount: rows.filter((record) => record.status === 'Retired')
+            .length,
+        }
+      })
+      return route.fulfill(
+        jsonResponse({
+          totalCount: assetList.length,
+          activeCount: assetList.filter((record) => record.status === 'Active')
+            .length,
+          inactiveCount: assetList.filter(
+            (record) => record.status === 'Inactive',
+          ).length,
+          retiredCount: assetList.filter(
+            (record) => record.status === 'Retired',
+          ).length,
+          categories,
+        }),
+      )
+    }
     if (pathname === '/api/v1/assets') {
       return route.fulfill(jsonResponse(assetList))
     }
@@ -497,7 +576,7 @@ test('shows a visible focus indicator on the active desktop navigation link', as
 test('returns to filtered, paged assets and keeps the back link keyboard reachable on mobile', async ({
   page,
 }) => {
-  const pagedAssets = Array.from({ length: 11 }, (_, index) => ({
+  const pagedAssets = Array.from({ length: 26 }, (_, index) => ({
     ...asset,
     id: '00000000-0000-4000-8000-' + String(index + 1).padStart(12, '0'),
     assetCode: 'FE-' + String(index + 1).padStart(3, '0'),
@@ -509,11 +588,11 @@ test('returns to filtered, paged assets and keeps the back link keyboard reachab
   await page.goto(
     '/app/assets?assetCategory=fire-extinguisher&status=Active&page=2',
   )
-  const finalAssetRow = page.getByRole('row').filter({ hasText: 'FE-011' })
+  const finalAssetRow = page.getByRole('row').filter({ hasText: 'FE-026' })
   await expect(finalAssetRow).toBeVisible()
   await finalAssetRow.getByRole('link', { name: 'View details' }).click()
   await expect(
-    page.getByRole('heading', { name: 'FE-011', level: 1 }),
+    page.getByRole('heading', { name: 'FE-026', level: 1 }),
   ).toBeVisible()
 
   await page.setViewportSize({ width: 375, height: 667 })
@@ -536,7 +615,7 @@ test('returns to filtered, paged assets and keeps the back link keyboard reachab
 
   await page.setViewportSize({ width: 1280, height: 800 })
   await expect(
-    page.getByRole('row').filter({ hasText: 'FE-011' }),
+    page.getByRole('row').filter({ hasText: 'FE-026' }),
   ).toBeVisible()
 })
 test('returns from submitted batch inspection and form detail to the exact review context', async ({

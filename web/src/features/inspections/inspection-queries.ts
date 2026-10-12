@@ -2,20 +2,34 @@ import { useQuery } from '@tanstack/react-query'
 import { httpClient } from '@/api/http-client'
 import {
   getGetInspectionHistoryQueryKey,
+  getGetInspectionRegistryOptionsQueryKey,
+  getGetInspectionRegistrySummaryQueryKey,
   getGetInspectionQueryKey,
   getInspection,
   getInspectionHistory,
   getListInspectionsQueryKey,
+  getListInspectionRegistryQueryKey,
+  getInspectionRegistryOptions,
+  getInspectionRegistrySummary,
+  listInspectionRegistry,
   listInspections,
 } from '@/api/generated/endpoints'
-import type { ListInspectionsParams } from '@/api/generated/models'
+import type {
+  GetInspectionRegistryOptionsParams,
+  ListInspectionsParams,
+  ListInspectionRegistryParams,
+} from '@/api/generated/models'
 import {
   parseInspection,
   parseInspectionHistory,
+  parseInspectionRegistryOptions,
+  parseInspectionRegistryPage,
+  parseInspectionRegistrySummary,
   parseInspections,
 } from '@/features/inspections/inspection-contract'
 
 export type InspectionServerFilters = ListInspectionsParams
+export type InspectionRegistryFilters = ListInspectionRegistryParams
 
 export function useInspections(filters: InspectionServerFilters = {}) {
   return useQuery({
@@ -23,6 +37,35 @@ export function useInspections(filters: InspectionServerFilters = {}) {
     queryFn: ({ signal }) =>
       listInspections(filters, signal).then(parseInspections),
     placeholderData: (previousData) => previousData,
+  })
+}
+
+export function useInspectionRegistry(filters: InspectionRegistryFilters = {}) {
+  return useQuery({
+    queryKey: getListInspectionRegistryQueryKey(filters),
+    queryFn: ({ signal }) =>
+      listInspectionRegistry(filters, signal).then(parseInspectionRegistryPage),
+    placeholderData: (previousData) => previousData,
+  })
+}
+
+export function useInspectionRegistryOptions(
+  filters: GetInspectionRegistryOptionsParams = {},
+) {
+  return useQuery({
+    queryKey: getGetInspectionRegistryOptionsQueryKey(filters),
+    queryFn: ({ signal }) =>
+      getInspectionRegistryOptions(filters, signal).then(
+        parseInspectionRegistryOptions,
+      ),
+  })
+}
+
+export function useInspectionRegistrySummary() {
+  return useQuery({
+    queryKey: getGetInspectionRegistrySummaryQueryKey(),
+    queryFn: ({ signal }) =>
+      getInspectionRegistrySummary(signal).then(parseInspectionRegistrySummary),
   })
 }
 

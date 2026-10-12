@@ -203,7 +203,42 @@ describe('app shell role access and layout', () => {
         if (pathname === '/api/v1/auth/me') {
           return HttpResponse.json(currentUser(['Admin', 'GSD']))
         }
-        if (pathname === '/api/v1/schedules') scheduleReads += 1
+        if (pathname === '/api/v1/schedules/registry') {
+          scheduleReads += 1
+          return HttpResponse.json({
+            items: [],
+            page: 1,
+            pageSize: 25,
+            totalCount: 0,
+            overallCount: 0,
+          })
+        }
+        if (pathname === '/api/v1/schedules/registry/options') {
+          return HttpResponse.json({
+            categories: [],
+            quarters: ['Q1', 'Q2', 'Q3', 'Q4'],
+            departments: [],
+            years: [],
+          })
+        }
+        if (pathname === '/api/v1/schedules/registry/summary') {
+          return HttpResponse.json({
+            totalCount: 0,
+            dueCount: 0,
+            ongoingCount: 0,
+            overdueCount: 0,
+            completedCount: 0,
+            cancelledCount: 0,
+          })
+        }
+        if (pathname === '/api/v1/schedules/coverage-review') {
+          return HttpResponse.json({
+            items: [],
+            page: 1,
+            pageSize: 10,
+            total: 0,
+          })
+        }
         return HttpResponse.json([])
       }),
     )

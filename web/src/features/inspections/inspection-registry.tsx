@@ -4,7 +4,6 @@ import {
   createColumnHelper,
   flexRender,
   getCoreRowModel,
-  type RowData,
   useReactTable,
 } from '@tanstack/react-table'
 import { Button } from '@/components/ui/button'
@@ -13,28 +12,34 @@ import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { Asset } from '@/features/assets/asset-contract'
-import { assetCategoryCodes } from '@/features/assets/asset-contract'
-import { useAssetCategories, useAssets } from '@/features/assets/asset-queries'
+import { AssetPicker } from '@/features/assets/asset-picker'
+import { useAsset } from '@/features/assets/asset-queries'
 import { categoryLabel } from '@/features/assets/asset-presentation'
 import type {
-  Inspection,
   InspectionFollowUpStatus,
+  InspectionRegistryItem,
 } from '@/features/inspections/inspection-contract'
-import { useInspections } from '@/features/inspections/inspection-queries'
+import {
+  useInspectionRegistry,
+  useInspectionRegistryOptions,
+  useInspectionRegistrySummary,
+} from '@/features/inspections/inspection-queries'
 import {
   excerpt,
   formatInspectionDate,
   inspectionOutcome,
 } from '@/features/inspections/inspection-presentation'
-import { useSchedules } from '@/features/schedules/schedule-queries'
 import {
   formatPmCycle,
   formatPmCycleDueDate,
+  getCurrentManilaYear,
 } from '@/features/schedules/schedule-presentation'
 import {
   RegistryLoadingPanel,
   RegistryResultsPanel,
 } from '@/features/shared/registry-results-panel'
+import { RegistryActiveFilters } from '@/features/shared/registry-active-filters'
+import type { RegistryActiveFilter } from '@/features/shared/registry-active-filters'
 import {
   fromDateTimeLocal,
   toDateTimeLocal,
@@ -48,6 +53,9 @@ export type InspectionSearch = {
   search?: string | undefined
   isOperational?: boolean | undefined
   wmsReferralStatus?: InspectionFollowUpStatus | undefined
+  year?: number | undefined
+  quarter?: 'Q1' | 'Q2' | 'Q3' | 'Q4' | undefined
+  pmCycle?: string | undefined
   dateFrom?: string | undefined
   dateTo?: string | undefined
   page?: number | undefined
@@ -60,44 +68,55 @@ function SummaryCard({ label, count }: { label: string; count: number }) {
         {label}
       </p>
       <p className="mt-2 text-2xl font-bold text-[var(--text-primary)]">
-        {count}
+        {count.toLocaleString()}
       </p>
     </Card>
   )
 }
 
-const columnHelper = createColumnHelper<Inspection>()
+const columnHelper = createColumnHelper<InspectionRegistryItem>()
+const EMPTY_FILTER_OPTIONS: string[] = []
 const createColumns = (search: InspectionSearch) => [
-  columnHelper.accessor('assetId', {
+  columnHelper.accessor('asset', {
     header: 'Asset',
-    cell: ({ getValue, table }) => {
-      const assets = table.options.meta?.assets
-      const asset = assets?.get(getValue())
-      return (
-        <div>
-          <p className="font-semibold">{asset?.assetCode ?? getValue()}</p>
-          <p className="text-xs text-[var(--text-neutral)]">
-            {asset?.assetCategory ?? 'Category not recorded'}
-          </p>
-        </div>
-      )
-    },
+    cell: ({ row }) => (
+      <div>
+        {row.original.asset ? (
+          <Link
+            to="/app/assets/$assetId"
+            params={{ assetId: row.original.asset.id }}
+            search={{ returnContext: { kind: 'inspectionRegistry', search } }}
+            className="font-semibold text-[var(--primary)] hover:underline"
+          >
+            {row.original.asset.assetCode}
+          </Link>
+        ) : (
+          <p className="font-semibold">Asset details unavailable</p>
+        )}
+        <p className="text-xs text-[var(--text-neutral)]">
+          {row.original.asset?.assetCategory ?? 'Category not recorded'}
+        </p>
+        <p className="text-xs text-[var(--text-neutral)]">
+          {[row.original.asset?.department, row.original.asset?.building]
+            .filter(Boolean)
+            .join(' · ') || 'Location not recorded'}
+        </p>
+      </div>
+    ),
   }),
-  columnHelper.accessor('scheduleId', {
+  columnHelper.accessor('schedule', {
     header: 'Scheduled month / due date',
-    cell: ({ getValue, table }) => {
-      const schedule = table.options.meta?.schedules.get(getValue())
-      return schedule ? (
+    cell: ({ row }) =>
+      row.original.schedule ? (
         <div>
-          <p>{formatPmCycle(schedule.pmCycle)}</p>
+          <p>{formatPmCycle(row.original.schedule.pmCycle)}</p>
           <p className="text-xs text-[var(--text-neutral)]">
-            Due date: {formatPmCycleDueDate(schedule.pmCycle)}
+            Due date: {formatPmCycleDueDate(row.original.schedule.pmCycle)}
           </p>
         </div>
       ) : (
-        getValue()
-      )
-    },
+        'Schedule details unavailable'
+      ),
   }),
   columnHelper.accessor('dateInspected', {
     header: 'Actual inspection date',
@@ -165,14 +184,6 @@ const createColumns = (search: InspectionSearch) => [
   }),
 ]
 
-declare module '@tanstack/react-table' {
-  interface TableMeta<TData extends RowData> {
-    assets?: Map<string, { assetCode: string; assetCategory: string }>
-    schedules: Map<string, { pmCycle?: string | undefined }>
-    rowData?: TData
-  }
-}
-
 export function InspectionRegistry({
   search,
   onSearchChange,
@@ -183,10 +194,7 @@ export function InspectionRegistry({
     options?: { replace?: boolean; preserveScroll?: boolean },
   ) => void
 }) {
-  const assets = useAssets()
-  const categories = useAssetCategories()
-  const schedules = useSchedules()
-  const allInspections = useInspections()
+  const pageSize = 25
   const [draft, setDraft] = useState<Omit<InspectionSearch, 'page'>>(() => ({
     assetId: search.assetId,
     scheduleId: search.scheduleId,
@@ -195,35 +203,22 @@ export function InspectionRegistry({
     search: search.search,
     isOperational: search.isOperational,
     wmsReferralStatus: search.wmsReferralStatus,
+    year: search.year,
+    quarter: search.quarter,
+    pmCycle: search.pmCycle,
     dateFrom: search.dateFrom,
     dateTo: search.dateTo,
   }))
-
-  useEffect(() => {
-    setDraft({
-      assetId: search.assetId,
-      scheduleId: search.scheduleId,
-      assetCategory: search.assetCategory,
-      department: search.department,
-      search: search.search,
-      isOperational: search.isOperational,
-      wmsReferralStatus: search.wmsReferralStatus,
-      dateFrom: search.dateFrom,
-      dateTo: search.dateTo,
-    })
-  }, [
-    search.assetId,
-    search.scheduleId,
-    search.assetCategory,
-    search.department,
-    search.search,
-    search.isOperational,
-    search.wmsReferralStatus,
-    search.dateFrom,
-    search.dateTo,
-  ])
-
-  const filteredInspections = useInspections({
+  const [filterNotice, setFilterNotice] = useState<string | null>(null)
+  const filterOptions = useInspectionRegistryOptions({
+    ...(draft.assetCategory ? { assetCategory: draft.assetCategory } : {}),
+    ...(draft.department ? { department: draft.department } : {}),
+  })
+  const categories = filterOptions.data?.categories ?? []
+  const departments = filterOptions.data?.departments ?? EMPTY_FILTER_OPTIONS
+  const years = filterOptions.data?.years ?? []
+  const summary = useInspectionRegistrySummary()
+  const registry = useInspectionRegistry({
     ...(search.assetId ? { assetId: search.assetId } : {}),
     ...(search.scheduleId ? { scheduleId: search.scheduleId } : {}),
     ...(search.assetCategory ? { assetCategory: search.assetCategory } : {}),
@@ -235,60 +230,94 @@ export function InspectionRegistry({
     ...(search.wmsReferralStatus
       ? { wmsReferralStatus: search.wmsReferralStatus }
       : {}),
+    ...(search.year === undefined ? {} : { year: search.year }),
+    ...(search.quarter ? { quarter: search.quarter } : {}),
+    ...(search.pmCycle ? { pmCycle: search.pmCycle } : {}),
     ...(search.dateFrom ? { dateFrom: search.dateFrom } : {}),
     ...(search.dateTo ? { dateTo: search.dateTo } : {}),
+    page: search.page ?? 1,
+    pageSize,
   })
+  const selectedAsset = useAsset(search.assetId ?? '', Boolean(search.assetId))
+  const draftSelectedAsset = useAsset(
+    draft.assetId ?? '',
+    Boolean(draft.assetId),
+  )
+  const draftAssetMatchesFilters = Boolean(
+    !draft.assetId ||
+    (draftSelectedAsset.isSuccess &&
+      (!draft.assetCategory ||
+        draftSelectedAsset.data.assetCategory === draft.assetCategory) &&
+      (!draft.department ||
+        draftSelectedAsset.data.department?.toLocaleLowerCase() ===
+          draft.department.toLocaleLowerCase())),
+  )
 
-  const records = useMemo(
-    () => filteredInspections.data ?? [],
-    [filteredInspections.data],
+  useEffect(() => {
+    setDraft({
+      assetId: search.assetId,
+      scheduleId: search.scheduleId,
+      assetCategory: search.assetCategory,
+      department: search.department,
+      search: search.search,
+      isOperational: search.isOperational,
+      wmsReferralStatus: search.wmsReferralStatus,
+      year: search.year,
+      quarter: search.quarter,
+      pmCycle: search.pmCycle,
+      dateFrom: search.dateFrom,
+      dateTo: search.dateTo,
+    })
+  }, [
+    search.assetId,
+    search.scheduleId,
+    search.assetCategory,
+    search.department,
+    search.search,
+    search.isOperational,
+    search.wmsReferralStatus,
+    search.year,
+    search.quarter,
+    search.pmCycle,
+    search.dateFrom,
+    search.dateTo,
+  ])
+
+  const records = registry.data?.items ?? []
+  const totalCount = registry.data?.totalCount ?? 0
+  const pageCount = Math.max(1, Math.ceil(totalCount / pageSize))
+  const page = Math.min(Math.max(search.page ?? 1, 1), pageCount)
+  const yearOptions = Array.from(
+    new Set([
+      ...years,
+      ...(draft.year ? [String(draft.year)] : []),
+      ...(draft.pmCycle ? [draft.pmCycle.slice(0, 4)] : []),
+    ]),
+  ).sort((left, right) => Number(right) - Number(left))
+  const selectedCategory = categories.find(
+    (category) => category.code === draft.assetCategory,
   )
-  const assetMap = useMemo(
-    () =>
-      new Map(
-        (assets.data ?? []).map((asset) => [
-          asset.id,
-          { assetCode: asset.assetCode, assetCategory: asset.assetCategory },
-        ]),
-      ),
-    [assets.data],
-  )
-  const scheduleMap = useMemo(
-    () =>
-      new Map(
-        (schedules.data ?? []).map((schedule) => [
-          schedule.id,
-          { pmCycle: schedule.pmCycle },
-        ]),
-      ),
-    [schedules.data],
-  )
-  const departments = useMemo(
-    () =>
-      [
-        ...new Set(
-          (assets.data ?? [])
-            .map((asset) => asset.department)
-            .filter((value): value is string => Boolean(value)),
-        ),
-      ].sort(),
-    [assets.data],
-  )
-  const categoryByCode = useMemo(
-    () =>
-      new Map(categories.data?.map((category) => [category.code, category])),
-    [categories.data],
+  const allowedMonths = Array.from(
+    { length: 12 },
+    (_, index) => index + 1,
+  ).filter(
+    (month) =>
+      (!selectedCategory || selectedCategory.scheduledMonths.includes(month)) &&
+      (!draft.quarter ||
+        `Q${Math.floor((month - 1) / 3) + 1}` === draft.quarter),
   )
   const dateRangeIsValid =
     !draft.dateFrom || !draft.dateTo || draft.dateFrom <= draft.dateTo
-  const pageSize = 10
-  const pageCount = Math.max(1, Math.ceil(records.length / pageSize))
-  const requestedPage = search.page ?? 1
-  const page = Math.min(Math.max(requestedPage, 1), pageCount)
-  const pageData = useMemo(
-    () => records.slice((page - 1) * pageSize, page * pageSize),
-    [page, records],
-  )
+  const pmCycleYear = draft.pmCycle
+    ? Number(draft.pmCycle.slice(0, 4))
+    : undefined
+  const pmCycleQuarter = draft.pmCycle
+    ? (`Q${Math.floor((Number(draft.pmCycle.slice(5, 7)) - 1) / 3) + 1}` as const)
+    : undefined
+  const pmCycleMatchesPeriod =
+    !draft.pmCycle ||
+    ((!draft.year || pmCycleYear === draft.year) &&
+      (!draft.quarter || pmCycleQuarter === draft.quarter))
 
   const changePage = (nextPage: number) => {
     onSearchChange(
@@ -297,21 +326,19 @@ export function InspectionRegistry({
     )
   }
 
-  const tableColumns = useMemo(() => createColumns(search), [search])
-
+  const columns = useMemo(() => createColumns(search), [search])
   // TanStack Table intentionally exposes mutable table methods to the renderer.
   // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
-    data: pageData,
-    columns: tableColumns,
+    data: records,
+    columns,
     getCoreRowModel: getCoreRowModel(),
-    meta: { assets: assetMap, schedules: scheduleMap },
   })
 
   useEffect(() => {
     if (
-      filteredInspections.isSuccess &&
-      !filteredInspections.isPlaceholderData &&
+      registry.isSuccess &&
+      !registry.isPlaceholderData &&
       search.page &&
       search.page > pageCount
     ) {
@@ -321,15 +348,50 @@ export function InspectionRegistry({
       )
     }
   }, [
-    filteredInspections.isSuccess,
-    filteredInspections.isPlaceholderData,
+    registry.isSuccess,
+    registry.isPlaceholderData,
     onSearchChange,
     pageCount,
     search,
   ])
 
+  useEffect(() => {
+    if (
+      !draft.department ||
+      !filterOptions.isSuccess ||
+      filterOptions.isFetching ||
+      departments.includes(draft.department)
+    ) {
+      return
+    }
+    setDraft((current) => ({
+      ...current,
+      department: undefined,
+      assetId: undefined,
+    }))
+    setFilterNotice(
+      'The department and specific asset were cleared because they do not match the selected category.',
+    )
+  }, [
+    departments,
+    draft.department,
+    filterOptions.isFetching,
+    filterOptions.isSuccess,
+  ])
+
+  useEffect(() => {
+    if (!draft.pmCycle) return
+    const month = Number(draft.pmCycle.slice(5, 7))
+    if (allowedMonths.includes(month)) return
+    setDraft((current) => ({ ...current, pmCycle: undefined }))
+    setFilterNotice(
+      'The PM month was cleared because it does not match the selected category or quarter.',
+    )
+  }, [allowedMonths, draft.pmCycle])
+
   const apply = () => {
-    if (!dateRangeIsValid) return
+    if (!dateRangeIsValid || !pmCycleMatchesPeriod || !draftAssetMatchesFilters)
+      return
     onSearchChange(
       {
         ...draft,
@@ -342,8 +404,188 @@ export function InspectionRegistry({
 
   const clear = () => {
     setDraft({})
+    setFilterNotice(null)
     onSearchChange({ page: 1 }, { preserveScroll: true })
   }
+
+  const activeFilters: RegistryActiveFilter[] = [
+    ...(search.assetId
+      ? [
+          {
+            id: 'assetId',
+            label: 'Specific asset',
+            value: selectedAsset.data?.assetCode ?? 'Selected asset',
+            onRemove: () =>
+              onSearchChange(
+                { ...search, assetId: undefined, page: 1 },
+                { preserveScroll: true },
+              ),
+          },
+        ]
+      : []),
+    ...(search.scheduleId
+      ? [
+          {
+            id: 'scheduleId',
+            label: 'Linked schedule',
+            value: 'Specific schedule',
+            onRemove: () =>
+              onSearchChange(
+                { ...search, scheduleId: undefined, page: 1 },
+                { preserveScroll: true },
+              ),
+          },
+        ]
+      : []),
+    ...(search.assetCategory
+      ? [
+          {
+            id: 'assetCategory',
+            label: 'Asset category',
+            value: categoryLabel(
+              categories.find((item) => item.code === search.assetCategory),
+              search.assetCategory,
+            ),
+            onRemove: () =>
+              onSearchChange(
+                { ...search, assetCategory: undefined, page: 1 },
+                { preserveScroll: true },
+              ),
+          },
+        ]
+      : []),
+    ...(search.department
+      ? [
+          {
+            id: 'department',
+            label: 'Department',
+            value: search.department,
+            onRemove: () =>
+              onSearchChange(
+                { ...search, department: undefined, page: 1 },
+                { preserveScroll: true },
+              ),
+          },
+        ]
+      : []),
+    ...(search.search
+      ? [
+          {
+            id: 'search',
+            label: 'Search',
+            value: search.search,
+            onRemove: () =>
+              onSearchChange(
+                { ...search, search: undefined, page: 1 },
+                { preserveScroll: true },
+              ),
+          },
+        ]
+      : []),
+    ...(search.isOperational === undefined
+      ? []
+      : [
+          {
+            id: 'isOperational',
+            label: 'Recorded result',
+            value: search.isOperational ? 'Operational' : 'Not operational',
+            onRemove: () =>
+              onSearchChange(
+                { ...search, isOperational: undefined, page: 1 },
+                { preserveScroll: true },
+              ),
+          },
+        ]),
+    ...(search.wmsReferralStatus
+      ? [
+          {
+            id: 'wmsReferralStatus',
+            label: 'Corrective follow-up',
+            value:
+              search.wmsReferralStatus === 'ReferredToWms'
+                ? 'Referred to WMS'
+                : search.wmsReferralStatus === 'CorrectiveFollowUpPending'
+                  ? 'Pending'
+                  : 'No referral required',
+            onRemove: () =>
+              onSearchChange(
+                { ...search, wmsReferralStatus: undefined, page: 1 },
+                { preserveScroll: true },
+              ),
+          },
+        ]
+      : []),
+    ...(search.year === undefined
+      ? []
+      : [
+          {
+            id: 'year',
+            label: 'PM calendar year',
+            value: String(search.year),
+            onRemove: () =>
+              onSearchChange(
+                { ...search, year: undefined, pmCycle: undefined, page: 1 },
+                { preserveScroll: true },
+              ),
+          },
+        ]),
+    ...(search.quarter
+      ? [
+          {
+            id: 'quarter',
+            label: 'PM calendar quarter',
+            value: search.quarter,
+            onRemove: () =>
+              onSearchChange(
+                { ...search, quarter: undefined, pmCycle: undefined, page: 1 },
+                { preserveScroll: true },
+              ),
+          },
+        ]
+      : []),
+    ...(search.pmCycle
+      ? [
+          {
+            id: 'pmCycle',
+            label: 'Exact PM month',
+            value: formatPmCycle(search.pmCycle),
+            onRemove: () =>
+              onSearchChange(
+                { ...search, pmCycle: undefined, page: 1 },
+                { preserveScroll: true },
+              ),
+          },
+        ]
+      : []),
+    ...(search.dateFrom
+      ? [
+          {
+            id: 'dateFrom',
+            label: 'Inspected from',
+            value: formatInspectionDate(search.dateFrom),
+            onRemove: () =>
+              onSearchChange(
+                { ...search, dateFrom: undefined, page: 1 },
+                { preserveScroll: true },
+              ),
+          },
+        ]
+      : []),
+    ...(search.dateTo
+      ? [
+          {
+            id: 'dateTo',
+            label: 'Inspected to',
+            value: formatInspectionDate(search.dateTo),
+            onRemove: () =>
+              onSearchChange(
+                { ...search, dateTo: undefined, page: 1 },
+                { preserveScroll: true },
+              ),
+          },
+        ]
+      : []),
+  ]
 
   return (
     <section aria-labelledby="inspections-title" className="space-y-6">
@@ -358,12 +600,12 @@ export function InspectionRegistry({
           Inspections
         </h1>
         <p className="mt-2 max-w-2xl text-[var(--text-secondary)]">
-          Review recorded inspection outcomes and source notes. This page does
-          not submit, approve, or change inspection records.
+          Review acknowledged inspection outcomes and source notes. This page
+          does not submit, approve, or change inspection records.
         </p>
       </div>
 
-      {allInspections.isPending ? (
+      {summary.isPending ? (
         <div className="grid gap-3 sm:grid-cols-3" role="status">
           <span className="sr-only">Loading inspection summary...</span>
           {Array.from({ length: 3 }, (_, index) => (
@@ -373,7 +615,7 @@ export function InspectionRegistry({
             </Card>
           ))}
         </div>
-      ) : allInspections.isError ? (
+      ) : summary.isError ? (
         <Card role="alert" className="border-[var(--error)] p-4 shadow-none">
           <p className="font-semibold text-[var(--error)]">
             Inspection summary is currently unavailable.
@@ -381,7 +623,7 @@ export function InspectionRegistry({
           <Button
             type="button"
             className="mt-3"
-            onClick={() => void allInspections.refetch()}
+            onClick={() => void summary.refetch()}
           >
             Retry summary
           </Button>
@@ -389,20 +631,16 @@ export function InspectionRegistry({
       ) : (
         <div className="grid gap-3 sm:grid-cols-3">
           <SummaryCard
-            label="All inspection records"
-            count={allInspections.data.length}
+            label="All acknowledged records"
+            count={summary.data.totalCount}
           />
           <SummaryCard
             label="Operational"
-            count={
-              allInspections.data.filter((item) => item.isOperational).length
-            }
+            count={summary.data.operationalCount}
           />
           <SummaryCard
             label="Not operational"
-            count={
-              allInspections.data.filter((item) => !item.isOperational).length
-            }
+            count={summary.data.nonOperationalCount}
           />
         </div>
       )}
@@ -415,171 +653,273 @@ export function InspectionRegistry({
             apply()
           }}
         >
-          <Input
-            aria-label="Search inspections"
-            placeholder="Asset code, location, remarks, recommendation, or WMS PM number"
-            value={draft.search ?? ''}
-            maxLength={256}
-            onChange={(event) =>
-              setDraft((current) => ({
-                ...current,
-                search: event.target.value,
-              }))
+          <label className="grid gap-1 text-sm font-semibold text-[var(--text-primary)] md:col-span-2">
+            Search
+            <Input
+              aria-label="Search inspections"
+              placeholder="Asset code, location, remarks, recommendation, or WMS PM number"
+              value={draft.search ?? ''}
+              maxLength={256}
+              onChange={(event) =>
+                setDraft((current) => ({
+                  ...current,
+                  search: event.target.value,
+                }))
+              }
+            />
+          </label>
+          <AssetPicker
+            value={draft.assetId}
+            assetCategory={draft.assetCategory}
+            department={draft.department}
+            onChange={(assetId) =>
+              setDraft((current) => ({ ...current, assetId }))
             }
-            className="md:col-span-2"
           />
-          <select
-            aria-label="Asset"
-            value={draft.assetId ?? ''}
-            disabled={assets.isError}
-            onChange={(event) =>
-              setDraft((current) => ({
-                ...current,
-                assetId: event.target.value || undefined,
-              }))
-            }
-            className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
-          >
-            <option value="">All assets</option>
-            {(assets.data ?? []).map((asset) => (
-              <option key={asset.id} value={asset.id}>
-                {asset.assetCode}
-              </option>
-            ))}
-          </select>
-          <select
-            aria-label="Schedule"
-            value={draft.scheduleId ?? ''}
-            disabled={schedules.isError}
-            onChange={(event) =>
-              setDraft((current) => ({
-                ...current,
-                scheduleId: event.target.value || undefined,
-              }))
-            }
-            className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
-          >
-            <option value="">All schedules</option>
-            {(schedules.data ?? []).map((schedule) => (
-              <option key={schedule.id} value={schedule.id}>
-                {schedule.asset?.assetCode ?? schedule.assetId} -{' '}
-                {formatPmCycle(schedule.pmCycle)} · Due{' '}
-                {formatPmCycleDueDate(schedule.pmCycle)}
-              </option>
-            ))}
-          </select>
-          <select
-            aria-label="Asset category"
-            value={draft.assetCategory ?? ''}
-            disabled={categories.isError}
-            onChange={(event) =>
-              setDraft((current) => ({
-                ...current,
-                assetCategory: (event.target.value || undefined) as
-                  Asset['assetCategory'] | undefined,
-              }))
-            }
-            className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
-          >
-            <option value="">All asset categories</option>
-            {assetCategoryCodes.map((categoryCode) => (
-              <option key={categoryCode} value={categoryCode}>
-                {categoryLabel(categoryByCode.get(categoryCode), categoryCode)}
-              </option>
-            ))}
-          </select>
-          <select
-            aria-label="Department"
-            value={draft.department ?? ''}
-            disabled={assets.isError}
-            onChange={(event) =>
-              setDraft((current) => ({
-                ...current,
-                department: event.target.value || undefined,
-              }))
-            }
-            className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
-          >
-            <option value="">All departments</option>
-            {departments.map((department) => (
-              <option key={department} value={department}>
-                {department}
-              </option>
-            ))}
-          </select>
-          <select
-            aria-label="Recorded operational result"
-            value={
-              draft.isOperational === undefined
-                ? ''
-                : draft.isOperational
-                  ? 'true'
-                  : 'false'
-            }
-            onChange={(event) =>
-              setDraft((current) => ({
-                ...current,
-                isOperational:
-                  event.target.value === ''
-                    ? undefined
-                    : event.target.value === 'true',
-              }))
-            }
-            className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
-          >
-            <option value="">All recorded results</option>
-            <option value="true">Operational</option>
-            <option value="false">Not operational</option>
-          </select>
-          <select
-            aria-label="Corrective follow-up status"
-            value={draft.wmsReferralStatus ?? ''}
-            onChange={(event) =>
-              setDraft((current) => ({
-                ...current,
-                wmsReferralStatus: (event.target.value || undefined) as
-                  InspectionFollowUpStatus | undefined,
-              }))
-            }
-            className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
-          >
-            <option value="">All follow-up statuses</option>
-            <option value="NoReferralRequired">No referral required</option>
-            <option value="CorrectiveFollowUpPending">
-              Corrective follow-up pending
-            </option>
-            <option value="ReferredToWms">Referred to WMS</option>
-          </select>
-          <label className="grid gap-1 text-xs font-semibold text-[var(--text-secondary)]">
-            Inspected from
-            <input
-              type="datetime-local"
-              value={toDateTimeLocal(draft.dateFrom)}
+          <label className="grid gap-1 text-sm font-semibold text-[var(--text-primary)]">
+            Asset category
+            <select
+              aria-label="Asset category"
+              value={draft.assetCategory ?? ''}
+              disabled={filterOptions.isError || filterOptions.isPending}
+              onChange={(event) => {
+                const assetCategory = (event.target.value || undefined) as
+                  Asset['assetCategory'] | undefined
+                setDraft((current) => ({
+                  ...current,
+                  assetCategory,
+                  assetId: undefined,
+                }))
+                setFilterNotice(
+                  draft.assetId
+                    ? 'Specific asset was cleared because the category filter changed.'
+                    : null,
+                )
+              }}
+              className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
+            >
+              <option value="">All asset categories</option>
+              {categories.map((category) => (
+                <option key={category.code} value={category.code}>
+                  {category.displayName}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="grid gap-1 text-sm font-semibold text-[var(--text-primary)]">
+            Department
+            <select
+              aria-label="Department"
+              value={draft.department ?? ''}
+              disabled={filterOptions.isError || filterOptions.isPending}
+              onChange={(event) => {
+                setDraft((current) => ({
+                  ...current,
+                  department: event.target.value || undefined,
+                  assetId: undefined,
+                }))
+                setFilterNotice(
+                  draft.assetId
+                    ? 'Specific asset was cleared because the department filter changed.'
+                    : null,
+                )
+              }}
+              className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
+            >
+              <option value="">All departments</option>
+              {departments.map((department) => (
+                <option key={department} value={department}>
+                  {department}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="grid gap-1 text-sm font-semibold text-[var(--text-primary)]">
+            Recorded result
+            <select
+              aria-label="Recorded operational result"
+              value={
+                draft.isOperational === undefined
+                  ? ''
+                  : draft.isOperational
+                    ? 'true'
+                    : 'false'
+              }
               onChange={(event) =>
                 setDraft((current) => ({
                   ...current,
-                  dateFrom: fromDateTimeLocal(event.target.value),
+                  isOperational:
+                    event.target.value === ''
+                      ? undefined
+                      : event.target.value === 'true',
                 }))
               }
-              className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm font-normal"
-            />
+              className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
+            >
+              <option value="">All recorded results</option>
+              <option value="true">Operational</option>
+              <option value="false">Not operational</option>
+            </select>
           </label>
-          <label className="grid gap-1 text-xs font-semibold text-[var(--text-secondary)]">
-            Inspected to
-            <input
-              type="datetime-local"
-              value={toDateTimeLocal(draft.dateTo)}
+          <label className="grid gap-1 text-sm font-semibold text-[var(--text-primary)]">
+            Corrective follow-up
+            <select
+              aria-label="Corrective follow-up status"
+              value={draft.wmsReferralStatus ?? ''}
               onChange={(event) =>
                 setDraft((current) => ({
                   ...current,
-                  dateTo: fromDateTimeLocal(event.target.value),
+                  wmsReferralStatus: (event.target.value || undefined) as
+                    InspectionFollowUpStatus | undefined,
                 }))
               }
-              className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm font-normal"
-            />
+              className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
+            >
+              <option value="">All follow-up statuses</option>
+              <option value="NoReferralRequired">No referral required</option>
+              <option value="CorrectiveFollowUpPending">
+                Corrective follow-up pending
+              </option>
+              <option value="ReferredToWms">Referred to WMS</option>
+            </select>
           </label>
+          <label className="grid gap-1 text-sm font-semibold text-[var(--text-primary)]">
+            PM calendar year
+            <select
+              aria-label="PM calendar year"
+              value={draft.year ?? pmCycleYear ?? ''}
+              onChange={(event) => {
+                setDraft((current) => ({
+                  ...current,
+                  year: event.target.value
+                    ? Number(event.target.value)
+                    : undefined,
+                  pmCycle: undefined,
+                }))
+                if (draft.pmCycle)
+                  setFilterNotice(
+                    'The exact PM month was cleared because the year changed.',
+                  )
+              }}
+              className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
+            >
+              <option value="">All years</option>
+              {yearOptions.map((year) => (
+                <option key={year} value={year}>
+                  {year}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="grid gap-1 text-sm font-semibold text-[var(--text-primary)]">
+            PM calendar quarter
+            <select
+              aria-label="PM calendar quarter"
+              value={draft.quarter ?? pmCycleQuarter ?? ''}
+              onChange={(event) => {
+                setDraft((current) => ({
+                  ...current,
+                  quarter: (event.target.value ||
+                    undefined) as InspectionSearch['quarter'],
+                  pmCycle: undefined,
+                }))
+                if (draft.pmCycle)
+                  setFilterNotice(
+                    'The exact PM month was cleared because the quarter changed.',
+                  )
+              }}
+              className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
+            >
+              <option value="">All quarters</option>
+              {['Q1', 'Q2', 'Q3', 'Q4'].map((quarter) => (
+                <option key={quarter} value={quarter}>
+                  {quarter}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="grid gap-1 text-sm font-semibold text-[var(--text-primary)]">
+            Exact PM month
+            <select
+              aria-label="Exact PM month"
+              value={draft.pmCycle?.slice(5, 7) ?? ''}
+              onChange={(event) => {
+                const month = Number(event.target.value)
+                if (!month) {
+                  setDraft((current) => ({ ...current, pmCycle: undefined }))
+                  setFilterNotice(null)
+                  return
+                }
+                const year = draft.year ?? getCurrentManilaYear()
+                const quarter =
+                  `Q${Math.floor((month - 1) / 3) + 1}` as NonNullable<
+                    InspectionSearch['quarter']
+                  >
+                setDraft((current) => ({
+                  ...current,
+                  year,
+                  quarter,
+                  pmCycle: `${year}-${String(month).padStart(2, '0')}`,
+                }))
+                setFilterNotice(null)
+              }}
+              className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
+            >
+              <option value="">All months</option>
+              {allowedMonths.map((month) => (
+                <option key={month} value={String(month).padStart(2, '0')}>
+                  {new Intl.DateTimeFormat(undefined, {
+                    month: 'long',
+                    timeZone: 'UTC',
+                  }).format(new Date(Date.UTC(2024, month - 1, 1)))}
+                </option>
+              ))}
+            </select>
+          </label>
+          <details className="rounded-lg border border-[var(--border-soft)] p-3 md:col-span-2 xl:col-span-4">
+            <summary className="cursor-pointer text-sm font-semibold text-[var(--text-primary)]">
+              Actual inspection dates (advanced)
+            </summary>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <label className="grid gap-1 text-xs font-semibold text-[var(--text-secondary)]">
+                Inspected from
+                <input
+                  type="datetime-local"
+                  value={toDateTimeLocal(draft.dateFrom)}
+                  onChange={(event) =>
+                    setDraft((current) => ({
+                      ...current,
+                      dateFrom: fromDateTimeLocal(event.target.value),
+                    }))
+                  }
+                  className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm font-normal"
+                />
+              </label>
+              <label className="grid gap-1 text-xs font-semibold text-[var(--text-secondary)]">
+                Inspected to
+                <input
+                  type="datetime-local"
+                  value={toDateTimeLocal(draft.dateTo)}
+                  onChange={(event) =>
+                    setDraft((current) => ({
+                      ...current,
+                      dateTo: fromDateTimeLocal(event.target.value),
+                    }))
+                  }
+                  className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm font-normal"
+                />
+              </label>
+            </div>
+          </details>
           <div className="flex flex-wrap items-end gap-2 md:col-span-2 xl:col-span-4">
-            <Button type="submit" disabled={!dateRangeIsValid}>
+            <Button
+              type="submit"
+              disabled={
+                !dateRangeIsValid ||
+                !pmCycleMatchesPeriod ||
+                !draftAssetMatchesFilters
+              }
+            >
               Apply filters
             </Button>
             <Button type="button" variant="secondary" onClick={clear}>
@@ -592,48 +932,54 @@ export function InspectionRegistry({
             The start date must be before or equal to the end date.
           </p>
         )}
-        {(assets.isError || categories.isError || schedules.isError) && (
+        {!pmCycleMatchesPeriod && (
+          <p className="mt-3 text-sm text-[var(--error)]" role="alert">
+            The exact PM month must match the selected calendar year and
+            quarter.
+          </p>
+        )}
+        {draft.assetId && !draftAssetMatchesFilters && (
+          <p className="mt-3 text-sm text-[var(--error)]" role="alert">
+            {draftSelectedAsset.isPending
+              ? 'Checking the selected asset before applying filters.'
+              : 'The selected asset could not be verified or does not match the category or department. Clear it or choose another asset.'}
+          </p>
+        )}
+        {filterNotice && (
+          <p
+            className="mt-3 text-sm text-[var(--text-secondary)]"
+            role="status"
+          >
+            {filterNotice}
+          </p>
+        )}
+        {filterOptions.isError && (
           <div
             role="alert"
             className="mt-3 flex flex-wrap gap-3 text-sm text-[var(--error)]"
           >
-            {assets.isError && (
-              <Button type="button" onClick={() => void assets.refetch()}>
-                Retry asset context
-              </Button>
-            )}
-            {categories.isError && (
-              <Button type="button" onClick={() => void categories.refetch()}>
-                Retry category options
-              </Button>
-            )}
-            {schedules.isError && (
-              <Button type="button" onClick={() => void schedules.refetch()}>
-                Retry schedule context
-              </Button>
-            )}
+            <span>Inspection filter options are unavailable.</span>
+            <Button type="button" onClick={() => void filterOptions.refetch()}>
+              Retry filter options
+            </Button>
           </div>
         )}
+        <RegistryActiveFilters filters={activeFilters} />
       </Card>
 
-      {records.length === 0 &&
-        filteredInspections.isFetching &&
-        !filteredInspections.isPending && (
-          <p
-            className="min-h-5 text-sm text-[var(--text-neutral)]"
-            role="status"
-          >
-            Updating results...
-          </p>
-        )}
-      {filteredInspections.isPending ? (
+      <p className="text-sm text-[var(--text-secondary)]" aria-live="polite">
+        Filtered results: {totalCount.toLocaleString()} · Overall acknowledged
+        inspection records:{' '}
+        {registry.data?.overallCount.toLocaleString() ?? 'Loading'}
+      </p>
+      {registry.isPending ? (
         <RegistryLoadingPanel breakpoint="md" viewportSize="standard">
           <span className="sr-only">Loading inspections...</span>
           {Array.from({ length: 5 }, (_, index) => (
             <Skeleton key={index} className="h-10 w-full" />
           ))}
         </RegistryLoadingPanel>
-      ) : filteredInspections.isError ? (
+      ) : registry.isError ? (
         <Card role="alert" className="border-[var(--error)] p-6 shadow-none">
           <h2 className="font-bold text-[var(--error)]">
             Inspections unavailable
@@ -644,7 +990,7 @@ export function InspectionRegistry({
           <Button
             type="button"
             className="mt-4"
-            onClick={() => void filteredInspections.refetch()}
+            onClick={() => void registry.refetch()}
           >
             Retry
           </Button>
@@ -652,8 +998,8 @@ export function InspectionRegistry({
       ) : records.length === 0 ? (
         <Card className="p-8 text-center shadow-none">
           <h2 className="font-bold">
-            {allInspections.isSuccess && allInspections.data.length === 0
-              ? 'No inspection records are available yet.'
+            {records.length === 0 && summary.data?.totalCount === 0
+              ? 'No acknowledged inspection records are available yet.'
               : 'No inspection records match these filters.'}
           </h2>
         </Card>
@@ -662,7 +1008,7 @@ export function InspectionRegistry({
           label="Inspections"
           breakpoint="md"
           viewportSize="standard"
-          isUpdating={filteredInspections.isFetching}
+          isUpdating={registry.isFetching}
           desktopContent={
             <table className="w-full min-w-[960px] text-left text-sm">
               <thead className="bg-[var(--page-background)] text-xs tracking-wide text-[var(--text-neutral)] uppercase">
@@ -697,69 +1043,83 @@ export function InspectionRegistry({
               </tbody>
             </table>
           }
-          mobileContent={pageData.map((inspection) => {
-            const asset = assetMap.get(inspection.assetId)
-            return (
-              <Card key={inspection.id} className="space-y-3 shadow-none">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="font-semibold">
-                      {asset?.assetCode ?? inspection.assetId}
-                    </p>
-                    <p className="text-sm text-[var(--text-secondary)]">
-                      Actual inspection date:{' '}
-                      {formatInspectionDate(inspection.dateInspected)}
-                    </p>
-                  </div>
-                  <Badge
-                    variant={inspection.isOperational ? 'success' : 'danger'}
-                  >
-                    {inspectionOutcome(inspection.isOperational)}
-                  </Badge>
+          mobileContent={records.map((inspection) => (
+            <Card key={inspection.id} className="space-y-3 shadow-none">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  {inspection.asset ? (
+                    <Link
+                      to="/app/assets/$assetId"
+                      params={{ assetId: inspection.asset.id }}
+                      search={{
+                        returnContext: { kind: 'inspectionRegistry', search },
+                      }}
+                      className="font-semibold text-[var(--primary)] hover:underline"
+                    >
+                      {inspection.asset.assetCode}
+                    </Link>
+                  ) : (
+                    <p className="font-semibold">Asset details unavailable</p>
+                  )}
+                  <p className="text-xs text-[var(--text-neutral)]">
+                    {inspection.asset?.assetCategory ?? 'Category not recorded'}
+                  </p>
+                  <p className="text-sm text-[var(--text-secondary)]">
+                    Actual inspection date:{' '}
+                    {formatInspectionDate(inspection.dateInspected)}
+                  </p>
                 </div>
-                <p className="text-sm text-[var(--text-secondary)]">
-                  {excerpt(inspection.remarks)}
-                </p>
                 <Badge
-                  variant={
-                    inspection.correctiveFollowUpStatus === 'ReferredToWms'
-                      ? 'success'
-                      : inspection.correctiveFollowUpStatus ===
-                          'CorrectiveFollowUpPending'
-                        ? 'warning'
-                        : 'neutral'
-                  }
+                  variant={inspection.isOperational ? 'success' : 'danger'}
                 >
-                  {inspection.correctiveFollowUpStatus === 'ReferredToWms'
-                    ? 'Referred to WMS'
+                  {inspectionOutcome(inspection.isOperational)}
+                </Badge>
+              </div>
+              <p className="text-sm text-[var(--text-secondary)]">
+                Scheduled month: {formatPmCycle(inspection.schedule?.pmCycle)}
+              </p>
+              <p className="text-sm text-[var(--text-secondary)]">
+                {excerpt(inspection.remarks)}
+              </p>
+              <Badge
+                variant={
+                  inspection.correctiveFollowUpStatus === 'ReferredToWms'
+                    ? 'success'
                     : inspection.correctiveFollowUpStatus ===
                         'CorrectiveFollowUpPending'
-                      ? 'Corrective follow-up pending'
-                      : 'No referral required'}
-                </Badge>
-                {inspection.externalPmNumber && (
-                  <p className="text-sm text-[var(--text-secondary)]">
-                    WMS PM: {inspection.externalPmNumber}
-                  </p>
-                )}
-                <Link
-                  to="/app/inspections/$inspectionId"
-                  params={{ inspectionId: inspection.id }}
-                  search={{
-                    ...search,
-                    returnContext: { kind: 'inspectionRegistry', search },
-                  }}
-                  className="text-sm font-semibold text-[var(--primary)] hover:underline"
-                >
-                  View details
-                </Link>
-              </Card>
-            )
-          })}
+                      ? 'warning'
+                      : 'neutral'
+                }
+              >
+                {inspection.correctiveFollowUpStatus === 'ReferredToWms'
+                  ? 'Referred to WMS'
+                  : inspection.correctiveFollowUpStatus ===
+                      'CorrectiveFollowUpPending'
+                    ? 'Corrective follow-up pending'
+                    : 'No referral required'}
+              </Badge>
+              {inspection.externalPmNumber && (
+                <p className="text-sm text-[var(--text-secondary)]">
+                  WMS PM: {inspection.externalPmNumber}
+                </p>
+              )}
+              <Link
+                to="/app/inspections/$inspectionId"
+                params={{ inspectionId: inspection.id }}
+                search={{
+                  ...search,
+                  returnContext: { kind: 'inspectionRegistry', search },
+                }}
+                className="inline-block font-semibold text-[var(--primary)] hover:underline"
+              >
+                View details
+              </Link>
+            </Card>
+          ))}
           pagination={{
             page,
             pageSize,
-            total: records.length,
+            total: totalCount,
             onPageChange: changePage,
           }}
         />

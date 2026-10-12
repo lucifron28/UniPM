@@ -114,18 +114,39 @@ const assetSearchSchema = z.object({
   text: z.string().trim().max(256).optional(),
   page: pageSchema,
 })
-const inspectionSearchSchema = z.object({
-  assetId: z.string().uuid().optional(),
-  scheduleId: z.string().uuid().optional(),
-  assetCategory: z.enum(assetCategoryCodes).optional(),
-  department: z.string().trim().max(256).optional(),
-  search: z.string().trim().max(256).optional(),
-  isOperational: z.boolean().optional(),
-  wmsReferralStatus: z.enum(inspectionFollowUpStatusCodes).optional(),
-  dateFrom: z.string().datetime({ offset: true }).optional(),
-  dateTo: z.string().datetime({ offset: true }).optional(),
-  page: pageSchema,
-})
+const inspectionSearchSchema = z
+  .object({
+    assetId: z.string().uuid().optional(),
+    scheduleId: z.string().uuid().optional(),
+    assetCategory: z.enum(assetCategoryCodes).optional(),
+    department: z.string().trim().max(256).optional(),
+    search: z.string().trim().max(256).optional(),
+    isOperational: z.boolean().optional(),
+    wmsReferralStatus: z.enum(inspectionFollowUpStatusCodes).optional(),
+    dateFrom: z.string().datetime({ offset: true }).optional(),
+    dateTo: z.string().datetime({ offset: true }).optional(),
+    year: z.coerce.number().int().min(2000).optional(),
+    quarter: z.enum(scheduleQuarterCodes).optional(),
+    pmCycle: z
+      .string()
+      .regex(/^(?!0000)\d{4}-(0[1-9]|1[0-2])$/)
+      .optional(),
+    page: pageSchema,
+  })
+  .refine(
+    (value) =>
+      !value.dateFrom || !value.dateTo || value.dateFrom <= value.dateTo,
+  )
+  .refine((value) => {
+    if (!value.pmCycle) return true
+    const year = Number(value.pmCycle.slice(0, 4))
+    const month = Number(value.pmCycle.slice(5, 7))
+    const quarter = `Q${Math.floor((month - 1) / 3) + 1}`
+    return (
+      (value.year === undefined || value.year === year) &&
+      (value.quarter === undefined || value.quarter === quarter)
+    )
+  })
 const scheduleSearchSchema = z.object({
   assetId: z.string().uuid().optional(),
   assetCategory: z.enum(assetCategoryCodes).optional(),
@@ -140,6 +161,10 @@ const scheduleSearchSchema = z.object({
     .int()
     .min(2000)
     .max(new Date().getUTCFullYear() + 5)
+    .optional(),
+  pmCycle: z
+    .string()
+    .regex(/^(?!0000)\d{4}-(0[1-9]|1[0-2])$/)
     .optional(),
   page: pageSchema,
 })

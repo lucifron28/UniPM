@@ -4,6 +4,8 @@ import {
   assignScheduleBatchSupervisor,
   assignScheduleBatchWorker,
   generatePreventiveMaintenanceSchedules,
+  getGetScheduleRegistryOptionsQueryKey,
+  getGetScheduleRegistrySummaryQueryKey,
   getGetPmPeriodDashboardQueryKey,
   getGetScheduleQueryKey,
   getListPmPeriodDashboardCyclesQueryKey,
@@ -14,7 +16,10 @@ import {
   getListSchedulePeriodTypesQueryKey,
   getListScheduleQuartersQueryKey,
   getListScheduleStatusesQueryKey,
+  getListScheduleRegistryQueryKey,
   getListSchedulesQueryKey,
+  getScheduleRegistryOptions,
+  getScheduleRegistrySummary,
   getSchedule,
   listScheduleSupervisorAssignmentOptions,
   listScheduleWorkerAssignmentOptions,
@@ -24,9 +29,12 @@ import {
   listScheduleEnrollmentDeferrals,
   reviewScheduleEnrollmentDeferral,
   listScheduleStatuses,
+  listScheduleRegistry,
   listSchedules,
 } from '@/api/generated/endpoints'
 import type {
+  GetScheduleRegistryOptionsParams,
+  ListScheduleRegistryParams,
   ListSchedulesParams,
   ListScheduleCoverageReviewParams,
   ListScheduleEnrollmentDeferralsParams,
@@ -35,6 +43,9 @@ import type {
 } from '@/api/generated/models'
 import {
   parseSchedulePeriodTypes,
+  parseScheduleRegistryOptions,
+  parseScheduleRegistryPage,
+  parseScheduleRegistrySummary,
   parseScheduleQuarters,
   parseScheduleStatuses,
   parseSchedule,
@@ -42,6 +53,7 @@ import {
 } from '@/features/schedules/schedule-contract'
 
 export type ScheduleServerFilters = ListSchedulesParams
+export type ScheduleRegistryFilters = ListScheduleRegistryParams
 
 export function useSchedules(filters: ScheduleServerFilters = {}) {
   return useQuery({
@@ -49,6 +61,35 @@ export function useSchedules(filters: ScheduleServerFilters = {}) {
     queryFn: ({ signal }) =>
       listSchedules(filters, signal).then(parseSchedules),
     placeholderData: (previousData) => previousData,
+  })
+}
+
+export function useScheduleRegistry(filters: ScheduleRegistryFilters = {}) {
+  return useQuery({
+    queryKey: getListScheduleRegistryQueryKey(filters),
+    queryFn: ({ signal }) =>
+      listScheduleRegistry(filters, signal).then(parseScheduleRegistryPage),
+    placeholderData: (previousData) => previousData,
+  })
+}
+
+export function useScheduleRegistryOptions(
+  filters: GetScheduleRegistryOptionsParams = {},
+) {
+  return useQuery({
+    queryKey: getGetScheduleRegistryOptionsQueryKey(filters),
+    queryFn: ({ signal }) =>
+      getScheduleRegistryOptions(filters, signal).then(
+        parseScheduleRegistryOptions,
+      ),
+  })
+}
+
+export function useScheduleRegistrySummary() {
+  return useQuery({
+    queryKey: getGetScheduleRegistrySummaryQueryKey(),
+    queryFn: ({ signal }) =>
+      getScheduleRegistrySummary(signal).then(parseScheduleRegistrySummary),
   })
 }
 
@@ -146,6 +187,15 @@ export function useAssignScheduleBatchSupervisor() {
           queryKey: getListSchedulesQueryKey(),
         }),
         queryClient.invalidateQueries({
+          queryKey: getListScheduleRegistryQueryKey(),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: getGetScheduleRegistryOptionsQueryKey(),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: getGetScheduleRegistrySummaryQueryKey(),
+        }),
+        queryClient.invalidateQueries({
           queryKey: getListScheduleEnrollmentDeferralsQueryKey(),
         }),
       ])
@@ -176,6 +226,15 @@ export function useAssignScheduleBatchWorker() {
         queryClient.invalidateQueries({
           queryKey: getListSchedulesQueryKey(),
         }),
+        queryClient.invalidateQueries({
+          queryKey: getListScheduleRegistryQueryKey(),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: getGetScheduleRegistryOptionsQueryKey(),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: getGetScheduleRegistrySummaryQueryKey(),
+        }),
       ])
     },
   })
@@ -191,6 +250,15 @@ export function useGenerateSchedules() {
       await Promise.all([
         queryClient.invalidateQueries({
           queryKey: getListSchedulesQueryKey(),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: getListScheduleRegistryQueryKey(),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: getGetScheduleRegistryOptionsQueryKey(),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: getGetScheduleRegistrySummaryQueryKey(),
         }),
         queryClient.invalidateQueries({
           queryKey: getListPmPeriodDashboardCyclesQueryKey(),

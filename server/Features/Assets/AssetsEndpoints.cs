@@ -178,31 +178,45 @@ public static class AssetsEndpoints
         .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status404NotFound)
         .RequireAuthorization(AuthPolicyCatalog.CanManageAssets);
 
-        group.MapGet("/", async (
+        group.MapGet("/registry", async (
             string? assetCategory,
             string? status,
             string? building,
             string? department,
             string? search,
-            int? limit,
+            int? page,
+            int? pageSize,
             IDbContextFactory<ApplicationDbContext> factory,
             CancellationToken cancellationToken) =>
         {
-            var normalizedDepartment = string.IsNullOrWhiteSpace(department)
-                ? null
-                : department.Trim();
-            var normalizedSearch = string.IsNullOrWhiteSpace(search)
-                ? null
-                : search.Trim();
+            var pageNumber = page ?? 1;
+            var size = pageSize ?? 25;
             var validationErrors = new Dictionary<string, string[]>();
-            if (normalizedDepartment?.Length > 256)
+            if (pageNumber < 1)
             {
-                validationErrors[nameof(department)] = ["Department must be 256 characters or fewer."];
+                validationErrors[nameof(page)] = ["Page must be greater than zero."];
             }
 
-            if (normalizedSearch?.Length > 256)
+            if (size is < 1 or > 100)
             {
-                validationErrors[nameof(search)] = ["Search must be 256 characters or fewer."];
+                validationErrors[nameof(pageSize)] = ["Page size must be between 1 and 100."];
+            }
+
+            if (!TryNormalizeAssetFilters(
+                    assetCategory,
+                    status,
+                    department,
+                    search,
+                    out var normalizedCategory,
+                    out var normalizedStatus,
+                    out var normalizedDepartment,
+                    out var normalizedSearch,
+                    out var filterErrors))
+            {
+                foreach (var (key, messages) in filterErrors)
+                {
+                    validationErrors[key] = messages;
+                }
             }
 
             if (validationErrors.Count > 0)
@@ -211,55 +225,188 @@ public static class AssetsEndpoints
             }
 
             await using var context = await factory.CreateDbContextAsync(cancellationToken);
-            var query = context.Assets.AsNoTracking();
+            var query = ApplyAssetFilters(
+                context.Assets.AsNoTracking(),
+                normalizedCategory,
+                normalizedStatus,
+                building,
+                normalizedDepartment,
+                normalizedSearch);
+            var totalCount = await query.CountAsync(cancellationToken);
+            var skip = (long)(pageNumber - 1) * size;
+            List<AssetResponse> items = skip > int.MaxValue
+                ? []
+                : await query
+                    .OrderBy(asset => asset.AssetCode)
+                    .ThenBy(asset => asset.Id)
+                    .Skip((int)skip)
+                    .Take(size)
+                    .Select(asset => new AssetResponse(
+                        asset.Id,
+                        asset.AssetCode,
+                        asset.AssetCategory,
+                        asset.Building,
+                        asset.Department,
+                        asset.Location,
+                        asset.QrCodeValue,
+                        asset.Status,
+                        asset.CreatedAt,
+                        asset.UpdatedAt,
+                        asset.VerificationLatitude != null
+                            && asset.VerificationLongitude != null
+                            && asset.VerificationRadiusMeters != null))
+                    .ToListAsync(cancellationToken);
 
-            if (!string.IsNullOrWhiteSpace(assetCategory))
+            return Results.Ok(new AssetRegistryPageResponse(items, pageNumber, size, totalCount));
+        })
+        .WithName("ListAssetRegistry")
+        .WithSummary("Lists a bounded page of assets for the web registry")
+        .Produces<AssetRegistryPageResponse>(StatusCodes.Status200OK)
+        .Produces<Microsoft.AspNetCore.Mvc.ValidationProblemDetails>(StatusCodes.Status400BadRequest)
+        .RequireAuthorization();
+
+        group.MapGet("/registry/options", async (
+            string? assetCategory,
+            string? department,
+            IDbContextFactory<ApplicationDbContext> factory,
+            CancellationToken cancellationToken) =>
+        {
+            if (!TryNormalizeAssetFilters(
+                    assetCategory,
+                    null,
+                    department,
+                    null,
+                    out var normalizedCategory,
+                    out _,
+                    out var normalizedDepartment,
+                    out _,
+                    out var validationErrors))
             {
-                if (!AssetCategoryCatalog.TryNormalize(assetCategory, out var normalizedCategory))
+                return ApiErrors.Validation(validationErrors);
+            }
+
+            await using var context = await factory.CreateDbContextAsync(cancellationToken);
+            var categoryQuery = ApplyAssetFilters(
+                context.Assets.AsNoTracking(),
+                normalizedCategory,
+                null,
+                null,
+                null,
+                null);
+            var locationQuery = ApplyAssetFilters(
+                context.Assets.AsNoTracking(),
+                normalizedCategory,
+                null,
+                null,
+                normalizedDepartment,
+                null);
+            var departments = await categoryQuery
+                .Where(asset => asset.Department != null)
+                .Select(asset => asset.Department!)
+                .Distinct()
+                .OrderBy(value => value)
+                .ToListAsync(cancellationToken);
+            var buildings = await locationQuery
+                .Where(asset => asset.Building != null)
+                .Select(asset => asset.Building!)
+                .Distinct()
+                .OrderBy(value => value)
+                .ToListAsync(cancellationToken);
+
+            return Results.Ok(new AssetRegistryOptionsResponse(
+                AssetCategoryCatalog.All,
+                AssetStatusCatalog.PersistedValues,
+                departments,
+                buildings));
+        })
+        .WithName("GetAssetRegistryOptions")
+        .WithSummary("Lists small asset registry filter options")
+        .Produces<AssetRegistryOptionsResponse>(StatusCodes.Status200OK)
+        .Produces<Microsoft.AspNetCore.Mvc.ValidationProblemDetails>(StatusCodes.Status400BadRequest)
+        .RequireAuthorization();
+
+        group.MapGet("/registry/summary", async (
+            IDbContextFactory<ApplicationDbContext> factory,
+            CancellationToken cancellationToken) =>
+        {
+            await using var context = await factory.CreateDbContextAsync(cancellationToken);
+            var groupedCounts = await context.Assets
+                .AsNoTracking()
+                .GroupBy(asset => asset.AssetCategory)
+                .Select(grouping => new AssetRegistryCategoryCounts(
+                    grouping.Key,
+                    grouping.Count(),
+                    grouping.Count(asset => asset.Status == AssetStatusCatalog.Active),
+                    grouping.Count(asset => asset.Status == AssetStatusCatalog.Inactive),
+                    grouping.Count(asset => asset.Status == AssetStatusCatalog.Retired)))
+                .ToListAsync(cancellationToken);
+            var countByCategory = groupedCounts.ToDictionary(
+                counts => counts.AssetCategory,
+                StringComparer.Ordinal);
+            var categories = AssetCategoryCatalog.All
+                .Select(category =>
                 {
-                    return ApiErrors.Validation(new Dictionary<string, string[]>
-                    {
-                        [nameof(assetCategory)] = ["Asset category must be one of the selected UniPM study scope categories."]
-                    });
-                }
+                    countByCategory.TryGetValue(category.Code, out var counts);
+                    return new AssetRegistryCategorySummaryResponse(
+                        category.Code,
+                        category.DisplayName,
+                        counts?.TotalCount ?? 0,
+                        counts?.ActiveCount ?? 0,
+                        counts?.InactiveCount ?? 0,
+                        counts?.RetiredCount ?? 0);
+                })
+                .ToArray();
 
-                query = query.Where(asset => asset.AssetCategory == normalizedCategory);
+            return Results.Ok(new AssetRegistrySummaryResponse(
+                categories.Sum(category => category.TotalCount),
+                categories.Sum(category => category.ActiveCount),
+                categories.Sum(category => category.InactiveCount),
+                categories.Sum(category => category.RetiredCount),
+                categories));
+        })
+        .WithName("GetAssetRegistrySummary")
+        .WithSummary("Returns overall asset totals by category and status")
+        .Produces<AssetRegistrySummaryResponse>(StatusCodes.Status200OK)
+        .RequireAuthorization();
+
+        group.MapGet("/", async (
+            string? assetCategory,
+            string? status,
+            string? building,
+            string? department,
+            string? search,
+            int? limit,
+            bool? hasDepartment,
+            IDbContextFactory<ApplicationDbContext> factory,
+            CancellationToken cancellationToken) =>
+        {
+            if (!TryNormalizeAssetFilters(
+                    assetCategory,
+                    status,
+                    department,
+                    search,
+                    out var normalizedCategory,
+                    out var normalizedStatus,
+                    out var normalizedDepartment,
+                    out var normalizedSearch,
+                    out var validationErrors))
+            {
+                return ApiErrors.Validation(validationErrors);
             }
 
-            if (!string.IsNullOrWhiteSpace(status))
-            {
-                if (!AssetStatusCatalog.TryNormalize(status, out var normalizedStatus))
-                {
-                    return ApiErrors.Validation(new Dictionary<string, string[]>
-                    {
-                        [nameof(status)] = ["Status must be a supported asset status."]
-                    });
-                }
+            await using var context = await factory.CreateDbContextAsync(cancellationToken);
+            var query = ApplyAssetFilters(
+                context.Assets.AsNoTracking(),
+                normalizedCategory,
+                normalizedStatus,
+                building,
+                normalizedDepartment,
+                normalizedSearch);
 
-                query = query.Where(asset => asset.Status == normalizedStatus);
-            }
-
-            if (!string.IsNullOrWhiteSpace(building))
+            if (hasDepartment == true)
             {
-                var normalizedBuilding = building.Trim().ToUpper();
-                query = query.Where(asset => asset.Building != null && asset.Building.ToUpper() == normalizedBuilding);
-            }
-
-            if (normalizedDepartment is not null)
-            {
-                var departmentKey = normalizedDepartment.ToUpperInvariant();
-                query = query.Where(asset => asset.Department != null && asset.Department.ToUpper() == departmentKey);
-            }
-
-            if (normalizedSearch is not null)
-            {
-                var searchKey = normalizedSearch.ToUpperInvariant();
                 query = query.Where(asset =>
-                    asset.AssetCode.Contains(searchKey) ||
-                    (asset.QrCodeValue != null && asset.QrCodeValue.ToUpper().Contains(searchKey)) ||
-                    (asset.Building != null && asset.Building.ToUpper().Contains(searchKey)) ||
-                    (asset.Department != null && asset.Department.ToUpper().Contains(searchKey)) ||
-                    (asset.Location != null && asset.Location.ToUpper().Contains(searchKey)));
+                    asset.Department != null && asset.Department.Trim() != string.Empty);
             }
 
             var orderedQuery = query.OrderBy(asset => asset.AssetCode);
@@ -286,7 +433,7 @@ public static class AssetsEndpoints
             return Results.Ok(assets);
         })
         .WithName("ListAssets")
-        .WithSummary("Lists assets using supported category, status, building, department, and search filters")
+        .WithSummary("Lists assets using supported category, status, location, search, and department-presence filters")
         .Produces<IReadOnlyList<AssetResponse>>(StatusCodes.Status200OK)
         .Produces<Microsoft.AspNetCore.Mvc.ValidationProblemDetails>(StatusCodes.Status400BadRequest);
 
@@ -353,11 +500,146 @@ public static class AssetsEndpoints
         return endpoints;
     }
 
+    private static bool TryNormalizeAssetFilters(
+        string? assetCategory,
+        string? status,
+        string? department,
+        string? search,
+        out string? normalizedCategory,
+        out string? normalizedStatus,
+        out string? normalizedDepartment,
+        out string? normalizedSearch,
+        out Dictionary<string, string[]> validationErrors)
+    {
+        normalizedCategory = null;
+        normalizedStatus = null;
+        normalizedDepartment = string.IsNullOrWhiteSpace(department) ? null : department.Trim();
+        normalizedSearch = string.IsNullOrWhiteSpace(search) ? null : search.Trim();
+        validationErrors = [];
+
+        if (!string.IsNullOrWhiteSpace(assetCategory))
+        {
+            if (AssetCategoryCatalog.TryNormalize(assetCategory, out var category))
+            {
+                normalizedCategory = category;
+            }
+            else
+            {
+                validationErrors[nameof(assetCategory)] =
+                    ["Asset category must be one of the selected UniPM study scope categories."];
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            if (AssetStatusCatalog.TryNormalize(status, out var assetStatus))
+            {
+                normalizedStatus = assetStatus;
+            }
+            else
+            {
+                validationErrors[nameof(status)] = ["Status must be a supported asset status."];
+            }
+        }
+
+        if (normalizedDepartment?.Length > AssetCodeValue.MetadataMaxLength)
+        {
+            validationErrors[nameof(department)] =
+                [$"Department must be {AssetCodeValue.MetadataMaxLength} characters or fewer."];
+        }
+
+        if (normalizedSearch?.Length > AssetCodeValue.MetadataMaxLength)
+        {
+            validationErrors[nameof(search)] =
+                [$"Search must be {AssetCodeValue.MetadataMaxLength} characters or fewer."];
+        }
+
+        return validationErrors.Count == 0;
+    }
+
+    private static IQueryable<Asset> ApplyAssetFilters(
+        IQueryable<Asset> query,
+        string? normalizedCategory,
+        string? normalizedStatus,
+        string? building,
+        string? normalizedDepartment,
+        string? normalizedSearch)
+    {
+        if (normalizedCategory is not null)
+        {
+            query = query.Where(asset => asset.AssetCategory == normalizedCategory);
+        }
+
+        if (normalizedStatus is not null)
+        {
+            query = query.Where(asset => asset.Status == normalizedStatus);
+        }
+
+        if (!string.IsNullOrWhiteSpace(building))
+        {
+            var normalizedBuilding = building.Trim().ToUpper();
+            query = query.Where(asset => asset.Building != null && asset.Building.ToUpper() == normalizedBuilding);
+        }
+
+        if (normalizedDepartment is not null)
+        {
+            var departmentKey = normalizedDepartment.ToUpperInvariant();
+            query = query.Where(asset => asset.Department != null && asset.Department.ToUpper() == departmentKey);
+        }
+
+        if (normalizedSearch is not null)
+        {
+            var searchKey = normalizedSearch.ToUpperInvariant();
+            query = query.Where(asset =>
+                asset.AssetCode.Contains(searchKey) ||
+                (asset.QrCodeValue != null && asset.QrCodeValue.ToUpper().Contains(searchKey)) ||
+                (asset.Building != null && asset.Building.ToUpper().Contains(searchKey)) ||
+                (asset.Department != null && asset.Department.ToUpper().Contains(searchKey)) ||
+                (asset.Location != null && asset.Location.ToUpper().Contains(searchKey)));
+        }
+
+        return query;
+    }
+
     private static string? NormalizeOptional(string? value)
     {
         return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }
 }
+
+public sealed record AssetRegistryPageResponse(
+    IReadOnlyList<AssetResponse> Items,
+    int Page,
+    int PageSize,
+    int TotalCount);
+
+public sealed record AssetRegistryOptionsResponse(
+    IReadOnlyList<AssetCategoryResponse> Categories,
+    IReadOnlyList<string> Statuses,
+    IReadOnlyList<string> Departments,
+    IReadOnlyList<string> Buildings);
+
+public sealed record AssetRegistryCategorySummaryResponse(
+    string AssetCategory,
+    string DisplayName,
+    int TotalCount,
+    int ActiveCount,
+    int InactiveCount,
+    int RetiredCount);
+
+public sealed record AssetRegistrySummaryResponse(
+    int TotalCount,
+    int ActiveCount,
+    int InactiveCount,
+    int RetiredCount,
+    IReadOnlyList<AssetRegistryCategorySummaryResponse> Categories);
+
+internal sealed record AssetRegistryCategoryCounts(
+    string AssetCategory,
+    int TotalCount,
+    int ActiveCount,
+    int InactiveCount,
+    int RetiredCount);
 
 public sealed record AssetResponse(
     Guid Id,

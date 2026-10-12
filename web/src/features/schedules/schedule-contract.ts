@@ -1,9 +1,14 @@
 import { z } from 'zod'
 import type {
   CreateScheduleDto,
+  ScheduleRegistryItemResponse,
+  ScheduleRegistryOptionsResponse,
+  ScheduleRegistryPageResponse,
+  ScheduleRegistrySummaryResponse,
   ScheduleReferenceResponse,
   ScheduleResponse,
 } from '@/api/generated/models'
+import { assetCategorySchema } from '@/features/assets/asset-contract'
 import { getCurrentManilaYear } from '@/features/schedules/schedule-presentation'
 
 export const scheduleStatusCodes = [
@@ -63,6 +68,78 @@ export const scheduleSchema = z
   .strict()
 
 export type Schedule = z.infer<typeof scheduleSchema>
+
+const scheduleRegistryAssetSchema = z
+  .object({
+    id: z.string().uuid(),
+    assetCode: z.string().trim().min(1).max(64),
+    assetCategory: z.string().trim().min(1).max(64),
+    building: optionalText,
+    department: optionalText,
+    location: optionalText,
+  })
+  .strict()
+
+const scheduleRegistryItemSchema = z
+  .object({
+    id: z.string().uuid(),
+    assetId: z.string().uuid(),
+    scheduleDate: z.string().datetime({ offset: true }),
+    pmCycle: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/),
+    periodType: z.enum(schedulePeriodTypeCodes),
+    status: z.enum(scheduleStatusCodes),
+    quarter: z.enum(scheduleQuarterCodes).nullable(),
+    semester: z.enum(scheduleSemesterCodes).nullable(),
+    year: z.preprocess(
+      (value) => (value == null ? null : Number(value)),
+      z.number().int().nullable(),
+    ),
+    academicYear: z.string().max(32).nullable(),
+    completedAt: z.string().datetime({ offset: true }).nullable(),
+    createdAt: z.string().datetime({ offset: true }),
+    updatedAt: z.string().datetime({ offset: true }),
+    asset: scheduleRegistryAssetSchema.nullable(),
+  })
+  .strict()
+
+const scheduleRegistryPageSchema = z
+  .object({
+    items: z.array(scheduleRegistryItemSchema),
+    page: z.coerce.number().int().positive(),
+    pageSize: z.coerce.number().int().positive(),
+    totalCount: z.coerce.number().int().nonnegative(),
+    overallCount: z.coerce.number().int().nonnegative(),
+  })
+  .strict()
+
+const scheduleRegistryOptionsSchema = z
+  .object({
+    categories: z.array(assetCategorySchema),
+    quarters: z.array(z.enum(scheduleQuarterCodes)),
+    departments: z.array(z.string().trim().min(1).max(256)),
+    years: z.array(z.string().regex(/^\d{4}$/)),
+  })
+  .strict()
+
+const scheduleRegistrySummarySchema = z
+  .object({
+    totalCount: z.coerce.number().int().nonnegative(),
+    dueCount: z.coerce.number().int().nonnegative(),
+    ongoingCount: z.coerce.number().int().nonnegative(),
+    overdueCount: z.coerce.number().int().nonnegative(),
+    completedCount: z.coerce.number().int().nonnegative(),
+    cancelledCount: z.coerce.number().int().nonnegative(),
+  })
+  .strict()
+
+export type ScheduleRegistryItem = z.infer<typeof scheduleRegistryItemSchema>
+export type ScheduleRegistryPage = z.infer<typeof scheduleRegistryPageSchema>
+export type ScheduleRegistryOptions = z.infer<
+  typeof scheduleRegistryOptionsSchema
+>
+export type ScheduleRegistrySummary = z.infer<
+  typeof scheduleRegistrySummarySchema
+>
 
 function rejectDuplicateReferenceCodes(
   references: ReadonlyArray<{ code: string }>,
@@ -194,6 +271,30 @@ export function parseSchedule(value: ScheduleResponseCompat): Schedule {
 
 export function parseSchedules(values: ScheduleResponseCompat[]): Schedule[] {
   return z.array(scheduleSchema).parse(values)
+}
+
+export function parseScheduleRegistryItem(
+  value: ScheduleRegistryItemResponse,
+): ScheduleRegistryItem {
+  return scheduleRegistryItemSchema.parse(value)
+}
+
+export function parseScheduleRegistryPage(
+  value: ScheduleRegistryPageResponse,
+): ScheduleRegistryPage {
+  return scheduleRegistryPageSchema.parse(value)
+}
+
+export function parseScheduleRegistryOptions(
+  value: ScheduleRegistryOptionsResponse,
+): ScheduleRegistryOptions {
+  return scheduleRegistryOptionsSchema.parse(value)
+}
+
+export function parseScheduleRegistrySummary(
+  value: ScheduleRegistrySummaryResponse,
+): ScheduleRegistrySummary {
+  return scheduleRegistrySummarySchema.parse(value)
 }
 
 export function parseScheduleStatuses(

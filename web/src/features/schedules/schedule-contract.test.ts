@@ -4,6 +4,7 @@ import { getCurrentManilaYear } from '@/features/schedules/schedule-presentation
 import {
   createScheduleSchema,
   parseSchedule,
+  parseScheduleRegistryPage,
   parseSchedulePeriodTypes,
   parseScheduleQuarters,
   parseScheduleStatuses,
@@ -41,6 +42,18 @@ describe('schedule contracts', () => {
     expect(() =>
       parseSchedule({ ...schedule, privateNote: 'nope' } as never),
     ).toThrow(ZodError)
+  })
+
+  it('parses the complete schedule registry page response', () => {
+    expect(
+      parseScheduleRegistryPage({
+        items: [],
+        page: 1,
+        pageSize: 25,
+        totalCount: 3,
+        overallCount: 42,
+      }).overallCount,
+    ).toBe(42)
   })
 
   it('builds a PM cycle from the selected year and allowed month', () => {

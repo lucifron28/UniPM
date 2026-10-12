@@ -3,6 +3,11 @@ import { expect, test, type Page } from '@playwright/test'
 const inspectionId = '11111111-1111-4111-8111-111111111111'
 const scheduleId = '22222222-2222-4222-8222-222222222222'
 const assetId = '33333333-3333-4333-8333-333333333333'
+const inspectionRegistryRoute = /\/api\/v1\/inspections\/registry(?:\?.*)?$/
+const inspectionRegistryOptionsRoute =
+  /\/api\/v1\/inspections\/registry\/options(?:\?.*)?$/
+const inspectionRegistrySummaryRoute =
+  /\/api\/v1\/inspections\/registry\/summary(?:\?.*)?$/
 const session = {
   accessToken: 'fictional-inspection-token',
   expiresAtUtc: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
@@ -75,6 +80,59 @@ const history = [
     actionsRecommendations: inspection.actionsRecommendations,
   },
 ]
+const registryInspection = {
+  id: inspection.id,
+  scheduleId: inspection.scheduleId,
+  assetId: inspection.assetId,
+  dateInspected: inspection.dateInspected,
+  isOperational: inspection.isOperational,
+  remarks: inspection.remarks,
+  actionsRecommendations: inspection.actionsRecommendations,
+  createdAt: inspection.createdAt,
+  updatedAt: inspection.updatedAt,
+  dateAccomplished: null,
+  waterReplaceCarbonFilter: null,
+  waterReplaceSedimentFilter: null,
+  waterCheckUvLight: null,
+  externalPmNumber: inspection.externalPmNumber,
+  wmsReferralRevision: inspection.wmsReferralRevision,
+  correctiveFollowUpStatus: inspection.correctiveFollowUpStatus,
+  hasPhotoEvidence: inspection.hasPhotoEvidence,
+  asset: {
+    id: assetId,
+    assetCode: asset.assetCode,
+    assetCategory: asset.assetCategory,
+    department: asset.department,
+    building: asset.building,
+    location: asset.location,
+  },
+  schedule: { id: scheduleId, pmCycle: '2026-08' },
+}
+const registryOptions = {
+  categories: [
+    {
+      code: 'fire-extinguisher',
+      displayName: 'Fire extinguishers',
+      scheduledMonths: [2, 5, 8, 11],
+    },
+  ],
+  quarters: ['Q1', 'Q2', 'Q3', 'Q4'],
+  wmsReferralStatuses: [
+    'NoReferralRequired',
+    'CorrectiveFollowUpPending',
+    'ReferredToWms',
+  ],
+  departments: ['GSD'],
+  years: ['2026'],
+}
+const registrySummary = {
+  totalCount: 1,
+  operationalCount: 0,
+  nonOperationalCount: 1,
+  noReferralCount: 0,
+  pendingFollowUpCount: 1,
+  referredCount: 0,
+}
 
 async function mockInspectionApi(page: Page) {
   await page.route('**/api/v1/auth/refresh', (route) =>
@@ -140,6 +198,33 @@ async function mockInspectionApi(page: Page) {
       body: JSON.stringify(inspection),
     }),
   )
+  await page.route(inspectionRegistryRoute, (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        items: [registryInspection],
+        page: 1,
+        pageSize: 25,
+        totalCount: 1,
+        overallCount: 1,
+      }),
+    }),
+  )
+  await page.route(inspectionRegistryOptionsRoute, (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(registryOptions),
+    }),
+  )
+  await page.route(inspectionRegistrySummaryRoute, (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(registrySummary),
+    }),
+  )
 }
 
 async function registryLayout(page: Page) {
@@ -184,22 +269,47 @@ test.describe('Inspection review workflows', () => {
     page,
   }) => {
     await mockInspectionApi(page)
-    const records = Array.from({ length: 11 }, (_, index) => ({
-      ...inspection,
+    const records = Array.from({ length: 26 }, (_, index) => ({
+      ...registryInspection,
       id: `10000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
       remarks: `Finding ${index + 1}`,
     }))
-    await page.route('**/api/v1/inspections**', (route) =>
+    await page.route(inspectionRegistryRoute, (route) => {
+      const params = new URL(route.request().url()).searchParams
+      const pageNumber = Number(params.get('page') ?? 1)
+      const pageSize = Number(params.get('pageSize') ?? 25)
+      const start = (pageNumber - 1) * pageSize
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          items: records.slice(start, start + pageSize),
+          page: pageNumber,
+          pageSize,
+          totalCount: records.length,
+          overallCount: records.length,
+        }),
+      })
+    })
+    await page.route(inspectionRegistrySummaryRoute, (route) =>
       route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify(records),
+        body: JSON.stringify({
+          totalCount: records.length,
+          operationalCount: records.filter((item) => item.isOperational).length,
+          nonOperationalCount: records.filter((item) => !item.isOperational)
+            .length,
+          noReferralCount: 0,
+          pendingFollowUpCount: records.length,
+          referredCount: 0,
+        }),
       }),
     )
     await page.setViewportSize({ width: 1280, height: 600 })
     await page.goto('/app/inspections?isOperational=false')
     const rows = page.getByRole('table').locator('tbody tr')
-    await expect(rows).toHaveCount(10)
+    await expect(rows).toHaveCount(25)
     const next = page.getByRole('button', { name: 'Next' })
     await next.scrollIntoViewIfNeeded()
     const scrollY = await page.evaluate(() => window.scrollY)
@@ -208,14 +318,14 @@ test.describe('Inspection review workflows', () => {
     await next.click()
     await expect(page).toHaveURL(/isOperational=false/)
     await expect(page).toHaveURL(/page=2/)
-    await expect(page.getByRole('cell', { name: 'Finding 11' })).toBeVisible()
+    await expect(page.getByRole('cell', { name: 'Finding 26' })).toBeVisible()
     await expect(rows).toHaveCount(1)
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(scrollY)
     const lastPageLayout = await registryLayout(page)
     expectStableRegistryLayout(firstPageLayout, lastPageLayout)
     await page.getByRole('button', { name: 'Previous' }).click()
     await expect(page).not.toHaveURL(/page=2/)
-    await expect(rows).toHaveCount(10)
+    await expect(rows).toHaveCount(25)
     await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(scrollY)
     expectStableRegistryLayout(firstPageLayout, await registryLayout(page))
 
@@ -235,7 +345,7 @@ test.describe('Inspection review workflows', () => {
     await page.setViewportSize({ width: 375, height: 667 })
     await page.goto('/app/inspections?isOperational=false&page=2')
     const mobileInspection = page
-      .getByText('Finding 11', { exact: true })
+      .getByText('Finding 26', { exact: true })
       .last()
       .locator('xpath=..')
     await expect(mobileInspection).toBeVisible()

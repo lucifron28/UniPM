@@ -8,6 +8,13 @@ import { ZodError } from 'zod'
 import {
   createAsset,
   getGetAssetQueryKey,
+  getGetAssetRegistryOptionsQueryKey,
+  getGetAssetRegistrySummaryQueryKey,
+  getListAssetRegistryQueryKey,
+  getGetScheduleRegistryOptionsQueryKey,
+  getGetScheduleRegistrySummaryQueryKey,
+  getListScheduleRegistryQueryKey,
+  getListSchedulesQueryKey,
   getListScheduleEnrollmentDeferralsQueryKey,
 } from '@/api/generated/endpoints'
 import { ApiError } from '@/api/problem-details'
@@ -166,7 +173,26 @@ export function AssetCreate() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['/api/v1/assets'] }),
         queryClient.invalidateQueries({
+          queryKey: getListAssetRegistryQueryKey(),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: getGetAssetRegistryOptionsQueryKey(),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: getGetAssetRegistrySummaryQueryKey(),
+        }),
+        queryClient.invalidateQueries({
           queryKey: getListScheduleEnrollmentDeferralsQueryKey(),
+        }),
+        queryClient.invalidateQueries({ queryKey: getListSchedulesQueryKey() }),
+        queryClient.invalidateQueries({
+          queryKey: getListScheduleRegistryQueryKey(),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: getGetScheduleRegistryOptionsQueryKey(),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: getGetScheduleRegistrySummaryQueryKey(),
         }),
       ])
       void navigate({

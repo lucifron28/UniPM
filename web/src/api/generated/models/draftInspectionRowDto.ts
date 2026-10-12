@@ -14,7 +14,6 @@ export interface DraftInspectionRowDto {
   /** @nullable */
   dateAccomplished?: string | null
   isOperational?: boolean
-  hasPhotoEvidence?: boolean
   /** @nullable */
   remarks?: string | null
   /** @nullable */

@@ -93,6 +93,70 @@ public sealed class ScheduleQueryEndpointsTests
     }
 
     [Fact]
+    public async Task List_schedules_filters_quarter_from_canonical_pm_cycle_for_every_asset_category()
+    {
+        await using var application = new TestApplicationFactory(
+            now: new DateTimeOffset(2026, 12, 1, 8, 0, 0, TimeSpan.FromHours(8)));
+        var client = application.CreateClient();
+        var fireExtinguisher = await CreateAssetAsync(client, "FE-QTR-001", "fire-extinguisher");
+        var fireAlarm = await CreateAssetAsync(client, "FA-QTR-001", "fire-alarm");
+        var emergencyLight = await CreateAssetAsync(client, "EL-QTR-001", "emergency-light");
+        var waterStation = await CreateAssetAsync(client, "WDS-QTR-001", "water-drinking-station");
+
+        await CreateScheduleAsync(
+            client,
+            fireExtinguisher.Id,
+            new DateTimeOffset(2026, 11, 15, 8, 0, 0, TimeSpan.FromHours(8)),
+            "Quarter",
+            "Q4",
+            2026);
+        var q2FireAlarm = await CreateScheduleAsync(
+            client,
+            fireAlarm.Id,
+            new DateTimeOffset(2026, 6, 15, 8, 0, 0, TimeSpan.FromHours(8)),
+            "Semester",
+            null,
+            2026);
+        var q2EmergencyLight = await CreateScheduleAsync(
+            client,
+            emergencyLight.Id,
+            new DateTimeOffset(2026, 6, 15, 8, 0, 0, TimeSpan.FromHours(8)),
+            "Semester",
+            null,
+            2026);
+        var q2FireExtinguisher = await CreateScheduleAsync(
+            client,
+            fireExtinguisher.Id,
+            new DateTimeOffset(2026, 5, 15, 8, 0, 0, TimeSpan.FromHours(8)),
+            "Quarter",
+            "Q2",
+            2026);
+        var q2WaterStation = await CreateScheduleAsync(
+            client,
+            waterStation.Id,
+            new DateTimeOffset(2026, 5, 15, 8, 0, 0, TimeSpan.FromHours(8)),
+            "Quarter",
+            "Q2",
+            2026);
+
+        var response = await client.GetAsync("/api/v1/schedules?quarter=Q2");
+
+        response.EnsureSuccessStatusCode();
+        var schedules = await response.Content.ReadFromJsonAsync<List<ScheduleResponse>>();
+
+        Assert.NotNull(schedules);
+        Assert.Equal(
+            new[]
+            {
+                q2FireAlarm.Id,
+                q2EmergencyLight.Id,
+                q2FireExtinguisher.Id,
+                q2WaterStation.Id
+            }.OrderBy(id => id),
+            schedules.Select(schedule => schedule.Id).OrderBy(id => id));
+    }
+
+    [Fact]
     public async Task Get_schedule_by_id_returns_schedule_response_with_asset_summary()
     {
         await using var application = new TestApplicationFactory();

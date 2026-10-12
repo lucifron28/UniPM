@@ -169,6 +169,50 @@ const pmPeriodDashboardOperations = [
   ['/api/v1/pm-period-dashboard', 'get', 'GetPmPeriodDashboard', '200'],
 ]
 
+const registryOperations = [
+  ['/api/v1/assets/registry', 'ListAssetRegistry', 'AssetRegistryPageResponse'],
+  [
+    '/api/v1/assets/registry/options',
+    'GetAssetRegistryOptions',
+    'AssetRegistryOptionsResponse',
+  ],
+  [
+    '/api/v1/assets/registry/summary',
+    'GetAssetRegistrySummary',
+    'AssetRegistrySummaryResponse',
+  ],
+  [
+    '/api/v1/schedules/registry',
+    'ListScheduleRegistry',
+    'ScheduleRegistryPageResponse',
+  ],
+  [
+    '/api/v1/schedules/registry/options',
+    'GetScheduleRegistryOptions',
+    'ScheduleRegistryOptionsResponse',
+  ],
+  [
+    '/api/v1/schedules/registry/summary',
+    'GetScheduleRegistrySummary',
+    'ScheduleRegistrySummaryResponse',
+  ],
+  [
+    '/api/v1/inspections/registry',
+    'ListInspectionRegistry',
+    'InspectionRegistryPageResponse',
+  ],
+  [
+    '/api/v1/inspections/registry/options',
+    'GetInspectionRegistryOptions',
+    'InspectionRegistryOptionsResponse',
+  ],
+  [
+    '/api/v1/inspections/registry/summary',
+    'GetInspectionRegistrySummary',
+    'InspectionRegistrySummaryResponse',
+  ],
+]
+
 for (const [path, method, operationId, requiresSchema] of requiredOperations) {
   const operation = snapshot.paths?.[path]?.[method]
   if (operation?.operationId !== operationId) {
@@ -391,6 +435,102 @@ for (const [path, method, operationId, status] of pmPeriodDashboardOperations) {
   }
 }
 
+for (const [path, operationId, schemaName] of registryOperations) {
+  const operation = snapshot.paths?.[path]?.get
+  const schema =
+    operation?.responses?.['200']?.content?.['application/json']?.schema
+  if (
+    operation?.operationId !== operationId ||
+    schema?.$ref !== `#/components/schemas/${schemaName}`
+  ) {
+    throw new Error(
+      `Registry operation ${operationId} must return ${schemaName}.`,
+    )
+  }
+}
+
+const registryFilterParameters = [
+  [
+    '/api/v1/assets/registry',
+    [
+      'assetCategory',
+      'status',
+      'building',
+      'department',
+      'search',
+      'page',
+      'pageSize',
+    ],
+  ],
+  [
+    '/api/v1/schedules/registry',
+    [
+      'assetId',
+      'status',
+      'quarter',
+      'year',
+      'pmCycle',
+      'department',
+      'assetCategory',
+      'search',
+      'page',
+      'pageSize',
+    ],
+  ],
+  [
+    '/api/v1/inspections/registry',
+    [
+      'assetId',
+      'scheduleId',
+      'year',
+      'quarter',
+      'pmCycle',
+      'department',
+      'assetCategory',
+      'search',
+      'page',
+      'pageSize',
+    ],
+  ],
+]
+for (const [path, expectedParameters] of registryFilterParameters) {
+  const parameters = snapshot.paths?.[path]?.get?.parameters ?? []
+  for (const expected of expectedParameters) {
+    if (!parameters.some((parameter) => parameter.name === expected)) {
+      throw new Error(
+        `Registry operation ${path} is missing the ${expected} parameter.`,
+      )
+    }
+  }
+}
+
+const registryResponseFields = [
+  ['AssetRegistryPageResponse', ['items', 'page', 'pageSize', 'totalCount']],
+  [
+    'ScheduleRegistryPageResponse',
+    ['items', 'page', 'pageSize', 'totalCount', 'overallCount'],
+  ],
+  [
+    'InspectionRegistryPageResponse',
+    ['items', 'page', 'pageSize', 'totalCount', 'overallCount'],
+  ],
+  ['ScheduleRegistryItemResponse', ['pmCycle', 'asset']],
+  ['InspectionRegistryItemResponse', ['schedule', 'asset']],
+  ['InspectionRegistryScheduleContext', ['id', 'pmCycle']],
+  [
+    'InspectionRegistryAssetContext',
+    ['id', 'assetCode', 'assetCategory', 'department'],
+  ],
+]
+for (const [schemaName, fields] of registryResponseFields) {
+  const properties = snapshot.components?.schemas?.[schemaName]?.properties
+  if (!properties || fields.some((field) => !properties[field])) {
+    throw new Error(
+      `${schemaName} is missing one or more web registry contract fields.`,
+    )
+  }
+}
+
 const assetFields = [
   'id',
   'assetCode',
@@ -588,5 +728,5 @@ if (
 }
 
 console.log(
-  'OpenAPI auth, asset, schedule, inspection, WMS referral, and preventive-maintenance form contract sanity check passed.',
+  'OpenAPI auth, asset, schedule, inspection registry, WMS referral, and preventive-maintenance form contract sanity check passed.',
 )

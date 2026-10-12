@@ -1,5 +1,6 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using UniPM.Api.Data;
@@ -718,6 +719,233 @@ public static class SchedulesEndpoints
         .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status409Conflict)
         .RequireAuthorization(AuthPolicyCatalog.CanAssignScheduleWorkers);
 
+        group.MapGet("/registry", async (
+            Guid? assetId,
+            string? status,
+            DateTimeOffset? from,
+            DateTimeOffset? to,
+            string? quarter,
+            int? year,
+            string? pmCycle,
+            string? department,
+            string? assetCategory,
+            string? search,
+            int? page,
+            int? pageSize,
+            ClaimsPrincipal user,
+            IDbContextFactory<ApplicationDbContext> factory,
+            CancellationToken cancellationToken) =>
+        {
+            var pageNumber = page ?? 1;
+            var size = pageSize ?? 25;
+            var validationErrors = ValidateScheduleRegistryFilters(
+                from,
+                to,
+                quarter,
+                year,
+                pmCycle,
+                status,
+                department,
+                assetCategory,
+                search,
+                pageNumber,
+                size,
+                out var normalizedQuarter,
+                out var normalizedPmCycle,
+                out var normalizedStatus,
+                out var normalizedDepartment,
+                out var normalizedCategory,
+                out var normalizedSearch);
+            if (validationErrors.Count > 0)
+            {
+                return ApiErrors.Validation(validationErrors);
+            }
+
+            await using var context = await factory.CreateDbContextAsync(cancellationToken);
+            var scopedQuery = CreateReadableScheduleQuery(context, user);
+            if (scopedQuery is null)
+            {
+                return Results.Forbid();
+            }
+
+            var overallCount = await scopedQuery.CountAsync(cancellationToken);
+            var query = ApplyScheduleRegistryFilters(
+                scopedQuery,
+                assetId,
+                normalizedStatus,
+                from,
+                to,
+                normalizedQuarter,
+                year,
+                normalizedPmCycle,
+                normalizedDepartment,
+                normalizedCategory,
+                normalizedSearch);
+            var totalCount = await query.CountAsync(cancellationToken);
+            var skip = (long)(pageNumber - 1) * size;
+            List<ScheduleRegistryItemResponse> items = skip > int.MaxValue
+                ? []
+                : await query
+                    .OrderBy(schedule => schedule.ScheduleDate)
+                    .ThenBy(schedule => schedule.Id)
+                    .Skip((int)skip)
+                    .Take(size)
+                    .Select(schedule => new ScheduleRegistryItemResponse(
+                        schedule.Id,
+                        schedule.AssetId,
+                        schedule.ScheduleDate,
+                        schedule.PmCycle,
+                        schedule.PeriodType,
+                        schedule.Status,
+                        schedule.Quarter,
+                        schedule.Semester,
+                        schedule.Year,
+                        schedule.AcademicYear,
+                        schedule.CompletedAt,
+                        schedule.CreatedAt,
+                        schedule.UpdatedAt,
+                        schedule.Asset == null
+                            ? null
+                            : new ScheduleRegistryAssetContext(
+                                schedule.Asset.Id,
+                                schedule.Asset.AssetCode,
+                                schedule.Asset.AssetCategory,
+                                schedule.Asset.Building,
+                                schedule.Asset.Department,
+                                schedule.Asset.Location)))
+                    .ToListAsync(cancellationToken);
+
+            return Results.Ok(new ScheduleRegistryPageResponse(
+                items,
+                pageNumber,
+                size,
+                totalCount,
+                overallCount));
+        })
+        .WithName("ListScheduleRegistry")
+        .WithSummary("Lists a bounded page of schedules for the web registry")
+        .Produces<ScheduleRegistryPageResponse>(StatusCodes.Status200OK)
+        .Produces<Microsoft.AspNetCore.Mvc.ValidationProblemDetails>(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .RequireAuthorization(AuthPolicyCatalog.CanReadSchedules);
+
+        group.MapGet("/registry/options", async (
+            string? assetCategory,
+            string? department,
+            ClaimsPrincipal user,
+            IDbContextFactory<ApplicationDbContext> factory,
+            CancellationToken cancellationToken) =>
+        {
+            var normalizedDepartment = string.IsNullOrWhiteSpace(department) ? null : department.Trim();
+            var validationErrors = new Dictionary<string, string[]>();
+            string? normalizedCategory = null;
+            if (normalizedDepartment?.Length > 256)
+            {
+                validationErrors[nameof(department)] = ["Department must be 256 characters or fewer."];
+            }
+
+            if (!string.IsNullOrWhiteSpace(assetCategory))
+            {
+                if (AssetCategoryCatalog.TryNormalize(assetCategory, out var category))
+                {
+                    normalizedCategory = category;
+                }
+                else
+                {
+                    validationErrors[nameof(assetCategory)] =
+                        ["Asset category must be one of the selected UniPM study scope categories."];
+                }
+            }
+
+            if (validationErrors.Count > 0)
+            {
+                return ApiErrors.Validation(validationErrors);
+            }
+
+            await using var context = await factory.CreateDbContextAsync(cancellationToken);
+            var scopedQuery = CreateReadableScheduleQuery(context, user);
+            if (scopedQuery is null)
+            {
+                return Results.Forbid();
+            }
+
+            var query = scopedQuery.Where(schedule => schedule.Asset != null);
+            if (normalizedCategory is not null)
+            {
+                query = query.Where(schedule => schedule.Asset!.AssetCategory == normalizedCategory);
+            }
+
+            var departmentOptionsQuery = query;
+            if (normalizedDepartment is not null)
+            {
+                var departmentKey = normalizedDepartment.ToUpperInvariant();
+                query = query.Where(schedule => schedule.Asset!.Department != null
+                    && schedule.Asset.Department.ToUpper() == departmentKey);
+            }
+
+            var departments = await departmentOptionsQuery
+                .Where(schedule => schedule.Asset!.Department != null)
+                .Select(schedule => schedule.Asset!.Department!)
+                .Distinct()
+                .OrderBy(value => value)
+                .ToListAsync(cancellationToken);
+            var years = await query
+                .Where(schedule => schedule.PmCycle.Length == PreventiveMaintenanceCycle.Length)
+                .Select(schedule => schedule.PmCycle.Substring(0, 4))
+                .Distinct()
+                .OrderByDescending(value => value)
+                .ToListAsync(cancellationToken);
+
+            return Results.Ok(new ScheduleRegistryOptionsResponse(
+                AssetCategoryCatalog.All,
+                ScheduleQuarterCatalog.PersistedValues,
+                departments,
+                years));
+        })
+        .WithName("GetScheduleRegistryOptions")
+        .WithSummary("Lists scoped schedule registry filter options")
+        .Produces<ScheduleRegistryOptionsResponse>(StatusCodes.Status200OK)
+        .Produces<Microsoft.AspNetCore.Mvc.ValidationProblemDetails>(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .RequireAuthorization(AuthPolicyCatalog.CanReadSchedules);
+
+        group.MapGet("/registry/summary", async (
+            ClaimsPrincipal user,
+            IDbContextFactory<ApplicationDbContext> factory,
+            CancellationToken cancellationToken) =>
+        {
+            await using var context = await factory.CreateDbContextAsync(cancellationToken);
+            var scopedQuery = CreateReadableScheduleQuery(context, user);
+            if (scopedQuery is null)
+            {
+                return Results.Forbid();
+            }
+
+            var groupedCounts = await scopedQuery
+                .GroupBy(schedule => schedule.Status)
+                .Select(grouping => new ScheduleRegistryStatusCounts(grouping.Key, grouping.Count()))
+                .ToListAsync(cancellationToken);
+            var counts = groupedCounts.ToDictionary(value => value.Status, value => value.Count, StringComparer.Ordinal);
+            int Count(string status) => counts.TryGetValue(status, out var count) ? count : 0;
+            var totalCount = groupedCounts.Sum(value => value.Count);
+
+            return Results.Ok(new ScheduleRegistrySummaryResponse(
+                totalCount,
+                Count(ScheduleStatusCatalog.Due),
+                Count(ScheduleStatusCatalog.Ongoing),
+                Count(ScheduleStatusCatalog.Overdue),
+                Count(ScheduleStatusCatalog.Completed),
+                Count(ScheduleStatusCatalog.Cancelled)));
+        })
+        .WithName("GetScheduleRegistrySummary")
+        .WithSummary("Returns status totals for the authenticated schedule read scope")
+        .Produces<ScheduleRegistrySummaryResponse>(StatusCodes.Status200OK)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .RequireAuthorization(AuthPolicyCatalog.CanReadSchedules);
+
         group.MapGet("/", async (
             Guid? assetId,
             string? status,
@@ -829,7 +1057,18 @@ public static class SchedulesEndpoints
                     });
                 }
 
-                query = query.Where(schedule => schedule.Quarter == normalizedQuarter);
+                var quarterMonths = normalizedQuarter switch
+                {
+                    ScheduleQuarterCatalog.Q1 => new[] { "01", "02", "03" },
+                    ScheduleQuarterCatalog.Q2 => new[] { "04", "05", "06" },
+                    ScheduleQuarterCatalog.Q3 => new[] { "07", "08", "09" },
+                    ScheduleQuarterCatalog.Q4 => new[] { "10", "11", "12" },
+                    _ => Array.Empty<string>()
+                };
+                query = query.Where(schedule =>
+                    schedule.PmCycle != null
+                    && schedule.PmCycle.Length == PreventiveMaintenanceCycle.Length
+                    && quarterMonths.Contains(schedule.PmCycle.Substring(5, 2)));
             }
 
             if (year is not null)
@@ -961,6 +1200,226 @@ public static class SchedulesEndpoints
             .ToListAsync(cancellationToken);
     }
 
+    private static Dictionary<string, string[]> ValidateScheduleRegistryFilters(
+        DateTimeOffset? from,
+        DateTimeOffset? to,
+        string? quarter,
+        int? year,
+        string? pmCycle,
+        string? status,
+        string? department,
+        string? assetCategory,
+        string? search,
+        int page,
+        int pageSize,
+        out string? normalizedQuarter,
+        out string? normalizedPmCycle,
+        out string? normalizedStatus,
+        out string? normalizedDepartment,
+        out string? normalizedCategory,
+        out string? normalizedSearch)
+    {
+        normalizedQuarter = null;
+        normalizedPmCycle = null;
+        normalizedStatus = null;
+        normalizedDepartment = string.IsNullOrWhiteSpace(department) ? null : department.Trim();
+        normalizedCategory = null;
+        normalizedSearch = string.IsNullOrWhiteSpace(search) ? null : search.Trim();
+        var errors = new Dictionary<string, string[]>();
+
+        if (page < 1)
+        {
+            errors[nameof(page)] = ["Page must be greater than zero."];
+        }
+
+        if (pageSize is < 1 or > 100)
+        {
+            errors[nameof(pageSize)] = ["Page size must be between 1 and 100."];
+        }
+
+        if (from is not null && to is not null && from > to)
+        {
+            errors[nameof(from)] = ["From date must be earlier than or equal to to date."];
+        }
+
+        if (!string.IsNullOrWhiteSpace(quarter))
+        {
+            if (ScheduleQuarterCatalog.TryNormalizeNullable(quarter, out var normalizedQuarterValue))
+            {
+                normalizedQuarter = normalizedQuarterValue;
+            }
+            else
+            {
+                errors[nameof(quarter)] = ["Quarter must be one of Q1, Q2, Q3, or Q4."];
+            }
+        }
+
+        if (year is < 1 or > 9999)
+        {
+            errors[nameof(year)] = ["Year must be between 1 and 9999."];
+        }
+
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            if (ScheduleStatusCatalog.TryNormalize(status, out var normalizedStatusValue))
+            {
+                normalizedStatus = normalizedStatusValue;
+            }
+            else
+            {
+                errors[nameof(status)] = ["Status must be a supported schedule status."];
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(pmCycle))
+        {
+            var value = pmCycle.Trim();
+            if (PreventiveMaintenanceCycle.TryParse(value, out _, out _))
+            {
+                normalizedPmCycle = value;
+            }
+            else
+            {
+                errors[nameof(pmCycle)] = ["PM cycle must use the yyyy-MM format."];
+            }
+        }
+
+        if (normalizedDepartment?.Length > 256)
+        {
+            errors[nameof(department)] = ["Department must be 256 characters or fewer."];
+        }
+
+        if (normalizedSearch?.Length > 256)
+        {
+            errors[nameof(search)] = ["Search must be 256 characters or fewer."];
+        }
+
+        if (!string.IsNullOrWhiteSpace(assetCategory))
+        {
+            if (AssetCategoryCatalog.TryNormalize(assetCategory, out var normalizedCategoryValue))
+            {
+                normalizedCategory = normalizedCategoryValue;
+            }
+            else
+            {
+                errors[nameof(assetCategory)] =
+                    ["Asset category must be one of the selected UniPM study scope categories."];
+            }
+        }
+
+        return errors;
+    }
+
+    private static IQueryable<PreventiveMaintenanceSchedule>? CreateReadableScheduleQuery(
+        ApplicationDbContext context,
+        ClaimsPrincipal user)
+    {
+        var query = context.PreventiveMaintenanceSchedules.AsNoTracking();
+        if (user.IsInRole(AuthRoleCatalog.Gsd) || user.IsInRole(AuthRoleCatalog.Supervisor))
+        {
+            return query;
+        }
+
+        if (!Guid.TryParse(user.FindFirst(JwtRegisteredClaimNames.Sub)?.Value, out var authenticatedUserId))
+        {
+            return null;
+        }
+
+        return query.Where(schedule => schedule.AssignedToUserId == authenticatedUserId);
+    }
+
+    private static IQueryable<PreventiveMaintenanceSchedule> ApplyScheduleRegistryFilters(
+        IQueryable<PreventiveMaintenanceSchedule> query,
+        Guid? assetId,
+        string? status,
+        DateTimeOffset? from,
+        DateTimeOffset? to,
+        string? quarter,
+        int? year,
+        string? pmCycle,
+        string? department,
+        string? assetCategory,
+        string? search)
+    {
+        if (assetId is not null)
+        {
+            query = query.Where(schedule => schedule.AssetId == assetId.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(status)
+            && ScheduleStatusCatalog.TryNormalize(status, out var normalizedStatus))
+        {
+            query = query.Where(schedule => schedule.Status == normalizedStatus);
+        }
+
+        if (from is not null)
+        {
+            query = query.Where(schedule => schedule.ScheduleDate >= from.Value);
+        }
+
+        if (to is not null)
+        {
+            query = query.Where(schedule => schedule.ScheduleDate <= to.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(quarter))
+        {
+            var quarterMonths = quarter switch
+            {
+                ScheduleQuarterCatalog.Q1 => new[] { "01", "02", "03" },
+                ScheduleQuarterCatalog.Q2 => new[] { "04", "05", "06" },
+                ScheduleQuarterCatalog.Q3 => new[] { "07", "08", "09" },
+                ScheduleQuarterCatalog.Q4 => new[] { "10", "11", "12" },
+                _ => Array.Empty<string>()
+            };
+            query = query.Where(schedule =>
+                schedule.PmCycle.Length == PreventiveMaintenanceCycle.Length
+                && quarterMonths.Contains(schedule.PmCycle.Substring(5, 2)));
+        }
+
+        if (year is not null)
+        {
+            var yearKey = year.Value.ToString("D4", CultureInfo.InvariantCulture);
+            query = query.Where(schedule =>
+                schedule.PmCycle.Length == PreventiveMaintenanceCycle.Length
+                && schedule.PmCycle.Substring(0, 4) == yearKey);
+        }
+
+        if (pmCycle is not null)
+        {
+            query = query.Where(schedule => schedule.PmCycle == pmCycle);
+        }
+
+        if (department is not null)
+        {
+            var departmentKey = department.ToUpperInvariant();
+            query = query.Where(schedule => schedule.Asset != null
+                && schedule.Asset.Department != null
+                && schedule.Asset.Department.ToUpper() == departmentKey);
+        }
+
+        if (assetCategory is not null)
+        {
+            query = query.Where(schedule => schedule.Asset != null
+                && schedule.Asset.AssetCategory == assetCategory);
+        }
+
+        if (search is not null)
+        {
+            var searchKey = search.ToUpperInvariant();
+            query = query.Where(schedule =>
+                schedule.PmCycle.ToUpper().Contains(searchKey)
+                || (schedule.Asset != null && (
+                    schedule.Asset.AssetCode.Contains(searchKey)
+                    || schedule.Asset.AssetCategory.ToUpper().Contains(searchKey)
+                    || (schedule.Asset.Building != null && schedule.Asset.Building.ToUpper().Contains(searchKey))
+                    || (schedule.Asset.Department != null && schedule.Asset.Department.ToUpper().Contains(searchKey))
+                    || (schedule.Asset.Location != null && schedule.Asset.Location.ToUpper().Contains(searchKey)))));
+        }
+
+        return query;
+    }
+
     private static async Task<bool> HasAssignmentWorkEvidenceAsync(
         ApplicationDbContext context,
         IReadOnlyCollection<PreventiveMaintenanceSchedule> batch,
@@ -1028,6 +1487,53 @@ public sealed record ScheduleResponse(
                     schedule.Asset.Location));
     }
 }
+
+public sealed record ScheduleRegistryPageResponse(
+    IReadOnlyList<ScheduleRegistryItemResponse> Items,
+    int Page,
+    int PageSize,
+    int TotalCount,
+    int OverallCount);
+
+public sealed record ScheduleRegistryItemResponse(
+    Guid Id,
+    Guid AssetId,
+    DateTimeOffset ScheduleDate,
+    string PmCycle,
+    string PeriodType,
+    string Status,
+    string? Quarter,
+    string? Semester,
+    int? Year,
+    string? AcademicYear,
+    DateTimeOffset? CompletedAt,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset UpdatedAt,
+    ScheduleRegistryAssetContext? Asset);
+
+public sealed record ScheduleRegistryAssetContext(
+    Guid Id,
+    string AssetCode,
+    string AssetCategory,
+    string? Building,
+    string? Department,
+    string? Location);
+
+public sealed record ScheduleRegistryOptionsResponse(
+    IReadOnlyList<AssetCategoryResponse> Categories,
+    IReadOnlyList<string> Quarters,
+    IReadOnlyList<string> Departments,
+    IReadOnlyList<string> Years);
+
+public sealed record ScheduleRegistrySummaryResponse(
+    int TotalCount,
+    int DueCount,
+    int OngoingCount,
+    int OverdueCount,
+    int CompletedCount,
+    int CancelledCount);
+
+internal sealed record ScheduleRegistryStatusCounts(string Status, int Count);
 
 public sealed record ScheduleAssigneeOption(Guid Id, string DisplayName);
 
