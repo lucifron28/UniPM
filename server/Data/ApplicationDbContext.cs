@@ -20,6 +20,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     public DbSet<InspectionWmsReferral> InspectionWmsReferrals => Set<InspectionWmsReferral>();
     public DbSet<InspectionWmsReferralAudit> InspectionWmsReferralAudits => Set<InspectionWmsReferralAudit>();
     public DbSet<InspectionLocationAttempt> InspectionLocationAttempts => Set<InspectionLocationAttempt>();
+    public DbSet<InspectionPhotoEvidence> InspectionPhotoEvidence => Set<InspectionPhotoEvidence>();
     public DbSet<PreventiveMaintenanceForm> PreventiveMaintenanceForms => Set<PreventiveMaintenanceForm>();
     public DbSet<PreventiveMaintenanceAcknowledgement> PreventiveMaintenanceAcknowledgements => Set<PreventiveMaintenanceAcknowledgement>();
     public DbSet<ReferenceDocument> ReferenceDocuments => Set<ReferenceDocument>();
@@ -188,6 +189,31 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             .IsUnique()
             .HasFilter("[LocationAttemptId] IS NOT NULL")
             .HasDatabaseName("IX_InspectionRecords_LocationAttemptId");
+
+        var inspectionPhotoEvidence = modelBuilder.Entity<InspectionPhotoEvidence>();
+        inspectionPhotoEvidence.ToTable("InspectionPhotoEvidence", table =>
+        {
+            table.HasCheckConstraint(
+                "CK_InspectionPhotoEvidence_LengthBytes_Positive",
+                "[LengthBytes] > 0");
+            table.HasCheckConstraint(
+                "CK_InspectionPhotoEvidence_Revision_Positive",
+                "[Revision] > 0");
+        });
+        inspectionPhotoEvidence.HasKey(entity => entity.InspectionId);
+        inspectionPhotoEvidence.Property(entity => entity.StorageKey)
+            .HasMaxLength(64)
+            .IsRequired();
+        inspectionPhotoEvidence.Property(entity => entity.LengthBytes)
+            .IsRequired();
+        inspectionPhotoEvidence.Property(entity => entity.UploadedAt)
+            .IsRequired();
+        inspectionPhotoEvidence.Property(entity => entity.Revision)
+            .IsConcurrencyToken();
+        inspectionPhotoEvidence.HasOne(entity => entity.Inspection)
+            .WithOne(inspection => inspection.PhotoEvidence)
+            .HasForeignKey<InspectionPhotoEvidence>(entity => entity.InspectionId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         var wmsReferral = modelBuilder.Entity<InspectionWmsReferral>();
         wmsReferral.HasKey(entity => entity.InspectionId);

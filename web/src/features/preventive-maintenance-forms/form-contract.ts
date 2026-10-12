@@ -33,6 +33,7 @@ const inspectionRowSchema = z
     startedAt: z.string().datetime({ offset: true }).nullable().optional(),
     completedAt: z.string().datetime({ offset: true }).nullable().optional(),
     isOperational: z.boolean(),
+    hasPhotoEvidence: z.boolean().optional(),
     remarks: optionalText,
     actionsRecommendations: optionalText,
     dateAccomplished: z

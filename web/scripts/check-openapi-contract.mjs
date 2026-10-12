@@ -105,6 +105,12 @@ const inspectionOperations = [
   ],
 ]
 
+const inspectionPhotoOperations = [
+  ['/api/v1/inspections/{id}/photo', 'get', 'GetInspectionPhotoEvidence'],
+  ['/api/v1/inspections/{id}/photo', 'put', 'ReplaceInspectionPhotoEvidence'],
+  ['/api/v1/inspections/{id}/photo', 'delete', 'DeleteInspectionPhotoEvidence'],
+]
+
 const preventiveMaintenanceFormOperations = [
   [
     '/api/v1/preventive-maintenance-forms',
@@ -295,6 +301,24 @@ if (
     'UpdateInspectionWmsReferral is missing its revisioned JSON request DTO.',
   )
 }
+
+for (const [path, method, operationId] of inspectionPhotoOperations) {
+  if (snapshot.paths?.[path]?.[method]?.operationId !== operationId) {
+    throw new Error(
+      `Missing required inspection photo operation: ${operationId}.`,
+    )
+  }
+}
+
+const inspectionPhotoPath = snapshot.paths?.['/api/v1/inspections/{id}/photo']
+if (
+  !inspectionPhotoPath?.get?.responses?.['200']?.content?.['image/jpeg'] ||
+  !inspectionPhotoPath?.put?.requestBody?.content?.['image/jpeg']
+) {
+  throw new Error(
+    'Inspection photo operations must use the image/jpeg media type.',
+  )
+}
 for (const status of ['400', '401', '403', '404', '409']) {
   if (!wmsReferralPut?.responses?.[status]) {
     throw new Error(
@@ -444,6 +468,7 @@ const inspectionFields = [
   'externalPmNumber',
   'wmsReferralRevision',
   'correctiveFollowUpStatus',
+  'hasPhotoEvidence',
 ]
 const inspectionProperties =
   snapshot.components?.schemas?.InspectionResponse?.properties

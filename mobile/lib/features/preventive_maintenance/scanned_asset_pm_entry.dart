@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import '../../auth/auth_models.dart';
 import '../assets/asset_models.dart';
 import 'preventive_maintenance_controller.dart';
-import 'inspection_location_capture.dart';
 import 'preventive_maintenance_models.dart';
 import 'preventive_maintenance_page.dart';
 import 'preventive_maintenance_repository.dart';
@@ -19,8 +18,6 @@ class ScannedAssetPmEntry extends StatefulWidget {
     required this.user,
     this.batchScope,
     this.onScanNextAsset,
-    this.locationCapture,
-    this.locationVerificationRepository,
   });
 
   final Asset asset;
@@ -28,8 +25,6 @@ class ScannedAssetPmEntry extends StatefulWidget {
   final AuthUser user;
   final PmBatchScope? batchScope;
   final VoidCallback? onScanNextAsset;
-  final InspectionLocationCapture? locationCapture;
-  final LocationVerificationRepository? locationVerificationRepository;
 
   @override
   State<ScannedAssetPmEntry> createState() => _ScannedAssetPmEntryState();
@@ -49,15 +44,11 @@ class _ScannedAssetPmEntryState extends State<ScannedAssetPmEntry> {
   bool isLoadingSchedules = true;
   bool isResolving = false;
   bool isOpening = false;
-  bool isCheckingLocation = false;
   String? errorMessage;
   late PmBatchScope? _batchScope = widget.batchScope;
   bool _hasOutOfBatchTask = false;
 
   bool get isActiveAsset => widget.asset.status == 'Active';
-
-  late final InspectionLocationCapture _locationCapture =
-      widget.locationCapture ?? InspectionLocationCapture();
 
   @override
   void initState() {
@@ -169,23 +160,8 @@ class _ScannedAssetPmEntryState extends State<ScannedAssetPmEntry> {
 
     setState(() {
       isOpening = true;
-      isCheckingLocation = true;
       errorMessage = null;
     });
-
-    final locationDecision =
-        currentResolution.kind == PmDraftResolutionKind.resume
-        ? const _LocationVerificationDecision.continueWith(null)
-        : await _verifyLocation(schedule.id);
-    if (!mounted) return;
-    if (!locationDecision.shouldContinue) {
-      setState(() {
-        isOpening = false;
-        isCheckingLocation = false;
-      });
-      return;
-    }
-    setState(() => isCheckingLocation = false);
 
     PreventiveMaintenanceForm? form;
     String? preselectedScheduleId;
@@ -229,7 +205,6 @@ class _ScannedAssetPmEntryState extends State<ScannedAssetPmEntry> {
               formId: form!.id,
               preselectedScheduleId: preselectedScheduleId,
               focusedInspectionId: focusedInspectionId,
-              locationAttemptId: locationDecision.locationAttemptId,
             ),
           ),
         );
@@ -239,156 +214,6 @@ class _ScannedAssetPmEntryState extends State<ScannedAssetPmEntry> {
     } else {
       await _resolveSelectedSchedule();
     }
-  }
-
-  Future<_LocationVerificationDecision> _verifyLocation(
-    String scheduleId,
-  ) async {
-    if (!widget.asset.hasVerificationLocation) {
-      final action = await showDialog<_LocationDialogAction>(
-        context: context,
-        barrierDismissible: false,
-        builder: (dialogContext) => AlertDialog(
-          key: const Key('location-verification-dialog'),
-          title: const Text('Location verification'),
-          content: const Text(
-            'No inspection verification area is configured for this asset.',
-            key: Key('location-verification-result'),
-          ),
-          actions: [
-            FilledButton(
-              key: const Key('location-continue'),
-              onPressed: () => Navigator.of(
-                dialogContext,
-              ).pop(_LocationDialogAction.continueWithoutVerification),
-              child: const Text('Continue'),
-            ),
-          ],
-        ),
-      );
-      return action == _LocationDialogAction.continueWithoutVerification
-          ? const _LocationVerificationDecision.continueWith(null)
-          : const _LocationVerificationDecision.stop();
-    }
-
-    String? locationAttemptId;
-    while (mounted) {
-      locationAttemptId = null;
-      LocationVerificationAttempt? attempt;
-      String message;
-      final capture = await _locationCapture.capture();
-      final coordinates = capture.coordinates;
-      if (coordinates == null) {
-        message = _captureFailureMessage(capture.failure!);
-      } else {
-        final repository =
-            widget.locationVerificationRepository ??
-            (widget.repository is LocationVerificationRepository
-                ? widget.repository as LocationVerificationRepository
-                : null);
-        if (repository == null) {
-          message =
-              'Location verification is unavailable. Retry or continue without it.';
-        } else {
-          try {
-            attempt = await repository
-                .createLocationVerificationAttempt(
-                  scheduleId,
-                  latitude: coordinates.latitude,
-                  longitude: coordinates.longitude,
-                  hasAccuracy: coordinates.hasAccuracy,
-                  accuracyMeters: coordinates.accuracyMeters,
-                  devicePositionTimestamp: coordinates.devicePositionTimestamp,
-                  isMocked: coordinates.isMocked,
-                  accuracyMode: coordinates.accuracyMode.apiValue,
-                  acquisitionDurationMs: coordinates.acquisitionDurationMs,
-                )
-                .timeout(const Duration(seconds: 10));
-            locationAttemptId = attempt.id;
-            message = _attemptMessage(attempt);
-          } on TimeoutException {
-            message =
-                'Location verification timed out. Retry or continue without it.';
-          } catch (_) {
-            message =
-                'Location verification could not be completed. Retry or continue without it.';
-          }
-        }
-        if (coordinates.accuracyMode == DeviceLocationAccuracyMode.reduced) {
-          message =
-              '$message Approximate location access is enabled. Verification may be less accurate.';
-        }
-      }
-
-      if (!mounted) return const _LocationVerificationDecision.stop();
-      final action = await showDialog<_LocationDialogAction>(
-        context: context,
-        barrierDismissible: false,
-        builder: (dialogContext) => AlertDialog(
-          key: const Key('location-verification-dialog'),
-          title: const Text('Location verification'),
-          content: Text(
-            message,
-            key: const Key('location-verification-result'),
-          ),
-          actions: [
-            TextButton(
-              key: const Key('location-retry'),
-              onPressed: () =>
-                  Navigator.of(dialogContext).pop(_LocationDialogAction.retry),
-              child: const Text('Retry location'),
-            ),
-            FilledButton(
-              key: const Key('location-continue'),
-              onPressed: () => Navigator.of(
-                dialogContext,
-              ).pop(_LocationDialogAction.continueWithoutVerification),
-              child: const Text('Continue'),
-            ),
-          ],
-        ),
-      );
-      if (!mounted) return const _LocationVerificationDecision.stop();
-      if (action == _LocationDialogAction.retry) continue;
-      if (action != _LocationDialogAction.continueWithoutVerification) {
-        return const _LocationVerificationDecision.stop();
-      }
-      return _LocationVerificationDecision.continueWith(locationAttemptId);
-    }
-    return const _LocationVerificationDecision.stop();
-  }
-
-  String _captureFailureMessage(
-    LocationCaptureFailure failure,
-  ) => switch (failure) {
-    LocationCaptureFailure.permissionDenied =>
-      'Location permission was denied. Retry or continue without location verification.',
-    LocationCaptureFailure.permissionPermanentlyDenied =>
-      'Location permission is permanently denied. Enable it in Settings, then retry, or continue without verification.',
-    LocationCaptureFailure.servicesDisabled =>
-      'Location services are turned off. Enable them, then retry, or continue without verification.',
-    LocationCaptureFailure.timedOut =>
-      'Getting your location timed out. Retry or continue without verification.',
-    LocationCaptureFailure.unavailable =>
-      'Your location is unavailable. Retry or continue without verification.',
-  };
-
-  String _attemptMessage(LocationVerificationAttempt attempt) {
-    final outcome = switch (attempt.outcome) {
-      LocationVerificationOutcome.inside =>
-        'Your location is within the configured inspection area.',
-      LocationVerificationOutcome.outside =>
-        'Your location is outside the configured inspection area.',
-      LocationVerificationOutcome.uncertain =>
-        'Your location could not be confirmed with enough accuracy.',
-      LocationVerificationOutcome.notConfigured =>
-        'No verification area is configured for this schedule.',
-    };
-    final details = <String>[
-      if (attempt.accuracyMeters != null)
-        'Accuracy: ${attempt.accuracyMeters!.toStringAsFixed(0)} m.',
-    ];
-    return details.isEmpty ? outcome : '$outcome ${details.join(' ')}';
   }
 
   Future<void> _leaveBatch() async {
@@ -563,9 +388,7 @@ class _ScannedAssetPmEntryState extends State<ScannedAssetPmEntry> {
       icon: Icon(isResume ? Icons.edit_note : Icons.play_arrow),
       label: Text(
         isOpening
-            ? isCheckingLocation
-                  ? 'Verifying location...'
-                  : 'Opening...'
+            ? 'Opening...'
             : isResume
             ? 'Resume Inspection'
             : 'Start Inspection',
@@ -585,20 +408,6 @@ class _ScannedAssetPmEntryState extends State<ScannedAssetPmEntry> {
     return widget.user.roles.contains('GSD') ||
         schedule.assignedToUserId == widget.user.id;
   }
-}
-
-enum _LocationDialogAction { retry, continueWithoutVerification }
-
-class _LocationVerificationDecision {
-  const _LocationVerificationDecision.stop()
-    : shouldContinue = false,
-      locationAttemptId = null;
-
-  const _LocationVerificationDecision.continueWith(this.locationAttemptId)
-    : shouldContinue = true;
-
-  final bool shouldContinue;
-  final String? locationAttemptId;
 }
 
 class _PmLoading extends StatelessWidget {

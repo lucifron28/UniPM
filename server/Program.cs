@@ -15,6 +15,7 @@ using OpenTelemetry.Metrics;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.OpenApi;
 using UniPM.Api.Features.Auth;
+using UniPM.Api.Features.Inspections;
 using UniPM.Api.Features.Schedules;
 
 var maintenanceCommand = SyntheticMaintenanceCommandParser.Parse(args);
@@ -148,6 +149,9 @@ builder.Services.AddScoped<ILexicalInstitutionalReferenceRetriever, SqlServerLex
 builder.Services.AddScoped<ISemanticInstitutionalReferenceRetriever, SqlServerSemanticInstitutionalReferenceRetriever>();
 builder.Services.AddScoped<PmPeriodDashboardService>();
 builder.Services.AddScoped<PmAnalyticsService>();
+builder.Services.Configure<InspectionPhotoEvidenceOptions>(
+    builder.Configuration.GetSection(InspectionPhotoEvidenceOptions.SectionName));
+builder.Services.AddSingleton<IInspectionPhotoEvidenceStorage, FileSystemInspectionPhotoEvidenceStorage>();
 builder.Services.Configure<NaturalLanguageAnalyticsOptions>(
     builder.Configuration.GetSection(NaturalLanguageAnalyticsOptions.SectionName));
 builder.Services.AddScoped<RuleBasedNaturalLanguageAnalyticsInterpreter>();

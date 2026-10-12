@@ -177,6 +177,8 @@ public static class PreventiveMaintenanceFormEndpoints
             var forms = await query
                 .Include(form => form.Inspections)
                     .ThenInclude(inspection => inspection.Asset)
+                .Include(form => form.Inspections)
+                    .ThenInclude(inspection => inspection.PhotoEvidence)
                 .OrderByDescending(form => form.CreatedAt)
                 .ThenBy(form => form.Id)
                 .ToListAsync(cancellationToken);
@@ -203,6 +205,8 @@ public static class PreventiveMaintenanceFormEndpoints
                 .AsNoTracking()
                 .Include(candidate => candidate.Inspections)
                     .ThenInclude(inspection => inspection.Asset)
+                .Include(candidate => candidate.Inspections)
+                    .ThenInclude(inspection => inspection.PhotoEvidence)
                 .SingleOrDefaultAsync(candidate => candidate.Id == id, cancellationToken);
 
             var users = form is null
@@ -235,9 +239,22 @@ public static class PreventiveMaintenanceFormEndpoints
             {
                 await using var context = await factory.CreateDbContextAsync(cancellationToken);
                 await using var transaction = await BeginSerializableTransactionIfRelationalAsync(context, cancellationToken);
+                var lockedForm = await LockFormForSubmissionAsync(context, id, cancellationToken);
+                if (lockedForm is null)
+                {
+                    return ApiErrors.NotFound("Preventive-maintenance form not found.");
+                }
+
+                if (!IsDraft(lockedForm))
+                {
+                    return ApiErrors.Conflict("Only draft forms can be submitted.");
+                }
+
                 var form = await context.PreventiveMaintenanceForms
                     .Include(candidate => candidate.Inspections)
                         .ThenInclude(inspection => inspection.Asset)
+                    .Include(candidate => candidate.Inspections)
+                        .ThenInclude(inspection => inspection.PhotoEvidence)
                     .SingleOrDefaultAsync(candidate => candidate.Id == id, cancellationToken);
                 if (form is null)
                 {
@@ -414,6 +431,8 @@ public static class PreventiveMaintenanceFormEndpoints
                 .Include(candidate => candidate.Acknowledgement)
                 .Include(candidate => candidate.Inspections)
                     .ThenInclude(inspection => inspection.Schedule)
+                .Include(candidate => candidate.Inspections)
+                    .ThenInclude(inspection => inspection.PhotoEvidence)
                 .SingleOrDefaultAsync(candidate => candidate.Id == id, cancellationToken);
             if (form is null)
             {
@@ -875,6 +894,7 @@ public static class PreventiveMaintenanceFormEndpoints
 
             var inspection = await context.InspectionRecords
                 .Include(candidate => candidate.Asset)
+                .Include(candidate => candidate.PhotoEvidence)
                 .SingleOrDefaultAsync(candidate => candidate.Id == inspectionId
                     && candidate.PreventiveMaintenanceFormId == form.Id,
                     cancellationToken);
@@ -939,6 +959,8 @@ public static class PreventiveMaintenanceFormEndpoints
             Guid inspectionId,
             ClaimsPrincipal principal,
             IDbContextFactory<ApplicationDbContext> factory,
+            IInspectionPhotoEvidenceStorage photoStorage,
+            ILoggerFactory loggerFactory,
             CancellationToken cancellationToken) =>
         {
             await using var context = await factory.CreateDbContextAsync(cancellationToken);
@@ -956,6 +978,7 @@ public static class PreventiveMaintenanceFormEndpoints
 
             var inspection = await context.InspectionRecords
                 .Include(candidate => candidate.Schedule)
+                .Include(candidate => candidate.PhotoEvidence)
                 .SingleOrDefaultAsync(candidate => candidate.Id == inspectionId
                     && candidate.PreventiveMaintenanceFormId == form.Id,
                     cancellationToken);
@@ -975,6 +998,7 @@ public static class PreventiveMaintenanceFormEndpoints
             }
 
             var now = DateTimeOffset.UtcNow;
+            var photoStorageKey = inspection.PhotoEvidence?.StorageKey;
             var institutionalToday = PreventiveMaintenanceCycle.ToInstitutionalTime(now).Date;
             var scheduledDay = PreventiveMaintenanceCycle.ToInstitutionalTime(inspection.Schedule.ScheduleDate).Date;
             inspection.Schedule.Status = scheduledDay < institutionalToday
@@ -985,6 +1009,19 @@ public static class PreventiveMaintenanceFormEndpoints
             context.InspectionRecords.Remove(inspection);
             form.UpdatedAt = now;
             await context.SaveChangesAsync(cancellationToken);
+
+            if (photoStorageKey is not null)
+            {
+                try
+                {
+                    await photoStorage.DeleteAsync(photoStorageKey, CancellationToken.None);
+                }
+                catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+                {
+                    loggerFactory.CreateLogger(nameof(PreventiveMaintenanceFormEndpoints))
+                        .LogWarning(exception, "Could not remove deleted inspection photo evidence file.");
+                }
+            }
 
             return Results.NoContent();
         })
@@ -1224,6 +1261,26 @@ public static class PreventiveMaintenanceFormEndpoints
         return context.Database.IsRelational()
             ? await context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, cancellationToken)
             : null;
+    }
+
+    private static Task<PreventiveMaintenanceForm?> LockFormForSubmissionAsync(
+        ApplicationDbContext context,
+        Guid formId,
+        CancellationToken cancellationToken)
+    {
+        if (!context.Database.IsSqlServer())
+        {
+            return context.PreventiveMaintenanceForms
+                .SingleOrDefaultAsync(candidate => candidate.Id == formId, cancellationToken);
+        }
+
+        return context.PreventiveMaintenanceForms
+            .FromSqlInterpolated($"""
+                SELECT *
+                FROM [dbo].[PreventiveMaintenanceForms] WITH (UPDLOCK, HOLDLOCK)
+                WHERE [Id] = {formId}
+                """)
+            .SingleOrDefaultAsync(cancellationToken);
     }
 
     private static async Task<IDbContextTransaction?> BeginTransactionIfRelationalAsync(
@@ -1609,7 +1666,8 @@ public sealed record DraftInspectionRowResponse(
     bool? WaterCheckUvLight = null,
     string? AssetCode = null,
     string? Location = null,
-    string? SkilledWorkerIdentity = null)
+    string? SkilledWorkerIdentity = null,
+    bool HasPhotoEvidence = false)
 {
     internal static DraftInspectionRowResponse FromInspection(
         InspectionRecord inspection,
@@ -1636,7 +1694,8 @@ public sealed record DraftInspectionRowResponse(
             inspection.WaterCheckUvLight,
             assetCode,
             location,
-            skilledWorkerIdentity);
+            skilledWorkerIdentity,
+            inspection.PhotoEvidence is not null);
     }
 }
 

@@ -45,7 +45,6 @@ Map<String, dynamic> assetToMap(Asset asset) => <String, dynamic>{
   'location': asset.location,
   'qrCodeValue': asset.qrCodeValue,
   'status': asset.status,
-  'hasVerificationLocation': false,
   'createdAt': '2026-08-01T00:00:00Z',
   'updatedAt': '2026-08-01T00:00:00Z',
 };

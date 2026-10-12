@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:image/image.dart' as image;
 import 'package:http/http.dart' as http;
 
 import 'package:mobile/api/api_client.dart';
@@ -10,11 +12,12 @@ import 'package:mobile/api/api_exception.dart';
 import 'package:mobile/auth/auth_models.dart';
 import 'package:mobile/features/assets/asset_models.dart';
 import 'package:mobile/features/preventive_maintenance/preventive_maintenance_controller.dart';
-import 'package:mobile/features/preventive_maintenance/inspection_location_capture.dart';
 import 'package:mobile/features/preventive_maintenance/preventive_maintenance_form_specs.dart';
 import 'package:mobile/features/preventive_maintenance/preventive_maintenance_models.dart';
 import 'package:mobile/features/preventive_maintenance/preventive_maintenance_page.dart';
 import 'package:mobile/features/preventive_maintenance/preventive_maintenance_repository.dart';
+import 'package:mobile/features/preventive_maintenance/inspection_photo_evidence_card.dart';
+import 'package:mobile/features/preventive_maintenance/inspection_photo_evidence_repository.dart';
 import 'package:mobile/features/preventive_maintenance/scanned_asset_pm_entry.dart';
 import 'package:mobile/ui/app_theme.dart';
 
@@ -26,6 +29,9 @@ const firstScheduleId = '55555555-5555-4555-8555-555555555555';
 const secondScheduleId = '66666666-6666-4666-8666-666666666666';
 const thirdScheduleId = '88888888-8888-4888-8888-888888888888';
 const firstInspectionId = '77777777-7777-4777-8777-777777777777';
+final Uint8List _tinyPhoto = Uint8List.fromList(
+  image.encodePng(image.Image(width: 1, height: 1)),
+);
 
 AuthUser testUser({List<String> roles = const ['Inspector']}) => AuthUser(
   id: inspectorId,
@@ -538,13 +544,6 @@ void main() {
       expect(repository.addedInputs, hasLength(2));
       expect(repository.addedInputs[0].scheduleId, firstScheduleId);
       expect(repository.addedInputs[1].scheduleId, secondScheduleId);
-      expect(
-        repository.addedInputs.every(
-          (input) =>
-              input.locationAttemptId == 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-        ),
-        isTrue,
-      );
     },
   );
 
@@ -937,6 +936,63 @@ void main() {
       ),
       findsOneWidget,
     );
+  });
+
+  testWidgets('a captured photo can be omitted when submitting the form', (
+    tester,
+  ) async {
+    final repository = FakePhotoEvidenceRepository(
+      forms: [
+        testForm(
+          id: formId,
+          inspections: [
+            testInspection(),
+            testInspection(id: secondInspectionId),
+          ],
+        ),
+      ],
+    );
+    await pumpDraftEditor(
+      tester,
+      repository,
+      formId: formId,
+      photoCapture: (_) async => _tinyPhoto,
+    );
+
+    await scrollTo(
+      tester,
+      find.byKey(const Key('capture-inspection-photo-$firstInspectionId')),
+    );
+    await tester.tap(
+      find.byKey(const Key('capture-inspection-photo-$firstInspectionId')),
+    );
+    await tester.pumpAndSettle();
+    await scrollTo(tester, find.byKey(const Key('submit-form-button')));
+
+    final submitWithoutPhoto = tester.widget<FilledButton>(
+      find.byKey(const Key('submit-form-button')),
+    );
+    expect(submitWithoutPhoto.onPressed, isNotNull);
+    expect(
+      find.text(
+        'A captured photo is not saved. You can still submit the completed inspection without it.',
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(find.byKey(const Key('submit-form-button')));
+    await tester.pumpAndSettle();
+    expect(
+      find.text(
+        'One or more captured photos were not saved. You can still submit the completed inspection without those photos. After submission, the form and its inspection rows cannot be edited.',
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(find.byKey(const Key('confirm-submit-without-photo')));
+    await tester.pumpAndSettle();
+
+    expect(repository.submitCallCount, 1);
+    expect(repository.savedPhotos, isEmpty);
+    expect(find.text('No photo evidence recorded.'), findsOneWidget);
   });
 
   testWidgets('submission confirmation can be cancelled without an API write', (
@@ -1371,11 +1427,6 @@ Future<void> pumpScannedEntry(
             user: user ?? testUser(),
             batchScope: batchScope,
             onScanNextAsset: onScanNextAsset,
-            locationCapture: InspectionLocationCapture(
-              platform: _GrantedDeviceLocationPlatform(),
-            ),
-            locationVerificationRepository:
-                _InsideLocationVerificationRepository(),
           ),
         ),
       ),
@@ -1389,6 +1440,7 @@ Future<void> pumpDraftEditor(
   FakePreventiveMaintenanceRepository repository, {
   required String formId,
   String? preselectedScheduleId,
+  InspectionPhotoCapture? photoCapture,
 }) async {
   final controller = PreventiveMaintenanceController(
     repository: repository,
@@ -1405,6 +1457,7 @@ Future<void> pumpDraftEditor(
         controller: controller,
         formId: formId,
         preselectedScheduleId: preselectedScheduleId,
+        photoCapture: photoCapture,
       ),
     ),
   );
@@ -1414,13 +1467,7 @@ Future<void> pumpDraftEditor(
 Future<void> _openScannedInspection(WidgetTester tester, Key actionKey) async {
   await tester.tap(find.byKey(actionKey));
   await tester.pumpAndSettle();
-  if (actionKey == const Key('resume-pm')) {
-    expect(find.byKey(const Key('location-verification-dialog')), findsNothing);
-    return;
-  }
-  expect(find.byKey(const Key('location-verification-dialog')), findsOneWidget);
-  await tester.tap(find.byKey(const Key('location-continue')));
-  await tester.pumpAndSettle();
+  expect(find.byKey(const Key('location-verification-dialog')), findsNothing);
 }
 
 Future<void> chooseDropdown(WidgetTester tester, Key key, String label) async {
@@ -1431,12 +1478,28 @@ Future<void> chooseDropdown(WidgetTester tester, Key key, String label) async {
   await tester.pumpAndSettle();
 }
 
-Future<void> scrollTo(WidgetTester tester, Finder finder) async {
+Future<void> scrollTo(
+  WidgetTester tester,
+  Finder finder, {
+  bool scrollUp = false,
+}) async {
   final listView = find.byType(ListView).last;
   final scrollable = find
       .descendant(of: listView, matching: find.byType(Scrollable))
       .first;
-  await tester.scrollUntilVisible(finder, 300, scrollable: scrollable);
+  if (scrollUp) {
+    for (
+      var attempt = 0;
+      attempt < 20 && finder.evaluate().isEmpty;
+      attempt++
+    ) {
+      await tester.drag(scrollable, const Offset(0, 300));
+      await tester.pumpAndSettle();
+    }
+    await tester.ensureVisible(finder);
+  } else {
+    await tester.scrollUntilVisible(finder, 300, scrollable: scrollable);
+  }
   await tester.pumpAndSettle();
 }
 
@@ -1490,7 +1553,6 @@ Asset testAsset({
   location: 'Test Area',
   qrCodeValue: 'UNIPM-$assetCode',
   status: status,
-  hasVerificationLocation: true,
 );
 
 PreventiveMaintenanceInspection testInspection({
@@ -1745,6 +1807,30 @@ class FakePreventiveMaintenanceRepository
   }
 }
 
+class FakePhotoEvidenceRepository extends FakePreventiveMaintenanceRepository
+    implements InspectionPhotoEvidenceRepository {
+  FakePhotoEvidenceRepository({super.forms});
+
+  final Map<String, Uint8List> savedPhotos = <String, Uint8List>{};
+
+  @override
+  Future<Uint8List> getInspectionPhoto(String inspectionId) async =>
+      savedPhotos[inspectionId] ?? _tinyPhoto;
+
+  @override
+  Future<void> saveInspectionPhoto(
+    String inspectionId,
+    Uint8List jpegBytes,
+  ) async {
+    savedPhotos[inspectionId] = jpegBytes;
+  }
+
+  @override
+  Future<void> deleteInspectionPhoto(String inspectionId) async {
+    savedPhotos.remove(inspectionId);
+  }
+}
+
 ScheduleOption testSchedule(
   String id,
   String assetCode, {
@@ -1877,49 +1963,4 @@ class DraftTransportState {
       'location': 'Test Area',
     },
   };
-}
-
-class _GrantedDeviceLocationPlatform implements DeviceLocationPlatform {
-  @override
-  Future<bool> isLocationServiceEnabled() async => true;
-
-  @override
-  Future<DeviceLocationPermission> checkPermission() async =>
-      DeviceLocationPermission.granted;
-
-  @override
-  Future<DeviceLocationPermission> requestPermission() async =>
-      DeviceLocationPermission.granted;
-
-  @override
-  Future<DeviceLocationAccuracyMode> getAccuracyMode() async =>
-      DeviceLocationAccuracyMode.precise;
-
-  @override
-  Future<DeviceLocationCoordinates> getCurrentPosition({
-    required Duration timeout,
-  }) async => const DeviceLocationCoordinates(
-    latitude: 14.5995,
-    longitude: 120.9842,
-    accuracyMeters: 5,
-  );
-}
-
-class _InsideLocationVerificationRepository
-    implements LocationVerificationRepository {
-  @override
-  Future<LocationVerificationAttempt> createLocationVerificationAttempt(
-    String scheduleId, {
-    required double latitude,
-    required double longitude,
-    required bool hasAccuracy,
-    required double? accuracyMeters,
-    required DateTime? devicePositionTimestamp,
-    required bool isMocked,
-    required String accuracyMode,
-    required int acquisitionDurationMs,
-  }) async => const LocationVerificationAttempt(
-    id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-    outcome: LocationVerificationOutcome.inside,
-  );
 }

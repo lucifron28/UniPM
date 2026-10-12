@@ -19,3 +19,19 @@ if (!g.WritableStream) {
 if (!g.BroadcastChannel) {
   g.BroadcastChannel = BroadcastChannel
 }
+
+if (typeof HTMLDialogElement !== 'undefined') {
+  if (!HTMLDialogElement.prototype.showModal) {
+    HTMLDialogElement.prototype.showModal = function showModal() {
+      this.setAttribute('open', '')
+      this.querySelector<HTMLElement>('[autofocus]')?.focus()
+    }
+  }
+
+  if (!HTMLDialogElement.prototype.close) {
+    HTMLDialogElement.prototype.close = function close() {
+      this.removeAttribute('open')
+      this.dispatchEvent(new Event('close'))
+    }
+  }
+}

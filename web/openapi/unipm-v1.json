@@ -1372,6 +1372,118 @@
         }
       }
     },
+    "/api/v1/inspections/{id}/photo": {
+      "get": {
+        "tags": ["Inspections"],
+        "summary": "Gets authorized private JPEG photo evidence for an inspection row",
+        "operationId": "GetInspectionPhotoEvidence",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "image/jpeg": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Forbidden" },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["Inspections"],
+        "summary": "Uploads or replaces one private JPEG photo for a draft inspection row",
+        "operationId": "ReplaceInspectionPhotoEvidence",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "image/jpeg": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": { "description": "No Content" },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Forbidden" },
+          "404": { "description": "Not Found" },
+          "409": { "description": "Conflict" },
+          "413": { "description": "Payload Too Large" },
+          "415": { "description": "Unsupported Media Type" }
+        }
+      },
+      "delete": {
+        "tags": ["Inspections"],
+        "summary": "Removes optional photo evidence from a draft inspection row",
+        "operationId": "DeleteInspectionPhotoEvidence",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": { "description": "No Content" },
+          "401": { "description": "Unauthorized" },
+          "403": { "description": "Forbidden" },
+          "404": { "description": "Not Found" },
+          "409": { "description": "Conflict" }
+        }
+      }
+    },
     "/api/v1/inspections/{id}/wms-referral": {
       "get": {
         "tags": ["Inspections"],
@@ -3041,6 +3153,10 @@
           "isOperational": {
             "type": "boolean"
           },
+          "hasPhotoEvidence": {
+            "type": "boolean",
+            "default": false
+          },
           "remarks": {
             "type": ["null", "string"]
           },
@@ -3105,6 +3221,10 @@
           },
           "isOperational": {
             "type": "boolean"
+          },
+          "hasPhotoEvidence": {
+            "type": "boolean",
+            "default": false
           },
           "remarks": {
             "type": ["null", "string"]
@@ -3344,6 +3464,10 @@
           "correctiveFollowUpStatus": {
             "type": "string",
             "default": "NoReferralRequired"
+          },
+          "hasPhotoEvidence": {
+            "type": "boolean",
+            "default": false
           }
         }
       },

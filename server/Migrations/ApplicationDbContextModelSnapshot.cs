@@ -398,6 +398,36 @@ namespace UniPM.Api.Migrations
                         });
                 });
 
+            modelBuilder.Entity("UniPM.Api.Models.InspectionPhotoEvidence", b =>
+                {
+                    b.Property<Guid>("InspectionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("LengthBytes")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Revision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("int");
+
+                    b.Property<string>("StorageKey")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<DateTimeOffset>("UploadedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.HasKey("InspectionId");
+
+                    b.ToTable("InspectionPhotoEvidence", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_InspectionPhotoEvidence_LengthBytes_Positive", "[LengthBytes] > 0");
+
+                            t.HasCheckConstraint("CK_InspectionPhotoEvidence_Revision_Positive", "[Revision] > 0");
+                        });
+                });
+
             modelBuilder.Entity("UniPM.Api.Models.InspectionRecord", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1212,6 +1242,17 @@ namespace UniPM.Api.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("UniPM.Api.Models.InspectionPhotoEvidence", b =>
+                {
+                    b.HasOne("UniPM.Api.Models.InspectionRecord", "Inspection")
+                        .WithOne("PhotoEvidence")
+                        .HasForeignKey("UniPM.Api.Models.InspectionPhotoEvidence", "InspectionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Inspection");
+                });
+
             modelBuilder.Entity("UniPM.Api.Models.InspectionRecord", b =>
                 {
                     b.HasOne("UniPM.Api.Models.Asset", "Asset")
@@ -1364,6 +1405,8 @@ namespace UniPM.Api.Migrations
 
             modelBuilder.Entity("UniPM.Api.Models.InspectionRecord", b =>
                 {
+                    b.Navigation("PhotoEvidence");
+
                     b.Navigation("WmsReferral");
                 });
 

@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { httpClient } from '@/api/http-client'
 import {
   getGetInspectionHistoryQueryKey,
   getGetInspectionQueryKey,
@@ -30,6 +31,23 @@ export function useInspection(inspectionId: string, enabled = true) {
     queryKey: getGetInspectionQueryKey(inspectionId),
     queryFn: ({ signal }) =>
       getInspection(inspectionId, signal).then(parseInspection),
+    enabled,
+  })
+}
+
+export function useInspectionPhotoEvidence(
+  inspectionId: string,
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: ['inspection-photo-evidence', inspectionId],
+    queryFn: async ({ signal }) => {
+      const response = await httpClient.get<Blob>(
+        `/api/v1/inspections/${inspectionId}/photo`,
+        { responseType: 'blob', signal },
+      )
+      return response.data
+    },
     enabled,
   })
 }

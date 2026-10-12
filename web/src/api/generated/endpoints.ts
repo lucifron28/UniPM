@@ -3375,6 +3375,342 @@ export function useGetInspection<
 }
 
 /**
+ * @summary Gets authorized private JPEG photo evidence for an inspection row
+ */
+export const getInspectionPhotoEvidence = (
+  id: string,
+  signal?: AbortSignal,
+) => {
+  return customInstance<Blob>({
+    url: `/api/v1/inspections/${id}/photo`,
+    method: 'GET',
+    responseType: 'blob',
+    signal,
+  })
+}
+
+export const getGetInspectionPhotoEvidenceQueryKey = (id: string) => {
+  return [`/api/v1/inspections/${id}/photo`] as const
+}
+
+export const getGetInspectionPhotoEvidenceQueryOptions = <
+  TData = Awaited<ReturnType<typeof getInspectionPhotoEvidence>>,
+  TError = void | ProblemDetails,
+>(
+  id: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getInspectionPhotoEvidence>>,
+        TError,
+        TData
+      >
+    >
+  },
+) => {
+  const { query: queryOptions } = options ?? {}
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetInspectionPhotoEvidenceQueryKey(id)
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getInspectionPhotoEvidence>>
+  > = ({ signal }) => getInspectionPhotoEvidence(id, signal)
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: id !== null && id !== undefined,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getInspectionPhotoEvidence>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetInspectionPhotoEvidenceQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getInspectionPhotoEvidence>>
+>
+export type GetInspectionPhotoEvidenceQueryError = void | ProblemDetails
+
+export function useGetInspectionPhotoEvidence<
+  TData = Awaited<ReturnType<typeof getInspectionPhotoEvidence>>,
+  TError = void | ProblemDetails,
+>(
+  id: string,
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getInspectionPhotoEvidence>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getInspectionPhotoEvidence>>,
+          TError,
+          Awaited<ReturnType<typeof getInspectionPhotoEvidence>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useGetInspectionPhotoEvidence<
+  TData = Awaited<ReturnType<typeof getInspectionPhotoEvidence>>,
+  TError = void | ProblemDetails,
+>(
+  id: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getInspectionPhotoEvidence>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getInspectionPhotoEvidence>>,
+          TError,
+          Awaited<ReturnType<typeof getInspectionPhotoEvidence>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useGetInspectionPhotoEvidence<
+  TData = Awaited<ReturnType<typeof getInspectionPhotoEvidence>>,
+  TError = void | ProblemDetails,
+>(
+  id: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getInspectionPhotoEvidence>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+/**
+ * @summary Gets authorized private JPEG photo evidence for an inspection row
+ */
+
+export function useGetInspectionPhotoEvidence<
+  TData = Awaited<ReturnType<typeof getInspectionPhotoEvidence>>,
+  TError = void | ProblemDetails,
+>(
+  id: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getInspectionPhotoEvidence>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+} {
+  const queryOptions = getGetInspectionPhotoEvidenceQueryOptions(id, options)
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+
+  return withQueryKey(query, queryOptions.queryKey)
+}
+
+/**
+ * @summary Uploads or replaces one private JPEG photo for a draft inspection row
+ */
+export const replaceInspectionPhotoEvidence = (
+  id: string,
+  replaceInspectionPhotoEvidenceBody: Blob,
+  signal?: AbortSignal,
+) => {
+  return customInstance<void>({
+    url: `/api/v1/inspections/${id}/photo`,
+    method: 'PUT',
+    headers: { 'Content-Type': 'image/jpeg' },
+    data: replaceInspectionPhotoEvidenceBody,
+    signal,
+  })
+}
+
+export const getReplaceInspectionPhotoEvidenceMutationOptions = <
+  TError = ValidationProblemDetails | void,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof replaceInspectionPhotoEvidence>>,
+    TError,
+    { id: string; data: Blob },
+    TContext
+  >
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof replaceInspectionPhotoEvidence>>,
+  TError,
+  { id: string; data: Blob },
+  TContext
+> => {
+  const mutationKey = ['replaceInspectionPhotoEvidence']
+  const { mutation: mutationOptions } = options
+    ? options.mutation &&
+      'mutationKey' in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey } }
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof replaceInspectionPhotoEvidence>>,
+    { id: string; data: Blob }
+  > = (props) => {
+    const { id, data } = props ?? {}
+
+    return replaceInspectionPhotoEvidence(id, data)
+  }
+
+  return { mutationFn, ...mutationOptions }
+}
+
+export type ReplaceInspectionPhotoEvidenceMutationResult = NonNullable<
+  Awaited<ReturnType<typeof replaceInspectionPhotoEvidence>>
+>
+export type ReplaceInspectionPhotoEvidenceMutationBody = Blob
+export type ReplaceInspectionPhotoEvidenceMutationError =
+  ValidationProblemDetails | void
+
+/**
+ * @summary Uploads or replaces one private JPEG photo for a draft inspection row
+ */
+export const useReplaceInspectionPhotoEvidence = <
+  TError = ValidationProblemDetails | void,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof replaceInspectionPhotoEvidence>>,
+      TError,
+      { id: string; data: Blob },
+      TContext
+    >
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof replaceInspectionPhotoEvidence>>,
+  TError,
+  { id: string; data: Blob },
+  TContext
+> => {
+  return useMutation(
+    getReplaceInspectionPhotoEvidenceMutationOptions(options),
+    queryClient,
+  )
+}
+
+/**
+ * @summary Removes optional photo evidence from a draft inspection row
+ */
+export const deleteInspectionPhotoEvidence = (
+  id: string,
+  signal?: AbortSignal,
+) => {
+  return customInstance<void>({
+    url: `/api/v1/inspections/${id}/photo`,
+    method: 'DELETE',
+    signal,
+  })
+}
+
+export const getDeleteInspectionPhotoEvidenceMutationOptions = <
+  TError = void,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteInspectionPhotoEvidence>>,
+    TError,
+    { id: string },
+    TContext
+  >
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteInspectionPhotoEvidence>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ['deleteInspectionPhotoEvidence']
+  const { mutation: mutationOptions } = options
+    ? options.mutation &&
+      'mutationKey' in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey } }
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteInspectionPhotoEvidence>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {}
+
+    return deleteInspectionPhotoEvidence(id)
+  }
+
+  return { mutationFn, ...mutationOptions }
+}
+
+export type DeleteInspectionPhotoEvidenceMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteInspectionPhotoEvidence>>
+>
+
+export type DeleteInspectionPhotoEvidenceMutationError = void
+
+/**
+ * @summary Removes optional photo evidence from a draft inspection row
+ */
+export const useDeleteInspectionPhotoEvidence = <
+  TError = void,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof deleteInspectionPhotoEvidence>>,
+      TError,
+      { id: string },
+      TContext
+    >
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof deleteInspectionPhotoEvidence>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(
+    getDeleteInspectionPhotoEvidenceMutationOptions(options),
+    queryClient,
+  )
+}
+
+/**
  * @summary Gets the manually recorded WMS PM number and its change audit
  */
 export const getInspectionWmsReferral = (id: string, signal?: AbortSignal) => {

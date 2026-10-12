@@ -57,6 +57,7 @@ const inspection = {
   inspectorUserId: session.user.id,
   dateInspected: '2026-07-22T01:00:00Z',
   isOperational: false,
+  hasPhotoEvidence: false,
   remarks: 'Low pressure recorded during inspection.',
   actionsRecommendations: 'Arrange a pressure check.',
   externalPmNumber: null,
@@ -306,4 +307,60 @@ test.describe('Inspection review workflows', () => {
       page.getByText('Low pressure recorded during inspection.'),
     ).toBeVisible()
   })
+
+  for (const viewport of [
+    { name: 'desktop', width: 1440, height: 900 },
+    { name: 'mobile', width: 375, height: 667 },
+  ]) {
+    test(`keeps photo preview keyboard-accessible on ${viewport.name}`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({
+        width: viewport.width,
+        height: viewport.height,
+      })
+      await mockInspectionApi(page)
+      await page.route(`**/api/v1/inspections/${inspectionId}`, (route) =>
+        route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ ...inspection, hasPhotoEvidence: true }),
+        }),
+      )
+      await page.route(`**/api/v1/inspections/${inspectionId}/photo`, (route) =>
+        route.fulfill({
+          status: 200,
+          contentType: 'image/jpeg',
+          body: Buffer.from([0xff, 0xd8, 0xff, 0xd9]),
+        }),
+      )
+
+      await page.goto(`/app/inspections/${inspectionId}`)
+      const thumbnail = page.getByRole('button', {
+        name: 'Open inspection photo preview',
+      })
+      await expect(thumbnail).toBeVisible()
+      await thumbnail.focus()
+      await page.keyboard.press('Enter')
+
+      const dialog = page.getByRole('dialog', {
+        name: 'Inspection photo evidence',
+      })
+      const closeButton = dialog.getByRole('button', {
+        name: 'Close photo preview',
+      })
+      await expect(dialog).toBeVisible()
+      await expect(closeButton).toBeFocused()
+      await expect
+        .poll(() => dialog.evaluate((element) => element.matches(':modal')))
+        .toBe(true)
+      await page.keyboard.press('Tab')
+      await expect(closeButton).toBeFocused()
+      await page.keyboard.press('Shift+Tab')
+      await expect(closeButton).toBeFocused()
+      await page.keyboard.press('Escape')
+      await expect(dialog).toHaveCount(0)
+      await expect(thumbnail).toBeFocused()
+    })
+  }
 })

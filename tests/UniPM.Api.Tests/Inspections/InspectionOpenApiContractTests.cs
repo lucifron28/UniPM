@@ -22,6 +22,17 @@ public sealed class InspectionOpenApiContractTests : IClassFixture<InspectionOpe
         Assert.False(paths.GetProperty("/api/v1/inspections").TryGetProperty("post", out _));
         AssertArrayOperation(paths, "/api/v1/inspections", "get", "ListInspections", "InspectionResponse");
         AssertOperation(paths, "/api/v1/inspections/{id}", "get", "GetInspection", "200", "InspectionResponse");
+        var photoPath = paths.GetProperty("/api/v1/inspections/{id}/photo");
+        Assert.True(photoPath.TryGetProperty("get", out var getPhoto));
+        Assert.Equal("GetInspectionPhotoEvidence", getPhoto.GetProperty("operationId").GetString());
+        Assert.True(getPhoto.GetProperty("responses").GetProperty("200")
+            .GetProperty("content").TryGetProperty("image/jpeg", out _));
+        Assert.True(photoPath.TryGetProperty("put", out var putPhoto));
+        Assert.Equal("ReplaceInspectionPhotoEvidence", putPhoto.GetProperty("operationId").GetString());
+        Assert.True(putPhoto.GetProperty("requestBody").GetProperty("content")
+            .TryGetProperty("image/jpeg", out _));
+        Assert.True(photoPath.TryGetProperty("delete", out var deletePhoto));
+        Assert.Equal("DeleteInspectionPhotoEvidence", deletePhoto.GetProperty("operationId").GetString());
         AssertArrayOperation(paths, "/api/v1/inspections/history/{assetId}", "get", "GetInspectionHistory", "InspectionHistoryResponse");
     }
 

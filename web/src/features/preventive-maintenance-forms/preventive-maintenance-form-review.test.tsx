@@ -196,6 +196,7 @@ function installDashboardNavigationHandlers(
         inspectorUserId: inspectorId,
         dateInspected: '2026-07-28T02:00:00Z',
         isOperational: false,
+        hasPhotoEvidence: false,
         remarks: 'Pressure is low.',
         actionsRecommendations: 'Inspect and recharge the unit.',
         externalPmNumber: null,
