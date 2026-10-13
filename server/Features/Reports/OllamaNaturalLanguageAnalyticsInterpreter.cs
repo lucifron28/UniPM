@@ -13,7 +13,7 @@ internal sealed class OllamaNaturalLanguageAnalyticsInterpreter : ModelNaturalLa
 
     internal new static string PromptFingerprint => ModelNaturalLanguageAnalyticsInterpreter.PromptFingerprint;
 
-    internal OllamaNaturalLanguageAnalyticsInterpreter(
+    public OllamaNaturalLanguageAnalyticsInterpreter(
         HttpClient httpClient,
         IOptionsMonitor<NaturalLanguageAnalyticsOptions> options,
         NaturalLanguageAnalyticsModelClientRunLedger? ledger = null)
