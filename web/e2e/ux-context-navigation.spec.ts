@@ -387,6 +387,36 @@ async function installApi(page: Page, assetList = [asset]) {
   })
   await page.route('**/api/v1/schedules**', (route) => {
     const pathname = new URL(route.request().url()).pathname
+    if (pathname === '/api/v1/schedules/enrollment-deferrals') {
+      return route.fulfill(
+        jsonResponse({
+          page: 1,
+          pageSize: 10,
+          total: 1,
+          pendingCount: 1,
+          reviewedCount: 0,
+          items: [
+            {
+              assetId,
+              assetCode: 'FE-001',
+              department: 'GSD',
+              assetCategory: 'fire-extinguisher',
+              deferredPmCycle: '2026-08',
+              nextEligiblePmCycle: '2026-11',
+              reasonCode: 'BatchAssigned',
+              reason:
+                'The batch already had an assigned Supervisor or Inspector.',
+              status: 'NeedsReview',
+              deferredAt: '2026-08-15T04:00:00Z',
+              reviewedAt: null,
+              reviewedByUserId: null,
+              reviewedByDisplayName: null,
+              reviewNote: null,
+            },
+          ],
+        }),
+      )
+    }
     if (pathname === '/api/v1/schedules/supervisor-assignment-options') {
       return route.fulfill(jsonResponse({ supervisors: [] }))
     }
@@ -548,6 +578,7 @@ test('shows a visible focus indicator on the active desktop navigation link', as
   await installApi(page)
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto('/app/dashboard')
+  await expect(page.getByText(/1 need review · 0 reviewed\./)).toBeVisible()
 
   const dashboardLink = await tabToLink(page, 'Dashboard')
   await expect(dashboardLink).toHaveCSS('outline-style', 'solid')
