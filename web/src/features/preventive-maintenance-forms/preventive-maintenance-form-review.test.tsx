@@ -1060,16 +1060,21 @@ describe('preventive-maintenance form review', () => {
         expect(router.state.location.pathname).toBe('/app/dashboard')
         expect(router.state.location.search).toEqual(dashboardSearch)
       })
-      expect(screen.getByLabelText('Department')).toHaveValue(departmentValue)
+      expect(screen.getByLabelText('Department (report scope)')).toHaveValue(
+        departmentValue,
+      )
       expect(screen.getByLabelText('Condition')).toHaveValue('NonOperational')
       expect(screen.getByLabelText('Timeliness / status')).toHaveValue('Late')
       expect(screen.getByLabelText('Search assets')).toHaveValue('FE-TEST-001')
       expect(
         screen.getByText('Asset category').parentElement,
       ).toHaveTextContent('Fire Extinguisher')
+      const scheduledAssetRow = screen.getByRole('row', {
+        name: /FE-TEST-001/,
+      })
       expect(
-        screen.getByText('Scheduled month/year').parentElement,
-      ).toHaveTextContent('July 2026')
+        within(scheduledAssetRow).getByText('July 2026', { exact: true }),
+      ).toBeInTheDocument()
 
       fireEvent.click(screen.getByRole('link', { name: 'Review batch' }))
       await screen.findByRole('heading', {
@@ -1119,7 +1124,9 @@ describe('preventive-maintenance form review', () => {
         expect(router.state.location.pathname).toBe('/app/dashboard')
         expect(router.state.location.search).toEqual(dashboardSearch)
       })
-      expect(screen.getByLabelText('Department')).toHaveValue(departmentValue)
+      expect(screen.getByLabelText('Department (report scope)')).toHaveValue(
+        departmentValue,
+      )
     },
   )
 
@@ -1153,7 +1160,7 @@ describe('preventive-maintenance form review', () => {
       expect(router.state.location.pathname).toBe('/app/dashboard')
       expect(router.state.location.search).toEqual(allDepartmentDashboardSearch)
     })
-    expect(screen.getByLabelText('Department')).toHaveValue('')
+    expect(screen.getByLabelText('Department (report scope)')).toHaveValue('')
   })
 
   it('preserves omitted dashboard scope fields across the review-form return path', async () => {

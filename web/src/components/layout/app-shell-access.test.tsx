@@ -103,10 +103,15 @@ describe('app shell role access and layout', () => {
 
     await screen.findAllByText('Synthetic Admin')
     const sidebar = screen.getByRole('complementary')
-    expect(sidebar.className).toContain('lg:sticky')
-    expect(sidebar.className).toContain('lg:top-0')
+    expect(sidebar.className).toContain('lg:fixed')
+    expect(sidebar.className).toContain('lg:inset-y-0')
+    expect(sidebar.className).toContain('lg:left-0')
+    expect(sidebar.className).toContain('lg:w-[15.5rem]')
+    expect(sidebar.className).toContain('lg:z-30')
     expect(sidebar.className).toContain('lg:h-screen')
     expect(sidebar.className).toContain('lg:overflow-hidden')
+
+    expect(sidebar.nextElementSibling?.className).toContain('lg:col-start-2')
 
     const navs = screen.getAllByRole('navigation', {
       name: 'Primary',
@@ -117,6 +122,8 @@ describe('app shell role access and layout', () => {
     expect(desktopNav.className).toContain('min-h-0')
     expect(desktopNav.className).toContain('overflow-y-auto')
     expect(mobileNav.className).toContain('flex-wrap')
+    expect(mobileNav.parentElement?.className).toContain('sticky')
+    expect(mobileNav.parentElement?.className).toContain('top-0')
 
     const footer = sidebar.lastElementChild
     expect(footer?.className).toContain('shrink-0')
