@@ -15,6 +15,7 @@ import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useCurrentUser } from '@/features/auth/current-user'
+import { formatAssetCategory } from '@/features/assets/asset-presentation'
 import { formatPmCycle } from '@/features/schedules/schedule-presentation'
 
 const metricDescriptions: Record<string, string> = {
@@ -33,13 +34,6 @@ const clarificationPrompts: Record<string, string> = {
   Month: 'Which month should be used?',
   Department: 'Which department should be used?',
   GroupBy: 'Should the results be grouped by department?',
-}
-
-function formatCategory(value: string) {
-  return value
-    .split('-')
-    .map((part) => `${part.slice(0, 1).toUpperCase()}${part.slice(1)}`)
-    .join(' ')
 }
 
 function formatMetric(value: string) {
@@ -420,7 +414,7 @@ function PmAnalyticsQuestionPanel() {
               {progressCount
                 ? 'Inspected assets'
                 : formatMetric(response.plan.metric)}{' '}
-              for {formatCategory(response.plan.assetCategory)} in{' '}
+              for {formatAssetCategory(response.plan.assetCategory)} in{' '}
               {formatPmCycle(response.plan.pmCycle)}
               {response.plan.department ? `, ${response.plan.department}` : ''}
               {response.plan.groupBy === 'Department'

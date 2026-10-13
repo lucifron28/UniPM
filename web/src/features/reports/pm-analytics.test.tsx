@@ -166,7 +166,7 @@ describe('PM analytics panel', () => {
     ).toBeInTheDocument()
     expect(
       screen.getByText(
-        'Non-operational assets for Fire Extinguisher in November 2026.',
+        'Non-operational assets for Fire extinguishers in November 2026.',
       ),
     ).toBeInTheDocument()
     expect(screen.getByText('3 shown of 3')).toBeInTheDocument()
@@ -459,7 +459,7 @@ describe('PM analytics panel', () => {
     expect(screen.getByText('Inspected assets (count)')).toBeInTheDocument()
     expect(
       screen.getByText(
-        'Inspected assets for Fire Extinguisher in November 2026.',
+        'Inspected assets for Fire extinguishers in November 2026.',
       ),
     ).toBeInTheDocument()
     expect(screen.getByText('2', { exact: true })).toBeInTheDocument()
