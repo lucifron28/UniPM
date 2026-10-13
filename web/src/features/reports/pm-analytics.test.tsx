@@ -169,14 +169,12 @@ describe('PM analytics panel', () => {
         'Non-operational assets for Fire extinguishers in November 2026.',
       ),
     ).toBeInTheDocument()
-    expect(screen.getByText('3 shown of 3')).toBeInTheDocument()
+    expect(screen.getByText('1 shown', { exact: true })).toBeInTheDocument()
     expect(
-      screen.getByText(/Deadline: Nov 30, 2026.*11:59 PM.*GMT\+8/),
+      screen.getByRole('heading', { name: 'Matching records' }),
     ).toBeInTheDocument()
     expect(
-      screen.getByText(
-        /A measure count can therefore be lower than the source count/,
-      ),
+      screen.getByText(/Deadline: Nov 30, 2026.*11:59 PM.*GMT\+8/),
     ).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'FE-001' })).toHaveAttribute(
       'href',
@@ -187,6 +185,23 @@ describe('PM analytics panel', () => {
     ).toBeInTheDocument()
     expect(screen.getByText('Form status')).toBeInTheDocument()
     expect(screen.getByText('Draft', { exact: true })).toBeInTheDocument()
+
+    fireEvent.click(
+      screen.getByRole('checkbox', {
+        name: 'Show all calculation source records',
+      }),
+    )
+    expect(await screen.findByText('3 shown of 3')).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: 'Source records' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        /A measure count can therefore be lower than the source count/,
+      ),
+    ).toBeInTheDocument()
+    expect(screen.getByText('FE-002')).toBeInTheDocument()
+    expect(screen.getByText('FE-003')).toBeInTheDocument()
     expect(screen.getAllByText('Not inspected', { exact: true })).toHaveLength(
       2,
     )
