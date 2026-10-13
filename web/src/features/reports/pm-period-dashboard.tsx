@@ -294,7 +294,7 @@ function navigateToDashboardSection(
     window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
   window.history.replaceState(
-    null,
+    window.history.state,
     '',
     `${window.location.pathname}${window.location.search}#${targetId}`,
   )

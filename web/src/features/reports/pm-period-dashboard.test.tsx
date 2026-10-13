@@ -241,6 +241,42 @@ describe('PM period dashboard period terminology', () => {
     expect(title).toHaveFocus()
   })
 
+  it('preserves router history state while navigating to NLA sections', () => {
+    const previousUrl = window.location.href
+    const previousHistoryState = window.history.state
+    const routerHistoryState = {
+      __testRouterState: 'preserved',
+    }
+
+    window.history.replaceState(
+      routerHistoryState,
+      '',
+      '/app/dashboard?cycle=2026-06',
+    )
+
+    try {
+      const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false } },
+      })
+
+      render(
+        <QueryClientProvider client={queryClient}>
+          <DashboardHeader showNlaShortcut />
+          <DashboardNlaSection />
+        </QueryClientProvider>,
+      )
+
+      fireEvent.click(screen.getByRole('link', { name: 'Ask NLA' }))
+
+      expect(window.history.state).toEqual(routerHistoryState)
+      expect(window.location.pathname).toBe('/app/dashboard')
+      expect(window.location.search).toBe('?cycle=2026-06')
+      expect(window.location.hash).toBe('#pm-analytics-section')
+    } finally {
+      window.history.replaceState(previousHistoryState, '', previousUrl)
+    }
+  })
+
   it('hides the NLA shortcut when its destination is unavailable', () => {
     render(<DashboardHeader />)
 
