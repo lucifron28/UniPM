@@ -471,6 +471,7 @@ test.describe('Asset Registry E2E Specs', () => {
     await mockAssetRegistry(page)
     await page.goto('/app/assets')
 
+    await expect(page.getByRole('heading', { name: 'Assets' })).toBeVisible()
     const nav = page
       .locator('nav[aria-label="Primary"]')
       .filter({ has: page.getByRole('link', { name: 'Assets' }) })
