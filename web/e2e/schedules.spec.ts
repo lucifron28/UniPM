@@ -458,7 +458,9 @@ test.describe('Schedule workflows', () => {
   }) => {
     await mockScheduleApi(page)
     await page.goto('/app/schedules?status=Due&quarter=Q3&year=2026')
-    await expect(page.getByRole('heading', { name: 'Schedules' })).toBeVisible()
+    await expect(
+      page.getByRole('heading', { name: 'Schedules', exact: true }),
+    ).toBeVisible()
     await expect(page.getByLabel('Schedule status')).toHaveValue('Due')
     await expect(
       page.getByLabel('Calendar quarter', { exact: true }),
@@ -474,6 +476,117 @@ test.describe('Schedule workflows', () => {
     await expect(page).toHaveURL(/quarter=Q3/)
     await expect(page).toHaveURL(/year=2026/)
     await expect(page.getByLabel('Schedule status')).toHaveValue('Due')
+  })
+
+  test('keeps the re-laid-out sections and management deep links usable', async ({
+    page,
+  }) => {
+    await mockScheduleApi(page)
+    let generationCalls = 0
+    await page.route('**/api/v1/schedules/generate', async (route) => {
+      if (route.request().method() !== 'POST') return route.fallback()
+      generationCalls += 1
+      const body = route.request().postDataJSON() as { year: number }
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          year: body.year,
+          eligibleAssets: 1,
+          existingSchedules: 1,
+          createdSchedules: 2,
+          deferredSchedules: 0,
+          cyclesRequiringGsdCoverageReview: 0,
+        }),
+      })
+    })
+    await page.route('**/api/v1/schedules/enrollment-deferrals**', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          page: 1,
+          pageSize: 10,
+          total: 1,
+          pendingCount: 1,
+          reviewedCount: 0,
+          items: [
+            {
+              assetId,
+              assetCode: 'FE-001',
+              department: 'GSD',
+              assetCategory: 'fire-extinguisher',
+              deferredPmCycle: '2026-08',
+              nextEligiblePmCycle: '2026-11',
+              reasonCode: 'BatchAssigned',
+              reason:
+                'The batch already had an assigned Supervisor or Inspector.',
+              status: 'NeedsReview',
+              deferredAt: '2026-08-15T04:00:00Z',
+              reviewedAt: null,
+              reviewedByUserId: null,
+              reviewedByDisplayName: null,
+              reviewNote: null,
+            },
+          ],
+        }),
+      }),
+    )
+
+    await page.setViewportSize({ width: 1440, height: 900 })
+    await page.goto('/app/schedules')
+    await expect(
+      page.getByRole('heading', { name: 'Schedules', exact: true }),
+    ).toBeVisible()
+    const sectionHeadings = await page
+      .locator('main h1, main h2')
+      .allTextContents()
+    expect(sectionHeadings.slice(0, 4)).toEqual([
+      'Schedules',
+      'Find schedules',
+      'Schedule summary',
+      'Schedule records',
+    ])
+    await expect(
+      page.getByText('Overall totals for all recorded schedules'),
+    ).toBeVisible()
+    await expect(
+      page.getByRole('link', { name: 'Manage schedules' }),
+    ).toHaveAttribute('href', '#schedule-management')
+
+    await page.getByRole('link', { name: 'Manage schedules' }).click()
+    await expect(page).toHaveURL(/#schedule-management$/)
+    await expect(
+      page.getByRole('heading', { name: 'Generate missing schedules' }),
+    ).toBeVisible()
+    await page
+      .getByRole('button', { name: 'Generate missing schedules' })
+      .click()
+    await expect(
+      page.getByRole('status').filter({ hasText: 'Year 2026' }),
+    ).toBeVisible()
+    expect(generationCalls).toBe(1)
+
+    await page.goto('/app/schedules#schedule-enrollment-deferrals')
+    await expect(page.locator('#schedule-enrollment-deferrals')).toBeVisible()
+    await expect(
+      page.getByRole('heading', { name: 'Deferred asset enrollment' }),
+    ).toBeVisible()
+
+    await page.setViewportSize({ width: 375, height: 667 })
+    await page.goto('/app/schedules#schedule-management')
+    await expect(
+      page.getByRole('heading', { name: 'Schedule management' }),
+    ).toBeVisible()
+    await page.getByText('More filters', { exact: true }).click()
+    await expect(page.getByLabel('Department')).toBeVisible()
+    expect(
+      await page.evaluate(
+        () =>
+          document.documentElement.scrollWidth -
+          document.documentElement.clientWidth,
+      ),
+    ).toBeLessThanOrEqual(1)
   })
 
   test('creates a schedule with only approved fields and opens its detail', async ({

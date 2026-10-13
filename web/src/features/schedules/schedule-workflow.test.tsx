@@ -362,6 +362,55 @@ describe('schedule workflows', () => {
     ).not.toBeInTheDocument()
   })
 
+  it('orders the schedule page sections and exposes management navigation', async () => {
+    renderWithProviders(
+      <ScheduleRegistry search={{ page: 1 }} onSearchChange={vi.fn()} />,
+    )
+
+    const pageHeading = await screen.findByRole('heading', {
+      name: 'Schedules',
+      level: 1,
+    })
+    const findHeading = screen.getByRole('heading', {
+      name: 'Find schedules',
+      level: 2,
+    })
+    const summaryHeading = screen.getByRole('heading', {
+      name: 'Schedule summary',
+      level: 2,
+    })
+    const recordsHeading = await screen.findByRole('heading', {
+      name: 'Schedule records',
+      level: 2,
+    })
+    const managementHeading = screen.getByRole('heading', {
+      name: 'Schedule management',
+      level: 2,
+    })
+    const follows = (before: HTMLElement, after: HTMLElement) =>
+      Boolean(
+        before.compareDocumentPosition(after) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+      )
+
+    expect(follows(pageHeading, findHeading)).toBe(true)
+    expect(follows(findHeading, summaryHeading)).toBe(true)
+    expect(follows(summaryHeading, recordsHeading)).toBe(true)
+    expect(follows(recordsHeading, managementHeading)).toBe(true)
+    expect(
+      screen.getByRole('link', { name: 'Manage schedules' }),
+    ).toHaveAttribute('href', '#schedule-management')
+    expect(screen.getByRole('link', { name: 'Add schedule' })).toHaveAttribute(
+      'href',
+      '/app/schedules/new',
+    )
+
+    const moreFilters = screen.getByText('More filters', { exact: true })
+    expect(moreFilters.tagName).toBe('SUMMARY')
+    await userEvent.setup().click(moreFilters)
+    expect(screen.getByLabelText('Department')).toBeVisible()
+  })
+
   it('keeps summary unfiltered while sending supported registry filters', async () => {
     const urls: URL[] = []
     server.use(

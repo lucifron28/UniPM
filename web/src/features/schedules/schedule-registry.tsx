@@ -208,6 +208,16 @@ export function ScheduleRegistry({
     pmCycle: search.pmCycle,
   }))
   const [filterNotice, setFilterNotice] = useState<string | null>(null)
+  const [showMoreFilters, setShowMoreFilters] = useState(() =>
+    Boolean(
+      search.assetId ||
+      search.department ||
+      search.from ||
+      search.to ||
+      search.quarter ||
+      search.pmCycle,
+    ),
+  )
   const filterOptions = useScheduleRegistryOptions({
     ...(draft.assetCategory ? { assetCategory: draft.assetCategory } : {}),
     ...(draft.department ? { department: draft.department } : {}),
@@ -563,9 +573,63 @@ export function ScheduleRegistry({
       : []),
   ]
 
+  const summarySection = (
+    <section aria-labelledby="schedule-summary-title" className="space-y-3">
+      <div>
+        <h2
+          id="schedule-summary-title"
+          className="text-xl font-bold text-[var(--text-primary)]"
+        >
+          Schedule summary
+        </h2>
+        <p className="mt-1 text-sm text-[var(--text-secondary)]">
+          Overall totals for all recorded schedules, independent of the registry
+          filters below.
+        </p>
+      </div>
+      {summary.isPending ? (
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3" role="status">
+          <span className="sr-only">Loading schedule summary...</span>
+          {Array.from({ length: 3 }, (_, index) => (
+            <Card key={index} className="p-4 shadow-none">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="mt-2 h-8 w-12" />
+            </Card>
+          ))}
+        </div>
+      ) : summary.isError ? (
+        <Card role="alert" className="border-[var(--error)] p-4 shadow-none">
+          <p className="font-semibold text-[var(--error)]">
+            {isScheduleAccessDenied(summary.error)
+              ? scheduleAccessDeniedMessage
+              : 'Schedule summary is currently unavailable.'}
+          </p>
+          <Button
+            type="button"
+            className="mt-3"
+            onClick={() => {
+              void summary.refetch()
+            }}
+          >
+            Retry summary
+          </Button>
+        </Card>
+      ) : (
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <SummaryCard label="All schedules" count={summary.data.totalCount} />
+          <SummaryCard label="Due" count={summary.data.dueCount} />
+          <SummaryCard label="Ongoing" count={summary.data.ongoingCount} />
+          <SummaryCard label="Overdue" count={summary.data.overdueCount} />
+          <SummaryCard label="Completed" count={summary.data.completedCount} />
+          <SummaryCard label="Cancelled" count={summary.data.cancelledCount} />
+        </div>
+      )}
+    </section>
+  )
+
   return (
-    <section aria-labelledby="schedules-title" className="space-y-6">
-      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+    <section aria-labelledby="schedules-title" className="space-y-8">
+      <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
           <p className="text-sm font-semibold tracking-[0.08em] text-[var(--primary)] uppercase">
             Preventive maintenance
@@ -582,8 +646,564 @@ export function ScheduleRegistry({
           </p>
         </div>
         {(canCreate || canGenerate) && (
-          <div className="flex flex-wrap items-end gap-3">
+          <div className="flex flex-wrap items-center gap-2">
             {canGenerate && (
+              <Button asChild variant="secondary">
+                <a href="#schedule-management">Manage schedules</a>
+              </Button>
+            )}
+            {canCreate && (
+              <Button asChild>
+                <Link to="/app/schedules/new">
+                  <CalendarPlus aria-hidden="true" className="mr-2 size-4" />
+                  Add schedule
+                </Link>
+              </Button>
+            )}
+          </div>
+        )}
+      </header>
+
+      <section aria-labelledby="schedule-filters-title" className="space-y-3">
+        <div>
+          <h2
+            id="schedule-filters-title"
+            className="text-xl font-bold text-[var(--text-primary)]"
+          >
+            Find schedules
+          </h2>
+          <p className="mt-1 text-sm text-[var(--text-secondary)]">
+            Search first, then narrow the schedule registry with the most-used
+            filters.
+          </p>
+        </div>
+        <Card className="p-4 shadow-none">
+          <form
+            className="space-y-4"
+            onSubmit={(event) => {
+              event.preventDefault()
+              apply()
+            }}
+          >
+            <label className="grid gap-1 text-sm font-semibold text-[var(--text-primary)]">
+              Search
+              <Input
+                aria-label="Search schedules"
+                placeholder="Asset code, location, department, or PM cycle"
+                value={draft.search ?? ''}
+                maxLength={256}
+                onChange={(event) =>
+                  setDraft((current) => ({
+                    ...current,
+                    search: event.target.value,
+                  }))
+                }
+              />
+            </label>
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+              <label className="grid gap-1 text-sm font-semibold text-[var(--text-primary)]">
+                Asset category
+                <select
+                  aria-label="Asset category"
+                  value={draft.assetCategory ?? ''}
+                  disabled={filterOptions.isError || filterOptions.isPending}
+                  onChange={(event) => {
+                    const assetCategory = (event.target.value || undefined) as
+                      Asset['assetCategory'] | undefined
+                    setDraft((current) => ({
+                      ...current,
+                      assetCategory,
+                      assetId: undefined,
+                    }))
+                    setFilterNotice(
+                      draft.assetId
+                        ? 'Specific asset was cleared because the category filter changed.'
+                        : null,
+                    )
+                  }}
+                  className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
+                >
+                  <option value="">All asset categories</option>
+                  {categories.map((category) => (
+                    <option key={category.code} value={category.code}>
+                      {category.displayName}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="grid gap-1 text-sm font-semibold text-[var(--text-primary)]">
+                Schedule status
+                <select
+                  aria-label="Schedule status"
+                  value={draft.status ?? ''}
+                  disabled={statuses.isError}
+                  onChange={(event) =>
+                    setDraft((current) => ({
+                      ...current,
+                      status: (event.target.value || undefined) as
+                        Schedule['status'] | undefined,
+                    }))
+                  }
+                  className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
+                >
+                  <option value="">All statuses</option>
+                  {(statuses.data ?? []).map((status) => (
+                    <option key={status.code} value={status.code}>
+                      {status.displayName}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="grid gap-1 text-sm font-semibold text-[var(--text-primary)]">
+                Calendar year
+                <select
+                  aria-label="Calendar year"
+                  value={draft.year ?? pmCycleYear ?? ''}
+                  onChange={(event) => {
+                    setDraft((current) => ({
+                      ...current,
+                      year: event.target.value
+                        ? Number(event.target.value)
+                        : undefined,
+                      pmCycle: undefined,
+                    }))
+                    if (draft.pmCycle) {
+                      setFilterNotice(
+                        'The exact PM month was cleared because the year changed.',
+                      )
+                    }
+                  }}
+                  className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
+                >
+                  <option value="">All years</option>
+                  {yearOptions.map((year) => (
+                    <option key={year} value={year}>
+                      {year}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <details
+              open={showMoreFilters}
+              onToggle={(event) => setShowMoreFilters(event.currentTarget.open)}
+              className="rounded-lg border border-[var(--border-soft)] px-4 py-3"
+            >
+              <summary className="cursor-pointer font-semibold text-[var(--text-primary)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2">
+                More filters
+              </summary>
+              <div
+                id="schedule-more-filters"
+                className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3"
+              >
+                <AssetPicker
+                  value={draft.assetId}
+                  assetCategory={draft.assetCategory}
+                  department={draft.department}
+                  onChange={(assetId) =>
+                    setDraft((current) => ({ ...current, assetId }))
+                  }
+                />
+                <label className="grid gap-1 text-sm font-semibold text-[var(--text-primary)]">
+                  Department
+                  <select
+                    aria-label="Department"
+                    value={draft.department ?? ''}
+                    disabled={filterOptions.isError}
+                    onChange={(event) => {
+                      setDraft((current) => ({
+                        ...current,
+                        department: event.target.value || undefined,
+                        assetId: undefined,
+                      }))
+                      setFilterNotice(
+                        draft.assetId
+                          ? 'Specific asset was cleared because the department filter changed.'
+                          : null,
+                      )
+                    }}
+                    className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
+                  >
+                    <option value="">All departments</option>
+                    {departments.map((department) => (
+                      <option key={department} value={department}>
+                        {department}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="grid gap-1 text-xs font-semibold text-[var(--text-secondary)]">
+                  From
+                  <input
+                    type="datetime-local"
+                    value={toDateTimeLocal(draft.from)}
+                    onChange={(event) =>
+                      setDraft((current) => ({
+                        ...current,
+                        from: fromDateTimeLocal(event.target.value),
+                      }))
+                    }
+                    className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm font-normal"
+                  />
+                </label>
+                <label className="grid gap-1 text-xs font-semibold text-[var(--text-secondary)]">
+                  To
+                  <input
+                    type="datetime-local"
+                    value={toDateTimeLocal(draft.to)}
+                    onChange={(event) =>
+                      setDraft((current) => ({
+                        ...current,
+                        to: fromDateTimeLocal(event.target.value),
+                      }))
+                    }
+                    className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm font-normal"
+                  />
+                </label>
+                <label className="grid gap-1 text-sm font-semibold text-[var(--text-primary)]">
+                  Calendar quarter
+                  <select
+                    aria-label="Calendar quarter"
+                    value={draft.quarter ?? pmCycleQuarter ?? ''}
+                    onChange={(event) => {
+                      setDraft((current) => ({
+                        ...current,
+                        quarter: (event.target.value || undefined) as
+                          NonNullable<Schedule['quarter']> | undefined,
+                        pmCycle: undefined,
+                      }))
+                      if (draft.pmCycle) {
+                        setFilterNotice(
+                          'The exact PM month was cleared because the quarter changed.',
+                        )
+                      }
+                    }}
+                    className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
+                  >
+                    <option value="">All quarters</option>
+                    {quarterOptions.map((quarter) => (
+                      <option key={quarter} value={quarter}>
+                        {quarter}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="grid gap-1 text-sm font-semibold text-[var(--text-primary)]">
+                  Exact PM month
+                  <select
+                    aria-label="Exact PM month"
+                    value={draft.pmCycle?.slice(5, 7) ?? ''}
+                    onChange={(event) => {
+                      const month = Number(event.target.value)
+                      if (!month) {
+                        setDraft((current) => ({
+                          ...current,
+                          pmCycle: undefined,
+                        }))
+                        setFilterNotice(null)
+                        return
+                      }
+                      const year = draft.year ?? currentManilaYear
+                      const quarter =
+                        `Q${Math.floor((month - 1) / 3) + 1}` as NonNullable<
+                          Schedule['quarter']
+                        >
+                      setDraft((current) => ({
+                        ...current,
+                        year,
+                        quarter,
+                        pmCycle: `${year}-${String(month).padStart(2, '0')}`,
+                      }))
+                      setFilterNotice(null)
+                    }}
+                    className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm font-normal"
+                  >
+                    <option value="">All months</option>
+                    {allowedMonths.map((month) => (
+                      <option
+                        key={month}
+                        value={String(month).padStart(2, '0')}
+                      >
+                        {new Intl.DateTimeFormat(undefined, {
+                          month: 'long',
+                          timeZone: 'UTC',
+                        }).format(new Date(Date.UTC(2024, month - 1, 1)))}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            </details>
+            <div className="flex flex-wrap items-end gap-2">
+              <Button
+                type="submit"
+                disabled={
+                  !dateRangeIsValid ||
+                  !pmCycleMatchesPeriod ||
+                  !draftAssetMatchesFilters
+                }
+              >
+                Apply filters
+              </Button>
+              <Button type="button" variant="secondary" onClick={clear}>
+                Clear filters
+              </Button>
+            </div>
+          </form>
+          {!dateRangeIsValid && (
+            <p className="mt-3 text-sm text-[var(--error)]" role="alert">
+              The start date must be before or equal to the end date.
+            </p>
+          )}
+          {!pmCycleMatchesPeriod && (
+            <p className="mt-3 text-sm text-[var(--error)]" role="alert">
+              The exact PM month must match the selected calendar year and
+              quarter.
+            </p>
+          )}
+          {draft.assetId && !draftAssetMatchesFilters && (
+            <p className="mt-3 text-sm text-[var(--error)]" role="alert">
+              {draftSelectedAsset.isPending
+                ? 'Checking the selected asset before applying filters.'
+                : 'The selected asset could not be verified or does not match the category or department. Clear it or choose another asset.'}
+            </p>
+          )}
+          {filterNotice && (
+            <p
+              className="mt-3 text-sm text-[var(--text-secondary)]"
+              role="status"
+            >
+              {filterNotice}
+            </p>
+          )}
+          {(filterOptions.isError || statuses.isError) && (
+            <div
+              className="mt-3 flex flex-wrap gap-3 text-sm text-[var(--error)]"
+              role="alert"
+            >
+              {filterOptions.isError && (
+                <Button
+                  type="button"
+                  onClick={() => void filterOptions.refetch()}
+                >
+                  Retry registry options
+                </Button>
+              )}
+              {statuses.isError && (
+                <Button type="button" onClick={() => void statuses.refetch()}>
+                  Retry status options
+                </Button>
+              )}
+            </div>
+          )}
+          <RegistryActiveFilters filters={activeFilters} />
+        </Card>
+      </section>
+
+      {summarySection}
+
+      <section aria-labelledby="schedule-records-title" className="space-y-4">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h2
+              id="schedule-records-title"
+              className="text-xl font-bold text-[var(--text-primary)]"
+            >
+              Schedule records
+            </h2>
+            <p className="mt-1 text-sm text-[var(--text-secondary)]">
+              Filtered schedule records and their current recorded status.
+            </p>
+          </div>
+          <p
+            className="text-sm text-[var(--text-secondary)]"
+            aria-live="polite"
+          >
+            Filtered results: {totalCount.toLocaleString()} · Overall schedules:{' '}
+            {registry.data?.overallCount.toLocaleString() ?? 'Loading'}
+          </p>
+        </div>
+        {registry.isPending ? (
+          <RegistryLoadingPanel breakpoint="md" viewportSize="standard">
+            <span className="sr-only">Loading schedules...</span>
+            {Array.from({ length: 5 }, (_, index) => (
+              <Skeleton key={index} className="h-10 w-full" />
+            ))}
+          </RegistryLoadingPanel>
+        ) : registry.isError ? (
+          <Card role="alert" className="border-[var(--error)] p-6 shadow-none">
+            <h2 className="font-bold text-[var(--error)]">
+              Schedules unavailable
+            </h2>
+            <p className="mt-2 text-sm text-[var(--text-secondary)]">
+              {isScheduleAccessDenied(registry.error)
+                ? scheduleAccessDeniedMessage
+                : 'The schedule registry could not be loaded.'}
+            </p>
+            <Button
+              type="button"
+              className="mt-4"
+              onClick={() => void registry.refetch()}
+            >
+              Retry
+            </Button>
+          </Card>
+        ) : records.length === 0 ? (
+          <Card className="p-8 text-center shadow-none">
+            <h2 className="font-bold">
+              {records.length === 0 && summary.data?.totalCount === 0
+                ? 'No schedules are recorded yet.'
+                : 'No schedules match these filters.'}
+            </h2>
+            <p className="mt-2 text-sm text-[var(--text-secondary)]">
+              {records.length === 0 && summary.data?.totalCount === 0
+                ? 'An authorized schedule manager can add the first record.'
+                : 'Clear the filters to return to all recorded schedules.'}
+            </p>
+          </Card>
+        ) : (
+          <RegistryResultsPanel
+            label="Schedules"
+            breakpoint="md"
+            viewportSize="standard"
+            isUpdating={registry.isFetching}
+            desktopContent={
+              <table className="w-full min-w-[760px] text-left text-sm">
+                <thead className="bg-[var(--page-background)] text-xs tracking-wide text-[var(--text-neutral)] uppercase">
+                  {table.getHeaderGroups().map((headerGroup) => (
+                    <tr key={headerGroup.id}>
+                      {headerGroup.headers.map((header) => (
+                        <th key={header.id} scope="col" className="px-5 py-3">
+                          {header.isPlaceholder
+                            ? null
+                            : flexRender(
+                                header.column.columnDef.header,
+                                header.getContext(),
+                              )}
+                        </th>
+                      ))}
+                    </tr>
+                  ))}
+                </thead>
+                <tbody className="divide-y divide-[var(--border-soft)]">
+                  {table.getRowModel().rows.map((row) => (
+                    <tr key={row.id}>
+                      {row.getVisibleCells().map((cell) => (
+                        <td key={cell.id} className="px-5 py-2">
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext(),
+                          )}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            }
+            mobileContent={
+              <div className="grid gap-3">
+                {pageData.map((schedule) => (
+                  <Card key={schedule.id} className="space-y-3 shadow-none">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <h2 className="font-bold">
+                          {schedule.asset ? (
+                            <Link
+                              to="/app/assets/$assetId"
+                              params={{ assetId: schedule.asset.id }}
+                              search={{
+                                returnContext: {
+                                  kind: 'scheduleRegistry',
+                                  search,
+                                },
+                              }}
+                              className="text-[var(--primary)] hover:underline"
+                            >
+                              {schedule.asset.assetCode}
+                            </Link>
+                          ) : (
+                            'Asset details unavailable'
+                          )}
+                        </h2>
+                        <p className="text-xs text-[var(--text-neutral)]">
+                          {schedule.asset?.assetCategory ??
+                            'Category not recorded'}
+                        </p>
+                      </div>
+                      <Badge variant={statusVariant(schedule.status)}>
+                        {schedule.status}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-[var(--text-secondary)]">
+                      Scheduled month: {formatPmCycle(schedule.pmCycle)}
+                      <br />
+                      Due date: {formatPmCycleDueDate(schedule.pmCycle)}
+                    </p>
+                    <Link
+                      to="/app/schedules/$scheduleId"
+                      params={{ scheduleId: schedule.id }}
+                      search={{
+                        ...search,
+                        returnContext: { kind: 'scheduleRegistry', search },
+                      }}
+                      className="inline-block font-semibold text-[var(--primary)] hover:underline"
+                    >
+                      View details
+                    </Link>
+                  </Card>
+                ))}
+              </div>
+            }
+            pagination={{
+              page,
+              pageSize,
+              total: totalCount,
+              onPageChange: changePage,
+            }}
+          />
+        )}
+      </section>
+
+      {canGenerate && (
+        <section
+          id="schedule-management"
+          aria-labelledby="schedule-management-title"
+          className="space-y-5 border-t border-[var(--border-soft)] pt-8"
+        >
+          <div>
+            <p className="text-sm font-semibold tracking-[0.08em] text-[var(--primary)] uppercase">
+              GSD tools
+            </p>
+            <h2
+              id="schedule-management-title"
+              className="mt-1 text-xl font-bold text-[var(--text-primary)]"
+            >
+              Schedule management
+            </h2>
+            <p className="mt-1 max-w-3xl text-sm text-[var(--text-secondary)]">
+              Generate approved schedule cycles and review coverage or deferred
+              enrollment items without changing registry filters.
+            </p>
+          </div>
+
+          <section
+            aria-labelledby="schedule-generation-title"
+            className="space-y-3"
+          >
+            <div>
+              <h3
+                id="schedule-generation-title"
+                className="text-lg font-bold text-[var(--text-primary)]"
+              >
+                Generate missing schedules
+              </h3>
+              <p className="mt-1 text-sm text-[var(--text-secondary)]">
+                Generate only missing schedules for the current Manila calendar
+                year.
+              </p>
+            </div>
+            <Card className="p-4 shadow-none">
               <form
                 className="flex flex-wrap items-end gap-2"
                 onSubmit={(event) => {
@@ -640,516 +1260,20 @@ export function ScheduleRegistry({
                     : 'Generate missing schedules'}
                 </Button>
               </form>
-            )}
-            {canCreate && (
-              <Button asChild>
-                <Link to="/app/schedules/new">
-                  <CalendarPlus aria-hidden="true" className="mr-2 size-4" />
-                  Add schedule
-                </Link>
-              </Button>
-            )}
-          </div>
-        )}
-      </div>
-      {canGenerate && generationMessage && (
-        <p
-          className={`-mt-4 text-sm ${generationFailed ? 'text-[var(--error)]' : 'text-[var(--text-secondary)]'}`}
-          role={generationFailed ? 'alert' : 'status'}
-        >
-          {generationMessage}
-        </p>
-      )}
-
-      {canGenerate && <ScheduleCoverageReview />}
-      {canGenerate && <ScheduleEnrollmentDeferralReview />}
-
-      {summary.isPending ? (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3" role="status">
-          <span className="sr-only">Loading schedule summary...</span>
-          {Array.from({ length: 3 }, (_, index) => (
-            <Card key={index} className="p-4 shadow-none">
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="mt-2 h-8 w-12" />
+              {generationMessage && (
+                <p
+                  className={`mt-3 text-sm ${generationFailed ? 'text-[var(--error)]' : 'text-[var(--text-secondary)]'}`}
+                  role={generationFailed ? 'alert' : 'status'}
+                >
+                  {generationMessage}
+                </p>
+              )}
             </Card>
-          ))}
-        </div>
-      ) : summary.isError ? (
-        <Card role="alert" className="border-[var(--error)] p-4 shadow-none">
-          <p className="font-semibold text-[var(--error)]">
-            {isScheduleAccessDenied(summary.error)
-              ? scheduleAccessDeniedMessage
-              : 'Schedule summary is currently unavailable.'}
-          </p>
-          <Button
-            type="button"
-            className="mt-3"
-            onClick={() => {
-              void summary.refetch()
-            }}
-          >
-            Retry summary
-          </Button>
-        </Card>
-      ) : (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          <SummaryCard label="All schedules" count={summary.data.totalCount} />
-          <SummaryCard label="Due" count={summary.data.dueCount} />
-          <SummaryCard label="Ongoing" count={summary.data.ongoingCount} />
-          <SummaryCard label="Overdue" count={summary.data.overdueCount} />
-          <SummaryCard label="Completed" count={summary.data.completedCount} />
-          <SummaryCard label="Cancelled" count={summary.data.cancelledCount} />
-        </div>
-      )}
+          </section>
 
-      <Card className="p-4 shadow-none">
-        <form
-          className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4"
-          onSubmit={(event) => {
-            event.preventDefault()
-            apply()
-          }}
-        >
-          <label className="grid gap-1 text-sm font-semibold text-[var(--text-primary)] xl:col-span-2">
-            Search
-            <Input
-              aria-label="Search schedules"
-              placeholder="Asset code, location, department, or PM cycle"
-              value={draft.search ?? ''}
-              maxLength={256}
-              onChange={(event) =>
-                setDraft((current) => ({
-                  ...current,
-                  search: event.target.value,
-                }))
-              }
-            />
-          </label>
-          <AssetPicker
-            value={draft.assetId}
-            assetCategory={draft.assetCategory}
-            department={draft.department}
-            onChange={(assetId) =>
-              setDraft((current) => ({ ...current, assetId }))
-            }
-          />
-          <label className="grid gap-1 text-sm font-semibold text-[var(--text-primary)]">
-            Asset category
-            <select
-              aria-label="Asset category"
-              value={draft.assetCategory ?? ''}
-              disabled={filterOptions.isError || filterOptions.isPending}
-              onChange={(event) => {
-                const assetCategory = (event.target.value || undefined) as
-                  Asset['assetCategory'] | undefined
-                setDraft((current) => ({
-                  ...current,
-                  assetCategory,
-                  assetId: undefined,
-                }))
-                setFilterNotice(
-                  draft.assetId
-                    ? 'Specific asset was cleared because the category filter changed.'
-                    : null,
-                )
-              }}
-              className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
-            >
-              <option value="">All asset categories</option>
-              {categories.map((category) => (
-                <option key={category.code} value={category.code}>
-                  {category.displayName}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="grid gap-1 text-sm font-semibold text-[var(--text-primary)]">
-            Department
-            <select
-              aria-label="Department"
-              value={draft.department ?? ''}
-              disabled={filterOptions.isError}
-              onChange={(event) => {
-                setDraft((current) => ({
-                  ...current,
-                  department: event.target.value || undefined,
-                  assetId: undefined,
-                }))
-                setFilterNotice(
-                  draft.assetId
-                    ? 'Specific asset was cleared because the department filter changed.'
-                    : null,
-                )
-              }}
-              className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
-            >
-              <option value="">All departments</option>
-              {departments.map((department) => (
-                <option key={department} value={department}>
-                  {department}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="grid gap-1 text-sm font-semibold text-[var(--text-primary)]">
-            Schedule status
-            <select
-              aria-label="Schedule status"
-              value={draft.status ?? ''}
-              disabled={statuses.isError}
-              onChange={(event) =>
-                setDraft((current) => ({
-                  ...current,
-                  status: (event.target.value || undefined) as
-                    Schedule['status'] | undefined,
-                }))
-              }
-              className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
-            >
-              <option value="">All statuses</option>
-              {(statuses.data ?? []).map((status) => (
-                <option key={status.code} value={status.code}>
-                  {status.displayName}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="grid gap-1 text-xs font-semibold text-[var(--text-secondary)]">
-            From
-            <input
-              type="datetime-local"
-              value={toDateTimeLocal(draft.from)}
-              onChange={(event) =>
-                setDraft((current) => ({
-                  ...current,
-                  from: fromDateTimeLocal(event.target.value),
-                }))
-              }
-              className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm font-normal"
-            />
-          </label>
-          <label className="grid gap-1 text-xs font-semibold text-[var(--text-secondary)]">
-            To
-            <input
-              type="datetime-local"
-              value={toDateTimeLocal(draft.to)}
-              onChange={(event) =>
-                setDraft((current) => ({
-                  ...current,
-                  to: fromDateTimeLocal(event.target.value),
-                }))
-              }
-              className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm font-normal"
-            />
-          </label>
-          <label className="grid gap-1 text-sm font-semibold text-[var(--text-primary)]">
-            Calendar quarter
-            <select
-              aria-label="Calendar quarter"
-              value={draft.quarter ?? pmCycleQuarter ?? ''}
-              onChange={(event) => {
-                setDraft((current) => ({
-                  ...current,
-                  quarter: (event.target.value || undefined) as
-                    NonNullable<Schedule['quarter']> | undefined,
-                  pmCycle: undefined,
-                }))
-                if (draft.pmCycle) {
-                  setFilterNotice(
-                    'The exact PM month was cleared because the quarter changed.',
-                  )
-                }
-              }}
-              className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
-            >
-              <option value="">All quarters</option>
-              {quarterOptions.map((quarter) => (
-                <option key={quarter} value={quarter}>
-                  {quarter}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="grid gap-1 text-xs font-semibold text-[var(--text-secondary)]">
-            Calendar year
-            <select
-              aria-label="Calendar year"
-              value={draft.year ?? pmCycleYear ?? ''}
-              onChange={(event) => {
-                setDraft((current) => ({
-                  ...current,
-                  year: event.target.value
-                    ? Number(event.target.value)
-                    : undefined,
-                  pmCycle: undefined,
-                }))
-                if (draft.pmCycle) {
-                  setFilterNotice(
-                    'The exact PM month was cleared because the year changed.',
-                  )
-                }
-              }}
-              className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm font-normal"
-            >
-              <option value="">All years</option>
-              {[
-                ...new Set([
-                  ...yearOptions,
-                  ...(draft.year ? [String(draft.year)] : []),
-                ]),
-              ].map((year) => (
-                <option key={year} value={year}>
-                  {year}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="grid gap-1 text-xs font-semibold text-[var(--text-secondary)]">
-            Exact PM month
-            <select
-              aria-label="Exact PM month"
-              value={draft.pmCycle?.slice(5, 7) ?? ''}
-              onChange={(event) => {
-                const month = Number(event.target.value)
-                if (!month) {
-                  setDraft((current) => ({ ...current, pmCycle: undefined }))
-                  setFilterNotice(null)
-                  return
-                }
-                const year = draft.year ?? currentManilaYear
-                const quarter =
-                  `Q${Math.floor((month - 1) / 3) + 1}` as NonNullable<
-                    Schedule['quarter']
-                  >
-                setDraft((current) => ({
-                  ...current,
-                  year,
-                  quarter,
-                  pmCycle: `${year}-${String(month).padStart(2, '0')}`,
-                }))
-                setFilterNotice(null)
-              }}
-              className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm font-normal"
-            >
-              <option value="">All months</option>
-              {allowedMonths.map((month) => (
-                <option key={month} value={String(month).padStart(2, '0')}>
-                  {new Intl.DateTimeFormat(undefined, {
-                    month: 'long',
-                    timeZone: 'UTC',
-                  }).format(new Date(Date.UTC(2024, month - 1, 1)))}
-                </option>
-              ))}
-            </select>
-          </label>
-          <div className="flex flex-wrap items-end gap-2 xl:col-span-4">
-            <Button
-              type="submit"
-              disabled={
-                !dateRangeIsValid ||
-                !pmCycleMatchesPeriod ||
-                !draftAssetMatchesFilters
-              }
-            >
-              Apply filters
-            </Button>
-            <Button type="button" variant="secondary" onClick={clear}>
-              Clear filters
-            </Button>
-          </div>
-        </form>
-        {!dateRangeIsValid && (
-          <p className="mt-3 text-sm text-[var(--error)]" role="alert">
-            The start date must be before or equal to the end date.
-          </p>
-        )}
-        {!pmCycleMatchesPeriod && (
-          <p className="mt-3 text-sm text-[var(--error)]" role="alert">
-            The exact PM month must match the selected calendar year and
-            quarter.
-          </p>
-        )}
-        {draft.assetId && !draftAssetMatchesFilters && (
-          <p className="mt-3 text-sm text-[var(--error)]" role="alert">
-            {draftSelectedAsset.isPending
-              ? 'Checking the selected asset before applying filters.'
-              : 'The selected asset could not be verified or does not match the category or department. Clear it or choose another asset.'}
-          </p>
-        )}
-        {filterNotice && (
-          <p
-            className="mt-3 text-sm text-[var(--text-secondary)]"
-            role="status"
-          >
-            {filterNotice}
-          </p>
-        )}
-        {(filterOptions.isError || statuses.isError) && (
-          <div
-            className="mt-3 flex flex-wrap gap-3 text-sm text-[var(--error)]"
-            role="alert"
-          >
-            {filterOptions.isError && (
-              <Button
-                type="button"
-                onClick={() => void filterOptions.refetch()}
-              >
-                Retry registry options
-              </Button>
-            )}
-            {statuses.isError && (
-              <Button type="button" onClick={() => void statuses.refetch()}>
-                Retry status options
-              </Button>
-            )}
-          </div>
-        )}
-        <RegistryActiveFilters filters={activeFilters} />
-      </Card>
-
-      <p className="text-sm text-[var(--text-secondary)]" aria-live="polite">
-        Filtered results: {totalCount.toLocaleString()} · Overall schedules:{' '}
-        {registry.data?.overallCount.toLocaleString() ?? 'Loading'}
-      </p>
-      {registry.isPending ? (
-        <RegistryLoadingPanel breakpoint="md" viewportSize="standard">
-          <span className="sr-only">Loading schedules...</span>
-          {Array.from({ length: 5 }, (_, index) => (
-            <Skeleton key={index} className="h-10 w-full" />
-          ))}
-        </RegistryLoadingPanel>
-      ) : registry.isError ? (
-        <Card role="alert" className="border-[var(--error)] p-6 shadow-none">
-          <h2 className="font-bold text-[var(--error)]">
-            Schedules unavailable
-          </h2>
-          <p className="mt-2 text-sm text-[var(--text-secondary)]">
-            {isScheduleAccessDenied(registry.error)
-              ? scheduleAccessDeniedMessage
-              : 'The schedule registry could not be loaded.'}
-          </p>
-          <Button
-            type="button"
-            className="mt-4"
-            onClick={() => void registry.refetch()}
-          >
-            Retry
-          </Button>
-        </Card>
-      ) : records.length === 0 ? (
-        <Card className="p-8 text-center shadow-none">
-          <h2 className="font-bold">
-            {records.length === 0 && summary.data?.totalCount === 0
-              ? 'No schedules are recorded yet.'
-              : 'No schedules match these filters.'}
-          </h2>
-          <p className="mt-2 text-sm text-[var(--text-secondary)]">
-            {records.length === 0 && summary.data?.totalCount === 0
-              ? 'An authorized schedule manager can add the first record.'
-              : 'Clear the filters to return to all recorded schedules.'}
-          </p>
-        </Card>
-      ) : (
-        <RegistryResultsPanel
-          label="Schedules"
-          breakpoint="md"
-          viewportSize="standard"
-          isUpdating={registry.isFetching}
-          desktopContent={
-            <table className="w-full min-w-[760px] text-left text-sm">
-              <thead className="bg-[var(--page-background)] text-xs tracking-wide text-[var(--text-neutral)] uppercase">
-                {table.getHeaderGroups().map((headerGroup) => (
-                  <tr key={headerGroup.id}>
-                    {headerGroup.headers.map((header) => (
-                      <th key={header.id} scope="col" className="px-5 py-3">
-                        {header.isPlaceholder
-                          ? null
-                          : flexRender(
-                              header.column.columnDef.header,
-                              header.getContext(),
-                            )}
-                      </th>
-                    ))}
-                  </tr>
-                ))}
-              </thead>
-              <tbody className="divide-y divide-[var(--border-soft)]">
-                {table.getRowModel().rows.map((row) => (
-                  <tr key={row.id}>
-                    {row.getVisibleCells().map((cell) => (
-                      <td key={cell.id} className="px-5 py-2">
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext(),
-                        )}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          }
-          mobileContent={
-            <div className="grid gap-3">
-              {pageData.map((schedule) => (
-                <Card key={schedule.id} className="space-y-3 shadow-none">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <h2 className="font-bold">
-                        {schedule.asset ? (
-                          <Link
-                            to="/app/assets/$assetId"
-                            params={{ assetId: schedule.asset.id }}
-                            search={{
-                              returnContext: {
-                                kind: 'scheduleRegistry',
-                                search,
-                              },
-                            }}
-                            className="text-[var(--primary)] hover:underline"
-                          >
-                            {schedule.asset.assetCode}
-                          </Link>
-                        ) : (
-                          'Asset details unavailable'
-                        )}
-                      </h2>
-                      <p className="text-xs text-[var(--text-neutral)]">
-                        {schedule.asset?.assetCategory ??
-                          'Category not recorded'}
-                      </p>
-                    </div>
-                    <Badge variant={statusVariant(schedule.status)}>
-                      {schedule.status}
-                    </Badge>
-                  </div>
-                  <p className="text-sm text-[var(--text-secondary)]">
-                    Scheduled month: {formatPmCycle(schedule.pmCycle)}
-                    <br />
-                    Due date: {formatPmCycleDueDate(schedule.pmCycle)}
-                  </p>
-                  <Link
-                    to="/app/schedules/$scheduleId"
-                    params={{ scheduleId: schedule.id }}
-                    search={{
-                      ...search,
-                      returnContext: { kind: 'scheduleRegistry', search },
-                    }}
-                    className="inline-block font-semibold text-[var(--primary)] hover:underline"
-                  >
-                    View details
-                  </Link>
-                </Card>
-              ))}
-            </div>
-          }
-          pagination={{
-            page,
-            pageSize,
-            total: totalCount,
-            onPageChange: changePage,
-          }}
-        />
+          <ScheduleCoverageReview />
+          <ScheduleEnrollmentDeferralReview />
+        </section>
       )}
     </section>
   )
