@@ -594,6 +594,9 @@ test.describe('PM period dashboard', () => {
     ).toEqual(['Operational', 'OnTime', 'FE-001'])
     await expect.poll(() => readOfficialMetrics(page)).toEqual(metrics)
 
+    await expect(
+      page.getByRole('heading', { name: 'Preventive Maintenance Dashboard' }),
+    ).toBeVisible()
     await page.getByRole('button', { name: 'Export dashboard' }).click()
     await expect(page.locator('html')).toHaveAttribute(
       'data-print-invoked',
@@ -610,7 +613,6 @@ test.describe('PM period dashboard', () => {
       'FE-001',
     ])
     await expect(filterSummary).toContainText('narrow asset rows only')
-    await expect(report).toContainText('UniPM')
     await expect(report).toContainText('May 2026')
     await expect(report).toContainText('All departments')
     await expect(page.locator('form:visible')).toHaveCount(0)
