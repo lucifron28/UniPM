@@ -366,8 +366,7 @@ function PmAnalyticsQuestionPanel() {
       )}
       {hasError && (
         <p role="alert" className="mt-4 text-sm text-[var(--error)]">
-          This question could not be answered. Check that it uses one supported
-          measure, category, and explicit month and year.
+          PM analytics could not be loaded. Please try again.
         </p>
       )}
       {interpretation?.status === 'NeedsClarification' && (

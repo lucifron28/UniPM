@@ -361,7 +361,7 @@ describe('PM analytics panel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Show result' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'This question could not be answered.',
+      'PM analytics could not be loaded. Please try again.',
     )
     expect(screen.queryByText('Unsupported question')).toBeNull()
   })
@@ -421,7 +421,7 @@ describe('PM analytics panel', () => {
     submitQuestion()
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'This question could not be answered.',
+      'PM analytics could not be loaded. Please try again.',
     )
     expect(screen.queryByText('private provider response')).toBeNull()
     expect(testState.queryPmAnalytics).not.toHaveBeenCalled()
