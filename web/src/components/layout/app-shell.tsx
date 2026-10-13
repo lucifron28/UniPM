@@ -102,7 +102,7 @@ export function AppShell() {
 
   return (
     <div className="min-h-screen bg-[var(--page-background)] lg:grid lg:grid-cols-[15.5rem_1fr]">
-      <aside className="hidden border-r border-[var(--border-soft)] bg-[var(--sidebar-background)] lg:sticky lg:top-0 lg:flex lg:h-screen lg:min-h-0 lg:flex-col lg:self-start lg:overflow-hidden">
+      <aside className="hidden border-r border-[var(--border-soft)] bg-[var(--sidebar-background)] lg:fixed lg:inset-y-0 lg:left-0 lg:z-30 lg:flex lg:h-screen lg:min-h-0 lg:w-[15.5rem] lg:flex-col lg:overflow-hidden">
         <div className="border-b border-[var(--border-soft)] px-6 py-5">
           <BrandMark compact />
         </div>
@@ -196,7 +196,7 @@ export function AppShell() {
         </div>
       </aside>
 
-      <div className="min-w-0">
+      <div className="min-w-0 lg:col-start-2">
         <header className="flex min-h-18 items-center justify-between gap-4 border-b border-[var(--border-soft)] bg-white px-4 py-3 sm:px-6 lg:px-8">
           <div className="lg:hidden">
             <BrandMark compact />
@@ -213,7 +213,7 @@ export function AppShell() {
             <LogoutButton />
           </div>
         </header>
-        <div className="border-b border-[var(--border-soft)] bg-white px-4 py-2.5 lg:hidden">
+        <div className="sticky top-0 z-20 border-b border-[var(--border-soft)] bg-white px-4 py-2.5 lg:hidden">
           <nav
             aria-label="Primary"
             className="flex flex-wrap items-center gap-2"
