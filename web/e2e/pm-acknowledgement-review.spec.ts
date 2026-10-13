@@ -252,7 +252,7 @@ test('demonstrates the submitted PM batch acknowledgement review workflow', asyn
       .getByRole('heading', { name: 'Preventive Maintenance Dashboard' })
       .first(),
   ).toBeVisible()
-  await page.getByRole('button', { name: 'Fire Extinguisher' }).click()
+  await page.getByRole('button', { name: 'Fire extinguishers' }).click()
   await page.getByRole('button', { name: '2026' }).click()
   await page.getByRole('button', { name: /August 2026/ }).click()
   await page.getByRole('button', { name: 'Generate dashboard' }).click()
@@ -276,7 +276,7 @@ test('demonstrates the submitted PM batch acknowledgement review workflow', asyn
   await expect(summary.getByText('Department', { exact: true })).toBeVisible()
   await expect(summary.getByText('GSD', { exact: true })).toBeVisible()
   await expect(
-    summary.getByText('Fire Extinguisher', { exact: true }),
+    summary.getByText('Fire extinguishers', { exact: true }),
   ).toBeVisible()
   await expect(summary.getByText('August 2026', { exact: true })).toBeVisible()
   await expect(

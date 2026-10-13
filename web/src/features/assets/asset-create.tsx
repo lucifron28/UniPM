@@ -335,8 +335,8 @@ export function AssetCreate() {
           Add asset
         </h1>
         <p className="mt-2 text-[var(--text-secondary)]">
-          Create a registry record using fields supported by the current API
-          contract.
+          Add an asset code, category, and department. Building and location are
+          optional.
         </p>
       </div>
       <Card className="shadow-none">

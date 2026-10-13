@@ -52,7 +52,7 @@ describe('schedule coverage review', () => {
     ).toBeInTheDocument()
     expect(screen.getByRole('table')).toBeInTheDocument()
     expect(screen.getByRole('row', { name: /FE-CCMS-01/ })).toHaveTextContent(
-      'CCMSfire-extinguisherMay 2026',
+      'CCMSFire extinguishersMay 2026',
     )
     expect(screen.getByRole('row', { name: /FE-CCMS-01/ })).toHaveTextContent(
       /approved coverage start date is not configured/,

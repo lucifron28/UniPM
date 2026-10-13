@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useCurrentUser } from '@/features/auth/current-user'
+import { formatAssetCategory } from '@/features/assets/asset-presentation'
 import {
   canReviewPreventiveMaintenanceForms,
   isGsdRole,
@@ -372,7 +373,10 @@ function CorrectiveHandoff({
         />
         <DetailItem label="Department" value={handoff.department ?? ''} />
         <DetailItem label="Building" value={handoff.building ?? ''} />
-        <DetailItem label="Asset category" value={handoff.assetCategory} />
+        <DetailItem
+          label="Asset category"
+          value={formatAssetCategory(handoff.assetCategory)}
+        />
         <DetailItem
           label="Follow-up rows"
           value={String(handoff.rows.length)}
@@ -1020,7 +1024,10 @@ export function FormDetail({
         </Badge>
       </div>
       <Card className="grid gap-5 shadow-none sm:grid-cols-2 lg:grid-cols-4">
-        <DetailItem label="Asset category" value={record.assetCategory} />
+        <DetailItem
+          label="Asset category"
+          value={formatAssetCategory(record.assetCategory)}
+        />
         <DetailItem label="Building" value={record.building ?? ''} />
         <DetailItem label="Department" value={record.department ?? ''} />
         <DetailItem label="Period" value={formatFormPeriod(record)} />

@@ -15,6 +15,7 @@ import {
   AssetRegistry,
   type AssetSearch,
 } from '@/features/assets/asset-registry'
+import { formatAssetCategory } from '@/features/assets/asset-presentation'
 import { useAuthStore } from '@/stores/auth-store'
 import { server } from '@/test/server'
 
@@ -196,6 +197,16 @@ function renderWithProviders(ui: React.ReactNode) {
 }
 
 describe('AssetRegistry feature component', () => {
+  it.each([
+    ['fire-extinguisher', 'Fire extinguishers'],
+    ['fire-alarm', 'Fire alarm systems'],
+    ['emergency-light', 'Emergency lights'],
+    ['water-drinking-station', 'Water drinking stations'],
+    ['unknown-category', 'Unknown Category'],
+  ])('formats the %s category for readers', (code, label) => {
+    expect(formatAssetCategory(code)).toBe(label)
+  })
+
   beforeEach(() => {
     setupAuth()
     server.use(http.get(meUrl, () => HttpResponse.json(gsdUser)))
