@@ -69,6 +69,9 @@ public sealed class SyntheticMaintenanceSeeder(
             }
 
             Apply(seedInspection, inspection, dataset.CreatedAt);
+            inspection.CompletedAt = dataset.Schedules
+                .Single(schedule => schedule.Id == seedInspection.ScheduleId).CompletedAt;
+            inspection.StartedAt = seedInspection.DateInspected;
         }
 
         await context.SaveChangesAsync(cancellationToken);
