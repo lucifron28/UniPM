@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import {
   createMemoryHistory,
@@ -14,6 +14,8 @@ import type {
   PmPeriodDashboardResponse,
 } from '@/api/generated/models'
 import {
+  DashboardHeader,
+  DashboardNlaSection,
   PmPeriodDashboardPresentation,
   type PmPeriodDashboardSearch,
 } from './pm-period-dashboard'
@@ -209,6 +211,42 @@ describe('PM period dashboard period terminology', () => {
   it('formats a cycle-derived leap-February month and deadline', () => {
     expect(formatPmCycle('2028-02')).toBe('February 2028')
     expect(formatPmCycleDueDate('2028-02')).toBe('Feb 29, 2028')
+  })
+
+  it('provides an accessible NLA jump and return-to-top link', () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    })
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <DashboardHeader showNlaShortcut />
+        <DashboardNlaSection />
+      </QueryClientProvider>,
+    )
+
+    const title = screen.getByRole('heading', {
+      name: 'Preventive Maintenance Dashboard',
+    })
+    const nlaSection = screen.getByRole('region', {
+      name: 'Natural Language Analytics',
+    })
+
+    fireEvent.click(screen.getByRole('link', { name: 'Ask NLA' }))
+    expect(window.location.hash).toBe('#pm-analytics-section')
+    expect(nlaSection).toHaveFocus()
+
+    fireEvent.click(screen.getByRole('link', { name: 'Back to top' }))
+    expect(window.location.hash).toBe('#dashboard-title')
+    expect(title).toHaveFocus()
+  })
+
+  it('hides the NLA shortcut when its destination is unavailable', () => {
+    render(<DashboardHeader />)
+
+    expect(
+      screen.queryByRole('link', { name: 'Ask NLA' }),
+    ).not.toBeInTheDocument()
   })
 
   it('shows deferred enrollment counts separately from PM period metrics', async () => {
