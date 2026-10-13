@@ -14,33 +14,31 @@ internal static class CpmpDemoHistorySeeder
 {
     private static readonly TimeSpan Manila = TimeSpan.FromHours(8);
     private const string Signature = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl2lD8AAAAASUVORK5CYII=";
+    private static readonly string[] Categories =
+        ["fire-extinguisher", "fire-alarm", "emergency-light", "water-drinking-station"];
+    private static readonly string[] Departments = ["Demo CCMS", "Demo Library"];
 
     internal static async Task<DevelopmentDemoSeedResult> SeedAsync(
         ApplicationDbContext context, Guid inspectorId, CancellationToken cancellationToken)
     {
+        await ValidateExistingFixtureRowsAsync(context, cancellationToken);
         var supervisorId = await context.Users.Where(user => user.Email == "supervisor@unipm.local")
             .Select(user => (Guid?)user.Id).SingleOrDefaultAsync(cancellationToken);
-        var categories = new[] { "fire-extinguisher", "fire-alarm", "emergency-light", "water-drinking-station" };
         // Separate fictional departments avoid adding rows to existing submitted demo batches.
-        var departments = new[] { "Demo CCMS", "Demo Library" };
         var assetCount = 0;
         var scheduleCount = 0;
         var inspectionCount = 0;
         var formCount = 0;
         var acknowledgementCount = 0;
 
-        foreach (var category in categories)
-        foreach (var department in departments)
+        foreach (var category in Categories)
+        foreach (var department in Departments)
         {
-            var prefix = category switch
-            {
-                "fire-extinguisher" => "FE", "fire-alarm" => "FA",
-                "emergency-light" => "EL", _ => "WDS"
-            };
+            var prefix = PrefixFor(category);
             var assets = new List<Asset>();
             for (var index = 1; index <= 2; index++)
             {
-                var code = $"CPMP-DEMO-{department.ToUpperInvariant().Replace(' ', '-')}-{prefix}-{index:00}";
+                var code = AssetCodeFor(department, prefix, index);
                 var id = Id(code);
                 var asset = await context.Assets.SingleOrDefaultAsync(row => row.Id == id, cancellationToken);
                 if (asset is null)
@@ -88,7 +86,7 @@ internal static class CpmpDemoHistorySeeder
                             Building = assets[0].Building, PmCycle = cycle, PeriodType = "Quarter",
                             Quarter = $"Q{(month - 1) / 3 + 1}", Year = year,
                             AcademicYear = $"{year}-{year + 1}", Status = status,
-                            FileNumber = draft ? null : $"PM-{year}-CPMP-{department.ToUpperInvariant()}-{prefix}-{month:00}",
+                            FileNumber = draft ? null : FileNumberFor(year, department, prefix, month),
                             CreatedByUserId = inspectorId, CreatedAt = At(year, month, 1),
                             UpdatedAt = At(year, month, 20)
                         };
@@ -175,6 +173,160 @@ internal static class CpmpDemoHistorySeeder
         return new DevelopmentDemoSeedResult(assetCount, scheduleCount, inspectionCount, formCount, acknowledgementCount);
     }
 
+    internal static CpmpDemoHistoryOwnedIds GetOwnedIds()
+    {
+        var assets = new Dictionary<Guid, string>();
+        var assetQrCodes = new Dictionary<Guid, string>();
+        var schedules = new Dictionary<Guid, (Guid AssetId, string PmCycle)>();
+        var forms = new Dictionary<Guid, (string AssetCategory, string Department, string PmCycle)>();
+        var formFileNumbers = new Dictionary<string, Guid>(StringComparer.Ordinal);
+        var formFileNumbersById = new Dictionary<Guid, string?>();
+        var inspections = new Dictionary<Guid, (Guid ScheduleId, Guid AssetId, Guid FormId)>();
+        var acknowledgements = new Dictionary<Guid, Guid>();
+
+        foreach (var category in Categories)
+        foreach (var department in Departments)
+        {
+            var prefix = PrefixFor(category);
+            var assetIds = new Guid[2];
+            for (var index = 1; index <= assetIds.Length; index++)
+            {
+                var code = AssetCodeFor(department, prefix, index);
+                var assetId = Id(code);
+                assetIds[index - 1] = assetId;
+                assets.Add(assetId, code);
+                assetQrCodes.Add(assetId, AssetQrCodeValue.Create(category, assetId));
+            }
+
+            foreach (var year in new[] { 2025, 2026 })
+            foreach (var month in CpmpScheduleFrequency.GetMonths(category))
+            {
+                var cycle = $"{year:D4}-{month:D2}";
+                var key = $"{department}:{category}:{cycle}";
+                var future = year == 2026 && month > 10;
+                var lastClosed = year == 2026 && month == (category is "fire-alarm" or "emergency-light" ? 6 : 8);
+                var draft = lastClosed;
+                var submitted = year == 2026 && month == 5;
+                var formId = future ? (Guid?)null : Id($"form:{key}");
+                if (formId is not null)
+                {
+                    forms.Add(formId.Value, (category, department, cycle));
+                    formFileNumbersById.Add(
+                        formId.Value,
+                        draft ? null : FileNumberFor(year, department, prefix, month));
+                    if (!draft)
+                    {
+                        formFileNumbers.Add(
+                            FileNumberFor(year, department, prefix, month),
+                            formId.Value);
+                    }
+                }
+
+                for (var index = 0; index < assetIds.Length; index++)
+                {
+                    var assetId = assetIds[index];
+                    var scheduleId = Id($"schedule:{key}:{assetId}");
+                    schedules.Add(scheduleId, (assetId, cycle));
+                    var completed = !future && !(draft && index == 1);
+                    if (completed)
+                    {
+                        inspections.Add(
+                            Id($"inspection:{scheduleId}"),
+                            (scheduleId, assetId, formId!.Value));
+                    }
+                }
+
+                if (!future && !draft && !submitted)
+                {
+                    acknowledgements.Add(Id($"ack:{key}"), formId!.Value);
+                }
+            }
+        }
+
+        return new CpmpDemoHistoryOwnedIds(
+            assets,
+            assetQrCodes,
+            schedules,
+            forms,
+            formFileNumbers,
+            formFileNumbersById,
+            inspections,
+            acknowledgements);
+    }
+
+    internal static async Task ValidateExistingFixtureRowsAsync(
+        ApplicationDbContext context,
+        CancellationToken cancellationToken)
+    {
+        var owned = GetOwnedIds();
+        var assetIds = owned.Assets.Keys.ToHashSet();
+        var assetCodes = owned.Assets.Values.ToHashSet(StringComparer.Ordinal);
+        var qrValues = owned.AssetQrCodes.Values.ToHashSet(StringComparer.Ordinal);
+        var assets = await context.Assets
+            .Where(row => assetIds.Contains(row.Id)
+                || assetCodes.Contains(row.AssetCode)
+                || row.QrCodeValue != null && qrValues.Contains(row.QrCodeValue))
+            .ToListAsync(cancellationToken);
+        if (assets.Any(row => !owned.Assets.TryGetValue(row.Id, out var code)
+                || !StringComparer.Ordinal.Equals(row.AssetCode, code)))
+        {
+            throw new InvalidOperationException("A CPMP demo asset ID, code, or QR value conflicts with an unrelated asset.");
+        }
+
+        var scheduleIds = owned.Schedules.Keys.ToHashSet();
+        var schedules = await context.PreventiveMaintenanceSchedules
+            .Where(row => scheduleIds.Contains(row.Id) || assetIds.Contains(row.AssetId))
+            .ToListAsync(cancellationToken);
+        if (schedules.Any(row => !owned.Schedules.TryGetValue(row.Id, out var key)
+                || row.AssetId != key.AssetId
+                || row.PmCycle != key.PmCycle))
+        {
+            throw new InvalidOperationException("A CPMP demo asset has an unrelated schedule or a schedule ID conflicts with an unrelated record.");
+        }
+
+        var formIds = owned.Forms.Keys.ToHashSet();
+        var fileNumbers = owned.FormFileNumbers.Keys.ToHashSet(StringComparer.Ordinal);
+        var forms = await context.PreventiveMaintenanceForms
+            .Where(row => formIds.Contains(row.Id)
+                || row.FileNumber != null && fileNumbers.Contains(row.FileNumber))
+            .ToListAsync(cancellationToken);
+        if (forms.Any(row => !owned.Forms.TryGetValue(row.Id, out var key)
+                || row.AssetCategory != key.AssetCategory
+                || row.Department != key.Department
+                || row.PmCycle != key.PmCycle
+                || !owned.FormFileNumbersById.TryGetValue(row.Id, out var fileNumber)
+                || row.FileNumber != fileNumber))
+        {
+            throw new InvalidOperationException("A CPMP demo form ID or file number conflicts with an unrelated form.");
+        }
+
+        var inspectionIds = owned.Inspections.Keys.ToHashSet();
+        var inspections = await context.InspectionRecords
+            .Where(row => inspectionIds.Contains(row.Id)
+                || assetIds.Contains(row.AssetId)
+                || scheduleIds.Contains(row.ScheduleId)
+                || row.PreventiveMaintenanceFormId.HasValue
+                    && formIds.Contains(row.PreventiveMaintenanceFormId.Value))
+            .ToListAsync(cancellationToken);
+        if (inspections.Any(row => !owned.Inspections.TryGetValue(row.Id, out var key)
+                || row.ScheduleId != key.ScheduleId
+                || row.AssetId != key.AssetId
+                || row.PreventiveMaintenanceFormId != key.FormId))
+        {
+            throw new InvalidOperationException("A CPMP demo fixture has an unrelated inspection or an inspection ID conflicts with an unrelated record.");
+        }
+
+        var acknowledgementIds = owned.Acknowledgements.Keys.ToHashSet();
+        var acknowledgements = await context.PreventiveMaintenanceAcknowledgements
+            .Where(row => acknowledgementIds.Contains(row.Id) || formIds.Contains(row.FormId))
+            .ToListAsync(cancellationToken);
+        if (acknowledgements.Any(row => !owned.Acknowledgements.TryGetValue(row.Id, out var formId)
+                || row.FormId != formId))
+        {
+            throw new InvalidOperationException("A CPMP demo acknowledgement ID or form conflicts with an unrelated record.");
+        }
+    }
+
     private static async Task RepairLegacyFixtureAsync(ApplicationDbContext context, CancellationToken cancellationToken)
     {
         // Limit repair to IDs in the immutable fictional fixture, not real/user-created rows.
@@ -226,5 +378,31 @@ internal static class CpmpDemoHistorySeeder
         bytes[8] = (byte)((bytes[8] & 0x3f) | 0x80);
         return new Guid(bytes);
     }
+
+    private static string PrefixFor(string category) => category switch
+    {
+        "fire-extinguisher" => "FE",
+        "fire-alarm" => "FA",
+        "emergency-light" => "EL",
+        "water-drinking-station" => "WDS",
+        _ => throw new InvalidOperationException($"Unsupported CPMP demo category '{category}'.")
+    };
+
+    private static string AssetCodeFor(string department, string prefix, int index) =>
+        $"CPMP-DEMO-{department.ToUpperInvariant().Replace(' ', '-')}-{prefix}-{index:00}";
+
+    private static string FileNumberFor(int year, string department, string prefix, int month) =>
+        $"PM-{year}-CPMP-{department.ToUpperInvariant()}-{prefix}-{month:00}";
+
     private static DateTimeOffset At(int year, int month, int day) => new(year, month, day, 10, 0, 0, Manila);
 }
+
+internal sealed record CpmpDemoHistoryOwnedIds(
+    IReadOnlyDictionary<Guid, string> Assets,
+    IReadOnlyDictionary<Guid, string> AssetQrCodes,
+    IReadOnlyDictionary<Guid, (Guid AssetId, string PmCycle)> Schedules,
+    IReadOnlyDictionary<Guid, (string AssetCategory, string Department, string PmCycle)> Forms,
+    IReadOnlyDictionary<string, Guid> FormFileNumbers,
+    IReadOnlyDictionary<Guid, string?> FormFileNumbersById,
+    IReadOnlyDictionary<Guid, (Guid ScheduleId, Guid AssetId, Guid FormId)> Inspections,
+    IReadOnlyDictionary<Guid, Guid> Acknowledgements);

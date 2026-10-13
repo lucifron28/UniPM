@@ -26,15 +26,15 @@ public sealed class DevelopmentDemoSeederTests
         var first = await seeder.SeedAsync();
         var second = await seeder.SeedAsync();
 
-        Assert.Equal(new DevelopmentDemoSeedResult(9, 9, 5, 2, 1), first);
+        Assert.Equal(new DevelopmentDemoSeedResult(25, 105, 77, 42, 29), first);
         Assert.Equal(first, second);
 
         await using var context = factory.CreateDbContext();
-        Assert.Equal(9, await context.Assets.CountAsync());
-        Assert.Equal(9, await context.PreventiveMaintenanceSchedules.CountAsync());
-        Assert.Equal(5, await context.InspectionRecords.CountAsync());
-        Assert.Equal(2, await context.PreventiveMaintenanceForms.CountAsync());
-        Assert.Equal(1, await context.PreventiveMaintenanceAcknowledgements.CountAsync());
+        Assert.Equal(25, await context.Assets.CountAsync());
+        Assert.Equal(105, await context.PreventiveMaintenanceSchedules.CountAsync());
+        Assert.Equal(77, await context.InspectionRecords.CountAsync());
+        Assert.Equal(42, await context.PreventiveMaintenanceForms.CountAsync());
+        Assert.Equal(29, await context.PreventiveMaintenanceAcknowledgements.CountAsync());
 
         var scenarioAAssetIds = DevelopmentDemoCatalog.Assets
             .Where(asset => asset.Scenario == "scenario-a")
@@ -43,13 +43,17 @@ public sealed class DevelopmentDemoSeederTests
         var schedules = await context.PreventiveMaintenanceSchedules
             .Include(schedule => schedule.Asset)
             .ToListAsync();
-        Assert.Equal(9, schedules.Count);
+        Assert.Equal(105, schedules.Count);
         Assert.All(schedules, schedule =>
         {
             Assert.True(PreventiveMaintenanceCycle.TryParse(schedule.PmCycle, out _, out var month));
             Assert.True(CpmpScheduleFrequency.IsValid(schedule.Asset!.AssetCategory, month));
             Assert.Equal(PreventiveMaintenanceCycle.DeadlineForCycle(schedule.PmCycle), schedule.ScheduleDate);
         });
+
+        var originalScheduleIds = DevelopmentDemoCatalog.ScheduleIds.ToHashSet();
+        var originalSchedules = schedules.Where(schedule => originalScheduleIds.Contains(schedule.Id)).ToList();
+        Assert.Equal(9, originalSchedules.Count);
 
         var scenarioASchedules = schedules
             .Where(schedule => scenarioAAssetIds.Contains(schedule.AssetId))
@@ -93,21 +97,38 @@ public sealed class DevelopmentDemoSeederTests
         Assert.Null(futurePeriod.OnTimeCompliancePercent);
         Assert.Equal(0m, futurePeriod.ProgressPercent);
 
-        var acknowledgedPeriod = await dashboard.GetPeriodAsync(
-            new PmPeriodDashboardQuery("2026-06", "emergency-light", null, null, null, null),
+        var studentAffairsPeriod = await dashboard.GetPeriodAsync(
+            new PmPeriodDashboardQuery("2026-06", "emergency-light", "Student Affairs Office", null, null, null),
             CancellationToken.None);
-        Assert.Equal(3, acknowledgedPeriod.Scheduled);
-        Assert.Equal(2, acknowledgedPeriod.Inspected);
-        Assert.Equal(1, acknowledgedPeriod.CompletedOnTime);
-        Assert.Equal(1, acknowledgedPeriod.CompletedLate);
-        Assert.Equal(1, acknowledgedPeriod.NotCompleted);
-        Assert.Equal(33.33m, acknowledgedPeriod.OnTimeCompliancePercent);
-        Assert.Equal(66.67m, acknowledgedPeriod.ProgressPercent);
-        Assert.Contains(acknowledgedPeriod.Batches, batch =>
+        Assert.Equal(2, studentAffairsPeriod.Scheduled);
+        Assert.Equal(2, studentAffairsPeriod.Inspected);
+        Assert.Equal(1, studentAffairsPeriod.CompletedOnTime);
+        Assert.Equal(1, studentAffairsPeriod.CompletedLate);
+        Assert.Equal(0, studentAffairsPeriod.NotCompleted);
+        Assert.Equal(0, studentAffairsPeriod.Remaining);
+        Assert.Equal(50m, studentAffairsPeriod.OnTimeCompliancePercent);
+        Assert.Equal(100m, studentAffairsPeriod.ProgressPercent);
+        Assert.Contains(studentAffairsPeriod.Batches, batch =>
             batch.Department == "STUDENT AFFAIRS OFFICE"
             && batch.Scheduled == 2
             && batch.Inspected == 2
             && batch.FormStatus == "Acknowledged");
+
+        var campusFacilitiesPeriod = await dashboard.GetPeriodAsync(
+            new PmPeriodDashboardQuery("2026-06", "emergency-light", "Campus Facilities", null, null, null),
+            CancellationToken.None);
+        Assert.Equal(1, campusFacilitiesPeriod.Scheduled);
+        Assert.Equal(0, campusFacilitiesPeriod.Inspected);
+        Assert.Equal(0, campusFacilitiesPeriod.CompletedOnTime);
+        Assert.Equal(0, campusFacilitiesPeriod.CompletedLate);
+        Assert.Equal(1, campusFacilitiesPeriod.NotCompleted);
+        Assert.Equal(0, campusFacilitiesPeriod.Remaining);
+
+        Assert.Equal(3, studentAffairsPeriod.Scheduled + campusFacilitiesPeriod.Scheduled);
+        Assert.Equal(2, studentAffairsPeriod.Inspected + campusFacilitiesPeriod.Inspected);
+        Assert.Equal(1, studentAffairsPeriod.CompletedOnTime + campusFacilitiesPeriod.CompletedOnTime);
+        Assert.Equal(1, studentAffairsPeriod.CompletedLate + campusFacilitiesPeriod.CompletedLate);
+        Assert.Equal(1, studentAffairsPeriod.NotCompleted + campusFacilitiesPeriod.NotCompleted);
 
         var acknowledged = await context.PreventiveMaintenanceForms
             .SingleAsync(form => form.Id == DevelopmentDemoCatalog.FormIds[1]);
@@ -171,7 +192,7 @@ public sealed class DevelopmentDemoSeederTests
         var first = await seeder.ResetAsync();
         var second = await seeder.ResetAsync();
 
-        Assert.Equal(new DevelopmentDemoResetResult(9, 9, 5, 2, 1), first);
+        Assert.Equal(new DevelopmentDemoResetResult(25, 105, 77, 42, 29), first);
         Assert.Equal(new DevelopmentDemoResetResult(0, 0, 0, 0, 0), second);
         await using var verificationContext = factory.CreateDbContext();
         Assert.NotNull(await verificationContext.Assets.FindAsync(unrelatedAssetId));
@@ -180,6 +201,93 @@ public sealed class DevelopmentDemoSeederTests
         Assert.Equal(0, await verificationContext.PreventiveMaintenanceSchedules.CountAsync());
         Assert.Equal(0, await verificationContext.InspectionRecords.CountAsync());
         Assert.Equal(1, await verificationContext.PreventiveMaintenanceForms.CountAsync());
+    }
+
+    [Fact]
+    public async Task Reset_refuses_to_remove_fixture_inspections_with_photo_or_wms_records()
+    {
+        var factory = new TestContextFactory();
+        var inspectorId = Guid.NewGuid();
+        await SeedRequiredUsersAsync(factory, inspectorId, Guid.NewGuid());
+        var seeder = CreateSeeder(factory);
+        await seeder.SeedAsync();
+        var inspectionId = CpmpDemoHistorySeeder.GetOwnedIds().Inspections.Keys.First();
+        var recordedAt = new DateTimeOffset(2026, 10, 1, 10, 0, 0, TimeSpan.FromHours(8));
+
+        await using (var context = factory.CreateDbContext())
+        {
+            context.InspectionPhotoEvidence.Add(new InspectionPhotoEvidence
+            {
+                InspectionId = inspectionId,
+                StorageKey = "fixture-photo-object",
+                LengthBytes = 128,
+                UploadedAt = recordedAt,
+                Revision = 1
+            });
+            context.InspectionWmsReferrals.Add(new InspectionWmsReferral
+            {
+                InspectionId = inspectionId,
+                ExternalPmNumber = "WMS-DEMO-001",
+                Revision = 1,
+                RecordedByUserId = inspectorId,
+                RecordedAt = recordedAt,
+                LastUpdatedByUserId = inspectorId,
+                LastUpdatedAt = recordedAt
+            });
+            context.InspectionWmsReferralAudits.Add(new InspectionWmsReferralAudit
+            {
+                Id = Guid.NewGuid(),
+                InspectionId = inspectionId,
+                NewExternalPmNumber = "WMS-DEMO-001",
+                Revision = 1,
+                ChangedByUserId = inspectorId,
+                ChangedAt = recordedAt
+            });
+            await context.SaveChangesAsync();
+        }
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => seeder.ResetAsync());
+
+        Assert.Contains("photo, WMS", exception.Message, StringComparison.Ordinal);
+        await using var verificationContext = factory.CreateDbContext();
+        Assert.Equal(25, await verificationContext.Assets.CountAsync());
+        Assert.Equal(105, await verificationContext.PreventiveMaintenanceSchedules.CountAsync());
+        Assert.Equal(77, await verificationContext.InspectionRecords.CountAsync());
+        Assert.Equal(42, await verificationContext.PreventiveMaintenanceForms.CountAsync());
+        Assert.Equal(29, await verificationContext.PreventiveMaintenanceAcknowledgements.CountAsync());
+        Assert.NotNull(await verificationContext.InspectionPhotoEvidence.FindAsync(inspectionId));
+        Assert.NotNull(await verificationContext.InspectionWmsReferrals.FindAsync(inspectionId));
+        Assert.Single(await verificationContext.InspectionWmsReferralAudits.ToListAsync());
+    }
+
+    [Fact]
+    public async Task Seed_refuses_a_cpmp_fixture_id_owned_by_an_unrelated_asset()
+    {
+        var factory = new TestContextFactory();
+        await SeedRequiredUsersAsync(factory, Guid.NewGuid(), Guid.NewGuid());
+        var conflictingId = CpmpDemoHistorySeeder.GetOwnedIds().Assets.Keys.First();
+        await using (var context = factory.CreateDbContext())
+        {
+            context.Assets.Add(new Asset
+            {
+                Id = conflictingId,
+                AssetCode = "UNRELATED-CPMP-COLLISION",
+                AssetCategory = "fire-extinguisher",
+                QrCodeValue = "UNIPM-UNRELATED-CPMP-COLLISION",
+                Status = "Active"
+            });
+            await context.SaveChangesAsync();
+        }
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => CreateSeeder(factory).SeedAsync());
+
+        Assert.Contains("deterministic asset ID", exception.Message, StringComparison.Ordinal);
+        await using var verificationContext = factory.CreateDbContext();
+        var preserved = await verificationContext.Assets.SingleAsync();
+        Assert.Equal(conflictingId, preserved.Id);
+        Assert.Equal("UNRELATED-CPMP-COLLISION", preserved.AssetCode);
+        Assert.Equal(0, await verificationContext.PreventiveMaintenanceSchedules.CountAsync());
+        Assert.Equal(0, await verificationContext.PreventiveMaintenanceForms.CountAsync());
     }
 
     [Fact]
@@ -196,18 +304,18 @@ public sealed class DevelopmentDemoSeederTests
 
         var reset = await seeder.ResetAsync();
 
-        Assert.Equal(new DevelopmentDemoResetResult(9, 9, 5, 3, 1), reset);
+        Assert.Equal(new DevelopmentDemoResetResult(25, 105, 77, 43, 29), reset);
         await using (var resetContext = factory.CreateDbContext())
         {
             Assert.Null(await resetContext.PreventiveMaintenanceForms.FindAsync(abandonedFormId));
         }
 
         await seeder.SeedAsync();
-        await AssertPristineDemoStateAsync(factory, inspectorId);
+        await AssertPristineDemoStateAsync(factory, unrelatedDraftCount: 0);
 
         await AddEmptyScenarioADraftAsync(factory, Guid.NewGuid(), inspectorId);
         await seeder.SeedAsync();
-        await AssertPristineDemoStateAsync(factory, inspectorId);
+        await AssertPristineDemoStateAsync(factory, unrelatedDraftCount: 0);
     }
 
     [Fact]
@@ -287,21 +395,20 @@ public sealed class DevelopmentDemoSeederTests
 
     private static async Task AssertPristineDemoStateAsync(
         TestContextFactory factory,
-        Guid inspectorId)
+        int unrelatedDraftCount)
     {
         await using var context = factory.CreateDbContext();
-        Assert.Equal(9, await context.Assets.CountAsync());
-        Assert.Equal(9, await context.PreventiveMaintenanceSchedules.CountAsync());
-        Assert.Equal(5, await context.InspectionRecords.CountAsync());
-        Assert.Equal(2, await context.PreventiveMaintenanceForms.CountAsync());
-        Assert.Equal(1, await context.PreventiveMaintenanceAcknowledgements.CountAsync());
-        Assert.False(await context.PreventiveMaintenanceForms.AnyAsync(form =>
-            form.CreatedByUserId == inspectorId
-            && form.Status == "Draft"
-            && form.AssetCategory == "fire-extinguisher"
-            && form.Department == "CCMS"
-            && form.Year == 2026
-            && form.Quarter == "Q3"));
+        var originalAssetIds = DevelopmentDemoCatalog.Assets.Select(asset => asset.Id).ToHashSet();
+        var cpmpAssetIds = CpmpDemoHistorySeeder.GetOwnedIds().Assets.Keys.ToHashSet();
+        Assert.Equal(25, await context.Assets.CountAsync());
+        Assert.Equal(105, await context.PreventiveMaintenanceSchedules.CountAsync());
+        Assert.Equal(77, await context.InspectionRecords.CountAsync());
+        Assert.Equal(42 + unrelatedDraftCount, await context.PreventiveMaintenanceForms.CountAsync());
+        Assert.Equal(29, await context.PreventiveMaintenanceAcknowledgements.CountAsync());
+        Assert.Equal(DevelopmentDemoCatalog.Assets.Count, await context.Assets.CountAsync(asset =>
+            originalAssetIds.Contains(asset.Id)));
+        Assert.Equal(CpmpDemoHistorySeeder.GetOwnedIds().Assets.Count, await context.Assets.CountAsync(asset =>
+            cpmpAssetIds.Contains(asset.Id)));
     }
 
     private static async Task SeedRequiredUsersAsync(

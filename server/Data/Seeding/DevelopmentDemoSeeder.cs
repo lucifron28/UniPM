@@ -337,68 +337,138 @@ internal sealed class DevelopmentDemoSeeder(
         Guid inspectorId,
         CancellationToken cancellationToken)
     {
-        var assetIds = DevelopmentDemoCatalog.Assets.Select(asset => asset.Id).ToHashSet();
-        var fixedScheduleIds = DevelopmentDemoCatalog.ScheduleIds.ToHashSet();
-        var fixedFormIds = DevelopmentDemoCatalog.FormIds.ToHashSet();
-        var abandonedScenarioAFormIds = await context.PreventiveMaintenanceForms
-            .Where(form => form.CreatedByUserId == inspectorId
-                && form.Status == PreventiveMaintenanceFormStatusCatalog.Draft
-                && form.FileNumber == null
-                && form.AssetCategory == "fire-extinguisher"
-                && form.Building == null
-                && form.Department == "CCMS"
-                && form.PmCycle == null
-                && form.PeriodType == "Quarter"
-                && form.Quarter == "Q3"
-                && form.Semester == null
-                && form.Year == 2026
-                && form.AcademicYear == "2026-2027"
-                && form.SubmittedByUserId == null
-                && form.SubmittedAt == null
-                && form.FieldWorkCompletedAt == null
-                && form.Acknowledgement == null
-                && !form.Inspections.Any())
-            .Select(form => form.Id)
-            .ToListAsync(cancellationToken);
-        var scheduleIds = (await context.PreventiveMaintenanceSchedules
-                .Where(schedule => assetIds.Contains(schedule.AssetId) || fixedScheduleIds.Contains(schedule.Id))
-                .Select(schedule => schedule.Id)
+        var cpmp = CpmpDemoHistorySeeder.GetOwnedIds();
+        var assetCodes = DevelopmentDemoCatalog.Assets.ToDictionary(asset => asset.Id, asset => asset.AssetCode);
+        foreach (var asset in cpmp.Assets)
+        {
+            assetCodes.Add(asset.Key, asset.Value);
+        }
+        var assetQrCodes = DevelopmentDemoCatalog.Assets.ToDictionary(asset => asset.Id, asset => asset.QrCodeValue);
+        foreach (var asset in cpmp.AssetQrCodes)
+        {
+            assetQrCodes.Add(asset.Key, asset.Value);
+        }
+        var assetIds = assetCodes.Keys.ToHashSet();
+        var assetCodeValues = assetCodes.Values.ToHashSet(StringComparer.Ordinal);
+        var qrValues = assetQrCodes.Values.ToHashSet(StringComparer.Ordinal);
+
+        var scheduleIdentities = BuildSchedules(inspectorId, AtManila(2026, 6, 1, 8))
+            .ToDictionary(schedule => schedule.Id, schedule => (schedule.AssetId, schedule.PmCycle));
+        foreach (var schedule in cpmp.Schedules)
+        {
+            scheduleIdentities.Add(schedule.Key, (schedule.Value.AssetId, schedule.Value.PmCycle));
+        }
+        var scheduleIds = scheduleIdentities.Keys.ToHashSet();
+
+        var formIdentities = new Dictionary<Guid, DemoFormIdentity>
+        {
+            [DevelopmentDemoCatalog.FormIds[0]] = new(
+                "fire-extinguisher", "University Library", "Library", "2026-08", "PM-2026-DEMO-0801"),
+            [DevelopmentDemoCatalog.FormIds[1]] = new(
+                "emergency-light", "Administration Building", "Student Affairs Office", "2026-06", "PM-2026-DEMO-0601")
+        };
+        var formFileNumbers = formIdentities.Values
+            .Where(form => form.FileNumber is not null)
+            .ToDictionary(form => form.FileNumber!, form => formIdentities.Single(pair => pair.Value == form).Key,
+                StringComparer.Ordinal);
+        foreach (var form in cpmp.Forms)
+        {
+            var building = form.Value.Department == "Demo CCMS" ? "CCMS Building" : "University Library";
+            var fileNumber = cpmp.FormFileNumbersById[form.Key];
+            formIdentities.Add(form.Key, new(
+                form.Value.AssetCategory,
+                building,
+                form.Value.Department,
+                form.Value.PmCycle,
+                fileNumber));
+            if (fileNumber is not null)
+            {
+                formFileNumbers.Add(fileNumber, form.Key);
+            }
+        }
+        var abandonedScenarioAFormIds = (await context.PreventiveMaintenanceForms
+                .Where(form => form.CreatedByUserId == inspectorId
+                    && form.Status == PreventiveMaintenanceFormStatusCatalog.Draft
+                    && form.FileNumber == null
+                    && form.AssetCategory == "fire-extinguisher"
+                    && form.Building == null
+                    && form.Department == "CCMS"
+                    && form.PmCycle == null
+                    && form.PeriodType == "Quarter"
+                    && form.Quarter == "Q3"
+                    && form.Semester == null
+                    && form.Year == 2026
+                    && form.AcademicYear == "2026-2027"
+                    && form.SubmittedByUserId == null
+                    && form.SubmittedAt == null
+                    && form.FieldWorkCompletedAt == null
+                    && form.Acknowledgement == null
+                    && !form.Inspections.Any())
+                .Select(form => form.Id)
                 .ToListAsync(cancellationToken))
             .ToHashSet();
-        var ownedInspections = await context.InspectionRecords
-            .Where(inspection => assetIds.Contains(inspection.AssetId)
-                || scheduleIds.Contains(inspection.ScheduleId)
-                || inspection.PreventiveMaintenanceFormId.HasValue
-                    && fixedFormIds.Contains(inspection.PreventiveMaintenanceFormId.Value))
-            .ToListAsync(cancellationToken);
-        var formIds = ownedInspections
-            .Where(inspection => inspection.PreventiveMaintenanceFormId.HasValue)
-            .Select(inspection => inspection.PreventiveMaintenanceFormId.GetValueOrDefault())
-            .Concat(fixedFormIds)
-            .Concat(abandonedScenarioAFormIds)
-            .ToHashSet();
-        var mixedFormDependency = await context.InspectionRecords
-            .AnyAsync(inspection => inspection.PreventiveMaintenanceFormId.HasValue
-                && formIds.Contains(inspection.PreventiveMaintenanceFormId.Value)
-                && !assetIds.Contains(inspection.AssetId)
-                && !scheduleIds.Contains(inspection.ScheduleId), cancellationToken);
-        if (mixedFormDependency)
+        var formIds = formIdentities.Keys.Concat(abandonedScenarioAFormIds).ToHashSet();
+
+        var inspectionIdentities = BuildInspections(
+                inspectorId,
+                DevelopmentDemoCatalog.FormIds[0],
+                DevelopmentDemoCatalog.FormIds[1])
+            .ToDictionary(
+                inspection => inspection.Id,
+                inspection => (inspection.ScheduleId, inspection.AssetId, inspection.PreventiveMaintenanceFormId));
+        foreach (var inspection in cpmp.Inspections)
         {
-            throw new InvalidOperationException(
-                "Demo reset refused because a demo form contains a non-demo inspection row.");
+            inspectionIdentities.Add(inspection.Key, (
+                inspection.Value.ScheduleId,
+                inspection.Value.AssetId,
+                inspection.Value.FormId));
         }
+        var inspectionIds = inspectionIdentities.Keys.ToHashSet();
+
+        var acknowledgementForms = new Dictionary<Guid, Guid>
+        {
+            [DevelopmentDemoCatalog.AcknowledgementId] = DevelopmentDemoCatalog.FormIds[1]
+        };
+        foreach (var acknowledgement in cpmp.Acknowledgements)
+        {
+            acknowledgementForms.Add(acknowledgement.Key, acknowledgement.Value);
+        }
+        var acknowledgementIds = acknowledgementForms.Keys.ToHashSet();
+
+        await ValidateOwnedDemoRowsAsync(
+            context,
+            assetIds,
+            assetCodes,
+            assetCodeValues,
+            assetQrCodes,
+            qrValues,
+            scheduleIds,
+            scheduleIdentities,
+            formIds,
+            abandonedScenarioAFormIds,
+            inspectorId,
+            formIdentities,
+            formFileNumbers,
+            inspectionIds,
+            inspectionIdentities,
+            acknowledgementIds,
+            acknowledgementForms,
+            cancellationToken);
 
         var acknowledgements = await context.PreventiveMaintenanceAcknowledgements
-            .Where(acknowledgement => formIds.Contains(acknowledgement.FormId))
+            .Where(row => acknowledgementIds.Contains(row.Id) || formIds.Contains(row.FormId))
+            .ToListAsync(cancellationToken);
+        var ownedInspections = await context.InspectionRecords
+            .Where(row => inspectionIds.Contains(row.Id))
             .ToListAsync(cancellationToken);
         var forms = await context.PreventiveMaintenanceForms
-            .Where(form => formIds.Contains(form.Id))
+            .Where(row => formIds.Contains(row.Id))
             .ToListAsync(cancellationToken);
         var schedules = await context.PreventiveMaintenanceSchedules
-            .Where(schedule => scheduleIds.Contains(schedule.Id))
+            .Where(row => scheduleIds.Contains(row.Id))
             .ToListAsync(cancellationToken);
         var assets = await context.Assets
-            .Where(asset => assetIds.Contains(asset.Id))
+            .Where(row => assetIds.Contains(row.Id))
             .ToListAsync(cancellationToken);
 
         context.PreventiveMaintenanceAcknowledgements.RemoveRange(acknowledgements);
@@ -415,6 +485,128 @@ internal sealed class DevelopmentDemoSeeder(
             forms.Count,
             acknowledgements.Count);
     }
+
+    private static async Task ValidateOwnedDemoRowsAsync(
+        ApplicationDbContext context,
+        HashSet<Guid> assetIds,
+        IReadOnlyDictionary<Guid, string> assetCodes,
+        HashSet<string> assetCodeValues,
+        IReadOnlyDictionary<Guid, string> assetQrCodes,
+        HashSet<string> qrValues,
+        HashSet<Guid> scheduleIds,
+        IReadOnlyDictionary<Guid, (Guid AssetId, string PmCycle)> scheduleIdentities,
+        HashSet<Guid> formIds,
+        HashSet<Guid> abandonedScenarioAFormIds,
+        Guid inspectorId,
+        IReadOnlyDictionary<Guid, DemoFormIdentity> formIdentities,
+        IReadOnlyDictionary<string, Guid> formFileNumbers,
+        HashSet<Guid> inspectionIds,
+        IReadOnlyDictionary<Guid, (Guid ScheduleId, Guid AssetId, Guid? FormId)> inspectionIdentities,
+        HashSet<Guid> acknowledgementIds,
+        IReadOnlyDictionary<Guid, Guid> acknowledgementForms,
+        CancellationToken cancellationToken)
+    {
+        var formFileNumberValues = formFileNumbers.Keys.ToArray();
+        var assets = await context.Assets
+            .Where(row => assetIds.Contains(row.Id)
+                || assetCodeValues.Contains(row.AssetCode)
+                || row.QrCodeValue != null && qrValues.Contains(row.QrCodeValue))
+            .ToListAsync(cancellationToken);
+        if (assets.Any(row => !assetCodes.TryGetValue(row.Id, out var code)
+                || !StringComparer.Ordinal.Equals(row.AssetCode, code)
+                || !assetQrCodes.TryGetValue(row.Id, out var qrValue)
+                || !StringComparer.Ordinal.Equals(row.QrCodeValue, qrValue)))
+        {
+            throw new InvalidOperationException("Demo reset refused because a deterministic asset ID, code, or QR value conflicts with an unrelated asset.");
+        }
+
+        var schedules = await context.PreventiveMaintenanceSchedules
+            .Where(row => scheduleIds.Contains(row.Id) || assetIds.Contains(row.AssetId))
+            .ToListAsync(cancellationToken);
+        if (schedules.Any(row => !scheduleIdentities.TryGetValue(row.Id, out var identity)
+                || row.AssetId != identity.AssetId
+                || row.PmCycle != identity.PmCycle))
+        {
+            throw new InvalidOperationException("Demo reset refused because a fixture asset has an unrelated schedule or a deterministic schedule ID conflict.");
+        }
+
+        var forms = await context.PreventiveMaintenanceForms
+            .Where(row => formIds.Contains(row.Id)
+                || row.FileNumber != null && formFileNumberValues.Contains(row.FileNumber))
+            .ToListAsync(cancellationToken);
+        if (forms.Any(row => abandonedScenarioAFormIds.Contains(row.Id)
+                ? !IsAbandonedScenarioADraft(row, inspectorId)
+                : !formIdentities.TryGetValue(row.Id, out var identity)
+                    || row.AssetCategory != identity.AssetCategory
+                    || row.Building != identity.Building
+                    || row.Department != identity.Department
+                    || row.PmCycle != identity.PmCycle
+                    || row.FileNumber != identity.FileNumber))
+        {
+            throw new InvalidOperationException("Demo reset refused because a deterministic form ID or file number conflicts with an unrelated form.");
+        }
+
+        var inspections = await context.InspectionRecords
+            .Where(row => inspectionIds.Contains(row.Id)
+                || assetIds.Contains(row.AssetId)
+                || scheduleIds.Contains(row.ScheduleId)
+                || row.PreventiveMaintenanceFormId.HasValue
+                    && formIds.Contains(row.PreventiveMaintenanceFormId.Value))
+            .ToListAsync(cancellationToken);
+        if (inspections.Any(row => !inspectionIdentities.TryGetValue(row.Id, out var identity)
+                || row.ScheduleId != identity.ScheduleId
+                || row.AssetId != identity.AssetId
+                || row.PreventiveMaintenanceFormId != identity.FormId))
+        {
+            throw new InvalidOperationException("Demo reset refused because fixture assets, schedules, or forms have an unrelated inspection dependency or a deterministic inspection ID conflict.");
+        }
+
+        var acknowledgements = await context.PreventiveMaintenanceAcknowledgements
+            .Where(row => acknowledgementIds.Contains(row.Id) || formIds.Contains(row.FormId))
+            .ToListAsync(cancellationToken);
+        if (acknowledgements.Any(row => !acknowledgementForms.TryGetValue(row.Id, out var formId)
+                || row.FormId != formId))
+        {
+            throw new InvalidOperationException("Demo reset refused because a deterministic acknowledgement ID or form conflicts with an unrelated record.");
+        }
+
+        var hasPhotoEvidence = await context.InspectionPhotoEvidence
+            .AnyAsync(row => inspectionIds.Contains(row.InspectionId), cancellationToken);
+        var hasWmsReferral = await context.InspectionWmsReferrals
+            .AnyAsync(row => inspectionIds.Contains(row.InspectionId), cancellationToken);
+        var hasWmsAudit = await context.InspectionWmsReferralAudits
+            .AnyAsync(row => inspectionIds.Contains(row.InspectionId), cancellationToken);
+        var hasLocationAttempt = await context.InspectionLocationAttempts
+            .AnyAsync(row => assetIds.Contains(row.AssetId) || scheduleIds.Contains(row.ScheduleId), cancellationToken);
+        var hasLinkedLocationAttempt = await context.InspectionRecords
+            .AnyAsync(row => inspectionIds.Contains(row.Id) && row.LocationAttemptId.HasValue, cancellationToken);
+        var hasEnrollmentDeferral = await context.ScheduleEnrollmentDeferrals
+            .AnyAsync(row => assetIds.Contains(row.AssetId), cancellationToken);
+        if (hasPhotoEvidence || hasWmsReferral || hasWmsAudit || hasLocationAttempt
+            || hasLinkedLocationAttempt || hasEnrollmentDeferral)
+        {
+            throw new InvalidOperationException(
+                "Demo reset refused because fixture records have photo, WMS, location, or enrollment dependencies.");
+        }
+    }
+
+    private static bool IsAbandonedScenarioADraft(PreventiveMaintenanceForm form, Guid inspectorId) =>
+        form.CreatedByUserId == inspectorId
+        && form.Status == PreventiveMaintenanceFormStatusCatalog.Draft
+        && form.FileNumber is null
+        && form.AssetCategory == "fire-extinguisher"
+        && form.Building is null
+        && form.Department == "CCMS"
+        && form.PmCycle is null
+        && form.PeriodType == "Quarter"
+        && form.Quarter == "Q3"
+        && form.Semester is null
+        && form.Year == 2026
+        && form.AcademicYear == "2026-2027"
+        && form.SubmittedByUserId is null
+        && form.SubmittedAt is null
+        && form.FieldWorkCompletedAt is null
+        && form.Acknowledgement is null;
 
     private async Task<ApplicationDbContext> CreateReadyContextAsync(CancellationToken cancellationToken)
     {
@@ -462,6 +654,13 @@ internal sealed class DevelopmentDemoSeeder(
         return new DateTimeOffset(year, month, day, hour, 0, 0, ManilaOffset);
     }
 }
+
+internal sealed record DemoFormIdentity(
+    string AssetCategory,
+    string Building,
+    string Department,
+    string PmCycle,
+    string? FileNumber);
 
 internal sealed record DevelopmentDemoSeedResult(
     int Assets,

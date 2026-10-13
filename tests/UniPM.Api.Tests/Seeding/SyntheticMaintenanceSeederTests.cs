@@ -89,6 +89,76 @@ public sealed class SyntheticMaintenanceSeederTests
     }
 
     [Fact]
+    public async Task Reset_refuses_fixture_photo_wms_and_location_dependencies_without_changes()
+    {
+        var factory = new TestContextFactory();
+        var seeder = CreateSeeder(factory);
+        var dataset = await LoadDatasetAsync();
+        await seeder.SeedAsync();
+        var fixtureInspection = dataset.Inspections[0];
+        var recordedAt = new DateTimeOffset(2026, 10, 1, 10, 0, 0, TimeSpan.FromHours(8));
+
+        await using (var context = factory.CreateDbContext())
+        {
+            context.InspectionPhotoEvidence.Add(new InspectionPhotoEvidence
+            {
+                InspectionId = fixtureInspection.Id,
+                StorageKey = "fixture-photo-object",
+                LengthBytes = 128,
+                UploadedAt = recordedAt,
+                Revision = 1
+            });
+            context.InspectionWmsReferrals.Add(new InspectionWmsReferral
+            {
+                InspectionId = fixtureInspection.Id,
+                ExternalPmNumber = "WMS-FIXTURE-001",
+                Revision = 1,
+                RecordedByUserId = fixtureInspection.InspectorUserId,
+                RecordedAt = recordedAt,
+                LastUpdatedByUserId = fixtureInspection.InspectorUserId,
+                LastUpdatedAt = recordedAt
+            });
+            context.InspectionWmsReferralAudits.Add(new InspectionWmsReferralAudit
+            {
+                Id = Guid.NewGuid(),
+                InspectionId = fixtureInspection.Id,
+                NewExternalPmNumber = "WMS-FIXTURE-001",
+                Revision = 1,
+                ChangedByUserId = fixtureInspection.InspectorUserId,
+                ChangedAt = recordedAt
+            });
+            context.InspectionLocationAttempts.Add(new InspectionLocationAttempt
+            {
+                Id = Guid.NewGuid(),
+                AssetId = fixtureInspection.AssetId,
+                ScheduleId = fixtureInspection.ScheduleId,
+                ActorUserId = fixtureInspection.InspectorUserId,
+                CapturedAt = recordedAt,
+                MeasuredLatitude = 14.5995,
+                MeasuredLongitude = 120.9842,
+                AccuracyMeters = 5,
+                HasAccuracy = true,
+                AccuracyMode = "Precise",
+                AcquisitionDurationMs = 50,
+                Outcome = "Accepted"
+            });
+            await context.SaveChangesAsync();
+        }
+
+        var exception = await Assert.ThrowsAsync<SyntheticMaintenanceFixtureException>(() => seeder.ResetAsync());
+
+        Assert.Contains("non-fixture records depend", exception.Message, StringComparison.Ordinal);
+        await using var verificationContext = factory.CreateDbContext();
+        Assert.Equal(20, await verificationContext.Assets.CountAsync());
+        Assert.Equal(34, await verificationContext.PreventiveMaintenanceSchedules.CountAsync());
+        Assert.Equal(30, await verificationContext.InspectionRecords.CountAsync());
+        Assert.Single(await verificationContext.InspectionPhotoEvidence.ToListAsync());
+        Assert.Single(await verificationContext.InspectionWmsReferrals.ToListAsync());
+        Assert.Single(await verificationContext.InspectionWmsReferralAudits.ToListAsync());
+        Assert.Single(await verificationContext.InspectionLocationAttempts.ToListAsync());
+    }
+
+    [Fact]
     public async Task Reset_refuses_non_fixture_schedule_for_fixture_asset_without_changes()
     {
         await AssertResetRefusesDependencyAsync(async (factory, dataset) =>

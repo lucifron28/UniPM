@@ -152,9 +152,35 @@ public sealed class SyntheticMaintenanceSeeder(
                     && !fixtureInspectionIds.Contains(inspection.Id),
                 cancellationToken);
 
+        var hasPhotoEvidence = await context.InspectionPhotoEvidence
+            .AnyAsync(photo => fixtureInspectionIds.Contains(photo.InspectionId), cancellationToken);
+
+        var hasWmsReferral = await context.InspectionWmsReferrals
+            .AnyAsync(referral => fixtureInspectionIds.Contains(referral.InspectionId), cancellationToken);
+
+        var hasWmsAudit = await context.InspectionWmsReferralAudits
+            .AnyAsync(audit => fixtureInspectionIds.Contains(audit.InspectionId), cancellationToken);
+
+        var hasLocationAttempt = await context.InspectionLocationAttempts
+            .AnyAsync(attempt => fixtureAssetIds.Contains(attempt.AssetId)
+                || fixtureScheduleIds.Contains(attempt.ScheduleId), cancellationToken);
+
+        var hasLinkedLocationAttempt = await context.InspectionRecords
+            .AnyAsync(inspection => fixtureInspectionIds.Contains(inspection.Id)
+                && inspection.LocationAttemptId.HasValue, cancellationToken);
+
+        var hasEnrollmentDeferral = await context.ScheduleEnrollmentDeferrals
+            .AnyAsync(deferral => fixtureAssetIds.Contains(deferral.AssetId), cancellationToken);
+
         if (hasUnrelatedScheduleDependency
             || hasUnrelatedAssetInspectionDependency
-            || hasUnrelatedScheduleInspectionDependency)
+            || hasUnrelatedScheduleInspectionDependency
+            || hasPhotoEvidence
+            || hasWmsReferral
+            || hasWmsAudit
+            || hasLocationAttempt
+            || hasLinkedLocationAttempt
+            || hasEnrollmentDeferral)
         {
             throw new SyntheticMaintenanceFixtureException(
                 "Synthetic reset cannot continue because non-fixture records depend on fixture-owned assets or schedules.");
