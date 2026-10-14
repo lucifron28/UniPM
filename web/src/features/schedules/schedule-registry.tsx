@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { CalendarPlus } from 'lucide-react'
+import { PageHeading } from '@/components/layout/page-heading'
 import { Link } from '@tanstack/react-router'
 import {
   createColumnHelper,
@@ -635,20 +636,12 @@ export function ScheduleRegistry({
   return (
     <section aria-labelledby="schedules-title" className="space-y-8">
       <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-        <div>
-          <p className="text-sm font-semibold tracking-[0.08em] text-[var(--primary)] uppercase">
-            Preventive maintenance
-          </p>
-          <h1
-            id="schedules-title"
-            className="mt-2 text-3xl font-bold tracking-tight text-[var(--text-primary)]"
-          >
-            Schedules
-          </h1>
-          <p className="mt-2 max-w-2xl text-[var(--text-secondary)]">
-            Review PM cycles, due dates, and recorded schedule status.
-          </p>
-        </div>
+        <PageHeading
+          id="schedules-title"
+          eyebrow="Preventive maintenance"
+          title="Schedules"
+          description="Review PM cycles, due dates, and recorded schedule status."
+        />
         {(canCreate || canGenerate) && (
           <div className="flex flex-wrap items-center gap-2">
             {canGenerate && (

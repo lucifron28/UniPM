@@ -7,6 +7,7 @@ import {
 } from 'react'
 import { Link } from '@tanstack/react-router'
 import { formatAssetCategory } from '@/features/assets/asset-presentation'
+import { PageHeading } from '@/components/layout/page-heading'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -292,10 +293,18 @@ function navigateToDashboardSection(
     '',
     `${window.location.pathname}${window.location.search}#${targetId}`,
   )
-  target.scrollIntoView?.({
-    behavior: prefersReducedMotion ? 'auto' : 'smooth',
-    block: 'start',
-  })
+  const workspace = target.closest('.app-workspace')
+  if (targetId === dashboardTitleId && !workspace) {
+    document.querySelector('.app-workspace')?.scrollTo?.({
+      top: 0,
+      behavior: prefersReducedMotion ? 'auto' : 'smooth',
+    })
+  } else {
+    target.scrollIntoView?.({
+      behavior: prefersReducedMotion ? 'auto' : 'smooth',
+      block: 'start',
+    })
+  }
   target.focus({ preventScroll: true })
 }
 
@@ -1480,38 +1489,29 @@ export function DashboardHeader({
   showNlaShortcut?: boolean
 }) {
   return (
-    <div
-      data-print-hide
-      className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"
-    >
-      <div>
-        <p className="text-sm font-semibold tracking-[0.08em] text-[var(--primary)] uppercase">
-          UniPM
-        </p>
-        <h1
-          id={dashboardTitleId}
-          tabIndex={-1}
-          className="mt-2 text-3xl font-bold tracking-tight text-[var(--text-primary)] outline-none sm:text-4xl"
-        >
-          Preventive Maintenance Dashboard
-        </h1>
-        <p className="mt-2 max-w-3xl text-[var(--text-secondary)]">
-          Choose the maintenance period you want to review.
-        </p>
-      </div>
+    <>
+      <PageHeading
+        id={dashboardTitleId}
+        tabIndex={-1}
+        eyebrow="UniPM"
+        title="Preventive Maintenance Dashboard"
+        description="Choose the maintenance period you want to review."
+      />
       {showNlaShortcut && (
-        <Button asChild variant="secondary" className="self-start">
-          <a
-            href={`#${dashboardNlaSectionId}`}
-            onClick={(event) =>
-              navigateToDashboardSection(event, dashboardNlaSectionId)
-            }
-          >
-            Ask NLA
-          </a>
-        </Button>
+        <div data-print-hide className="flex justify-end">
+          <Button asChild variant="secondary">
+            <a
+              href={`#${dashboardNlaSectionId}`}
+              onClick={(event) =>
+                navigateToDashboardSection(event, dashboardNlaSectionId)
+              }
+            >
+              Ask NLA
+            </a>
+          </Button>
+        </div>
       )}
-    </div>
+    </>
   )
 }
 

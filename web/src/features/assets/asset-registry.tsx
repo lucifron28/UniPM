@@ -7,6 +7,7 @@ import {
   useReactTable,
 } from '@tanstack/react-table'
 import { Plus, Search } from 'lucide-react'
+import { PageHeading } from '@/components/layout/page-heading'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
@@ -478,20 +479,12 @@ export function AssetRegistry({
   return (
     <section aria-labelledby="assets-title" className="space-y-6">
       <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-        <div>
-          <p className="text-sm font-semibold tracking-[0.08em] text-[var(--primary)] uppercase">
-            Asset registry
-          </p>
-          <h1
-            id="assets-title"
-            className="mt-2 text-3xl font-bold tracking-tight text-[var(--text-primary)]"
-          >
-            Assets
-          </h1>
-          <p className="mt-2 max-w-2xl text-[var(--text-secondary)]">
-            Find equipment by category, status, location, or asset code.
-          </p>
-        </div>
+        <PageHeading
+          id="assets-title"
+          eyebrow="Asset registry"
+          title="Assets"
+          description="Find equipment by category, status, location, or asset code."
+        />
         {canCreate && (
           <Button asChild>
             <Link to="/app/assets/new">

@@ -157,12 +157,12 @@ function Summary({
           <p className="text-sm font-semibold tracking-[0.08em] text-[var(--primary)] uppercase">
             Submitted batch review
           </p>
-          <h1
+          <h2
             id="pm-acknowledgement-review-title"
             className="mt-1 text-2xl font-bold tracking-tight text-[var(--text-primary)] sm:text-3xl"
           >
             Review before acknowledgement
-          </h1>
+          </h2>
           <p className="mt-2 max-w-3xl text-sm text-[var(--text-secondary)]">
             Acknowledgement records receipt/noting of the completed PM form. It
             is not personal witnessing. It does not approve corrective work,

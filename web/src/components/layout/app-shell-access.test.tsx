@@ -1,4 +1,10 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import {
   createMemoryHistory,
@@ -73,63 +79,81 @@ function renderAppRoute(initialEntry: string) {
 }
 
 describe('app shell role access and layout', () => {
-  beforeEach(() => setupAuth())
+  beforeEach(() => {
+    window.localStorage.removeItem('unipm.sidebar.collapsed')
+    setupAuth()
+  })
 
-  it('hides operational navigation from Admin while retaining general pages', async () => {
+  it('starts with a logo-only rail and hides operational navigation from Admin', async () => {
     server.use(http.get(meUrl, () => HttpResponse.json(currentUser(['Admin']))))
 
     renderShell()
 
-    await screen.findAllByText('Synthetic Admin')
-    const navs = await screen.findAllByRole('navigation', { name: 'Primary' })
-    expect(navs).toHaveLength(2)
-    for (const nav of navs) {
-      expect(within(nav).getByRole('link', { name: 'Dashboard' })).toBeVisible()
-      expect(within(nav).getByRole('link', { name: 'Assets' })).toBeVisible()
-      expect(
-        within(nav).getByRole('link', { name: 'Inspections' }),
-      ).toBeVisible()
-      expect(within(nav).queryByRole('link', { name: /Schedules/ })).toBeNull()
-      expect(
-        within(nav).queryByRole('link', { name: /Form review|Forms/ }),
-      ).toBeNull()
-    }
+    await screen.findByLabelText('Account menu')
+    const sidebar = screen.getByRole('complementary')
+    const nav = within(sidebar).getByRole('navigation', { name: 'Primary' })
+    expect(within(sidebar).getByRole('img', { name: 'UniPM' })).toBeVisible()
+    expect(
+      within(nav).getByRole('link', { name: 'Dashboard' }),
+    ).toHaveAttribute('title', 'Dashboard')
+    expect(within(nav).getByRole('link', { name: 'Assets' })).toBeVisible()
+    expect(within(nav).getByRole('link', { name: 'Inspections' })).toBeVisible()
+    expect(within(nav).queryByRole('link', { name: 'Schedules' })).toBeNull()
+    expect(within(nav).queryByRole('link', { name: 'Form review' })).toBeNull()
   })
 
-  it('keeps the desktop sidebar viewport-bound with a scrollable nav and fixed footer', async () => {
+  it('expands the rail, persists preference, and puts account actions in the header', async () => {
     server.use(http.get(meUrl, () => HttpResponse.json(currentUser(['GSD']))))
 
     renderShell()
 
-    await screen.findAllByText('Synthetic Admin')
+    await screen.findByLabelText('Account menu')
     const sidebar = screen.getByRole('complementary')
-    expect(sidebar.className).toContain('lg:fixed')
-    expect(sidebar.className).toContain('lg:inset-y-0')
-    expect(sidebar.className).toContain('lg:left-0')
-    expect(sidebar.className).toContain('lg:w-[15.5rem]')
-    expect(sidebar.className).toContain('lg:z-30')
-    expect(sidebar.className).toContain('lg:h-screen')
-    expect(sidebar.className).toContain('lg:overflow-hidden')
+    const shell = sidebar.parentElement!
+    const header = document.querySelector('.app-page-header')!
+    const workspace = document.querySelector('.app-workspace')!
+    expect(shell).toHaveClass('app-shell')
+    expect(header.contains(workspace)).toBe(false)
+    expect(header.contains(screen.getByLabelText('Account menu'))).toBe(true)
+    expect(workspace.closest('main')).toBeTruthy()
+    expect(sidebar.querySelector('nav')).toHaveClass('overflow-y-auto')
 
-    expect(sidebar.nextElementSibling?.className).toContain('lg:col-start-2')
-
-    const navs = screen.getAllByRole('navigation', {
-      name: 'Primary',
+    const expand = within(sidebar).getByRole('button', {
+      name: 'Expand navigation',
     })
-    expect(navs).toHaveLength(2)
-    const desktopNav = navs[0]!
-    const mobileNav = navs[1]!
-    expect(desktopNav.className).toContain('min-h-0')
-    expect(desktopNav.className).toContain('overflow-y-auto')
-    expect(mobileNav.className).toContain('flex-wrap')
-    expect(mobileNav.parentElement?.className).toContain('sticky')
-    expect(mobileNav.parentElement?.className).toContain('top-0')
-
-    const footer = sidebar.lastElementChild
-    expect(footer?.className).toContain('shrink-0')
+    expect(expand).toHaveAttribute('aria-expanded', 'false')
+    fireEvent.click(expand)
     expect(
-      within(sidebar).getByRole('button', { name: 'Sign out' }),
-    ).toBeVisible()
+      within(sidebar).getByRole('button', { name: 'Collapse navigation' }),
+    ).toHaveAttribute('aria-expanded', 'true')
+    expect(window.localStorage.getItem('unipm.sidebar.collapsed')).toBe('false')
+    expect(
+      within(sidebar).getAllByText('Institutional operations'),
+    ).toHaveLength(2)
+
+    const account = screen.getByLabelText('Account menu')
+    fireEvent.click(account)
+    expect(account.closest('details')).toHaveAttribute('open')
+    expect(screen.getByText('admin@example.test')).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Sign out' })).toBeVisible()
+    expect(
+      within(sidebar).queryByRole('button', { name: 'Sign out' }),
+    ).toBeNull()
+  })
+
+  it('opens responsive navigation and closes it with Escape', async () => {
+    server.use(http.get(meUrl, () => HttpResponse.json(currentUser(['GSD']))))
+    renderShell()
+    await screen.findByLabelText('Account menu')
+
+    const open = screen.getByRole('button', { name: 'Open navigation' })
+    const sidebar = screen.getByRole('complementary')
+    expect(open).toHaveAttribute('aria-expanded', 'false')
+    fireEvent.click(open)
+    expect(open).toHaveAttribute('aria-expanded', 'true')
+    expect(sidebar.classList.contains('flex')).toBe(true)
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(open).toHaveAttribute('aria-expanded', 'false')
   })
 
   it.each([
@@ -246,6 +270,16 @@ describe('app shell role access and layout', () => {
             total: 0,
           })
         }
+        if (pathname === '/api/v1/schedules/enrollment-deferrals') {
+          return HttpResponse.json({
+            items: [],
+            page: 1,
+            pageSize: 10,
+            total: 0,
+            pendingCount: 0,
+            reviewedCount: 0,
+          })
+        }
         return HttpResponse.json([])
       }),
     )
@@ -254,5 +288,15 @@ describe('app shell role access and layout', () => {
 
     await waitFor(() => expect(scheduleReads).toBeGreaterThan(0))
     expect(screen.queryByRole('heading', { name: 'Access denied' })).toBeNull()
+    await waitFor(() =>
+      expect(
+        document.querySelector('.page-heading-host #schedules-title'),
+      ).not.toBeNull(),
+    )
+    expect(
+      document
+        .querySelector('.app-workspace')
+        ?.contains(document.querySelector('#schedules-title')),
+    ).toBe(false)
   })
 })

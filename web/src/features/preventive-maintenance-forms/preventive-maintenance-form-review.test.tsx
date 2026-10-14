@@ -545,9 +545,7 @@ describe('preventive-maintenance form review', () => {
 
     renderWithProviders(<AppShell />)
 
-    expect(
-      await screen.findByText('Preventive Maintenance Portal'),
-    ).toBeInTheDocument()
+    expect(await screen.findByLabelText('Account menu')).toBeInTheDocument()
     expect(
       await screen.findByRole('link', { name: 'Form review' }),
     ).toBeInTheDocument()
@@ -1015,6 +1013,7 @@ describe('preventive-maintenance form review', () => {
           name: 'Review before acknowledgement',
         }),
       ).toBeInTheDocument()
+      await screen.findByText('Awaiting acknowledgement')
       expect(screen.getByText('Awaiting acknowledgement')).toBeInTheDocument()
       expect(screen.getByText('Compliance rate')).toBeInTheDocument()
       expect(screen.getByText('100%')).toBeInTheDocument()
@@ -1053,7 +1052,7 @@ describe('preventive-maintenance form review', () => {
       expect(
         await screen.findByRole('heading', {
           name: 'FE-TEST-001',
-          level: 1,
+          level: 2,
         }),
       ).toBeInTheDocument()
       expect(

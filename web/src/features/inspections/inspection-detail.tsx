@@ -335,12 +335,12 @@ export function InspectionDetail({
           <p className="text-sm font-semibold tracking-[0.08em] text-[var(--primary)] uppercase">
             Inspection source record
           </p>
-          <h1
+          <h2
             id="inspection-detail-title"
             className="mt-2 text-3xl font-bold tracking-tight text-[var(--text-primary)]"
           >
             {asset.data?.assetCode ?? 'Inspection record'}
-          </h1>
+          </h2>
           <p className="mt-2 text-[var(--text-secondary)]">
             Actual inspection date: {formatInspectionDate(record.dateInspected)}
           </p>

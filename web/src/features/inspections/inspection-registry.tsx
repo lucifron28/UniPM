@@ -7,6 +7,7 @@ import {
   useReactTable,
 } from '@tanstack/react-table'
 import { Button } from '@/components/ui/button'
+import { PageHeading } from '@/components/layout/page-heading'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -662,20 +663,12 @@ export function InspectionRegistry({
 
   return (
     <section aria-labelledby="inspections-title" className="space-y-6">
-      <header>
-        <p className="text-sm font-semibold tracking-[0.08em] text-[var(--primary)] uppercase">
-          Source-record review
-        </p>
-        <h1
-          id="inspections-title"
-          className="mt-2 text-3xl font-bold tracking-tight text-[var(--text-primary)]"
-        >
-          Inspections
-        </h1>
-        <p className="mt-2 max-w-2xl text-[var(--text-secondary)]">
-          Review inspection outcomes, source notes, and corrective follow-up.
-        </p>
-      </header>
+      <PageHeading
+        id="inspections-title"
+        eyebrow="Source-record review"
+        title="Inspections"
+        description="Review inspection outcomes, source notes, and corrective follow-up."
+      />
 
       <section aria-labelledby="find-inspections-title" className="space-y-3">
         <h2

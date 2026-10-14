@@ -298,7 +298,10 @@ test.describe('Inspection review workflows', () => {
       'section[aria-labelledby="inspections-title"]',
     )
     await expect(
-      registry.getByRole('heading', { name: 'Inspections', exact: true }),
+      page.locator('.app-page-header').getByRole('heading', {
+        name: 'Inspections',
+        exact: true,
+      }),
     ).toBeVisible()
     await expect(
       registry.getByRole('heading', { name: 'Find inspections' }),
@@ -310,7 +313,6 @@ test.describe('Inspection review workflows', () => {
       registry.getByRole('heading', { name: 'Inspection records' }),
     ).toBeVisible()
     expect(await registry.locator('h1, h2').allTextContents()).toEqual([
-      'Inspections',
       'Find inspections',
       'Inspection summary',
       'Inspection records',
@@ -324,7 +326,7 @@ test.describe('Inspection review workflows', () => {
     await expect(page.getByLabel('Corrective follow-up status')).toBeVisible()
     await expect(page.getByText('WMS-PM-007').first()).toBeVisible()
     await page.screenshot({
-      path: 'test-results/remaining-relayout-inspections-desktop.png',
+      path: 'test-results/web-ui-refinement-inspections-desktop.png',
       fullPage: true,
     })
 
@@ -385,7 +387,7 @@ test.describe('Inspection review workflows', () => {
       })
       .click()
     await page.screenshot({
-      path: 'test-results/remaining-relayout-inspections-mobile.png',
+      path: 'test-results/web-ui-refinement-inspections-mobile.png',
       fullPage: true,
     })
   })
@@ -436,22 +438,27 @@ test.describe('Inspection review workflows', () => {
     const rows = page.getByRole('table').locator('tbody tr')
     await expect(rows).toHaveCount(25)
     const next = page.getByRole('button', { name: 'Next' })
+    const workspace = page.locator('.app-workspace')
     await next.scrollIntoViewIfNeeded()
-    const scrollY = await page.evaluate(() => window.scrollY)
-    expect(scrollY).toBeGreaterThan(0)
+    const scrollTop = await workspace.evaluate((element) => element.scrollTop)
+    expect(scrollTop).toBeGreaterThan(0)
     const firstPageLayout = await registryLayout(page)
     await next.click()
     await expect(page).toHaveURL(/isOperational=false/)
     await expect(page).toHaveURL(/page=2/)
     await expect(page.getByRole('cell', { name: 'Finding 26' })).toBeVisible()
     await expect(rows).toHaveCount(1)
-    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(scrollY)
+    await expect
+      .poll(() => workspace.evaluate((element) => element.scrollTop))
+      .toBe(scrollTop)
     const lastPageLayout = await registryLayout(page)
     expectStableRegistryLayout(firstPageLayout, lastPageLayout)
     await page.getByRole('button', { name: 'Previous' }).click()
     await expect(page).not.toHaveURL(/page=2/)
     await expect(rows).toHaveCount(25)
-    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(scrollY)
+    await expect
+      .poll(() => workspace.evaluate((element) => element.scrollTop))
+      .toBe(scrollTop)
     expectStableRegistryLayout(firstPageLayout, await registryLayout(page))
 
     await page.goto('/app/inspections?isOperational=false&page=2')

@@ -374,7 +374,10 @@ test.describe('Asset Registry E2E Specs', () => {
 
     const registry = page.locator('section[aria-labelledby="assets-title"]')
     await expect(
-      registry.getByRole('heading', { name: 'Assets', exact: true }),
+      page.locator('.app-page-header').getByRole('heading', {
+        name: 'Assets',
+        exact: true,
+      }),
     ).toBeVisible()
     await expect(
       registry.getByRole('heading', { name: 'Find assets' }),
@@ -387,7 +390,6 @@ test.describe('Asset Registry E2E Specs', () => {
     ).toBeVisible()
     const headingOrder = await registry.locator('h1, h2').allTextContents()
     expect(headingOrder).toEqual([
-      'Assets',
       'Find assets',
       'Overall asset inventory',
       'Asset records',
@@ -399,7 +401,7 @@ test.describe('Asset Registry E2E Specs', () => {
     await expect(page.getByLabel('Department')).toBeVisible()
     await expect(page.getByText('FE-001').first()).toBeVisible()
     await page.screenshot({
-      path: 'test-results/remaining-relayout-assets-desktop.png',
+      path: 'test-results/web-ui-refinement-assets-desktop.png',
       fullPage: true,
     })
 
@@ -443,7 +445,7 @@ test.describe('Asset Registry E2E Specs', () => {
       })
       .click()
     await page.screenshot({
-      path: 'test-results/remaining-relayout-assets-mobile.png',
+      path: 'test-results/web-ui-refinement-assets-mobile.png',
       fullPage: true,
     })
   })
@@ -467,26 +469,33 @@ test.describe('Asset Registry E2E Specs', () => {
     const rows = page.getByRole('table').locator('tbody tr')
     await expect(rows).toHaveCount(25)
     const next = page.getByRole('button', { name: 'Next' })
+    const workspace = page.locator('.app-workspace')
     await next.scrollIntoViewIfNeeded()
-    const scrollY = await page.evaluate(() => window.scrollY)
-    expect(scrollY).toBeGreaterThan(0)
+    const scrollTop = await workspace.evaluate((element) => element.scrollTop)
+    expect(scrollTop).toBeGreaterThan(0)
     const firstPageLayout = await registryLayout(page)
     await next.click()
     await expect(page).toHaveURL(/status=Active/)
     await expect(page).toHaveURL(/page=2/)
-    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(scrollY)
+    await expect
+      .poll(() => workspace.evaluate((element) => element.scrollTop))
+      .toBe(scrollTop)
     await expect(rows).toHaveCount(1)
     await expect(page.getByText('FE-026').first()).toBeVisible()
     const lastPageLayout = await registryLayout(page)
     expectStableRegistryLayout(firstPageLayout, lastPageLayout)
     await page.getByRole('button', { name: 'Previous' }).click()
     await expect(page).not.toHaveURL(/page=2/)
-    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(scrollY)
+    await expect
+      .poll(() => workspace.evaluate((element) => element.scrollTop))
+      .toBe(scrollTop)
     await expect(rows).toHaveCount(25)
     expectStableRegistryLayout(firstPageLayout, await registryLayout(page))
     await next.click()
     await expect(page).toHaveURL(/page=2/)
-    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(scrollY)
+    await expect
+      .poll(() => workspace.evaluate((element) => element.scrollTop))
+      .toBe(scrollTop)
     const detailResponse = page.waitForResponse(
       (response) =>
         response.request().method() === 'GET' &&
@@ -504,7 +513,7 @@ test.describe('Asset Registry E2E Specs', () => {
     expect(response.status()).toBe(200)
     expect((await response.json()).assetCode).toBe('FE-026')
     await expect(
-      page.getByRole('heading', { name: 'FE-026', level: 1 }),
+      page.getByRole('heading', { name: 'FE-026', level: 2 }),
     ).toBeVisible()
     await page.getByRole('link', { name: 'Back to assets' }).click()
     await expect(page).toHaveURL(/status=Active/)
@@ -565,6 +574,8 @@ test.describe('Asset Registry E2E Specs', () => {
       .locator('nav[aria-label="Primary"]')
       .filter({ has: page.getByRole('link', { name: 'Assets' }) })
       .first()
+    await expect(nav).toBeHidden()
+    await page.getByRole('button', { name: 'Open navigation' }).click()
     await expect(nav).toBeVisible()
     await expect(nav.getByRole('link', { name: 'Assets' })).toBeVisible()
   })
@@ -879,7 +890,7 @@ test.describe('Asset Registry E2E Specs', () => {
     await page.screenshot({ path: 'test-results/asset-qr-print-preview.png' })
   })
 
-  test('shows copy failure feedback and keeps browser storage empty', async ({
+  test('shows copy failure feedback without persisting clipboard content', async ({
     page,
   }) => {
     await mockAssetRegistry(page)
@@ -906,6 +917,11 @@ test.describe('Asset Registry E2E Specs', () => {
           session: Object.keys(sessionStorage),
         })),
       )
-      .toEqual({ local: [], session: [] })
+      .toEqual({ local: ['unipm.sidebar.collapsed'], session: [] })
+    expect(
+      await page.evaluate(() =>
+        localStorage.getItem('unipm.sidebar.collapsed'),
+      ),
+    ).toBe('true')
   })
 })

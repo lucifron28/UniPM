@@ -387,9 +387,10 @@ test.describe('Schedule workflows', () => {
     const rows = page.getByRole('table').locator('tbody tr')
     await expect(rows).toHaveCount(25)
     const next = page.getByRole('button', { name: 'Next' })
+    const workspace = page.locator('.app-workspace')
     await next.scrollIntoViewIfNeeded()
-    const scrollY = await page.evaluate(() => window.scrollY)
-    expect(scrollY).toBeGreaterThan(0)
+    const scrollTop = await workspace.evaluate((element) => element.scrollTop)
+    expect(scrollTop).toBeGreaterThan(0)
     const firstPageLayout = await registryLayout(page)
     await next.click()
     await expect(page).toHaveURL(/status=Due/)
@@ -398,13 +399,17 @@ test.describe('Schedule workflows', () => {
     await expect(page).toHaveURL(/page=2/)
     await expect(page.getByRole('cell', { name: 'FE-026' })).toBeVisible()
     await expect(rows).toHaveCount(1)
-    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(scrollY)
+    await expect
+      .poll(() => workspace.evaluate((element) => element.scrollTop))
+      .toBe(scrollTop)
     const lastPageLayout = await registryLayout(page)
     expectStableRegistryLayout(firstPageLayout, lastPageLayout)
     await page.getByRole('button', { name: 'Previous' }).click()
     await expect(page).not.toHaveURL(/page=2/)
     await expect(rows).toHaveCount(25)
-    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(scrollY)
+    await expect
+      .poll(() => workspace.evaluate((element) => element.scrollTop))
+      .toBe(scrollTop)
     expectStableRegistryLayout(firstPageLayout, await registryLayout(page))
 
     await page.goto('/app/schedules?status=Due&quarter=Q3&year=2026&page=2')
@@ -541,8 +546,7 @@ test.describe('Schedule workflows', () => {
     const sectionHeadings = await page
       .locator('main h1, main h2')
       .allTextContents()
-    expect(sectionHeadings.slice(0, 4)).toEqual([
-      'Schedules',
+    expect(sectionHeadings.slice(0, 3)).toEqual([
       'Find schedules',
       'Schedule summary',
       'Schedule records',
@@ -553,6 +557,10 @@ test.describe('Schedule workflows', () => {
     await expect(
       page.getByRole('link', { name: 'Manage schedules' }),
     ).toHaveAttribute('href', '#schedule-management')
+    await page.screenshot({
+      path: 'test-results/web-ui-refinement-schedules-desktop.png',
+      fullPage: true,
+    })
 
     await page.getByRole('link', { name: 'Manage schedules' }).click()
     await expect(page).toHaveURL(/#schedule-management$/)
@@ -587,6 +595,10 @@ test.describe('Schedule workflows', () => {
           document.documentElement.clientWidth,
       ),
     ).toBeLessThanOrEqual(1)
+    await page.screenshot({
+      path: 'test-results/web-ui-refinement-schedules-mobile.png',
+      fullPage: true,
+    })
   })
 
   test('creates a schedule with only approved fields and opens its detail', async ({
@@ -605,9 +617,38 @@ test.describe('Schedule workflows', () => {
       }
       return route.fallback()
     })
+    await page.setViewportSize({ width: 1280, height: 720 })
     await page.goto('/app/schedules/new')
     const assetPicker = page.getByRole('combobox', { name: 'Asset' })
     await assetPicker.fill('FE-001')
+    const expectPickerToFit = async () => {
+      const geometry = await page.evaluate(() => {
+        const menu = document.querySelector('[role="listbox"]')?.parentElement
+        const workspace = document.querySelector('.app-workspace')
+        if (!menu || !workspace) return null
+        const menuBounds = menu.getBoundingClientRect()
+        const workspaceBounds = workspace.getBoundingClientRect()
+        return {
+          left: menuBounds.left,
+          right: menuBounds.right,
+          top: menuBounds.top,
+          bottom: menuBounds.bottom,
+          workspaceTop: workspaceBounds.top,
+          workspaceBottom: Math.min(workspaceBounds.bottom, window.innerHeight),
+          viewportWidth: window.innerWidth,
+        }
+      })
+      expect(geometry).not.toBeNull()
+      if (!geometry) throw new Error('Asset picker menu is not mounted')
+      expect(geometry.left).toBeGreaterThanOrEqual(0)
+      expect(geometry.right).toBeLessThanOrEqual(geometry.viewportWidth)
+      expect(geometry.top).toBeGreaterThanOrEqual(geometry.workspaceTop)
+      expect(geometry.bottom).toBeLessThanOrEqual(geometry.workspaceBottom)
+    }
+    await expect(page.getByRole('option', { name: /FE-001/ })).toBeVisible()
+    await expectPickerToFit()
+    await page.setViewportSize({ width: 375, height: 667 })
+    await expectPickerToFit()
     await page.getByRole('option', { name: /FE-001/ }).click()
     await page.getByLabel('Scheduled year').fill('2026')
     await page.getByLabel('Scheduled month').selectOption('8')

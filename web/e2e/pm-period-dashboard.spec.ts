@@ -534,6 +534,20 @@ test.describe('PM period dashboard', () => {
       '67%',
       'Not measurable yet',
     ])
+    await page.screenshot({
+      path: 'test-results/web-ui-refinement-dashboard-desktop.png',
+    })
+    await page.setViewportSize({ width: 375, height: 812 })
+    await page.screenshot({
+      path: 'test-results/web-ui-refinement-dashboard-mobile.png',
+      fullPage: true,
+    })
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth - window.innerWidth,
+      ),
+    ).toBeLessThanOrEqual(1)
+    await page.setViewportSize({ width: 1280, height: 900 })
 
     await page.getByLabel('Condition').selectOption('NonOperational')
     await expectRequest(requests, {

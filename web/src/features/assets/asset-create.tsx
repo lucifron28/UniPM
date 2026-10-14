@@ -19,6 +19,7 @@ import {
 } from '@/api/generated/endpoints'
 import { ApiError } from '@/api/problem-details'
 import { Alert } from '@/components/ui/alert'
+import { PageHeading } from '@/components/layout/page-heading'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -328,16 +329,11 @@ export function AssetCreate() {
         >
           Back to assets
         </Link>
-        <h1
+        <PageHeading
           id="create-asset-title"
-          className="mt-4 text-3xl font-bold tracking-tight text-[var(--text-primary)]"
-        >
-          Add asset
-        </h1>
-        <p className="mt-2 text-[var(--text-secondary)]">
-          Add an asset code, category, and department. Building and location are
-          optional.
-        </p>
+          title="Add asset"
+          description="Add an asset code, category, and department. Building and location are optional."
+        />
       </div>
       <Card className="shadow-none">
         <form

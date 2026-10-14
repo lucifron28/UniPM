@@ -5,6 +5,7 @@ import type { ListPreventiveMaintenanceFormsParams } from '@/api/generated/model
 import { assetCategoryCodes } from '@/features/assets/asset-contract'
 import { formatAssetCategory } from '@/features/assets/asset-presentation'
 import { Badge } from '@/components/ui/badge'
+import { PageHeading } from '@/components/layout/page-heading'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -535,20 +536,12 @@ export function FormRegistry({ search, onSearchChange }: FormRegistryProps) {
 
   return (
     <section aria-labelledby="forms-title" className="max-w-6xl space-y-6">
-      <header>
-        <p className="text-sm font-semibold tracking-[0.08em] text-[var(--primary)] uppercase">
-          Preventive maintenance
-        </p>
-        <h1
-          id="forms-title"
-          className="mt-2 text-3xl font-bold tracking-tight text-[var(--text-primary)]"
-        >
-          Form review
-        </h1>
-        <p className="mt-2 max-w-2xl text-[var(--text-secondary)]">
-          Review submitted forms and open their inspection source rows.
-        </p>
-      </header>
+      <PageHeading
+        id="forms-title"
+        eyebrow="Preventive maintenance"
+        title="Form review"
+        description="Review submitted forms and open their inspection source rows."
+      />
       <FormRegistryFilters
         key={JSON.stringify([
           search.status,

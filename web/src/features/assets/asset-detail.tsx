@@ -200,14 +200,14 @@ export function AssetDetail({
           <p className="text-sm font-semibold tracking-[0.08em] text-[var(--primary)] uppercase">
             Asset record
           </p>
-          <h1
+          <h2
             ref={heading}
             id="asset-detail-title"
             tabIndex={-1}
             className="mt-2 text-3xl font-bold tracking-tight text-[var(--text-primary)] outline-none"
           >
             {record.assetCode}
-          </h1>
+          </h2>
           <p className="mt-2 text-[var(--text-secondary)]">
             {categoryLabel(category, record.assetCategory)}
           </p>

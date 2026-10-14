@@ -151,7 +151,10 @@ test('keeps Form Review cards readable and zoom-contained across desktop and mob
 
   const registry = page.locator('section[aria-labelledby="forms-title"]')
   await expect(
-    registry.getByRole('heading', { name: 'Form review', exact: true }),
+    page.locator('.app-page-header').getByRole('heading', {
+      name: 'Form review',
+      exact: true,
+    }),
   ).toBeVisible()
   await expect(
     registry.getByRole('heading', { name: 'Find forms' }),
@@ -160,7 +163,6 @@ test('keeps Form Review cards readable and zoom-contained across desktop and mob
     registry.getByRole('heading', { name: 'Form records' }),
   ).toBeVisible()
   expect(await registry.locator('h1, h2').allTextContents()).toEqual([
-    'Form review',
     'Find forms',
     'Form records',
   ])
@@ -186,7 +188,7 @@ test('keeps Form Review cards readable and zoom-contained across desktop and mob
   await expect(page).toHaveURL(/department=GSD/)
   await expect(page).toHaveURL(/pmCycle=2026-08/)
   await page.screenshot({
-    path: 'test-results/remaining-relayout-form-review-desktop.png',
+    path: 'test-results/web-ui-refinement-form-review-desktop.png',
     fullPage: true,
   })
 
@@ -221,7 +223,7 @@ test('keeps Form Review cards readable and zoom-contained across desktop and mob
     })
     .click()
   await page.screenshot({
-    path: 'test-results/remaining-relayout-form-review-mobile.png',
+    path: 'test-results/web-ui-refinement-form-review-mobile.png',
     fullPage: true,
   })
 })
@@ -411,7 +413,7 @@ test('demonstrates the submitted PM batch acknowledgement review workflow', asyn
   // 7. Follow the row inspection ID and 8. return with the stable review query.
   await page.getByRole('link', { name: 'View inspection detail' }).click()
   await expect(
-    page.getByRole('heading', { name: 'FE-TEST-001', level: 1 }),
+    page.getByRole('heading', { name: 'FE-TEST-001', level: 2 }),
   ).toBeVisible()
   await expect(
     page.getByRole('heading', { name: 'Record information' }),

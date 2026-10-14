@@ -1,5 +1,14 @@
 @import 'tailwindcss';
 
+@theme {
+  --radius-sm: 0.25rem;
+  --radius-md: 0.3125rem;
+  --radius-lg: 0.375rem;
+  --radius-xl: 0.5rem;
+  --radius-2xl: 0.5rem;
+  --radius-3xl: 0.5rem;
+}
+
 :root {
   font-family: Inter, ui-sans-serif, system-ui, sans-serif;
   color: #191c1d;
@@ -33,6 +42,85 @@ body {
 
 * {
   box-sizing: border-box;
+}
+
+.page-heading-region:has(.page-heading-host [data-page-heading])
+  > .page-heading-fallback {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  html:has(.app-shell),
+  body:has(.app-shell),
+  #root:has(.app-shell) {
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .app-shell {
+    --sidebar-width: 4.75rem;
+    display: grid;
+    grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  .app-shell[data-sidebar-collapsed='false'] {
+    --sidebar-width: 15.5rem;
+  }
+
+  .app-shell-body,
+  .app-shell-main {
+    display: flex;
+    min-height: 0;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .app-workspace {
+    flex: 1;
+    min-height: 0;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+  }
+}
+
+@media print {
+  html:has(.app-shell),
+  body:has(.app-shell),
+  #root:has(.app-shell) {
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  .app-shell,
+  .app-shell-body,
+  .app-shell-main,
+  .app-workspace {
+    display: block !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .app-shell {
+    background: #fff !important;
+  }
+
+  .app-sidebar,
+  .app-page-header {
+    display: none !important;
+  }
+
+  .app-shell-main,
+  .app-workspace {
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    box-shadow: none !important;
+  }
 }
 
 @layer base {
