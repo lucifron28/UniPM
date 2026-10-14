@@ -137,6 +137,95 @@ function jsonResponse(body: unknown) {
   }
 }
 
+test('keeps Form Review cards readable and zoom-contained across desktop and mobile', async ({
+  page,
+}) => {
+  await mockApi(page)
+  await page.route('**/api/v1/preventive-maintenance-forms**', (route) =>
+    route.fulfill(jsonResponse([form])),
+  )
+  await page.setViewportSize({ width: 1280, height: 900 })
+  await page.goto(
+    '/app/preventive-maintenance-forms?status=Submitted&assetCategory=fire-extinguisher&department=GSD&pmCycle=2026-08',
+  )
+
+  const registry = page.locator('section[aria-labelledby="forms-title"]')
+  await expect(
+    registry.getByRole('heading', { name: 'Form review', exact: true }),
+  ).toBeVisible()
+  await expect(
+    registry.getByRole('heading', { name: 'Find forms' }),
+  ).toBeVisible()
+  await expect(
+    registry.getByRole('heading', { name: 'Form records' }),
+  ).toBeVisible()
+  expect(await registry.locator('h1, h2').allTextContents()).toEqual([
+    'Form review',
+    'Find forms',
+    'Form records',
+  ])
+  await expect(page.getByLabel('Search forms')).toBeVisible()
+  await expect(page.getByLabel('Form status')).toBeVisible()
+  await expect(page.getByLabel('Asset category')).toBeVisible()
+  await expect(page.getByLabel('Department')).toBeVisible()
+  await expect(page.getByLabel('PM cycle')).toBeVisible()
+  await expect(page.getByLabel('Form status')).toHaveValue('Submitted')
+  await expect(
+    page.getByRole('link', { name: 'PMF-2026-0001' }).first(),
+  ).toBeVisible()
+  await expect(
+    page
+      .locator('article')
+      .filter({ hasText: 'PMF-2026-0001' })
+      .first()
+      .getByText('Awaiting acknowledgement', { exact: true }),
+  ).toBeVisible()
+  await expect(
+    page.getByRole('link', { name: 'View form details' }).first(),
+  ).toBeVisible()
+  await expect(page).toHaveURL(/department=GSD/)
+  await expect(page).toHaveURL(/pmCycle=2026-08/)
+  await page.screenshot({
+    path: 'test-results/remaining-relayout-form-review-desktop.png',
+    fullPage: true,
+  })
+
+  const zoomGroup = page.getByRole('group', {
+    name: 'Form records zoom controls',
+  })
+  const increase = zoomGroup.getByRole('button', {
+    name: 'Increase Form records zoom',
+  })
+  await increase.click()
+  await increase.click()
+  await increase.click()
+  await expect(zoomGroup).toContainText('130%')
+  await expect(increase).toBeDisabled()
+
+  await page.setViewportSize({ width: 375, height: 812 })
+  await expect(
+    page.getByRole('link', { name: 'View form details' }).first(),
+  ).toBeVisible()
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          document.documentElement.scrollWidth -
+          document.documentElement.clientWidth,
+      ),
+    )
+    .toBeLessThanOrEqual(1)
+  await zoomGroup
+    .getByRole('button', {
+      name: 'Reset Form records zoom to 100 percent',
+    })
+    .click()
+  await page.screenshot({
+    path: 'test-results/remaining-relayout-form-review-mobile.png',
+    fullPage: true,
+  })
+})
+
 async function mockApi(page: import('@playwright/test').Page) {
   await page.route('**/api/v1/auth/refresh', (route) =>
     route.fulfill(jsonResponse(session)),
