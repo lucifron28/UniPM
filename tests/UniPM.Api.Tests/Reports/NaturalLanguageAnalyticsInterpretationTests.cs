@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
@@ -237,6 +238,38 @@ public sealed class NaturalLanguageAnalyticsInterpretationTests
                 CancellationToken.None));
 
         Assert.Equal(NaturalLanguageAnalyticsProviderFailure.ProviderUnavailable, exception.Failure);
+        Assert.Equal(0, handler.RequestCount);
+    }
+
+    [Theory]
+    [InlineData("Development", false)]
+    [InlineData("Production", true)]
+    public async Task Typed_client_DI_resolves_rule_based_path_without_model_requests(
+        string environmentName,
+        bool modelEnabled)
+    {
+        var handler = new StubResponseHandler("{}");
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.Configure<NaturalLanguageAnalyticsOptions>(options => options.Enabled = modelEnabled);
+        services.AddSingleton<IHostEnvironment>(new TestHostEnvironment(environmentName));
+        services.AddScoped<RuleBasedNaturalLanguageAnalyticsInterpreter>();
+        services.AddHttpClient<OllamaNaturalLanguageAnalyticsInterpreter>()
+            .ConfigurePrimaryHttpMessageHandler(() => handler);
+        services.AddScoped<ConfiguredNaturalLanguageAnalyticsInterpreter>();
+        services.AddScoped<INaturalLanguageAnalyticsInterpreter>(provider =>
+            provider.GetRequiredService<ConfiguredNaturalLanguageAnalyticsInterpreter>());
+
+        using var provider = services.BuildServiceProvider(validateScopes: true);
+        using var scope = provider.CreateScope();
+        var interpreter = scope.ServiceProvider.GetRequiredService<INaturalLanguageAnalyticsInterpreter>();
+
+        var result = await interpreter.InterpretAsync(
+            "Show progress for fire-extinguisher in 2026-11",
+            CancellationToken.None);
+
+        Assert.Equal(PmAnalyticsInterpretationStatus.Valid, result.Status);
+        Assert.Equal("2026-11", result.Plan?.PmCycle);
         Assert.Equal(0, handler.RequestCount);
     }
 

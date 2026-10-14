@@ -496,14 +496,14 @@ export function AssetRegistry({
             apply()
           }}
         >
-          <div className="grid gap-1 xl:col-span-2">
+          <div className="grid min-w-0 gap-1 xl:col-span-2">
             <label
               className="text-sm font-semibold text-[var(--text-primary)]"
               htmlFor="asset-search"
             >
               Search assets
             </label>
-            <div className="relative">
+            <div className="relative min-w-0">
               <Search
                 aria-hidden="true"
                 className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-[var(--text-neutral)]"
@@ -518,7 +518,7 @@ export function AssetRegistry({
               />
             </div>
           </div>
-          <div className="grid gap-1 text-sm font-semibold text-[var(--text-primary)]">
+          <div className="grid min-w-0 gap-1 text-sm font-semibold text-[var(--text-primary)]">
             <label htmlFor="asset-category">Asset category</label>
             {categories.isError ? (
               <div className="flex flex-col gap-1">
@@ -526,7 +526,7 @@ export function AssetRegistry({
                   disabled
                   id="asset-category"
                   aria-label="Asset category"
-                  className="min-h-10 rounded-lg border border-[var(--error)] bg-white px-3 text-sm opacity-60"
+                  className="min-h-10 w-full min-w-0 rounded-lg border border-[var(--error)] bg-white px-3 text-sm opacity-60"
                 >
                   <option value="">Categories unavailable</option>
                 </select>
@@ -548,7 +548,7 @@ export function AssetRegistry({
                   )
                   setFilterNotice(null)
                 }}
-                className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
+                className="min-h-10 w-full min-w-0 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
               >
                 <option value="">All categories</option>
                 {(categories.data ?? []).map((category) => (
@@ -559,7 +559,7 @@ export function AssetRegistry({
               </select>
             )}
           </div>
-          <label className="grid gap-1 text-sm font-semibold text-[var(--text-primary)]">
+          <label className="grid min-w-0 gap-1 text-sm font-semibold text-[var(--text-primary)]">
             <span>Status</span>
             <select
               value={status}
@@ -567,7 +567,7 @@ export function AssetRegistry({
                 setStatus((event.target.value || '') as Asset['status'] | '')
                 setFilterNotice(null)
               }}
-              className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
+              className="min-h-10 w-full min-w-0 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
             >
               <option value="">All statuses</option>
               {assetStatusCodes.map((status) => (
@@ -577,7 +577,7 @@ export function AssetRegistry({
               ))}
             </select>
           </label>
-          <label className="grid gap-1 text-sm font-semibold text-[var(--text-primary)]">
+          <label className="grid min-w-0 gap-1 text-sm font-semibold text-[var(--text-primary)]">
             <span>Building</span>
             <select
               value={building}
@@ -585,7 +585,7 @@ export function AssetRegistry({
                 setBuilding(event.target.value)
                 setFilterNotice(null)
               }}
-              className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
+              className="min-h-10 w-full min-w-0 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
             >
               <option value="">All buildings</option>
               {buildings.map((value) => (
@@ -593,7 +593,7 @@ export function AssetRegistry({
               ))}
             </select>
           </label>
-          <label className="grid gap-1 text-sm font-semibold text-[var(--text-primary)]">
+          <label className="grid min-w-0 gap-1 text-sm font-semibold text-[var(--text-primary)]">
             <span>Department</span>
             <select
               value={department}
@@ -601,7 +601,7 @@ export function AssetRegistry({
                 setDepartment(event.target.value)
                 setFilterNotice(null)
               }}
-              className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
+              className="min-h-10 w-full min-w-0 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
             >
               <option value="">All departments</option>
               {departments.map((value) => (

@@ -6,6 +6,7 @@ import {
   type ReactNode,
 } from 'react'
 import { Link } from '@tanstack/react-router'
+import { formatAssetCategory } from '@/features/assets/asset-presentation'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -68,13 +69,6 @@ const timelinessOptions = [
 
 const dashboardTitleId = 'dashboard-title'
 const dashboardNlaSectionId = 'pm-analytics-section'
-
-function formatCategory(value: string) {
-  return value
-    .split('-')
-    .map((part) => `${part.slice(0, 1).toUpperCase()}${part.slice(1)}`)
-    .join(' ')
-}
 
 function formatDate(
   value: string | null | undefined,
@@ -520,7 +514,7 @@ function AssetRows({
                     {asset.assetCode}
                   </Link>
                   <p className="mt-1 text-xs text-[var(--text-neutral)]">
-                    {formatCategory(asset.assetCategory)}
+                    {formatAssetCategory(asset.assetCategory)}
                   </p>
                 </td>
                 <td className="px-3 py-3 text-[var(--text-secondary)]">
@@ -1009,7 +1003,7 @@ export function PmPeriodDashboard({
                           Asset category
                         </dt>
                         <dd className="mt-1 font-medium text-[var(--text-primary)]">
-                          {formatCategory(search.assetCategory ?? '')}
+                          {formatAssetCategory(search.assetCategory ?? '')}
                         </dd>
                       </div>
                       <div>
@@ -1381,7 +1375,7 @@ export function PmPeriodDashboard({
                           setDraftCycleValue('')
                         }}
                       >
-                        {formatCategory(category)}
+                        {formatAssetCategory(category)}
                       </Button>
                     ))}
                   </div>

@@ -14,7 +14,10 @@ import { Skeleton } from '@/components/ui/skeleton'
 import type { Asset } from '@/features/assets/asset-contract'
 import { AssetPicker } from '@/features/assets/asset-picker'
 import { useAsset } from '@/features/assets/asset-queries'
-import { categoryLabel } from '@/features/assets/asset-presentation'
+import {
+  categoryLabel,
+  formatAssetCategory,
+} from '@/features/assets/asset-presentation'
 import type {
   InspectionFollowUpStatus,
   InspectionRegistryItem,
@@ -94,7 +97,9 @@ const createColumns = (search: InspectionSearch) => [
           <p className="font-semibold">Asset details unavailable</p>
         )}
         <p className="text-xs text-[var(--text-neutral)]">
-          {row.original.asset?.assetCategory ?? 'Category not recorded'}
+          {row.original.asset
+            ? formatAssetCategory(row.original.asset.assetCategory)
+            : 'Category not recorded'}
         </p>
         <p className="text-xs text-[var(--text-neutral)]">
           {[row.original.asset?.department, row.original.asset?.building]
@@ -600,8 +605,7 @@ export function InspectionRegistry({
           Inspections
         </h1>
         <p className="mt-2 max-w-2xl text-[var(--text-secondary)]">
-          Review acknowledged inspection outcomes and source notes. This page
-          does not submit, approve, or change inspection records.
+          Review inspection outcomes, source notes, and corrective follow-up.
         </p>
       </div>
 
@@ -1062,7 +1066,9 @@ export function InspectionRegistry({
                     <p className="font-semibold">Asset details unavailable</p>
                   )}
                   <p className="text-xs text-[var(--text-neutral)]">
-                    {inspection.asset?.assetCategory ?? 'Category not recorded'}
+                    {inspection.asset
+                      ? formatAssetCategory(inspection.asset.assetCategory)
+                      : 'Category not recorded'}
                   </p>
                   <p className="text-sm text-[var(--text-secondary)]">
                     Actual inspection date:{' '}

@@ -166,17 +166,15 @@ describe('PM analytics panel', () => {
     ).toBeInTheDocument()
     expect(
       screen.getByText(
-        'Non-operational assets for Fire Extinguisher in November 2026.',
+        'Non-operational assets for Fire extinguishers in November 2026.',
       ),
     ).toBeInTheDocument()
-    expect(screen.getByText('3 shown of 3')).toBeInTheDocument()
+    expect(screen.getByText('1 shown', { exact: true })).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: 'Matching records' }),
+    ).toBeInTheDocument()
     expect(
       screen.getByText(/Deadline: Nov 30, 2026.*11:59 PM.*GMT\+8/),
-    ).toBeInTheDocument()
-    expect(
-      screen.getByText(
-        /A measure count can therefore be lower than the source count/,
-      ),
     ).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'FE-001' })).toHaveAttribute(
       'href',
@@ -187,6 +185,23 @@ describe('PM analytics panel', () => {
     ).toBeInTheDocument()
     expect(screen.getByText('Form status')).toBeInTheDocument()
     expect(screen.getByText('Draft', { exact: true })).toBeInTheDocument()
+
+    fireEvent.click(
+      screen.getByRole('checkbox', {
+        name: 'Show all calculation source records',
+      }),
+    )
+    expect(await screen.findByText('3 shown of 3')).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: 'Source records' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        /A measure count can therefore be lower than the source count/,
+      ),
+    ).toBeInTheDocument()
+    expect(screen.getByText('FE-002')).toBeInTheDocument()
+    expect(screen.getByText('FE-003')).toBeInTheDocument()
     expect(screen.getAllByText('Not inspected', { exact: true })).toHaveLength(
       2,
     )
@@ -346,7 +361,7 @@ describe('PM analytics panel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Show result' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'This question could not be answered.',
+      'PM analytics could not be loaded. Please try again.',
     )
     expect(screen.queryByText('Unsupported question')).toBeNull()
   })
@@ -406,7 +421,7 @@ describe('PM analytics panel', () => {
     submitQuestion()
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'This question could not be answered.',
+      'PM analytics could not be loaded. Please try again.',
     )
     expect(screen.queryByText('private provider response')).toBeNull()
     expect(testState.queryPmAnalytics).not.toHaveBeenCalled()
@@ -459,7 +474,7 @@ describe('PM analytics panel', () => {
     expect(screen.getByText('Inspected assets (count)')).toBeInTheDocument()
     expect(
       screen.getByText(
-        'Inspected assets for Fire Extinguisher in November 2026.',
+        'Inspected assets for Fire extinguishers in November 2026.',
       ),
     ).toBeInTheDocument()
     expect(screen.getByText('2', { exact: true })).toBeInTheDocument()

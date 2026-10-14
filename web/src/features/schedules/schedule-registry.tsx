@@ -16,7 +16,10 @@ import { Skeleton } from '@/components/ui/skeleton'
 import type { Asset } from '@/features/assets/asset-contract'
 import { useAsset } from '@/features/assets/asset-queries'
 import { AssetPicker } from '@/features/assets/asset-picker'
-import { categoryLabel } from '@/features/assets/asset-presentation'
+import {
+  categoryLabel,
+  formatAssetCategory,
+} from '@/features/assets/asset-presentation'
 import { useCurrentUser } from '@/features/auth/current-user'
 import {
   RegistryLoadingPanel,
@@ -110,7 +113,9 @@ const createColumns = (search: ScheduleSearch) => [
           <p className="font-semibold">Asset details unavailable</p>
         )}
         <p className="text-xs text-[var(--text-neutral)]">
-          {row.original.asset?.assetCategory ?? 'Category not recorded'}
+          {row.original.asset
+            ? formatAssetCategory(row.original.asset.assetCategory)
+            : 'Category not recorded'}
         </p>
       </div>
     ),
@@ -641,8 +646,7 @@ export function ScheduleRegistry({
             Schedules
           </h1>
           <p className="mt-2 max-w-2xl text-[var(--text-secondary)]">
-            Browse scheduled PM months, due dates, and recorded statuses. The
-            interface does not infer overdue state or change workflow status.
+            Review PM cycles, due dates, and recorded schedule status.
           </p>
         </div>
         {(canCreate || canGenerate) && (
@@ -673,8 +677,7 @@ export function ScheduleRegistry({
             Find schedules
           </h2>
           <p className="mt-1 text-sm text-[var(--text-secondary)]">
-            Search first, then narrow the schedule registry with the most-used
-            filters.
+            Search by asset, then refine by status or PM cycle.
           </p>
         </div>
         <Card className="p-4 shadow-none">
@@ -1127,8 +1130,9 @@ export function ScheduleRegistry({
                           )}
                         </h2>
                         <p className="text-xs text-[var(--text-neutral)]">
-                          {schedule.asset?.assetCategory ??
-                            'Category not recorded'}
+                          {schedule.asset
+                            ? formatAssetCategory(schedule.asset.assetCategory)
+                            : 'Category not recorded'}
                         </p>
                       </div>
                       <Badge variant={statusVariant(schedule.status)}>

@@ -1068,7 +1068,7 @@ describe('preventive-maintenance form review', () => {
       expect(screen.getByLabelText('Search assets')).toHaveValue('FE-TEST-001')
       expect(
         screen.getByText('Asset category').parentElement,
-      ).toHaveTextContent('Fire Extinguisher')
+      ).toHaveTextContent('Fire extinguishers')
       const scheduledAssetRow = screen.getByRole('row', {
         name: /FE-TEST-001/,
       })

@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { ApiError } from '@/api/problem-details'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { formatAssetCategory } from '@/features/assets/asset-presentation'
 import type { Schedule } from '@/features/schedules/schedule-contract'
 import {
   useAssignScheduleBatchSupervisor,
@@ -97,7 +98,9 @@ export function ScheduleBatchAssignment({
             Asset category
           </dt>
           <dd className="mt-1 text-sm">
-            {schedule.asset?.assetCategory ?? 'Not recorded'}
+            {schedule.asset
+              ? formatAssetCategory(schedule.asset.assetCategory)
+              : 'Not recorded'}
           </dd>
         </div>
         <div>

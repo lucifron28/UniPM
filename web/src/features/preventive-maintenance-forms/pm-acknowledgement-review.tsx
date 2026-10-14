@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { ApiError } from '@/api/problem-details'
 import { assetCategoryCodes } from '@/features/assets/asset-contract'
+import { formatAssetCategory } from '@/features/assets/asset-presentation'
 import type { PmPeriodDashboardSearch } from '@/features/reports/pm-period-dashboard'
 import type {
   PmPeriodDashboardAssetRowResponse,
@@ -40,13 +41,6 @@ export type PmAcknowledgementReviewSearch = PmPeriodDashboardSearch & {
 
 export type PmAcknowledgementReviewContext = PmPeriodDashboardSearch & {
   reviewFormId: string
-}
-
-function formatCategory(value: string) {
-  return value
-    .split('-')
-    .map((part) => `${part.slice(0, 1).toUpperCase()}${part.slice(1)}`)
-    .join(' ')
 }
 
 function formatCycle(value: string) {
@@ -188,7 +182,7 @@ function Summary({
         />
         <DetailItem
           label="Asset category"
-          value={formatCategory(batch.assetCategory)}
+          value={formatAssetCategory(batch.assetCategory)}
         />
         <DetailItem label="PM cycle" value={formatCycle(batch.pmCycle)} />
         <DetailItem label="Form period" value={formatFormPeriod(form)} />
@@ -282,7 +276,7 @@ function AssetReviewList({
                       {asset.assetCode}
                     </p>
                     <p className="mt-1 text-xs text-[var(--text-neutral)]">
-                      {formatCategory(asset.assetCategory)}
+                      {formatAssetCategory(asset.assetCategory)}
                     </p>
                   </td>
                   <td className="px-3 py-3 text-[var(--text-secondary)]">

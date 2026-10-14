@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { formatAssetCategory } from '@/features/assets/asset-presentation'
 import { formatPmCycle } from '@/features/schedules/schedule-presentation'
 import { useScheduleCoverageReview } from '@/features/schedules/schedule-queries'
 
@@ -107,7 +108,7 @@ export function ScheduleCoverageReview() {
                   {record.department}
                 </td>
                 <td className="px-3 py-3 text-[var(--text-secondary)]">
-                  {record.assetCategory}
+                  {formatAssetCategory(record.assetCategory)}
                 </td>
                 <td className="px-3 py-3 text-[var(--text-secondary)]">
                   {formatPmCycle(record.pmCycle)}

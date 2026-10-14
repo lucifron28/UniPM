@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mobile/api/api_exception.dart';
 import 'package:mobile/auth/auth_models.dart';
 import 'package:mobile/features/auth/home_page.dart';
 import 'package:mobile/features/preventive_maintenance/preventive_maintenance_models.dart';
@@ -30,18 +31,24 @@ class _MutablePmRepository implements PreventiveMaintenanceRepository {
 
   List<PreventiveMaintenanceForm> forms;
   List<ScheduleOption> schedules;
+  Object? formsFailure;
+  Object? schedulesFailure;
   int listFormsCalls = 0;
   int listSchedulesCalls = 0;
 
   @override
   Future<List<PreventiveMaintenanceForm>> listForms() async {
     listFormsCalls++;
+    final failure = formsFailure;
+    if (failure != null) throw failure;
     return List.unmodifiable(forms);
   }
 
   @override
   Future<List<ScheduleOption>> listSchedules({String? assetId}) async {
     listSchedulesCalls++;
+    final failure = schedulesFailure;
+    if (failure != null) throw failure;
     return List.unmodifiable(
       schedules.where(
         (schedule) => assetId == null || schedule.assetId == assetId,
@@ -574,5 +581,93 @@ void main() {
     await tester.pumpAndSettle();
     expect(createdDraft, findsOneWidget);
     expect(find.text('1 of 1 assets inspected'), findsOneWidget);
+  });
+
+  testWidgets('keeps assigned schedules visible when PM forms fail', (
+    tester,
+  ) async {
+    final repository = _MutablePmRepository(
+      forms: const [],
+      schedules: [
+        _schedule(id: 'available-schedule', cycle: '2026-05', status: 'Due'),
+      ],
+    )..formsFailure = StateError('Forms are unavailable.');
+    PmBatchScope? startedScope;
+
+    await _pumpHome(
+      tester,
+      user: _inspector,
+      repository: repository,
+      onStartBatch: (_, scope) async {
+        startedScope = scope;
+      },
+    );
+
+    expect(find.text('Could not load active PM forms.'), findsOneWidget);
+    expect(find.text('Could not load assigned PM schedules.'), findsNothing);
+    expect(find.text('Start inspection'), findsOneWidget);
+
+    final startInspection = find.text('Start inspection');
+    await tester.ensureVisible(startInspection);
+    await tester.pumpAndSettle();
+    await tester.tap(startInspection);
+    await tester.pumpAndSettle();
+
+    expect(startedScope?.department, 'Facilities');
+    expect(startedScope?.assetCategory, 'fire-extinguisher');
+    expect(startedScope?.pmCycle, '2026-05');
+  });
+
+  testWidgets('keeps Draft forms resumable when schedule loading fails', (
+    tester,
+  ) async {
+    final draft = _form(
+      id: _draftId,
+      inspections: [_inspection(1, scheduleId: 'draft-schedule')],
+    );
+    final repository = _MutablePmRepository(
+      forms: [draft],
+      schedules: const [],
+    )..schedulesFailure = StateError('Schedules are unavailable.');
+    String? openedFormId;
+
+    await _pumpHome(
+      tester,
+      user: _inspector,
+      repository: repository,
+      onOpenForm: (_, formId) async {
+        openedFormId = formId;
+      },
+    );
+
+    expect(find.text('Could not load assigned PM schedules.'), findsOneWidget);
+    expect(find.text('Could not load active PM forms.'), findsNothing);
+    expect(find.byKey(const ValueKey('draft-card-$_draftId')), findsOneWidget);
+    expect(find.text('Start inspection'), findsNothing);
+
+    final continueBatch = find.text('Continue PM batch').first;
+    await tester.ensureVisible(continueBatch);
+    await tester.pumpAndSettle();
+    await tester.tap(continueBatch);
+    await tester.pumpAndSettle();
+
+    expect(openedFormId, _draftId);
+  });
+
+  testWidgets('does not turn terminal 401 into a PM list error', (
+    tester,
+  ) async {
+    final repository = _MutablePmRepository(
+      forms: const [],
+      schedules: const [],
+    )..formsFailure = const ApiException(
+      statusCode: 401,
+      message: 'Your session expired. Please sign in again.',
+    );
+
+    await _pumpHome(tester, user: _inspector, repository: repository);
+
+    expect(find.text('Could not load active PM forms.'), findsNothing);
+    expect(find.text('Could not load assigned PM schedules.'), findsNothing);
   });
 }

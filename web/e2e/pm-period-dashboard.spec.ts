@@ -962,10 +962,28 @@ test.describe('PM period dashboard', () => {
     await expect(
       results.getByText('Non-operational assets', { exact: true }),
     ).toBeVisible()
-    await expect(results.getByText('3 shown of 3')).toBeVisible()
+    await expect(results.getByText('1 shown', { exact: true })).toBeVisible()
+    await expect(
+      results.getByRole('heading', { name: 'Matching records' }),
+    ).toBeVisible()
     await expect(
       results.getByText(/Deadline: Nov 30, 2026.*11:59 PM.*GMT\+8/),
     ).toBeVisible()
+    await expect(
+      results.getByRole('link', { name: 'FE-001', exact: true }),
+    ).toBeVisible()
+    await expect(results.getByText('FE-002', { exact: true })).toHaveCount(0)
+    await expect(results.getByText('FE-003', { exact: true })).toHaveCount(0)
+
+    await results
+      .getByRole('checkbox', { name: 'Show all calculation source records' })
+      .check()
+    await expect(results.getByText('3 shown of 3')).toBeVisible()
+    await expect(
+      results.getByRole('heading', { name: 'Source records' }),
+    ).toBeVisible()
+    await expect(results.getByRole('link', { name: 'FE-002' })).toBeVisible()
+    await expect(results.getByRole('link', { name: 'FE-003' })).toBeVisible()
     await expect(results.getByText('Form status')).toBeVisible()
     await expect(results.getByText('Draft', { exact: true })).toBeVisible()
     await expect(

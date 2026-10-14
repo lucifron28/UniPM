@@ -282,6 +282,71 @@ function expectStableRegistryLayout(
 }
 
 test.describe('Asset Registry E2E Specs', () => {
+  for (const viewport of [
+    { width: 1440, height: 900 },
+    { width: 1920, height: 1080 },
+  ]) {
+    test(`keeps asset filters inside their grid cells at ${viewport.width}px`, async ({
+      page,
+    }) => {
+      await page.setViewportSize(viewport)
+      await mockAssetRegistry(page)
+      await page.goto('/app/assets')
+      await expect(page.getByRole('heading', { name: 'Assets' })).toBeVisible()
+      await expect(page.getByText('FE-001').first()).toBeVisible()
+
+      const selectBoxes = await page
+        .locator('form select')
+        .evaluateAll((items) =>
+          items.map((item) => {
+            const { x, y, width, height } = item.getBoundingClientRect()
+            const cell = item.closest('.grid')
+            if (!cell)
+              throw new Error('Expected each asset filter to have a grid cell.')
+            const cellRect = cell.getBoundingClientRect()
+            return {
+              x,
+              y,
+              width,
+              height,
+              right: x + width,
+              bottom: y + height,
+              cell: {
+                x: cellRect.x,
+                y: cellRect.y,
+                right: cellRect.right,
+                bottom: cellRect.bottom,
+                width: cellRect.width,
+              },
+            }
+          }),
+        )
+      expect(selectBoxes).toHaveLength(4)
+      for (const rect of selectBoxes) {
+        expect(rect.width).toBeGreaterThan(0)
+        expect(rect.x).toBeGreaterThanOrEqual(0)
+        expect(rect.right).toBeLessThanOrEqual(viewport.width)
+        expect(rect.cell.width).toBeGreaterThan(0)
+        expect(rect.x).toBeGreaterThanOrEqual(rect.cell.x)
+        expect(rect.right).toBeLessThanOrEqual(rect.cell.right)
+        expect(rect.y).toBeGreaterThanOrEqual(rect.cell.y)
+        expect(rect.bottom).toBeLessThanOrEqual(rect.cell.bottom)
+      }
+      for (let first = 0; first < selectBoxes.length; first += 1) {
+        for (let second = first + 1; second < selectBoxes.length; second += 1) {
+          const a = selectBoxes[first]
+          const b = selectBoxes[second]
+          expect(
+            a.right <= b.x ||
+              b.right <= a.x ||
+              a.bottom <= b.y ||
+              b.bottom <= a.y,
+          ).toBe(true)
+        }
+      }
+    })
+  }
+
   test('authenticated GSD users can browse and filter fictional assets', async ({
     page,
   }) => {
@@ -406,6 +471,7 @@ test.describe('Asset Registry E2E Specs', () => {
     await mockAssetRegistry(page)
     await page.goto('/app/assets')
 
+    await expect(page.getByRole('heading', { name: 'Assets' })).toBeVisible()
     const nav = page
       .locator('nav[aria-label="Primary"]')
       .filter({ has: page.getByRole('link', { name: 'Assets' }) })

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useCurrentUser } from '@/features/auth/current-user'
+import { formatAssetCategory } from '@/features/assets/asset-presentation'
 import { ScheduleBatchAssignment } from '@/features/schedules/schedule-batch-assignment'
 import { useSchedule } from '@/features/schedules/schedule-queries'
 import type { ScheduleSearch } from '@/features/schedules/schedule-registry'
@@ -191,7 +192,11 @@ export function ScheduleDetail({
         </div>
         <DetailItem
           label="Asset category"
-          value={record.asset?.assetCategory ?? 'Not recorded'}
+          value={
+            record.asset
+              ? formatAssetCategory(record.asset.assetCategory)
+              : 'Not recorded'
+          }
         />
         <DetailItem
           label="Location"

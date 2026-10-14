@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../api/api_exception.dart';
 import '../../auth/auth_models.dart';
 import '../../ui/app_colors.dart';
 import '../../ui/widgets/batch_pm_card.dart';
@@ -41,7 +42,8 @@ class _HomePageState extends State<HomePage> {
   List<PreventiveMaintenanceForm> _forms = [];
   List<ScheduleOption> _schedules = [];
   bool _isLoadingBatches = false;
-  String? _batchError;
+  String? _formsError;
+  String? _schedulesError;
 
   bool get _isGsd => widget.user.roles.contains('GSD');
 
@@ -57,28 +59,42 @@ class _HomePageState extends State<HomePage> {
 
     setState(() {
       _isLoadingBatches = true;
-      _batchError = null;
+      _formsError = null;
+      _schedulesError = null;
     });
 
+    await Future.wait<void>([
+      _loadForms(repo),
+      _loadSchedules(repo),
+    ]);
+    if (!mounted) return;
+    setState(() => _isLoadingBatches = false);
+  }
+
+  Future<void> _loadForms(PreventiveMaintenanceRepository repo) async {
     try {
-      final results = await Future.wait([
-        repo.listForms(),
-        repo.listSchedules(),
-      ]);
+      final forms = await repo.listForms();
       if (!mounted) return;
-      setState(() {
-        _forms = results[0] as List<PreventiveMaintenanceForm>;
-        _schedules = results[1] as List<ScheduleOption>;
-        _isLoadingBatches = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _isLoadingBatches = false;
-        _batchError = 'Could not load active batches.';
-      });
+      setState(() => _forms = forms);
+    } catch (error) {
+      if (!mounted || _isTerminalAuthenticationFailure(error)) return;
+      setState(() => _formsError = 'Could not load active PM forms.');
     }
   }
+
+  Future<void> _loadSchedules(PreventiveMaintenanceRepository repo) async {
+    try {
+      final schedules = await repo.listSchedules();
+      if (!mounted) return;
+      setState(() => _schedules = schedules);
+    } catch (error) {
+      if (!mounted || _isTerminalAuthenticationFailure(error)) return;
+      setState(() => _schedulesError = 'Could not load assigned PM schedules.');
+    }
+  }
+
+  bool _isTerminalAuthenticationFailure(Object error) =>
+      error is ApiException && error.isUnauthorized;
 
   Future<void> _runChildWorkflow(
     FutureOr<void> Function()? openWorkflow,
@@ -524,120 +540,100 @@ class _HomePageState extends State<HomePage> {
             ),
             const SizedBox(height: 12),
 
-            if (_batchError != null)
+            if (_formsError != null)
+              _BatchLoadErrorCard(
+                message: _formsError!,
+                onRetry: _loadBatches,
+              ),
+            if (_schedulesError != null)
+              _BatchLoadErrorCard(
+                message: _schedulesError!,
+                onRetry: _loadBatches,
+              ),
+            if (!_isLoadingBatches &&
+                _formsError == null &&
+                _schedulesError == null &&
+                _activeDrafts.isEmpty &&
+                _unstartedAssignedBatches.isEmpty &&
+                _awaitingAck.isEmpty)
               Card(
-                color: AppColors.pageBackground,
                 child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
                     children: [
                       const Icon(
-                        Icons.error_outline,
-                        color: AppColors.error,
-                        size: 20,
+                        Icons.checklist_rtl_outlined,
+                        size: 44,
+                        color: AppColors.textNeutral,
                       ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          _batchError!,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: AppColors.error,
-                          ),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'No assigned PM tasks',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
                         ),
                       ),
-                      TextButton(
-                        onPressed: _loadBatches,
-                        child: const Text('Retry'),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'You have no assigned PM tasks for this period.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: AppColors.textNeutral,
+                        ),
                       ),
                     ],
                   ),
                 ),
               )
             else ...[
-              if (!_isLoadingBatches &&
-                  _activeDrafts.isEmpty &&
-                  _unstartedAssignedBatches.isEmpty &&
-                  _awaitingAck.isEmpty)
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      children: [
-                        const Icon(
-                          Icons.checklist_rtl_outlined,
-                          size: 44,
-                          color: AppColors.textNeutral,
-                        ),
-                        const SizedBox(height: 12),
-                        const Text(
-                          'No assigned PM tasks',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        const Text(
-                          'You have no assigned PM tasks for this period.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: AppColors.textNeutral,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                )
-              else ...[
-                // Field-work tasks ordered by urgency, then PM cycle.
-                ..._orderedPmTasks.map((task) => task.card),
+              // Field-work tasks ordered by urgency, then PM cycle.
+              ..._orderedPmTasks.map((task) => task.card),
 
-                // Awaiting Acknowledgement
-                if (_awaitingAck.isNotEmpty) ...[
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Awaiting Acknowledgement',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                    ),
+              // Awaiting Acknowledgement
+              if (_awaitingAck.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                const Text(
+                  'Awaiting Acknowledgement',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
                   ),
-                  const SizedBox(height: 10),
-                  ..._awaitingAck.map((form) {
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: BatchPmCard(
-                        key: ValueKey('ack-card-${form.id}'),
-                        department: form.department ?? 'General Department',
-                        assetCategory: form.assetCategory,
-                        pmCycle: _resolvePmCycle(
-                          pmCycle: form.pmCycle,
-                          periodType: form.periodType,
-                          year: form.year,
-                        ),
-                        status: form.status,
-                        completedCount: form.inspections.length,
-                        totalCount: form.inspections.length,
-                        building: form.building,
-                        actionLabel: 'Capture Signature',
-                        onAction: widget.onOpenAcknowledgement == null
-                            ? null
-                            : () => _runChildWorkflow(
-                                () => widget.onOpenAcknowledgement!(form),
-                              ),
-                        onTap: widget.onOpenAcknowledgement == null
-                            ? null
-                            : () => _runChildWorkflow(
-                                () => widget.onOpenAcknowledgement!(form),
-                              ),
+                ),
+                const SizedBox(height: 10),
+                ..._awaitingAck.map((form) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: BatchPmCard(
+                      key: ValueKey('ack-card-${form.id}'),
+                      department: form.department ?? 'General Department',
+                      assetCategory: form.assetCategory,
+                      pmCycle: _resolvePmCycle(
+                        pmCycle: form.pmCycle,
+                        periodType: form.periodType,
+                        year: form.year,
                       ),
-                    );
-                  }),
-                ],
+                      status: form.status,
+                      completedCount: form.inspections.length,
+                      totalCount: form.inspections.length,
+                      building: form.building,
+                      actionLabel: 'Capture Signature',
+                      onAction: widget.onOpenAcknowledgement == null
+                          ? null
+                          : () => _runChildWorkflow(
+                              () => widget.onOpenAcknowledgement!(form),
+                            ),
+                      onTap: widget.onOpenAcknowledgement == null
+                          ? null
+                          : () => _runChildWorkflow(
+                              () => widget.onOpenAcknowledgement!(form),
+                            ),
+                    ),
+                  );
+                }),
               ],
             ],
           ],
@@ -720,6 +716,46 @@ class _QuickActionCard extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BatchLoadErrorCard extends StatelessWidget {
+  const _BatchLoadErrorCard({
+    required this.message,
+    required this.onRetry,
+  });
+
+  final String message;
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      color: AppColors.pageBackground,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            const Icon(
+              Icons.error_outline,
+              color: AppColors.error,
+              size: 20,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                message,
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: AppColors.error,
+                ),
+              ),
+            ),
+            TextButton(onPressed: onRetry, child: const Text('Retry')),
+          ],
         ),
       ),
     );

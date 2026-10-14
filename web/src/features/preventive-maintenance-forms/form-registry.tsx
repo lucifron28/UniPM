@@ -3,6 +3,7 @@ import { Link } from '@tanstack/react-router'
 import { ApiError } from '@/api/problem-details'
 import type { ListPreventiveMaintenanceFormsParams } from '@/api/generated/models'
 import { assetCategoryCodes } from '@/features/assets/asset-contract'
+import { formatAssetCategory } from '@/features/assets/asset-presentation'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -97,7 +98,7 @@ function FormSummary({
             Asset category
           </dt>
           <dd className="mt-1 text-[var(--text-primary)]">
-            {form.assetCategory}
+            {formatAssetCategory(form.assetCategory)}
           </dd>
         </div>
         <div>
@@ -238,7 +239,7 @@ function FormRegistryFilters({
             .filter((category) => categories.includes(category))
             .map((category) => (
               <option key={category} value={category}>
-                {category.replaceAll('-', ' ')}
+                {formatAssetCategory(category)}
               </option>
             ))}
         </select>
@@ -493,8 +494,7 @@ export function FormRegistry({ search, onSearchChange }: FormRegistryProps) {
           Form review
         </h1>
         <p className="mt-2 max-w-2xl text-[var(--text-secondary)]">
-          Review submitted preventive-maintenance forms and their inspection
-          source rows. Field workflow actions remain outside this web module.
+          Review submitted forms and open their inspection source rows.
         </p>
       </div>
       <FormRegistryFilters

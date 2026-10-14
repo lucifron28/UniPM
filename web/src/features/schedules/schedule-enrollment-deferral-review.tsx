@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { formatAssetCategory } from '@/features/assets/asset-presentation'
 import {
   formatPmCycle,
   formatScheduleDateTime,
@@ -153,7 +154,8 @@ export function ScheduleEnrollmentDeferralReview() {
                       {record.assetCode}
                     </p>
                     <p className="mt-1 text-xs text-[var(--text-neutral)]">
-                      {record.department} · {record.assetCategory}
+                      {record.department} ·{' '}
+                      {formatAssetCategory(record.assetCategory)}
                     </p>
                   </div>
                   <Badge

@@ -15,6 +15,7 @@ import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useCurrentUser } from '@/features/auth/current-user'
+import { formatAssetCategory } from '@/features/assets/asset-presentation'
 import { formatPmCycle } from '@/features/schedules/schedule-presentation'
 
 const metricDescriptions: Record<string, string> = {
@@ -33,13 +34,6 @@ const clarificationPrompts: Record<string, string> = {
   Month: 'Which month should be used?',
   Department: 'Which department should be used?',
   GroupBy: 'Should the results be grouped by department?',
-}
-
-function formatCategory(value: string) {
-  return value
-    .split('-')
-    .map((part) => `${part.slice(0, 1).toUpperCase()}${part.slice(1)}`)
-    .join(' ')
 }
 
 function formatMetric(value: string) {
@@ -204,6 +198,18 @@ export function PmAnalyticsPanel() {
 function PmAnalyticsQuestionPanel() {
   const [question, setQuestion] = useState('')
   const [response, setResponse] = useState<PmAnalyticsResponse | null>(null)
+  const [showAllSources, setShowAllSources] = useState(false)
+  const filtersSources =
+    response?.plan.metric === 'CompletedLate' ||
+    response?.plan.metric === 'NonOperational'
+  const visibleSources =
+    response?.sources.filter((source) => {
+      if (!filtersSources || showAllSources) return true
+      return response.plan.metric === 'CompletedLate'
+        ? source.timeliness === 'Late'
+        : source.inspectionCompletedAt !== null &&
+            source.condition === 'NonOperational'
+    }) ?? []
   const [interpretation, setInterpretation] =
     useState<PmAnalyticsInterpretationResponse | null>(null)
   const [presentation, setPresentation] = useState<string | null>(null)
@@ -227,6 +233,7 @@ function PmAnalyticsQuestionPanel() {
     controller.current = null
     setQuestion(value)
     setResponse(null)
+    setShowAllSources(false)
     setInterpretation(null)
     setPresentation(null)
     setHasError(false)
@@ -359,8 +366,7 @@ function PmAnalyticsQuestionPanel() {
       )}
       {hasError && (
         <p role="alert" className="mt-4 text-sm text-[var(--error)]">
-          This question could not be answered. Check that it uses one supported
-          measure, category, and explicit month and year.
+          PM analytics could not be loaded. Please try again.
         </p>
       )}
       {interpretation?.status === 'NeedsClarification' && (
@@ -407,7 +413,7 @@ function PmAnalyticsQuestionPanel() {
               {progressCount
                 ? 'Inspected assets'
                 : formatMetric(response.plan.metric)}{' '}
-              for {formatCategory(response.plan.assetCategory)} in{' '}
+              for {formatAssetCategory(response.plan.assetCategory)} in{' '}
               {formatPmCycle(response.plan.pmCycle)}
               {response.plan.department ? `, ${response.plan.department}` : ''}
               {response.plan.groupBy === 'Department'
@@ -454,25 +460,38 @@ function PmAnalyticsQuestionPanel() {
           <div>
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <h4 className="font-semibold text-[var(--text-primary)]">
-                Source records
+                {filtersSources && !showAllSources
+                  ? 'Matching records'
+                  : 'Source records'}
               </h4>
               <p className="text-xs text-[var(--text-secondary)]">
-                {response.sources.length.toLocaleString()} shown of{' '}
-                {response.totalSourceCount.toLocaleString()}
+                {visibleSources.length.toLocaleString()} shown
+                {(!filtersSources || showAllSources) &&
+                  ` of ${response.totalSourceCount.toLocaleString()}`}
               </p>
             </div>
             <p className="mt-1 text-xs text-[var(--text-neutral)]">
-              Sources include all eligible scheduled assets, even when an
-              inspection has not been recorded. A measure count can therefore be
-              lower than the source count.
+              {filtersSources && !showAllSources
+                ? 'Showing records that contribute to the requested count, within the returned source records.'
+                : 'Sources include all eligible scheduled assets, even when an inspection has not been recorded. A measure count can therefore be lower than the source count.'}
             </p>
-            {response.sources.length === 0 ? (
+            {filtersSources && (
+              <label className="mt-2 flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={showAllSources}
+                  onChange={(event) => setShowAllSources(event.target.checked)}
+                />
+                Show all calculation source records
+              </label>
+            )}
+            {visibleSources.length === 0 ? (
               <p className="mt-2 text-sm text-[var(--text-secondary)]">
                 No source records match this scope.
               </p>
             ) : (
               <ul className="mt-3 space-y-2">
-                {response.sources.map((source) => (
+                {visibleSources.map((source) => (
                   <SourceRecord
                     key={`${source.scheduleId}-${source.inspectionId ?? 'none'}`}
                     source={source}

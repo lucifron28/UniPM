@@ -430,6 +430,17 @@ test.describe('Inspection review workflows', () => {
         height: viewport.height,
       })
       await mockInspectionApi(page)
+      const photoDataUrl = await page.evaluate(() => {
+        const canvas = document.createElement('canvas')
+        canvas.width = 2
+        canvas.height = 2
+        const context = canvas.getContext('2d')
+        if (!context) throw new Error('Canvas context is unavailable.')
+        context.fillStyle = '#8f1d1d'
+        context.fillRect(0, 0, canvas.width, canvas.height)
+        return canvas.toDataURL('image/jpeg')
+      })
+      const validJpeg = Buffer.from(photoDataUrl.split(',')[1]!, 'base64')
       await page.route(`**/api/v1/inspections/${inspectionId}`, (route) =>
         route.fulfill({
           status: 200,
@@ -441,7 +452,7 @@ test.describe('Inspection review workflows', () => {
         route.fulfill({
           status: 200,
           contentType: 'image/jpeg',
-          body: Buffer.from([0xff, 0xd8, 0xff, 0xd9]),
+          body: validJpeg,
         }),
       )
 
@@ -450,6 +461,10 @@ test.describe('Inspection review workflows', () => {
         name: 'Open inspection photo preview',
       })
       await expect(thumbnail).toBeVisible()
+      const thumbnailImage = page.getByAltText('Inspection photo thumbnail')
+      await expect
+        .poll(() => thumbnailImage.evaluate((image) => image.naturalWidth))
+        .toBeGreaterThan(0)
       await thumbnail.focus()
       await page.keyboard.press('Enter')
 
@@ -460,6 +475,12 @@ test.describe('Inspection review workflows', () => {
         name: 'Close photo preview',
       })
       await expect(dialog).toBeVisible()
+      const previewImage = page.getByAltText(
+        'Photo captured for this inspection',
+      )
+      await expect
+        .poll(() => previewImage.evaluate((image) => image.naturalWidth))
+        .toBeGreaterThan(0)
       await expect(closeButton).toBeFocused()
       await expect
         .poll(() => dialog.evaluate((element) => element.matches(':modal')))
