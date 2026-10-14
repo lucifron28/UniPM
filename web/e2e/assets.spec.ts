@@ -292,7 +292,9 @@ test.describe('Asset Registry E2E Specs', () => {
       await page.setViewportSize(viewport)
       await mockAssetRegistry(page)
       await page.goto('/app/assets')
-      await expect(page.getByRole('heading', { name: 'Assets' })).toBeVisible()
+      await expect(
+        page.getByRole('heading', { name: 'Assets', exact: true }),
+      ).toBeVisible()
       await expect(page.getByText('FE-001').first()).toBeVisible()
 
       const selectBoxes = await page
@@ -352,13 +354,98 @@ test.describe('Asset Registry E2E Specs', () => {
   }) => {
     await mockAssetRegistry(page)
     await page.goto('/app/assets')
-    await expect(page.getByRole('heading', { name: 'Assets' })).toBeVisible()
+    await expect(
+      page.getByRole('heading', { name: 'Assets', exact: true }),
+    ).toBeVisible()
     await expect(page.getByText('FE-001').first()).toBeVisible()
     await page.getByLabel('Asset category').selectOption('fire-alarm')
     await expect(page).not.toHaveURL(/assetCategory=fire-alarm/)
     await page.getByRole('button', { name: 'Apply filters' }).click()
     await expect(page).toHaveURL(/assetCategory=fire-alarm/)
     await expect(page.getByText('FA-001').first()).toBeVisible()
+  })
+
+  test('keeps asset inventory sections ordered and zoom contained at desktop and mobile widths', async ({
+    page,
+  }) => {
+    await mockAssetRegistry(page)
+    await page.setViewportSize({ width: 1280, height: 900 })
+    await page.goto('/app/assets')
+
+    const registry = page.locator('section[aria-labelledby="assets-title"]')
+    await expect(
+      registry.getByRole('heading', { name: 'Assets', exact: true }),
+    ).toBeVisible()
+    await expect(
+      registry.getByRole('heading', { name: 'Find assets' }),
+    ).toBeVisible()
+    await expect(
+      registry.getByRole('heading', { name: 'Overall asset inventory' }),
+    ).toBeVisible()
+    await expect(
+      registry.getByRole('heading', { name: 'Asset records' }),
+    ).toBeVisible()
+    const headingOrder = await registry.locator('h1, h2').allTextContents()
+    expect(headingOrder).toEqual([
+      'Assets',
+      'Find assets',
+      'Overall asset inventory',
+      'Asset records',
+    ])
+    await expect(page.getByLabel('Search assets')).toBeVisible()
+    await expect(page.getByLabel('Asset category')).toBeVisible()
+    await expect(page.getByLabel('Status')).toBeVisible()
+    await expect(page.getByLabel('Building')).toBeVisible()
+    await expect(page.getByLabel('Department')).toBeVisible()
+    await expect(page.getByText('FE-001').first()).toBeVisible()
+    await page.screenshot({
+      path: 'test-results/remaining-relayout-assets-desktop.png',
+      fullPage: true,
+    })
+
+    const zoomGroup = page.getByRole('group', {
+      name: 'Asset records zoom controls',
+    })
+    const increase = zoomGroup.getByRole('button', {
+      name: 'Increase Asset records zoom',
+    })
+    await increase.click()
+    await increase.click()
+    await increase.click()
+    await expect(zoomGroup).toContainText('130%')
+    await expect(increase).toBeDisabled()
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () =>
+            document.documentElement.scrollWidth -
+            document.documentElement.clientWidth,
+        ),
+      )
+      .toBeLessThanOrEqual(1)
+
+    await page.setViewportSize({ width: 375, height: 812 })
+    await expect(
+      page.getByRole('link', { name: /FE-001/ }).first(),
+    ).toBeVisible()
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () =>
+            document.documentElement.scrollWidth -
+            document.documentElement.clientWidth,
+        ),
+      )
+      .toBeLessThanOrEqual(1)
+    await zoomGroup
+      .getByRole('button', {
+        name: 'Reset Asset records zoom to 100 percent',
+      })
+      .click()
+    await page.screenshot({
+      path: 'test-results/remaining-relayout-assets-mobile.png',
+      fullPage: true,
+    })
   })
 
   test('restores text-search URL state through the route', async ({ page }) => {
@@ -471,7 +558,9 @@ test.describe('Asset Registry E2E Specs', () => {
     await mockAssetRegistry(page)
     await page.goto('/app/assets')
 
-    await expect(page.getByRole('heading', { name: 'Assets' })).toBeVisible()
+    await expect(
+      page.getByRole('heading', { name: 'Assets', exact: true }),
+    ).toBeVisible()
     const nav = page
       .locator('nav[aria-label="Primary"]')
       .filter({ has: page.getByRole('link', { name: 'Assets' }) })
