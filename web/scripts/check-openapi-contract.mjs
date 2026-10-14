@@ -169,6 +169,21 @@ const pmPeriodDashboardOperations = [
   ['/api/v1/pm-period-dashboard', 'get', 'GetPmPeriodDashboard', '200'],
 ]
 
+const pmAnalyticsV2Operations = [
+  [
+    '/api/v1/analytics/pm/v2/interpret',
+    'InterpretPmAnalyticsV2Question',
+    'PmAnalyticsV2InterpretRequest',
+    'PmAnalyticsV2InterpretationResponse',
+  ],
+  [
+    '/api/v1/analytics/pm/v2/query',
+    'QueryPmAnalyticsV2',
+    'PmAnalyticsV2QueryRequest',
+    'PmAnalyticsV2QueryResponse',
+  ],
+]
+
 const registryOperations = [
   ['/api/v1/assets/registry', 'ListAssetRegistry', 'AssetRegistryPageResponse'],
   [
@@ -431,6 +446,89 @@ for (const [path, method, operationId, status] of pmPeriodDashboardOperations) {
   if (!schema) {
     throw new Error(
       `Required PM dashboard operation ${operationId} is missing its JSON success schema.`,
+    )
+  }
+}
+
+for (const [
+  path,
+  operationId,
+  requestSchemaName,
+  responseSchemaName,
+] of pmAnalyticsV2Operations) {
+  const operation = snapshot.paths?.[path]?.post
+  const requestSchema =
+    operation?.requestBody?.content?.['application/json']?.schema
+  const responseSchema =
+    operation?.responses?.['200']?.content?.['application/json']?.schema
+
+  if (
+    operation?.operationId !== operationId ||
+    requestSchema?.$ref !== `#/components/schemas/${requestSchemaName}` ||
+    responseSchema?.$ref !== `#/components/schemas/${responseSchemaName}`
+  ) {
+    throw new Error(
+      `PM analytics V2 operation ${operationId} must use ${requestSchemaName} and return ${responseSchemaName}.`,
+    )
+  }
+}
+
+const pmAnalyticsV2RequiredFields = {
+  PmAnalyticsV2Plan: [
+    'schemaVersion',
+    'metric',
+    'assetCategory',
+    'period',
+    'comparison',
+    'presentation',
+    'countBasis',
+    'department',
+    'building',
+    'assetCode',
+    'condition',
+    'timeliness',
+    'groupBy',
+    'ranking',
+  ],
+  PmAnalyticsV2QueryRequest: ['plan', 'sourceScope', 'page', 'pageSize'],
+  PmAnalyticsV2QueryResponse: [
+    'asOfUtc',
+    'plan',
+    'population',
+    'result',
+    'cycles',
+    'groups',
+    'comparison',
+    'sources',
+    'scopeNote',
+  ],
+  PmAnalyticsV2PopulationResponse: [
+    'eligibleAssetCycleCount',
+    'eligibleDistinctAssetCount',
+    'matchingAssetCycleCount',
+    'matchingDistinctAssetCount',
+    'sourceTotalCount',
+    'totalPages',
+  ],
+  PmAnalyticsV2SourceResponse: [
+    'assetCode',
+    'currentDepartment',
+    'currentBuilding',
+    'pmCycle',
+    'deadline',
+    'completedAt',
+    'scheduleStatus',
+    'formStatus',
+  ],
+}
+
+for (const [schemaName, fields] of Object.entries(
+  pmAnalyticsV2RequiredFields,
+)) {
+  const properties = snapshot.components?.schemas?.[schemaName]?.properties
+  if (!properties || fields.some((field) => !(field in properties))) {
+    throw new Error(
+      `PM analytics V2 schema ${schemaName} is missing a required field.`,
     )
   }
 }

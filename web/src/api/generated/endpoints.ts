@@ -68,6 +68,10 @@ import type {
   PmAnalyticsInterpretationResponse,
   PmAnalyticsQuestionRequest,
   PmAnalyticsResponse,
+  PmAnalyticsV2InterpretRequest,
+  PmAnalyticsV2InterpretationResponse,
+  PmAnalyticsV2QueryRequest,
+  PmAnalyticsV2QueryResponse,
   PmPeriodDashboardCycleGroupResponse,
   PmPeriodDashboardResponse,
   PreventiveMaintenanceAcknowledgementResponse,
@@ -7449,4 +7453,178 @@ export function useGetInspectionRegistrySummary<
   > & { queryKey: DataTag<QueryKey, TData, TError> }
 
   return withQueryKey(query, queryOptions.queryKey)
+}
+
+/**
+ * @summary Interprets a bounded preventive-maintenance analytics question using the V2 deterministic grammar
+ */
+export const interpretPmAnalyticsV2Question = (
+  pmAnalyticsV2InterpretRequest: PmAnalyticsV2InterpretRequest,
+  signal?: AbortSignal,
+) => {
+  return customInstance<PmAnalyticsV2InterpretationResponse>({
+    url: `/api/v1/analytics/pm/v2/interpret`,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    data: pmAnalyticsV2InterpretRequest,
+    signal,
+  })
+}
+
+export const getInterpretPmAnalyticsV2QuestionMutationOptions = <
+  TError = ValidationProblemDetails | ProblemDetails,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof interpretPmAnalyticsV2Question>>,
+    TError,
+    { data: PmAnalyticsV2InterpretRequest },
+    TContext
+  >
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof interpretPmAnalyticsV2Question>>,
+  TError,
+  { data: PmAnalyticsV2InterpretRequest },
+  TContext
+> => {
+  const mutationKey = ['interpretPmAnalyticsV2Question']
+  const { mutation: mutationOptions } = options
+    ? options.mutation &&
+      'mutationKey' in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey } }
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof interpretPmAnalyticsV2Question>>,
+    { data: PmAnalyticsV2InterpretRequest }
+  > = (props) => {
+    const { data } = props ?? {}
+
+    return interpretPmAnalyticsV2Question(data)
+  }
+
+  return { mutationFn, ...mutationOptions }
+}
+
+export type InterpretPmAnalyticsV2QuestionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof interpretPmAnalyticsV2Question>>
+>
+export type InterpretPmAnalyticsV2QuestionMutationBody =
+  PmAnalyticsV2InterpretRequest
+export type InterpretPmAnalyticsV2QuestionMutationError =
+  ValidationProblemDetails | ProblemDetails
+
+/**
+ * @summary Interprets a bounded preventive-maintenance analytics question using the V2 deterministic grammar
+ */
+export const useInterpretPmAnalyticsV2Question = <
+  TError = ValidationProblemDetails | ProblemDetails,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof interpretPmAnalyticsV2Question>>,
+      TError,
+      { data: PmAnalyticsV2InterpretRequest },
+      TContext
+    >
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof interpretPmAnalyticsV2Question>>,
+  TError,
+  { data: PmAnalyticsV2InterpretRequest },
+  TContext
+> => {
+  return useMutation(
+    getInterpretPmAnalyticsV2QuestionMutationOptions(options),
+    queryClient,
+  )
+}
+
+/**
+ * @summary Executes a validated typed V2 preventive-maintenance analytics plan
+ */
+export const queryPmAnalyticsV2 = (
+  pmAnalyticsV2QueryRequest: PmAnalyticsV2QueryRequest,
+  signal?: AbortSignal,
+) => {
+  return customInstance<PmAnalyticsV2QueryResponse>({
+    url: `/api/v1/analytics/pm/v2/query`,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    data: pmAnalyticsV2QueryRequest,
+    signal,
+  })
+}
+
+export const getQueryPmAnalyticsV2MutationOptions = <
+  TError = ValidationProblemDetails | ProblemDetails,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof queryPmAnalyticsV2>>,
+    TError,
+    { data: PmAnalyticsV2QueryRequest },
+    TContext
+  >
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof queryPmAnalyticsV2>>,
+  TError,
+  { data: PmAnalyticsV2QueryRequest },
+  TContext
+> => {
+  const mutationKey = ['queryPmAnalyticsV2']
+  const { mutation: mutationOptions } = options
+    ? options.mutation &&
+      'mutationKey' in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey } }
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof queryPmAnalyticsV2>>,
+    { data: PmAnalyticsV2QueryRequest }
+  > = (props) => {
+    const { data } = props ?? {}
+
+    return queryPmAnalyticsV2(data)
+  }
+
+  return { mutationFn, ...mutationOptions }
+}
+
+export type QueryPmAnalyticsV2MutationResult = NonNullable<
+  Awaited<ReturnType<typeof queryPmAnalyticsV2>>
+>
+export type QueryPmAnalyticsV2MutationBody = PmAnalyticsV2QueryRequest
+export type QueryPmAnalyticsV2MutationError =
+  ValidationProblemDetails | ProblemDetails
+
+/**
+ * @summary Executes a validated typed V2 preventive-maintenance analytics plan
+ */
+export const useQueryPmAnalyticsV2 = <
+  TError = ValidationProblemDetails | ProblemDetails,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof queryPmAnalyticsV2>>,
+      TError,
+      { data: PmAnalyticsV2QueryRequest },
+      TContext
+    >
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof queryPmAnalyticsV2>>,
+  TError,
+  { data: PmAnalyticsV2QueryRequest },
+  TContext
+> => {
+  return useMutation(getQueryPmAnalyticsV2MutationOptions(options), queryClient)
 }
