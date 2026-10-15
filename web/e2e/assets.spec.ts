@@ -401,7 +401,7 @@ test.describe('Asset Registry E2E Specs', () => {
     await expect(page.getByLabel('Department')).toBeVisible()
     await expect(page.getByText('FE-001').first()).toBeVisible()
     await page.screenshot({
-      path: 'test-results/web-ui-refinement-assets-desktop.png',
+      path: 'test-results/web-ui-polish-assets-desktop.png',
       fullPage: true,
     })
 
@@ -445,7 +445,7 @@ test.describe('Asset Registry E2E Specs', () => {
       })
       .click()
     await page.screenshot({
-      path: 'test-results/web-ui-refinement-assets-mobile.png',
+      path: 'test-results/web-ui-polish-assets-mobile.png',
       fullPage: true,
     })
   })

@@ -502,7 +502,7 @@ export function AssetRegistry({
         >
           Find assets
         </h2>
-        <Card className="p-5 shadow-none">
+        <Card className="content-card p-5">
           <form
             className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4"
             onSubmit={(event) => {

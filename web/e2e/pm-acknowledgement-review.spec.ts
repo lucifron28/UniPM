@@ -187,8 +187,56 @@ test('keeps Form Review cards readable and zoom-contained across desktop and mob
   ).toBeVisible()
   await expect(page).toHaveURL(/department=GSD/)
   await expect(page).toHaveURL(/pmCycle=2026-08/)
+  const formReviewAlignment = await page.evaluate(() => {
+    const registry = document.querySelector(
+      'section[aria-labelledby="forms-title"]',
+    )!
+    const findHeading = registry.querySelector('#find-forms-title')!
+    const filterCard = findHeading.nextElementSibling!
+    const recordsHeading = registry.querySelector('#form-records-title')!
+    const recordsSection = recordsHeading.closest('section')!
+    const zoomControls = registry.querySelector(
+      '[aria-label="Form records zoom controls"]',
+    )!
+    const rect = (element: Element) => element.getBoundingClientRect()
+    return {
+      registry: rect(registry),
+      filterCard: rect(filterCard),
+      recordsHeading: rect(recordsHeading),
+      recordsSection: rect(recordsSection),
+      zoomControls: rect(zoomControls),
+    }
+  })
+  expect(
+    Math.abs(
+      formReviewAlignment.filterCard.left - formReviewAlignment.registry.left,
+    ),
+  ).toBeLessThan(1)
+  expect(
+    Math.abs(
+      formReviewAlignment.filterCard.width - formReviewAlignment.registry.width,
+    ),
+  ).toBeLessThan(1)
+  expect(
+    Math.abs(
+      formReviewAlignment.recordsHeading.left -
+        formReviewAlignment.registry.left,
+    ),
+  ).toBeLessThan(1)
+  expect(
+    Math.abs(
+      formReviewAlignment.recordsSection.width -
+        formReviewAlignment.registry.width,
+    ),
+  ).toBeLessThan(1)
+  expect(
+    Math.abs(
+      formReviewAlignment.zoomControls.right -
+        formReviewAlignment.recordsSection.right,
+    ),
+  ).toBeLessThan(1)
   await page.screenshot({
-    path: 'test-results/web-ui-refinement-form-review-desktop.png',
+    path: 'test-results/web-ui-polish-form-review-desktop.png',
     fullPage: true,
   })
 
@@ -223,7 +271,7 @@ test('keeps Form Review cards readable and zoom-contained across desktop and mob
     })
     .click()
   await page.screenshot({
-    path: 'test-results/web-ui-refinement-form-review-mobile.png',
+    path: 'test-results/web-ui-polish-form-review-mobile.png',
     fullPage: true,
   })
 })

@@ -1,11 +1,6 @@
-import {
-  useEffect,
-  useMemo,
-  useState,
-  type MouseEvent,
-  type ReactNode,
-} from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Link } from '@tanstack/react-router'
+import { X } from 'lucide-react'
 import { formatAssetCategory } from '@/features/assets/asset-presentation'
 import { PageHeading } from '@/components/layout/page-heading'
 import { Button } from '@/components/ui/button'
@@ -69,7 +64,6 @@ const timelinessOptions = [
 ]
 
 const dashboardTitleId = 'dashboard-title'
-const dashboardNlaSectionId = 'pm-analytics-section'
 
 function formatDate(
   value: string | null | undefined,
@@ -164,7 +158,7 @@ function formatLocation(
 
 function DashboardMetric({ label, value, note }: DashboardMetricProps) {
   return (
-    <Card className="p-4 shadow-none">
+    <Card className="content-card p-4">
       <p className="text-xs font-semibold tracking-[0.08em] text-[var(--text-neutral)] uppercase">
         {label}
       </p>
@@ -276,38 +270,6 @@ function selectionButtonClass(isSelected: boolean) {
   }`
 }
 
-function navigateToDashboardSection(
-  event: MouseEvent<HTMLAnchorElement>,
-  targetId: string,
-) {
-  event.preventDefault()
-  const target = document.getElementById(targetId)
-  if (!target) return
-
-  const prefersReducedMotion =
-    typeof window.matchMedia === 'function' &&
-    window.matchMedia('(prefers-reduced-motion: reduce)').matches
-
-  window.history.replaceState(
-    window.history.state,
-    '',
-    `${window.location.pathname}${window.location.search}#${targetId}`,
-  )
-  const workspace = target.closest('.app-workspace')
-  if (targetId === dashboardTitleId && !workspace) {
-    document.querySelector('.app-workspace')?.scrollTo?.({
-      top: 0,
-      behavior: prefersReducedMotion ? 'auto' : 'smooth',
-    })
-  } else {
-    target.scrollIntoView?.({
-      behavior: prefersReducedMotion ? 'auto' : 'smooth',
-      block: 'start',
-    })
-  }
-  target.focus({ preventScroll: true })
-}
-
 function BatchOverview({
   batches,
   periodState,
@@ -320,7 +282,7 @@ function BatchOverview({
   const isClosed = periodState === 'Closed'
 
   return (
-    <Card className="p-4 shadow-none sm:p-5">
+    <Card className="content-card p-4 sm:p-5">
       <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h2 className="text-lg font-semibold text-[var(--text-primary)]">
@@ -459,7 +421,7 @@ function AssetRows({
   dashboardSearch?: PmPeriodDashboardSearch | undefined
 }) {
   return (
-    <Card className="p-4 shadow-none sm:p-5">
+    <Card className="content-card p-4 sm:p-5">
       <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h2 className="text-lg font-semibold text-[var(--text-primary)]">
@@ -831,6 +793,7 @@ export function PmPeriodDashboard({
     hasRequestedScope ? (search.pmCycle ?? '') : '',
   )
   const [isChangingSelection, setIsChangingSelection] = useState(false)
+  const [isNlaOpen, setIsNlaOpen] = useState(false)
   const [text, setText] = useState(search.search ?? '')
 
   // Route changes reset the submitted search draft to its URL-backed value.
@@ -939,10 +902,7 @@ export function PmPeriodDashboard({
 
   if (cyclesQuery.isPending) {
     return (
-      <section
-        aria-labelledby="dashboard-title"
-        className="max-w-7xl space-y-5"
-      >
+      <section aria-labelledby="dashboard-title" className="space-y-6">
         <DashboardHeader />
         <DeferredEnrollmentDashboardSummary />
         <CyclesLoading />
@@ -952,10 +912,7 @@ export function PmPeriodDashboard({
 
   if (cyclesQuery.isError) {
     return (
-      <section
-        aria-labelledby="dashboard-title"
-        className="max-w-7xl space-y-5"
-      >
+      <section aria-labelledby="dashboard-title" className="space-y-6">
         <DashboardHeader />
         <DeferredEnrollmentDashboardSummary />
         <QueryError
@@ -968,10 +925,7 @@ export function PmPeriodDashboard({
 
   if (cycles.length === 0) {
     return (
-      <section
-        aria-labelledby="dashboard-title"
-        className="max-w-7xl space-y-5"
-      >
+      <section aria-labelledby="dashboard-title" className="space-y-6">
         <DashboardHeader />
         <DeferredEnrollmentDashboardSummary />
         <Card className="p-6 shadow-none">
@@ -987,14 +941,14 @@ export function PmPeriodDashboard({
   }
 
   return (
-    <section aria-labelledby="dashboard-title" className="max-w-7xl space-y-5">
-      <DashboardHeader showNlaShortcut={canAskNla} />
+    <section aria-labelledby="dashboard-title" className="space-y-6">
+      <DashboardHeader />
 
       {showGeneratedReport ? (
         <>
-          <div className="pm-dashboard-report space-y-5">
+          <div className="pm-dashboard-report space-y-6">
             <section aria-labelledby="pm-dashboard-reporting-period">
-              <Card className="p-4 shadow-none sm:p-5">
+              <Card className="content-card p-4 sm:p-5">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <p className="text-sm font-semibold tracking-[0.08em] text-[var(--primary)] uppercase">
@@ -1036,6 +990,17 @@ export function PmPeriodDashboard({
                     </dl>
                   </div>
                   <div className="flex flex-wrap gap-2 print:hidden">
+                    {canAskNla && (
+                      <Button
+                        id="dashboard-ask-nla"
+                        type="button"
+                        variant="secondary"
+                        className="min-h-9 px-3"
+                        onClick={() => setIsNlaOpen(true)}
+                      >
+                        Ask NLA
+                      </Button>
+                    )}
                     <Button
                       type="button"
                       disabled={!dashboardQuery.data}
@@ -1140,7 +1105,7 @@ export function PmPeriodDashboard({
                 </section>
 
                 <section aria-labelledby="pm-dashboard-detailed-filters">
-                  <Card className="p-4 shadow-none sm:p-5">
+                  <Card className="content-card p-4 sm:p-5">
                     <div>
                       <p className="text-sm font-semibold tracking-[0.08em] text-[var(--primary)] uppercase">
                         Row-level filters
@@ -1318,12 +1283,11 @@ export function PmPeriodDashboard({
               </>
             ) : null}
           </div>
-          {canAskNla && <DashboardNlaSection />}
         </>
       ) : (
         <>
           <section aria-labelledby="pm-dashboard-reporting-period">
-            <Card className="p-4 shadow-none sm:p-5">
+            <Card className="content-card p-4 sm:p-5">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                   <p className="text-sm font-semibold tracking-[0.08em] text-[var(--primary)] uppercase">
@@ -1340,15 +1304,28 @@ export function PmPeriodDashboard({
                     loads only after you generate it.
                   </p>
                 </div>
-                {hasValidGeneratedScope && isChangingSelection && (
-                  <Button
-                    type="button"
-                    className="bg-white text-[var(--text-primary)] hover:bg-[var(--page-background)]"
-                    onClick={() => setIsChangingSelection(false)}
-                  >
-                    Cancel
-                  </Button>
-                )}
+                <div className="flex flex-wrap gap-2 print:hidden">
+                  {canAskNla && (
+                    <Button
+                      id="dashboard-ask-nla"
+                      type="button"
+                      variant="secondary"
+                      className="min-h-9 px-3"
+                      onClick={() => setIsNlaOpen(true)}
+                    >
+                      Ask NLA
+                    </Button>
+                  )}
+                  {hasValidGeneratedScope && isChangingSelection && (
+                    <Button
+                      type="button"
+                      className="bg-white text-[var(--text-primary)] hover:bg-[var(--page-background)]"
+                      onClick={() => setIsChangingSelection(false)}
+                    >
+                      Cancel
+                    </Button>
+                  )}
+                </div>
               </div>
 
               {hasRequestedScope && !hasValidGeneratedScope && (
@@ -1478,63 +1455,103 @@ export function PmPeriodDashboard({
           <DeferredEnrollmentDashboardSummary />
         </>
       )}
-      {!showGeneratedReport && canAskNla && <DashboardNlaSection />}
+      {canAskNla && (
+        <DashboardNlaDrawer
+          open={isNlaOpen}
+          onClose={() => setIsNlaOpen(false)}
+        />
+      )}
     </section>
   )
 }
 
-export function DashboardHeader({
-  showNlaShortcut = false,
-}: {
-  showNlaShortcut?: boolean
-}) {
+export function DashboardHeader() {
   return (
-    <>
-      <PageHeading
-        id={dashboardTitleId}
-        tabIndex={-1}
-        eyebrow="UniPM"
-        title="Preventive Maintenance Dashboard"
-        description="Choose the maintenance period you want to review."
-      />
-      {showNlaShortcut && (
-        <div data-print-hide className="flex justify-end">
-          <Button asChild variant="secondary">
-            <a
-              href={`#${dashboardNlaSectionId}`}
-              onClick={(event) =>
-                navigateToDashboardSection(event, dashboardNlaSectionId)
-              }
+    <PageHeading
+      id={dashboardTitleId}
+      tabIndex={-1}
+      eyebrow="UniPM"
+      title="Preventive Maintenance Dashboard"
+      description="Choose the maintenance period you want to review."
+    />
+  )
+}
+
+function DashboardNlaDrawer({
+  open,
+  onClose,
+}: {
+  open: boolean
+  onClose: () => void
+}) {
+  const dialogRef = useRef<HTMLDialogElement>(null)
+
+  useEffect(() => {
+    const dialog = dialogRef.current
+    if (!dialog) return
+
+    if (open && !dialog.open) {
+      dialog.showModal()
+      dialog
+        .querySelector<HTMLButtonElement>('[aria-label="Close Ask NLA"]')
+        ?.focus()
+    } else if (!open && dialog.open) {
+      dialog.close()
+    }
+
+    return () => {
+      if (dialog.open) dialog.close()
+    }
+  }, [open])
+
+  const closeDrawer = () => {
+    if (dialogRef.current?.open) dialogRef.current.close()
+    onClose()
+    window.requestAnimationFrame(() => {
+      document.getElementById('dashboard-ask-nla')?.focus()
+    })
+  }
+
+  return (
+    <dialog
+      ref={dialogRef}
+      aria-labelledby="dashboard-nla-drawer-title"
+      className="fixed inset-y-0 right-0 m-0 ml-auto h-dvh max-h-none w-full max-w-none border-0 border-l border-[var(--border-soft)] bg-white p-0 text-[var(--text-primary)] backdrop:bg-black/40 sm:w-[min(36rem,100vw)] print:hidden"
+      onCancel={(event) => {
+        event.preventDefault()
+        closeDrawer()
+      }}
+      onClick={(event) => {
+        if (event.target === event.currentTarget) closeDrawer()
+      }}
+    >
+      <div className="flex h-full min-h-0 flex-col">
+        <header className="flex shrink-0 items-center justify-between gap-4 border-b border-[var(--border-soft)] px-4 py-3 sm:px-6">
+          <div>
+            <h2
+              id="dashboard-nla-drawer-title"
+              className="text-lg font-bold text-[var(--text-primary)]"
             >
               Ask NLA
-            </a>
+            </h2>
+            <p className="mt-1 text-sm text-[var(--text-secondary)]">
+              Review a supported PM measure and its source records.
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="secondary"
+            className="size-10 min-h-10 shrink-0 px-0"
+            aria-label="Close Ask NLA"
+            onClick={closeDrawer}
+          >
+            <X aria-hidden="true" className="size-5" />
           </Button>
+        </header>
+        <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
+          <PmAnalyticsPanel />
         </div>
-      )}
-    </>
-  )
-}
-
-export function DashboardNlaSection() {
-  return (
-    <section
-      id={dashboardNlaSectionId}
-      tabIndex={-1}
-      aria-label="Natural Language Analytics"
-      className="scroll-mt-6 outline-none print:hidden"
-    >
-      <PmAnalyticsPanel />
-      <div className="mt-3 flex justify-end">
-        <a
-          href={`#${dashboardTitleId}`}
-          onClick={(event) =>
-            navigateToDashboardSection(event, dashboardTitleId)
-          }
-          className="text-sm font-semibold text-[var(--primary)] underline-offset-2 hover:underline focus-visible:rounded focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:outline-none"
-        >
-          Back to top
-        </a>
       </div>
-    </section>
+    </dialog>
   )
 }

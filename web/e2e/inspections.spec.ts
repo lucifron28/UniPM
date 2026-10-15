@@ -326,7 +326,7 @@ test.describe('Inspection review workflows', () => {
     await expect(page.getByLabel('Corrective follow-up status')).toBeVisible()
     await expect(page.getByText('WMS-PM-007').first()).toBeVisible()
     await page.screenshot({
-      path: 'test-results/web-ui-refinement-inspections-desktop.png',
+      path: 'test-results/web-ui-polish-inspections-desktop.png',
       fullPage: true,
     })
 
@@ -387,7 +387,7 @@ test.describe('Inspection review workflows', () => {
       })
       .click()
     await page.screenshot({
-      path: 'test-results/web-ui-refinement-inspections-mobile.png',
+      path: 'test-results/web-ui-polish-inspections-mobile.png',
       fullPage: true,
     })
   })

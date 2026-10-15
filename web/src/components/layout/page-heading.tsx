@@ -30,7 +30,7 @@ export function PageHeading({
         id={id}
         ref={headingRef}
         tabIndex={tabIndex}
-        className="text-2xl font-semibold tracking-tight text-[var(--text-primary)] outline-none sm:text-[1.7rem]"
+        className="text-2xl font-bold tracking-tight text-[var(--text-primary)] outline-none sm:text-[1.75rem]"
       >
         {title}
       </h1>

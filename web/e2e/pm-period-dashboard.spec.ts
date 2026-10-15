@@ -958,13 +958,29 @@ test.describe('PM period dashboard', () => {
       )
     })
 
-    // This legacy dashboard cycle checks that the question sets its own scope.
+    // The drawer retains the existing analytics workflow and its independent scope.
     await page.goto(
       '/app/dashboard?assetCategory=fire-extinguisher&year=2026&pmCycle=2026-08',
     )
+    const askNla = page.getByRole('button', { name: 'Ask NLA' })
+    const drawer = page.getByRole('dialog', { name: 'Ask NLA' })
+    await expect(askNla).toBeVisible()
+    await expect(drawer).toBeHidden()
+    await page.screenshot({
+      path: 'test-results/web-ui-polish-dashboard-desktop.png',
+    })
+    await askNla.click()
+    await expect(drawer).toBeVisible()
     await expect(
-      page.getByRole('heading', { name: 'Ask about PM results' }),
+      drawer.getByRole('heading', { name: 'Ask about PM results' }),
     ).toBeVisible()
+    await page.screenshot({
+      path: 'test-results/web-ui-polish-ask-nla-drawer-open-desktop.png',
+    })
+    await page.keyboard.press('Escape')
+    await expect(drawer).toBeHidden()
+    await expect(askNla).toBeFocused()
+    await askNla.click()
     await page
       .getByRole('textbox', { name: 'Question' })
       .fill(
@@ -1037,5 +1053,35 @@ test.describe('PM period dashboard', () => {
         }),
       )}`,
     )
+    await page.screenshot({
+      path: 'test-results/web-ui-polish-ask-nla-drawer-desktop.png',
+    })
+    await page.getByRole('button', { name: 'Close Ask NLA' }).click()
+    await expect(drawer).toBeHidden()
+
+    await page.setViewportSize({ width: 375, height: 812 })
+    await askNla.click()
+    await expect(drawer).toBeVisible()
+    await expect
+      .poll(() =>
+        drawer.evaluate((element) =>
+          Math.abs(element.getBoundingClientRect().width - window.innerWidth),
+        ),
+      )
+      .toBeLessThan(1)
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth - window.innerWidth,
+      ),
+    ).toBeLessThanOrEqual(1)
+    await drawer
+      .locator('div.min-h-0.flex-1.overflow-y-auto')
+      .evaluate((element) => {
+        element.scrollTop = 0
+      })
+    await page.screenshot({
+      path: 'test-results/web-ui-polish-ask-nla-drawer-mobile.png',
+    })
+    await page.getByRole('button', { name: 'Close Ask NLA' }).click()
   })
 })

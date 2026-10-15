@@ -15,6 +15,7 @@ type RegistryPagination = {
 type RegistryResultsPanelProps = {
   label: string
   desktopLabel?: string
+  desktopFrameClassName?: string
   breakpoint: RegistryBreakpoint
   viewportSize: RegistryViewportSize
   desktopContent: ReactNode
@@ -62,6 +63,7 @@ export function RegistryLoadingPanel({
 export function RegistryResultsPanel({
   label,
   desktopLabel,
+  desktopFrameClassName = 'content-card',
   breakpoint,
   viewportSize,
   desktopContent,
@@ -105,15 +107,17 @@ export function RegistryResultsPanel({
 
   return (
     <section aria-label={label + ' results'} className="space-y-4">
-      <p
-        className="min-h-5 text-sm text-[var(--text-neutral)]"
-        role={isUpdating ? 'status' : undefined}
-        aria-live="polite"
-      >
-        {isUpdating ? 'Updating results...' : null}
-      </p>
+      {isUpdating && (
+        <p
+          className="min-h-5 text-sm text-[var(--text-neutral)]"
+          role="status"
+          aria-live="polite"
+        >
+          Updating results...
+        </p>
+      )}
       <Card
-        className={'hidden overflow-hidden p-0 shadow-none ' + desktopClassName}
+        className={`hidden overflow-hidden p-0 ${desktopFrameClassName} ${desktopClassName}`}
       >
         <div
           role="region"

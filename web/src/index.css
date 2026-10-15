@@ -27,6 +27,7 @@
   --text-neutral: #57534e;
   --border-soft: #e7e5e4;
   --border-control: #767676;
+  --shadow-content-card: 0 2px 8px rgb(0 0 0 / 5%);
   --success: #166534;
   --warning: #9a3412;
   --error: #ba1a1a;
@@ -64,6 +65,7 @@ body {
     height: 100vh;
     height: 100dvh;
     overflow: hidden;
+    transition: grid-template-columns 220ms ease-in-out;
   }
 
   .app-shell[data-sidebar-collapsed='false'] {
@@ -83,6 +85,66 @@ body {
     min-height: 0;
     overscroll-behavior: contain;
     scrollbar-gutter: stable;
+  }
+}
+
+.content-card {
+  box-shadow: var(--shadow-content-card);
+}
+
+.sidebar-active-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: 5px;
+  background: var(--primary-active);
+  opacity: 0;
+  transition:
+    transform 240ms ease-in-out,
+    width 240ms ease-in-out,
+    height 240ms ease-in-out,
+    opacity 100ms ease-out;
+}
+
+.sidebar-nav-label {
+  display: inline-block;
+  min-width: 0;
+  max-width: 12rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition:
+    max-width 140ms ease-in-out,
+    opacity 140ms ease-in-out,
+    transform 140ms ease-in-out;
+}
+
+.sidebar-control {
+  transition:
+    background-color 150ms ease-out,
+    color 150ms ease-out,
+    transform 110ms ease-out;
+}
+
+.sidebar-control:active {
+  transform: scale(0.98);
+}
+
+@media (min-width: 1024px) {
+  .app-shell[data-sidebar-collapsed='true'] .sidebar-nav-link {
+    width: 44px;
+    margin-inline: 8px;
+    justify-content: center;
+    gap: 0;
+    padding-inline: 0;
+  }
+
+  .app-shell[data-sidebar-collapsed='true'] .sidebar-nav-label {
+    max-width: 0;
+    opacity: 0;
+    transform: translateX(-4px);
   }
 }
 
@@ -121,6 +183,10 @@ body {
     border: 0 !important;
     box-shadow: none !important;
   }
+
+  .content-card {
+    box-shadow: none !important;
+  }
 }
 
 @layer base {
@@ -129,10 +195,13 @@ body {
   }
 
   nav[aria-label='Primary'] a {
+    width: 100%;
+    margin-inline: 0;
     transition:
-      background-color 150ms ease-out,
       color 150ms ease-out,
-      transform 100ms ease-out;
+      transform 100ms ease-out,
+      width 220ms ease-in-out,
+      margin 220ms ease-in-out;
   }
 
   nav[aria-label='Primary'] a:focus-visible {
@@ -156,6 +225,16 @@ body {
 
   [role='region'][aria-label$=' table'] tbody tr:hover {
     background-color: var(--page-background);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-shell,
+  .sidebar-active-indicator,
+  .sidebar-nav-label,
+  .sidebar-control,
+  nav[aria-label='Primary'] a {
+    transition-duration: 0.01ms !important;
   }
 }
 

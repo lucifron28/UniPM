@@ -558,7 +558,7 @@ test.describe('Schedule workflows', () => {
       page.getByRole('link', { name: 'Manage schedules' }),
     ).toHaveAttribute('href', '#schedule-management')
     await page.screenshot({
-      path: 'test-results/web-ui-refinement-schedules-desktop.png',
+      path: 'test-results/web-ui-polish-schedules-desktop.png',
       fullPage: true,
     })
 
@@ -596,7 +596,7 @@ test.describe('Schedule workflows', () => {
       ),
     ).toBeLessThanOrEqual(1)
     await page.screenshot({
-      path: 'test-results/web-ui-refinement-schedules-mobile.png',
+      path: 'test-results/web-ui-polish-schedules-mobile.png',
       fullPage: true,
     })
   })

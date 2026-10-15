@@ -69,7 +69,7 @@ export type InspectionSearch = {
 
 function SummaryCard({ label, count }: { label: string; count: number }) {
   return (
-    <Card className="p-4 shadow-none">
+    <Card className="content-card p-4">
       <p className="text-xs font-semibold tracking-[0.08em] text-[var(--text-neutral)] uppercase">
         {label}
       </p>
@@ -677,7 +677,7 @@ export function InspectionRegistry({
         >
           Find inspections
         </h2>
-        <Card className="p-5 shadow-none">
+        <Card className="content-card p-5">
           <form
             className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4"
             onSubmit={(event) => {
@@ -1125,7 +1125,7 @@ export function InspectionRegistry({
               </table>
             }
             mobileContent={records.map((inspection) => (
-              <Card key={inspection.id} className="space-y-3 p-5 shadow-none">
+              <Card key={inspection.id} className="content-card space-y-3 p-5">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     {inspection.asset ? (

@@ -11,7 +11,7 @@ import {
   PanelLeftOpen,
   X,
 } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Alert } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -181,7 +181,7 @@ export function UserIdentity() {
   )
 }
 
-function AccountMenu() {
+function AccountMenu({ sidebarCollapsed }: { sidebarCollapsed: boolean }) {
   const currentUser = useCurrentUser()
   const detailsRef = useRef<HTMLDetailsElement>(null)
 
@@ -211,17 +211,26 @@ function AccountMenu() {
 
   if (currentUser.isPending) {
     return (
-      <div className="flex shrink-0 items-center gap-2" role="status">
+      <div
+        className={`flex w-full shrink-0 items-center gap-2 ${sidebarCollapsed ? 'lg:justify-center' : ''}`}
+        role="status"
+      >
         <span className="sr-only">Loading signed-in user.</span>
         <Skeleton className="size-9 rounded-full" />
-        <Skeleton className="hidden h-4 w-24 sm:block" />
+        <Skeleton
+          className={`h-4 w-24 ${sidebarCollapsed ? 'hidden' : 'hidden sm:block'}`}
+        />
       </div>
     )
   }
   if (currentUser.isError || !currentUser.data) {
     return (
-      <div className="flex shrink-0 items-center gap-2">
-        <span className="text-xs text-[var(--text-neutral)]">
+      <div
+        className={`flex w-full shrink-0 items-center gap-2 ${sidebarCollapsed ? 'lg:justify-center' : ''}`}
+      >
+        <span
+          className={`text-xs text-[var(--text-neutral)] ${sidebarCollapsed ? 'lg:sr-only' : ''}`}
+        >
           Account unavailable
         </span>
         <LogoutButton />
@@ -231,10 +240,11 @@ function AccountMenu() {
 
   const user = currentUser.data
   return (
-    <details ref={detailsRef} className="relative shrink-0">
+    <details ref={detailsRef} className="relative w-full shrink-0">
       <summary
         aria-label="Account menu"
-        className="flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-md px-2 text-left hover:bg-[var(--surface-muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)] [&::-webkit-details-marker]:hidden"
+        title={`${user.displayName} · ${user.roles.join(', ') || 'Account'}`}
+        className={`flex min-h-11 w-full cursor-pointer list-none items-center gap-2 rounded-md px-2 text-left hover:bg-[var(--surface-muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)] [&::-webkit-details-marker]:hidden ${sidebarCollapsed ? 'lg:justify-center lg:px-0' : ''}`}
       >
         <span
           aria-hidden="true"
@@ -242,7 +252,9 @@ function AccountMenu() {
         >
           {initials(user.displayName)}
         </span>
-        <span className="hidden min-w-0 sm:block">
+        <span
+          className={`min-w-0 ${sidebarCollapsed ? 'lg:hidden' : 'hidden sm:block'}`}
+        >
           <span className="block max-w-36 truncate text-sm font-semibold text-[var(--text-primary)]">
             {user.displayName}
           </span>
@@ -252,10 +264,13 @@ function AccountMenu() {
         </span>
         <ChevronDown
           aria-hidden="true"
-          className="size-4 text-[var(--text-neutral)]"
+          className={`size-4 text-[var(--text-neutral)] ${sidebarCollapsed ? 'lg:hidden' : ''}`}
         />
+        <span className="sr-only">
+          {user.displayName}, {user.roles.join(', ') || 'Account'}
+        </span>
       </summary>
-      <div className="absolute top-full right-0 z-50 mt-2 w-[min(18rem,calc(100vw-2rem))] rounded-md border border-[var(--border-soft)] bg-white p-3 shadow-md">
+      <div className="absolute bottom-full left-0 z-50 mb-2 w-[min(18rem,calc(100vw-2rem))] rounded-md border border-[var(--border-soft)] bg-white p-3 shadow-md">
         <p className="text-xs font-semibold tracking-wide text-[var(--text-neutral)] uppercase">
           Signed in as
         </p>
@@ -297,6 +312,8 @@ export function AppShell() {
   const [headingHost, setHeadingHost] = useState<HTMLDivElement | null>(null)
   const mobileToggleRef = useRef<HTMLButtonElement>(null)
   const mobileCloseRef = useRef<HTMLButtonElement>(null)
+  const navigationRef = useRef<HTMLElement>(null)
+  const activeIndicatorRef = useRef<HTMLSpanElement>(null)
   const roles = currentUser.isSuccess ? currentUser.data.roles : []
   const requiredRoles = getRequiredAppRoles(pathname)
   const isRoleRestrictedRoute = requiredRoles !== null
@@ -358,6 +375,46 @@ export function AppShell() {
     return () => document.removeEventListener('keydown', handleEscape)
   }, [mobileNavigationOpen])
 
+  useLayoutEffect(() => {
+    const navigation = navigationRef.current
+    const indicator = activeIndicatorRef.current
+    if (!navigation || !indicator) return
+
+    const updateIndicator = () => {
+      const activeLink = navigation.querySelector<HTMLElement>(
+        '[aria-current="page"]',
+      )
+      if (!activeLink) {
+        indicator.style.opacity = '0'
+        return
+      }
+
+      const navigationBounds = navigation.getBoundingClientRect()
+      const linkBounds = activeLink.getBoundingClientRect()
+      indicator.style.width = `${linkBounds.width}px`
+      indicator.style.height = `${linkBounds.height}px`
+      indicator.style.transform = `translate3d(${linkBounds.left - navigationBounds.left + navigation.scrollLeft}px, ${linkBounds.top - navigationBounds.top + navigation.scrollTop}px, 0)`
+      indicator.style.opacity = '1'
+    }
+
+    updateIndicator()
+    const resizeObserver =
+      typeof ResizeObserver === 'undefined'
+        ? null
+        : new ResizeObserver(updateIndicator)
+    resizeObserver?.observe(navigation)
+    const activeLink = navigation.querySelector<HTMLElement>(
+      '[aria-current="page"]',
+    )
+    if (activeLink) resizeObserver?.observe(activeLink)
+    window.addEventListener('resize', updateIndicator)
+
+    return () => {
+      resizeObserver?.disconnect()
+      window.removeEventListener('resize', updateIndicator)
+    }
+  }, [pathname, sidebarCollapsed, showSchedules, showFormReview])
+
   return (
     <div
       className="app-shell min-h-dvh bg-[var(--page-background)]"
@@ -379,7 +436,7 @@ export function AppShell() {
         className={`app-sidebar fixed inset-y-0 left-0 z-50 w-[min(18rem,calc(100vw-3rem))] flex-col border-r border-[var(--border-soft)] bg-[var(--sidebar-background)] lg:relative lg:z-auto lg:flex lg:h-full lg:min-h-0 lg:w-auto ${mobileNavigationOpen ? 'flex' : 'hidden'}`}
       >
         <div
-          className={`flex shrink-0 items-center gap-2 border-b border-[var(--border-soft)] p-3 ${sidebarCollapsed ? 'lg:flex-col' : 'lg:justify-between'}`}
+          className={`flex shrink-0 items-center gap-2 border-b border-[var(--border-soft)] p-3 ${sidebarCollapsed ? 'lg:flex-col lg:items-center' : 'lg:justify-between'}`}
         >
           <div className="min-w-0 flex-1 lg:hidden">
             <BrandMark compact />
@@ -397,7 +454,7 @@ export function AppShell() {
             ref={mobileCloseRef}
             type="button"
             aria-label="Close navigation"
-            className="flex size-9 shrink-0 items-center justify-center rounded-md text-[var(--text-secondary)] hover:bg-[var(--surface-muted)] focus-visible:outline-2 focus-visible:outline-[var(--primary)] lg:hidden"
+            className="sidebar-control flex size-9 shrink-0 items-center justify-center rounded-md text-[var(--text-secondary)] hover:bg-[var(--surface-muted)] focus-visible:outline-2 focus-visible:outline-[var(--primary)] lg:hidden"
             onClick={() => {
               setMobileNavigationOpen(false)
               mobileToggleRef.current?.focus()
@@ -412,7 +469,7 @@ export function AppShell() {
             }
             aria-controls="primary-navigation"
             aria-expanded={!sidebarCollapsed}
-            className="hidden size-9 shrink-0 items-center justify-center rounded-md text-[var(--text-secondary)] hover:bg-[var(--surface-muted)] focus-visible:outline-2 focus-visible:outline-[var(--primary)] lg:flex"
+            className="sidebar-control hidden size-9 shrink-0 items-center justify-center rounded-md text-[var(--text-secondary)] hover:bg-[var(--surface-muted)] focus-visible:outline-2 focus-visible:outline-[var(--primary)] lg:flex"
             onClick={() => setSidebarCollapsed((value) => !value)}
           >
             {sidebarCollapsed ? (
@@ -423,10 +480,16 @@ export function AppShell() {
           </button>
         </div>
         <nav
+          ref={navigationRef}
           id="primary-navigation"
           aria-label="Primary"
-          className="min-h-0 flex-1 space-y-1 overflow-y-auto p-2"
+          className="relative flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto p-2"
         >
+          <span
+            ref={activeIndicatorRef}
+            aria-hidden="true"
+            className="sidebar-active-indicator"
+          />
           {navigationItems
             .filter((item) => item.visible)
             .map(({ to, label, icon: Icon }) => (
@@ -438,20 +501,21 @@ export function AppShell() {
                 activeProps={{
                   'aria-current': 'page',
                   className:
-                    'flex min-h-10 items-center gap-3 rounded-md bg-[var(--primary-active)] px-3 py-2 text-sm font-semibold text-white',
+                    'sidebar-nav-link relative z-10 flex min-h-11 items-center gap-3 rounded-md px-3 py-2 text-sm font-semibold text-white',
                 }}
                 inactiveProps={{
                   className:
-                    'flex min-h-10 items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]',
+                    'sidebar-nav-link relative z-10 flex min-h-11 items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]',
                 }}
               >
                 <Icon aria-hidden="true" className="size-5 shrink-0" />
-                <span className={sidebarCollapsed ? 'lg:sr-only' : undefined}>
-                  {label}
-                </span>
+                <span className="sidebar-nav-label">{label}</span>
               </Link>
             ))}
         </nav>
+        <div className="mt-auto shrink-0 border-t border-[var(--border-soft)] p-2">
+          <AccountMenu sidebarCollapsed={sidebarCollapsed} />
+        </div>
       </aside>
 
       <div className="app-shell-body min-w-0 lg:min-h-0">
@@ -462,14 +526,14 @@ export function AppShell() {
             aria-label="Open navigation"
             aria-controls="primary-navigation"
             aria-expanded={mobileNavigationOpen}
-            className="flex size-10 shrink-0 items-center justify-center rounded-md border border-[var(--border-soft)] bg-white text-[var(--text-primary)] focus-visible:outline-2 focus-visible:outline-[var(--primary)] lg:hidden"
+            className="sidebar-control flex size-10 shrink-0 items-center justify-center rounded-md border border-[var(--border-soft)] bg-white text-[var(--text-primary)] focus-visible:outline-2 focus-visible:outline-[var(--primary)] lg:hidden"
             onClick={() => setMobileNavigationOpen(true)}
           >
             <Menu aria-hidden="true" className="size-5" />
           </button>
           <div className="page-heading-region min-w-0 flex-1">
             <div className="page-heading-fallback">
-              <h1 className="text-2xl font-semibold tracking-tight text-[var(--text-primary)] sm:text-[1.7rem]">
+              <h1 className="text-2xl font-bold tracking-tight text-[var(--text-primary)] sm:text-[1.75rem]">
                 {fallbackHeading.title}
               </h1>
               <p className="mt-1 hidden text-sm text-[var(--text-neutral)] sm:block">
@@ -478,7 +542,6 @@ export function AppShell() {
             </div>
             <div ref={setHeadingHost} className="page-heading-host" />
           </div>
-          <AccountMenu />
         </header>
         <main className="app-shell-main px-4 pb-4 sm:px-6 lg:min-h-0 lg:flex-1 lg:overflow-hidden lg:px-6 lg:pb-6">
           <div className="app-workspace rounded-xl border border-[var(--border-soft)] bg-white p-4 sm:p-5 lg:h-full lg:min-h-0 lg:overflow-x-hidden lg:overflow-y-auto lg:p-6">

@@ -94,15 +94,26 @@ describe('app shell role access and layout', () => {
     const nav = within(sidebar).getByRole('navigation', { name: 'Primary' })
     expect(within(sidebar).getByRole('img', { name: 'UniPM' })).toBeVisible()
     expect(
+      sidebar.querySelector('.sidebar-active-indicator'),
+    ).toBeInTheDocument()
+    expect(
       within(nav).getByRole('link', { name: 'Dashboard' }),
     ).toHaveAttribute('title', 'Dashboard')
+    expect(within(nav).getByRole('link', { name: 'Dashboard' })).toHaveClass(
+      'sidebar-nav-link',
+    )
+    expect(
+      within(nav)
+        .getByRole('link', { name: 'Dashboard' })
+        .querySelector('span'),
+    ).toHaveClass('sidebar-nav-label')
     expect(within(nav).getByRole('link', { name: 'Assets' })).toBeVisible()
     expect(within(nav).getByRole('link', { name: 'Inspections' })).toBeVisible()
     expect(within(nav).queryByRole('link', { name: 'Schedules' })).toBeNull()
     expect(within(nav).queryByRole('link', { name: 'Form review' })).toBeNull()
   })
 
-  it('expands the rail, persists preference, and puts account actions in the header', async () => {
+  it('expands the rail, persists preference, and keeps account actions at the sidebar bottom', async () => {
     server.use(http.get(meUrl, () => HttpResponse.json(currentUser(['GSD']))))
 
     renderShell()
@@ -112,9 +123,14 @@ describe('app shell role access and layout', () => {
     const shell = sidebar.parentElement!
     const header = document.querySelector('.app-page-header')!
     const workspace = document.querySelector('.app-workspace')!
+    const account = screen.getByLabelText('Account menu')
     expect(shell).toHaveClass('app-shell')
     expect(header.contains(workspace)).toBe(false)
-    expect(header.contains(screen.getByLabelText('Account menu'))).toBe(true)
+    expect(header.contains(account)).toBe(false)
+    expect(account.closest('details')?.parentElement).toBe(
+      sidebar.lastElementChild,
+    )
+    expect(account).toHaveAttribute('title', 'Synthetic Admin · GSD')
     expect(workspace.closest('main')).toBeTruthy()
     expect(sidebar.querySelector('nav')).toHaveClass('overflow-y-auto')
 
@@ -131,14 +147,16 @@ describe('app shell role access and layout', () => {
       within(sidebar).getAllByText('Institutional operations'),
     ).toHaveLength(2)
 
-    const account = screen.getByLabelText('Account menu')
     fireEvent.click(account)
     expect(account.closest('details')).toHaveAttribute('open')
     expect(screen.getByText('admin@example.test')).toBeVisible()
     expect(screen.getByRole('button', { name: 'Sign out' })).toBeVisible()
     expect(
-      within(sidebar).queryByRole('button', { name: 'Sign out' }),
-    ).toBeNull()
+      within(sidebar).getByRole('button', { name: 'Sign out' }),
+    ).toBeVisible()
+    expect(account.closest('details')?.lastElementChild).toHaveClass(
+      'bottom-full',
+    )
   })
 
   it('opens responsive navigation and closes it with Escape', async () => {

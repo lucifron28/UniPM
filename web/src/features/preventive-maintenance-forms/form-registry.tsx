@@ -81,7 +81,7 @@ function FormSummary({
   }
 
   return (
-    <article className="rounded-xl border border-[var(--border-soft)] bg-white p-5 shadow-sm sm:p-6">
+    <article className="content-card rounded-lg border border-[var(--border-soft)] bg-white p-5 sm:p-6">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <div className="min-w-0">
           <p className="text-xs font-semibold tracking-[0.08em] text-[var(--text-neutral)] uppercase">
@@ -218,7 +218,7 @@ function FormRegistryFilters({
       >
         Find forms
       </h2>
-      <Card className="p-5 shadow-none">
+      <Card className="content-card p-5">
         <form
           className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4"
           onSubmit={(event) => {
@@ -535,7 +535,7 @@ export function FormRegistry({ search, onSearchChange }: FormRegistryProps) {
   }
 
   return (
-    <section aria-labelledby="forms-title" className="max-w-6xl space-y-6">
+    <section aria-labelledby="forms-title" className="space-y-6">
       <PageHeading
         id="forms-title"
         eyebrow="Preventive maintenance"
@@ -611,6 +611,7 @@ export function FormRegistry({ search, onSearchChange }: FormRegistryProps) {
           <RegistryResultsPanel
             label="Preventive-maintenance forms"
             desktopLabel="Preventive-maintenance form records"
+            desktopFrameClassName="border-0 bg-transparent"
             breakpoint="md"
             viewportSize="standard"
             isUpdating={forms.isFetching}

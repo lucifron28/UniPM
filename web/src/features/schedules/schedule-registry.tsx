@@ -73,7 +73,7 @@ function isScheduleAccessDenied(error: unknown) {
 
 function SummaryCard({ label, count }: { label: string; count: number }) {
   return (
-    <Card className="p-4 shadow-none">
+    <Card className="content-card p-4">
       <p className="text-xs font-semibold tracking-[0.08em] text-[var(--text-neutral)] uppercase">
         {label}
       </p>
@@ -634,7 +634,7 @@ export function ScheduleRegistry({
   )
 
   return (
-    <section aria-labelledby="schedules-title" className="space-y-8">
+    <section aria-labelledby="schedules-title" className="space-y-6">
       <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <PageHeading
           id="schedules-title"
@@ -673,7 +673,7 @@ export function ScheduleRegistry({
             Search by asset, then refine by status or PM cycle.
           </p>
         </div>
-        <Card className="p-4 shadow-none">
+        <Card className="content-card p-4">
           <form
             className="space-y-4"
             onSubmit={(event) => {
@@ -1100,7 +1100,7 @@ export function ScheduleRegistry({
             mobileContent={
               <div className="grid gap-3">
                 {pageData.map((schedule) => (
-                  <Card key={schedule.id} className="space-y-3 shadow-none">
+                  <Card key={schedule.id} className="content-card space-y-3">
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <h2 className="font-bold">
