@@ -8,8 +8,11 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using UniPM.Api.Data;
+using UniPM.Api.Features.Assets;
 using UniPM.Api.Features.Auth;
 using UniPM.Api.Features.Reports;
+using UniPM.Api.Features.Schedules;
+using UniPM.Api.Models;
 
 namespace UniPM.Api.Tests;
 
@@ -100,6 +103,64 @@ public sealed class PmAnalyticsV2EndpointTests
             "/api/v1/analytics/pm/v2/query",
             new PmAnalyticsV2QueryRequest(ValidPlan()));
         Assert.Equal(HttpStatusCode.Unauthorized, unauthorized.StatusCode);
+    }
+
+    [Fact]
+    public async Task Blank_stored_pm_cycle_uses_schedule_date_fallback_in_memory()
+    {
+        await using var application = new AnalyticsApplicationFactory(authenticated: true, AuthRoleCatalog.Gsd);
+        using var client = application.CreateClient();
+        await EnsureCreatedAsync(application.Services);
+
+        var assetId = Guid.NewGuid();
+        var createdAt = new DateTimeOffset(2023, 2, 1, 0, 0, 0, TimeSpan.FromHours(8));
+        await using (var scope = application.Services.CreateAsyncScope())
+        {
+            var factory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
+            await using var context = await factory.CreateDbContextAsync();
+            context.Assets.Add(new Asset
+            {
+                Id = assetId,
+                AssetCode = "V2-LEGACY-CYCLE",
+                AssetCategory = "fire-extinguisher",
+                Building = "Legacy Test Building",
+                Department = "Legacy Test Department",
+                Location = "Synthetic test area",
+                Status = AssetStatusCatalog.Active,
+                CreatedAt = createdAt,
+                UpdatedAt = createdAt
+            });
+            context.PreventiveMaintenanceSchedules.Add(new PreventiveMaintenanceSchedule
+            {
+                Id = Guid.NewGuid(),
+                AssetId = assetId,
+                ScheduleDate = createdAt,
+                // InMemory-only legacy row. Native SQL enforces canonical PM cycle values.
+                PmCycle = string.Empty,
+                PeriodType = "Quarter",
+                Quarter = "Q1",
+                Year = 2023,
+                Status = ScheduleStatusCatalog.Due,
+                CreatedAt = createdAt,
+                UpdatedAt = createdAt
+            });
+            await context.SaveChangesAsync();
+        }
+
+        var plan = ValidPlan() with
+        {
+            Period = new PmAnalyticsV2Period(PmAnalyticsV2PeriodKind.Month, Year: 2023, Month: 2)
+        };
+        using var response = await client.PostAsJsonAsync(
+            "/api/v1/analytics/pm/v2/query",
+            new PmAnalyticsV2QueryRequest(plan, PmAnalyticsV2SourceScope.Calculation));
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var result = await response.Content.ReadFromJsonAsync<PmAnalyticsV2QueryResponse>();
+        Assert.NotNull(result);
+        var source = Assert.Single(result.Sources);
+        Assert.Equal("2023-02", source.PmCycle);
+        Assert.True(source.UsedLegacyDateFallback);
+        Assert.Equal(PreventiveMaintenanceCycle.DeadlineForCycle("2023-02"), source.Deadline);
     }
 
     private static async Task EnsureCreatedAsync(IServiceProvider services)

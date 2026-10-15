@@ -80,11 +80,12 @@ public sealed class PmAnalyticsV2SqlServerTests
             Assert.Equal(PreventiveMaintenanceCycle.DeadlineForCycle("2024-02"), leapCycle.Deadline);
             Assert.Equal(TimeSpan.FromHours(8), leapCycle.Deadline.Offset);
 
-            var legacyFallback = await QueryPayloadAsync(gsdClient, CreatePlan(
+            var canonicalCycle = await QueryPayloadAsync(gsdClient, CreatePlan(
                 PmAnalyticsV2Metric.Progress,
                 PmAnalyticsV2Presentation.Percent,
-                new PmAnalyticsV2Period(PmAnalyticsV2PeriodKind.Month, Year: 2023, Month: 2)));
-            Assert.Equal(1, Assert.Single(legacyFallback.Cycles).LegacyDateFallbackCount);
+                new PmAnalyticsV2Period(PmAnalyticsV2PeriodKind.Month, Year: 2023, Month: 2),
+                assetCode: "V2-FE-LEAP"));
+            Assert.Equal(0, Assert.Single(canonicalCycle.Cycles).LegacyDateFallbackCount);
 
             using (var comparisonResponse = await gsdClient.PostAsJsonAsync(
                 "/api/v1/analytics/pm/v2/query",
@@ -456,7 +457,7 @@ public sealed class PmAnalyticsV2SqlServerTests
             Id = Guid.NewGuid(),
             AssetId = legacyAsset.Id,
             ScheduleDate = new DateTimeOffset(2023, 2, 1, 0, 0, 0, TimeSpan.FromHours(8)),
-            PmCycle = string.Empty,
+            PmCycle = "2023-02",
             PeriodType = "Quarter",
             Quarter = "Q1",
             Year = 2023,
