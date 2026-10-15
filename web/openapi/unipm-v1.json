@@ -3239,6 +3239,124 @@
           }
         }
       }
+    },
+    "/api/v1/analytics/pm/v2/interpret": {
+      "post": {
+        "tags": ["PM Analytics"],
+        "summary": "Interprets a bounded preventive-maintenance analytics question using the V2 deterministic grammar",
+        "operationId": "InterpretPmAnalyticsV2Question",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PmAnalyticsV2InterpretRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PmAnalyticsV2InterpretationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analytics/pm/v2/query": {
+      "post": {
+        "tags": ["PM Analytics"],
+        "summary": "Executes a validated typed V2 preventive-maintenance analytics plan",
+        "operationId": "QueryPmAnalyticsV2",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PmAnalyticsV2QueryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PmAnalyticsV2QueryResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -6053,6 +6171,683 @@
             "format": "int32"
           }
         }
+      },
+      "PmAnalyticsV2Comparison": {
+        "required": ["earlierCycle", "laterCycle"],
+        "type": "object",
+        "properties": {
+          "earlierCycle": {
+            "type": "string"
+          },
+          "laterCycle": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "PmAnalyticsV2ComparisonResponse": {
+        "required": [
+          "earlierCycle",
+          "laterCycle",
+          "earlier",
+          "later",
+          "delta",
+          "deltaUnit"
+        ],
+        "type": "object",
+        "properties": {
+          "earlierCycle": {
+            "type": "string"
+          },
+          "laterCycle": {
+            "type": "string"
+          },
+          "earlier": {
+            "$ref": "#/components/schemas/PmAnalyticsV2MeasureResponse"
+          },
+          "later": {
+            "$ref": "#/components/schemas/PmAnalyticsV2MeasureResponse"
+          },
+          "delta": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": ["null", "number", "string"],
+            "format": "double"
+          },
+          "deltaUnit": {
+            "type": "string"
+          }
+        }
+      },
+      "PmAnalyticsV2Condition": {
+        "enum": ["Operational", "NonOperational", "NotInspected", null]
+      },
+      "PmAnalyticsV2CountBasis": {
+        "enum": ["AssetCycles", "DistinctAssets"]
+      },
+      "PmAnalyticsV2CycleResponse": {
+        "required": [
+          "pmCycle",
+          "deadline",
+          "state",
+          "eligibleAssetCycleCount",
+          "eligibleDistinctAssetCount",
+          "inspectedCount",
+          "completedOnTimeCount",
+          "completedLateCount",
+          "nonOperationalCount",
+          "remainingCount",
+          "missedCount",
+          "legacyDateFallbackCount"
+        ],
+        "type": "object",
+        "properties": {
+          "pmCycle": {
+            "type": "string"
+          },
+          "deadline": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "state": {
+            "type": "string"
+          },
+          "eligibleAssetCycleCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "eligibleDistinctAssetCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "inspectedCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "completedOnTimeCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "completedLateCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "nonOperationalCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "remainingCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "missedCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "legacyDateFallbackCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          }
+        }
+      },
+      "PmAnalyticsV2Direction": {
+        "enum": ["Highest", "Lowest"]
+      },
+      "PmAnalyticsV2GroupBy": {
+        "enum": ["None", "Department", "Building", "PmCycle"]
+      },
+      "PmAnalyticsV2GroupResponse": {
+        "required": [
+          "groupBy",
+          "value",
+          "result",
+          "eligibleAssetCycleCount",
+          "eligibleDistinctAssetCount",
+          "matchingAssetCycleCount",
+          "matchingDistinctAssetCount"
+        ],
+        "type": "object",
+        "properties": {
+          "groupBy": {
+            "$ref": "#/components/schemas/PmAnalyticsV2GroupBy"
+          },
+          "value": {
+            "type": ["null", "string"]
+          },
+          "result": {
+            "$ref": "#/components/schemas/PmAnalyticsV2MeasureResponse"
+          },
+          "eligibleAssetCycleCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "eligibleDistinctAssetCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "matchingAssetCycleCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "matchingDistinctAssetCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          }
+        }
+      },
+      "PmAnalyticsV2InterpretationResponse": {
+        "required": ["status", "plan", "clarificationFields", "code", "detail"],
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "plan": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PmAnalyticsV2Plan"
+              }
+            ]
+          },
+          "clarificationFields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "code": {
+            "type": ["null", "string"]
+          },
+          "detail": {
+            "type": ["null", "string"]
+          }
+        }
+      },
+      "PmAnalyticsV2InterpretRequest": {
+        "required": ["question"],
+        "type": "object",
+        "properties": {
+          "question": {
+            "type": ["null", "string"]
+          }
+        },
+        "additionalProperties": false
+      },
+      "PmAnalyticsV2MeasureResponse": {
+        "required": [
+          "numerator",
+          "denominator",
+          "value",
+          "unit",
+          "isMeasurable",
+          "unmeasurableReason"
+        ],
+        "type": "object",
+        "properties": {
+          "numerator": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "denominator": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "value": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": ["null", "number", "string"],
+            "format": "double"
+          },
+          "unit": {
+            "type": "string"
+          },
+          "isMeasurable": {
+            "type": "boolean"
+          },
+          "unmeasurableReason": {
+            "type": ["null", "string"]
+          }
+        }
+      },
+      "PmAnalyticsV2Metric": {
+        "enum": [
+          "Progress",
+          "OnTimeCompliance",
+          "CompletedLate",
+          "NonOperational",
+          "Remaining",
+          "Missed"
+        ]
+      },
+      "PmAnalyticsV2Period": {
+        "required": ["kind"],
+        "type": "object",
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/PmAnalyticsV2PeriodKind"
+          },
+          "year": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["null", "integer", "string"],
+            "format": "int32"
+          },
+          "month": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["null", "integer", "string"],
+            "format": "int32"
+          },
+          "quarter": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["null", "integer", "string"],
+            "format": "int32"
+          },
+          "startCycle": {
+            "type": ["null", "string"]
+          },
+          "endCycle": {
+            "type": ["null", "string"]
+          }
+        },
+        "additionalProperties": false
+      },
+      "PmAnalyticsV2PeriodKind": {
+        "enum": ["Month", "Quarter", "Year", "Range"]
+      },
+      "PmAnalyticsV2Plan": {
+        "required": [
+          "schemaVersion",
+          "metric",
+          "assetCategory",
+          "period",
+          "comparison",
+          "presentation",
+          "countBasis",
+          "department",
+          "building",
+          "assetCode",
+          "condition",
+          "timeliness",
+          "groupBy",
+          "ranking"
+        ],
+        "type": "object",
+        "properties": {
+          "schemaVersion": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "metric": {
+            "$ref": "#/components/schemas/PmAnalyticsV2Metric"
+          },
+          "assetCategory": {
+            "type": "string"
+          },
+          "period": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PmAnalyticsV2Period"
+              }
+            ]
+          },
+          "comparison": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PmAnalyticsV2Comparison"
+              }
+            ]
+          },
+          "presentation": {
+            "$ref": "#/components/schemas/PmAnalyticsV2Presentation"
+          },
+          "countBasis": {
+            "$ref": "#/components/schemas/PmAnalyticsV2CountBasis"
+          },
+          "department": {
+            "type": ["null", "string"]
+          },
+          "building": {
+            "type": ["null", "string"]
+          },
+          "assetCode": {
+            "type": ["null", "string"]
+          },
+          "condition": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PmAnalyticsV2Condition"
+              }
+            ]
+          },
+          "timeliness": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PmAnalyticsV2Timeliness"
+              }
+            ]
+          },
+          "groupBy": {
+            "$ref": "#/components/schemas/PmAnalyticsV2GroupBy"
+          },
+          "ranking": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PmAnalyticsV2Ranking"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "PmAnalyticsV2PopulationResponse": {
+        "required": [
+          "eligibleAssetCycleCount",
+          "eligibleDistinctAssetCount",
+          "matchingAssetCycleCount",
+          "matchingDistinctAssetCount",
+          "sourceTotalCount",
+          "totalPages"
+        ],
+        "type": "object",
+        "properties": {
+          "eligibleAssetCycleCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "eligibleDistinctAssetCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "matchingAssetCycleCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "matchingDistinctAssetCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "sourceTotalCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "totalPages": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          }
+        }
+      },
+      "PmAnalyticsV2Presentation": {
+        "enum": ["Count", "Percent", "Records"]
+      },
+      "PmAnalyticsV2QueryRequest": {
+        "required": ["plan"],
+        "type": "object",
+        "properties": {
+          "plan": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PmAnalyticsV2Plan"
+              }
+            ]
+          },
+          "sourceScope": {
+            "$ref": "#/components/schemas/PmAnalyticsV2SourceScope"
+          },
+          "page": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32",
+            "default": 1
+          },
+          "pageSize": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32",
+            "default": 25
+          }
+        },
+        "additionalProperties": false
+      },
+      "PmAnalyticsV2QueryResponse": {
+        "required": [
+          "schemaVersion",
+          "asOfUtc",
+          "plan",
+          "sourceScope",
+          "page",
+          "pageSize",
+          "population",
+          "result",
+          "cycles",
+          "groups",
+          "rankingExclusions",
+          "comparison",
+          "sources",
+          "scopeNote"
+        ],
+        "type": "object",
+        "properties": {
+          "schemaVersion": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "asOfUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "plan": {
+            "$ref": "#/components/schemas/PmAnalyticsV2Plan"
+          },
+          "sourceScope": {
+            "$ref": "#/components/schemas/PmAnalyticsV2SourceScope"
+          },
+          "page": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "pageSize": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "population": {
+            "$ref": "#/components/schemas/PmAnalyticsV2PopulationResponse"
+          },
+          "result": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PmAnalyticsV2MeasureResponse"
+              }
+            ]
+          },
+          "cycles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PmAnalyticsV2CycleResponse"
+            }
+          },
+          "groups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PmAnalyticsV2GroupResponse"
+            }
+          },
+          "rankingExclusions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PmAnalyticsV2RankingExclusionResponse"
+            }
+          },
+          "comparison": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PmAnalyticsV2ComparisonResponse"
+              }
+            ]
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PmAnalyticsV2SourceResponse"
+            }
+          },
+          "scopeNote": {
+            "type": "string"
+          }
+        }
+      },
+      "PmAnalyticsV2Ranking": {
+        "required": ["limit", "direction"],
+        "type": "object",
+        "properties": {
+          "limit": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "direction": {
+            "$ref": "#/components/schemas/PmAnalyticsV2Direction"
+          }
+        },
+        "additionalProperties": false
+      },
+      "PmAnalyticsV2RankingExclusionResponse": {
+        "required": ["department", "reason"],
+        "type": "object",
+        "properties": {
+          "department": {
+            "type": ["null", "string"]
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
+      },
+      "PmAnalyticsV2SourceResponse": {
+        "required": [
+          "scheduleId",
+          "assetId",
+          "inspectionId",
+          "assetCode",
+          "assetCategory",
+          "currentDepartment",
+          "currentBuilding",
+          "pmCycle",
+          "deadline",
+          "completedAt",
+          "scheduleStatus",
+          "formStatus",
+          "condition",
+          "timeliness",
+          "usedLegacyDateFallback"
+        ],
+        "type": "object",
+        "properties": {
+          "scheduleId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "assetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "inspectionId": {
+            "type": ["null", "string"],
+            "format": "uuid"
+          },
+          "assetCode": {
+            "type": "string"
+          },
+          "assetCategory": {
+            "type": "string"
+          },
+          "currentDepartment": {
+            "type": ["null", "string"]
+          },
+          "currentBuilding": {
+            "type": ["null", "string"]
+          },
+          "pmCycle": {
+            "type": "string"
+          },
+          "deadline": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "completedAt": {
+            "type": ["null", "string"],
+            "format": "date-time"
+          },
+          "scheduleStatus": {
+            "type": "string"
+          },
+          "formStatus": {
+            "type": ["null", "string"]
+          },
+          "condition": {
+            "type": "string"
+          },
+          "timeliness": {
+            "type": "string"
+          },
+          "usedLegacyDateFallback": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PmAnalyticsV2SourceScope": {
+        "enum": ["Matching", "Calculation"]
+      },
+      "PmAnalyticsV2Timeliness": {
+        "enum": ["OnTime", "Late", "Remaining", "Missed", "Future", null]
       }
     },
     "securitySchemes": {
