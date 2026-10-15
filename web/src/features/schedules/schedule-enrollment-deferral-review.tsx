@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { CalendarClock } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -69,25 +70,34 @@ export function ScheduleEnrollmentDeferralReview() {
     <Card
       id="schedule-enrollment-deferrals"
       aria-labelledby="schedule-enrollment-review-title"
-      className="space-y-4 border-[color-mix(in_srgb,var(--warning)_35%,white)] p-5 shadow-none"
+      className="content-card space-y-4 rounded-lg p-5"
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2
-            id="schedule-enrollment-review-title"
-            className="text-lg font-bold text-[var(--text-primary)]"
+        <div className="flex min-w-0 items-start gap-3">
+          <span
+            aria-hidden="true"
+            className="inline-flex size-9 shrink-0 items-center justify-center rounded-md bg-[color-mix(in_srgb,var(--primary)_9%,white)] text-[var(--primary)]"
           >
-            Deferred asset enrollment
-          </h2>
-          <p className="mt-1 max-w-3xl text-sm text-[var(--text-secondary)]">
-            These cycles could not join a PM batch after work began. GSD review
-            records an acknowledgement only. It does not create a schedule,
-            complete or waive PM work, or change asset condition.
-          </p>
-          <p className="mt-2 text-sm text-[var(--text-secondary)]">
-            If a next eligible cycle belongs to a future year, it is a planning
-            reference. UniPM generates that schedule when the year begins.
-          </p>
+            <CalendarClock className="size-4" />
+          </span>
+          <div>
+            <h2
+              id="schedule-enrollment-review-title"
+              className="text-lg font-bold text-[var(--text-primary)]"
+            >
+              Deferred asset enrollment
+            </h2>
+            <p className="mt-1 max-w-3xl text-sm text-[var(--text-secondary)]">
+              These cycles could not join a PM batch after work began. GSD
+              review records an acknowledgement only. It does not create a
+              schedule, complete or waive PM work, or change asset condition.
+            </p>
+            <p className="mt-2 text-sm text-[var(--text-secondary)]">
+              If a next eligible cycle belongs to a future year, it is a
+              planning reference. UniPM generates that schedule when the year
+              begins.
+            </p>
+          </div>
         </div>
         <div
           className="flex flex-wrap gap-2"
@@ -146,7 +156,7 @@ export function ScheduleEnrollmentDeferralReview() {
             return (
               <li
                 key={key}
-                className="rounded-lg border border-[var(--border-soft)] bg-white p-4 transition-colors duration-150 hover:bg-[var(--page-background)]"
+                className="rounded-lg border border-[var(--border-soft)] bg-white p-4 hover:bg-[var(--page-background)]"
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>

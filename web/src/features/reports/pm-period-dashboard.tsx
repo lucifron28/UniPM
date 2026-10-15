@@ -1,6 +1,20 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Link } from '@tanstack/react-router'
-import { X } from 'lucide-react'
+import {
+  Activity,
+  ArrowRight,
+  CalendarClock,
+  CalendarDays,
+  CircleAlert,
+  CircleCheck,
+  CircleX,
+  ClipboardCheck,
+  Clock,
+  Gauge,
+  Sparkles,
+  X,
+  type LucideIcon,
+} from 'lucide-react'
 import { formatAssetCategory } from '@/features/assets/asset-presentation'
 import { PageHeading } from '@/components/layout/page-heading'
 import { Button } from '@/components/ui/button'
@@ -8,6 +22,10 @@ import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
+import {
+  SummaryMetricCard,
+  type SummaryMetricTone,
+} from '@/components/ui/summary-metric-card'
 import type {
   PmPeriodDashboardAssetRowResponse,
   PmPeriodDashboardBatchResponse,
@@ -42,6 +60,8 @@ type DashboardMetricProps = {
   label: string
   value: ReactNode
   note?: string
+  icon: LucideIcon
+  tone: SummaryMetricTone
 }
 
 const selectClassName =
@@ -156,19 +176,21 @@ function formatLocation(
   )
 }
 
-function DashboardMetric({ label, value, note }: DashboardMetricProps) {
+function DashboardMetric({
+  label,
+  value,
+  note,
+  icon,
+  tone,
+}: DashboardMetricProps) {
   return (
-    <Card className="content-card p-4">
-      <p className="text-xs font-semibold tracking-[0.08em] text-[var(--text-neutral)] uppercase">
-        {label}
-      </p>
-      <p className="mt-2 text-2xl font-bold tracking-tight text-[var(--text-primary)]">
-        {value}
-      </p>
-      {note && (
-        <p className="mt-1 text-xs text-[var(--text-secondary)]">{note}</p>
-      )}
-    </Card>
+    <SummaryMetricCard
+      label={label}
+      value={value}
+      {...(note === undefined ? {} : { note })}
+      icon={icon}
+      tone={tone}
+    />
   )
 }
 
@@ -605,43 +627,59 @@ function DashboardMetrics({
       <DashboardMetric
         label="Scheduled"
         value={formatNumber(dashboard.scheduled)}
+        icon={CalendarDays}
+        tone="brand"
       />
       <DashboardMetric
         label="Inspected"
         value={formatNumber(dashboard.inspected)}
+        icon={ClipboardCheck}
+        tone="information"
       />
       <DashboardMetric
         label="Completed on time"
         value={formatNumber(dashboard.completedOnTime)}
+        icon={CircleCheck}
+        tone="success"
       />
       <DashboardMetric
         label="Completed late"
         value={formatNumber(dashboard.completedLate)}
+        icon={Clock}
+        tone="warning"
       />
       {isClosed && (
         <DashboardMetric
           label="Not completed"
           value={formatNumber(dashboard.notCompleted)}
+          icon={CircleX}
+          tone="danger"
         />
       )}
       <DashboardMetric
         label="Remaining"
         value={formatNumber(dashboard.remaining)}
         note="Backend-reported unfinished scheduled work"
+        icon={CalendarClock}
+        tone="neutral"
       />
       {dashboard.inspectionResultsAvailable ? (
         <>
           <DashboardMetric
             label="Operational"
             value={formatNumber(dashboard.operational)}
+            icon={CircleCheck}
+            tone="success"
           />
           <DashboardMetric
             label="Non-operational"
             value={formatNumber(dashboard.nonOperational)}
+            icon={CircleAlert}
+            tone="danger"
           />
         </>
       ) : (
-        <Card role="status" className="p-4 shadow-none">
+        <Card role="status" className="content-card rounded-lg p-4">
           <p className="text-sm font-semibold text-[var(--text-primary)]">
             No completed inspection results yet
           </p>
@@ -655,6 +693,8 @@ function DashboardMetrics({
         label="Progress"
         value={formatPercent(dashboard.progressPercent)}
         note="Backend-reported inspection progress"
+        icon={Activity}
+        tone="information"
       />
       <DashboardMetric
         label="Compliance rate"
@@ -668,6 +708,8 @@ function DashboardMetrics({
             ? 'Backend-reported result'
             : 'Backend reports this period is not measurable yet'
         }
+        icon={Gauge}
+        tone={dashboard.complianceMeasurable ? 'success' : 'neutral'}
       />
     </div>
   )
@@ -712,20 +754,28 @@ function DeferredEnrollmentDashboardSummary() {
   return (
     <Card
       aria-labelledby="dashboard-deferred-enrollment-title"
-      className="flex flex-wrap items-center justify-between gap-4 border-[color-mix(in_srgb,var(--warning)_35%,white)] p-4 shadow-none"
+      className="content-card flex flex-wrap items-center justify-between gap-4 rounded-lg p-4"
     >
-      <div>
-        <h2
-          id="dashboard-deferred-enrollment-title"
-          className="font-semibold text-[var(--text-primary)]"
+      <div className="flex min-w-0 items-start gap-3">
+        <span
+          aria-hidden="true"
+          className="inline-flex size-9 shrink-0 items-center justify-center rounded-md bg-[color-mix(in_srgb,var(--primary)_9%,white)] text-[var(--primary)]"
         >
-          Deferred enrollment across all PM periods
-        </h2>
-        <p className="mt-1 text-sm text-[var(--text-secondary)]">
-          {pendingCount} need review · {reviewedCount} reviewed. Deferred cycles
-          have no schedule and are not completed maintenance. They stay outside
-          the scheduled and compliance totals.
-        </p>
+          <CalendarClock className="size-4" />
+        </span>
+        <div>
+          <h2
+            id="dashboard-deferred-enrollment-title"
+            className="font-semibold text-[var(--text-primary)]"
+          >
+            Deferred enrollment across all PM periods
+          </h2>
+          <p className="mt-1 text-sm text-[var(--text-secondary)]">
+            {pendingCount} need review · {reviewedCount} reviewed. Deferred
+            cycles have no schedule and are not completed maintenance. They stay
+            outside the scheduled and compliance totals.
+          </p>
+        </div>
       </div>
       <Button asChild variant="secondary">
         <Link to="/app/schedules" hash="schedule-enrollment-deferrals">
@@ -991,15 +1041,10 @@ export function PmPeriodDashboard({
                   </div>
                   <div className="flex flex-wrap gap-2 print:hidden">
                     {canAskNla && (
-                      <Button
-                        id="dashboard-ask-nla"
-                        type="button"
-                        variant="secondary"
-                        className="min-h-9 px-3"
+                      <AskNlaEntryPoint
+                        open={isNlaOpen}
                         onClick={() => setIsNlaOpen(true)}
-                      >
-                        Ask NLA
-                      </Button>
+                      />
                     )}
                     <Button
                       type="button"
@@ -1010,7 +1055,7 @@ export function PmPeriodDashboard({
                     </Button>
                     <Button
                       type="button"
-                      className="bg-white text-[var(--text-primary)] hover:bg-[var(--page-background)]"
+                      variant="secondary"
                       onClick={handleChangeSelection}
                     >
                       Change selection
@@ -1083,12 +1128,9 @@ export function PmPeriodDashboard({
                   className="space-y-3"
                 >
                   <div>
-                    <p className="text-sm font-semibold tracking-[0.08em] text-[var(--primary)] uppercase">
-                      Period status and maintenance metrics
-                    </p>
                     <h2
                       id="pm-dashboard-period-status"
-                      className="mt-1 text-xl font-semibold text-[var(--text-primary)]"
+                      className="text-xl font-bold text-[var(--text-primary)]"
                     >
                       Period overview
                     </h2>
@@ -1193,7 +1235,7 @@ export function PmPeriodDashboard({
                         <Button type="submit">Apply search</Button>
                         <Button
                           type="button"
-                          className="bg-white text-[var(--text-primary)] hover:bg-[var(--page-background)]"
+                          variant="secondary"
                           onClick={() => {
                             setText('')
                             onSearchChange({
@@ -1306,20 +1348,15 @@ export function PmPeriodDashboard({
                 </div>
                 <div className="flex flex-wrap gap-2 print:hidden">
                   {canAskNla && (
-                    <Button
-                      id="dashboard-ask-nla"
-                      type="button"
-                      variant="secondary"
-                      className="min-h-9 px-3"
+                    <AskNlaEntryPoint
+                      open={isNlaOpen}
                       onClick={() => setIsNlaOpen(true)}
-                    >
-                      Ask NLA
-                    </Button>
+                    />
                   )}
                   {hasValidGeneratedScope && isChangingSelection && (
                     <Button
                       type="button"
-                      className="bg-white text-[var(--text-primary)] hover:bg-[var(--page-background)]"
+                      variant="secondary"
                       onClick={() => setIsChangingSelection(false)}
                     >
                       Cancel
@@ -1477,6 +1514,48 @@ export function DashboardHeader() {
   )
 }
 
+function AskNlaEntryPoint({
+  open,
+  onClick,
+}: {
+  open: boolean
+  onClick: () => void
+}) {
+  return (
+    <Button
+      id="dashboard-ask-nla"
+      type="button"
+      variant="secondary"
+      aria-label="Ask NLA"
+      aria-haspopup="dialog"
+      aria-expanded={open}
+      onClick={onClick}
+      className="h-auto min-h-[4.25rem] w-full max-w-[19rem] justify-between gap-3 rounded-lg border-[color-mix(in_srgb,var(--primary)_18%,white)] bg-[color-mix(in_srgb,var(--primary)_5%,white)] px-3 py-2.5 text-left hover:border-[color-mix(in_srgb,var(--primary)_35%,white)] hover:bg-[color-mix(in_srgb,var(--primary)_8%,white)]"
+    >
+      <span className="flex min-w-0 items-center gap-3">
+        <span
+          aria-hidden="true"
+          className="inline-flex size-9 shrink-0 items-center justify-center rounded-md bg-[var(--primary)] text-white"
+        >
+          <Sparkles className="size-4" />
+        </span>
+        <span className="min-w-0">
+          <span className="block text-sm font-bold text-[var(--text-primary)]">
+            Ask NLA
+          </span>
+          <span className="mt-0.5 block text-xs leading-4 font-normal text-[var(--text-secondary)]">
+            Ask questions about your maintenance data.
+          </span>
+        </span>
+      </span>
+      <ArrowRight
+        aria-hidden="true"
+        className="size-4 shrink-0 text-[var(--primary)]"
+      />
+    </Button>
+  )
+}
+
 function DashboardNlaDrawer({
   open,
   onClose,
@@ -1485,38 +1564,60 @@ function DashboardNlaDrawer({
   onClose: () => void
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null)
+  const closeTimerRef = useRef<number | null>(null)
+  const isClosingRef = useRef(false)
+  const [isVisible, setIsVisible] = useState(false)
 
   useEffect(() => {
     const dialog = dialogRef.current
     if (!dialog) return
 
     if (open && !dialog.open) {
+      isClosingRef.current = false
       dialog.showModal()
+      window.requestAnimationFrame(() => setIsVisible(true))
       dialog
         .querySelector<HTMLButtonElement>('[aria-label="Close Ask NLA"]')
         ?.focus()
     } else if (!open && dialog.open) {
       dialog.close()
+      isClosingRef.current = false
     }
 
     return () => {
+      if (closeTimerRef.current !== null) {
+        window.clearTimeout(closeTimerRef.current)
+        closeTimerRef.current = null
+      }
       if (dialog.open) dialog.close()
     }
   }, [open])
 
   const closeDrawer = () => {
-    if (dialogRef.current?.open) dialogRef.current.close()
-    onClose()
-    window.requestAnimationFrame(() => {
-      document.getElementById('dashboard-ask-nla')?.focus()
-    })
+    if (!dialogRef.current?.open || isClosingRef.current) return
+
+    isClosingRef.current = true
+    setIsVisible(false)
+    const delay = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      ? 0
+      : 240
+    closeTimerRef.current = window.setTimeout(() => {
+      if (dialogRef.current?.open) dialogRef.current.close()
+      closeTimerRef.current = null
+      isClosingRef.current = false
+      onClose()
+      window.requestAnimationFrame(() => {
+        document.getElementById('dashboard-ask-nla')?.focus()
+      })
+    }, delay)
   }
 
   return (
     <dialog
       ref={dialogRef}
       aria-labelledby="dashboard-nla-drawer-title"
-      className="fixed inset-y-0 right-0 m-0 ml-auto h-dvh max-h-none w-full max-w-none border-0 border-l border-[var(--border-soft)] bg-white p-0 text-[var(--text-primary)] backdrop:bg-black/40 sm:w-[min(36rem,100vw)] print:hidden"
+      data-visible={isVisible}
+      className="ask-nla-drawer fixed inset-y-0 right-0 m-0 ml-auto h-dvh max-h-none w-full max-w-none border-0 border-l border-[var(--border-soft)] bg-white p-0 text-[var(--text-primary)] sm:w-[min(36rem,100vw)] print:hidden"
       onCancel={(event) => {
         event.preventDefault()
         closeDrawer()
@@ -1526,22 +1627,22 @@ function DashboardNlaDrawer({
       }}
     >
       <div className="flex h-full min-h-0 flex-col">
-        <header className="flex shrink-0 items-center justify-between gap-4 border-b border-[var(--border-soft)] px-4 py-3 sm:px-6">
+        <header className="flex shrink-0 items-center justify-between gap-4 border-b border-white/20 bg-[var(--primary)] px-4 py-3 text-white sm:px-6">
           <div>
             <h2
               id="dashboard-nla-drawer-title"
-              className="text-lg font-bold text-[var(--text-primary)]"
+              className="text-lg font-bold text-white"
             >
               Ask NLA
             </h2>
-            <p className="mt-1 text-sm text-[var(--text-secondary)]">
+            <p className="mt-1 text-sm text-white/80">
               Review a supported PM measure and its source records.
             </p>
           </div>
           <Button
             type="button"
             variant="secondary"
-            className="size-10 min-h-10 shrink-0 px-0"
+            className="size-10 min-h-10 shrink-0 border-white bg-white px-0 text-[var(--primary)] hover:bg-white/90"
             aria-label="Close Ask NLA"
             onClick={closeDrawer}
           >

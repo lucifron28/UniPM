@@ -6,7 +6,7 @@ import {
   getCoreRowModel,
   useReactTable,
 } from '@tanstack/react-table'
-import { Plus, Search } from 'lucide-react'
+import { Eye, Plus, Search } from 'lucide-react'
 import { PageHeading } from '@/components/layout/page-heading'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -94,8 +94,9 @@ const createColumns = (search: AssetSearch) => [
         to="/app/assets/$assetId"
         params={{ assetId: row.original.id }}
         search={{ ...search, returnContext: { kind: 'assetRegistry', search } }}
-        className="font-semibold text-[var(--primary)] hover:underline"
+        className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-[color-mix(in_srgb,var(--primary)_30%,white)] bg-white px-2.5 text-xs font-semibold text-[var(--primary)] hover:border-[var(--primary)] hover:bg-[color-mix(in_srgb,var(--primary)_5%,white)] focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 focus-visible:outline-none"
       >
+        <Eye aria-hidden="true" className="size-3.5" />
         View details
       </Link>
     ),
@@ -123,22 +124,46 @@ function SummaryCard({
       type="button"
       aria-pressed={selected}
       onClick={onSelect}
-      className={`rounded-xl border bg-white p-4 text-left transition-colors hover:border-[var(--primary)] focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:outline-none ${
+      className={`content-card rounded-lg border p-4 text-left focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:outline-none ${
         selected
-          ? 'border-[var(--primary)] ring-1 ring-[var(--primary)]'
-          : 'border-[var(--border-soft)]'
+          ? 'border-[var(--primary)] bg-[var(--primary)] text-white'
+          : 'border-[var(--border-soft)] bg-white text-[var(--text-primary)] hover:border-[var(--primary)]'
       }`}
     >
-      <span className="block text-xs font-semibold tracking-[0.08em] text-[var(--text-neutral)] uppercase">
+      <span
+        className={`block text-xs font-semibold tracking-[0.08em] uppercase ${selected ? 'text-white/90' : 'text-[var(--text-neutral)]'}`}
+      >
         {category.displayName}
       </span>
-      <span className="mt-2 block text-2xl font-bold text-[var(--text-primary)]">
+      <span
+        className={`mt-2 block text-3xl leading-none font-bold ${selected ? 'text-white' : 'text-[var(--text-primary)]'}`}
+      >
         {category.totalCount.toLocaleString()}
       </span>
-      <span className="mt-1 block text-xs text-[var(--text-secondary)]">
-        Overall total · Active {category.activeCount.toLocaleString()} ·
-        Inactive {category.inactiveCount.toLocaleString()} · Retired{' '}
-        {category.retiredCount.toLocaleString()}
+      <span
+        className={`mt-3 flex flex-wrap gap-x-3 gap-y-1 text-xs font-medium ${selected ? 'text-white/90' : 'text-[var(--text-secondary)]'}`}
+      >
+        <span className="inline-flex items-center gap-1.5">
+          <span
+            aria-hidden="true"
+            className={`size-1.5 rounded-full ${selected ? 'bg-emerald-200' : 'bg-emerald-600'}`}
+          />
+          Active {category.activeCount.toLocaleString()}
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span
+            aria-hidden="true"
+            className={`size-1.5 rounded-full ${selected ? 'bg-amber-200' : 'bg-amber-600'}`}
+          />
+          Inactive {category.inactiveCount.toLocaleString()}
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span
+            aria-hidden="true"
+            className={`size-1.5 rounded-full ${selected ? 'bg-white/60' : 'bg-stone-400'}`}
+          />
+          Retired {category.retiredCount.toLocaleString()}
+        </span>
       </span>
     </button>
   )
@@ -735,14 +760,14 @@ export function AssetRegistry({
             recordsZoom={recordZoom.zoom}
             desktopContent={
               <table className="w-full min-w-[960px] text-left text-sm">
-                <thead className="border-b border-[var(--border-soft)] bg-[var(--page-background)]">
+                <thead className="border-b border-[var(--primary)] bg-[var(--primary)] text-white">
                   {table.getHeaderGroups().map((headerGroup) => (
                     <tr key={headerGroup.id}>
                       {headerGroup.headers.map((header) => (
                         <th
                           key={header.id}
                           scope="col"
-                          className="px-5 py-4 font-semibold whitespace-nowrap text-[var(--text-primary)]"
+                          className="px-5 py-4 font-semibold whitespace-nowrap text-white"
                         >
                           {header.isPlaceholder
                             ? null
@@ -808,7 +833,7 @@ export function AssetRegistry({
                       ...search,
                       returnContext: { kind: 'assetRegistry', search },
                     }}
-                    className="rounded-xl border border-[var(--border-soft)] bg-white p-5 shadow-sm"
+                    className="content-card rounded-lg border border-[var(--border-soft)] bg-white p-4"
                   >
                     <p className="font-semibold text-[var(--primary)]">
                       {asset.assetCode}
@@ -838,6 +863,10 @@ export function AssetRegistry({
                         {asset.qrCodeValue ? 'QR ready' : 'QR unavailable'}
                       </Badge>
                     </div>
+                    <span className="mt-4 inline-flex min-h-9 items-center gap-2 rounded-lg border border-[color-mix(in_srgb,var(--primary)_30%,white)] px-2.5 text-xs font-semibold text-[var(--primary)]">
+                      <Eye aria-hidden="true" className="size-3.5" />
+                      View details
+                    </span>
                   </Link>
                 ))}
               </div>

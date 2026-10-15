@@ -1,5 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
-import { CalendarPlus } from 'lucide-react'
+import {
+  CalendarClock,
+  CalendarDays,
+  CalendarPlus,
+  CircleAlert,
+  CircleCheck,
+  CircleX,
+  Clock,
+  Eye,
+} from 'lucide-react'
 import { PageHeading } from '@/components/layout/page-heading'
 import { Link } from '@tanstack/react-router'
 import {
@@ -12,6 +21,7 @@ import { ApiError } from '@/api/problem-details'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
+import { SummaryMetricCard } from '@/components/ui/summary-metric-card'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { Asset } from '@/features/assets/asset-contract'
@@ -69,19 +79,6 @@ const scheduleAccessDeniedMessage =
 
 function isScheduleAccessDenied(error: unknown) {
   return error instanceof ApiError && error.status === 403
-}
-
-function SummaryCard({ label, count }: { label: string; count: number }) {
-  return (
-    <Card className="content-card p-4">
-      <p className="text-xs font-semibold tracking-[0.08em] text-[var(--text-neutral)] uppercase">
-        {label}
-      </p>
-      <p className="mt-2 text-2xl font-bold text-[var(--text-primary)]">
-        {count}
-      </p>
-    </Card>
-  )
 }
 
 const columnHelper = createColumnHelper<ScheduleRegistryItem>()
@@ -172,8 +169,9 @@ const createColumns = (search: ScheduleSearch) => [
           ...search,
           returnContext: { kind: 'scheduleRegistry', search },
         }}
-        className="font-semibold text-[var(--primary)] hover:underline"
+        className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-[color-mix(in_srgb,var(--primary)_30%,white)] bg-white px-2.5 text-xs font-semibold text-[var(--primary)] hover:border-[var(--primary)] hover:bg-[color-mix(in_srgb,var(--primary)_5%,white)] focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 focus-visible:outline-none"
       >
+        <Eye aria-hidden="true" className="size-3.5" />
         View details
       </Link>
     ),
@@ -622,12 +620,42 @@ export function ScheduleRegistry({
         </Card>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          <SummaryCard label="All schedules" count={summary.data.totalCount} />
-          <SummaryCard label="Due" count={summary.data.dueCount} />
-          <SummaryCard label="Ongoing" count={summary.data.ongoingCount} />
-          <SummaryCard label="Overdue" count={summary.data.overdueCount} />
-          <SummaryCard label="Completed" count={summary.data.completedCount} />
-          <SummaryCard label="Cancelled" count={summary.data.cancelledCount} />
+          <SummaryMetricCard
+            label="All schedules"
+            value={summary.data.totalCount.toLocaleString()}
+            icon={CalendarDays}
+            tone="brand"
+          />
+          <SummaryMetricCard
+            label="Due"
+            value={summary.data.dueCount.toLocaleString()}
+            icon={CalendarClock}
+            tone="warning"
+          />
+          <SummaryMetricCard
+            label="Ongoing"
+            value={summary.data.ongoingCount.toLocaleString()}
+            icon={Clock}
+            tone="information"
+          />
+          <SummaryMetricCard
+            label="Overdue"
+            value={summary.data.overdueCount.toLocaleString()}
+            icon={CircleAlert}
+            tone="danger"
+          />
+          <SummaryMetricCard
+            label="Completed"
+            value={summary.data.completedCount.toLocaleString()}
+            icon={CircleCheck}
+            tone="success"
+          />
+          <SummaryMetricCard
+            label="Cancelled"
+            value={summary.data.cancelledCount.toLocaleString()}
+            icon={CircleX}
+            tone="neutral"
+          />
         </div>
       )}
     </section>
@@ -1065,7 +1093,7 @@ export function ScheduleRegistry({
             isUpdating={registry.isFetching}
             desktopContent={
               <table className="w-full min-w-[760px] text-left text-sm">
-                <thead className="bg-[var(--page-background)] text-xs tracking-wide text-[var(--text-neutral)] uppercase">
+                <thead className="bg-[var(--primary)] text-xs tracking-wide text-white uppercase">
                   {table.getHeaderGroups().map((headerGroup) => (
                     <tr key={headerGroup.id}>
                       {headerGroup.headers.map((header) => (
@@ -1144,8 +1172,9 @@ export function ScheduleRegistry({
                         ...search,
                         returnContext: { kind: 'scheduleRegistry', search },
                       }}
-                      className="inline-block font-semibold text-[var(--primary)] hover:underline"
+                      className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-[color-mix(in_srgb,var(--primary)_30%,white)] bg-white px-2.5 text-xs font-semibold text-[var(--primary)] hover:border-[var(--primary)] hover:bg-[color-mix(in_srgb,var(--primary)_5%,white)] focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 focus-visible:outline-none"
                     >
+                      <Eye aria-hidden="true" className="size-3.5" />
                       View details
                     </Link>
                   </Card>

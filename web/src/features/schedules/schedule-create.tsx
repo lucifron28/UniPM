@@ -469,10 +469,7 @@ export function ScheduleCreate() {
               )}
               {mutation.isPending ? 'Creating schedule...' : 'Create schedule'}
             </Button>
-            <Button
-              asChild
-              className="bg-white text-[var(--text-primary)] hover:bg-[var(--page-background)]"
-            >
+            <Button asChild variant="secondary">
               <Link to="/app/schedules">Cancel</Link>
             </Button>
           </div>

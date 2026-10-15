@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from '@tanstack/react-router'
+import { CircleAlert, CircleCheck, ClipboardCheck, Eye } from 'lucide-react'
 import {
   createColumnHelper,
   flexRender,
@@ -10,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { PageHeading } from '@/components/layout/page-heading'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
+import { SummaryMetricCard } from '@/components/ui/summary-metric-card'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { Asset } from '@/features/assets/asset-contract'
@@ -65,19 +67,6 @@ export type InspectionSearch = {
   dateFrom?: string | undefined
   dateTo?: string | undefined
   page?: number | undefined
-}
-
-function SummaryCard({ label, count }: { label: string; count: number }) {
-  return (
-    <Card className="content-card p-4">
-      <p className="text-xs font-semibold tracking-[0.08em] text-[var(--text-neutral)] uppercase">
-        {label}
-      </p>
-      <p className="mt-2 text-2xl font-bold text-[var(--text-primary)]">
-        {count.toLocaleString()}
-      </p>
-    </Card>
-  )
 }
 
 const columnHelper = createColumnHelper<InspectionRegistryItem>()
@@ -184,8 +173,9 @@ const createColumns = (search: InspectionSearch) => [
           ...search,
           returnContext: { kind: 'inspectionRegistry', search },
         }}
-        className="font-semibold text-[var(--primary)] hover:underline"
+        className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-[color-mix(in_srgb,var(--primary)_30%,white)] bg-white px-2.5 text-xs font-semibold text-[var(--primary)] hover:border-[var(--primary)] hover:bg-[color-mix(in_srgb,var(--primary)_5%,white)] focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 focus-visible:outline-none"
       >
+        <Eye aria-hidden="true" className="size-3.5" />
         View details
       </Link>
     ),
@@ -644,17 +634,23 @@ export function InspectionRegistry({
         </Card>
       ) : (
         <div className="grid gap-3 sm:grid-cols-3">
-          <SummaryCard
+          <SummaryMetricCard
             label="All acknowledged records"
-            count={summary.data.totalCount}
+            value={summary.data.totalCount.toLocaleString()}
+            icon={ClipboardCheck}
+            tone="brand"
           />
-          <SummaryCard
+          <SummaryMetricCard
             label="Operational"
-            count={summary.data.operationalCount}
+            value={summary.data.operationalCount.toLocaleString()}
+            icon={CircleCheck}
+            tone="success"
           />
-          <SummaryCard
+          <SummaryMetricCard
             label="Not operational"
-            count={summary.data.nonOperationalCount}
+            value={summary.data.nonOperationalCount.toLocaleString()}
+            icon={CircleAlert}
+            tone="danger"
           />
         </div>
       )}
@@ -1089,7 +1085,7 @@ export function InspectionRegistry({
             recordsZoom={recordZoom.zoom}
             desktopContent={
               <table className="w-full min-w-[1280px] text-left text-sm">
-                <thead className="bg-[var(--page-background)] text-xs tracking-wide text-[var(--text-neutral)] uppercase">
+                <thead className="bg-[var(--primary)] text-xs tracking-wide text-white uppercase">
                   {table.getHeaderGroups().map((headerGroup) => (
                     <tr key={headerGroup.id}>
                       {headerGroup.headers.map((header) => (
@@ -1193,8 +1189,9 @@ export function InspectionRegistry({
                     ...search,
                     returnContext: { kind: 'inspectionRegistry', search },
                   }}
-                  className="inline-block font-semibold text-[var(--primary)] hover:underline"
+                  className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-[color-mix(in_srgb,var(--primary)_30%,white)] bg-white px-2.5 text-xs font-semibold text-[var(--primary)] hover:border-[var(--primary)] hover:bg-[color-mix(in_srgb,var(--primary)_5%,white)] focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 focus-visible:outline-none"
                 >
+                  <Eye aria-hidden="true" className="size-3.5" />
                   View details
                 </Link>
               </Card>
