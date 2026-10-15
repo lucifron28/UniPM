@@ -360,8 +360,10 @@ internal sealed class PmAnalyticsV2QueryService(
     {
         var row = Expression.Parameter(typeof(ScheduleRow), "row");
         var cycle = Expression.Property(row, nameof(ScheduleRow.EffectivePmCycle));
-        var start = BuildDateMap(cycle, windows, window => window.Start);
-        var deadline = BuildDateMap(cycle, windows, window => window.Deadline);
+        var scheduleDate = Expression.Property(row, nameof(ScheduleRow.ScheduleDate));
+        // Anchor the SQL CASE result to the datetimeoffset column; selected rows match known cycles.
+        var start = BuildDateMap(cycle, windows, window => window.Start, scheduleDate);
+        var deadline = BuildDateMap(cycle, windows, window => window.Deadline, scheduleDate);
         var bindings = CopyScheduleBindings(row,
             nameof(ScheduleRow.CycleStart),
             nameof(ScheduleRow.Deadline));
@@ -375,9 +377,10 @@ internal sealed class PmAnalyticsV2QueryService(
     private static Expression BuildDateMap(
         Expression cycle,
         IReadOnlyList<CycleWindow> windows,
-        Func<CycleWindow, DateTimeOffset> select)
+        Func<CycleWindow, DateTimeOffset> select,
+        Expression fallback)
     {
-        Expression result = Expression.Constant(DateTimeOffset.MinValue);
+        Expression result = fallback;
         foreach (var window in windows.Reverse())
         {
             result = Expression.Condition(
