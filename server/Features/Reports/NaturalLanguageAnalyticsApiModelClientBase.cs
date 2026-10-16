@@ -30,10 +30,12 @@ internal abstract class NaturalLanguageAnalyticsApiModelClientBase : INaturalLan
         NaturalLanguageAnalyticsModelClientRunLedger ledger,
         HttpMessageHandler? handler,
         Func<TimeSpan, CancellationToken, Task>? retryDelay = null,
-        Func<int>? retryJitterMilliseconds = null)
+        Func<int>? retryJitterMilliseconds = null,
+        NaturalLanguageAnalyticsPromptProfile? promptProfile = null)
     {
         _apiKey = apiKey;
         _ledger = ledger;
+        PromptProfile = promptProfile ?? NaturalLanguageAnalyticsInterpretationPrompt.Profile;
         _retryDelay = retryDelay ?? ((delay, token) => Task.Delay(delay, token));
         _retryJitterMilliseconds = retryJitterMilliseconds
             ?? (() => Random.Shared.Next(MinimumJitterMilliseconds, MaximumJitterMilliseconds + 1));
@@ -50,6 +52,8 @@ internal abstract class NaturalLanguageAnalyticsApiModelClientBase : INaturalLan
     public abstract string Provider { get; }
 
     public abstract string ModelId { get; }
+
+    internal NaturalLanguageAnalyticsPromptProfile PromptProfile { get; }
 
     protected abstract Uri Endpoint { get; }
 
