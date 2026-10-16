@@ -18,6 +18,7 @@ record's evidence level and tested/source commit.
 
 | ID | Type | Title | Status | Evidence level | Tested/source commit | Record | Note |
 |---|---|---|---|---|---|---|---|
+| TEST-083 | test-run | NLA V2 model plan interpreter focused verification | executed | locally-executed | Base `ae64da0b2b7d96415435b7e24f82fe29e47eab98` + recorded source/test patch; committed equivalent `3ba1c5fa16b94748dbdcfd854e05da2a58498600` | [record](test-runs/TEST-083-nla-v2-model-plan-interpreter.md) | Focused fake-handler tests passed 19/19; an earlier sandbox attempt aborted before test counts on testhost connection timeout. No provider quality or language evaluation claimed. |
 | TEST-082 | test-run | PM analytics V2 native SQL verification | executed | locally-executed | Final verified source `d4186c414467f4e2aeb0c7930351fd56615fdf17`; attempts `e12e5ffaab987e20dff8be4881674ae5756f3e5e` and `3744ac18050f2657c93ad18eb877bc209a3ac5db` preserved in record | [record](test-runs/TEST-082-pm-analytics-v2-native-sql-fixture.md) | Attempt 1: 22/1/0 fixture constraint failure; attempt 2: 23/1/0 query materialization failure; final focused run: 24/24 passed including native SQL fact. Owned database absent after each checked run. |
 | TEST-080 | test-run | Backend, web, SQL, and live QA remediation verification | executed | locally-executed | Web/API b74ed318; focused NLA/seeder tests have qualified source identities in record | [record](test-runs/TEST-080-web-qa-remediation.md) | NLA 29/29; seeders 16/16 before provider-safe query correction, exercised by native SQL smoke; web unit 219/219; mock Playwright 50/1; CI passed (38488819555/38488819578). Live coverage completed cumulatively across attempts 2, 5, and 6, including final NLA-only pass; WMS assertion count caveat recorded. |
 | TEST-081 | test-run | PM analytics V2 expansion verification | executed | ci-executed | `5e0ab750a63bf9472493e3dc85f2f619299b2f37`; local web checks have qualified source identities in record | [record](test-runs/TEST-081-pm-analytics-v2-expansion-verification.md) | Exact-head Backend CI 485/531 with 46 skips (V2 SQL Server fact skipped); Web CI 219/219 unit and coverage, Playwright 50/1, plus formatting/lint/typecheck/contracts/generated drift/build passed. Local backend test attempt failed during restore before discovery. |
@@ -178,6 +179,10 @@ record's evidence level and tested/source commit.
 
 ## Pending evidence
 
+- NLA V2 provisional development-case human review/adjudication, a separate
+  held-out set, and any language interpretation evaluation remain pending.
+  TEST-083 covers only fake-handler adapter/parser behavior; V1–V3 evidence is
+  not comparable to the V2 protocol.
 - Independent semantic model-quality baseline for the retained institutional
   ReferenceDocument retrieval: pending approved data, a labeled evaluation set,
   and review protocol.

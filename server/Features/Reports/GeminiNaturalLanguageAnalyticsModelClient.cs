@@ -8,13 +8,15 @@ internal sealed class GeminiNaturalLanguageAnalyticsModelClient(
     HttpMessageHandler? handler = null,
     Func<TimeSpan, CancellationToken, Task>? retryDelay = null,
     Func<int>? retryJitterMilliseconds = null,
-    string? modelId = null)
+    string? modelId = null,
+    NaturalLanguageAnalyticsPromptProfile? promptProfile = null)
     : NaturalLanguageAnalyticsApiModelClientBase(
         apiKey,
         ledger,
         handler,
         retryDelay,
-        retryJitterMilliseconds)
+        retryJitterMilliseconds,
+        promptProfile)
 {
     internal const string ConfiguredModelId = "gemini-3.8-flash";
     internal const string FlashLiteModelId = "gemini-3.5-flash-lite";
@@ -35,7 +37,7 @@ internal sealed class GeminiNaturalLanguageAnalyticsModelClient(
         {
             systemInstruction = new
             {
-                parts = new[] { new { text = NaturalLanguageAnalyticsInterpretationPrompt.SystemPrompt } }
+                parts = new[] { new { text = PromptProfile.SystemPrompt } }
             },
             contents = new[]
             {
@@ -49,7 +51,7 @@ internal sealed class GeminiNaturalLanguageAnalyticsModelClient(
             {
                 maxOutputTokens = MaximumOutputTokens,
                 responseMimeType = "application/json",
-                responseJsonSchema = NaturalLanguageAnalyticsInterpretationPrompt.OutputSchema,
+                responseJsonSchema = PromptProfile.OutputSchema,
                 thinkingConfig = new { thinkingLevel = ThinkingLevel }
             }
         }, JsonOptions);
