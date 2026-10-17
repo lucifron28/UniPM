@@ -114,7 +114,7 @@ export function LoginForm({
         setServerFieldErrors(schemaFieldErrors(form.state.values))
         void form.handleSubmit()
       }}
-      className="mt-8 space-y-6"
+      className="login-form mt-8 space-y-6"
     >
       {(initializationError || submitError) && (
         <Alert
