@@ -70,6 +70,41 @@ public sealed class InspectionPhotoEvidenceEndpointsTests
     }
 
     [Fact]
+    public async Task Storage_cleanup_failure_does_not_restore_replaced_or_deleted_photo_pointer()
+    {
+        await using var application = new TestApplicationFactory(AuthRoleCatalog.Inspector);
+        using var client = application.CreateClient();
+        var scenario = await application.CreateDraftAsync();
+        using var initialContent = new ByteArrayContent(MinimalJpeg());
+        initialContent.Headers.ContentType = new("image/jpeg");
+        var initialUpload = await client.PutAsync(
+            $"/api/v1/inspections/{scenario.InspectionId}/photo",
+            initialContent);
+        Assert.Equal(HttpStatusCode.NoContent, initialUpload.StatusCode);
+        var initial = await application.ReadEvidenceAsync(scenario.InspectionId);
+        Assert.NotNull(initial);
+
+        application.Storage.FailDeletes = true;
+        using var replacementContent = new ByteArrayContent(MinimalJpeg());
+        replacementContent.Headers.ContentType = new("image/jpeg");
+        var replacementUpload = await client.PutAsync(
+            $"/api/v1/inspections/{scenario.InspectionId}/photo",
+            replacementContent);
+        Assert.Equal(HttpStatusCode.NoContent, replacementUpload.StatusCode);
+        var replacement = await application.ReadEvidenceAsync(scenario.InspectionId);
+        Assert.NotNull(replacement);
+        Assert.NotEqual(initial.StorageKey, replacement.StorageKey);
+        Assert.Contains(initial.StorageKey, application.Storage.Files.Keys);
+        Assert.Contains(replacement.StorageKey, application.Storage.Files.Keys);
+
+        var delete = await client.DeleteAsync($"/api/v1/inspections/{scenario.InspectionId}/photo");
+
+        Assert.Equal(HttpStatusCode.NoContent, delete.StatusCode);
+        Assert.Null(await application.ReadEvidenceAsync(scenario.InspectionId));
+        Assert.Contains(replacement.StorageKey, application.Storage.Files.Keys);
+    }
+
+    [Fact]
     public async Task Photo_upload_rejects_wrong_content_type_invalid_jpeg_and_oversized_body()
     {
         await using var application = new TestApplicationFactory(AuthRoleCatalog.Inspector);
@@ -352,6 +387,7 @@ public sealed class InspectionPhotoEvidenceEndpointsTests
     private sealed class MemoryPhotoStorage : IInspectionPhotoEvidenceStorage
     {
         public Dictionary<string, byte[]> Files { get; } = [];
+        public bool FailDeletes { get; set; }
 
         public Task<string> SaveAsync(ReadOnlyMemory<byte> photo, CancellationToken cancellationToken)
         {
@@ -370,6 +406,7 @@ public sealed class InspectionPhotoEvidenceEndpointsTests
         public Task DeleteAsync(string storageKey, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            if (FailDeletes) throw new IOException("Photo cleanup failed.");
             Files.Remove(storageKey);
             return Task.CompletedTask;
         }
