@@ -1013,29 +1013,28 @@ test.describe('PM period dashboard', () => {
       )
     })
 
-    // The drawer retains the existing analytics workflow and its independent scope.
+    // The dashboard keeps a small link to the dedicated analytics route.
+    await page.setViewportSize({ width: 1440, height: 900 })
     await page.goto(
       '/app/dashboard?assetCategory=fire-extinguisher&year=2026&pmCycle=2026-08',
     )
-    const askNla = page.getByRole('button', { name: 'Ask NLA' })
-    const drawer = page.getByRole('dialog', { name: 'Ask NLA' })
-    await expect(askNla).toBeVisible()
-    await expect(drawer).toBeHidden()
+    const askPmData = page.getByRole('link', { name: 'Ask about PM data' })
+    await expect(askPmData).toBeVisible()
+    await expect(page.getByRole('link', { name: 'PM Analytics' })).toBeVisible()
     await page.screenshot({
       path: 'test-results/web-ui-polish-dashboard-desktop.png',
     })
-    await askNla.click()
-    await expect(drawer).toBeVisible()
+    await askPmData.click()
+    await expect(page).toHaveURL(/\/app\/analytics$/)
     await expect(
-      drawer.getByRole('heading', { name: 'Ask about PM results' }),
+      page.getByRole('heading', { name: 'PM Analytics' }),
+    ).toBeVisible()
+    await expect(
+      page.getByRole('heading', { name: 'Ask about PM results' }),
     ).toBeVisible()
     await page.screenshot({
-      path: 'test-results/web-ui-polish-ask-nla-drawer-open-desktop.png',
+      path: 'test-results/web-ui-polish-pm-analytics-desktop.png',
     })
-    await page.keyboard.press('Escape')
-    await expect(drawer).toBeHidden()
-    await expect(askNla).toBeFocused()
-    await askNla.click()
     await page
       .getByRole('textbox', { name: 'Question' })
       .fill(
@@ -1053,6 +1052,20 @@ test.describe('PM period dashboard', () => {
     await expect(
       results.getByRole('heading', { name: 'Matching source records' }),
     ).toBeVisible()
+    await expect(
+      results.getByRole('button', { name: 'Matching only' }),
+    ).toHaveAttribute('aria-pressed', 'true')
+    await expect(
+      results.getByRole('button', { name: 'Matching only' }),
+    ).toContainText('1')
+    await expect(
+      results.getByRole('button', { name: 'Calculation sources' }),
+    ).toContainText('3')
+    await results
+      .locator('li')
+      .filter({ hasText: 'FE-001' })
+      .getByText('Record details', { exact: true })
+      .click()
     await expect(results.getByText(/Scheduled deadline/)).toBeVisible()
     await expect(
       results.getByRole('link', { name: 'FE-001', exact: true }),
@@ -1060,13 +1073,66 @@ test.describe('PM period dashboard', () => {
     await expect(results.getByText('FE-002', { exact: true })).toHaveCount(0)
     await expect(results.getByText('FE-003', { exact: true })).toHaveCount(0)
 
-    await results.getByRole('button', { name: 'Calculation sources' }).click()
+    const calculationSourcesButton = results.getByRole('button', {
+      name: 'Calculation sources',
+    })
+    await calculationSourcesButton.scrollIntoViewIfNeeded()
+    const readShellPositions = () =>
+      page.evaluate(() => {
+        const sidebar = document.querySelector<HTMLElement>('.app-sidebar')
+        const header = document.querySelector<HTMLElement>('.app-page-header')
+        const workspace = document.querySelector<HTMLElement>('.app-workspace')
+        if (!sidebar || !header || !workspace) {
+          throw new Error('Application shell geometry is unavailable')
+        }
+        return {
+          windowScrollY: window.scrollY,
+          sidebarTop: sidebar.getBoundingClientRect().top,
+          headerTop: header.getBoundingClientRect().top,
+          workspaceTop: workspace.getBoundingClientRect().top,
+          workspaceScrollTop: workspace.scrollTop,
+        }
+      })
+    const beforeCalculationSources = await readShellPositions()
+    await calculationSourcesButton.click()
     await expect(results.getByText(/3 shown on this page of 3/)).toBeVisible()
+    const sourcesTitle = page.locator('#pm-analytics-sources-title')
+    await expect(sourcesTitle).toBeVisible()
+    await sourcesTitle.evaluate((element) =>
+      element.scrollIntoView({ block: 'start' }),
+    )
+    const afterCalculationSources = await readShellPositions()
+    expect(afterCalculationSources.windowScrollY).toBe(
+      beforeCalculationSources.windowScrollY,
+    )
+    expect(afterCalculationSources.sidebarTop).toBeCloseTo(
+      beforeCalculationSources.sidebarTop,
+      2,
+    )
+    expect(afterCalculationSources.headerTop).toBeCloseTo(
+      beforeCalculationSources.headerTop,
+      2,
+    )
+    expect(afterCalculationSources.workspaceTop).toBeCloseTo(
+      beforeCalculationSources.workspaceTop,
+      2,
+    )
+    expect(afterCalculationSources.workspaceScrollTop).toBeGreaterThan(
+      beforeCalculationSources.workspaceScrollTop,
+    )
     await expect(
       results.getByRole('heading', { name: 'Calculation source records' }),
     ).toBeVisible()
     await expect(results.getByRole('link', { name: 'FE-002' })).toBeVisible()
     await expect(results.getByRole('link', { name: 'FE-003' })).toBeVisible()
+    await expect(
+      results.getByRole('button', { name: 'Calculation sources' }),
+    ).toHaveAttribute('aria-pressed', 'true')
+    await results
+      .locator('li')
+      .filter({ hasText: 'FE-002' })
+      .getByText('Record details', { exact: true })
+      .click()
     await expect(results.getByText('Form status')).toBeVisible()
     await expect(results.getByText('Draft', { exact: true })).toBeVisible()
     await expect(
@@ -1131,34 +1197,17 @@ test.describe('PM period dashboard', () => {
       )}`,
     )
     await page.screenshot({
-      path: 'test-results/web-ui-polish-ask-nla-drawer-desktop.png',
+      path: 'test-results/web-ui-polish-pm-analytics-result-desktop.png',
     })
-    await page.getByRole('button', { name: 'Close Ask NLA' }).click()
-    await expect(drawer).toBeHidden()
 
     await page.setViewportSize({ width: 375, height: 812 })
-    await askNla.click()
-    await expect(drawer).toBeVisible()
-    await expect
-      .poll(() =>
-        drawer.evaluate((element) =>
-          Math.abs(element.getBoundingClientRect().width - window.innerWidth),
-        ),
-      )
-      .toBeLessThan(1)
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth - window.innerWidth,
       ),
     ).toBeLessThanOrEqual(1)
-    await drawer
-      .locator('div.min-h-0.flex-1.overflow-y-auto')
-      .evaluate((element) => {
-        element.scrollTop = 0
-      })
     await page.screenshot({
-      path: 'test-results/web-ui-polish-ask-nla-drawer-mobile.png',
+      path: 'test-results/web-ui-polish-pm-analytics-mobile.png',
     })
-    await page.getByRole('button', { name: 'Close Ask NLA' }).click()
   })
 })

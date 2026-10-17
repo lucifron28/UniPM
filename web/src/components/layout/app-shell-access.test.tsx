@@ -84,7 +84,7 @@ describe('app shell role access and layout', () => {
     setupAuth()
   })
 
-  it('starts with a logo-only rail and hides operational navigation from Admin', async () => {
+  it('starts expanded by default and hides operational navigation from Admin', async () => {
     server.use(http.get(meUrl, () => HttpResponse.json(currentUser(['Admin']))))
 
     renderShell()
@@ -92,13 +92,15 @@ describe('app shell role access and layout', () => {
     await screen.findByLabelText('Account menu')
     const sidebar = screen.getByRole('complementary')
     const nav = within(sidebar).getByRole('navigation', { name: 'Primary' })
-    expect(within(sidebar).getByRole('img', { name: 'UniPM' })).toBeVisible()
     expect(
       sidebar.querySelector('.sidebar-active-indicator'),
     ).toBeInTheDocument()
     expect(
+      within(sidebar).getByRole('button', { name: 'Collapse navigation' }),
+    ).toHaveAttribute('aria-expanded', 'true')
+    expect(
       within(nav).getByRole('link', { name: 'Dashboard' }),
-    ).toHaveAttribute('title', 'Dashboard')
+    ).not.toHaveAttribute('title')
     expect(within(nav).getByRole('link', { name: 'Dashboard' })).toHaveClass(
       'sidebar-nav-link',
     )
@@ -113,7 +115,8 @@ describe('app shell role access and layout', () => {
     expect(within(nav).queryByRole('link', { name: 'Form review' })).toBeNull()
   })
 
-  it('expands the rail, persists preference, and keeps account actions at the sidebar bottom', async () => {
+  it('preserves a saved collapsed preference and keeps account actions at the sidebar bottom', async () => {
+    window.localStorage.setItem('unipm.sidebar.collapsed', 'true')
     server.use(http.get(meUrl, () => HttpResponse.json(currentUser(['GSD']))))
 
     renderShell()
@@ -183,6 +186,10 @@ describe('app shell role access and layout', () => {
     { path: '/app/schedules/new', roles: ['Inspector'] },
     { path: '/app/assets/new', roles: ['Admin'] },
     { path: '/app/preventive-maintenance-forms', roles: ['Admin'] },
+    { path: '/app/analytics', roles: ['Admin'] },
+    { path: '/app/analytics', roles: ['Inspector'] },
+    { path: '/app/analytics', roles: ['Supervisor'] },
+    { path: '/app/analytics', roles: ['DepartmentHead'] },
   ] as const)(
     'denies route access before loading page data at $path',
     async ({ path, roles }) => {
@@ -207,6 +214,37 @@ describe('app shell role access and layout', () => {
       expect(operationalRequests).toBe(0)
     },
   )
+
+  it('shows PM Analytics to GSD without running a query on page load', async () => {
+    let operationalRequests = 0
+    let analyticsRequests = 0
+    server.use(
+      http.get('*/api/v1/*', ({ request }) => {
+        const pathname = new URL(request.url).pathname
+        if (pathname === '/api/v1/auth/me') {
+          return HttpResponse.json(currentUser(['GSD']))
+        }
+        operationalRequests += 1
+        return HttpResponse.json([])
+      }),
+      http.post('*/api/v1/analytics/pm/v2/*', () => {
+        analyticsRequests += 1
+        return HttpResponse.json({ status: 'Unsupported' })
+      }),
+    )
+
+    renderAppRoute('/app/analytics')
+
+    expect(
+      await screen.findByRole('heading', { name: 'Ask about PM results' }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'PM Analytics' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
+    expect(operationalRequests).toBe(0)
+    expect(analyticsRequests).toBe(0)
+  })
 
   it('does not deny a role-restricted route while roles are loading', async () => {
     let releaseCurrentUser!: () => void

@@ -1,8 +1,7 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link } from '@tanstack/react-router'
 import {
   Activity,
-  ArrowRight,
   CalendarClock,
   CalendarDays,
   CircleAlert,
@@ -11,8 +10,6 @@ import {
   ClipboardCheck,
   Clock,
   Gauge,
-  Sparkles,
-  X,
   type LucideIcon,
 } from 'lucide-react'
 import { formatAssetCategory } from '@/features/assets/asset-presentation'
@@ -36,7 +33,6 @@ import {
   usePmPeriodDashboard,
   usePmPeriodDashboardCycles,
 } from '@/features/reports/pm-period-dashboard-queries'
-import { PmAnalyticsPanel } from '@/features/reports/pm-analytics'
 import { useCurrentUser } from '@/features/auth/current-user'
 import { useScheduleEnrollmentDeferrals } from '@/features/schedules/schedule-queries'
 import {
@@ -589,28 +585,27 @@ function PeriodStateSummary({
           : 'The backend returned an unrecognized period state. Review the row-level status values for this period.'
 
   return (
-    <Card role="status" className="p-4 shadow-none sm:p-5">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-xs font-semibold tracking-[0.08em] text-[var(--text-neutral)] uppercase">
-            Period state
-          </p>
-          <p className="mt-1 text-lg font-semibold text-[var(--text-primary)]">
-            {state}
-          </p>
-        </div>
-        <StatusText
-          value={state}
-          tone={
-            dashboard.periodState === 'Closed'
-              ? 'success'
-              : dashboard.periodState === 'Active'
-                ? 'warning'
-                : 'neutral'
-          }
-        />
-      </div>
-      <p className="mt-3 text-sm text-[var(--text-secondary)]">{message}</p>
+    <Card
+      role="status"
+      className="flex flex-wrap items-center gap-x-3 gap-y-1 p-3 shadow-none"
+    >
+      <p className="text-xs font-semibold tracking-[0.08em] text-[var(--text-neutral)] uppercase">
+        Period state
+      </p>
+      <p className="font-semibold text-[var(--text-primary)]">{state}</p>
+      <StatusText
+        value={state}
+        tone={
+          dashboard.periodState === 'Closed'
+            ? 'success'
+            : dashboard.periodState === 'Active'
+              ? 'warning'
+              : 'neutral'
+        }
+      />
+      <p className="basis-full text-sm text-[var(--text-secondary)]">
+        {message}
+      </p>
     </Card>
   )
 }
@@ -624,6 +619,28 @@ function DashboardMetrics({
 
   return (
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+      <DashboardMetric
+        label="Progress"
+        value={formatPercent(dashboard.progressPercent)}
+        note="Inspected / scheduled asset cycles"
+        icon={Activity}
+        tone="information"
+      />
+      <DashboardMetric
+        label="Compliance rate"
+        value={
+          dashboard.complianceMeasurable
+            ? formatPercent(dashboard.onTimeCompliancePercent)
+            : 'Not measurable yet'
+        }
+        note={
+          dashboard.complianceMeasurable
+            ? 'Completed on time / scheduled asset cycles'
+            : 'Backend reports this period is not measurable yet'
+        }
+        icon={Gauge}
+        tone={dashboard.complianceMeasurable ? 'success' : 'neutral'}
+      />
       <DashboardMetric
         label="Scheduled"
         value={formatNumber(dashboard.scheduled)}
@@ -659,7 +676,7 @@ function DashboardMetrics({
       <DashboardMetric
         label="Remaining"
         value={formatNumber(dashboard.remaining)}
-        note="Backend-reported unfinished scheduled work"
+        note="Unfinished scheduled work"
         icon={CalendarClock}
         tone="neutral"
       />
@@ -689,28 +706,6 @@ function DashboardMetrics({
           </p>
         </Card>
       )}
-      <DashboardMetric
-        label="Progress"
-        value={formatPercent(dashboard.progressPercent)}
-        note="Backend-reported inspection progress"
-        icon={Activity}
-        tone="information"
-      />
-      <DashboardMetric
-        label="Compliance rate"
-        value={
-          dashboard.complianceMeasurable
-            ? formatPercent(dashboard.onTimeCompliancePercent)
-            : 'Not measurable yet'
-        }
-        note={
-          dashboard.complianceMeasurable
-            ? 'Backend-reported result'
-            : 'Backend reports this period is not measurable yet'
-        }
-        icon={Gauge}
-        tone={dashboard.complianceMeasurable ? 'success' : 'neutral'}
-      />
     </div>
   )
 }
@@ -754,30 +749,22 @@ function DeferredEnrollmentDashboardSummary() {
   return (
     <Card
       aria-labelledby="dashboard-deferred-enrollment-title"
-      className="content-card flex flex-wrap items-center justify-between gap-4 rounded-lg p-4"
+      className="content-card flex flex-wrap items-center justify-between gap-3 rounded-lg p-3"
     >
-      <div className="flex min-w-0 items-start gap-3">
-        <span
-          aria-hidden="true"
-          className="inline-flex size-9 shrink-0 items-center justify-center rounded-md bg-[color-mix(in_srgb,var(--primary)_9%,white)] text-[var(--primary)]"
+      <div className="min-w-0 flex-1">
+        <h2
+          id="dashboard-deferred-enrollment-title"
+          className="text-sm font-semibold text-[var(--text-primary)]"
         >
-          <CalendarClock className="size-4" />
-        </span>
-        <div>
-          <h2
-            id="dashboard-deferred-enrollment-title"
-            className="font-semibold text-[var(--text-primary)]"
-          >
-            Deferred enrollment across all PM periods
-          </h2>
-          <p className="mt-1 text-sm text-[var(--text-secondary)]">
-            {pendingCount} need review · {reviewedCount} reviewed. Deferred
-            cycles have no schedule and are not completed maintenance. They stay
-            outside the scheduled and compliance totals.
-          </p>
-        </div>
+          Deferred enrollment: {pendingCount} need review · {reviewedCount}{' '}
+          reviewed
+        </h2>
+        <p className="mt-1 text-xs text-[var(--text-secondary)]">
+          These cycles have no schedule, are not completed maintenance, and stay
+          outside scheduled and compliance totals.
+        </p>
       </div>
-      <Button asChild variant="secondary">
+      <Button asChild variant="secondary" className="h-9 min-h-0 px-3">
         <Link to="/app/schedules" hash="schedule-enrollment-deferrals">
           Review deferred cycles
         </Link>
@@ -797,8 +784,8 @@ export function PmPeriodDashboardPresentation({
 }) {
   return (
     <>
-      <PeriodStateSummary dashboard={dashboard} />
       <DashboardMetrics dashboard={dashboard} />
+      <PeriodStateSummary dashboard={dashboard} />
       {showBatch && (
         <BatchOverview
           batches={dashboard.batches}
@@ -843,7 +830,6 @@ export function PmPeriodDashboard({
     hasRequestedScope ? (search.pmCycle ?? '') : '',
   )
   const [isChangingSelection, setIsChangingSelection] = useState(false)
-  const [isNlaOpen, setIsNlaOpen] = useState(false)
   const [text, setText] = useState(search.search ?? '')
 
   // Route changes reset the submitted search draft to its URL-backed value.
@@ -952,7 +938,7 @@ export function PmPeriodDashboard({
 
   if (cyclesQuery.isPending) {
     return (
-      <section aria-labelledby="dashboard-title" className="space-y-6">
+      <section aria-labelledby="dashboard-title" className="space-y-4">
         <DashboardHeader />
         <DeferredEnrollmentDashboardSummary />
         <CyclesLoading />
@@ -962,7 +948,7 @@ export function PmPeriodDashboard({
 
   if (cyclesQuery.isError) {
     return (
-      <section aria-labelledby="dashboard-title" className="space-y-6">
+      <section aria-labelledby="dashboard-title" className="space-y-4">
         <DashboardHeader />
         <DeferredEnrollmentDashboardSummary />
         <QueryError
@@ -975,9 +961,8 @@ export function PmPeriodDashboard({
 
   if (cycles.length === 0) {
     return (
-      <section aria-labelledby="dashboard-title" className="space-y-6">
+      <section aria-labelledby="dashboard-title" className="space-y-4">
         <DashboardHeader />
-        <DeferredEnrollmentDashboardSummary />
         <Card className="p-6 shadow-none">
           <h2 className="text-lg font-semibold text-[var(--text-primary)]">
             No PM periods are scheduled
@@ -986,66 +971,46 @@ export function PmPeriodDashboard({
             Schedule a PM period to make it available for report generation.
           </p>
         </Card>
+        <DeferredEnrollmentDashboardSummary />
       </section>
     )
   }
 
   return (
-    <section aria-labelledby="dashboard-title" className="space-y-6">
+    <section aria-labelledby="dashboard-title" className="space-y-4">
       <DashboardHeader />
 
       {showGeneratedReport ? (
         <>
-          <div className="pm-dashboard-report space-y-6">
+          <div className="pm-dashboard-report space-y-4">
             <section aria-labelledby="pm-dashboard-reporting-period">
-              <Card className="content-card p-4 sm:p-5">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <Card className="content-card p-3 sm:p-4">
+                <div className="flex flex-wrap items-center justify-between gap-x-5 gap-y-3">
                   <div>
-                    <p className="text-sm font-semibold tracking-[0.08em] text-[var(--primary)] uppercase">
+                    <p className="text-xs font-semibold tracking-[0.08em] text-[var(--primary)] uppercase">
                       Reporting period
                     </p>
                     <h2
                       id="pm-dashboard-reporting-period"
-                      className="mt-1 text-xl font-semibold text-[var(--text-primary)]"
+                      className="mt-1 text-base font-semibold text-[var(--text-primary)]"
                     >
-                      Selected maintenance scope
+                      {formatAssetCategory(search.assetCategory ?? '')} ·{' '}
+                      {search.pmCycle
+                        ? formatPmCycle(search.pmCycle)
+                        : 'Not selected'}
                     </h2>
-                    <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
-                      <div>
-                        <dt className="text-xs font-semibold text-[var(--text-neutral)]">
-                          Asset category
-                        </dt>
-                        <dd className="mt-1 font-medium text-[var(--text-primary)]">
-                          {formatAssetCategory(search.assetCategory ?? '')}
-                        </dd>
-                      </div>
-                      <div>
-                        <dt className="text-xs font-semibold text-[var(--text-neutral)]">
-                          PM year
-                        </dt>
-                        <dd className="mt-1 font-medium text-[var(--text-primary)]">
-                          {search.year ?? 'Not selected'}
-                        </dd>
-                      </div>
-                      <div>
-                        <dt className="text-xs font-semibold text-[var(--text-neutral)]">
-                          PM month
-                        </dt>
-                        <dd className="mt-1 font-medium text-[var(--text-primary)]">
-                          {search.pmCycle
-                            ? formatPmCycle(search.pmCycle)
-                            : 'Not selected'}
-                        </dd>
-                      </div>
-                    </dl>
+                    <p className="mt-1 text-xs text-[var(--text-secondary)]">
+                      PM year {search.year ?? 'Not selected'} · Due
+                      (Asia/Manila){' '}
+                      {dashboardQuery.isPending
+                        ? 'Loading...'
+                        : dashboardQuery.data
+                          ? formatPmCycleDueDate(dashboardQuery.data.pmCycle)
+                          : 'Unavailable'}
+                    </p>
                   </div>
                   <div className="flex flex-wrap gap-2 print:hidden">
-                    {canAskNla && (
-                      <AskNlaEntryPoint
-                        open={isNlaOpen}
-                        onClick={() => setIsNlaOpen(true)}
-                      />
-                    )}
+                    {canAskNla && <AskPmAnalyticsLink />}
                     <Button
                       type="button"
                       disabled={!dashboardQuery.data}
@@ -1062,70 +1027,27 @@ export function PmPeriodDashboard({
                     </Button>
                   </div>
                 </div>
-                <div className="mt-5 grid gap-3 border-t border-[var(--border-soft)] pt-4 sm:grid-cols-[minmax(0,18rem)_1fr] sm:items-end">
-                  <div>
-                    <Label htmlFor="pm-dashboard-department">
-                      Department (report scope)
-                    </Label>
-                    <select
-                      id="pm-dashboard-department"
-                      value={search.department ?? ''}
-                      onChange={(event) =>
-                        onSearchChange({
-                          ...search,
-                          department: event.target.value || undefined,
-                        })
-                      }
-                      disabled={scopeDashboardQuery.isPending}
-                      className={`${selectClassName} mt-2`}
-                    >
-                      <option value="">All departments</option>
-                      {search.department &&
-                        !departmentOptions.includes(search.department) && (
-                          <option value={search.department}>
-                            {search.department}
-                          </option>
-                        )}
-                      {departmentOptions.map((value) => (
-                        <option key={value} value={value}>
-                          {value}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <p className="text-xs text-[var(--text-secondary)]">
-                    Department is part of the report scope and updates summary
-                    totals. Condition, timeliness, and asset search are
-                    row-level filters below.
-                  </p>
-                </div>
-                <p className="mt-4 text-sm text-[var(--text-secondary)]">
-                  <span className="font-semibold text-[var(--text-primary)]">
-                    Due date (Asia/Manila):
-                  </span>{' '}
-                  {dashboardQuery.isPending
-                    ? 'Loading...'
-                    : dashboardQuery.data
-                      ? formatPmCycleDueDate(dashboardQuery.data.pmCycle)
-                      : 'Unavailable'}
-                </p>
               </Card>
             </section>
 
-            <DeferredEnrollmentDashboardSummary />
-
             {dashboardQuery.isPending ? (
-              <DashboardLoading />
+              <>
+                <DeferredEnrollmentDashboardSummary />
+                <DashboardLoading />
+              </>
             ) : dashboardQuery.isError ? (
-              <QueryError
-                message="The selected PM period could not be loaded."
-                onRetry={() => void dashboardQuery.refetch()}
-              />
+              <>
+                <DeferredEnrollmentDashboardSummary />
+                <QueryError
+                  message="The selected PM period could not be loaded."
+                  onRetry={() => void dashboardQuery.refetch()}
+                />
+              </>
             ) : dashboardQuery.data ? (
               <>
                 <section
                   aria-labelledby="pm-dashboard-period-status"
-                  className="space-y-3"
+                  className="space-y-2"
                 >
                   <div>
                     <h2
@@ -1135,8 +1057,8 @@ export function PmPeriodDashboard({
                       Period overview
                     </h2>
                     <p className="mt-1 text-sm text-[var(--text-secondary)]">
-                      The status explanation is followed by the backend-reported
-                      maintenance metrics for this scope.
+                      Progress and compliance lead the report. Period state and
+                      the remaining backend-reported measures follow.
                     </p>
                   </div>
                   <PmPeriodDashboardPresentation
@@ -1146,8 +1068,47 @@ export function PmPeriodDashboard({
                   />
                 </section>
 
+                <DeferredEnrollmentDashboardSummary />
+
                 <section aria-labelledby="pm-dashboard-detailed-filters">
                   <Card className="content-card p-4 sm:p-5">
+                    <div className="grid gap-4 border-b border-[var(--border-soft)] pb-4 md:grid-cols-[minmax(0,18rem)_1fr] md:items-end">
+                      <div>
+                        <Label htmlFor="pm-dashboard-department">
+                          Department (report scope)
+                        </Label>
+                        <select
+                          id="pm-dashboard-department"
+                          value={search.department ?? ''}
+                          onChange={(event) =>
+                            onSearchChange({
+                              ...search,
+                              department: event.target.value || undefined,
+                            })
+                          }
+                          disabled={scopeDashboardQuery.isPending}
+                          className={`${selectClassName} mt-2`}
+                        >
+                          <option value="">All departments</option>
+                          {search.department &&
+                            !departmentOptions.includes(search.department) && (
+                              <option value={search.department}>
+                                {search.department}
+                              </option>
+                            )}
+                          {departmentOptions.map((value) => (
+                            <option key={value} value={value}>
+                              {value}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <p className="text-xs text-[var(--text-secondary)]">
+                        Department is part of the report scope and updates
+                        summary totals. The row-level filters below narrow
+                        records only.
+                      </p>
+                    </div>
                     <div>
                       <p className="text-sm font-semibold tracking-[0.08em] text-[var(--primary)] uppercase">
                         Row-level filters
@@ -1328,6 +1289,7 @@ export function PmPeriodDashboard({
         </>
       ) : (
         <>
+          <DeferredEnrollmentDashboardSummary />
           <section aria-labelledby="pm-dashboard-reporting-period">
             <Card className="content-card p-4 sm:p-5">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -1347,12 +1309,7 @@ export function PmPeriodDashboard({
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2 print:hidden">
-                  {canAskNla && (
-                    <AskNlaEntryPoint
-                      open={isNlaOpen}
-                      onClick={() => setIsNlaOpen(true)}
-                    />
-                  )}
+                  {canAskNla && <AskPmAnalyticsLink />}
                   {hasValidGeneratedScope && isChangingSelection && (
                     <Button
                       type="button"
@@ -1489,14 +1446,7 @@ export function PmPeriodDashboard({
               </div>
             </Card>
           </section>
-          <DeferredEnrollmentDashboardSummary />
         </>
-      )}
-      {canAskNla && (
-        <DashboardNlaDrawer
-          open={isNlaOpen}
-          onClose={() => setIsNlaOpen(false)}
-        />
       )}
     </section>
   )
@@ -1514,145 +1464,10 @@ export function DashboardHeader() {
   )
 }
 
-function AskNlaEntryPoint({
-  open,
-  onClick,
-}: {
-  open: boolean
-  onClick: () => void
-}) {
+function AskPmAnalyticsLink() {
   return (
-    <Button
-      id="dashboard-ask-nla"
-      type="button"
-      variant="secondary"
-      aria-label="Ask NLA"
-      aria-haspopup="dialog"
-      aria-expanded={open}
-      onClick={onClick}
-      className="h-auto min-h-[4.25rem] w-full max-w-[19rem] justify-between gap-3 rounded-lg border-[color-mix(in_srgb,var(--primary)_18%,white)] bg-[color-mix(in_srgb,var(--primary)_5%,white)] px-3 py-2.5 text-left hover:border-[color-mix(in_srgb,var(--primary)_35%,white)] hover:bg-[color-mix(in_srgb,var(--primary)_8%,white)]"
-    >
-      <span className="flex min-w-0 items-center gap-3">
-        <span
-          aria-hidden="true"
-          className="inline-flex size-9 shrink-0 items-center justify-center rounded-md bg-[var(--primary)] text-white"
-        >
-          <Sparkles className="size-4" />
-        </span>
-        <span className="min-w-0">
-          <span className="block text-sm font-bold text-[var(--text-primary)]">
-            Ask NLA
-          </span>
-          <span className="mt-0.5 block text-xs leading-4 font-normal text-[var(--text-secondary)]">
-            Ask questions about your maintenance data.
-          </span>
-        </span>
-      </span>
-      <ArrowRight
-        aria-hidden="true"
-        className="size-4 shrink-0 text-[var(--primary)]"
-      />
+    <Button asChild variant="secondary" className="h-9 min-h-0 px-3">
+      <Link to="/app/analytics">Ask about PM data</Link>
     </Button>
-  )
-}
-
-function DashboardNlaDrawer({
-  open,
-  onClose,
-}: {
-  open: boolean
-  onClose: () => void
-}) {
-  const dialogRef = useRef<HTMLDialogElement>(null)
-  const closeTimerRef = useRef<number | null>(null)
-  const isClosingRef = useRef(false)
-  const [isVisible, setIsVisible] = useState(false)
-
-  useEffect(() => {
-    const dialog = dialogRef.current
-    if (!dialog) return
-
-    if (open && !dialog.open) {
-      isClosingRef.current = false
-      dialog.showModal()
-      window.requestAnimationFrame(() => setIsVisible(true))
-      dialog
-        .querySelector<HTMLButtonElement>('[aria-label="Close Ask NLA"]')
-        ?.focus()
-    } else if (!open && dialog.open) {
-      dialog.close()
-      isClosingRef.current = false
-    }
-
-    return () => {
-      if (closeTimerRef.current !== null) {
-        window.clearTimeout(closeTimerRef.current)
-        closeTimerRef.current = null
-      }
-      if (dialog.open) dialog.close()
-    }
-  }, [open])
-
-  const closeDrawer = () => {
-    if (!dialogRef.current?.open || isClosingRef.current) return
-
-    isClosingRef.current = true
-    setIsVisible(false)
-    const delay = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-      ? 0
-      : 240
-    closeTimerRef.current = window.setTimeout(() => {
-      if (dialogRef.current?.open) dialogRef.current.close()
-      closeTimerRef.current = null
-      isClosingRef.current = false
-      onClose()
-      window.requestAnimationFrame(() => {
-        document.getElementById('dashboard-ask-nla')?.focus()
-      })
-    }, delay)
-  }
-
-  return (
-    <dialog
-      ref={dialogRef}
-      aria-labelledby="dashboard-nla-drawer-title"
-      data-visible={isVisible}
-      className="ask-nla-drawer fixed inset-y-0 right-0 m-0 ml-auto h-dvh max-h-none w-full max-w-none border-0 border-l border-[var(--border-soft)] bg-white p-0 text-[var(--text-primary)] sm:w-[min(36rem,100vw)] print:hidden"
-      onCancel={(event) => {
-        event.preventDefault()
-        closeDrawer()
-      }}
-      onClick={(event) => {
-        if (event.target === event.currentTarget) closeDrawer()
-      }}
-    >
-      <div className="flex h-full min-h-0 flex-col">
-        <header className="flex shrink-0 items-center justify-between gap-4 border-b border-white/20 bg-[var(--primary)] px-4 py-3 text-white sm:px-6">
-          <div>
-            <h2
-              id="dashboard-nla-drawer-title"
-              className="text-lg font-bold text-white"
-            >
-              Ask NLA
-            </h2>
-            <p className="mt-1 text-sm text-white/80">
-              Review a supported PM measure and its source records.
-            </p>
-          </div>
-          <Button
-            type="button"
-            variant="secondary"
-            className="size-10 min-h-10 shrink-0 border-white bg-white px-0 text-[var(--primary)] hover:bg-white/90"
-            aria-label="Close Ask NLA"
-            onClick={closeDrawer}
-          >
-            <X aria-hidden="true" className="size-5" />
-          </Button>
-        </header>
-        <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
-          <PmAnalyticsPanel />
-        </div>
-      </div>
-    </dialog>
   )
 }

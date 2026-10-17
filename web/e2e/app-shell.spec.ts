@@ -101,10 +101,13 @@ test('desktop shell keeps its header and rail still while the workspace scrolls'
   const workspace = page.locator('.app-workspace')
   const sidebar = page.locator('.app-sidebar')
   await expect(heading).toBeVisible()
-  await expect(sidebar.getByRole('img', { name: 'UniPM' })).toBeVisible()
-  await expect(sidebar).toHaveCSS('width', '76px')
+  await expect(sidebar.getByText('UniPM', { exact: true }).last()).toBeVisible()
   await expect(
-    page.getByRole('button', { name: 'Expand navigation' }),
+    sidebar.getByText('Institutional operations').last(),
+  ).toBeVisible()
+  await expect(sidebar).toHaveCSS('width', '248px')
+  await expect(
+    page.getByRole('button', { name: 'Collapse navigation' }),
   ).toBeVisible()
   await expect(
     workspace.getByRole('heading', {
@@ -116,47 +119,19 @@ test('desktop shell keeps its header and rail still while the workspace scrolls'
   ).toBeVisible()
   await expect(workspace.getByText('50%', { exact: true })).toBeVisible()
   await expect(workspace.getByText('25%', { exact: true })).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Assets' })).toHaveAttribute(
+  await expect(page.getByRole('link', { name: 'Assets' })).not.toHaveAttribute(
     'title',
-    'Assets',
   )
+  await expect(page.getByRole('link', { name: 'PM Analytics' })).toBeVisible()
   await page.screenshot({
-    path: 'test-results/web-ui-polish-sidebar-collapsed-desktop.png',
+    path: 'test-results/web-ui-polish-sidebar-expanded-default-desktop.png',
   })
-  const collapsedAlignment = await page.evaluate(() => {
-    const sidebar = document.querySelector('.app-sidebar')!
-    const nav = sidebar.querySelector('nav')!
-    const elements = [
-      sidebar.querySelector('img[alt="UniPM"]')!,
-      sidebar.querySelector('[aria-label="Expand navigation"]')!,
-      ...nav.querySelectorAll('a'),
-      sidebar.querySelector('details summary')!,
-    ]
-    const boxes = elements.map((element) => {
-      const bounds = element.getBoundingClientRect()
-      return {
-        centerX: bounds.left + bounds.width / 2,
-        width: bounds.width,
-        height: bounds.height,
-      }
-    })
-    return boxes
-  })
-  expect(
-    Math.max(...collapsedAlignment.map((box) => box.centerX)) -
-      Math.min(...collapsedAlignment.map((box) => box.centerX)),
-  ).toBeLessThan(1)
-  expect(
-    collapsedAlignment
-      .slice(2, -1)
-      .every((box) => box.width === 44 && box.height === 44),
-  ).toBe(true)
 
   await page.getByLabel('Account menu').click()
   await expect(sidebar.getByText('fictional.gsd@example.test')).toBeVisible()
   await expect(sidebar.getByRole('button', { name: 'Sign out' })).toBeVisible()
   await page.screenshot({
-    path: 'test-results/web-ui-polish-sidebar-account-menu-collapsed.png',
+    path: 'test-results/web-ui-polish-sidebar-account-menu-expanded.png',
   })
   await page.keyboard.press('Escape')
   await expect(sidebar.locator('details')).not.toHaveAttribute('open', '')
@@ -203,6 +178,46 @@ test('desktop shell keeps its header and rail still while the workspace scrolls'
   expect(
     await workspace.evaluate((element) => getComputedStyle(element).overflowY),
   ).toBe('auto')
+
+  await page.getByRole('button', { name: 'Collapse navigation' }).click()
+  await expect(
+    page.getByRole('button', { name: 'Expand navigation' }),
+  ).toBeVisible()
+  await expect(sidebar).toHaveCSS('width', '76px')
+  expect(
+    await page.evaluate(() => localStorage.getItem('unipm.sidebar.collapsed')),
+  ).toBe('true')
+  await page.reload()
+  await expect(
+    page.getByRole('button', { name: 'Expand navigation' }),
+  ).toBeVisible()
+  await expect(sidebar).toHaveCSS('width', '76px')
+  const collapsedAlignment = await page.evaluate(() => {
+    const sidebar = document.querySelector('.app-sidebar')!
+    const nav = sidebar.querySelector('nav')!
+    return [
+      sidebar.querySelector('img[alt="UniPM"]')!,
+      sidebar.querySelector('[aria-label="Expand navigation"]')!,
+      ...nav.querySelectorAll('a'),
+      sidebar.querySelector('details summary')!,
+    ].map((element) => {
+      const bounds = element.getBoundingClientRect()
+      return {
+        centerX: bounds.left + bounds.width / 2,
+        width: bounds.width,
+        height: bounds.height,
+      }
+    })
+  })
+  expect(
+    Math.max(...collapsedAlignment.map((box) => box.centerX)) -
+      Math.min(...collapsedAlignment.map((box) => box.centerX)),
+  ).toBeLessThan(1)
+  expect(
+    collapsedAlignment
+      .slice(2, -1)
+      .every((box) => box.width === 44 && box.height === 44),
+  ).toBe(true)
 
   await page.getByRole('button', { name: 'Expand navigation' }).click()
   await expect(

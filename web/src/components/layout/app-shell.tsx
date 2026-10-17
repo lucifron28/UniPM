@@ -1,5 +1,6 @@
 import { Link, Outlet, useRouterState } from '@tanstack/react-router'
 import {
+  BarChart3,
   Boxes,
   CalendarDays,
   ChevronDown,
@@ -40,9 +41,9 @@ function initials(displayName: string) {
 
 function initialSidebarPreference() {
   try {
-    return window.localStorage.getItem(sidebarPreferenceKey) !== 'false'
+    return window.localStorage.getItem(sidebarPreferenceKey) === 'true'
   } catch {
-    return true
+    return false
   }
 }
 
@@ -56,6 +57,12 @@ function fallbackPageHeading(pathname: string) {
     return {
       title: 'Preventive Maintenance Dashboard',
       description: 'Choose the maintenance period you want to review.',
+    }
+  }
+  if (section === 'analytics') {
+    return {
+      title: 'PM Analytics',
+      description: 'Review a supported PM measure and its source records.',
     }
   }
   if (section === 'assets') {
@@ -322,6 +329,7 @@ export function AppShell() {
     (currentUser.isSuccess && hasAnyRole(roles, requiredRoles))
   const showSchedules = currentUser.isSuccess && canReadSchedules(roles)
   const showFormReview = currentUser.isSuccess && canReviewForms(roles)
+  const showPmAnalytics = currentUser.isSuccess && roles.includes('GSD')
   const fallbackHeading = fallbackPageHeading(pathname)
   const navigationItems = [
     {
@@ -329,6 +337,12 @@ export function AppShell() {
       label: 'Dashboard',
       icon: LayoutDashboard,
       visible: true,
+    },
+    {
+      to: '/app/analytics',
+      label: 'PM Analytics',
+      icon: BarChart3,
+      visible: showPmAnalytics,
     },
     { to: '/app/assets', label: 'Assets', icon: Boxes, visible: true },
     {
@@ -413,7 +427,13 @@ export function AppShell() {
       resizeObserver?.disconnect()
       window.removeEventListener('resize', updateIndicator)
     }
-  }, [pathname, sidebarCollapsed, showSchedules, showFormReview])
+  }, [
+    pathname,
+    sidebarCollapsed,
+    showSchedules,
+    showFormReview,
+    showPmAnalytics,
+  ])
 
   return (
     <div

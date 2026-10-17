@@ -212,7 +212,7 @@ describe('PM period dashboard period terminology', () => {
     expect(formatPmCycleDueDate('2028-02')).toBe('Feb 29, 2028')
   })
 
-  it('keeps the page heading free of a detached Ask NLA action', () => {
+  it('keeps analytics navigation out of the page heading actions', () => {
     render(<DashboardHeader />)
 
     expect(
@@ -221,7 +221,7 @@ describe('PM period dashboard period terminology', () => {
       }),
     ).toBeInTheDocument()
     expect(
-      screen.queryByRole('button', { name: 'Ask NLA' }),
+      screen.queryByRole('link', { name: 'Ask about PM data' }),
     ).not.toBeInTheDocument()
   })
 
@@ -278,7 +278,7 @@ describe('PM period dashboard period terminology', () => {
 
     expect(
       await screen.findByRole('heading', {
-        name: 'Deferred enrollment across all PM periods',
+        name: /Deferred enrollment: 2 need review · 1 reviewed/,
       }),
     ).toBeInTheDocument()
     expect(screen.getByText(/2 need review · 1 reviewed/)).toBeInTheDocument()

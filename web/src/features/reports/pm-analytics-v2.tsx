@@ -15,7 +15,6 @@ import type {
 } from '@/api/generated/models'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useCurrentUser } from '@/features/auth/current-user'
 import { formatAssetCategory } from '@/features/assets/asset-presentation'
@@ -243,6 +242,12 @@ function formatMeasureValue(
   return value + ' ' + formatLabel(measure.unit).toLowerCase()
 }
 
+function formatPopulationUnit(countBasis: string) {
+  return countBasis === 'DistinctAssets'
+    ? 'eligible distinct assets'
+    : 'eligible scheduled asset cycles'
+}
+
 function MeasureCard({
   label,
   measure,
@@ -264,6 +269,93 @@ function MeasureCard({
         {formatNumber(measure.numerator)} of {formatNumber(measure.denominator)}
       </p>
     </div>
+  )
+}
+
+function HeadlineAnswer({
+  response,
+  plan,
+}: {
+  response: PmAnalyticsV2QueryResponse
+  plan: PmAnalyticsV2Plan
+}) {
+  if (response.result) {
+    return (
+      <Card
+        role="group"
+        aria-label="PM analytics answer"
+        className="border-[color-mix(in_srgb,var(--primary)_25%,var(--border-soft))] bg-[color-mix(in_srgb,var(--primary)_4%,white)] p-5 shadow-none sm:p-6"
+      >
+        <p className="text-xs font-semibold tracking-[0.08em] text-[var(--primary)] uppercase">
+          Answer
+        </p>
+        <div className="mt-2 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold text-[var(--text-secondary)]">
+              {formatMetric(plan.metric, plan.countBasis)}
+            </p>
+            <p className="mt-1 text-3xl font-bold tracking-tight text-[var(--text-primary)] sm:text-4xl">
+              {formatMeasureValue(response.result, plan.presentation)}
+            </p>
+          </div>
+          <p className="text-sm font-medium text-[var(--text-secondary)]">
+            {formatNumber(response.result.numerator)} of{' '}
+            {formatNumber(response.result.denominator)}{' '}
+            {formatPopulationUnit(plan.countBasis)}
+          </p>
+        </div>
+      </Card>
+    )
+  }
+
+  if (response.comparison) {
+    const { comparison } = response
+    return (
+      <Card
+        role="group"
+        aria-label="PM analytics answer"
+        className="border-[color-mix(in_srgb,var(--primary)_25%,var(--border-soft))] bg-[color-mix(in_srgb,var(--primary)_4%,white)] p-5 shadow-none sm:p-6"
+      >
+        <p className="text-xs font-semibold tracking-[0.08em] text-[var(--primary)] uppercase">
+          Comparison change
+        </p>
+        <p className="mt-2 text-3xl font-bold tracking-tight text-[var(--text-primary)] sm:text-4xl">
+          {comparison.delta === null
+            ? 'Not measurable'
+            : `${formatNumber(comparison.delta)} ${formatDeltaUnit(comparison.deltaUnit)}`}
+        </p>
+        <dl className="mt-4 grid gap-3 sm:grid-cols-2">
+          {[comparison.earlier, comparison.later].map((measure, index) => {
+            const cycle =
+              index === 0 ? comparison.earlierCycle : comparison.laterCycle
+            return (
+              <div
+                key={cycle}
+                className="rounded-lg border border-[var(--border-soft)] bg-white/70 p-3"
+              >
+                <dt className="text-xs text-[var(--text-neutral)]">
+                  {index === 0 ? 'Earlier' : 'Later'} · {formatPmCycle(cycle)}:
+                </dt>
+                <dd className="mt-1 font-semibold text-[var(--text-primary)]">
+                  {formatMeasureValue(measure, plan.presentation)}
+                </dd>
+                <dd className="mt-1 text-xs text-[var(--text-secondary)]">
+                  {formatNumber(measure.numerator)} of{' '}
+                  {formatNumber(measure.denominator)}{' '}
+                  {formatPopulationUnit(plan.countBasis)}
+                </dd>
+              </div>
+            )
+          })}
+        </dl>
+      </Card>
+    )
+  }
+
+  return (
+    <Card role="status" className="p-4 shadow-none">
+      No measure is available for this question.
+    </Card>
   )
 }
 
@@ -320,14 +412,23 @@ function SourceRecord({
           Current building: {source.currentBuilding ?? 'Not recorded'}
         </span>
       </div>
-      <dl className="mt-2 grid gap-x-4 gap-y-2 text-sm sm:grid-cols-2 lg:grid-cols-3">
-        {details.map(([label, value]) => (
-          <div key={label}>
-            <dt className="text-xs text-[var(--text-neutral)]">{label}</dt>
-            <dd className="text-[var(--text-primary)]">{value}</dd>
-          </div>
-        ))}
-      </dl>
+      <p className="mt-1 text-xs text-[var(--text-secondary)]">
+        {formatPmCycle(source.pmCycle)} · {formatLabel(source.condition)} ·{' '}
+        {formatLabel(source.timeliness)}
+      </p>
+      <details className="mt-2 border-t border-[var(--border-soft)] pt-2">
+        <summary className="cursor-pointer text-sm font-medium text-[var(--primary)] focus-visible:rounded focus-visible:outline-2 focus-visible:outline-[var(--primary)]">
+          Record details
+        </summary>
+        <dl className="mt-3 grid gap-x-4 gap-y-2 text-sm sm:grid-cols-2 lg:grid-cols-3">
+          {details.map(([label, value]) => (
+            <div key={label}>
+              <dt className="text-xs text-[var(--text-neutral)]">{label}</dt>
+              <dd className="text-[var(--text-primary)]">{value}</dd>
+            </div>
+          ))}
+        </dl>
+      </details>
     </li>
   )
 }
@@ -591,28 +692,28 @@ function PmAnalyticsQuestionPanel() {
   const population = response?.population
   const currentPage = toNumber(response?.page) ?? 1
   const totalPages = toNumber(population?.totalPages) ?? 0
+  const matchingSourceCount = population?.matchingAssetCycleCount
+  const calculationSourceCount = population?.eligibleAssetCycleCount
 
   return (
-    <Card className="p-4 shadow-none sm:p-5">
+    <Card className="p-3 shadow-none sm:p-4">
       <div className="max-w-3xl print:hidden">
         <h2 className="text-lg font-semibold text-[var(--text-primary)]">
           Ask about PM results
         </h2>
         <p className="mt-1 text-sm text-[var(--text-secondary)]">
-          Ask bounded questions about progress, on-time compliance, late,
-          non-operational, remaining, or missed schedules. Use a supported asset
-          category with an explicit month, quarter, year, range, or two-cycle
-          comparison.
+          Ask about a supported measure, asset category, and time period.
         </p>
         <form
-          className="mt-4 space-y-3"
+          className="mt-2 space-y-2"
           onSubmit={(event) => void handleSubmit(event)}
         >
           <div>
             <Label htmlFor="pm-analytics-question">Question</Label>
-            <Input
+            <textarea
               id="pm-analytics-question"
-              className="mt-2"
+              rows={2}
+              className="mt-1 block min-h-16 w-full resize-y rounded-lg border border-[var(--border-soft)] bg-white px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus-visible:border-[var(--primary)] focus-visible:ring-2 focus-visible:ring-[color-mix(in_srgb,var(--primary)_25%,transparent)]"
               value={question}
               maxLength={512}
               onChange={(event) => handleQuestionChange(event.target.value)}
@@ -623,20 +724,54 @@ function PmAnalyticsQuestionPanel() {
               id="pm-analytics-help"
               className="mt-1 text-xs text-[var(--text-neutral)]"
             >
-              Remaining includes unfinished schedules in active cycles only;
-              missed includes unfinished schedules in closed cycles only. Future
-              cycles and unscheduled assets are not counted as missed. Current
-              department and building labels reflect current asset metadata, not
-              a historical snapshot.
+              Include a measure, category, and period. Grouping and comparisons
+              are optional.
             </p>
           </div>
-          <Button type="submit" disabled={isPending || !question.trim()}>
-            {isPending
-              ? isInterpreting
-                ? 'Checking question'
-                : 'Reading PM results'
-              : 'Show result'}
-          </Button>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <details>
+              <summary className="cursor-pointer text-xs font-medium text-[var(--primary)] focus-visible:rounded focus-visible:outline-2 focus-visible:outline-[var(--primary)]">
+                Example questions
+              </summary>
+              <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-[var(--text-secondary)]">
+                <li>
+                  Show on-time compliance for fire extinguishers during 2025 by
+                  department.
+                </li>
+                <li>
+                  Compare on-time compliance for fire extinguishers in August
+                  2025 and November 2025.
+                </li>
+                <li>
+                  Show late and non-operational fire extinguisher inspections
+                  during 2025.
+                </li>
+              </ul>
+            </details>
+            <details>
+              <summary className="cursor-pointer text-xs font-medium text-[var(--primary)] focus-visible:rounded focus-visible:outline-2 focus-visible:outline-[var(--primary)]">
+                Counting notes
+              </summary>
+              <p className="mt-2 text-sm text-[var(--text-secondary)]">
+                Remaining includes unfinished schedules in active cycles only;
+                missed includes unfinished schedules in closed cycles only.
+                Future cycles and unscheduled assets are not counted as missed.
+                Current department and building labels reflect current asset
+                metadata, not a historical snapshot.
+              </p>
+            </details>
+            <Button
+              className="ml-auto"
+              type="submit"
+              disabled={isPending || !question.trim()}
+            >
+              {isPending
+                ? isInterpreting
+                  ? 'Checking question'
+                  : 'Reading PM results'
+                : 'Show result'}
+            </Button>
+          </div>
         </form>
       </div>
 
@@ -700,24 +835,34 @@ function PmAnalyticsQuestionPanel() {
           className="mt-5 space-y-5"
           aria-live="polite"
         >
-          <div>
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <h3
-                id="pm-analytics-result-title"
-                className="text-base font-semibold text-[var(--text-primary)]"
-              >
-                PM analytics result
-              </h3>
-              <Button
-                type="button"
-                variant="secondary"
-                className="print:hidden"
-                onClick={() => window.print()}
-              >
-                Print result
-              </Button>
-            </div>
-            <p className="mt-1 text-sm text-[var(--text-secondary)]">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h3
+              id="pm-analytics-result-title"
+              className="text-base font-semibold text-[var(--text-primary)]"
+            >
+              PM analytics result
+            </h3>
+            <Button
+              type="button"
+              variant="secondary"
+              className="print:hidden"
+              onClick={() => window.print()}
+            >
+              Print result
+            </Button>
+          </div>
+
+          <section
+            aria-labelledby="pm-analytics-scope-title"
+            className="rounded-lg border border-[var(--border-soft)] bg-[var(--surface-muted)] p-4"
+          >
+            <p className="text-xs font-semibold tracking-[0.08em] text-[var(--primary)] uppercase">
+              Interpreted scope
+            </p>
+            <h4 id="pm-analytics-scope-title" className="sr-only">
+              Interpreted scope
+            </h4>
+            <p className="mt-2 text-sm text-[var(--text-primary)]">
               {formatMetric(plan.metric, plan.countBasis)} for{' '}
               {formatAssetCategory(plan.assetCategory)} during{' '}
               {plan.comparison
@@ -745,32 +890,21 @@ function PmAnalyticsQuestionPanel() {
                   '.'
                 : ''}
             </p>
-            <p className="mt-1 text-sm text-[var(--text-secondary)]">
-              {describeMetric(plan)}
-            </p>
-            <p className="mt-1 text-xs text-[var(--text-neutral)]">
-              As of {formatDate(response.asOfUtc)}. Count basis:{' '}
-              {formatLabel(plan.countBasis)}. Grouping:{' '}
+            <p className="mt-2 text-xs text-[var(--text-secondary)]">
+              Count basis: {formatLabel(plan.countBasis)} · Grouped by{' '}
               {formatLabel(plan.groupBy)}.
             </p>
-            <p className="mt-2 text-xs text-[var(--text-neutral)]">
-              {response.scopeNote}
+          </section>
+
+          <HeadlineAnswer response={response} plan={plan} />
+
+          {plan.presentation === 'Percent' && (
+            <p className="-mt-2 text-sm text-[var(--text-secondary)]">
+              Percentages use the eligible scheduled population (
+              {formatPopulationUnit(plan.countBasis)}). Matching source filters
+              narrow the record list, not that denominator.
             </p>
-            {plan.presentation === 'Percent' && (
-              <p className="mt-2 text-xs text-[var(--text-neutral)]">
-                Percentages use the eligible scheduled population. Matching
-                source filters do not change the measure denominator.
-              </p>
-            )}
-            {plan.groupBy !== 'None' &&
-              plan.countBasis === 'DistinctAssets' && (
-                <p className="mt-2 text-xs text-[var(--text-neutral)]">
-                  Distinct asset counts in separate groups or cycles can
-                  overlap; do not add them to calculate an overall
-                  distinct-asset total.
-                </p>
-              )}
-          </div>
+          )}
 
           <dl className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <div className="rounded-lg border border-[var(--border-soft)] p-4">
@@ -797,40 +931,6 @@ function PmAnalyticsQuestionPanel() {
                 {formatNumber(population?.matchingDistinctAssetCount)}
               </p>
             </div>
-            {response.result && (
-              <MeasureCard
-                label={formatMetric(plan.metric, plan.countBasis)}
-                measure={response.result}
-                presentation={plan.presentation}
-              />
-            )}
-            {response.comparison && (
-              <div className="rounded-lg border border-[var(--border-soft)] p-4">
-                <dt className="text-xs font-semibold tracking-[0.08em] text-[var(--text-neutral)] uppercase">
-                  Comparison change
-                </dt>
-                <dd className="mt-2 text-xl font-bold text-[var(--text-primary)]">
-                  {response.comparison.delta === null
-                    ? 'Not measurable'
-                    : formatNumber(response.comparison.delta) +
-                      ' ' +
-                      formatDeltaUnit(response.comparison.deltaUnit)}
-                </dd>
-                <p className="mt-1 text-xs text-[var(--text-secondary)]">
-                  {formatPmCycle(response.comparison.earlierCycle)}:{' '}
-                  {formatMeasureValue(
-                    response.comparison.earlier,
-                    plan.presentation,
-                  )}
-                  {' · '}
-                  {formatPmCycle(response.comparison.laterCycle)}:{' '}
-                  {formatMeasureValue(
-                    response.comparison.later,
-                    plan.presentation,
-                  )}
-                </p>
-              </div>
-            )}
           </dl>
 
           {response.rankingExclusions.length > 0 && (
@@ -904,10 +1004,22 @@ function PmAnalyticsQuestionPanel() {
                   response.sourceScope === 'Matching' ? 'primary' : 'secondary'
                 }
                 aria-pressed={response.sourceScope === 'Matching'}
-                disabled={isPending || response.sourceScope === 'Matching'}
-                onClick={() => void reloadSources(response.plan, 'Matching', 1)}
+                aria-label="Matching only"
+                aria-describedby="pm-analytics-matching-count-description"
+                disabled={isPending}
+                onClick={() => {
+                  if (response.sourceScope !== 'Matching') {
+                    void reloadSources(response.plan, 'Matching', 1)
+                  }
+                }}
               >
-                Matching only
+                Matching records
+                <span
+                  aria-hidden="true"
+                  className="ml-2 rounded-full bg-[var(--surface-muted)] px-2 py-0.5 text-xs text-[var(--text-primary)]"
+                >
+                  {formatNumber(matchingSourceCount)}
+                </span>
               </Button>
               <Button
                 type="button"
@@ -917,14 +1029,35 @@ function PmAnalyticsQuestionPanel() {
                     : 'secondary'
                 }
                 aria-pressed={response.sourceScope === 'Calculation'}
-                disabled={isPending || response.sourceScope === 'Calculation'}
-                onClick={() =>
-                  void reloadSources(response.plan, 'Calculation', 1)
-                }
+                aria-label="Calculation sources"
+                aria-describedby="pm-analytics-calculation-count-description"
+                disabled={isPending}
+                onClick={() => {
+                  if (response.sourceScope !== 'Calculation') {
+                    void reloadSources(response.plan, 'Calculation', 1)
+                  }
+                }}
               >
-                Calculation sources
+                All eligible records
+                <span
+                  aria-hidden="true"
+                  className="ml-2 rounded-full bg-[var(--surface-muted)] px-2 py-0.5 text-xs text-[var(--text-primary)]"
+                >
+                  {formatNumber(calculationSourceCount)}
+                </span>
               </Button>
             </div>
+            <p id="pm-analytics-matching-count-description" className="sr-only">
+              {formatNumber(matchingSourceCount)} matching asset-cycle source
+              records.
+            </p>
+            <p
+              id="pm-analytics-calculation-count-description"
+              className="sr-only"
+            >
+              {formatNumber(calculationSourceCount)} eligible asset-cycle source
+              records in the calculation scope.
+            </p>
 
             {response.plan.ranking && (
               <p className="mt-2 text-xs text-[var(--text-neutral)]">
@@ -990,6 +1123,29 @@ function PmAnalyticsQuestionPanel() {
               </div>
             </div>
           </section>
+
+          <details className="rounded-lg border border-[var(--border-soft)] px-4 py-3">
+            <summary className="cursor-pointer font-semibold text-[var(--text-primary)] focus-visible:rounded focus-visible:outline-2 focus-visible:outline-[var(--primary)]">
+              Calculation details
+            </summary>
+            <div className="mt-3 space-y-2 text-sm text-[var(--text-secondary)]">
+              <p>{describeMetric(plan)}</p>
+              <p>
+                As of {formatDate(response.asOfUtc)}. Count basis:{' '}
+                {formatLabel(plan.countBasis)}. Grouping:{' '}
+                {formatLabel(plan.groupBy)}.
+              </p>
+              <p>{response.scopeNote}</p>
+              {plan.groupBy !== 'None' &&
+                plan.countBasis === 'DistinctAssets' && (
+                  <p>
+                    Distinct asset counts in separate groups or cycles can
+                    overlap; do not add them to calculate an overall
+                    distinct-asset total.
+                  </p>
+                )}
+            </div>
+          </details>
         </section>
       )}
     </Card>

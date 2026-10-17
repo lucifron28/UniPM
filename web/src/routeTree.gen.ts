@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRouteRouteImport } from './routes/app/route'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppIndexRouteImport } from './routes/app/index'
+import { Route as AppAnalyticsRouteImport } from './routes/app/analytics'
 import { Route as AppDashboardRouteImport } from './routes/app/dashboard'
 import { Route as AppAssetsIndexRouteImport } from './routes/app/assets/index'
 import { Route as AppAssetsAssetIdRouteImport } from './routes/app/assets/$assetId'
@@ -45,6 +46,11 @@ const LoginRoute = LoginRouteImport.update({
 const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => AppRouteRoute,
+} as any)
+const AppAnalyticsRoute = AppAnalyticsRouteImport.update({
+  id: '/analytics',
+  path: '/analytics',
   getParentRoute: () => AppRouteRoute,
 } as any)
 const AppDashboardRoute = AppDashboardRouteImport.update({
@@ -122,6 +128,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/app': typeof AppRouteRouteWithChildren
   '/login': typeof LoginRoute
+  '/app/analytics': typeof AppAnalyticsRoute
   '/app/dashboard': typeof AppDashboardRoute
   '/app/': typeof AppIndexRoute
   '/app/assets/$assetId': typeof AppAssetsAssetIdRoute
@@ -140,6 +147,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/app/analytics': typeof AppAnalyticsRoute
   '/app/dashboard': typeof AppDashboardRoute
   '/app': typeof AppIndexRoute
   '/app/assets/$assetId': typeof AppAssetsAssetIdRoute
@@ -159,6 +167,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/app': typeof AppRouteRouteWithChildren
   '/login': typeof LoginRoute
+  '/app/analytics': typeof AppAnalyticsRoute
   '/app/dashboard': typeof AppDashboardRoute
   '/app/': typeof AppIndexRoute
   '/app/assets/$assetId': typeof AppAssetsAssetIdRoute
@@ -180,6 +189,7 @@ export interface FileRouteTypes {
     | '/'
     | '/app'
     | '/login'
+    | '/app/analytics'
     | '/app/dashboard'
     | '/app/'
     | '/app/assets/$assetId'
@@ -198,6 +208,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/login'
+    | '/app/analytics'
     | '/app/dashboard'
     | '/app'
     | '/app/assets/$assetId'
@@ -216,6 +227,7 @@ export interface FileRouteTypes {
     | '/'
     | '/app'
     | '/login'
+    | '/app/analytics'
     | '/app/dashboard'
     | '/app/'
     | '/app/assets/$assetId'
@@ -266,6 +278,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/app/'
       preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRouteRoute
+    }
+    '/app/analytics': {
+      id: '/app/analytics'
+      path: '/analytics'
+      fullPath: '/app/analytics'
+      preLoaderRoute: typeof AppAnalyticsRouteImport
       parentRoute: typeof AppRouteRoute
     }
     '/app/dashboard': {
@@ -381,6 +400,7 @@ const AppPreventiveMaintenanceFormsFormIdRouteWithChildren =
   )
 
 interface AppRouteRouteChildren {
+  AppAnalyticsRoute: typeof AppAnalyticsRoute
   AppDashboardRoute: typeof AppDashboardRoute
   AppIndexRoute: typeof AppIndexRoute
   AppAssetsAssetIdRoute: typeof AppAssetsAssetIdRoute
@@ -396,6 +416,7 @@ interface AppRouteRouteChildren {
 }
 
 const AppRouteRouteChildren: AppRouteRouteChildren = {
+  AppAnalyticsRoute: AppAnalyticsRoute,
   AppDashboardRoute: AppDashboardRoute,
   AppIndexRoute: AppIndexRoute,
   AppAssetsAssetIdRoute: AppAssetsAssetIdRoute,

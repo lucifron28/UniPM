@@ -236,6 +236,20 @@ describe('PM analytics panel', () => {
     expect(screen.getByText('Eligible distinct assets: 10')).toBeInTheDocument()
     expect(screen.getByText('Matching distinct assets: 3')).toBeInTheDocument()
     expect(
+      screen.getByRole('button', { name: 'Matching only' }),
+    ).toHaveTextContent('4')
+    expect(
+      screen.getByRole('button', { name: 'Calculation sources' }),
+    ).toHaveTextContent('12')
+    expect(
+      screen.getByText('4 matching asset-cycle source records.'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        '12 eligible asset-cycle source records in the calculation scope.',
+      ),
+    ).toBeInTheDocument()
+    expect(
       screen.getByText(
         'Current department: Demo CCMS · Current building: Library',
       ),
