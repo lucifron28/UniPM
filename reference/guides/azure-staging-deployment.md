@@ -270,6 +270,9 @@ IDs, all 22 application tables, empty tables, and read/write permissions. It
 reports the collation for operator review and requires the exact `APP STOPPED`
 confirmation phrase before any application writes. Do not confirm while another
 writer is active. This check is not a concurrency lock.
+Missing SQL target metadata or Full-Text availability is rejected explicitly,
+including `NULL` values. `scripts/test-staging-sql-null-guards.ps1` verifies
+these predicates with read-only expressions against local SQL Server only.
 
 The account command precedes the demo-data command. The staging profile never
 calls `MigrateAsync`, resets a database, deletes/replaces demo records, repairs
