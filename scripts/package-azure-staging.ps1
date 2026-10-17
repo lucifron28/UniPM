@@ -138,7 +138,7 @@ try {
 
     $artifactRoot = Join-Path $repositoryRoot "artifacts/azure-staging"
     $artifactDirectory = Join-Path $artifactRoot $sourceCommit
-    $webRootSource = Join-Path $repositoryRoot "web"
+    $webRootSource = Join-Path $artifactDirectory "frontend-source"
     $nodeModulesDirectory = Join-Path $webRootSource "node_modules"
     $frontendBuild = Join-Path $webRootSource "dist"
     if (Test-Path -LiteralPath $artifactDirectory) {
@@ -151,13 +151,29 @@ try {
     Assert-SafeContainedDirectory -ParentPath $artifactRoot -ChildPath $artifactDirectory
     Assert-SafeContainedDirectory -ParentPath $artifactDirectory -ChildPath $publishDirectory
     Assert-SafeContainedDirectory -ParentPath $artifactDirectory -ChildPath $emptyViteEnvironment
+    Assert-SafeContainedDirectory -ParentPath $artifactDirectory -ChildPath $webRootSource
     Assert-SafeContainedDirectory -ParentPath $webRootSource -ChildPath $nodeModulesDirectory
     Assert-SafeContainedDirectory -ParentPath $webRootSource -ChildPath $frontendBuild
     New-Item -ItemType Directory -Path $publishDirectory -Force | Out-Null
     New-Item -ItemType Directory -Path $emptyViteEnvironment -Force | Out-Null
 
+    # Isolate npm ci from a running local Vite server and its locked native modules.
+    $frontendFiles = & git ls-files -- web
+    if ($LASTEXITCODE -ne 0 -or -not $frontendFiles) {
+        throw "Could not enumerate the committed frontend source."
+    }
+    foreach ($relativeFile in $frontendFiles) {
+        $sourceFile = Join-Path $repositoryRoot $relativeFile
+        if ((Get-Item -LiteralPath $sourceFile -Force).Attributes -band [IO.FileAttributes]::ReparsePoint) {
+            throw "Frontend packaging does not follow source reparse points."
+        }
+        $destinationFile = Join-Path $webRootSource $relativeFile.Substring(4)
+        New-Item -ItemType Directory -Path (Split-Path -Parent $destinationFile) -Force | Out-Null
+        Copy-Item -LiteralPath $sourceFile -Destination $destinationFile
+    }
+
     $env:VITE_API_BASE_URL = "/"
-    Push-Location (Join-Path $repositoryRoot "web")
+    Push-Location $webRootSource
     try {
         Invoke-CheckedNative $npmCommand @("ci", "--no-audit", "--no-fund")
         Invoke-CheckedNative $npmCommand @("run", "typecheck")
