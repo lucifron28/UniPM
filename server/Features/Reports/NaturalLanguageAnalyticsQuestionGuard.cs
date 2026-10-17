@@ -301,6 +301,11 @@ internal static class NaturalLanguageAnalyticsQuestionGuard
         return Identifier.Replace(masked, "[IDENTIFIER]");
     }
 
+    internal static string SanitizeForModel(string value) => Sanitize(value.Trim());
+
+    internal static bool IsUnsafeModelRequest(string sanitizedQuestion)
+        => UnsafeRequest.IsMatch(sanitizedQuestion);
+
     private static bool HasComparisonIntent(string question) => Regex.IsMatch(
         question,
         @"\b(?:compare|comparison|versus|vs\.?|ikumpara|paghambingin|kumpara)\b",
