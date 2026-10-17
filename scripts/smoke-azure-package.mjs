@@ -141,9 +141,9 @@ try {
       await new Promise(resolve => setTimeout(resolve, 250))
     }
   }
-  for (const route of ['/', '/assets', '/reports/overview']) {
+  for (const route of ['/', '/app/assets', '/app/dashboard']) {
     const response = await request(route)
-    assert.equal(response.status, 200)
+    assert.equal(response.status, 200, `Packaged route ${route}`)
     assert.match(response.headers['content-type'], /text\/html/)
     assert.match(response.headers['cache-control'], /no-store/)
   }
@@ -189,7 +189,7 @@ try {
   page.on('request', req => { if (/https?:\/\/(localhost|127\.0\.0\.1)/i.test(req.url())) badRequests.push(req.url()) })
   await page.goto(`${origin}/`, { waitUntil: 'networkidle' })
   await page.getByRole('button', { name: /sign in/i }).waitFor()
-  await page.goto(`${origin}/assets`, { waitUntil: 'networkidle' })
+  await page.goto(`${origin}/app/assets`, { waitUntil: 'networkidle' })
   await page.getByRole('button', { name: /sign in/i }).waitFor()
   assert.equal(badRequests.length, 0)
   checks.push('Chromium loads the ZIP React UI on root and direct nested navigation, with no localhost requests.')
