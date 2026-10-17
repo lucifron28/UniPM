@@ -160,28 +160,153 @@ SQL access, allow the App Service's documented outbound IP addresses. Keep
 blanket Azure-service access disabled. Recheck outbound addresses after plan or
 network changes, and remove temporary administrator firewall rules afterward.
 
-After a separately approved migration and a fresh readiness check, the
-maintainer can run
-[`initialize-azure-staging-demo.ps1`](../../scripts/initialize-azure-staging-demo.ps1)
-from a trusted workstation. It requires the exact target confirmation
-`sql-unipm-staging.database.windows.net/unipm-staging-db`, a read-only
-preflight, an empty target with the latest migration, and an interactive typed
-confirmation. It runs the existing Development-only seed commands as bounded
-local child processes and exits before starting a web host. It does not enable
-Development mode in App Service, reset a database, or create a Department Head
-login. Provide `ConnectionStrings__DefaultConnection` and
-`UNIPM_STAGING_DEMO_PASSWORD` through a secure process environment; never put
-their values in command arguments, source control, or this guide. The script's
-optional `-PublishedApiDll` parameter defaults to the package's
-`publish/UniPM.Api.dll` for the current full Git SHA.
+## Fictional demo initialization, separate approval required
 
-The existing demo seeder internally calls `MigrateAsync`; the wrapper requires
-the exact current migration history so that call is expected to do no work.
-Keep all writers stopped throughout initialization. The four demo logins are
-`admin@unipm.local`, `gsd@unipm.local`, `inspector@unipm.local`, and
-`supervisor@unipm.local`. Their password comes only from the supplied secret.
-The legacy DepartmentHead role remains for contract compatibility; no matching
-login is created by this initializer.
+The live database already has all 22 migrations. Do not rerun them. TEST-089
+records the last verified empty state; this preparation task did not reconnect
+to Azure or initialize it. Obtain separate owner authorization before executing
+this procedure. These are demonstration credentials, not institutional accounts.
+
+Prerequisites:
+
+- Trusted Windows workstation, Windows PowerShell 5.1, .NET 10 runtime,
+  `sqlcmd.exe`, Git, and a clean `deploy/azure-staging` checkout.
+- Fresh package built from the exact checked-out commit. Earlier packages do
+  not contain the staging guards. See the packaging procedure above.
+- App Service and all other database writers stopped. The public application's
+  environment stays `Production`; only the bounded local seed children use
+  `Development`. No HTTP server is started by initialization.
+- A working encrypted SQL connection, certificate validation enabled, and
+  narrowly scoped temporary access for the workstation's current public IP.
+  A phone hotspot is suitable when dorm Wi-Fi changes its public IP. Recheck
+  the current IP and adjust only that exact temporary rule if it changes.
+  Never allow an entire network or all Azure services. The script does not
+  change firewall rules.
+
+The initializer accepts four independent process secrets by default:
+`UNIPM_STAGING_ADMIN_PASSWORD`, `UNIPM_STAGING_GSD_PASSWORD`,
+`UNIPM_STAGING_INSPECTOR_PASSWORD`, and `UNIPM_STAGING_SUPERVISOR_PASSWORD`.
+Each must satisfy Identity's minimum 12 characters, uppercase, lowercase,
+digit and non-alphanumeric requirements; duplicates are rejected.
+
+The owner explicitly approved a shared-password exception for this temporary
+demo. Select `-AllowSharedDemoPassword` and provide only
+`UNIPM_STAGING_DEMO_PASSWORD`. This is an explicit mode, never a fallback.
+It cannot be combined with per-role secrets. A common password means knowledge
+of one role's credential permits login to the other demo accounts. Use distinct
+credentials for any later institutional deployment. No password value belongs
+in this guide, source, evidence, chat, command arguments, or plaintext files.
+
+After authorization, run the following in a trusted Windows PowerShell session.
+Paste the command text, then enter credentials only at the hidden prompts.
+No password literals enter command history. For independent passwords, change
+`$useSharedDemoPassword` to `$false` before running; each role is prompted
+separately. A password manager can generate the independent credentials.
+
+```powershell
+Set-Location C:\Users\Ron\Documents\projects\Capstone
+$useSharedDemoPassword = $true # Explicit owner-approved temporary demo mode.
+$credentialNames = @('UNIPM_STAGING_DEMO_PASSWORD',
+    'UNIPM_STAGING_ADMIN_PASSWORD', 'UNIPM_STAGING_GSD_PASSWORD',
+    'UNIPM_STAGING_INSPECTOR_PASSWORD', 'UNIPM_STAGING_SUPERVISOR_PASSWORD')
+$temporaryNames = @('ConnectionStrings__DefaultConnection', 'SQLCMDPASSWORD') + $credentialNames
+$savedEnvironment = @{}
+$sqlSecret = $null
+$connection = $null
+function Read-ProcessSecret([string]$Name, [string]$Prompt) {
+    $secret = Read-Host $Prompt -AsSecureString
+    try {
+        [Environment]::SetEnvironmentVariable($Name,
+            [Net.NetworkCredential]::new('', $secret).Password, 'Process')
+    }
+    finally { $secret.Dispose() }
+}
+try {
+    foreach ($name in $temporaryNames) {
+        $savedEnvironment[$name] = [Environment]::GetEnvironmentVariable($name, 'Process')
+        [Environment]::SetEnvironmentVariable($name, $null, 'Process')
+    }
+    $sqlLogin = Read-Host 'Azure SQL login'
+    $sqlSecret = Read-Host 'Azure SQL password' -AsSecureString
+    $connection = [Data.SqlClient.SqlConnectionStringBuilder]::new()
+    $connection.DataSource = 'tcp:sql-unipm-staging.database.windows.net,1433'
+    $connection.InitialCatalog = 'unipm-staging-db'
+    $connection.UserID = $sqlLogin
+    $connection.Password = [Net.NetworkCredential]::new('', $sqlSecret).Password
+    $connection.Encrypt = $true
+    $connection.TrustServerCertificate = $false
+    $connection.ConnectTimeout = 60
+    [Environment]::SetEnvironmentVariable('ConnectionStrings__DefaultConnection',
+        $connection.ConnectionString, 'Process')
+    if ($useSharedDemoPassword) {
+        Read-ProcessSecret 'UNIPM_STAGING_DEMO_PASSWORD' 'Shared demo account password'
+    }
+    else {
+        foreach ($name in $credentialNames[1..4]) { Read-ProcessSecret $name $name }
+    }
+    & ./scripts/initialize-azure-staging-demo.ps1 `
+        -ConfirmTarget 'sql-unipm-staging.database.windows.net/unipm-staging-db' `
+        -AllowSharedDemoPassword:$useSharedDemoPassword
+    # Independent read-only postflight, only after initialization succeeds.
+    [Environment]::SetEnvironmentVariable('SQLCMDPASSWORD', $connection.Password, 'Process')
+    & sqlcmd.exe -S $connection.DataSource -d $connection.InitialCatalog `
+        -U $sqlLogin -N -x -b -l 60 -i database/azure-staging-demo-postflight.sql
+    if ($LASTEXITCODE -ne 0) { throw 'Read-only demo postflight failed. Stop for review.' }
+}
+finally {
+    foreach ($name in $temporaryNames) {
+        [Environment]::SetEnvironmentVariable($name, $savedEnvironment[$name], 'Process')
+    }
+    if ($null -ne $connection) { $connection.Clear() }
+    if ($null -ne $sqlSecret) { $sqlSecret.Dispose() }
+    $savedEnvironment.Clear()
+    Remove-Item Function:\Read-ProcessSecret -ErrorAction SilentlyContinue
+}
+```
+
+The initializer verifies the exact logical server/database, Azure SQL
+EngineEdition 5, compatibility 150, available Full-Text Search, all 22 migration
+IDs, all 22 application tables, empty tables, and read/write permissions. It
+reports the collation for operator review and requires the exact `APP STOPPED`
+confirmation phrase before any application writes. Do not confirm while another
+writer is active. This check is not a concurrency lock.
+
+The account command precedes the demo-data command. The staging profile never
+calls `MigrateAsync`, resets a database, deletes/replaces demo records, repairs
+existing accounts, or updates an existing password. The legacy local development
+profile retains its previous seeding/reseeding behavior. The four staging logins
+are `admin@unipm.test`, `gsd@unipm.test`, `inspector@unipm.test` and
+`supervisor@unipm.test`. The legacy DepartmentHead role remains for contract
+compatibility, but no Department Head account is created.
+
+Expected success is `UNIPM_STAGING_DEMO_VERIFIED`, four active accounts with
+one intended role each, 25 assets, 105 schedules, 77 inspection rows, 42 forms,
+and 29 acknowledgements. All are fictional. Existing synthetic signatures are
+placeholder images, not real signatures or inspection photos. The data covers
+pending work, Draft, Submitted, Acknowledged, on-time/late and operational/
+non-operational examples, and the four CPMP categories. It does not establish
+photo upload, physical geolocation, or real institutional acceptance. Reference
+rows and inspection photos remain empty. No dataset expansion was needed.
+
+On failure, stop. The two commands are separate processes; account creation can
+partially commit before an error, and successful accounts may remain if demo
+seeding fails. Neither command is an automatic recovery tool. Reinitialization
+is deliberately rejected. Do not reset, delete rows, change passwords, rerun
+migrations, or repeat the seed commands without diagnosis and new approval.
+Use the read-only schema postflight from TEST-089 and
+`database/azure-staging-demo-postflight.sql` to inspect migration IDs, expected
+account/role membership and row counts. A failed count check is diagnostic, not
+permission to alter data. Never select password hashes, tokens, or secrets for
+an evidence log. The script withholds child process output on failure because
+it can include sensitive configuration. Record only the sanitized failure and
+which command started; seek reviewed recovery instructions.
+
+After success or failure, remove temporary workstation firewall rules in the
+portal and close the trusted session. The wrapper restores prior process
+variables and clears its temporary secret references. The initializer restores
+`SQLCMDPASSWORD`; it does not persist credentials. Keep seed variables out of
+App Service configuration. Deployment, runtime role acceptance and actual Azure
+initialization require their own verification and authorization.
 
 The App Service health endpoints are `/health/live` and `/health/ready`. The
 readiness endpoint checks SQL connectivity. It can succeed against an empty
