@@ -1,9 +1,12 @@
 # Azure staging package and deployment guide
 
 This guide prepares the UniPM web and API for a single-origin Azure App Service
-staging deployment. It does not record a deployment: no Azure resource was
-created or changed, no Azure database was contacted, and no staging login was
-provisioned during this work.
+staging deployment. Package preparation did not deploy the application.
+On October 18, 2026, the owner separately approved and executed all 22
+migrations against the existing Azure SQL staging database. The final schema
+was verified by a read-only follow-up. No demo login was provisioned and no
+App Service was deployed. See
+[TEST-089](../evidence/test-runs/TEST-089-azure-sql-staging-migration.md).
 
 The intended host is a managed .NET 10 Linux App Service in Japan East. Confirm
 the .NET 10 runtime and the desired App Service plan are available in the
@@ -127,11 +130,16 @@ history match the documented preconditions.
 
 The migration chain includes historical Full-Text Search installation guards
 that require `SERVERPROPERTY('IsFullTextInstalled')` to be `1`. Local SQL Server
-2019 evidence does not prove this Azure SQL Database behavior. The preflight
-captures the property but has not been run against Azure. Resolve this
-compatibility check with a reviewed target-specific plan before applying the
-migrations; do not edit historical migrations or claim Azure migration
-readiness from the local checks.
+2019 evidence alone does not prove this Azure SQL Database behavior. The
+separately executed live Azure preflight reported `1`, and the complete
+22-migration chain succeeded on this staging database. The retained reference
+full-text index and removal of retired maintenance storage were verified.
+This resolves the guard question for the tested target and source, not every
+future Azure database. Historical migrations were unchanged.
+
+The staging database is now migrated and empty. Do not rerun the original
+empty-database migration wrapper. Demo initialization still requires its
+separate authorization and fresh checks against the migrated schema.
 
 Once those preconditions pass and migration execution is separately approved,
 stop the App Service and other writers. Supply the migration connection through
@@ -243,8 +251,8 @@ public deployment; passing tests do not resolve a security advisory.
 
 The package workflow has not been run against Azure and the App Service has not
 been deployed. Before opening staging to GSD, record the exact package commit
-and checksum, verify the portal runtime and host configuration, complete the
-Azure SQL Full-Text Search and migration preflight, validate managed identity
+and checksum, verify the portal runtime and host configuration, recheck the
+database's current identity and migration history, validate managed identity
 access to the confirmed Blob container, and perform an HTTPS smoke test of
 login, secure refresh/logout, the PM workflows, photo access, and readiness.
 Keep that evidence sanitized and distinguish local package checks from Azure

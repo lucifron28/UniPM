@@ -2,6 +2,21 @@
 
 This is a source audit of the 22 EF Core migrations present at commit `0a8ae6a677a92c1c4969eeaa6df41c62ccbfce7d`, from `20260623145921_InitialDomainSchema` through `20261010141251_AddInspectionPhotoEvidence`. It does not certify a deployment. No Azure SQL database was contacted and no migration or preflight query was executed against Azure.
 
+## Subsequent live verification, October 18, 2026
+
+The statement above describes the original audit only. The owner subsequently
+approved and executed this unchanged 22-migration chain at source
+`c3f9d4a1d8eebb8db607f3d257095d9f8e20111a` against the existing staging
+Azure SQL database. Fresh preflight reported `IsFullTextInstalled=1`,
+compatibility 150, the expected collation, and an empty target. Migration
+returned exit code 0. A separate read-only follow-up verified every expected
+migration ID, all 22 empty model tables, enabled/trusted constraints, and the
+expected final Full-Text Search state. See
+[TEST-089](../evidence/test-runs/TEST-089-azure-sql-staging-migration.md).
+The installation guard is therefore verified for that target/source; the
+original audit concerns below remain guidance for other targets. No historical
+migration or production schema definition was edited to obtain success.
+
 ## Findings
 
 The migrations use the EF Core SQL Server provider and SQL Server types, constraints, indexes, and T-SQL. The reviewed chain has no PostgreSQL-specific migration. Most operations are ordinary in-database DDL. Seven migrations contain hand-written SQL; three migrations use Full-Text Search DDL or its installation guard. The full-text index statements are marked `suppressTransaction: true`, matching Microsoft’s requirement that `CREATE FULLTEXT INDEX` run outside a user transaction.
