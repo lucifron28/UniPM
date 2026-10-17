@@ -116,11 +116,11 @@ const withQueryKey = <T extends object, K>(
 }
 
 export const getApiInfo = (signal?: AbortSignal) => {
-  return customInstance<void>({ url: `/`, method: 'GET', signal })
+  return customInstance<void>({ url: `/api/info`, method: 'GET', signal })
 }
 
 export const getGetApiInfoQueryKey = () => {
-  return [`/`] as const
+  return [`/api/info`] as const
 }
 
 export const getGetApiInfoQueryOptions = <

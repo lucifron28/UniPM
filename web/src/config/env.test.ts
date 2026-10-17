@@ -18,6 +18,14 @@ describe('environment', () => {
   it('uses the local API default when no value is supplied', () =>
     expect(parseEnvironment({}).apiBaseUrl).toBe('http://localhost:5000'))
 
+  it('uses same-origin API requests for production without an override', () => {
+    expect(parseEnvironment({ defaultApiBaseUrl: '/' }).apiBaseUrl).toBe('')
+  })
+
+  it('accepts the same-origin API base', () => {
+    expect(parseEnvironment({ VITE_API_BASE_URL: '/' }).apiBaseUrl).toBe('')
+  })
+
   it('rejects unsupported protocols', () => {
     expect(() =>
       parseEnvironment({ VITE_API_BASE_URL: 'ftp://localhost:5000' }),

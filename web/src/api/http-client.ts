@@ -45,10 +45,16 @@ const authPaths = new Set([
 
 function requestPath(config: AxiosRequestConfig) {
   try {
-    return new URL(
-      config.url ?? '',
-      config.baseURL ?? environment.apiBaseUrl,
-    ).pathname.replace(/\/+$/, '')
+    const browserOrigin =
+      typeof window === 'undefined' ? undefined : window.location.origin
+    const configuredBaseUrl = config.baseURL ?? environment.apiBaseUrl
+    const baseUrl = configuredBaseUrl
+      ? new URL(configuredBaseUrl, browserOrigin).toString()
+      : browserOrigin
+    const requestUrl = baseUrl
+      ? new URL(config.url ?? '', baseUrl)
+      : new URL(config.url ?? '')
+    return requestUrl.pathname.replace(/\/+$/, '')
   } catch {
     return ''
   }

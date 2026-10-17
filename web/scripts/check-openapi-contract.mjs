@@ -13,6 +13,7 @@ const snapshot = JSON.parse(
   ),
 )
 const requiredOperations = [
+  ['/api/info', 'get', 'GetApiInfo', false],
   ['/api/v1/auth/login', 'post', 'Login', true],
   ['/api/v1/auth/refresh', 'post', 'RefreshSession', true],
   ['/api/v1/auth/logout', 'post', 'Logout', false],
