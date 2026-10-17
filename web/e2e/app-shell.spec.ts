@@ -40,7 +40,60 @@ test('desktop shell keeps its header and rail still while the workspace scrolls'
 }) => {
   await page.setViewportSize({ width: 1280, height: 720 })
   await mockSession(page)
-  await page.goto('/app/dashboard')
+  await page.route('**/api/v1/pm-period-dashboard**', async (route) => {
+    const url = new URL(route.request().url())
+    const body = url.pathname.endsWith('/cycles')
+      ? [
+          {
+            assetCategory: 'fire-extinguisher',
+            year: 2026,
+            cycles: [{ pmCycle: '2026-08', scheduled: 4 }],
+          },
+        ]
+      : {
+          pmCycle: '2026-08',
+          assetCategory: 'fire-extinguisher',
+          department: null,
+          deadline: '2026-08-31T15:59:59.999Z',
+          periodState: 'Closed',
+          complianceMeasurable: true,
+          inspectionResultsAvailable: true,
+          scheduled: 4,
+          inspected: 2,
+          completedOnTime: 1,
+          completedLate: 1,
+          notCompleted: 2,
+          remaining: 0,
+          operational: 1,
+          nonOperational: 1,
+          onTimeCompliancePercent: 25,
+          progressPercent: 50,
+          batches: [],
+          assets: [],
+        }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(body),
+    })
+  })
+  await page.route('**/api/v1/schedules/enrollment-deferrals**', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        page: 1,
+        pageSize: 10,
+        total: 0,
+        pendingCount: 0,
+        reviewedCount: 0,
+        items: [],
+      }),
+    }),
+  )
+  await page.goto(
+    '/app/dashboard?assetCategory=fire-extinguisher&year=2026&pmCycle=2026-08',
+  )
 
   const heading = page
     .locator('.app-page-header')
@@ -58,6 +111,11 @@ test('desktop shell keeps its header and rail still while the workspace scrolls'
       name: 'Preventive Maintenance Dashboard',
     }),
   ).toHaveCount(0)
+  await expect(
+    workspace.getByRole('heading', { name: 'Scheduled assets' }),
+  ).toBeVisible()
+  await expect(workspace.getByText('50%', { exact: true })).toBeVisible()
+  await expect(workspace.getByText('25%', { exact: true })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Assets' })).toHaveAttribute(
     'title',
     'Assets',
@@ -154,6 +212,33 @@ test('desktop shell keeps its header and rail still while the workspace scrolls'
   await expect(
     sidebar.getByText('Institutional operations').last(),
   ).toBeVisible()
+  await workspace.evaluate((element) => {
+    element.scrollTop = 0
+  })
+  await expect
+    .poll(() => workspace.evaluate((element) => element.scrollTop))
+    .toBe(0)
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const navigation = document.querySelector('#primary-navigation')
+        const indicator = navigation?.querySelector('.sidebar-active-indicator')
+        const activeLink = navigation?.querySelector<HTMLElement>(
+          '[aria-current="page"]',
+        )
+        if (!indicator || !activeLink) return false
+
+        const indicatorBounds = indicator.getBoundingClientRect()
+        const linkBounds = activeLink.getBoundingClientRect()
+        return (
+          Math.abs(indicatorBounds.left - linkBounds.left) < 1 &&
+          Math.abs(indicatorBounds.top - linkBounds.top) < 1 &&
+          Math.abs(indicatorBounds.width - linkBounds.width) < 1 &&
+          Math.abs(indicatorBounds.height - linkBounds.height) < 1
+        )
+      }),
+    )
+    .toBe(true)
   await page.screenshot({
     path: 'test-results/web-ui-polish-sidebar-expanded-desktop.png',
   })
