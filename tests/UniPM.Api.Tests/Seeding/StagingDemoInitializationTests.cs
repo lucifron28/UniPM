@@ -10,6 +10,7 @@ using Microsoft.Extensions.Hosting;
 using UniPM.Api.Data;
 using UniPM.Api.Data.Seeding;
 using UniPM.Api.Features.Auth;
+using UniPM.Api.Features.ReferenceData;
 using UniPM.Api.Features.Schedules;
 using UniPM.Api.Models;
 
