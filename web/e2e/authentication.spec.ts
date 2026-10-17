@@ -132,9 +132,17 @@ test('successful login opens the dashboard and displays returned identity', asyn
   await expect(
     page.getByRole('heading', { name: 'Preventive Maintenance Dashboard' }),
   ).toBeVisible()
-  const sidebar = page.getByRole('complementary')
-  await expect(sidebar.getByText('Fictional Inspector')).toBeVisible()
-  await expect(sidebar.getByText(fictionalCredentials.email)).toBeVisible()
+  const accountMenu = page.locator('.app-sidebar details')
+  await accountMenu.getByLabel('Account menu').click()
+  const accountDetails = accountMenu.locator(':scope > div')
+  await expect(
+    accountDetails.getByText(fictionalSession.user.displayName, {
+      exact: true,
+    }),
+  ).toBeVisible()
+  await expect(
+    accountDetails.getByText(fictionalSession.user.email, { exact: true }),
+  ).toBeVisible()
 })
 
 test('direct protected navigation restores through the refresh cookie contract', async ({
@@ -151,8 +159,16 @@ test('direct protected navigation restores through the refresh cookie contract',
   await page.goto('/app/dashboard')
 
   await expect(page).toHaveURL(/\/app\/dashboard$/)
+  const accountMenu = page.locator('.app-sidebar details')
+  await accountMenu.getByLabel('Account menu').click()
+  const accountDetails = accountMenu.locator(':scope > div')
   await expect(
-    page.getByRole('complementary').getByText('Fictional Inspector'),
+    accountDetails.getByText(fictionalSession.user.displayName, {
+      exact: true,
+    }),
+  ).toBeVisible()
+  await expect(
+    accountDetails.getByText(fictionalSession.user.email, { exact: true }),
   ).toBeVisible()
 })
 
@@ -181,6 +197,7 @@ test('logout is locally final and returns to login', async ({ page }) => {
     route.fulfill({ status: 204 }),
   )
   await page.goto('/app/dashboard')
+  await page.getByLabel('Account menu').click()
   await page.getByRole('button', { name: 'Sign out' }).first().click()
 
   await expect(page).toHaveURL(/\/login$/)
@@ -194,13 +211,21 @@ test('access token is never stored in browser storage', async ({ page }) => {
   await mockSuccessfulLogin(page)
   await page.goto('/login')
   await completeLogin(page)
+  await expect
+    .poll(() =>
+      page.evaluate(() => localStorage.getItem('unipm.sidebar.collapsed')),
+    )
+    .toBe('true')
 
   expect(
     await page.evaluate(() => ({
       local: { ...localStorage },
       session: { ...sessionStorage },
     })),
-  ).toEqual({ local: {}, session: {} })
+  ).toEqual({
+    local: { 'unipm.sidebar.collapsed': 'true' },
+    session: {},
+  })
 })
 
 test('unsafe redirect input falls back to the dashboard', async ({ page }) => {

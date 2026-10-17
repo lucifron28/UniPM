@@ -5,6 +5,7 @@ import type { ListPreventiveMaintenanceFormsParams } from '@/api/generated/model
 import { assetCategoryCodes } from '@/features/assets/asset-contract'
 import { formatAssetCategory } from '@/features/assets/asset-presentation'
 import { Badge } from '@/components/ui/badge'
+import { PageHeading } from '@/components/layout/page-heading'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -17,6 +18,8 @@ import {
 } from '@/features/preventive-maintenance-forms/form-contract'
 import { usePreventiveMaintenanceForms } from '@/features/preventive-maintenance-forms/form-queries'
 import { RegistryResultsPanel } from '@/features/shared/registry-results-panel'
+import { RegistryZoomControls } from '@/features/shared/registry-zoom'
+import { useRegistryZoom } from '@/features/shared/registry-zoom-state'
 import { formatPmCycle } from '@/features/schedules/schedule-presentation'
 import {
   formStatusClass,
@@ -71,29 +74,37 @@ function FormSummary({
   form: PreventiveMaintenanceForm
   search: FormSearch
 }) {
+  const detailSearch = {
+    returnContext: Object.values(search).some((value) => value !== undefined)
+      ? { kind: 'formRegistry' as const, search }
+      : { kind: 'formRegistry' as const },
+  }
+
   return (
-    <article className="rounded-xl border border-[var(--border-soft)] bg-white p-5 shadow-sm">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
-        <div>
+    <article className="content-card rounded-lg border border-[var(--border-soft)] bg-white p-5 sm:p-6">
+      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold tracking-[0.08em] text-[var(--text-neutral)] uppercase">
+            Form file number
+          </p>
           <Link
             to="/app/preventive-maintenance-forms/$formId"
             params={{ formId: form.id }}
-            search={{
-              returnContext: Object.values(search).some(
-                (value) => value !== undefined,
-              )
-                ? { kind: 'formRegistry', search }
-                : { kind: 'formRegistry' },
-            }}
-            className="font-semibold text-[var(--primary)] hover:underline"
+            search={detailSearch}
+            className="mt-1 inline-block text-lg font-bold break-words text-[var(--primary)] hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
           >
             {form.fileNumber ?? 'Unsubmitted form'}
           </Link>
         </div>
-        <FormStatus status={form.status} />
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <span className="text-xs font-semibold text-[var(--text-neutral)]">
+            Status
+          </span>
+          <FormStatus status={form.status} />
+        </div>
       </div>
-      <dl className="mt-5 grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
-        <div>
+      <dl className="mt-5 grid gap-x-6 gap-y-5 border-t border-[var(--border-soft)] pt-5 text-sm sm:grid-cols-2 lg:grid-cols-5">
+        <div className="min-w-0">
           <dt className="text-xs font-semibold tracking-[0.08em] text-[var(--text-neutral)] uppercase">
             Asset category
           </dt>
@@ -101,7 +112,7 @@ function FormSummary({
             {formatAssetCategory(form.assetCategory)}
           </dd>
         </div>
-        <div>
+        <div className="min-w-0">
           <dt className="text-xs font-semibold tracking-[0.08em] text-[var(--text-neutral)] uppercase">
             Building / department
           </dt>
@@ -110,7 +121,7 @@ function FormSummary({
               'Not recorded'}
           </dd>
         </div>
-        <div>
+        <div className="min-w-0">
           <dt className="text-xs font-semibold tracking-[0.08em] text-[var(--text-neutral)] uppercase">
             Period
           </dt>
@@ -118,7 +129,7 @@ function FormSummary({
             {formatFormPeriod(form)}
           </dd>
         </div>
-        <div>
+        <div className="min-w-0">
           <dt className="text-xs font-semibold tracking-[0.08em] text-[var(--text-neutral)] uppercase">
             Inspection rows
           </dt>
@@ -126,10 +137,28 @@ function FormSummary({
             {form.inspections.length}
           </dd>
         </div>
+        <div className="min-w-0">
+          <dt className="text-xs font-semibold tracking-[0.08em] text-[var(--text-neutral)] uppercase">
+            Submitted
+          </dt>
+          <dd className="mt-1 text-[var(--text-primary)]">
+            {formatFormDate(form.submittedAt)}
+          </dd>
+        </div>
       </dl>
-      <p className="mt-4 text-xs text-[var(--text-neutral)]">
-        Submitted: {formatFormDate(form.submittedAt)}
-      </p>
+      <div className="mt-5 flex justify-end border-t border-[var(--border-soft)] pt-4">
+        <Link
+          to="/app/preventive-maintenance-forms/$formId"
+          params={{ formId: form.id }}
+          search={detailSearch}
+          className="inline-flex min-h-10 items-center font-semibold text-[var(--primary)] hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
+        >
+          View form details{' '}
+          <span aria-hidden="true" className="ml-1">
+            →
+          </span>
+        </Link>
+      </div>
     </article>
   )
 }
@@ -182,167 +211,191 @@ function FormRegistryFilters({
   }
 
   return (
-    <Card className="p-4 shadow-none">
-      <form
-        className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-5"
-        onSubmit={(event) => {
-          event.preventDefault()
-          apply()
-        }}
+    <section aria-labelledby="find-forms-title" className="space-y-3">
+      <h2
+        id="find-forms-title"
+        className="text-xl font-semibold text-[var(--text-primary)]"
       >
-        <Input
-          aria-label="Search forms"
-          placeholder="File number, building, or asset details"
-          value={draft.search ?? ''}
-          maxLength={256}
-          onChange={(event) =>
-            setDraft((current) => ({
-              ...current,
-              search: event.target.value,
-            }))
-          }
-          className="xl:col-span-2"
-        />
-        <select
-          aria-label="Form status"
-          value={draft.status ?? ''}
-          onChange={(event) =>
-            setDraft((current) => ({
-              ...current,
-              status: (event.target.value || undefined) as
-                PreventiveMaintenanceForm['status'] | undefined,
-            }))
-          }
-          className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
+        Find forms
+      </h2>
+      <Card className="content-card p-5">
+        <form
+          className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4"
+          onSubmit={(event) => {
+            event.preventDefault()
+            apply()
+          }}
         >
-          <option value="">All statuses</option>
-          {preventiveMaintenanceFormStatusCodes.map((status) => (
-            <option key={status} value={status}>
-              {formStatusLabel(status)}
-            </option>
-          ))}
-        </select>
-        <select
-          aria-label="Asset category"
-          value={draft.assetCategory ?? ''}
-          disabled={optionsPending && categories.length === 0}
-          onChange={(event) =>
-            setDraft((current) => ({
-              ...current,
-              assetCategory: event.target.value || undefined,
-            }))
-          }
-          className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
-        >
-          <option value="">All asset categories</option>
-          {assetCategoryCodes
-            .filter((category) => categories.includes(category))
-            .map((category) => (
-              <option key={category} value={category}>
-                {formatAssetCategory(category)}
-              </option>
-            ))}
-        </select>
-        <select
-          aria-label="Department"
-          value={draft.department ?? ''}
-          disabled={optionsPending && departments.length === 0}
-          onChange={(event) =>
-            setDraft((current) => ({
-              ...current,
-              department: event.target.value || undefined,
-            }))
-          }
-          className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
-        >
-          <option value="">All departments</option>
-          {departments.map((department) => (
-            <option key={department} value={department}>
-              {department}
-            </option>
-          ))}
-        </select>
-        <select
-          aria-label="PM cycle"
-          value={draft.pmCycle ?? ''}
-          disabled={optionsPending && cycles.length === 0}
-          onChange={(event) =>
-            setDraft((current) => ({
-              ...current,
-              pmCycle: event.target.value || undefined,
-            }))
-          }
-          className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
-        >
-          <option value="">All PM cycles</option>
-          {cycles.map((cycle) => (
-            <option key={cycle} value={cycle}>
-              {formatPmCycle(cycle)}
-            </option>
-          ))}
-        </select>
-        <div className="flex flex-wrap gap-2 xl:col-span-5">
-          <Button type="submit">Apply filters</Button>
-          <Button type="button" variant="secondary" onClick={clear}>
-            Clear filters
-          </Button>
-          <Button type="button" variant="secondary" onClick={onRefreshForms}>
-            Refresh forms
-          </Button>
-        </div>
-      </form>
-      {(search.status ||
-        search.assetCategory ||
-        search.department ||
-        search.pmCycle ||
-        search.search) && (
-        <p
-          className="mt-4 text-sm text-[var(--text-secondary)]"
-          aria-live="polite"
-        >
-          Active filters:{' '}
-          {[
-            search.status,
-            search.assetCategory,
-            search.department,
-            search.pmCycle,
-            search.search,
-          ]
-            .filter(Boolean)
-            .join(' · ')}
-        </p>
-      )}
-      {formsError && (
-        <div
-          className="mt-3 flex flex-wrap items-center gap-3 text-sm text-[var(--error)]"
-          role="alert"
-        >
-          <span>Preventive-maintenance forms could not be loaded.</span>
-          <Button type="button" onClick={onRefreshForms}>
-            Retry
-          </Button>
-          <Button type="button" variant="secondary" onClick={clear}>
-            Clear filters
-          </Button>
-        </div>
-      )}
-      {optionsError && (
-        <div
-          className="mt-3 flex items-center gap-3 text-sm text-[var(--error)]"
-          role="alert"
-        >
-          <span>Filter options could not be loaded.</span>
-          <Button type="button" onClick={onRetryOptions}>
-            Retry options
-          </Button>
-        </div>
-      )}
-    </Card>
+          <label className="grid gap-2 text-sm font-semibold text-[var(--text-primary)] md:col-span-2 xl:col-span-4">
+            Search forms
+            <Input
+              aria-label="Search forms"
+              placeholder="File number, building, or asset details"
+              value={draft.search ?? ''}
+              maxLength={256}
+              onChange={(event) =>
+                setDraft((current) => ({
+                  ...current,
+                  search: event.target.value,
+                }))
+              }
+              className="min-h-12 text-base"
+            />
+          </label>
+          <label className="grid gap-1 text-sm font-semibold text-[var(--text-primary)]">
+            Form status
+            <select
+              aria-label="Form status"
+              value={draft.status ?? ''}
+              onChange={(event) =>
+                setDraft((current) => ({
+                  ...current,
+                  status: (event.target.value || undefined) as
+                    PreventiveMaintenanceForm['status'] | undefined,
+                }))
+              }
+              className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
+            >
+              <option value="">All statuses</option>
+              {preventiveMaintenanceFormStatusCodes.map((status) => (
+                <option key={status} value={status}>
+                  {formStatusLabel(status)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="grid gap-1 text-sm font-semibold text-[var(--text-primary)]">
+            Asset category
+            <select
+              aria-label="Asset category"
+              value={draft.assetCategory ?? ''}
+              disabled={optionsPending && categories.length === 0}
+              onChange={(event) =>
+                setDraft((current) => ({
+                  ...current,
+                  assetCategory: event.target.value || undefined,
+                }))
+              }
+              className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
+            >
+              <option value="">All asset categories</option>
+              {assetCategoryCodes
+                .filter((category) => categories.includes(category))
+                .map((category) => (
+                  <option key={category} value={category}>
+                    {formatAssetCategory(category)}
+                  </option>
+                ))}
+            </select>
+          </label>
+          <label className="grid gap-1 text-sm font-semibold text-[var(--text-primary)]">
+            Department
+            <select
+              aria-label="Department"
+              value={draft.department ?? ''}
+              disabled={optionsPending && departments.length === 0}
+              onChange={(event) =>
+                setDraft((current) => ({
+                  ...current,
+                  department: event.target.value || undefined,
+                }))
+              }
+              className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
+            >
+              <option value="">All departments</option>
+              {departments.map((department) => (
+                <option key={department} value={department}>
+                  {department}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="grid gap-1 text-sm font-semibold text-[var(--text-primary)]">
+            PM cycle
+            <select
+              aria-label="PM cycle"
+              value={draft.pmCycle ?? ''}
+              disabled={optionsPending && cycles.length === 0}
+              onChange={(event) =>
+                setDraft((current) => ({
+                  ...current,
+                  pmCycle: event.target.value || undefined,
+                }))
+              }
+              className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
+            >
+              <option value="">All PM cycles</option>
+              {cycles.map((cycle) => (
+                <option key={cycle} value={cycle}>
+                  {formatPmCycle(cycle)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="flex flex-wrap gap-2 md:col-span-2 xl:col-span-4">
+            <Button type="submit">Apply filters</Button>
+            <Button type="button" variant="secondary" onClick={clear}>
+              Clear filters
+            </Button>
+            <Button type="button" variant="secondary" onClick={onRefreshForms}>
+              Refresh forms
+            </Button>
+          </div>
+        </form>
+        {(search.status ||
+          search.assetCategory ||
+          search.department ||
+          search.pmCycle ||
+          search.search) && (
+          <p
+            className="mt-4 text-sm text-[var(--text-secondary)]"
+            aria-live="polite"
+          >
+            Active filters:{' '}
+            {[
+              search.status,
+              search.assetCategory,
+              search.department,
+              search.pmCycle,
+              search.search,
+            ]
+              .filter(Boolean)
+              .join(' · ')}
+          </p>
+        )}
+        {formsError && (
+          <div
+            className="mt-3 flex flex-wrap items-center gap-3 text-sm text-[var(--error)]"
+            role="alert"
+          >
+            <span>Preventive-maintenance forms could not be loaded.</span>
+            <Button type="button" onClick={onRefreshForms}>
+              Retry
+            </Button>
+            <Button type="button" variant="secondary" onClick={clear}>
+              Clear filters
+            </Button>
+          </div>
+        )}
+        {optionsError && (
+          <div
+            className="mt-3 flex items-center gap-3 text-sm text-[var(--error)]"
+            role="alert"
+          >
+            <span>Filter options could not be loaded.</span>
+            <Button type="button" onClick={onRetryOptions}>
+              Retry options
+            </Button>
+          </div>
+        )}
+      </Card>
+    </section>
   )
 }
 
 export function FormRegistry({ search, onSearchChange }: FormRegistryProps) {
   const currentUser = useCurrentUser()
+  const recordZoom = useRegistryZoom()
   const canReview = canReviewPreventiveMaintenanceForms(currentUser.data?.roles)
   const filters = useMemo(
     () => ({
@@ -482,21 +535,13 @@ export function FormRegistry({ search, onSearchChange }: FormRegistryProps) {
   }
 
   return (
-    <section aria-labelledby="forms-title" className="max-w-6xl space-y-6">
-      <div>
-        <p className="text-sm font-semibold tracking-[0.08em] text-[var(--primary)] uppercase">
-          Preventive maintenance
-        </p>
-        <h1
-          id="forms-title"
-          className="mt-2 text-3xl font-bold tracking-tight text-[var(--text-primary)]"
-        >
-          Form review
-        </h1>
-        <p className="mt-2 max-w-2xl text-[var(--text-secondary)]">
-          Review submitted forms and open their inspection source rows.
-        </p>
-      </div>
+    <section aria-labelledby="forms-title" className="space-y-6">
+      <PageHeading
+        id="forms-title"
+        eyebrow="Preventive maintenance"
+        title="Form review"
+        description="Review submitted forms and open their inspection source rows."
+      />
       <FormRegistryFilters
         key={JSON.stringify([
           search.status,
@@ -516,52 +561,80 @@ export function FormRegistry({ search, onSearchChange }: FormRegistryProps) {
         onRefreshForms={() => void forms.refetch()}
         onRetryOptions={() => void allForms.refetch()}
       />
-      {rows.length === 0 && (
-        <p
-          className="min-h-5 text-sm text-[var(--text-neutral)]"
-          role={forms.isFetching ? 'status' : undefined}
-          aria-live="polite"
-        >
-          {forms.isFetching ? 'Updating results...' : null}
-        </p>
-      )}
-      {forms.isSuccess && rows.length === 0 ? (
-        <Card className="text-center shadow-none">
-          <h2 className="text-lg font-semibold text-[var(--text-primary)]">
-            {allForms.isSuccess && allForms.data.length === 0
-              ? 'No preventive-maintenance forms found.'
-              : 'No forms match these filters.'}
-          </h2>
-          <p className="mt-2 text-sm text-[var(--text-secondary)]">
-            {allForms.isSuccess && allForms.data.length === 0
-              ? 'Forms will appear here after they are created through the field workflow.'
-              : 'Clear the filters to return to all recorded forms.'}
+      <section aria-labelledby="form-records-title" className="space-y-4">
+        <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2
+              id="form-records-title"
+              className="text-xl font-semibold text-[var(--text-primary)]"
+            >
+              Form records
+            </h2>
+            <p
+              className="mt-1 text-sm text-[var(--text-secondary)]"
+              aria-live="polite"
+            >
+              Filtered results: {rows.length.toLocaleString()}
+            </p>
+          </div>
+          <RegistryZoomControls
+            label="Form records"
+            zoom={recordZoom.zoom}
+            onDecrease={recordZoom.decrease}
+            onIncrease={recordZoom.increase}
+            onReset={recordZoom.reset}
+          />
+        </header>
+        {rows.length === 0 && (
+          <p
+            className="min-h-5 text-sm text-[var(--text-neutral)]"
+            role={forms.isFetching ? 'status' : undefined}
+            aria-live="polite"
+          >
+            {forms.isFetching ? 'Updating results...' : null}
           </p>
-        </Card>
-      ) : rows.length > 0 ? (
-        <RegistryResultsPanel
-          label="Preventive-maintenance forms"
-          breakpoint="md"
-          viewportSize="standard"
-          isUpdating={forms.isFetching}
-          desktopContent={
-            <div className="space-y-3 p-1" role="list">
-              {pageData.map((form) => (
-                <FormSummary key={form.id} form={form} search={search} />
-              ))}
-            </div>
-          }
-          mobileContent={pageData.map((form) => (
-            <FormSummary key={form.id} form={form} search={search} />
-          ))}
-          pagination={{
-            page,
-            pageSize,
-            total: rows.length,
-            onPageChange: changePage,
-          }}
-        />
-      ) : null}
+        )}
+        {forms.isSuccess && rows.length === 0 ? (
+          <Card className="text-center shadow-none">
+            <h2 className="text-lg font-semibold text-[var(--text-primary)]">
+              {allForms.isSuccess && allForms.data.length === 0
+                ? 'No preventive-maintenance forms found.'
+                : 'No forms match these filters.'}
+            </h2>
+            <p className="mt-2 text-sm text-[var(--text-secondary)]">
+              {allForms.isSuccess && allForms.data.length === 0
+                ? 'Forms will appear here after they are created through the field workflow.'
+                : 'Clear the filters to return to all recorded forms.'}
+            </p>
+          </Card>
+        ) : rows.length > 0 ? (
+          <RegistryResultsPanel
+            label="Preventive-maintenance forms"
+            desktopLabel="Preventive-maintenance form records"
+            desktopFrameClassName="border-0 bg-transparent"
+            breakpoint="md"
+            viewportSize="standard"
+            isUpdating={forms.isFetching}
+            recordsZoom={recordZoom.zoom}
+            desktopContent={
+              <div className="space-y-3 p-1" role="list">
+                {pageData.map((form) => (
+                  <FormSummary key={form.id} form={form} search={search} />
+                ))}
+              </div>
+            }
+            mobileContent={pageData.map((form) => (
+              <FormSummary key={form.id} form={form} search={search} />
+            ))}
+            pagination={{
+              page,
+              pageSize,
+              total: rows.length,
+              onPageChange: changePage,
+            }}
+          />
+        ) : null}
+      </section>
     </section>
   )
 }

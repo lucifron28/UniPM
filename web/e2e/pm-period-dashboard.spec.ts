@@ -534,6 +534,20 @@ test.describe('PM period dashboard', () => {
       '67%',
       'Not measurable yet',
     ])
+    await page.screenshot({
+      path: 'test-results/web-ui-refinement-dashboard-desktop.png',
+    })
+    await page.setViewportSize({ width: 375, height: 812 })
+    await page.screenshot({
+      path: 'test-results/web-ui-refinement-dashboard-mobile.png',
+      fullPage: true,
+    })
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth - window.innerWidth,
+      ),
+    ).toBeLessThanOrEqual(1)
+    await page.setViewportSize({ width: 1280, height: 900 })
 
     await page.getByLabel('Condition').selectOption('NonOperational')
     await expectRequest(requests, {
@@ -853,104 +867,175 @@ test.describe('PM period dashboard', () => {
     await mockDashboardApi(page)
     const analyticsRequests: unknown[] = []
     const interpretationRequests: unknown[] = []
-    await page.route('**/api/v1/analytics/pm/interpret', async (route) => {
+    await page.route('**/api/v1/analytics/pm/v2/interpret', async (route) => {
       interpretationRequests.push(route.request().postDataJSON())
       await route.fulfill(
         jsonResponse({
           status: 'Valid',
           plan: {
+            schemaVersion: 2,
             metric: 'NonOperational',
             assetCategory: 'fire-extinguisher',
-            pmCycle: '2026-11',
+            period: {
+              kind: 'Month',
+              year: 2026,
+              month: 11,
+              quarter: null,
+              startCycle: null,
+              endCycle: null,
+            },
+            comparison: null,
+            presentation: 'Count',
+            countBasis: 'AssetCycles',
             department: null,
+            building: null,
+            assetCode: null,
+            condition: null,
+            timeliness: null,
             groupBy: 'None',
+            ranking: null,
           },
           clarificationFields: [],
-          presentation: 'Count',
           code: null,
-          canonicalQuestion:
-            'Show non-operational assets for fire-extinguisher in 2026-11',
+          detail: null,
         }),
       )
     })
-    await page.route('**/api/v1/analytics/pm/query', async (route) => {
-      analyticsRequests.push(route.request().postDataJSON())
+    await page.route('**/api/v1/analytics/pm/v2/query', async (route) => {
+      const request = route.request().postDataJSON() as {
+        sourceScope: string
+      }
+      analyticsRequests.push(request)
+      const matchingSource = {
+        scheduleId: assetIds.onTime,
+        assetId: assetIds.onTime,
+        inspectionId: assetIds.onTime,
+        assetCode: 'FE-001',
+        assetCategory: 'fire-extinguisher',
+        currentDepartment: 'GSD',
+        currentBuilding: 'Library',
+        pmCycle: '2026-11',
+        deadline: '2026-11-30T15:59:59.999Z',
+        completedAt: '2026-12-01T04:00:00Z',
+        scheduleStatus: 'Completed',
+        timeliness: 'Late',
+        condition: 'NonOperational',
+        formStatus: 'Draft',
+        usedLegacyDateFallback: false,
+      }
+      const calculationSources = [
+        matchingSource,
+        {
+          ...matchingSource,
+          scheduleId: assetIds.pending,
+          assetId: assetIds.pending,
+          inspectionId: null,
+          assetCode: 'FE-002',
+          completedAt: null,
+          scheduleStatus: 'Due',
+          timeliness: 'Missed',
+          condition: 'NotInspected',
+          formStatus: null,
+        },
+        {
+          ...matchingSource,
+          scheduleId: assetIds.notCompleted,
+          assetId: assetIds.notCompleted,
+          inspectionId: null,
+          assetCode: 'FE-003',
+          completedAt: null,
+          scheduleStatus: 'Due',
+          timeliness: 'Missed',
+          condition: 'NotInspected',
+          formStatus: null,
+        },
+      ]
       await route.fulfill(
         jsonResponse({
+          schemaVersion: 2,
+          asOfUtc: '2026-12-01T05:00:00Z',
           plan: {
+            schemaVersion: 2,
             metric: 'NonOperational',
             assetCategory: 'fire-extinguisher',
-            pmCycle: '2026-11',
+            period: {
+              kind: 'Month',
+              year: 2026,
+              month: 11,
+              quarter: null,
+              startCycle: null,
+              endCycle: null,
+            },
+            comparison: null,
+            presentation: 'Count',
+            countBasis: 'AssetCycles',
             department: null,
+            building: null,
+            assetCode: null,
+            condition: null,
+            timeliness: null,
             groupBy: 'None',
+            ranking: null,
           },
-          deadline: '2026-11-30T15:59:59.999Z',
-          periodState: 'Closed',
+          sourceScope: request.sourceScope,
+          page: 1,
+          pageSize: 25,
+          population: {
+            eligibleAssetCycleCount: 3,
+            eligibleDistinctAssetCount: 3,
+            matchingAssetCycleCount: 1,
+            matchingDistinctAssetCount: 1,
+            sourceTotalCount:
+              request.sourceScope === 'Matching'
+                ? 1
+                : calculationSources.length,
+            totalPages: 1,
+          },
           result: {
-            department: null,
             numerator: 1,
             denominator: 3,
             value: 1,
             unit: 'Count',
             isMeasurable: true,
+            unmeasurableReason: null,
           },
+          cycles: [],
           groups: [],
-          sources: [
-            {
-              scheduleId: assetIds.onTime,
-              assetId: assetIds.onTime,
-              inspectionId: assetIds.onTime,
-              assetCode: 'FE-001',
-              department: 'GSD',
-              pmCycle: '2026-11',
-              deadline: '2026-11-30T15:59:59.999Z',
-              inspectionCompletedAt: '2026-12-01T04:00:00Z',
-              timeliness: 'Late',
-              condition: 'NonOperational',
-              formStatus: 'Draft',
-            },
-            {
-              scheduleId: assetIds.pending,
-              assetId: assetIds.pending,
-              inspectionId: null,
-              assetCode: 'FE-002',
-              department: 'GSD',
-              pmCycle: '2026-11',
-              deadline: '2026-11-30T15:59:59.999Z',
-              inspectionCompletedAt: null,
-              timeliness: 'NotCompleted',
-              condition: 'NotInspected',
-              formStatus: null,
-            },
-            {
-              scheduleId: assetIds.notCompleted,
-              assetId: assetIds.notCompleted,
-              inspectionId: null,
-              assetCode: 'FE-003',
-              department: 'GSD',
-              pmCycle: '2026-11',
-              deadline: '2026-11-30T15:59:59.999Z',
-              inspectionCompletedAt: null,
-              timeliness: 'NotCompleted',
-              condition: 'NotInspected',
-              formStatus: null,
-            },
-          ],
-          totalSourceCount: 3,
-          sourcesTruncated: false,
+          rankingExclusions: [],
+          comparison: null,
+          sources:
+            request.sourceScope === 'Matching'
+              ? [matchingSource]
+              : calculationSources,
           scopeNote:
-            'These are live PM results for the selected scope, not acknowledged-only official history.',
+            'These are operational PM schedule results, not official history.',
         }),
       )
     })
 
-    // This legacy dashboard cycle checks that the question sets its own scope.
+    // The drawer retains the existing analytics workflow and its independent scope.
     await page.goto(
       '/app/dashboard?assetCategory=fire-extinguisher&year=2026&pmCycle=2026-08',
     )
+    const askNla = page.getByRole('button', { name: 'Ask NLA' })
+    const drawer = page.getByRole('dialog', { name: 'Ask NLA' })
+    await expect(askNla).toBeVisible()
+    await expect(drawer).toBeHidden()
+    await page.screenshot({
+      path: 'test-results/web-ui-polish-dashboard-desktop.png',
+    })
+    await askNla.click()
+    await expect(drawer).toBeVisible()
     await expect(
-      page.getByRole('heading', { name: 'Ask about PM results' }),
+      drawer.getByRole('heading', { name: 'Ask about PM results' }),
     ).toBeVisible()
+    await page.screenshot({
+      path: 'test-results/web-ui-polish-ask-nla-drawer-open-desktop.png',
+    })
+    await page.keyboard.press('Escape')
+    await expect(drawer).toBeHidden()
+    await expect(askNla).toBeFocused()
+    await askNla.click()
     await page
       .getByRole('textbox', { name: 'Question' })
       .fill(
@@ -958,29 +1043,27 @@ test.describe('PM period dashboard', () => {
       )
     await page.getByRole('button', { name: 'Show result' }).click()
 
-    const results = page.getByRole('region', { name: 'PM result' })
+    const results = page.getByRole('region', {
+      name: 'PM analytics result',
+    })
     await expect(
-      results.getByText('Non-operational assets', { exact: true }),
+      results.getByText('Non-operational inspections', { exact: true }),
     ).toBeVisible()
-    await expect(results.getByText('1 shown', { exact: true })).toBeVisible()
+    await expect(results.getByText(/1 shown on this page of 1/)).toBeVisible()
     await expect(
-      results.getByRole('heading', { name: 'Matching records' }),
+      results.getByRole('heading', { name: 'Matching source records' }),
     ).toBeVisible()
-    await expect(
-      results.getByText(/Deadline: Nov 30, 2026.*11:59 PM.*GMT\+8/),
-    ).toBeVisible()
+    await expect(results.getByText(/Scheduled deadline/)).toBeVisible()
     await expect(
       results.getByRole('link', { name: 'FE-001', exact: true }),
     ).toBeVisible()
     await expect(results.getByText('FE-002', { exact: true })).toHaveCount(0)
     await expect(results.getByText('FE-003', { exact: true })).toHaveCount(0)
 
-    await results
-      .getByRole('checkbox', { name: 'Show all calculation source records' })
-      .check()
-    await expect(results.getByText('3 shown of 3')).toBeVisible()
+    await results.getByRole('button', { name: 'Calculation sources' }).click()
+    await expect(results.getByText(/3 shown on this page of 3/)).toBeVisible()
     await expect(
-      results.getByRole('heading', { name: 'Source records' }),
+      results.getByRole('heading', { name: 'Calculation source records' }),
     ).toBeVisible()
     await expect(results.getByRole('link', { name: 'FE-002' })).toBeVisible()
     await expect(results.getByRole('link', { name: 'FE-003' })).toBeVisible()
@@ -1001,8 +1084,32 @@ test.describe('PM period dashboard', () => {
       .poll(() => analyticsRequests)
       .toEqual([
         {
-          question:
-            'Show non-operational assets for fire-extinguisher in 2026-11',
+          plan: expect.objectContaining({
+            schemaVersion: 2,
+            metric: 'NonOperational',
+            assetCategory: 'fire-extinguisher',
+            period: {
+              kind: 'Month',
+              year: 2026,
+              month: 11,
+              quarter: null,
+              startCycle: null,
+              endCycle: null,
+            },
+          }),
+          sourceScope: 'Matching',
+          page: 1,
+          pageSize: 25,
+        },
+        {
+          plan: expect.objectContaining({
+            schemaVersion: 2,
+            metric: 'NonOperational',
+            assetCategory: 'fire-extinguisher',
+          }),
+          sourceScope: 'Calculation',
+          page: 1,
+          pageSize: 25,
         },
       ])
 
@@ -1023,5 +1130,35 @@ test.describe('PM period dashboard', () => {
         }),
       )}`,
     )
+    await page.screenshot({
+      path: 'test-results/web-ui-polish-ask-nla-drawer-desktop.png',
+    })
+    await page.getByRole('button', { name: 'Close Ask NLA' }).click()
+    await expect(drawer).toBeHidden()
+
+    await page.setViewportSize({ width: 375, height: 812 })
+    await askNla.click()
+    await expect(drawer).toBeVisible()
+    await expect
+      .poll(() =>
+        drawer.evaluate((element) =>
+          Math.abs(element.getBoundingClientRect().width - window.innerWidth),
+        ),
+      )
+      .toBeLessThan(1)
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth - window.innerWidth,
+      ),
+    ).toBeLessThanOrEqual(1)
+    await drawer
+      .locator('div.min-h-0.flex-1.overflow-y-auto')
+      .evaluate((element) => {
+        element.scrollTop = 0
+      })
+    await page.screenshot({
+      path: 'test-results/web-ui-polish-ask-nla-drawer-mobile.png',
+    })
+    await page.getByRole('button', { name: 'Close Ask NLA' }).click()
   })
 })

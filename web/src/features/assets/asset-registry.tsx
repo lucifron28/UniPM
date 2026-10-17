@@ -6,7 +6,8 @@ import {
   getCoreRowModel,
   useReactTable,
 } from '@tanstack/react-table'
-import { Plus, Search } from 'lucide-react'
+import { Eye, Plus, Search } from 'lucide-react'
+import { PageHeading } from '@/components/layout/page-heading'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
@@ -28,6 +29,8 @@ import {
 } from '@/features/shared/registry-results-panel'
 import { RegistryActiveFilters } from '@/features/shared/registry-active-filters'
 import type { RegistryActiveFilter } from '@/features/shared/registry-active-filters'
+import { RegistryZoomControls } from '@/features/shared/registry-zoom'
+import { useRegistryZoom } from '@/features/shared/registry-zoom-state'
 
 export type AssetSearch = {
   assetCategory?: Asset['assetCategory'] | undefined
@@ -91,8 +94,9 @@ const createColumns = (search: AssetSearch) => [
         to="/app/assets/$assetId"
         params={{ assetId: row.original.id }}
         search={{ ...search, returnContext: { kind: 'assetRegistry', search } }}
-        className="font-semibold text-[var(--primary)] hover:underline"
+        className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-[color-mix(in_srgb,var(--primary)_30%,white)] bg-white px-2.5 text-xs font-semibold text-[var(--primary)] hover:border-[var(--primary)] hover:bg-[color-mix(in_srgb,var(--primary)_5%,white)] focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 focus-visible:outline-none"
       >
+        <Eye aria-hidden="true" className="size-3.5" />
         View details
       </Link>
     ),
@@ -120,22 +124,46 @@ function SummaryCard({
       type="button"
       aria-pressed={selected}
       onClick={onSelect}
-      className={`rounded-xl border bg-white p-4 text-left transition-colors hover:border-[var(--primary)] focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:outline-none ${
+      className={`content-card rounded-lg border p-4 text-left focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:outline-none ${
         selected
-          ? 'border-[var(--primary)] ring-1 ring-[var(--primary)]'
-          : 'border-[var(--border-soft)]'
+          ? 'border-[var(--primary)] bg-[var(--primary)] text-white'
+          : 'border-[var(--border-soft)] bg-white text-[var(--text-primary)] hover:border-[var(--primary)]'
       }`}
     >
-      <span className="block text-xs font-semibold tracking-[0.08em] text-[var(--text-neutral)] uppercase">
+      <span
+        className={`block text-xs font-semibold tracking-[0.08em] uppercase ${selected ? 'text-white/90' : 'text-[var(--text-neutral)]'}`}
+      >
         {category.displayName}
       </span>
-      <span className="mt-2 block text-2xl font-bold text-[var(--text-primary)]">
+      <span
+        className={`mt-2 block text-3xl leading-none font-bold ${selected ? 'text-white' : 'text-[var(--text-primary)]'}`}
+      >
         {category.totalCount.toLocaleString()}
       </span>
-      <span className="mt-1 block text-xs text-[var(--text-secondary)]">
-        Overall total · Active {category.activeCount.toLocaleString()} ·
-        Inactive {category.inactiveCount.toLocaleString()} · Retired{' '}
-        {category.retiredCount.toLocaleString()}
+      <span
+        className={`mt-3 flex flex-wrap gap-x-3 gap-y-1 text-xs font-medium ${selected ? 'text-white/90' : 'text-[var(--text-secondary)]'}`}
+      >
+        <span className="inline-flex items-center gap-1.5">
+          <span
+            aria-hidden="true"
+            className={`size-1.5 rounded-full ${selected ? 'bg-emerald-200' : 'bg-emerald-600'}`}
+          />
+          Active {category.activeCount.toLocaleString()}
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span
+            aria-hidden="true"
+            className={`size-1.5 rounded-full ${selected ? 'bg-amber-200' : 'bg-amber-600'}`}
+          />
+          Inactive {category.inactiveCount.toLocaleString()}
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span
+            aria-hidden="true"
+            className={`size-1.5 rounded-full ${selected ? 'bg-white/60' : 'bg-stone-400'}`}
+          />
+          Retired {category.retiredCount.toLocaleString()}
+        </span>
       </span>
     </button>
   )
@@ -152,6 +180,7 @@ export function AssetRegistry({
   ) => void
 }) {
   const currentUser = useCurrentUser()
+  const recordZoom = useRegistryZoom()
   const categories = useAssetCategories()
   const summary = useAssetRegistrySummary()
   const pageSize = 25
@@ -398,33 +427,20 @@ export function AssetRegistry({
       : []),
   ]
 
-  return (
-    <section aria-labelledby="assets-title" className="space-y-6">
-      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-        <div>
-          <p className="text-sm font-semibold tracking-[0.08em] text-[var(--primary)] uppercase">
-            Asset registry
-          </p>
-          <h1
-            id="assets-title"
-            className="mt-2 text-3xl font-bold tracking-tight text-[var(--text-primary)]"
-          >
-            Assets
-          </h1>
-          <p className="mt-2 max-w-2xl text-[var(--text-secondary)]">
-            Find equipment by category, status, location, or asset code.
-          </p>
-        </div>
-        {canCreate && (
-          <Button asChild>
-            <Link to="/app/assets/new">
-              <Plus aria-hidden="true" className="mr-2 size-4" />
-              Add asset
-            </Link>
-          </Button>
-        )}
+  const summarySection = (
+    <section aria-labelledby="asset-inventory-title" className="space-y-3">
+      <div>
+        <h2
+          id="asset-inventory-title"
+          className="text-xl font-semibold text-[var(--text-primary)]"
+        >
+          Overall asset inventory
+        </h2>
+        <p className="mt-1 text-sm text-[var(--text-secondary)]">
+          Category totals cover the full inventory and are independent of the
+          registry filters.
+        </p>
       </div>
-
       {summary.isPending ? (
         <div
           className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
@@ -456,356 +472,414 @@ export function AssetRegistry({
           </Button>
         </Card>
       ) : (
-        <div className="space-y-3">
-          <h2 className="text-lg font-semibold text-[var(--text-primary)]">
-            Overall by asset category
-          </h2>
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {summary.data.categories.map((category) => (
-              <SummaryCard
-                key={category.assetCategory}
-                category={category}
-                selected={search.assetCategory === category.assetCategory}
-                onSelect={() => {
-                  const nextCategory =
-                    search.assetCategory === category.assetCategory
-                      ? undefined
-                      : category.assetCategory
-                  setAssetCategory(nextCategory ?? '')
-                  setStatus('')
-                  setText('')
-                  setBuilding('')
-                  setDepartment('')
-                  setFilterNotice(null)
-                  onSearchChange(
-                    { assetCategory: nextCategory, page: 1 },
-                    { preserveScroll: true },
-                  )
-                }}
-              />
-            ))}
-          </div>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {summary.data.categories.map((category) => (
+            <SummaryCard
+              key={category.assetCategory}
+              category={category}
+              selected={search.assetCategory === category.assetCategory}
+              onSelect={() => {
+                const nextCategory =
+                  search.assetCategory === category.assetCategory
+                    ? undefined
+                    : category.assetCategory
+                setAssetCategory(nextCategory ?? '')
+                setStatus('')
+                setText('')
+                setBuilding('')
+                setDepartment('')
+                setFilterNotice(null)
+                onSearchChange(
+                  { assetCategory: nextCategory, page: 1 },
+                  { preserveScroll: true },
+                )
+              }}
+            />
+          ))}
         </div>
       )}
+    </section>
+  )
 
-      <Card className="p-4 shadow-none">
-        <form
-          className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-6"
-          onSubmit={(event) => {
-            event.preventDefault()
-            apply()
-          }}
+  return (
+    <section aria-labelledby="assets-title" className="space-y-6">
+      <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+        <PageHeading
+          id="assets-title"
+          eyebrow="Asset registry"
+          title="Assets"
+          description="Find equipment by category, status, location, or asset code."
+        />
+        {canCreate && (
+          <Button asChild>
+            <Link to="/app/assets/new">
+              <Plus aria-hidden="true" className="mr-2 size-4" />
+              Add asset
+            </Link>
+          </Button>
+        )}
+      </header>
+
+      <section aria-labelledby="find-assets-title" className="space-y-3">
+        <h2
+          id="find-assets-title"
+          className="text-xl font-semibold text-[var(--text-primary)]"
         >
-          <div className="grid min-w-0 gap-1 xl:col-span-2">
-            <label
-              className="text-sm font-semibold text-[var(--text-primary)]"
-              htmlFor="asset-search"
-            >
-              Search assets
-            </label>
-            <div className="relative min-w-0">
-              <Search
-                aria-hidden="true"
-                className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-[var(--text-neutral)]"
-              />
-              <Input
-                id="asset-search"
-                value={text}
-                maxLength={256}
-                onChange={(event) => setText(event.target.value)}
-                placeholder="Asset code, QR, building, department, or location"
-                className="pl-9"
-              />
-            </div>
-          </div>
-          <div className="grid min-w-0 gap-1 text-sm font-semibold text-[var(--text-primary)]">
-            <label htmlFor="asset-category">Asset category</label>
-            {categories.isError ? (
-              <div className="flex flex-col gap-1">
-                <select
-                  disabled
-                  id="asset-category"
-                  aria-label="Asset category"
-                  className="min-h-10 w-full min-w-0 rounded-lg border border-[var(--error)] bg-white px-3 text-sm opacity-60"
-                >
-                  <option value="">Categories unavailable</option>
-                </select>
-                <button
-                  type="button"
-                  className="text-left text-xs font-semibold text-[var(--error)] underline"
-                  onClick={() => void categories.refetch()}
-                >
-                  Retry categories
-                </button>
+          Find assets
+        </h2>
+        <Card className="content-card p-5">
+          <form
+            className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4"
+            onSubmit={(event) => {
+              event.preventDefault()
+              apply()
+            }}
+          >
+            <div className="grid min-w-0 gap-2 md:col-span-2 xl:col-span-4">
+              <label
+                className="text-sm font-semibold text-[var(--text-primary)]"
+                htmlFor="asset-search"
+              >
+                Search assets
+              </label>
+              <div className="relative min-w-0">
+                <Search
+                  aria-hidden="true"
+                  className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-[var(--text-neutral)]"
+                />
+                <Input
+                  id="asset-search"
+                  value={text}
+                  maxLength={256}
+                  onChange={(event) => setText(event.target.value)}
+                  placeholder="Asset code, QR, building, department, or location"
+                  className="min-h-12 pl-9 text-base"
+                />
               </div>
-            ) : (
+            </div>
+            <div className="grid min-w-0 gap-1 text-sm font-semibold text-[var(--text-primary)]">
+              <label htmlFor="asset-category">Asset category</label>
+              {categories.isError ? (
+                <div className="flex flex-col gap-1">
+                  <select
+                    disabled
+                    id="asset-category"
+                    aria-label="Asset category"
+                    className="min-h-10 w-full min-w-0 rounded-lg border border-[var(--error)] bg-white px-3 text-sm opacity-60"
+                  >
+                    <option value="">Categories unavailable</option>
+                  </select>
+                  <button
+                    type="button"
+                    className="text-left text-xs font-semibold text-[var(--error)] underline"
+                    onClick={() => void categories.refetch()}
+                  >
+                    Retry categories
+                  </button>
+                </div>
+              ) : (
+                <select
+                  id="asset-category"
+                  value={assetCategory}
+                  onChange={(event) => {
+                    setAssetCategory(
+                      (event.target.value || '') as Asset['assetCategory'] | '',
+                    )
+                    setFilterNotice(null)
+                  }}
+                  className="min-h-10 w-full min-w-0 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
+                >
+                  <option value="">All categories</option>
+                  {(categories.data ?? []).map((category) => (
+                    <option key={category.code} value={category.code}>
+                      {category.displayName}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+            <label className="grid min-w-0 gap-1 text-sm font-semibold text-[var(--text-primary)]">
+              <span>Status</span>
               <select
-                id="asset-category"
-                value={assetCategory}
+                value={status}
                 onChange={(event) => {
-                  setAssetCategory(
-                    (event.target.value || '') as Asset['assetCategory'] | '',
-                  )
+                  setStatus((event.target.value || '') as Asset['status'] | '')
                   setFilterNotice(null)
                 }}
                 className="min-h-10 w-full min-w-0 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
               >
-                <option value="">All categories</option>
-                {(categories.data ?? []).map((category) => (
-                  <option key={category.code} value={category.code}>
-                    {category.displayName}
+                <option value="">All statuses</option>
+                {assetStatusCodes.map((status) => (
+                  <option key={status} value={status}>
+                    {status}
                   </option>
                 ))}
               </select>
-            )}
+            </label>
+            <label className="grid min-w-0 gap-1 text-sm font-semibold text-[var(--text-primary)]">
+              <span>Building</span>
+              <select
+                value={building}
+                onChange={(event) => {
+                  setBuilding(event.target.value)
+                  setFilterNotice(null)
+                }}
+                className="min-h-10 w-full min-w-0 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
+              >
+                <option value="">All buildings</option>
+                {buildings.map((value) => (
+                  <option key={value}>{value}</option>
+                ))}
+              </select>
+            </label>
+            <label className="grid min-w-0 gap-1 text-sm font-semibold text-[var(--text-primary)]">
+              <span>Department</span>
+              <select
+                value={department}
+                onChange={(event) => {
+                  setDepartment(event.target.value)
+                  setFilterNotice(null)
+                }}
+                className="min-h-10 w-full min-w-0 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
+              >
+                <option value="">All departments</option>
+                {departments.map((value) => (
+                  <option key={value}>{value}</option>
+                ))}
+              </select>
+            </label>
+            <div className="flex flex-wrap gap-2 md:col-span-2 xl:col-span-4">
+              <Button type="submit">Apply filters</Button>
+              <Button type="button" variant="secondary" onClick={clear}>
+                Clear filters
+              </Button>
+            </div>
+          </form>
+          {filterOptions.isError && (
+            <p className="mt-3 text-sm text-[var(--error)]" role="alert">
+              Location filters could not be loaded.{' '}
+              <button
+                type="button"
+                className="font-semibold underline"
+                onClick={() => void filterOptions.refetch()}
+              >
+                Retry
+              </button>
+            </p>
+          )}
+          {filterNotice && (
+            <p
+              className="mt-3 text-sm text-[var(--text-secondary)]"
+              role="status"
+            >
+              {filterNotice}
+            </p>
+          )}
+          <RegistryActiveFilters filters={activeFilters} />
+        </Card>
+      </section>
+
+      {summarySection}
+
+      <section aria-labelledby="asset-records-title" className="space-y-4">
+        <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2
+              id="asset-records-title"
+              className="text-xl font-semibold text-[var(--text-primary)]"
+            >
+              Asset records
+            </h2>
+            <p
+              className="mt-1 text-sm text-[var(--text-secondary)]"
+              aria-live="polite"
+            >
+              Filtered results: {totalCount.toLocaleString()} · Overall assets:{' '}
+              {summary.data?.totalCount.toLocaleString() ?? 'Loading'}
+            </p>
           </div>
-          <label className="grid min-w-0 gap-1 text-sm font-semibold text-[var(--text-primary)]">
-            <span>Status</span>
-            <select
-              value={status}
-              onChange={(event) => {
-                setStatus((event.target.value || '') as Asset['status'] | '')
-                setFilterNotice(null)
-              }}
-              className="min-h-10 w-full min-w-0 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
-            >
-              <option value="">All statuses</option>
-              {assetStatusCodes.map((status) => (
-                <option key={status} value={status}>
-                  {status}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="grid min-w-0 gap-1 text-sm font-semibold text-[var(--text-primary)]">
-            <span>Building</span>
-            <select
-              value={building}
-              onChange={(event) => {
-                setBuilding(event.target.value)
-                setFilterNotice(null)
-              }}
-              className="min-h-10 w-full min-w-0 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
-            >
-              <option value="">All buildings</option>
-              {buildings.map((value) => (
-                <option key={value}>{value}</option>
-              ))}
-            </select>
-          </label>
-          <label className="grid min-w-0 gap-1 text-sm font-semibold text-[var(--text-primary)]">
-            <span>Department</span>
-            <select
-              value={department}
-              onChange={(event) => {
-                setDepartment(event.target.value)
-                setFilterNotice(null)
-              }}
-              className="min-h-10 w-full min-w-0 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
-            >
-              <option value="">All departments</option>
-              {departments.map((value) => (
-                <option key={value}>{value}</option>
-              ))}
-            </select>
-          </label>
-          <div className="flex gap-2 xl:col-span-6">
-            <Button type="submit">Apply filters</Button>
-            <Button type="button" variant="secondary" onClick={clear}>
-              Clear filters
-            </Button>
-          </div>
-        </form>
-        {filterOptions.isError && (
-          <p className="mt-3 text-sm text-[var(--error)]" role="alert">
-            Location filters could not be loaded.{' '}
-            <button
+          <RegistryZoomControls
+            label="Asset records"
+            zoom={recordZoom.zoom}
+            onDecrease={recordZoom.decrease}
+            onIncrease={recordZoom.increase}
+            onReset={recordZoom.reset}
+          />
+        </header>
+        {registry.isPending ? (
+          <RegistryLoadingPanel
+            breakpoint="lg"
+            viewportSize="compact"
+            label="Loading assets"
+          >
+            <span className="sr-only">Loading asset records...</span>
+            {Array.from({ length: 5 }, (_, index) => (
+              <Skeleton key={index} className="h-16 w-full" />
+            ))}
+          </RegistryLoadingPanel>
+        ) : registry.isError ? (
+          <Card
+            role="alert"
+            className="border-[var(--error)] p-4 text-[var(--error)] shadow-none"
+          >
+            <p className="font-semibold">
+              Assets could not be loaded. Please try again.
+            </p>
+            <Button
               type="button"
-              className="font-semibold underline"
-              onClick={() => void filterOptions.refetch()}
+              className="mt-3 text-xs"
+              onClick={() => void registry.refetch()}
             >
               Retry
-            </button>
-          </p>
-        )}
-        {filterNotice && (
-          <p
-            className="mt-3 text-sm text-[var(--text-secondary)]"
-            role="status"
-          >
-            {filterNotice}
-          </p>
-        )}
-        <RegistryActiveFilters filters={activeFilters} />
-      </Card>
-
-      <p className="text-sm text-[var(--text-secondary)]" aria-live="polite">
-        Filtered results: {totalCount.toLocaleString()} · Overall assets:{' '}
-        {summary.data?.totalCount.toLocaleString() ?? 'Loading'}
-      </p>
-      {registry.isPending ? (
-        <RegistryLoadingPanel
-          breakpoint="lg"
-          viewportSize="compact"
-          label="Loading assets"
-        >
-          <span className="sr-only">Loading asset records...</span>
-          {Array.from({ length: 5 }, (_, index) => (
-            <Skeleton key={index} className="h-16 w-full" />
-          ))}
-        </RegistryLoadingPanel>
-      ) : registry.isError ? (
-        <Card
-          role="alert"
-          className="border-[var(--error)] p-4 text-[var(--error)] shadow-none"
-        >
-          <p className="font-semibold">
-            Assets could not be loaded. Please try again.
-          </p>
-          <Button
-            type="button"
-            className="mt-3 text-xs"
-            onClick={() => void registry.refetch()}
-          >
-            Retry
-          </Button>
-        </Card>
-      ) : records.length === 0 && summary.data?.totalCount === 0 ? (
-        <Card className="p-6 text-center shadow-none">
-          <h2 className="text-lg font-semibold text-[var(--text-primary)]">
-            No assets are registered yet.
-          </h2>
-          <p className="mt-1 text-sm text-[var(--text-secondary)]">
-            There are currently no assets registered in the system repository.
-          </p>
-        </Card>
-      ) : records.length === 0 ? (
-        <Card className="p-6 text-center shadow-none">
-          <h2 className="text-lg font-semibold text-[var(--text-primary)]">
-            No assets match the current filters.
-          </h2>
-          <p className="mt-1 text-sm text-[var(--text-secondary)]">
-            Adjust the filters or clear them to return to the full registry.
-          </p>
-        </Card>
-      ) : (
-        <RegistryResultsPanel
-          label="Assets"
-          breakpoint="lg"
-          viewportSize="compact"
-          isUpdating={registry.isFetching}
-          desktopContent={
-            <table className="w-full text-left text-sm">
-              <thead className="border-b border-[var(--border-soft)] bg-[var(--page-background)]">
-                {table.getHeaderGroups().map((headerGroup) => (
-                  <tr key={headerGroup.id}>
-                    {headerGroup.headers.map((header) => (
-                      <th
-                        key={header.id}
-                        scope="col"
-                        className="px-4 py-3 font-semibold whitespace-nowrap text-[var(--text-primary)]"
-                      >
-                        {header.isPlaceholder
-                          ? null
-                          : flexRender(
-                              header.column.columnDef.header,
-                              header.getContext(),
-                            )}
-                      </th>
-                    ))}
-                  </tr>
-                ))}
-              </thead>
-              <tbody>
-                {table.getRowModel().rows.map((row) => (
-                  <tr
-                    key={row.id}
-                    className="border-b border-[var(--border-soft)] last:border-0 hover:bg-[var(--page-background)]"
-                  >
-                    {row.getVisibleCells().map((cell, index) => (
-                      <td
-                        key={cell.id}
-                        className="px-4 py-3 whitespace-nowrap text-[var(--text-secondary)]"
-                      >
-                        {index === 0 ? (
-                          <Link
-                            to="/app/assets/$assetId"
-                            params={{ assetId: row.original.id }}
-                            search={{
-                              ...search,
-                              returnContext: { kind: 'assetRegistry', search },
-                            }}
-                            className="font-semibold text-[var(--primary)] hover:underline"
-                          >
-                            {flexRender(
+            </Button>
+          </Card>
+        ) : records.length === 0 && summary.data?.totalCount === 0 ? (
+          <Card className="p-6 text-center shadow-none">
+            <h2 className="text-lg font-semibold text-[var(--text-primary)]">
+              No assets are registered yet.
+            </h2>
+            <p className="mt-1 text-sm text-[var(--text-secondary)]">
+              There are currently no assets registered in the system repository.
+            </p>
+          </Card>
+        ) : records.length === 0 ? (
+          <Card className="p-6 text-center shadow-none">
+            <h2 className="text-lg font-semibold text-[var(--text-primary)]">
+              No assets match the current filters.
+            </h2>
+            <p className="mt-1 text-sm text-[var(--text-secondary)]">
+              Adjust the filters or clear them to return to the full registry.
+            </p>
+          </Card>
+        ) : (
+          <RegistryResultsPanel
+            label="Assets"
+            breakpoint="lg"
+            viewportSize="compact"
+            isUpdating={registry.isFetching}
+            recordsZoom={recordZoom.zoom}
+            desktopContent={
+              <table className="w-full min-w-[960px] text-left text-sm">
+                <thead className="border-b border-[var(--primary)] bg-[var(--primary)] text-white">
+                  {table.getHeaderGroups().map((headerGroup) => (
+                    <tr key={headerGroup.id}>
+                      {headerGroup.headers.map((header) => (
+                        <th
+                          key={header.id}
+                          scope="col"
+                          className="px-5 py-4 font-semibold whitespace-nowrap text-white"
+                        >
+                          {header.isPlaceholder
+                            ? null
+                            : flexRender(
+                                header.column.columnDef.header,
+                                header.getContext(),
+                              )}
+                        </th>
+                      ))}
+                    </tr>
+                  ))}
+                </thead>
+                <tbody>
+                  {table.getRowModel().rows.map((row) => (
+                    <tr
+                      key={row.id}
+                      className="border-b border-[var(--border-soft)] last:border-0 hover:bg-[var(--page-background)]"
+                    >
+                      {row.getVisibleCells().map((cell, index) => (
+                        <td
+                          key={cell.id}
+                          className="px-5 py-4 whitespace-nowrap text-[var(--text-secondary)]"
+                        >
+                          {index === 0 ? (
+                            <Link
+                              to="/app/assets/$assetId"
+                              params={{ assetId: row.original.id }}
+                              search={{
+                                ...search,
+                                returnContext: {
+                                  kind: 'assetRegistry',
+                                  search,
+                                },
+                              }}
+                              className="font-semibold text-[var(--primary)] hover:underline"
+                            >
+                              {flexRender(
+                                cell.column.columnDef.cell,
+                                cell.getContext(),
+                              )}
+                            </Link>
+                          ) : (
+                            flexRender(
                               cell.column.columnDef.cell,
                               cell.getContext(),
-                            )}
-                          </Link>
-                        ) : (
-                          flexRender(
-                            cell.column.columnDef.cell,
-                            cell.getContext(),
-                          )
-                        )}
-                      </td>
-                    ))}
-                  </tr>
+                            )
+                          )}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            }
+            mobileContent={
+              <div className="grid gap-3">
+                {pageData.map((asset) => (
+                  <Link
+                    key={asset.id}
+                    to="/app/assets/$assetId"
+                    params={{ assetId: asset.id }}
+                    search={{
+                      ...search,
+                      returnContext: { kind: 'assetRegistry', search },
+                    }}
+                    className="content-card rounded-lg border border-[var(--border-soft)] bg-white p-4"
+                  >
+                    <p className="font-semibold text-[var(--primary)]">
+                      {asset.assetCode}
+                    </p>
+                    <p className="mt-1 text-sm text-[var(--text-secondary)]">
+                      {categoryLabel(
+                        categoryByCode.get(asset.assetCategory),
+                        asset.assetCategory,
+                      )}
+                    </p>
+                    <p className="mt-1 text-sm text-[var(--text-neutral)]">
+                      {[asset.building, asset.department, asset.location]
+                        .filter(Boolean)
+                        .join(' · ') || 'Not recorded'}
+                    </p>
+                    <div className="mt-3 flex gap-2">
+                      <Badge
+                        variant={
+                          asset.status === 'Active' ? 'success' : 'neutral'
+                        }
+                      >
+                        {asset.status}
+                      </Badge>
+                      <Badge
+                        variant={asset.qrCodeValue ? 'success' : 'neutral'}
+                      >
+                        {asset.qrCodeValue ? 'QR ready' : 'QR unavailable'}
+                      </Badge>
+                    </div>
+                    <span className="mt-4 inline-flex min-h-9 items-center gap-2 rounded-lg border border-[color-mix(in_srgb,var(--primary)_30%,white)] px-2.5 text-xs font-semibold text-[var(--primary)]">
+                      <Eye aria-hidden="true" className="size-3.5" />
+                      View details
+                    </span>
+                  </Link>
                 ))}
-              </tbody>
-            </table>
-          }
-          mobileContent={
-            <div className="grid gap-3">
-              {pageData.map((asset) => (
-                <Link
-                  key={asset.id}
-                  to="/app/assets/$assetId"
-                  params={{ assetId: asset.id }}
-                  search={{
-                    ...search,
-                    returnContext: { kind: 'assetRegistry', search },
-                  }}
-                  className="rounded-xl border border-[var(--border-soft)] bg-white p-4 shadow-sm"
-                >
-                  <p className="font-semibold text-[var(--primary)]">
-                    {asset.assetCode}
-                  </p>
-                  <p className="mt-1 text-sm text-[var(--text-secondary)]">
-                    {categoryLabel(
-                      categoryByCode.get(asset.assetCategory),
-                      asset.assetCategory,
-                    )}
-                  </p>
-                  <p className="mt-1 text-sm text-[var(--text-neutral)]">
-                    {[asset.building, asset.department, asset.location]
-                      .filter(Boolean)
-                      .join(' · ') || 'Not recorded'}
-                  </p>
-                  <div className="mt-3 flex gap-2">
-                    <Badge
-                      variant={
-                        asset.status === 'Active' ? 'success' : 'neutral'
-                      }
-                    >
-                      {asset.status}
-                    </Badge>
-                    <Badge variant={asset.qrCodeValue ? 'success' : 'neutral'}>
-                      {asset.qrCodeValue ? 'QR ready' : 'QR unavailable'}
-                    </Badge>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          }
-          pagination={{
-            page,
-            pageSize,
-            total: totalCount,
-            onPageChange: changePage,
-          }}
-        />
-      )}
+              </div>
+            }
+            pagination={{
+              page,
+              pageSize,
+              total: totalCount,
+              onPageChange: changePage,
+            }}
+          />
+        )}
+      </section>
     </section>
   )
 }

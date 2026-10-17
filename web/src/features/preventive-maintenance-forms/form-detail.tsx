@@ -1012,12 +1012,12 @@ export function FormDetail({
           <p className="text-sm font-semibold tracking-[0.08em] text-[var(--primary)] uppercase">
             Preventive-maintenance form
           </p>
-          <h1
+          <h2
             id="form-detail-title"
             className="mt-2 text-3xl font-bold tracking-tight text-[var(--text-primary)]"
           >
             {record.fileNumber ?? 'Unsubmitted form'}
-          </h1>
+          </h2>
         </div>
         <Badge className={formStatusClass(record.status)}>
           {formStatusLabel(record.status)}

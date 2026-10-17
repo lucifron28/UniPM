@@ -344,6 +344,20 @@ describe('preventive-maintenance form review', () => {
     expect(
       await screen.findByRole('heading', { name: 'Form review' }),
     ).toBeInTheDocument()
+    const headings = screen
+      .getAllByRole('heading')
+      .map((heading) => heading.textContent?.trim())
+    expect(headings.indexOf('Form review')).toBeLessThan(
+      headings.indexOf('Find forms'),
+    )
+    expect(headings.indexOf('Find forms')).toBeLessThan(
+      headings.indexOf('Form records'),
+    )
+    expect(screen.getByRole('textbox', { name: 'Search forms' })).toBeVisible()
+    expect(screen.getByLabelText('Form status')).toBeVisible()
+    expect(screen.getByLabelText('Asset category')).toBeVisible()
+    expect(screen.getByLabelText('Department')).toBeVisible()
+    expect(screen.getByLabelText('PM cycle')).toBeVisible()
     expect(screen.getAllByText('Draft')).toHaveLength(3)
     expect(screen.getAllByText('Awaiting acknowledgement')).toHaveLength(3)
     expect(screen.getAllByText('Acknowledged')).toHaveLength(3)
@@ -362,6 +376,30 @@ describe('preventive-maintenance form review', () => {
     ).toHaveAttribute(
       'href',
       '/app/preventive-maintenance-forms/77777777-7777-4777-8777-777777777777?returnContext=%7B%22kind%22%3A%22formRegistry%22%7D',
+    )
+    expect(
+      screen.getAllByRole('link', { name: 'View form details' }),
+    ).toHaveLength(6)
+
+    const zoomGroup = screen.getByRole('group', {
+      name: 'Form records zoom controls',
+    })
+    await userEvent.setup().click(
+      within(zoomGroup).getByRole('button', {
+        name: 'Increase Form records zoom',
+      }),
+    )
+    expect(
+      screen
+        .getByRole('region', {
+          name: 'Preventive-maintenance form records',
+        })
+        .querySelector<HTMLElement>(':scope > div')?.style.zoom,
+    ).toBe('1.1')
+    await userEvent.setup().click(
+      within(zoomGroup).getByRole('button', {
+        name: 'Reset Form records zoom to 100 percent',
+      }),
     )
   })
 
@@ -507,9 +545,7 @@ describe('preventive-maintenance form review', () => {
 
     renderWithProviders(<AppShell />)
 
-    expect(
-      await screen.findByText('Preventive Maintenance Portal'),
-    ).toBeInTheDocument()
+    expect(await screen.findByLabelText('Account menu')).toBeInTheDocument()
     expect(
       await screen.findByRole('link', { name: 'Form review' }),
     ).toBeInTheDocument()
@@ -977,6 +1013,7 @@ describe('preventive-maintenance form review', () => {
           name: 'Review before acknowledgement',
         }),
       ).toBeInTheDocument()
+      await screen.findByText('Awaiting acknowledgement')
       expect(screen.getByText('Awaiting acknowledgement')).toBeInTheDocument()
       expect(screen.getByText('Compliance rate')).toBeInTheDocument()
       expect(screen.getByText('100%')).toBeInTheDocument()
@@ -1015,7 +1052,7 @@ describe('preventive-maintenance form review', () => {
       expect(
         await screen.findByRole('heading', {
           name: 'FE-TEST-001',
-          level: 1,
+          level: 2,
         }),
       ).toBeInTheDocument()
       expect(

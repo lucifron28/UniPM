@@ -149,6 +149,8 @@ builder.Services.AddScoped<ILexicalInstitutionalReferenceRetriever, SqlServerLex
 builder.Services.AddScoped<ISemanticInstitutionalReferenceRetriever, SqlServerSemanticInstitutionalReferenceRetriever>();
 builder.Services.AddScoped<PmPeriodDashboardService>();
 builder.Services.AddScoped<PmAnalyticsService>();
+builder.Services.AddScoped<PmAnalyticsV2QueryService>();
+builder.Services.AddScoped<PmAnalyticsV2QuestionInterpreter>();
 builder.Services.Configure<InspectionPhotoEvidenceOptions>(
     builder.Configuration.GetSection(InspectionPhotoEvidenceOptions.SectionName));
 builder.Services.AddSingleton<IInspectionPhotoEvidenceStorage, FileSystemInspectionPhotoEvidenceStorage>();

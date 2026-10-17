@@ -1,5 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
-import { CalendarPlus } from 'lucide-react'
+import {
+  CalendarClock,
+  CalendarDays,
+  CalendarPlus,
+  CircleAlert,
+  CircleCheck,
+  CircleX,
+  Clock,
+  Eye,
+} from 'lucide-react'
+import { PageHeading } from '@/components/layout/page-heading'
 import { Link } from '@tanstack/react-router'
 import {
   createColumnHelper,
@@ -11,6 +21,7 @@ import { ApiError } from '@/api/problem-details'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
+import { SummaryMetricCard } from '@/components/ui/summary-metric-card'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { Asset } from '@/features/assets/asset-contract'
@@ -68,19 +79,6 @@ const scheduleAccessDeniedMessage =
 
 function isScheduleAccessDenied(error: unknown) {
   return error instanceof ApiError && error.status === 403
-}
-
-function SummaryCard({ label, count }: { label: string; count: number }) {
-  return (
-    <Card className="p-4 shadow-none">
-      <p className="text-xs font-semibold tracking-[0.08em] text-[var(--text-neutral)] uppercase">
-        {label}
-      </p>
-      <p className="mt-2 text-2xl font-bold text-[var(--text-primary)]">
-        {count}
-      </p>
-    </Card>
-  )
 }
 
 const columnHelper = createColumnHelper<ScheduleRegistryItem>()
@@ -171,8 +169,9 @@ const createColumns = (search: ScheduleSearch) => [
           ...search,
           returnContext: { kind: 'scheduleRegistry', search },
         }}
-        className="font-semibold text-[var(--primary)] hover:underline"
+        className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-[color-mix(in_srgb,var(--primary)_30%,white)] bg-white px-2.5 text-xs font-semibold text-[var(--primary)] hover:border-[var(--primary)] hover:bg-[color-mix(in_srgb,var(--primary)_5%,white)] focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 focus-visible:outline-none"
       >
+        <Eye aria-hidden="true" className="size-3.5" />
         View details
       </Link>
     ),
@@ -621,34 +620,56 @@ export function ScheduleRegistry({
         </Card>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          <SummaryCard label="All schedules" count={summary.data.totalCount} />
-          <SummaryCard label="Due" count={summary.data.dueCount} />
-          <SummaryCard label="Ongoing" count={summary.data.ongoingCount} />
-          <SummaryCard label="Overdue" count={summary.data.overdueCount} />
-          <SummaryCard label="Completed" count={summary.data.completedCount} />
-          <SummaryCard label="Cancelled" count={summary.data.cancelledCount} />
+          <SummaryMetricCard
+            label="All schedules"
+            value={summary.data.totalCount.toLocaleString()}
+            icon={CalendarDays}
+            tone="brand"
+          />
+          <SummaryMetricCard
+            label="Due"
+            value={summary.data.dueCount.toLocaleString()}
+            icon={CalendarClock}
+            tone="warning"
+          />
+          <SummaryMetricCard
+            label="Ongoing"
+            value={summary.data.ongoingCount.toLocaleString()}
+            icon={Clock}
+            tone="information"
+          />
+          <SummaryMetricCard
+            label="Overdue"
+            value={summary.data.overdueCount.toLocaleString()}
+            icon={CircleAlert}
+            tone="danger"
+          />
+          <SummaryMetricCard
+            label="Completed"
+            value={summary.data.completedCount.toLocaleString()}
+            icon={CircleCheck}
+            tone="success"
+          />
+          <SummaryMetricCard
+            label="Cancelled"
+            value={summary.data.cancelledCount.toLocaleString()}
+            icon={CircleX}
+            tone="neutral"
+          />
         </div>
       )}
     </section>
   )
 
   return (
-    <section aria-labelledby="schedules-title" className="space-y-8">
+    <section aria-labelledby="schedules-title" className="space-y-6">
       <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-        <div>
-          <p className="text-sm font-semibold tracking-[0.08em] text-[var(--primary)] uppercase">
-            Preventive maintenance
-          </p>
-          <h1
-            id="schedules-title"
-            className="mt-2 text-3xl font-bold tracking-tight text-[var(--text-primary)]"
-          >
-            Schedules
-          </h1>
-          <p className="mt-2 max-w-2xl text-[var(--text-secondary)]">
-            Review PM cycles, due dates, and recorded schedule status.
-          </p>
-        </div>
+        <PageHeading
+          id="schedules-title"
+          eyebrow="Preventive maintenance"
+          title="Schedules"
+          description="Review PM cycles, due dates, and recorded schedule status."
+        />
         {(canCreate || canGenerate) && (
           <div className="flex flex-wrap items-center gap-2">
             {canGenerate && (
@@ -680,7 +701,7 @@ export function ScheduleRegistry({
             Search by asset, then refine by status or PM cycle.
           </p>
         </div>
-        <Card className="p-4 shadow-none">
+        <Card className="content-card p-4">
           <form
             className="space-y-4"
             onSubmit={(event) => {
@@ -1072,7 +1093,7 @@ export function ScheduleRegistry({
             isUpdating={registry.isFetching}
             desktopContent={
               <table className="w-full min-w-[760px] text-left text-sm">
-                <thead className="bg-[var(--page-background)] text-xs tracking-wide text-[var(--text-neutral)] uppercase">
+                <thead className="bg-[var(--primary)] text-xs tracking-wide text-white uppercase">
                   {table.getHeaderGroups().map((headerGroup) => (
                     <tr key={headerGroup.id}>
                       {headerGroup.headers.map((header) => (
@@ -1107,7 +1128,7 @@ export function ScheduleRegistry({
             mobileContent={
               <div className="grid gap-3">
                 {pageData.map((schedule) => (
-                  <Card key={schedule.id} className="space-y-3 shadow-none">
+                  <Card key={schedule.id} className="content-card space-y-3">
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <h2 className="font-bold">
@@ -1151,8 +1172,9 @@ export function ScheduleRegistry({
                         ...search,
                         returnContext: { kind: 'scheduleRegistry', search },
                       }}
-                      className="inline-block font-semibold text-[var(--primary)] hover:underline"
+                      className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-[color-mix(in_srgb,var(--primary)_30%,white)] bg-white px-2.5 text-xs font-semibold text-[var(--primary)] hover:border-[var(--primary)] hover:bg-[color-mix(in_srgb,var(--primary)_5%,white)] focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 focus-visible:outline-none"
                     >
+                      <Eye aria-hidden="true" className="size-3.5" />
                       View details
                     </Link>
                   </Card>

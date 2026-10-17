@@ -137,6 +137,145 @@ function jsonResponse(body: unknown) {
   }
 }
 
+test('keeps Form Review cards readable and zoom-contained across desktop and mobile', async ({
+  page,
+}) => {
+  await mockApi(page)
+  await page.route('**/api/v1/preventive-maintenance-forms**', (route) =>
+    route.fulfill(jsonResponse([form])),
+  )
+  await page.setViewportSize({ width: 1280, height: 900 })
+  await page.goto(
+    '/app/preventive-maintenance-forms?status=Submitted&assetCategory=fire-extinguisher&department=GSD&pmCycle=2026-08',
+  )
+
+  const registry = page.locator('section[aria-labelledby="forms-title"]')
+  await expect(
+    page.locator('.app-page-header').getByRole('heading', {
+      name: 'Form review',
+      exact: true,
+    }),
+  ).toBeVisible()
+  await expect(
+    registry.getByRole('heading', { name: 'Find forms' }),
+  ).toBeVisible()
+  await expect(
+    registry.getByRole('heading', { name: 'Form records' }),
+  ).toBeVisible()
+  expect(await registry.locator('h1, h2').allTextContents()).toEqual([
+    'Find forms',
+    'Form records',
+  ])
+  await expect(page.getByLabel('Search forms')).toBeVisible()
+  await expect(page.getByLabel('Form status')).toBeVisible()
+  await expect(page.getByLabel('Asset category')).toBeVisible()
+  await expect(page.getByLabel('Department')).toBeVisible()
+  await expect(page.getByLabel('PM cycle')).toBeVisible()
+  await expect(page.getByLabel('Form status')).toHaveValue('Submitted')
+  await expect(
+    page.getByRole('link', { name: 'PMF-2026-0001' }).first(),
+  ).toBeVisible()
+  await expect(
+    page
+      .locator('article')
+      .filter({ hasText: 'PMF-2026-0001' })
+      .first()
+      .getByText('Awaiting acknowledgement', { exact: true }),
+  ).toBeVisible()
+  await expect(
+    page.getByRole('link', { name: 'View form details' }).first(),
+  ).toBeVisible()
+  await expect(page).toHaveURL(/department=GSD/)
+  await expect(page).toHaveURL(/pmCycle=2026-08/)
+  const formReviewAlignment = await page.evaluate(() => {
+    const registry = document.querySelector(
+      'section[aria-labelledby="forms-title"]',
+    )!
+    const findHeading = registry.querySelector('#find-forms-title')!
+    const filterCard = findHeading.nextElementSibling!
+    const recordsHeading = registry.querySelector('#form-records-title')!
+    const recordsSection = recordsHeading.closest('section')!
+    const zoomControls = registry.querySelector(
+      '[aria-label="Form records zoom controls"]',
+    )!
+    const rect = (element: Element) => element.getBoundingClientRect()
+    return {
+      registry: rect(registry),
+      filterCard: rect(filterCard),
+      recordsHeading: rect(recordsHeading),
+      recordsSection: rect(recordsSection),
+      zoomControls: rect(zoomControls),
+    }
+  })
+  expect(
+    Math.abs(
+      formReviewAlignment.filterCard.left - formReviewAlignment.registry.left,
+    ),
+  ).toBeLessThan(1)
+  expect(
+    Math.abs(
+      formReviewAlignment.filterCard.width - formReviewAlignment.registry.width,
+    ),
+  ).toBeLessThan(1)
+  expect(
+    Math.abs(
+      formReviewAlignment.recordsHeading.left -
+        formReviewAlignment.registry.left,
+    ),
+  ).toBeLessThan(1)
+  expect(
+    Math.abs(
+      formReviewAlignment.recordsSection.width -
+        formReviewAlignment.registry.width,
+    ),
+  ).toBeLessThan(1)
+  expect(
+    Math.abs(
+      formReviewAlignment.zoomControls.right -
+        formReviewAlignment.recordsSection.right,
+    ),
+  ).toBeLessThan(1)
+  await page.screenshot({
+    path: 'test-results/web-ui-polish-form-review-desktop.png',
+    fullPage: true,
+  })
+
+  const zoomGroup = page.getByRole('group', {
+    name: 'Form records zoom controls',
+  })
+  const increase = zoomGroup.getByRole('button', {
+    name: 'Increase Form records zoom',
+  })
+  await increase.click()
+  await increase.click()
+  await increase.click()
+  await expect(zoomGroup).toContainText('130%')
+  await expect(increase).toBeDisabled()
+
+  await page.setViewportSize({ width: 375, height: 812 })
+  await expect(
+    page.getByRole('link', { name: 'View form details' }).first(),
+  ).toBeVisible()
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          document.documentElement.scrollWidth -
+          document.documentElement.clientWidth,
+      ),
+    )
+    .toBeLessThanOrEqual(1)
+  await zoomGroup
+    .getByRole('button', {
+      name: 'Reset Form records zoom to 100 percent',
+    })
+    .click()
+  await page.screenshot({
+    path: 'test-results/web-ui-polish-form-review-mobile.png',
+    fullPage: true,
+  })
+})
+
 async function mockApi(page: import('@playwright/test').Page) {
   await page.route('**/api/v1/auth/refresh', (route) =>
     route.fulfill(jsonResponse(session)),
@@ -322,7 +461,7 @@ test('demonstrates the submitted PM batch acknowledgement review workflow', asyn
   // 7. Follow the row inspection ID and 8. return with the stable review query.
   await page.getByRole('link', { name: 'View inspection detail' }).click()
   await expect(
-    page.getByRole('heading', { name: 'FE-TEST-001', level: 1 }),
+    page.getByRole('heading', { name: 'FE-TEST-001', level: 2 }),
   ).toBeVisible()
   await expect(
     page.getByRole('heading', { name: 'Record information' }),

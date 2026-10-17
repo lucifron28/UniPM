@@ -1,5 +1,13 @@
-import { useEffect, useId, useMemo, useState } from 'react'
-import type { KeyboardEvent } from 'react'
+import {
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
+import type { CSSProperties, KeyboardEvent } from 'react'
+import { createPortal } from 'react-dom'
 import { Input } from '@/components/ui/input'
 import {
   useAsset,
@@ -42,6 +50,8 @@ export function AssetPicker({
   const [searchText, setSearchText] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [isOpen, setIsOpen] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const [menuPosition, setMenuPosition] = useState<CSSProperties>({})
   const [activeOption, setActiveOption] = useState<{
     scope: string
     options: Asset[]
@@ -96,6 +106,45 @@ export function AssetPicker({
     return () => window.clearTimeout(timeout)
   }, [searchText])
 
+  useLayoutEffect(() => {
+    if (!isOpen) return
+
+    function updateMenuPosition() {
+      const input = inputRef.current
+      if (!input) return
+      const bounds = input.getBoundingClientRect()
+      const workspace = input.closest('.app-workspace')?.getBoundingClientRect()
+      const topLimit = Math.max(8, workspace?.top ?? 8)
+      const bottomLimit = Math.min(
+        window.innerHeight - 8,
+        workspace?.bottom ?? window.innerHeight - 8,
+      )
+      const below = bottomLimit - bounds.bottom - 4
+      const above = bounds.top - topLimit - 4
+      const showAbove = below < 160 && above > below
+      const maxHeight = Math.max(96, Math.min(256, showAbove ? above : below))
+      setMenuPosition({
+        top: showAbove
+          ? Math.max(topLimit, bounds.top - maxHeight - 4)
+          : bounds.bottom + 4,
+        left: Math.max(
+          8,
+          Math.min(bounds.left, window.innerWidth - bounds.width - 8),
+        ),
+        width: Math.min(bounds.width, window.innerWidth - 16),
+        maxHeight,
+      })
+    }
+
+    updateMenuPosition()
+    window.addEventListener('resize', updateMenuPosition)
+    document.addEventListener('scroll', updateMenuPosition, true)
+    return () => {
+      window.removeEventListener('resize', updateMenuPosition)
+      document.removeEventListener('scroll', updateMenuPosition, true)
+    }
+  }, [isOpen])
+
   const chooseAsset = (asset: Asset) => {
     setSearchText('')
     setDebouncedSearch('')
@@ -144,6 +193,7 @@ export function AssetPicker({
       </label>
       <div className="flex gap-2">
         <Input
+          ref={inputRef}
           id={inputId}
           role="combobox"
           aria-label={label}
@@ -223,64 +273,71 @@ export function AssetPicker({
           choose another active asset with a department.
         </p>
       )}
-      {isOpen && (
-        <div className="absolute top-full z-20 mt-1 max-h-64 w-full overflow-auto rounded-lg border border-[var(--border-soft)] bg-white p-1 shadow-lg">
-          {assets.isPending || !resultsAreCurrent ? (
-            <p
-              className="px-3 py-2 text-sm text-[var(--text-neutral)]"
-              role="status"
-            >
-              Updating asset results…
-            </p>
-          ) : assets.isError ? (
-            <p className="px-3 py-2 text-sm text-[var(--error)]" role="alert">
-              Asset search is unavailable.
-            </p>
-          ) : options.length === 0 ? (
-            <p className="px-3 py-2 text-sm text-[var(--text-neutral)]">
-              No matching assets.
-            </p>
-          ) : (
-            <ul id={listboxId} role="listbox" aria-label="Matching assets">
-              {options.map((asset, index) => (
-                <li key={asset.id} role="none">
-                  <button
-                    id={`${listboxId}-option-${index}`}
-                    type="button"
-                    role="option"
-                    tabIndex={-1}
-                    aria-selected={index === activeIndex || asset.id === value}
-                    onMouseDown={(event) => event.preventDefault()}
-                    onMouseEnter={() =>
-                      setActiveOption({ scope, options, index })
-                    }
-                    onClick={() => chooseAsset(asset)}
-                    className={`w-full rounded-md px-3 py-2 text-left text-sm ${
-                      index === activeIndex
-                        ? 'bg-[var(--page-background)]'
-                        : 'hover:bg-[var(--page-background)]'
-                    }`}
-                  >
-                    <span className="block font-semibold text-[var(--text-primary)]">
-                      {asset.assetCode}
-                    </span>
-                    <span className="block text-xs text-[var(--text-neutral)]">
-                      {categoryLabel(
-                        categoryByCode.get(asset.assetCategory),
-                        asset.assetCategory,
-                      )}
-                      {[asset.department, asset.building, asset.location]
-                        .filter(Boolean)
-                        .map((value) => ` · ${value}`)
-                        .join('')}
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
+      {isOpen &&
+        createPortal(
+          <div
+            className="fixed z-[60] overflow-auto rounded-md border border-[var(--border-soft)] bg-white p-1 shadow-md"
+            style={menuPosition}
+          >
+            {assets.isPending || !resultsAreCurrent ? (
+              <p
+                className="px-3 py-2 text-sm text-[var(--text-neutral)]"
+                role="status"
+              >
+                Updating asset results…
+              </p>
+            ) : assets.isError ? (
+              <p className="px-3 py-2 text-sm text-[var(--error)]" role="alert">
+                Asset search is unavailable.
+              </p>
+            ) : options.length === 0 ? (
+              <p className="px-3 py-2 text-sm text-[var(--text-neutral)]">
+                No matching assets.
+              </p>
+            ) : (
+              <ul id={listboxId} role="listbox" aria-label="Matching assets">
+                {options.map((asset, index) => (
+                  <li key={asset.id} role="none">
+                    <button
+                      id={`${listboxId}-option-${index}`}
+                      type="button"
+                      role="option"
+                      tabIndex={-1}
+                      aria-selected={
+                        index === activeIndex || asset.id === value
+                      }
+                      onMouseDown={(event) => event.preventDefault()}
+                      onMouseEnter={() =>
+                        setActiveOption({ scope, options, index })
+                      }
+                      onClick={() => chooseAsset(asset)}
+                      className={`w-full rounded-md px-3 py-2 text-left text-sm ${
+                        index === activeIndex
+                          ? 'bg-[var(--page-background)]'
+                          : 'hover:bg-[var(--page-background)]'
+                      }`}
+                    >
+                      <span className="block font-semibold text-[var(--text-primary)]">
+                        {asset.assetCode}
+                      </span>
+                      <span className="block text-xs text-[var(--text-neutral)]">
+                        {categoryLabel(
+                          categoryByCode.get(asset.assetCategory),
+                          asset.assetCategory,
+                        )}
+                        {[asset.department, asset.building, asset.location]
+                          .filter(Boolean)
+                          .map((value) => ` · ${value}`)
+                          .join('')}
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>,
+          document.body,
+        )}
     </div>
   )
 }
