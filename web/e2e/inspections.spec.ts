@@ -331,9 +331,10 @@ test.describe('Inspection review workflows', () => {
     })
 
     await page.getByText('More filters').click()
+    await expect(page.getByLabel('Department', { exact: true })).toBeVisible()
     await expect(
-      page.getByLabel('Department', { exact: true }),
-    ).not.toBeVisible()
+      page.getByLabel('Specific asset', { exact: true }),
+    ).toBeHidden()
     for (const filter of [
       'Specific asset',
       'Department',

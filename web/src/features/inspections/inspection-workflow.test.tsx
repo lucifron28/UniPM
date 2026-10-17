@@ -314,7 +314,8 @@ describe('inspection review workflows', () => {
 
     const actor = userEvent.setup()
     await actor.click(screen.getByText('More filters'))
-    expect(screen.getByLabelText('Department')).not.toBeVisible()
+    expect(screen.getByLabelText('Department')).toBeVisible()
+    expect(screen.getByLabelText('Specific asset')).not.toBeVisible()
     expect(
       screen.getByRole('button', { name: 'Remove Specific asset filter' }),
     ).toBeVisible()
@@ -502,7 +503,7 @@ describe('inspection review workflows', () => {
     expect(await screen.findByText('August 2026')).toBeInTheDocument()
     expect(screen.getByText('Due date')).toBeInTheDocument()
     expect(await screen.findByText('Aug 31, 2026')).toBeInTheDocument()
-    expect(screen.getByText('Actual inspection date')).toBeInTheDocument()
+    expect(screen.getByText(/Actual inspection date:/)).toBeInTheDocument()
     expect(
       await screen.findByRole('link', { name: 'FE-001' }),
     ).toBeInTheDocument()

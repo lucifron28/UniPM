@@ -124,46 +124,28 @@ function SummaryCard({
       type="button"
       aria-pressed={selected}
       onClick={onSelect}
-      className={`content-card rounded-lg border p-4 text-left focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:outline-none ${
+      className={`content-card grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 rounded-lg border px-3 py-2 text-left focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:outline-none ${
         selected
           ? 'border-[var(--primary)] bg-[var(--primary)] text-white'
           : 'border-[var(--border-soft)] bg-white text-[var(--text-primary)] hover:border-[var(--primary)]'
       }`}
     >
       <span
-        className={`block text-xs font-semibold tracking-[0.08em] uppercase ${selected ? 'text-white/90' : 'text-[var(--text-neutral)]'}`}
+        className={`min-w-0 text-sm font-semibold ${selected ? 'text-white' : 'text-[var(--text-primary)]'}`}
       >
         {category.displayName}
       </span>
       <span
-        className={`mt-2 block text-3xl leading-none font-bold ${selected ? 'text-white' : 'text-[var(--text-primary)]'}`}
+        className={`text-xl leading-none font-bold ${selected ? 'text-white' : 'text-[var(--text-primary)]'}`}
       >
         {category.totalCount.toLocaleString()}
       </span>
       <span
-        className={`mt-3 flex flex-wrap gap-x-3 gap-y-1 text-xs font-medium ${selected ? 'text-white/90' : 'text-[var(--text-secondary)]'}`}
+        className={`col-span-2 flex min-w-0 flex-wrap gap-x-2 gap-y-1 text-xs font-medium ${selected ? 'text-white/90' : 'text-[var(--text-secondary)]'}`}
       >
-        <span className="inline-flex items-center gap-1.5">
-          <span
-            aria-hidden="true"
-            className={`size-1.5 rounded-full ${selected ? 'bg-emerald-200' : 'bg-emerald-600'}`}
-          />
-          Active {category.activeCount.toLocaleString()}
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <span
-            aria-hidden="true"
-            className={`size-1.5 rounded-full ${selected ? 'bg-amber-200' : 'bg-amber-600'}`}
-          />
-          Inactive {category.inactiveCount.toLocaleString()}
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <span
-            aria-hidden="true"
-            className={`size-1.5 rounded-full ${selected ? 'bg-white/60' : 'bg-stone-400'}`}
-          />
-          Retired {category.retiredCount.toLocaleString()}
-        </span>
+        <span>Active {category.activeCount.toLocaleString()}</span>
+        <span>Inactive {category.inactiveCount.toLocaleString()}</span>
+        <span>Retired {category.retiredCount.toLocaleString()}</span>
       </span>
     </button>
   )
@@ -428,28 +410,27 @@ export function AssetRegistry({
   ]
 
   const summarySection = (
-    <section aria-labelledby="asset-inventory-title" className="space-y-3">
-      <div>
+    <section aria-labelledby="asset-inventory-title" className="space-y-2">
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <h2
           id="asset-inventory-title"
-          className="text-xl font-semibold text-[var(--text-primary)]"
+          className="text-sm font-semibold text-[var(--text-primary)]"
         >
           Overall asset inventory
         </h2>
-        <p className="mt-1 text-sm text-[var(--text-secondary)]">
-          Category totals cover the full inventory and are independent of the
-          registry filters.
+        <p className="text-xs text-[var(--text-secondary)]">
+          Totals cover all assets, independent of registry filters.
         </p>
       </div>
       {summary.isPending ? (
         <div
-          className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
+          className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4"
           role="status"
           aria-label="Loading summary statistics"
         >
           <span className="sr-only">Loading summary statistics...</span>
           {Array.from({ length: 4 }, (_, i) => (
-            <Card key={i} className="p-4 shadow-none">
+            <Card key={i} className="p-3 shadow-none">
               <Skeleton className="h-4 w-24" />
               <Skeleton className="mt-2 h-8 w-12" />
             </Card>
@@ -472,7 +453,7 @@ export function AssetRegistry({
           </Button>
         </Card>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
           {summary.data.categories.map((category) => (
             <SummaryCard
               key={category.assetCategory}
@@ -502,34 +483,34 @@ export function AssetRegistry({
   )
 
   return (
-    <section aria-labelledby="assets-title" className="space-y-6">
-      <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-        <PageHeading
-          id="assets-title"
-          eyebrow="Asset registry"
-          title="Assets"
-          description="Find equipment by category, status, location, or asset code."
-        />
-        {canCreate && (
-          <Button asChild>
-            <Link to="/app/assets/new">
-              <Plus aria-hidden="true" className="mr-2 size-4" />
-              Add asset
-            </Link>
-          </Button>
-        )}
-      </header>
+    <section aria-labelledby="assets-title" className="space-y-4">
+      <PageHeading
+        id="assets-title"
+        eyebrow="Asset registry"
+        title="Assets"
+        description="Find equipment by category, status, location, or asset code."
+        actions={
+          canCreate ? (
+            <Button asChild>
+              <Link to="/app/assets/new">
+                <Plus aria-hidden="true" className="mr-2 size-4" />
+                Add asset
+              </Link>
+            </Button>
+          ) : undefined
+        }
+      />
 
-      <section aria-labelledby="find-assets-title" className="space-y-3">
+      <section aria-labelledby="find-assets-title" className="space-y-2">
         <h2
           id="find-assets-title"
           className="text-xl font-semibold text-[var(--text-primary)]"
         >
           Find assets
         </h2>
-        <Card className="content-card p-5">
+        <Card className="content-card p-3">
           <form
-            className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4"
+            className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4"
             onSubmit={(event) => {
               event.preventDefault()
               apply()
@@ -553,7 +534,7 @@ export function AssetRegistry({
                   maxLength={256}
                   onChange={(event) => setText(event.target.value)}
                   placeholder="Asset code, QR, building, department, or location"
-                  className="min-h-12 pl-9 text-base"
+                  className="min-h-10 pl-9 text-sm"
                 />
               </div>
             </div>
@@ -767,7 +748,7 @@ export function AssetRegistry({
                         <th
                           key={header.id}
                           scope="col"
-                          className="px-5 py-4 font-semibold whitespace-nowrap text-white"
+                          className="px-3 py-3 font-semibold whitespace-nowrap text-white"
                         >
                           {header.isPlaceholder
                             ? null
@@ -789,7 +770,11 @@ export function AssetRegistry({
                       {row.getVisibleCells().map((cell, index) => (
                         <td
                           key={cell.id}
-                          className="px-5 py-4 whitespace-nowrap text-[var(--text-secondary)]"
+                          className={`px-3 py-2 align-top leading-relaxed text-[var(--text-secondary)] ${
+                            index === 0 || index === 7
+                              ? 'whitespace-nowrap'
+                              : ''
+                          }`}
                         >
                           {index === 0 ? (
                             <Link

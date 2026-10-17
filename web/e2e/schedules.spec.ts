@@ -552,7 +552,9 @@ test.describe('Schedule workflows', () => {
       'Schedule records',
     ])
     await expect(
-      page.getByText('Overall totals for all recorded schedules'),
+      page.getByText(
+        'Overall schedule totals, independent of registry filters.',
+      ),
     ).toBeVisible()
     await expect(
       page.getByRole('link', { name: 'Manage schedules' }),
@@ -586,8 +588,14 @@ test.describe('Schedule workflows', () => {
     await expect(
       page.getByRole('heading', { name: 'Schedule management' }),
     ).toBeVisible()
+    await expect(page.getByLabel('Department')).toBeVisible()
+    await expect(page.getByLabel('Specific asset')).toBeHidden()
     await page.getByText('More filters', { exact: true }).click()
     await expect(page.getByLabel('Department')).toBeVisible()
+    await expect(page.getByLabel('Specific asset')).toBeVisible()
+    await page.getByText('More filters', { exact: true }).click()
+    await expect(page.getByLabel('Department')).toBeVisible()
+    await expect(page.getByLabel('Specific asset')).toBeHidden()
     expect(
       await page.evaluate(
         () =>

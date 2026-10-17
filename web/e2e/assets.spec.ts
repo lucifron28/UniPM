@@ -895,8 +895,11 @@ test.describe('Asset Registry E2E Specs', () => {
   }) => {
     await mockAssetRegistry(page)
     await page.addInitScript(() => {
-      Object.assign(navigator, {
-        clipboard: { writeText: () => Promise.reject(new Error('blocked')) },
+      Object.defineProperty(navigator, 'clipboard', {
+        configurable: true,
+        value: {
+          writeText: () => Promise.reject(new Error('blocked')),
+        },
       })
     })
 
@@ -922,6 +925,6 @@ test.describe('Asset Registry E2E Specs', () => {
       await page.evaluate(() =>
         localStorage.getItem('unipm.sidebar.collapsed'),
       ),
-    ).toBe('true')
+    ).toBe('false')
   })
 })

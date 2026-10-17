@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from '@tanstack/react-router'
-import { CircleAlert, CircleCheck, ClipboardCheck, Eye } from 'lucide-react'
+import { Eye } from 'lucide-react'
 import {
   createColumnHelper,
   flexRender,
@@ -11,7 +11,6 @@ import { Button } from '@/components/ui/button'
 import { PageHeading } from '@/components/layout/page-heading'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
-import { SummaryMetricCard } from '@/components/ui/summary-metric-card'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { Asset } from '@/features/assets/asset-contract'
@@ -102,7 +101,7 @@ const createColumns = (search: InspectionSearch) => [
     ),
   }),
   columnHelper.accessor('schedule', {
-    header: 'Scheduled month / due date',
+    header: 'PM cycle / due date',
     cell: ({ row }) =>
       row.original.schedule ? (
         <div>
@@ -120,7 +119,7 @@ const createColumns = (search: InspectionSearch) => [
     cell: ({ getValue }) => formatInspectionDate(getValue()),
   }),
   columnHelper.accessor('isOperational', {
-    header: 'Recorded result',
+    header: 'Condition',
     cell: ({ getValue }) => (
       <Badge variant={getValue() ? 'success' : 'danger'}>
         {inspectionOutcome(getValue())}
@@ -136,7 +135,7 @@ const createColumns = (search: InspectionSearch) => [
     cell: ({ getValue }) => excerpt(getValue()),
   }),
   columnHelper.accessor('correctiveFollowUpStatus', {
-    header: 'Corrective follow-up',
+    header: 'Follow-up',
     cell: ({ getValue, row }) => (
       <div>
         <Badge
@@ -210,12 +209,7 @@ export function InspectionRegistry({
   }))
   const [moreFiltersOpen, setMoreFiltersOpen] = useState(() =>
     Boolean(
-      search.assetId ||
-      search.department ||
-      search.quarter ||
-      search.pmCycle ||
-      search.dateFrom ||
-      search.dateTo,
+      search.assetId || search.pmCycle || search.dateFrom || search.dateTo,
     ),
   )
   const [filterNotice, setFilterNotice] = useState<string | null>(null)
@@ -597,26 +591,30 @@ export function InspectionRegistry({
   ]
 
   const summarySection = (
-    <section aria-labelledby="inspection-summary-title" className="space-y-3">
-      <div>
+    <section aria-labelledby="inspection-summary-title" className="space-y-2">
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <h2
           id="inspection-summary-title"
-          className="text-xl font-semibold text-[var(--text-primary)]"
+          className="text-sm font-semibold text-[var(--text-primary)]"
         >
           Inspection summary
         </h2>
-        <p className="mt-1 text-sm text-[var(--text-secondary)]">
-          Summary counts include acknowledged inspection records only.
+        <p className="text-xs text-[var(--text-secondary)]">
+          Counts include acknowledged inspection records only.
         </p>
       </div>
       {summary.isPending ? (
-        <div className="grid gap-3 sm:grid-cols-3" role="status">
+        <div
+          className="grid grid-cols-2 gap-2 rounded-lg border border-[var(--border-soft)] bg-white p-3 sm:grid-cols-3"
+          role="status"
+          aria-label="Loading inspection summary"
+        >
           <span className="sr-only">Loading inspection summary...</span>
           {Array.from({ length: 3 }, (_, index) => (
-            <Card key={index} className="p-4 shadow-none">
-              <Skeleton className="h-4 w-28" />
-              <Skeleton className="mt-2 h-8 w-12" />
-            </Card>
+            <div key={index} className="space-y-2 px-2 py-1">
+              <Skeleton className="h-3 w-24" />
+              <Skeleton className="h-5 w-10" />
+            </div>
           ))}
         </div>
       ) : summary.isError ? (
@@ -633,32 +631,26 @@ export function InspectionRegistry({
           </Button>
         </Card>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-3">
-          <SummaryMetricCard
-            label="All acknowledged records"
-            value={summary.data.totalCount.toLocaleString()}
-            icon={ClipboardCheck}
-            tone="brand"
-          />
-          <SummaryMetricCard
-            label="Operational"
-            value={summary.data.operationalCount.toLocaleString()}
-            icon={CircleCheck}
-            tone="success"
-          />
-          <SummaryMetricCard
-            label="Not operational"
-            value={summary.data.nonOperationalCount.toLocaleString()}
-            icon={CircleAlert}
-            tone="danger"
-          />
-        </div>
+        <dl className="grid grid-cols-2 divide-x divide-y divide-[var(--border-soft)] rounded-lg border border-[var(--border-soft)] bg-white sm:grid-cols-3">
+          {[
+            ['Acknowledged records', summary.data.totalCount],
+            ['Operational', summary.data.operationalCount],
+            ['Not operational', summary.data.nonOperationalCount],
+          ].map(([label, value]) => (
+            <div key={label} className="px-3 py-2">
+              <dt className="text-xs text-[var(--text-neutral)]">{label}</dt>
+              <dd className="mt-0.5 text-lg leading-5 font-semibold text-[var(--text-primary)]">
+                {Number(value).toLocaleString()}
+              </dd>
+            </div>
+          ))}
+        </dl>
       )}
     </section>
   )
 
   return (
-    <section aria-labelledby="inspections-title" className="space-y-6">
+    <section aria-labelledby="inspections-title" className="space-y-4">
       <PageHeading
         id="inspections-title"
         eyebrow="Source-record review"
@@ -666,22 +658,22 @@ export function InspectionRegistry({
         description="Review inspection outcomes, source notes, and corrective follow-up."
       />
 
-      <section aria-labelledby="find-inspections-title" className="space-y-3">
+      <section aria-labelledby="find-inspections-title" className="space-y-2">
         <h2
           id="find-inspections-title"
           className="text-xl font-semibold text-[var(--text-primary)]"
         >
           Find inspections
         </h2>
-        <Card className="content-card p-5">
+        <Card className="content-card p-3">
           <form
-            className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4"
+            className="grid grid-cols-1 gap-3 md:grid-cols-3 xl:grid-cols-6"
             onSubmit={(event) => {
               event.preventDefault()
               apply()
             }}
           >
-            <label className="grid gap-2 text-sm font-semibold text-[var(--text-primary)] md:col-span-2 xl:col-span-4">
+            <label className="grid min-w-0 gap-1 text-sm font-semibold text-[var(--text-primary)] md:col-span-3 xl:col-span-6">
               Search inspections
               <Input
                 aria-label="Search inspections"
@@ -694,10 +686,10 @@ export function InspectionRegistry({
                     search: event.target.value,
                   }))
                 }
-                className="min-h-12 text-base"
+                className="min-h-10 text-sm"
               />
             </label>
-            <label className="grid gap-1 text-sm font-semibold text-[var(--text-primary)]">
+            <label className="grid min-w-0 gap-1 text-sm font-semibold text-[var(--text-primary)]">
               Asset category
               <select
                 aria-label="Asset category"
@@ -717,7 +709,7 @@ export function InspectionRegistry({
                       : null,
                   )
                 }}
-                className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
+                className="min-h-10 w-full min-w-0 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
               >
                 <option value="">All asset categories</option>
                 {categories.map((category) => (
@@ -727,7 +719,7 @@ export function InspectionRegistry({
                 ))}
               </select>
             </label>
-            <label className="grid gap-1 text-sm font-semibold text-[var(--text-primary)]">
+            <label className="grid min-w-0 gap-1 text-sm font-semibold text-[var(--text-primary)]">
               PM calendar year
               <select
                 aria-label="PM calendar year"
@@ -745,7 +737,7 @@ export function InspectionRegistry({
                       'The exact PM month was cleared because the year changed.',
                     )
                 }}
-                className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
+                className="min-h-10 w-full min-w-0 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
               >
                 <option value="">All years</option>
                 {yearOptions.map((year) => (
@@ -755,7 +747,7 @@ export function InspectionRegistry({
                 ))}
               </select>
             </label>
-            <label className="grid gap-1 text-sm font-semibold text-[var(--text-primary)]">
+            <label className="grid min-w-0 gap-1 text-sm font-semibold text-[var(--text-primary)]">
               Recorded result
               <select
                 aria-label="Recorded operational result"
@@ -775,14 +767,14 @@ export function InspectionRegistry({
                         : event.target.value === 'true',
                   }))
                 }
-                className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
+                className="min-h-10 w-full min-w-0 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
               >
                 <option value="">All recorded results</option>
                 <option value="true">Operational</option>
                 <option value="false">Not operational</option>
               </select>
             </label>
-            <label className="grid gap-1 text-sm font-semibold text-[var(--text-primary)]">
+            <label className="grid min-w-0 gap-1 text-sm font-semibold text-[var(--text-primary)]">
               Corrective follow-up
               <select
                 aria-label="Corrective follow-up status"
@@ -794,7 +786,7 @@ export function InspectionRegistry({
                       InspectionFollowUpStatus | undefined,
                   }))
                 }
-                className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
+                className="min-h-10 w-full min-w-0 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
               >
                 <option value="">All follow-up statuses</option>
                 <option value="NoReferralRequired">No referral required</option>
@@ -804,15 +796,70 @@ export function InspectionRegistry({
                 <option value="ReferredToWms">Referred to WMS</option>
               </select>
             </label>
+            <label className="grid min-w-0 gap-1 text-sm font-semibold text-[var(--text-primary)]">
+              Department
+              <select
+                aria-label="Department"
+                value={draft.department ?? ''}
+                disabled={filterOptions.isError || filterOptions.isPending}
+                onChange={(event) => {
+                  setDraft((current) => ({
+                    ...current,
+                    department: event.target.value || undefined,
+                    assetId: undefined,
+                  }))
+                  setFilterNotice(
+                    draft.assetId
+                      ? 'Specific asset was cleared because the department filter changed.'
+                      : null,
+                  )
+                }}
+                className="min-h-10 w-full min-w-0 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
+              >
+                <option value="">All departments</option>
+                {departments.map((department) => (
+                  <option key={department} value={department}>
+                    {department}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="grid min-w-0 gap-1 text-sm font-semibold text-[var(--text-primary)]">
+              PM calendar quarter
+              <select
+                aria-label="PM calendar quarter"
+                value={draft.quarter ?? pmCycleQuarter ?? ''}
+                onChange={(event) => {
+                  setDraft((current) => ({
+                    ...current,
+                    quarter: (event.target.value ||
+                      undefined) as InspectionSearch['quarter'],
+                    pmCycle: undefined,
+                  }))
+                  if (draft.pmCycle)
+                    setFilterNotice(
+                      'The exact PM month was cleared because the quarter changed.',
+                    )
+                }}
+                className="min-h-10 w-full min-w-0 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
+              >
+                <option value="">All quarters</option>
+                {['Q1', 'Q2', 'Q3', 'Q4'].map((quarter) => (
+                  <option key={quarter} value={quarter}>
+                    {quarter}
+                  </option>
+                ))}
+              </select>
+            </label>
             <details
               open={moreFiltersOpen}
               onToggle={(event) => setMoreFiltersOpen(event.currentTarget.open)}
-              className="rounded-lg border border-[var(--border-soft)] p-4 md:col-span-2 xl:col-span-4"
+              className="rounded-lg border border-[var(--border-soft)] p-3 md:col-span-3 xl:col-span-6"
             >
               <summary className="cursor-pointer font-semibold text-[var(--text-primary)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--primary)]">
                 More filters
               </summary>
-              <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 <AssetPicker
                   value={draft.assetId}
                   assetCategory={draft.assetCategory}
@@ -821,61 +868,6 @@ export function InspectionRegistry({
                     setDraft((current) => ({ ...current, assetId }))
                   }
                 />
-                <label className="grid gap-1 text-sm font-semibold text-[var(--text-primary)]">
-                  Department
-                  <select
-                    aria-label="Department"
-                    value={draft.department ?? ''}
-                    disabled={filterOptions.isError || filterOptions.isPending}
-                    onChange={(event) => {
-                      setDraft((current) => ({
-                        ...current,
-                        department: event.target.value || undefined,
-                        assetId: undefined,
-                      }))
-                      setFilterNotice(
-                        draft.assetId
-                          ? 'Specific asset was cleared because the department filter changed.'
-                          : null,
-                      )
-                    }}
-                    className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
-                  >
-                    <option value="">All departments</option>
-                    {departments.map((department) => (
-                      <option key={department} value={department}>
-                        {department}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="grid gap-1 text-sm font-semibold text-[var(--text-primary)]">
-                  PM calendar quarter
-                  <select
-                    aria-label="PM calendar quarter"
-                    value={draft.quarter ?? pmCycleQuarter ?? ''}
-                    onChange={(event) => {
-                      setDraft((current) => ({
-                        ...current,
-                        quarter: (event.target.value ||
-                          undefined) as InspectionSearch['quarter'],
-                        pmCycle: undefined,
-                      }))
-                      if (draft.pmCycle)
-                        setFilterNotice(
-                          'The exact PM month was cleared because the quarter changed.',
-                        )
-                    }}
-                    className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
-                  >
-                    <option value="">All quarters</option>
-                    {['Q1', 'Q2', 'Q3', 'Q4'].map((quarter) => (
-                      <option key={quarter} value={quarter}>
-                        {quarter}
-                      </option>
-                    ))}
-                  </select>
-                </label>
                 <label className="grid gap-1 text-sm font-semibold text-[var(--text-primary)]">
                   Exact PM month
                   <select
@@ -957,7 +949,7 @@ export function InspectionRegistry({
                 </fieldset>
               </div>
             </details>
-            <div className="flex flex-wrap items-end gap-2 md:col-span-2 xl:col-span-4">
+            <div className="flex flex-wrap items-end gap-2 md:col-span-3 xl:col-span-6">
               <Button
                 type="submit"
                 disabled={
@@ -1084,12 +1076,12 @@ export function InspectionRegistry({
             isUpdating={registry.isFetching}
             recordsZoom={recordZoom.zoom}
             desktopContent={
-              <table className="w-full min-w-[1280px] text-left text-sm">
+              <table className="w-full min-w-[1160px] text-left text-sm">
                 <thead className="bg-[var(--primary)] text-xs tracking-wide text-white uppercase">
                   {table.getHeaderGroups().map((headerGroup) => (
                     <tr key={headerGroup.id}>
                       {headerGroup.headers.map((header) => (
-                        <th key={header.id} scope="col" className="px-5 py-4">
+                        <th key={header.id} scope="col" className="px-3 py-3">
                           {header.isPlaceholder
                             ? null
                             : flexRender(
@@ -1107,7 +1099,7 @@ export function InspectionRegistry({
                       {row.getVisibleCells().map((cell) => (
                         <td
                           key={cell.id}
-                          className="px-5 py-3 align-top leading-relaxed"
+                          className="px-3 py-2 align-top leading-relaxed"
                         >
                           {flexRender(
                             cell.column.columnDef.cell,

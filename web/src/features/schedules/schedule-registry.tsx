@@ -1,14 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import {
-  CalendarClock,
-  CalendarDays,
-  CalendarPlus,
-  CircleAlert,
-  CircleCheck,
-  CircleX,
-  Clock,
-  Eye,
-} from 'lucide-react'
+import { CalendarPlus, Eye } from 'lucide-react'
 import { PageHeading } from '@/components/layout/page-heading'
 import { Link } from '@tanstack/react-router'
 import {
@@ -21,7 +12,6 @@ import { ApiError } from '@/api/problem-details'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
-import { SummaryMetricCard } from '@/components/ui/summary-metric-card'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { Asset } from '@/features/assets/asset-contract'
@@ -213,14 +203,7 @@ export function ScheduleRegistry({
   }))
   const [filterNotice, setFilterNotice] = useState<string | null>(null)
   const [showMoreFilters, setShowMoreFilters] = useState(() =>
-    Boolean(
-      search.assetId ||
-      search.department ||
-      search.from ||
-      search.to ||
-      search.quarter ||
-      search.pmCycle,
-    ),
+    Boolean(search.assetId || search.from || search.to || search.pmCycle),
   )
   const filterOptions = useScheduleRegistryOptions({
     ...(draft.assetCategory ? { assetCategory: draft.assetCategory } : {}),
@@ -578,27 +561,30 @@ export function ScheduleRegistry({
   ]
 
   const summarySection = (
-    <section aria-labelledby="schedule-summary-title" className="space-y-3">
-      <div>
+    <section aria-labelledby="schedule-summary-title" className="space-y-2">
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <h2
           id="schedule-summary-title"
-          className="text-xl font-bold text-[var(--text-primary)]"
+          className="text-sm font-semibold text-[var(--text-primary)]"
         >
           Schedule summary
         </h2>
-        <p className="mt-1 text-sm text-[var(--text-secondary)]">
-          Overall totals for all recorded schedules, independent of the registry
-          filters below.
+        <p className="text-xs text-[var(--text-secondary)]">
+          Overall schedule totals, independent of registry filters.
         </p>
       </div>
       {summary.isPending ? (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3" role="status">
+        <div
+          className="grid grid-cols-2 gap-2 rounded-lg border border-[var(--border-soft)] bg-white p-3 sm:grid-cols-3 xl:grid-cols-6"
+          role="status"
+          aria-label="Loading schedule summary"
+        >
           <span className="sr-only">Loading schedule summary...</span>
-          {Array.from({ length: 3 }, (_, index) => (
-            <Card key={index} className="p-4 shadow-none">
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="mt-2 h-8 w-12" />
-            </Card>
+          {Array.from({ length: 6 }, (_, index) => (
+            <div key={index} className="space-y-2 px-2 py-1">
+              <Skeleton className="h-3 w-16" />
+              <Skeleton className="h-5 w-10" />
+            </div>
           ))}
         </div>
       ) : summary.isError ? (
@@ -619,77 +605,59 @@ export function ScheduleRegistry({
           </Button>
         </Card>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          <SummaryMetricCard
-            label="All schedules"
-            value={summary.data.totalCount.toLocaleString()}
-            icon={CalendarDays}
-            tone="brand"
-          />
-          <SummaryMetricCard
-            label="Due"
-            value={summary.data.dueCount.toLocaleString()}
-            icon={CalendarClock}
-            tone="warning"
-          />
-          <SummaryMetricCard
-            label="Ongoing"
-            value={summary.data.ongoingCount.toLocaleString()}
-            icon={Clock}
-            tone="information"
-          />
-          <SummaryMetricCard
-            label="Overdue"
-            value={summary.data.overdueCount.toLocaleString()}
-            icon={CircleAlert}
-            tone="danger"
-          />
-          <SummaryMetricCard
-            label="Completed"
-            value={summary.data.completedCount.toLocaleString()}
-            icon={CircleCheck}
-            tone="success"
-          />
-          <SummaryMetricCard
-            label="Cancelled"
-            value={summary.data.cancelledCount.toLocaleString()}
-            icon={CircleX}
-            tone="neutral"
-          />
-        </div>
+        <dl
+          aria-label="Overall schedule totals"
+          className="grid grid-cols-2 divide-x divide-y divide-[var(--border-soft)] rounded-lg border border-[var(--border-soft)] bg-white sm:grid-cols-3 xl:grid-cols-6"
+        >
+          {[
+            ['All schedules', summary.data.totalCount],
+            ['Due', summary.data.dueCount],
+            ['Ongoing', summary.data.ongoingCount],
+            ['Overdue', summary.data.overdueCount],
+            ['Completed', summary.data.completedCount],
+            ['Cancelled', summary.data.cancelledCount],
+          ].map(([label, value]) => (
+            <div key={label} className="px-3 py-2">
+              <dt className="text-xs text-[var(--text-neutral)]">{label}</dt>
+              <dd className="mt-0.5 text-lg leading-5 font-semibold text-[var(--text-primary)]">
+                {Number(value).toLocaleString()}
+              </dd>
+            </div>
+          ))}
+        </dl>
       )}
     </section>
   )
 
   return (
-    <section aria-labelledby="schedules-title" className="space-y-6">
-      <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-        <PageHeading
-          id="schedules-title"
-          eyebrow="Preventive maintenance"
-          title="Schedules"
-          description="Review PM cycles, due dates, and recorded schedule status."
-        />
-        {(canCreate || canGenerate) && (
-          <div className="flex flex-wrap items-center gap-2">
-            {canGenerate && (
-              <Button asChild variant="secondary">
-                <a href="#schedule-management">Manage schedules</a>
-              </Button>
-            )}
-            {canCreate && (
-              <Button asChild>
-                <Link to="/app/schedules/new">
-                  <CalendarPlus aria-hidden="true" className="mr-2 size-4" />
-                  Add schedule
-                </Link>
-              </Button>
-            )}
-          </div>
-        )}
-      </header>
+    <section aria-labelledby="schedules-title" className="space-y-4">
+      <PageHeading
+        id="schedules-title"
+        eyebrow="Preventive maintenance"
+        title="Schedules"
+        description="Review PM cycles, due dates, and recorded schedule status."
+        actions={
+          canCreate || canGenerate ? (
+            <>
+              {canGenerate && (
+                <Button asChild variant="secondary">
+                  <a href="#schedule-management">Manage schedules</a>
+                </Button>
+              )}
+              {canCreate && (
+                <Button asChild>
+                  <Link to="/app/schedules/new">
+                    <CalendarPlus aria-hidden="true" className="mr-2 size-4" />
+                    Add schedule
+                  </Link>
+                </Button>
+              )}
+            </>
+          ) : undefined
+        }
+      />
 
-      <section aria-labelledby="schedule-filters-title" className="space-y-3">
+      <section aria-labelledby="schedule-filters-title" className="space-y-2">
         <div>
           <h2
             id="schedule-filters-title"
@@ -701,9 +669,9 @@ export function ScheduleRegistry({
             Search by asset, then refine by status or PM cycle.
           </p>
         </div>
-        <Card className="content-card p-4">
+        <Card className="content-card p-3">
           <form
-            className="space-y-4"
+            className="space-y-3"
             onSubmit={(event) => {
               event.preventDefault()
               apply()
@@ -724,7 +692,7 @@ export function ScheduleRegistry({
                 }
               />
             </label>
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-3 xl:grid-cols-5">
               <label className="grid gap-1 text-sm font-semibold text-[var(--text-primary)]">
                 Asset category
                 <select
@@ -807,6 +775,62 @@ export function ScheduleRegistry({
                   ))}
                 </select>
               </label>
+              <label className="grid gap-1 text-sm font-semibold text-[var(--text-primary)]">
+                Department
+                <select
+                  aria-label="Department"
+                  value={draft.department ?? ''}
+                  disabled={filterOptions.isError}
+                  onChange={(event) => {
+                    setDraft((current) => ({
+                      ...current,
+                      department: event.target.value || undefined,
+                      assetId: undefined,
+                    }))
+                    setFilterNotice(
+                      draft.assetId
+                        ? 'Specific asset was cleared because the department filter changed.'
+                        : null,
+                    )
+                  }}
+                  className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
+                >
+                  <option value="">All departments</option>
+                  {departments.map((department) => (
+                    <option key={department} value={department}>
+                      {department}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="grid gap-1 text-sm font-semibold text-[var(--text-primary)]">
+                Calendar quarter
+                <select
+                  aria-label="Calendar quarter"
+                  value={draft.quarter ?? pmCycleQuarter ?? ''}
+                  onChange={(event) => {
+                    setDraft((current) => ({
+                      ...current,
+                      quarter: (event.target.value || undefined) as
+                        NonNullable<Schedule['quarter']> | undefined,
+                      pmCycle: undefined,
+                    }))
+                    if (draft.pmCycle) {
+                      setFilterNotice(
+                        'The exact PM month was cleared because the quarter changed.',
+                      )
+                    }
+                  }}
+                  className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
+                >
+                  <option value="">All quarters</option>
+                  {quarterOptions.map((quarter) => (
+                    <option key={quarter} value={quarter}>
+                      {quarter}
+                    </option>
+                  ))}
+                </select>
+              </label>
             </div>
             <details
               open={showMoreFilters}
@@ -818,7 +842,7 @@ export function ScheduleRegistry({
               </summary>
               <div
                 id="schedule-more-filters"
-                className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3"
+                className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3"
               >
                 <AssetPicker
                   value={draft.assetId}
@@ -828,34 +852,6 @@ export function ScheduleRegistry({
                     setDraft((current) => ({ ...current, assetId }))
                   }
                 />
-                <label className="grid gap-1 text-sm font-semibold text-[var(--text-primary)]">
-                  Department
-                  <select
-                    aria-label="Department"
-                    value={draft.department ?? ''}
-                    disabled={filterOptions.isError}
-                    onChange={(event) => {
-                      setDraft((current) => ({
-                        ...current,
-                        department: event.target.value || undefined,
-                        assetId: undefined,
-                      }))
-                      setFilterNotice(
-                        draft.assetId
-                          ? 'Specific asset was cleared because the department filter changed.'
-                          : null,
-                      )
-                    }}
-                    className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
-                  >
-                    <option value="">All departments</option>
-                    {departments.map((department) => (
-                      <option key={department} value={department}>
-                        {department}
-                      </option>
-                    ))}
-                  </select>
-                </label>
                 <label className="grid gap-1 text-xs font-semibold text-[var(--text-secondary)]">
                   From
                   <input
@@ -883,34 +879,6 @@ export function ScheduleRegistry({
                     }
                     className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm font-normal"
                   />
-                </label>
-                <label className="grid gap-1 text-sm font-semibold text-[var(--text-primary)]">
-                  Calendar quarter
-                  <select
-                    aria-label="Calendar quarter"
-                    value={draft.quarter ?? pmCycleQuarter ?? ''}
-                    onChange={(event) => {
-                      setDraft((current) => ({
-                        ...current,
-                        quarter: (event.target.value || undefined) as
-                          NonNullable<Schedule['quarter']> | undefined,
-                        pmCycle: undefined,
-                      }))
-                      if (draft.pmCycle) {
-                        setFilterNotice(
-                          'The exact PM month was cleared because the quarter changed.',
-                        )
-                      }
-                    }}
-                    className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
-                  >
-                    <option value="">All quarters</option>
-                    {quarterOptions.map((quarter) => (
-                      <option key={quarter} value={quarter}>
-                        {quarter}
-                      </option>
-                    ))}
-                  </select>
                 </label>
                 <label className="grid gap-1 text-sm font-semibold text-[var(--text-primary)]">
                   Exact PM month

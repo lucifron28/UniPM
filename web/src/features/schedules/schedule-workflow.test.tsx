@@ -407,8 +407,16 @@ describe('schedule workflows', () => {
 
     const moreFilters = screen.getByText('More filters', { exact: true })
     expect(moreFilters.tagName).toBe('SUMMARY')
+    expect(screen.getByLabelText('Department')).toBeVisible()
+    expect(screen.getByLabelText('Specific asset')).not.toBeVisible()
     await userEvent.setup().click(moreFilters)
     expect(screen.getByLabelText('Department')).toBeVisible()
+    expect(
+      screen.getByRole('combobox', { name: 'Specific asset' }),
+    ).toBeVisible()
+    await userEvent.setup().click(moreFilters)
+    expect(screen.getByLabelText('Department')).toBeVisible()
+    expect(screen.getByLabelText('Specific asset')).not.toBeVisible()
   })
 
   it('keeps summary unfiltered while sending supported registry filters', async () => {
