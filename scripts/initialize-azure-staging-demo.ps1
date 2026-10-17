@@ -9,13 +9,13 @@ connection, permission, migration-history, and application-table preflight, then
 Development seed commands as short-lived local processes. It does not invoke the standalone
 --migrate-database command or reset, host the API, provision Azure resources, or deploy.
 
-The existing --seed-demo command calls EF Core MigrateAsync during context setup. With the exact
-current migration history required by this script, that call is expected to be a no-op; the script
-does not suppress it. The preflight is not a database lock, so stop application writers and do not
+The staging profile rejects incomplete schema or partial data and never calls MigrateAsync or
+replaces existing demo data. The preflight is not a database lock, so stop application writers and do not
 run another migration process while initialization is in progress.
 
-The caller must provide ConnectionStrings__DefaultConnection and UNIPM_STAGING_DEMO_PASSWORD
-as process environment variables. The SQL connection must use SQL authentication, explicit
+The caller must provide ConnectionStrings__DefaultConnection and per-role UNIPM_STAGING_*_PASSWORD
+process variables, or explicitly select AllowSharedDemoPassword with UNIPM_STAGING_DEMO_PASSWORD.
+The SQL connection must use SQL authentication, explicit
 encryption, and certificate validation. The demo password is checked against the existing
 Identity password policy and is never written to the command line or output.
 
@@ -29,10 +29,9 @@ Optional explicit path to UniPM.Api.dll. The accepted path is constrained to the
 commit's artifacts/azure-staging/<commit>/publish/UniPM.Api.dll, whose provenance manifest must
 declare the same source commit and branch.
 
-.EXAMPLE
-$env:ConnectionStrings__DefaultConnection = '<SQL-authentication connection string>'
-$env:UNIPM_STAGING_DEMO_PASSWORD = '<strong fictional demo password>'
-./scripts/initialize-azure-staging-demo.ps1 -ConfirmTarget 'sql-unipm-staging.database.windows.net/unipm-staging-db'
+.PARAMETER AllowSharedDemoPassword
+Explicit demo-only exception allowing all four accounts to share the supplied process secret.
+See the deployment guide for hidden prompts and environment cleanup. Never enter secrets as arguments.
 #>
 [CmdletBinding()]
 param(
@@ -40,7 +39,9 @@ param(
     [string]$ConfirmTarget,
 
     [Parameter()]
-    [string]$PublishedApiDll
+    [string]$PublishedApiDll,
+
+    [switch]$AllowSharedDemoPassword
 )
 
 Set-StrictMode -Version Latest
@@ -104,6 +105,37 @@ function Get-ConnectionStringValue {
     return $values[0]
 }
 
+function Get-StagingCredentialEnvironment {
+    param([bool]$AllowShared)
+
+    $names = @('ADMIN', 'GSD', 'INSPECTOR', 'SUPERVISOR') |
+        ForEach-Object { "UNIPM_STAGING_$($_)_PASSWORD" }
+    $credentials = @{}
+    if ($AllowShared) {
+        foreach ($name in $names) {
+            if (-not [string]::IsNullOrEmpty([Environment]::GetEnvironmentVariable($name, 'Process'))) {
+                throw 'Do not combine shared and per-role staging credential modes.'
+            }
+        }
+        $names = @('UNIPM_STAGING_DEMO_PASSWORD')
+    }
+    foreach ($name in $names) {
+        $value = [Environment]::GetEnvironmentVariable($name, 'Process')
+        if ([string]::IsNullOrEmpty($value) -or $value.Length -lt 12 -or
+            $value -cnotmatch '[A-Z]' -or $value -cnotmatch '[a-z]' -or
+            $value -notmatch '[0-9]' -or $value -notmatch '[^a-zA-Z0-9]') {
+            throw 'Staging credentials are missing or do not satisfy the Identity password policy.'
+        }
+        $credentials[$name] = $value
+    }
+    if (-not $AllowShared) {
+        $unique = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+        foreach ($value in $credentials.Values) { $null = $unique.Add($value) }
+        if ($unique.Count -ne 4) { throw 'Distinct staging credentials are required unless shared mode is explicitly selected.' }
+    }
+    return $credentials
+}
+
 function Invoke-LocalSeedCommand {
     param(
         [Parameter(Mandatory = $true)]
@@ -119,7 +151,9 @@ function Invoke-LocalSeedCommand {
         [string]$ConnectionString,
 
         [Parameter(Mandatory = $true)]
-        [string]$DemoPassword
+        [hashtable]$CredentialEnvironment,
+
+        [bool]$AllowShared
     )
 
     $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
@@ -134,13 +168,19 @@ function Invoke-LocalSeedCommand {
     $childEnvironment['ASPNETCORE_ENVIRONMENT'] = 'Development'
     $childEnvironment['DOTNET_ENVIRONMENT'] = 'Development'
     $childEnvironment['ConnectionStrings__DefaultConnection'] = $ConnectionString
-    $childEnvironment['UNIPM_DEV_USER_PASSWORD'] = $DemoPassword
+    $childEnvironment.Remove('UNIPM_DEV_USER_PASSWORD')
+    foreach ($role in @('ADMIN', 'GSD', 'INSPECTOR', 'SUPERVISOR')) {
+        $childEnvironment.Remove("UNIPM_STAGING_$($role)_PASSWORD")
+    }
+    $childEnvironment.Remove('UNIPM_STAGING_DEMO_PASSWORD')
+    $childEnvironment['UNIPM_STAGING_DEMO_INITIALIZATION'] = 'true'
+    $childEnvironment['UNIPM_STAGING_ALLOW_SHARED_PASSWORD'] = $AllowShared.ToString()
+    foreach ($name in $CredentialEnvironment.Keys) { $childEnvironment[$name] = $CredentialEnvironment[$name] }
     $childEnvironment['UNIPM_DEV_SKIP_DEPARTMENT_HEAD_ACCOUNT'] = 'true'
     $childEnvironment['Embeddings__Enabled'] = 'false'
     $childEnvironment['NaturalLanguageAnalytics__Enabled'] = 'false'
     $childEnvironment['Observability__MetricsEnabled'] = 'false'
     $childEnvironment['PreventiveMaintenanceScheduleGeneration__WorkerEnabled'] = 'false'
-    $childEnvironment.Remove('UNIPM_STAGING_DEMO_PASSWORD')
     $childEnvironment.Remove('SQLCMDPASSWORD')
 
     $process = [System.Diagnostics.Process]::new()
@@ -171,6 +211,7 @@ function Invoke-LocalSeedCommand {
         }
     }
     finally {
+        $childEnvironment.Clear()
         $process.Dispose()
     }
 }
@@ -268,18 +309,10 @@ if (-not [string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable('SQL
 }
 
 $connectionString = [Environment]::GetEnvironmentVariable('ConnectionStrings__DefaultConnection', 'Process')
-$demoPassword = [Environment]::GetEnvironmentVariable('UNIPM_STAGING_DEMO_PASSWORD', 'Process')
-if ([string]::IsNullOrWhiteSpace($connectionString) -or [string]::IsNullOrWhiteSpace($demoPassword)) {
-    throw 'Set ConnectionStrings__DefaultConnection and UNIPM_STAGING_DEMO_PASSWORD in the current process environment.'
+if ([string]::IsNullOrWhiteSpace($connectionString)) {
+    throw 'Set ConnectionStrings__DefaultConnection in the current process environment.'
 }
-
-if ($demoPassword.Length -lt 12 -or
-    $demoPassword -notmatch '\p{Lu}' -or
-    $demoPassword -notmatch '\p{Ll}' -or
-    $demoPassword -notmatch '\p{Nd}' -or
-    $demoPassword -notmatch '[^\p{L}\p{Nd}]') {
-    throw 'UNIPM_STAGING_DEMO_PASSWORD does not satisfy the configured Identity password policy.'
-}
+$credentialEnvironment = Get-StagingCredentialEnvironment -AllowShared $AllowSharedDemoPassword.IsPresent
 
 $builder = [System.Data.Common.DbConnectionStringBuilder]::new()
 try {
@@ -336,9 +369,26 @@ DECLARE @compatibilityLevel int = (
 DECLARE @collation sysname = CONVERT(sysname, DATABASEPROPERTYEX(DB_NAME(), 'Collation'));
 
 IF DB_NAME() <> N'$expectedDatabase' THROW 51000, N'Unexpected database.', 1;
+IF CONVERT(nvarchar(128), SERVERPROPERTY('ServerName')) <> N'sql-unipm-staging'
+    THROW 51008, N'Unexpected logical server.', 1;
 IF @engineEdition <> 5 THROW 51001, N'Expected Azure SQL Database.', 1;
 IF @compatibilityLevel <> 150 THROW 51002, N'Expected compatibility level 150.', 1;
 IF @collation IS NULL OR @collation = N'' THROW 51003, N'Database collation is unavailable.', 1;
+IF FULLTEXTSERVICEPROPERTY('IsFullTextInstalled') <> 1 THROW 51009, N'Full-Text Search is required.', 1;
+
+DECLARE @expectedTables TABLE (Name sysname NOT NULL PRIMARY KEY);
+INSERT INTO @expectedTables VALUES
+(N'AspNetRoleClaims'),(N'AspNetRoles'),(N'AspNetUserClaims'),(N'AspNetUserLogins'),
+(N'AspNetUserRoles'),(N'AspNetUsers'),(N'AspNetUserTokens'),(N'Assets'),
+(N'InspectionLocationAttempts'),(N'InspectionPhotoEvidence'),(N'InspectionRecords'),
+(N'InspectionWmsReferralAudits'),(N'InspectionWmsReferrals'),
+(N'PreventiveMaintenanceAcknowledgements'),(N'PreventiveMaintenanceForms'),
+(N'PreventiveMaintenanceSchedules'),(N'ReferenceDocumentApplicabilities'),
+(N'ReferenceDocuments'),(N'ReferenceDocumentSectionEmbeddings'),(N'ReferenceDocumentSections'),
+(N'RefreshSessions'),(N'ScheduleEnrollmentDeferrals');
+IF EXISTS (SELECT 1 FROM @expectedTables WHERE OBJECT_ID(N'dbo.' + QUOTENAME(Name), N'U') IS NULL)
+   OR (SELECT COUNT(*) FROM sys.tables WHERE is_ms_shipped = 0 AND name <> N'__EFMigrationsHistory') <> 22
+    THROW 51010, N'Expected exactly 22 application tables.', 1;
 
 IF ISNULL(IS_ROLEMEMBER(N'db_owner'), 0) <> 1
    AND (ISNULL(IS_ROLEMEMBER(N'db_datareader'), 0) <> 1
@@ -412,7 +462,7 @@ try {
         -s '|' `
         -W `
         -w 1024 `
-        -l 30 `
+        -l 60 `
         -t 120 `
         -i $sqlFile 2>&1)
     $sqlcmdExitCode = $LASTEXITCODE
@@ -443,6 +493,7 @@ try {
     Write-Output "Read-only preflight passed for $expectedTarget (Azure SQL Database, compatibility 150, collation $collation, exact 22 migrations, empty application tables, and seed read/write permission)."
     Write-Output 'The migrations do not pin a required collation; review the reported value before continuing.'
     Write-Output 'Stop the App Service and all other database writers before running the seed commands; this preflight does not lock the database.'
+    if ($AllowSharedDemoPassword) { Write-Output 'Explicit demo exception: all four accounts will share one password.' }
     $typedConfirmation = Read-Host "After stopping database writers, type '$confirmation' to run the two local seed commands"
     if (-not [string]::Equals($typedConfirmation, $confirmation, [StringComparison]::Ordinal)) {
         throw 'The typed confirmation did not match. No seed commands were started.'
@@ -455,7 +506,8 @@ try {
         -DotnetPath $dotnet.Source `
         -ApiDll $resolvedApiDll `
         -ConnectionString $connectionString `
-        -DemoPassword $demoPassword
+        -CredentialEnvironment $credentialEnvironment `
+        -AllowShared $AllowSharedDemoPassword.IsPresent
 
     Write-Output 'Running the local fictional demo-data seed command.'
     Invoke-LocalSeedCommand `
@@ -463,9 +515,19 @@ try {
         -DotnetPath $dotnet.Source `
         -ApiDll $resolvedApiDll `
         -ConnectionString $connectionString `
-        -DemoPassword $demoPassword
+        -CredentialEnvironment $credentialEnvironment `
+        -AllowShared $AllowSharedDemoPassword.IsPresent
 
-    Write-Output 'Staging initialization completed. No API host, standalone migration command, or reset command was started. The existing --seed-demo MigrateAsync context check was expected to be a no-op after preflight.'
+    $postflightPath = Join-Path $repositoryRoot 'database/azure-staging-demo-postflight.sql'
+    $postflightOutput = @(& $sqlcmd.Source -S $expectedServer -d $expectedDatabase -U $sqlLogin `
+        -N -x -b -r 1 -h -1 -s '|' -W -l 60 -t 120 -i $postflightPath 2>&1)
+    if ($LASTEXITCODE -ne 0 -or -not ($postflightOutput | Where-Object {
+        ([string]$_).Trim().StartsWith('UNIPM_STAGING_DEMO_VERIFIED|')
+    })) {
+        throw 'Read-only initialization postflight failed. Stop for manual review; do not rerun initialization.'
+    }
+    Write-Output 'UNIPM_STAGING_DEMO_VERIFIED: four accounts, 25 fictional assets, 105 schedules, 77 inspections, 42 forms, 29 acknowledgements, no inspection photos.'
+    Write-Output 'No API host, migrations, reset or replacement of existing records was started.'
 }
 catch {
     if ($seedCommandsStarted) {
@@ -475,6 +537,10 @@ catch {
     throw $_.Exception.Message
 }
 finally {
+    $credentialEnvironment.Clear()
+    $connectionString = $null
+    $sqlPassword = $null
+    $builder.Clear()
     if ($hadSqlcmdPassword) {
         [Environment]::SetEnvironmentVariable('SQLCMDPASSWORD', $originalSqlcmdPassword, 'Process')
     }
