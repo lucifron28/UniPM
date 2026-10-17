@@ -578,9 +578,20 @@ test('shows a visible focus indicator on the active desktop navigation link', as
   await installApi(page)
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto('/app/dashboard')
-  await expect(page.getByText(/1 need review · 0 reviewed\./)).toBeVisible()
+  await expect(
+    page.getByRole('heading', {
+      name: 'Preventive Maintenance Dashboard',
+      level: 1,
+    }),
+  ).toBeVisible()
 
+  await expect(page.getByRole('link', { name: 'Dashboard' })).toHaveAttribute(
+    'aria-current',
+    'page',
+  )
   const dashboardLink = await tabToLink(page, 'Dashboard')
+  await expect(dashboardLink).toBeFocused()
+  await expect(dashboardLink).toHaveAttribute('aria-current', 'page')
   await expect(dashboardLink).toHaveCSS('outline-style', 'solid')
   await expect(dashboardLink).toHaveCSS('outline-color', 'rgb(87, 0, 0)')
   await expect(dashboardLink).toHaveCSS('outline-width', '2px')

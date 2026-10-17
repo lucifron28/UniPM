@@ -211,21 +211,35 @@ test('access token is never stored in browser storage', async ({ page }) => {
   await mockSuccessfulLogin(page)
   await page.goto('/login')
   await completeLogin(page)
+  await page.getByRole('button', { name: 'Collapse navigation' }).click()
   await expect
     .poll(() =>
       page.evaluate(() => localStorage.getItem('unipm.sidebar.collapsed')),
     )
     .toBe('true')
 
-  expect(
-    await page.evaluate(() => ({
-      local: { ...localStorage },
-      session: { ...sessionStorage },
-    })),
-  ).toEqual({
+  const browserStorage = await page.evaluate(() => {
+    const snapshot = (storage: Storage) =>
+      Object.fromEntries(
+        Array.from({ length: storage.length }, (_, index) => {
+          const key = storage.key(index)!
+          return [key, storage.getItem(key)]
+        }),
+      )
+
+    return {
+      local: snapshot(localStorage),
+      session: snapshot(sessionStorage),
+    }
+  })
+
+  expect(browserStorage).toEqual({
     local: { 'unipm.sidebar.collapsed': 'true' },
     session: {},
   })
+  expect(JSON.stringify(browserStorage)).not.toContain(
+    fictionalSession.accessToken,
+  )
 })
 
 test('unsafe redirect input falls back to the dashboard', async ({ page }) => {

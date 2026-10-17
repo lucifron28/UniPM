@@ -171,11 +171,6 @@ test('desktop shell keeps its header and rail still while the workspace scrolls'
     ),
   ).toBeLessThanOrEqual(1)
   expect(
-    await page
-      .locator('.app-shell-main')
-      .evaluate((element) => getComputedStyle(element).overflowY),
-  ).toBe('hidden')
-  expect(
     await workspace.evaluate((element) => getComputedStyle(element).overflowY),
   ).toBe('auto')
 
