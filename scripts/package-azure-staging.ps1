@@ -129,8 +129,8 @@ try {
 
     $unexpectedViteVariables = Get-ChildItem Env: |
         Where-Object {
-            $_.Name.StartsWith("VITE_", [StringComparison]::OrdinalIgnoreCase)
-            -and $_.Name -ne "VITE_API_BASE_URL"
+            $_.Name.StartsWith("VITE_", [StringComparison]::OrdinalIgnoreCase) -and
+            $_.Name -ne "VITE_API_BASE_URL"
         }
     if ($unexpectedViteVariables) {
         throw "Unset additional VITE_* process variables before packaging."
@@ -212,18 +212,18 @@ try {
 
     $packageFiles = Get-ChildItem -LiteralPath $publishDirectory -File -Recurse -Force
     if ($packageFiles | Where-Object {
-        $_.Extension -eq ".map"
-        -or $_.Extension -eq ".pdb"
-        -or $_.Name -match '^\.env(?:\.|$)'
-        -or $_.Name -match '^appsettings\.Development\.json$'
-        -or $_.Name -match '^usersecrets\.json$'
+        $_.Extension -eq ".map" -or
+        $_.Extension -eq ".pdb" -or
+        $_.Name -match '^\.env(?:\.|$)' -or
+        $_.Name -match '^appsettings\.Development\.json$' -or
+        $_.Name -match '^usersecrets\.json$'
     }) {
         throw "The publish output contains a source map, development settings, environment file, or user-secrets file."
     }
 
     if ($packageFiles | Where-Object {
-        $_.FullName.StartsWith($webRoot, [StringComparison]::OrdinalIgnoreCase)
-        -and $_.Extension -eq ".map"
+        $_.FullName.StartsWith($webRoot, [StringComparison]::OrdinalIgnoreCase) -and
+        $_.Extension -eq ".map"
     }) {
         throw "The public frontend contains source maps."
     }
