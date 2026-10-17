@@ -35,7 +35,7 @@ internal static class CampusSeedAssertions
         {
             ["CCMS Building"] = ["CCMS"],
             ["University Library Complex"] = ["Library"],
-            ["Administration Building"] = ["Office of Student Affairs and Services", "General Services Department"],
+            ["Administration Building"] = ["Office of Student Affairs and Services", "Registrar's Office"],
             ["CNAHS Building"] = ["CNAHS"],
             ["University Gymnasium"] = ["General Services Department"]
         };
@@ -45,7 +45,7 @@ internal static class CampusSeedAssertions
             Assert.NotNull(asset.Building);
             Assert.True(buildings.ContainsKey(asset.Building));
             Assert.Contains(asset.Department, buildings[asset.Building]);
-            Assert.Matches(@"^(FE|FA|EL|WDS)-(CCMS|LIB|OSAS|GSD|CNAHS|GYM)-\d{3}$", asset.AssetCode);
+            Assert.Matches(@"^(FE|FA|EL|WDS)-(CCMS|LIB|OSAS|REG|CNAHS|GYM)-\d{3}$", asset.AssetCode);
             Assert.StartsWith("UNIPM-", asset.QrCodeValue);
             Assert.Null(asset.VerificationLatitude);
             Assert.Null(asset.VerificationLongitude);

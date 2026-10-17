@@ -116,7 +116,7 @@ public sealed class DevelopmentDemoSeederTests
             && batch.FormStatus == "Acknowledged");
 
         var campusFacilitiesPeriod = await dashboard.GetPeriodAsync(
-            new PmPeriodDashboardQuery("2026-06", "emergency-light", "General Services Department", null, null, null),
+            new PmPeriodDashboardQuery("2026-06", "emergency-light", "Registrar's Office", null, null, null),
             CancellationToken.None);
         Assert.Equal(1, campusFacilitiesPeriod.Scheduled);
         Assert.Equal(0, campusFacilitiesPeriod.Inspected);

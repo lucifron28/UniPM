@@ -82,12 +82,12 @@ public static class DevelopmentDemoCatalog
         new(
             Guid.Parse("30000000-0000-4000-8000-000000000003"),
             "scenario-c",
-            "EL-GSD-001",
+            "EL-REG-001",
             "emergency-light",
             "Administration Building",
-            "General Services Department",
+            "Registrar's Office",
             "Common area",
-            "UNIPM-EL-GSD-001")
+            "UNIPM-EL-REG-001")
     ];
 
     internal static IReadOnlyList<Guid> ScheduleIds { get; } =
