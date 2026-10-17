@@ -1,10 +1,10 @@
 -- Read-only verification after a separately approved initialization. No credentials or hashes returned.
 SET NOCOUNT ON;
-IF DB_NAME() <> N'unipm-staging-db'
-   OR CONVERT(nvarchar(128), SERVERPROPERTY('ServerName')) <> N'sql-unipm-staging'
-   OR CONVERT(int, SERVERPROPERTY('EngineEdition')) <> 5
+IF ISNULL(DB_NAME(), N'') <> N'unipm-staging-db'
+   OR ISNULL(CONVERT(nvarchar(128), SERVERPROPERTY('ServerName')), N'') <> N'sql-unipm-staging'
+   OR ISNULL(TRY_CONVERT(int, SERVERPROPERTY('EngineEdition')), 0) <> 5
     THROW 51100, N'Unexpected Azure staging target.', 1;
-IF (SELECT compatibility_level FROM sys.databases WHERE database_id = DB_ID()) <> 150
+IF ISNULL((SELECT compatibility_level FROM sys.databases WHERE database_id = DB_ID()), 0) <> 150
     THROW 51101, N'Unexpected compatibility level.', 1;
 IF (SELECT COUNT(*) FROM dbo.__EFMigrationsHistory) <> 22
    OR NOT EXISTS (SELECT 1 FROM dbo.__EFMigrationsHistory WHERE MigrationId = N'20261010141251_AddInspectionPhotoEvidence')

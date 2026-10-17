@@ -368,13 +368,13 @@ DECLARE @compatibilityLevel int = (
 );
 DECLARE @collation sysname = CONVERT(sysname, DATABASEPROPERTYEX(DB_NAME(), 'Collation'));
 
-IF DB_NAME() <> N'$expectedDatabase' THROW 51000, N'Unexpected database.', 1;
-IF CONVERT(nvarchar(128), SERVERPROPERTY('ServerName')) <> N'sql-unipm-staging'
+IF ISNULL(DB_NAME(), N'') <> N'$expectedDatabase' THROW 51000, N'Unexpected database.', 1;
+IF ISNULL(CONVERT(nvarchar(128), SERVERPROPERTY('ServerName')), N'') <> N'sql-unipm-staging'
     THROW 51008, N'Unexpected logical server.', 1;
-IF @engineEdition <> 5 THROW 51001, N'Expected Azure SQL Database.', 1;
-IF @compatibilityLevel <> 150 THROW 51002, N'Expected compatibility level 150.', 1;
+IF ISNULL(@engineEdition, 0) <> 5 THROW 51001, N'Expected Azure SQL Database.', 1;
+IF ISNULL(@compatibilityLevel, 0) <> 150 THROW 51002, N'Expected compatibility level 150.', 1;
 IF @collation IS NULL OR @collation = N'' THROW 51003, N'Database collation is unavailable.', 1;
-IF FULLTEXTSERVICEPROPERTY('IsFullTextInstalled') <> 1 THROW 51009, N'Full-Text Search is required.', 1;
+IF ISNULL(TRY_CONVERT(int, FULLTEXTSERVICEPROPERTY('IsFullTextInstalled')), 0) <> 1 THROW 51009, N'Full-Text Search is required.', 1;
 
 DECLARE @expectedTables TABLE (Name sysname NOT NULL PRIMARY KEY);
 INSERT INTO @expectedTables VALUES
