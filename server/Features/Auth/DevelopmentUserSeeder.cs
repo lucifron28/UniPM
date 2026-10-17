@@ -1,4 +1,6 @@
 using Microsoft.AspNetCore.Identity;
+using UniPM.Api.Data;
+using UniPM.Api.Data.Seeding;
 using UniPM.Api.Models;
 
 namespace UniPM.Api.Features.Auth;
@@ -13,7 +15,8 @@ internal sealed class DevelopmentUserSeeder(
     RoleManager<IdentityRole<Guid>> roleManager,
     UserManager<ApplicationUser> userManager,
     IConfiguration configuration,
-    IHostEnvironment environment)
+    IHostEnvironment environment,
+    ApplicationDbContext? context = null)
 {
     private const string SkipDepartmentHeadAccountSetting = "UNIPM_DEV_SKIP_DEPARTMENT_HEAD_ACCOUNT";
     private const string DepartmentHeadEmail = "departmenthead@unipm.local";
@@ -35,8 +38,10 @@ internal sealed class DevelopmentUserSeeder(
                 "Development user seeding is available only in Development.");
         }
 
-        var password = configuration["UNIPM_DEV_USER_PASSWORD"];
-        if (string.IsNullOrWhiteSpace(password))
+        var staging = StagingDemoInitialization.Enabled(configuration);
+        var passwords = staging ? StagingDemoInitialization.Passwords(configuration) : null;
+        var password = staging ? null : configuration["UNIPM_DEV_USER_PASSWORD"];
+        if (!staging && string.IsNullOrWhiteSpace(password))
         {
             throw new InvalidOperationException(
                 "UNIPM_DEV_USER_PASSWORD must be configured for Development user seeding.");
@@ -49,6 +54,23 @@ internal sealed class DevelopmentUserSeeder(
         {
             throw new InvalidOperationException(
                 $"{SkipDepartmentHeadAccountSetting} must be true or false.");
+        }
+
+        var definitions = Users.Where(user =>
+            staging ? StagingDemoInitialization.Roles.Contains(user.Role)
+                : !skipDepartmentHeadAccount || user.Email != DepartmentHeadEmail)
+            .Select(user => staging ? user with { Email = StagingDemoInitialization.Email(user.Role) } : user)
+            .ToArray();
+        if (staging)
+        {
+            // Validate every password against Identity before the first role/user write.
+            foreach (var definition in definitions)
+            foreach (var validator in userManager.PasswordValidators)
+                EnsureSucceeded(await validator.ValidateAsync(userManager,
+                    new ApplicationUser { UserName = definition.Email, Email = definition.Email },
+                    passwords![definition.Role]), "validate staging credential policy");
+            await StagingDemoInitialization.EnsureReadyAsync(context
+                ?? throw new InvalidOperationException("Staging initialization context is unavailable."), false);
         }
 
         var rolesCreated = 0;
@@ -68,9 +90,7 @@ internal sealed class DevelopmentUserSeeder(
         var usersCreated = 0;
         var assignmentsRepaired = 0;
         var usersReactivated = 0;
-        foreach (var definition in Users.Where(user =>
-                     !skipDepartmentHeadAccount
-                     || !string.Equals(user.Email, DepartmentHeadEmail, StringComparison.OrdinalIgnoreCase)))
+        foreach (var definition in definitions)
         {
             var user = await userManager.FindByEmailAsync(definition.Email);
             if (user is null)
@@ -85,7 +105,7 @@ internal sealed class DevelopmentUserSeeder(
                     IsActive = true
                 };
                 EnsureSucceeded(
-                    await userManager.CreateAsync(user, password),
+                    await userManager.CreateAsync(user, staging ? passwords![definition.Role] : password!),
                     $"create Development user '{definition.Email}'");
                 usersCreated++;
             }

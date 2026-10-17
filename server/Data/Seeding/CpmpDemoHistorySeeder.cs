@@ -19,10 +19,11 @@ internal static class CpmpDemoHistorySeeder
     private static readonly string[] Departments = ["Demo CCMS", "Demo Library"];
 
     internal static async Task<DevelopmentDemoSeedResult> SeedAsync(
-        ApplicationDbContext context, Guid inspectorId, CancellationToken cancellationToken)
+        ApplicationDbContext context, Guid inspectorId, CancellationToken cancellationToken,
+        string supervisorEmail = "supervisor@unipm.local")
     {
         await ValidateExistingFixtureRowsAsync(context, cancellationToken);
-        var supervisorId = await context.Users.Where(user => user.Email == "supervisor@unipm.local")
+        var supervisorId = await context.Users.Where(user => user.Email == supervisorEmail)
             .Select(user => (Guid?)user.Id).SingleOrDefaultAsync(cancellationToken);
         // Separate fictional departments avoid adding rows to existing submitted demo batches.
         var assetCount = 0;
