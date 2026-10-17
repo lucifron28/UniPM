@@ -29,6 +29,19 @@ public sealed class FoundationEndpointsTests : IClassFixture<FoundationEndpoints
     }
 
     [Fact]
+    public async Task Api_info_route_returns_api_information_without_a_packaged_frontend()
+    {
+        var response = await _client.GetAsync("/api/info");
+
+        response.EnsureSuccessStatusCode();
+        var payload = await response.Content.ReadFromJsonAsync<ApiInformation>();
+
+        Assert.NotNull(payload);
+        Assert.Equal("UniPM API", payload.Name);
+        Assert.Equal("running", payload.Status);
+    }
+
+    [Fact]
     public async Task Liveness_returns_ok_without_database()
     {
         var response = await _client.GetAsync("/health/live");

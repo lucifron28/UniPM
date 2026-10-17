@@ -559,7 +559,8 @@ public sealed class AuthEndpointsTests
                     ["Jwt:Issuer"] = Issuer,
                     ["Jwt:Audience"] = Audience,
                     ["Jwt:SigningKey"] = signingKey,
-                    ["Jwt:AccessTokenMinutes"] = "60"
+                    ["Jwt:AccessTokenMinutes"] = "60",
+                    ["UNIPM_WEB_ORIGIN"] = "https://staging.unipm.example"
                 }));
         }
     }
