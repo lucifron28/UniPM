@@ -284,7 +284,13 @@ compatibility, but no Department Head account is created.
 
 Expected success is `UNIPM_STAGING_DEMO_VERIFIED`, four active accounts with
 one intended role each, 25 assets, 105 schedules, 77 inspection rows, 42 forms,
-and 29 acknowledgements. All are fictional. Existing synthetic signatures are
+and 29 acknowledgements. Campus facility names are publicly documented; equipment,
+placements and maintenance records are synthetic. See the
+[source-to-seed reference](mseuf-campus-staging-seed.md) for verified names,
+inventory examples, identifier conventions and existing-local-data limitations.
+The focused local seed and staging-guard result is recorded in
+[TEST-092](../evidence/test-runs/TEST-092-mseuf-campus-staging-seed.md).
+Existing synthetic signatures are
 placeholder images, not real signatures or inspection photos. The data covers
 pending work, Draft, Submitted, Acknowledged, on-time/late and operational/
 non-operational examples, and the four CPMP categories. It does not establish
