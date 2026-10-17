@@ -15,6 +15,9 @@ internal sealed class DevelopmentUserSeeder(
     IConfiguration configuration,
     IHostEnvironment environment)
 {
+    private const string SkipDepartmentHeadAccountSetting = "UNIPM_DEV_SKIP_DEPARTMENT_HEAD_ACCOUNT";
+    private const string DepartmentHeadEmail = "departmenthead@unipm.local";
+
     private static readonly DevelopmentUserDefinition[] Users =
     [
         new("admin@unipm.local", "UniPM Administrator", AuthRoleCatalog.Admin),
@@ -39,6 +42,15 @@ internal sealed class DevelopmentUserSeeder(
                 "UNIPM_DEV_USER_PASSWORD must be configured for Development user seeding.");
         }
 
+        var skipDepartmentHeadSetting = configuration[SkipDepartmentHeadAccountSetting];
+        var skipDepartmentHeadAccount = false;
+        if (skipDepartmentHeadSetting is not null
+            && !bool.TryParse(skipDepartmentHeadSetting, out skipDepartmentHeadAccount))
+        {
+            throw new InvalidOperationException(
+                $"{SkipDepartmentHeadAccountSetting} must be true or false.");
+        }
+
         var rolesCreated = 0;
         foreach (var roleName in AuthRoleCatalog.Values)
         {
@@ -56,7 +68,9 @@ internal sealed class DevelopmentUserSeeder(
         var usersCreated = 0;
         var assignmentsRepaired = 0;
         var usersReactivated = 0;
-        foreach (var definition in Users)
+        foreach (var definition in Users.Where(user =>
+                     !skipDepartmentHeadAccount
+                     || !string.Equals(user.Email, DepartmentHeadEmail, StringComparison.OrdinalIgnoreCase)))
         {
             var user = await userManager.FindByEmailAsync(definition.Email);
             if (user is null)
