@@ -55,13 +55,16 @@ Provisioning and any later deployment require separate operator authorization.
 The SQL logical server and database identified for staging are expected to
 exist already. The storage account name has not been provided; use only the
 account confirmed by the owner. Do not substitute an assumed account name.
+On October 17, 2026, the owner confirmed creating `inspection-photos`.
+Container existence is owner-reported; anonymous-access settings and managed
+identity permissions have not been independently verified.
 
 Set `HTTPS Only` for the App Service and configure its managed identity. Grant
 that identity `Storage Blob Data Contributor` access scoped to the existing
 `inspection-photos` container. Use account scope only if container scope cannot
 be configured and the owner explicitly accepts the wider permission.
-The container is fixed by the application. Confirm it exists in the portal;
-create it there only if absent and separately authorized. The application
+The container is fixed by the application. Verify its private access settings
+in the portal. The application
 selects Azure Blob storage only when
 `InspectionPhotoEvidence__StorageProvider=AzureBlob` and the configured
 `InspectionPhotoEvidence__BlobServiceUri` is the HTTPS account-root URI. It
