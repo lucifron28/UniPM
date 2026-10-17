@@ -435,15 +435,17 @@ test('demonstrates the submitted PM batch acknowledgement review workflow', asyn
     .locator('..')
   await expect(
     acknowledgementCard.getByText(
-      /For the whole PM batch, acknowledgement records receipt\/noting/,
+      /This records the department head's receipt and signatory details\./,
     ),
   ).toBeVisible()
   await expect(
-    acknowledgementCard.getByText(/It is not personal witnessing\./),
+    acknowledgementCard.getByText(
+      /It locks the form and makes its inspection rows eligible for official history\./,
+    ),
   ).toBeVisible()
   await expect(
     acknowledgementCard.getByText(
-      /It does not approve corrective work, funding, or an RMRF\./,
+      /It does not approve corrective work or create an RMRF\./,
     ),
   ).toBeVisible()
   await expect(page.getByText('FE-TEST-001', { exact: true })).toBeVisible()

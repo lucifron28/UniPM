@@ -362,6 +362,11 @@ describe('preventive-maintenance form review', () => {
     expect(screen.getAllByText('Awaiting acknowledgement')).toHaveLength(3)
     expect(screen.getAllByText('Acknowledged')).toHaveLength(3)
     // jsdom includes both responsive lists: three forms rendered twice.
+    expect(
+      screen.getAllByRole('link', {
+        name: 'Fire extinguishers · GSD · Quarter / Q3 / 2026',
+      }),
+    ).toHaveLength(2)
     expect(screen.getAllByText('Main Building / GSD')).toHaveLength(6)
     expect(screen.getAllByText('Inspection rows')).toHaveLength(6)
     expect(screen.queryByText(formId)).not.toBeInTheDocument()
@@ -526,11 +531,23 @@ describe('preventive-maintenance form review', () => {
 
     renderWithProviders(<FormDetail formId={formId} />)
 
-    expect(await screen.findAllByText('WDS-MAIN-001')).toHaveLength(2)
-    expect(screen.getByText('Main Building lobby')).toBeInTheDocument()
-    expect(screen.getByText('Synthetic Inspector')).toBeInTheDocument()
+    expect(await screen.findAllByText('WDS-MAIN-001')).toHaveLength(1)
+    const inspectionRow = screen.getByText('WDS-MAIN-001').closest('article')
+    expect(inspectionRow).toHaveTextContent(/Main Building lobby/)
     expect(screen.getByText('Awaiting acknowledgement')).toBeInTheDocument()
     expect(screen.getByText(/Corrective follow-up pending/)).toBeInTheDocument()
+    const rowDetailsSummary = screen.getByText('Row details')
+    const rowDetails = rowDetailsSummary.closest('details')
+    if (!(rowDetails instanceof HTMLDetailsElement)) {
+      throw new Error('Inspection row details section was not found')
+    }
+    expect(rowDetails).not.toHaveAttribute('open')
+    expect(screen.getByText('Synthetic Inspector')).not.toBeVisible()
+    expect(
+      screen.getByText('Water drinking station work items'),
+    ).not.toBeVisible()
+    fireEvent.click(rowDetailsSummary)
+    expect(screen.getByText('Synthetic Inspector')).toBeVisible()
     expect(screen.getByText('Recommendation')).toBeInTheDocument()
     expect(
       screen.getByText('Water drinking station work items'),
@@ -767,6 +784,11 @@ describe('preventive-maintenance form review', () => {
     renderWithProviders(<FormDetail formId={formId} />)
 
     expect(
+      await screen.findByRole('heading', {
+        name: 'Fire extinguishers · GSD · Quarter / Q3 / 2026',
+      }),
+    ).toBeInTheDocument()
+    expect(
       await screen.findByRole('heading', { name: 'Inspection rows' }),
     ).toBeInTheDocument()
     expect(
@@ -854,21 +876,60 @@ describe('preventive-maintenance form review', () => {
         name: 'Acknowledge submitted form',
       }),
     ).toBeInTheDocument()
-    const acknowledgementCopy = screen.getByText(
-      /Field-work completion and acknowledgement are separate/,
+    expect(
+      screen.getByText(
+        /This records the department head's receipt and signatory details\./,
+      ),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        /locks the form and makes its inspection rows eligible for official history\./,
+      ),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        /It does not approve corrective work or create an RMRF\./,
+      ),
+    ).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Acknowledge form' }))
+    const signatoryNameInput = screen.getByLabelText('Signatory name')
+    const signatoryPositionInput = screen.getByLabelText('Signatory position')
+    expect(signatoryNameInput).toHaveAttribute('aria-invalid', 'true')
+    expect(signatoryNameInput).toHaveAttribute(
+      'aria-describedby',
+      'signatory-name-error',
     )
-    expect(acknowledgementCopy).toHaveTextContent(
-      /For the whole PM batch, acknowledgement records receipt\/noting, locks the form, and makes its inspection rows eligible for official history\./,
+    expect(screen.getByText('Enter the signatory name.')).toBeInTheDocument()
+    expect(signatoryPositionInput).toHaveAttribute('aria-invalid', 'true')
+    expect(signatoryPositionInput).toHaveAttribute(
+      'aria-describedby',
+      'signatory-position-error',
     )
-    expect(acknowledgementCopy).toHaveTextContent(
-      /It does not approve corrective work, funding, or an RMRF\./,
-    )
+    expect(
+      screen.getByText('Enter the signatory position.'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'Capture the department-head signature before continuing.',
+      ),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('dialog', {
+        name: 'Confirm department-head acknowledgement',
+      }),
+    ).not.toBeInTheDocument()
     fireEvent.change(screen.getByLabelText('Signatory name'), {
       target: { value: 'Synthetic Department Head' },
     })
     fireEvent.change(screen.getByLabelText('Signatory position'), {
       target: { value: 'Department Head' },
     })
+    expect(
+      screen.queryByText('Enter the signatory name.'),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('Enter the signatory position.'),
+    ).not.toBeInTheDocument()
     const signatureCanvas = screen.getByLabelText('Signature')
     const bounds = {
       x: 0,
@@ -961,7 +1022,7 @@ describe('preventive-maintenance form review', () => {
         screen.getByRole('dialog', {
           name: 'Confirm department-head acknowledgement',
         }),
-      ).getByText(/does not approve corrective work, funding, or an RMRF/),
+      ).getByText(/does not approve corrective work or create an RMRF/),
     ).toBeInTheDocument()
     fireEvent.click(
       screen.getByRole('button', { name: 'Confirm acknowledgement' }),
@@ -1104,8 +1165,10 @@ describe('preventive-maintenance form review', () => {
       expect(screen.getByLabelText('Timeliness / status')).toHaveValue('Late')
       expect(screen.getByLabelText('Search assets')).toHaveValue('FE-TEST-001')
       expect(
-        screen.getByText('Asset category').parentElement,
-      ).toHaveTextContent('Fire extinguishers')
+        screen.getByRole('heading', {
+          name: 'Fire extinguishers · July 2026',
+        }),
+      ).toBeInTheDocument()
       const scheduledAssetRow = screen.getByRole('row', {
         name: /FE-TEST-001/,
       })

@@ -74,6 +74,14 @@ function FormSummary({
   form: PreventiveMaintenanceForm
   search: FormSearch
 }) {
+  const cycleLabel = form.pmCycle
+    ? formatPmCycle(form.pmCycle)
+    : formatFormPeriod(form) || 'Cycle not recorded'
+  const draftTitle = [
+    formatAssetCategory(form.assetCategory),
+    form.department || 'Department not recorded',
+    cycleLabel,
+  ].join(' · ')
   const detailSearch = {
     returnContext: Object.values(search).some((value) => value !== undefined)
       ? { kind: 'formRegistry' as const, search }
@@ -81,29 +89,22 @@ function FormSummary({
   }
 
   return (
-    <article className="content-card rounded-lg border border-[var(--border-soft)] bg-white p-5 sm:p-6">
-      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+    <article className="content-card rounded-lg border border-[var(--border-soft)] bg-white p-3 sm:px-4">
+      <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-xs font-semibold tracking-[0.08em] text-[var(--text-neutral)] uppercase">
-            Form file number
-          </p>
           <Link
             to="/app/preventive-maintenance-forms/$formId"
             params={{ formId: form.id }}
             search={detailSearch}
-            className="mt-1 inline-block text-lg font-bold break-words text-[var(--primary)] hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
+            className="inline-block font-semibold break-words text-[var(--primary)] hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
           >
-            {form.fileNumber ?? 'Unsubmitted form'}
+            {form.fileNumber ??
+              (form.status === 'Draft' ? draftTitle : 'Unsubmitted form')}
           </Link>
         </div>
-        <div className="flex items-center gap-2 self-start sm:self-auto">
-          <span className="text-xs font-semibold text-[var(--text-neutral)]">
-            Status
-          </span>
-          <FormStatus status={form.status} />
-        </div>
+        <FormStatus status={form.status} />
       </div>
-      <dl className="mt-5 grid gap-x-6 gap-y-5 border-t border-[var(--border-soft)] pt-5 text-sm sm:grid-cols-2 lg:grid-cols-5">
+      <dl className="mt-3 grid gap-x-4 gap-y-2 border-t border-[var(--border-soft)] pt-3 text-sm sm:grid-cols-2 lg:grid-cols-5">
         <div className="min-w-0">
           <dt className="text-xs font-semibold tracking-[0.08em] text-[var(--text-neutral)] uppercase">
             Asset category
@@ -125,9 +126,7 @@ function FormSummary({
           <dt className="text-xs font-semibold tracking-[0.08em] text-[var(--text-neutral)] uppercase">
             Period
           </dt>
-          <dd className="mt-1 text-[var(--text-primary)]">
-            {formatFormPeriod(form)}
-          </dd>
+          <dd className="mt-1 text-[var(--text-primary)]">{cycleLabel}</dd>
         </div>
         <div className="min-w-0">
           <dt className="text-xs font-semibold tracking-[0.08em] text-[var(--text-neutral)] uppercase">
@@ -146,12 +145,12 @@ function FormSummary({
           </dd>
         </div>
       </dl>
-      <div className="mt-5 flex justify-end border-t border-[var(--border-soft)] pt-4">
+      <div className="mt-2 flex justify-end border-t border-[var(--border-soft)] pt-2">
         <Link
           to="/app/preventive-maintenance-forms/$formId"
           params={{ formId: form.id }}
           search={detailSearch}
-          className="inline-flex min-h-10 items-center font-semibold text-[var(--primary)] hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
+          className="inline-flex min-h-8 items-center text-sm font-semibold text-[var(--primary)] hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
         >
           View form details{' '}
           <span aria-hidden="true" className="ml-1">
@@ -218,15 +217,15 @@ function FormRegistryFilters({
       >
         Find forms
       </h2>
-      <Card className="content-card p-5">
+      <Card className="content-card p-3">
         <form
-          className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4"
+          className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4"
           onSubmit={(event) => {
             event.preventDefault()
             apply()
           }}
         >
-          <label className="grid gap-2 text-sm font-semibold text-[var(--text-primary)] md:col-span-2 xl:col-span-4">
+          <label className="grid gap-1 text-sm font-semibold text-[var(--text-primary)] md:col-span-2 xl:col-span-4">
             Search forms
             <Input
               aria-label="Search forms"
@@ -239,7 +238,7 @@ function FormRegistryFilters({
                   search: event.target.value,
                 }))
               }
-              className="min-h-12 text-base"
+              className="min-h-10 text-sm"
             />
           </label>
           <label className="grid gap-1 text-sm font-semibold text-[var(--text-primary)]">
@@ -353,10 +352,16 @@ function FormRegistryFilters({
           >
             Active filters:{' '}
             {[
-              search.status,
-              search.assetCategory,
+              search.status
+                ? formStatusLabel(
+                    search.status as PreventiveMaintenanceForm['status'],
+                  )
+                : undefined,
+              search.assetCategory
+                ? formatAssetCategory(search.assetCategory)
+                : undefined,
               search.department,
-              search.pmCycle,
+              search.pmCycle ? formatPmCycle(search.pmCycle) : undefined,
               search.search,
             ]
               .filter(Boolean)
@@ -535,7 +540,7 @@ export function FormRegistry({ search, onSearchChange }: FormRegistryProps) {
   }
 
   return (
-    <section aria-labelledby="forms-title" className="space-y-6">
+    <section aria-labelledby="forms-title" className="space-y-4">
       <PageHeading
         id="forms-title"
         eyebrow="Preventive maintenance"

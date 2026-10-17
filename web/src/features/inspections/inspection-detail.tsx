@@ -144,12 +144,12 @@ function InspectionPhotoEvidencePanel({
                 type="button"
                 aria-label="Open inspection photo preview"
                 onClick={() => setShowPreview(true)}
-                className="overflow-hidden rounded-md border border-[var(--border-soft)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
+                className="flex max-h-40 max-w-64 items-center justify-center overflow-hidden rounded-md border border-[var(--border-soft)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
               >
                 <img
                   src={photoUrl}
                   alt="Inspection photo thumbnail"
-                  className="h-32 w-32 object-cover"
+                  className="block h-auto max-h-40 w-auto max-w-64 object-contain"
                 />
               </button>
               <p className="text-sm text-[var(--text-secondary)]">
@@ -399,10 +399,6 @@ export function InspectionDetail({
         <DetailItem
           label="Due date"
           value={formatPmCycleDueDate(schedule.data?.pmCycle)}
-        />
-        <DetailItem
-          label="Actual inspection date"
-          value={formatInspectionDate(record.dateInspected)}
         />
         <DetailItem
           label="Recorded operational result"
