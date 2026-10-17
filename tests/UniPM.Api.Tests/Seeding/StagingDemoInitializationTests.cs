@@ -16,7 +16,7 @@ using UniPM.Api.Models;
 
 namespace UniPM.Api.Tests;
 
-public sealed class StagingDemoInitializationTests
+public sealed class StagingDemoInitializationTests(Xunit.Abstractions.ITestOutputHelper output)
 {
     private static Dictionary<string, string?> Credentials(bool shared = false)
     {
@@ -70,7 +70,7 @@ public sealed class StagingDemoInitializationTests
     public Task Explicit_shared_mode_seeds_only_four_accounts_and_rejects_reinitialization() =>
         VerifyLocalSqlAsync(true);
 
-    private static async Task VerifyLocalSqlAsync(bool shared)
+    private async Task VerifyLocalSqlAsync(bool shared)
     {
         var baseConnection = new SqlConnectionStringBuilder(
             Environment.GetEnvironmentVariable("UNIPM_SQLSERVER2019_TEST_CONNECTION"));
@@ -158,6 +158,7 @@ public sealed class StagingDemoInitializationTests
             context.Assets.Remove(partialAsset);
             await context.SaveChangesAsync();
             Assert.Equal(new DevelopmentDemoSeedResult(25, 105, 77, 42, 29), await demoSeeder.SeedAsync());
+            output.WriteLine("CAMPUS_SEED_ASSETS=" + await CampusSeedAssertions.VerifyAsync(context));
             await Assert.ThrowsAsync<InvalidOperationException>(() => demoSeeder.SeedAsync());
             await Assert.ThrowsAsync<InvalidOperationException>(() => demoSeeder.ResetAsync());
             Assert.Equal(25, await context.Assets.CountAsync());

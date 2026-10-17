@@ -62,7 +62,7 @@ internal sealed class DevelopmentDemoSeeder(
             Id = DevelopmentDemoCatalog.AcknowledgementId,
             FormId = acknowledgedForm.Id,
             SignatoryName = "Dr. Elena Mercado",
-            SignatoryPosition = "Fictional Department Head",
+            SignatoryPosition = "Department representative",
             SignatureData = SignatureBase64,
             SignatureContentType = "image/png",
             SignatureChecksum = Convert.ToHexString(SHA256.HashData(signatureBytes)),
@@ -166,9 +166,9 @@ internal sealed class DevelopmentDemoSeeder(
         return new PreventiveMaintenanceForm
         {
             Id = DevelopmentDemoCatalog.FormIds[0],
-            FileNumber = "PM-2026-DEMO-0801",
+            FileNumber = "PM-2026-LIB-FE-08",
             AssetCategory = "fire-extinguisher",
-            Building = "University Library",
+            Building = "University Library Complex",
             Department = "Library",
             PmCycle = "2026-08",
             PeriodType = "Quarter",
@@ -190,10 +190,10 @@ internal sealed class DevelopmentDemoSeeder(
         return new PreventiveMaintenanceForm
         {
             Id = DevelopmentDemoCatalog.FormIds[1],
-            FileNumber = "PM-2026-DEMO-0601",
+            FileNumber = "PM-2026-OSAS-EL-06",
             AssetCategory = "emergency-light",
             Building = "Administration Building",
-            Department = "Student Affairs Office",
+            Department = "Office of Student Affairs and Services",
             PmCycle = "2026-06",
             PeriodType = "Quarter",
             Quarter = "Q2",
@@ -226,9 +226,9 @@ internal sealed class DevelopmentDemoSeeder(
         {
             "Pressure gauge below the green operating range.",
             "Safety pin seal is worn and should be replaced.",
-            "Mounting bracket is loose near the archives room entrance.",
-            "Emergency light passed the simulated power interruption test.",
-            "Battery duration was below the expected inspection interval."
+            "Mounting bracket is loose in the library corridor.",
+            "Battery backup remained illuminated during the functional test.",
+            "Reduced battery duration observed during the functional test."
         };
         var recommendations = new[]
         {
@@ -328,9 +328,9 @@ internal sealed class DevelopmentDemoSeeder(
         var formIds = DevelopmentDemoCatalog.FormIds.ToHashSet();
         var fileNumbers = new[]
         {
-            "PM-2026-DEMO-0801",
-            "PM-2026-DEMO-0601",
-            "PM-2026-DEMO-0701"
+            "PM-2026-LIB-FE-08",
+            "PM-2026-OSAS-EL-06",
+            "PM-2026-OSAS-EL-07"
         };
         var formConflicts = await context.PreventiveMaintenanceForms
             .AsNoTracking()
@@ -373,9 +373,9 @@ internal sealed class DevelopmentDemoSeeder(
         var formIdentities = new Dictionary<Guid, DemoFormIdentity>
         {
             [DevelopmentDemoCatalog.FormIds[0]] = new(
-                "fire-extinguisher", "University Library", "Library", "2026-08", "PM-2026-DEMO-0801"),
+                "fire-extinguisher", "University Library Complex", "Library", "2026-08", "PM-2026-LIB-FE-08"),
             [DevelopmentDemoCatalog.FormIds[1]] = new(
-                "emergency-light", "Administration Building", "Student Affairs Office", "2026-06", "PM-2026-DEMO-0601")
+                "emergency-light", "Administration Building", "Office of Student Affairs and Services", "2026-06", "PM-2026-OSAS-EL-06")
         };
         var formFileNumbers = formIdentities.Values
             .Where(form => form.FileNumber is not null)
@@ -383,7 +383,7 @@ internal sealed class DevelopmentDemoSeeder(
                 StringComparer.Ordinal);
         foreach (var form in cpmp.Forms)
         {
-            var building = form.Value.Department == "Demo CCMS" ? "CCMS Building" : "University Library";
+            var building = form.Value.Department == "CNAHS" ? "CNAHS Building" : "University Gymnasium";
             var fileNumber = cpmp.FormFileNumbersById[form.Key];
             formIdentities.Add(form.Key, new(
                 form.Value.AssetCategory,

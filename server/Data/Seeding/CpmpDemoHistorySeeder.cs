@@ -16,6 +16,8 @@ internal static class CpmpDemoHistorySeeder
     private const string Signature = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl2lD8AAAAASUVORK5CYII=";
     private static readonly string[] Categories =
         ["fire-extinguisher", "fire-alarm", "emergency-light", "water-drinking-station"];
+    // Immutable hash inputs preserve all previously assigned record IDs.
+    // These keys are never persisted as display labels.
     private static readonly string[] Departments = ["Demo CCMS", "Demo Library"];
 
     internal static async Task<DevelopmentDemoSeedResult> SeedAsync(
@@ -25,7 +27,7 @@ internal static class CpmpDemoHistorySeeder
         await ValidateExistingFixtureRowsAsync(context, cancellationToken);
         var supervisorId = await context.Users.Where(user => user.Email == supervisorEmail)
             .Select(user => (Guid?)user.Id).SingleOrDefaultAsync(cancellationToken);
-        // Separate fictional departments avoid adding rows to existing submitted demo batches.
+        // Separate campus groups avoid colliding with baseline CCMS and Library batches.
         var assetCount = 0;
         var scheduleCount = 0;
         var inspectionCount = 0;
@@ -40,7 +42,7 @@ internal static class CpmpDemoHistorySeeder
             for (var index = 1; index <= 2; index++)
             {
                 var code = AssetCodeFor(department, prefix, index);
-                var id = Id(code);
+                var id = AssetIdFor(department, prefix, index);
                 var asset = await context.Assets.SingleOrDefaultAsync(row => row.Id == id, cancellationToken);
                 if (asset is null)
                 {
@@ -48,9 +50,9 @@ internal static class CpmpDemoHistorySeeder
                         throw new InvalidOperationException("CPMP demo code conflicts with an unrelated asset.");
                     asset = new Asset
                     {
-                        Id = id, AssetCode = code, AssetCategory = category, Department = department,
-                        Building = department == "Demo CCMS" ? "CCMS Building" : "University Library",
-                        Location = $"Fictional demo area {index}", Status = "Active",
+                        Id = id, AssetCode = code, AssetCategory = category, Department = DepartmentNameFor(department),
+                        Building = department == "Demo CCMS" ? "CNAHS Building" : "University Gymnasium",
+                        Location = LocationFor(category, index), Status = "Active",
                         QrCodeValue = AssetQrCodeValue.Create(category, id),
                         CreatedAt = At(2025, 1, 1), UpdatedAt = At(2025, 1, 1)
                     };
@@ -83,7 +85,7 @@ internal static class CpmpDemoHistorySeeder
                     {
                         form = new PreventiveMaintenanceForm
                         {
-                            Id = formId, AssetCategory = category, Department = department,
+                            Id = formId, AssetCategory = category, Department = DepartmentNameFor(department),
                             Building = assets[0].Building, PmCycle = cycle, PeriodType = "Quarter",
                             Quarter = $"Q{(month - 1) / 3 + 1}", Year = year,
                             AcademicYear = $"{year}-{year + 1}", Status = status,
@@ -131,8 +133,8 @@ internal static class CpmpDemoHistorySeeder
                             PreventiveMaintenanceFormId = form!.Id, InspectorUserId = inspectorId,
                             StartedAt = completion.AddMinutes(-30), DateInspected = completion.AddMinutes(-30),
                             CompletedAt = completion, IsOperational = index == 0,
-                            Remarks = index == 0 ? "Fictional routine check: operational." : "Fictional inspection: non-operational; GSD review required.",
-                            ActionsRecommendations = index == 0 ? null : "Prepare a corrective-action handoff for human review.",
+                            Remarks = RemarksFor(category, index == 0),
+                            ActionsRecommendations = index == 0 ? null : RecommendationFor(category),
                             CreatedAt = completion.AddMinutes(-30), UpdatedAt = completion
                         });
                     }
@@ -156,7 +158,8 @@ internal static class CpmpDemoHistorySeeder
                             context.PreventiveMaintenanceAcknowledgements.Add(new PreventiveMaintenanceAcknowledgement
                             {
                                 Id = Id($"ack:{key}"), FormId = form.Id,
-                                SignatoryName = "Fictional Department Representative", SignatoryPosition = "Demo signatory",
+                                SignatoryName = department == "Demo CCMS" ? "Adrian M. Reyes" : "Marina L. Santos",
+                                SignatoryPosition = "Department representative",
                                 CapturedByUserId = inspectorId, AcknowledgedAt = acknowledgementTime,
                                 SignatureData = Signature, SignatureContentType = "image/png",
                                 SignatureChecksum = Convert.ToHexString(SHA256.HashData(Convert.FromBase64String(Signature)))
@@ -193,7 +196,7 @@ internal static class CpmpDemoHistorySeeder
             for (var index = 1; index <= assetIds.Length; index++)
             {
                 var code = AssetCodeFor(department, prefix, index);
-                var assetId = Id(code);
+                var assetId = AssetIdFor(department, prefix, index);
                 assetIds[index - 1] = assetId;
                 assets.Add(assetId, code);
                 assetQrCodes.Add(assetId, AssetQrCodeValue.Create(category, assetId));
@@ -211,7 +214,7 @@ internal static class CpmpDemoHistorySeeder
                 var formId = future ? (Guid?)null : Id($"form:{key}");
                 if (formId is not null)
                 {
-                    forms.Add(formId.Value, (category, department, cycle));
+                    forms.Add(formId.Value, (category, DepartmentNameFor(department), cycle));
                     formFileNumbersById.Add(
                         formId.Value,
                         draft ? null : FileNumberFor(year, department, prefix, month));
@@ -389,11 +392,53 @@ internal static class CpmpDemoHistorySeeder
         _ => throw new InvalidOperationException($"Unsupported CPMP demo category '{category}'.")
     };
 
+    private static Guid AssetIdFor(string department, string prefix, int index) =>
+        Id($"CPMP-DEMO-{department.ToUpperInvariant().Replace(' ', '-')}-{prefix}-{index:00}");
+
+    private static string DepartmentNameFor(string department) =>
+        department == "Demo CCMS" ? "CNAHS" : "General Services Department";
+
+    private static string DepartmentCodeFor(string department) => department == "Demo CCMS" ? "CNAHS" : "GYM";
+
     private static string AssetCodeFor(string department, string prefix, int index) =>
-        $"CPMP-DEMO-{department.ToUpperInvariant().Replace(' ', '-')}-{prefix}-{index:00}";
+        $"{prefix}-{DepartmentCodeFor(department)}-{100 + index:000}";
 
     private static string FileNumberFor(int year, string department, string prefix, int month) =>
-        $"PM-{year}-CPMP-{department.ToUpperInvariant()}-{prefix}-{month:00}";
+        $"PM-{year}-{DepartmentCodeFor(department)}-{prefix}-{month:00}";
+
+    // Room layouts and equipment placements are synthetic; no floor numbers are asserted.
+    private static string LocationFor(string category, int index) =>
+        (category, index) switch
+        {
+            ("fire-extinguisher", 1) => "Common area entrance",
+            ("fire-extinguisher", _) => "Common corridor",
+            ("fire-alarm", 1) => "Common area",
+            ("fire-alarm", _) => "Entrance approach",
+            ("emergency-light", 1) => "Exit approach",
+            ("emergency-light", _) => "Common corridor",
+            (_, 1) => "Common area",
+            (_, _) => "Entrance approach"
+        };
+
+    private static string RemarksFor(string category, bool operational) => (category, operational) switch
+    {
+        ("fire-extinguisher", true) => "Pressure gauge within operating range; pin, seal and hose intact.",
+        ("fire-extinguisher", false) => "Pressure gauge below operating range; unit requires servicing.",
+        ("fire-alarm", true) => "Alarm activation test completed; audible signal and indicator responded.",
+        ("fire-alarm", false) => "Audible alarm failed to activate during the functional test.",
+        ("emergency-light", true) => "Lamp remained illuminated during the power interruption test.",
+        ("emergency-light", false) => "Lamp failed to remain illuminated during the battery backup test.",
+        (_, true) => "Water dispensing and cooling functions responded; no visible leaks observed.",
+        (_, false) => "Water dispenser failed to cool; leakage observed at the outlet connection."
+    };
+
+    private static string RecommendationFor(string category) => category switch
+    {
+        "fire-extinguisher" => "Refer for cylinder servicing and pressure verification before returning to use.",
+        "fire-alarm" => "Refer for circuit and sounder inspection, then repeat the activation test.",
+        "emergency-light" => "Refer for battery and charging-circuit inspection, then repeat the backup test.",
+        _ => "Refer for cooling-system and outlet repair, then verify dispensing and leak-free operation."
+    };
 
     private static DateTimeOffset At(int year, int month, int day) => new(year, month, day, 10, 0, 0, Manila);
 }
