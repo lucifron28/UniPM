@@ -26,7 +26,9 @@ an empty Vite environment directory and the same-origin API base `/`, then
 publishes the API and copies the frontend into the publish root. It rejects
 unexpected `VITE_*` process variables, source maps, local API URLs, development
 settings, and environment or user-secret files. It does not read or print `.env`
-values. The recursive cleanup paths are constrained to the generated package
+values. It installs frontend dependencies in an isolated copy of committed
+web source, so a running local Vite server cannot lock that install. The
+recursive cleanup paths are constrained to the generated package
 directory.
 
 The resulting files are under
@@ -48,6 +50,17 @@ The API information endpoint is `GET /api/info`. In a package, `GET /` serves
 the React application. Unknown `/api`, health, metrics, OpenAPI, Swagger, and
 asset-file paths do not fall through to the SPA. API calls use the app's own
 origin, and the existing `/api/v1` contracts are unchanged.
+
+The locally verified candidate starts from
+`ac62139af203ad06b6b1a712426d8558d73982d8` and was packaged at
+`c51e673691dca541530886bfe0139150848db80b`. Its ZIP checksum is
+`0d3b8bf582e24b404c5f798cc21d04f3d34795bb1d040526b4c9738ee38ffa33`.
+See [TEST-087](../evidence/test-runs/TEST-087-azure-staging-package-verification.md)
+for the actual ZIP smoke and
+[TEST-088](../evidence/test-runs/TEST-088-azure-staging-browser-followup.md)
+for the passing browser follow-up. Later evidence commits are not a new local
+build. A CI package has its own source commit and checksum; verify that
+manifest rather than assuming the bytes match the Windows artifact.
 
 ## Configure the existing staging resources
 
