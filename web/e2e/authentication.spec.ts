@@ -132,12 +132,17 @@ test('successful login opens the dashboard and displays returned identity', asyn
   await expect(
     page.getByRole('heading', { name: 'Preventive Maintenance Dashboard' }),
   ).toBeVisible()
-  const header = page.locator('.app-page-header')
+  const accountMenu = page.locator('.app-sidebar details')
+  await accountMenu.getByLabel('Account menu').click()
+  const accountDetails = accountMenu.locator(':scope > div')
   await expect(
-    header.locator('summary').getByText('Fictional Inspector'),
+    accountDetails.getByText(fictionalSession.user.displayName, {
+      exact: true,
+    }),
   ).toBeVisible()
-  await header.getByLabel('Account menu').click()
-  await expect(header.getByText(fictionalCredentials.email)).toBeVisible()
+  await expect(
+    accountDetails.getByText(fictionalSession.user.email, { exact: true }),
+  ).toBeVisible()
 })
 
 test('direct protected navigation restores through the refresh cookie contract', async ({
@@ -154,8 +159,16 @@ test('direct protected navigation restores through the refresh cookie contract',
   await page.goto('/app/dashboard')
 
   await expect(page).toHaveURL(/\/app\/dashboard$/)
+  const accountMenu = page.locator('.app-sidebar details')
+  await accountMenu.getByLabel('Account menu').click()
+  const accountDetails = accountMenu.locator(':scope > div')
   await expect(
-    page.locator('.app-page-header summary').getByText('Fictional Inspector'),
+    accountDetails.getByText(fictionalSession.user.displayName, {
+      exact: true,
+    }),
+  ).toBeVisible()
+  await expect(
+    accountDetails.getByText(fictionalSession.user.email, { exact: true }),
   ).toBeVisible()
 })
 

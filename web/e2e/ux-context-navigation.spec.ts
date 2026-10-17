@@ -660,8 +660,14 @@ test('returns from submitted batch inspection and form detail to the exact revie
       '/review?department=GSD&assetCategory=fire-extinguisher&year=2026&pmCycle=2026-08&condition=NonOperational&timeliness=OnTime&search=FE-001',
   )
   await expect(
-    page.getByRole('heading', { name: 'Review before acknowledgement' }),
+    page.locator('.page-heading-host').getByRole('heading', {
+      name: 'Review before acknowledgement',
+      level: 1,
+    }),
   ).toBeVisible()
+  await expect(
+    page.getByRole('heading', { name: 'Review before acknowledgement' }),
+  ).toHaveCount(1)
   await page.getByRole('link', { name: 'View inspection detail' }).click()
   await expect(
     page.getByRole('link', { name: 'Back to batch review' }),
