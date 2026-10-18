@@ -92,10 +92,6 @@ export function ScheduleAssignmentQueue({
   )
 
   useEffect(() => {
-    setSelectedBatch(null)
-  }, [assignmentScopeKey])
-
-  useEffect(() => {
     if (!search.pmCycle || !selectedCategory || options.isPending) return
     const month = Number(search.pmCycle.slice(5, 7))
     if (selectedCategory.scheduledMonths.includes(month)) return
@@ -153,13 +149,15 @@ export function ScheduleAssignmentQueue({
     0,
   )
 
-  const updateFilters = (patch: Partial<ScheduleSearch>) =>
+  const updateFilters = (patch: Partial<ScheduleSearch>) => {
+    setSelectedBatch(null)
     onSearchChange({
       ...search,
       ...patch,
       view: 'assignments',
       page: undefined,
     })
+  }
 
   return (
     <section
