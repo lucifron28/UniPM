@@ -443,21 +443,27 @@ export function ScheduleAssignmentQueue({
                           ? 'Assign Supervisor'
                           : 'Assign Inspector'}
                     </Button>
-                    <Button asChild variant="secondary">
-                      <Link
-                        to="/app/schedules"
-                        search={{
-                          view: 'history',
-                          year: selectedYear,
-                          department: batch.department,
-                          assetCategory: batch.assetCategory,
-                          pmCycle: batch.pmCycle,
-                          page: 1,
-                        }}
-                      >
+                    {assignmentsUnavailable ? (
+                      <Button variant="secondary" disabled>
                         View schedules in batch
-                      </Link>
-                    </Button>
+                      </Button>
+                    ) : (
+                      <Button asChild variant="secondary">
+                        <Link
+                          to="/app/schedules"
+                          search={{
+                            view: 'history',
+                            year: selectedYear,
+                            department: batch.department,
+                            assetCategory: batch.assetCategory,
+                            pmCycle: batch.pmCycle,
+                            page: 1,
+                          }}
+                        >
+                          View schedules in batch
+                        </Link>
+                      </Button>
+                    )}
                   </div>
                 </div>
 

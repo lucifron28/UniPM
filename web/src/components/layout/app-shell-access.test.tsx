@@ -494,6 +494,9 @@ describe('app shell role access and layout', () => {
     expect(
       await screen.findByText(/1 batch · 2 schedules in view/),
     ).toBeVisible()
+    expect(
+      screen.getByRole('link', { name: 'View schedules in batch' }),
+    ).toBeVisible()
     fireEvent.click(screen.getByRole('button', { name: 'Assign Supervisor' }))
     expect(
       await screen.findByRole('heading', { name: 'Supervisor assignment' }),
@@ -512,6 +515,12 @@ describe('app shell role access and layout', () => {
     ).toBeVisible()
     expect(
       screen.getByRole('button', { name: 'Assign Supervisor' }),
+    ).toBeDisabled()
+    expect(
+      screen.queryByRole('link', { name: 'View schedules in batch' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'View schedules in batch' }),
     ).toBeDisabled()
     expect(
       screen.queryByRole('heading', { name: 'Supervisor assignment' }),
