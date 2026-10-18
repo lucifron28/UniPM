@@ -41,7 +41,20 @@ export function ScheduleAssignmentQueue({
   const currentUser = useCurrentUser()
   const currentYear = getCurrentManilaYear()
   const selectedYear = search.year ?? currentYear
-  const [selectedBatchId, setSelectedBatchId] = useState<string | null>(null)
+  const assignmentScopeKey = [
+    role,
+    selectedYear,
+    search.assetCategory ?? '',
+    search.department ?? '',
+    search.pmCycle ?? '',
+    search.assignmentFilter ?? '',
+  ].join('|')
+  const [selectedBatch, setSelectedBatch] = useState<{
+    id: string
+    scopeKey: string
+  } | null>(null)
+  const selectedBatchId =
+    selectedBatch?.scopeKey === assignmentScopeKey ? selectedBatch.id : null
   const onlyNeedsSupervisor =
     role === 'GSD' && search.assignmentFilter === 'needs-supervisor'
   const onlyNeedsInspector =
@@ -56,6 +69,11 @@ export function ScheduleAssignmentQueue({
     ...(search.department ? { department: search.department } : {}),
     ...(search.pmCycle ? { pmCycle: search.pmCycle } : {}),
   })
+  const assignmentsUnavailable =
+    scheduleBatches.isPlaceholderData || scheduleBatches.isFetching
+  const assignmentRefreshMessage = scheduleBatches.isPlaceholderData
+    ? 'Filters changed. Previous batch results are shown while the new results load; assignment is temporarily unavailable.'
+    : 'Schedule batches are refreshing; assignment is temporarily unavailable.'
   const categories = options.data?.categories ?? []
   const selectedCategory = categories.find(
     (category) => category.code === search.assetCategory,
@@ -72,6 +90,10 @@ export function ScheduleAssignmentQueue({
     () => options.data?.departments ?? [],
     [options.data?.departments],
   )
+
+  useEffect(() => {
+    setSelectedBatch(null)
+  }, [assignmentScopeKey])
 
   useEffect(() => {
     if (!search.pmCycle || !selectedCategory || options.isPending) return
@@ -126,6 +148,10 @@ export function ScheduleAssignmentQueue({
         left.assetCategory.localeCompare(right.assetCategory)
       )
     })
+  const visibleScheduleCount = visibleBatches.reduce(
+    (total, batch) => total + batch.scheduleCount,
+    0,
+  )
 
   const updateFilters = (patch: Partial<ScheduleSearch>) =>
     onSearchChange({
@@ -323,20 +349,38 @@ export function ScheduleAssignmentQueue({
           </Button>
         </Card>
       ) : visibleBatches.length === 0 ? (
-        <Card className="p-5 shadow-none">
-          <h2 className="font-semibold">No matching batches</h2>
-          <p className="mt-1 text-sm text-[var(--text-secondary)]">
-            {role === 'GSD'
-              ? 'No batches need a Supervisor for the selected filters.'
-              : 'No batches assigned to you match the selected filters.'}
-          </p>
-        </Card>
+        <>
+          {scheduleBatches.data && assignmentsUnavailable && (
+            <Card role="status" className="p-3 text-sm shadow-none">
+              {assignmentRefreshMessage}
+            </Card>
+          )}
+          <Card className="p-5 shadow-none">
+            <h2 className="font-semibold">
+              {assignmentsUnavailable
+                ? 'Updating schedule batches'
+                : 'No matching batches'}
+            </h2>
+            <p className="mt-1 text-sm text-[var(--text-secondary)]">
+              {assignmentsUnavailable
+                ? 'The selected batch results are updating. Assignment is temporarily unavailable.'
+                : role === 'GSD'
+                  ? 'No batches need a Supervisor for the selected filters.'
+                  : 'No batches assigned to you match the selected filters.'}
+            </p>
+          </Card>
+        </>
       ) : (
         <div className="space-y-3">
+          {scheduleBatches.data && assignmentsUnavailable && (
+            <Card role="status" className="p-3 text-sm shadow-none">
+              {assignmentRefreshMessage}
+            </Card>
+          )}
           <p className="text-sm text-[var(--text-secondary)]">
             {visibleBatches.length} batch
-            {visibleBatches.length === 1 ? '' : 'es'} ·{' '}
-            {scheduleBatches.data?.totalScheduleCount ?? 0} schedules in view
+            {visibleBatches.length === 1 ? '' : 'es'} · {visibleScheduleCount}{' '}
+            schedules in view
           </p>
           {visibleBatches.map((batch) => {
             const isSelected = selectedBatchId === batch.id
@@ -384,9 +428,15 @@ export function ScheduleAssignmentQueue({
                     <Button
                       type="button"
                       variant={isSelected ? 'secondary' : 'primary'}
-                      disabled={!canAssign && !isSelected}
+                      disabled={
+                        assignmentsUnavailable || (!canAssign && !isSelected)
+                      }
                       onClick={() =>
-                        setSelectedBatchId(isSelected ? null : batch.id)
+                        setSelectedBatch(
+                          isSelected
+                            ? null
+                            : { id: batch.id, scopeKey: assignmentScopeKey },
+                        )
                       }
                     >
                       {isSelected
@@ -464,7 +514,7 @@ export function ScheduleAssignmentQueue({
                     </p>
                   )}
 
-                {isSelected && canAssign && (
+                {isSelected && canAssign && !assignmentsUnavailable && (
                   <ScheduleBatchAssignment
                     key={`${batch.id}-${batch.supervisorUserId ?? ''}-${batch.inspectorUserId ?? ''}`}
                     schedule={batch.representative}
