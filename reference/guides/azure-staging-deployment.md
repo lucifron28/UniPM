@@ -117,10 +117,13 @@ placeholder in the portal; do not commit a completed copy. In particular:
   `Observability__MetricsEnabled=false` for this PMIS validation staging host.
   The PMIS workflows and deterministic PM analytics do not require an AI
   provider.
-- Set `PreventiveMaintenanceScheduleGeneration__WorkerEnabled=false`
-  explicitly. The application defaults this worker to enabled if the setting
-  is omitted. Keep it disabled until the owner approves scheduling effective-date
-  behavior; otherwise startup can add schedules to the seeded baseline.
+- Set `PreventiveMaintenanceScheduleGeneration__WorkerEnabled=true`
+  explicitly. The worker creates missing current and future CPMP cycles for the
+  institutional calendar year when the app starts and checks daily while it
+  runs. It does not backfill missing cycles before the current month unless
+  GSD approves `ScheduleGeneration__EffectiveDate`. With scale-to-zero hosting,
+  the worker waits for the next request to start the app, so it does not run at
+  midnight while the app is stopped.
 
 Use the startup command `dotnet UniPM.Api.dll`. Disable App Service build
 automation with `SCM_DO_BUILD_DURING_DEPLOYMENT=false`, because the ZIP already
