@@ -1013,21 +1013,25 @@ test.describe('PM period dashboard', () => {
       )
     })
 
-    // The dashboard keeps a small link to the dedicated analytics route.
+    // The dashboard keeps structured reports and questions in one workspace.
     await page.setViewportSize({ width: 1440, height: 900 })
     await page.goto(
       '/app/dashboard?assetCategory=fire-extinguisher&year=2026&pmCycle=2026-08',
     )
-    const askPmData = page.getByRole('link', { name: 'Ask about PM data' })
-    await expect(askPmData).toBeVisible()
-    await expect(page.getByRole('link', { name: 'PM Analytics' })).toBeVisible()
+    const askAQuestion = page.getByRole('button', { name: 'Ask a question' })
+    await expect(
+      page.getByRole('button', { name: 'Build a report' }),
+    ).toBeVisible()
+    await expect(askAQuestion).toBeVisible()
     await page.screenshot({
       path: 'test-results/web-ui-polish-dashboard-desktop.png',
     })
-    await askPmData.click()
-    await expect(page).toHaveURL(/\/app\/analytics$/)
+    await askAQuestion.click()
+    await expect(page).toHaveURL(/\/app\/dashboard\?.*view=question/)
     await expect(
-      page.getByRole('heading', { name: 'PM Analytics' }),
+      page.getByRole('heading', {
+        name: 'Preventive Maintenance Dashboard',
+      }),
     ).toBeVisible()
     await expect(
       page.getByRole('heading', { name: 'Ask about PM results' }),

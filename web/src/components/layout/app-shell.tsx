@@ -1,6 +1,5 @@
 import { Link, Outlet, useRouterState } from '@tanstack/react-router'
 import {
-  BarChart3,
   Boxes,
   CalendarDays,
   ChevronDown,
@@ -18,6 +17,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { BrandMark } from '@/components/brand-mark'
 import { PageHeadingHostContext } from '@/components/layout/page-heading-context'
+import { QuickNavigation } from '@/components/layout/quick-navigation'
 import { LogoutButton } from '@/features/auth/logout-button'
 import { useCurrentUser } from '@/features/auth/current-user'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -56,13 +56,13 @@ function fallbackPageHeading(pathname: string) {
   if (section === 'dashboard') {
     return {
       title: 'Preventive Maintenance Dashboard',
-      description: 'Choose the maintenance period you want to review.',
+      description: 'Review preventive maintenance with filters or a question.',
     }
   }
   if (section === 'analytics') {
     return {
-      title: 'PM Analytics',
-      description: 'Review a supported PM measure and its source records.',
+      title: 'Preventive Maintenance Dashboard',
+      description: 'Choose how you want to review PM results.',
     }
   }
   if (section === 'assets') {
@@ -329,7 +329,6 @@ export function AppShell() {
     (currentUser.isSuccess && hasAnyRole(roles, requiredRoles))
   const showSchedules = currentUser.isSuccess && canReadSchedules(roles)
   const showFormReview = currentUser.isSuccess && canReviewForms(roles)
-  const showPmAnalytics = currentUser.isSuccess && roles.includes('GSD')
   const fallbackHeading = fallbackPageHeading(pathname)
   const navigationItems = [
     {
@@ -337,12 +336,6 @@ export function AppShell() {
       label: 'Dashboard',
       icon: LayoutDashboard,
       visible: true,
-    },
-    {
-      to: '/app/analytics',
-      label: 'PM Analytics',
-      icon: BarChart3,
-      visible: showPmAnalytics,
     },
     { to: '/app/assets', label: 'Assets', icon: Boxes, visible: true },
     {
@@ -427,13 +420,7 @@ export function AppShell() {
       resizeObserver?.disconnect()
       window.removeEventListener('resize', updateIndicator)
     }
-  }, [
-    pathname,
-    sidebarCollapsed,
-    showSchedules,
-    showFormReview,
-    showPmAnalytics,
-  ])
+  }, [pathname, sidebarCollapsed, showSchedules, showFormReview])
 
   return (
     <div
@@ -509,6 +496,15 @@ export function AppShell() {
             ref={activeIndicatorRef}
             aria-hidden="true"
             className="sidebar-active-indicator"
+          />
+          <QuickNavigation
+            roles={roles}
+            sidebarCollapsed={sidebarCollapsed}
+            onNavigate={() => {
+              if (!mobileNavigationOpen) return
+              mobileToggleRef.current?.focus()
+              setMobileNavigationOpen(false)
+            }}
           />
           {navigationItems
             .filter((item) => item.visible)

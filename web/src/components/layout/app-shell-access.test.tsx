@@ -215,7 +215,7 @@ describe('app shell role access and layout', () => {
     },
   )
 
-  it('shows PM Analytics to GSD without running a query on page load', async () => {
+  it('opens Ask about PM results from the dashboard without running a query on page load', async () => {
     let operationalRequests = 0
     let analyticsRequests = 0
     server.use(
@@ -238,7 +238,11 @@ describe('app shell role access and layout', () => {
     expect(
       await screen.findByRole('heading', { name: 'Ask about PM results' }),
     ).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'PM Analytics' })).toHaveAttribute(
+    expect(
+      screen.getByRole('button', { name: 'Ask a question' }),
+    ).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.queryByRole('link', { name: 'PM Analytics' })).toBeNull()
+    expect(screen.getByRole('link', { name: 'Dashboard' })).toHaveAttribute(
       'aria-current',
       'page',
     )
@@ -283,22 +287,19 @@ describe('app shell role access and layout', () => {
   })
 
   it('allows an assigned operational role alongside Admin', async () => {
-    let scheduleReads = 0
+    let assignmentBatchReads = 0
     server.use(
       http.get('*/api/v1/*', ({ request }) => {
         const pathname = new URL(request.url).pathname
         if (pathname === '/api/v1/auth/me') {
           return HttpResponse.json(currentUser(['Admin', 'GSD']))
         }
-        if (pathname === '/api/v1/schedules/registry') {
-          scheduleReads += 1
-          return HttpResponse.json({
-            items: [],
-            page: 1,
-            pageSize: 25,
-            totalCount: 0,
-            overallCount: 0,
-          })
+        if (pathname === '/api/v1/schedules/assignment-batches') {
+          assignmentBatchReads += 1
+          return HttpResponse.json({ totalScheduleCount: 0, batches: [] })
+        }
+        if (pathname === '/api/v1/schedules') {
+          return HttpResponse.json([])
         }
         if (pathname === '/api/v1/schedules/registry/options') {
           return HttpResponse.json({
@@ -342,17 +343,13 @@ describe('app shell role access and layout', () => {
 
     renderAppRoute('/app/schedules')
 
-    await waitFor(() => expect(scheduleReads).toBeGreaterThan(0))
+    await waitFor(() => expect(assignmentBatchReads).toBeGreaterThan(0))
     expect(screen.queryByRole('heading', { name: 'Access denied' })).toBeNull()
-    await waitFor(() =>
-      expect(
-        document.querySelector('.page-heading-host #schedules-title'),
-      ).not.toBeNull(),
-    )
+    const scheduleHeading = await screen.findByRole('heading', {
+      name: 'PM schedule batches',
+    })
     expect(
-      document
-        .querySelector('.app-workspace')
-        ?.contains(document.querySelector('#schedules-title')),
-    ).toBe(false)
+      document.querySelector('.app-workspace')?.contains(scheduleHeading),
+    ).toBe(true)
   })
 })

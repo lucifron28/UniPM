@@ -122,7 +122,10 @@ test('desktop shell keeps its header and rail still while the workspace scrolls'
   await expect(page.getByRole('link', { name: 'Assets' })).not.toHaveAttribute(
     'title',
   )
-  await expect(page.getByRole('link', { name: 'PM Analytics' })).toBeVisible()
+  await expect(
+    page.getByRole('button', { name: 'Ask a question' }),
+  ).toBeVisible()
+  await expect(page.getByRole('link', { name: 'PM Analytics' })).toHaveCount(0)
   await page.screenshot({
     path: 'test-results/web-ui-polish-sidebar-expanded-default-desktop.png',
   })
@@ -377,4 +380,94 @@ test('mobile navigation opens, closes, and leaves the page usable', async ({
       () => document.documentElement.scrollWidth - window.innerWidth,
     ),
   ).toBeLessThanOrEqual(1)
+})
+
+test('quick search resets its active destination when results are filtered', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await mockSession(page)
+  await page.route('**/api/v1/pm-period-dashboard**', async (route) => {
+    const url = new URL(route.request().url())
+    const body = url.pathname.endsWith('/cycles')
+      ? [
+          {
+            assetCategory: 'fire-extinguisher',
+            year: 2026,
+            cycles: [{ pmCycle: '2026-08', scheduled: 4 }],
+          },
+        ]
+      : {
+          pmCycle: '2026-08',
+          assetCategory: 'fire-extinguisher',
+          department: null,
+          deadline: '2026-08-31T15:59:59.999Z',
+          periodState: 'Closed',
+          complianceMeasurable: true,
+          inspectionResultsAvailable: true,
+          scheduled: 4,
+          inspected: 2,
+          completedOnTime: 1,
+          completedLate: 1,
+          notCompleted: 2,
+          remaining: 0,
+          operational: 1,
+          nonOperational: 1,
+          onTimeCompliancePercent: 25,
+          progressPercent: 50,
+          batches: [],
+          assets: [],
+        }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(body),
+    })
+  })
+  await page.route('**/api/v1/schedules/enrollment-deferrals**', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        page: 1,
+        pageSize: 10,
+        total: 0,
+        pendingCount: 0,
+        reviewedCount: 0,
+        items: [],
+      }),
+    }),
+  )
+  await page.goto(
+    '/app/dashboard?assetCategory=fire-extinguisher&year=2026&pmCycle=2026-08',
+  )
+  await expect(
+    page.getByRole('heading', { name: 'Preventive Maintenance Dashboard' }),
+  ).toBeVisible()
+  await expect(page.getByText('Checking deferred enrollment…')).toHaveCount(0)
+
+  await page.getByRole('button', { name: 'Quick search' }).click()
+  const search = page.getByRole('textbox', { name: 'Search pages and tasks' })
+  await expect(search).toBeFocused()
+  await page.keyboard.press('ArrowDown')
+  await page.keyboard.press('ArrowDown')
+  await search.fill('supervisor')
+
+  const destination = page.getByRole('option', { name: /Assign supervisor/ })
+  await expect(destination).toHaveAttribute('aria-selected', 'true')
+  await expect(search).toHaveAttribute(
+    'aria-activedescendant',
+    'quick-navigation-option-assign-supervisor',
+  )
+  await page.screenshot({
+    path: 'test-results/web-ui-polish-quick-search-desktop.png',
+    animations: 'disabled',
+  })
+
+  await page.keyboard.press('Enter')
+  await expect(page).toHaveURL(/\/app\/schedules\?view=assignments/)
+  await expect(page).toHaveURL(/assignmentFilter=needs-supervisor/)
+  await expect(
+    page.getByRole('heading', { name: 'PM schedule batches' }),
+  ).toBeVisible()
 })

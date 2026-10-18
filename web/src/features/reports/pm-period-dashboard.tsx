@@ -42,6 +42,7 @@ import {
 import './pm-dashboard-print.css'
 
 export type PmPeriodDashboardSearch = {
+  view?: 'question' | undefined
   assetCategory?: string | undefined
   year?: number | undefined
   pmCycle?: string | undefined
@@ -187,6 +188,43 @@ function DashboardMetric({
       icon={icon}
       tone={tone}
     />
+  )
+}
+
+export function DashboardModeSwitch({
+  view,
+  canAskNla,
+  onChange,
+}: {
+  view: 'report' | 'question'
+  canAskNla: boolean
+  onChange: (view: 'report' | 'question') => void
+}) {
+  if (!canAskNla) return null
+
+  return (
+    <div
+      role="group"
+      aria-label="Choose how to review PM results"
+      className="flex w-fit flex-wrap gap-2 rounded-xl border border-[var(--border-soft)] bg-white p-1"
+    >
+      <Button
+        type="button"
+        variant={view === 'report' ? 'primary' : 'secondary'}
+        aria-pressed={view === 'report'}
+        onClick={() => onChange('report')}
+      >
+        Build a report
+      </Button>
+      <Button
+        type="button"
+        variant={view === 'question' ? 'primary' : 'secondary'}
+        aria-pressed={view === 'question'}
+        onClick={() => onChange('question')}
+      >
+        Ask a question
+      </Button>
+    </div>
   )
 }
 
@@ -813,6 +851,18 @@ export function PmPeriodDashboard({
   const canAskNla = Boolean(
     currentUser.data?.id && currentUser.data.roles.includes('GSD'),
   )
+  const changeView = (nextView: 'report' | 'question') =>
+    onSearchChange(
+      { ...search, view: nextView === 'question' ? 'question' : undefined },
+      { replace: true },
+    )
+  const modeSwitch = (
+    <DashboardModeSwitch
+      view="report"
+      canAskNla={canAskNla}
+      onChange={changeView}
+    />
+  )
   const categoryOptions = useMemo(
     () => [...new Set(cycles.map((group) => group.assetCategory))].sort(),
     [cycles],
@@ -940,6 +990,7 @@ export function PmPeriodDashboard({
     return (
       <section aria-labelledby="dashboard-title" className="space-y-4">
         <DashboardHeader />
+        {modeSwitch}
         <DeferredEnrollmentDashboardSummary />
         <CyclesLoading />
       </section>
@@ -950,6 +1001,7 @@ export function PmPeriodDashboard({
     return (
       <section aria-labelledby="dashboard-title" className="space-y-4">
         <DashboardHeader />
+        {modeSwitch}
         <DeferredEnrollmentDashboardSummary />
         <QueryError
           message="PM period options could not be loaded."
@@ -963,6 +1015,7 @@ export function PmPeriodDashboard({
     return (
       <section aria-labelledby="dashboard-title" className="space-y-4">
         <DashboardHeader />
+        {modeSwitch}
         <Card className="p-6 shadow-none">
           <h2 className="text-lg font-semibold text-[var(--text-primary)]">
             No PM periods are scheduled
@@ -979,6 +1032,7 @@ export function PmPeriodDashboard({
   return (
     <section aria-labelledby="dashboard-title" className="space-y-4">
       <DashboardHeader />
+      {modeSwitch}
 
       {showGeneratedReport ? (
         <>
@@ -1010,7 +1064,6 @@ export function PmPeriodDashboard({
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-2 print:hidden">
-                    {canAskNla && <AskPmAnalyticsLink />}
                     <Button
                       type="button"
                       disabled={!dashboardQuery.data}
@@ -1309,7 +1362,6 @@ export function PmPeriodDashboard({
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2 print:hidden">
-                  {canAskNla && <AskPmAnalyticsLink />}
                   {hasValidGeneratedScope && isChangingSelection && (
                     <Button
                       type="button"
@@ -1459,15 +1511,7 @@ export function DashboardHeader() {
       tabIndex={-1}
       eyebrow="UniPM"
       title="Preventive Maintenance Dashboard"
-      description="Choose the maintenance period you want to review."
+      description="Review preventive maintenance with filters or a question."
     />
-  )
-}
-
-function AskPmAnalyticsLink() {
-  return (
-    <Button asChild variant="secondary" className="h-9 min-h-0 px-3">
-      <Link to="/app/analytics">Ask about PM data</Link>
-    </Button>
   )
 }
