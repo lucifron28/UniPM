@@ -400,9 +400,25 @@ test.describe('Asset Registry E2E Specs', () => {
     await expect(page.getByLabel('Building')).toBeVisible()
     await expect(page.getByLabel('Department')).toBeVisible()
     await expect(page.getByText('FE-001').first()).toBeVisible()
+    const assetTable = page.getByRole('region', { name: 'Assets table' })
+    const actionCell = assetTable
+      .getByRole('cell', { name: /View details/ })
+      .first()
+    await expect(actionCell).toBeVisible()
+    const actionBounds = await actionCell.boundingBox()
+    const tableBounds = await assetTable.boundingBox()
+    expect(actionBounds).not.toBeNull()
+    expect(tableBounds).not.toBeNull()
+    expect(actionBounds!.x + actionBounds!.width).toBeLessThanOrEqual(
+      tableBounds!.x + tableBounds!.width + 1,
+    )
+    await expect(
+      assetTable.getByRole('columnheader', { name: 'Updated' }),
+    ).toBeHidden()
     await page.screenshot({
       path: 'test-results/web-ui-polish-assets-desktop.png',
       fullPage: true,
+      animations: 'disabled',
     })
 
     const zoomGroup = page.getByRole('group', {
