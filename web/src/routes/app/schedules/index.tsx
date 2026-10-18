@@ -1,5 +1,7 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
 import { z } from 'zod'
+import { Button } from '@/components/ui/button'
+import { useCurrentUser } from '@/features/auth/current-user'
 import {
   scheduleQuarterCodes,
   scheduleStatusCodes,
@@ -9,6 +11,7 @@ import {
   ScheduleRegistry,
   type ScheduleSearch,
 } from '@/features/schedules/schedule-registry'
+import { ScheduleAssignmentQueue } from '@/features/schedules/schedule-assignment-queue'
 
 const dateTime = z.string().datetime({ offset: true })
 const searchSchema = z
@@ -30,6 +33,10 @@ const searchSchema = z
       .int()
       .min(2000)
       .max(new Date().getUTCFullYear() + 5)
+      .optional(),
+    view: z.enum(['assignments', 'history']).optional(),
+    assignmentFilter: z
+      .enum(['needs-supervisor', 'needs-inspector'])
       .optional(),
     page: z.coerce.number().int().positive().max(10000).optional(),
   })
@@ -54,16 +61,55 @@ export const Route = createFileRoute('/app/schedules/')({
 function SchedulesPage() {
   const search = Route.useSearch()
   const navigate = Route.useNavigate()
+  const currentUser = useCurrentUser()
+  const roles = currentUser.data?.roles ?? []
+  const assignmentRole = roles.includes('GSD')
+    ? 'GSD'
+    : roles.includes('Supervisor')
+      ? 'Supervisor'
+      : null
+  const showAssignments = assignmentRole !== null && search.view !== 'history'
+
   return (
-    <ScheduleRegistry
-      search={search}
-      onSearchChange={(next, options) =>
-        void navigate({
-          search: next,
-          ...(options?.replace ? { replace: true } : {}),
-          ...(options?.preserveScroll ? { resetScroll: false } : {}),
-        })
-      }
-    />
+    <div className="space-y-5">
+      {assignmentRole && (
+        <nav aria-label="Schedule views" className="flex flex-wrap gap-2">
+          <Button asChild variant={showAssignments ? 'secondary' : 'primary'}>
+            <Link
+              to="/app/schedules"
+              search={{ ...search, view: 'history', page: undefined }}
+            >
+              Schedule history
+            </Link>
+          </Button>
+          <Button asChild variant={showAssignments ? 'primary' : 'secondary'}>
+            <Link
+              to="/app/schedules"
+              search={{ ...search, view: 'assignments', page: undefined }}
+            >
+              Planning &amp; assignment
+            </Link>
+          </Button>
+        </nav>
+      )}
+      {showAssignments ? (
+        <ScheduleAssignmentQueue
+          role={assignmentRole === 'Supervisor' ? 'Supervisor' : 'GSD'}
+          search={search}
+          onSearchChange={(next) => void navigate({ search: next })}
+        />
+      ) : (
+        <ScheduleRegistry
+          search={search}
+          onSearchChange={(next, options) =>
+            void navigate({
+              search: next,
+              ...(options?.replace ? { replace: true } : {}),
+              ...(options?.preserveScroll ? { resetScroll: false } : {}),
+            })
+          }
+        />
+      )}
+    </div>
   )
 }

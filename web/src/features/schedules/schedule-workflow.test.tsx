@@ -400,10 +400,9 @@ describe('schedule workflows', () => {
     expect(
       screen.getByRole('link', { name: 'Manage schedules' }),
     ).toHaveAttribute('href', '#schedule-management')
-    expect(screen.getByRole('link', { name: 'Add schedule' })).toHaveAttribute(
-      'href',
-      '/app/schedules/new',
-    )
+    expect(
+      screen.queryByRole('link', { name: 'Add schedule' }),
+    ).not.toBeInTheDocument()
 
     const moreFilters = screen.getByText('More filters', { exact: true })
     expect(moreFilters.tagName).toBe('SUMMARY')
@@ -684,6 +683,15 @@ describe('schedule workflows', () => {
   it('lets GSD assign the Supervisor stage for the full department, category, and cycle batch', async () => {
     let requestBody: unknown
     server.use(
+      http.get(`${base}/schedules/registry`, () =>
+        HttpResponse.json({
+          items: [scheduleRegistryItem(schedule)],
+          page: 1,
+          pageSize: 1,
+          totalCount: 2,
+          overallCount: 2,
+        }),
+      ),
       http.get(`${base}/schedules/${scheduleId}`, () =>
         HttpResponse.json(schedule),
       ),
@@ -708,9 +716,15 @@ describe('schedule workflows', () => {
     renderWithProviders(<ScheduleDetail scheduleId={scheduleId} />)
     const actor = userEvent.setup()
     expect(await screen.findByLabelText('Supervisor (oversight)')).toBeVisible()
-    await actor.selectOptions(
+    expect(
+      await screen.findByText(
+        'This assignment affects 2 schedules in this batch.',
+      ),
+    ).toBeVisible()
+    await actor.clear(screen.getByLabelText('Supervisor (oversight)'))
+    await actor.type(
       screen.getByLabelText('Supervisor (oversight)'),
-      supervisorId,
+      'Fictional Supervisor',
     )
     await actor.click(
       screen.getByRole('button', {
@@ -724,7 +738,7 @@ describe('schedule workflows', () => {
       ),
     )
     expect(requestBody).toEqual({ supervisorUserId: supervisorId })
-    expect(screen.queryByLabelText('Skilled worker (Inspector)')).toBeNull()
+    expect(screen.queryByLabelText('Inspector')).toBeNull()
   })
 
   it('lets only the assigned Supervisor choose an Inspector for the batch', async () => {
@@ -754,10 +768,13 @@ describe('schedule workflows', () => {
     mockReferences(['Supervisor'])
     renderWithProviders(<ScheduleDetail scheduleId={scheduleId} />)
     const actor = userEvent.setup()
-    await actor.selectOptions(
-      await screen.findByLabelText('Skilled worker (Inspector)'),
-      workerId,
-    )
+    expect(
+      await screen.findByText(
+        'This assignment affects 1 schedule in this batch.',
+      ),
+    ).toBeVisible()
+    await actor.clear(await screen.findByLabelText('Inspector'))
+    await actor.type(screen.getByLabelText('Inspector'), 'Fictional Inspector')
     await actor.click(
       screen.getByRole('button', { name: 'Assign Inspector to entire batch' }),
     )
@@ -794,7 +811,7 @@ describe('schedule workflows', () => {
         'Only the Supervisor assigned to this PM batch can assign or update its Inspector.',
       ),
     ).toBeVisible()
-    expect(screen.queryByLabelText('Skilled worker (Inspector)')).toBeNull()
+    expect(screen.queryByLabelText('Inspector')).toBeNull()
     expect(optionsRequested).toBe(false)
   })
 
@@ -819,7 +836,7 @@ describe('schedule workflows', () => {
     renderWithProviders(<ScheduleDetail scheduleId={scheduleId} />)
 
     await screen.findByText('Batch assignment')
-    expect(screen.queryByLabelText('Skilled worker (Inspector)')).toBeNull()
+    expect(screen.queryByLabelText('Inspector')).toBeNull()
     expect(screen.queryByLabelText('Supervisor (oversight)')).toBeNull()
     expect(supervisorOptionsRequested).toBe(false)
     expect(workerOptionsRequested).toBe(false)

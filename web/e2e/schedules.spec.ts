@@ -441,7 +441,10 @@ test.describe('Schedule workflows', () => {
       }),
     )
     await page.setViewportSize({ width: 1280, height: 600 })
-    await page.goto('/app/schedules?status=Due&quarter=Q3&year=2026')
+    await page.goto(
+      '/app/schedules?view=history&status=Due&quarter=Q3&year=2026',
+    )
+    await expect(page).toHaveURL(/view=history/)
     // Longer CPMP cells must preserve the viewport even with enlarged text.
     await page.addStyleTag({
       content: 'tbody td { font-size: 18px; line-height: 28px; }',
@@ -474,7 +477,9 @@ test.describe('Schedule workflows', () => {
       .toBe(scrollTop)
     expectStableRegistryLayout(firstPageLayout, await registryLayout(page))
 
-    await page.goto('/app/schedules?status=Due&quarter=Q3&year=2026&page=2')
+    await page.goto(
+      '/app/schedules?view=history&status=Due&quarter=Q3&year=2026&page=2',
+    )
     await expect(page).toHaveURL(/page=2/)
     await expect(rows).toHaveCount(1)
     await page.reload()
@@ -484,7 +489,9 @@ test.describe('Schedule workflows', () => {
     await expect(page).toHaveURL(/page=2/)
     await expect(rows).toHaveCount(1)
 
-    await page.goto('/app/schedules?status=Due&quarter=Q3&year=2026&page=99')
+    await page.goto(
+      '/app/schedules?view=history&status=Due&quarter=Q3&year=2026&page=99',
+    )
     await expect(page).toHaveURL(/status=Due/)
     await expect(page).toHaveURL(/quarter=Q3/)
     await expect(page).toHaveURL(/year=2026/)
@@ -493,7 +500,9 @@ test.describe('Schedule workflows', () => {
     const overflowStates: unknown[] = []
     for (const width of responsiveScheduleWidths) {
       await page.setViewportSize({ width, height: 667 })
-      await page.goto('/app/schedules?status=Due&quarter=Q3&year=2026&page=2')
+      await page.goto(
+        '/app/schedules?view=history&status=Due&quarter=Q3&year=2026&page=2',
+      )
       await page
         .locator('.app-workspace')
         .evaluate((workspace) => (workspace.scrollTop = 0))
@@ -547,7 +556,9 @@ test.describe('Schedule workflows', () => {
     page,
   }) => {
     await mockScheduleApi(page)
-    await page.goto('/app/schedules?status=Due&quarter=Q3&year=2026')
+    await page.goto(
+      '/app/schedules?view=history&status=Due&quarter=Q3&year=2026',
+    )
     await expect(
       page.getByRole('heading', { name: 'Schedules', exact: true }),
     ).toBeVisible()
@@ -566,6 +577,7 @@ test.describe('Schedule workflows', () => {
     await expect(page).toHaveURL(/quarter=Q3/)
     await expect(page).toHaveURL(/year=2026/)
     await expect(page.getByLabel('Schedule status')).toHaveValue('Due')
+    await expect(page).toHaveURL(/view=history/)
   })
 
   test('keeps the re-laid-out sections and management deep links usable', async ({
@@ -622,12 +634,63 @@ test.describe('Schedule workflows', () => {
         }),
       }),
     )
+    await page.route('**/api/v1/schedules/assignment-batches**', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          totalScheduleCount: 1,
+          batches: [
+            {
+              batchKey: 'GSD|fire-extinguisher|2026-08',
+              department: 'GSD',
+              assetCategory: 'fire-extinguisher',
+              pmCycle: '2026-08',
+              scheduleCount: 1,
+              completedCount: 0,
+              ongoingCount: 0,
+              overdueCount: 0,
+              supervisorState: 'Unassigned',
+              supervisorUserId: null,
+              supervisorDisplayName: null,
+              inspectorState: 'Unassigned',
+              inspectorUserId: null,
+              inspectorDisplayName: null,
+              assignmentLocked: false,
+              supervisorOwnershipIsConsistent: true,
+              representativeSchedule: schedule,
+            },
+          ],
+        }),
+      }),
+    )
 
     await page.setViewportSize({ width: 1440, height: 900 })
     await page.goto('/app/schedules')
     await expect(
       page.getByRole('heading', { name: 'Schedules', exact: true }),
     ).toBeVisible()
+    await expect(
+      page.getByRole('heading', { name: 'PM schedule batches' }),
+    ).toBeVisible()
+    await expect(
+      page.getByRole('heading', { name: 'GSD · Fire extinguishers' }),
+    ).toBeVisible()
+    const viewBatchLink = page.getByRole('link', {
+      name: 'View schedules in batch',
+    })
+    await expect(viewBatchLink).toHaveAttribute('href', /view=history/)
+    await page.screenshot({
+      path: 'test-results/web-ui-polish-schedules-planning-desktop.png',
+      fullPage: true,
+      animations: 'disabled',
+    })
+    await viewBatchLink.click()
+    await expect(page).toHaveURL(/view=history/)
+    await expect(page).toHaveURL(/year=2026/)
+    await expect(page).toHaveURL(/department=GSD/)
+    await expect(page).toHaveURL(/assetCategory=fire-extinguisher/)
+    await expect(page).toHaveURL(/pmCycle=2026-08/)
     const sectionHeadings = await page
       .locator('main h1, main h2')
       .allTextContents()
@@ -662,7 +725,7 @@ test.describe('Schedule workflows', () => {
     ).toBeVisible()
     expect(generationCalls).toBe(1)
 
-    await page.goto('/app/schedules#schedule-enrollment-deferrals')
+    await page.goto('/app/schedules?view=history#schedule-enrollment-deferrals')
     await expect(page.locator('#schedule-enrollment-deferrals')).toBeVisible()
     await expect(
       page.getByRole('heading', { name: 'Deferred asset enrollment' }),
@@ -671,7 +734,7 @@ test.describe('Schedule workflows', () => {
     const overflowStates: unknown[] = []
     for (const width of responsiveScheduleWidths) {
       await page.setViewportSize({ width, height: 667 })
-      await page.goto('/app/schedules#schedule-management')
+      await page.goto('/app/schedules?view=history#schedule-management')
       await expect(
         page.getByRole('heading', { name: 'Schedule management' }),
       ).toBeVisible()
