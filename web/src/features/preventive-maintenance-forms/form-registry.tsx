@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { ApiError } from '@/api/problem-details'
-import type { ListPreventiveMaintenanceFormsParams } from '@/api/generated/models'
+import type {
+  ListPreventiveMaintenanceFormsParams,
+  ScheduleAssigneeOption,
+} from '@/api/generated/models'
 import { assetCategoryCodes } from '@/features/assets/asset-contract'
 import { formatAssetCategory } from '@/features/assets/asset-presentation'
 import { Badge } from '@/components/ui/badge'
@@ -9,10 +12,15 @@ import { PageHeading } from '@/components/layout/page-heading'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import {
+  SearchableOptionInput,
+  type SearchableOption,
+} from '@/components/ui/searchable-option-input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useCurrentUser } from '@/features/auth/current-user'
 import {
   canReviewPreventiveMaintenanceForms,
+  isGsdRole,
   preventiveMaintenanceFormStatusCodes,
   type PreventiveMaintenanceForm,
 } from '@/features/preventive-maintenance-forms/form-contract'
@@ -21,6 +29,7 @@ import { RegistryResultsPanel } from '@/features/shared/registry-results-panel'
 import { RegistryZoomControls } from '@/features/shared/registry-zoom'
 import { useRegistryZoom } from '@/features/shared/registry-zoom-state'
 import { formatPmCycle } from '@/features/schedules/schedule-presentation'
+import { useScheduleSupervisorAssignmentOptions } from '@/features/schedules/schedule-queries'
 import {
   formStatusClass,
   formStatusLabel,
@@ -35,6 +44,7 @@ export type FormSearch = {
   department?: ListPreventiveMaintenanceFormsParams['department'] | undefined
   pmCycle?: ListPreventiveMaintenanceFormsParams['pmCycle'] | undefined
   search?: ListPreventiveMaintenanceFormsParams['search'] | undefined
+  supervisor?: string | undefined
   page?: number | undefined
 }
 
@@ -65,6 +75,70 @@ function FormStatus({
   return (
     <Badge className={formStatusClass(status)}>{formStatusLabel(status)}</Badge>
   )
+}
+
+type SupervisorOption = { id: string; label: string }
+
+function toSupervisorOptions(
+  options: ScheduleAssigneeOption[],
+): SupervisorOption[] {
+  const nameCounts = new Map<string, number>()
+  for (const { displayName } of options) {
+    nameCounts.set(displayName, (nameCounts.get(displayName) ?? 0) + 1)
+  }
+
+  return options
+    .map(({ id, displayName }) => ({
+      id,
+      label:
+        nameCounts.get(displayName) === 1
+          ? displayName
+          : `${displayName} · …${id.slice(-4)}`,
+    }))
+    .sort((left, right) => left.label.localeCompare(right.label))
+}
+
+function currentScheduleAssignmentSummary(
+  form: PreventiveMaintenanceForm,
+  role: 'Inspector' | 'Supervisor',
+) {
+  const assignments = new Map<string, string>()
+  let unavailableCount = 0
+
+  for (const row of form.inspections) {
+    const id =
+      role === 'Supervisor'
+        ? row.currentScheduleSupervisorUserId
+        : row.currentScheduleInspectorUserId
+    const identity =
+      role === 'Supervisor'
+        ? row.currentScheduleSupervisorIdentity
+        : row.currentScheduleInspectorIdentity
+
+    if (id === undefined) {
+      unavailableCount += 1
+    } else if (id === null) {
+      assignments.set('unassigned', 'Unassigned')
+    } else {
+      assignments.set(id, identity?.trim() || `Assigned ${role}`)
+    }
+  }
+
+  const nameCounts = new Map<string, number>()
+  for (const name of assignments.values()) {
+    nameCounts.set(name, (nameCounts.get(name) ?? 0) + 1)
+  }
+  const labels = [...assignments.entries()].map(([id, name]) =>
+    nameCounts.get(name) === 1 || id === 'unassigned'
+      ? name
+      : `${name} · …${id.slice(-4)}`,
+  )
+
+  if (unavailableCount > 0) {
+    labels.push(`${unavailableCount} not recorded`)
+  }
+
+  return labels.length > 0 ? labels.join('; ') : 'Not recorded'
 }
 
 function FormSummary({
@@ -145,6 +219,28 @@ function FormSummary({
           </dd>
         </div>
       </dl>
+      <dl className="mt-3 grid gap-x-4 gap-y-2 border-t border-[var(--border-soft)] pt-3 text-sm sm:grid-cols-2">
+        <div className="min-w-0">
+          <dt className="text-xs font-semibold tracking-[0.08em] text-[var(--text-neutral)] uppercase">
+            Current supervisor assignment
+          </dt>
+          <dd className="mt-1 text-[var(--text-primary)]">
+            {currentScheduleAssignmentSummary(form, 'Supervisor')}
+          </dd>
+        </div>
+        <div className="min-w-0">
+          <dt className="text-xs font-semibold tracking-[0.08em] text-[var(--text-neutral)] uppercase">
+            Current inspector assignment
+          </dt>
+          <dd className="mt-1 text-[var(--text-primary)]">
+            {currentScheduleAssignmentSummary(form, 'Inspector')}
+          </dd>
+        </div>
+      </dl>
+      <p className="mt-2 text-xs text-[var(--text-secondary)]">
+        These are current schedule assignments. They can differ from the person
+        who completed an inspection.
+      </p>
       <div className="mt-2 flex justify-end border-t border-[var(--border-soft)] pt-2">
         <Link
           to="/app/preventive-maintenance-forms/$formId"
@@ -167,6 +263,7 @@ function FormRegistryFilters({
   categories,
   departments,
   cycles,
+  isGsd,
   optionsPending,
   optionsError,
   formsError,
@@ -178,6 +275,7 @@ function FormRegistryFilters({
   categories: string[]
   departments: string[]
   cycles: string[]
+  isGsd: boolean
   optionsPending: boolean
   optionsError: boolean
   formsError: boolean
@@ -191,7 +289,33 @@ function FormRegistryFilters({
     department: search.department,
     pmCycle: search.pmCycle,
     search: search.search,
+    supervisor: search.supervisor,
   }))
+  const [supervisorSearch, setSupervisorSearch] = useState<string | null>(null)
+  const selectedSupervisorId =
+    draft.supervisor && draft.supervisor !== 'unassigned'
+      ? draft.supervisor
+      : undefined
+  const supervisorOptionsQuery = useScheduleSupervisorAssignmentOptions(
+    isGsd,
+    supervisorSearch ?? '',
+    selectedSupervisorId,
+  )
+  const supervisors = useMemo(
+    () => toSupervisorOptions(supervisorOptionsQuery.data?.supervisors ?? []),
+    [supervisorOptionsQuery.data?.supervisors],
+  )
+  const selectedSupervisorLabel =
+    draft.supervisor === 'unassigned'
+      ? 'Unassigned'
+      : supervisors.find(({ id }) => id === draft.supervisor)?.label
+  const supervisorInputValue = supervisorSearch ?? selectedSupervisorLabel ?? ''
+
+  const supervisorPickerOptions: SearchableOption[] = [
+    { value: '', label: 'All supervisors' },
+    { value: 'unassigned', label: 'Unassigned' },
+    ...supervisors.map(({ id, label }) => ({ value: id, label })),
+  ]
   const apply = () =>
     onSearchChange(
       {
@@ -200,12 +324,14 @@ function FormRegistryFilters({
         department: draft.department?.trim() || undefined,
         pmCycle: draft.pmCycle || undefined,
         search: draft.search?.trim() || undefined,
+        supervisor: draft.supervisor || undefined,
         page: 1,
       },
       { preserveScroll: true },
     )
   const clear = () => {
     setDraft({})
+    setSupervisorSearch(null)
     onSearchChange({ page: 1 }, { preserveScroll: true })
   }
 
@@ -331,6 +457,37 @@ function FormRegistryFilters({
               ))}
             </select>
           </label>
+          {isGsd && (
+            <SearchableOptionInput
+              id="supervisor-filter"
+              label="Supervisor filter"
+              value={supervisorInputValue}
+              options={supervisorPickerOptions}
+              placeholder="Type a supervisor name"
+              helperText="Choose a suggestion to filter by account. Use All supervisors or Unassigned when needed."
+              onChange={(value) => {
+                setSupervisorSearch(value)
+                const option = supervisorPickerOptions.find(
+                  (candidate) =>
+                    candidate.label.toLocaleLowerCase() ===
+                    value.trim().toLocaleLowerCase(),
+                )
+                setDraft((current) => ({
+                  ...current,
+                  supervisor: option?.value || undefined,
+                }))
+              }}
+            />
+          )}
+          {isGsd && supervisorOptionsQuery.isError && (
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => void supervisorOptionsQuery.refetch()}
+            >
+              Retry supervisor suggestions
+            </Button>
+          )}
           <div className="flex flex-wrap gap-2 md:col-span-2 xl:col-span-4">
             <Button type="submit">Apply filters</Button>
             <Button type="button" variant="secondary" onClick={clear}>
@@ -345,7 +502,8 @@ function FormRegistryFilters({
           search.assetCategory ||
           search.department ||
           search.pmCycle ||
-          search.search) && (
+          search.search ||
+          search.supervisor) && (
           <p
             className="mt-4 text-sm text-[var(--text-secondary)]"
             aria-live="polite"
@@ -363,6 +521,11 @@ function FormRegistryFilters({
               search.department,
               search.pmCycle ? formatPmCycle(search.pmCycle) : undefined,
               search.search,
+              search.supervisor === 'unassigned'
+                ? 'Unassigned supervisor'
+                : (supervisors.find(({ id }) => id === search.supervisor)
+                    ?.label ??
+                  (search.supervisor ? 'Supervisor assignment' : undefined)),
             ]
               .filter(Boolean)
               .join(' · ')}
@@ -402,6 +565,7 @@ export function FormRegistry({ search, onSearchChange }: FormRegistryProps) {
   const currentUser = useCurrentUser()
   const recordZoom = useRegistryZoom()
   const canReview = canReviewPreventiveMaintenanceForms(currentUser.data?.roles)
+  const canFilterSupervisor = isGsdRole(currentUser.data?.roles)
   const filters = useMemo(
     () => ({
       ...(search.status ? { status: search.status } : {}),
@@ -420,8 +584,18 @@ export function FormRegistry({ search, onSearchChange }: FormRegistryProps) {
   )
   const allForms = usePreventiveMaintenanceForms({}, canReview)
   const forms = usePreventiveMaintenanceForms(filters, canReview)
-  const rows = forms.data ?? emptyForms
-  const optionRows = allForms.data ?? rows
+  const responseRows = forms.data ?? emptyForms
+  const optionRows = allForms.data ?? responseRows
+  const rows = useMemo(() => {
+    if (!search.supervisor) return responseRows
+    return responseRows.filter((form) =>
+      form.inspections.some((row) =>
+        search.supervisor === 'unassigned'
+          ? row.currentScheduleSupervisorUserId === null
+          : row.currentScheduleSupervisorUserId === search.supervisor,
+      ),
+    )
+  }, [responseRows, search.supervisor])
   const categories = useMemo(
     () => [...new Set(optionRows.map((form) => form.assetCategory))].sort(),
     [optionRows],
@@ -554,11 +728,13 @@ export function FormRegistry({ search, onSearchChange }: FormRegistryProps) {
           search.department,
           search.pmCycle,
           search.search,
+          search.supervisor,
         ])}
         search={search}
         categories={categories}
         departments={departments}
         cycles={cycles}
+        isGsd={canFilterSupervisor}
         optionsPending={allForms.isPending}
         optionsError={allForms.isError}
         formsError={forms.isError}
