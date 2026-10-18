@@ -2,11 +2,20 @@
 
 This guide prepares the UniPM web and API for a single-origin Azure App Service
 staging deployment. Package preparation did not deploy the application.
-On October 18, 2026, the owner separately approved and executed all 22
-migrations against the existing Azure SQL staging database. The final schema
-was verified by a read-only follow-up. No demo login was provisioned and no
-App Service was deployed. See
-[TEST-089](../evidence/test-runs/TEST-089-azure-sql-staging-migration.md).
+TEST-089 records the completed 22-migration Azure SQL verification. The owner
+subsequently reported successful initialization of four staging accounts,
+25 assets, 105 schedules, 77 inspections, 42 forms and 29 acknowledgements.
+The deployment preflight did not independently query those counts. Do not run
+the migration or initialization procedures below against this initialized
+database again.
+
+On October 18, 2026, Azure CLI verified .NET 10 Linux support, but the approved
+Japan East B1 plan creation failed because the subscription's B1 quota is zero.
+The subscription is Free Trial with its spending limit on. No App Service plan
+or app was created, and no ZIP was deployed. Nearby-region quota discovery did
+not establish a usable alternative. Do not upgrade the subscription or switch
+tier/region automatically. See
+[TEST-094](../evidence/test-runs/TEST-094-azure-preflight-runtime-security.md).
 
 The intended host is a managed .NET 10 Linux App Service in Japan East. Confirm
 the .NET 10 runtime and the desired App Service plan are available in the
@@ -68,12 +77,14 @@ manifest rather than assuming the bytes match the Windows artifact.
 ## Configure the existing staging resources
 
 Provisioning and any later deployment require separate operator authorization.
-The SQL logical server and database identified for staging are expected to
-exist already. The storage account name has not been provided; use only the
-account confirmed by the owner. Do not substitute an assumed account name.
-On October 17, 2026, the owner confirmed creating `inspection-photos`.
-Container existence is owner-reported; anonymous-access settings and managed
-identity permissions have not been independently verified.
+The SQL logical server and database already exist in Japan East. Azure CLI
+discovered the existing storage account `stunipmstaging` in Japan West and
+verified its `inspection-photos` container has public access `None`. The
+account disables anonymous Blob access, requires HTTPS and has minimum TLS
+1.2. Preserve these resources; do not recreate or relocate them. No app managed
+identity or Blob role assignment has been created or verified yet. Two
+temporary SQL administrator IP rules were still present during discovery;
+review their removal separately before inviting testers.
 
 Set `HTTPS Only` for the App Service and configure its managed identity. Grant
 that identity `Storage Blob Data Contributor` access scoped to the existing
@@ -106,8 +117,10 @@ placeholder in the portal; do not commit a completed copy. In particular:
   `Observability__MetricsEnabled=false` for this PMIS validation staging host.
   The PMIS workflows and deterministic PM analytics do not require an AI
   provider.
-- Keep `PreventiveMaintenanceScheduleGeneration__WorkerEnabled=true` only if
-  the staging owner wants the existing schedule-generation worker active.
+- Set `PreventiveMaintenanceScheduleGeneration__WorkerEnabled=false`
+  explicitly. The application defaults this worker to enabled if the setting
+  is omitted. Keep it disabled until the owner approves scheduling effective-date
+  behavior; otherwise startup can add schedules to the seeded baseline.
 
 Use the startup command `dotnet UniPM.Api.dll`. Disable App Service build
 automation with `SCM_DO_BUILD_DURING_DEPLOYMENT=false`, because the ZIP already
@@ -137,9 +150,10 @@ full-text index and removal of retired maintenance storage were verified.
 This resolves the guard question for the tested target and source, not every
 future Azure database. Historical migrations were unchanged.
 
-The staging database is now migrated and empty. Do not rerun the original
-empty-database migration wrapper. Demo initialization still requires its
-separate authorization and fresh checks against the migrated schema.
+The staging database is migrated and the owner reports demo initialization is
+complete. Do not rerun the original empty-database migration wrapper or the
+initializer. The procedures below remain a reference for separately authorized
+future empty targets, not recovery instructions for this existing database.
 
 Once those preconditions pass and migration execution is separately approved,
 stop the App Service and other writers. Supply the migration connection through
@@ -162,10 +176,10 @@ network changes, and remove temporary administrator firewall rules afterward.
 
 ## Fictional demo initialization, separate approval required
 
-The live database already has all 22 migrations. Do not rerun them. TEST-089
-records the last verified empty state; this preparation task did not reconnect
-to Azure or initialize it. Obtain separate owner authorization before executing
-this procedure. These are demonstration credentials, not institutional accounts.
+The live database already has all 22 migrations and owner-reported seeded data.
+Do not execute this procedure against it. TEST-089 records the earlier empty
+state, not the current population. Keep this procedure only for a separately
+approved fresh target. These are demonstration credentials, not institutional accounts.
 
 Prerequisites:
 
