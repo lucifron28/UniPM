@@ -30,14 +30,18 @@ import {
   reviewScheduleEnrollmentDeferral,
   listScheduleStatuses,
   listScheduleRegistry,
+  listScheduleAssignmentBatches,
   listSchedules,
 } from '@/api/generated/endpoints'
 import type {
+  ListScheduleAssignmentBatchesParams,
   GetScheduleRegistryOptionsParams,
   ListScheduleRegistryParams,
   ListSchedulesParams,
   ListScheduleCoverageReviewParams,
   ListScheduleEnrollmentDeferralsParams,
+  ListScheduleSupervisorAssignmentOptionsParams,
+  ListScheduleWorkerAssignmentOptionsParams,
   ScheduleEnrollmentDeferralReviewRequest,
   ScheduleReferenceResponse,
 } from '@/api/generated/models'
@@ -46,6 +50,7 @@ import {
   parseScheduleRegistryOptions,
   parseScheduleRegistryPage,
   parseScheduleRegistrySummary,
+  parseScheduleAssignmentQueue,
   parseScheduleQuarters,
   parseScheduleStatuses,
   parseSchedule,
@@ -64,12 +69,29 @@ export function useSchedules(filters: ScheduleServerFilters = {}) {
   })
 }
 
-export function useScheduleRegistry(filters: ScheduleRegistryFilters = {}) {
+export function useScheduleAssignmentBatches(
+  filters: ListScheduleAssignmentBatchesParams,
+) {
+  return useQuery({
+    queryKey: [...getListSchedulesQueryKey(), 'assignment-batches', filters],
+    queryFn: ({ signal }) =>
+      listScheduleAssignmentBatches(filters, signal).then(
+        parseScheduleAssignmentQueue,
+      ),
+    placeholderData: (previousData) => previousData,
+  })
+}
+
+export function useScheduleRegistry(
+  filters: ScheduleRegistryFilters = {},
+  enabled = true,
+) {
   return useQuery({
     queryKey: getListScheduleRegistryQueryKey(filters),
     queryFn: ({ signal }) =>
       listScheduleRegistry(filters, signal).then(parseScheduleRegistryPage),
     placeholderData: (previousData) => previousData,
+    enabled,
   })
 }
 
@@ -147,18 +169,38 @@ export function useReviewScheduleEnrollmentDeferral() {
   })
 }
 
-export function useScheduleSupervisorAssignmentOptions(enabled: boolean) {
+export function useScheduleSupervisorAssignmentOptions(
+  enabled: boolean,
+  search = '',
+  selectedUserId?: string,
+) {
+  const params: ListScheduleSupervisorAssignmentOptionsParams = {
+    ...(search.trim() ? { search: search.trim() } : {}),
+    ...(selectedUserId ? { selectedUserId } : {}),
+  }
+
   return useQuery({
-    queryKey: getListScheduleSupervisorAssignmentOptionsQueryKey(),
-    queryFn: ({ signal }) => listScheduleSupervisorAssignmentOptions(signal),
+    queryKey: getListScheduleSupervisorAssignmentOptionsQueryKey(params),
+    queryFn: ({ signal }) =>
+      listScheduleSupervisorAssignmentOptions(params, signal),
     enabled,
   })
 }
 
-export function useScheduleWorkerAssignmentOptions(enabled: boolean) {
+export function useScheduleWorkerAssignmentOptions(
+  enabled: boolean,
+  search = '',
+  selectedUserId?: string,
+) {
+  const params: ListScheduleWorkerAssignmentOptionsParams = {
+    ...(search.trim() ? { search: search.trim() } : {}),
+    ...(selectedUserId ? { selectedUserId } : {}),
+  }
+
   return useQuery({
-    queryKey: getListScheduleWorkerAssignmentOptionsQueryKey(),
-    queryFn: ({ signal }) => listScheduleWorkerAssignmentOptions(signal),
+    queryKey: getListScheduleWorkerAssignmentOptionsQueryKey(params),
+    queryFn: ({ signal }) =>
+      listScheduleWorkerAssignmentOptions(params, signal),
     enabled,
   })
 }
