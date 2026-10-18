@@ -229,13 +229,13 @@ try {
     $sqlLogin = Read-Host 'Azure SQL login'
     $sqlSecret = Read-Host 'Azure SQL password' -AsSecureString
     $connection = [Data.SqlClient.SqlConnectionStringBuilder]::new()
-    $connection.DataSource = 'tcp:sql-unipm-staging.database.windows.net,1433'
-    $connection.InitialCatalog = 'unipm-staging-db'
-    $connection.UserID = $sqlLogin
-    $connection.Password = [Net.NetworkCredential]::new('', $sqlSecret).Password
-    $connection.Encrypt = $true
-    $connection.TrustServerCertificate = $false
-    $connection.ConnectTimeout = 60
+    $connection['Data Source'] = 'tcp:sql-unipm-staging.database.windows.net,1433'
+    $connection['Initial Catalog'] = 'unipm-staging-db'
+    $connection['User ID'] = $sqlLogin
+    $connection['Password'] = [Net.NetworkCredential]::new('', $sqlSecret).Password
+    $connection['Encrypt'] = $true
+    $connection['TrustServerCertificate'] = $false
+    $connection['Connect Timeout'] = 60
     [Environment]::SetEnvironmentVariable('ConnectionStrings__DefaultConnection',
         $connection.ConnectionString, 'Process')
     if ($useSharedDemoPassword) {
@@ -248,8 +248,8 @@ try {
         -ConfirmTarget 'sql-unipm-staging.database.windows.net/unipm-staging-db' `
         -AllowSharedDemoPassword:$useSharedDemoPassword
     # Independent read-only postflight, only after initialization succeeds.
-    [Environment]::SetEnvironmentVariable('SQLCMDPASSWORD', $connection.Password, 'Process')
-    & sqlcmd.exe -S $connection.DataSource -d $connection.InitialCatalog `
+    [Environment]::SetEnvironmentVariable('SQLCMDPASSWORD', $connection['Password'], 'Process')
+    & sqlcmd.exe -S $connection['Data Source'] -d $connection['Initial Catalog'] `
         -U $sqlLogin -N -x -b -l 60 -i database/azure-staging-demo-postflight.sql
     if ($LASTEXITCODE -ne 0) { throw 'Read-only demo postflight failed. Stop for review.' }
 }
