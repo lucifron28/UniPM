@@ -1,0 +1,5 @@
+# The context contains only the verified published app. Docker always sends
+# the Dockerfile and this ignore file, even when these paths are excluded.
+**
+!app/
+!app/**
