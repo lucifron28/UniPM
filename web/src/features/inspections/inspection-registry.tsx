@@ -40,6 +40,10 @@ import {
   getCurrentManilaYear,
 } from '@/features/schedules/schedule-presentation'
 import {
+  quartersForScheduledMonths,
+  scheduleQuarterCodes,
+} from '@/features/schedules/schedule-contract'
+import {
   RegistryLoadingPanel,
   RegistryResultsPanel,
 } from '@/features/shared/registry-results-panel'
@@ -217,7 +221,10 @@ export function InspectionRegistry({
     ...(draft.assetCategory ? { assetCategory: draft.assetCategory } : {}),
     ...(draft.department ? { department: draft.department } : {}),
   })
-  const categories = filterOptions.data?.categories ?? []
+  const categories = useMemo(
+    () => filterOptions.data?.categories ?? [],
+    [filterOptions.data?.categories],
+  )
   const departments = filterOptions.data?.departments ?? EMPTY_FILTER_OPTIONS
   const years = filterOptions.data?.years ?? []
   const summary = useInspectionRegistrySummary()
@@ -299,6 +306,13 @@ export function InspectionRegistry({
   ).sort((left, right) => Number(right) - Number(left))
   const selectedCategory = categories.find(
     (category) => category.code === draft.assetCategory,
+  )
+  const availableQuarters = useMemo<ReadonlySet<string>>(
+    () =>
+      selectedCategory
+        ? quartersForScheduledMonths(selectedCategory.scheduledMonths)
+        : new Set(scheduleQuarterCodes),
+    [selectedCategory],
   )
   const allowedMonths = Array.from(
     { length: 12 },
@@ -383,14 +397,58 @@ export function InspectionRegistry({
   ])
 
   useEffect(() => {
-    if (!draft.pmCycle) return
-    const month = Number(draft.pmCycle.slice(5, 7))
-    if (allowedMonths.includes(month)) return
-    setDraft((current) => ({ ...current, pmCycle: undefined }))
-    setFilterNotice(
-      'The PM month was cleared because it does not match the selected category or quarter.',
+    const invalidQuarter = Boolean(
+      draft.quarter &&
+      selectedCategory &&
+      !availableQuarters.has(draft.quarter),
     )
-  }, [allowedMonths, draft.pmCycle])
+    const invalidPmCycle = Boolean(
+      draft.pmCycle &&
+      !allowedMonths.includes(Number(draft.pmCycle.slice(5, 7))),
+    )
+    if (!invalidQuarter && !invalidPmCycle) return
+    setDraft((current) => ({
+      ...current,
+      ...(invalidQuarter ? { quarter: undefined } : {}),
+      ...(invalidPmCycle ? { pmCycle: undefined } : {}),
+    }))
+    setFilterNotice(
+      invalidQuarter
+        ? 'The quarter and PM month were cleared because the selected category has no scheduled CPMP cycle in that quarter.'
+        : 'The PM month was cleared because it does not match the selected category or quarter.',
+    )
+  }, [
+    allowedMonths,
+    availableQuarters,
+    draft.pmCycle,
+    draft.quarter,
+    selectedCategory,
+  ])
+
+  useEffect(() => {
+    if (!filterOptions.isSuccess || !search.assetCategory || !search.quarter) {
+      return
+    }
+    const appliedCategory = categories.find(
+      (category) => category.code === search.assetCategory,
+    )
+    if (
+      !appliedCategory ||
+      quartersForScheduledMonths(appliedCategory.scheduledMonths).has(
+        search.quarter,
+      )
+    ) {
+      return
+    }
+
+    onSearchChange(
+      { ...search, quarter: undefined, pmCycle: undefined, page: 1 },
+      { replace: true, preserveScroll: true },
+    )
+    setFilterNotice(
+      'The quarter filter was cleared because the selected category has no scheduled CPMP cycle in that quarter.',
+    )
+  }, [categories, filterOptions.isSuccess, onSearchChange, search])
 
   const apply = () => {
     if (!dateRangeIsValid || !pmCycleMatchesPeriod || !draftAssetMatchesFilters)
@@ -667,13 +725,13 @@ export function InspectionRegistry({
         </h2>
         <Card className="content-card p-3">
           <form
-            className="grid grid-cols-1 gap-3 md:grid-cols-3 xl:grid-cols-6"
+            className="grid grid-cols-1 gap-3 md:grid-cols-3"
             onSubmit={(event) => {
               event.preventDefault()
               apply()
             }}
           >
-            <label className="grid min-w-0 gap-1 text-sm font-semibold text-[var(--text-primary)] md:col-span-3 xl:col-span-6">
+            <label className="grid min-w-0 gap-1 text-sm font-semibold text-[var(--text-primary)] md:col-span-3">
               Search inspections
               <Input
                 aria-label="Search inspections"
@@ -828,6 +886,7 @@ export function InspectionRegistry({
               PM calendar quarter
               <select
                 aria-label="PM calendar quarter"
+                aria-describedby="inspection-quarter-hint"
                 value={draft.quarter ?? pmCycleQuarter ?? ''}
                 onChange={(event) => {
                   setDraft((current) => ({
@@ -844,17 +903,31 @@ export function InspectionRegistry({
                 className="min-h-10 w-full min-w-0 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
               >
                 <option value="">All quarters</option>
-                {['Q1', 'Q2', 'Q3', 'Q4'].map((quarter) => (
-                  <option key={quarter} value={quarter}>
-                    {quarter}
+                {scheduleQuarterCodes.map((quarter) => (
+                  <option
+                    key={quarter}
+                    value={quarter}
+                    disabled={!availableQuarters.has(quarter)}
+                  >
+                    {availableQuarters.has(quarter)
+                      ? quarter
+                      : `${quarter} — no scheduled CPMP cycle`}
                   </option>
                 ))}
               </select>
+              <span
+                id="inspection-quarter-hint"
+                className="text-xs font-normal text-[var(--text-secondary)]"
+              >
+                {draft.assetCategory
+                  ? 'Disabled quarters have no scheduled cycle for this category.'
+                  : 'Choose a category to limit quarters to its scheduled PM cycles.'}
+              </span>
             </label>
             <details
               open={moreFiltersOpen}
               onToggle={(event) => setMoreFiltersOpen(event.currentTarget.open)}
-              className="rounded-lg border border-[var(--border-soft)] p-3 md:col-span-3 xl:col-span-6"
+              className="rounded-lg border border-[var(--border-soft)] p-3 md:col-span-3"
             >
               <summary className="cursor-pointer font-semibold text-[var(--text-primary)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--primary)]">
                 More filters
@@ -949,7 +1022,7 @@ export function InspectionRegistry({
                 </fieldset>
               </div>
             </details>
-            <div className="flex flex-wrap items-end gap-2 md:col-span-3 xl:col-span-6">
+            <div className="flex flex-wrap items-end gap-2 md:col-span-3">
               <Button
                 type="submit"
                 disabled={
