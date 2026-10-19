@@ -544,6 +544,11 @@ void main() {
         _form(id: 'inspector-form-1', status: 'Submitted'),
         _form(id: 'inspector-form-2', status: 'Submitted'),
         _form(
+          id: 'gsd-form-3',
+          status: 'Submitted',
+          createdByUserId: _otherInspectorId,
+        ),
+        _form(
           id: 'other-inspector-form',
           status: 'Submitted',
           createdByUserId: _otherInspectorId,
@@ -580,12 +585,30 @@ void main() {
       lessThan(tester.getTopLeft(find.byKey(const Key('scan-asset-qr'))).dy),
     );
 
-    await _pumpHome(tester, user: _gsdUser, repository: repository);
+    await _pumpHome(
+      tester,
+      user: _gsdUser,
+      repository: repository,
+      onOpenAcknowledgement: (context, form) => _pushWorkflowPage(
+        context,
+        title: 'Acknowledge PM form',
+        actionLabel: 'Record acknowledgement',
+        onAction: () {
+          repository.forms = repository.forms
+              .map(
+                (candidate) => candidate.id == form.id
+                    ? candidate.copyWith(status: 'Acknowledged')
+                    : candidate,
+              )
+              .toList(growable: false);
+        },
+      ),
+    );
 
     expect(
       find.descendant(
         of: find.byKey(const Key('pending-ack-count')),
-        matching: find.text('3'),
+        matching: find.text('4'),
       ),
       findsOneWidget,
     );
@@ -593,11 +616,44 @@ void main() {
       find.byKey(const ValueKey('ack-card-other-inspector-form')),
       findsNothing,
     );
+    expect(find.byKey(const ValueKey('ack-card-gsd-form-3')), findsNothing);
     await tester.tap(find.byKey(const Key('view-all-pending-forms')));
     await tester.pumpAndSettle();
     expect(find.text('Pending acknowledgements'), findsOneWidget);
     expect(
       find.byKey(const ValueKey('ack-card-other-inspector-form')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('ack-card-gsd-form-3')), findsOneWidget);
+
+    final thirdFormSignButton = find.descendant(
+      of: find.byKey(const ValueKey('ack-card-gsd-form-3')),
+      matching: find.text('Sign'),
+    );
+    await tester.ensureVisible(thirdFormSignButton);
+    await tester.tap(thirdFormSignButton);
+    await tester.pumpAndSettle();
+    expect(find.text('Acknowledge PM form'), findsOneWidget);
+    expect(
+      repository.forms.singleWhere((form) => form.id == 'gsd-form-3').status,
+      'Submitted',
+    );
+
+    await tester.tap(find.byKey(const Key('child-workflow-action')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(BackButton));
+    await tester.pumpAndSettle();
+
+    expect(
+      repository.forms.singleWhere((form) => form.id == 'gsd-form-3').status,
+      'Acknowledged',
+    );
+    expect(repository.listFormsCalls, 3);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('pending-ack-count')),
+        matching: find.text('3'),
+      ),
       findsOneWidget,
     );
   });

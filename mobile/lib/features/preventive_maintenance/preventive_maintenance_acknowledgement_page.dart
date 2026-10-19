@@ -27,6 +27,7 @@ class PreventiveMaintenanceAcknowledgementPage extends StatefulWidget {
 
 class _PreventiveMaintenanceAcknowledgementPageState
     extends State<PreventiveMaintenanceAcknowledgementPage> {
+  final pageScrollController = ScrollController();
   final formKey = GlobalKey<FormState>();
   final signaturePadKey = GlobalKey<PmSignaturePadState>();
   final signatoryNameController = TextEditingController();
@@ -36,6 +37,7 @@ class _PreventiveMaintenanceAcknowledgementPageState
 
   @override
   void dispose() {
+    pageScrollController.dispose();
     signatoryNameController.dispose();
     signatoryPositionController.dispose();
     super.dispose();
@@ -79,6 +81,7 @@ class _PreventiveMaintenanceAcknowledgementPageState
 
     return ListView(
       key: const Key('acknowledgement-page'),
+      controller: pageScrollController,
       padding: const EdgeInsets.all(16),
       physics: isSignatureGestureActive
           ? const NeverScrollableScrollPhysics()
@@ -129,13 +132,54 @@ class _PreventiveMaintenanceAcknowledgementPageState
   }
 
   Future<void> _jumpToAcknowledgementForm() async {
+    for (var attempt = 0; attempt < 8; attempt++) {
+      final target = formKey.currentContext;
+      if (target != null) {
+        await Scrollable.ensureVisible(
+          target,
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeInOut,
+          alignment: 0.04,
+        );
+        return;
+      }
+
+      if (!pageScrollController.hasClients) {
+        _showScrollFailure();
+        return;
+      }
+      final position = pageScrollController.position;
+      if (!position.hasContentDimensions) {
+        await WidgetsBinding.instance.endOfFrame;
+        if (!mounted) return;
+        continue;
+      }
+      await position.animateTo(
+        position.maxScrollExtent,
+        duration: const Duration(milliseconds: 150),
+        curve: Curves.easeOut,
+      );
+      await WidgetsBinding.instance.endOfFrame;
+      if (!mounted) return;
+    }
+
     final target = formKey.currentContext;
-    if (target == null) return;
-    await Scrollable.ensureVisible(
-      target,
-      duration: const Duration(milliseconds: 250),
-      curve: Curves.easeInOut,
-      alignment: 0.04,
+    if (target != null) {
+      await Scrollable.ensureVisible(
+        target,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeInOut,
+        alignment: 0.04,
+      );
+    } else {
+      _showScrollFailure();
+    }
+  }
+
+  void _showScrollFailure() {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Could not reach the signatory fields.')),
     );
   }
 

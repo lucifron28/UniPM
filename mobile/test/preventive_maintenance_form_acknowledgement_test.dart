@@ -68,13 +68,16 @@ Map<String, dynamic> _submittedFormJson({bool includeAssetMetadata = true}) =>
       ],
     };
 
-PreventiveMaintenanceForm submittedFormWithInspectionCount(int count) {
+PreventiveMaintenanceForm submittedFormWithInspectionCount(
+  int count, {
+  int nonOperationalInspectionCount = 1,
+}) {
   final json = _submittedFormJson();
   final template =
       (json['inspections'] as List<dynamic>).single as Map<String, dynamic>;
   json['inspections'] = List<Map<String, dynamic>>.generate(count, (index) {
     final date = DateTime.utc(2026, 2, 9, 16, 30 + index);
-    final isOperational = index != 4;
+    final isOperational = index >= nonOperationalInspectionCount;
     return {
       ...template,
       'id': 'synthetic-inspection-$index',
@@ -83,8 +86,8 @@ PreventiveMaintenanceForm submittedFormWithInspectionCount(int count) {
       'assetCode': 'FE-2026-${(index + 1).toString().padLeft(4, '0')}',
       'dateInspected': date.toIso8601String(),
       'isOperational': isOperational,
-      'remarks': isOperational ? 'Routine check' : 'Low pressure',
-      'actionsRecommendations': isOperational ? 'None' : 'Inspect gauge',
+      'remarks': isOperational ? 'Routine check' : 'Low pressure detected at the gauge. Verify pressure stability and inspect the valve assembly.',
+      'actionsRecommendations': isOperational ? 'None' : 'Inspect the gauge and valve assembly with the approved test instrument, then record the follow-up maintenance action.',
     };
   });
   return PreventiveMaintenanceForm.fromJson(json);
@@ -313,56 +316,66 @@ void main() {
     controller.dispose();
   });
 
-  testWidgets('long forms summarize findings and keep signature access close', (
-    tester,
-  ) async {
-    tester.view.physicalSize = const Size(360, 640);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
+  testWidgets(
+    'long forms with multiple findings keep signature access reachable',
+    (tester) async {
+      tester.view.physicalSize = const Size(360, 640);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
 
-    final repository = FakeAcknowledgementRepository()
-      ..form = submittedFormWithInspectionCount(24);
-    final controller = PreventiveMaintenanceController(
-      repository: repository,
-      user: testUser(),
-    );
-    controller.selectForm(repository.form);
+      final repository = FakeAcknowledgementRepository()
+        ..form = submittedFormWithInspectionCount(
+          24,
+          nonOperationalInspectionCount: 8,
+        );
+      final controller = PreventiveMaintenanceController(
+        repository: repository,
+        user: testUser(),
+      );
+      controller.selectForm(repository.form);
 
-    await tester.pumpWidget(
-      MaterialApp(
-        home: PreventiveMaintenanceAcknowledgementPage(
-          controller: controller,
-          form: repository.form,
+      await tester.pumpWidget(
+        MaterialApp(
+          home: PreventiveMaintenanceAcknowledgementPage(
+            controller: controller,
+            form: repository.form,
+          ),
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
+      );
+      await tester.pumpAndSettle();
 
-    expect(find.text('24 inspections'), findsOneWidget);
-    expect(find.text('1 non-operational'), findsOneWidget);
-    expect(find.text('FE-2026-0005 · Non-operational'), findsOneWidget);
-    expect(find.text('Asset: FE-2026-0024'), findsNothing);
+      expect(find.text('24 inspections'), findsOneWidget);
+      expect(find.text('8 non-operational'), findsOneWidget);
+      expect(find.text('FE-2026-0001 · Non-operational'), findsOneWidget);
+      expect(find.text('FE-2026-0002 · Non-operational'), findsOneWidget);
+      expect(find.text('FE-2026-0003 · Non-operational'), findsOneWidget);
+      expect(
+        find.text('5 more findings are included in all inspection details.'),
+        findsOneWidget,
+      );
+      expect(find.text('Asset: FE-2026-0024'), findsNothing);
 
-    await tester.tap(find.byKey(const Key('jump-to-acknowledgement-form')));
-    await tester.pumpAndSettle();
-    final nameField = find.byKey(const Key('ack-signatory-name'));
-    expect(nameField, findsOneWidget);
-    expect(tester.getRect(nameField).bottom, lessThan(640));
+      await tester.tap(find.byKey(const Key('jump-to-acknowledgement-form')));
+      await tester.pumpAndSettle();
+      final nameField = find.byKey(const Key('ack-signatory-name'));
+      expect(nameField, findsOneWidget);
+      expect(tester.getRect(nameField).bottom, lessThan(640));
 
-    final canvas = find.byKey(const Key('signature-canvas'));
-    await tester.ensureVisible(canvas);
-    await tester.pumpAndSettle();
-    expect(tester.getRect(canvas).bottom, lessThan(640));
+      final canvas = find.byKey(const Key('signature-canvas'));
+      await tester.ensureVisible(canvas);
+      await tester.pumpAndSettle();
+      expect(tester.getRect(canvas).bottom, lessThan(640));
 
-    final details = find.text('All inspection details (24)');
-    await tester.ensureVisible(details);
-    await tester.tap(details);
-    await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Asset: FE-2026-0024'));
-    expect(find.text('Asset: FE-2026-0024'), findsOneWidget);
-    controller.dispose();
-  });
+      final details = find.text('All inspection details (24)');
+      await tester.ensureVisible(details);
+      await tester.tap(details);
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Asset: FE-2026-0024'));
+      expect(find.text('Asset: FE-2026-0024'), findsOneWidget);
+      controller.dispose();
+    },
+  );
 
   testWidgets(
     'signature drawing locks and restores acknowledgement scrolling',
