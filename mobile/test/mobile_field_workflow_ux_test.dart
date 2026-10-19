@@ -165,7 +165,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('My PM Tasks'), findsOneWidget);
+      expect(find.text('Urgent PM tasks'), findsOneWidget);
       expect(find.text('No active PM batches'), findsNothing);
       expect(find.text('Fire Extinguisher'), findsOneWidget);
       expect(find.text('College of Science'), findsOneWidget);
@@ -178,7 +178,7 @@ void main() {
   );
 
   testWidgets(
-    'My PM Tasks strictly isolates assignments and maintains GSD visibility',
+    'urgent PM tasks isolate assignments and preserve GSD visibility',
     (tester) async {
       const inspectorAliceId = '11111111-1111-4111-8111-111111111111';
       const inspectorBobId = '22222222-2222-4222-8222-222222222222';
@@ -285,7 +285,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Alice sees her assigned schedule under My PM Tasks
+      // Alice sees her assigned schedule in the urgent task preview.
       expect(find.text('Department of Physics'), findsOneWidget);
 
       // Alice does NOT see Bob's assigned schedule
@@ -301,7 +301,7 @@ void main() {
       expect(startedBatch?.department, 'Department of Physics');
       expect(startedBatch?.assetCategory, 'fire-extinguisher');
       expect(startedBatch?.pmCycle, '2026-05');
-      // 2. Test GSD visibility: GSD sees all relevant schedules under My PM Tasks
+      // 2. GSD sees all schedules in the complete PM task list.
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -316,6 +316,8 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Department of Physics'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('view-all-pm-tasks')));
+      await tester.pumpAndSettle();
       expect(find.text('Department of Chemistry'), findsOneWidget);
       await tester.scrollUntilVisible(
         find.text('Department of Biology'),
