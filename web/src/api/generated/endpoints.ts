@@ -41,6 +41,7 @@ import type {
   GenerateScheduleCyclesDto,
   GetAssetRegistryOptionsParams,
   GetInspectionRegistryOptionsParams,
+  GetPmAnalyticsV3CatalogParams,
   GetPmAnalyticsV3FilterValuesParams,
   GetPmPeriodDashboardParams,
   GetScheduleRegistryOptionsParams,
@@ -7498,40 +7499,52 @@ export function useGetPmPeriodDashboard<
 }
 
 /**
- * @summary Returns the versioned PM execution measure, dimension and field catalog
+ * @summary Returns a versioned V3 report subject catalog
  */
-export const getPmAnalyticsV3Catalog = (signal?: AbortSignal) => {
+export const getPmAnalyticsV3Catalog = (
+  params?: GetPmAnalyticsV3CatalogParams,
+  signal?: AbortSignal,
+) => {
   return customInstance<PmAnalyticsV3CatalogResponse>({
     url: `/api/v1/analytics/pm/v3/catalog`,
     method: 'GET',
+    params,
     signal,
   })
 }
 
-export const getGetPmAnalyticsV3CatalogQueryKey = () => {
-  return [`/api/v1/analytics/pm/v3/catalog`] as const
+export const getGetPmAnalyticsV3CatalogQueryKey = (
+  params?: GetPmAnalyticsV3CatalogParams,
+) => {
+  return [
+    `/api/v1/analytics/pm/v3/catalog`,
+    ...(params ? [params] : []),
+  ] as const
 }
 
 export const getGetPmAnalyticsV3CatalogQueryOptions = <
   TData = Awaited<ReturnType<typeof getPmAnalyticsV3Catalog>>,
   TError = ProblemDetails,
->(options?: {
-  query?: Partial<
-    UseQueryOptions<
-      Awaited<ReturnType<typeof getPmAnalyticsV3Catalog>>,
-      TError,
-      TData
+>(
+  params?: GetPmAnalyticsV3CatalogParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getPmAnalyticsV3Catalog>>,
+        TError,
+        TData
+      >
     >
-  >
-}) => {
+  },
+) => {
   const { query: queryOptions } = options ?? {}
 
   const queryKey =
-    queryOptions?.queryKey ?? getGetPmAnalyticsV3CatalogQueryKey()
+    queryOptions?.queryKey ?? getGetPmAnalyticsV3CatalogQueryKey(params)
 
   const queryFn: QueryFunction<
     Awaited<ReturnType<typeof getPmAnalyticsV3Catalog>>
-  > = ({ signal }) => getPmAnalyticsV3Catalog(signal)
+  > = ({ signal }) => getPmAnalyticsV3Catalog(params, signal)
 
   return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
     Awaited<ReturnType<typeof getPmAnalyticsV3Catalog>>,
@@ -7549,6 +7562,7 @@ export function useGetPmAnalyticsV3Catalog<
   TData = Awaited<ReturnType<typeof getPmAnalyticsV3Catalog>>,
   TError = ProblemDetails,
 >(
+  params: undefined | GetPmAnalyticsV3CatalogParams,
   options: {
     query: Partial<
       UseQueryOptions<
@@ -7574,6 +7588,7 @@ export function useGetPmAnalyticsV3Catalog<
   TData = Awaited<ReturnType<typeof getPmAnalyticsV3Catalog>>,
   TError = ProblemDetails,
 >(
+  params?: GetPmAnalyticsV3CatalogParams,
   options?: {
     query?: Partial<
       UseQueryOptions<
@@ -7599,6 +7614,7 @@ export function useGetPmAnalyticsV3Catalog<
   TData = Awaited<ReturnType<typeof getPmAnalyticsV3Catalog>>,
   TError = ProblemDetails,
 >(
+  params?: GetPmAnalyticsV3CatalogParams,
   options?: {
     query?: Partial<
       UseQueryOptions<
@@ -7613,13 +7629,14 @@ export function useGetPmAnalyticsV3Catalog<
   queryKey: DataTag<QueryKey, TData, TError>
 }
 /**
- * @summary Returns the versioned PM execution measure, dimension and field catalog
+ * @summary Returns a versioned V3 report subject catalog
  */
 
 export function useGetPmAnalyticsV3Catalog<
   TData = Awaited<ReturnType<typeof getPmAnalyticsV3Catalog>>,
   TError = ProblemDetails,
 >(
+  params?: GetPmAnalyticsV3CatalogParams,
   options?: {
     query?: Partial<
       UseQueryOptions<
@@ -7633,7 +7650,7 @@ export function useGetPmAnalyticsV3Catalog<
 ): UseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>
 } {
-  const queryOptions = getGetPmAnalyticsV3CatalogQueryOptions(options)
+  const queryOptions = getGetPmAnalyticsV3CatalogQueryOptions(params, options)
 
   const query = useQuery(queryOptions, queryClient) as UseQueryResult<
     TData,

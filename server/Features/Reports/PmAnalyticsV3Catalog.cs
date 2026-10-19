@@ -1,4 +1,5 @@
 using UniPM.Api.Features.PreventiveMaintenanceForms;
+using UniPM.Api.Features.Assets;
 using UniPM.Api.Features.ReferenceData;
 using UniPM.Api.Features.Schedules;
 
@@ -48,8 +49,9 @@ public sealed record PmAnalyticsV3RecordColumnDefinition(
 /// </summary>
 internal static class PmAnalyticsV3Catalog
 {
-    internal const int Version = 1;
+    internal const int Version = 2;
     internal const string SubjectPmExecution = "pmExecution";
+    internal const string SubjectAssetInventory = "assetInventory";
 
     internal const string ScheduledCount = "scheduledCount";
     internal const string CompletedCount = "completedCount";
@@ -72,6 +74,8 @@ internal static class PmAnalyticsV3Catalog
     internal const string AssetId = "assetId";
     internal const string AssetCode = "assetCode";
     internal const string Location = "location";
+    internal const string RegistrationStatus = "registrationStatus";
+    internal const string RegisteredAssetCount = "registeredAssetCount";
     internal const string Deadline = "deadline";
     internal const string CompletedAt = "completedAt";
     internal const string ScheduleStatus = "scheduleStatus";
@@ -87,6 +91,21 @@ internal static class PmAnalyticsV3Catalog
                 category.DisplayName,
                 Array.AsReadOnly(category.ScheduledMonths.ToArray())))
             .ToArray());
+
+    internal static IReadOnlyList<PmAnalyticsV3SubjectDefinition> Subjects { get; } =
+        Array.AsReadOnly(new[]
+        {
+            new PmAnalyticsV3SubjectDefinition(
+                SubjectPmExecution,
+                "PM execution",
+                "Eligible persisted asset-cycle schedules and their inspection outcomes.",
+                true),
+            new PmAnalyticsV3SubjectDefinition(
+                SubjectAssetInventory,
+                "Asset inventory",
+                "One current registered asset per row, independent of PM schedules and inspections.",
+                false)
+        });
 
     internal static IReadOnlyList<PmAnalyticsV3MeasureDefinition> Measures { get; } =
         Array.AsReadOnly(new[]
@@ -220,6 +239,41 @@ internal static class PmAnalyticsV3Catalog
                 "Calendar year derived from the PM cycle.")
         });
 
+    internal static IReadOnlyList<PmAnalyticsV3MeasureDefinition> InventoryMeasures { get; } =
+        Array.AsReadOnly(new[]
+        {
+            new PmAnalyticsV3MeasureDefinition(
+                RegisteredAssetCount,
+                "Registered assets",
+                "integer",
+                "assets",
+                "one registered Asset row per unique asset ID",
+                "filtered registered-asset population",
+                "Count unique registered asset IDs after category and population filters. The query reads Assets directly and does not join schedules, inspections, forms, acknowledgements, or referral history.")
+        });
+
+    internal static IReadOnlyList<PmAnalyticsV3DimensionDefinition> InventoryDimensions { get; } =
+        Array.AsReadOnly(new[]
+        {
+            Dimensions.Single(item => item.Id == AssetCategory),
+            Dimensions.Single(item => item.Id == Department),
+            Dimensions.Single(item => item.Id == Building),
+            new PmAnalyticsV3DimensionDefinition(
+                Location,
+                "General location",
+                "string",
+                "null or blank values form an explicit unknown group",
+                "current asset",
+                "The asset's current general location; historical location snapshots are unavailable."),
+            new PmAnalyticsV3DimensionDefinition(
+                RegistrationStatus,
+                "Registration status",
+                "string",
+                "persisted catalog status",
+                "current asset",
+                "The stored asset registration status code. This is separate from inspection condition.")
+        });
+
     internal static IReadOnlyList<PmAnalyticsV3FilterFieldDefinition> FilterFields { get; } =
         Array.AsReadOnly(new[]
         {
@@ -232,6 +286,21 @@ internal static class PmAnalyticsV3Catalog
             FilterField(Timeliness, "Timeliness", isBase: false, "timeliness", 16, allowedValues: ["OnTime", "Late", "Remaining", "Missed", "Future"]),
             FilterField(ScheduleStatus, "Schedule status", isBase: false, "scheduleStatus", 16, allowedValues: ScheduleStatusCatalog.PersistedValues.Where(value => value != ScheduleStatusCatalog.Cancelled).ToArray()),
             FilterField(FormStatus, "Form status", isBase: false, "formStatus", 16, allowNull: true, allowedValues: PreventiveMaintenanceFormStatusCatalog.PersistedValues)
+        });
+
+    internal static IReadOnlyList<PmAnalyticsV3FilterFieldDefinition> InventoryFilterFields { get; } =
+        Array.AsReadOnly(new[]
+        {
+            FilterField(Department, "Department", isBase: true, "string", 256, allowNull: true),
+            FilterField(Building, "Building", isBase: true, "string", 256, allowNull: true),
+            FilterField(Location, "General location", isBase: true, "string", 256, allowNull: true),
+            FilterField(
+                RegistrationStatus,
+                "Registration status",
+                isBase: true,
+                "registrationStatus",
+                16,
+                allowedValues: AssetStatusCatalog.PersistedValues)
         });
 
     internal static IReadOnlyList<PmAnalyticsV3RecordColumnDefinition> RecordColumns { get; } =
@@ -254,32 +323,63 @@ internal static class PmAnalyticsV3Catalog
             new PmAnalyticsV3RecordColumnDefinition(UsedLegacyDateFallback, "Used legacy cycle fallback", "boolean", "", null)
         });
 
+    internal static IReadOnlyList<PmAnalyticsV3RecordColumnDefinition> InventoryRecordColumns { get; } =
+        Array.AsReadOnly(new[]
+        {
+            new PmAnalyticsV3RecordColumnDefinition(AssetId, "Asset ID", "guid", "", null),
+            new PmAnalyticsV3RecordColumnDefinition(AssetCode, "Asset code", "string", "", null),
+            new PmAnalyticsV3RecordColumnDefinition(AssetCategory, "Asset category", "string", "", null),
+            new PmAnalyticsV3RecordColumnDefinition(Department, "Current department", "string", "", "Current Asset value; may be unknown."),
+            new PmAnalyticsV3RecordColumnDefinition(Building, "Current building", "string", "", "Current Asset value; may be unknown."),
+            new PmAnalyticsV3RecordColumnDefinition(Location, "General location", "string", "", "Current Asset value; may be unknown."),
+            new PmAnalyticsV3RecordColumnDefinition(RegistrationStatus, "Registration status", "string", "", "Stored registration status; not inspection condition.")
+        });
+
     internal static IReadOnlyList<string> ClarificationFields { get; } = Array.AsReadOnly(new[]
     {
         "Categories", "Period", "Measures", "Mode", "GroupBy", "Presentation", "Department", "Building", "Location", "AssetCode", "AssetId", "Filters", "Thresholds", "Top", "Columns"
     });
 
-    internal static bool IsMeasure(string? id) =>
-        id is not null && Measures.Any(measure => string.Equals(measure.Id, id, StringComparison.Ordinal));
+    internal static bool IsSubject(string? id) =>
+        id is not null && Subjects.Any(subject => string.Equals(subject.Id, id, StringComparison.Ordinal));
 
-    internal static bool IsDimension(string? id) =>
-        id is not null && Dimensions.Any(dimension => string.Equals(dimension.Id, id, StringComparison.Ordinal));
+    internal static IReadOnlyList<PmAnalyticsV3MeasureDefinition> MeasuresFor(string subject) =>
+        subject == SubjectAssetInventory ? InventoryMeasures : Measures;
+
+    internal static IReadOnlyList<PmAnalyticsV3DimensionDefinition> DimensionsFor(string subject) =>
+        subject == SubjectAssetInventory ? InventoryDimensions : Dimensions;
+
+    internal static IReadOnlyList<PmAnalyticsV3FilterFieldDefinition> FilterFieldsFor(string subject) =>
+        subject == SubjectAssetInventory ? InventoryFilterFields : FilterFields;
+
+    internal static IReadOnlyList<PmAnalyticsV3RecordColumnDefinition> RecordColumnsFor(string subject) =>
+        subject == SubjectAssetInventory ? InventoryRecordColumns : RecordColumns;
+
+    internal static bool IsMeasure(string? id, string subject = SubjectPmExecution) =>
+        id is not null && MeasuresFor(subject).Any(measure => string.Equals(measure.Id, id, StringComparison.Ordinal));
+
+    internal static bool IsDimension(string? id, string subject = SubjectPmExecution) =>
+        id is not null && DimensionsFor(subject).Any(dimension => string.Equals(dimension.Id, id, StringComparison.Ordinal));
 
     internal static bool IsCategory(string? id) =>
         id is not null && Categories.Any(category => string.Equals(category.Id, id, StringComparison.Ordinal));
 
-    internal static bool IsRecordColumn(string? id) =>
-        id is not null && RecordColumns.Any(column => string.Equals(column.Id, id, StringComparison.Ordinal));
+    internal static bool IsRecordColumn(string? id, string subject = SubjectPmExecution) =>
+        id is not null && RecordColumnsFor(subject).Any(column => string.Equals(column.Id, id, StringComparison.Ordinal));
 
-    internal static PmAnalyticsV3FilterFieldDefinition? FindFilterField(string? id) =>
+    internal static PmAnalyticsV3FilterFieldDefinition? FindFilterField(
+        string? id,
+        string subject = SubjectPmExecution) =>
         id is null
             ? null
-            : FilterFields.FirstOrDefault(field => string.Equals(field.Id, id, StringComparison.Ordinal));
+            : FilterFieldsFor(subject).FirstOrDefault(field => string.Equals(field.Id, id, StringComparison.Ordinal));
 
-    internal static PmAnalyticsV3RecordColumnDefinition? FindRecordColumn(string? id) =>
+    internal static PmAnalyticsV3RecordColumnDefinition? FindRecordColumn(
+        string? id,
+        string subject = SubjectPmExecution) =>
         id is null
             ? null
-            : RecordColumns.FirstOrDefault(column => string.Equals(column.Id, id, StringComparison.Ordinal));
+            : RecordColumnsFor(subject).FirstOrDefault(column => string.Equals(column.Id, id, StringComparison.Ordinal));
 
     private static PmAnalyticsV3FilterFieldDefinition FilterField(
         string id,

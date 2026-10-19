@@ -7,6 +7,7 @@
 
 export type GetPmAnalyticsV3FilterValuesParams = {
   field?: string
+  subject?: string
   categories?: string[]
   search?: string
 }

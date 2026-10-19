@@ -5,7 +5,7 @@
   "candidateFile": "dev-candidates.jsonl",
   "expectedCaseCount": 18,
   "schemaVersion": 3,
-  "catalogVersion": 1,
+  "catalogVersion": 2,
   "interpreterId": "PmAnalyticsV3QuestionGuard+PmAnalyticsV3RuleParser",
   "frozenSourceCommit": null,
   "fileSha256": "b7362e13106b8872353b934ceedd33c70e356334c67343a78e55f316453348e6",

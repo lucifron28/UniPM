@@ -6,7 +6,7 @@
   },
   "servers": [
     {
-      "url": "http://127.0.0.1:5187/"
+      "url": "http://localhost:5254/"
     }
   ],
   "paths": {
@@ -3280,8 +3280,17 @@
     "/api/v1/analytics/pm/v3/catalog": {
       "get": {
         "tags": ["PM Analytics"],
-        "summary": "Returns the versioned PM execution measure, dimension and field catalog",
+        "summary": "Returns a versioned V3 report subject catalog",
         "operationId": "GetPmAnalyticsV3Catalog",
+        "parameters": [
+          {
+            "name": "subject",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -3324,6 +3333,13 @@
         "parameters": [
           {
             "name": "field",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "subject",
             "in": "query",
             "schema": {
               "type": "string"
@@ -6142,6 +6158,7 @@
           "schemaVersion",
           "catalogVersion",
           "subject",
+          "subjects",
           "categories",
           "measures",
           "dimensions",
@@ -6162,6 +6179,12 @@
           },
           "subject": {
             "type": "string"
+          },
+          "subjects": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PmAnalyticsV3SubjectDefinition"
+            }
           },
           "categories": {
             "type": "array",
@@ -6789,11 +6812,11 @@
         }
       },
       "PmAnalyticsV3RecordRow": {
-        "required": ["scheduleId", "assetId", "values"],
+        "required": ["scheduleId", "assetId", "inspectionId", "values"],
         "type": "object",
         "properties": {
           "scheduleId": {
-            "type": "string",
+            "type": ["null", "string"],
             "format": "uuid"
           },
           "assetId": {
@@ -6846,7 +6869,14 @@
             "$ref": "#/components/schemas/PmAnalyticsV3Mode"
           },
           "period": {
-            "$ref": "#/components/schemas/PmAnalyticsV3Period"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PmAnalyticsV3Period"
+              }
+            ]
           },
           "categories": {
             "type": "array",
@@ -6914,6 +6944,24 @@
       },
       "PmAnalyticsV3SortDirection": {
         "enum": ["Ascending", "Descending"]
+      },
+      "PmAnalyticsV3SubjectDefinition": {
+        "required": ["id", "label", "description", "requiresPeriod"],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "requiresPeriod": {
+            "type": "boolean"
+          }
+        }
       },
       "PmAnalyticsV3Top": {
         "required": ["measure", "limit", "direction"],

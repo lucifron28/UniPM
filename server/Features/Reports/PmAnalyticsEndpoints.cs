@@ -17,22 +17,45 @@ public static class PmAnalyticsEndpoints
                 .RequireAuthenticatedUser()
                 .RequireRole(AuthRoleCatalog.Gsd));
 
-        group.MapGet("/pm/v3/catalog", () => Results.Ok(PmAnalyticsV3QueryService.CreateCatalogResponse()))
+        group.MapGet("/pm/v3/catalog", ([FromQuery] string? subject) =>
+        {
+            var selectedSubject = string.IsNullOrWhiteSpace(subject)
+                ? PmAnalyticsV3Catalog.SubjectPmExecution
+                : subject.Trim();
+            if (!PmAnalyticsV3Catalog.IsSubject(selectedSubject))
+            {
+                return ApiErrors.Validation(new Dictionary<string, string[]>
+                {
+                    [nameof(subject)] = ["Subject must be selected from the V3 subject catalog."]
+                });
+            }
+
+            return Results.Ok(PmAnalyticsV3QueryService.CreateCatalogResponse(selectedSubject));
+        })
             .WithName("GetPmAnalyticsV3Catalog")
-            .WithSummary("Returns the versioned PM execution measure, dimension and field catalog")
+            .WithSummary("Returns a versioned V3 report subject catalog")
             .Produces<PmAnalyticsV3CatalogResponse>(StatusCodes.Status200OK)
             .Produces<ProblemDetails>(StatusCodes.Status401Unauthorized)
             .Produces<ProblemDetails>(StatusCodes.Status403Forbidden);
 
         group.MapGet("/pm/v3/catalog/values", async (
             [FromQuery] string? field,
+            [FromQuery] string? subject,
             [FromQuery] string[]? categories,
             [FromQuery] string? search,
             PmAnalyticsV3QueryService service,
             CancellationToken cancellationToken) =>
         {
             var errors = new Dictionary<string, string[]>();
-            var definition = PmAnalyticsV3Catalog.FindFilterField(field);
+            var selectedSubject = string.IsNullOrWhiteSpace(subject)
+                ? PmAnalyticsV3Catalog.SubjectPmExecution
+                : subject.Trim();
+            if (!PmAnalyticsV3Catalog.IsSubject(selectedSubject))
+            {
+                errors[nameof(subject)] = ["Subject must be selected from the V3 subject catalog."];
+            }
+
+            var definition = PmAnalyticsV3Catalog.FindFilterField(field, selectedSubject);
             if (definition is null || !definition.IsBaseFilter
                 || definition.ValueType is not ("string"))
             {
@@ -151,7 +174,7 @@ public static class PmAnalyticsEndpoints
                 resolution.Plan.Plan,
                 resolution.Plan.CyclesByCategory,
                 PmAnalyticsV3QueryService.CreatePreviewSummary(resolution.Plan),
-                PmAnalyticsV3QueryService.ScopeNotes));
+                PmAnalyticsV3QueryService.ScopeNotesFor(resolution.Plan.Plan.Subject)));
         })
         .WithName("PreviewPmAnalyticsV3Report")
         .WithSummary("Validates a V3 report plan and creates a short-lived user-bound preview")

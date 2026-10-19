@@ -51,10 +51,16 @@ internal static class PmAnalyticsV3PlanValidator
             AddError(errors, nameof(candidate.CatalogVersion), $"CatalogVersion must be {PmAnalyticsV3Catalog.Version}.");
         }
 
-        if (!string.Equals(candidate.Subject, PmAnalyticsV3Catalog.SubjectPmExecution, StringComparison.Ordinal))
+        var requestedSubject = candidate.Subject?.Trim();
+        if (!PmAnalyticsV3Catalog.IsSubject(requestedSubject))
         {
-            AddError(errors, nameof(candidate.Subject), $"Subject must be '{PmAnalyticsV3Catalog.SubjectPmExecution}'.");
+            AddError(errors, nameof(candidate.Subject), "Subject must use an identifier from the approved V3 subject catalog.");
         }
+
+        var subject = PmAnalyticsV3Catalog.IsSubject(requestedSubject)
+            ? requestedSubject!
+            : PmAnalyticsV3Catalog.SubjectPmExecution;
+        var isInventory = subject == PmAnalyticsV3Catalog.SubjectAssetInventory;
 
         if (!Enum.IsDefined(candidate.Mode))
         {
@@ -66,24 +72,24 @@ internal static class PmAnalyticsV3PlanValidator
             AddError(errors, nameof(candidate.Presentation), "Presentation is not supported.");
         }
 
-        var categories = NormalizeCategories(candidate.Categories, errors);
+        var categories = NormalizeCategories(candidate.Categories, errors, allowEmpty: isInventory);
         var measures = NormalizeIdentifiers(
             candidate.Measures,
             nameof(candidate.Measures),
-            PmAnalyticsV3Catalog.IsMeasure,
+            id => PmAnalyticsV3Catalog.IsMeasure(id, subject),
             "Measures must use identifiers from the approved V3 measure catalog.",
             MaximumMeasures,
             errors);
         var groupBy = NormalizeIdentifiers(
             candidate.GroupBy ?? [],
             nameof(candidate.GroupBy),
-            PmAnalyticsV3Catalog.IsDimension,
+            id => PmAnalyticsV3Catalog.IsDimension(id, subject),
             "GroupBy must use identifiers from the approved V3 dimension catalog.",
             MaximumGroupings,
             errors);
-        var baseFilters = NormalizeFilters(candidate.BaseFilters, isBase: true, errors);
-        var matchingFilters = NormalizeFilters(candidate.MatchingFilters, isBase: false, errors);
-        var aggregateFilters = NormalizeAggregateFilters(candidate.AggregateFilters, measures, errors);
+        var baseFilters = NormalizeFilters(candidate.BaseFilters, isBase: true, subject, errors);
+        var matchingFilters = NormalizeFilters(candidate.MatchingFilters, isBase: false, subject, errors);
+        var aggregateFilters = NormalizeAggregateFilters(candidate.AggregateFilters, measures, subject, errors);
         var orderBy = NormalizeOrderBy(candidate.OrderBy, errors);
         var columns = NormalizeColumns(candidate.Columns, errors);
 
@@ -131,8 +137,8 @@ internal static class PmAnalyticsV3PlanValidator
         }
         else if (candidate.Mode == PmAnalyticsV3Mode.Records)
         {
-            ValidateRecordColumns(columns, errors);
-            ValidateRecordOrderBy(orderBy, columns, errors);
+            ValidateRecordColumns(columns, subject, errors);
+            ValidateRecordOrderBy(orderBy, columns, subject, errors);
         }
 
         if (candidate.Top is not null)
@@ -166,16 +172,27 @@ internal static class PmAnalyticsV3PlanValidator
         }
 
         if (matchingFilters.Count > 0
-            && measures.Any(IsPercentageMeasure))
+            && measures.Any(measure => IsPercentageMeasure(measure, subject)))
         {
             AddError(errors, nameof(candidate.MatchingFilters), "Outcome and workflow filters cannot be combined with percentage measures because they would change the denominator.");
         }
 
-        IReadOnlyList<(int Year, int Month)> calendarMonths;
-        string periodError;
-        if (candidate.Period is null)
+        IReadOnlyList<(int Year, int Month)> calendarMonths = [];
+        var periodError = string.Empty;
+        if (isInventory)
         {
-            calendarMonths = [];
+            if (candidate.Period is not null)
+            {
+                AddError(errors, nameof(candidate.Period), "Asset inventory reports do not use a PM cycle period.");
+            }
+
+            if (matchingFilters.Count > 0)
+            {
+                AddError(errors, nameof(candidate.MatchingFilters), "Asset inventory filters apply to the registered-asset population; matching-row filters are not supported.");
+            }
+        }
+        else if (candidate.Period is null)
+        {
             periodError = "Period is required.";
             AddError(errors, nameof(candidate.Period), periodError);
         }
@@ -186,7 +203,7 @@ internal static class PmAnalyticsV3PlanValidator
         }
 
         var cyclesByCategory = new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal);
-        if (periodError.Length == 0)
+        if (!isInventory && periodError.Length == 0)
         {
             foreach (var category in categories)
             {
@@ -215,7 +232,7 @@ internal static class PmAnalyticsV3PlanValidator
 
         var plan = candidate with
         {
-            Subject = PmAnalyticsV3Catalog.SubjectPmExecution,
+            Subject = subject,
             Categories = Array.AsReadOnly(categories.ToArray()),
             Measures = Array.AsReadOnly(measures.ToArray()),
             GroupBy = Array.AsReadOnly(groupBy.ToArray()),
@@ -231,12 +248,19 @@ internal static class PmAnalyticsV3PlanValidator
 
     private static List<string> NormalizeCategories(
         IReadOnlyList<string>? values,
-        Dictionary<string, string[]> errors)
+        Dictionary<string, string[]> errors,
+        bool allowEmpty)
     {
         var result = new List<string>();
         if (values is null || values.Count == 0)
         {
-            AddError(errors, "Categories", "Select at least one supported asset category.");
+            if (!allowEmpty)
+            {
+                AddError(errors, "Categories", "Select at least one supported asset category.");
+                return result;
+            }
+
+            result.AddRange(PmAnalyticsV3Catalog.Categories.Select(category => category.Id));
             return result;
         }
 
@@ -310,6 +334,7 @@ internal static class PmAnalyticsV3PlanValidator
     private static List<PmAnalyticsV3Filter> NormalizeFilters(
         IReadOnlyList<PmAnalyticsV3Filter>? filters,
         bool isBase,
+        string subject,
         Dictionary<string, string[]> errors)
     {
         var fieldName = isBase ? "BaseFilters" : "MatchingFilters";
@@ -335,7 +360,7 @@ internal static class PmAnalyticsV3PlanValidator
             }
 
             var fieldId = filter.Field?.Trim();
-            var definition = PmAnalyticsV3Catalog.FindFilterField(fieldId);
+            var definition = PmAnalyticsV3Catalog.FindFilterField(fieldId, subject);
             if (definition is null || definition.IsBaseFilter != isBase)
             {
                 AddError(errors, fieldName, $"Field '{fieldId}' is not available in {fieldName}.");
@@ -432,7 +457,7 @@ internal static class PmAnalyticsV3PlanValidator
                 allowed => string.Equals(allowed, value, StringComparison.OrdinalIgnoreCase)),
             "timeliness" => definition.AllowedValues.FirstOrDefault(
                 allowed => string.Equals(allowed, value, StringComparison.OrdinalIgnoreCase)),
-            "scheduleStatus" or "formStatus" => definition.AllowedValues.FirstOrDefault(
+            "scheduleStatus" or "formStatus" or "registrationStatus" => definition.AllowedValues.FirstOrDefault(
                 allowed => string.Equals(allowed, value, StringComparison.OrdinalIgnoreCase)),
             _ => value
         };
@@ -441,6 +466,7 @@ internal static class PmAnalyticsV3PlanValidator
     private static List<PmAnalyticsV3AggregateFilter> NormalizeAggregateFilters(
         IReadOnlyList<PmAnalyticsV3AggregateFilter>? filters,
         IReadOnlyList<string> measures,
+        string subject,
         Dictionary<string, string[]> errors)
     {
         var result = new List<PmAnalyticsV3AggregateFilter>();
@@ -465,7 +491,7 @@ internal static class PmAnalyticsV3PlanValidator
 
             var measure = filter.Measure?.Trim();
             if (string.IsNullOrEmpty(measure)
-                || !PmAnalyticsV3Catalog.IsMeasure(measure)
+                || !PmAnalyticsV3Catalog.IsMeasure(measure, subject)
                 || !measures.Contains(measure, StringComparer.Ordinal))
             {
                 AddError(errors, "AggregateFilters", "Each aggregate filter must reference a selected measure.");
@@ -478,7 +504,7 @@ internal static class PmAnalyticsV3PlanValidator
                 continue;
             }
 
-            var definition = PmAnalyticsV3Catalog.Measures.Single(item => item.Id == measure);
+            var definition = PmAnalyticsV3Catalog.MeasuresFor(subject).Single(item => item.Id == measure);
             if (filter.Value < 0
                 || definition.Unit == "percent" && filter.Value > 100
                 || definition.ValueType == "integer" && decimal.Truncate(filter.Value) != filter.Value)
@@ -611,11 +637,12 @@ internal static class PmAnalyticsV3PlanValidator
 
     private static void ValidateRecordColumns(
         IReadOnlyList<string> columns,
+        string subject,
         Dictionary<string, string[]> errors)
     {
         foreach (var column in columns)
         {
-            if (!PmAnalyticsV3Catalog.IsRecordColumn(column))
+            if (!PmAnalyticsV3Catalog.IsRecordColumn(column, subject))
             {
                 AddError(errors, "Columns", $"Record column '{column}' is not in the approved record-column catalog.");
             }
@@ -639,20 +666,21 @@ internal static class PmAnalyticsV3PlanValidator
     private static void ValidateRecordOrderBy(
         IReadOnlyList<PmAnalyticsV3OrderBy> orderBy,
         IReadOnlyList<string> columns,
+        string subject,
         Dictionary<string, string[]> errors)
     {
         foreach (var item in orderBy)
         {
             if (!columns.Contains(item.Field, StringComparer.Ordinal)
-                || !PmAnalyticsV3Catalog.IsRecordColumn(item.Field))
+                || !PmAnalyticsV3Catalog.IsRecordColumn(item.Field, subject))
             {
                 AddError(errors, "OrderBy", $"Record order field '{item.Field}' must be an output record column.");
             }
         }
     }
 
-    private static bool IsPercentageMeasure(string measure) =>
-        PmAnalyticsV3Catalog.Measures.Single(item => item.Id == measure).Unit == "percent";
+    private static bool IsPercentageMeasure(string measure, string subject) =>
+        PmAnalyticsV3Catalog.MeasuresFor(subject).Single(item => item.Id == measure).Unit == "percent";
 
     private static bool TryExpandPeriod(
         PmAnalyticsV3Period? period,

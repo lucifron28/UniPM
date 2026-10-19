@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using UniPM.Api.Data;
+using UniPM.Api.Features.Assets;
 using UniPM.Api.Features.ReferenceData;
 using UniPM.Api.Features.Schedules;
 using UniPM.Api.Models;
@@ -54,6 +55,15 @@ internal sealed class PmAnalyticsV3QueryService(
         "A non-operational count is a finding recorded on an inspection, not a current inventory-condition claim."
     });
 
+    internal static IReadOnlyList<string> InventoryScopeNotes { get; } = Array.AsReadOnly(new[]
+    {
+        "Each result represents one registered Asset row, identified by Asset ID.",
+        "Inventory reads the Assets table directly and does not join PM schedules, inspections, forms, acknowledgements, or referral history.",
+        "Department, building and general location are current Asset fields; historical snapshots are unavailable.",
+        "Registration status is the stored asset status code and is separate from inspection condition.",
+        "The current API writes Active for new assets; other catalogued stored statuses are filterable if present."
+    });
+
     internal async Task<PmAnalyticsV3PlanResolution> NormalizeAndResolveAsync(
         PmAnalyticsV3ReportPlan? candidate,
         CancellationToken cancellationToken)
@@ -70,6 +80,12 @@ internal sealed class PmAnalyticsV3QueryService(
         foreach (var filter in normalized.Plan.BaseFilters)
         {
             if (filter.Operator == PmAnalyticsV3FilterOperator.IsNull)
+            {
+                baseFilters.Add(filter);
+                continue;
+            }
+
+            if (filter.Field == PmAnalyticsV3Catalog.RegistrationStatus)
             {
                 baseFilters.Add(filter);
                 continue;
@@ -145,15 +161,20 @@ internal sealed class PmAnalyticsV3QueryService(
         return new PmAnalyticsV3PlanResolution(normalized, errors, []);
     }
 
-    internal static PmAnalyticsV3CatalogResponse CreateCatalogResponse() => new(
+    internal static PmAnalyticsV3CatalogResponse CreateCatalogResponse(
+        string subject = PmAnalyticsV3Catalog.SubjectPmExecution) => new(
         3,
         PmAnalyticsV3Catalog.Version,
-        PmAnalyticsV3Catalog.SubjectPmExecution,
+        subject,
+        PmAnalyticsV3Catalog.Subjects,
         PmAnalyticsV3Catalog.Categories,
-        PmAnalyticsV3Catalog.Measures,
-        PmAnalyticsV3Catalog.Dimensions,
-        PmAnalyticsV3Catalog.FilterFields,
-        PmAnalyticsV3Catalog.RecordColumns);
+        PmAnalyticsV3Catalog.MeasuresFor(subject),
+        PmAnalyticsV3Catalog.DimensionsFor(subject),
+        PmAnalyticsV3Catalog.FilterFieldsFor(subject),
+        PmAnalyticsV3Catalog.RecordColumnsFor(subject));
+
+    internal static IReadOnlyList<string> ScopeNotesFor(string subject) =>
+        subject == PmAnalyticsV3Catalog.SubjectAssetInventory ? InventoryScopeNotes : ScopeNotes;
 
     internal async Task<PmAnalyticsV3FilterValuesResponse> FindFilterValuesAsync(
         string field,
@@ -203,6 +224,15 @@ internal sealed class PmAnalyticsV3QueryService(
 
         var now = timeProvider.GetUtcNow();
         await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
+        if (normalized.Plan.Subject == PmAnalyticsV3Catalog.SubjectAssetInventory)
+        {
+            var inventory = await LoadInventoryRowsAsync(context, normalized, cancellationToken);
+            var inventoryColumns = BuildColumns(normalized.Plan);
+            return normalized.Plan.Mode == PmAnalyticsV3Mode.Records
+                ? BuildInventoryRecordsResponse(normalized, inventory, inventoryColumns, now, page, pageSize)
+                : BuildInventoryAggregateResponse(normalized, inventory, inventoryColumns, now, page, pageSize);
+        }
+
         var eligibleRows = await LoadEligibleRowsAsync(context, normalized, cancellationToken);
         var matchingRows = eligibleRows
             .Where(row => MatchesFilters(row, normalized.Plan.MatchingFilters, now))
@@ -220,6 +250,40 @@ internal sealed class PmAnalyticsV3QueryService(
     internal static string CreatePreviewSummary(PmAnalyticsV3NormalizedPlan normalized)
     {
         var plan = normalized.Plan;
+        var isInventory = plan.Subject == PmAnalyticsV3Catalog.SubjectAssetInventory;
+        if (isInventory)
+        {
+            var inventoryFilters = plan.BaseFilters.Select(filter => "population: " + DescribeFilter(filter, plan.Subject)).ToArray();
+            var inventoryClauses = new List<string>
+            {
+                plan.Mode == PmAnalyticsV3Mode.Records
+                    ? "returned as one row per registered asset"
+                    : "counted as unique registered assets",
+                $"categories: {string.Join(", ", plan.Categories.Select(category => PmAnalyticsV3Catalog.Categories.Single(item => item.Id == category).Label))}",
+                plan.Mode == PmAnalyticsV3Mode.Records
+                    ? "returned as source records"
+                    : (plan.GroupBy ?? []).Count == 0
+                        ? "as one overall result"
+                        : $"grouped by {string.Join(" and ", plan.GroupBy!.Select(dimension => DescribeDimension(dimension, plan.Subject)))}"
+            };
+            inventoryClauses.AddRange(inventoryFilters);
+            inventoryClauses.AddRange(plan.AggregateFilters.Select(filter => DescribeAggregateFilter(filter, plan.Subject)));
+            if (plan.Top is { } inventoryTop)
+            {
+                inventoryClauses.Add($"{(inventoryTop.Direction == PmAnalyticsV3SortDirection.Descending ? "top" : "bottom")} {inventoryTop.Limit} by {DescribeMeasure(inventoryTop.Measure, plan.Subject)}");
+            }
+
+            if (plan.OrderBy.Count > 0)
+            {
+                inventoryClauses.Add("ordered by " + string.Join(", ", plan.OrderBy.Select(order =>
+                    $"{DescribeOutputColumn(order.Field, plan.Subject)} {order.Direction.ToString().ToLowerInvariant()}")));
+            }
+
+            inventoryClauses.Add($"{plan.Presentation.ToString().ToLowerInvariant()} presentation");
+            inventoryClauses.Add("columns: " + string.Join(", ", plan.Columns.Select(column => DescribeOutputColumn(column, plan.Subject))));
+            return $"Report current registered asset inventory; {string.Join("; ", inventoryClauses)}. This report is independent of PM schedules and inspection condition.";
+        }
+
         var categoryScopes = normalized.CyclesByCategory.Select(entry =>
         {
             var label = PmAnalyticsV3Catalog.Categories.Single(item => item.Id == entry.Key).Label;
@@ -232,7 +296,7 @@ internal sealed class PmAnalyticsV3QueryService(
 
         var prefix = plan.Mode == PmAnalyticsV3Mode.Records
             ? $"Show PM execution records on scheduled-cycle time for {scope}"
-            : $"Calculate {string.Join(", ", plan.Measures.Select(DescribeMeasure))} on scheduled-cycle time for {scope}";
+            : $"Calculate {string.Join(", ", plan.Measures.Select(measure => DescribeMeasure(measure, plan.Subject)))} on scheduled-cycle time for {scope}";
         var groupBy = plan.GroupBy ?? [];
         var clauses = new List<string>
         {
@@ -240,23 +304,23 @@ internal sealed class PmAnalyticsV3QueryService(
                 ? "returned as matching records"
                 : groupBy.Count == 0
                     ? "as one overall result"
-                    : $"grouped by {string.Join(" and ", groupBy.Select(DescribeDimension))}"
+                    : $"grouped by {string.Join(" and ", groupBy.Select(dimension => DescribeDimension(dimension, plan.Subject)))}"
         };
         clauses.AddRange(filters);
-        clauses.AddRange(plan.AggregateFilters.Select(DescribeAggregateFilter));
+        clauses.AddRange(plan.AggregateFilters.Select(filter => DescribeAggregateFilter(filter, plan.Subject)));
         if (plan.Top is { } top)
         {
-            clauses.Add($"{(top.Direction == PmAnalyticsV3SortDirection.Descending ? "top" : "bottom")} {top.Limit} by {DescribeMeasure(top.Measure)}");
+            clauses.Add($"{(top.Direction == PmAnalyticsV3SortDirection.Descending ? "top" : "bottom")} {top.Limit} by {DescribeMeasure(top.Measure, plan.Subject)}");
         }
 
         if (plan.OrderBy.Count > 0)
         {
             clauses.Add("ordered by " + string.Join(", ", plan.OrderBy.Select(order =>
-                $"{DescribeOutputColumn(order.Field)} {order.Direction.ToString().ToLowerInvariant()}")));
+                $"{DescribeOutputColumn(order.Field, plan.Subject)} {order.Direction.ToString().ToLowerInvariant()}")));
         }
 
         clauses.Add($"{plan.Presentation.ToString().ToLowerInvariant()} presentation");
-        clauses.Add("columns: " + string.Join(", ", plan.Columns.Select(DescribeOutputColumn)));
+        clauses.Add("columns: " + string.Join(", ", plan.Columns.Select(column => DescribeOutputColumn(column, plan.Subject))));
         return $"{prefix}; {string.Join("; ", clauses)}.";
     }
 
@@ -381,6 +445,299 @@ internal sealed class PmAnalyticsV3QueryService(
 
         return result.ToArray();
     }
+
+    private static async Task<PmAnalyticsV3InventorySource[]> LoadInventoryRowsAsync(
+        ApplicationDbContext context,
+        PmAnalyticsV3NormalizedPlan normalized,
+        CancellationToken cancellationToken)
+    {
+        IQueryable<Asset> assets = context.Assets
+            .AsNoTracking()
+            .Where(asset => normalized.Plan.Categories.Contains(asset.AssetCategory));
+
+        foreach (var filter in normalized.Plan.BaseFilters)
+        {
+            var values = filter.Values ?? [];
+            if (filter.Operator == PmAnalyticsV3FilterOperator.IsNull)
+            {
+                assets = filter.Field switch
+                {
+                    PmAnalyticsV3Catalog.Department => assets.Where(asset => asset.Department == null || asset.Department.Trim() == string.Empty),
+                    PmAnalyticsV3Catalog.Building => assets.Where(asset => asset.Building == null || asset.Building.Trim() == string.Empty),
+                    PmAnalyticsV3Catalog.Location => assets.Where(asset => asset.Location == null || asset.Location.Trim() == string.Empty),
+                    _ => assets
+                };
+                continue;
+            }
+
+            assets = filter.Field switch
+            {
+                PmAnalyticsV3Catalog.Department => assets.Where(asset => asset.Department != null
+                    && values.Contains(asset.Department.Trim().ToUpper())),
+                PmAnalyticsV3Catalog.Building => assets.Where(asset => asset.Building != null
+                    && values.Contains(asset.Building.Trim().ToUpper())),
+                PmAnalyticsV3Catalog.Location => assets.Where(asset => asset.Location != null
+                    && values.Contains(asset.Location.Trim().ToUpper())),
+                PmAnalyticsV3Catalog.RegistrationStatus => assets.Where(asset => values.Contains(asset.Status)),
+                _ => assets
+            };
+        }
+
+        var rows = await assets
+            .OrderBy(asset => asset.AssetCode)
+            .ThenBy(asset => asset.Id)
+            .Take(MaximumRowsPerExecution + 1)
+            .Select(asset => new PmAnalyticsV3InventorySource(
+                asset.Id,
+                asset.AssetCode,
+                asset.AssetCategory,
+                asset.Department,
+                asset.Building,
+                asset.Location,
+                asset.Status))
+            .ToListAsync(cancellationToken);
+        if (rows.Count > MaximumRowsPerExecution)
+        {
+            throw new PmAnalyticsV3ExecutionLimitException(
+                $"This report scope exceeds the current {MaximumRowsPerExecution:N0} registered-asset execution limit. Narrow the category or filters.");
+        }
+
+        return rows.ToArray();
+    }
+
+    private static PmAnalyticsV3ExecutionResponse BuildInventoryRecordsResponse(
+        PmAnalyticsV3NormalizedPlan normalized,
+        IReadOnlyList<PmAnalyticsV3InventorySource> sourceRows,
+        IReadOnlyList<PmAnalyticsV3Column> columns,
+        DateTimeOffset now,
+        int page,
+        int pageSize)
+    {
+        var ordered = sourceRows.ToList();
+        if (normalized.Plan.OrderBy.Count == 0)
+        {
+            ordered.Sort((left, right) =>
+            {
+                var comparison = StringComparer.Ordinal.Compare(left.AssetCode, right.AssetCode);
+                return comparison != 0 ? comparison : left.AssetId.CompareTo(right.AssetId);
+            });
+        }
+        else
+        {
+            ordered.Sort((left, right) => CompareInventoryRows(left, right, normalized.Plan.OrderBy));
+        }
+
+        var totalPages = PageCount(ordered.Count, pageSize);
+        var records = ordered
+            .Skip(checked((page - 1) * pageSize))
+            .Take(pageSize)
+            .Select(row => new PmAnalyticsV3RecordRow(
+                null,
+                row.AssetId,
+                null,
+                normalized.Plan.Columns.ToDictionary(
+                    column => column,
+                    column => InventoryColumnValue(row, column),
+                    StringComparer.Ordinal)))
+            .ToArray();
+        var population = new PmAnalyticsV3Population(
+            0,
+            sourceRows.Count,
+            0,
+            sourceRows.Count,
+            sourceRows.Count,
+            0,
+            0,
+            0);
+
+        return new PmAnalyticsV3ExecutionResponse(
+            3,
+            PmAnalyticsV3Catalog.Version,
+            now,
+            normalized.Plan,
+            normalized.CyclesByCategory,
+            PmAnalyticsV3Mode.Records,
+            columns,
+            population,
+            page,
+            pageSize,
+            totalPages,
+            [],
+            records,
+            InventoryScopeNotes);
+    }
+
+    private static PmAnalyticsV3ExecutionResponse BuildInventoryAggregateResponse(
+        PmAnalyticsV3NormalizedPlan normalized,
+        IReadOnlyList<PmAnalyticsV3InventorySource> sourceRows,
+        IReadOnlyList<PmAnalyticsV3Column> columns,
+        DateTimeOffset now,
+        int page,
+        int pageSize)
+    {
+        var groupBy = normalized.Plan.GroupBy ?? [];
+        var groupedRows = groupBy.Count == 0
+            ? new[] { (Key: new PmAnalyticsV3GroupKey(null, null, null, null), Rows: sourceRows) }
+            : sourceRows
+                .GroupBy(row => CreateInventoryGroupKey(row, groupBy))
+                .Select(group => (group.Key, Rows: (IReadOnlyList<PmAnalyticsV3InventorySource>)group.ToArray()))
+                .ToArray();
+
+        var groups = groupedRows.Select(group =>
+        {
+            var count = group.Rows.Count;
+            var measure = new PmAnalyticsV3MeasureResult(
+                count,
+                count,
+                0,
+                "assets",
+                true,
+                null,
+                count,
+                count);
+            IReadOnlyDictionary<string, PmAnalyticsV3MeasureResult> measures =
+                new Dictionary<string, PmAnalyticsV3MeasureResult>(StringComparer.Ordinal)
+                {
+                    [PmAnalyticsV3Catalog.RegisteredAssetCount] = measure
+                };
+            return new PmAnalyticsV3InventoryGroup(group.Key, group.Rows, measures);
+        }).ToList();
+
+        var beforeFilters = groups.Count;
+        foreach (var filter in normalized.Plan.AggregateFilters)
+        {
+            groups = groups
+                .Where(group => MatchesAggregateFilter(
+                    group.Measures[filter.Measure].Value!.Value,
+                    filter))
+                .ToList();
+        }
+
+        var afterFilters = groups.Count;
+        if (normalized.Plan.Top is { } top)
+        {
+            groups = (top.Direction == PmAnalyticsV3SortDirection.Ascending
+                    ? groups.OrderBy(group => group.Measures[top.Measure].Value)
+                    : groups.OrderByDescending(group => group.Measures[top.Measure].Value))
+                .ThenBy(group => DescribeGroupKey(group.Key), StringComparer.Ordinal)
+                .Take(top.Limit)
+                .ToList();
+        }
+
+        SortInventoryGroups(groups, normalized.Plan);
+        var returnedAfterTop = groups.Count;
+        var totalPages = PageCount(groups.Count, pageSize);
+        var rows = groups
+            .Skip(checked((page - 1) * pageSize))
+            .Take(pageSize)
+            .Select(group => new PmAnalyticsV3AggregateRow(
+                normalized.Plan.Columns.ToDictionary(
+                    column => column,
+                    column => AggregateColumnValue(group.Key, group.Measures, column),
+                    StringComparer.Ordinal),
+                group.Measures))
+            .ToArray();
+        var population = new PmAnalyticsV3Population(
+            0,
+            sourceRows.Count,
+            0,
+            sourceRows.Count,
+            sourceRows.Count,
+            beforeFilters,
+            afterFilters,
+            returnedAfterTop);
+
+        return new PmAnalyticsV3ExecutionResponse(
+            3,
+            PmAnalyticsV3Catalog.Version,
+            now,
+            normalized.Plan,
+            normalized.CyclesByCategory,
+            PmAnalyticsV3Mode.Aggregate,
+            columns,
+            population,
+            page,
+            pageSize,
+            totalPages,
+            rows,
+            [],
+            InventoryScopeNotes);
+    }
+
+    private static PmAnalyticsV3GroupKey CreateInventoryGroupKey(
+        PmAnalyticsV3InventorySource row,
+        IReadOnlyList<string> dimensions)
+    {
+        object? Get(string dimension) => dimension switch
+        {
+            PmAnalyticsV3Catalog.AssetCategory => row.AssetCategory,
+            PmAnalyticsV3Catalog.Department => NormalizeNullableText(row.Department)?.ToUpperInvariant(),
+            PmAnalyticsV3Catalog.Building => NormalizeNullableText(row.Building)?.ToUpperInvariant(),
+            PmAnalyticsV3Catalog.Location => NormalizeNullableText(row.Location)?.ToUpperInvariant(),
+            PmAnalyticsV3Catalog.RegistrationStatus => row.RegistrationStatus,
+            _ => null
+        };
+
+        return new PmAnalyticsV3GroupKey(
+            dimensions.Count > 0 ? dimensions[0] : null,
+            dimensions.Count > 0 ? Get(dimensions[0]) : null,
+            dimensions.Count > 1 ? dimensions[1] : null,
+            dimensions.Count > 1 ? Get(dimensions[1]) : null);
+    }
+
+    private static void SortInventoryGroups(
+        List<PmAnalyticsV3InventoryGroup> groups,
+        PmAnalyticsV3ReportPlan plan)
+    {
+        groups.Sort((left, right) =>
+        {
+            foreach (var order in plan.OrderBy)
+            {
+                var comparison = CompareAggregateValues(
+                    AggregateColumnValue(left.Key, left.Measures, order.Field),
+                    AggregateColumnValue(right.Key, right.Measures, order.Field));
+                if (comparison != 0)
+                {
+                    return order.Direction == PmAnalyticsV3SortDirection.Ascending ? comparison : -comparison;
+                }
+            }
+
+            return StringComparer.Ordinal.Compare(DescribeGroupKey(left.Key), DescribeGroupKey(right.Key));
+        });
+    }
+
+    private static int CompareInventoryRows(
+        PmAnalyticsV3InventorySource left,
+        PmAnalyticsV3InventorySource right,
+        IReadOnlyList<PmAnalyticsV3OrderBy> orderBy)
+    {
+        foreach (var order in orderBy)
+        {
+            var comparison = CompareAggregateValues(
+                InventoryColumnValue(left, order.Field),
+                InventoryColumnValue(right, order.Field));
+            if (comparison != 0)
+            {
+                return order.Direction == PmAnalyticsV3SortDirection.Ascending ? comparison : -comparison;
+            }
+        }
+
+        var assetCodeComparison = StringComparer.Ordinal.Compare(left.AssetCode, right.AssetCode);
+        return assetCodeComparison != 0 ? assetCodeComparison : left.AssetId.CompareTo(right.AssetId);
+    }
+
+    private static object? InventoryColumnValue(PmAnalyticsV3InventorySource row, string column) =>
+        column switch
+        {
+            PmAnalyticsV3Catalog.AssetId => row.AssetId,
+            PmAnalyticsV3Catalog.AssetCode => row.AssetCode,
+            PmAnalyticsV3Catalog.AssetCategory => row.AssetCategory,
+            PmAnalyticsV3Catalog.Department => NormalizeNullableText(row.Department),
+            PmAnalyticsV3Catalog.Building => NormalizeNullableText(row.Building),
+            PmAnalyticsV3Catalog.Location => NormalizeNullableText(row.Location),
+            PmAnalyticsV3Catalog.RegistrationStatus => row.RegistrationStatus,
+            _ => null
+        };
 
     private static IQueryable<PmAnalyticsV3RawRow> ApplyBaseFilter(
         IQueryable<PmAnalyticsV3RawRow> rows,
@@ -861,19 +1218,19 @@ internal sealed class PmAnalyticsV3QueryService(
     {
         return plan.Columns.Select(column =>
         {
-            var measure = PmAnalyticsV3Catalog.Measures.FirstOrDefault(item => item.Id == column);
+            var measure = PmAnalyticsV3Catalog.MeasuresFor(plan.Subject).FirstOrDefault(item => item.Id == column);
             if (measure is not null)
             {
                 return new PmAnalyticsV3Column(measure.Id, measure.Label, measure.ValueType, measure.Unit, null);
             }
 
-            var dimension = PmAnalyticsV3Catalog.Dimensions.FirstOrDefault(item => item.Id == column);
+            var dimension = PmAnalyticsV3Catalog.DimensionsFor(plan.Subject).FirstOrDefault(item => item.Id == column);
             if (dimension is not null)
             {
                 return new PmAnalyticsV3Column(dimension.Id, dimension.Label, dimension.ValueType, "", dimension.NullSemantics);
             }
 
-            var record = PmAnalyticsV3Catalog.FindRecordColumn(column)!;
+            var record = PmAnalyticsV3Catalog.FindRecordColumn(column, plan.Subject)!;
             return new PmAnalyticsV3Column(record.Id, record.Label, record.ValueType, record.Unit, record.NullSemantics);
         }).ToArray();
     }
@@ -1002,24 +1359,26 @@ internal sealed class PmAnalyticsV3QueryService(
             ? string.Empty
             : $";{key.SecondId}={Convert.ToString(key.SecondValue, CultureInfo.InvariantCulture) ?? "(unknown)"}");
 
-    private static string DescribeFilter(PmAnalyticsV3Filter filter)
+    private static string DescribeFilter(PmAnalyticsV3Filter filter, string subject = PmAnalyticsV3Catalog.SubjectPmExecution)
     {
-        var label = PmAnalyticsV3Catalog.FindFilterField(filter.Field)?.Label ?? filter.Field;
+        var label = PmAnalyticsV3Catalog.FindFilterField(filter.Field, subject)?.Label ?? filter.Field;
         return filter.Operator == PmAnalyticsV3FilterOperator.IsNull
             ? $"{label} is unknown"
             : $"{label} {string.Join(" or ", filter.Values ?? [])}";
     }
 
-    private static string DescribeMeasure(string measure) =>
-        PmAnalyticsV3Catalog.Measures.Single(item => item.Id == measure).Label;
+    private static string DescribeMeasure(string measure, string subject = PmAnalyticsV3Catalog.SubjectPmExecution) =>
+        PmAnalyticsV3Catalog.MeasuresFor(subject).Single(item => item.Id == measure).Label;
 
-    private static string DescribeOutputColumn(string column) =>
-        PmAnalyticsV3Catalog.Measures.FirstOrDefault(item => item.Id == column)?.Label
-        ?? PmAnalyticsV3Catalog.Dimensions.FirstOrDefault(item => item.Id == column)?.Label
-        ?? PmAnalyticsV3Catalog.FindRecordColumn(column)?.Label
+    private static string DescribeOutputColumn(string column, string subject = PmAnalyticsV3Catalog.SubjectPmExecution) =>
+        PmAnalyticsV3Catalog.MeasuresFor(subject).FirstOrDefault(item => item.Id == column)?.Label
+        ?? PmAnalyticsV3Catalog.DimensionsFor(subject).FirstOrDefault(item => item.Id == column)?.Label
+        ?? PmAnalyticsV3Catalog.FindRecordColumn(column, subject)?.Label
         ?? column;
 
-    private static string DescribeAggregateFilter(PmAnalyticsV3AggregateFilter filter)
+    private static string DescribeAggregateFilter(
+        PmAnalyticsV3AggregateFilter filter,
+        string subject = PmAnalyticsV3Catalog.SubjectPmExecution)
     {
         var operation = filter.Operator switch
         {
@@ -1031,12 +1390,12 @@ internal sealed class PmAnalyticsV3QueryService(
             PmAnalyticsV3NumericOperator.LessThanOrEqual => "≤",
             _ => filter.Operator.ToString()
         };
-        var definition = PmAnalyticsV3Catalog.Measures.Single(item => item.Id == filter.Measure);
+        var definition = PmAnalyticsV3Catalog.MeasuresFor(subject).Single(item => item.Id == filter.Measure);
         return $"only groups where {definition.Label} {operation} {filter.Value.ToString(CultureInfo.InvariantCulture)}{(definition.Unit == "percent" ? "%" : string.Empty)}";
     }
 
-    private static string DescribeDimension(string dimension) =>
-        PmAnalyticsV3Catalog.Dimensions.FirstOrDefault(item => item.Id == dimension)?.Label ?? dimension;
+    private static string DescribeDimension(string dimension, string subject = PmAnalyticsV3Catalog.SubjectPmExecution) =>
+        PmAnalyticsV3Catalog.DimensionsFor(subject).FirstOrDefault(item => item.Id == dimension)?.Label ?? dimension;
 
     private static string DescribePeriod(IReadOnlyList<string> cycles)
     {
@@ -1111,6 +1470,20 @@ internal sealed class PmAnalyticsV3QueryService(
         public bool? IsOperational { get; init; }
         public string? FormStatus { get; init; }
     }
+
+    private sealed record PmAnalyticsV3InventorySource(
+        Guid AssetId,
+        string AssetCode,
+        string AssetCategory,
+        string? Department,
+        string? Building,
+        string? Location,
+        string RegistrationStatus);
+
+    private sealed record PmAnalyticsV3InventoryGroup(
+        PmAnalyticsV3GroupKey Key,
+        IReadOnlyList<PmAnalyticsV3InventorySource> Rows,
+        IReadOnlyDictionary<string, PmAnalyticsV3MeasureResult> Measures);
 
     internal sealed record PmAnalyticsV3Source(
         Guid ScheduleId,

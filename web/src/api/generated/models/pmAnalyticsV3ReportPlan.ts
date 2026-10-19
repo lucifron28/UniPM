@@ -19,7 +19,7 @@ export interface PmAnalyticsV3ReportPlan {
   catalogVersion: number | string
   subject: string
   mode: PmAnalyticsV3Mode
-  period: PmAnalyticsV3Period
+  period: null | PmAnalyticsV3Period
   categories: string[]
   measures: string[]
   /** @nullable */

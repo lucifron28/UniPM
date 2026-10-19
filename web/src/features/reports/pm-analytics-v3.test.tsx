@@ -8,6 +8,7 @@ import type {
   PmAnalyticsV3PreviewResponse,
   PmAnalyticsV3ReportPlan,
 } from '@/api/generated/models'
+import { PmAnalyticsV3FilterOperator } from '@/api/generated/models'
 import { ApiError } from '@/api/problem-details'
 import { PmAnalyticsV3Panel } from './pm-analytics-v3'
 
@@ -58,7 +59,7 @@ function makePlan(
 ): PmAnalyticsV3ReportPlan {
   return {
     schemaVersion: 3,
-    catalogVersion: 1,
+    catalogVersion: 2,
     subject: 'pmExecution',
     mode: 'Aggregate',
     period: {
@@ -87,8 +88,22 @@ function makePlan(
 function makeCatalog(): PmAnalyticsV3CatalogResponse {
   return {
     schemaVersion: 3,
-    catalogVersion: 1,
+    catalogVersion: 2,
     subject: 'pmExecution',
+    subjects: [
+      {
+        id: 'pmExecution',
+        label: 'PM execution',
+        description: 'Eligible PM schedule rows.',
+        requiresPeriod: true,
+      },
+      {
+        id: 'assetInventory',
+        label: 'Asset inventory',
+        description: 'One registered asset per row.',
+        requiresPeriod: false,
+      },
+    ],
     categories: [
       {
         id: 'fire-extinguisher',
@@ -238,6 +253,226 @@ function makeCatalog(): PmAnalyticsV3CatalogResponse {
   }
 }
 
+function makeInventoryCatalog(): PmAnalyticsV3CatalogResponse {
+  const catalog = makeCatalog()
+  return {
+    ...catalog,
+    subject: 'assetInventory',
+    measures: [
+      {
+        id: 'registeredAssetCount',
+        label: 'Registered assets',
+        valueType: 'integer',
+        unit: 'assets',
+        grain: 'one registered Asset row per unique asset ID',
+        population: 'filtered registered-asset population',
+        definition:
+          'Count unique registered asset IDs after category and population filters.',
+      },
+    ],
+    dimensions: [
+      {
+        id: 'assetCategory',
+        label: 'Asset category',
+        valueType: 'string',
+        nullSemantics: 'Not null.',
+        grain: 'asset',
+        definition: 'Canonical asset category.',
+      },
+      {
+        id: 'department',
+        label: 'Department',
+        valueType: 'string',
+        nullSemantics: 'Unknown values form a group.',
+        grain: 'current asset',
+        definition: 'Current department.',
+      },
+      {
+        id: 'building',
+        label: 'Building',
+        valueType: 'string',
+        nullSemantics: 'Unknown values form a group.',
+        grain: 'current asset',
+        definition: 'Current building.',
+      },
+      {
+        id: 'location',
+        label: 'General location',
+        valueType: 'string',
+        nullSemantics: 'Unknown values form a group.',
+        grain: 'current asset',
+        definition: 'Current location.',
+      },
+      {
+        id: 'registrationStatus',
+        label: 'Registration status',
+        valueType: 'string',
+        nullSemantics: 'Stored catalog status.',
+        grain: 'current asset',
+        definition:
+          'Stored registration status, separate from inspection condition.',
+      },
+    ],
+    filterFields: [
+      ...['department', 'building', 'location'].map((id) => ({
+        id,
+        label:
+          id === 'location'
+            ? 'General location'
+            : id.charAt(0).toUpperCase() + id.slice(1),
+        isBaseFilter: true,
+        valueType: 'string',
+        maximumLength: 256,
+        allowedValues: [],
+        operators: [
+          PmAnalyticsV3FilterOperator.Equal,
+          PmAnalyticsV3FilterOperator.In,
+          PmAnalyticsV3FilterOperator.IsNull,
+        ],
+      })),
+      {
+        id: 'registrationStatus',
+        label: 'Registration status',
+        isBaseFilter: true,
+        valueType: 'registrationStatus',
+        maximumLength: 16,
+        allowedValues: ['Active', 'Inactive', 'Retired'],
+        operators: [
+          PmAnalyticsV3FilterOperator.Equal,
+          PmAnalyticsV3FilterOperator.In,
+        ],
+      },
+    ],
+    recordColumns: [
+      {
+        id: 'assetId',
+        label: 'Asset ID',
+        valueType: 'guid',
+        unit: '',
+        nullSemantics: null,
+      },
+      {
+        id: 'assetCode',
+        label: 'Asset code',
+        valueType: 'string',
+        unit: '',
+        nullSemantics: null,
+      },
+      {
+        id: 'assetCategory',
+        label: 'Asset category',
+        valueType: 'string',
+        unit: '',
+        nullSemantics: null,
+      },
+      {
+        id: 'department',
+        label: 'Current department',
+        valueType: 'string',
+        unit: '',
+        nullSemantics: 'Current Asset value.',
+      },
+      {
+        id: 'building',
+        label: 'Current building',
+        valueType: 'string',
+        unit: '',
+        nullSemantics: 'Current Asset value.',
+      },
+      {
+        id: 'location',
+        label: 'General location',
+        valueType: 'string',
+        unit: '',
+        nullSemantics: 'Current Asset value.',
+      },
+      {
+        id: 'registrationStatus',
+        label: 'Registration status',
+        valueType: 'string',
+        unit: '',
+        nullSemantics: 'Stored status.',
+      },
+    ],
+  }
+}
+
+function makeInventoryExecution(
+  plan: PmAnalyticsV3ReportPlan,
+): PmAnalyticsV3ExecutionResponse {
+  return {
+    schemaVersion: 3,
+    catalogVersion: 2,
+    asOfUtc: '2025-01-01T01:00:00Z',
+    plan,
+    cyclesByCategory: {},
+    mode: 'Aggregate',
+    columns: [
+      {
+        id: 'registrationStatus',
+        label: 'Registration status',
+        valueType: 'string',
+        unit: '',
+        nullSemantics: 'Stored status.',
+      },
+      {
+        id: 'registeredAssetCount',
+        label: 'Registered assets',
+        valueType: 'integer',
+        unit: 'assets',
+        nullSemantics: null,
+      },
+    ],
+    population: {
+      eligibleAssetCycleCount: 0,
+      eligibleDistinctAssetCount: 2,
+      matchingAssetCycleCount: 0,
+      matchingDistinctAssetCount: 2,
+      sourceTotalCount: 2,
+      groupsBeforeAggregateFilters: 2,
+      groupsAfterAggregateFilters: 2,
+      groupsReturnedAfterTop: 2,
+    },
+    page: 1,
+    pageSize: 25,
+    totalPages: 1,
+    aggregateRows: [
+      {
+        values: { registrationStatus: 'Active' },
+        measures: {
+          registeredAssetCount: {
+            value: 1,
+            numerator: 1,
+            denominator: 0,
+            unit: 'assets',
+            isMeasurable: true,
+            unmeasurableReason: null,
+            eligibleRowCount: 1,
+            matchingRowCount: 1,
+          },
+        },
+      },
+      {
+        values: { registrationStatus: 'Retired' },
+        measures: {
+          registeredAssetCount: {
+            value: 1,
+            numerator: 1,
+            denominator: 0,
+            unit: 'assets',
+            isMeasurable: true,
+            unmeasurableReason: null,
+            eligibleRowCount: 1,
+            matchingRowCount: 1,
+          },
+        },
+      },
+    ],
+    records: [],
+    scopeNotes: ['One Asset row per ID.'],
+  }
+}
+
 function makeInterpretation(
   plan = makePlan(),
   overrides: Partial<PmAnalyticsV3InterpretationResponse> = {},
@@ -311,7 +546,7 @@ function makeExecution(
   )
   return {
     schemaVersion: 3,
-    catalogVersion: 1,
+    catalogVersion: 2,
     asOfUtc: '2025-01-01T01:00:00Z',
     plan,
     cyclesByCategory: {
@@ -427,6 +662,84 @@ describe('PM analytics V3 workflow', () => {
         makePreview(plan),
       )
     api.execute.mockReset()
+  })
+
+  it('builds, previews, and runs a schedule-independent inventory report', async () => {
+    api.catalog.mockImplementation(async (params?: { subject?: string }) =>
+      params?.subject === 'assetInventory'
+        ? makeInventoryCatalog()
+        : makeCatalog(),
+    )
+    api.preview.mockImplementation(
+      async ({ plan }: { plan: PmAnalyticsV3ReportPlan }) => ({
+        ...makePreview(plan),
+        cyclesByCategory: {},
+        summary: 'Count registered assets grouped by registration status.',
+        scopeNotes: ['One Asset row per ID; no PM schedule joins.'],
+      }),
+    )
+    api.execute.mockImplementation(async () => {
+      const plan = api.preview.mock.calls.at(-1)?.[0]
+        .plan as PmAnalyticsV3ReportPlan
+      return makeInventoryExecution(plan)
+    })
+
+    render(<PmAnalyticsV3Panel />)
+    await screen.findByRole('heading', { name: 'Build a PM report' })
+    fireEvent.change(screen.getByLabelText('Report subject'), {
+      target: { value: 'assetInventory' },
+    })
+
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Build an asset inventory report',
+      }),
+    ).toBeInTheDocument()
+    expect(
+      await screen.findByText(
+        'Count unique registered asset IDs after category and population filters.',
+      ),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByLabelText('Describe the report'),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByLabelText('Scheduled PM cycle period'),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('Matching record filters'),
+    ).not.toBeInTheDocument()
+
+    const registrationStatusGroup = screen
+      .getAllByRole('checkbox', { name: 'Registration status' })
+      .find((element) => !element.hasAttribute('disabled'))
+    expect(registrationStatusGroup).toBeDefined()
+    fireEvent.click(registrationStatusGroup!)
+    fireEvent.click(screen.getByRole('button', { name: 'Preview report' }))
+    expect(
+      await screen.findByRole('heading', { name: 'Report preview' }),
+    ).toBeInTheDocument()
+    const previewPlan = api.preview.mock.calls.at(-1)?.[0]
+      .plan as PmAnalyticsV3ReportPlan
+    expect(previewPlan.subject).toBe('assetInventory')
+    expect(previewPlan.period).toBeNull()
+    expect(previewPlan.groupBy).toEqual(['registrationStatus'])
+    expect(
+      screen.queryByText('Included PM cycles by category'),
+    ).not.toBeInTheDocument()
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Confirm and run report' }),
+    )
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Registered asset inventory results',
+      }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getAllByText(/no denominator applies/i).length,
+    ).toBeGreaterThan(0)
+    expect(api.interpret).not.toHaveBeenCalled()
   })
 
   it('loads the catalog, carries an interpreted plan through confirmation, and drills into numerator sources', async () => {

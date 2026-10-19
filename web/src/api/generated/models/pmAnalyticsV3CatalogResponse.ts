@@ -9,6 +9,7 @@ import type { PmAnalyticsV3DimensionDefinition } from './pmAnalyticsV3DimensionD
 import type { PmAnalyticsV3FilterFieldDefinition } from './pmAnalyticsV3FilterFieldDefinition'
 import type { PmAnalyticsV3MeasureDefinition } from './pmAnalyticsV3MeasureDefinition'
 import type { PmAnalyticsV3RecordColumnDefinition } from './pmAnalyticsV3RecordColumnDefinition'
+import type { PmAnalyticsV3SubjectDefinition } from './pmAnalyticsV3SubjectDefinition'
 
 export interface PmAnalyticsV3CatalogResponse {
   /** @pattern ^-?(?:0|[1-9]\d*)$ */
@@ -16,6 +17,7 @@ export interface PmAnalyticsV3CatalogResponse {
   /** @pattern ^-?(?:0|[1-9]\d*)$ */
   catalogVersion: number | string
   subject: string
+  subjects: PmAnalyticsV3SubjectDefinition[]
   categories: PmAnalyticsV3CategoryDefinition[]
   measures: PmAnalyticsV3MeasureDefinition[]
   dimensions: PmAnalyticsV3DimensionDefinition[]

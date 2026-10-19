@@ -96,6 +96,12 @@ public sealed record PmAnalyticsV3Top(
     [property: JsonRequired]
     PmAnalyticsV3SortDirection Direction);
 
+public sealed record PmAnalyticsV3SubjectDefinition(
+    string Id,
+    string Label,
+    string Description,
+    bool RequiresPeriod);
+
 /// <summary>Typed, closed V3 report plan contract.</summary>
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record PmAnalyticsV3ReportPlan(
@@ -108,7 +114,7 @@ public sealed record PmAnalyticsV3ReportPlan(
     [property: JsonRequired]
     PmAnalyticsV3Mode Mode,
     [property: JsonRequired]
-    PmAnalyticsV3Period Period,
+    PmAnalyticsV3Period? Period,
     [property: JsonRequired]
     IReadOnlyList<string> Categories,
     [property: JsonRequired]
@@ -152,6 +158,7 @@ public sealed record PmAnalyticsV3CatalogResponse(
     int SchemaVersion,
     int CatalogVersion,
     string Subject,
+    IReadOnlyList<PmAnalyticsV3SubjectDefinition> Subjects,
     IReadOnlyList<PmAnalyticsV3CategoryDefinition> Categories,
     IReadOnlyList<PmAnalyticsV3MeasureDefinition> Measures,
     IReadOnlyList<PmAnalyticsV3DimensionDefinition> Dimensions,
@@ -195,7 +202,7 @@ public sealed record PmAnalyticsV3AggregateRow(
     IReadOnlyDictionary<string, PmAnalyticsV3MeasureResult> Measures);
 
 public sealed record PmAnalyticsV3RecordRow(
-    Guid ScheduleId,
+    Guid? ScheduleId,
     Guid AssetId,
     Guid? InspectionId,
     IReadOnlyDictionary<string, object?> Values);

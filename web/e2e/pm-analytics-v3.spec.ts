@@ -13,7 +13,7 @@ const session = {
 
 const plan = {
   schemaVersion: 3,
-  catalogVersion: 1,
+  catalogVersion: 2,
   subject: 'pmExecution',
   mode: 'Aggregate',
   period: {
@@ -39,8 +39,24 @@ const plan = {
 
 const catalog = {
   schemaVersion: 3,
-  catalogVersion: 1,
+  catalogVersion: 2,
   subject: 'pmExecution',
+  subjects: [
+    {
+      id: 'pmExecution',
+      label: 'PM execution',
+      description:
+        'Eligible persisted asset-cycle schedules and their inspection outcomes.',
+      requiresPeriod: true,
+    },
+    {
+      id: 'assetInventory',
+      label: 'Asset inventory',
+      description:
+        'One current registered asset per row, independent of PM schedules and inspections.',
+      requiresPeriod: false,
+    },
+  ],
   categories: [
     {
       id: 'fire-extinguisher',
@@ -175,7 +191,7 @@ test('runs a V3 report through source-record review at a narrow viewport', async
   await page.route('**/api/v1/auth/me', (route) =>
     route.fulfill({ json: session.user }),
   )
-  await page.route('**/api/v1/analytics/pm/v3/catalog', (route) =>
+  await page.route('**/api/v1/analytics/pm/v3/catalog**', (route) =>
     route.fulfill({ json: catalog }),
   )
   await page.route('**/api/v1/analytics/pm/v3/interpret', (route) =>
@@ -202,7 +218,7 @@ test('runs a V3 report through source-record review at a narrow viewport', async
       await route.fulfill({
         json: {
           schemaVersion: 3,
-          catalogVersion: 1,
+          catalogVersion: 2,
           asOfUtc: '2026-10-19T08:00:00Z',
           plan,
           cyclesByCategory: preview.cyclesByCategory,
@@ -248,7 +264,7 @@ test('runs a V3 report through source-record review at a narrow viewport', async
     await route.fulfill({
       json: {
         schemaVersion: 3,
-        catalogVersion: 1,
+        catalogVersion: 2,
         asOfUtc: '2026-10-19T08:00:00Z',
         plan: recordPlan,
         cyclesByCategory: preview.cyclesByCategory,
@@ -326,6 +342,217 @@ test('runs a V3 report through source-record review at a narrow viewport', async
     'href',
     '/app/inspections/33333333-3333-4333-8333-333333333333',
   )
+
+  const pageWidth = await page.evaluate(
+    () => document.documentElement.scrollWidth,
+  )
+  expect(pageWidth).toBeLessThanOrEqual(390)
+})
+
+test('runs a registered asset inventory report without a PM period', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.route('**/api/v1/auth/refresh', (route) =>
+    route.fulfill({ json: session }),
+  )
+  await page.route('**/api/v1/auth/me', (route) =>
+    route.fulfill({ json: session.user }),
+  )
+
+  const inventoryCatalog = {
+    ...catalog,
+    subject: 'assetInventory',
+    measures: [
+      {
+        id: 'registeredAssetCount',
+        label: 'Registered assets',
+        valueType: 'integer',
+        unit: 'assets',
+        grain: 'one registered Asset row per unique asset ID',
+        population: 'filtered registered-asset population',
+        definition:
+          'Count unique registered asset IDs after category and population filters.',
+      },
+    ],
+    dimensions: [
+      {
+        id: 'registrationStatus',
+        label: 'Registration status',
+        valueType: 'string',
+        nullSemantics: 'Stored catalog status.',
+        grain: 'current asset',
+        definition:
+          'Stored registration status, separate from inspection condition.',
+      },
+    ],
+    filterFields: [
+      {
+        id: 'registrationStatus',
+        label: 'Registration status',
+        isBaseFilter: true,
+        valueType: 'registrationStatus',
+        maximumLength: 16,
+        allowedValues: ['Active', 'Inactive', 'Retired'],
+        operators: ['Equal', 'In'],
+      },
+    ],
+    recordColumns: [
+      {
+        id: 'assetId',
+        label: 'Asset ID',
+        valueType: 'guid',
+        unit: '',
+        nullSemantics: null,
+      },
+      {
+        id: 'assetCode',
+        label: 'Asset code',
+        valueType: 'string',
+        unit: '',
+        nullSemantics: null,
+      },
+      {
+        id: 'registrationStatus',
+        label: 'Registration status',
+        valueType: 'string',
+        unit: '',
+        nullSemantics: 'Stored status.',
+      },
+    ],
+  }
+
+  await page.route('**/api/v1/analytics/pm/v3/catalog**', (route) => {
+    const subject = new URL(route.request().url()).searchParams.get('subject')
+    return route.fulfill({
+      json: subject === 'assetInventory' ? inventoryCatalog : catalog,
+    })
+  })
+
+  let previewPlan: Record<string, unknown> | null = null
+  await page.route('**/api/v1/analytics/pm/v3/preview', async (route) => {
+    const request = route.request().postDataJSON() as {
+      plan: Record<string, unknown>
+    }
+    previewPlan = request.plan
+    await route.fulfill({
+      json: {
+        previewId: 'signed-inventory-preview-token',
+        expiresAtUtc: '2026-10-20T08:00:00Z',
+        plan: request.plan,
+        cyclesByCategory: {},
+        summary: 'Count registered assets grouped by registration status.',
+        scopeNotes: [
+          'Each result represents one registered Asset row, identified by Asset ID.',
+          'Inventory reads Assets directly and does not join PM schedules or inspections.',
+          'Registration status is separate from inspection condition.',
+        ],
+      },
+    })
+  })
+  await page.route('**/api/v1/analytics/pm/v3/execute', (route) =>
+    route.fulfill({
+      json: {
+        schemaVersion: 3,
+        catalogVersion: 2,
+        asOfUtc: '2026-10-19T08:00:00Z',
+        plan: previewPlan,
+        cyclesByCategory: {},
+        mode: 'Aggregate',
+        columns: [
+          {
+            id: 'registrationStatus',
+            label: 'Registration status',
+            valueType: 'string',
+            unit: '',
+            nullSemantics: 'Stored status.',
+          },
+          {
+            id: 'registeredAssetCount',
+            label: 'Registered assets',
+            valueType: 'integer',
+            unit: 'assets',
+            nullSemantics: null,
+          },
+        ],
+        population: {
+          eligibleAssetCycleCount: 0,
+          eligibleDistinctAssetCount: 2,
+          matchingAssetCycleCount: 0,
+          matchingDistinctAssetCount: 2,
+          sourceTotalCount: 2,
+          groupsBeforeAggregateFilters: 2,
+          groupsAfterAggregateFilters: 2,
+          groupsReturnedAfterTop: 2,
+        },
+        page: 1,
+        pageSize: 25,
+        totalPages: 1,
+        aggregateRows: [
+          {
+            values: { registrationStatus: 'Active' },
+            measures: {
+              registeredAssetCount: {
+                value: 1,
+                numerator: 1,
+                denominator: 0,
+                unit: 'assets',
+                isMeasurable: true,
+                unmeasurableReason: null,
+                eligibleRowCount: 1,
+                matchingRowCount: 1,
+              },
+            },
+          },
+          {
+            values: { registrationStatus: 'Retired' },
+            measures: {
+              registeredAssetCount: {
+                value: 1,
+                numerator: 1,
+                denominator: 0,
+                unit: 'assets',
+                isMeasurable: true,
+                unmeasurableReason: null,
+                eligibleRowCount: 1,
+                matchingRowCount: 1,
+              },
+            },
+          },
+        ],
+        records: [],
+        scopeNotes: ['One registered Asset row per ID.'],
+      },
+    }),
+  )
+
+  await page.goto('/app/analytics')
+  await page.getByLabel('Report subject').selectOption('assetInventory')
+  await expect(
+    page.getByRole('heading', { name: 'Build an asset inventory report' }),
+  ).toBeVisible()
+  await expect(page.getByLabel('Scheduled PM cycle period')).toHaveCount(0)
+  await expect(page.getByLabel('Describe the report')).toHaveCount(0)
+  await page
+    .getByRole('group', { name: 'Group results by' })
+    .getByRole('checkbox', { name: 'Registration status' })
+    .check()
+  await page.getByRole('button', { name: 'Preview report' }).click()
+  await expect(
+    page.getByRole('heading', { name: 'Report preview' }),
+  ).toBeVisible()
+  expect(previewPlan).toMatchObject({
+    subject: 'assetInventory',
+    period: null,
+    groupBy: ['registrationStatus'],
+  })
+  await expect(page.getByText('Included PM cycles by category')).toHaveCount(0)
+  await page.getByRole('button', { name: 'Confirm and run report' }).click()
+  await expect(
+    page.getByRole('heading', { name: 'Registered asset inventory results' }),
+  ).toBeVisible()
+  await page.getByText('Calculation definitions and provenance').click()
+  await expect(page.getByText(/Source: Assets table/)).toBeVisible()
 
   const pageWidth = await page.evaluate(
     () => document.documentElement.scrollWidth,
