@@ -22,6 +22,7 @@ public sealed class RegistryReadEndpointsTests
         await using var application = new TestApplicationFactory();
         using var client = application.CreateClient();
         await application.SeedAssetsAsync(1_000);
+        await application.SeedScheduleLookupAssetsAsync();
 
         var page = await client.GetFromJsonAsync<AssetRegistryPageResponse>(
             "/api/v1/assets/registry?page=3&pageSize=100");
@@ -38,6 +39,21 @@ public sealed class RegistryReadEndpointsTests
             "/api/v1/assets/registry?search=Control%20Room%20999");
         Assert.NotNull(matchingAssets);
         Assert.Equal("REG-0999", Assert.Single(matchingAssets.Items).AssetCode);
+
+        var scheduleEligibleAssets = await client.GetFromJsonAsync<AssetRegistryPageResponse>(
+            "/api/v1/assets/registry?status=Active&hasDepartment=true&search=ZZZ-ELIGIBLE&pageSize=25");
+        Assert.NotNull(scheduleEligibleAssets);
+        Assert.Equal(3, scheduleEligibleAssets.TotalCount);
+        Assert.All(scheduleEligibleAssets.Items, asset =>
+        {
+            Assert.Equal("Active", asset.Status);
+            Assert.False(string.IsNullOrWhiteSpace(asset.Department));
+        });
+
+        var assetsWithoutDepartment = await client.GetFromJsonAsync<AssetRegistryPageResponse>(
+            "/api/v1/assets/registry?hasDepartment=true&search=AAA-NO-DEPARTMENT");
+        Assert.NotNull(assetsWithoutDepartment);
+        Assert.Empty(assetsWithoutDepartment.Items);
 
         var options = await client.GetFromJsonAsync<AssetRegistryOptionsResponse>(
             "/api/v1/assets/registry/options?assetCategory=fire-extinguisher&department=GSD");

@@ -169,7 +169,7 @@ test('GSD, Supervisor, and Inspector complete an assigned PM batch through WMS r
   const scheduleIds = initialSchedules.map((schedule) => schedule.id)
 
   const supervisorOptionsResponse = await request.get(
-    `${apiBaseUrl}/api/v1/schedules/supervisor-assignment-options`,
+    `${apiBaseUrl}/api/v1/schedules/supervisor-assignment-options?search=${encodeURIComponent('Maintenance Supervisor')}`,
     { headers: gsdHeaders },
   )
   expect(supervisorOptionsResponse.status()).toBe(200)
@@ -213,7 +213,9 @@ test('GSD, Supervisor, and Inspector complete an assigned PM batch through WMS r
   ).toBeVisible()
   await expect(page.getByLabel('Supervisor (oversight)')).toBeVisible()
   await expect(page.getByLabel('Skilled worker (Inspector)')).toHaveCount(0)
-  await page.getByLabel('Supervisor (oversight)').selectOption(supervisor!.id)
+  const supervisorPicker = page.getByLabel('Supervisor (oversight)')
+  await supervisorPicker.fill(supervisor!.displayName)
+  await page.getByRole('option', { name: supervisor!.displayName }).click()
 
   const gsdAssignmentPromise = page.waitForResponse(
     (response) =>
@@ -265,7 +267,7 @@ test('GSD, Supervisor, and Inspector complete an assigned PM batch through WMS r
   expect(supervisorSession.user.roles).toContain('Supervisor')
   const supervisorHeaders = authHeaders(supervisorSession)
   const workerOptionsResponse = await request.get(
-    `${apiBaseUrl}/api/v1/schedules/assignment-options`,
+    `${apiBaseUrl}/api/v1/schedules/assignment-options?search=${encodeURIComponent(inspector.user.displayName)}`,
     { headers: supervisorHeaders },
   )
   expect(workerOptionsResponse.status()).toBe(200)
@@ -290,7 +292,9 @@ test('GSD, Supervisor, and Inspector complete an assigned PM batch through WMS r
   ).toBeVisible()
   await expect(page.getByLabel('Skilled worker (Inspector)')).toBeVisible()
   await expect(page.getByLabel('Supervisor (oversight)')).toHaveCount(0)
-  await page.getByLabel('Skilled worker (Inspector)').selectOption(worker!.id)
+  const workerPicker = page.getByLabel('Skilled worker (Inspector)')
+  await workerPicker.fill(worker!.displayName)
+  await page.getByRole('option', { name: worker!.displayName }).click()
 
   const supervisorAssignmentPromise = page.waitForResponse(
     (response) =>

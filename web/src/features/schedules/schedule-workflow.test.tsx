@@ -57,6 +57,41 @@ function assetLookupHandlers(
   onLookup?: (url: URL) => void,
 ) {
   return [
+    http.get(`${base}/assets/registry`, ({ request }) => {
+      const params = new URL(request.url).searchParams
+      const search = params.get('search')?.toLocaleLowerCase()
+      const assetCategory = params.get('assetCategory')
+      const department = params.get('department')
+      const status = params.get('status')
+      const requiresDepartment = params.get('hasDepartment') === 'true'
+      const page = Number(params.get('page') ?? 1)
+      const pageSize = Number(params.get('pageSize') ?? 20)
+      const matchingAssets = assets.filter((candidate) => {
+        const matchesSearch =
+          !search ||
+          [
+            candidate.assetCode,
+            candidate.department,
+            candidate.building,
+            candidate.location,
+          ]
+            .filter(Boolean)
+            .some((value) => value!.toLocaleLowerCase().includes(search))
+        return (
+          (!assetCategory || candidate.assetCategory === assetCategory) &&
+          (!department || candidate.department === department) &&
+          (!status || candidate.status === status) &&
+          (!requiresDepartment || Boolean(candidate.department?.trim())) &&
+          matchesSearch
+        )
+      })
+      return HttpResponse.json({
+        items: matchingAssets.slice((page - 1) * pageSize, page * pageSize),
+        page,
+        pageSize,
+        totalCount: matchingAssets.length,
+      })
+    }),
     http.get(`${base}/assets`, ({ request }) => {
       const url = new URL(request.url)
       onLookup?.(url)
@@ -121,6 +156,32 @@ const schedule = {
 }
 const workerId = '44444444-4444-4444-8444-444444444444'
 const supervisorId = '55555555-5555-4555-8555-555555555555'
+const assignmentOptionSearches: string[] = []
+
+function assignmentOptionsPage(
+  request: Request,
+  key: 'workers' | 'supervisors',
+  options: { id: string; displayName: string }[],
+) {
+  const params = new URL(request.url).searchParams
+  const search = params.get('search') ?? ''
+  assignmentOptionSearches.push(search)
+  const matching = options.filter((option) =>
+    option.displayName.toLocaleLowerCase().includes(search.toLocaleLowerCase()),
+  )
+  const page = Number(params.get('page') ?? 1)
+  const pageSize = Number(params.get('pageSize') ?? 20)
+  const selected = options.find(
+    (option) => option.id === params.get('selectedUserId'),
+  )
+  return HttpResponse.json({
+    [key]: matching.slice((page - 1) * pageSize, page * pageSize),
+    page,
+    pageSize,
+    totalCount: matching.length,
+    selected: selected ?? null,
+  })
+}
 
 function scheduleRegistryItem(item: typeof schedule) {
   return {
@@ -224,20 +285,20 @@ function renderWithProviders(ui: React.ReactNode) {
 function mockReferences(roles = ['GSD']) {
   server.use(
     http.get(`${base}/auth/me`, () => HttpResponse.json({ ...user, roles })),
-    http.get(`${base}/schedules/supervisor-assignment-options`, () =>
-      roles.includes('GSD')
-        ? HttpResponse.json({
-            supervisors: [
+    http.get(
+      `${base}/schedules/supervisor-assignment-options`,
+      ({ request }) =>
+        roles.includes('GSD')
+          ? assignmentOptionsPage(request, 'supervisors', [
               { id: supervisorId, displayName: 'Fictional Supervisor' },
-            ],
-          })
-        : HttpResponse.json({}, { status: 403 }),
+            ])
+          : HttpResponse.json({}, { status: 403 }),
     ),
-    http.get(`${base}/schedules/assignment-options`, () =>
+    http.get(`${base}/schedules/assignment-options`, ({ request }) =>
       roles.includes('Supervisor')
-        ? HttpResponse.json({
-            workers: [{ id: workerId, displayName: 'Fictional Inspector' }],
-          })
+        ? assignmentOptionsPage(request, 'workers', [
+            { id: workerId, displayName: 'Fictional Inspector' },
+          ])
         : HttpResponse.json({}, { status: 403 }),
     ),
     http.get(`${base}/schedules/enrollment-deferrals`, () =>
@@ -286,6 +347,7 @@ function mockReferences(roles = ['GSD']) {
 
 describe('schedule workflows', () => {
   beforeEach(() => {
+    assignmentOptionSearches.length = 0
     vi.restoreAllMocks()
     setupAuth()
     vi.spyOn(toast, 'success')
@@ -501,7 +563,11 @@ describe('schedule workflows', () => {
       screen.getByLabelText('Asset category'),
       'fire-alarm',
     )
-    await actor.selectOptions(screen.getByLabelText('Department'), 'GSD')
+    const departmentFilter = screen.getByRole('combobox', {
+      name: 'Department',
+    })
+    await actor.type(departmentFilter, 'GSD')
+    await actor.keyboard('{ArrowDown}{Enter}')
     expect(urls).toHaveLength(1)
 
     await actor.click(screen.getByRole('button', { name: 'Apply filters' }))
@@ -700,10 +766,14 @@ describe('schedule workflows', () => {
     renderWithProviders(<ScheduleDetail scheduleId={scheduleId} />)
     const actor = userEvent.setup()
     expect(await screen.findByLabelText('Supervisor (oversight)')).toBeVisible()
-    await actor.selectOptions(
-      screen.getByLabelText('Supervisor (oversight)'),
-      supervisorId,
+    const supervisorPicker = screen.getByRole('combobox', {
+      name: 'Supervisor (oversight)',
+    })
+    await actor.type(supervisorPicker, 'Fictional Supervisor')
+    await waitFor(() =>
+      expect(assignmentOptionSearches).toContain('Fictional Supervisor'),
     )
+    await actor.keyboard('{ArrowDown}{Enter}')
     await actor.click(
       screen.getByRole('button', {
         name: 'Assign Supervisor to entire batch',
@@ -746,10 +816,14 @@ describe('schedule workflows', () => {
     mockReferences(['Supervisor'])
     renderWithProviders(<ScheduleDetail scheduleId={scheduleId} />)
     const actor = userEvent.setup()
-    await actor.selectOptions(
-      await screen.findByLabelText('Skilled worker (Inspector)'),
-      workerId,
+    const workerPicker = await screen.findByRole('combobox', {
+      name: 'Skilled worker (Inspector)',
+    })
+    await actor.type(workerPicker, 'Fictional Inspector')
+    await waitFor(() =>
+      expect(assignmentOptionSearches).toContain('Fictional Inspector'),
     )
+    await actor.keyboard('{ArrowDown}{Enter}')
     await actor.click(
       screen.getByRole('button', { name: 'Assign Inspector to entire batch' }),
     )

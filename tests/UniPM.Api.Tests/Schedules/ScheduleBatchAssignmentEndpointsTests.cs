@@ -145,6 +145,50 @@ public sealed class ScheduleBatchAssignmentEndpointsTests
     }
 
     [Fact]
+    public async Task Assignment_options_search_and_page_active_users_by_role_and_preserve_selection()
+    {
+        var databaseName = $"unipm-assignment-options-{Guid.NewGuid():N}";
+        await using var gsdApplication = new TestApplicationFactory(AuthRoleCatalog.Gsd, databaseName);
+        await using var supervisorApplication = new TestApplicationFactory(AuthRoleCatalog.Supervisor, databaseName);
+        using var gsdClient = gsdApplication.CreateClient();
+        using var supervisorClient = supervisorApplication.CreateClient();
+
+        var firstInspector = await gsdApplication.SeedUserAsync(
+            "searchable-inspector-a",
+            AuthRoleCatalog.Inspector);
+        var secondInspector = await gsdApplication.SeedUserAsync(
+            "searchable-inspector-b",
+            AuthRoleCatalog.Inspector);
+        await gsdApplication.SeedUserAsync("other-inspector", AuthRoleCatalog.Inspector);
+        await gsdApplication.SeedUserAsync("searchable-supervisor", AuthRoleCatalog.Supervisor);
+
+        var workerResponse = await supervisorClient.GetAsync(
+            $"/api/v1/schedules/assignment-options?search=searchable-inspector&page=2&pageSize=1&selectedUserId={firstInspector}");
+        workerResponse.EnsureSuccessStatusCode();
+        var workers = await workerResponse.Content.ReadFromJsonAsync<WorkerOptionsResponse>();
+
+        Assert.NotNull(workers);
+        Assert.Equal(2, workers.Page);
+        Assert.Equal(1, workers.PageSize);
+        Assert.Equal(2, workers.TotalCount);
+        Assert.Equal(secondInspector, Assert.Single(workers.Workers).Id);
+        Assert.Equal(firstInspector, workers.Selected?.Id);
+
+        var supervisorResponse = await gsdClient.GetAsync(
+            "/api/v1/schedules/supervisor-assignment-options?search=searchable&page=1&pageSize=5");
+        supervisorResponse.EnsureSuccessStatusCode();
+        var supervisors = await supervisorResponse.Content.ReadFromJsonAsync<SupervisorOptionsResponse>();
+
+        Assert.NotNull(supervisors);
+        Assert.Equal(1, supervisors.TotalCount);
+        Assert.Equal("searchable-supervisor user", Assert.Single(supervisors.Supervisors).DisplayName);
+
+        Assert.Equal(
+            HttpStatusCode.BadRequest,
+            (await supervisorClient.GetAsync("/api/v1/schedules/assignment-options?pageSize=101")).StatusCode);
+    }
+
+    [Fact]
     public async Task Supervisor_cannot_assign_worker_to_another_supervisors_batch()
     {
         var databaseName = $"unipm-assignment-{Guid.NewGuid():N}";
@@ -404,8 +448,18 @@ public sealed class ScheduleBatchAssignmentEndpointsTests
     private sealed record ScheduleRef(Guid Id, Guid AssetId);
     private sealed record ScheduleAssignment(Guid? WorkerId, Guid? SupervisorId);
     private sealed record AssigneeOption(Guid Id, string DisplayName);
-    private sealed record WorkerOptionsResponse(IReadOnlyList<AssigneeOption> Workers);
-    private sealed record SupervisorOptionsResponse(IReadOnlyList<AssigneeOption> Supervisors);
+    private sealed record WorkerOptionsResponse(
+        IReadOnlyList<AssigneeOption> Workers,
+        int Page,
+        int PageSize,
+        int TotalCount,
+        AssigneeOption? Selected);
+    private sealed record SupervisorOptionsResponse(
+        IReadOnlyList<AssigneeOption> Supervisors,
+        int Page,
+        int PageSize,
+        int TotalCount,
+        AssigneeOption? Selected);
     private sealed record AssignmentResponse(
         string Department,
         string AssetCategory,

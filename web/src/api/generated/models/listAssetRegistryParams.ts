@@ -19,4 +19,5 @@ export type ListAssetRegistryParams = {
    * @pattern ^-?(?:0|[1-9]\d*)$
    */
   pageSize?: number | string
+  hasDepartment?: boolean
 }

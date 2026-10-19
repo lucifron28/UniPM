@@ -390,7 +390,11 @@ describe('preventive-maintenance form review', () => {
       screen.getByLabelText('Asset category'),
       'fire-extinguisher',
     )
-    await actor.selectOptions(screen.getByLabelText('Department'), 'GSD')
+    const departmentFilter = screen.getByRole('combobox', {
+      name: 'Department',
+    })
+    await actor.type(departmentFilter, 'GSD')
+    await actor.keyboard('{ArrowDown}{Enter}')
     await actor.selectOptions(screen.getByLabelText('PM cycle'), '2026-07')
     expect(requests).toHaveLength(1)
 

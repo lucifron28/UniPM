@@ -2,6 +2,9 @@ import { useState, type FormEvent } from 'react'
 import { ApiError } from '@/api/problem-details'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { SearchablePicker } from '@/components/ui/searchable-picker'
+import type { SearchablePickerOption } from '@/components/ui/searchable-picker'
+import type { ScheduleAssigneeOption } from '@/api/generated/models'
 import { formatAssetCategory } from '@/features/assets/asset-presentation'
 import type { Schedule } from '@/features/schedules/schedule-contract'
 import {
@@ -12,6 +15,14 @@ import {
 } from '@/features/schedules/schedule-queries'
 
 const assignableStatuses = new Set(['Due', 'Ongoing', 'Overdue'])
+
+function assigneePickerOption(
+  option?: ScheduleAssigneeOption | null,
+): SearchablePickerOption<ScheduleAssigneeOption> | undefined {
+  return option
+    ? { value: option.id, label: option.displayName, item: option }
+    : undefined
+}
 
 export function ScheduleBatchAssignment({
   schedule,
@@ -28,25 +39,36 @@ export function ScheduleBatchAssignment({
     (canAssignSupervisor || canAssignWorker) &&
     assignableStatuses.has(schedule.status) &&
     schedule.completedAt === null
-  const supervisors = useScheduleSupervisorAssignmentOptions(
-    canEdit && canAssignSupervisor,
-  )
-  const workers = useScheduleWorkerAssignmentOptions(canEdit && canAssignWorker)
-  const supervisorAssignment = useAssignScheduleBatchSupervisor()
-  const workerAssignment = useAssignScheduleBatchWorker()
   const [workerUserId, setWorkerUserId] = useState(
     schedule.assignedToUserId ?? '',
   )
   const [supervisorUserId, setSupervisorUserId] = useState(
     schedule.assignedSupervisorUserId ?? '',
   )
-
-  const workerName = workers.data?.workers.find(
-    (worker) => worker.id === schedule.assignedToUserId,
-  )?.displayName
-  const supervisorName = supervisors.data?.supervisors.find(
-    (supervisor) => supervisor.id === schedule.assignedSupervisorUserId,
-  )?.displayName
+  const [workerSearch, setWorkerSearch] = useState('')
+  const [supervisorSearch, setSupervisorSearch] = useState('')
+  const [workerSelectedOption, setWorkerSelectedOption] = useState<
+    SearchablePickerOption<ScheduleAssigneeOption> | undefined
+  >()
+  const [supervisorSelectedOption, setSupervisorSelectedOption] = useState<
+    SearchablePickerOption<ScheduleAssigneeOption> | undefined
+  >()
+  const supervisors = useScheduleSupervisorAssignmentOptions(
+    canEdit && canAssignSupervisor,
+    {
+      search: supervisorSearch,
+      ...(supervisorUserId ? { selectedUserId: supervisorUserId } : {}),
+    },
+  )
+  const workers = useScheduleWorkerAssignmentOptions(
+    canEdit && canAssignWorker,
+    {
+      search: workerSearch,
+      ...(workerUserId ? { selectedUserId: workerUserId } : {}),
+    },
+  )
+  const supervisorAssignment = useAssignScheduleBatchSupervisor()
+  const workerAssignment = useAssignScheduleBatchWorker()
 
   function submitSupervisor(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -70,8 +92,23 @@ export function ScheduleBatchAssignment({
 
   const showsSupervisorStage = canEdit && canAssignSupervisor
   const showsWorkerStage = canEdit && canAssignWorker
-  const supervisorList = supervisors.data?.supervisors ?? []
-  const workerList = workers.data?.workers ?? []
+  const supervisorList =
+    supervisors.data?.pages.flatMap((page) => page.supervisors) ?? []
+  const workerList = workers.data?.pages.flatMap((page) => page.workers) ?? []
+  const selectedSupervisor =
+    supervisorSelectedOption ??
+    assigneePickerOption(supervisors.data?.pages[0]?.selected) ??
+    assigneePickerOption(
+      supervisorList.find((option) => option.id === supervisorUserId),
+    )
+  const selectedWorker =
+    workerSelectedOption ??
+    assigneePickerOption(workers.data?.pages[0]?.selected) ??
+    assigneePickerOption(
+      workerList.find((option) => option.id === workerUserId),
+    )
+  const supervisorName = selectedSupervisor?.label
+  const workerName = selectedWorker?.label
 
   return (
     <Card className="space-y-5 shadow-none">
@@ -138,82 +175,58 @@ export function ScheduleBatchAssignment({
               <h3 id="supervisor-assignment-title" className="font-medium">
                 Supervisor assignment
               </h3>
-              {supervisors.isPending ? (
-                <p
-                  role="status"
-                  className="mt-2 text-sm text-[var(--text-secondary)]"
-                >
-                  Loading Supervisor options...
-                </p>
-              ) : supervisors.isError ? (
-                <div role="alert" className="mt-3 space-y-3">
-                  <p className="text-sm text-[var(--error)]">
-                    Supervisor options could not be loaded.
+              <form onSubmit={submitSupervisor} className="mt-3 space-y-3">
+                <SearchablePicker
+                  id="batch-supervisor"
+                  label="Supervisor (oversight)"
+                  value={supervisorUserId || undefined}
+                  selectedOption={selectedSupervisor}
+                  options={supervisorList.map((supervisor) => ({
+                    value: supervisor.id,
+                    label: supervisor.displayName,
+                    item: supervisor,
+                  }))}
+                  placeholder="Choose a Supervisor"
+                  emptyMessage="Add an active Supervisor account before assigning this batch."
+                  loading={
+                    supervisors.isPending ||
+                    (supervisors.isFetching && supervisorList.length === 0)
+                  }
+                  loadingMore={supervisors.isFetchingNextPage}
+                  errorMessage={
+                    supervisors.isError
+                      ? 'Supervisor options could not be loaded.'
+                      : undefined
+                  }
+                  hasMore={Boolean(supervisors.hasNextPage)}
+                  onLoadMore={() => void supervisors.fetchNextPage()}
+                  onRetry={() => void supervisors.refetch()}
+                  onSearchChange={setSupervisorSearch}
+                  disabled={supervisorAssignment.isPending}
+                  onChange={(value, option) => {
+                    setSupervisorUserId(value ?? '')
+                    setSupervisorSelectedOption(option)
+                  }}
+                />
+                {supervisorAssignment.isError && (
+                  <p role="alert" className="text-sm text-[var(--error)]">
+                    {supervisorAssignment.error instanceof ApiError &&
+                    supervisorAssignment.error.status === 409
+                      ? 'This batch can no longer be assigned. Refresh it and review its current status.'
+                      : 'The Supervisor assignment could not be saved. Check the selection and try again.'}
                   </p>
-                  <Button
-                    type="button"
-                    disabled={supervisors.isFetching}
-                    onClick={() => void supervisors.refetch()}
-                  >
-                    Retry
-                  </Button>
-                </div>
-              ) : supervisorList.length === 0 ? (
-                <p
-                  role="status"
-                  className="mt-2 text-sm text-[var(--text-secondary)]"
+                )}
+                <Button
+                  type="submit"
+                  disabled={supervisorAssignment.isPending || !supervisorUserId}
                 >
-                  Add an active Supervisor account before assigning this batch.
-                </p>
-              ) : (
-                <form onSubmit={submitSupervisor} className="mt-3 space-y-3">
-                  <div>
-                    <label
-                      htmlFor="batch-supervisor"
-                      className="mb-1 block text-sm font-medium"
-                    >
-                      Supervisor (oversight)
-                    </label>
-                    <select
-                      id="batch-supervisor"
-                      required
-                      value={supervisorUserId}
-                      onChange={(event) =>
-                        setSupervisorUserId(event.target.value)
-                      }
-                      disabled={supervisorAssignment.isPending}
-                      className="min-h-10 w-full rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm text-[var(--text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--primary-active)]"
-                    >
-                      <option value="">Choose a Supervisor</option>
-                      {supervisorList.map((supervisor) => (
-                        <option key={supervisor.id} value={supervisor.id}>
-                          {supervisor.displayName}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  {supervisorAssignment.isError && (
-                    <p role="alert" className="text-sm text-[var(--error)]">
-                      {supervisorAssignment.error instanceof ApiError &&
-                      supervisorAssignment.error.status === 409
-                        ? 'This batch can no longer be assigned. Refresh it and review its current status.'
-                        : 'The Supervisor assignment could not be saved. Check the selection and try again.'}
-                    </p>
-                  )}
-                  <Button
-                    type="submit"
-                    disabled={
-                      supervisorAssignment.isPending || !supervisorUserId
-                    }
-                  >
-                    {supervisorAssignment.isPending
-                      ? 'Saving Supervisor assignment...'
-                      : schedule.assignedSupervisorUserId
-                        ? 'Update Supervisor for entire batch'
-                        : 'Assign Supervisor to entire batch'}
-                  </Button>
-                </form>
-              )}
+                  {supervisorAssignment.isPending
+                    ? 'Saving Supervisor assignment...'
+                    : schedule.assignedSupervisorUserId
+                      ? 'Update Supervisor for entire batch'
+                      : 'Assign Supervisor to entire batch'}
+                </Button>
+              </form>
             </section>
           )}
 
@@ -222,78 +235,58 @@ export function ScheduleBatchAssignment({
               <h3 id="worker-assignment-title" className="font-medium">
                 Inspector assignment
               </h3>
-              {workers.isPending ? (
-                <p
-                  role="status"
-                  className="mt-2 text-sm text-[var(--text-secondary)]"
-                >
-                  Loading Inspector options...
-                </p>
-              ) : workers.isError ? (
-                <div role="alert" className="mt-3 space-y-3">
-                  <p className="text-sm text-[var(--error)]">
-                    Inspector options could not be loaded.
+              <form onSubmit={submitWorker} className="mt-3 space-y-3">
+                <SearchablePicker
+                  id="batch-worker"
+                  label="Skilled worker (Inspector)"
+                  value={workerUserId || undefined}
+                  selectedOption={selectedWorker}
+                  options={workerList.map((worker) => ({
+                    value: worker.id,
+                    label: worker.displayName,
+                    item: worker,
+                  }))}
+                  placeholder="Choose an Inspector"
+                  emptyMessage="Add an active Inspector account before assigning this batch."
+                  loading={
+                    workers.isPending ||
+                    (workers.isFetching && workerList.length === 0)
+                  }
+                  loadingMore={workers.isFetchingNextPage}
+                  errorMessage={
+                    workers.isError
+                      ? 'Inspector options could not be loaded.'
+                      : undefined
+                  }
+                  hasMore={Boolean(workers.hasNextPage)}
+                  onLoadMore={() => void workers.fetchNextPage()}
+                  onRetry={() => void workers.refetch()}
+                  onSearchChange={setWorkerSearch}
+                  disabled={workerAssignment.isPending}
+                  onChange={(value, option) => {
+                    setWorkerUserId(value ?? '')
+                    setWorkerSelectedOption(option)
+                  }}
+                />
+                {workerAssignment.isError && (
+                  <p role="alert" className="text-sm text-[var(--error)]">
+                    {workerAssignment.error instanceof ApiError &&
+                    workerAssignment.error.status === 409
+                      ? 'This batch can no longer be assigned. Refresh it and review its current status.'
+                      : 'The Inspector assignment could not be saved. Check the selection and try again.'}
                   </p>
-                  <Button
-                    type="button"
-                    disabled={workers.isFetching}
-                    onClick={() => void workers.refetch()}
-                  >
-                    Retry
-                  </Button>
-                </div>
-              ) : workerList.length === 0 ? (
-                <p
-                  role="status"
-                  className="mt-2 text-sm text-[var(--text-secondary)]"
+                )}
+                <Button
+                  type="submit"
+                  disabled={workerAssignment.isPending || !workerUserId}
                 >
-                  Add an active Inspector account before assigning this batch.
-                </p>
-              ) : (
-                <form onSubmit={submitWorker} className="mt-3 space-y-3">
-                  <div>
-                    <label
-                      htmlFor="batch-worker"
-                      className="mb-1 block text-sm font-medium"
-                    >
-                      Skilled worker (Inspector)
-                    </label>
-                    <select
-                      id="batch-worker"
-                      required
-                      value={workerUserId}
-                      onChange={(event) => setWorkerUserId(event.target.value)}
-                      disabled={workerAssignment.isPending}
-                      className="min-h-10 w-full rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm text-[var(--text-primary)] focus-visible:ring-2 focus-visible:ring-[var(--primary-active)]"
-                    >
-                      <option value="">Choose an Inspector</option>
-                      {workerList.map((worker) => (
-                        <option key={worker.id} value={worker.id}>
-                          {worker.displayName}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  {workerAssignment.isError && (
-                    <p role="alert" className="text-sm text-[var(--error)]">
-                      {workerAssignment.error instanceof ApiError &&
-                      workerAssignment.error.status === 409
-                        ? 'This batch can no longer be assigned. Refresh it and review its current status.'
-                        : 'The Inspector assignment could not be saved. Check the selection and try again.'}
-                    </p>
-                  )}
-                  <Button
-                    type="submit"
-                    disabled={workerAssignment.isPending || !workerUserId}
-                  >
-                    {workerAssignment.isPending
-                      ? 'Saving Inspector assignment...'
-                      : schedule.assignedToUserId
-                        ? 'Update Inspector for entire batch'
-                        : 'Assign Inspector to entire batch'}
-                  </Button>
-                </form>
-              )}
+                  {workerAssignment.isPending
+                    ? 'Saving Inspector assignment...'
+                    : schedule.assignedToUserId
+                      ? 'Update Inspector for entire batch'
+                      : 'Assign Inspector to entire batch'}
+                </Button>
+              </form>
             </section>
           )}
         </div>

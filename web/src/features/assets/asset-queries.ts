@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
 import {
   getAssetRegistryOptions,
   getAssetRegistrySummary,
@@ -41,6 +41,7 @@ export type AssetRegistryFilters = Pick<
   | 'search'
   | 'page'
   | 'pageSize'
+  | 'hasDepartment'
 >
 
 export function useAssets(filters: AssetServerFilters = {}) {
@@ -57,6 +58,24 @@ export function useAssetRegistry(filters: AssetRegistryFilters = {}) {
     queryFn: ({ signal }) =>
       listAssetRegistry(filters, signal).then(parseAssetRegistryPage),
     placeholderData: (previousData) => previousData,
+  })
+}
+
+export function useAssetRegistrySearch(
+  filters: Omit<AssetRegistryFilters, 'page' | 'pageSize'> = {},
+  enabled = true,
+) {
+  const params = { ...filters, pageSize: 20 }
+  return useInfiniteQuery({
+    queryKey: getListAssetRegistryQueryKey(params),
+    queryFn: ({ pageParam, signal }) =>
+      listAssetRegistry({ ...params, page: pageParam }, signal).then(
+        parseAssetRegistryPage,
+      ),
+    initialPageParam: 1,
+    getNextPageParam: (page) =>
+      page.page * page.pageSize < page.totalCount ? page.page + 1 : undefined,
+    enabled,
   })
 }
 

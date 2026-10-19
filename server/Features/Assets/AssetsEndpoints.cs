@@ -184,6 +184,7 @@ public static class AssetsEndpoints
             string? building,
             string? department,
             string? search,
+            bool? hasDepartment,
             int? page,
             int? pageSize,
             IDbContextFactory<ApplicationDbContext> factory,
@@ -232,6 +233,12 @@ public static class AssetsEndpoints
                 building,
                 normalizedDepartment,
                 normalizedSearch);
+            if (hasDepartment == true)
+            {
+                query = query.Where(asset =>
+                    asset.Department != null && asset.Department.Trim() != string.Empty);
+            }
+
             var totalCount = await query.CountAsync(cancellationToken);
             var skip = (long)(pageNumber - 1) * size;
             List<AssetResponse> items = skip > int.MaxValue

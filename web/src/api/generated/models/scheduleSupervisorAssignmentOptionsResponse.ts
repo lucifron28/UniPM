@@ -8,4 +8,11 @@ import type { ScheduleAssigneeOption } from './scheduleAssigneeOption'
 
 export interface ScheduleSupervisorAssignmentOptionsResponse {
   supervisors: ScheduleAssigneeOption[]
+  /** @pattern ^-?(?:0|[1-9]\d*)$ */
+  page: number | string
+  /** @pattern ^-?(?:0|[1-9]\d*)$ */
+  pageSize: number | string
+  /** @pattern ^-?(?:0|[1-9]\d*)$ */
+  totalCount: number | string
+  selected: null | ScheduleAssigneeOption
 }
