@@ -434,6 +434,13 @@ provider-quality acceptance has been run for this implementation.
 
 ### Phase 5: first-release evaluation and controlled acceptance
 
+**Preparation status (2026-10-19):** A protocol outline and provisional English
+development question set have been drafted in
+[`reference/evaluation/pm-analytics-v3/`](../evaluation/pm-analytics-v3/README.md).
+They are not independently reviewed, frozen, or evaluated. Held-out questions
+have not been created or accessed for this phase. The acceptance exit criteria
+below remain open.
+
 - Create a separately identified protocol and reviewed question set. Separate
   V2/V3 shared tasks from newly supported tasks and include unsafe, ambiguous,
   unmeasurable, missing-data and provider-failure cases.
