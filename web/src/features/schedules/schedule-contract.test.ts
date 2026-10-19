@@ -40,6 +40,7 @@ const schedule = {
 describe('schedule contracts', () => {
   it('parses the public schedule response and rejects private or unknown fields', () => {
     expect(parseSchedule(schedule).asset?.assetCode).toBe('FE-001')
+    expect(parseSchedule(schedule).asset?.status).toBe('Active')
     expect(() =>
       parseSchedule({ ...schedule, privateNote: 'nope' } as never),
     ).toThrow(ZodError)

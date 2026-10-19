@@ -36,6 +36,7 @@ const scheduleAssetSchema = z
     building: optionalText,
     department: optionalText,
     location: optionalText,
+    status: z.string().trim().min(1).max(32),
   })
   .strict()
 
