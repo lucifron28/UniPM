@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
@@ -25,9 +26,13 @@ public sealed class PmAnalyticsV3EndpointTests
 
         using var catalogResponse = await client.GetAsync("/api/v1/analytics/pm/v3/catalog");
         Assert.Equal(HttpStatusCode.OK, catalogResponse.StatusCode);
-        var catalog = await catalogResponse.Content.ReadFromJsonAsync<PmAnalyticsV3CatalogResponse>();
-        Assert.NotNull(catalog);
-        Assert.Equal(PmAnalyticsV3Catalog.Version, catalog.CatalogVersion);
+        var catalog = await catalogResponse.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(
+            PmAnalyticsV3Catalog.Version,
+            catalog.GetProperty("catalogVersion").GetInt32());
+        Assert.Equal(
+            JsonValueKind.Array,
+            catalog.GetProperty("filterFields")[0].GetProperty("operators").ValueKind);
 
         using var valuesResponse = await client.GetAsync(
             "/api/v1/analytics/pm/v3/catalog/values?field=department&categories=fire-extinguisher&search=Synthetic");
