@@ -85,6 +85,40 @@ async function mockScheduleApi(page: Page, roles = ['GSD']) {
       body: JSON.stringify(session.user),
     }),
   )
+  await page.route(/\/api\/v1\/assets\/registry(?:\?.*)?$/, async (route) => {
+    const requestUrl = new URL(route.request().url())
+    const parameters = requestUrl.searchParams
+    const search = parameters.get('search')?.trim().toLocaleLowerCase()
+    const matchesAsset =
+      (!parameters.has('assetCategory') ||
+        parameters.get('assetCategory') === asset.assetCategory) &&
+      (!parameters.has('department') ||
+        parameters.get('department') === asset.department) &&
+      (!parameters.has('status') ||
+        parameters.get('status') === asset.status) &&
+      (parameters.get('hasDepartment') !== 'true' ||
+        Boolean(asset.department?.trim())) &&
+      (!search ||
+        [
+          asset.assetCode,
+          asset.assetCategory,
+          asset.building,
+          asset.department,
+          asset.location,
+        ].some((value) => value.toLocaleLowerCase().includes(search)))
+    const page = Number(parameters.get('page') ?? 1)
+    const pageSize = Number(parameters.get('pageSize') ?? 20)
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        items: matchesAsset ? [asset] : [],
+        page,
+        pageSize,
+        totalCount: matchesAsset ? 1 : 0,
+      }),
+    })
+  })
   await page.route(/\/api\/v1\/assets(?:\?.*)?$/, async (route) => {
     const requestUrl = new URL(route.request().url())
     const parameters = requestUrl.searchParams
@@ -324,6 +358,257 @@ function expectStableRegistryLayout(
 }
 
 test.describe('Schedule workflows', () => {
+  test('searches long filters, stays inside desktop viewports, and applies combined filters', async ({
+    page,
+  }, testInfo) => {
+    await page.setViewportSize({ width: 1280, height: 720 })
+    await mockScheduleApi(page)
+
+    const departments = Array.from(
+      { length: 60 },
+      (_, index) => `Department ${String(index + 1).padStart(3, '0')}`,
+    )
+    const assets = departments.map((department, index) => {
+      const sequence = String(index + 1).padStart(12, '0')
+      const assetSequence = String(index + 1).padStart(3, '0')
+      return {
+        ...asset,
+        id: `77777777-7777-4777-8777-${sequence}`,
+        assetCode: `FE-${assetSequence}`,
+        building: `Main Building ${assetSequence}`,
+        department,
+        location: `Room ${assetSequence}`,
+      }
+    })
+    const lookupAssetById = new Map(assets.map((record) => [record.id, record]))
+    const assetRequests: URL[] = []
+    const scheduleRequests: URL[] = []
+
+    await page.route('**/api/v1/schedules/registry/options**', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          categories: [
+            {
+              code: 'fire-extinguisher',
+              displayName: 'Fire extinguishers',
+              scheduledMonths: [2, 5, 8, 11],
+            },
+          ],
+          quarters: ['Q1', 'Q2', 'Q3', 'Q4'],
+          departments,
+          years: ['2026'],
+        }),
+      }),
+    )
+    await page.route(/\/api\/v1\/assets\/registry(?:\?.*)?$/, (route) => {
+      const requestUrl = new URL(route.request().url())
+      assetRequests.push(requestUrl)
+      const params = requestUrl.searchParams
+      const search = params.get('search')?.toLocaleLowerCase()
+      const matchingAssets = assets.filter(
+        (record) =>
+          (!params.has('assetCategory') ||
+            params.get('assetCategory') === record.assetCategory) &&
+          (!params.has('department') ||
+            params.get('department') === record.department) &&
+          (!params.has('status') || params.get('status') === record.status) &&
+          (params.get('hasDepartment') !== 'true' ||
+            Boolean(record.department?.trim())) &&
+          (!search ||
+            [
+              record.assetCode,
+              record.department,
+              record.building,
+              record.location,
+            ].some((value) => value.toLocaleLowerCase().includes(search))),
+      )
+      const pageNumber = Number(params.get('page') ?? 1)
+      const pageSize = Number(params.get('pageSize') ?? 20)
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          items: matchingAssets.slice(
+            (pageNumber - 1) * pageSize,
+            pageNumber * pageSize,
+          ),
+          page: pageNumber,
+          pageSize,
+          totalCount: matchingAssets.length,
+        }),
+      })
+    })
+    await page.route(/\/api\/v1\/assets\/[^/]+$/, (route) => {
+      const assetIdFromPath = new URL(route.request().url()).pathname
+        .split('/')
+        .at(-1)
+      const record = lookupAssetById.get(assetIdFromPath ?? '')
+      return record
+        ? route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify(record),
+          })
+        : route.fallback()
+    })
+    await page.route(scheduleRegistryRoute, (route) => {
+      const requestUrl = new URL(route.request().url())
+      scheduleRequests.push(requestUrl)
+      const params = requestUrl.searchParams
+      const selectedAsset = assets[58]!
+      const matchesCombinedFilters =
+        params.get('assetId') === selectedAsset.id &&
+        params.get('assetCategory') === selectedAsset.assetCategory &&
+        params.get('department') === selectedAsset.department &&
+        params.get('status') === 'Due' &&
+        params.get('quarter') === 'Q3'
+      const item = {
+        ...scheduleRegistryItem,
+        asset: {
+          id: selectedAsset.id,
+          assetCode: selectedAsset.assetCode,
+          assetCategory: selectedAsset.assetCategory,
+          building: selectedAsset.building,
+          department: selectedAsset.department,
+          location: selectedAsset.location,
+        },
+      }
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          items: matchesCombinedFilters ? [item] : [],
+          page: 1,
+          pageSize: 25,
+          totalCount: matchesCombinedFilters ? 1 : 0,
+          overallCount: 1,
+        }),
+      })
+    })
+
+    await page.goto('/app/schedules#schedule-management')
+    await expect(
+      page.getByRole('heading', { name: 'Schedule management' }),
+    ).toBeVisible()
+    const moreFilters = page.locator('#schedule-more-filters')
+    if (!(await moreFilters.isVisible())) {
+      await page.getByText('More filters', { exact: true }).click()
+    }
+    const departmentPicker = page.getByRole('combobox', { name: 'Department' })
+
+    for (const viewport of [
+      { width: 1280, height: 720 },
+      { width: 1440, height: 900 },
+      { width: 1920, height: 1080 },
+    ]) {
+      await page.setViewportSize(viewport)
+      await departmentPicker.click()
+      const popup = page.locator('[data-searchable-picker-popup]')
+      const listbox = popup.getByRole('listbox')
+      await expect(listbox).toBeVisible()
+      const dimensions = await listbox.evaluate((element) => ({
+        clientHeight: element.clientHeight,
+        scrollHeight: element.scrollHeight,
+        maxHeight: Number.parseFloat(getComputedStyle(element).maxHeight),
+      }))
+      expect(dimensions.maxHeight).toBeGreaterThan(0)
+      expect(dimensions.maxHeight).toBeLessThanOrEqual(280)
+      expect(dimensions.scrollHeight).toBeGreaterThan(dimensions.clientHeight)
+      await listbox.evaluate((element) => {
+        element.scrollTop = element.scrollHeight
+      })
+      await expect(departmentPicker).toBeVisible()
+      const bounds = await popup.boundingBox()
+      expect(bounds).not.toBeNull()
+      expect(bounds!.x).toBeGreaterThanOrEqual(0)
+      expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(viewport.width)
+      expect(bounds!.y).toBeGreaterThanOrEqual(0)
+      expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(viewport.height)
+      await page.screenshot({
+        path: testInfo.outputPath(
+          `searchable-filters-${viewport.width}x${viewport.height}.png`,
+        ),
+        animations: 'disabled',
+      })
+      await departmentPicker.press('Escape')
+      await expect(listbox).toBeHidden()
+    }
+
+    const assetPicker = page.getByRole('combobox', { name: 'Specific asset' })
+    await assetPicker.click()
+    await expect(
+      page.getByRole('button', { name: 'Load more options' }),
+    ).toBeVisible()
+    await page.getByRole('button', { name: 'Load more options' }).click()
+    await expect
+      .poll(() =>
+        assetRequests.some((url) => url.searchParams.get('page') === '2'),
+      )
+      .toBe(true)
+    await assetPicker.press('Escape')
+
+    await page
+      .getByRole('combobox', { name: 'Asset category' })
+      .selectOption('fire-extinguisher')
+    await page
+      .getByRole('combobox', { name: 'Schedule status' })
+      .selectOption('Due')
+    await page
+      .getByRole('combobox', { name: 'Calendar quarter' })
+      .selectOption('Q3')
+    await departmentPicker.fill('Department 059')
+    await expect(
+      page.getByRole('option', { name: 'Department 059' }),
+    ).toBeVisible()
+    await departmentPicker.press('ArrowDown')
+    await departmentPicker.press('Enter')
+    await expect(departmentPicker).toHaveValue('Department 059')
+
+    await assetPicker.fill('FE-059')
+    const assetOption = page.getByRole('option', { name: /FE-059/ })
+    await expect(assetOption).toBeVisible()
+    await assetPicker.press('ArrowDown')
+    await assetPicker.press('Enter')
+    await expect(assetPicker).toHaveValue(/FE-059/)
+    await page.getByRole('button', { name: 'Apply filters' }).click()
+    await expect(
+      page.getByRole('link', { name: 'FE-059', exact: true }).first(),
+    ).toBeVisible()
+    await expect
+      .poll(() =>
+        scheduleRequests.some((url) =>
+          ['assetId', 'assetCategory', 'department', 'status', 'quarter'].every(
+            (key) => url.searchParams.has(key),
+          ),
+        ),
+      )
+      .toBe(true)
+    const combinedRequest = scheduleRequests.find((url) =>
+      ['assetId', 'assetCategory', 'department', 'status', 'quarter'].every(
+        (key) => url.searchParams.has(key),
+      ),
+    )
+    expect(combinedRequest?.searchParams.get('assetId')).toBe(assets[58]!.id)
+    expect(combinedRequest?.searchParams.get('assetCategory')).toBe(
+      'fire-extinguisher',
+    )
+    expect(combinedRequest?.searchParams.get('department')).toBe(
+      'Department 059',
+    )
+    expect(combinedRequest?.searchParams.get('status')).toBe('Due')
+    expect(combinedRequest?.searchParams.get('quarter')).toBe('Q3')
+    expect(
+      assetRequests.some(
+        (url) =>
+          url.searchParams.get('search') === 'FE-059' &&
+          url.searchParams.get('department') === 'Department 059' &&
+          url.searchParams.get('assetCategory') === 'fire-extinguisher',
+      ),
+    ).toBe(true)
+  })
+
   test('keeps window scroll position on both pagination directions', async ({
     page,
   }) => {

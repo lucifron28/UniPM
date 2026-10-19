@@ -472,6 +472,76 @@ describe('AssetRegistry feature component', () => {
     expect(capturedUrl!.searchParams.get('text')).toBeNull()
   })
 
+  it('searches long building and department lists before applying combined filters', async () => {
+    const records = Array.from({ length: 60 }, (_, index) => {
+      const sequence = String(index + 1).padStart(3, '0')
+      return {
+        ...sampleAssets[0]!,
+        id: `77777777-7777-4777-8777-${String(index + 1).padStart(12, '0')}`,
+        assetCode: `FE-${sequence}`,
+        building: `Science Building ${sequence}`,
+        department: `Department ${sequence}`,
+      }
+    })
+    server.use(
+      ...registryHandlers(records),
+      http.get(categoriesUrl, () => HttpResponse.json(sampleCategories)),
+    )
+
+    const onSearchChange = vi.fn()
+    function FilterHarness() {
+      const [search, setSearch] = useState<AssetSearch>({})
+      return (
+        <AssetRegistry
+          search={search}
+          onSearchChange={(next, options) => {
+            onSearchChange(next, options)
+            setSearch(next)
+          }}
+        />
+      )
+    }
+
+    renderWithProviders(<FilterHarness />)
+    const actor = userEvent.setup()
+    await screen.findAllByText('FE-001')
+    await actor.selectOptions(
+      screen.getByRole('combobox', { name: 'Asset category' }),
+      'fire-extinguisher',
+    )
+    await actor.selectOptions(screen.getByLabelText('Status'), 'Active')
+
+    const buildingPicker = screen.getByRole('combobox', { name: 'Building' })
+    await actor.click(buildingPicker)
+    await screen.findByRole('option', { name: 'Science Building 059' })
+    await actor.type(buildingPicker, 'Science Building 059')
+    await screen.findByRole('option', { name: 'Science Building 059' })
+    await actor.keyboard('{ArrowDown}{Enter}')
+    const departmentPicker = screen.getByRole('combobox', {
+      name: 'Department',
+    })
+    await actor.click(departmentPicker)
+    await screen.findByRole('option', { name: 'Department 059' })
+    await actor.type(departmentPicker, 'Department 059')
+    await screen.findByRole('option', { name: 'Department 059' })
+    await actor.keyboard('{ArrowDown}{Enter}')
+    await actor.click(screen.getByRole('button', { name: 'Apply filters' }))
+
+    await waitFor(() => {
+      expect(onSearchChange).toHaveBeenCalledWith(
+        expect.objectContaining({
+          assetCategory: 'fire-extinguisher',
+          status: 'Active',
+          building: 'Science Building 059',
+          department: 'Department 059',
+          page: 1,
+        }),
+        { preserveScroll: true },
+      )
+    })
+    expect(await screen.findAllByText('FE-059')).not.toHaveLength(0)
+  })
+
   it('displays loading skeleton elements while queries are pending', async () => {
     server.use(
       http.get(meUrl, () => HttpResponse.json(gsdUser)),

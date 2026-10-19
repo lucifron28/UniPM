@@ -61,6 +61,8 @@ import type {
   ListScheduleCoverageReviewParams,
   ListScheduleEnrollmentDeferralsParams,
   ListScheduleRegistryParams,
+  ListScheduleSupervisorAssignmentOptionsParams,
+  ListScheduleWorkerAssignmentOptionsParams,
   ListSchedulesParams,
   LoginRequest,
   LoginResponse,
@@ -2015,40 +2017,53 @@ export function useGetAssetByQr<
 }
 
 /**
- * @summary Lists active Inspectors for Supervisor batch assignment
+ * @summary Searches a bounded page of active Inspectors for schedule assignment
  */
-export const listScheduleWorkerAssignmentOptions = (signal?: AbortSignal) => {
+export const listScheduleWorkerAssignmentOptions = (
+  params?: ListScheduleWorkerAssignmentOptionsParams,
+  signal?: AbortSignal,
+) => {
   return customInstance<ScheduleWorkerAssignmentOptionsResponse>({
     url: `/api/v1/schedules/assignment-options`,
     method: 'GET',
+    params,
     signal,
   })
 }
 
-export const getListScheduleWorkerAssignmentOptionsQueryKey = () => {
-  return [`/api/v1/schedules/assignment-options`] as const
+export const getListScheduleWorkerAssignmentOptionsQueryKey = (
+  params?: ListScheduleWorkerAssignmentOptionsParams,
+) => {
+  return [
+    `/api/v1/schedules/assignment-options`,
+    ...(params ? [params] : []),
+  ] as const
 }
 
 export const getListScheduleWorkerAssignmentOptionsQueryOptions = <
   TData = Awaited<ReturnType<typeof listScheduleWorkerAssignmentOptions>>,
-  TError = void,
->(options?: {
-  query?: Partial<
-    UseQueryOptions<
-      Awaited<ReturnType<typeof listScheduleWorkerAssignmentOptions>>,
-      TError,
-      TData
+  TError = ValidationProblemDetails | void,
+>(
+  params?: ListScheduleWorkerAssignmentOptionsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listScheduleWorkerAssignmentOptions>>,
+        TError,
+        TData
+      >
     >
-  >
-}) => {
+  },
+) => {
   const { query: queryOptions } = options ?? {}
 
   const queryKey =
-    queryOptions?.queryKey ?? getListScheduleWorkerAssignmentOptionsQueryKey()
+    queryOptions?.queryKey ??
+    getListScheduleWorkerAssignmentOptionsQueryKey(params)
 
   const queryFn: QueryFunction<
     Awaited<ReturnType<typeof listScheduleWorkerAssignmentOptions>>
-  > = ({ signal }) => listScheduleWorkerAssignmentOptions(signal)
+  > = ({ signal }) => listScheduleWorkerAssignmentOptions(params, signal)
 
   return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
     Awaited<ReturnType<typeof listScheduleWorkerAssignmentOptions>>,
@@ -2060,12 +2075,14 @@ export const getListScheduleWorkerAssignmentOptionsQueryOptions = <
 export type ListScheduleWorkerAssignmentOptionsQueryResult = NonNullable<
   Awaited<ReturnType<typeof listScheduleWorkerAssignmentOptions>>
 >
-export type ListScheduleWorkerAssignmentOptionsQueryError = void
+export type ListScheduleWorkerAssignmentOptionsQueryError =
+  ValidationProblemDetails | void
 
 export function useListScheduleWorkerAssignmentOptions<
   TData = Awaited<ReturnType<typeof listScheduleWorkerAssignmentOptions>>,
-  TError = void,
+  TError = ValidationProblemDetails | void,
 >(
+  params: undefined | ListScheduleWorkerAssignmentOptionsParams,
   options: {
     query: Partial<
       UseQueryOptions<
@@ -2089,8 +2106,9 @@ export function useListScheduleWorkerAssignmentOptions<
 }
 export function useListScheduleWorkerAssignmentOptions<
   TData = Awaited<ReturnType<typeof listScheduleWorkerAssignmentOptions>>,
-  TError = void,
+  TError = ValidationProblemDetails | void,
 >(
+  params?: ListScheduleWorkerAssignmentOptionsParams,
   options?: {
     query?: Partial<
       UseQueryOptions<
@@ -2114,8 +2132,9 @@ export function useListScheduleWorkerAssignmentOptions<
 }
 export function useListScheduleWorkerAssignmentOptions<
   TData = Awaited<ReturnType<typeof listScheduleWorkerAssignmentOptions>>,
-  TError = void,
+  TError = ValidationProblemDetails | void,
 >(
+  params?: ListScheduleWorkerAssignmentOptionsParams,
   options?: {
     query?: Partial<
       UseQueryOptions<
@@ -2130,13 +2149,14 @@ export function useListScheduleWorkerAssignmentOptions<
   queryKey: DataTag<QueryKey, TData, TError>
 }
 /**
- * @summary Lists active Inspectors for Supervisor batch assignment
+ * @summary Searches a bounded page of active Inspectors for schedule assignment
  */
 
 export function useListScheduleWorkerAssignmentOptions<
   TData = Awaited<ReturnType<typeof listScheduleWorkerAssignmentOptions>>,
-  TError = void,
+  TError = ValidationProblemDetails | void,
 >(
+  params?: ListScheduleWorkerAssignmentOptionsParams,
   options?: {
     query?: Partial<
       UseQueryOptions<
@@ -2150,8 +2170,10 @@ export function useListScheduleWorkerAssignmentOptions<
 ): UseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>
 } {
-  const queryOptions =
-    getListScheduleWorkerAssignmentOptionsQueryOptions(options)
+  const queryOptions = getListScheduleWorkerAssignmentOptionsQueryOptions(
+    params,
+    options,
+  )
 
   const query = useQuery(queryOptions, queryClient) as UseQueryResult<
     TData,
@@ -2162,43 +2184,53 @@ export function useListScheduleWorkerAssignmentOptions<
 }
 
 /**
- * @summary Lists active Supervisors for GSD batch assignment
+ * @summary Searches a bounded page of active Supervisors for schedule assignment
  */
 export const listScheduleSupervisorAssignmentOptions = (
+  params?: ListScheduleSupervisorAssignmentOptionsParams,
   signal?: AbortSignal,
 ) => {
   return customInstance<ScheduleSupervisorAssignmentOptionsResponse>({
     url: `/api/v1/schedules/supervisor-assignment-options`,
     method: 'GET',
+    params,
     signal,
   })
 }
 
-export const getListScheduleSupervisorAssignmentOptionsQueryKey = () => {
-  return [`/api/v1/schedules/supervisor-assignment-options`] as const
+export const getListScheduleSupervisorAssignmentOptionsQueryKey = (
+  params?: ListScheduleSupervisorAssignmentOptionsParams,
+) => {
+  return [
+    `/api/v1/schedules/supervisor-assignment-options`,
+    ...(params ? [params] : []),
+  ] as const
 }
 
 export const getListScheduleSupervisorAssignmentOptionsQueryOptions = <
   TData = Awaited<ReturnType<typeof listScheduleSupervisorAssignmentOptions>>,
-  TError = void,
->(options?: {
-  query?: Partial<
-    UseQueryOptions<
-      Awaited<ReturnType<typeof listScheduleSupervisorAssignmentOptions>>,
-      TError,
-      TData
+  TError = ValidationProblemDetails | void,
+>(
+  params?: ListScheduleSupervisorAssignmentOptionsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listScheduleSupervisorAssignmentOptions>>,
+        TError,
+        TData
+      >
     >
-  >
-}) => {
+  },
+) => {
   const { query: queryOptions } = options ?? {}
 
   const queryKey =
     queryOptions?.queryKey ??
-    getListScheduleSupervisorAssignmentOptionsQueryKey()
+    getListScheduleSupervisorAssignmentOptionsQueryKey(params)
 
   const queryFn: QueryFunction<
     Awaited<ReturnType<typeof listScheduleSupervisorAssignmentOptions>>
-  > = ({ signal }) => listScheduleSupervisorAssignmentOptions(signal)
+  > = ({ signal }) => listScheduleSupervisorAssignmentOptions(params, signal)
 
   return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
     Awaited<ReturnType<typeof listScheduleSupervisorAssignmentOptions>>,
@@ -2210,12 +2242,14 @@ export const getListScheduleSupervisorAssignmentOptionsQueryOptions = <
 export type ListScheduleSupervisorAssignmentOptionsQueryResult = NonNullable<
   Awaited<ReturnType<typeof listScheduleSupervisorAssignmentOptions>>
 >
-export type ListScheduleSupervisorAssignmentOptionsQueryError = void
+export type ListScheduleSupervisorAssignmentOptionsQueryError =
+  ValidationProblemDetails | void
 
 export function useListScheduleSupervisorAssignmentOptions<
   TData = Awaited<ReturnType<typeof listScheduleSupervisorAssignmentOptions>>,
-  TError = void,
+  TError = ValidationProblemDetails | void,
 >(
+  params: undefined | ListScheduleSupervisorAssignmentOptionsParams,
   options: {
     query: Partial<
       UseQueryOptions<
@@ -2239,8 +2273,9 @@ export function useListScheduleSupervisorAssignmentOptions<
 }
 export function useListScheduleSupervisorAssignmentOptions<
   TData = Awaited<ReturnType<typeof listScheduleSupervisorAssignmentOptions>>,
-  TError = void,
+  TError = ValidationProblemDetails | void,
 >(
+  params?: ListScheduleSupervisorAssignmentOptionsParams,
   options?: {
     query?: Partial<
       UseQueryOptions<
@@ -2264,8 +2299,9 @@ export function useListScheduleSupervisorAssignmentOptions<
 }
 export function useListScheduleSupervisorAssignmentOptions<
   TData = Awaited<ReturnType<typeof listScheduleSupervisorAssignmentOptions>>,
-  TError = void,
+  TError = ValidationProblemDetails | void,
 >(
+  params?: ListScheduleSupervisorAssignmentOptionsParams,
   options?: {
     query?: Partial<
       UseQueryOptions<
@@ -2280,13 +2316,14 @@ export function useListScheduleSupervisorAssignmentOptions<
   queryKey: DataTag<QueryKey, TData, TError>
 }
 /**
- * @summary Lists active Supervisors for GSD batch assignment
+ * @summary Searches a bounded page of active Supervisors for schedule assignment
  */
 
 export function useListScheduleSupervisorAssignmentOptions<
   TData = Awaited<ReturnType<typeof listScheduleSupervisorAssignmentOptions>>,
-  TError = void,
+  TError = ValidationProblemDetails | void,
 >(
+  params?: ListScheduleSupervisorAssignmentOptionsParams,
   options?: {
     query?: Partial<
       UseQueryOptions<
@@ -2300,8 +2337,10 @@ export function useListScheduleSupervisorAssignmentOptions<
 ): UseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>
 } {
-  const queryOptions =
-    getListScheduleSupervisorAssignmentOptionsQueryOptions(options)
+  const queryOptions = getListScheduleSupervisorAssignmentOptionsQueryOptions(
+    params,
+    options,
+  )
 
   const query = useQuery(queryOptions, queryClient) as UseQueryResult<
     TData,

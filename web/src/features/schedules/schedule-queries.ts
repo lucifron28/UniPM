@@ -1,4 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
   assignScheduleBatchSupervisor,
@@ -34,6 +39,8 @@ import {
 } from '@/api/generated/endpoints'
 import type {
   GetScheduleRegistryOptionsParams,
+  ListScheduleSupervisorAssignmentOptionsParams,
+  ListScheduleWorkerAssignmentOptionsParams,
   ListScheduleRegistryParams,
   ListSchedulesParams,
   ListScheduleCoverageReviewParams,
@@ -147,18 +154,54 @@ export function useReviewScheduleEnrollmentDeferral() {
   })
 }
 
-export function useScheduleSupervisorAssignmentOptions(enabled: boolean) {
-  return useQuery({
-    queryKey: getListScheduleSupervisorAssignmentOptionsQueryKey(),
-    queryFn: ({ signal }) => listScheduleSupervisorAssignmentOptions(signal),
+export function useScheduleSupervisorAssignmentOptions(
+  enabled: boolean,
+  filters: Pick<
+    ListScheduleSupervisorAssignmentOptionsParams,
+    'search' | 'selectedUserId'
+  > = {},
+) {
+  const params = { ...filters, pageSize: 20 }
+  return useInfiniteQuery({
+    queryKey: getListScheduleSupervisorAssignmentOptionsQueryKey(params),
+    queryFn: ({ signal, pageParam }) =>
+      listScheduleSupervisorAssignmentOptions(
+        { ...params, page: pageParam },
+        signal,
+      ),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) => {
+      const page = Number(lastPage.page)
+      return page * Number(lastPage.pageSize) < Number(lastPage.totalCount)
+        ? page + 1
+        : undefined
+    },
     enabled,
   })
 }
 
-export function useScheduleWorkerAssignmentOptions(enabled: boolean) {
-  return useQuery({
-    queryKey: getListScheduleWorkerAssignmentOptionsQueryKey(),
-    queryFn: ({ signal }) => listScheduleWorkerAssignmentOptions(signal),
+export function useScheduleWorkerAssignmentOptions(
+  enabled: boolean,
+  filters: Pick<
+    ListScheduleWorkerAssignmentOptionsParams,
+    'search' | 'selectedUserId'
+  > = {},
+) {
+  const params = { ...filters, pageSize: 20 }
+  return useInfiniteQuery({
+    queryKey: getListScheduleWorkerAssignmentOptionsQueryKey(params),
+    queryFn: ({ signal, pageParam }) =>
+      listScheduleWorkerAssignmentOptions(
+        { ...params, page: pageParam },
+        signal,
+      ),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) => {
+      const page = Number(lastPage.page)
+      return page * Number(lastPage.pageSize) < Number(lastPage.totalCount)
+        ? page + 1
+        : undefined
+    },
     enabled,
   })
 }

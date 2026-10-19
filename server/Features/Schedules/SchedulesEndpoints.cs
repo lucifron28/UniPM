@@ -296,35 +296,89 @@ public static class SchedulesEndpoints
         .RequireAuthorization(AuthPolicyCatalog.CanGenerateSchedules);
 
         group.MapGet("/supervisor-assignment-options", async (
-            UserManager<ApplicationUser> userManager) =>
+            string? search,
+            int? page,
+            int? pageSize,
+            Guid? selectedUserId,
+            IDbContextFactory<ApplicationDbContext> factory,
+            CancellationToken cancellationToken) =>
         {
-            var supervisors = await userManager.GetUsersInRoleAsync(AuthRoleCatalog.Supervisor);
+            if (!TryNormalizeAssignmentOptionFilters(
+                    search,
+                    page,
+                    pageSize,
+                    out var normalizedSearch,
+                    out var pageNumber,
+                    out var size,
+                    out var validationErrors))
+            {
+                return ApiErrors.Validation(validationErrors);
+            }
+
+            await using var context = await factory.CreateDbContextAsync(cancellationToken);
+            var options = await GetAssignmentOptionsAsync(
+                context,
+                AuthRoleCatalog.Supervisor,
+                normalizedSearch,
+                pageNumber,
+                size,
+                selectedUserId,
+                cancellationToken);
             return Results.Ok(new ScheduleSupervisorAssignmentOptionsResponse(
-                supervisors.Where(user => user.IsActive)
-                    .OrderBy(user => user.DisplayName)
-                    .Select(user => new ScheduleAssigneeOption(user.Id, user.DisplayName))
-                    .ToArray()));
+                options.Items,
+                options.Page,
+                options.PageSize,
+                options.TotalCount,
+                options.Selected));
         })
         .WithName("ListScheduleSupervisorAssignmentOptions")
-        .WithSummary("Lists active Supervisors for GSD batch assignment")
+        .WithSummary("Searches a bounded page of active Supervisors for GSD batch assignment")
         .Produces<ScheduleSupervisorAssignmentOptionsResponse>(StatusCodes.Status200OK)
+        .Produces<Microsoft.AspNetCore.Mvc.ValidationProblemDetails>(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden)
         .RequireAuthorization(AuthPolicyCatalog.CanAssignScheduleSupervisors);
 
         group.MapGet("/assignment-options", async (
-            UserManager<ApplicationUser> userManager) =>
+            string? search,
+            int? page,
+            int? pageSize,
+            Guid? selectedUserId,
+            IDbContextFactory<ApplicationDbContext> factory,
+            CancellationToken cancellationToken) =>
         {
-            var workers = await userManager.GetUsersInRoleAsync(AuthRoleCatalog.Inspector);
+            if (!TryNormalizeAssignmentOptionFilters(
+                    search,
+                    page,
+                    pageSize,
+                    out var normalizedSearch,
+                    out var pageNumber,
+                    out var size,
+                    out var validationErrors))
+            {
+                return ApiErrors.Validation(validationErrors);
+            }
+
+            await using var context = await factory.CreateDbContextAsync(cancellationToken);
+            var options = await GetAssignmentOptionsAsync(
+                context,
+                AuthRoleCatalog.Inspector,
+                normalizedSearch,
+                pageNumber,
+                size,
+                selectedUserId,
+                cancellationToken);
             return Results.Ok(new ScheduleWorkerAssignmentOptionsResponse(
-                workers.Where(user => user.IsActive)
-                    .OrderBy(user => user.DisplayName)
-                    .Select(user => new ScheduleAssigneeOption(user.Id, user.DisplayName))
-                    .ToArray()));
+                options.Items,
+                options.Page,
+                options.PageSize,
+                options.TotalCount,
+                options.Selected));
         })
         .WithName("ListScheduleWorkerAssignmentOptions")
-        .WithSummary("Lists active Inspectors for Supervisor batch assignment")
+        .WithSummary("Searches a bounded page of active Inspectors for Supervisor batch assignment")
         .Produces<ScheduleWorkerAssignmentOptionsResponse>(StatusCodes.Status200OK)
+        .Produces<Microsoft.AspNetCore.Mvc.ValidationProblemDetails>(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
         .Produces(StatusCodes.Status403Forbidden)
         .RequireAuthorization(AuthPolicyCatalog.CanAssignScheduleWorkers);
@@ -1438,6 +1492,85 @@ public static class SchedulesEndpoints
             inspection => scheduleIds.Contains(inspection.ScheduleId),
             cancellationToken);
     }
+
+    private static bool TryNormalizeAssignmentOptionFilters(
+        string? search,
+        int? page,
+        int? pageSize,
+        out string? normalizedSearch,
+        out int pageNumber,
+        out int size,
+        out Dictionary<string, string[]> validationErrors)
+    {
+        normalizedSearch = string.IsNullOrWhiteSpace(search) ? null : search.Trim();
+        pageNumber = page ?? 1;
+        size = pageSize ?? 25;
+        validationErrors = [];
+
+        if (pageNumber < 1)
+        {
+            validationErrors[nameof(page)] = ["Page must be greater than zero."];
+        }
+
+        if (size is < 1 or > 100)
+        {
+            validationErrors[nameof(pageSize)] = ["Page size must be between 1 and 100."];
+        }
+
+        if (normalizedSearch?.Length > 256)
+        {
+            validationErrors[nameof(search)] = ["Search must be 256 characters or fewer."];
+        }
+
+        return validationErrors.Count == 0;
+    }
+
+    private static async Task<ScheduleAssignmentOptionsPage> GetAssignmentOptionsAsync(
+        ApplicationDbContext context,
+        string roleName,
+        string? search,
+        int page,
+        int pageSize,
+        Guid? selectedUserId,
+        CancellationToken cancellationToken)
+    {
+        var normalizedRole = roleName.ToUpperInvariant();
+        var eligibleUsers =
+            from user in context.Users.AsNoTracking()
+            join userRole in context.UserRoles.AsNoTracking()
+                on user.Id equals userRole.UserId
+            join role in context.Roles.AsNoTracking()
+                on userRole.RoleId equals role.Id
+            where user.IsActive && role.NormalizedName == normalizedRole
+            select user;
+
+        var query = eligibleUsers;
+        if (search is not null)
+        {
+            var searchKey = search.ToUpperInvariant();
+            query = query.Where(user => user.DisplayName.ToUpper().Contains(searchKey));
+        }
+
+        var totalCount = await query.CountAsync(cancellationToken);
+        var skip = (long)(page - 1) * pageSize;
+        List<ScheduleAssigneeOption> items = skip > int.MaxValue
+            ? []
+            : await query
+                .OrderBy(user => user.DisplayName)
+                .ThenBy(user => user.Id)
+                .Skip((int)skip)
+                .Take(pageSize)
+                .Select(user => new ScheduleAssigneeOption(user.Id, user.DisplayName))
+                .ToListAsync(cancellationToken);
+        var selected = selectedUserId is Guid id
+            ? await eligibleUsers
+                .Where(user => user.Id == id)
+                .Select(user => new ScheduleAssigneeOption(user.Id, user.DisplayName))
+                .SingleOrDefaultAsync(cancellationToken)
+            : null;
+
+        return new ScheduleAssignmentOptionsPage(items, page, pageSize, totalCount, selected);
+    }
 }
 
 public sealed record ScheduleResponse(
@@ -1538,10 +1671,25 @@ internal sealed record ScheduleRegistryStatusCounts(string Status, int Count);
 public sealed record ScheduleAssigneeOption(Guid Id, string DisplayName);
 
 public sealed record ScheduleWorkerAssignmentOptionsResponse(
-    IReadOnlyList<ScheduleAssigneeOption> Workers);
+    IReadOnlyList<ScheduleAssigneeOption> Workers,
+    int Page,
+    int PageSize,
+    int TotalCount,
+    ScheduleAssigneeOption? Selected);
 
 public sealed record ScheduleSupervisorAssignmentOptionsResponse(
-    IReadOnlyList<ScheduleAssigneeOption> Supervisors);
+    IReadOnlyList<ScheduleAssigneeOption> Supervisors,
+    int Page,
+    int PageSize,
+    int TotalCount,
+    ScheduleAssigneeOption? Selected);
+
+internal sealed record ScheduleAssignmentOptionsPage(
+    IReadOnlyList<ScheduleAssigneeOption> Items,
+    int Page,
+    int PageSize,
+    int TotalCount,
+    ScheduleAssigneeOption? Selected);
 
 public sealed record ScheduleCoverageReviewPage(
     int Year,

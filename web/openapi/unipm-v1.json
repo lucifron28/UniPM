@@ -685,7 +685,7 @@
     "/api/v1/schedules/assignment-options": {
       "get": {
         "tags": ["Schedules"],
-        "summary": "Lists active Inspectors for Supervisor batch assignment",
+        "summary": "Searches a bounded page of active Inspectors for schedule assignment",
         "operationId": "ListScheduleWorkerAssignmentOptions",
         "responses": {
           "200": {
@@ -698,19 +698,64 @@
               }
             }
           },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
           "401": {
             "description": "Unauthorized"
           },
           "403": {
             "description": "Forbidden"
           }
-        }
+        },
+        "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": ["integer", "string"],
+              "format": "int32"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": ["integer", "string"],
+              "format": "int32"
+            }
+          },
+          {
+            "name": "selectedUserId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
       }
     },
     "/api/v1/schedules/supervisor-assignment-options": {
       "get": {
         "tags": ["Schedules"],
-        "summary": "Lists active Supervisors for GSD batch assignment",
+        "summary": "Searches a bounded page of active Supervisors for schedule assignment",
         "operationId": "ListScheduleSupervisorAssignmentOptions",
         "responses": {
           "200": {
@@ -723,13 +768,58 @@
               }
             }
           },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
           "401": {
             "description": "Unauthorized"
           },
           "403": {
             "description": "Forbidden"
           }
-        }
+        },
+        "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": ["integer", "string"],
+              "format": "int32"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": ["integer", "string"],
+              "format": "int32"
+            }
+          },
+          {
+            "name": "selectedUserId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
       }
     },
     "/api/v1/schedules": {
@@ -2740,6 +2830,13 @@
               "pattern": "^-?(?:0|[1-9]\\d*)$",
               "type": ["integer", "string"],
               "format": "int32"
+            }
+          },
+          {
+            "name": "hasDepartment",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
             }
           }
         ],
@@ -4908,7 +5005,13 @@
         }
       },
       "ScheduleSupervisorAssignmentOptionsResponse": {
-        "required": ["supervisors"],
+        "required": [
+          "supervisors",
+          "page",
+          "pageSize",
+          "totalCount",
+          "selected"
+        ],
         "type": "object",
         "properties": {
           "supervisors": {
@@ -4916,11 +5019,36 @@
             "items": {
               "$ref": "#/components/schemas/ScheduleAssigneeOption"
             }
+          },
+          "page": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "pageSize": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "totalCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "selected": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ScheduleAssigneeOption"
+              }
+            ]
           }
         }
       },
       "ScheduleWorkerAssignmentOptionsResponse": {
-        "required": ["workers"],
+        "required": ["workers", "page", "pageSize", "totalCount", "selected"],
         "type": "object",
         "properties": {
           "workers": {
@@ -4928,6 +5056,31 @@
             "items": {
               "$ref": "#/components/schemas/ScheduleAssigneeOption"
             }
+          },
+          "page": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "pageSize": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "totalCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "selected": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ScheduleAssigneeOption"
+              }
+            ]
           }
         }
       },
