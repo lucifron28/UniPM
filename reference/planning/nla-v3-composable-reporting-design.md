@@ -1,13 +1,19 @@
 # NLA V3 composable reporting design
 
 Date: 19 October 2026.
-Status: the PM execution first-release path is implemented on a dedicated
-feature branch. API and web builds pass. Native SQL behavior, authorization,
-provider, browser and first-release acceptance checks remain pending; tests
-were not added or run. The in-memory preview store has not been checked against
-the deployed replica and restart topology. This status does not authorize
-deployment, release, external provider calls, database changes or new domain
-measures.
+Status: reporting correctness, interpretation and React workflow hardening is
+committed on the feature branch as `e2f90bba35707a7142b3dccb1afb8eeec6143ad4`.
+The web production build (including TypeScript), lint, changed-file formatting,
+7 focused V3 React tests, OpenAPI generation/drift check and 7 negative contract
+checks passed. Backend regression and authorization tests were added but could
+not be run because this environment has no .NET SDK. The browser scenario was
+added but could not launch because Chromium is absent and the official browser
+download returned HTTP 403. Native SQL Server 2019 behavior and runtime API
+authorization remain unverified; no SQL test connection is configured. No
+DeepSeek request was made. First-release acceptance, the in-memory preview
+store's deployed replica/restart topology, and deployment remain unverified.
+This status does not authorize deployment, release, external provider calls,
+database changes or new domain measures.
 
 ## Goal and source baseline
 
