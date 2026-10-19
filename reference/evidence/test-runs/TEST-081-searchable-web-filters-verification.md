@@ -59,9 +59,13 @@ not start its configured web server.
 - Focused Playwright cases started: 0.
 - Focused Playwright cases passed, failed, or skipped: none; startup failed before collection.
 
-## SQL Server Verification
+## Backend And Database Verification
 
-Not applicable. No database behavior or schema changed in this check.
+The earlier statement that database verification was not applicable was
+inaccurate: this feature changes backend registry query behavior for assets
+and personnel. TEST-081 itself did not run the backend registry test. The
+focused backend result is recorded in TEST-082. Native SQL Server-specific
+execution was not run.
 
 ## AI-Provider Verification
 
@@ -86,11 +90,12 @@ observed because no test began.
 
 - Browser interaction, long-list scrolling, keyboard navigation, combined
   filter behavior, popup viewport bounds, and requested desktop screenshots
-  remain unverified in a running browser.
-- Backend test execution was not part of this web-focused verification.
+  were not verified during TEST-081. Their follow-up is recorded in TEST-082.
+- Backend registry query behavior was not tested during TEST-081; see TEST-082
+  for the focused asset registry test result.
 
 ## Limitations
 
-This record confirms typecheck and generated API contract checks only. It does
-not establish browser behavior or screenshot acceptance. The focused browser
-scenario should be run when port 5173 is available.
+This record's original execution confirms typecheck and generated API contract
+checks only. It does not establish browser behavior or screenshot acceptance.
+TEST-082 records the successful follow-up browser and backend verification.
