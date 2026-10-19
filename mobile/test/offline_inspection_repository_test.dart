@@ -128,6 +128,41 @@ void main() {
   );
 
   test(
+    'cached schedules, assets, and references restore after restart offline',
+    () async {
+      await repository.activate(_userA);
+      expect((await repository.listSchedules()).single.id, _scheduleId);
+      expect(
+        (await repository.listAssetCategories()).single.code,
+        'fire-extinguisher',
+      );
+      expect((await repository.listPeriodTypes()).single.code, 'Quarter');
+      expect((await repository.listQuarters()).single.code, 'Q1');
+
+      repository.dispose();
+      connectivity.setConnected(false);
+      remote.connected = false;
+      repository = createRepository();
+      await repository.activate(_userA);
+
+      expect(repository.hasCachedSchedules, isTrue);
+      expect((await repository.listSchedules()).single.id, _scheduleId);
+      expect(
+        (await repository.listAssetCategories()).single.code,
+        'fire-extinguisher',
+      );
+      expect((await repository.listPeriodTypes()).single.code, 'Quarter');
+      expect((await repository.listQuarters()).single.code, 'Q1');
+      expect((await repository.getByCode('FE-CCMS-001')).id, _assetId);
+      expect(
+        (await repository.getByQr('UNIPM-FIRE-EXTINGUISHER-55555555')).id,
+        _assetId,
+      );
+      expect(repository.hasNetwork, isFalse);
+    },
+  );
+
+  test(
     'automatically syncs an offline Draft when connectivity returns',
     () async {
       await repository.activate(_userA);
