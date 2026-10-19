@@ -573,7 +573,9 @@ test.describe('Schedule workflows', () => {
     await assetPicker.press('Enter')
     await expect(assetPicker).toHaveValue(/FE-059/)
     await page.getByRole('button', { name: 'Apply filters' }).click()
-    await expect(page.getByText('FE-059', { exact: true })).toBeVisible()
+    await expect(
+      page.getByRole('link', { name: 'FE-059', exact: true }).first(),
+    ).toBeVisible()
     await expect
       .poll(() =>
         scheduleRequests.some((url) =>
