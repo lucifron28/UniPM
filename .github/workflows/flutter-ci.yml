@@ -1,0 +1,62 @@
+name: Flutter CI
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - "feature/**"
+    paths:
+      - ".github/workflows/flutter-ci.yml"
+      - "mobile/**"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/flutter-ci.yml"
+      - "mobile/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: flutter-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  mobile:
+    name: Analyze and test Flutter app
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    defaults:
+      run:
+        working-directory: mobile
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+          cache-dependency-path: mobile/pubspec.lock
+
+      - name: Install Flutter dependencies
+        run: flutter pub get
+
+      - name: Check Dart formatting
+        run: dart format --output=none --set-exit-if-changed lib test
+
+      - name: Analyze Flutter app
+        run: flutter analyze
+
+      - name: Run focused workflow widget tests
+        run: >
+          flutter test
+          test/field_worker_workflow_test.dart
+          test/home_page_return_ux_test.dart
+          test/mobile_field_workflow_ux_test.dart
+          test/preventive_maintenance_form_acknowledgement_test.dart
