@@ -648,7 +648,7 @@ void main() {
       repository.forms.singleWhere((form) => form.id == 'gsd-form-3').status,
       'Acknowledged',
     );
-    expect(repository.listFormsCalls, 3);
+    expect(repository.listFormsCalls, 2);
     expect(
       find.descendant(
         of: find.byKey(const Key('pending-ack-count')),

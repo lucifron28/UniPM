@@ -316,8 +316,12 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Department of Physics'), findsOneWidget);
-      await tester.tap(find.byKey(const Key('view-all-pm-tasks')));
+      final viewAllPmTasks = find.byKey(const Key('view-all-pm-tasks'));
+      await tester.ensureVisible(viewAllPmTasks);
       await tester.pumpAndSettle();
+      await tester.tap(viewAllPmTasks);
+      await tester.pumpAndSettle();
+      expect(find.text('All PM tasks'), findsOneWidget);
       expect(find.text('Department of Chemistry'), findsOneWidget);
       await tester.scrollUntilVisible(
         find.text('Department of Biology'),

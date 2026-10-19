@@ -80,9 +80,9 @@ PreventiveMaintenanceForm submittedFormWithInspectionCount(
     final isOperational = index >= nonOperationalInspectionCount;
     return {
       ...template,
-      'id': 'synthetic-inspection-$index',
-      'scheduleId': 'synthetic-schedule-$index',
-      'assetId': 'synthetic-asset-$index',
+      'id': _syntheticUuid('10000000', index),
+      'scheduleId': _syntheticUuid('20000000', index),
+      'assetId': _syntheticUuid('30000000', index),
       'assetCode': 'FE-2026-${(index + 1).toString().padLeft(4, '0')}',
       'dateInspected': date.toIso8601String(),
       'isOperational': isOperational,
@@ -96,6 +96,9 @@ PreventiveMaintenanceForm submittedFormWithInspectionCount(
   });
   return PreventiveMaintenanceForm.fromJson(json);
 }
+
+String _syntheticUuid(String namespace, int index) =>
+    '$namespace-0000-4000-8000-${(index + 1).toRadixString(16).padLeft(12, '0')}';
 
 PreventiveMaintenanceAcknowledgement testAcknowledgement() {
   return PreventiveMaintenanceAcknowledgement(
