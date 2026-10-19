@@ -18,6 +18,7 @@ record's evidence level and tested/source commit.
 
 | ID | Type | Title | Status | Evidence level | Tested/source commit | Record | Note |
 |---|---|---|---|---|---|---|---|
+| TEST-112 | test-run | PM analytics V3 local verification follow-up | executed | locally-executed | `41b3aa956082f06b4d24f88f3309998e0dc9eb47` | [record](test-runs/TEST-112-pm-analytics-v3-local-verification-follow-up.md) | User-reported isolated-snapshot Web checks and focused V3 backend tests passed; Node 24 was used; browser E2E and SQL Server 2019 were not run. |
 | TEST-111 | test-run | PM analytics V3 quarterly drill-down follow-up verification | executed | locally-executed | `b028938204932f0e49f285d5a0b90206dd58a32a` | [record](test-runs/TEST-111-pm-analytics-v3-quarterly-drilldown.md) | .NET 10 build, focused V3 backend 10/10, React 9/9, Web CI checks, and Playwright 1/1 passed; native SQL Server 2019 remains unverified. |
 | TEST-110 | test-run | PM analytics V3 reporting correctness and workflow hardening verification | executed | locally-executed | `e2f90bba35707a7142b3dccb1afb8eeec6143ad4` | [record](test-runs/TEST-110-pm-analytics-v3-reporting-hardening.md) | Node 22 build, lint, formatting, focused React 7/7, OpenAPI generation/drift and negative contract 7/7 passed; backend/.NET, SQL Server 2019 and browser behavior remain unverified. |
 | TEST-109 | test-run | Keep the Assets action visible at compact desktop widths | executed | locally-executed | HEAD `d474cb4725ffce031a7c903cf2201d7afe2427ab` + focused source manifest `c266cd474548185b46049b9e1db7d5547930d0ab0605737d7d72f997ccbeccfb` | [record](test-runs/TEST-109-assets-action-column-compact-desktop.md) | Focused Playwright 1/1 and full Playwright 57 passed/1 opt-in skip; format, lint, typecheck and production build passed under Node 24. Node 22, exact-head CI, backend, and deployed acceptance remain unverified. |
@@ -211,6 +212,10 @@ record's evidence level and tested/source commit.
 
 ## Pending evidence
 
+- NLA V3 Phase 5: independent question-label review and corpus freeze, a V3
+  scoring harness/development run, browser E2E, native SQL Server 2019
+  integration, and GSD task-success acceptance remain pending. TEST-112 covers
+  local Web checks and focused V3 backend tests only.
 - NLA V2 provisional development-case human review/adjudication, a separate
   held-out set, and any language interpretation evaluation remain pending.
   TEST-083 covers only fake-handler adapter/parser behavior; V1–V3 evidence is
