@@ -37,10 +37,7 @@ class _LoginPageState extends State<LoginPage> {
     final isBusy = widget.controller.status == SessionStatus.signingIn;
     final errorMessage = widget.controller.errorMessage;
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('UniPM'),
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: const Text('UniPM'), centerTitle: true),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -61,8 +58,8 @@ class _LoginPageState extends State<LoginPage> {
                   Text(
                     'Sign in',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                   const SizedBox(height: 6),
                   const Text('Use your UniPM field-work account.'),

@@ -303,8 +303,9 @@ class _HomePageState extends State<HomePage> {
       ),
     ];
     tasks.sort((left, right) {
-      final statusOrder = _statusOrder(left.status)
-          .compareTo(_statusOrder(right.status));
+      final statusOrder = _statusOrder(
+        left.status,
+      ).compareTo(_statusOrder(right.status));
       if (statusOrder != 0) return statusOrder;
 
       final cycleOrder = _comparePmCycles(left.pmCycle, right.pmCycle);
@@ -551,9 +552,9 @@ class _HomePageState extends State<HomePage> {
               key: const Key('view-all-pm-tasks'),
               onPressed: () => _openItemList(
                 title: 'All PM tasks',
-                children: _buildPmTasks(closeListBeforeAction: true)
-                    .map((task) => task.card)
-                    .toList(growable: false),
+                children: _buildPmTasks(
+                  closeListBeforeAction: true,
+                ).map((task) => task.card).toList(growable: false),
               ),
               icon: const Icon(Icons.view_list_outlined),
               label: Text('View all PM tasks (${tasks.length})'),

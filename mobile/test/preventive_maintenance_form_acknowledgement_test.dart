@@ -86,8 +86,12 @@ PreventiveMaintenanceForm submittedFormWithInspectionCount(
       'assetCode': 'FE-2026-${(index + 1).toString().padLeft(4, '0')}',
       'dateInspected': date.toIso8601String(),
       'isOperational': isOperational,
-      'remarks': isOperational ? 'Routine check' : 'Low pressure detected at the gauge. Verify pressure stability and inspect the valve assembly.',
-      'actionsRecommendations': isOperational ? 'None' : 'Inspect the gauge and valve assembly with the approved test instrument, then record the follow-up maintenance action.',
+      'remarks': isOperational
+          ? 'Routine check'
+          : 'Low pressure detected at the gauge. Verify pressure stability and inspect the valve assembly.',
+      'actionsRecommendations': isOperational
+          ? 'None'
+          : 'Inspect the gauge and valve assembly with the approved test instrument, then record the follow-up maintenance action.',
     };
   });
   return PreventiveMaintenanceForm.fromJson(json);
@@ -269,10 +273,9 @@ void main() {
     expect(find.text('Asset: FE-2026-0001'), findsOneWidget);
     expect(find.text('Location: Room 101'), findsOneWidget);
     expect(find.text('Condition: Non-operational'), findsOneWidget);
-    final localInspectionDate = DateTime.parse('2026-02-09T16:30:00Z')
-        .toLocal()
-        .toIso8601String()
-        .substring(0, 10);
+    final localInspectionDate = DateTime.parse(
+      '2026-02-09T16:30:00Z',
+    ).toLocal().toIso8601String().substring(0, 10);
     expect(find.text('Inspection date: $localInspectionDate'), findsOneWidget);
     expect(find.text('Remarks: Low pressure'), findsOneWidget);
     expect(find.text('Recommendation: Inspect gauge'), findsOneWidget);
