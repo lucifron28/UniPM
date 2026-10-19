@@ -215,7 +215,7 @@ describe('app shell role access and layout', () => {
     },
   )
 
-  it('shows PM Analytics to GSD without running a query on page load', async () => {
+  it('opens Ask about PM results from the dashboard without running a query on page load', async () => {
     let operationalRequests = 0
     let analyticsRequests = 0
     server.use(
@@ -238,7 +238,11 @@ describe('app shell role access and layout', () => {
     expect(
       await screen.findByRole('heading', { name: 'Ask about PM results' }),
     ).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'PM Analytics' })).toHaveAttribute(
+    expect(
+      screen.getByRole('button', { name: 'Ask a question' }),
+    ).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.queryByRole('link', { name: 'PM Analytics' })).toBeNull()
+    expect(screen.getByRole('link', { name: 'Dashboard' })).toHaveAttribute(
       'aria-current',
       'page',
     )
@@ -283,22 +287,19 @@ describe('app shell role access and layout', () => {
   })
 
   it('allows an assigned operational role alongside Admin', async () => {
-    let scheduleReads = 0
+    let assignmentBatchReads = 0
     server.use(
       http.get('*/api/v1/*', ({ request }) => {
         const pathname = new URL(request.url).pathname
         if (pathname === '/api/v1/auth/me') {
           return HttpResponse.json(currentUser(['Admin', 'GSD']))
         }
-        if (pathname === '/api/v1/schedules/registry') {
-          scheduleReads += 1
-          return HttpResponse.json({
-            items: [],
-            page: 1,
-            pageSize: 25,
-            totalCount: 0,
-            overallCount: 0,
-          })
+        if (pathname === '/api/v1/schedules/assignment-batches') {
+          assignmentBatchReads += 1
+          return HttpResponse.json({ totalScheduleCount: 0, batches: [] })
+        }
+        if (pathname === '/api/v1/schedules') {
+          return HttpResponse.json([])
         }
         if (pathname === '/api/v1/schedules/registry/options') {
           return HttpResponse.json({
@@ -342,17 +343,192 @@ describe('app shell role access and layout', () => {
 
     renderAppRoute('/app/schedules')
 
-    await waitFor(() => expect(scheduleReads).toBeGreaterThan(0))
+    await waitFor(() => expect(assignmentBatchReads).toBeGreaterThan(0))
     expect(screen.queryByRole('heading', { name: 'Access denied' })).toBeNull()
-    await waitFor(() =>
-      expect(
-        document.querySelector('.page-heading-host #schedules-title'),
-      ).not.toBeNull(),
+    const scheduleHeading = await screen.findByRole('heading', {
+      name: 'PM schedule batches',
+    })
+    expect(
+      document.querySelector('.app-workspace')?.contains(scheduleHeading),
+    ).toBe(true)
+  })
+
+  it('keeps batch assignment scoped to loaded filters and counts only visible schedules', async () => {
+    const currentYear = Number(
+      new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Asia/Manila',
+        year: 'numeric',
+      }).format(new Date()),
+    )
+    const previousYear = currentYear - 1
+    const pmCycle = `${currentYear}-08`
+    const assignedSupervisorId = '22222222-2222-4222-8222-222222222222'
+    const makeBatch = (
+      department: string,
+      scheduleCount: number,
+      supervisorUserId: string | null,
+    ) => {
+      const departmentCode = department === 'CCMS' ? '33333333' : '44444444'
+      const assetId = `${departmentCode}-3333-4333-8333-333333333333`
+      const scheduleId = `${departmentCode}-4444-4444-8444-444444444444`
+      return {
+        batchKey: `${pmCycle}|${department}|fire-extinguisher`,
+        department,
+        assetCategory: 'fire-extinguisher',
+        pmCycle,
+        scheduleCount,
+        completedCount: 0,
+        ongoingCount: 0,
+        overdueCount: 0,
+        supervisorState: supervisorUserId ? 'Assigned' : 'Unassigned',
+        supervisorUserId,
+        supervisorDisplayName: supervisorUserId ? 'Synthetic Supervisor' : null,
+        inspectorState: 'Unassigned',
+        inspectorUserId: null,
+        inspectorDisplayName: null,
+        assignmentLocked: false,
+        supervisorOwnershipIsConsistent: true,
+        representativeSchedule: {
+          id: scheduleId,
+          assetId,
+          scheduleDate: `${currentYear}-08-31T23:59:59+08:00`,
+          pmCycle,
+          periodType: 'Quarter',
+          status: 'Due',
+          quarter: 'Q3',
+          semester: null,
+          year: currentYear,
+          academicYear: null,
+          assignedToUserId: null,
+          assignedSupervisorUserId: supervisorUserId,
+          completedAt: null,
+          createdAt: `${currentYear}-08-01T08:00:00+08:00`,
+          updatedAt: `${currentYear}-08-01T08:00:00+08:00`,
+          asset: {
+            id: assetId,
+            assetCode: `${department}-FE-001`,
+            assetCategory: 'fire-extinguisher',
+            building: `${department} Building`,
+            department,
+            location: 'Synthetic common area',
+          },
+        },
+      }
+    }
+    const currentBatches = [
+      makeBatch('CCMS', 2, null),
+      makeBatch('Library', 3, assignedSupervisorId),
+    ]
+    let releasePreviousYearResponse!: () => void
+    const previousYearResponseGate = new Promise<void>((resolve) => {
+      releasePreviousYearResponse = resolve
+    })
+    let signalPreviousYearRequest!: () => void
+    const previousYearRequestStarted = new Promise<void>((resolve) => {
+      signalPreviousYearRequest = resolve
+    })
+
+    server.use(
+      http.get('*/api/v1/*', async ({ request }) => {
+        const url = new URL(request.url)
+        const pathname = url.pathname
+        if (pathname === '/api/v1/auth/me') {
+          return HttpResponse.json(currentUser(['GSD']))
+        }
+        if (pathname === '/api/v1/schedules/assignment-batches') {
+          if (url.searchParams.get('year') === String(previousYear)) {
+            signalPreviousYearRequest()
+            await previousYearResponseGate
+            return HttpResponse.json({ totalScheduleCount: 0, batches: [] })
+          }
+          return HttpResponse.json({
+            totalScheduleCount: 5,
+            batches: currentBatches,
+          })
+        }
+        if (pathname === '/api/v1/schedules/registry/options') {
+          return HttpResponse.json({
+            categories: [
+              {
+                code: 'fire-extinguisher',
+                displayName: 'Fire extinguishers',
+                scheduledMonths: [2, 5, 8, 11],
+              },
+            ],
+            quarters: ['Q1', 'Q2', 'Q3', 'Q4'],
+            departments: ['CCMS', 'Library'],
+            years: [String(previousYear), String(currentYear)],
+          })
+        }
+        if (pathname === '/api/v1/schedules/supervisor-assignment-options') {
+          return HttpResponse.json({
+            supervisors: [
+              { id: assignedSupervisorId, displayName: 'Synthetic Supervisor' },
+            ],
+          })
+        }
+        if (pathname === '/api/v1/schedules/registry/summary') {
+          return HttpResponse.json({
+            totalCount: 0,
+            dueCount: 0,
+            ongoingCount: 0,
+            overdueCount: 0,
+            completedCount: 0,
+            cancelledCount: 0,
+          })
+        }
+        return HttpResponse.json([])
+      }),
+    )
+
+    renderAppRoute('/app/schedules')
+
+    expect(
+      await screen.findByText(/2 batches · 5 schedules in view/),
+    ).toBeVisible()
+    fireEvent.click(
+      screen.getByRole('checkbox', {
+        name: 'Only show batches needing a Supervisor',
+      }),
     )
     expect(
-      document
-        .querySelector('.app-workspace')
-        ?.contains(document.querySelector('#schedules-title')),
-    ).toBe(false)
+      await screen.findByText(/1 batch · 2 schedules in view/),
+    ).toBeVisible()
+    expect(
+      screen.getByRole('link', { name: 'View schedules in batch' }),
+    ).toBeVisible()
+    fireEvent.click(screen.getByRole('button', { name: 'Assign Supervisor' }))
+    expect(
+      await screen.findByRole('heading', { name: 'Supervisor assignment' }),
+    ).toBeVisible()
+
+    fireEvent.change(
+      screen.getByRole('combobox', { name: 'Assignment year' }),
+      {
+        target: { value: String(previousYear) },
+      },
+    )
+    await previousYearRequestStarted
+
+    expect(
+      await screen.findByText(/Filters changed\. Previous batch results/),
+    ).toBeVisible()
+    expect(
+      screen.getByRole('button', { name: 'Assign Supervisor' }),
+    ).toBeDisabled()
+    expect(
+      screen.queryByRole('link', { name: 'View schedules in batch' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'View schedules in batch' }),
+    ).toBeDisabled()
+    expect(
+      screen.queryByRole('heading', { name: 'Supervisor assignment' }),
+    ).not.toBeInTheDocument()
+
+    releasePreviousYearResponse()
+    expect(
+      await screen.findByRole('heading', { name: 'No matching batches' }),
+    ).toBeVisible()
   })
 })

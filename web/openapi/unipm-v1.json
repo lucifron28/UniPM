@@ -1557,6 +1557,74 @@
         }
       }
     },
+    "/api/v1/schedules/assignment-batches": {
+      "get": {
+        "tags": ["Schedules"],
+        "summary": "Lists grouped PM schedule batches for assignment",
+        "operationId": "ListScheduleAssignmentBatches",
+        "parameters": [
+          {
+            "name": "year",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": ["integer", "string"],
+              "format": "int32"
+            }
+          },
+          {
+            "name": "assetCategory",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "department",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "pmCycle",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleAssignmentQueueResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      }
+    },
     "/api/v1/schedules/registry": {
       "get": {
         "tags": ["Schedules"],
@@ -4458,6 +4526,20 @@
           "hasPhotoEvidence": {
             "type": "boolean",
             "default": false
+          },
+          "currentScheduleInspectorUserId": {
+            "type": ["null", "string"],
+            "format": "uuid"
+          },
+          "currentScheduleInspectorIdentity": {
+            "type": ["null", "string"]
+          },
+          "currentScheduleSupervisorUserId": {
+            "type": ["null", "string"],
+            "format": "uuid"
+          },
+          "currentScheduleSupervisorIdentity": {
+            "type": ["null", "string"]
           }
         }
       },
@@ -7437,6 +7519,108 @@
             "items": {
               "type": "string",
               "format": "uuid"
+            }
+          }
+        }
+      },
+      "ScheduleAssignmentQueueBatchResponse": {
+        "required": [
+          "batchKey",
+          "department",
+          "assetCategory",
+          "pmCycle",
+          "scheduleCount",
+          "completedCount",
+          "ongoingCount",
+          "overdueCount",
+          "supervisorState",
+          "supervisorUserId",
+          "supervisorDisplayName",
+          "inspectorState",
+          "inspectorUserId",
+          "inspectorDisplayName",
+          "assignmentLocked",
+          "supervisorOwnershipIsConsistent",
+          "representativeSchedule"
+        ],
+        "type": "object",
+        "properties": {
+          "batchKey": {
+            "type": "string"
+          },
+          "department": {
+            "type": "string"
+          },
+          "assetCategory": {
+            "type": "string"
+          },
+          "pmCycle": {
+            "type": "string"
+          },
+          "scheduleCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "completedCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "ongoingCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "overdueCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "supervisorState": {
+            "type": "string"
+          },
+          "supervisorUserId": {
+            "type": ["null", "string"],
+            "format": "uuid"
+          },
+          "supervisorDisplayName": {
+            "type": ["null", "string"]
+          },
+          "inspectorState": {
+            "type": "string"
+          },
+          "inspectorUserId": {
+            "type": ["null", "string"],
+            "format": "uuid"
+          },
+          "inspectorDisplayName": {
+            "type": ["null", "string"]
+          },
+          "assignmentLocked": {
+            "type": "boolean"
+          },
+          "supervisorOwnershipIsConsistent": {
+            "type": "boolean"
+          },
+          "representativeSchedule": {
+            "$ref": "#/components/schemas/ScheduleResponse"
+          }
+        }
+      },
+      "ScheduleAssignmentQueueResponse": {
+        "required": ["totalScheduleCount", "batches"],
+        "type": "object",
+        "properties": {
+          "totalScheduleCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "batches": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScheduleAssignmentQueueBatchResponse"
             }
           }
         }

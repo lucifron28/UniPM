@@ -1,9 +1,14 @@
-# UniPM fictional presentation data
+# UniPM synthetic presentation data in MSEUF facilities
 
 This fixture prepares a repeatable local demonstration of the preventive-
-maintenance workflow. Every person, asset, finding, recommendation, and
-signature in it is fictional. It is available only when the API runs in the
-`Development` environment.
+maintenance workflow. The campus facility and CCMS laboratory names are based
+on publicly documented MSEUF facilities listed in
+[`mseuf-campus-staging-seed.md`](../guides/mseuf-campus-staging-seed.md). This
+does not verify equipment inventory or exact placements. All assets, placement
+descriptions, people, inspections, findings, recommendations, and signatures
+are synthetic and do not represent maintenance work performed by MSEUF staff.
+This fixture is available only when the API runs in the `Development`
+environment.
 
 ## Prepare the demo
 
@@ -60,9 +65,9 @@ open before its deadline, so Compliance rate is not final yet; Progress is
 
 | Asset code | QR payload | Location |
 | --- | --- | --- |
-| `DEMO-FE-001` | `UNIPM-DEMO-FE-001` | Ground Floor Computer Laboratory |
-| `DEMO-FE-002` | `UNIPM-DEMO-FE-002` | Second Floor Faculty Room |
-| `DEMO-FE-003` | `UNIPM-DEMO-FE-003` | Third Floor Network Laboratory |
+| `FE-CCMS-001` | `UNIPM-FE-CCMS-001` | CL-01 |
+| `FE-CCMS-002` | `UNIPM-FE-CCMS-002` | CL-03 |
+| `FE-CCMS-003` | `UNIPM-FE-CCMS-003` | CL-04 |
 
 Use these assets for QR scan, code lookup, inspection entry, batch progress,
 and whole-form submission.
@@ -87,25 +92,27 @@ all eligible non-cancelled scheduled assets in the selected official scope.
 Progress is inspected divided by scheduled. Form acknowledgement does not
 change either measure.
 
-The asset codes are `DEMO-LIB-FE-001`, `DEMO-LIB-FE-002`, and
-`DEMO-LIB-FE-003`.
+The synthetic assets are `FE-LIB-001` (Library reading area), `FE-LIB-002`
+(Library circulation area), and `FE-LIB-003` (Library corridor), all in the
+University Library Complex.
 
 ### C. Acknowledged official history
 
-The Student Affairs Office emergency-light batch for `2026-06` had two
-scheduled assets and a June 30, 2026 due date. One inspection was completed on
-June 20 and one was completed late on July 3. The Acknowledged form contains
-both rows. Its fictional acknowledgement was captured on July 7, after field
-work and submission. Those two rows are projected into official history; the
-Submitted Library rows are not. `DEMO-EL-003` is in the separate Campus
-Facilities department and remains uncompleted for the same PM cycle.
+The Office of Student Affairs and Services emergency-light batch for `2026-06`
+had two scheduled assets and a June 30, 2026 due date. One inspection was
+completed on June 20 and one was completed late on July 3. The Acknowledged
+form contains both rows. Its fictional acknowledgement was captured on July 7,
+after field work and submission. Those two rows are projected into official
+history; the Submitted Library rows are not. `EL-REG-001`, assigned to the
+Registrar's Office in the Administration Building, remains uncompleted for the
+same PM cycle.
 
 The category-wide closed-period dashboard shows Scheduled `3`, Inspected `2`,
 On time `1`, Late `1`, Not completed `1`, Compliance rate `33.33%` (`1 / 3`),
 and Progress `66.67%` (`2 / 3`). The acknowledgement date does not change
 these values.
 
-The asset codes are `DEMO-EL-001`, `DEMO-EL-002`, and `DEMO-EL-003`.
+The asset codes are `EL-OSAS-001`, `EL-OSAS-002`, and `EL-REG-001`.
 
 ## QR sheet
 
@@ -114,9 +121,11 @@ large PNG intended for scanning directly from a laptop display. The text under
 the code shows the exact persisted payload. Individual PNG files are in the
 same directory.
 
-Every demo asset has one unique QR payload. Running `prepare-demo.ps1`
-regenerates the committed sheet from the same catalog used by the database
-seeder.
+The sheet contains the nine baseline assets in `DevelopmentDemoCatalog`; the
+additional historical CPMP fixture assets are seeded separately and are not
+included on this QR sheet. Each listed baseline asset has one unique QR
+payload. Running `prepare-demo.ps1` regenerates the sheet from the same catalog
+used by the database seeder.
 
 ## Connect a physical Android phone
 

@@ -1,9 +1,4 @@
-import {
-  useInfiniteQuery,
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
   assignScheduleBatchSupervisor,
@@ -35,16 +30,18 @@ import {
   reviewScheduleEnrollmentDeferral,
   listScheduleStatuses,
   listScheduleRegistry,
+  listScheduleAssignmentBatches,
   listSchedules,
 } from '@/api/generated/endpoints'
 import type {
+  ListScheduleAssignmentBatchesParams,
   GetScheduleRegistryOptionsParams,
-  ListScheduleSupervisorAssignmentOptionsParams,
-  ListScheduleWorkerAssignmentOptionsParams,
   ListScheduleRegistryParams,
   ListSchedulesParams,
   ListScheduleCoverageReviewParams,
   ListScheduleEnrollmentDeferralsParams,
+  ListScheduleSupervisorAssignmentOptionsParams,
+  ListScheduleWorkerAssignmentOptionsParams,
   ScheduleEnrollmentDeferralReviewRequest,
   ScheduleReferenceResponse,
 } from '@/api/generated/models'
@@ -53,6 +50,7 @@ import {
   parseScheduleRegistryOptions,
   parseScheduleRegistryPage,
   parseScheduleRegistrySummary,
+  parseScheduleAssignmentQueue,
   parseScheduleQuarters,
   parseScheduleStatuses,
   parseSchedule,
@@ -71,12 +69,29 @@ export function useSchedules(filters: ScheduleServerFilters = {}) {
   })
 }
 
-export function useScheduleRegistry(filters: ScheduleRegistryFilters = {}) {
+export function useScheduleAssignmentBatches(
+  filters: ListScheduleAssignmentBatchesParams,
+) {
+  return useQuery({
+    queryKey: [...getListSchedulesQueryKey(), 'assignment-batches', filters],
+    queryFn: ({ signal }) =>
+      listScheduleAssignmentBatches(filters, signal).then(
+        parseScheduleAssignmentQueue,
+      ),
+    placeholderData: (previousData) => previousData,
+  })
+}
+
+export function useScheduleRegistry(
+  filters: ScheduleRegistryFilters = {},
+  enabled = true,
+) {
   return useQuery({
     queryKey: getListScheduleRegistryQueryKey(filters),
     queryFn: ({ signal }) =>
       listScheduleRegistry(filters, signal).then(parseScheduleRegistryPage),
     placeholderData: (previousData) => previousData,
+    enabled,
   })
 }
 
@@ -156,52 +171,36 @@ export function useReviewScheduleEnrollmentDeferral() {
 
 export function useScheduleSupervisorAssignmentOptions(
   enabled: boolean,
-  filters: Pick<
-    ListScheduleSupervisorAssignmentOptionsParams,
-    'search' | 'selectedUserId'
-  > = {},
+  search = '',
+  selectedUserId?: string,
 ) {
-  const params = { ...filters, pageSize: 20 }
-  return useInfiniteQuery({
+  const params: ListScheduleSupervisorAssignmentOptionsParams = {
+    ...(search.trim() ? { search: search.trim() } : {}),
+    ...(selectedUserId ? { selectedUserId } : {}),
+  }
+
+  return useQuery({
     queryKey: getListScheduleSupervisorAssignmentOptionsQueryKey(params),
-    queryFn: ({ signal, pageParam }) =>
-      listScheduleSupervisorAssignmentOptions(
-        { ...params, page: pageParam },
-        signal,
-      ),
-    initialPageParam: 1,
-    getNextPageParam: (lastPage) => {
-      const page = Number(lastPage.page)
-      return page * Number(lastPage.pageSize) < Number(lastPage.totalCount)
-        ? page + 1
-        : undefined
-    },
+    queryFn: ({ signal }) =>
+      listScheduleSupervisorAssignmentOptions(params, signal),
     enabled,
   })
 }
 
 export function useScheduleWorkerAssignmentOptions(
   enabled: boolean,
-  filters: Pick<
-    ListScheduleWorkerAssignmentOptionsParams,
-    'search' | 'selectedUserId'
-  > = {},
+  search = '',
+  selectedUserId?: string,
 ) {
-  const params = { ...filters, pageSize: 20 }
-  return useInfiniteQuery({
+  const params: ListScheduleWorkerAssignmentOptionsParams = {
+    ...(search.trim() ? { search: search.trim() } : {}),
+    ...(selectedUserId ? { selectedUserId } : {}),
+  }
+
+  return useQuery({
     queryKey: getListScheduleWorkerAssignmentOptionsQueryKey(params),
-    queryFn: ({ signal, pageParam }) =>
-      listScheduleWorkerAssignmentOptions(
-        { ...params, page: pageParam },
-        signal,
-      ),
-    initialPageParam: 1,
-    getNextPageParam: (lastPage) => {
-      const page = Number(lastPage.page)
-      return page * Number(lastPage.pageSize) < Number(lastPage.totalCount)
-        ? page + 1
-        : undefined
-    },
+    queryFn: ({ signal }) =>
+      listScheduleWorkerAssignmentOptions(params, signal),
     enabled,
   })
 }

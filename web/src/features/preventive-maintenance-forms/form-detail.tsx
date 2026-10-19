@@ -427,6 +427,16 @@ function InspectionRow({
     row.waterCheckUvLight !== null
   const yesNo = (value: boolean | null | undefined) =>
     value == null ? 'Not recorded' : value ? 'Yes' : 'No'
+  const assignmentLabel = (
+    id: string | null | undefined,
+    identity: string | null | undefined,
+    role: 'Inspector' | 'Supervisor',
+  ) =>
+    id === undefined
+      ? 'Not recorded'
+      : id === null
+        ? 'Unassigned'
+        : identity?.trim() || `Assigned ${role}`
 
   return (
     <article className="rounded-lg border border-[var(--border-soft)] bg-white p-3">
@@ -464,10 +474,30 @@ function InspectionRow({
         )}
         <dl className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <DetailItem
-            label="Skilled worker"
-            value={row.skilledWorkerIdentity ?? ''}
+            label="Inspected by"
+            value={row.skilledWorkerIdentity ?? 'Not recorded'}
+          />
+          <DetailItem
+            label="Current assigned Inspector"
+            value={assignmentLabel(
+              row.currentScheduleInspectorUserId,
+              row.currentScheduleInspectorIdentity,
+              'Inspector',
+            )}
+          />
+          <DetailItem
+            label="Current assigned Supervisor"
+            value={assignmentLabel(
+              row.currentScheduleSupervisorUserId,
+              row.currentScheduleSupervisorIdentity,
+              'Supervisor',
+            )}
           />
         </dl>
+        <p className="mt-2 text-xs text-[var(--text-secondary)]">
+          Current schedule assignments may differ from the people assigned when
+          this inspection was completed.
+        </p>
         <div className="mt-3 grid gap-3 border-t border-[var(--border-soft)] pt-3 sm:grid-cols-2">
           <div>
             <h3 className="text-xs font-semibold tracking-[0.08em] text-[var(--text-neutral)] uppercase">
@@ -522,6 +552,14 @@ function InspectionRow({
             <DetailItem
               label="Skilled worker user ID"
               value={row.inspectorUserId}
+            />
+            <DetailItem
+              label="Current assigned Inspector user ID"
+              value={row.currentScheduleInspectorUserId ?? 'Not recorded'}
+            />
+            <DetailItem
+              label="Current assigned Supervisor user ID"
+              value={row.currentScheduleSupervisorUserId ?? 'Not recorded'}
             />
           </dl>
         </details>

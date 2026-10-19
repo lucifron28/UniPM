@@ -47,6 +47,10 @@ const inspectionRowSchema = z
     assetCode: optionalText.optional(),
     location: optionalText.optional(),
     skilledWorkerIdentity: optionalText.optional(),
+    currentScheduleInspectorUserId: z.string().uuid().nullable().optional(),
+    currentScheduleInspectorIdentity: optionalText.optional(),
+    currentScheduleSupervisorUserId: z.string().uuid().nullable().optional(),
+    currentScheduleSupervisorIdentity: optionalText.optional(),
     createdAt: z.string().datetime({ offset: true }),
     updatedAt: z.string().datetime({ offset: true }),
   })

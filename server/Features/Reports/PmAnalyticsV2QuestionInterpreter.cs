@@ -61,7 +61,8 @@ internal static class PmAnalyticsV2QuestionGrammar
     private static readonly HashSet<string> HarmlessWords = new(StringComparer.OrdinalIgnoreCase)
     {
         "a", "an", "and", "are", "asset", "assets", "by", "for", "from", "give", "grouped",
-        "how", "in", "inspection", "inspections", "is", "list", "many", "of", "on", "please",
+        "all", "how", "in", "inspection", "inspections", "is", "list", "many",
+        "me", "of", "on", "please",
         "pm", "record", "records", "report", "schedule", "schedules", "show", "the", "to", "what",
         "which", "with", "year", "during", "between", "compare", "versus", "vs", "count", "counts",
         "total", "overall",
@@ -598,8 +599,11 @@ internal static class PmAnalyticsV2QuestionGrammar
     private static PmAnalyticsV2GroupBy ParseGroupBy(ref string residual, out bool ambiguous)
     {
         var candidates = new List<(PmAnalyticsV2GroupBy Value, Match Match)>();
-        candidates.AddRange(FindMatches(residual, @"(?:grouped\s+by|by|across)\s+departments?")
-            .Select(match => (PmAnalyticsV2GroupBy.Department, match)));
+        candidates.AddRange(
+            FindMatches(
+                residual,
+                @"(?:grouped\s+by|by|across|for\s+all(?:\s+the)?)\s+departments?")
+                .Select(match => (PmAnalyticsV2GroupBy.Department, match)));
         candidates.AddRange(FindMatches(residual, @"(?:grouped\s+by|by)\s+buildings?")
             .Select(match => (PmAnalyticsV2GroupBy.Building, match)));
         candidates.AddRange(FindMatches(residual, @"(?:grouped\s+by|by)\s+(?:pm\s+)?cycles?")

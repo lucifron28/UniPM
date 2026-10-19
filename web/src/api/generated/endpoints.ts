@@ -59,6 +59,7 @@ import type {
   ListInspectionsParams,
   ListPmPeriodDashboardCyclesParams,
   ListPreventiveMaintenanceFormsParams,
+  ListScheduleAssignmentBatchesParams,
   ListScheduleCoverageReviewParams,
   ListScheduleEnrollmentDeferralsParams,
   ListScheduleRegistryParams,
@@ -89,6 +90,7 @@ import type {
   PreventiveMaintenanceFormResponse,
   ProblemDetails,
   ScheduleAssignmentBatchResponse,
+  ScheduleAssignmentQueueResponse,
   ScheduleCoverageReviewPage,
   ScheduleEnrollmentDeferralPage,
   ScheduleEnrollmentDeferralReviewRequest,
@@ -3758,6 +3760,172 @@ export const useAssignScheduleBatchWorker = <
     getAssignScheduleBatchWorkerMutationOptions(options),
     queryClient,
   )
+}
+
+/**
+ * @summary Lists grouped PM schedule batches for assignment
+ */
+export const listScheduleAssignmentBatches = (
+  params: ListScheduleAssignmentBatchesParams,
+  signal?: AbortSignal,
+) => {
+  return customInstance<ScheduleAssignmentQueueResponse>({
+    url: `/api/v1/schedules/assignment-batches`,
+    method: 'GET',
+    params,
+    signal,
+  })
+}
+
+export const getListScheduleAssignmentBatchesQueryKey = (
+  params?: ListScheduleAssignmentBatchesParams,
+) => {
+  return [
+    `/api/v1/schedules/assignment-batches`,
+    ...(params ? [params] : []),
+  ] as const
+}
+
+export const getListScheduleAssignmentBatchesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listScheduleAssignmentBatches>>,
+  TError = ValidationProblemDetails | void,
+>(
+  params: ListScheduleAssignmentBatchesParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listScheduleAssignmentBatches>>,
+        TError,
+        TData
+      >
+    >
+  },
+) => {
+  const { query: queryOptions } = options ?? {}
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListScheduleAssignmentBatchesQueryKey(params)
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listScheduleAssignmentBatches>>
+  > = ({ signal }) => listScheduleAssignmentBatches(params, signal)
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listScheduleAssignmentBatches>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListScheduleAssignmentBatchesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listScheduleAssignmentBatches>>
+>
+export type ListScheduleAssignmentBatchesQueryError =
+  ValidationProblemDetails | void
+
+export function useListScheduleAssignmentBatches<
+  TData = Awaited<ReturnType<typeof listScheduleAssignmentBatches>>,
+  TError = ValidationProblemDetails | void,
+>(
+  params: ListScheduleAssignmentBatchesParams,
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listScheduleAssignmentBatches>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listScheduleAssignmentBatches>>,
+          TError,
+          Awaited<ReturnType<typeof listScheduleAssignmentBatches>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useListScheduleAssignmentBatches<
+  TData = Awaited<ReturnType<typeof listScheduleAssignmentBatches>>,
+  TError = ValidationProblemDetails | void,
+>(
+  params: ListScheduleAssignmentBatchesParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listScheduleAssignmentBatches>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listScheduleAssignmentBatches>>,
+          TError,
+          Awaited<ReturnType<typeof listScheduleAssignmentBatches>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useListScheduleAssignmentBatches<
+  TData = Awaited<ReturnType<typeof listScheduleAssignmentBatches>>,
+  TError = ValidationProblemDetails | void,
+>(
+  params: ListScheduleAssignmentBatchesParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listScheduleAssignmentBatches>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+/**
+ * @summary Lists grouped PM schedule batches for assignment
+ */
+
+export function useListScheduleAssignmentBatches<
+  TData = Awaited<ReturnType<typeof listScheduleAssignmentBatches>>,
+  TError = ValidationProblemDetails | void,
+>(
+  params: ListScheduleAssignmentBatchesParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listScheduleAssignmentBatches>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+} {
+  const queryOptions = getListScheduleAssignmentBatchesQueryOptions(
+    params,
+    options,
+  )
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+
+  return withQueryKey(query, queryOptions.queryKey)
 }
 
 /**

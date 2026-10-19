@@ -37,4 +37,12 @@ export interface DraftInspectionRowResponse {
   /** @nullable */
   skilledWorkerIdentity?: string | null
   hasPhotoEvidence?: boolean
+  /** @nullable */
+  currentScheduleInspectorUserId?: string | null
+  /** @nullable */
+  currentScheduleInspectorIdentity?: string | null
+  /** @nullable */
+  currentScheduleSupervisorUserId?: string | null
+  /** @nullable */
+  currentScheduleSupervisorIdentity?: string | null
 }

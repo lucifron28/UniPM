@@ -178,6 +178,8 @@ public static class PreventiveMaintenanceFormEndpoints
                 .Include(form => form.Inspections)
                     .ThenInclude(inspection => inspection.Asset)
                 .Include(form => form.Inspections)
+                    .ThenInclude(inspection => inspection.Schedule)
+                .Include(form => form.Inspections)
                     .ThenInclude(inspection => inspection.PhotoEvidence)
                 .OrderByDescending(form => form.CreatedAt)
                 .ThenBy(form => form.Id)
@@ -205,6 +207,8 @@ public static class PreventiveMaintenanceFormEndpoints
                 .AsNoTracking()
                 .Include(candidate => candidate.Inspections)
                     .ThenInclude(inspection => inspection.Asset)
+                .Include(candidate => candidate.Inspections)
+                    .ThenInclude(inspection => inspection.Schedule)
                 .Include(candidate => candidate.Inspections)
                     .ThenInclude(inspection => inspection.PhotoEvidence)
                 .SingleOrDefaultAsync(candidate => candidate.Id == id, cancellationToken);
@@ -253,6 +257,8 @@ public static class PreventiveMaintenanceFormEndpoints
                 var form = await context.PreventiveMaintenanceForms
                     .Include(candidate => candidate.Inspections)
                         .ThenInclude(inspection => inspection.Asset)
+                    .Include(candidate => candidate.Inspections)
+                        .ThenInclude(inspection => inspection.Schedule)
                     .Include(candidate => candidate.Inspections)
                         .ThenInclude(inspection => inspection.PhotoEvidence)
                     .SingleOrDefaultAsync(candidate => candidate.Id == id, cancellationToken);
@@ -1044,7 +1050,14 @@ public static class PreventiveMaintenanceFormEndpoints
     {
         var userIds = forms
             .SelectMany(form => form.Inspections)
-            .Select(inspection => inspection.InspectorUserId)
+            .SelectMany(inspection => new Guid?[]
+            {
+                inspection.InspectorUserId,
+                inspection.Schedule?.AssignedToUserId,
+                inspection.Schedule?.AssignedSupervisorUserId
+            })
+            .Where(userId => userId.HasValue)
+            .Select(userId => userId!.Value)
             .Distinct()
             .ToList();
 
@@ -1642,7 +1655,15 @@ public sealed record PreventiveMaintenanceFormResponse(
                     inspection,
                     inspection.Asset?.AssetCode,
                     inspection.Asset?.Location,
-                    userDisplayNames?.GetValueOrDefault(inspection.InspectorUserId)))
+                    userDisplayNames?.GetValueOrDefault(inspection.InspectorUserId),
+                    inspection.Schedule?.AssignedToUserId,
+                    inspection.Schedule?.AssignedToUserId is { } assignedInspectorId
+                        ? userDisplayNames?.GetValueOrDefault(assignedInspectorId)
+                        : null,
+                    inspection.Schedule?.AssignedSupervisorUserId,
+                    inspection.Schedule?.AssignedSupervisorUserId is { } assignedSupervisorId
+                        ? userDisplayNames?.GetValueOrDefault(assignedSupervisorId)
+                        : null))
                 .ToList());
     }
 }
@@ -1667,13 +1688,21 @@ public sealed record DraftInspectionRowResponse(
     string? AssetCode = null,
     string? Location = null,
     string? SkilledWorkerIdentity = null,
-    bool HasPhotoEvidence = false)
+    bool HasPhotoEvidence = false,
+    Guid? CurrentScheduleInspectorUserId = null,
+    string? CurrentScheduleInspectorIdentity = null,
+    Guid? CurrentScheduleSupervisorUserId = null,
+    string? CurrentScheduleSupervisorIdentity = null)
 {
     internal static DraftInspectionRowResponse FromInspection(
         InspectionRecord inspection,
         string? assetCode = null,
         string? location = null,
-        string? skilledWorkerIdentity = null)
+        string? skilledWorkerIdentity = null,
+        Guid? currentScheduleInspectorUserId = null,
+        string? currentScheduleInspectorIdentity = null,
+        Guid? currentScheduleSupervisorUserId = null,
+        string? currentScheduleSupervisorIdentity = null)
     {
         return new DraftInspectionRowResponse(
             inspection.Id,
@@ -1695,7 +1724,11 @@ public sealed record DraftInspectionRowResponse(
             assetCode,
             location,
             skilledWorkerIdentity,
-            inspection.PhotoEvidence is not null);
+            inspection.PhotoEvidence is not null,
+            currentScheduleInspectorUserId,
+            currentScheduleInspectorIdentity,
+            currentScheduleSupervisorUserId,
+            currentScheduleSupervisorIdentity);
     }
 }
 
