@@ -467,11 +467,18 @@ a separate authorization step.
 
 ### Phase 6: asset inventory reporting
 
-Depends on Phase 5 correctness and human review of the report contract. The
-review-ready subject design, including grain, counts, filters, tests and
-dependencies, is in
+**Engineering status (2026-10-19):** The bounded inventory subject is
+implemented on the isolated `feature/nla-v3-asset-inventory` branch at
+`fcd6e6b7b1ab71bdc64e3c4520fcb558b7551920`. Local backend, Web, API-contract,
+and focused browser checks passed; native SQL Server 2019 remains unverified.
+See [TEST-114](../evidence/test-runs/TEST-114-pm-analytics-v3-asset-inventory.md)
+for commands and limits. This implementation does not close Phase 5: all 18
+provisional interpretation labels still need independent human review, and no
+score or GSD acceptance claim is available.
+
+The subject design, including grain, counts, filters, tests and dependencies,
+is in
 [`nla-v3-phase6-asset-inventory-design.md`](nla-v3-phase6-asset-inventory-design.md).
-Implementation must wait until Phase 5 semantic blockers are resolved.
 
 - Add a subject whose row is one registered asset. Support category, department,
   building, general location and registration-status filters and counts.
@@ -484,6 +491,12 @@ Exit: inventory counts agree with authorized registry results and never count
 one asset once per historical schedule. Extend protocol coverage independently.
 
 ### Phase 7: batches and assignment coverage
+
+**Status:** planning only. The implementation requirements and open semantic
+decisions are in
+[`nla-v3-phase7-batch-assignment-design.md`](nla-v3-phase7-batch-assignment-design.md).
+Resolve those decisions before adding the subject; Phase 7 is not part of the
+current implementation branch.
 
 - Add a batch subject keyed by department, category and PM cycle. Building does
   not split a batch. Distinguish batch counts from asset-cycle counts.
@@ -499,6 +512,9 @@ Exit: batch counts and eligibility match the operational assignment workflow.
 Reports cannot silently assign work or present workload as employee performance.
 
 ### Phase 8: forms and inspection follow-up
+
+The bounded requirements and dependencies are listed in the Phase 6 design's
+[Phase 8 planning notes](nla-v3-phase6-asset-inventory-design.md#phase-8-forms-and-follow-up-reporting).
 
 - Add form reports at one row per form, with Draft, Submitted and Acknowledged
   states. Define ageing from an explicit event timestamp and a fixed as-of time.

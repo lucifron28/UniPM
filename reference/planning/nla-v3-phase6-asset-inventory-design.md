@@ -1,6 +1,10 @@
 # NLA V3 Phase 6: asset inventory report design
 
-Status: proposed contract for review. Phase 6 implementation has not started.
+Status: implemented at `fcd6e6b7b1ab71bdc64e3c4520fcb558b7551920` on the
+isolated `feature/nla-v3-asset-inventory` branch. Focused local verification
+passed; native SQL Server 2019 and institutional acceptance remain unverified.
+See [TEST-114](../evidence/test-runs/TEST-114-pm-analytics-v3-asset-inventory.md).
+This engineering result does not approve the Phase 5 question labels.
 
 ## Subject and authorization
 
@@ -19,17 +23,17 @@ or referral audit history in the inventory query.
 
 ## Contract boundary
 
-Proposed typed plan fields:
+Implemented typed plan fields:
 
 ```text
 ReportPlan
   schemaVersion, catalogVersion
   subject: assetInventory
   mode: aggregate | records
-  categories: optional nonempty selection of supported asset categories
+  categories: selected supported asset categories; empty means all four
   baseFilters: department, building, location, registrationStatus
   groupBy: zero, one, or two of category, department, building, location, registrationStatus
-  measures: registeredAssetCount and, if needed, separately named status counts
+  measures: registeredAssetCount
   orderBy: catalogued group or measure fields
   top: optional bounded ranking by registeredAssetCount
   presentation: table | summary; typed columns
@@ -39,8 +43,8 @@ The backend handles an omitted category selection as all four currently
 registered asset categories. `registrationStatus` is optional and accepts only
 the persisted `Active`, `Inactive`, or `Retired` catalog codes. The current
 asset API only writes `Active`, and the status catalog does not define status
-transitions; before implementation, confirm what existing inactive and retired
-rows mean and whether GSDs may filter on each. Other filters use current Asset
+transitions. This implementation exposes the stored codes as filters and groups;
+it does not assign lifecycle semantics to them. Other filters use current Asset
 values and existing bounded exact-match catalog resolution.
 Department, building, and general location are free-text current-state fields;
 they are not historical snapshots. Empty-value behavior must be explicit
@@ -56,11 +60,9 @@ and is outside this inventory measure.
 
 - `registeredAssetCount` is the count of unique authorized Asset IDs after
   category and base filters. Because the subject query is one row per asset,
-  `COUNT(*)` is sufficient only while the query has no one-to-many joins.
-- `activeAssetCount`, `inactiveAssetCount`, and `retiredAssetCount` may be
-  exposed as explicitly named status counts. If a status filter is applied,
-  each count is calculated within the filtered population; do not report counts
-  for excluded statuses as though they shared that denominator.
+  a row count is sufficient only while the query has no one-to-many joins. The
+  measure has unit `assets`, has no denominator, and returns zero for an empty
+  population.
 - Grouped rows partition the eligible Asset population. A two-dimension group
   must never duplicate an asset across values. Top/bottom selection occurs
   before any requested display sort, with stable category/value tie-breaks.
@@ -78,35 +80,70 @@ semantics. Do not add that metric to Phase 6 by joining inspection rows.
 ## Focused test contract
 
 Use synthetic fixtures with explicit Asset IDs, statuses, and current context.
-Include:
+The implemented full API regressions cover all three stored statuses, default
+all-category selection, department/building/location/status filters, status
+grouping, stable record paging, and an Active asset whose inspection history
+includes a non-operational finding. The fixture also gives that asset four PM
+schedules, four inspection rows, and six referral-audit rows; inventory still
+returns one asset. GSD, anonymous, and non-GSD access are covered by the V3
+route policy tests. The React test and narrow browser scenario exercise subject
+selection, null period, editable grouping, preview, confirmation, provenance,
+and results.
 
-1. Counts by category, building, and department, with authorized filters.
-2. All three registration statuses, including mixed status groups and exact
-   status filters.
-3. Assets with no PM schedules, many PM schedules, many inspection/form rows,
-   and referral audit rows. Each must still count once and return one record.
-4. Null and duplicate current location values, with the documented null group
+Additional checks still needed before broad acceptance include:
+
+1. Grouping and ranking by category, building, department, and location, with
+   tied counts and stable tie-breaks.
+2. Null and duplicate current location values, with the documented null group
    and stable ordering.
-5. Empty inventory scope and page boundaries.
-6. A deliberately non-operational inspection on an Active asset, proving the
-   inventory status remains Active and the operational finding is not used as
-   registration status.
-7. GSD access, anonymous 401, non-GSD 403, invalid category/status rejection,
-   signed preview expiry and cross-user rejection.
+3. Empty inventory scope, zero-count results, and final-page boundaries.
+4. Inventory-specific expired-preview and cross-user confirmation tests. The
+   shared token implementation has V3 expiry and user-binding regressions, but
+   the inventory API flow currently exercises a normal same-user confirmation.
+5. Native SQL Server 2019 translation and execution against a disposable test
+   database.
 
 The highest-value fanout regression seeds one asset with multiple schedules,
 inspection records and referral audit rows, then verifies an inventory count
 of one and one source row. The query implementation should remain an Asset
 query with no joins that can increase its grain.
 
-## Dependencies and phase gate
+## Phase 5 status and verification boundary
 
-Before coding, complete Phase 5 review and verification: settle provisional
-question labels, review calculation fixture expectations, run backend and web
-checks, and execute SQL Server 2019 scenarios on a disposable local database.
-No inventory code should be started while those semantic or compatibility
-questions remain open. Confirm the four asset categories and status definitions
-against the existing catalogs; do not add statuses or alter registry data.
+Phase 5 remains incomplete: the 18 question labels are still pending human
+review, the score gate remains closed, and native SQL Server 2019 compatibility
+is unverified. The inventory change is isolated as an editable typed subject and
+does not alter or approve those PM interpretation expectations. No acceptance
+score is claimed. The API contract reuses the existing four categories and
+three stored status codes; no status or registry data was changed.
+
+The current inventory tests use the EF InMemory provider. Do not describe the
+SQL Server query as verified until the focused integration test runs against a
+disposable SQL Server 2019 database.
+
+## Implemented contract
+
+- `GET /api/v1/analytics/pm/v3/catalog?subject=assetInventory` returns only
+  inventory measures, dimensions, base filters, and record columns while
+  retaining the shared subject list and GSD authorization.
+- `catalogVersion` is 2. Inventory plans set `period` to null; PM plans still
+  require their PM period. Empty inventory categories normalize to the four
+  supported category IDs.
+- `registeredAssetCount` reads `Assets` directly with no schedule, inspection,
+  form, acknowledgement, or referral joins. Filters are category, department,
+  building, location, and the exact stored registration status code.
+- Aggregate and record modes share the existing signed, stateless, user-bound,
+  expiring preview and confirmation flow. Record rows have nullable schedule
+  and inspection identifiers; inventory rows leave both null.
+- The React workflow selects the subject from the catalog, hides PM period and
+  matching-record controls for inventory, and shows count provenance, source
+  records, empty states, and current registration status separately from
+  inspection condition. Natural-language interpretation remains PM-only and
+  is never silently mapped to inventory.
+- Full end-to-end API regression coverage includes multiple schedules,
+  inspections, and referral audit rows without multiplying the asset count;
+  status/category groups, building/department/location/status filters, record
+  pagination, and invalid subject clauses are covered.
 
 ## Phases 7–8 planning
 
