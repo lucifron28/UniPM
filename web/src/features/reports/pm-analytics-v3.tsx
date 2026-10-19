@@ -348,38 +348,42 @@ function BaseFilterPicker({
   onChange: (values: string[], isNull: boolean) => void
 }) {
   const [search, setSearch] = useState('')
-  const [options, setOptions] = useState<FilterValues | null>(null)
-  const [failed, setFailed] = useState(false)
+  const [options, setOptions] = useState<{
+    queryKey: string
+    values: FilterValues
+  } | null>(null)
+  const [failedQueryKey, setFailedQueryKey] = useState<string | null>(null)
   const categoryKey = categories.join(',')
+  const trimmedSearch = search.trim()
+  const shouldSearch =
+    searchable &&
+    !isNull &&
+    !disabled &&
+    categories.length > 0 &&
+    trimmedSearch.length >= 2
+  const queryKey = JSON.stringify([field, categoryKey, trimmedSearch])
+  const currentOptions =
+    shouldSearch && options?.queryKey === queryKey ? options.values : null
+  const failed = shouldSearch && failedQueryKey === queryKey
   const listId = `pm-v3-${field}-catalog-values`
 
   useEffect(() => {
-    if (
-      !searchable ||
-      isNull ||
-      disabled ||
-      categories.length === 0 ||
-      search.trim().length < 2
-    ) {
-      setOptions(null)
-      setFailed(false)
-      return
-    }
+    if (!shouldSearch) return
 
     const controller = new AbortController()
     const timer = window.setTimeout(() => {
       void getPmAnalyticsV3FilterValues(
-        { field, categories, search: search.trim() },
+        { field, categories, search: trimmedSearch },
         controller.signal,
       )
         .then((result) => {
           if (!controller.signal.aborted) {
-            setOptions(result)
-            setFailed(false)
+            setOptions({ queryKey, values: result })
+            setFailedQueryKey(null)
           }
         })
         .catch(() => {
-          if (!controller.signal.aborted) setFailed(true)
+          if (!controller.signal.aborted) setFailedQueryKey(queryKey)
         })
     }, 250)
 
@@ -387,7 +391,7 @@ function BaseFilterPicker({
       window.clearTimeout(timer)
       controller.abort()
     }
-  }, [categories, categoryKey, disabled, field, isNull, search, searchable])
+  }, [categories, categoryKey, field, queryKey, shouldSearch, trimmedSearch])
 
   const addValue = () => {
     const candidate = search.trim()
@@ -412,7 +416,10 @@ function BaseFilterPicker({
           maxLength={maximumLength}
           list={searchable ? listId : undefined}
           disabled={disabled || isNull || values.length >= 20}
-          onChange={(event) => setSearch(event.target.value)}
+          onChange={(event) => {
+            setSearch(event.target.value)
+            setFailedQueryKey(null)
+          }}
           onKeyDown={(event) => {
             if (event.key === 'Enter') {
               event.preventDefault()
@@ -435,7 +442,7 @@ function BaseFilterPicker({
       </div>
       {searchable && (
         <datalist id={listId}>
-          {options?.values.map((option) => (
+          {currentOptions?.values.map((option) => (
             <option key={option} value={option} />
           ))}
         </datalist>
@@ -483,11 +490,11 @@ function BaseFilterPicker({
       <p className="min-h-4 text-xs text-[var(--text-neutral)]">
         {failed
           ? 'Catalog suggestions are unavailable; values are checked when previewing.'
-          : options?.hasMore
+          : currentOptions?.hasMore
             ? 'More values match. Add letters to narrow the search.'
             : searchable &&
                 search.trim().length >= 2 &&
-                options?.values.length === 0
+                currentOptions?.values.length === 0
               ? 'No current catalog value matches this search.'
               : values.length > 1
                 ? 'The population includes rows matching any selected value.'
