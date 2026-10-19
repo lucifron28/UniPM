@@ -550,7 +550,7 @@ test.describe('Schedule workflows', () => {
       })
     })
 
-    await page.goto('/app/schedules#schedule-management')
+    await page.goto('/app/schedules?view=history#schedule-management')
     await expect(
       page.getByRole('heading', { name: 'Schedule management' }),
     ).toBeVisible()
