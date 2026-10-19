@@ -395,7 +395,9 @@ describe('preventive-maintenance form review', () => {
     })
     await actor.type(departmentFilter, 'GSD')
     await actor.keyboard('{ArrowDown}{Enter}')
-    await actor.selectOptions(screen.getByLabelText('PM cycle'), '2026-07')
+    const cycleFilter = screen.getByRole('combobox', { name: 'PM cycle' })
+    await actor.type(cycleFilter, '2026-07')
+    await actor.keyboard('{ArrowDown}{Enter}')
     expect(requests).toHaveLength(1)
 
     await actor.click(screen.getByRole('button', { name: 'Apply filters' }))

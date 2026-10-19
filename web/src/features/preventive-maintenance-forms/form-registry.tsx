@@ -267,25 +267,35 @@ function FormRegistryFilters({
             setDraft((current) => ({ ...current, department }))
           }
         />
-        <select
-          aria-label="PM cycle"
-          value={draft.pmCycle ?? ''}
-          disabled={optionsPending && cycles.length === 0}
-          onChange={(event) =>
-            setDraft((current) => ({
-              ...current,
-              pmCycle: event.target.value || undefined,
-            }))
+        <SearchablePicker
+          label="PM cycle"
+          value={draft.pmCycle}
+          selectedOption={
+            draft.pmCycle
+              ? {
+                  value: draft.pmCycle,
+                  label: formatPmCycle(draft.pmCycle),
+                  description: draft.pmCycle,
+                }
+              : undefined
           }
-          className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
-        >
-          <option value="">All PM cycles</option>
-          {cycles.map((cycle) => (
-            <option key={cycle} value={cycle}>
-              {formatPmCycle(cycle)}
-            </option>
-          ))}
-        </select>
+          allLabel="All PM cycles"
+          options={cycles.map((cycle) => ({
+            value: cycle,
+            label: formatPmCycle(cycle),
+            description: cycle,
+          }))}
+          disabled={optionsPending && cycles.length === 0}
+          loading={optionsPending}
+          errorMessage={
+            optionsError ? 'PM cycle options could not be loaded.' : undefined
+          }
+          emptyMessage="No matching PM cycles."
+          onRetry={onRetryOptions}
+          onChange={(pmCycle) =>
+            setDraft((current) => ({ ...current, pmCycle }))
+          }
+        />
         <div className="flex flex-wrap gap-2 xl:col-span-5">
           <Button type="submit">Apply filters</Button>
           <Button type="button" variant="secondary" onClick={clear}>
