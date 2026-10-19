@@ -49,6 +49,9 @@ Azure resource, database schema, or Phase 6–10 work was performed.
 - Record rows now include an optional inspection ID so results can link to the
   inspection when present or to the source asset otherwise. OpenAPI and the
   generated TypeScript model match this contract.
+- Preview plans are carried in signed, stateless, user-bound tokens that expire
+  after ten minutes. Any API instance using the same JWT signing key can verify
+  a token; the preview store does not retain server-side in-memory state.
 
 ## Architecture And Contracts
 
@@ -101,11 +104,21 @@ Chromium is absent; the official browser download returned HTTP 403.
 - Browser behavior, responsive rendering and screen-reader behavior remain
   unverified in a real browser. A Playwright test is present but could not
   launch Chromium.
-- The in-memory preview store has not been validated against deployed replica
-  or restart topology.
+- Cross-instance token validation is covered by a repository regression test,
+  but that test was not executed in TEST-110. No deployed API runtime was
+  exercised; instances must share the JWT signing key to verify the tokens.
 - No DeepSeek call or provider-cost test was made. Production provider calls
   remain disabled by the existing Development-only gate.
 
 ## Related Evidence
 
 - [TEST-110: PM analytics V3 hardening verification](../test-runs/TEST-110-pm-analytics-v3-reporting-hardening.md)
+
+## Architecture correction
+
+This record originally described the preview mechanism as an in-memory store.
+That wording was incorrect. The implementation in
+`server/Features/Reports/PmAnalyticsV3PreviewStore.cs` creates and verifies
+signed, stateless, user-bound tokens with a ten-minute lifetime. The historical
+TEST-110 execution results remain unchanged; its backend test limitation is
+preserved above.

@@ -10,10 +10,13 @@ not be run because this environment has no .NET SDK. The browser scenario was
 added but could not launch because Chromium is absent and the official browser
 download returned HTTP 403. Native SQL Server 2019 behavior and runtime API
 authorization remain unverified; no SQL test connection is configured. No
-DeepSeek request was made. First-release acceptance, the in-memory preview
-store's deployed replica/restart topology, and deployment remain unverified.
-This status does not authorize deployment, release, external provider calls,
-database changes or new domain measures.
+DeepSeek request was made. First-release acceptance and deployment remain
+unverified. Preview state is carried in signed, stateless, user-bound tokens
+that expire after ten minutes; the preview store has no in-memory state to
+replicate. The cross-instance, tampering, user-binding, and expiry regression
+test is present in source but was not executed in TEST-110 because the .NET SDK
+was unavailable. This status does not authorize deployment, release, external
+provider calls, database changes or new domain measures.
 
 ## Goal and source baseline
 
@@ -30,8 +33,9 @@ it does not establish the deployed version or deployment acceptance.
 Implemented on the feature branch: the closed plan contract and versioned
 catalog; category-specific period expansion and validation; GSD-only catalog,
 interpret, preview and execute endpoints; local asset-value resolution; bounded
-read-only execution; a user-bound ten-minute in-memory preview; deterministic
-question parsing with an optional Development-only, separately flagged
+read-only execution; signed, stateless, user-bound preview tokens that expire
+after ten minutes; deterministic question parsing with an optional
+Development-only, separately flagged
 DeepSeek Flash path; and a V3 report builder with preview, confirmation, typed output,
 pagination and the existing V2 reports retained as a fallback. These are source
 changes, not deployment or first-release acceptance evidence.

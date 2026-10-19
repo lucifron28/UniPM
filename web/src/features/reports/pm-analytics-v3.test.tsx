@@ -95,6 +95,16 @@ function makeCatalog(): PmAnalyticsV3CatalogResponse {
         label: 'Fire Extinguisher',
         scheduledMonths: [2, 5, 8, 11],
       },
+      {
+        id: 'water-drinking-station',
+        label: 'Water Drinking Station',
+        scheduledMonths: [2, 5, 8, 11],
+      },
+      {
+        id: 'fire-alarm',
+        label: 'Fire Alarm',
+        scheduledMonths: [6, 12],
+      },
     ],
     measures: [
       {
@@ -135,6 +145,14 @@ function makeCatalog(): PmAnalyticsV3CatalogResponse {
         nullSemantics: 'Unknown values form a group.',
         grain: 'current asset',
         definition: 'Current department.',
+      },
+      {
+        id: 'calendarQuarter',
+        label: 'Calendar quarter',
+        valueType: 'string',
+        nullSemantics: 'Unknown values form a group.',
+        grain: 'PM cycle',
+        definition: 'Calendar quarter derived from the PM cycle.',
       },
     ],
     filterFields: [],
@@ -241,7 +259,11 @@ function makePreview(
     previewId: 'signed-preview-token',
     expiresAtUtc: '2025-01-01T01:10:00Z',
     plan,
-    cyclesByCategory: { 'fire-extinguisher': ['2024-02', '2024-05'] },
+    cyclesByCategory: {
+      'fire-extinguisher': ['2024-02', '2024-05', '2024-08', '2024-11'],
+      'water-drinking-station': ['2024-02', '2024-05', '2024-08', '2024-11'],
+      'fire-alarm': ['2024-06', '2024-12'],
+    },
     summary:
       'Calculate progress on scheduled PM cycles for Fire Extinguisher: 2024.',
     scopeNotes: ['Cancelled schedules are excluded.'],
@@ -292,7 +314,11 @@ function makeExecution(
     catalogVersion: 1,
     asOfUtc: '2025-01-01T01:00:00Z',
     plan,
-    cyclesByCategory: { 'fire-extinguisher': ['2024-02', '2024-05'] },
+    cyclesByCategory: {
+      'fire-extinguisher': ['2024-02', '2024-05', '2024-08', '2024-11'],
+      'water-drinking-station': ['2024-02', '2024-05', '2024-08', '2024-11'],
+      'fire-alarm': ['2024-06', '2024-12'],
+    },
     mode,
     columns: aggregate
       ? [
@@ -451,6 +477,137 @@ describe('PM analytics V3 workflow', () => {
       await screen.findByRole('link', { name: 'Review inspection' }),
     ).toHaveAttribute('href', `/app/inspections/${inspectionId}`)
   })
+
+  it.each([
+    {
+      quarter: '2024-Q1',
+      quarterNumber: 1,
+      expectedCategories: ['fire-extinguisher', 'water-drinking-station'],
+      sourceCycle: '2024-02',
+    },
+    {
+      quarter: '2024-Q4',
+      quarterNumber: 4,
+      expectedCategories: [
+        'fire-extinguisher',
+        'water-drinking-station',
+        'fire-alarm',
+      ],
+      sourceCycle: '2024-11',
+    },
+  ])(
+    'keeps CPMP categories, period, filters, and source records for $sourceCycle quarter drill-down',
+    async ({ quarter, quarterNumber, expectedCategories, sourceCycle }) => {
+      const plan = makePlan({
+        categories: [
+          'fire-extinguisher',
+          'water-drinking-station',
+          'fire-alarm',
+        ],
+        groupBy: ['calendarQuarter'],
+        baseFilters: [
+          {
+            field: 'building',
+            operator: 'Equal',
+            values: ['Engineering Hall'],
+          },
+        ],
+        columns: ['calendarQuarter', 'progressPercent'],
+        presentation: 'Table',
+      })
+      const aggregateExecution = makeExecution(plan)
+      aggregateExecution.columns = [
+        {
+          id: 'calendarQuarter',
+          label: 'Calendar quarter',
+          valueType: 'string',
+          unit: '',
+          nullSemantics: null,
+        },
+        {
+          id: 'progressPercent',
+          label: 'Progress',
+          valueType: 'decimal',
+          unit: 'percent',
+          nullSemantics: null,
+        },
+      ]
+      aggregateExecution.aggregateRows[0].values.calendarQuarter = quarter
+
+      api.interpret.mockResolvedValueOnce(makeInterpretation(plan))
+      api.execute
+        .mockResolvedValueOnce(aggregateExecution)
+        .mockImplementationOnce(async () => {
+          const recordPlan = api.preview.mock.calls.at(-1)?.[0]
+            .plan as PmAnalyticsV3ReportPlan
+          const recordsExecution = makeExecution(recordPlan, 'Records')
+          recordsExecution.records[0].values.assetCategory =
+            'water-drinking-station'
+          recordsExecution.records[0].values.assetCode = 'WDS-001'
+          recordsExecution.records[0].values.pmCycle = sourceCycle
+          recordsExecution.population.sourceTotalCount = 1
+          return recordsExecution
+        })
+
+      render(<PmAnalyticsV3Panel />)
+      await interpretAndPreview(
+        plan,
+        'Show progress by calendar quarter for fire extinguishers, water stations, and fire alarms during 2024',
+      )
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Confirm and run report' }),
+      )
+      fireEvent.click(
+        await screen.findByRole('button', {
+          name: /View Progress records · Calendar quarter/,
+        }),
+      )
+
+      expect(
+        await screen.findByText(/records plan for Progress is ready/),
+      ).toBeInTheDocument()
+      fireEvent.click(screen.getByRole('button', { name: 'Preview report' }))
+      await waitFor(() => expect(api.preview).toHaveBeenCalledTimes(2))
+      const sourcePlan = api.preview.mock.calls.at(1)?.[0]
+        .plan as PmAnalyticsV3ReportPlan
+      expect(sourcePlan).toMatchObject({
+        mode: 'Records',
+        categories: expectedCategories,
+        period: {
+          basis: 'pmCycle',
+          kind: 'Quarter',
+          year: 2024,
+          month: null,
+          quarter: quarterNumber,
+          startCycle: null,
+          endCycle: null,
+        },
+        baseFilters: [
+          {
+            field: 'building',
+            operator: 'Equal',
+            values: ['Engineering Hall'],
+          },
+        ],
+        matchingFilters: [
+          {
+            field: 'condition',
+            operator: 'In',
+            values: ['Operational', 'NonOperational'],
+          },
+        ],
+      })
+
+      fireEvent.click(
+        await screen.findByRole('button', { name: 'Confirm and run report' }),
+      )
+      expect(await screen.findByText('WDS-001')).toBeInTheDocument()
+      expect(await screen.findByText(sourceCycle)).toBeInTheDocument()
+      expect(
+        await screen.findByRole('link', { name: 'Review inspection' }),
+      ).toHaveAttribute('href', `/app/inspections/${inspectionId}`)
+    },
+  )
 
   it('clears a previous preview and result when the question changes', async () => {
     api.execute.mockResolvedValueOnce(makeExecution())

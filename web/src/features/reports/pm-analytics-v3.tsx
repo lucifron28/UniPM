@@ -178,7 +178,8 @@ function createMeasureSourcePlan(
         }
         categories = categories.filter((category) =>
           cyclesByCategory[category]?.some((cycle) => {
-            const cycleQuarter = (Number(cycle.slice(5, 7)) - 1) / 3 + 1
+            const cycleQuarter =
+              Math.floor((Number(cycle.slice(5, 7)) - 1) / 3) + 1
             return cycle.startsWith(`${year}-`) && cycleQuarter === quarter
           }),
         )
