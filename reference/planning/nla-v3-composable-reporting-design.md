@@ -441,6 +441,14 @@ They are not independently reviewed, frozen, or evaluated. Held-out questions
 have not been created or accessed for this phase. The acceptance exit criteria
 below remain open.
 
+**Engineering follow-up (2026-10-19):** A V3-only corpus validator and
+deterministic diagnostic/scoring gate, pending-review labels, and synthetic
+calculation fixtures have been added on the Phase 5 work branch. All 18
+provisional labels remain pending, so no question accuracy score or acceptance
+claim is available. Diagnostics surfaced two material candidate-label
+differences (the `or` filter and “not late” questions); both need reviewer
+adjudication. SQL Server 2019 and GSD task acceptance remain open.
+
 - Create a separately identified protocol and reviewed question set. Separate
   V2/V3 shared tasks from newly supported tasks and include unsafe, ambiguous,
   unmeasurable, missing-data and provider-failure cases.
@@ -459,7 +467,11 @@ a separate authorization step.
 
 ### Phase 6: asset inventory reporting
 
-Depends on the stable contract and executor, not on adding arbitrary joins.
+Depends on Phase 5 correctness and human review of the report contract. The
+review-ready subject design, including grain, counts, filters, tests and
+dependencies, is in
+[`nla-v3-phase6-asset-inventory-design.md`](nla-v3-phase6-asset-inventory-design.md).
+Implementation must wait until Phase 5 semantic blockers are resolved.
 
 - Add a subject whose row is one registered asset. Support category, department,
   building, general location and registration-status filters and counts.

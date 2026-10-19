@@ -18,6 +18,7 @@ record's evidence level and tested/source commit.
 
 | ID | Type | Title | Status | Evidence level | Tested/source commit | Record | Note |
 |---|---|---|---|---|---|---|---|
+| TEST-113 | test-run | PM analytics V3 Phase 5 evaluation and correctness verification | executed | locally-executed | `616e4ba2752a6acb20a5b823bf53f03c5b3a51ac` | [record](test-runs/TEST-113-pm-analytics-v3-phase5-verification.md) | .NET 10 build, V3 20/20 plus one SQL skip, V2 compatibility 73/73; Node 22 React/API checks and narrow Playwright passed. SQL Server 2019 and hosted CI remain unverified; all 18 labels remain pending, so no score. |
 | TEST-112 | test-run | PM analytics V3 local verification follow-up | executed | locally-executed | `41b3aa956082f06b4d24f88f3309998e0dc9eb47` | [record](test-runs/TEST-112-pm-analytics-v3-local-verification-follow-up.md) | User-reported isolated-snapshot Web checks and focused V3 backend tests passed; Node 24 was used; browser E2E and SQL Server 2019 were not run. |
 | TEST-111 | test-run | PM analytics V3 quarterly drill-down follow-up verification | executed | locally-executed | `b028938204932f0e49f285d5a0b90206dd58a32a` | [record](test-runs/TEST-111-pm-analytics-v3-quarterly-drilldown.md) | .NET 10 build, focused V3 backend 10/10, React 9/9, Web CI checks, and Playwright 1/1 passed; native SQL Server 2019 remains unverified. |
 | TEST-110 | test-run | PM analytics V3 reporting correctness and workflow hardening verification | executed | locally-executed | `e2f90bba35707a7142b3dccb1afb8eeec6143ad4` | [record](test-runs/TEST-110-pm-analytics-v3-reporting-hardening.md) | Node 22 build, lint, formatting, focused React 7/7, OpenAPI generation/drift and negative contract 7/7 passed; backend/.NET, SQL Server 2019 and browser behavior remain unverified. |
@@ -207,15 +208,17 @@ record's evidence level and tested/source commit.
 | IMP-040 | implementation | Maintenance-history RAG retirement in the PMIS validation branch | reviewed | source-inspected | `f2a1eae` | [record](implementation/IMP-040-maintenance-history-rag-retirement.md) | Active maintenance-review runtime and tooling retired; ReferenceDocument foundation and historical evidence retained. |
 | IMP-051 | implementation | PM analytics V2 schema expansion | draft | source-inspected | `1625d88e68797f9f92ea26646b955a4f8515f85a`; data-audit code baseline `7179227639b29913451ec81617e39e9e2ca9bd91` | [record](implementation/IMP-051-pm-analytics-v2-schema-expansion.md) | Additive typed-plan analytics scope with provisional cases; focused web unit tests passed 12/12 before a final Button-variant-only correction, typecheck passed after it, backend invocation exited during restore before tests, and the audited UniPMDb active-target scope is unconfirmed. |
 | IMP-052 | implementation | PM analytics V3 reporting correctness and workflow hardening | reviewed | locally-executed | `e2f90bba35707a7142b3dccb1afb8eeec6143ad4` | [record](implementation/IMP-052-pm-analytics-v3-reporting-hardening.md) | Includes the correction that preview state uses signed stateless tokens; TEST-110 preserves initial results and TEST-111 records the follow-up quarter fix and verification. |
+| IMP-053 | implementation | PM analytics V3 Phase 5 evaluation readiness | draft | source-inspected | `616e4ba2752a6acb20a5b823bf53f03c5b3a51ac` | [record](implementation/IMP-053-pm-analytics-v3-phase5-evaluation-readiness.md) | V3-only evaluator, synthetic regressions, pending-label review notes and loopback SQL Server test source; semantic and native SQL review remain open. |
 | TEST-049 | test-run | Maintenance-history RAG retirement and PMIS verification | executed | locally-executed | `f2a1eae` | [record](test-runs/TEST-049-maintenance-history-rag-retirement-verification.md) | Backend 248 passed/0 failed/1 optional-provider skip; web unit/build/lint/typecheck passed. Populated migration, runtime, generated-drift, and Playwright checks remain unverified; local formatting failed. |
 | TEST-050 | test-run | Maintenance-history RAG retirement follow-up verification | executed | locally-executed | `73c2d4531d8b5bbf5bb4ba2e9681ed0b028bad4b` | [record](test-runs/TEST-050-maintenance-history-rag-retirement-follow-up-verification.md) | HTTP retirement smoke, populated Up/Down/Up preservation, focused SQL 4/4, backend 248/0/1 optional-provider skip, and EF model consistency passed; local execution record, exact-head CI reported separately. |
 
 ## Pending evidence
 
-- NLA V3 Phase 5: independent question-label review and corpus freeze, a V3
-  scoring harness/development run, browser E2E, native SQL Server 2019
-  integration, and GSD task-success acceptance remain pending. TEST-112 covers
-  local Web checks and focused V3 backend tests only.
+- NLA V3 Phase 5: independent question-label review and corpus freeze, a
+  positive V3 scoring run, native SQL Server 2019 integration, and GSD
+  task-success acceptance remain pending. The focused browser scenario passed
+  locally in TEST-113; full browser/accessibility acceptance remains open.
+  Hosted CI status could not be read because GitHub returned HTTP 403.
 - NLA V2 provisional development-case human review/adjudication, a separate
   held-out set, and any language interpretation evaluation remain pending.
   TEST-083 covers only fake-handler adapter/parser behavior; V1–V3 evidence is
