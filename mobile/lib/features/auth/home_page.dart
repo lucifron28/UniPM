@@ -330,9 +330,14 @@ class _HomePageState extends State<HomePage> {
     bool closeListBeforeAction = false,
   }) {
     final total = _calculateTotalForDraft(draft);
-    final openDraft = () => closeListBeforeAction
-        ? _runFromList(() => widget.onOpenForm?.call(draft.id))
-        : _runChildWorkflow(() => widget.onOpenForm?.call(draft.id));
+    Future<void> openDraft() async {
+      if (closeListBeforeAction) {
+        await _runFromList(() => widget.onOpenForm?.call(draft.id));
+      } else {
+        await _runChildWorkflow(() => widget.onOpenForm?.call(draft.id));
+      }
+    }
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: BatchPmCard(
@@ -355,12 +360,13 @@ class _HomePageState extends State<HomePage> {
     _AssignedPmBatch batch, {
     bool closeListBeforeAction = false,
   }) {
-    final startBatch = () async {
+    Future<void> startBatch() async {
       if (closeListBeforeAction) {
         await Navigator.of(context).maybePop();
       }
       await _startBatch(batch);
-    };
+    }
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: BatchPmCard(
@@ -387,9 +393,14 @@ class _HomePageState extends State<HomePage> {
     PreventiveMaintenanceForm form, {
     bool closeListBeforeAction = false,
   }) {
-    final openAcknowledgement = () => closeListBeforeAction
-        ? _runFromList(() => widget.onOpenAcknowledgement?.call(form))
-        : _runChildWorkflow(() => widget.onOpenAcknowledgement?.call(form));
+    Future<void> openAcknowledgement() async {
+      if (closeListBeforeAction) {
+        await _runFromList(() => widget.onOpenAcknowledgement?.call(form));
+      } else {
+        await _runChildWorkflow(() => widget.onOpenAcknowledgement?.call(form));
+      }
+    }
+
     final cycle = _resolvePmCycle(
       pmCycle: form.pmCycle,
       periodType: form.periodType,

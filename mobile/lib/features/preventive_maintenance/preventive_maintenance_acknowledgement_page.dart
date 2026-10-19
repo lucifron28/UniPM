@@ -135,6 +135,10 @@ class _PreventiveMaintenanceAcknowledgementPageState
     for (var attempt = 0; attempt < 8; attempt++) {
       final target = formKey.currentContext;
       if (target != null) {
+        if (!target.mounted) {
+          _showScrollFailure();
+          return;
+        }
         await Scrollable.ensureVisible(
           target,
           duration: const Duration(milliseconds: 250),
@@ -165,6 +169,10 @@ class _PreventiveMaintenanceAcknowledgementPageState
 
     final target = formKey.currentContext;
     if (target != null) {
+      if (!target.mounted) {
+        _showScrollFailure();
+        return;
+      }
       await Scrollable.ensureVisible(
         target,
         duration: const Duration(milliseconds: 250),
