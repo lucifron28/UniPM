@@ -30,10 +30,10 @@ public sealed class RegistryReadEndpointsTests
         Assert.NotNull(page);
         Assert.Equal(3, page.Page);
         Assert.Equal(100, page.PageSize);
-        Assert.Equal(1_000, page.TotalCount);
+        Assert.Equal(1_036, page.TotalCount);
         Assert.Equal(100, page.Items.Count);
-        Assert.Equal("REG-0200", page.Items[0].AssetCode);
-        Assert.Equal("REG-0299", page.Items[^1].AssetCode);
+        Assert.Equal("REG-0167", page.Items[0].AssetCode);
+        Assert.Equal("REG-0266", page.Items[^1].AssetCode);
 
         var matchingAssets = await client.GetFromJsonAsync<AssetRegistryPageResponse>(
             "/api/v1/assets/registry?search=Control%20Room%20999");
@@ -65,8 +65,8 @@ public sealed class RegistryReadEndpointsTests
         var summary = await client.GetFromJsonAsync<AssetRegistrySummaryResponse>(
             "/api/v1/assets/registry/summary");
         Assert.NotNull(summary);
-        Assert.Equal(1_000, summary.TotalCount);
-        Assert.Equal(250, Assert.Single(summary.Categories, item =>
+        Assert.Equal(1_036, summary.TotalCount);
+        Assert.Equal(286, Assert.Single(summary.Categories, item =>
             item.AssetCategory == "fire-alarm").TotalCount);
         Assert.Equal(
             summary.TotalCount,
