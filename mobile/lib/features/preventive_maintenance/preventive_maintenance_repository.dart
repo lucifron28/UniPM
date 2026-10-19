@@ -31,9 +31,33 @@ abstract interface class PreventiveMaintenanceRepository {
   Future<void> deleteInspection(String formId, String inspectionId);
 }
 
+abstract interface class OfflineSafePreventiveMaintenanceRepository {
+  Future<PreventiveMaintenanceForm> createFormWithId(
+    CreatePreventiveMaintenanceFormInput input,
+    String id,
+  );
+  Future<PreventiveMaintenanceInspection> addInspectionWithId(
+    String formId,
+    AddInspectionInput input,
+    String id,
+  );
+  Future<PreventiveMaintenanceInspection> updateInspectionIfUnchanged(
+    String formId,
+    String inspectionId,
+    UpdateInspectionInput input,
+    DateTime expectedUpdatedAt,
+  );
+  Future<void> deleteInspectionIfUnchanged(
+    String formId,
+    String inspectionId,
+    DateTime? expectedUpdatedAt,
+  );
+}
+
 class ApiPreventiveMaintenanceRepository
     implements
         PreventiveMaintenanceRepository,
+        OfflineSafePreventiveMaintenanceRepository,
         InspectionPhotoEvidenceRepository {
   const ApiPreventiveMaintenanceRepository(this._client);
 
@@ -57,9 +81,16 @@ class ApiPreventiveMaintenanceRepository
   @override
   Future<PreventiveMaintenanceForm> createForm(
     CreatePreventiveMaintenanceFormInput input,
+  ) => createFormWithId(input, input.id ?? '');
+
+  @override
+  Future<PreventiveMaintenanceForm> createFormWithId(
+    CreatePreventiveMaintenanceFormInput input,
+    String id,
   ) async {
     return PreventiveMaintenanceForm.fromJson(
       await _client.postJson('/api/v1/preventive-maintenance-forms', {
+        if (id.isNotEmpty) 'id': id,
         'assetCategory': input.assetCategory,
         'building': input.building,
         'department': input.department,
@@ -123,10 +154,18 @@ class ApiPreventiveMaintenanceRepository
   Future<PreventiveMaintenanceInspection> addInspection(
     String formId,
     AddInspectionInput input,
+  ) => addInspectionWithId(formId, input, input.id ?? '');
+
+  @override
+  Future<PreventiveMaintenanceInspection> addInspectionWithId(
+    String formId,
+    AddInspectionInput input,
+    String id,
   ) async {
     final json = await _client.postJson(
       '/api/v1/preventive-maintenance-forms/$formId/inspections',
       _inspectionBody(
+        id: id.isEmpty ? null : id,
         scheduleId: input.scheduleId,
         inspectorUserId: input.inspectorUserId,
         dateInspected: input.dateInspected,
@@ -151,6 +190,7 @@ class ApiPreventiveMaintenanceRepository
     final json = await _client.putJson(
       '/api/v1/preventive-maintenance-forms/$formId/inspections/$inspectionId',
       _inspectionBody(
+        expectedUpdatedAt: input.expectedUpdatedAt,
         dateInspected: input.dateInspected,
         dateAccomplished: input.dateAccomplished,
         isOperational: input.isOperational,
@@ -170,6 +210,40 @@ class ApiPreventiveMaintenanceRepository
     String inspectionId,
   ) => _client.deleteEmpty(
     '/api/v1/preventive-maintenance-forms/$formId/inspections/$inspectionId',
+  );
+
+  @override
+  Future<PreventiveMaintenanceInspection> updateInspectionIfUnchanged(
+    String formId,
+    String inspectionId,
+    UpdateInspectionInput input,
+    DateTime expectedUpdatedAt,
+  ) async {
+    final json = await _client.putJson(
+      '/api/v1/preventive-maintenance-forms/$formId/inspections/$inspectionId',
+      _inspectionBody(
+        expectedUpdatedAt: expectedUpdatedAt,
+        dateInspected: input.dateInspected,
+        dateAccomplished: input.dateAccomplished,
+        isOperational: input.isOperational,
+        remarks: input.remarks,
+        actionsRecommendations: input.actionsRecommendations,
+        waterReplaceCarbonFilter: input.waterReplaceCarbonFilter,
+        waterReplaceSedimentFilter: input.waterReplaceSedimentFilter,
+        waterCheckUvLight: input.waterCheckUvLight,
+      ),
+    );
+    return PreventiveMaintenanceInspection.fromJson(json);
+  }
+
+  @override
+  Future<void> deleteInspectionIfUnchanged(
+    String formId,
+    String inspectionId,
+    DateTime? expectedUpdatedAt,
+  ) => _client.deleteEmpty(
+    '/api/v1/preventive-maintenance-forms/$formId/inspections/$inspectionId'
+    '${expectedUpdatedAt == null ? '' : '?expectedUpdatedAt=${Uri.encodeQueryComponent(expectedUpdatedAt.toUtc().toIso8601String())}'}',
   );
 
   @override
@@ -210,6 +284,8 @@ ReferenceOption _referenceFromValue(dynamic value) {
 }
 
 Map<String, dynamic> _inspectionBody({
+  String? id,
+  DateTime? expectedUpdatedAt,
   String? scheduleId,
   String? inspectorUserId,
   required DateTime dateInspected,
@@ -222,6 +298,12 @@ Map<String, dynamic> _inspectionBody({
   bool? waterCheckUvLight,
 }) {
   return <String, dynamic>{
+    ...?id == null ? null : <String, dynamic>{'id': id},
+    ...?expectedUpdatedAt == null
+        ? null
+        : <String, dynamic>{
+            'expectedUpdatedAt': expectedUpdatedAt.toUtc().toIso8601String(),
+          },
     ...?scheduleId == null ? null : <String, dynamic>{'scheduleId': scheduleId},
     ...?inspectorUserId == null
         ? null

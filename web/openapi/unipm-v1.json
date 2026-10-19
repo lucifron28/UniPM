@@ -1738,6 +1738,16 @@
           "required": true
         },
         "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreventiveMaintenanceFormResponse"
+                }
+              }
+            }
+          },
           "201": {
             "description": "Created",
             "content": {
@@ -2089,6 +2099,16 @@
           "required": true
         },
         "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DraftInspectionRowResponse"
+                }
+              }
+            }
+          },
           "201": {
             "description": "Created",
             "content": {
@@ -2243,6 +2263,14 @@
             "schema": {
               "type": "string",
               "format": "uuid"
+            }
+          },
+          {
+            "name": "expectedUpdatedAt",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
             }
           }
         ],
@@ -3754,6 +3782,10 @@
       "CreatePreventiveMaintenanceFormDto": {
         "type": "object",
         "properties": {
+          "id": {
+            "type": ["null", "string"],
+            "format": "uuid"
+          },
           "assetCategory": {
             "type": "string"
           },
@@ -3812,6 +3844,10 @@
       "DraftInspectionRowDto": {
         "type": "object",
         "properties": {
+          "id": {
+            "type": ["null", "string"],
+            "format": "uuid"
+          },
           "scheduleId": {
             "type": "string",
             "format": "uuid"
@@ -4921,7 +4957,8 @@
           "assetCategory",
           "building",
           "department",
-          "location"
+          "location",
+          "status"
         ],
         "type": "object",
         "properties": {
@@ -4943,6 +4980,9 @@
           },
           "location": {
             "type": ["null", "string"]
+          },
+          "status": {
+            "type": "string"
           }
         }
       },
@@ -5207,6 +5247,10 @@
       "UpdateDraftInspectionRowDto": {
         "type": "object",
         "properties": {
+          "expectedUpdatedAt": {
+            "type": ["null", "string"],
+            "format": "date-time"
+          },
           "dateInspected": {
             "type": "string",
             "format": "date-time"

@@ -45,6 +45,30 @@ class PreventiveMaintenanceForm {
 
   bool get isDraft => status == 'Draft';
 
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    'id': id,
+    'fileNumber': fileNumber,
+    'assetCategory': assetCategory,
+    'building': building,
+    'department': department,
+    'pmCycle': pmCycle,
+    'periodType': periodType,
+    'quarter': quarter,
+    'semester': semester,
+    'year': year,
+    'academicYear': academicYear,
+    'status': status,
+    'createdByUserId': createdByUserId,
+    'submittedByUserId': submittedByUserId,
+    'submittedAt': submittedAt?.toUtc().toIso8601String(),
+    'fieldWorkCompletedAt': fieldWorkCompletedAt?.toUtc().toIso8601String(),
+    'createdAt': createdAt.toUtc().toIso8601String(),
+    'updatedAt': updatedAt.toUtc().toIso8601String(),
+    'inspections': inspections
+        .map((inspection) => inspection.toJson())
+        .toList(),
+  };
+
   factory PreventiveMaintenanceForm.fromJson(Map<String, dynamic> json) {
     return PreventiveMaintenanceForm(
       id: _requiredUuid(json, 'id'),
@@ -143,6 +167,28 @@ class PreventiveMaintenanceInspection {
   final DateTime updatedAt;
   final bool hasPhotoEvidence;
 
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    'id': id,
+    'scheduleId': scheduleId,
+    'assetId': assetId,
+    'assetCode': assetCode,
+    'location': location,
+    'inspectorUserId': inspectorUserId,
+    'dateInspected': dateInspected.toUtc().toIso8601String(),
+    'startedAt': startedAt?.toUtc().toIso8601String(),
+    'completedAt': completedAt?.toUtc().toIso8601String(),
+    'dateAccomplished': dateAccomplished?.toUtc().toIso8601String(),
+    'isOperational': isOperational,
+    'remarks': remarks,
+    'actionsRecommendations': actionsRecommendations,
+    'waterReplaceCarbonFilter': waterReplaceCarbonFilter,
+    'waterReplaceSedimentFilter': waterReplaceSedimentFilter,
+    'waterCheckUvLight': waterCheckUvLight,
+    'createdAt': createdAt.toUtc().toIso8601String(),
+    'updatedAt': updatedAt.toUtc().toIso8601String(),
+    'hasPhotoEvidence': hasPhotoEvidence,
+  };
+
   factory PreventiveMaintenanceInspection.fromJson(Map<String, dynamic> json) {
     return PreventiveMaintenanceInspection(
       id: _requiredUuid(json, 'id'),
@@ -177,6 +223,11 @@ class ReferenceOption {
   final String code;
   final String displayName;
 
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    'code': code,
+    'displayName': displayName,
+  };
+
   factory ReferenceOption.fromJson(Map<String, dynamic> json) {
     return ReferenceOption(
       code: _requiredText(json, 'code'),
@@ -200,6 +251,8 @@ class ScheduleOption {
     required this.asset,
     this.assignedToUserId,
     this.assignedSupervisorUserId,
+    this.completedAt,
+    this.updatedAt,
   });
 
   final String id;
@@ -215,6 +268,8 @@ class ScheduleOption {
   final ScheduleAssetOption? asset;
   final String? assignedToUserId;
   final String? assignedSupervisorUserId;
+  final DateTime? completedAt;
+  final DateTime? updatedAt;
 
   String get canonicalPmCycle {
     final persistedCycle = pmCycle?.trim();
@@ -236,6 +291,42 @@ class ScheduleOption {
 
   bool get isCancelled => status.trim().toLowerCase() == 'cancelled';
 
+  ScheduleOption copyWith({String? status}) => ScheduleOption(
+    id: id,
+    assetId: assetId,
+    scheduleDate: scheduleDate,
+    pmCycle: pmCycle,
+    periodType: periodType,
+    status: status ?? this.status,
+    quarter: quarter,
+    semester: semester,
+    year: year,
+    academicYear: academicYear,
+    asset: asset,
+    assignedToUserId: assignedToUserId,
+    assignedSupervisorUserId: assignedSupervisorUserId,
+    completedAt: status == 'Completed' ? DateTime.now().toUtc() : completedAt,
+    updatedAt: status == 'Completed' ? DateTime.now().toUtc() : updatedAt,
+  );
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    'id': id,
+    'assetId': assetId,
+    'scheduleDate': scheduleDate.toUtc().toIso8601String(),
+    'pmCycle': pmCycle,
+    'periodType': periodType,
+    'status': status,
+    'quarter': quarter,
+    'semester': semester,
+    'year': year,
+    'academicYear': academicYear,
+    'assignedToUserId': assignedToUserId,
+    'assignedSupervisorUserId': assignedSupervisorUserId,
+    'completedAt': completedAt?.toUtc().toIso8601String(),
+    'updatedAt': updatedAt?.toUtc().toIso8601String(),
+    'asset': asset?.toJson(),
+  };
+
   factory ScheduleOption.fromJson(Map<String, dynamic> json) {
     final assetJson = json['asset'];
     if (assetJson is! Map) {
@@ -255,6 +346,8 @@ class ScheduleOption {
       asset: ScheduleAssetOption.fromJson(assetJson.cast<String, dynamic>()),
       assignedToUserId: _nullableUuid(json, 'assignedToUserId'),
       assignedSupervisorUserId: _nullableUuid(json, 'assignedSupervisorUserId'),
+      completedAt: _nullableDateTime(json, 'completedAt'),
+      updatedAt: _nullableDateTime(json, 'updatedAt'),
     );
   }
 }
@@ -287,6 +380,7 @@ class ScheduleAssetOption {
     required this.building,
     required this.department,
     required this.location,
+    this.status,
   });
 
   final String id;
@@ -295,6 +389,17 @@ class ScheduleAssetOption {
   final String? building;
   final String? department;
   final String? location;
+  final String? status;
+
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    'id': id,
+    'assetCode': assetCode,
+    'assetCategory': assetCategory,
+    'building': building,
+    'department': department,
+    'location': location,
+    'status': status,
+  };
 
   factory ScheduleAssetOption.fromJson(Map<String, dynamic> json) {
     return ScheduleAssetOption(
@@ -304,12 +409,14 @@ class ScheduleAssetOption {
       building: _nullableString(json, 'building'),
       department: _nullableString(json, 'department'),
       location: _nullableString(json, 'location'),
+      status: _nullableString(json, 'status'),
     );
   }
 }
 
 class CreatePreventiveMaintenanceFormInput {
   const CreatePreventiveMaintenanceFormInput({
+    this.id,
     required this.assetCategory,
     required this.building,
     required this.department,
@@ -320,6 +427,7 @@ class CreatePreventiveMaintenanceFormInput {
     required this.academicYear,
   });
 
+  final String? id;
   final String assetCategory;
   final String? building;
   final String? department;
@@ -415,6 +523,7 @@ class PreventiveMaintenanceGrouping {
 
 class AddInspectionInput {
   const AddInspectionInput({
+    this.id,
     required this.scheduleId,
     required this.inspectorUserId,
     required this.dateInspected,
@@ -427,6 +536,7 @@ class AddInspectionInput {
     this.waterCheckUvLight,
   });
 
+  final String? id;
   final String scheduleId;
   final String inspectorUserId;
   final DateTime dateInspected;
@@ -441,6 +551,7 @@ class AddInspectionInput {
 
 class UpdateInspectionInput {
   const UpdateInspectionInput({
+    this.expectedUpdatedAt,
     required this.dateInspected,
     this.dateAccomplished,
     required this.isOperational,
@@ -451,6 +562,7 @@ class UpdateInspectionInput {
     this.waterCheckUvLight,
   });
 
+  final DateTime? expectedUpdatedAt;
   final DateTime dateInspected;
   final DateTime? dateAccomplished;
   final bool isOperational;

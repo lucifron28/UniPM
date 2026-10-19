@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../auth/auth_models.dart';
@@ -10,6 +12,7 @@ import 'preventive_maintenance_repository.dart';
 import 'inspection_completion_sheet.dart';
 import 'inspection_photo_evidence_card.dart';
 import 'inspection_photo_evidence_repository.dart';
+import 'offline_inspection_repository.dart';
 import 'pm_cycle_presentation.dart';
 
 enum PreventiveMaintenanceDraftAction { scanNextAsset }
@@ -731,6 +734,10 @@ class _PreventiveMaintenanceDraftPageState
           orElse: () => null,
         );
     final displayedInspections = [...form.inspections];
+    final offlineRepository =
+        widget.controller.repository is OfflineInspectionRepository
+        ? widget.controller.repository as OfflineInspectionRepository
+        : null;
     final focusedInspectionId = widget.focusedInspectionId;
     if (focusedInspectionId != null) {
       displayedInspections.sort((left, right) {
@@ -745,6 +752,13 @@ class _PreventiveMaintenanceDraftPageState
       children: [
         if (widget.controller.errorMessage != null)
           _InlineError(message: widget.controller.errorMessage!),
+        if (offlineRepository != null) ...[
+          _OfflineDraftStatusCard(
+            repository: offlineRepository,
+            formId: form.id,
+          ),
+          const SizedBox(height: 12),
+        ],
         _FormMetadata(form: form, pmCycle: canonicalBatchCycle),
         const SizedBox(height: 16),
         if (!canEdit)
@@ -973,6 +987,9 @@ class _PreventiveMaintenanceDraftPageState
             eligibleScheduleCount: eligibleScheduleIds.length,
             completedWithoutDraftCount: completedWithoutDraftCount,
             hasPendingPhotoEvidence: pendingPhotoEvidenceIds.isNotEmpty,
+            canSubmitOnline:
+                offlineRepository == null ||
+                offlineRepository.canSubmitForm(form.id),
             onSubmit: _confirmSubmit,
           ),
         ],
@@ -1412,6 +1429,83 @@ class _InspectionRowEditor extends StatefulWidget {
   State<_InspectionRowEditor> createState() => _InspectionRowEditorState();
 }
 
+class _OfflineDraftStatusCard extends StatelessWidget {
+  const _OfflineDraftStatusCard({
+    required this.repository,
+    required this.formId,
+  });
+
+  final OfflineInspectionRepository repository;
+  final String formId;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: repository,
+      builder: (context, _) {
+        final pending = repository.pendingCountFor(formId);
+        final hasConflict = repository.hasConflictFor(formId);
+        if (repository.hasNetwork && pending == 0 && !hasConflict) {
+          return const SizedBox.shrink();
+        }
+        final title = hasConflict
+            ? 'This draft needs sync review'
+            : repository.hasNetwork
+            ? 'Saved changes are syncing'
+            : 'Offline draft saved securely';
+        final detail = hasConflict
+            ? repository.lastIssue ??
+                  'Your local draft is preserved on this device.'
+            : pending > 0
+            ? '$pending change(s) for this draft are waiting to sync. '
+                  'Location verification, photo evidence, and submission need a connection.'
+            : 'This device has a cached copy. Connect to refresh schedules and sync changes.';
+        return Card(
+          color: hasConflict
+              ? Theme.of(context).colorScheme.errorContainer
+              : Theme.of(context).colorScheme.surfaceContainerLow,
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(
+              children: [
+                Icon(
+                  hasConflict
+                      ? Icons.warning_amber_outlined
+                      : repository.hasNetwork
+                      ? Icons.cloud_upload_outlined
+                      : Icons.cloud_off_outlined,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(detail),
+                    ],
+                  ),
+                ),
+                if (pending > 0 && !hasConflict)
+                  TextButton(
+                    key: const Key('draft-sync-retry'),
+                    onPressed: repository.syncState == OfflineSyncState.syncing
+                        ? null
+                        : () => unawaited(repository.syncNow()),
+                    child: const Text('Retry sync'),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
 class _SubmitFormCard extends StatelessWidget {
   const _SubmitFormCard({
     required this.hasRows,
@@ -1422,6 +1516,7 @@ class _SubmitFormCard extends StatelessWidget {
     required this.eligibleScheduleCount,
     required this.completedWithoutDraftCount,
     required this.hasPendingPhotoEvidence,
+    required this.canSubmitOnline,
     required this.onSubmit,
   });
 
@@ -1433,6 +1528,7 @@ class _SubmitFormCard extends StatelessWidget {
   final int eligibleScheduleCount;
   final int completedWithoutDraftCount;
   final bool hasPendingPhotoEvidence;
+  final bool canSubmitOnline;
   final VoidCallback onSubmit;
 
   bool get canSubmit =>
@@ -1489,10 +1585,19 @@ class _SubmitFormCard extends StatelessWidget {
                 'A captured photo is not saved. You can still submit the completed inspection without it.',
               ),
             ],
+            if (!canSubmitOnline) ...[
+              const SizedBox(height: 8),
+              const Text(
+                'Reconnect and sync this draft before submitting it.',
+                key: Key('submit-requires-online-sync'),
+              ),
+            ],
             const SizedBox(height: 12),
             FilledButton(
               key: const Key('submit-form-button'),
-              onPressed: isSaving || !canSubmit ? null : onSubmit,
+              onPressed: isSaving || !canSubmit || !canSubmitOnline
+                  ? null
+                  : onSubmit,
               child: Text(isSaving ? 'Submitting...' : 'Submit form'),
             ),
           ],
@@ -1703,6 +1808,10 @@ class _InspectionRowEditorState extends State<_InspectionRowEditor> {
                       : 'Non-operational',
                   hasSavedPhoto: widget.row.hasPhotoEvidence,
                   editable: widget.editable,
+                  onlineAvailable:
+                      widget.photoRepository is! OfflineInspectionRepository ||
+                      (widget.photoRepository as OfflineInspectionRepository)
+                          .canEditPhoto(widget.row.id),
                   repository: widget.photoRepository!,
                   onPendingStateChanged: widget.onPhotoPendingChanged,
                   capturePhoto: widget.photoCapture ?? captureInspectionPhoto,

@@ -6,6 +6,7 @@ import 'auth/session_controller.dart';
 import 'config/app_config.dart';
 import 'features/assets/asset_repository.dart';
 import 'features/maintenance_history/asset_maintenance_history_repository.dart';
+import 'features/preventive_maintenance/offline_inspection_repository.dart';
 import 'features/preventive_maintenance/preventive_maintenance_repository.dart';
 import 'routing/app_router.dart';
 import 'ui/app_theme.dart';
@@ -14,9 +15,14 @@ void main() {
   final config = AppConfig.fromEnvironment();
   final apiClient = ApiClient(baseUrl: config.apiBaseUrl);
   final authRepository = AuthRepository(apiClient);
-  final assetRepository = ApiAssetRepository(apiClient);
-  final preventiveMaintenanceRepository = ApiPreventiveMaintenanceRepository(
-    apiClient,
+  final remoteAssetRepository = ApiAssetRepository(apiClient);
+  final remotePreventiveMaintenanceRepository =
+      ApiPreventiveMaintenanceRepository(apiClient);
+  final offlineInspectionRepository = OfflineInspectionRepository(
+    remote: remotePreventiveMaintenanceRepository,
+    remoteAssets: remoteAssetRepository,
+    store: SecureOfflineSnapshotStore(),
+    connectivity: DeviceConnectivityMonitor(),
   );
   final assetMaintenanceHistoryRepository =
       ApiAssetMaintenanceHistoryRepository(apiClient);
@@ -31,8 +37,9 @@ void main() {
   runApp(
     UniPmApp(
       sessionController: sessionController,
-      assetRepository: assetRepository,
-      preventiveMaintenanceRepository: preventiveMaintenanceRepository,
+      assetRepository: offlineInspectionRepository,
+      preventiveMaintenanceRepository: offlineInspectionRepository,
+      offlineInspectionRepository: offlineInspectionRepository,
       assetMaintenanceHistoryRepository: assetMaintenanceHistoryRepository,
       configurationError: config.errorMessage,
     ),
@@ -45,6 +52,7 @@ class UniPmApp extends StatefulWidget {
     required this.sessionController,
     this.assetRepository,
     this.preventiveMaintenanceRepository,
+    this.offlineInspectionRepository,
     this.assetMaintenanceHistoryRepository,
     this.configurationError,
     this.navigatorKey,
@@ -53,6 +61,7 @@ class UniPmApp extends StatefulWidget {
   final SessionController sessionController;
   final AssetRepository? assetRepository;
   final PreventiveMaintenanceRepository? preventiveMaintenanceRepository;
+  final OfflineInspectionRepository? offlineInspectionRepository;
   final AssetMaintenanceHistoryRepository? assetMaintenanceHistoryRepository;
   final String? configurationError;
   final GlobalKey<NavigatorState>? navigatorKey;
@@ -66,6 +75,12 @@ class _UniPmAppState extends State<UniPmApp> {
       widget.navigatorKey ?? GlobalKey<NavigatorState>();
 
   @override
+  void dispose() {
+    widget.offlineInspectionRepository?.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return MaterialApp(
       navigatorKey: _navigatorKey,
@@ -75,6 +90,7 @@ class _UniPmAppState extends State<UniPmApp> {
         sessionController: widget.sessionController,
         assetRepository: widget.assetRepository,
         preventiveMaintenanceRepository: widget.preventiveMaintenanceRepository,
+        offlineInspectionRepository: widget.offlineInspectionRepository,
         assetMaintenanceHistoryRepository:
             widget.assetMaintenanceHistoryRepository,
         configurationError: widget.configurationError,

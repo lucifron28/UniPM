@@ -15,4 +15,5 @@ export interface ScheduleAssetResponse {
   department: string | null
   /** @nullable */
   location: string | null
+  status: string
 }
