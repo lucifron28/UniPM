@@ -321,6 +321,14 @@ function mockReferences(roles = ['GSD']) {
         items: [],
       }),
     ),
+    http.get(`${base}/schedules/coverage-review`, () =>
+      HttpResponse.json({
+        items: [],
+        page: 1,
+        pageSize: 10,
+        total: 0,
+      }),
+    ),
     ...scheduleRegistryHandlers(),
     ...assetLookupHandlers([asset]),
     http.get(`${base}/reference-data/asset-categories`, () =>

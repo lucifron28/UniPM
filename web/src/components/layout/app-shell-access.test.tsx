@@ -246,6 +246,16 @@ describe('app shell role access and layout', () => {
             total: 0,
           })
         }
+        if (pathname === '/api/v1/schedules/enrollment-deferrals') {
+          return HttpResponse.json({
+            items: [],
+            page: 1,
+            pageSize: 10,
+            total: 0,
+            pendingCount: 0,
+            reviewedCount: 0,
+          })
+        }
         return HttpResponse.json([])
       }),
     )
