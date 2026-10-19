@@ -29,7 +29,7 @@ internal sealed class PmAnalyticsV3QuestionInterpreter : IDisposable
 
     private readonly DeepSeekNaturalLanguageAnalyticsModelClient _modelClient;
 
-    internal PmAnalyticsV3QuestionInterpreter(
+    public PmAnalyticsV3QuestionInterpreter(
         IOptionsMonitor<NaturalLanguageAnalyticsOptions> options,
         IHostEnvironment environment,
         TimeProvider timeProvider,
@@ -72,6 +72,19 @@ internal sealed class PmAnalyticsV3QuestionInterpreter : IDisposable
         if (NaturalLanguageAnalyticsQuestionGuard.IsUnsafeModelRequest(sanitized))
         {
             return Unsupported("UnsafeRequestNotSupported", "The request includes instructions or data outside supported analytics interpretation.");
+        }
+
+        sanitized = PmAnalyticsV3RuleParser.NormalizeNegatedOperationalIntent(
+            sanitized,
+            out var unsupportedNegation);
+        if (unsupportedNegation)
+        {
+            return new PmAnalyticsV3InterpretationResponse(
+                "NeedsClarification",
+                null,
+                ["Filters", "Measures"],
+                "NegatedOutcomeNeedsClarification",
+                "Please state the desired outcome directly, such as completed, late, missed, or non-operational.");
         }
 
         PmAnalyticsV3ModelOutput candidate;
@@ -220,8 +233,38 @@ internal sealed class PmAnalyticsV3QuestionInterpreter : IDisposable
 
 internal static class PmAnalyticsV3RuleParser
 {
+    private static readonly Regex UnsupportedNegatedOutcomeRegex = new(
+        @"\bnot\s+(?:been\s+)?(?:non[ -]?operational|completed|complete|late|missed|on[ -]?time|scheduled|remaining)\b",
+        RegexOptions.CultureInvariant | RegexOptions.IgnoreCase,
+        TimeSpan.FromMilliseconds(100));
+    private static readonly Regex NegatedOperationalRegex = new(
+        @"\bnot\s+(?:been\s+)?operational\b",
+        RegexOptions.CultureInvariant | RegexOptions.IgnoreCase,
+        TimeSpan.FromMilliseconds(100));
+
+    internal static string NormalizeNegatedOperationalIntent(
+        string question,
+        out bool unsupportedNegation)
+    {
+        unsupportedNegation = UnsupportedNegatedOutcomeRegex.IsMatch(question);
+        return unsupportedNegation
+            ? question
+            : NegatedOperationalRegex.Replace(question, "non-operational");
+    }
+
     internal static PmAnalyticsV3ModelOutput Parse(string question, DateTimeOffset nowUtc)
     {
+        question = NormalizeNegatedOperationalIntent(question, out var unsupportedNegation);
+        if (unsupportedNegation)
+        {
+            return new PmAnalyticsV3ModelOutput(
+                "NeedsClarification",
+                null,
+                ["Filters", "Measures"],
+                "NegatedOutcomeNeedsClarification",
+                "Please state the desired outcome directly, such as completed, late, missed, or non-operational.");
+        }
+
         if (IsAmbiguousCombinedOutcome(question))
         {
             return new PmAnalyticsV3ModelOutput(

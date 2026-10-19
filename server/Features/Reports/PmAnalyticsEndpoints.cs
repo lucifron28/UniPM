@@ -212,7 +212,8 @@ public static class PmAnalyticsEndpoints
             CancellationToken cancellationToken) =>
         {
             var requestErrors = new Dictionary<string, string[]>();
-            if (string.IsNullOrWhiteSpace(request.PreviewId) || request.PreviewId.Length > 128)
+            if (string.IsNullOrWhiteSpace(request.PreviewId)
+                || request.PreviewId.Length > PmAnalyticsV3PreviewStore.MaximumTokenLength)
             {
                 requestErrors[nameof(request.PreviewId)] = ["PreviewId is required and must be valid."];
             }

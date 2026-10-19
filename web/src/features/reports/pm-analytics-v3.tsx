@@ -1,161 +1,79 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { customInstance } from '@/api/http-client'
+import {
+  executePmAnalyticsV3Report,
+  getPmAnalyticsV3Catalog,
+  getPmAnalyticsV3FilterValues,
+  interpretPmAnalyticsV3Question,
+  previewPmAnalyticsV3Report,
+} from '@/api/generated/endpoints'
+import type {
+  PmAnalyticsV3AggregateFilter,
+  PmAnalyticsV3CatalogResponse,
+  PmAnalyticsV3Column,
+  PmAnalyticsV3ExecutionResponse,
+  PmAnalyticsV3FilterValuesResponse,
+  PmAnalyticsV3InterpretationResponse,
+  PmAnalyticsV3MeasureResult,
+  PmAnalyticsV3Mode,
+  PmAnalyticsV3NumericOperator,
+  PmAnalyticsV3Period,
+  PmAnalyticsV3PeriodKind,
+  PmAnalyticsV3Presentation,
+  PmAnalyticsV3PreviewResponse,
+  PmAnalyticsV3ReportPlan,
+  PmAnalyticsV3SortDirection,
+  PmAnalyticsV3Top,
+} from '@/api/generated/models'
 import { ApiError } from '@/api/problem-details'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 
-type Mode = 'Aggregate' | 'Records'
-type Presentation = 'Table' | 'Summary'
-type PeriodKind = 'Month' | 'Quarter' | 'Year' | 'Range'
-type FilterOperator = 'Equal' | 'In' | 'IsNull'
-type NumericOperator =
-  | 'Equal'
-  | 'NotEqual'
-  | 'GreaterThan'
-  | 'GreaterThanOrEqual'
-  | 'LessThan'
-  | 'LessThanOrEqual'
-type Direction = 'Ascending' | 'Descending'
-
-type Period = {
+type Mode = PmAnalyticsV3Mode
+type Presentation = PmAnalyticsV3Presentation
+type PeriodKind = PmAnalyticsV3PeriodKind
+type NumericOperator = PmAnalyticsV3NumericOperator
+type Direction = PmAnalyticsV3SortDirection
+type Period = Omit<
+  PmAnalyticsV3Period,
+  'year' | 'month' | 'quarter' | 'startCycle' | 'endCycle'
+> & {
   basis: 'pmCycle'
-  kind: PeriodKind
   year: number | null
   month: number | null
   quarter: number | null
   startCycle: string | null
   endCycle: string | null
 }
-
-type Filter = {
-  field: string
-  operator: FilterOperator
-  values: string[]
-}
-
-type AggregateFilter = {
-  measure: string
-  operator: NumericOperator
+type AggregateFilter = Omit<PmAnalyticsV3AggregateFilter, 'value'> & {
   value: number
 }
-
-type OrderBy = { field: string; direction: Direction }
-type Top = { measure: string; limit: number; direction: Direction }
-
-type ReportPlan = {
-  schemaVersion: number
-  catalogVersion: number
-  subject: string
-  mode: Mode
-  period: Period
-  categories: string[]
-  measures: string[]
+type Top = Omit<PmAnalyticsV3Top, 'limit'> & { limit: number }
+type ReportPlan = Omit<
+  PmAnalyticsV3ReportPlan,
+  'groupBy' | 'period' | 'top' | 'aggregateFilters'
+> & {
   groupBy: string[]
-  baseFilters: Filter[]
-  matchingFilters: Filter[]
-  aggregateFilters: AggregateFilter[]
-  orderBy: OrderBy[]
+  period: Period
   top: Top | null
-  presentation: Presentation
-  columns: string[]
+  aggregateFilters: AggregateFilter[]
 }
-
-type CatalogEntry = {
-  id: string
-  label: string
-  valueType: string
-  unit?: string
-  population?: string
-  nullSemantics?: string | null
-  definition?: string
-  operators?: string[]
-  isBaseFilter?: boolean
-  maximumLength?: number
-  allowedValues?: string[]
+type Catalog = Omit<PmAnalyticsV3CatalogResponse, 'filterFields'> & {
+  filterFields: Array<
+    Omit<
+      PmAnalyticsV3CatalogResponse['filterFields'][number],
+      'maximumLength'
+    > & {
+      maximumLength: number
+    }
+  >
 }
-
-type Catalog = {
-  schemaVersion: number
-  catalogVersion: number
-  subject: string
-  categories: CatalogEntry[]
-  measures: CatalogEntry[]
-  dimensions: CatalogEntry[]
-  filterFields: CatalogEntry[]
-  recordColumns: CatalogEntry[]
-}
-
-type MeasureResult = {
-  value: number | null
-  numerator: number
-  denominator: number
-  unit: string
-  isMeasurable: boolean
-  unmeasurableReason: string | null
-  eligibleRowCount: number
-  matchingRowCount: number
-}
-
-type Column = {
-  id: string
-  label: string
-  valueType: string
-  unit: string
-  nullSemantics: string | null
-}
-
-type PreviewResponse = {
-  previewId: string
-  expiresAtUtc: string
-  plan: ReportPlan
-  cyclesByCategory: Record<string, string[]>
-  summary: string
-  scopeNotes: string[]
-}
-
-type ExecutionResponse = {
-  schemaVersion: number
-  catalogVersion: number
-  asOfUtc: string
-  plan: ReportPlan
-  cyclesByCategory: Record<string, string[]>
-  mode: Mode
-  columns: Column[]
-  population: {
-    eligibleAssetCycleCount: number
-    eligibleDistinctAssetCount: number
-    matchingAssetCycleCount: number
-    matchingDistinctAssetCount: number
-    sourceTotalCount: number
-    groupsBeforeAggregateFilters: number
-    groupsAfterAggregateFilters: number
-    groupsReturnedAfterTop: number
-  }
-  page: number
-  pageSize: number
-  totalPages: number
-  aggregateRows: Array<{
-    values: Record<string, unknown>
-    measures: Record<string, MeasureResult>
-  }>
-  records: Array<{
-    scheduleId: string
-    assetId: string
-    values: Record<string, unknown>
-  }>
-  scopeNotes: string[]
-}
-
-type Interpretation = {
-  status: 'Valid' | 'NeedsClarification' | 'Unsupported' | string
-  plan: ReportPlan | null
-  clarificationFields: string[]
-  code: string | null
-  detail: string | null
-}
-
-type FilterValues = { field: string; values: string[]; hasMore: boolean }
+type Column = PmAnalyticsV3Column
+type MeasureResult = PmAnalyticsV3MeasureResult
+type PreviewResponse = PmAnalyticsV3PreviewResponse
+type ExecutionResponse = PmAnalyticsV3ExecutionResponse
+type Interpretation = PmAnalyticsV3InterpretationResponse
+type FilterValues = PmAnalyticsV3FilterValuesResponse
 
 const inputClass =
   'mt-1 block min-h-10 w-full rounded-md border border-[var(--border-soft)] bg-white px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus-visible:border-[var(--primary)] focus-visible:ring-2 focus-visible:ring-[color-mix(in_srgb,var(--primary)_25%,transparent)] disabled:cursor-not-allowed disabled:bg-[var(--surface-muted)]'
@@ -227,6 +145,51 @@ function initialPlan(): ReportPlan {
   }
 }
 
+function normalizeCatalog(value: PmAnalyticsV3CatalogResponse): Catalog {
+  return {
+    ...value,
+    filterFields: value.filterFields.map((field) => ({
+      ...field,
+      maximumLength: Number(field.maximumLength),
+    })),
+  }
+}
+
+function normalizePlan(value: PmAnalyticsV3ReportPlan): ReportPlan {
+  return {
+    ...value,
+    schemaVersion: Number(value.schemaVersion),
+    catalogVersion: Number(value.catalogVersion),
+    period: {
+      ...value.period,
+      basis: 'pmCycle',
+      year: value.period.year == null ? null : Number(value.period.year),
+      month: value.period.month == null ? null : Number(value.period.month),
+      quarter:
+        value.period.quarter == null ? null : Number(value.period.quarter),
+      startCycle: value.period.startCycle ?? null,
+      endCycle: value.period.endCycle ?? null,
+    },
+    groupBy: value.groupBy ?? [],
+    baseFilters: value.baseFilters.map((filter) => ({
+      ...filter,
+      values: filter.values ?? [],
+    })),
+    matchingFilters: value.matchingFilters.map((filter) => ({
+      ...filter,
+      values: filter.values ?? [],
+    })),
+    aggregateFilters: value.aggregateFilters.map((filter) => ({
+      ...filter,
+      value: Number(filter.value),
+    })),
+    top:
+      value.top === null
+        ? null
+        : { ...value.top, limit: Number(value.top.limit) },
+  }
+}
+
 function getErrorMessage(error: unknown) {
   if (error instanceof ApiError) {
     const validation = error.problem?.errors
@@ -286,10 +249,10 @@ function formatLabel(value: string | null | undefined, catalog?: Catalog) {
   return labels[value] ?? value.replace(/([a-z])([A-Z])/g, '$1 $2')
 }
 
-function formatNumber(value: number | null | undefined) {
+function formatNumber(value: number | string | null | undefined) {
   if (value === null || value === undefined) return 'Not measurable'
   return new Intl.NumberFormat('en-PH', { maximumFractionDigits: 2 }).format(
-    value,
+    Number(value),
   )
 }
 
@@ -405,13 +368,10 @@ function BaseFilterPicker({
 
     const controller = new AbortController()
     const timer = window.setTimeout(() => {
-      const query = new URLSearchParams({ field, search: search.trim() })
-      for (const category of categories) query.append('categories', category)
-      void customInstance<FilterValues>({
-        url: `/api/v1/analytics/pm/v3/catalog/values?${query.toString()}`,
-        method: 'GET',
-        signal: controller.signal,
-      })
+      void getPmAnalyticsV3FilterValues(
+        { field, categories, search: search.trim() },
+        controller.signal,
+      )
         .then((result) => {
           if (!controller.signal.aborted) {
             setOptions(result)
@@ -555,19 +515,16 @@ export function PmAnalyticsV3Panel() {
 
   useEffect(() => {
     const controller = new AbortController()
-    void customInstance<Catalog>({
-      url: '/api/v1/analytics/pm/v3/catalog',
-      method: 'GET',
-      signal: controller.signal,
-    })
+    void getPmAnalyticsV3Catalog(controller.signal)
       .then((value) => {
         if (!controller.signal.aborted) {
-          setCatalog(value)
+          const currentCatalog = normalizeCatalog(value)
+          setCatalog(currentCatalog)
           setPlan((current) => ({
             ...current,
-            schemaVersion: value.schemaVersion,
-            catalogVersion: value.catalogVersion,
-            subject: value.subject,
+            schemaVersion: currentCatalog.schemaVersion,
+            catalogVersion: currentCatalog.catalogVersion,
+            subject: currentCatalog.subject,
           }))
         }
       })
@@ -643,15 +600,13 @@ export function PmAnalyticsV3Panel() {
     setResponse(null)
     const request = beginRequest('Interpreting the question')
     try {
-      const result = await customInstance<Interpretation>({
-        url: '/api/v1/analytics/pm/v3/interpret',
-        method: 'POST',
-        data: { question: cleanQuestion },
-        signal: request.controller.signal,
-      })
+      const result = await interpretPmAnalyticsV3Question(
+        { question: cleanQuestion },
+        request.controller.signal,
+      )
       if (!request.isCurrent()) return
       setInterpretation(result)
-      if (result.plan) setPlan(result.plan)
+      if (result.plan) setPlan(normalizePlan(result.plan))
     } catch (requestError) {
       if (request.isCurrent()) setError(getErrorMessage(requestError))
     } finally {
@@ -668,12 +623,10 @@ export function PmAnalyticsV3Panel() {
     setPreview(null)
     setResponse(null)
     try {
-      const result = await customInstance<PreviewResponse>({
-        url: '/api/v1/analytics/pm/v3/preview',
-        method: 'POST',
-        data: { plan },
-        signal: request.controller.signal,
-      })
+      const result = await previewPmAnalyticsV3Report(
+        { plan },
+        request.controller.signal,
+      )
       if (request.isCurrent()) setPreview(result)
     } catch (requestError) {
       if (request.isCurrent()) setError(getErrorMessage(requestError))
@@ -690,12 +643,10 @@ export function PmAnalyticsV3Panel() {
     if (!preview) return
     const request = beginRequest('Running the confirmed report')
     try {
-      const result = await customInstance<ExecutionResponse>({
-        url: '/api/v1/analytics/pm/v3/execute',
-        method: 'POST',
-        data: { previewId: preview.previewId, page, pageSize: 25 },
-        signal: request.controller.signal,
-      })
+      const result = await executePmAnalyticsV3Report(
+        { previewId: preview.previewId, page, pageSize: 25 },
+        request.controller.signal,
+      )
       if (request.isCurrent()) setResponse(result)
     } catch (requestError) {
       if (request.isCurrent()) setError(getErrorMessage(requestError))
@@ -931,9 +882,12 @@ export function PmAnalyticsV3Panel() {
             value={question}
             maxLength={512}
             onChange={(event) => {
-              if (pending) cancelPending()
+              cancelPending()
               setQuestion(event.target.value)
               setInterpretation(null)
+              setPreview(null)
+              setResponse(null)
+              setError(null)
             }}
             placeholder="Which departments had 100% fire-extinguisher compliance in 2025?"
           />
@@ -2056,7 +2010,7 @@ export function PmAnalyticsV3Panel() {
               </p>
             ))}
 
-          {response.totalPages > 1 && (
+          {Number(response.totalPages) > 1 && (
             <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border-soft)] pt-3 print:hidden">
               <p className="text-sm text-[var(--text-secondary)]">
                 Page {response.page} of {response.totalPages} ·{' '}
@@ -2067,16 +2021,19 @@ export function PmAnalyticsV3Panel() {
                 <Button
                   type="button"
                   variant="secondary"
-                  disabled={pending || response.page <= 1}
-                  onClick={() => void executePage(response.page - 1)}
+                  disabled={pending || Number(response.page) <= 1}
+                  onClick={() => void executePage(Number(response.page) - 1)}
                 >
                   Previous
                 </Button>
                 <Button
                   type="button"
                   variant="secondary"
-                  disabled={pending || response.page >= response.totalPages}
-                  onClick={() => void executePage(response.page + 1)}
+                  disabled={
+                    pending ||
+                    Number(response.page) >= Number(response.totalPages)
+                  }
+                  onClick={() => void executePage(Number(response.page) + 1)}
                 >
                   Next
                 </Button>

@@ -623,7 +623,9 @@ export function AssetRegistry({
               label="Department"
               value={department || undefined}
               selectedOption={
-                department ? { value: department, label: department } : undefined
+                department
+                  ? { value: department, label: department }
+                  : undefined
               }
               allLabel="All departments"
               options={departments.map((value) => ({ value, label: value }))}

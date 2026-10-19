@@ -527,6 +527,7 @@ internal sealed class PmAnalyticsV3QueryService(
         {
             matchingLookup.TryGetValue(group.Key, out var matching);
             matching ??= [];
+            var selectedCycles = CyclesForGroup(normalized, group.Rows, group.Key);
             var measures = new Dictionary<string, PmAnalyticsV3MeasureResult>(StringComparer.Ordinal);
             foreach (var measure in normalized.Plan.Measures)
             {
@@ -534,7 +535,8 @@ internal sealed class PmAnalyticsV3QueryService(
                     measure,
                     group.Rows,
                     matching,
-                    now);
+                    now,
+                    selectedCycles);
             }
 
             groups.Add(new PmAnalyticsV3ComputedGroup(group.Key, group.Rows, matching, measures));
@@ -542,9 +544,13 @@ internal sealed class PmAnalyticsV3QueryService(
 
         if (groups.Count == 0 && groupBy.Count == 0)
         {
+            var selectedCycles = CyclesForGroup(
+                normalized,
+                [],
+                new PmAnalyticsV3GroupKey(null, null, null, null));
             var measures = normalized.Plan.Measures.ToDictionary(
                 measure => measure,
-                measure => CalculateMeasure(measure, [], [], now),
+                measure => CalculateMeasure(measure, [], [], now, selectedCycles),
                 StringComparer.Ordinal);
             groups.Add(new PmAnalyticsV3ComputedGroup(new PmAnalyticsV3GroupKey(null, null, null, null), [], [], measures));
         }
@@ -655,11 +661,12 @@ internal sealed class PmAnalyticsV3QueryService(
             second);
     }
 
-    private static PmAnalyticsV3MeasureResult CalculateMeasure(
+    internal static PmAnalyticsV3MeasureResult CalculateMeasure(
         string measure,
         IReadOnlyList<PmAnalyticsV3Source> eligible,
         IReadOnlyList<PmAnalyticsV3Source> matching,
-        DateTimeOffset now)
+        DateTimeOffset now,
+        IReadOnlyList<string> selectedCycles)
     {
         int numerator;
         int denominator;
@@ -671,7 +678,7 @@ internal sealed class PmAnalyticsV3QueryService(
         switch (measure)
         {
             case PmAnalyticsV3Catalog.ScheduledCount:
-                numerator = matching.Count;
+                numerator = eligible.Count;
                 denominator = eligible.Count;
                 unit = "asset-cycles";
                 value = numerator;
@@ -734,7 +741,8 @@ internal sealed class PmAnalyticsV3QueryService(
                 numerator = eligible.Count(row => row.CompletedAt is { } completed && completed <= row.Deadline);
                 denominator = eligible.Count;
                 unit = "percent";
-                var hasOpenCycle = eligible.Any(row => row.Deadline >= now);
+                var hasOpenCycle = selectedCycles.Any(cycle =>
+                    PreventiveMaintenanceCycle.DeadlineForCycle(cycle) >= now);
                 value = denominator == 0 || hasOpenCycle ? null : numerator * 100m / denominator;
                 if (denominator == 0)
                 {
@@ -761,6 +769,46 @@ internal sealed class PmAnalyticsV3QueryService(
             reason,
             eligible.Count,
             matching.Count);
+    }
+
+    private static IReadOnlyList<string> CyclesForGroup(
+        PmAnalyticsV3NormalizedPlan normalized,
+        IReadOnlyList<PmAnalyticsV3Source> rows,
+        PmAnalyticsV3GroupKey key)
+    {
+        var categories = rows.Count == 0
+            ? normalized.Plan.Categories
+            : rows.Select(row => row.AssetCategory).Distinct(StringComparer.Ordinal).ToArray();
+        var cycles = categories
+            .Where(normalized.CyclesByCategory.ContainsKey)
+            .SelectMany(category => normalized.CyclesByCategory[category]);
+
+        return cycles
+            .Where(cycle => MatchesCycleDimension(cycle, key.FirstId, key.FirstValue)
+                && MatchesCycleDimension(cycle, key.SecondId, key.SecondValue))
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+    }
+
+    private static bool MatchesCycleDimension(string cycle, string? dimension, object? value)
+    {
+        if (dimension is null || dimension is PmAnalyticsV3Catalog.AssetCategory
+            or PmAnalyticsV3Catalog.Department or PmAnalyticsV3Catalog.Building)
+        {
+            return true;
+        }
+
+        return dimension switch
+        {
+            PmAnalyticsV3Catalog.PmCycle => string.Equals(cycle, value as string, StringComparison.Ordinal),
+            PmAnalyticsV3Catalog.CalendarQuarter => string.Equals(
+                $"{cycle[..4]}-Q{(int.Parse(cycle[5..], CultureInfo.InvariantCulture) - 1) / 3 + 1}",
+                value as string,
+                StringComparison.Ordinal),
+            PmAnalyticsV3Catalog.CalendarYear => int.TryParse(cycle[..4], CultureInfo.InvariantCulture, out var year)
+                && value is int selectedYear && year == selectedYear,
+            _ => true
+        };
     }
 
     private static void SortGroups(List<PmAnalyticsV3ComputedGroup> groups, PmAnalyticsV3ReportPlan plan)
@@ -1055,7 +1103,7 @@ internal sealed class PmAnalyticsV3QueryService(
         public string? FormStatus { get; init; }
     }
 
-    private sealed record PmAnalyticsV3Source(
+    internal sealed record PmAnalyticsV3Source(
         Guid ScheduleId,
         Guid AssetId,
         Guid? InspectionId,

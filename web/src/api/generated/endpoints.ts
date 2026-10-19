@@ -41,6 +41,7 @@ import type {
   GenerateScheduleCyclesDto,
   GetAssetRegistryOptionsParams,
   GetInspectionRegistryOptionsParams,
+  GetPmAnalyticsV3FilterValuesParams,
   GetPmPeriodDashboardParams,
   GetScheduleRegistryOptionsParams,
   HttpValidationProblemDetails,
@@ -74,6 +75,14 @@ import type {
   PmAnalyticsV2InterpretationResponse,
   PmAnalyticsV2QueryRequest,
   PmAnalyticsV2QueryResponse,
+  PmAnalyticsV3CatalogResponse,
+  PmAnalyticsV3ExecuteRequest,
+  PmAnalyticsV3ExecutionResponse,
+  PmAnalyticsV3FilterValuesResponse,
+  PmAnalyticsV3InterpretRequest,
+  PmAnalyticsV3InterpretationResponse,
+  PmAnalyticsV3PreviewRequest,
+  PmAnalyticsV3PreviewResponse,
   PmPeriodDashboardCycleGroupResponse,
   PmPeriodDashboardResponse,
   PreventiveMaintenanceAcknowledgementResponse,
@@ -1745,6 +1754,473 @@ export const useUpdateAssetVerificationLocation = <
 }
 
 /**
+ * @summary Lists a bounded page of assets for the web registry
+ */
+export const listAssetRegistry = (
+  params?: ListAssetRegistryParams,
+  signal?: AbortSignal,
+) => {
+  return customInstance<AssetRegistryPageResponse>({
+    url: `/api/v1/assets/registry`,
+    method: 'GET',
+    params,
+    signal,
+  })
+}
+
+export const getListAssetRegistryQueryKey = (
+  params?: ListAssetRegistryParams,
+) => {
+  return [`/api/v1/assets/registry`, ...(params ? [params] : [])] as const
+}
+
+export const getListAssetRegistryQueryOptions = <
+  TData = Awaited<ReturnType<typeof listAssetRegistry>>,
+  TError = ValidationProblemDetails,
+>(
+  params?: ListAssetRegistryParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listAssetRegistry>>,
+        TError,
+        TData
+      >
+    >
+  },
+) => {
+  const { query: queryOptions } = options ?? {}
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListAssetRegistryQueryKey(params)
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listAssetRegistry>>
+  > = ({ signal }) => listAssetRegistry(params, signal)
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listAssetRegistry>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListAssetRegistryQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listAssetRegistry>>
+>
+export type ListAssetRegistryQueryError = ValidationProblemDetails
+
+export function useListAssetRegistry<
+  TData = Awaited<ReturnType<typeof listAssetRegistry>>,
+  TError = ValidationProblemDetails,
+>(
+  params: undefined | ListAssetRegistryParams,
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listAssetRegistry>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listAssetRegistry>>,
+          TError,
+          Awaited<ReturnType<typeof listAssetRegistry>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useListAssetRegistry<
+  TData = Awaited<ReturnType<typeof listAssetRegistry>>,
+  TError = ValidationProblemDetails,
+>(
+  params?: ListAssetRegistryParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listAssetRegistry>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listAssetRegistry>>,
+          TError,
+          Awaited<ReturnType<typeof listAssetRegistry>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useListAssetRegistry<
+  TData = Awaited<ReturnType<typeof listAssetRegistry>>,
+  TError = ValidationProblemDetails,
+>(
+  params?: ListAssetRegistryParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listAssetRegistry>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+/**
+ * @summary Lists a bounded page of assets for the web registry
+ */
+
+export function useListAssetRegistry<
+  TData = Awaited<ReturnType<typeof listAssetRegistry>>,
+  TError = ValidationProblemDetails,
+>(
+  params?: ListAssetRegistryParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listAssetRegistry>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+} {
+  const queryOptions = getListAssetRegistryQueryOptions(params, options)
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+
+  return withQueryKey(query, queryOptions.queryKey)
+}
+
+/**
+ * @summary Lists small asset registry filter options
+ */
+export const getAssetRegistryOptions = (
+  params?: GetAssetRegistryOptionsParams,
+  signal?: AbortSignal,
+) => {
+  return customInstance<AssetRegistryOptionsResponse>({
+    url: `/api/v1/assets/registry/options`,
+    method: 'GET',
+    params,
+    signal,
+  })
+}
+
+export const getGetAssetRegistryOptionsQueryKey = (
+  params?: GetAssetRegistryOptionsParams,
+) => {
+  return [
+    `/api/v1/assets/registry/options`,
+    ...(params ? [params] : []),
+  ] as const
+}
+
+export const getGetAssetRegistryOptionsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getAssetRegistryOptions>>,
+  TError = ValidationProblemDetails,
+>(
+  params?: GetAssetRegistryOptionsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getAssetRegistryOptions>>,
+        TError,
+        TData
+      >
+    >
+  },
+) => {
+  const { query: queryOptions } = options ?? {}
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetAssetRegistryOptionsQueryKey(params)
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getAssetRegistryOptions>>
+  > = ({ signal }) => getAssetRegistryOptions(params, signal)
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getAssetRegistryOptions>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetAssetRegistryOptionsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getAssetRegistryOptions>>
+>
+export type GetAssetRegistryOptionsQueryError = ValidationProblemDetails
+
+export function useGetAssetRegistryOptions<
+  TData = Awaited<ReturnType<typeof getAssetRegistryOptions>>,
+  TError = ValidationProblemDetails,
+>(
+  params: undefined | GetAssetRegistryOptionsParams,
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getAssetRegistryOptions>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAssetRegistryOptions>>,
+          TError,
+          Awaited<ReturnType<typeof getAssetRegistryOptions>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useGetAssetRegistryOptions<
+  TData = Awaited<ReturnType<typeof getAssetRegistryOptions>>,
+  TError = ValidationProblemDetails,
+>(
+  params?: GetAssetRegistryOptionsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getAssetRegistryOptions>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAssetRegistryOptions>>,
+          TError,
+          Awaited<ReturnType<typeof getAssetRegistryOptions>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useGetAssetRegistryOptions<
+  TData = Awaited<ReturnType<typeof getAssetRegistryOptions>>,
+  TError = ValidationProblemDetails,
+>(
+  params?: GetAssetRegistryOptionsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getAssetRegistryOptions>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+/**
+ * @summary Lists small asset registry filter options
+ */
+
+export function useGetAssetRegistryOptions<
+  TData = Awaited<ReturnType<typeof getAssetRegistryOptions>>,
+  TError = ValidationProblemDetails,
+>(
+  params?: GetAssetRegistryOptionsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getAssetRegistryOptions>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+} {
+  const queryOptions = getGetAssetRegistryOptionsQueryOptions(params, options)
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+
+  return withQueryKey(query, queryOptions.queryKey)
+}
+
+/**
+ * @summary Returns overall asset totals by category and status
+ */
+export const getAssetRegistrySummary = (signal?: AbortSignal) => {
+  return customInstance<AssetRegistrySummaryResponse>({
+    url: `/api/v1/assets/registry/summary`,
+    method: 'GET',
+    signal,
+  })
+}
+
+export const getGetAssetRegistrySummaryQueryKey = () => {
+  return [`/api/v1/assets/registry/summary`] as const
+}
+
+export const getGetAssetRegistrySummaryQueryOptions = <
+  TData = Awaited<ReturnType<typeof getAssetRegistrySummary>>,
+  TError = unknown,
+>(options?: {
+  query?: Partial<
+    UseQueryOptions<
+      Awaited<ReturnType<typeof getAssetRegistrySummary>>,
+      TError,
+      TData
+    >
+  >
+}) => {
+  const { query: queryOptions } = options ?? {}
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetAssetRegistrySummaryQueryKey()
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getAssetRegistrySummary>>
+  > = ({ signal }) => getAssetRegistrySummary(signal)
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getAssetRegistrySummary>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetAssetRegistrySummaryQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getAssetRegistrySummary>>
+>
+export type GetAssetRegistrySummaryQueryError = unknown
+
+export function useGetAssetRegistrySummary<
+  TData = Awaited<ReturnType<typeof getAssetRegistrySummary>>,
+  TError = unknown,
+>(
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getAssetRegistrySummary>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAssetRegistrySummary>>,
+          TError,
+          Awaited<ReturnType<typeof getAssetRegistrySummary>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useGetAssetRegistrySummary<
+  TData = Awaited<ReturnType<typeof getAssetRegistrySummary>>,
+  TError = unknown,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getAssetRegistrySummary>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAssetRegistrySummary>>,
+          TError,
+          Awaited<ReturnType<typeof getAssetRegistrySummary>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useGetAssetRegistrySummary<
+  TData = Awaited<ReturnType<typeof getAssetRegistrySummary>>,
+  TError = unknown,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getAssetRegistrySummary>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+/**
+ * @summary Returns overall asset totals by category and status
+ */
+
+export function useGetAssetRegistrySummary<
+  TData = Awaited<ReturnType<typeof getAssetRegistrySummary>>,
+  TError = unknown,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getAssetRegistrySummary>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+} {
+  const queryOptions = getGetAssetRegistrySummaryQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+
+  return withQueryKey(query, queryOptions.queryKey)
+}
+
+/**
  * @summary Gets an asset by its canonical asset code
  */
 export const getAssetByCode = (assetCode: string, signal?: AbortSignal) => {
@@ -2021,38 +2497,127 @@ export function useGetAssetByQr<
 }
 
 /**
- * @summary Searches a bounded page of active Inspectors for schedule assignment
+ * @summary Ensures missing CPMP schedules for one calendar year
  */
-export const listScheduleWorkerAssignmentOptions = (
-  params?: ListScheduleWorkerAssignmentOptionsParams,
+export const generatePreventiveMaintenanceSchedules = (
+  generateScheduleCyclesDto: GenerateScheduleCyclesDto,
   signal?: AbortSignal,
 ) => {
-  return customInstance<ScheduleWorkerAssignmentOptionsResponse>({
-    url: `/api/v1/schedules/assignment-options`,
+  return customInstance<ScheduleGenerationResult>({
+    url: `/api/v1/schedules/generate`,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    data: generateScheduleCyclesDto,
+    signal,
+  })
+}
+
+export const getGeneratePreventiveMaintenanceSchedulesMutationOptions = <
+  TError = ValidationProblemDetails | ProblemDetails,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof generatePreventiveMaintenanceSchedules>>,
+    TError,
+    { data: GenerateScheduleCyclesDto },
+    TContext
+  >
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof generatePreventiveMaintenanceSchedules>>,
+  TError,
+  { data: GenerateScheduleCyclesDto },
+  TContext
+> => {
+  const mutationKey = ['generatePreventiveMaintenanceSchedules']
+  const { mutation: mutationOptions } = options
+    ? options.mutation &&
+      'mutationKey' in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey } }
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof generatePreventiveMaintenanceSchedules>>,
+    { data: GenerateScheduleCyclesDto }
+  > = (props) => {
+    const { data } = props ?? {}
+
+    return generatePreventiveMaintenanceSchedules(data)
+  }
+
+  return { mutationFn, ...mutationOptions }
+}
+
+export type GeneratePreventiveMaintenanceSchedulesMutationResult = NonNullable<
+  Awaited<ReturnType<typeof generatePreventiveMaintenanceSchedules>>
+>
+export type GeneratePreventiveMaintenanceSchedulesMutationBody =
+  GenerateScheduleCyclesDto
+export type GeneratePreventiveMaintenanceSchedulesMutationError =
+  ValidationProblemDetails | ProblemDetails
+
+/**
+ * @summary Ensures missing CPMP schedules for one calendar year
+ */
+export const useGeneratePreventiveMaintenanceSchedules = <
+  TError = ValidationProblemDetails | ProblemDetails,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof generatePreventiveMaintenanceSchedules>>,
+      TError,
+      { data: GenerateScheduleCyclesDto },
+      TContext
+    >
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof generatePreventiveMaintenanceSchedules>>,
+  TError,
+  { data: GenerateScheduleCyclesDto },
+  TContext
+> => {
+  return useMutation(
+    getGeneratePreventiveMaintenanceSchedulesMutationOptions(options),
+    queryClient,
+  )
+}
+
+/**
+ * @summary Lists past CPMP cycles missing both a schedule and a deferral for GSD review
+ */
+export const listScheduleCoverageReview = (
+  params?: ListScheduleCoverageReviewParams,
+  signal?: AbortSignal,
+) => {
+  return customInstance<ScheduleCoverageReviewPage>({
+    url: `/api/v1/schedules/coverage-review`,
     method: 'GET',
     params,
     signal,
   })
 }
 
-export const getListScheduleWorkerAssignmentOptionsQueryKey = (
-  params?: ListScheduleWorkerAssignmentOptionsParams,
+export const getListScheduleCoverageReviewQueryKey = (
+  params?: ListScheduleCoverageReviewParams,
 ) => {
   return [
-    `/api/v1/schedules/assignment-options`,
+    `/api/v1/schedules/coverage-review`,
     ...(params ? [params] : []),
   ] as const
 }
 
-export const getListScheduleWorkerAssignmentOptionsQueryOptions = <
-  TData = Awaited<ReturnType<typeof listScheduleWorkerAssignmentOptions>>,
-  TError = ValidationProblemDetails | void,
+export const getListScheduleCoverageReviewQueryOptions = <
+  TData = Awaited<ReturnType<typeof listScheduleCoverageReview>>,
+  TError = void,
 >(
-  params?: ListScheduleWorkerAssignmentOptionsParams,
+  params?: ListScheduleCoverageReviewParams,
   options?: {
     query?: Partial<
       UseQueryOptions<
-        Awaited<ReturnType<typeof listScheduleWorkerAssignmentOptions>>,
+        Awaited<ReturnType<typeof listScheduleCoverageReview>>,
         TError,
         TData
       >
@@ -2062,44 +2627,42 @@ export const getListScheduleWorkerAssignmentOptionsQueryOptions = <
   const { query: queryOptions } = options ?? {}
 
   const queryKey =
-    queryOptions?.queryKey ??
-    getListScheduleWorkerAssignmentOptionsQueryKey(params)
+    queryOptions?.queryKey ?? getListScheduleCoverageReviewQueryKey(params)
 
   const queryFn: QueryFunction<
-    Awaited<ReturnType<typeof listScheduleWorkerAssignmentOptions>>
-  > = ({ signal }) => listScheduleWorkerAssignmentOptions(params, signal)
+    Awaited<ReturnType<typeof listScheduleCoverageReview>>
+  > = ({ signal }) => listScheduleCoverageReview(params, signal)
 
   return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
-    Awaited<ReturnType<typeof listScheduleWorkerAssignmentOptions>>,
+    Awaited<ReturnType<typeof listScheduleCoverageReview>>,
     TError,
     TData
   > & { queryKey: DataTag<QueryKey, TData, TError> }
 }
 
-export type ListScheduleWorkerAssignmentOptionsQueryResult = NonNullable<
-  Awaited<ReturnType<typeof listScheduleWorkerAssignmentOptions>>
+export type ListScheduleCoverageReviewQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listScheduleCoverageReview>>
 >
-export type ListScheduleWorkerAssignmentOptionsQueryError =
-  ValidationProblemDetails | void
+export type ListScheduleCoverageReviewQueryError = void
 
-export function useListScheduleWorkerAssignmentOptions<
-  TData = Awaited<ReturnType<typeof listScheduleWorkerAssignmentOptions>>,
-  TError = ValidationProblemDetails | void,
+export function useListScheduleCoverageReview<
+  TData = Awaited<ReturnType<typeof listScheduleCoverageReview>>,
+  TError = void,
 >(
-  params: undefined | ListScheduleWorkerAssignmentOptionsParams,
+  params: undefined | ListScheduleCoverageReviewParams,
   options: {
     query: Partial<
       UseQueryOptions<
-        Awaited<ReturnType<typeof listScheduleWorkerAssignmentOptions>>,
+        Awaited<ReturnType<typeof listScheduleCoverageReview>>,
         TError,
         TData
       >
     > &
       Pick<
         DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof listScheduleWorkerAssignmentOptions>>,
+          Awaited<ReturnType<typeof listScheduleCoverageReview>>,
           TError,
-          Awaited<ReturnType<typeof listScheduleWorkerAssignmentOptions>>
+          Awaited<ReturnType<typeof listScheduleCoverageReview>>
         >,
         'initialData'
       >
@@ -2108,24 +2671,24 @@ export function useListScheduleWorkerAssignmentOptions<
 ): DefinedUseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>
 }
-export function useListScheduleWorkerAssignmentOptions<
-  TData = Awaited<ReturnType<typeof listScheduleWorkerAssignmentOptions>>,
-  TError = ValidationProblemDetails | void,
+export function useListScheduleCoverageReview<
+  TData = Awaited<ReturnType<typeof listScheduleCoverageReview>>,
+  TError = void,
 >(
-  params?: ListScheduleWorkerAssignmentOptionsParams,
+  params?: ListScheduleCoverageReviewParams,
   options?: {
     query?: Partial<
       UseQueryOptions<
-        Awaited<ReturnType<typeof listScheduleWorkerAssignmentOptions>>,
+        Awaited<ReturnType<typeof listScheduleCoverageReview>>,
         TError,
         TData
       >
     > &
       Pick<
         UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof listScheduleWorkerAssignmentOptions>>,
+          Awaited<ReturnType<typeof listScheduleCoverageReview>>,
           TError,
-          Awaited<ReturnType<typeof listScheduleWorkerAssignmentOptions>>
+          Awaited<ReturnType<typeof listScheduleCoverageReview>>
         >,
         'initialData'
       >
@@ -2134,15 +2697,15 @@ export function useListScheduleWorkerAssignmentOptions<
 ): UseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>
 }
-export function useListScheduleWorkerAssignmentOptions<
-  TData = Awaited<ReturnType<typeof listScheduleWorkerAssignmentOptions>>,
-  TError = ValidationProblemDetails | void,
+export function useListScheduleCoverageReview<
+  TData = Awaited<ReturnType<typeof listScheduleCoverageReview>>,
+  TError = void,
 >(
-  params?: ListScheduleWorkerAssignmentOptionsParams,
+  params?: ListScheduleCoverageReviewParams,
   options?: {
     query?: Partial<
       UseQueryOptions<
-        Awaited<ReturnType<typeof listScheduleWorkerAssignmentOptions>>,
+        Awaited<ReturnType<typeof listScheduleCoverageReview>>,
         TError,
         TData
       >
@@ -2153,18 +2716,18 @@ export function useListScheduleWorkerAssignmentOptions<
   queryKey: DataTag<QueryKey, TData, TError>
 }
 /**
- * @summary Searches a bounded page of active Inspectors for schedule assignment
+ * @summary Lists past CPMP cycles missing both a schedule and a deferral for GSD review
  */
 
-export function useListScheduleWorkerAssignmentOptions<
-  TData = Awaited<ReturnType<typeof listScheduleWorkerAssignmentOptions>>,
-  TError = ValidationProblemDetails | void,
+export function useListScheduleCoverageReview<
+  TData = Awaited<ReturnType<typeof listScheduleCoverageReview>>,
+  TError = void,
 >(
-  params?: ListScheduleWorkerAssignmentOptionsParams,
+  params?: ListScheduleCoverageReviewParams,
   options?: {
     query?: Partial<
       UseQueryOptions<
-        Awaited<ReturnType<typeof listScheduleWorkerAssignmentOptions>>,
+        Awaited<ReturnType<typeof listScheduleCoverageReview>>,
         TError,
         TData
       >
@@ -2174,7 +2737,7 @@ export function useListScheduleWorkerAssignmentOptions<
 ): UseQueryResult<TData, TError> & {
   queryKey: DataTag<QueryKey, TData, TError>
 } {
-  const queryOptions = getListScheduleWorkerAssignmentOptionsQueryOptions(
+  const queryOptions = getListScheduleCoverageReviewQueryOptions(
     params,
     options,
   )
@@ -2188,7 +2751,283 @@ export function useListScheduleWorkerAssignmentOptions<
 }
 
 /**
- * @summary Searches a bounded page of active Supervisors for schedule assignment
+ * @summary Lists deferred asset cycles and their GSD review status
+ */
+export const listScheduleEnrollmentDeferrals = (
+  params?: ListScheduleEnrollmentDeferralsParams,
+  signal?: AbortSignal,
+) => {
+  return customInstance<ScheduleEnrollmentDeferralPage>({
+    url: `/api/v1/schedules/enrollment-deferrals`,
+    method: 'GET',
+    params,
+    signal,
+  })
+}
+
+export const getListScheduleEnrollmentDeferralsQueryKey = (
+  params?: ListScheduleEnrollmentDeferralsParams,
+) => {
+  return [
+    `/api/v1/schedules/enrollment-deferrals`,
+    ...(params ? [params] : []),
+  ] as const
+}
+
+export const getListScheduleEnrollmentDeferralsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>,
+  TError = ValidationProblemDetails | void,
+>(
+  params?: ListScheduleEnrollmentDeferralsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>,
+        TError,
+        TData
+      >
+    >
+  },
+) => {
+  const { query: queryOptions } = options ?? {}
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListScheduleEnrollmentDeferralsQueryKey(params)
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>
+  > = ({ signal }) => listScheduleEnrollmentDeferrals(params, signal)
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListScheduleEnrollmentDeferralsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>
+>
+export type ListScheduleEnrollmentDeferralsQueryError =
+  ValidationProblemDetails | void
+
+export function useListScheduleEnrollmentDeferrals<
+  TData = Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>,
+  TError = ValidationProblemDetails | void,
+>(
+  params: undefined | ListScheduleEnrollmentDeferralsParams,
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>,
+          TError,
+          Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useListScheduleEnrollmentDeferrals<
+  TData = Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>,
+  TError = ValidationProblemDetails | void,
+>(
+  params?: ListScheduleEnrollmentDeferralsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>,
+          TError,
+          Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useListScheduleEnrollmentDeferrals<
+  TData = Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>,
+  TError = ValidationProblemDetails | void,
+>(
+  params?: ListScheduleEnrollmentDeferralsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+/**
+ * @summary Lists deferred asset cycles and their GSD review status
+ */
+
+export function useListScheduleEnrollmentDeferrals<
+  TData = Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>,
+  TError = ValidationProblemDetails | void,
+>(
+  params?: ListScheduleEnrollmentDeferralsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+} {
+  const queryOptions = getListScheduleEnrollmentDeferralsQueryOptions(
+    params,
+    options,
+  )
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+
+  return withQueryKey(query, queryOptions.queryKey)
+}
+
+/**
+ * @summary Marks one deferred asset cycle as reviewed by GSD
+ */
+export const reviewScheduleEnrollmentDeferral = (
+  assetId: string,
+  pmCycle: string,
+  scheduleEnrollmentDeferralReviewRequest: ScheduleEnrollmentDeferralReviewRequest,
+  signal?: AbortSignal,
+) => {
+  return customInstance<void>({
+    url: `/api/v1/schedules/enrollment-deferrals/${assetId}/${pmCycle}/review`,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    data: scheduleEnrollmentDeferralReviewRequest,
+    signal,
+  })
+}
+
+export const getReviewScheduleEnrollmentDeferralMutationOptions = <
+  TError = void,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof reviewScheduleEnrollmentDeferral>>,
+    TError,
+    {
+      assetId: string
+      pmCycle: string
+      data: ScheduleEnrollmentDeferralReviewRequest
+    },
+    TContext
+  >
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof reviewScheduleEnrollmentDeferral>>,
+  TError,
+  {
+    assetId: string
+    pmCycle: string
+    data: ScheduleEnrollmentDeferralReviewRequest
+  },
+  TContext
+> => {
+  const mutationKey = ['reviewScheduleEnrollmentDeferral']
+  const { mutation: mutationOptions } = options
+    ? options.mutation &&
+      'mutationKey' in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey } }
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof reviewScheduleEnrollmentDeferral>>,
+    {
+      assetId: string
+      pmCycle: string
+      data: ScheduleEnrollmentDeferralReviewRequest
+    }
+  > = (props) => {
+    const { assetId, pmCycle, data } = props ?? {}
+
+    return reviewScheduleEnrollmentDeferral(assetId, pmCycle, data)
+  }
+
+  return { mutationFn, ...mutationOptions }
+}
+
+export type ReviewScheduleEnrollmentDeferralMutationResult = NonNullable<
+  Awaited<ReturnType<typeof reviewScheduleEnrollmentDeferral>>
+>
+export type ReviewScheduleEnrollmentDeferralMutationBody =
+  ScheduleEnrollmentDeferralReviewRequest
+export type ReviewScheduleEnrollmentDeferralMutationError = void
+
+/**
+ * @summary Marks one deferred asset cycle as reviewed by GSD
+ */
+export const useReviewScheduleEnrollmentDeferral = <
+  TError = void,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof reviewScheduleEnrollmentDeferral>>,
+      TError,
+      {
+        assetId: string
+        pmCycle: string
+        data: ScheduleEnrollmentDeferralReviewRequest
+      },
+      TContext
+    >
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof reviewScheduleEnrollmentDeferral>>,
+  TError,
+  {
+    assetId: string
+    pmCycle: string
+    data: ScheduleEnrollmentDeferralReviewRequest
+  },
+  TContext
+> => {
+  return useMutation(
+    getReviewScheduleEnrollmentDeferralMutationOptions(options),
+    queryClient,
+  )
+}
+
+/**
+ * @summary Searches a bounded page of active Supervisors for GSD batch assignment
  */
 export const listScheduleSupervisorAssignmentOptions = (
   params?: ListScheduleSupervisorAssignmentOptionsParams,
@@ -2320,7 +3159,7 @@ export function useListScheduleSupervisorAssignmentOptions<
   queryKey: DataTag<QueryKey, TData, TError>
 }
 /**
- * @summary Searches a bounded page of active Supervisors for schedule assignment
+ * @summary Searches a bounded page of active Supervisors for GSD batch assignment
  */
 
 export function useListScheduleSupervisorAssignmentOptions<
@@ -2342,6 +3181,173 @@ export function useListScheduleSupervisorAssignmentOptions<
   queryKey: DataTag<QueryKey, TData, TError>
 } {
   const queryOptions = getListScheduleSupervisorAssignmentOptionsQueryOptions(
+    params,
+    options,
+  )
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+
+  return withQueryKey(query, queryOptions.queryKey)
+}
+
+/**
+ * @summary Searches a bounded page of active Inspectors for Supervisor batch assignment
+ */
+export const listScheduleWorkerAssignmentOptions = (
+  params?: ListScheduleWorkerAssignmentOptionsParams,
+  signal?: AbortSignal,
+) => {
+  return customInstance<ScheduleWorkerAssignmentOptionsResponse>({
+    url: `/api/v1/schedules/assignment-options`,
+    method: 'GET',
+    params,
+    signal,
+  })
+}
+
+export const getListScheduleWorkerAssignmentOptionsQueryKey = (
+  params?: ListScheduleWorkerAssignmentOptionsParams,
+) => {
+  return [
+    `/api/v1/schedules/assignment-options`,
+    ...(params ? [params] : []),
+  ] as const
+}
+
+export const getListScheduleWorkerAssignmentOptionsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listScheduleWorkerAssignmentOptions>>,
+  TError = ValidationProblemDetails | void,
+>(
+  params?: ListScheduleWorkerAssignmentOptionsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listScheduleWorkerAssignmentOptions>>,
+        TError,
+        TData
+      >
+    >
+  },
+) => {
+  const { query: queryOptions } = options ?? {}
+
+  const queryKey =
+    queryOptions?.queryKey ??
+    getListScheduleWorkerAssignmentOptionsQueryKey(params)
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listScheduleWorkerAssignmentOptions>>
+  > = ({ signal }) => listScheduleWorkerAssignmentOptions(params, signal)
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listScheduleWorkerAssignmentOptions>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListScheduleWorkerAssignmentOptionsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listScheduleWorkerAssignmentOptions>>
+>
+export type ListScheduleWorkerAssignmentOptionsQueryError =
+  ValidationProblemDetails | void
+
+export function useListScheduleWorkerAssignmentOptions<
+  TData = Awaited<ReturnType<typeof listScheduleWorkerAssignmentOptions>>,
+  TError = ValidationProblemDetails | void,
+>(
+  params: undefined | ListScheduleWorkerAssignmentOptionsParams,
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listScheduleWorkerAssignmentOptions>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listScheduleWorkerAssignmentOptions>>,
+          TError,
+          Awaited<ReturnType<typeof listScheduleWorkerAssignmentOptions>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useListScheduleWorkerAssignmentOptions<
+  TData = Awaited<ReturnType<typeof listScheduleWorkerAssignmentOptions>>,
+  TError = ValidationProblemDetails | void,
+>(
+  params?: ListScheduleWorkerAssignmentOptionsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listScheduleWorkerAssignmentOptions>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listScheduleWorkerAssignmentOptions>>,
+          TError,
+          Awaited<ReturnType<typeof listScheduleWorkerAssignmentOptions>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useListScheduleWorkerAssignmentOptions<
+  TData = Awaited<ReturnType<typeof listScheduleWorkerAssignmentOptions>>,
+  TError = ValidationProblemDetails | void,
+>(
+  params?: ListScheduleWorkerAssignmentOptionsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listScheduleWorkerAssignmentOptions>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+/**
+ * @summary Searches a bounded page of active Inspectors for Supervisor batch assignment
+ */
+
+export function useListScheduleWorkerAssignmentOptions<
+  TData = Awaited<ReturnType<typeof listScheduleWorkerAssignmentOptions>>,
+  TError = ValidationProblemDetails | void,
+>(
+  params?: ListScheduleWorkerAssignmentOptionsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listScheduleWorkerAssignmentOptions>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+} {
+  const queryOptions = getListScheduleWorkerAssignmentOptionsQueryOptions(
     params,
     options,
   )
@@ -2576,6 +3582,96 @@ export function useListSchedules<
 }
 
 /**
+ * @summary Assigns a Supervisor to all schedules in one PM batch
+ */
+export const assignScheduleBatchSupervisor = (
+  id: string,
+  assignScheduleSupervisorDto: AssignScheduleSupervisorDto,
+  signal?: AbortSignal,
+) => {
+  return customInstance<ScheduleAssignmentBatchResponse>({
+    url: `/api/v1/schedules/${id}/supervisor-assignment`,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    data: assignScheduleSupervisorDto,
+    signal,
+  })
+}
+
+export const getAssignScheduleBatchSupervisorMutationOptions = <
+  TError = ValidationProblemDetails | void | ProblemDetails,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof assignScheduleBatchSupervisor>>,
+    TError,
+    { id: string; data: AssignScheduleSupervisorDto },
+    TContext
+  >
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof assignScheduleBatchSupervisor>>,
+  TError,
+  { id: string; data: AssignScheduleSupervisorDto },
+  TContext
+> => {
+  const mutationKey = ['assignScheduleBatchSupervisor']
+  const { mutation: mutationOptions } = options
+    ? options.mutation &&
+      'mutationKey' in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey } }
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof assignScheduleBatchSupervisor>>,
+    { id: string; data: AssignScheduleSupervisorDto }
+  > = (props) => {
+    const { id, data } = props ?? {}
+
+    return assignScheduleBatchSupervisor(id, data)
+  }
+
+  return { mutationFn, ...mutationOptions }
+}
+
+export type AssignScheduleBatchSupervisorMutationResult = NonNullable<
+  Awaited<ReturnType<typeof assignScheduleBatchSupervisor>>
+>
+export type AssignScheduleBatchSupervisorMutationBody =
+  AssignScheduleSupervisorDto
+export type AssignScheduleBatchSupervisorMutationError =
+  ValidationProblemDetails | void | ProblemDetails
+
+/**
+ * @summary Assigns a Supervisor to all schedules in one PM batch
+ */
+export const useAssignScheduleBatchSupervisor = <
+  TError = ValidationProblemDetails | void | ProblemDetails,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof assignScheduleBatchSupervisor>>,
+      TError,
+      { id: string; data: AssignScheduleSupervisorDto },
+      TContext
+    >
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof assignScheduleBatchSupervisor>>,
+  TError,
+  { id: string; data: AssignScheduleSupervisorDto },
+  TContext
+> => {
+  return useMutation(
+    getAssignScheduleBatchSupervisorMutationOptions(options),
+    queryClient,
+  )
+}
+
+/**
  * @summary Assigns an Inspector to a PM batch owned by the authenticated Supervisor
  */
 export const assignScheduleBatchWorker = (
@@ -2665,93 +3761,474 @@ export const useAssignScheduleBatchWorker = <
 }
 
 /**
- * @summary Assigns a Supervisor to all schedules in one PM batch
+ * @summary Lists a bounded page of schedules for the web registry
  */
-export const assignScheduleBatchSupervisor = (
-  id: string,
-  assignScheduleSupervisorDto: AssignScheduleSupervisorDto,
+export const listScheduleRegistry = (
+  params?: ListScheduleRegistryParams,
   signal?: AbortSignal,
 ) => {
-  return customInstance<ScheduleAssignmentBatchResponse>({
-    url: `/api/v1/schedules/${id}/supervisor-assignment`,
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    data: assignScheduleSupervisorDto,
+  return customInstance<ScheduleRegistryPageResponse>({
+    url: `/api/v1/schedules/registry`,
+    method: 'GET',
+    params,
     signal,
   })
 }
 
-export const getAssignScheduleBatchSupervisorMutationOptions = <
-  TError = ValidationProblemDetails | void | ProblemDetails,
-  TContext = unknown,
->(options?: {
-  mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof assignScheduleBatchSupervisor>>,
-    TError,
-    { id: string; data: AssignScheduleSupervisorDto },
-    TContext
-  >
-}): UseMutationOptions<
-  Awaited<ReturnType<typeof assignScheduleBatchSupervisor>>,
-  TError,
-  { id: string; data: AssignScheduleSupervisorDto },
-  TContext
-> => {
-  const mutationKey = ['assignScheduleBatchSupervisor']
-  const { mutation: mutationOptions } = options
-    ? options.mutation &&
-      'mutationKey' in options.mutation &&
-      options.mutation.mutationKey
-      ? options
-      : { ...options, mutation: { ...options.mutation, mutationKey } }
-    : { mutation: { mutationKey } }
-
-  const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof assignScheduleBatchSupervisor>>,
-    { id: string; data: AssignScheduleSupervisorDto }
-  > = (props) => {
-    const { id, data } = props ?? {}
-
-    return assignScheduleBatchSupervisor(id, data)
-  }
-
-  return { mutationFn, ...mutationOptions }
+export const getListScheduleRegistryQueryKey = (
+  params?: ListScheduleRegistryParams,
+) => {
+  return [`/api/v1/schedules/registry`, ...(params ? [params] : [])] as const
 }
 
-export type AssignScheduleBatchSupervisorMutationResult = NonNullable<
-  Awaited<ReturnType<typeof assignScheduleBatchSupervisor>>
->
-export type AssignScheduleBatchSupervisorMutationBody =
-  AssignScheduleSupervisorDto
-export type AssignScheduleBatchSupervisorMutationError =
-  ValidationProblemDetails | void | ProblemDetails
-
-/**
- * @summary Assigns a Supervisor to all schedules in one PM batch
- */
-export const useAssignScheduleBatchSupervisor = <
-  TError = ValidationProblemDetails | void | ProblemDetails,
-  TContext = unknown,
+export const getListScheduleRegistryQueryOptions = <
+  TData = Awaited<ReturnType<typeof listScheduleRegistry>>,
+  TError = ValidationProblemDetails | void,
 >(
+  params?: ListScheduleRegistryParams,
   options?: {
-    mutation?: UseMutationOptions<
-      Awaited<ReturnType<typeof assignScheduleBatchSupervisor>>,
-      TError,
-      { id: string; data: AssignScheduleSupervisorDto },
-      TContext
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listScheduleRegistry>>,
+        TError,
+        TData
+      >
+    >
+  },
+) => {
+  const { query: queryOptions } = options ?? {}
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListScheduleRegistryQueryKey(params)
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listScheduleRegistry>>
+  > = ({ signal }) => listScheduleRegistry(params, signal)
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listScheduleRegistry>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListScheduleRegistryQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listScheduleRegistry>>
+>
+export type ListScheduleRegistryQueryError = ValidationProblemDetails | void
+
+export function useListScheduleRegistry<
+  TData = Awaited<ReturnType<typeof listScheduleRegistry>>,
+  TError = ValidationProblemDetails | void,
+>(
+  params: undefined | ListScheduleRegistryParams,
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listScheduleRegistry>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listScheduleRegistry>>,
+          TError,
+          Awaited<ReturnType<typeof listScheduleRegistry>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useListScheduleRegistry<
+  TData = Awaited<ReturnType<typeof listScheduleRegistry>>,
+  TError = ValidationProblemDetails | void,
+>(
+  params?: ListScheduleRegistryParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listScheduleRegistry>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listScheduleRegistry>>,
+          TError,
+          Awaited<ReturnType<typeof listScheduleRegistry>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useListScheduleRegistry<
+  TData = Awaited<ReturnType<typeof listScheduleRegistry>>,
+  TError = ValidationProblemDetails | void,
+>(
+  params?: ListScheduleRegistryParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listScheduleRegistry>>,
+        TError,
+        TData
+      >
     >
   },
   queryClient?: QueryClient,
-): UseMutationResult<
-  Awaited<ReturnType<typeof assignScheduleBatchSupervisor>>,
-  TError,
-  { id: string; data: AssignScheduleSupervisorDto },
-  TContext
-> => {
-  return useMutation(
-    getAssignScheduleBatchSupervisorMutationOptions(options),
-    queryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+/**
+ * @summary Lists a bounded page of schedules for the web registry
+ */
+
+export function useListScheduleRegistry<
+  TData = Awaited<ReturnType<typeof listScheduleRegistry>>,
+  TError = ValidationProblemDetails | void,
+>(
+  params?: ListScheduleRegistryParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listScheduleRegistry>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+} {
+  const queryOptions = getListScheduleRegistryQueryOptions(params, options)
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+
+  return withQueryKey(query, queryOptions.queryKey)
+}
+
+/**
+ * @summary Lists scoped schedule registry filter options
+ */
+export const getScheduleRegistryOptions = (
+  params?: GetScheduleRegistryOptionsParams,
+  signal?: AbortSignal,
+) => {
+  return customInstance<ScheduleRegistryOptionsResponse>({
+    url: `/api/v1/schedules/registry/options`,
+    method: 'GET',
+    params,
+    signal,
+  })
+}
+
+export const getGetScheduleRegistryOptionsQueryKey = (
+  params?: GetScheduleRegistryOptionsParams,
+) => {
+  return [
+    `/api/v1/schedules/registry/options`,
+    ...(params ? [params] : []),
+  ] as const
+}
+
+export const getGetScheduleRegistryOptionsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getScheduleRegistryOptions>>,
+  TError = ValidationProblemDetails | void,
+>(
+  params?: GetScheduleRegistryOptionsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getScheduleRegistryOptions>>,
+        TError,
+        TData
+      >
+    >
+  },
+) => {
+  const { query: queryOptions } = options ?? {}
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetScheduleRegistryOptionsQueryKey(params)
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getScheduleRegistryOptions>>
+  > = ({ signal }) => getScheduleRegistryOptions(params, signal)
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getScheduleRegistryOptions>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetScheduleRegistryOptionsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getScheduleRegistryOptions>>
+>
+export type GetScheduleRegistryOptionsQueryError =
+  ValidationProblemDetails | void
+
+export function useGetScheduleRegistryOptions<
+  TData = Awaited<ReturnType<typeof getScheduleRegistryOptions>>,
+  TError = ValidationProblemDetails | void,
+>(
+  params: undefined | GetScheduleRegistryOptionsParams,
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getScheduleRegistryOptions>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getScheduleRegistryOptions>>,
+          TError,
+          Awaited<ReturnType<typeof getScheduleRegistryOptions>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useGetScheduleRegistryOptions<
+  TData = Awaited<ReturnType<typeof getScheduleRegistryOptions>>,
+  TError = ValidationProblemDetails | void,
+>(
+  params?: GetScheduleRegistryOptionsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getScheduleRegistryOptions>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getScheduleRegistryOptions>>,
+          TError,
+          Awaited<ReturnType<typeof getScheduleRegistryOptions>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useGetScheduleRegistryOptions<
+  TData = Awaited<ReturnType<typeof getScheduleRegistryOptions>>,
+  TError = ValidationProblemDetails | void,
+>(
+  params?: GetScheduleRegistryOptionsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getScheduleRegistryOptions>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+/**
+ * @summary Lists scoped schedule registry filter options
+ */
+
+export function useGetScheduleRegistryOptions<
+  TData = Awaited<ReturnType<typeof getScheduleRegistryOptions>>,
+  TError = ValidationProblemDetails | void,
+>(
+  params?: GetScheduleRegistryOptionsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getScheduleRegistryOptions>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+} {
+  const queryOptions = getGetScheduleRegistryOptionsQueryOptions(
+    params,
+    options,
   )
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+
+  return withQueryKey(query, queryOptions.queryKey)
+}
+
+/**
+ * @summary Returns status totals for the authenticated schedule read scope
+ */
+export const getScheduleRegistrySummary = (signal?: AbortSignal) => {
+  return customInstance<ScheduleRegistrySummaryResponse>({
+    url: `/api/v1/schedules/registry/summary`,
+    method: 'GET',
+    signal,
+  })
+}
+
+export const getGetScheduleRegistrySummaryQueryKey = () => {
+  return [`/api/v1/schedules/registry/summary`] as const
+}
+
+export const getGetScheduleRegistrySummaryQueryOptions = <
+  TData = Awaited<ReturnType<typeof getScheduleRegistrySummary>>,
+  TError = void,
+>(options?: {
+  query?: Partial<
+    UseQueryOptions<
+      Awaited<ReturnType<typeof getScheduleRegistrySummary>>,
+      TError,
+      TData
+    >
+  >
+}) => {
+  const { query: queryOptions } = options ?? {}
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetScheduleRegistrySummaryQueryKey()
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getScheduleRegistrySummary>>
+  > = ({ signal }) => getScheduleRegistrySummary(signal)
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getScheduleRegistrySummary>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetScheduleRegistrySummaryQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getScheduleRegistrySummary>>
+>
+export type GetScheduleRegistrySummaryQueryError = void
+
+export function useGetScheduleRegistrySummary<
+  TData = Awaited<ReturnType<typeof getScheduleRegistrySummary>>,
+  TError = void,
+>(
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getScheduleRegistrySummary>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getScheduleRegistrySummary>>,
+          TError,
+          Awaited<ReturnType<typeof getScheduleRegistrySummary>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useGetScheduleRegistrySummary<
+  TData = Awaited<ReturnType<typeof getScheduleRegistrySummary>>,
+  TError = void,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getScheduleRegistrySummary>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getScheduleRegistrySummary>>,
+          TError,
+          Awaited<ReturnType<typeof getScheduleRegistrySummary>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useGetScheduleRegistrySummary<
+  TData = Awaited<ReturnType<typeof getScheduleRegistrySummary>>,
+  TError = void,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getScheduleRegistrySummary>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+/**
+ * @summary Returns status totals for the authenticated schedule read scope
+ */
+
+export function useGetScheduleRegistrySummary<
+  TData = Awaited<ReturnType<typeof getScheduleRegistrySummary>>,
+  TError = void,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getScheduleRegistrySummary>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+} {
+  const queryOptions = getGetScheduleRegistrySummaryQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+
+  return withQueryKey(query, queryOptions.queryKey)
 }
 
 /**
@@ -3140,6 +4617,724 @@ export function useGetInspectionHistory<
 }
 
 /**
+ * @summary Gets the manually recorded WMS PM number and its change audit
+ */
+export const getInspectionWmsReferral = (id: string, signal?: AbortSignal) => {
+  return customInstance<InspectionWmsReferralDetailResponse>({
+    url: `/api/v1/inspections/${id}/wms-referral`,
+    method: 'GET',
+    signal,
+  })
+}
+
+export const getGetInspectionWmsReferralQueryKey = (id: string) => {
+  return [`/api/v1/inspections/${id}/wms-referral`] as const
+}
+
+export const getGetInspectionWmsReferralQueryOptions = <
+  TData = Awaited<ReturnType<typeof getInspectionWmsReferral>>,
+  TError = void | ProblemDetails,
+>(
+  id: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getInspectionWmsReferral>>,
+        TError,
+        TData
+      >
+    >
+  },
+) => {
+  const { query: queryOptions } = options ?? {}
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetInspectionWmsReferralQueryKey(id)
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getInspectionWmsReferral>>
+  > = ({ signal }) => getInspectionWmsReferral(id, signal)
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: id !== null && id !== undefined,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getInspectionWmsReferral>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetInspectionWmsReferralQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getInspectionWmsReferral>>
+>
+export type GetInspectionWmsReferralQueryError = void | ProblemDetails
+
+export function useGetInspectionWmsReferral<
+  TData = Awaited<ReturnType<typeof getInspectionWmsReferral>>,
+  TError = void | ProblemDetails,
+>(
+  id: string,
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getInspectionWmsReferral>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getInspectionWmsReferral>>,
+          TError,
+          Awaited<ReturnType<typeof getInspectionWmsReferral>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useGetInspectionWmsReferral<
+  TData = Awaited<ReturnType<typeof getInspectionWmsReferral>>,
+  TError = void | ProblemDetails,
+>(
+  id: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getInspectionWmsReferral>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getInspectionWmsReferral>>,
+          TError,
+          Awaited<ReturnType<typeof getInspectionWmsReferral>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useGetInspectionWmsReferral<
+  TData = Awaited<ReturnType<typeof getInspectionWmsReferral>>,
+  TError = void | ProblemDetails,
+>(
+  id: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getInspectionWmsReferral>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+/**
+ * @summary Gets the manually recorded WMS PM number and its change audit
+ */
+
+export function useGetInspectionWmsReferral<
+  TData = Awaited<ReturnType<typeof getInspectionWmsReferral>>,
+  TError = void | ProblemDetails,
+>(
+  id: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getInspectionWmsReferral>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+} {
+  const queryOptions = getGetInspectionWmsReferralQueryOptions(id, options)
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+
+  return withQueryKey(query, queryOptions.queryKey)
+}
+
+/**
+ * @summary Records or corrects the external WMS PM number without changing the inspection
+ */
+export const updateInspectionWmsReferral = (
+  id: string,
+  updateInspectionWmsReferralDto: UpdateInspectionWmsReferralDto,
+  signal?: AbortSignal,
+) => {
+  return customInstance<InspectionWmsReferralResponse>({
+    url: `/api/v1/inspections/${id}/wms-referral`,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    data: updateInspectionWmsReferralDto,
+    signal,
+  })
+}
+
+export const getUpdateInspectionWmsReferralMutationOptions = <
+  TError = ValidationProblemDetails | void | ProblemDetails,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateInspectionWmsReferral>>,
+    TError,
+    { id: string; data: UpdateInspectionWmsReferralDto },
+    TContext
+  >
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateInspectionWmsReferral>>,
+  TError,
+  { id: string; data: UpdateInspectionWmsReferralDto },
+  TContext
+> => {
+  const mutationKey = ['updateInspectionWmsReferral']
+  const { mutation: mutationOptions } = options
+    ? options.mutation &&
+      'mutationKey' in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey } }
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateInspectionWmsReferral>>,
+    { id: string; data: UpdateInspectionWmsReferralDto }
+  > = (props) => {
+    const { id, data } = props ?? {}
+
+    return updateInspectionWmsReferral(id, data)
+  }
+
+  return { mutationFn, ...mutationOptions }
+}
+
+export type UpdateInspectionWmsReferralMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateInspectionWmsReferral>>
+>
+export type UpdateInspectionWmsReferralMutationBody =
+  UpdateInspectionWmsReferralDto
+export type UpdateInspectionWmsReferralMutationError =
+  ValidationProblemDetails | void | ProblemDetails
+
+/**
+ * @summary Records or corrects the external WMS PM number without changing the inspection
+ */
+export const useUpdateInspectionWmsReferral = <
+  TError = ValidationProblemDetails | void | ProblemDetails,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof updateInspectionWmsReferral>>,
+      TError,
+      { id: string; data: UpdateInspectionWmsReferralDto },
+      TContext
+    >
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof updateInspectionWmsReferral>>,
+  TError,
+  { id: string; data: UpdateInspectionWmsReferralDto },
+  TContext
+> => {
+  return useMutation(
+    getUpdateInspectionWmsReferralMutationOptions(options),
+    queryClient,
+  )
+}
+
+/**
+ * @summary Lists a bounded page of acknowledged or legacy official inspections for the web registry
+ */
+export const listInspectionRegistry = (
+  params?: ListInspectionRegistryParams,
+  signal?: AbortSignal,
+) => {
+  return customInstance<InspectionRegistryPageResponse>({
+    url: `/api/v1/inspections/registry`,
+    method: 'GET',
+    params,
+    signal,
+  })
+}
+
+export const getListInspectionRegistryQueryKey = (
+  params?: ListInspectionRegistryParams,
+) => {
+  return [`/api/v1/inspections/registry`, ...(params ? [params] : [])] as const
+}
+
+export const getListInspectionRegistryQueryOptions = <
+  TData = Awaited<ReturnType<typeof listInspectionRegistry>>,
+  TError = ValidationProblemDetails,
+>(
+  params?: ListInspectionRegistryParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listInspectionRegistry>>,
+        TError,
+        TData
+      >
+    >
+  },
+) => {
+  const { query: queryOptions } = options ?? {}
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListInspectionRegistryQueryKey(params)
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listInspectionRegistry>>
+  > = ({ signal }) => listInspectionRegistry(params, signal)
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listInspectionRegistry>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListInspectionRegistryQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listInspectionRegistry>>
+>
+export type ListInspectionRegistryQueryError = ValidationProblemDetails
+
+export function useListInspectionRegistry<
+  TData = Awaited<ReturnType<typeof listInspectionRegistry>>,
+  TError = ValidationProblemDetails,
+>(
+  params: undefined | ListInspectionRegistryParams,
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listInspectionRegistry>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listInspectionRegistry>>,
+          TError,
+          Awaited<ReturnType<typeof listInspectionRegistry>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useListInspectionRegistry<
+  TData = Awaited<ReturnType<typeof listInspectionRegistry>>,
+  TError = ValidationProblemDetails,
+>(
+  params?: ListInspectionRegistryParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listInspectionRegistry>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listInspectionRegistry>>,
+          TError,
+          Awaited<ReturnType<typeof listInspectionRegistry>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useListInspectionRegistry<
+  TData = Awaited<ReturnType<typeof listInspectionRegistry>>,
+  TError = ValidationProblemDetails,
+>(
+  params?: ListInspectionRegistryParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listInspectionRegistry>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+/**
+ * @summary Lists a bounded page of acknowledged or legacy official inspections for the web registry
+ */
+
+export function useListInspectionRegistry<
+  TData = Awaited<ReturnType<typeof listInspectionRegistry>>,
+  TError = ValidationProblemDetails,
+>(
+  params?: ListInspectionRegistryParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listInspectionRegistry>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+} {
+  const queryOptions = getListInspectionRegistryQueryOptions(params, options)
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+
+  return withQueryKey(query, queryOptions.queryKey)
+}
+
+/**
+ * @summary Lists lightweight official inspection filter options
+ */
+export const getInspectionRegistryOptions = (
+  params?: GetInspectionRegistryOptionsParams,
+  signal?: AbortSignal,
+) => {
+  return customInstance<InspectionRegistryOptionsResponse>({
+    url: `/api/v1/inspections/registry/options`,
+    method: 'GET',
+    params,
+    signal,
+  })
+}
+
+export const getGetInspectionRegistryOptionsQueryKey = (
+  params?: GetInspectionRegistryOptionsParams,
+) => {
+  return [
+    `/api/v1/inspections/registry/options`,
+    ...(params ? [params] : []),
+  ] as const
+}
+
+export const getGetInspectionRegistryOptionsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getInspectionRegistryOptions>>,
+  TError = ValidationProblemDetails,
+>(
+  params?: GetInspectionRegistryOptionsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getInspectionRegistryOptions>>,
+        TError,
+        TData
+      >
+    >
+  },
+) => {
+  const { query: queryOptions } = options ?? {}
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetInspectionRegistryOptionsQueryKey(params)
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getInspectionRegistryOptions>>
+  > = ({ signal }) => getInspectionRegistryOptions(params, signal)
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getInspectionRegistryOptions>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetInspectionRegistryOptionsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getInspectionRegistryOptions>>
+>
+export type GetInspectionRegistryOptionsQueryError = ValidationProblemDetails
+
+export function useGetInspectionRegistryOptions<
+  TData = Awaited<ReturnType<typeof getInspectionRegistryOptions>>,
+  TError = ValidationProblemDetails,
+>(
+  params: undefined | GetInspectionRegistryOptionsParams,
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getInspectionRegistryOptions>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getInspectionRegistryOptions>>,
+          TError,
+          Awaited<ReturnType<typeof getInspectionRegistryOptions>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useGetInspectionRegistryOptions<
+  TData = Awaited<ReturnType<typeof getInspectionRegistryOptions>>,
+  TError = ValidationProblemDetails,
+>(
+  params?: GetInspectionRegistryOptionsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getInspectionRegistryOptions>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getInspectionRegistryOptions>>,
+          TError,
+          Awaited<ReturnType<typeof getInspectionRegistryOptions>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useGetInspectionRegistryOptions<
+  TData = Awaited<ReturnType<typeof getInspectionRegistryOptions>>,
+  TError = ValidationProblemDetails,
+>(
+  params?: GetInspectionRegistryOptionsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getInspectionRegistryOptions>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+/**
+ * @summary Lists lightweight official inspection filter options
+ */
+
+export function useGetInspectionRegistryOptions<
+  TData = Awaited<ReturnType<typeof getInspectionRegistryOptions>>,
+  TError = ValidationProblemDetails,
+>(
+  params?: GetInspectionRegistryOptionsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getInspectionRegistryOptions>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+} {
+  const queryOptions = getGetInspectionRegistryOptionsQueryOptions(
+    params,
+    options,
+  )
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+
+  return withQueryKey(query, queryOptions.queryKey)
+}
+
+/**
+ * @summary Returns overall official inspection totals
+ */
+export const getInspectionRegistrySummary = (signal?: AbortSignal) => {
+  return customInstance<InspectionRegistrySummaryResponse>({
+    url: `/api/v1/inspections/registry/summary`,
+    method: 'GET',
+    signal,
+  })
+}
+
+export const getGetInspectionRegistrySummaryQueryKey = () => {
+  return [`/api/v1/inspections/registry/summary`] as const
+}
+
+export const getGetInspectionRegistrySummaryQueryOptions = <
+  TData = Awaited<ReturnType<typeof getInspectionRegistrySummary>>,
+  TError = unknown,
+>(options?: {
+  query?: Partial<
+    UseQueryOptions<
+      Awaited<ReturnType<typeof getInspectionRegistrySummary>>,
+      TError,
+      TData
+    >
+  >
+}) => {
+  const { query: queryOptions } = options ?? {}
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetInspectionRegistrySummaryQueryKey()
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getInspectionRegistrySummary>>
+  > = ({ signal }) => getInspectionRegistrySummary(signal)
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getInspectionRegistrySummary>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetInspectionRegistrySummaryQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getInspectionRegistrySummary>>
+>
+export type GetInspectionRegistrySummaryQueryError = unknown
+
+export function useGetInspectionRegistrySummary<
+  TData = Awaited<ReturnType<typeof getInspectionRegistrySummary>>,
+  TError = unknown,
+>(
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getInspectionRegistrySummary>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getInspectionRegistrySummary>>,
+          TError,
+          Awaited<ReturnType<typeof getInspectionRegistrySummary>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useGetInspectionRegistrySummary<
+  TData = Awaited<ReturnType<typeof getInspectionRegistrySummary>>,
+  TError = unknown,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getInspectionRegistrySummary>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getInspectionRegistrySummary>>,
+          TError,
+          Awaited<ReturnType<typeof getInspectionRegistrySummary>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useGetInspectionRegistrySummary<
+  TData = Awaited<ReturnType<typeof getInspectionRegistrySummary>>,
+  TError = unknown,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getInspectionRegistrySummary>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+/**
+ * @summary Returns overall official inspection totals
+ */
+
+export function useGetInspectionRegistrySummary<
+  TData = Awaited<ReturnType<typeof getInspectionRegistrySummary>>,
+  TError = unknown,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getInspectionRegistrySummary>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+} {
+  const queryOptions = getGetInspectionRegistrySummaryQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+
+  return withQueryKey(query, queryOptions.queryKey)
+}
+
+/**
  * @summary Lists inspection records using supported metadata filters
  */
 export const listInspections = (
@@ -3433,6 +5628,95 @@ export function useGetInspection<
 }
 
 /**
+ * @summary Uploads or replaces one private JPEG photo for a draft inspection row
+ */
+export const replaceInspectionPhotoEvidence = (
+  id: string,
+  replaceInspectionPhotoEvidenceBody: Blob,
+  signal?: AbortSignal,
+) => {
+  return customInstance<void>({
+    url: `/api/v1/inspections/${id}/photo`,
+    method: 'PUT',
+    headers: { 'Content-Type': 'image/jpeg' },
+    data: replaceInspectionPhotoEvidenceBody,
+    signal,
+  })
+}
+
+export const getReplaceInspectionPhotoEvidenceMutationOptions = <
+  TError = ValidationProblemDetails | void,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof replaceInspectionPhotoEvidence>>,
+    TError,
+    { id: string; data: Blob },
+    TContext
+  >
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof replaceInspectionPhotoEvidence>>,
+  TError,
+  { id: string; data: Blob },
+  TContext
+> => {
+  const mutationKey = ['replaceInspectionPhotoEvidence']
+  const { mutation: mutationOptions } = options
+    ? options.mutation &&
+      'mutationKey' in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey } }
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof replaceInspectionPhotoEvidence>>,
+    { id: string; data: Blob }
+  > = (props) => {
+    const { id, data } = props ?? {}
+
+    return replaceInspectionPhotoEvidence(id, data)
+  }
+
+  return { mutationFn, ...mutationOptions }
+}
+
+export type ReplaceInspectionPhotoEvidenceMutationResult = NonNullable<
+  Awaited<ReturnType<typeof replaceInspectionPhotoEvidence>>
+>
+export type ReplaceInspectionPhotoEvidenceMutationBody = Blob
+export type ReplaceInspectionPhotoEvidenceMutationError =
+  ValidationProblemDetails | void
+
+/**
+ * @summary Uploads or replaces one private JPEG photo for a draft inspection row
+ */
+export const useReplaceInspectionPhotoEvidence = <
+  TError = ValidationProblemDetails | void,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof replaceInspectionPhotoEvidence>>,
+      TError,
+      { id: string; data: Blob },
+      TContext
+    >
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof replaceInspectionPhotoEvidence>>,
+  TError,
+  { id: string; data: Blob },
+  TContext
+> => {
+  return useMutation(
+    getReplaceInspectionPhotoEvidenceMutationOptions(options),
+    queryClient,
+  )
+}
+
+/**
  * @summary Gets authorized private JPEG photo evidence for an inspection row
  */
 export const getInspectionPhotoEvidence = (
@@ -3595,95 +5879,6 @@ export function useGetInspectionPhotoEvidence<
 }
 
 /**
- * @summary Uploads or replaces one private JPEG photo for a draft inspection row
- */
-export const replaceInspectionPhotoEvidence = (
-  id: string,
-  replaceInspectionPhotoEvidenceBody: Blob,
-  signal?: AbortSignal,
-) => {
-  return customInstance<void>({
-    url: `/api/v1/inspections/${id}/photo`,
-    method: 'PUT',
-    headers: { 'Content-Type': 'image/jpeg' },
-    data: replaceInspectionPhotoEvidenceBody,
-    signal,
-  })
-}
-
-export const getReplaceInspectionPhotoEvidenceMutationOptions = <
-  TError = ValidationProblemDetails | void,
-  TContext = unknown,
->(options?: {
-  mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof replaceInspectionPhotoEvidence>>,
-    TError,
-    { id: string; data: Blob },
-    TContext
-  >
-}): UseMutationOptions<
-  Awaited<ReturnType<typeof replaceInspectionPhotoEvidence>>,
-  TError,
-  { id: string; data: Blob },
-  TContext
-> => {
-  const mutationKey = ['replaceInspectionPhotoEvidence']
-  const { mutation: mutationOptions } = options
-    ? options.mutation &&
-      'mutationKey' in options.mutation &&
-      options.mutation.mutationKey
-      ? options
-      : { ...options, mutation: { ...options.mutation, mutationKey } }
-    : { mutation: { mutationKey } }
-
-  const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof replaceInspectionPhotoEvidence>>,
-    { id: string; data: Blob }
-  > = (props) => {
-    const { id, data } = props ?? {}
-
-    return replaceInspectionPhotoEvidence(id, data)
-  }
-
-  return { mutationFn, ...mutationOptions }
-}
-
-export type ReplaceInspectionPhotoEvidenceMutationResult = NonNullable<
-  Awaited<ReturnType<typeof replaceInspectionPhotoEvidence>>
->
-export type ReplaceInspectionPhotoEvidenceMutationBody = Blob
-export type ReplaceInspectionPhotoEvidenceMutationError =
-  ValidationProblemDetails | void
-
-/**
- * @summary Uploads or replaces one private JPEG photo for a draft inspection row
- */
-export const useReplaceInspectionPhotoEvidence = <
-  TError = ValidationProblemDetails | void,
-  TContext = unknown,
->(
-  options?: {
-    mutation?: UseMutationOptions<
-      Awaited<ReturnType<typeof replaceInspectionPhotoEvidence>>,
-      TError,
-      { id: string; data: Blob },
-      TContext
-    >
-  },
-  queryClient?: QueryClient,
-): UseMutationResult<
-  Awaited<ReturnType<typeof replaceInspectionPhotoEvidence>>,
-  TError,
-  { id: string; data: Blob },
-  TContext
-> => {
-  return useMutation(
-    getReplaceInspectionPhotoEvidenceMutationOptions(options),
-    queryClient,
-  )
-}
-
-/**
  * @summary Removes optional photo evidence from a draft inspection row
  */
 export const deleteInspectionPhotoEvidence = (
@@ -3764,254 +5959,6 @@ export const useDeleteInspectionPhotoEvidence = <
 > => {
   return useMutation(
     getDeleteInspectionPhotoEvidenceMutationOptions(options),
-    queryClient,
-  )
-}
-
-/**
- * @summary Gets the manually recorded WMS PM number and its change audit
- */
-export const getInspectionWmsReferral = (id: string, signal?: AbortSignal) => {
-  return customInstance<InspectionWmsReferralDetailResponse>({
-    url: `/api/v1/inspections/${id}/wms-referral`,
-    method: 'GET',
-    signal,
-  })
-}
-
-export const getGetInspectionWmsReferralQueryKey = (id: string) => {
-  return [`/api/v1/inspections/${id}/wms-referral`] as const
-}
-
-export const getGetInspectionWmsReferralQueryOptions = <
-  TData = Awaited<ReturnType<typeof getInspectionWmsReferral>>,
-  TError = void | ProblemDetails,
->(
-  id: string,
-  options?: {
-    query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof getInspectionWmsReferral>>,
-        TError,
-        TData
-      >
-    >
-  },
-) => {
-  const { query: queryOptions } = options ?? {}
-
-  const queryKey =
-    queryOptions?.queryKey ?? getGetInspectionWmsReferralQueryKey(id)
-
-  const queryFn: QueryFunction<
-    Awaited<ReturnType<typeof getInspectionWmsReferral>>
-  > = ({ signal }) => getInspectionWmsReferral(id, signal)
-
-  return {
-    queryKey,
-    queryFn,
-    enabled: id !== null && id !== undefined,
-    ...queryOptions,
-  } as UseQueryOptions<
-    Awaited<ReturnType<typeof getInspectionWmsReferral>>,
-    TError,
-    TData
-  > & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type GetInspectionWmsReferralQueryResult = NonNullable<
-  Awaited<ReturnType<typeof getInspectionWmsReferral>>
->
-export type GetInspectionWmsReferralQueryError = void | ProblemDetails
-
-export function useGetInspectionWmsReferral<
-  TData = Awaited<ReturnType<typeof getInspectionWmsReferral>>,
-  TError = void | ProblemDetails,
->(
-  id: string,
-  options: {
-    query: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof getInspectionWmsReferral>>,
-        TError,
-        TData
-      >
-    > &
-      Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getInspectionWmsReferral>>,
-          TError,
-          Awaited<ReturnType<typeof getInspectionWmsReferral>>
-        >,
-        'initialData'
-      >
-  },
-  queryClient?: QueryClient,
-): DefinedUseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>
-}
-export function useGetInspectionWmsReferral<
-  TData = Awaited<ReturnType<typeof getInspectionWmsReferral>>,
-  TError = void | ProblemDetails,
->(
-  id: string,
-  options?: {
-    query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof getInspectionWmsReferral>>,
-        TError,
-        TData
-      >
-    > &
-      Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getInspectionWmsReferral>>,
-          TError,
-          Awaited<ReturnType<typeof getInspectionWmsReferral>>
-        >,
-        'initialData'
-      >
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>
-}
-export function useGetInspectionWmsReferral<
-  TData = Awaited<ReturnType<typeof getInspectionWmsReferral>>,
-  TError = void | ProblemDetails,
->(
-  id: string,
-  options?: {
-    query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof getInspectionWmsReferral>>,
-        TError,
-        TData
-      >
-    >
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>
-}
-/**
- * @summary Gets the manually recorded WMS PM number and its change audit
- */
-
-export function useGetInspectionWmsReferral<
-  TData = Awaited<ReturnType<typeof getInspectionWmsReferral>>,
-  TError = void | ProblemDetails,
->(
-  id: string,
-  options?: {
-    query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof getInspectionWmsReferral>>,
-        TError,
-        TData
-      >
-    >
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>
-} {
-  const queryOptions = getGetInspectionWmsReferralQueryOptions(id, options)
-
-  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
-    TData,
-    TError
-  > & { queryKey: DataTag<QueryKey, TData, TError> }
-
-  return withQueryKey(query, queryOptions.queryKey)
-}
-
-/**
- * @summary Records or corrects the external WMS PM number without changing the inspection
- */
-export const updateInspectionWmsReferral = (
-  id: string,
-  updateInspectionWmsReferralDto: UpdateInspectionWmsReferralDto,
-  signal?: AbortSignal,
-) => {
-  return customInstance<InspectionWmsReferralResponse>({
-    url: `/api/v1/inspections/${id}/wms-referral`,
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    data: updateInspectionWmsReferralDto,
-    signal,
-  })
-}
-
-export const getUpdateInspectionWmsReferralMutationOptions = <
-  TError = ValidationProblemDetails | void | ProblemDetails,
-  TContext = unknown,
->(options?: {
-  mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof updateInspectionWmsReferral>>,
-    TError,
-    { id: string; data: UpdateInspectionWmsReferralDto },
-    TContext
-  >
-}): UseMutationOptions<
-  Awaited<ReturnType<typeof updateInspectionWmsReferral>>,
-  TError,
-  { id: string; data: UpdateInspectionWmsReferralDto },
-  TContext
-> => {
-  const mutationKey = ['updateInspectionWmsReferral']
-  const { mutation: mutationOptions } = options
-    ? options.mutation &&
-      'mutationKey' in options.mutation &&
-      options.mutation.mutationKey
-      ? options
-      : { ...options, mutation: { ...options.mutation, mutationKey } }
-    : { mutation: { mutationKey } }
-
-  const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof updateInspectionWmsReferral>>,
-    { id: string; data: UpdateInspectionWmsReferralDto }
-  > = (props) => {
-    const { id, data } = props ?? {}
-
-    return updateInspectionWmsReferral(id, data)
-  }
-
-  return { mutationFn, ...mutationOptions }
-}
-
-export type UpdateInspectionWmsReferralMutationResult = NonNullable<
-  Awaited<ReturnType<typeof updateInspectionWmsReferral>>
->
-export type UpdateInspectionWmsReferralMutationBody =
-  UpdateInspectionWmsReferralDto
-export type UpdateInspectionWmsReferralMutationError =
-  ValidationProblemDetails | void | ProblemDetails
-
-/**
- * @summary Records or corrects the external WMS PM number without changing the inspection
- */
-export const useUpdateInspectionWmsReferral = <
-  TError = ValidationProblemDetails | void | ProblemDetails,
-  TContext = unknown,
->(
-  options?: {
-    mutation?: UseMutationOptions<
-      Awaited<ReturnType<typeof updateInspectionWmsReferral>>,
-      TError,
-      { id: string; data: UpdateInspectionWmsReferralDto },
-      TContext
-    >
-  },
-  queryClient?: QueryClient,
-): UseMutationResult<
-  Awaited<ReturnType<typeof updateInspectionWmsReferral>>,
-  TError,
-  { id: string; data: UpdateInspectionWmsReferralDto },
-  TContext
-> => {
-  return useMutation(
-    getUpdateInspectionWmsReferralMutationOptions(options),
     queryClient,
   )
 }
@@ -5383,6 +7330,757 @@ export function useGetPmPeriodDashboard<
 }
 
 /**
+ * @summary Returns the versioned PM execution measure, dimension and field catalog
+ */
+export const getPmAnalyticsV3Catalog = (signal?: AbortSignal) => {
+  return customInstance<PmAnalyticsV3CatalogResponse>({
+    url: `/api/v1/analytics/pm/v3/catalog`,
+    method: 'GET',
+    signal,
+  })
+}
+
+export const getGetPmAnalyticsV3CatalogQueryKey = () => {
+  return [`/api/v1/analytics/pm/v3/catalog`] as const
+}
+
+export const getGetPmAnalyticsV3CatalogQueryOptions = <
+  TData = Awaited<ReturnType<typeof getPmAnalyticsV3Catalog>>,
+  TError = ProblemDetails,
+>(options?: {
+  query?: Partial<
+    UseQueryOptions<
+      Awaited<ReturnType<typeof getPmAnalyticsV3Catalog>>,
+      TError,
+      TData
+    >
+  >
+}) => {
+  const { query: queryOptions } = options ?? {}
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetPmAnalyticsV3CatalogQueryKey()
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getPmAnalyticsV3Catalog>>
+  > = ({ signal }) => getPmAnalyticsV3Catalog(signal)
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getPmAnalyticsV3Catalog>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetPmAnalyticsV3CatalogQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getPmAnalyticsV3Catalog>>
+>
+export type GetPmAnalyticsV3CatalogQueryError = ProblemDetails
+
+export function useGetPmAnalyticsV3Catalog<
+  TData = Awaited<ReturnType<typeof getPmAnalyticsV3Catalog>>,
+  TError = ProblemDetails,
+>(
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getPmAnalyticsV3Catalog>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getPmAnalyticsV3Catalog>>,
+          TError,
+          Awaited<ReturnType<typeof getPmAnalyticsV3Catalog>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useGetPmAnalyticsV3Catalog<
+  TData = Awaited<ReturnType<typeof getPmAnalyticsV3Catalog>>,
+  TError = ProblemDetails,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getPmAnalyticsV3Catalog>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getPmAnalyticsV3Catalog>>,
+          TError,
+          Awaited<ReturnType<typeof getPmAnalyticsV3Catalog>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useGetPmAnalyticsV3Catalog<
+  TData = Awaited<ReturnType<typeof getPmAnalyticsV3Catalog>>,
+  TError = ProblemDetails,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getPmAnalyticsV3Catalog>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+/**
+ * @summary Returns the versioned PM execution measure, dimension and field catalog
+ */
+
+export function useGetPmAnalyticsV3Catalog<
+  TData = Awaited<ReturnType<typeof getPmAnalyticsV3Catalog>>,
+  TError = ProblemDetails,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getPmAnalyticsV3Catalog>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+} {
+  const queryOptions = getGetPmAnalyticsV3CatalogQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+
+  return withQueryKey(query, queryOptions.queryKey)
+}
+
+/**
+ * @summary Searches current asset catalog values for a V3 population filter
+ */
+export const getPmAnalyticsV3FilterValues = (
+  params?: GetPmAnalyticsV3FilterValuesParams,
+  signal?: AbortSignal,
+) => {
+  return customInstance<PmAnalyticsV3FilterValuesResponse>({
+    url: `/api/v1/analytics/pm/v3/catalog/values`,
+    method: 'GET',
+    params,
+    signal,
+  })
+}
+
+export const getGetPmAnalyticsV3FilterValuesQueryKey = (
+  params?: GetPmAnalyticsV3FilterValuesParams,
+) => {
+  return [
+    `/api/v1/analytics/pm/v3/catalog/values`,
+    ...(params ? [params] : []),
+  ] as const
+}
+
+export const getGetPmAnalyticsV3FilterValuesQueryOptions = <
+  TData = Awaited<ReturnType<typeof getPmAnalyticsV3FilterValues>>,
+  TError = ValidationProblemDetails | ProblemDetails,
+>(
+  params?: GetPmAnalyticsV3FilterValuesParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getPmAnalyticsV3FilterValues>>,
+        TError,
+        TData
+      >
+    >
+  },
+) => {
+  const { query: queryOptions } = options ?? {}
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetPmAnalyticsV3FilterValuesQueryKey(params)
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getPmAnalyticsV3FilterValues>>
+  > = ({ signal }) => getPmAnalyticsV3FilterValues(params, signal)
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getPmAnalyticsV3FilterValues>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetPmAnalyticsV3FilterValuesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getPmAnalyticsV3FilterValues>>
+>
+export type GetPmAnalyticsV3FilterValuesQueryError =
+  ValidationProblemDetails | ProblemDetails
+
+export function useGetPmAnalyticsV3FilterValues<
+  TData = Awaited<ReturnType<typeof getPmAnalyticsV3FilterValues>>,
+  TError = ValidationProblemDetails | ProblemDetails,
+>(
+  params: undefined | GetPmAnalyticsV3FilterValuesParams,
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getPmAnalyticsV3FilterValues>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getPmAnalyticsV3FilterValues>>,
+          TError,
+          Awaited<ReturnType<typeof getPmAnalyticsV3FilterValues>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useGetPmAnalyticsV3FilterValues<
+  TData = Awaited<ReturnType<typeof getPmAnalyticsV3FilterValues>>,
+  TError = ValidationProblemDetails | ProblemDetails,
+>(
+  params?: GetPmAnalyticsV3FilterValuesParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getPmAnalyticsV3FilterValues>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getPmAnalyticsV3FilterValues>>,
+          TError,
+          Awaited<ReturnType<typeof getPmAnalyticsV3FilterValues>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useGetPmAnalyticsV3FilterValues<
+  TData = Awaited<ReturnType<typeof getPmAnalyticsV3FilterValues>>,
+  TError = ValidationProblemDetails | ProblemDetails,
+>(
+  params?: GetPmAnalyticsV3FilterValuesParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getPmAnalyticsV3FilterValues>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+/**
+ * @summary Searches current asset catalog values for a V3 population filter
+ */
+
+export function useGetPmAnalyticsV3FilterValues<
+  TData = Awaited<ReturnType<typeof getPmAnalyticsV3FilterValues>>,
+  TError = ValidationProblemDetails | ProblemDetails,
+>(
+  params?: GetPmAnalyticsV3FilterValuesParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getPmAnalyticsV3FilterValues>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+} {
+  const queryOptions = getGetPmAnalyticsV3FilterValuesQueryOptions(
+    params,
+    options,
+  )
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+
+  return withQueryKey(query, queryOptions.queryKey)
+}
+
+/**
+ * @summary Interprets a bounded preventive-maintenance analytics question using the V2 deterministic grammar
+ */
+export const interpretPmAnalyticsV2Question = (
+  pmAnalyticsV2InterpretRequest: PmAnalyticsV2InterpretRequest,
+  signal?: AbortSignal,
+) => {
+  return customInstance<PmAnalyticsV2InterpretationResponse>({
+    url: `/api/v1/analytics/pm/v2/interpret`,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    data: pmAnalyticsV2InterpretRequest,
+    signal,
+  })
+}
+
+export const getInterpretPmAnalyticsV2QuestionMutationOptions = <
+  TError = ValidationProblemDetails | ProblemDetails,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof interpretPmAnalyticsV2Question>>,
+    TError,
+    { data: PmAnalyticsV2InterpretRequest },
+    TContext
+  >
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof interpretPmAnalyticsV2Question>>,
+  TError,
+  { data: PmAnalyticsV2InterpretRequest },
+  TContext
+> => {
+  const mutationKey = ['interpretPmAnalyticsV2Question']
+  const { mutation: mutationOptions } = options
+    ? options.mutation &&
+      'mutationKey' in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey } }
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof interpretPmAnalyticsV2Question>>,
+    { data: PmAnalyticsV2InterpretRequest }
+  > = (props) => {
+    const { data } = props ?? {}
+
+    return interpretPmAnalyticsV2Question(data)
+  }
+
+  return { mutationFn, ...mutationOptions }
+}
+
+export type InterpretPmAnalyticsV2QuestionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof interpretPmAnalyticsV2Question>>
+>
+export type InterpretPmAnalyticsV2QuestionMutationBody =
+  PmAnalyticsV2InterpretRequest
+export type InterpretPmAnalyticsV2QuestionMutationError =
+  ValidationProblemDetails | ProblemDetails
+
+/**
+ * @summary Interprets a bounded preventive-maintenance analytics question using the V2 deterministic grammar
+ */
+export const useInterpretPmAnalyticsV2Question = <
+  TError = ValidationProblemDetails | ProblemDetails,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof interpretPmAnalyticsV2Question>>,
+      TError,
+      { data: PmAnalyticsV2InterpretRequest },
+      TContext
+    >
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof interpretPmAnalyticsV2Question>>,
+  TError,
+  { data: PmAnalyticsV2InterpretRequest },
+  TContext
+> => {
+  return useMutation(
+    getInterpretPmAnalyticsV2QuestionMutationOptions(options),
+    queryClient,
+  )
+}
+
+/**
+ * @summary Validates a V3 report plan and creates a short-lived user-bound preview
+ */
+export const previewPmAnalyticsV3Report = (
+  pmAnalyticsV3PreviewRequest: PmAnalyticsV3PreviewRequest,
+  signal?: AbortSignal,
+) => {
+  return customInstance<PmAnalyticsV3PreviewResponse>({
+    url: `/api/v1/analytics/pm/v3/preview`,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    data: pmAnalyticsV3PreviewRequest,
+    signal,
+  })
+}
+
+export const getPreviewPmAnalyticsV3ReportMutationOptions = <
+  TError = ValidationProblemDetails | ProblemDetails,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof previewPmAnalyticsV3Report>>,
+    TError,
+    { data: PmAnalyticsV3PreviewRequest },
+    TContext
+  >
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof previewPmAnalyticsV3Report>>,
+  TError,
+  { data: PmAnalyticsV3PreviewRequest },
+  TContext
+> => {
+  const mutationKey = ['previewPmAnalyticsV3Report']
+  const { mutation: mutationOptions } = options
+    ? options.mutation &&
+      'mutationKey' in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey } }
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof previewPmAnalyticsV3Report>>,
+    { data: PmAnalyticsV3PreviewRequest }
+  > = (props) => {
+    const { data } = props ?? {}
+
+    return previewPmAnalyticsV3Report(data)
+  }
+
+  return { mutationFn, ...mutationOptions }
+}
+
+export type PreviewPmAnalyticsV3ReportMutationResult = NonNullable<
+  Awaited<ReturnType<typeof previewPmAnalyticsV3Report>>
+>
+export type PreviewPmAnalyticsV3ReportMutationBody = PmAnalyticsV3PreviewRequest
+export type PreviewPmAnalyticsV3ReportMutationError =
+  ValidationProblemDetails | ProblemDetails
+
+/**
+ * @summary Validates a V3 report plan and creates a short-lived user-bound preview
+ */
+export const usePreviewPmAnalyticsV3Report = <
+  TError = ValidationProblemDetails | ProblemDetails,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof previewPmAnalyticsV3Report>>,
+      TError,
+      { data: PmAnalyticsV3PreviewRequest },
+      TContext
+    >
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof previewPmAnalyticsV3Report>>,
+  TError,
+  { data: PmAnalyticsV3PreviewRequest },
+  TContext
+> => {
+  return useMutation(
+    getPreviewPmAnalyticsV3ReportMutationOptions(options),
+    queryClient,
+  )
+}
+
+/**
+ * @summary Interprets a PM execution question into a V3 report plan without running it
+ */
+export const interpretPmAnalyticsV3Question = (
+  pmAnalyticsV3InterpretRequest: PmAnalyticsV3InterpretRequest,
+  signal?: AbortSignal,
+) => {
+  return customInstance<PmAnalyticsV3InterpretationResponse>({
+    url: `/api/v1/analytics/pm/v3/interpret`,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    data: pmAnalyticsV3InterpretRequest,
+    signal,
+  })
+}
+
+export const getInterpretPmAnalyticsV3QuestionMutationOptions = <
+  TError = ValidationProblemDetails | ProblemDetails,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof interpretPmAnalyticsV3Question>>,
+    TError,
+    { data: PmAnalyticsV3InterpretRequest },
+    TContext
+  >
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof interpretPmAnalyticsV3Question>>,
+  TError,
+  { data: PmAnalyticsV3InterpretRequest },
+  TContext
+> => {
+  const mutationKey = ['interpretPmAnalyticsV3Question']
+  const { mutation: mutationOptions } = options
+    ? options.mutation &&
+      'mutationKey' in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey } }
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof interpretPmAnalyticsV3Question>>,
+    { data: PmAnalyticsV3InterpretRequest }
+  > = (props) => {
+    const { data } = props ?? {}
+
+    return interpretPmAnalyticsV3Question(data)
+  }
+
+  return { mutationFn, ...mutationOptions }
+}
+
+export type InterpretPmAnalyticsV3QuestionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof interpretPmAnalyticsV3Question>>
+>
+export type InterpretPmAnalyticsV3QuestionMutationBody =
+  PmAnalyticsV3InterpretRequest
+export type InterpretPmAnalyticsV3QuestionMutationError =
+  ValidationProblemDetails | ProblemDetails
+
+/**
+ * @summary Interprets a PM execution question into a V3 report plan without running it
+ */
+export const useInterpretPmAnalyticsV3Question = <
+  TError = ValidationProblemDetails | ProblemDetails,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof interpretPmAnalyticsV3Question>>,
+      TError,
+      { data: PmAnalyticsV3InterpretRequest },
+      TContext
+    >
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof interpretPmAnalyticsV3Question>>,
+  TError,
+  { data: PmAnalyticsV3InterpretRequest },
+  TContext
+> => {
+  return useMutation(
+    getInterpretPmAnalyticsV3QuestionMutationOptions(options),
+    queryClient,
+  )
+}
+
+/**
+ * @summary Revalidates and executes a confirmed V3 PM execution report
+ */
+export const executePmAnalyticsV3Report = (
+  pmAnalyticsV3ExecuteRequest: PmAnalyticsV3ExecuteRequest,
+  signal?: AbortSignal,
+) => {
+  return customInstance<PmAnalyticsV3ExecutionResponse>({
+    url: `/api/v1/analytics/pm/v3/execute`,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    data: pmAnalyticsV3ExecuteRequest,
+    signal,
+  })
+}
+
+export const getExecutePmAnalyticsV3ReportMutationOptions = <
+  TError = ValidationProblemDetails | ProblemDetails,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof executePmAnalyticsV3Report>>,
+    TError,
+    { data: PmAnalyticsV3ExecuteRequest },
+    TContext
+  >
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof executePmAnalyticsV3Report>>,
+  TError,
+  { data: PmAnalyticsV3ExecuteRequest },
+  TContext
+> => {
+  const mutationKey = ['executePmAnalyticsV3Report']
+  const { mutation: mutationOptions } = options
+    ? options.mutation &&
+      'mutationKey' in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey } }
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof executePmAnalyticsV3Report>>,
+    { data: PmAnalyticsV3ExecuteRequest }
+  > = (props) => {
+    const { data } = props ?? {}
+
+    return executePmAnalyticsV3Report(data)
+  }
+
+  return { mutationFn, ...mutationOptions }
+}
+
+export type ExecutePmAnalyticsV3ReportMutationResult = NonNullable<
+  Awaited<ReturnType<typeof executePmAnalyticsV3Report>>
+>
+export type ExecutePmAnalyticsV3ReportMutationBody = PmAnalyticsV3ExecuteRequest
+export type ExecutePmAnalyticsV3ReportMutationError =
+  ValidationProblemDetails | ProblemDetails
+
+/**
+ * @summary Revalidates and executes a confirmed V3 PM execution report
+ */
+export const useExecutePmAnalyticsV3Report = <
+  TError = ValidationProblemDetails | ProblemDetails,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof executePmAnalyticsV3Report>>,
+      TError,
+      { data: PmAnalyticsV3ExecuteRequest },
+      TContext
+    >
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof executePmAnalyticsV3Report>>,
+  TError,
+  { data: PmAnalyticsV3ExecuteRequest },
+  TContext
+> => {
+  return useMutation(
+    getExecutePmAnalyticsV3ReportMutationOptions(options),
+    queryClient,
+  )
+}
+
+/**
+ * @summary Executes a validated typed V2 preventive-maintenance analytics plan
+ */
+export const queryPmAnalyticsV2 = (
+  pmAnalyticsV2QueryRequest: PmAnalyticsV2QueryRequest,
+  signal?: AbortSignal,
+) => {
+  return customInstance<PmAnalyticsV2QueryResponse>({
+    url: `/api/v1/analytics/pm/v2/query`,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    data: pmAnalyticsV2QueryRequest,
+    signal,
+  })
+}
+
+export const getQueryPmAnalyticsV2MutationOptions = <
+  TError = ValidationProblemDetails | ProblemDetails,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof queryPmAnalyticsV2>>,
+    TError,
+    { data: PmAnalyticsV2QueryRequest },
+    TContext
+  >
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof queryPmAnalyticsV2>>,
+  TError,
+  { data: PmAnalyticsV2QueryRequest },
+  TContext
+> => {
+  const mutationKey = ['queryPmAnalyticsV2']
+  const { mutation: mutationOptions } = options
+    ? options.mutation &&
+      'mutationKey' in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey } }
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof queryPmAnalyticsV2>>,
+    { data: PmAnalyticsV2QueryRequest }
+  > = (props) => {
+    const { data } = props ?? {}
+
+    return queryPmAnalyticsV2(data)
+  }
+
+  return { mutationFn, ...mutationOptions }
+}
+
+export type QueryPmAnalyticsV2MutationResult = NonNullable<
+  Awaited<ReturnType<typeof queryPmAnalyticsV2>>
+>
+export type QueryPmAnalyticsV2MutationBody = PmAnalyticsV2QueryRequest
+export type QueryPmAnalyticsV2MutationError =
+  ValidationProblemDetails | ProblemDetails
+
+/**
+ * @summary Executes a validated typed V2 preventive-maintenance analytics plan
+ */
+export const useQueryPmAnalyticsV2 = <
+  TError = ValidationProblemDetails | ProblemDetails,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof queryPmAnalyticsV2>>,
+      TError,
+      { data: PmAnalyticsV2QueryRequest },
+      TContext
+    >
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof queryPmAnalyticsV2>>,
+  TError,
+  { data: PmAnalyticsV2QueryRequest },
+  TContext
+> => {
+  return useMutation(getQueryPmAnalyticsV2MutationOptions(options), queryClient)
+}
+
+/**
  * @summary Runs a deterministic query over supported preventive-maintenance metrics
  */
 export const queryPmAnalytics = (
@@ -5554,2116 +8252,4 @@ export const useInterpretPmAnalyticsQuestion = <
     getInterpretPmAnalyticsQuestionMutationOptions(options),
     queryClient,
   )
-}
-
-/**
- * @summary Ensures missing CPMP schedules for one calendar year
- */
-export const generatePreventiveMaintenanceSchedules = (
-  generateScheduleCyclesDto: GenerateScheduleCyclesDto,
-  signal?: AbortSignal,
-) => {
-  return customInstance<ScheduleGenerationResult>({
-    url: `/api/v1/schedules/generate`,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    data: generateScheduleCyclesDto,
-    signal,
-  })
-}
-
-export const getGeneratePreventiveMaintenanceSchedulesMutationOptions = <
-  TError = ValidationProblemDetails | ProblemDetails,
-  TContext = unknown,
->(options?: {
-  mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof generatePreventiveMaintenanceSchedules>>,
-    TError,
-    { data: GenerateScheduleCyclesDto },
-    TContext
-  >
-}): UseMutationOptions<
-  Awaited<ReturnType<typeof generatePreventiveMaintenanceSchedules>>,
-  TError,
-  { data: GenerateScheduleCyclesDto },
-  TContext
-> => {
-  const mutationKey = ['generatePreventiveMaintenanceSchedules']
-  const { mutation: mutationOptions } = options
-    ? options.mutation &&
-      'mutationKey' in options.mutation &&
-      options.mutation.mutationKey
-      ? options
-      : { ...options, mutation: { ...options.mutation, mutationKey } }
-    : { mutation: { mutationKey } }
-
-  const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof generatePreventiveMaintenanceSchedules>>,
-    { data: GenerateScheduleCyclesDto }
-  > = (props) => {
-    const { data } = props ?? {}
-
-    return generatePreventiveMaintenanceSchedules(data)
-  }
-
-  return { mutationFn, ...mutationOptions }
-}
-
-export type GeneratePreventiveMaintenanceSchedulesMutationResult = NonNullable<
-  Awaited<ReturnType<typeof generatePreventiveMaintenanceSchedules>>
->
-export type GeneratePreventiveMaintenanceSchedulesMutationBody =
-  GenerateScheduleCyclesDto
-export type GeneratePreventiveMaintenanceSchedulesMutationError =
-  ValidationProblemDetails | ProblemDetails
-
-/**
- * @summary Ensures missing CPMP schedules for one calendar year
- */
-export const useGeneratePreventiveMaintenanceSchedules = <
-  TError = ValidationProblemDetails | ProblemDetails,
-  TContext = unknown,
->(
-  options?: {
-    mutation?: UseMutationOptions<
-      Awaited<ReturnType<typeof generatePreventiveMaintenanceSchedules>>,
-      TError,
-      { data: GenerateScheduleCyclesDto },
-      TContext
-    >
-  },
-  queryClient?: QueryClient,
-): UseMutationResult<
-  Awaited<ReturnType<typeof generatePreventiveMaintenanceSchedules>>,
-  TError,
-  { data: GenerateScheduleCyclesDto },
-  TContext
-> => {
-  return useMutation(
-    getGeneratePreventiveMaintenanceSchedulesMutationOptions(options),
-    queryClient,
-  )
-}
-
-/**
- * @summary Lists past CPMP cycles missing both a schedule and a deferral for GSD review
- */
-export const listScheduleCoverageReview = (
-  params?: ListScheduleCoverageReviewParams,
-  signal?: AbortSignal,
-) => {
-  return customInstance<ScheduleCoverageReviewPage>({
-    url: `/api/v1/schedules/coverage-review`,
-    method: 'GET',
-    params,
-    signal,
-  })
-}
-
-export const getListScheduleCoverageReviewQueryKey = (
-  params?: ListScheduleCoverageReviewParams,
-) => {
-  return [
-    `/api/v1/schedules/coverage-review`,
-    ...(params ? [params] : []),
-  ] as const
-}
-
-export const getListScheduleCoverageReviewQueryOptions = <
-  TData = Awaited<ReturnType<typeof listScheduleCoverageReview>>,
-  TError = void,
->(
-  params?: ListScheduleCoverageReviewParams,
-  options?: {
-    query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof listScheduleCoverageReview>>,
-        TError,
-        TData
-      >
-    >
-  },
-) => {
-  const { query: queryOptions } = options ?? {}
-
-  const queryKey =
-    queryOptions?.queryKey ?? getListScheduleCoverageReviewQueryKey(params)
-
-  const queryFn: QueryFunction<
-    Awaited<ReturnType<typeof listScheduleCoverageReview>>
-  > = ({ signal }) => listScheduleCoverageReview(params, signal)
-
-  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
-    Awaited<ReturnType<typeof listScheduleCoverageReview>>,
-    TError,
-    TData
-  > & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type ListScheduleCoverageReviewQueryResult = NonNullable<
-  Awaited<ReturnType<typeof listScheduleCoverageReview>>
->
-export type ListScheduleCoverageReviewQueryError = void
-
-export function useListScheduleCoverageReview<
-  TData = Awaited<ReturnType<typeof listScheduleCoverageReview>>,
-  TError = void,
->(
-  params: undefined | ListScheduleCoverageReviewParams,
-  options: {
-    query: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof listScheduleCoverageReview>>,
-        TError,
-        TData
-      >
-    > &
-      Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof listScheduleCoverageReview>>,
-          TError,
-          Awaited<ReturnType<typeof listScheduleCoverageReview>>
-        >,
-        'initialData'
-      >
-  },
-  queryClient?: QueryClient,
-): DefinedUseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>
-}
-export function useListScheduleCoverageReview<
-  TData = Awaited<ReturnType<typeof listScheduleCoverageReview>>,
-  TError = void,
->(
-  params?: ListScheduleCoverageReviewParams,
-  options?: {
-    query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof listScheduleCoverageReview>>,
-        TError,
-        TData
-      >
-    > &
-      Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof listScheduleCoverageReview>>,
-          TError,
-          Awaited<ReturnType<typeof listScheduleCoverageReview>>
-        >,
-        'initialData'
-      >
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>
-}
-export function useListScheduleCoverageReview<
-  TData = Awaited<ReturnType<typeof listScheduleCoverageReview>>,
-  TError = void,
->(
-  params?: ListScheduleCoverageReviewParams,
-  options?: {
-    query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof listScheduleCoverageReview>>,
-        TError,
-        TData
-      >
-    >
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>
-}
-/**
- * @summary Lists past CPMP cycles missing both a schedule and a deferral for GSD review
- */
-
-export function useListScheduleCoverageReview<
-  TData = Awaited<ReturnType<typeof listScheduleCoverageReview>>,
-  TError = void,
->(
-  params?: ListScheduleCoverageReviewParams,
-  options?: {
-    query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof listScheduleCoverageReview>>,
-        TError,
-        TData
-      >
-    >
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>
-} {
-  const queryOptions = getListScheduleCoverageReviewQueryOptions(
-    params,
-    options,
-  )
-
-  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
-    TData,
-    TError
-  > & { queryKey: DataTag<QueryKey, TData, TError> }
-
-  return withQueryKey(query, queryOptions.queryKey)
-}
-
-/**
- * @summary Lists deferred asset cycles and their GSD review status
- */
-export const listScheduleEnrollmentDeferrals = (
-  params?: ListScheduleEnrollmentDeferralsParams,
-  signal?: AbortSignal,
-) => {
-  return customInstance<ScheduleEnrollmentDeferralPage>({
-    url: `/api/v1/schedules/enrollment-deferrals`,
-    method: 'GET',
-    params,
-    signal,
-  })
-}
-
-export const getListScheduleEnrollmentDeferralsQueryKey = (
-  params?: ListScheduleEnrollmentDeferralsParams,
-) => {
-  return [
-    `/api/v1/schedules/enrollment-deferrals`,
-    ...(params ? [params] : []),
-  ] as const
-}
-
-export const getListScheduleEnrollmentDeferralsQueryOptions = <
-  TData = Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>,
-  TError = ValidationProblemDetails | void,
->(
-  params?: ListScheduleEnrollmentDeferralsParams,
-  options?: {
-    query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>,
-        TError,
-        TData
-      >
-    >
-  },
-) => {
-  const { query: queryOptions } = options ?? {}
-
-  const queryKey =
-    queryOptions?.queryKey ?? getListScheduleEnrollmentDeferralsQueryKey(params)
-
-  const queryFn: QueryFunction<
-    Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>
-  > = ({ signal }) => listScheduleEnrollmentDeferrals(params, signal)
-
-  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
-    Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>,
-    TError,
-    TData
-  > & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type ListScheduleEnrollmentDeferralsQueryResult = NonNullable<
-  Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>
->
-export type ListScheduleEnrollmentDeferralsQueryError =
-  ValidationProblemDetails | void
-
-export function useListScheduleEnrollmentDeferrals<
-  TData = Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>,
-  TError = ValidationProblemDetails | void,
->(
-  params: undefined | ListScheduleEnrollmentDeferralsParams,
-  options: {
-    query: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>,
-        TError,
-        TData
-      >
-    > &
-      Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>,
-          TError,
-          Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>
-        >,
-        'initialData'
-      >
-  },
-  queryClient?: QueryClient,
-): DefinedUseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>
-}
-export function useListScheduleEnrollmentDeferrals<
-  TData = Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>,
-  TError = ValidationProblemDetails | void,
->(
-  params?: ListScheduleEnrollmentDeferralsParams,
-  options?: {
-    query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>,
-        TError,
-        TData
-      >
-    > &
-      Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>,
-          TError,
-          Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>
-        >,
-        'initialData'
-      >
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>
-}
-export function useListScheduleEnrollmentDeferrals<
-  TData = Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>,
-  TError = ValidationProblemDetails | void,
->(
-  params?: ListScheduleEnrollmentDeferralsParams,
-  options?: {
-    query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>,
-        TError,
-        TData
-      >
-    >
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>
-}
-/**
- * @summary Lists deferred asset cycles and their GSD review status
- */
-
-export function useListScheduleEnrollmentDeferrals<
-  TData = Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>,
-  TError = ValidationProblemDetails | void,
->(
-  params?: ListScheduleEnrollmentDeferralsParams,
-  options?: {
-    query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof listScheduleEnrollmentDeferrals>>,
-        TError,
-        TData
-      >
-    >
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>
-} {
-  const queryOptions = getListScheduleEnrollmentDeferralsQueryOptions(
-    params,
-    options,
-  )
-
-  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
-    TData,
-    TError
-  > & { queryKey: DataTag<QueryKey, TData, TError> }
-
-  return withQueryKey(query, queryOptions.queryKey)
-}
-
-/**
- * @summary Marks one deferred asset cycle as reviewed by GSD
- */
-export const reviewScheduleEnrollmentDeferral = (
-  assetId: string,
-  pmCycle: string,
-  scheduleEnrollmentDeferralReviewRequest: ScheduleEnrollmentDeferralReviewRequest,
-  signal?: AbortSignal,
-) => {
-  return customInstance<void>({
-    url: `/api/v1/schedules/enrollment-deferrals/${assetId}/${pmCycle}/review`,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    data: scheduleEnrollmentDeferralReviewRequest,
-    signal,
-  })
-}
-
-export const getReviewScheduleEnrollmentDeferralMutationOptions = <
-  TError = void,
-  TContext = unknown,
->(options?: {
-  mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof reviewScheduleEnrollmentDeferral>>,
-    TError,
-    {
-      assetId: string
-      pmCycle: string
-      data: ScheduleEnrollmentDeferralReviewRequest
-    },
-    TContext
-  >
-}): UseMutationOptions<
-  Awaited<ReturnType<typeof reviewScheduleEnrollmentDeferral>>,
-  TError,
-  {
-    assetId: string
-    pmCycle: string
-    data: ScheduleEnrollmentDeferralReviewRequest
-  },
-  TContext
-> => {
-  const mutationKey = ['reviewScheduleEnrollmentDeferral']
-  const { mutation: mutationOptions } = options
-    ? options.mutation &&
-      'mutationKey' in options.mutation &&
-      options.mutation.mutationKey
-      ? options
-      : { ...options, mutation: { ...options.mutation, mutationKey } }
-    : { mutation: { mutationKey } }
-
-  const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof reviewScheduleEnrollmentDeferral>>,
-    {
-      assetId: string
-      pmCycle: string
-      data: ScheduleEnrollmentDeferralReviewRequest
-    }
-  > = (props) => {
-    const { assetId, pmCycle, data } = props ?? {}
-
-    return reviewScheduleEnrollmentDeferral(assetId, pmCycle, data)
-  }
-
-  return { mutationFn, ...mutationOptions }
-}
-
-export type ReviewScheduleEnrollmentDeferralMutationResult = NonNullable<
-  Awaited<ReturnType<typeof reviewScheduleEnrollmentDeferral>>
->
-export type ReviewScheduleEnrollmentDeferralMutationBody =
-  ScheduleEnrollmentDeferralReviewRequest
-export type ReviewScheduleEnrollmentDeferralMutationError = void
-
-/**
- * @summary Marks one deferred asset cycle as reviewed by GSD
- */
-export const useReviewScheduleEnrollmentDeferral = <
-  TError = void,
-  TContext = unknown,
->(
-  options?: {
-    mutation?: UseMutationOptions<
-      Awaited<ReturnType<typeof reviewScheduleEnrollmentDeferral>>,
-      TError,
-      {
-        assetId: string
-        pmCycle: string
-        data: ScheduleEnrollmentDeferralReviewRequest
-      },
-      TContext
-    >
-  },
-  queryClient?: QueryClient,
-): UseMutationResult<
-  Awaited<ReturnType<typeof reviewScheduleEnrollmentDeferral>>,
-  TError,
-  {
-    assetId: string
-    pmCycle: string
-    data: ScheduleEnrollmentDeferralReviewRequest
-  },
-  TContext
-> => {
-  return useMutation(
-    getReviewScheduleEnrollmentDeferralMutationOptions(options),
-    queryClient,
-  )
-}
-
-/**
- * @summary Lists a bounded page of assets for the web registry
- */
-export const listAssetRegistry = (
-  params?: ListAssetRegistryParams,
-  signal?: AbortSignal,
-) => {
-  return customInstance<AssetRegistryPageResponse>({
-    url: `/api/v1/assets/registry`,
-    method: 'GET',
-    params,
-    signal,
-  })
-}
-
-export const getListAssetRegistryQueryKey = (
-  params?: ListAssetRegistryParams,
-) => {
-  return [`/api/v1/assets/registry`, ...(params ? [params] : [])] as const
-}
-
-export const getListAssetRegistryQueryOptions = <
-  TData = Awaited<ReturnType<typeof listAssetRegistry>>,
-  TError = ValidationProblemDetails,
->(
-  params?: ListAssetRegistryParams,
-  options?: {
-    query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof listAssetRegistry>>,
-        TError,
-        TData
-      >
-    >
-  },
-) => {
-  const { query: queryOptions } = options ?? {}
-
-  const queryKey =
-    queryOptions?.queryKey ?? getListAssetRegistryQueryKey(params)
-
-  const queryFn: QueryFunction<
-    Awaited<ReturnType<typeof listAssetRegistry>>
-  > = ({ signal }) => listAssetRegistry(params, signal)
-
-  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
-    Awaited<ReturnType<typeof listAssetRegistry>>,
-    TError,
-    TData
-  > & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type ListAssetRegistryQueryResult = NonNullable<
-  Awaited<ReturnType<typeof listAssetRegistry>>
->
-export type ListAssetRegistryQueryError = ValidationProblemDetails
-
-export function useListAssetRegistry<
-  TData = Awaited<ReturnType<typeof listAssetRegistry>>,
-  TError = ValidationProblemDetails,
->(
-  params: undefined | ListAssetRegistryParams,
-  options: {
-    query: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof listAssetRegistry>>,
-        TError,
-        TData
-      >
-    > &
-      Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof listAssetRegistry>>,
-          TError,
-          Awaited<ReturnType<typeof listAssetRegistry>>
-        >,
-        'initialData'
-      >
-  },
-  queryClient?: QueryClient,
-): DefinedUseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>
-}
-export function useListAssetRegistry<
-  TData = Awaited<ReturnType<typeof listAssetRegistry>>,
-  TError = ValidationProblemDetails,
->(
-  params?: ListAssetRegistryParams,
-  options?: {
-    query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof listAssetRegistry>>,
-        TError,
-        TData
-      >
-    > &
-      Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof listAssetRegistry>>,
-          TError,
-          Awaited<ReturnType<typeof listAssetRegistry>>
-        >,
-        'initialData'
-      >
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>
-}
-export function useListAssetRegistry<
-  TData = Awaited<ReturnType<typeof listAssetRegistry>>,
-  TError = ValidationProblemDetails,
->(
-  params?: ListAssetRegistryParams,
-  options?: {
-    query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof listAssetRegistry>>,
-        TError,
-        TData
-      >
-    >
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>
-}
-/**
- * @summary Lists a bounded page of assets for the web registry
- */
-
-export function useListAssetRegistry<
-  TData = Awaited<ReturnType<typeof listAssetRegistry>>,
-  TError = ValidationProblemDetails,
->(
-  params?: ListAssetRegistryParams,
-  options?: {
-    query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof listAssetRegistry>>,
-        TError,
-        TData
-      >
-    >
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>
-} {
-  const queryOptions = getListAssetRegistryQueryOptions(params, options)
-
-  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
-    TData,
-    TError
-  > & { queryKey: DataTag<QueryKey, TData, TError> }
-
-  return withQueryKey(query, queryOptions.queryKey)
-}
-
-/**
- * @summary Lists small asset registry filter options
- */
-export const getAssetRegistryOptions = (
-  params?: GetAssetRegistryOptionsParams,
-  signal?: AbortSignal,
-) => {
-  return customInstance<AssetRegistryOptionsResponse>({
-    url: `/api/v1/assets/registry/options`,
-    method: 'GET',
-    params,
-    signal,
-  })
-}
-
-export const getGetAssetRegistryOptionsQueryKey = (
-  params?: GetAssetRegistryOptionsParams,
-) => {
-  return [
-    `/api/v1/assets/registry/options`,
-    ...(params ? [params] : []),
-  ] as const
-}
-
-export const getGetAssetRegistryOptionsQueryOptions = <
-  TData = Awaited<ReturnType<typeof getAssetRegistryOptions>>,
-  TError = ValidationProblemDetails,
->(
-  params?: GetAssetRegistryOptionsParams,
-  options?: {
-    query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof getAssetRegistryOptions>>,
-        TError,
-        TData
-      >
-    >
-  },
-) => {
-  const { query: queryOptions } = options ?? {}
-
-  const queryKey =
-    queryOptions?.queryKey ?? getGetAssetRegistryOptionsQueryKey(params)
-
-  const queryFn: QueryFunction<
-    Awaited<ReturnType<typeof getAssetRegistryOptions>>
-  > = ({ signal }) => getAssetRegistryOptions(params, signal)
-
-  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
-    Awaited<ReturnType<typeof getAssetRegistryOptions>>,
-    TError,
-    TData
-  > & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type GetAssetRegistryOptionsQueryResult = NonNullable<
-  Awaited<ReturnType<typeof getAssetRegistryOptions>>
->
-export type GetAssetRegistryOptionsQueryError = ValidationProblemDetails
-
-export function useGetAssetRegistryOptions<
-  TData = Awaited<ReturnType<typeof getAssetRegistryOptions>>,
-  TError = ValidationProblemDetails,
->(
-  params: undefined | GetAssetRegistryOptionsParams,
-  options: {
-    query: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof getAssetRegistryOptions>>,
-        TError,
-        TData
-      >
-    > &
-      Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getAssetRegistryOptions>>,
-          TError,
-          Awaited<ReturnType<typeof getAssetRegistryOptions>>
-        >,
-        'initialData'
-      >
-  },
-  queryClient?: QueryClient,
-): DefinedUseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>
-}
-export function useGetAssetRegistryOptions<
-  TData = Awaited<ReturnType<typeof getAssetRegistryOptions>>,
-  TError = ValidationProblemDetails,
->(
-  params?: GetAssetRegistryOptionsParams,
-  options?: {
-    query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof getAssetRegistryOptions>>,
-        TError,
-        TData
-      >
-    > &
-      Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getAssetRegistryOptions>>,
-          TError,
-          Awaited<ReturnType<typeof getAssetRegistryOptions>>
-        >,
-        'initialData'
-      >
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>
-}
-export function useGetAssetRegistryOptions<
-  TData = Awaited<ReturnType<typeof getAssetRegistryOptions>>,
-  TError = ValidationProblemDetails,
->(
-  params?: GetAssetRegistryOptionsParams,
-  options?: {
-    query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof getAssetRegistryOptions>>,
-        TError,
-        TData
-      >
-    >
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>
-}
-/**
- * @summary Lists small asset registry filter options
- */
-
-export function useGetAssetRegistryOptions<
-  TData = Awaited<ReturnType<typeof getAssetRegistryOptions>>,
-  TError = ValidationProblemDetails,
->(
-  params?: GetAssetRegistryOptionsParams,
-  options?: {
-    query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof getAssetRegistryOptions>>,
-        TError,
-        TData
-      >
-    >
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>
-} {
-  const queryOptions = getGetAssetRegistryOptionsQueryOptions(params, options)
-
-  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
-    TData,
-    TError
-  > & { queryKey: DataTag<QueryKey, TData, TError> }
-
-  return withQueryKey(query, queryOptions.queryKey)
-}
-
-/**
- * @summary Returns overall asset totals by category and status
- */
-export const getAssetRegistrySummary = (signal?: AbortSignal) => {
-  return customInstance<AssetRegistrySummaryResponse>({
-    url: `/api/v1/assets/registry/summary`,
-    method: 'GET',
-    signal,
-  })
-}
-
-export const getGetAssetRegistrySummaryQueryKey = () => {
-  return [`/api/v1/assets/registry/summary`] as const
-}
-
-export const getGetAssetRegistrySummaryQueryOptions = <
-  TData = Awaited<ReturnType<typeof getAssetRegistrySummary>>,
-  TError = unknown,
->(options?: {
-  query?: Partial<
-    UseQueryOptions<
-      Awaited<ReturnType<typeof getAssetRegistrySummary>>,
-      TError,
-      TData
-    >
-  >
-}) => {
-  const { query: queryOptions } = options ?? {}
-
-  const queryKey =
-    queryOptions?.queryKey ?? getGetAssetRegistrySummaryQueryKey()
-
-  const queryFn: QueryFunction<
-    Awaited<ReturnType<typeof getAssetRegistrySummary>>
-  > = ({ signal }) => getAssetRegistrySummary(signal)
-
-  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
-    Awaited<ReturnType<typeof getAssetRegistrySummary>>,
-    TError,
-    TData
-  > & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type GetAssetRegistrySummaryQueryResult = NonNullable<
-  Awaited<ReturnType<typeof getAssetRegistrySummary>>
->
-export type GetAssetRegistrySummaryQueryError = unknown
-
-export function useGetAssetRegistrySummary<
-  TData = Awaited<ReturnType<typeof getAssetRegistrySummary>>,
-  TError = unknown,
->(
-  options: {
-    query: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof getAssetRegistrySummary>>,
-        TError,
-        TData
-      >
-    > &
-      Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getAssetRegistrySummary>>,
-          TError,
-          Awaited<ReturnType<typeof getAssetRegistrySummary>>
-        >,
-        'initialData'
-      >
-  },
-  queryClient?: QueryClient,
-): DefinedUseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>
-}
-export function useGetAssetRegistrySummary<
-  TData = Awaited<ReturnType<typeof getAssetRegistrySummary>>,
-  TError = unknown,
->(
-  options?: {
-    query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof getAssetRegistrySummary>>,
-        TError,
-        TData
-      >
-    > &
-      Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getAssetRegistrySummary>>,
-          TError,
-          Awaited<ReturnType<typeof getAssetRegistrySummary>>
-        >,
-        'initialData'
-      >
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>
-}
-export function useGetAssetRegistrySummary<
-  TData = Awaited<ReturnType<typeof getAssetRegistrySummary>>,
-  TError = unknown,
->(
-  options?: {
-    query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof getAssetRegistrySummary>>,
-        TError,
-        TData
-      >
-    >
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>
-}
-/**
- * @summary Returns overall asset totals by category and status
- */
-
-export function useGetAssetRegistrySummary<
-  TData = Awaited<ReturnType<typeof getAssetRegistrySummary>>,
-  TError = unknown,
->(
-  options?: {
-    query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof getAssetRegistrySummary>>,
-        TError,
-        TData
-      >
-    >
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>
-} {
-  const queryOptions = getGetAssetRegistrySummaryQueryOptions(options)
-
-  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
-    TData,
-    TError
-  > & { queryKey: DataTag<QueryKey, TData, TError> }
-
-  return withQueryKey(query, queryOptions.queryKey)
-}
-
-/**
- * @summary Lists a bounded page of schedules for the web registry
- */
-export const listScheduleRegistry = (
-  params?: ListScheduleRegistryParams,
-  signal?: AbortSignal,
-) => {
-  return customInstance<ScheduleRegistryPageResponse>({
-    url: `/api/v1/schedules/registry`,
-    method: 'GET',
-    params,
-    signal,
-  })
-}
-
-export const getListScheduleRegistryQueryKey = (
-  params?: ListScheduleRegistryParams,
-) => {
-  return [`/api/v1/schedules/registry`, ...(params ? [params] : [])] as const
-}
-
-export const getListScheduleRegistryQueryOptions = <
-  TData = Awaited<ReturnType<typeof listScheduleRegistry>>,
-  TError = ValidationProblemDetails | void,
->(
-  params?: ListScheduleRegistryParams,
-  options?: {
-    query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof listScheduleRegistry>>,
-        TError,
-        TData
-      >
-    >
-  },
-) => {
-  const { query: queryOptions } = options ?? {}
-
-  const queryKey =
-    queryOptions?.queryKey ?? getListScheduleRegistryQueryKey(params)
-
-  const queryFn: QueryFunction<
-    Awaited<ReturnType<typeof listScheduleRegistry>>
-  > = ({ signal }) => listScheduleRegistry(params, signal)
-
-  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
-    Awaited<ReturnType<typeof listScheduleRegistry>>,
-    TError,
-    TData
-  > & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type ListScheduleRegistryQueryResult = NonNullable<
-  Awaited<ReturnType<typeof listScheduleRegistry>>
->
-export type ListScheduleRegistryQueryError = ValidationProblemDetails | void
-
-export function useListScheduleRegistry<
-  TData = Awaited<ReturnType<typeof listScheduleRegistry>>,
-  TError = ValidationProblemDetails | void,
->(
-  params: undefined | ListScheduleRegistryParams,
-  options: {
-    query: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof listScheduleRegistry>>,
-        TError,
-        TData
-      >
-    > &
-      Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof listScheduleRegistry>>,
-          TError,
-          Awaited<ReturnType<typeof listScheduleRegistry>>
-        >,
-        'initialData'
-      >
-  },
-  queryClient?: QueryClient,
-): DefinedUseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>
-}
-export function useListScheduleRegistry<
-  TData = Awaited<ReturnType<typeof listScheduleRegistry>>,
-  TError = ValidationProblemDetails | void,
->(
-  params?: ListScheduleRegistryParams,
-  options?: {
-    query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof listScheduleRegistry>>,
-        TError,
-        TData
-      >
-    > &
-      Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof listScheduleRegistry>>,
-          TError,
-          Awaited<ReturnType<typeof listScheduleRegistry>>
-        >,
-        'initialData'
-      >
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>
-}
-export function useListScheduleRegistry<
-  TData = Awaited<ReturnType<typeof listScheduleRegistry>>,
-  TError = ValidationProblemDetails | void,
->(
-  params?: ListScheduleRegistryParams,
-  options?: {
-    query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof listScheduleRegistry>>,
-        TError,
-        TData
-      >
-    >
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>
-}
-/**
- * @summary Lists a bounded page of schedules for the web registry
- */
-
-export function useListScheduleRegistry<
-  TData = Awaited<ReturnType<typeof listScheduleRegistry>>,
-  TError = ValidationProblemDetails | void,
->(
-  params?: ListScheduleRegistryParams,
-  options?: {
-    query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof listScheduleRegistry>>,
-        TError,
-        TData
-      >
-    >
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>
-} {
-  const queryOptions = getListScheduleRegistryQueryOptions(params, options)
-
-  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
-    TData,
-    TError
-  > & { queryKey: DataTag<QueryKey, TData, TError> }
-
-  return withQueryKey(query, queryOptions.queryKey)
-}
-
-/**
- * @summary Lists scoped schedule registry filter options
- */
-export const getScheduleRegistryOptions = (
-  params?: GetScheduleRegistryOptionsParams,
-  signal?: AbortSignal,
-) => {
-  return customInstance<ScheduleRegistryOptionsResponse>({
-    url: `/api/v1/schedules/registry/options`,
-    method: 'GET',
-    params,
-    signal,
-  })
-}
-
-export const getGetScheduleRegistryOptionsQueryKey = (
-  params?: GetScheduleRegistryOptionsParams,
-) => {
-  return [
-    `/api/v1/schedules/registry/options`,
-    ...(params ? [params] : []),
-  ] as const
-}
-
-export const getGetScheduleRegistryOptionsQueryOptions = <
-  TData = Awaited<ReturnType<typeof getScheduleRegistryOptions>>,
-  TError = ValidationProblemDetails | void,
->(
-  params?: GetScheduleRegistryOptionsParams,
-  options?: {
-    query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof getScheduleRegistryOptions>>,
-        TError,
-        TData
-      >
-    >
-  },
-) => {
-  const { query: queryOptions } = options ?? {}
-
-  const queryKey =
-    queryOptions?.queryKey ?? getGetScheduleRegistryOptionsQueryKey(params)
-
-  const queryFn: QueryFunction<
-    Awaited<ReturnType<typeof getScheduleRegistryOptions>>
-  > = ({ signal }) => getScheduleRegistryOptions(params, signal)
-
-  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
-    Awaited<ReturnType<typeof getScheduleRegistryOptions>>,
-    TError,
-    TData
-  > & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type GetScheduleRegistryOptionsQueryResult = NonNullable<
-  Awaited<ReturnType<typeof getScheduleRegistryOptions>>
->
-export type GetScheduleRegistryOptionsQueryError =
-  ValidationProblemDetails | void
-
-export function useGetScheduleRegistryOptions<
-  TData = Awaited<ReturnType<typeof getScheduleRegistryOptions>>,
-  TError = ValidationProblemDetails | void,
->(
-  params: undefined | GetScheduleRegistryOptionsParams,
-  options: {
-    query: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof getScheduleRegistryOptions>>,
-        TError,
-        TData
-      >
-    > &
-      Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getScheduleRegistryOptions>>,
-          TError,
-          Awaited<ReturnType<typeof getScheduleRegistryOptions>>
-        >,
-        'initialData'
-      >
-  },
-  queryClient?: QueryClient,
-): DefinedUseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>
-}
-export function useGetScheduleRegistryOptions<
-  TData = Awaited<ReturnType<typeof getScheduleRegistryOptions>>,
-  TError = ValidationProblemDetails | void,
->(
-  params?: GetScheduleRegistryOptionsParams,
-  options?: {
-    query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof getScheduleRegistryOptions>>,
-        TError,
-        TData
-      >
-    > &
-      Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getScheduleRegistryOptions>>,
-          TError,
-          Awaited<ReturnType<typeof getScheduleRegistryOptions>>
-        >,
-        'initialData'
-      >
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>
-}
-export function useGetScheduleRegistryOptions<
-  TData = Awaited<ReturnType<typeof getScheduleRegistryOptions>>,
-  TError = ValidationProblemDetails | void,
->(
-  params?: GetScheduleRegistryOptionsParams,
-  options?: {
-    query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof getScheduleRegistryOptions>>,
-        TError,
-        TData
-      >
-    >
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>
-}
-/**
- * @summary Lists scoped schedule registry filter options
- */
-
-export function useGetScheduleRegistryOptions<
-  TData = Awaited<ReturnType<typeof getScheduleRegistryOptions>>,
-  TError = ValidationProblemDetails | void,
->(
-  params?: GetScheduleRegistryOptionsParams,
-  options?: {
-    query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof getScheduleRegistryOptions>>,
-        TError,
-        TData
-      >
-    >
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>
-} {
-  const queryOptions = getGetScheduleRegistryOptionsQueryOptions(
-    params,
-    options,
-  )
-
-  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
-    TData,
-    TError
-  > & { queryKey: DataTag<QueryKey, TData, TError> }
-
-  return withQueryKey(query, queryOptions.queryKey)
-}
-
-/**
- * @summary Returns status totals for the authenticated schedule read scope
- */
-export const getScheduleRegistrySummary = (signal?: AbortSignal) => {
-  return customInstance<ScheduleRegistrySummaryResponse>({
-    url: `/api/v1/schedules/registry/summary`,
-    method: 'GET',
-    signal,
-  })
-}
-
-export const getGetScheduleRegistrySummaryQueryKey = () => {
-  return [`/api/v1/schedules/registry/summary`] as const
-}
-
-export const getGetScheduleRegistrySummaryQueryOptions = <
-  TData = Awaited<ReturnType<typeof getScheduleRegistrySummary>>,
-  TError = void,
->(options?: {
-  query?: Partial<
-    UseQueryOptions<
-      Awaited<ReturnType<typeof getScheduleRegistrySummary>>,
-      TError,
-      TData
-    >
-  >
-}) => {
-  const { query: queryOptions } = options ?? {}
-
-  const queryKey =
-    queryOptions?.queryKey ?? getGetScheduleRegistrySummaryQueryKey()
-
-  const queryFn: QueryFunction<
-    Awaited<ReturnType<typeof getScheduleRegistrySummary>>
-  > = ({ signal }) => getScheduleRegistrySummary(signal)
-
-  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
-    Awaited<ReturnType<typeof getScheduleRegistrySummary>>,
-    TError,
-    TData
-  > & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type GetScheduleRegistrySummaryQueryResult = NonNullable<
-  Awaited<ReturnType<typeof getScheduleRegistrySummary>>
->
-export type GetScheduleRegistrySummaryQueryError = void
-
-export function useGetScheduleRegistrySummary<
-  TData = Awaited<ReturnType<typeof getScheduleRegistrySummary>>,
-  TError = void,
->(
-  options: {
-    query: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof getScheduleRegistrySummary>>,
-        TError,
-        TData
-      >
-    > &
-      Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getScheduleRegistrySummary>>,
-          TError,
-          Awaited<ReturnType<typeof getScheduleRegistrySummary>>
-        >,
-        'initialData'
-      >
-  },
-  queryClient?: QueryClient,
-): DefinedUseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>
-}
-export function useGetScheduleRegistrySummary<
-  TData = Awaited<ReturnType<typeof getScheduleRegistrySummary>>,
-  TError = void,
->(
-  options?: {
-    query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof getScheduleRegistrySummary>>,
-        TError,
-        TData
-      >
-    > &
-      Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getScheduleRegistrySummary>>,
-          TError,
-          Awaited<ReturnType<typeof getScheduleRegistrySummary>>
-        >,
-        'initialData'
-      >
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>
-}
-export function useGetScheduleRegistrySummary<
-  TData = Awaited<ReturnType<typeof getScheduleRegistrySummary>>,
-  TError = void,
->(
-  options?: {
-    query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof getScheduleRegistrySummary>>,
-        TError,
-        TData
-      >
-    >
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>
-}
-/**
- * @summary Returns status totals for the authenticated schedule read scope
- */
-
-export function useGetScheduleRegistrySummary<
-  TData = Awaited<ReturnType<typeof getScheduleRegistrySummary>>,
-  TError = void,
->(
-  options?: {
-    query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof getScheduleRegistrySummary>>,
-        TError,
-        TData
-      >
-    >
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>
-} {
-  const queryOptions = getGetScheduleRegistrySummaryQueryOptions(options)
-
-  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
-    TData,
-    TError
-  > & { queryKey: DataTag<QueryKey, TData, TError> }
-
-  return withQueryKey(query, queryOptions.queryKey)
-}
-
-/**
- * @summary Lists a bounded page of acknowledged or legacy official inspections for the web registry
- */
-export const listInspectionRegistry = (
-  params?: ListInspectionRegistryParams,
-  signal?: AbortSignal,
-) => {
-  return customInstance<InspectionRegistryPageResponse>({
-    url: `/api/v1/inspections/registry`,
-    method: 'GET',
-    params,
-    signal,
-  })
-}
-
-export const getListInspectionRegistryQueryKey = (
-  params?: ListInspectionRegistryParams,
-) => {
-  return [`/api/v1/inspections/registry`, ...(params ? [params] : [])] as const
-}
-
-export const getListInspectionRegistryQueryOptions = <
-  TData = Awaited<ReturnType<typeof listInspectionRegistry>>,
-  TError = ValidationProblemDetails,
->(
-  params?: ListInspectionRegistryParams,
-  options?: {
-    query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof listInspectionRegistry>>,
-        TError,
-        TData
-      >
-    >
-  },
-) => {
-  const { query: queryOptions } = options ?? {}
-
-  const queryKey =
-    queryOptions?.queryKey ?? getListInspectionRegistryQueryKey(params)
-
-  const queryFn: QueryFunction<
-    Awaited<ReturnType<typeof listInspectionRegistry>>
-  > = ({ signal }) => listInspectionRegistry(params, signal)
-
-  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
-    Awaited<ReturnType<typeof listInspectionRegistry>>,
-    TError,
-    TData
-  > & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type ListInspectionRegistryQueryResult = NonNullable<
-  Awaited<ReturnType<typeof listInspectionRegistry>>
->
-export type ListInspectionRegistryQueryError = ValidationProblemDetails
-
-export function useListInspectionRegistry<
-  TData = Awaited<ReturnType<typeof listInspectionRegistry>>,
-  TError = ValidationProblemDetails,
->(
-  params: undefined | ListInspectionRegistryParams,
-  options: {
-    query: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof listInspectionRegistry>>,
-        TError,
-        TData
-      >
-    > &
-      Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof listInspectionRegistry>>,
-          TError,
-          Awaited<ReturnType<typeof listInspectionRegistry>>
-        >,
-        'initialData'
-      >
-  },
-  queryClient?: QueryClient,
-): DefinedUseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>
-}
-export function useListInspectionRegistry<
-  TData = Awaited<ReturnType<typeof listInspectionRegistry>>,
-  TError = ValidationProblemDetails,
->(
-  params?: ListInspectionRegistryParams,
-  options?: {
-    query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof listInspectionRegistry>>,
-        TError,
-        TData
-      >
-    > &
-      Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof listInspectionRegistry>>,
-          TError,
-          Awaited<ReturnType<typeof listInspectionRegistry>>
-        >,
-        'initialData'
-      >
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>
-}
-export function useListInspectionRegistry<
-  TData = Awaited<ReturnType<typeof listInspectionRegistry>>,
-  TError = ValidationProblemDetails,
->(
-  params?: ListInspectionRegistryParams,
-  options?: {
-    query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof listInspectionRegistry>>,
-        TError,
-        TData
-      >
-    >
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>
-}
-/**
- * @summary Lists a bounded page of acknowledged or legacy official inspections for the web registry
- */
-
-export function useListInspectionRegistry<
-  TData = Awaited<ReturnType<typeof listInspectionRegistry>>,
-  TError = ValidationProblemDetails,
->(
-  params?: ListInspectionRegistryParams,
-  options?: {
-    query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof listInspectionRegistry>>,
-        TError,
-        TData
-      >
-    >
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>
-} {
-  const queryOptions = getListInspectionRegistryQueryOptions(params, options)
-
-  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
-    TData,
-    TError
-  > & { queryKey: DataTag<QueryKey, TData, TError> }
-
-  return withQueryKey(query, queryOptions.queryKey)
-}
-
-/**
- * @summary Lists lightweight official inspection filter options
- */
-export const getInspectionRegistryOptions = (
-  params?: GetInspectionRegistryOptionsParams,
-  signal?: AbortSignal,
-) => {
-  return customInstance<InspectionRegistryOptionsResponse>({
-    url: `/api/v1/inspections/registry/options`,
-    method: 'GET',
-    params,
-    signal,
-  })
-}
-
-export const getGetInspectionRegistryOptionsQueryKey = (
-  params?: GetInspectionRegistryOptionsParams,
-) => {
-  return [
-    `/api/v1/inspections/registry/options`,
-    ...(params ? [params] : []),
-  ] as const
-}
-
-export const getGetInspectionRegistryOptionsQueryOptions = <
-  TData = Awaited<ReturnType<typeof getInspectionRegistryOptions>>,
-  TError = ValidationProblemDetails,
->(
-  params?: GetInspectionRegistryOptionsParams,
-  options?: {
-    query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof getInspectionRegistryOptions>>,
-        TError,
-        TData
-      >
-    >
-  },
-) => {
-  const { query: queryOptions } = options ?? {}
-
-  const queryKey =
-    queryOptions?.queryKey ?? getGetInspectionRegistryOptionsQueryKey(params)
-
-  const queryFn: QueryFunction<
-    Awaited<ReturnType<typeof getInspectionRegistryOptions>>
-  > = ({ signal }) => getInspectionRegistryOptions(params, signal)
-
-  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
-    Awaited<ReturnType<typeof getInspectionRegistryOptions>>,
-    TError,
-    TData
-  > & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type GetInspectionRegistryOptionsQueryResult = NonNullable<
-  Awaited<ReturnType<typeof getInspectionRegistryOptions>>
->
-export type GetInspectionRegistryOptionsQueryError = ValidationProblemDetails
-
-export function useGetInspectionRegistryOptions<
-  TData = Awaited<ReturnType<typeof getInspectionRegistryOptions>>,
-  TError = ValidationProblemDetails,
->(
-  params: undefined | GetInspectionRegistryOptionsParams,
-  options: {
-    query: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof getInspectionRegistryOptions>>,
-        TError,
-        TData
-      >
-    > &
-      Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getInspectionRegistryOptions>>,
-          TError,
-          Awaited<ReturnType<typeof getInspectionRegistryOptions>>
-        >,
-        'initialData'
-      >
-  },
-  queryClient?: QueryClient,
-): DefinedUseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>
-}
-export function useGetInspectionRegistryOptions<
-  TData = Awaited<ReturnType<typeof getInspectionRegistryOptions>>,
-  TError = ValidationProblemDetails,
->(
-  params?: GetInspectionRegistryOptionsParams,
-  options?: {
-    query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof getInspectionRegistryOptions>>,
-        TError,
-        TData
-      >
-    > &
-      Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getInspectionRegistryOptions>>,
-          TError,
-          Awaited<ReturnType<typeof getInspectionRegistryOptions>>
-        >,
-        'initialData'
-      >
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>
-}
-export function useGetInspectionRegistryOptions<
-  TData = Awaited<ReturnType<typeof getInspectionRegistryOptions>>,
-  TError = ValidationProblemDetails,
->(
-  params?: GetInspectionRegistryOptionsParams,
-  options?: {
-    query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof getInspectionRegistryOptions>>,
-        TError,
-        TData
-      >
-    >
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>
-}
-/**
- * @summary Lists lightweight official inspection filter options
- */
-
-export function useGetInspectionRegistryOptions<
-  TData = Awaited<ReturnType<typeof getInspectionRegistryOptions>>,
-  TError = ValidationProblemDetails,
->(
-  params?: GetInspectionRegistryOptionsParams,
-  options?: {
-    query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof getInspectionRegistryOptions>>,
-        TError,
-        TData
-      >
-    >
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>
-} {
-  const queryOptions = getGetInspectionRegistryOptionsQueryOptions(
-    params,
-    options,
-  )
-
-  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
-    TData,
-    TError
-  > & { queryKey: DataTag<QueryKey, TData, TError> }
-
-  return withQueryKey(query, queryOptions.queryKey)
-}
-
-/**
- * @summary Returns overall official inspection totals
- */
-export const getInspectionRegistrySummary = (signal?: AbortSignal) => {
-  return customInstance<InspectionRegistrySummaryResponse>({
-    url: `/api/v1/inspections/registry/summary`,
-    method: 'GET',
-    signal,
-  })
-}
-
-export const getGetInspectionRegistrySummaryQueryKey = () => {
-  return [`/api/v1/inspections/registry/summary`] as const
-}
-
-export const getGetInspectionRegistrySummaryQueryOptions = <
-  TData = Awaited<ReturnType<typeof getInspectionRegistrySummary>>,
-  TError = unknown,
->(options?: {
-  query?: Partial<
-    UseQueryOptions<
-      Awaited<ReturnType<typeof getInspectionRegistrySummary>>,
-      TError,
-      TData
-    >
-  >
-}) => {
-  const { query: queryOptions } = options ?? {}
-
-  const queryKey =
-    queryOptions?.queryKey ?? getGetInspectionRegistrySummaryQueryKey()
-
-  const queryFn: QueryFunction<
-    Awaited<ReturnType<typeof getInspectionRegistrySummary>>
-  > = ({ signal }) => getInspectionRegistrySummary(signal)
-
-  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
-    Awaited<ReturnType<typeof getInspectionRegistrySummary>>,
-    TError,
-    TData
-  > & { queryKey: DataTag<QueryKey, TData, TError> }
-}
-
-export type GetInspectionRegistrySummaryQueryResult = NonNullable<
-  Awaited<ReturnType<typeof getInspectionRegistrySummary>>
->
-export type GetInspectionRegistrySummaryQueryError = unknown
-
-export function useGetInspectionRegistrySummary<
-  TData = Awaited<ReturnType<typeof getInspectionRegistrySummary>>,
-  TError = unknown,
->(
-  options: {
-    query: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof getInspectionRegistrySummary>>,
-        TError,
-        TData
-      >
-    > &
-      Pick<
-        DefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getInspectionRegistrySummary>>,
-          TError,
-          Awaited<ReturnType<typeof getInspectionRegistrySummary>>
-        >,
-        'initialData'
-      >
-  },
-  queryClient?: QueryClient,
-): DefinedUseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>
-}
-export function useGetInspectionRegistrySummary<
-  TData = Awaited<ReturnType<typeof getInspectionRegistrySummary>>,
-  TError = unknown,
->(
-  options?: {
-    query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof getInspectionRegistrySummary>>,
-        TError,
-        TData
-      >
-    > &
-      Pick<
-        UndefinedInitialDataOptions<
-          Awaited<ReturnType<typeof getInspectionRegistrySummary>>,
-          TError,
-          Awaited<ReturnType<typeof getInspectionRegistrySummary>>
-        >,
-        'initialData'
-      >
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>
-}
-export function useGetInspectionRegistrySummary<
-  TData = Awaited<ReturnType<typeof getInspectionRegistrySummary>>,
-  TError = unknown,
->(
-  options?: {
-    query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof getInspectionRegistrySummary>>,
-        TError,
-        TData
-      >
-    >
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>
-}
-/**
- * @summary Returns overall official inspection totals
- */
-
-export function useGetInspectionRegistrySummary<
-  TData = Awaited<ReturnType<typeof getInspectionRegistrySummary>>,
-  TError = unknown,
->(
-  options?: {
-    query?: Partial<
-      UseQueryOptions<
-        Awaited<ReturnType<typeof getInspectionRegistrySummary>>,
-        TError,
-        TData
-      >
-    >
-  },
-  queryClient?: QueryClient,
-): UseQueryResult<TData, TError> & {
-  queryKey: DataTag<QueryKey, TData, TError>
-} {
-  const queryOptions = getGetInspectionRegistrySummaryQueryOptions(options)
-
-  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
-    TData,
-    TError
-  > & { queryKey: DataTag<QueryKey, TData, TError> }
-
-  return withQueryKey(query, queryOptions.queryKey)
-}
-
-/**
- * @summary Interprets a bounded preventive-maintenance analytics question using the V2 deterministic grammar
- */
-export const interpretPmAnalyticsV2Question = (
-  pmAnalyticsV2InterpretRequest: PmAnalyticsV2InterpretRequest,
-  signal?: AbortSignal,
-) => {
-  return customInstance<PmAnalyticsV2InterpretationResponse>({
-    url: `/api/v1/analytics/pm/v2/interpret`,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    data: pmAnalyticsV2InterpretRequest,
-    signal,
-  })
-}
-
-export const getInterpretPmAnalyticsV2QuestionMutationOptions = <
-  TError = ValidationProblemDetails | ProblemDetails,
-  TContext = unknown,
->(options?: {
-  mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof interpretPmAnalyticsV2Question>>,
-    TError,
-    { data: PmAnalyticsV2InterpretRequest },
-    TContext
-  >
-}): UseMutationOptions<
-  Awaited<ReturnType<typeof interpretPmAnalyticsV2Question>>,
-  TError,
-  { data: PmAnalyticsV2InterpretRequest },
-  TContext
-> => {
-  const mutationKey = ['interpretPmAnalyticsV2Question']
-  const { mutation: mutationOptions } = options
-    ? options.mutation &&
-      'mutationKey' in options.mutation &&
-      options.mutation.mutationKey
-      ? options
-      : { ...options, mutation: { ...options.mutation, mutationKey } }
-    : { mutation: { mutationKey } }
-
-  const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof interpretPmAnalyticsV2Question>>,
-    { data: PmAnalyticsV2InterpretRequest }
-  > = (props) => {
-    const { data } = props ?? {}
-
-    return interpretPmAnalyticsV2Question(data)
-  }
-
-  return { mutationFn, ...mutationOptions }
-}
-
-export type InterpretPmAnalyticsV2QuestionMutationResult = NonNullable<
-  Awaited<ReturnType<typeof interpretPmAnalyticsV2Question>>
->
-export type InterpretPmAnalyticsV2QuestionMutationBody =
-  PmAnalyticsV2InterpretRequest
-export type InterpretPmAnalyticsV2QuestionMutationError =
-  ValidationProblemDetails | ProblemDetails
-
-/**
- * @summary Interprets a bounded preventive-maintenance analytics question using the V2 deterministic grammar
- */
-export const useInterpretPmAnalyticsV2Question = <
-  TError = ValidationProblemDetails | ProblemDetails,
-  TContext = unknown,
->(
-  options?: {
-    mutation?: UseMutationOptions<
-      Awaited<ReturnType<typeof interpretPmAnalyticsV2Question>>,
-      TError,
-      { data: PmAnalyticsV2InterpretRequest },
-      TContext
-    >
-  },
-  queryClient?: QueryClient,
-): UseMutationResult<
-  Awaited<ReturnType<typeof interpretPmAnalyticsV2Question>>,
-  TError,
-  { data: PmAnalyticsV2InterpretRequest },
-  TContext
-> => {
-  return useMutation(
-    getInterpretPmAnalyticsV2QuestionMutationOptions(options),
-    queryClient,
-  )
-}
-
-/**
- * @summary Executes a validated typed V2 preventive-maintenance analytics plan
- */
-export const queryPmAnalyticsV2 = (
-  pmAnalyticsV2QueryRequest: PmAnalyticsV2QueryRequest,
-  signal?: AbortSignal,
-) => {
-  return customInstance<PmAnalyticsV2QueryResponse>({
-    url: `/api/v1/analytics/pm/v2/query`,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    data: pmAnalyticsV2QueryRequest,
-    signal,
-  })
-}
-
-export const getQueryPmAnalyticsV2MutationOptions = <
-  TError = ValidationProblemDetails | ProblemDetails,
-  TContext = unknown,
->(options?: {
-  mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof queryPmAnalyticsV2>>,
-    TError,
-    { data: PmAnalyticsV2QueryRequest },
-    TContext
-  >
-}): UseMutationOptions<
-  Awaited<ReturnType<typeof queryPmAnalyticsV2>>,
-  TError,
-  { data: PmAnalyticsV2QueryRequest },
-  TContext
-> => {
-  const mutationKey = ['queryPmAnalyticsV2']
-  const { mutation: mutationOptions } = options
-    ? options.mutation &&
-      'mutationKey' in options.mutation &&
-      options.mutation.mutationKey
-      ? options
-      : { ...options, mutation: { ...options.mutation, mutationKey } }
-    : { mutation: { mutationKey } }
-
-  const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof queryPmAnalyticsV2>>,
-    { data: PmAnalyticsV2QueryRequest }
-  > = (props) => {
-    const { data } = props ?? {}
-
-    return queryPmAnalyticsV2(data)
-  }
-
-  return { mutationFn, ...mutationOptions }
-}
-
-export type QueryPmAnalyticsV2MutationResult = NonNullable<
-  Awaited<ReturnType<typeof queryPmAnalyticsV2>>
->
-export type QueryPmAnalyticsV2MutationBody = PmAnalyticsV2QueryRequest
-export type QueryPmAnalyticsV2MutationError =
-  ValidationProblemDetails | ProblemDetails
-
-/**
- * @summary Executes a validated typed V2 preventive-maintenance analytics plan
- */
-export const useQueryPmAnalyticsV2 = <
-  TError = ValidationProblemDetails | ProblemDetails,
-  TContext = unknown,
->(
-  options?: {
-    mutation?: UseMutationOptions<
-      Awaited<ReturnType<typeof queryPmAnalyticsV2>>,
-      TError,
-      { data: PmAnalyticsV2QueryRequest },
-      TContext
-    >
-  },
-  queryClient?: QueryClient,
-): UseMutationResult<
-  Awaited<ReturnType<typeof queryPmAnalyticsV2>>,
-  TError,
-  { data: PmAnalyticsV2QueryRequest },
-  TContext
-> => {
-  return useMutation(getQueryPmAnalyticsV2MutationOptions(options), queryClient)
 }

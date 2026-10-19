@@ -303,7 +303,9 @@ function FormRegistryFilters({
             }))}
             loading={optionsPending}
             errorMessage={
-              optionsError ? 'Department options could not be loaded.' : undefined
+              optionsError
+                ? 'Department options could not be loaded.'
+                : undefined
             }
             emptyMessage="No matching departments."
             onRetry={onRetryOptions}
