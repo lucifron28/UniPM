@@ -3,6 +3,9 @@
 Date: 19 October 2026.
 Status: reporting correctness, interpretation and React workflow hardening is
 committed on the feature branch as `e2f90bba35707a7142b3dccb1afb8eeec6143ad4`.
+
+### Historical verification at `e2f90bba` (TEST-110)
+
 The web production build (including TypeScript), lint, changed-file formatting,
 7 focused V3 React tests, OpenAPI generation/drift check and 7 negative contract
 checks passed. Backend regression and authorization tests were added but could
@@ -17,6 +20,19 @@ replicate. The cross-instance, tampering, user-binding, and expiry regression
 test is present in source but was not executed in TEST-110 because the .NET SDK
 was unavailable. This status does not authorize deployment, release, external
 provider calls, database changes or new domain measures.
+
+### Quarterly drill-down follow-up at `b0289382` (TEST-111)
+
+Quarter grouping now uses the floored month-to-quarter calculation. Focused
+React regressions cover February/Q1 and November/Q4, including category
+selection, quarter period, retained filters, and returned source records. The
+.NET 10 build and focused V3 regression/authorization tests passed; the focused
+React tests, relevant Web CI checks, and narrow-viewport Playwright scenario
+also passed. Native SQL Server 2019 integration remains unverified because no
+dedicated SQL test connection is configured. First-release acceptance and
+deployment remain unverified. No DeepSeek request was made. See
+[TEST-111](../evidence/test-runs/TEST-111-pm-analytics-v3-quarterly-drilldown.md)
+for exact commands and results.
 
 ## Goal and source baseline
 

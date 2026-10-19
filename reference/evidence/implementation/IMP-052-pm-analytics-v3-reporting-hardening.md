@@ -87,7 +87,7 @@ interpret-preview-execute workflow and negative role checks. Added seven React
 workflow tests and one narrow-viewport Playwright scenario. Backend and browser
 test execution limits are detailed in [TEST-110](../test-runs/TEST-110-pm-analytics-v3-reporting-hardening.md).
 
-## Verification Status
+## Verification Status as recorded in TEST-110
 
 The Node 22.23.3 web build, lint, changed-file formatting, seven focused React
 tests, OpenAPI generation/drift check and seven negative OpenAPI contract checks
@@ -95,7 +95,7 @@ passed at the implementation commit. Backend compilation/tests did not run
 because the .NET SDK is absent. The Playwright scenario could not start because
 Chromium is absent; the official browser download returned HTTP 403.
 
-## Known Limitations
+## Known Limitations as of TEST-110
 
 - Backend compilation, endpoint authorization execution and service regression
   tests remain unverified.
@@ -113,6 +113,7 @@ Chromium is absent; the official browser download returned HTTP 403.
 ## Related Evidence
 
 - [TEST-110: PM analytics V3 hardening verification](../test-runs/TEST-110-pm-analytics-v3-reporting-hardening.md)
+- [TEST-111: PM analytics V3 quarterly drill-down follow-up](../test-runs/TEST-111-pm-analytics-v3-quarterly-drilldown.md)
 
 ## Architecture correction
 
@@ -121,4 +122,6 @@ That wording was incorrect. The implementation in
 `server/Features/Reports/PmAnalyticsV3PreviewStore.cs` creates and verifies
 signed, stateless, user-bound tokens with a ten-minute lifetime. The historical
 TEST-110 execution results remain unchanged; its backend test limitation is
-preserved above.
+preserved above. The quarterly source-record correction and current verification
+at `b028938204932f0e49f285d5a0b90206dd58a32a` are recorded separately in
+TEST-111.
