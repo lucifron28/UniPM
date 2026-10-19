@@ -168,6 +168,9 @@ builder.Services.AddScoped<PmPeriodDashboardService>();
 builder.Services.AddScoped<PmAnalyticsService>();
 builder.Services.AddScoped<PmAnalyticsV2QueryService>();
 builder.Services.AddScoped<PmAnalyticsV2QuestionInterpreter>();
+builder.Services.AddScoped<PmAnalyticsV3QueryService>();
+builder.Services.AddSingleton<PmAnalyticsV3PreviewStore>();
+builder.Services.AddScoped<PmAnalyticsV3QuestionInterpreter>();
 builder.Services
     .AddOptions<InspectionPhotoEvidenceOptions>()
     .Bind(builder.Configuration.GetSection(InspectionPhotoEvidenceOptions.SectionName))
