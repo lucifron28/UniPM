@@ -154,6 +154,7 @@ const schedule = {
     building: asset.building,
     department: asset.department,
     location: asset.location,
+    status: asset.status,
   },
 }
 const workerId = '44444444-4444-4444-8444-444444444444'
@@ -200,7 +201,14 @@ function scheduleRegistryItem(item: typeof schedule) {
     completedAt: item.completedAt,
     createdAt: item.createdAt,
     updatedAt: item.updatedAt,
-    asset: item.asset,
+    asset: {
+      id: item.asset.id,
+      assetCode: item.asset.assetCode,
+      assetCategory: item.asset.assetCategory,
+      building: item.asset.building,
+      department: item.asset.department,
+      location: item.asset.location,
+    },
   }
 }
 
