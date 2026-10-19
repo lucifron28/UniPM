@@ -532,7 +532,9 @@ describe('PM analytics V3 workflow', () => {
           nullSemantics: null,
         },
       ]
-      aggregateExecution.aggregateRows[0].values.calendarQuarter = quarter
+      const aggregateRow = aggregateExecution.aggregateRows[0]
+      if (!aggregateRow) throw new Error('Expected one aggregate row')
+      aggregateRow.values.calendarQuarter = quarter
 
       api.interpret.mockResolvedValueOnce(makeInterpretation(plan))
       api.execute
@@ -541,10 +543,11 @@ describe('PM analytics V3 workflow', () => {
           const recordPlan = api.preview.mock.calls.at(-1)?.[0]
             .plan as PmAnalyticsV3ReportPlan
           const recordsExecution = makeExecution(recordPlan, 'Records')
-          recordsExecution.records[0].values.assetCategory =
-            'water-drinking-station'
-          recordsExecution.records[0].values.assetCode = 'WDS-001'
-          recordsExecution.records[0].values.pmCycle = sourceCycle
+          const [record] = recordsExecution.records
+          if (!record) throw new Error('Expected one source record')
+          record.values.assetCategory = 'water-drinking-station'
+          record.values.assetCode = 'WDS-001'
+          record.values.pmCycle = sourceCycle
           recordsExecution.population.sourceTotalCount = 1
           return recordsExecution
         })
