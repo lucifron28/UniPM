@@ -731,7 +731,7 @@ export function ScheduleRegistry({
                 }
               />
             </label>
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-3 xl:grid-cols-5">
+            <div className="grid grid-cols-1 items-start gap-3 md:grid-cols-3 xl:grid-cols-5">
               <label className="grid gap-1 text-sm font-semibold text-[var(--text-primary)]">
                 Asset category
                 <select
@@ -752,7 +752,7 @@ export function ScheduleRegistry({
                         : null,
                     )
                   }}
-                  className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
+                  className="h-10 w-full min-w-0 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
                 >
                   <option value="">All asset categories</option>
                   {categories.map((category) => (
@@ -775,7 +775,7 @@ export function ScheduleRegistry({
                         Schedule['status'] | undefined,
                     }))
                   }
-                  className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
+                  className="h-10 w-full min-w-0 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
                 >
                   <option value="">All statuses</option>
                   {(statuses.data ?? []).map((status) => (
@@ -804,7 +804,7 @@ export function ScheduleRegistry({
                       )
                     }
                   }}
-                  className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
+                  className="h-10 w-full min-w-0 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
                 >
                   <option value="">All years</option>
                   {yearOptions.map((year) => (
@@ -870,7 +870,7 @@ export function ScheduleRegistry({
                       )
                     }
                   }}
-                  className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
+                  className="h-10 w-full min-w-0 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
                 >
                   <option value="">All quarters</option>
                   {quarterOptions.map((quarter) => (
@@ -905,7 +905,7 @@ export function ScheduleRegistry({
               </summary>
               <div
                 id="schedule-more-filters"
-                className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3"
+                className="mt-3 grid grid-cols-1 items-start gap-3 md:grid-cols-2 xl:grid-cols-3"
               >
                 <AssetPicker
                   value={draft.assetId}
@@ -926,7 +926,7 @@ export function ScheduleRegistry({
                         from: fromDateTimeLocal(event.target.value),
                       }))
                     }
-                    className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm font-normal"
+                    className="h-10 w-full min-w-0 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm font-normal"
                   />
                 </label>
                 <label className="grid gap-1 text-xs font-semibold text-[var(--text-secondary)]">
@@ -940,7 +940,7 @@ export function ScheduleRegistry({
                         to: fromDateTimeLocal(event.target.value),
                       }))
                     }
-                    className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm font-normal"
+                    className="h-10 w-full min-w-0 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm font-normal"
                   />
                 </label>
                 <label className="grid gap-1 text-sm font-semibold text-[var(--text-primary)]">
@@ -971,7 +971,7 @@ export function ScheduleRegistry({
                       }))
                       setFilterNotice(null)
                     }}
-                    className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm font-normal"
+                    className="h-10 w-full min-w-0 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm font-normal"
                   >
                     <option value="">All months</option>
                     {allowedMonths.map((month) => (
