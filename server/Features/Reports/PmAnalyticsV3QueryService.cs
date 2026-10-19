@@ -779,8 +779,8 @@ internal sealed class PmAnalyticsV3QueryService(
     {
         var categoryGroup = new[]
             {
-                (key.FirstId, key.FirstValue),
-                (key.SecondId, key.SecondValue)
+                (FirstId: key.FirstId, FirstValue: key.FirstValue),
+                (FirstId: key.SecondId, FirstValue: key.SecondValue)
             }
             .FirstOrDefault(group => group.FirstId == PmAnalyticsV3Catalog.AssetCategory);
         var categories = categoryGroup.FirstId is null
