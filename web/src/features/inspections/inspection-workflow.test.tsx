@@ -171,6 +171,14 @@ function mockInspectionApi() {
   })
   server.use(
     http.get(`${base}/assets`, () => HttpResponse.json([asset])),
+    http.get(`${base}/assets/registry`, () =>
+      HttpResponse.json({
+        items: [asset],
+        page: 1,
+        pageSize: 20,
+        totalCount: 1,
+      }),
+    ),
     http.get(`${base}/reference-data/asset-categories`, () =>
       HttpResponse.json([
         { code: 'fire-extinguisher', displayName: 'Fire extinguishers' },
@@ -394,7 +402,11 @@ describe('inspection review workflows', () => {
       screen.getByLabelText('Asset category'),
       'fire-extinguisher',
     )
-    await actor.selectOptions(screen.getByLabelText('Department'), 'GSD')
+    const departmentFilter = screen.getByRole('combobox', {
+      name: 'Department',
+    })
+    await actor.type(departmentFilter, 'GSD')
+    await actor.keyboard('{ArrowDown}{Enter}')
     await actor.selectOptions(
       screen.getByLabelText('Recorded operational result'),
       'false',

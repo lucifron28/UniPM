@@ -297,8 +297,8 @@ test.describe('Asset Registry E2E Specs', () => {
       ).toBeVisible()
       await expect(page.getByText('FE-001').first()).toBeVisible()
 
-      const selectBoxes = await page
-        .locator('form select')
+      const filterControlBoxes = await page
+        .locator('form select, form [role="combobox"]')
         .evaluateAll((items) =>
           items.map((item) => {
             const { x, y, width, height } = item.getBoundingClientRect()
@@ -323,8 +323,8 @@ test.describe('Asset Registry E2E Specs', () => {
             }
           }),
         )
-      expect(selectBoxes).toHaveLength(4)
-      for (const rect of selectBoxes) {
+      expect(filterControlBoxes).toHaveLength(4)
+      for (const rect of filterControlBoxes) {
         expect(rect.width).toBeGreaterThan(0)
         expect(rect.x).toBeGreaterThanOrEqual(0)
         expect(rect.right).toBeLessThanOrEqual(viewport.width)
@@ -334,10 +334,14 @@ test.describe('Asset Registry E2E Specs', () => {
         expect(rect.y).toBeGreaterThanOrEqual(rect.cell.y)
         expect(rect.bottom).toBeLessThanOrEqual(rect.cell.bottom)
       }
-      for (let first = 0; first < selectBoxes.length; first += 1) {
-        for (let second = first + 1; second < selectBoxes.length; second += 1) {
-          const a = selectBoxes[first]
-          const b = selectBoxes[second]
+      for (let first = 0; first < filterControlBoxes.length; first += 1) {
+        for (
+          let second = first + 1;
+          second < filterControlBoxes.length;
+          second += 1
+        ) {
+          const a = filterControlBoxes[first]
+          const b = filterControlBoxes[second]
           expect(
             a.right <= b.x ||
               b.right <= a.x ||

@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { SearchablePicker } from '@/components/ui/searchable-picker'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { Asset, AssetCategory } from '@/features/assets/asset-contract'
 import { assetStatusCodes } from '@/features/assets/asset-contract'
@@ -597,38 +598,48 @@ export function AssetRegistry({
                 ))}
               </select>
             </label>
-            <label className="grid min-w-0 gap-1 text-sm font-semibold text-[var(--text-primary)]">
-              <span>Building</span>
-              <select
-                value={building}
-                onChange={(event) => {
-                  setBuilding(event.target.value)
-                  setFilterNotice(null)
-                }}
-                className="min-h-10 w-full min-w-0 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
-              >
-                <option value="">All buildings</option>
-                {buildings.map((value) => (
-                  <option key={value}>{value}</option>
-                ))}
-              </select>
-            </label>
-            <label className="grid min-w-0 gap-1 text-sm font-semibold text-[var(--text-primary)]">
-              <span>Department</span>
-              <select
-                value={department}
-                onChange={(event) => {
-                  setDepartment(event.target.value)
-                  setFilterNotice(null)
-                }}
-                className="min-h-10 w-full min-w-0 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
-              >
-                <option value="">All departments</option>
-                {departments.map((value) => (
-                  <option key={value}>{value}</option>
-                ))}
-              </select>
-            </label>
+            <SearchablePicker
+              label="Building"
+              value={building || undefined}
+              selectedOption={
+                building ? { value: building, label: building } : undefined
+              }
+              allLabel="All buildings"
+              options={buildings.map((value) => ({ value, label: value }))}
+              loading={filterOptions.isPending}
+              errorMessage={
+                filterOptions.isError
+                  ? 'Building options could not be loaded.'
+                  : undefined
+              }
+              emptyMessage="No matching buildings."
+              onRetry={() => void filterOptions.refetch()}
+              onChange={(nextBuilding) => {
+                setBuilding(nextBuilding ?? '')
+                setFilterNotice(null)
+              }}
+            />
+            <SearchablePicker
+              label="Department"
+              value={department || undefined}
+              selectedOption={
+                department ? { value: department, label: department } : undefined
+              }
+              allLabel="All departments"
+              options={departments.map((value) => ({ value, label: value }))}
+              loading={filterOptions.isPending}
+              errorMessage={
+                filterOptions.isError
+                  ? 'Department options could not be loaded.'
+                  : undefined
+              }
+              emptyMessage="No matching departments."
+              onRetry={() => void filterOptions.refetch()}
+              onChange={(nextDepartment) => {
+                setDepartment(nextDepartment ?? '')
+                setFilterNotice(null)
+              }}
+            />
             <div className="flex flex-wrap gap-2 md:col-span-2 xl:col-span-4">
               <Button type="submit">Apply filters</Button>
               <Button type="button" variant="secondary" onClick={clear}>

@@ -149,6 +149,18 @@ async function mockInspectionApi(page: Page) {
       body: JSON.stringify(session.user),
     }),
   )
+  await page.route('**/api/v1/assets/registry**', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        items: [asset],
+        page: 1,
+        pageSize: 20,
+        totalCount: 1,
+      }),
+    }),
+  )
   await page.route('**/api/v1/assets**', (route) =>
     route.fulfill({
       status: 200,

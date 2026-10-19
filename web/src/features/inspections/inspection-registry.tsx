@@ -12,6 +12,7 @@ import { PageHeading } from '@/components/layout/page-heading'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { SearchablePicker } from '@/components/ui/searchable-picker'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { Asset } from '@/features/assets/asset-contract'
 import { AssetPicker } from '@/features/assets/asset-picker'
@@ -796,34 +797,40 @@ export function InspectionRegistry({
                 <option value="ReferredToWms">Referred to WMS</option>
               </select>
             </label>
-            <label className="grid min-w-0 gap-1 text-sm font-semibold text-[var(--text-primary)]">
-              Department
-              <select
-                aria-label="Department"
-                value={draft.department ?? ''}
-                disabled={filterOptions.isError || filterOptions.isPending}
-                onChange={(event) => {
-                  setDraft((current) => ({
-                    ...current,
-                    department: event.target.value || undefined,
-                    assetId: undefined,
-                  }))
-                  setFilterNotice(
-                    draft.assetId
-                      ? 'Specific asset was cleared because the department filter changed.'
-                      : null,
-                  )
-                }}
-                className="min-h-10 w-full min-w-0 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
-              >
-                <option value="">All departments</option>
-                {departments.map((department) => (
-                  <option key={department} value={department}>
-                    {department}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <SearchablePicker
+              label="Department"
+              value={draft.department}
+              selectedOption={
+                draft.department
+                  ? { value: draft.department, label: draft.department }
+                  : undefined
+              }
+              allLabel="All departments"
+              options={departments.map((department) => ({
+                value: department,
+                label: department,
+              }))}
+              loading={filterOptions.isPending}
+              errorMessage={
+                filterOptions.isError
+                  ? 'Department options could not be loaded.'
+                  : undefined
+              }
+              emptyMessage="No matching departments."
+              onRetry={() => void filterOptions.refetch()}
+              onChange={(department) => {
+                setDraft((current) => ({
+                  ...current,
+                  department,
+                  assetId: undefined,
+                }))
+                setFilterNotice(
+                  draft.assetId
+                    ? 'Specific asset was cleared because the department filter changed.'
+                    : null,
+                )
+              }}
+            />
             <label className="grid min-w-0 gap-1 text-sm font-semibold text-[var(--text-primary)]">
               PM calendar quarter
               <select
