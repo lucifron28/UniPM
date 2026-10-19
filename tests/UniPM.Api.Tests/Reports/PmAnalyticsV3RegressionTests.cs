@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using UniPM.Api.Data;
 using UniPM.Api.Features.Schedules;
 using UniPM.Api.Models;
+using System.Text.Json;
 
 namespace UniPM.Api.Tests;
 
@@ -82,6 +83,34 @@ public sealed class PmAnalyticsV3RegressionTests
         Assert.Contains(records.Plan.MatchingFilters, filter =>
             filter.Field == PmAnalyticsV3Catalog.Condition
                 && filter.Values?.Contains("NonOperational", StringComparer.Ordinal) == true);
+    }
+
+    [Fact]
+    public void Comparing_multiple_categories_groups_results_by_category()
+    {
+        var result = PmAnalyticsV3RuleParser.Parse(
+            "Compare scheduled fire extinguisher and fire alarm cycles in 2024",
+            new DateTimeOffset(2025, 6, 1, 0, 0, 0, TimeSpan.Zero));
+
+        Assert.Equal("Valid", result.Status);
+        Assert.NotNull(result.Plan);
+        Assert.Equal(
+            new[] { "fire-extinguisher", "fire-alarm" },
+            result.Plan.Categories);
+        Assert.Equal([PmAnalyticsV3Catalog.AssetCategory], result.Plan.GroupBy);
+        Assert.Contains(PmAnalyticsV3Catalog.AssetCategory, result.Plan.Columns);
+    }
+
+    [Fact]
+    public void Clearly_out_of_scope_asset_categories_are_rejected_without_a_plan()
+    {
+        var result = PmAnalyticsV3RuleParser.Parse(
+            "Show elevator maintenance compliance in 2024",
+            new DateTimeOffset(2025, 6, 1, 0, 0, 0, TimeSpan.Zero));
+
+        Assert.Equal("Unsupported", result.Status);
+        Assert.Equal("UnsupportedAssetCategory", result.Code);
+        Assert.Null(result.Plan);
     }
 
     [Fact]
@@ -174,6 +203,178 @@ public sealed class PmAnalyticsV3RegressionTests
         Assert.False(compliance.IsMeasurable);
         Assert.Equal(1, compliance.Denominator);
         Assert.Contains("active or future", compliance.UnmeasurableReason);
+    }
+
+    [Fact]
+    public async Task Synthetic_denominator_fixture_keeps_matching_filters_out_of_the_denominator()
+    {
+        using var fixture = LoadCalculationFixture("denominator-matching");
+        var plan = CreateAggregatePlan(
+            ["fire-extinguisher"],
+            new PmAnalyticsV3Period("pmCycle", PmAnalyticsV3PeriodKind.Month, Year: 2024, Month: 2),
+            [PmAnalyticsV3Catalog.CompletedCount],
+            [],
+            [PmAnalyticsV3Catalog.CompletedCount]) with
+        {
+            MatchingFilters = [new PmAnalyticsV3Filter(PmAnalyticsV3Catalog.Condition, PmAnalyticsV3FilterOperator.Equal, ["NonOperational"])]
+        };
+
+        var response = await ExecuteFixtureAsync(fixture.RootElement, plan);
+        var result = Assert.Single(response.AggregateRows).Measures[PmAnalyticsV3Catalog.CompletedCount];
+        var expected = fixture.RootElement.GetProperty("expected");
+
+        Assert.Equal(expected.GetProperty("eligibleCount").GetInt32(), response.Population.EligibleAssetCycleCount);
+        Assert.Equal(expected.GetProperty("matchingCount").GetInt32(), result.MatchingRowCount);
+        Assert.Equal(expected.GetProperty("completedCountNumerator").GetInt32(), result.Numerator);
+        Assert.Equal(expected.GetProperty("denominator").GetInt32(), result.Denominator);
+        Assert.Equal(expected.GetProperty("completedCountValue").GetDecimal(), result.Value);
+    }
+
+    [Fact]
+    public async Task Synthetic_grouping_fixture_applies_thresholds_to_group_level_denominators()
+    {
+        using var fixture = LoadCalculationFixture("grouped-threshold");
+        var plan = CreateAggregatePlan(
+            ["fire-extinguisher"],
+            new PmAnalyticsV3Period("pmCycle", PmAnalyticsV3PeriodKind.Month, Year: 2024, Month: 2),
+            [PmAnalyticsV3Catalog.OnTimeCompliancePercent],
+            [PmAnalyticsV3Catalog.Department],
+            [PmAnalyticsV3Catalog.Department, PmAnalyticsV3Catalog.OnTimeCompliancePercent],
+            aggregateFilters: [new PmAnalyticsV3AggregateFilter(
+                PmAnalyticsV3Catalog.OnTimeCompliancePercent,
+                PmAnalyticsV3NumericOperator.GreaterThanOrEqual,
+                60m)]);
+
+        var response = await ExecuteFixtureAsync(fixture.RootElement, plan);
+        var expected = fixture.RootElement.GetProperty("expected");
+        var row = Assert.Single(response.AggregateRows);
+        var result = row.Measures[PmAnalyticsV3Catalog.OnTimeCompliancePercent];
+
+        Assert.Equal(expected.GetProperty("eligibleCount").GetInt32(), response.Population.EligibleAssetCycleCount);
+        Assert.Equal(expected.GetProperty("groupCountBeforeThreshold").GetInt32(), response.Population.GroupsBeforeAggregateFilters);
+        Assert.Equal(expected.GetProperty("groupCountAfterThreshold").GetInt32(), response.Population.GroupsAfterAggregateFilters);
+        Assert.Equal(expected.GetProperty("keptDepartment").GetString(), row.Values[PmAnalyticsV3Catalog.Department]);
+        Assert.Equal(expected.GetProperty("keptNumerator").GetInt32(), result.Numerator);
+        Assert.Equal(expected.GetProperty("keptDenominator").GetInt32(), result.Denominator);
+        Assert.Equal(expected.GetProperty("keptPercent").GetDecimal(), result.Value);
+    }
+
+    [Fact]
+    public async Task Synthetic_category_fixture_uses_category_specific_cycle_calendars()
+    {
+        using var fixture = LoadCalculationFixture("category-cycles");
+        var plan = CreateAggregatePlan(
+            ["fire-extinguisher", "fire-alarm"],
+            new PmAnalyticsV3Period("pmCycle", PmAnalyticsV3PeriodKind.Year, Year: 2024),
+            [PmAnalyticsV3Catalog.ScheduledCount],
+            [PmAnalyticsV3Catalog.AssetCategory],
+            [PmAnalyticsV3Catalog.AssetCategory, PmAnalyticsV3Catalog.ScheduledCount]);
+
+        var response = await ExecuteFixtureAsync(fixture.RootElement, plan);
+        var expected = fixture.RootElement.GetProperty("expected");
+
+        Assert.Equal(
+            expected.GetProperty("fire-extinguisher").EnumerateArray().Select(item => item.GetString()),
+            response.CyclesByCategory["fire-extinguisher"]);
+        Assert.Equal(
+            expected.GetProperty("fire-alarm").EnumerateArray().Select(item => item.GetString()),
+            response.CyclesByCategory["fire-alarm"]);
+        Assert.Equal(expected.GetProperty("eligibleCount").GetInt32(), response.Population.EligibleAssetCycleCount);
+        Assert.Equal(expected.GetProperty("scheduledByCategory").GetProperty("fire-extinguisher").GetInt32(),
+            Convert.ToInt32(response.AggregateRows.Single(row => Equals(row.Values[PmAnalyticsV3Catalog.AssetCategory], "fire-extinguisher")).Measures[PmAnalyticsV3Catalog.ScheduledCount].Value));
+        Assert.Equal(expected.GetProperty("scheduledByCategory").GetProperty("fire-alarm").GetInt32(),
+            Convert.ToInt32(response.AggregateRows.Single(row => Equals(row.Values[PmAnalyticsV3Catalog.AssetCategory], "fire-alarm")).Measures[PmAnalyticsV3Catalog.ScheduledCount].Value));
+    }
+
+    [Fact]
+    public async Task Synthetic_quarter_source_fixture_preserves_categories_period_filters_and_sources()
+    {
+        using var fixture = LoadCalculationFixture("quarter-source-records");
+        var expected = fixture.RootElement.GetProperty("expected");
+        var firstQuarter = await ExecuteFixtureAsync(fixture.RootElement, CreateRecordsPlan(
+            ["fire-extinguisher"],
+            new PmAnalyticsV3Period("pmCycle", PmAnalyticsV3PeriodKind.Quarter, Year: 2025, Quarter: 1),
+            [new PmAnalyticsV3Filter(PmAnalyticsV3Catalog.Building, PmAnalyticsV3FilterOperator.Equal, ["NORTH"])],
+            [new PmAnalyticsV3Filter(PmAnalyticsV3Catalog.Condition, PmAnalyticsV3FilterOperator.Equal, ["NonOperational"])]));
+        var fourthQuarter = await ExecuteFixtureAsync(fixture.RootElement, CreateRecordsPlan(
+            ["fire-extinguisher"],
+            new PmAnalyticsV3Period("pmCycle", PmAnalyticsV3PeriodKind.Quarter, Year: 2025, Quarter: 4),
+            [new PmAnalyticsV3Filter(PmAnalyticsV3Catalog.Building, PmAnalyticsV3FilterOperator.Equal, ["NORTH"])],
+            [new PmAnalyticsV3Filter(PmAnalyticsV3Catalog.Condition, PmAnalyticsV3FilterOperator.Equal, ["NonOperational"])]));
+
+        Assert.Equal(["fire-extinguisher"], firstQuarter.Plan.Categories);
+        Assert.Equal(expected.GetProperty("quarter1Cycles").EnumerateArray().Select(item => item.GetString()),
+            firstQuarter.CyclesByCategory["fire-extinguisher"]);
+        Assert.Equal(expected.GetProperty("quarter1RecordCodes").EnumerateArray().Select(item => item.GetString()),
+            firstQuarter.Records.Select(record => record.Values["assetCode"]));
+        Assert.Equal(["fire-extinguisher"], fourthQuarter.Plan.Categories);
+        Assert.Equal(expected.GetProperty("quarter4Cycles").EnumerateArray().Select(item => item.GetString()),
+            fourthQuarter.CyclesByCategory["fire-extinguisher"]);
+        Assert.Equal(expected.GetProperty("quarter4RecordCodes").EnumerateArray().Select(item => item.GetString()),
+            fourthQuarter.Records.Select(record => record.Values["assetCode"]));
+    }
+
+    [Fact]
+    public async Task Synthetic_pagination_fixture_returns_stable_nonduplicated_source_records()
+    {
+        using var fixture = LoadCalculationFixture("records-pagination");
+        var expected = fixture.RootElement.GetProperty("expected");
+        var plan = CreateRecordsPlan(
+            ["fire-extinguisher"],
+            new PmAnalyticsV3Period("pmCycle", PmAnalyticsV3PeriodKind.Month, Year: 2024, Month: 2),
+            [],
+            [new PmAnalyticsV3Filter(PmAnalyticsV3Catalog.Condition, PmAnalyticsV3FilterOperator.Equal, ["NonOperational"])]);
+
+        var response = await ExecuteFixtureAsync(
+            fixture.RootElement,
+            plan,
+            expected.GetProperty("page").GetInt32(),
+            expected.GetProperty("pageSize").GetInt32());
+
+        Assert.Equal(expected.GetProperty("eligibleCount").GetInt32(), response.Population.EligibleAssetCycleCount);
+        Assert.Equal(expected.GetProperty("matchingCount").GetInt32(), response.Population.MatchingAssetCycleCount);
+        Assert.Equal(expected.GetProperty("totalPages").GetInt32(), response.TotalPages);
+        Assert.Equal(expected.GetProperty("recordCodes").EnumerateArray().Select(item => item.GetString()),
+            response.Records.Select(record => record.Values["assetCode"]));
+        Assert.Equal(response.Records.Count, response.Records.Select(record => record.ScheduleId).Distinct().Count());
+    }
+
+    [Fact]
+    public async Task Synthetic_missing_coverage_and_empty_fixtures_are_unmeasurable_without_invented_values()
+    {
+        using var missingFixture = LoadCalculationFixture("missing-category-coverage");
+        var missingPlan = CreateAggregatePlan(
+            ["fire-extinguisher", "fire-alarm"],
+            new PmAnalyticsV3Period("pmCycle", PmAnalyticsV3PeriodKind.Range, StartCycle: "2025-05", EndCycle: "2025-06"),
+            [PmAnalyticsV3Catalog.OnTimeCompliancePercent],
+            [PmAnalyticsV3Catalog.Department],
+            [PmAnalyticsV3Catalog.Department, PmAnalyticsV3Catalog.OnTimeCompliancePercent]);
+        var missing = await ExecuteFixtureAsync(missingFixture.RootElement, missingPlan);
+        var missingExpected = missingFixture.RootElement.GetProperty("expected");
+        var missingMeasure = Assert.Single(missing.AggregateRows).Measures[PmAnalyticsV3Catalog.OnTimeCompliancePercent];
+
+        Assert.Equal(missingExpected.GetProperty("eligibleCount").GetInt32(), missingMeasure.Denominator);
+        Assert.False(missingMeasure.IsMeasurable);
+        Assert.Null(missingMeasure.Value);
+        Assert.Contains(missingExpected.GetProperty("reasonContains").GetString()!, missingMeasure.UnmeasurableReason);
+        Assert.Equal(missingExpected.GetProperty("fire-alarm").EnumerateArray().Select(item => item.GetString()), missing.CyclesByCategory["fire-alarm"]);
+
+        using var emptyFixture = LoadCalculationFixture("zero-eligible");
+        var emptyPlan = CreateAggregatePlan(
+            ["fire-extinguisher"],
+            new PmAnalyticsV3Period("pmCycle", PmAnalyticsV3PeriodKind.Year, Year: 2024),
+            [PmAnalyticsV3Catalog.ProgressPercent],
+            [],
+            [PmAnalyticsV3Catalog.ProgressPercent]);
+        var empty = await ExecuteFixtureAsync(emptyFixture.RootElement, emptyPlan);
+        var emptyExpected = emptyFixture.RootElement.GetProperty("expected");
+        var emptyMeasure = Assert.Single(empty.AggregateRows).Measures[PmAnalyticsV3Catalog.ProgressPercent];
+
+        Assert.Equal(emptyExpected.GetProperty("eligibleCount").GetInt32(), empty.Population.EligibleAssetCycleCount);
+        Assert.Equal(emptyExpected.GetProperty("denominator").GetInt32(), emptyMeasure.Denominator);
+        Assert.False(emptyMeasure.IsMeasurable);
+        Assert.Null(emptyMeasure.Value);
+        Assert.Contains(emptyExpected.GetProperty("reasonContains").GetString()!, emptyMeasure.UnmeasurableReason);
     }
 
     [Fact]
@@ -292,7 +493,8 @@ public sealed class PmAnalyticsV3RegressionTests
         IReadOnlyList<string> groupBy,
         IReadOnlyList<string> columns,
         IReadOnlyList<PmAnalyticsV3OrderBy>? orderBy = null,
-        PmAnalyticsV3Top? top = null) => new(
+        PmAnalyticsV3Top? top = null,
+        IReadOnlyList<PmAnalyticsV3AggregateFilter>? aggregateFilters = null) => new(
             3,
             PmAnalyticsV3Catalog.Version,
             PmAnalyticsV3Catalog.SubjectPmExecution,
@@ -303,11 +505,119 @@ public sealed class PmAnalyticsV3RegressionTests
             groupBy,
             [],
             [],
-            [],
+            aggregateFilters ?? [],
             orderBy ?? [],
             top,
             PmAnalyticsV3Presentation.Table,
             columns);
+
+    private static PmAnalyticsV3ReportPlan CreateRecordsPlan(
+        IReadOnlyList<string> categories,
+        PmAnalyticsV3Period period,
+        IReadOnlyList<PmAnalyticsV3Filter> baseFilters,
+        IReadOnlyList<PmAnalyticsV3Filter> matchingFilters) => new(
+            3,
+            PmAnalyticsV3Catalog.Version,
+            PmAnalyticsV3Catalog.SubjectPmExecution,
+            PmAnalyticsV3Mode.Records,
+            period,
+            categories,
+            [],
+            [],
+            baseFilters,
+            matchingFilters,
+            [],
+            [],
+            null,
+            PmAnalyticsV3Presentation.Table,
+            ["assetCode", PmAnalyticsV3Catalog.AssetCategory, PmAnalyticsV3Catalog.Department, PmAnalyticsV3Catalog.Building, PmAnalyticsV3Catalog.PmCycle, PmAnalyticsV3Catalog.Condition]);
+
+    private static JsonDocument LoadCalculationFixture(string fixtureId)
+    {
+        var current = new DirectoryInfo(Directory.GetCurrentDirectory());
+        while (current is not null && !File.Exists(Path.Combine(current.FullName, "reference/evaluation/pm-analytics-v3/synthetic-calculation-fixtures.json")))
+        {
+            current = current.Parent;
+        }
+
+        if (current is null)
+        {
+            throw new DirectoryNotFoundException("Could not locate the synthetic PM Analytics V3 fixtures.");
+        }
+
+        var document = JsonDocument.Parse(File.ReadAllText(Path.Combine(current.FullName, "reference/evaluation/pm-analytics-v3/synthetic-calculation-fixtures.json")));
+        var fixture = document.RootElement.GetProperty("fixtures").EnumerateArray()
+            .SingleOrDefault(item => item.GetProperty("fixtureId").GetString() == fixtureId);
+        if (fixture.ValueKind == JsonValueKind.Undefined)
+        {
+            document.Dispose();
+            throw new KeyNotFoundException($"Synthetic fixture '{fixtureId}' was not found.");
+        }
+
+        return JsonDocument.Parse(fixture.GetRawText());
+    }
+
+    private static async Task<PmAnalyticsV3ExecutionResponse> ExecuteFixtureAsync(
+        JsonElement fixture,
+        PmAnalyticsV3ReportPlan plan,
+        int page = 1,
+        int pageSize = 100)
+    {
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase($"unipm-pm-analytics-v3-fixture-{Guid.NewGuid():N}")
+            .Options;
+        await using (var context = new ApplicationDbContext(options))
+        {
+            await context.Database.EnsureCreatedAsync();
+            foreach (var entry in fixture.GetProperty("assets").EnumerateArray())
+            {
+                var asset = CreateAsset(
+                    entry.GetProperty("assetCode").GetString()!,
+                    entry.GetProperty("department").GetString()!,
+                    entry.GetProperty("category").GetString()!);
+                asset.Building = entry.GetProperty("building").GetString();
+                asset.Location = "Synthetic Location";
+                var cycle = entry.GetProperty("cycle").GetString()!;
+                var year = int.Parse(cycle[..4], System.Globalization.CultureInfo.InvariantCulture);
+                var month = int.Parse(cycle[5..], System.Globalization.CultureInfo.InvariantCulture);
+                var schedule = new PreventiveMaintenanceSchedule
+                {
+                    Id = Guid.NewGuid(),
+                    AssetId = asset.Id,
+                    Asset = asset,
+                    PmCycle = cycle,
+                    ScheduleDate = new DateTimeOffset(year, month, 1, 0, 0, 0, TimeSpan.FromHours(8)),
+                    PeriodType = "Quarter",
+                    Status = ScheduleStatusCatalog.Due
+                };
+                context.Assets.Add(asset);
+                context.PreventiveMaintenanceSchedules.Add(schedule);
+                if (entry.GetProperty("completedAt").ValueKind == JsonValueKind.String)
+                {
+                    context.InspectionRecords.Add(new InspectionRecord
+                    {
+                        Id = Guid.NewGuid(),
+                        ScheduleId = schedule.Id,
+                        Schedule = schedule,
+                        AssetId = asset.Id,
+                        Asset = asset,
+                        InspectorUserId = Guid.NewGuid(),
+                        DateInspected = DateTimeOffset.Parse(entry.GetProperty("completedAt").GetString()!),
+                        CompletedAt = DateTimeOffset.Parse(entry.GetProperty("completedAt").GetString()!),
+                        IsOperational = entry.GetProperty("isOperational").GetBoolean()
+                    });
+                }
+            }
+
+            await context.SaveChangesAsync();
+        }
+
+        var now = DateTimeOffset.Parse(fixture.GetProperty("asOfUtc").GetString()!);
+        var service = new PmAnalyticsV3QueryService(new TestContextFactory(options), new FixedTimeProvider(now));
+        var resolution = await service.NormalizeAndResolveAsync(plan, CancellationToken.None);
+        Assert.NotNull(resolution.Plan);
+        return await service.ExecuteAsync(resolution.Plan, page, pageSize, CancellationToken.None);
+    }
 
     private static async Task<PmAnalyticsV3ExecutionResponse> ExecutePlanAsync(
         PmAnalyticsV3ReportPlan plan,
@@ -334,15 +644,15 @@ public sealed class PmAnalyticsV3RegressionTests
         string assetCode,
         string department,
         string category = "fire-extinguisher") => new()
-    {
-        Id = Guid.NewGuid(),
-        AssetCode = assetCode,
-        AssetCategory = category,
-        Department = department,
-        Building = "Synthetic Building",
-        Location = "Synthetic Location",
-        Status = "Active"
-    };
+        {
+            Id = Guid.NewGuid(),
+            AssetCode = assetCode,
+            AssetCategory = category,
+            Department = department,
+            Building = "Synthetic Building",
+            Location = "Synthetic Location",
+            Status = "Active"
+        };
 
     private static void AddSchedules(ApplicationDbContext context, string department, int count)
     {

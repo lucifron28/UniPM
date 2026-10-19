@@ -245,6 +245,10 @@ internal static class PmAnalyticsV3RuleParser
         @"\bor\b",
         RegexOptions.CultureInvariant | RegexOptions.IgnoreCase,
         TimeSpan.FromMilliseconds(100));
+    private static readonly Regex UnsupportedAssetCategoryRegex = new(
+        @"\b(?:elevators?|lifts?)\s+(?:maintenance|pm|inspection|compliance|records?|assets?|systems?|cycles?)\b|\b(?:maintenance|pm|inspection|compliance|records?|assets?|systems?|cycles?)\s+(?:for|of)\s+(?:elevators?|lifts?)\b",
+        RegexOptions.CultureInvariant | RegexOptions.IgnoreCase,
+        TimeSpan.FromMilliseconds(100));
     private static readonly Regex UnsupportedExclusionRegex = new(
         @"\b(?:except|excluding|exclude|without|not\s+including)\b",
         RegexOptions.CultureInvariant | RegexOptions.IgnoreCase,
@@ -279,6 +283,16 @@ internal static class PmAnalyticsV3RuleParser
                 ["Filters", "Measures"],
                 "NegatedOutcomeNeedsClarification",
                 "Please state the desired outcome directly, such as completed, late, missed, or non-operational.");
+        }
+
+        if (UnsupportedAssetCategoryRegex.IsMatch(question))
+        {
+            return new PmAnalyticsV3ModelOutput(
+                "Unsupported",
+                null,
+                [],
+                "UnsupportedAssetCategory",
+                "This reporting subject supports fire extinguishers, fire alarms, emergency lights, and water drinking stations.");
         }
 
         if (UnsupportedExclusionRegex.IsMatch(question))
@@ -341,6 +355,24 @@ internal static class PmAnalyticsV3RuleParser
         var mode = IsRecordsQuestion(question) ? PmAnalyticsV3Mode.Records : PmAnalyticsV3Mode.Aggregate;
         var measures = mode == PmAnalyticsV3Mode.Records ? [] : ResolveMeasures(question);
         var requestedGroupBy = ResolveGrouping(question);
+        var comparesSelectedCategories = mode == PmAnalyticsV3Mode.Aggregate
+            && categories.Count > 1
+            && Regex.IsMatch(question, @"\bcompar(?:e|ing|ison)\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(100));
+        if (comparesSelectedCategories && !requestedGroupBy.Contains(PmAnalyticsV3Catalog.AssetCategory, StringComparer.Ordinal))
+        {
+            if (requestedGroupBy.Count >= 2)
+            {
+                return new PmAnalyticsV3ModelOutput(
+                    "NeedsClarification",
+                    null,
+                    ["GroupBy"],
+                    "CategoryComparisonNeedsGrouping",
+                    "A category comparison needs category-level results. Choose which other grouping dimension to remove.");
+            }
+
+            requestedGroupBy.Insert(0, PmAnalyticsV3Catalog.AssetCategory);
+        }
+
         if (mode == PmAnalyticsV3Mode.Records && requestedGroupBy.Count > 0)
         {
             return new PmAnalyticsV3ModelOutput(

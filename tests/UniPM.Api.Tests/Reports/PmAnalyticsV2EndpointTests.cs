@@ -4,6 +4,7 @@ using System.Text;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -218,6 +219,7 @@ public sealed class PmAnalyticsV2EndpointTests
                 }
 
                 services.RemoveAll<IDbContextFactory<ApplicationDbContext>>();
+                services.RemoveAll<IDbContextOptionsConfiguration<ApplicationDbContext>>();
                 services.RemoveAll<DbContextOptions<ApplicationDbContext>>();
                 services.AddDbContextFactory<ApplicationDbContext>(options =>
                     options.UseInMemoryDatabase(databaseName));

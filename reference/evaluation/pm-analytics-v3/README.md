@@ -110,6 +110,35 @@ trace results to supported source records. Record task completion, clarification
 turns, edits correcting wrong previews, and failures. A local browser run is not
 GSD acceptance.
 
+## Engineering harness status (2026-10-19)
+
+A V3-specific .NET 10 harness now validates the fixed development corpus,
+reports deterministic parser differences case by case, and refuses to produce
+a score until every label is approved and the candidate SHA is frozen. It uses
+the safety guard and deterministic V3 rule parser only. It does not execute
+plans, call DeepSeek, inspect held-out data, or use the V1/V2 datasets or score
+format. Commands from the repository root:
+
+```sh
+dotnet run --project tools/UniPM.PmAnalytics.V3Evaluation -- validate
+dotnet run --project tools/UniPM.PmAnalytics.V3Evaluation -- diagnose
+dotnet run --project tools/UniPM.PmAnalytics.V3Evaluation -- score
+```
+
+`validate` currently passes for 18 structurally valid candidates and reports
+all 18 labels pending. `diagnose` is a review aid, not an accuracy result. The
+`score` command currently exits without a score because labels are unreviewed.
+After human approval and freezing, the score report will include status,
+clarification-set, disposition, and declared-plan-assertion results grouped by
+case class and intent family, plus deterministic parser elapsed time. It
+measures the safety guard and rule parser; it does not run catalog resolution,
+query execution, a provider, or end-to-end API latency.
+The separate [`review-notes.md`](review-notes.md) lists per-case issues. The
+synthetic calculations in
+[`synthetic-calculation-fixtures.json`](synthetic-calculation-fixtures.json)
+are independently authored engineering expectations; they are not yet
+independently reviewed acceptance evidence.
+
 ## Acceptance gates and blockers
 
 Phase 5 remains open until all of the following have evidence:
@@ -138,14 +167,16 @@ return no plan. A later evaluator must compare these fields as typed values and
 must reject preview/execution for clarification and unsupported outcomes.
 
 The existing `tools/UniPM.PmAnalytics.InterpretationEval` CLI evaluates the
-older V1/V2 contract. A V3-specific evaluator and automated schema checks for
-this candidate file are not implemented yet; do not pass this file to the V1/V2
-CLI or treat manual inspection as a scored run.
+older V1/V2 contract. Keep this corpus in the V3 harness; never pass it to the
+V1/V2 CLI or combine its results with historical V1/V2 scores.
 
 ## Provenance
 
 - Preparation source commit: `d18966feed237d83d4901c938fc5b118c7dfda3b`.
 - Branch: `feature/nla-v3-composable-reporting`.
 - Candidate labels: provisional, developer-authored, unreviewed.
+- V3 harness corpus structure: validated; 18 cases, 18 pending labels.
+- Deterministic diagnostics: differences are listed per case; no accuracy score.
+- Synthetic calculation fixtures: added for engineering regression; independent review pending.
 - Provider calls: none.
 - Held-out data: none created, read, or evaluated for this protocol.
