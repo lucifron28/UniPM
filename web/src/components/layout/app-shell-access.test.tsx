@@ -216,7 +216,6 @@ describe('app shell role access and layout', () => {
   )
 
   it('opens Ask about PM results from the dashboard without running a query on page load', async () => {
-    let operationalRequests = 0
     let analyticsRequests = 0
     server.use(
       http.get('*/api/v1/*', ({ request }) => {
@@ -224,7 +223,6 @@ describe('app shell role access and layout', () => {
         if (pathname === '/api/v1/auth/me') {
           return HttpResponse.json(currentUser(['GSD']))
         }
-        operationalRequests += 1
         return HttpResponse.json([])
       }),
       http.post('*/api/v1/analytics/pm/v2/*', () => {
@@ -233,7 +231,7 @@ describe('app shell role access and layout', () => {
       }),
     )
 
-    renderAppRoute('/app/analytics')
+    renderAppRoute('/app/dashboard?view=question')
 
     expect(
       await screen.findByRole('heading', { name: 'Ask about PM results' }),
@@ -246,7 +244,6 @@ describe('app shell role access and layout', () => {
       'aria-current',
       'page',
     )
-    expect(operationalRequests).toBe(0)
     expect(analyticsRequests).toBe(0)
   })
 

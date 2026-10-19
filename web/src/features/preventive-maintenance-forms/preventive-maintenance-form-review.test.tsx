@@ -424,6 +424,29 @@ describe('preventive-maintenance form review', () => {
         requests.push(new URL(request.url))
         return HttpResponse.json([submittedForm])
       }),
+      http.get('*/api/v1/schedules/registry/options', () =>
+        HttpResponse.json({
+          categories: [
+            {
+              code: 'fire-extinguisher',
+              displayName: 'Fire extinguishers',
+              scheduledMonths: [2, 5, 8, 11],
+            },
+          ],
+          quarters: ['Q1', 'Q2', 'Q3', 'Q4'],
+          departments: ['GSD'],
+          years: ['2026'],
+        }),
+      ),
+      http.get(supervisorOptionsUrl, () =>
+        HttpResponse.json({
+          supervisors: [],
+          page: 1,
+          pageSize: 10,
+          totalCount: 0,
+          selected: null,
+        }),
+      ),
     )
 
     const router = renderAppRouter('/app/preventive-maintenance-forms')
@@ -443,11 +466,9 @@ describe('preventive-maintenance form review', () => {
     const departmentFilter = screen.getByRole('combobox', {
       name: 'Department',
     })
-    await actor.type(departmentFilter, 'GSD')
-    await actor.keyboard('{ArrowDown}{Enter}')
+    await actor.selectOptions(departmentFilter, 'GSD')
     const cycleFilter = screen.getByRole('combobox', { name: 'PM cycle' })
-    await actor.type(cycleFilter, '2026-07')
-    await actor.keyboard('{ArrowDown}{Enter}')
+    await actor.selectOptions(cycleFilter, '2026-07')
     expect(requests).toHaveLength(1)
 
     await actor.click(screen.getByRole('button', { name: 'Apply filters' }))

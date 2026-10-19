@@ -57,14 +57,15 @@ function assetLookupHandlers(
   onLookup?: (url: URL) => void,
 ) {
   return [
-    http.get(`${base}/assets`, ({ request }) => {
+    http.get(`${base}/assets/registry`, ({ request }) => {
       const url = new URL(request.url)
       onLookup?.(url)
       const params = url.searchParams
       const search = params.get('search')?.toLocaleLowerCase()
       const status = params.get('status')
       const requiresDepartment = params.get('hasDepartment') === 'true'
-      const limit = Number(params.get('limit') ?? assets.length)
+      const page = Number(params.get('page') ?? 1)
+      const pageSize = Number(params.get('pageSize') ?? 20)
       const matchingAssets = assets.filter((candidate) => {
         const matchesSearch =
           !search ||
@@ -82,7 +83,13 @@ function assetLookupHandlers(
           matchesSearch
         )
       })
-      return HttpResponse.json(matchingAssets.slice(0, limit))
+      const start = (page - 1) * pageSize
+      return HttpResponse.json({
+        items: matchingAssets.slice(start, start + pageSize),
+        page,
+        pageSize,
+        totalCount: matchingAssets.length,
+      })
     }),
     http.get(`${base}/assets/:assetId`, ({ params }) => {
       const selected = assets.find(
@@ -431,6 +438,34 @@ describe('schedule workflows', () => {
           overallCount: 1,
         })
       }),
+      http.get(`${base}/schedules/registry/options`, () =>
+        HttpResponse.json({
+          categories: [
+            {
+              code: 'fire-extinguisher',
+              displayName: 'Fire extinguishers',
+              scheduledMonths: [2, 5, 8, 11],
+            },
+            {
+              code: 'fire-alarm',
+              displayName: 'Fire alarm systems',
+              scheduledMonths: [6, 12],
+            },
+          ],
+          quarters: ['Q1', 'Q2', 'Q3', 'Q4'],
+          departments: ['GSD'],
+          years: ['2026'],
+        }),
+      ),
+      http.get(`${base}/schedules/coverage-review`, () =>
+        HttpResponse.json({
+          year: 2026,
+          page: 1,
+          pageSize: 10,
+          total: 0,
+          items: [],
+        }),
+      ),
     )
     renderWithProviders(
       <ScheduleRegistry
@@ -480,6 +515,34 @@ describe('schedule workflows', () => {
           overallCount: 1,
         })
       }),
+      http.get(`${base}/schedules/registry/options`, () =>
+        HttpResponse.json({
+          categories: [
+            {
+              code: 'fire-extinguisher',
+              displayName: 'Fire extinguishers',
+              scheduledMonths: [2, 5, 8, 11],
+            },
+            {
+              code: 'fire-alarm',
+              displayName: 'Fire alarm systems',
+              scheduledMonths: [6, 12],
+            },
+          ],
+          quarters: ['Q1', 'Q2', 'Q3', 'Q4'],
+          departments: ['GSD'],
+          years: ['2026'],
+        }),
+      ),
+      http.get(`${base}/schedules/coverage-review`, () =>
+        HttpResponse.json({
+          year: 2026,
+          page: 1,
+          pageSize: 10,
+          total: 0,
+          items: [],
+        }),
+      ),
     )
 
     function FilterHarness() {
@@ -508,7 +571,11 @@ describe('schedule workflows', () => {
       screen.getByLabelText('Asset category'),
       'fire-alarm',
     )
-    await actor.selectOptions(screen.getByLabelText('Department'), 'GSD')
+    const departmentPicker = screen.getByRole('combobox', {
+      name: 'Department',
+    })
+    await actor.click(departmentPicker)
+    await actor.click(await screen.findByRole('option', { name: 'GSD' }))
     expect(urls).toHaveLength(1)
 
     await actor.click(screen.getByRole('button', { name: 'Apply filters' }))
@@ -987,7 +1054,7 @@ describe('schedule workflows', () => {
     expect(lookupUrl?.searchParams.get('search')).toBe('FE-')
     expect(lookupUrl?.searchParams.get('status')).toBe('Active')
     expect(lookupUrl?.searchParams.get('hasDepartment')).toBe('true')
-    expect(lookupUrl?.searchParams.get('limit')).toBe('20')
+    expect(lookupUrl?.searchParams.get('pageSize')).toBe('20')
     expect(
       screen.getByText(
         'Only active assets with a department are available for scheduling.',
