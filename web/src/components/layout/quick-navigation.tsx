@@ -65,8 +65,49 @@ export function QuickNavigation({
             keywords: ['schedule', 'pm cycle', 'history'],
             navigate: () => void router.navigate({ to: '/app/schedules' }),
           },
+          {
+            id: 'schedule-history',
+            title: 'Schedules / Schedule history',
+            description:
+              'Open schedule records with the history view selected.',
+            keywords: ['past', 'previous', 'cycles', 'records'],
+            navigate: () =>
+              void router.navigate({
+                to: '/app/schedules',
+                search: { view: 'history' },
+                hash: 'schedule-history',
+              }),
+          },
         ]
       : []),
+    ...(roles.includes('GSD') || roles.includes('Supervisor')
+      ? [
+          {
+            id: 'schedule-planning',
+            title: 'Schedules / Planning & assignment',
+            description: 'Open PM batches to plan and assign work.',
+            keywords: ['schedule', 'planning', 'assignment', 'queue', 'batch'],
+            navigate: () =>
+              void router.navigate({
+                to: '/app/schedules',
+                search: { view: 'assignments' },
+                hash: 'schedule-assignments',
+              }),
+          },
+        ]
+      : []),
+    {
+      id: 'non-operational-inspections',
+      title: 'Inspections / Non-operational results',
+      description:
+        'Open inspection records filtered to non-operational results.',
+      keywords: ['non operational', 'condition', 'equipment', 'follow-up'],
+      navigate: () =>
+        void router.navigate({
+          to: '/app/inspections',
+          search: { isOperational: false },
+        }),
+    },
     ...(roles.includes('GSD')
       ? [
           {
@@ -76,6 +117,13 @@ export function QuickNavigation({
               'Compose a report with the versioned PM analytics plan.',
             keywords: ['analytics', 'report builder', 'v3', 'nla'],
             navigate: () => void router.navigate({ to: '/app/analytics' }),
+          },
+          {
+            id: 'add-asset',
+            title: 'Assets / Add asset',
+            description: 'Open the asset registration form.',
+            keywords: ['new', 'create', 'register', 'equipment'],
+            navigate: () => void router.navigate({ to: '/app/assets/new' }),
           },
           {
             id: 'ask-pm-results',
@@ -144,16 +192,32 @@ export function QuickNavigation({
             navigate: () =>
               void router.navigate({ to: '/app/preventive-maintenance-forms' }),
           },
+          ...(['Draft', 'Submitted', 'Acknowledged'] as const).map(
+            (status) => ({
+              id: `forms-${status.toLowerCase()}`,
+              title: `Form review / ${status} forms`,
+              description: `Open the form registry filtered to ${status.toLowerCase()} forms.`,
+              keywords: ['maintenance', 'status', 'records', 'review'],
+              navigate: () =>
+                void router.navigate({
+                  to: '/app/preventive-maintenance-forms',
+                  search: { status },
+                }),
+            }),
+          ),
         ]
       : []),
   ]
 
   const normalizedQuery = query.trim().toLocaleLowerCase()
+  const queryTerms = normalizedQuery.split(/\s+/).filter(Boolean)
   const results = destinations.filter((destination) =>
-    [destination.title, destination.description, ...destination.keywords]
-      .join(' ')
-      .toLocaleLowerCase()
-      .includes(normalizedQuery),
+    queryTerms.every((term) =>
+      [destination.title, destination.description, ...destination.keywords]
+        .join(' ')
+        .toLocaleLowerCase()
+        .includes(term),
+    ),
   )
 
   useEffect(() => {

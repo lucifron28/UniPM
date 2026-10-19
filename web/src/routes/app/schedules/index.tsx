@@ -92,34 +92,36 @@ function SchedulesPage() {
           </Button>
         </nav>
       )}
-      {showAssignments ? (
-        <ScheduleAssignmentQueue
-          role={assignmentRole === 'Supervisor' ? 'Supervisor' : 'GSD'}
-          search={search}
-          onSearchChange={(next) =>
-            void navigate({
-              search: {
-                ...next,
-                ...(search.view ? { view: search.view } : {}),
-              },
-            })
-          }
-        />
-      ) : (
-        <ScheduleRegistry
-          search={search}
-          onSearchChange={(next, options) =>
-            void navigate({
-              search: {
-                ...next,
-                ...(search.view ? { view: search.view } : {}),
-              },
-              ...(options?.replace ? { replace: true } : {}),
-              ...(options?.preserveScroll ? { resetScroll: false } : {}),
-            })
-          }
-        />
-      )}
+      <div id={showAssignments ? 'schedule-assignments' : 'schedule-history'}>
+        {showAssignments ? (
+          <ScheduleAssignmentQueue
+            role={assignmentRole === 'Supervisor' ? 'Supervisor' : 'GSD'}
+            search={search}
+            onSearchChange={(next) =>
+              void navigate({
+                search: {
+                  ...next,
+                  ...(search.view ? { view: search.view } : {}),
+                },
+              })
+            }
+          />
+        ) : (
+          <ScheduleRegistry
+            search={search}
+            onSearchChange={(next, options) =>
+              void navigate({
+                search: {
+                  ...next,
+                  ...(search.view ? { view: search.view } : {}),
+                },
+                ...(options?.replace ? { replace: true } : {}),
+                ...(options?.preserveScroll ? { resetScroll: false } : {}),
+              })
+            }
+          />
+        )}
+      </div>
     </div>
   )
 }
