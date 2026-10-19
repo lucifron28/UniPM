@@ -128,6 +128,42 @@ void main() {
   );
 
   test(
+    'automatically syncs an offline Draft when connectivity returns',
+    () async {
+      await repository.activate(_userA);
+      await repository.listSchedules();
+      connectivity.setConnected(false);
+      remote.connected = false;
+
+      final form = await repository.createForm(_createInput());
+      expect(repository.pendingCount, 1);
+      expect(repository.syncState, OfflineSyncState.offline);
+      expect(remote.forms, isEmpty);
+
+      final synced = Completer<void>();
+      void completeWhenSynced() {
+        if (repository.pendingCount == 0 &&
+            repository.syncState == OfflineSyncState.ready &&
+            !synced.isCompleted) {
+          synced.complete();
+        }
+      }
+
+      repository.addListener(completeWhenSynced);
+      remote.connected = true;
+      connectivity.setConnected(true);
+      try {
+        await synced.future.timeout(const Duration(seconds: 2));
+      } finally {
+        repository.removeListener(completeWhenSynced);
+      }
+
+      expect(repository.syncState, OfflineSyncState.ready);
+      expect(remote.forms.map((saved) => saved.id), [form.id]);
+    },
+  );
+
+  test(
     'a server conflict preserves the local row and blocks submission',
     () async {
       remote.forms = [
