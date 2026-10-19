@@ -172,25 +172,22 @@ internal sealed class PmAnalyticsV3QueryService(
         var searchKey = search.Trim().ToUpperInvariant();
 
         await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
-        var candidates = await context.Assets
+        var distinctValues = await context.Assets
             .AsNoTracking()
             .Where(asset => categories.Contains(asset.AssetCategory))
             .Select(selector)
             .Where(value => value != null && value.Trim().ToUpper().Contains(searchKey))
-            .OrderBy(value => value)
             .Select(value => value!.Trim())
-            .Take(MaximumCatalogValueResults * 4 + 1)
-            .ToListAsync(cancellationToken);
-        var distinct = candidates
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .Order(StringComparer.OrdinalIgnoreCase)
+            .GroupBy(value => value.ToUpper())
+            .Select(group => group.Min())
+            .OrderBy(value => value)
             .Take(MaximumCatalogValueResults + 1)
-            .ToArray();
+            .ToListAsync(cancellationToken);
 
         return new PmAnalyticsV3FilterValuesResponse(
             field,
-            distinct.Take(MaximumCatalogValueResults).ToArray(),
-            distinct.Length > MaximumCatalogValueResults || candidates.Count > MaximumCatalogValueResults * 4);
+            distinctValues.Take(MaximumCatalogValueResults).ToArray(),
+            distinctValues.Count > MaximumCatalogValueResults);
     }
 
     internal async Task<PmAnalyticsV3ExecutionResponse> ExecuteAsync(
@@ -476,6 +473,7 @@ internal sealed class PmAnalyticsV3QueryService(
             .Select(row => new PmAnalyticsV3RecordRow(
                 row.ScheduleId,
                 row.AssetId,
+                row.InspectionId,
                 normalized.Plan.Columns.ToDictionary(
                     column => column,
                     column => RecordColumnValue(row, column, now),
@@ -527,7 +525,7 @@ internal sealed class PmAnalyticsV3QueryService(
         {
             matchingLookup.TryGetValue(group.Key, out var matching);
             matching ??= [];
-            var selectedCycles = CyclesForGroup(normalized, group.Rows, group.Key);
+            var selectedCycles = CyclesForGroup(normalized, group.Key);
             var measures = new Dictionary<string, PmAnalyticsV3MeasureResult>(StringComparer.Ordinal);
             foreach (var measure in normalized.Plan.Measures)
             {
@@ -546,7 +544,6 @@ internal sealed class PmAnalyticsV3QueryService(
         {
             var selectedCycles = CyclesForGroup(
                 normalized,
-                [],
                 new PmAnalyticsV3GroupKey(null, null, null, null));
             var measures = normalized.Plan.Measures.ToDictionary(
                 measure => measure,
@@ -591,6 +588,11 @@ internal sealed class PmAnalyticsV3QueryService(
             groups = top.Direction == PmAnalyticsV3SortDirection.Ascending
                 ? groups.OrderBy(group => group.Measures[top.Measure].Value).ThenBy(group => DescribeGroupKey(group.Key), StringComparer.Ordinal).Take(top.Limit).ToList()
                 : groups.OrderByDescending(group => group.Measures[top.Measure].Value).ThenBy(group => DescribeGroupKey(group.Key), StringComparer.Ordinal).Take(top.Limit).ToList();
+
+            if (normalized.Plan.OrderBy.Count > 0)
+            {
+                SortGroups(groups, normalized.Plan);
+            }
         }
 
         var returnedAfterTop = groups.Count;
@@ -773,12 +775,19 @@ internal sealed class PmAnalyticsV3QueryService(
 
     private static IReadOnlyList<string> CyclesForGroup(
         PmAnalyticsV3NormalizedPlan normalized,
-        IReadOnlyList<PmAnalyticsV3Source> rows,
         PmAnalyticsV3GroupKey key)
     {
-        var categories = rows.Count == 0
+        var categoryGroup = new[]
+            {
+                (key.FirstId, key.FirstValue),
+                (key.SecondId, key.SecondValue)
+            }
+            .FirstOrDefault(group => group.FirstId == PmAnalyticsV3Catalog.AssetCategory);
+        var categories = categoryGroup.FirstId is null
             ? normalized.Plan.Categories
-            : rows.Select(row => row.AssetCategory).Distinct(StringComparer.Ordinal).ToArray();
+            : normalized.Plan.Categories
+                .Where(category => string.Equals(category, categoryGroup.FirstValue as string, StringComparison.Ordinal))
+                .ToArray();
         var cycles = categories
             .Where(normalized.CyclesByCategory.ContainsKey)
             .SelectMany(category => normalized.CyclesByCategory[category]);

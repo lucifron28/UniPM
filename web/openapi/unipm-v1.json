@@ -6800,6 +6800,10 @@
             "type": "string",
             "format": "uuid"
           },
+          "inspectionId": {
+            "type": ["null", "string"],
+            "format": "uuid"
+          },
           "values": {
             "type": "object"
           }

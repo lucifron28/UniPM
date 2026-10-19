@@ -9,5 +9,7 @@ import type { PmAnalyticsV3RecordRowValues } from './pmAnalyticsV3RecordRowValue
 export interface PmAnalyticsV3RecordRow {
   scheduleId: string
   assetId: string
+  /** @nullable */
+  inspectionId?: string | null
   values: PmAnalyticsV3RecordRowValues
 }

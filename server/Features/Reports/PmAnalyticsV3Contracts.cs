@@ -197,6 +197,7 @@ public sealed record PmAnalyticsV3AggregateRow(
 public sealed record PmAnalyticsV3RecordRow(
     Guid ScheduleId,
     Guid AssetId,
+    Guid? InspectionId,
     IReadOnlyDictionary<string, object?> Values);
 
 public sealed record PmAnalyticsV3ExecutionResponse(

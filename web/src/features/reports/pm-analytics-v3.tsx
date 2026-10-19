@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { Link } from '@tanstack/react-router'
 import {
   executePmAnalyticsV3Report,
   getPmAnalyticsV3Catalog,
@@ -104,6 +105,159 @@ const defaultRecordColumns = [
   'timeliness',
 ]
 
+const measuresWithSourceRows = new Set([
+  'scheduledCount',
+  'completedCount',
+  'completedOnTimeCount',
+  'completedLateCount',
+  'nonOperationalCount',
+  'remainingCount',
+  'missedCount',
+  'progressPercent',
+  'onTimeCompliancePercent',
+])
+
+function createMeasureSourcePlan(
+  plan: ReportPlan,
+  groupValues: Record<string, unknown> | null,
+  measureId: string,
+  cyclesByCategory: Record<string, string[]>,
+): ReportPlan | null {
+  if (!measuresWithSourceRows.has(measureId)) return null
+
+  const baseFilters = [...plan.baseFilters]
+  const matchingFilters =
+    measureId === 'scheduledCount' ? [] : [...plan.matchingFilters]
+  let categories = [...plan.categories]
+  let period = plan.period
+
+  const setBaseFilter = (field: string, value: unknown) => {
+    const existing = baseFilters.filter((filter) => filter.field !== field)
+    existing.push(
+      value === null
+        ? { field, operator: 'IsNull', values: [] }
+        : { field, operator: 'Equal', values: [String(value)] },
+    )
+    baseFilters.splice(0, baseFilters.length, ...existing)
+  }
+
+  if (groupValues) {
+    for (const dimension of plan.groupBy) {
+      const value = groupValues[dimension]
+      if (dimension === 'assetCategory') {
+        if (typeof value !== 'string') return null
+        categories = [value]
+      } else if (dimension === 'department' || dimension === 'building') {
+        setBaseFilter(dimension, value ?? null)
+      } else if (dimension === 'pmCycle' && typeof value === 'string') {
+        period = {
+          basis: 'pmCycle',
+          kind: 'Range',
+          year: null,
+          month: null,
+          quarter: null,
+          startCycle: value,
+          endCycle: value,
+        }
+        categories = categories.filter((category) =>
+          cyclesByCategory[category]?.includes(value),
+        )
+      } else if (dimension === 'calendarQuarter' && typeof value === 'string') {
+        const match = /^(\d{4})-Q([1-4])$/.exec(value)
+        if (!match) return null
+        const year = Number(match[1])
+        const quarter = Number(match[2])
+        period = {
+          basis: 'pmCycle',
+          kind: 'Quarter',
+          year,
+          month: null,
+          quarter,
+          startCycle: null,
+          endCycle: null,
+        }
+        categories = categories.filter((category) =>
+          cyclesByCategory[category]?.some((cycle) => {
+            const cycleQuarter = (Number(cycle.slice(5, 7)) - 1) / 3 + 1
+            return cycle.startsWith(`${year}-`) && cycleQuarter === quarter
+          }),
+        )
+      } else if (dimension === 'calendarYear') {
+        const year = Number(value)
+        if (!Number.isInteger(year)) return null
+        period = {
+          basis: 'pmCycle',
+          kind: 'Year',
+          year,
+          month: null,
+          quarter: null,
+          startCycle: null,
+          endCycle: null,
+        }
+        categories = categories.filter((category) =>
+          cyclesByCategory[category]?.some((cycle) =>
+            cycle.startsWith(`${year}-`),
+          ),
+        )
+      }
+    }
+  }
+
+  if (categories.length === 0) return null
+
+  const addMatchingFilter = (field: string, values: string[]) => {
+    const existing = matchingFilters.find((filter) => filter.field === field)
+    if (!existing) {
+      matchingFilters.push({
+        field,
+        operator: values.length > 1 ? 'In' : 'Equal',
+        values,
+      })
+      return true
+    }
+    if (existing.operator === 'IsNull') return false
+    const intersection = (existing.values ?? []).filter((value) =>
+      values.includes(value),
+    )
+    if (intersection.length === 0) return false
+    matchingFilters.splice(matchingFilters.indexOf(existing), 1, {
+      field,
+      operator: intersection.length > 1 ? 'In' : 'Equal',
+      values: intersection,
+    })
+    return true
+  }
+
+  const measureCondition: Record<string, [string, string[]]> = {
+    completedCount: ['condition', ['Operational', 'NonOperational']],
+    completedOnTimeCount: ['timeliness', ['OnTime']],
+    completedLateCount: ['timeliness', ['Late']],
+    nonOperationalCount: ['condition', ['NonOperational']],
+    remainingCount: ['timeliness', ['Remaining']],
+    missedCount: ['timeliness', ['Missed']],
+    progressPercent: ['condition', ['Operational', 'NonOperational']],
+    onTimeCompliancePercent: ['timeliness', ['OnTime']],
+  }
+  const condition = measureCondition[measureId]
+  if (condition && !addMatchingFilter(condition[0], condition[1])) return null
+
+  return {
+    ...plan,
+    mode: 'Records',
+    categories,
+    period,
+    measures: [],
+    groupBy: [],
+    baseFilters,
+    matchingFilters,
+    aggregateFilters: [],
+    orderBy: [],
+    top: null,
+    presentation: 'Table',
+    columns: defaultRecordColumns,
+  }
+}
+
 function manilaParts() {
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone: 'Asia/Manila',
@@ -192,6 +346,22 @@ function normalizePlan(value: PmAnalyticsV3ReportPlan): ReportPlan {
 
 function getErrorMessage(error: unknown) {
   if (error instanceof ApiError) {
+    const code = error.problem?.extensions?.code
+    if (code === 'PreviewUnavailable') {
+      return 'This preview expired or is no longer available. Create and review a new preview before running the report.'
+    }
+    if (code === 'PreviewStale') {
+      return 'The selected report values changed. Update the plan and create a new preview before running it.'
+    }
+    if (code === 'ProviderUnavailable' || code === 'Timeout') {
+      return 'Question interpretation is unavailable. You can complete the report plan below and preview it manually.'
+    }
+    if (code === 'InvalidOutput') {
+      return 'The question could not be interpreted safely. Edit the report plan or try a more specific question.'
+    }
+    if (code === 'ExecutionLimitExceeded') {
+      return 'This report exceeds the current row limit. Narrow the period or add a population filter, then preview again.'
+    }
     const validation = error.problem?.errors
       ? Object.values(error.problem.errors).flat().join(' ')
       : ''
@@ -507,6 +677,8 @@ function BaseFilterPicker({
 export function PmAnalyticsV3Panel() {
   const [catalog, setCatalog] = useState<Catalog | null>(null)
   const [catalogError, setCatalogError] = useState<string | null>(null)
+  const [catalogLoading, setCatalogLoading] = useState(true)
+  const [catalogAttempt, setCatalogAttempt] = useState(0)
   const [plan, setPlan] = useState<ReportPlan>(initialPlan)
   const [question, setQuestion] = useState('')
   const [interpretation, setInterpretation] = useState<Interpretation | null>(
@@ -517,6 +689,7 @@ export function PmAnalyticsV3Panel() {
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
   const [pendingLabel, setPendingLabel] = useState('')
+  const [drilldownNotice, setDrilldownNotice] = useState<string | null>(null)
   const activeController = useRef<AbortController | null>(null)
   const requestId = useRef(0)
 
@@ -533,14 +706,17 @@ export function PmAnalyticsV3Panel() {
             catalogVersion: currentCatalog.catalogVersion,
             subject: currentCatalog.subject,
           }))
+          setCatalogLoading(false)
         }
       })
       .catch((loadError: unknown) => {
-        if (!controller.signal.aborted)
+        if (!controller.signal.aborted) {
           setCatalogError(getErrorMessage(loadError))
+          setCatalogLoading(false)
+        }
       })
     return () => controller.abort()
-  }, [])
+  }, [catalogAttempt])
 
   useEffect(() => () => activeController.current?.abort(), [])
 
@@ -580,6 +756,32 @@ export function PmAnalyticsV3Panel() {
     setResponse(null)
     setError(null)
     setInterpretation(null)
+    setDrilldownNotice(null)
+  }
+
+  const handleMeasureSources = (
+    groupValues: Record<string, unknown> | null,
+    measureId: string,
+    cyclesByCategory: Record<string, string[]>,
+  ) => {
+    const sourcePlan = createMeasureSourcePlan(
+      plan,
+      groupValues,
+      measureId,
+      cyclesByCategory,
+    )
+    if (!sourcePlan) {
+      setError('This group has no compatible source-record view.')
+      return
+    }
+
+    const measureLabel =
+      measures.find((measure) => measure.id === measureId)?.label ?? measureId
+    setQuestion('')
+    updatePlan(sourcePlan)
+    setDrilldownNotice(
+      `A records plan for ${measureLabel} is ready. Preview it to review the contributing source records.`,
+    )
   }
 
   const beginRequest = (label: string) => {
@@ -605,6 +807,7 @@ export function PmAnalyticsV3Panel() {
     if (!cleanQuestion) return
     setPreview(null)
     setResponse(null)
+    setInterpretation(null)
     const request = beginRequest('Interpreting the question')
     try {
       const result = await interpretPmAnalyticsV3Question(
@@ -656,7 +859,17 @@ export function PmAnalyticsV3Panel() {
       )
       if (request.isCurrent()) setResponse(result)
     } catch (requestError) {
-      if (request.isCurrent()) setError(getErrorMessage(requestError))
+      if (request.isCurrent()) {
+        const code =
+          requestError instanceof ApiError
+            ? requestError.problem?.extensions?.code
+            : undefined
+        if (code === 'PreviewUnavailable' || code === 'PreviewStale') {
+          setPreview(null)
+          setResponse(null)
+        }
+        setError(getErrorMessage(requestError))
+      }
     } finally {
       if (request.isCurrent()) {
         activeController.current = null
@@ -842,6 +1055,7 @@ export function PmAnalyticsV3Panel() {
     (plan.mode === 'Records' ||
       plan.columns.some((column) => plan.measures.includes(column))) &&
     isPeriodReady(plan.period) &&
+    (interpretation === null || interpretation.status === 'Valid') &&
     plan.aggregateFilters.every((filter) => {
       const measure = measures.find((item) => item.id === filter.measure)
       return (
@@ -861,7 +1075,26 @@ export function PmAnalyticsV3Panel() {
 
   const interpretationDescription = interpretation?.clarificationFields.length
     ? interpretation.clarificationFields
-        .map((field) => field.replace(/([a-z])([A-Z])/g, '$1 $2'))
+        .map((field) => {
+          const prompts: Record<string, string> = {
+            Categories: 'asset category',
+            Period: 'report period',
+            Measures: 'measure',
+            Mode: 'report type',
+            GroupBy: 'grouping',
+            Presentation: 'presentation',
+            Department: 'department',
+            Building: 'building',
+            Location: 'location',
+            AssetCode: 'asset code',
+            AssetId: 'asset',
+            Filters: 'record filters',
+            Thresholds: 'threshold measure',
+            Top: 'ranking measure and limit',
+            Columns: 'output columns',
+          }
+          return prompts[field] ?? field.replace(/([a-z])([A-Z])/g, '$1 $2')
+        })
         .join(', ')
     : null
 
@@ -895,6 +1128,7 @@ export function PmAnalyticsV3Panel() {
               setPreview(null)
               setResponse(null)
               setError(null)
+              setDrilldownNotice(null)
             }}
             placeholder="Which departments had 100% fire-extinguisher compliance in 2025?"
           />
@@ -905,7 +1139,7 @@ export function PmAnalyticsV3Panel() {
             <Button
               type="submit"
               variant="secondary"
-              disabled={pending || !question.trim()}
+              disabled={pending || catalog === null || !question.trim()}
             >
               {pending && pendingLabel === 'Interpreting the question'
                 ? 'Interpreting…'
@@ -915,8 +1149,36 @@ export function PmAnalyticsV3Panel() {
         </form>
 
         {catalogError && (
-          <p role="alert" className="text-sm text-[var(--error)]">
-            The report catalog could not be loaded: {catalogError}
+          <div
+            role="alert"
+            className="flex flex-wrap items-center gap-3 text-sm text-[var(--error)]"
+          >
+            <p>The report catalog could not be loaded: {catalogError}</p>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={catalogLoading}
+              onClick={() => {
+                setCatalogError(null)
+                setCatalogLoading(true)
+                setCatalogAttempt((attempt) => attempt + 1)
+              }}
+            >
+              Retry catalog
+            </Button>
+          </div>
+        )}
+        {catalogLoading && !catalog && (
+          <p role="status" className="text-sm text-[var(--text-secondary)]">
+            Loading the report catalog…
+          </p>
+        )}
+        {drilldownNotice && (
+          <p
+            role="status"
+            className="rounded-md bg-[var(--surface-muted)] p-3 text-sm text-[var(--text-secondary)]"
+          >
+            {drilldownNotice}
           </p>
         )}
         {interpretation && (
@@ -1622,10 +1884,11 @@ export function PmAnalyticsV3Panel() {
               )
             })}
           </div>
-          {plan.mode === 'Aggregate' &&
+          {catalog &&
+            plan.mode === 'Aggregate' &&
             !plan.columns.some((column) => plan.measures.includes(column)) && (
-              <p role="alert" className="text-xs text-[var(--error)]">
-                Select at least one measure as an output column.
+              <p role="status" className="text-xs text-[var(--text-neutral)]">
+                Choose at least one measure to include in the result.
               </p>
             )}
         </section>
@@ -1977,6 +2240,25 @@ export function PmAnalyticsV3Panel() {
                             {result.unmeasurableReason}
                           </p>
                         )}
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          className="mt-3 min-h-10"
+                          disabled={
+                            !result?.isMeasurable ||
+                            !measuresWithSourceRows.has(measure.id) ||
+                            pending
+                          }
+                          onClick={() =>
+                            handleMeasureSources(
+                              response.aggregateRows[0]?.values ?? null,
+                              measure.id,
+                              response.cyclesByCategory,
+                            )
+                          }
+                        >
+                          View contributing records
+                        </Button>
                       </div>
                     )
                   })}
@@ -1984,22 +2266,32 @@ export function PmAnalyticsV3Panel() {
             )}
 
           {response.mode === 'Aggregate' &&
-            plan.presentation === 'Table' &&
-            (response.aggregateRows.length > 0 ? (
-              <ResultTable
-                columns={response.columns}
-                rows={response.aggregateRows}
-                mode="Aggregate"
-                catalog={catalog}
-              />
-            ) : (
+            response.aggregateRows.length === 0 && (
               <p
                 role="status"
                 className="rounded-md bg-[var(--surface-muted)] p-4 text-sm text-[var(--text-secondary)]"
               >
                 No groups met the selected filters.
               </p>
-            ))}
+            )}
+          {response.mode === 'Aggregate' &&
+            plan.presentation === 'Table' &&
+            response.aggregateRows.length > 0 && (
+              <ResultTable
+                columns={response.columns}
+                rows={response.aggregateRows}
+                mode="Aggregate"
+                catalog={catalog}
+                groupBy={plan.groupBy}
+                onMeasureSource={(values, measure) =>
+                  handleMeasureSources(
+                    values,
+                    measure,
+                    response.cyclesByCategory,
+                  )
+                }
+              />
+            )}
           {response.mode === 'Records' &&
             (response.records.length > 0 ? (
               <ResultTable
@@ -2016,6 +2308,49 @@ export function PmAnalyticsV3Panel() {
                 No records matched the selected filters.
               </p>
             ))}
+
+          {response.mode === 'Aggregate' && (
+            <details>
+              <summary className="cursor-pointer text-sm font-medium text-[var(--primary)]">
+                Calculation definitions and provenance
+              </summary>
+              <dl className="mt-3 grid gap-3 sm:grid-cols-2">
+                {selectedMeasureDefinitions.map((measure) => {
+                  const result = response.aggregateRows[0]?.measures[measure.id]
+                  return (
+                    <div
+                      key={measure.id}
+                      className="rounded-md border border-[var(--border-soft)] p-3"
+                    >
+                      <dt className="font-semibold text-[var(--text-primary)]">
+                        {measure.label} ({measure.unit})
+                      </dt>
+                      <dd className="mt-1 text-sm text-[var(--text-secondary)]">
+                        {measure.definition} Population: {measure.population}.
+                      </dd>
+                      {result && (
+                        <dd className="mt-2 text-xs text-[var(--text-neutral)]">
+                          Numerator {formatNumber(result.numerator)} of
+                          denominator {formatNumber(result.denominator)};{' '}
+                          {formatNumber(result.eligibleRowCount)} eligible rows
+                          and {formatNumber(result.matchingRowCount)} matching
+                          rows.
+                          {result.unmeasurableReason
+                            ? ` ${result.unmeasurableReason}`
+                            : ''}
+                        </dd>
+                      )}
+                    </div>
+                  )
+                })}
+              </dl>
+              <p className="mt-3 text-sm text-[var(--text-secondary)]">
+                Source-record actions open a separate records plan filtered to
+                the rows contributing to each measure numerator. Review its
+                preview before running it.
+              </p>
+            </details>
+          )}
 
           {Number(response.totalPages) > 1 && (
             <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border-soft)] pt-3 print:hidden">
@@ -2068,14 +2403,21 @@ function ResultTable({
   rows,
   mode,
   catalog,
+  groupBy = [],
+  onMeasureSource,
 }: {
   columns: Column[]
   rows: Array<{
+    scheduleId?: string
+    assetId?: string
+    inspectionId?: string | null
     values: Record<string, unknown>
     measures?: Record<string, MeasureResult>
   }>
   mode: Mode
   catalog: Catalog
+  groupBy?: string[]
+  onMeasureSource?: (values: Record<string, unknown>, measure: string) => void
 }) {
   return (
     <div className="overflow-x-auto rounded-md border border-[var(--border-soft)]">
@@ -2102,12 +2444,22 @@ function ResultTable({
                 )}
               </th>
             ))}
+            {mode === 'Records' && (
+              <th scope="col" className="px-3 py-2 whitespace-nowrap">
+                Source record
+              </th>
+            )}
+            {mode === 'Aggregate' && onMeasureSource && (
+              <th scope="col" className="px-3 py-2 whitespace-nowrap">
+                Calculation sources
+              </th>
+            )}
           </tr>
         </thead>
         <tbody className="divide-y divide-[var(--border-soft)]">
           {rows.map((row, index) => (
             <tr
-              key={String(row.values.scheduleId ?? row.values.assetId ?? index)}
+              key={String(row.scheduleId ?? row.assetId ?? index)}
               className="align-top"
             >
               {columns.map((column) => {
@@ -2142,6 +2494,75 @@ function ResultTable({
                   </td>
                 )
               })}
+              {mode === 'Records' && (
+                <td className="px-3 py-2">
+                  {row.inspectionId ? (
+                    <Link
+                      to="/app/inspections/$inspectionId"
+                      params={{ inspectionId: row.inspectionId }}
+                      className="font-medium text-[var(--primary)] underline-offset-2 hover:underline focus-visible:rounded focus-visible:ring-2 focus-visible:outline-none"
+                    >
+                      Review inspection
+                    </Link>
+                  ) : row.assetId ? (
+                    <Link
+                      to="/app/assets/$assetId"
+                      params={{ assetId: row.assetId }}
+                      className="font-medium text-[var(--primary)] underline-offset-2 hover:underline focus-visible:rounded focus-visible:ring-2 focus-visible:outline-none"
+                    >
+                      View asset
+                    </Link>
+                  ) : (
+                    'No source link available'
+                  )}
+                </td>
+              )}
+              {mode === 'Aggregate' && onMeasureSource && (
+                <td className="px-3 py-2">
+                  <div className="flex min-w-44 flex-col items-start gap-2">
+                    {Object.entries(row.measures ?? {}).map(
+                      ([measureId, result]) => {
+                        const groupLabel = groupBy
+                          .map((dimension) => {
+                            const value = row.values[dimension]
+                            return `${formatLabel(dimension, catalog)} ${formatValue(
+                              value,
+                              columns.find(
+                                (column) => column.id === dimension,
+                              ) ?? {
+                                id: dimension,
+                                label: dimension,
+                                valueType: 'string',
+                                unit: '',
+                                nullSemantics: null,
+                              },
+                              catalog,
+                            )}`
+                          })
+                          .join(', ')
+                        return (
+                          <Button
+                            key={measureId}
+                            type="button"
+                            variant="secondary"
+                            className="min-h-10"
+                            disabled={
+                              !result.isMeasurable ||
+                              !measuresWithSourceRows.has(measureId)
+                            }
+                            onClick={() =>
+                              onMeasureSource(row.values, measureId)
+                            }
+                          >
+                            View {formatLabel(measureId, catalog)} records
+                            {groupLabel ? ` · ${groupLabel}` : ''}
+                          </Button>
+                        )
+                      },
+                    )}
+                  </div>
+                </td>
+              )}
             </tr>
           ))}
         </tbody>
