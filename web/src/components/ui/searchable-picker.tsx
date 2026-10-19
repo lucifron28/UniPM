@@ -8,7 +8,11 @@ import {
   useRef,
   useState,
 } from 'react'
-import type { CSSProperties, KeyboardEvent } from 'react'
+import type {
+  CSSProperties,
+  FocusEvent as ReactFocusEvent,
+  KeyboardEvent,
+} from 'react'
 import { Input } from '@/components/ui/input'
 
 const MAX_PANEL_HEIGHT = 280
@@ -74,8 +78,11 @@ export function SearchablePicker<T>({
   const inputId = id ?? `${generatedId}-input`
   const listboxId = `${inputId}-listbox`
   const descriptionId = `${inputId}-description`
+  const rootRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const clearButtonRef = useRef<HTMLButtonElement>(null)
   const listboxRef = useRef<HTMLDivElement>(null)
+  const popupRef = useRef<HTMLDivElement>(null)
   const searchChangeRef = useRef(onSearchChange)
   const [isOpen, setIsOpen] = useState(false)
   const [query, setQuery] = useState('')
@@ -224,6 +231,18 @@ export function SearchablePicker<T>({
       return
     }
 
+    if (event.key === 'Tab' && !event.shiftKey && isOpen) {
+      if (clearButtonRef.current) return
+      const firstAction = popupRef.current?.querySelector<HTMLButtonElement>(
+        'button:not([role="option"]):not(:disabled)',
+      )
+      if (firstAction) {
+        event.preventDefault()
+        firstAction.focus()
+      }
+      return
+    }
+
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       event.preventDefault()
       if (!isOpen) open()
@@ -263,6 +282,48 @@ export function SearchablePicker<T>({
     }
   }
 
+  const handleClearKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
+    if (event.key !== 'Tab' || event.shiftKey || !isOpen) return
+    const firstAction = popupRef.current?.querySelector<HTMLButtonElement>(
+      'button:not([role="option"]):not(:disabled)',
+    )
+    if (firstAction) {
+      event.preventDefault()
+      firstAction.focus()
+    }
+  }
+
+  const handleFocusExit = (event: ReactFocusEvent<HTMLDivElement>) => {
+    const nextTarget = event.relatedTarget
+    if (
+      nextTarget instanceof Node &&
+      (rootRef.current?.contains(nextTarget) ||
+        popupRef.current?.contains(nextTarget))
+    ) {
+      return
+    }
+    close()
+  }
+
+  const handlePopupKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      close()
+      inputRef.current?.focus()
+      return
+    }
+
+    if (event.key === 'Tab' && event.shiftKey) {
+      const firstAction = popupRef.current?.querySelector<HTMLButtonElement>(
+        'button:not([role="option"]):not(:disabled)',
+      )
+      if (event.target === firstAction) {
+        event.preventDefault()
+        ;(clearButtonRef.current ?? inputRef.current)?.focus()
+      }
+    }
+  }
+
   const clear = () => {
     onChange(undefined)
     inputRef.current?.focus()
@@ -273,9 +334,11 @@ export function SearchablePicker<T>({
     isOpen && typeof document !== 'undefined'
       ? createPortal(
           <div
+            ref={popupRef}
             className="overflow-hidden rounded-lg border border-[var(--border-soft)] bg-white shadow-xl"
             style={popupPosition}
             data-searchable-picker-popup
+            onKeyDown={handlePopupKeyDown}
           >
             {(showLoading || showError || visibleOptions.length === 0) && (
               <div className="px-3 py-2 text-sm">
@@ -393,7 +456,7 @@ export function SearchablePicker<T>({
       : null
 
   return (
-    <div className="grid min-w-0 gap-1">
+    <div ref={rootRef} className="grid min-w-0 gap-1" onBlur={handleFocusExit}>
       <label
         htmlFor={inputId}
         className="text-sm font-semibold text-[var(--text-primary)]"
@@ -427,12 +490,11 @@ export function SearchablePicker<T>({
               : (placeholder ?? `Select ${label.toLocaleLowerCase()}`)
           }
           disabled={disabled}
-          onFocus={open}
-          onBlur={() => {
-            setIsOpen(false)
-            setQuery('')
-            setActiveIndex(-1)
-            searchChangeRef.current?.('')
+          onFocus={() => {
+            if (!isOpen) open()
+          }}
+          onClick={() => {
+            if (!isOpen) open()
           }}
           onChange={(event) => {
             const nextQuery = event.target.value
@@ -446,10 +508,12 @@ export function SearchablePicker<T>({
         />
         {(value || query) && (
           <button
+            ref={clearButtonRef}
             type="button"
             aria-label={`Clear ${label.toLocaleLowerCase()} selection`}
             disabled={disabled}
             onMouseDown={(event) => event.preventDefault()}
+            onKeyDown={handleClearKeyDown}
             onClick={clear}
             className="shrink-0 rounded-lg border border-[var(--border-control)] px-3 text-sm font-semibold text-[var(--text-secondary)] hover:bg-[var(--page-background)] disabled:opacity-60"
           >

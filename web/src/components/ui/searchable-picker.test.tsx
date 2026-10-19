@@ -42,8 +42,14 @@ describe('SearchablePicker', () => {
     expect(onChange).toHaveBeenLastCalledWith('gsd', departments[0])
 
     await user.click(picker)
+    expect(screen.getByRole('listbox')).toBeVisible()
     await user.keyboard('{Home}{Enter}')
     expect(onChange).toHaveBeenLastCalledWith(undefined, undefined)
+
+    await user.keyboard('{Escape}')
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+    await user.click(picker)
+    expect(screen.getByRole('listbox')).toBeVisible()
   })
 
   it('preserves the selected option when reopened and provides a clear action', async () => {
@@ -120,7 +126,7 @@ describe('SearchablePicker', () => {
     await waitFor(() => expect(screen.queryByRole('listbox')).toBeNull())
   })
 
-  it('shows retry and load-more controls for remote options', async () => {
+  it('lets keyboard users reach retry and load-more controls', async () => {
     const user = userEvent.setup()
     const onRetry = vi.fn()
     const onLoadMore = vi.fn()
@@ -138,9 +144,24 @@ describe('SearchablePicker', () => {
     )
 
     await user.click(screen.getByRole('combobox', { name: 'Inspector' }))
-    await user.click(screen.getByRole('button', { name: 'Retry' }))
+    await user.keyboard('{Tab}')
+    const retry = screen.getByRole('button', { name: 'Retry' })
+    expect(retry).toHaveFocus()
+    expect(screen.getByRole('combobox', { name: 'Inspector' })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    )
+    await user.keyboard('{Enter}')
     expect(onRetry).toHaveBeenCalledOnce()
-    await user.click(screen.getByRole('button', { name: 'Load more options' }))
+    await user.keyboard('{Tab}')
+    const loadMore = screen.getByRole('button', { name: 'Load more options' })
+    expect(loadMore).toHaveFocus()
+    await user.keyboard('{Enter}')
     expect(onLoadMore).toHaveBeenCalledOnce()
+    await user.keyboard('{Escape}')
+    expect(
+      screen.queryByRole('button', { name: 'Load more options' }),
+    ).toBeNull()
+    expect(screen.getByRole('combobox', { name: 'Inspector' })).toHaveFocus()
   })
 })
