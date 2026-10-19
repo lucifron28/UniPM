@@ -33,6 +33,7 @@ const schedule = {
     building: 'Main',
     department: 'GSD',
     location: 'Lobby',
+    status: 'Active',
   },
 }
 
