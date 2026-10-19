@@ -107,5 +107,6 @@ experiment.
   professor/adviser confirmation; it is not implemented or approved and
   requires a separate approved task after GSD validation. The historical
   maintenance-review contract is not published by the current runtime.
-- IIS production deployment, final RBAC, audit persistence, institutional source
-  authorization, and offline-sync architecture remain unverified or deferred.
+- IIS production deployment, final RBAC, audit persistence, and institutional
+  source authorization remain unverified or deferred. Offline sync is available
+  only as an unaccepted feature-branch prototype; see the mobile README.

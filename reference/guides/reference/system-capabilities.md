@@ -131,9 +131,11 @@ The Flutter client currently provides:
   with signatory capture.
 
 Access tokens remain in memory only. The app does not persist cookies or tokens,
-does not restore a session after restart, and does not implement offline sync.
-Offline synchronization is deferred and its persistence and synchronization
-architecture remain undecided pending a separate approved decision.
+and does not restore a session after restart. The
+`feature/offline-inspection-workflow` branch adds encrypted per-user Draft
+caching and queued sync after the user signs in again. It remains a
+feature-branch prototype pending review; location verification, photo evidence,
+submission, and acknowledgement remain online-only.
 
 ## Explicitly Excluded or Planned
 
@@ -148,6 +150,7 @@ architecture remain undecided pending a separate approved decision.
 - OEM retrieval is excluded from the evaluated MVP.
 - Final RBAC, audit-log persistence, official building/department/location
   lists, and schedule-adjustment authority remain deferred.
-- Offline synchronization, persistent session restoration, and later mobile
-  field workflows remain outside the current mobile scope.
+- Persistent session restoration and later mobile field workflows remain
+  outside the current mobile scope. Offline synchronization is a feature-branch
+  prototype, not an accepted or evaluated MVP capability.
 - No client calls SQL Server, an embedding provider, or an LLM directly.

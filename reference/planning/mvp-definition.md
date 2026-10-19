@@ -121,9 +121,11 @@ release verification remain outside this milestone.
 The four supplied GSD forms are implemented as the authoritative visible
 category-form structure for the current mobile PM pass. Broader category
 procedures, requiredness, historical form-version preservation, attachments,
-alerts, offline synchronization, and persistent session restoration remain
-separately approved or GSD-validated work; the current mobile authentication
-session remains memory-only.
+alerts, and persistent session restoration remain separately approved or
+GSD-validated work; the current mobile authentication session remains
+memory-only. An encrypted offline-Draft workflow is being prototyped on
+`feature/offline-inspection-workflow`; it has not changed the accepted MVP or
+GSD validation baseline.
 
 ## Core PM Acceptance Status
 
@@ -136,8 +138,8 @@ acknowledgement -> official history`
 
 See [`TEST-040`](../evidence/test-runs/TEST-040-mobile-core-pm-physical-acceptance.md)
 for the mobile/core PM execution record. TEST-040 does not verify the M2 web
-dashboard. This status does not make attachments, alerts,
-offline synchronization, persistent session restoration, AI/RAG, or other
+dashboard. This status does not make attachments, alerts, the unaccepted
+offline-sync prototype, persistent session restoration, AI/RAG, or other
 optional capabilities blockers for the milestone.
 
 ## Explicit Exclusions From This Branch
@@ -152,7 +154,8 @@ optional capabilities blockers for the milestone.
 - Deployment completion or IIS rehearsal.
 - Inspection attachments.
 - Operational alerts.
-- Offline synchronization.
+- Offline synchronization as an accepted or evaluated MVP capability (a
+  feature-branch prototype is documented in the mobile README).
 - Persistent mobile session restoration.
 - OEM retrieval and real institutional-document ingestion.
 - A separate vector database or native SQL vector features.

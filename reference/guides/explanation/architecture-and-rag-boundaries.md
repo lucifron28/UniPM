@@ -150,5 +150,6 @@ or autonomous diagnostic tool.
 - OEM retrieval is excluded from the evaluated MVP.
 - Final RBAC, audit persistence, official location lists, and schedule policy
   remain deferred.
-- Mobile offline synchronization is deferred; its persistence and synchronization
-  architecture remains undecided.
+- An encrypted per-user offline-Draft and queued-sync prototype is implemented
+  on `feature/offline-inspection-workflow`; it is not yet part of the accepted
+  GSD validation baseline. Session restoration remains deferred.
