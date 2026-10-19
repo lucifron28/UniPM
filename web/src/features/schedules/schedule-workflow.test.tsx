@@ -58,7 +58,9 @@ function assetLookupHandlers(
 ) {
   return [
     http.get(`${base}/assets/registry`, ({ request }) => {
-      const params = new URL(request.url).searchParams
+      const url = new URL(request.url)
+      onLookup?.(url)
+      const params = url.searchParams
       const search = params.get('search')?.toLocaleLowerCase()
       const assetCategory = params.get('assetCategory')
       const department = params.get('department')
@@ -789,6 +791,105 @@ describe('schedule workflows', () => {
     expect(screen.queryByLabelText('Skilled worker (Inspector)')).toBeNull()
   })
 
+  it('keeps the saved Supervisor in the summary until a draft assignment succeeds', async () => {
+    mockReferences()
+    server.use(
+      http.get(`${base}/schedules/${scheduleId}`, () =>
+        HttpResponse.json({
+          ...schedule,
+          assignedSupervisorUserId: supervisorId,
+        }),
+      ),
+      http.get(
+        `${base}/schedules/supervisor-assignment-options`,
+        ({ request }) =>
+          assignmentOptionsPage(request, 'supervisors', [
+            { id: supervisorId, displayName: 'Saved Supervisor' },
+            {
+              id: '66666666-6666-4666-8666-666666666666',
+              displayName: 'Draft Supervisor',
+            },
+          ]),
+      ),
+      http.put(`${base}/schedules/${scheduleId}/supervisor-assignment`, () =>
+        HttpResponse.json({}, { status: 500 }),
+      ),
+    )
+
+    renderWithProviders(<ScheduleDetail scheduleId={scheduleId} />)
+    const actor = userEvent.setup()
+    const supervisorPicker = await screen.findByRole('combobox', {
+      name: 'Supervisor (oversight)',
+    })
+    expect(await screen.findByText('Saved Supervisor')).toBeVisible()
+    await actor.type(supervisorPicker, 'Draft Supervisor')
+    await waitFor(() =>
+      expect(assignmentOptionSearches).toContain('Draft Supervisor'),
+    )
+    await actor.keyboard('{ArrowDown}{Enter}')
+
+    expect(screen.getByText('Saved Supervisor')).toBeVisible()
+    await actor.click(
+      screen.getByRole('button', {
+        name: 'Update Supervisor for entire batch',
+      }),
+    )
+    expect(
+      await screen.findByText(
+        'The Supervisor assignment could not be saved. Check the selection and try again.',
+      ),
+    ).toBeVisible()
+    expect(screen.getByText('Saved Supervisor')).toBeVisible()
+  })
+
+  it('keeps the saved Inspector in the summary when a draft assignment fails', async () => {
+    mockReferences(['Supervisor'])
+    server.use(
+      http.get(`${base}/schedules/${scheduleId}`, () =>
+        HttpResponse.json({
+          ...schedule,
+          assignedToUserId: workerId,
+          assignedSupervisorUserId: user.id,
+        }),
+      ),
+      http.get(`${base}/schedules/assignment-options`, ({ request }) =>
+        assignmentOptionsPage(request, 'workers', [
+          { id: workerId, displayName: 'Saved Inspector' },
+          {
+            id: '77777777-7777-4777-8777-777777777777',
+            displayName: 'Draft Inspector',
+          },
+        ]),
+      ),
+      http.put(`${base}/schedules/${scheduleId}/assignment`, () =>
+        HttpResponse.json({}, { status: 500 }),
+      ),
+    )
+
+    renderWithProviders(<ScheduleDetail scheduleId={scheduleId} />)
+    const actor = userEvent.setup()
+    const workerPicker = await screen.findByRole('combobox', {
+      name: 'Skilled worker (Inspector)',
+    })
+    expect(await screen.findByText('Saved Inspector')).toBeVisible()
+    await actor.type(workerPicker, 'Draft Inspector')
+    await waitFor(() =>
+      expect(assignmentOptionSearches).toContain('Draft Inspector'),
+    )
+    await actor.keyboard('{ArrowDown}{Enter}')
+
+    expect(screen.getByText('Saved Inspector')).toBeVisible()
+    await actor.click(
+      screen.getByRole('button', { name: 'Update Inspector for entire batch' }),
+    )
+    expect(
+      await screen.findByText(
+        'The Inspector assignment could not be saved. Check the selection and try again.',
+      ),
+    ).toBeVisible()
+    expect(screen.getByText('Saved Inspector')).toBeVisible()
+  })
+
   it('lets only the assigned Supervisor choose an Inspector for the batch', async () => {
     let requestBody: unknown
     server.use(
@@ -1029,14 +1130,16 @@ describe('schedule workflows', () => {
     const assetPicker = await screen.findByRole('combobox', { name: 'Asset' })
     const actor = userEvent.setup()
     await actor.type(assetPicker, 'FE-')
+    await waitFor(() =>
+      expect(lookupUrl?.searchParams.get('search')).toBe('FE-'),
+    )
     expect(await screen.findByRole('option', { name: /FE-001/ })).toBeVisible()
     expect(screen.queryByRole('option', { name: /FE-INACTIVE/ })).toBeNull()
     expect(screen.queryByRole('option', { name: /FE-RETIRED/ })).toBeNull()
     expect(screen.queryByRole('option', { name: /FE-NO-DEPT/ })).toBeNull()
-    expect(lookupUrl?.searchParams.get('search')).toBe('FE-')
     expect(lookupUrl?.searchParams.get('status')).toBe('Active')
     expect(lookupUrl?.searchParams.get('hasDepartment')).toBe('true')
-    expect(lookupUrl?.searchParams.get('limit')).toBe('20')
+    expect(lookupUrl?.searchParams.get('pageSize')).toBe('20')
     expect(
       screen.getByText(
         'Only active assets with a department are available for scheduling.',

@@ -57,14 +57,18 @@ export function ScheduleBatchAssignment({
     canEdit && canAssignSupervisor,
     {
       search: supervisorSearch,
-      ...(supervisorUserId ? { selectedUserId: supervisorUserId } : {}),
+      ...(schedule.assignedSupervisorUserId
+        ? { selectedUserId: schedule.assignedSupervisorUserId }
+        : {}),
     },
   )
   const workers = useScheduleWorkerAssignmentOptions(
     canEdit && canAssignWorker,
     {
       search: workerSearch,
-      ...(workerUserId ? { selectedUserId: workerUserId } : {}),
+      ...(schedule.assignedToUserId
+        ? { selectedUserId: schedule.assignedToUserId }
+        : {}),
     },
   )
   const supervisorAssignment = useAssignScheduleBatchSupervisor()
@@ -107,8 +111,18 @@ export function ScheduleBatchAssignment({
     assigneePickerOption(
       workerList.find((option) => option.id === workerUserId),
     )
-  const supervisorName = selectedSupervisor?.label
-  const workerName = selectedWorker?.label
+  const savedSupervisorName =
+    supervisors.data?.pages[0]?.selected?.id ===
+    schedule.assignedSupervisorUserId
+      ? supervisors.data.pages[0].selected.displayName
+      : supervisorList.find(
+          (option) => option.id === schedule.assignedSupervisorUserId,
+        )?.displayName
+  const savedWorkerName =
+    workers.data?.pages[0]?.selected?.id === schedule.assignedToUserId
+      ? workers.data.pages[0].selected.displayName
+      : workerList.find((option) => option.id === schedule.assignedToUserId)
+          ?.displayName
 
   return (
     <Card className="space-y-5 shadow-none">
@@ -152,7 +166,7 @@ export function ScheduleBatchAssignment({
           </dt>
           <dd className="mt-1 text-sm">
             {schedule.assignedToUserId
-              ? (workerName ?? 'Inspector assigned')
+              ? (savedWorkerName ?? 'Inspector assigned')
               : 'Not assigned'}
           </dd>
         </div>
@@ -162,7 +176,7 @@ export function ScheduleBatchAssignment({
           </dt>
           <dd className="mt-1 text-sm">
             {schedule.assignedSupervisorUserId
-              ? (supervisorName ?? 'Supervisor assigned')
+              ? (savedSupervisorName ?? 'Supervisor assigned')
               : 'Not assigned'}
           </dd>
         </div>
