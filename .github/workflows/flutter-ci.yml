@@ -52,6 +52,25 @@ jobs:
       - name: Analyze Flutter app
         run: flutter analyze
 
+      - name: Diagnose acknowledgement widget tests
+        run: |
+          test_log="${RUNNER_TEMP}/acknowledgement-tests.log"
+          if flutter test --reporter expanded test/preventive_maintenance_form_acknowledgement_test.dart >"${test_log}" 2>&1; then
+            cat "${test_log}"
+          else
+            status=$?
+            cat "${test_log}"
+            grep -E -m 25 '(Expected:|Actual:|Which:|TestFailure|Exception|Error:|Some tests failed|Test failed)' "${test_log}" | while IFS= read -r diagnostic; do
+              diagnostic="${diagnostic//'%'/'%25'}"
+              printf '::error title=Acknowledgement widget test::%s\n' "${diagnostic}"
+            done
+            tail -n 100 "${test_log}" | while IFS= read -r diagnostic; do
+              diagnostic="${diagnostic//'%'/'%25'}"
+              printf '::error title=Acknowledgement test output::%s\n' "${diagnostic}"
+            done
+            exit "${status}"
+          fi
+
       - name: Run focused workflow widget tests
         run: >
           flutter test
