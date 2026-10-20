@@ -467,14 +467,16 @@ a separate authorization step.
 
 ### Phase 6: asset inventory reporting
 
-**Engineering status (2026-10-19):** The bounded inventory subject is
-implemented on the isolated `feature/nla-v3-asset-inventory` branch at
-`fcd6e6b7b1ab71bdc64e3c4520fcb558b7551920`. Local backend, Web, API-contract,
-and focused browser checks passed; native SQL Server 2019 remains unverified.
-See [TEST-114](../evidence/test-runs/TEST-114-pm-analytics-v3-asset-inventory.md)
-for commands and limits. This implementation does not close Phase 5: all 18
-provisional interpretation labels still need independent human review, and no
-score or GSD acceptance claim is available.
+**Engineering status (2026-10-20):** The bounded inventory subject is
+implemented on the isolated `feature/nla-v3-asset-inventory` branch at code
+commit `b2c40f2a39c0e1b326a612cbdf09f77ea6555459`. The follow-up backend, Web,
+API-contract, and browser verification is recorded in
+[TEST-117](../evidence/test-runs/TEST-117-nla-v3-phase6-final-verification.md);
+the earlier [TEST-114](../evidence/test-runs/TEST-114-pm-analytics-v3-asset-inventory.md)
+remains the initial implementation evidence. Native SQL Server 2019 is still
+unverified. Phase 5 remains open: all 18 provisional interpretation labels
+still need independent human review, and no score or GSD acceptance claim is
+available.
 
 The subject design, including grain, counts, filters, tests and dependencies,
 is in
