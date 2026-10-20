@@ -25,15 +25,11 @@ import {
   type PreventiveMaintenanceForm,
 } from '@/features/preventive-maintenance-forms/form-contract'
 import { usePreventiveMaintenanceForms } from '@/features/preventive-maintenance-forms/form-queries'
-import { RegistryResultsPanel } from '@/features/shared/registry-results-panel'
-import { RegistryZoomControls } from '@/features/shared/registry-zoom'
-import { useRegistryZoom } from '@/features/shared/registry-zoom-state'
 import { formatPmCycle } from '@/features/schedules/schedule-presentation'
 import { useScheduleSupervisorAssignmentOptions } from '@/features/schedules/schedule-queries'
 import {
   formStatusClass,
   formStatusLabel,
-  formatFormDate,
   formatFormPeriod,
 } from '@/features/preventive-maintenance-forms/form-presentation'
 
@@ -103,50 +99,19 @@ function toSupervisorOptions(
     .sort((left, right) => left.label.localeCompare(right.label))
 }
 
-function currentScheduleAssignmentSummary(
-  form: PreventiveMaintenanceForm,
-  role: 'Inspector' | 'Supervisor',
-) {
-  const assignments = new Map<string, string>()
-  let unavailableCount = 0
-
-  for (const row of form.inspections) {
-    const id =
-      role === 'Supervisor'
-        ? row.currentScheduleSupervisorUserId
-        : row.currentScheduleInspectorUserId
-    const identity =
-      role === 'Supervisor'
-        ? row.currentScheduleSupervisorIdentity
-        : row.currentScheduleInspectorIdentity
-
-    if (id === undefined) {
-      unavailableCount += 1
-    } else if (id === null) {
-      assignments.set('unassigned', 'Unassigned')
-    } else {
-      assignments.set(id, identity?.trim() || `Assigned ${role}`)
-    }
-  }
-
-  const nameCounts = new Map<string, number>()
-  for (const name of assignments.values()) {
-    nameCounts.set(name, (nameCounts.get(name) ?? 0) + 1)
-  }
-  const labels = [...assignments.entries()].map(([id, name]) =>
-    nameCounts.get(name) === 1 || id === 'unassigned'
-      ? name
-      : `${name} · …${id.slice(-4)}`,
-  )
-
-  if (unavailableCount > 0) {
-    labels.push(`${unavailableCount} not recorded`)
-  }
-
-  return labels.length > 0 ? labels.join('; ') : 'Not recorded'
+function formIdentifier(form: PreventiveMaintenanceForm) {
+  return form.fileNumber?.trim() || formatAssetCategory(form.assetCategory)
 }
 
-function FormSummary({
+function formDetailSearch(search: FormSearch) {
+  return {
+    returnContext: Object.values(search).some((value) => value !== undefined)
+      ? { kind: 'formRegistry' as const, search }
+      : { kind: 'formRegistry' as const },
+  }
+}
+
+function FormTableRow({
   form,
   search,
 }: {
@@ -155,114 +120,176 @@ function FormSummary({
 }) {
   const cycleLabel = form.pmCycle
     ? formatPmCycle(form.pmCycle)
-    : formatFormPeriod(form) || 'Cycle not recorded'
-  const draftTitle = [
-    formatAssetCategory(form.assetCategory),
-    form.department || 'Department not recorded',
-    cycleLabel,
-  ].join(' · ')
-  const detailSearch = {
-    returnContext: Object.values(search).some((value) => value !== undefined)
-      ? { kind: 'formRegistry' as const, search }
-      : { kind: 'formRegistry' as const },
-  }
+    : formatFormPeriod(form) || 'Not recorded'
+  const identifier = formIdentifier(form)
+  const detailSearch = formDetailSearch(search)
 
   return (
-    <article className="content-card rounded-lg border border-[var(--border-soft)] bg-white p-3 sm:px-4">
-      <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <Link
-            to="/app/preventive-maintenance-forms/$formId"
-            params={{ formId: form.id }}
-            search={detailSearch}
-            className="inline-block font-semibold break-words text-[var(--primary)] hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
-          >
-            {form.fileNumber ??
-              (form.status === 'Draft' ? draftTitle : 'Unsubmitted form')}
-          </Link>
-        </div>
+    <tr
+      tabIndex={0}
+      aria-label={'Open form ' + identifier}
+      className="h-16 cursor-pointer border-b border-[var(--border-soft)] text-sm text-[var(--text-primary)] transition-colors last:border-b-0 hover:bg-[var(--surface-subtle)] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--primary)]"
+      onClick={(event) => {
+        if (
+          event.target instanceof Element &&
+          event.target.closest('a, button, input, select, textarea')
+        ) {
+          return
+        }
+        event.currentTarget
+          .querySelector<HTMLAnchorElement>('[data-form-identifier]')
+          ?.click()
+      }}
+      onKeyDown={(event) => {
+        if (event.target !== event.currentTarget) return
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          event.currentTarget
+            .querySelector<HTMLAnchorElement>('[data-form-identifier]')
+            ?.click()
+        }
+      }}
+    >
+      <th scope="row" className="max-w-0 px-4 py-3 text-left font-semibold">
+        <Link
+          data-form-identifier
+          to="/app/preventive-maintenance-forms/$formId"
+          params={{ formId: form.id }}
+          search={detailSearch}
+          className="block truncate text-[var(--primary)] hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
+          title={identifier}
+        >
+          {identifier}
+        </Link>
+      </th>
+      <td className="max-w-0 px-4 py-3">
+        <span
+          className="block truncate"
+          title={formatAssetCategory(form.assetCategory)}
+        >
+          {formatAssetCategory(form.assetCategory)}
+        </span>
+      </td>
+      <td className="max-w-0 px-4 py-3">
+        <span
+          className="block truncate"
+          title={form.department || 'Not recorded'}
+        >
+          {form.department || 'Not recorded'}
+        </span>
+      </td>
+      <td className="max-w-0 px-4 py-3">
+        <span className="block truncate" title={cycleLabel}>
+          {cycleLabel}
+        </span>
+      </td>
+      <td className="px-4 py-3 text-center">{form.inspections.length}</td>
+      <td className="px-4 py-3">
         <FormStatus status={form.status} />
-      </div>
-      <dl className="mt-3 grid gap-x-4 gap-y-2 border-t border-[var(--border-soft)] pt-3 text-sm sm:grid-cols-2 lg:grid-cols-5">
-        <div className="min-w-0">
-          <dt className="text-xs font-semibold tracking-[0.08em] text-[var(--text-neutral)] uppercase">
-            Asset category
-          </dt>
-          <dd className="mt-1 text-[var(--text-primary)]">
-            {formatAssetCategory(form.assetCategory)}
-          </dd>
-        </div>
-        <div className="min-w-0">
-          <dt className="text-xs font-semibold tracking-[0.08em] text-[var(--text-neutral)] uppercase">
-            Building / department
-          </dt>
-          <dd className="mt-1 text-[var(--text-primary)]">
-            {[form.building, form.department].filter(Boolean).join(' / ') ||
-              'Not recorded'}
-          </dd>
-        </div>
-        <div className="min-w-0">
-          <dt className="text-xs font-semibold tracking-[0.08em] text-[var(--text-neutral)] uppercase">
-            Period
-          </dt>
-          <dd className="mt-1 text-[var(--text-primary)]">{cycleLabel}</dd>
-        </div>
-        <div className="min-w-0">
-          <dt className="text-xs font-semibold tracking-[0.08em] text-[var(--text-neutral)] uppercase">
-            Inspection rows
-          </dt>
-          <dd className="mt-1 text-[var(--text-primary)]">
-            {form.inspections.length}
-          </dd>
-        </div>
-        <div className="min-w-0">
-          <dt className="text-xs font-semibold tracking-[0.08em] text-[var(--text-neutral)] uppercase">
-            Submitted
-          </dt>
-          <dd className="mt-1 text-[var(--text-primary)]">
-            {formatFormDate(form.submittedAt)}
-          </dd>
-        </div>
-      </dl>
-      <dl className="mt-3 grid gap-x-4 gap-y-2 border-t border-[var(--border-soft)] pt-3 text-sm sm:grid-cols-2">
-        <div className="min-w-0">
-          <dt className="text-xs font-semibold tracking-[0.08em] text-[var(--text-neutral)] uppercase">
-            Current supervisor assignment
-          </dt>
-          <dd className="mt-1 text-[var(--text-primary)]">
-            {currentScheduleAssignmentSummary(form, 'Supervisor')}
-          </dd>
-        </div>
-        <div className="min-w-0">
-          <dt className="text-xs font-semibold tracking-[0.08em] text-[var(--text-neutral)] uppercase">
-            Current inspector assignment
-          </dt>
-          <dd className="mt-1 text-[var(--text-primary)]">
-            {currentScheduleAssignmentSummary(form, 'Inspector')}
-          </dd>
-        </div>
-      </dl>
-      <p className="mt-2 text-xs text-[var(--text-secondary)]">
-        These are current schedule assignments. They can differ from the person
-        who completed an inspection.
-      </p>
-      <div className="mt-2 flex justify-end border-t border-[var(--border-soft)] pt-2">
+      </td>
+      <td className="px-4 py-3 text-right">
         <Link
           to="/app/preventive-maintenance-forms/$formId"
           params={{ formId: form.id }}
           search={detailSearch}
-          className="inline-flex min-h-8 items-center text-sm font-semibold text-[var(--primary)] hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
+          className="inline-flex min-h-8 items-center font-semibold text-[var(--primary)] hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
         >
-          View form details{' '}
-          <span aria-hidden="true" className="ml-1">
-            →
-          </span>
+          View details
         </Link>
-      </div>
-    </article>
+      </td>
+    </tr>
   )
 }
 
+function FormMobileRow({
+  form,
+  search,
+}: {
+  form: PreventiveMaintenanceForm
+  search: FormSearch
+}) {
+  const cycleLabel = form.pmCycle
+    ? formatPmCycle(form.pmCycle)
+    : formatFormPeriod(form) || 'Not recorded'
+  const identifier = formIdentifier(form)
+  const category = formatAssetCategory(form.assetCategory)
+  const department = form.department || 'Department not recorded'
+  const hasFileNumber = Boolean(form.fileNumber?.trim())
+
+  return (
+    <Link
+      to="/app/preventive-maintenance-forms/$formId"
+      params={{ formId: form.id }}
+      search={formDetailSearch(search)}
+      className="block border-b border-[var(--border-soft)] px-3 py-3 text-sm last:border-b-0 hover:bg-[var(--surface-subtle)] focus-visible:relative focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-[var(--primary)]"
+    >
+      <div className="flex items-center justify-between gap-3">
+        <span className="min-w-0 truncate font-semibold text-[var(--primary)]">
+          {identifier}
+        </span>
+        <FormStatus status={form.status} />
+      </div>
+      <p className="mt-1 truncate text-[var(--text-secondary)]">
+        {hasFileNumber ? category + ' · ' + department : department}
+      </p>
+      <p className="mt-1 flex items-center justify-between gap-3 text-xs text-[var(--text-neutral)]">
+        <span>{cycleLabel}</span>
+        <span>
+          {form.inspections.length}{' '}
+          {form.inspections.length === 1 ? 'inspection' : 'inspections'}
+        </span>
+      </p>
+    </Link>
+  )
+}
+
+function FormPagination({
+  page,
+  pageSize,
+  total,
+  onPageChange,
+}: {
+  page: number
+  pageSize: number
+  total: number
+  onPageChange: (page: number) => void
+}) {
+  const pageCount = Math.max(1, Math.ceil(total / pageSize))
+  const first = (page - 1) * pageSize + 1
+  const last = Math.min(page * pageSize, total)
+
+  return (
+    <nav
+      aria-label="Form review pagination"
+      className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border-soft)] pt-3 text-sm"
+    >
+      <p className="text-[var(--text-secondary)]">
+        Showing {first}–{last} of {total}
+      </p>
+      <div className="flex items-center gap-2">
+        <Button
+          type="button"
+          variant="secondary"
+          disabled={page <= 1}
+          onClick={() => onPageChange(page - 1)}
+        >
+          Previous
+        </Button>
+        <span aria-live="polite" className="text-[var(--text-secondary)]">
+          Page {page} of {pageCount}
+        </span>
+        <Button
+          type="button"
+          variant="secondary"
+          disabled={page >= pageCount}
+          onClick={() => onPageChange(page + 1)}
+        >
+          Next
+        </Button>
+      </div>
+    </nav>
+  )
+}
 function FormRegistryFilters({
   search,
   categories,
@@ -273,7 +300,7 @@ function FormRegistryFilters({
   optionsError,
   formsError,
   onSearchChange,
-  onRefreshForms,
+  onRetryForms,
   onRetryOptions,
 }: {
   search: FormSearch
@@ -285,7 +312,7 @@ function FormRegistryFilters({
   optionsError: boolean
   formsError: boolean
   onSearchChange: FormRegistryProps['onSearchChange']
-  onRefreshForms: () => void
+  onRetryForms: () => void
   onRetryOptions: () => void
 }) {
   const [draft, setDraft] = useState<FormSearch>(() => ({
@@ -357,156 +384,162 @@ function FormRegistryFilters({
       </h2>
       <Card className="content-card p-3">
         <form
-          className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4"
+          className="space-y-3"
           onSubmit={(event) => {
             event.preventDefault()
             apply()
           }}
         >
-          <label className="grid gap-1 text-sm font-semibold text-[var(--text-primary)] md:col-span-2 xl:col-span-4">
-            Search forms
-            <Input
-              aria-label="Search forms"
-              placeholder="File number, building, or asset details"
-              value={draft.search ?? ''}
-              maxLength={256}
-              onChange={(event) =>
-                setDraft((current) => ({
-                  ...current,
-                  search: event.target.value,
-                }))
-              }
-              className="min-h-10 text-sm"
-            />
-          </label>
-          <label className="grid gap-1 text-sm font-semibold text-[var(--text-primary)]">
-            Form status
-            <select
-              aria-label="Form status"
-              value={draft.status ?? ''}
-              onChange={(event) =>
-                setDraft((current) => ({
-                  ...current,
-                  status: (event.target.value || undefined) as
-                    PreventiveMaintenanceForm['status'] | undefined,
-                }))
-              }
-              className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
-            >
-              <option value="">All statuses</option>
-              {preventiveMaintenanceFormStatusCodes.map((status) => (
-                <option key={status} value={status}>
-                  {formStatusLabel(status)}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="grid gap-1 text-sm font-semibold text-[var(--text-primary)]">
-            Asset category
-            <select
-              aria-label="Asset category"
-              value={draft.assetCategory ?? ''}
-              disabled={optionsPending && categories.length === 0}
-              onChange={(event) =>
-                setDraft((current) => ({
-                  ...current,
-                  assetCategory: event.target.value || undefined,
-                }))
-              }
-              className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
-            >
-              <option value="">All asset categories</option>
-              {assetCategoryCodes
-                .filter((category) => categories.includes(category))
-                .map((category) => (
-                  <option key={category} value={category}>
-                    {formatAssetCategory(category)}
+          <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_16rem]">
+            <label className="grid gap-1 text-sm font-semibold text-[var(--text-primary)]">
+              Search forms
+              <Input
+                aria-label="Search forms"
+                placeholder="File number, building, or asset details"
+                value={draft.search ?? ''}
+                maxLength={256}
+                onChange={(event) =>
+                  setDraft((current) => ({
+                    ...current,
+                    search: event.target.value,
+                  }))
+                }
+                className="min-h-10 text-sm"
+              />
+            </label>
+            <label className="grid gap-1 text-sm font-semibold text-[var(--text-primary)]">
+              Form status
+              <select
+                aria-label="Form status"
+                value={draft.status ?? ''}
+                onChange={(event) =>
+                  setDraft((current) => ({
+                    ...current,
+                    status: (event.target.value || undefined) as
+                      PreventiveMaintenanceForm['status'] | undefined,
+                  }))
+                }
+                className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
+              >
+                <option value="">All statuses</option>
+                {preventiveMaintenanceFormStatusCodes.map((status) => (
+                  <option key={status} value={status}>
+                    {formStatusLabel(status)}
                   </option>
                 ))}
-            </select>
-          </label>
-          <label className="grid gap-1 text-sm font-semibold text-[var(--text-primary)]">
-            Department
-            <select
-              aria-label="Department"
-              value={draft.department ?? ''}
-              disabled={optionsPending && departments.length === 0}
-              onChange={(event) =>
-                setDraft((current) => ({
-                  ...current,
-                  department: event.target.value || undefined,
-                }))
-              }
-              className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
-            >
-              <option value="">All departments</option>
-              {departments.map((department) => (
-                <option key={department} value={department}>
-                  {department}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="grid gap-1 text-sm font-semibold text-[var(--text-primary)]">
-            PM cycle
-            <select
-              aria-label="PM cycle"
-              value={draft.pmCycle ?? ''}
-              disabled={optionsPending && cycles.length === 0}
-              onChange={(event) =>
-                setDraft((current) => ({
-                  ...current,
-                  pmCycle: event.target.value || undefined,
-                }))
-              }
-              className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
-            >
-              <option value="">All PM cycles</option>
-              {cycles.map((cycle) => (
-                <option key={cycle} value={cycle}>
-                  {formatPmCycle(cycle)}
-                </option>
-              ))}
-            </select>
-          </label>
-          {isGsd && (
-            <SearchableOptionInput
-              id="supervisor-filter"
-              label="Supervisor filter"
-              value={supervisorInputValue}
-              options={supervisorPickerOptions}
-              placeholder="Type a supervisor name"
-              helperText="Choose a suggestion to filter by account. Use All supervisors or Unassigned when needed."
-              onChange={(value) => {
-                setSupervisorSearch(value)
-                const option = supervisorPickerOptions.find(
-                  (candidate) =>
-                    candidate.label.toLocaleLowerCase() ===
-                    value.trim().toLocaleLowerCase(),
-                )
-                setDraft((current) => ({
-                  ...current,
-                  supervisor: option?.value || undefined,
-                }))
-              }}
-            />
-          )}
-          {isGsd && supervisorOptionsQuery.isError && (
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => void supervisorOptionsQuery.refetch()}
-            >
-              Retry supervisor suggestions
-            </Button>
-          )}
-          <div className="flex flex-wrap gap-2 md:col-span-2 xl:col-span-4">
+              </select>
+            </label>
+          </div>
+          <details className="rounded-lg border border-[var(--border-soft)] px-3">
+            <summary className="cursor-pointer py-2 text-sm font-semibold text-[var(--text-primary)] focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]">
+              More filters
+            </summary>
+            <div className="grid gap-3 border-t border-[var(--border-soft)] py-3 md:grid-cols-2 xl:grid-cols-4">
+              <label className="grid gap-1 text-sm font-semibold text-[var(--text-primary)]">
+                Asset category
+                <select
+                  aria-label="Asset category"
+                  value={draft.assetCategory ?? ''}
+                  disabled={optionsPending && categories.length === 0}
+                  onChange={(event) =>
+                    setDraft((current) => ({
+                      ...current,
+                      assetCategory: event.target.value || undefined,
+                    }))
+                  }
+                  className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
+                >
+                  <option value="">All asset categories</option>
+                  {assetCategoryCodes
+                    .filter((category) => categories.includes(category))
+                    .map((category) => (
+                      <option key={category} value={category}>
+                        {formatAssetCategory(category)}
+                      </option>
+                    ))}
+                </select>
+              </label>
+              <label className="grid gap-1 text-sm font-semibold text-[var(--text-primary)]">
+                Department
+                <select
+                  aria-label="Department"
+                  value={draft.department ?? ''}
+                  disabled={optionsPending && departments.length === 0}
+                  onChange={(event) =>
+                    setDraft((current) => ({
+                      ...current,
+                      department: event.target.value || undefined,
+                    }))
+                  }
+                  className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
+                >
+                  <option value="">All departments</option>
+                  {departments.map((department) => (
+                    <option key={department} value={department}>
+                      {department}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="grid gap-1 text-sm font-semibold text-[var(--text-primary)]">
+                PM cycle
+                <select
+                  aria-label="PM cycle"
+                  value={draft.pmCycle ?? ''}
+                  disabled={optionsPending && cycles.length === 0}
+                  onChange={(event) =>
+                    setDraft((current) => ({
+                      ...current,
+                      pmCycle: event.target.value || undefined,
+                    }))
+                  }
+                  className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
+                >
+                  <option value="">All PM cycles</option>
+                  {cycles.map((cycle) => (
+                    <option key={cycle} value={cycle}>
+                      {formatPmCycle(cycle)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {isGsd && (
+                <SearchableOptionInput
+                  id="supervisor-filter"
+                  label="Supervisor filter"
+                  value={supervisorInputValue}
+                  options={supervisorPickerOptions}
+                  placeholder="Type a supervisor name"
+                  helperText="Choose a suggestion to filter by account. Use All supervisors or Unassigned when needed."
+                  onChange={(value) => {
+                    setSupervisorSearch(value)
+                    const option = supervisorPickerOptions.find(
+                      (candidate) =>
+                        candidate.label.toLocaleLowerCase() ===
+                        value.trim().toLocaleLowerCase(),
+                    )
+                    setDraft((current) => ({
+                      ...current,
+                      supervisor: option?.value || undefined,
+                    }))
+                  }}
+                />
+              )}
+              {isGsd && supervisorOptionsQuery.isError && (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => void supervisorOptionsQuery.refetch()}
+                >
+                  Retry supervisor suggestions
+                </Button>
+              )}
+            </div>
+          </details>
+          <div className="flex flex-wrap gap-2">
             <Button type="submit">Apply filters</Button>
             <Button type="button" variant="secondary" onClick={clear}>
               Clear filters
-            </Button>
-            <Button type="button" variant="secondary" onClick={onRefreshForms}>
-              Refresh forms
             </Button>
           </div>
         </form>
@@ -549,7 +582,7 @@ function FormRegistryFilters({
             role="alert"
           >
             <span>Preventive-maintenance forms could not be loaded.</span>
-            <Button type="button" onClick={onRefreshForms}>
+            <Button type="button" onClick={onRetryForms}>
               Retry
             </Button>
             <Button type="button" variant="secondary" onClick={clear}>
@@ -575,7 +608,6 @@ function FormRegistryFilters({
 
 export function FormRegistry({ search, onSearchChange }: FormRegistryProps) {
   const currentUser = useCurrentUser()
-  const recordZoom = useRegistryZoom()
   const canReview = canReviewPreventiveMaintenanceForms(currentUser.data?.roles)
   const canFilterSupervisor = isGsdRole(currentUser.data?.roles)
   const filters = useMemo(
@@ -751,40 +783,30 @@ export function FormRegistry({ search, onSearchChange }: FormRegistryProps) {
         optionsError={allForms.isError}
         formsError={forms.isError}
         onSearchChange={onSearchChange}
-        onRefreshForms={() => void forms.refetch()}
+        onRetryForms={() => void forms.refetch()}
         onRetryOptions={() => void allForms.refetch()}
       />
-      <section aria-labelledby="form-records-title" className="space-y-4">
-        <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2
-              id="form-records-title"
-              className="text-xl font-semibold text-[var(--text-primary)]"
-            >
-              Form records
-            </h2>
-            <p
-              className="mt-1 text-sm text-[var(--text-secondary)]"
-              aria-live="polite"
-            >
-              Filtered results: {rows.length.toLocaleString()}
-            </p>
-          </div>
-          <RegistryZoomControls
-            label="Form records"
-            zoom={recordZoom.zoom}
-            onDecrease={recordZoom.decrease}
-            onIncrease={recordZoom.increase}
-            onReset={recordZoom.reset}
-          />
-        </header>
-        {rows.length === 0 && (
+      <section
+        aria-labelledby="form-records-title"
+        className="w-full space-y-3"
+      >
+        <header className="flex items-center justify-between gap-3">
+          <h2
+            id="form-records-title"
+            className="text-lg font-semibold text-[var(--text-primary)]"
+          >
+            Form records
+          </h2>
           <p
-            className="min-h-5 text-sm text-[var(--text-neutral)]"
-            role={forms.isFetching ? 'status' : undefined}
+            className="text-sm text-[var(--text-secondary)]"
             aria-live="polite"
           >
-            {forms.isFetching ? 'Updating results...' : null}
+            {rows.length.toLocaleString()} forms
+          </p>
+        </header>
+        {forms.isFetching && (
+          <p className="text-sm text-[var(--text-neutral)]" role="status">
+            Updating results...
           </p>
         )}
         {forms.isSuccess && rows.length === 0 ? (
@@ -801,30 +823,71 @@ export function FormRegistry({ search, onSearchChange }: FormRegistryProps) {
             </p>
           </Card>
         ) : rows.length > 0 ? (
-          <RegistryResultsPanel
-            label="Preventive-maintenance forms"
-            desktopLabel="Preventive-maintenance form records"
-            breakpoint="md"
-            viewportSize="standard"
-            isUpdating={forms.isFetching}
-            recordsZoom={recordZoom.zoom}
-            desktopContent={
-              <div className="space-y-3 p-1" role="list">
-                {pageData.map((form) => (
-                  <FormSummary key={form.id} form={form} search={search} />
-                ))}
-              </div>
-            }
-            mobileContent={pageData.map((form) => (
-              <FormSummary key={form.id} form={form} search={search} />
-            ))}
-            pagination={{
-              page,
-              pageSize,
-              total: rows.length,
-              onPageChange: changePage,
-            }}
-          />
+          <>
+            <div className="hidden overflow-x-auto rounded-lg border border-[var(--border-soft)] bg-white lg:block">
+              <table className="w-full min-w-[880px] table-fixed text-left text-sm">
+                <caption className="sr-only">
+                  Preventive-maintenance forms
+                </caption>
+                <colgroup>
+                  <col className="w-[22%]" />
+                  <col className="w-[16%]" />
+                  <col className="w-[15%]" />
+                  <col className="w-[14%]" />
+                  <col className="w-[10%]" />
+                  <col className="w-[14%]" />
+                  <col className="w-[9%]" />
+                </colgroup>
+                <thead className="bg-[var(--primary)] text-xs text-white">
+                  <tr>
+                    <th scope="col" className="px-4 py-3 font-semibold">
+                      Form
+                    </th>
+                    <th scope="col" className="px-4 py-3 font-semibold">
+                      Asset category
+                    </th>
+                    <th scope="col" className="px-4 py-3 font-semibold">
+                      Department
+                    </th>
+                    <th scope="col" className="px-4 py-3 font-semibold">
+                      PM cycle
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-4 py-3 text-center font-semibold"
+                    >
+                      Inspections
+                    </th>
+                    <th scope="col" className="px-4 py-3 font-semibold">
+                      Status
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-4 py-3 text-right font-semibold"
+                    >
+                      Action
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pageData.map((form) => (
+                    <FormTableRow key={form.id} form={form} search={search} />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="overflow-hidden rounded-lg border border-[var(--border-soft)] bg-white lg:hidden">
+              {pageData.map((form) => (
+                <FormMobileRow key={form.id} form={form} search={search} />
+              ))}
+            </div>
+            <FormPagination
+              page={page}
+              pageSize={pageSize}
+              total={rows.length}
+              onPageChange={changePage}
+            />
+          </>
         ) : null}
       </section>
     </section>
