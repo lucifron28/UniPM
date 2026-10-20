@@ -353,10 +353,10 @@ function getErrorMessage(error: unknown) {
       return 'The selected report values changed. Update the plan and create a new preview before running it.'
     }
     if (code === 'ProviderUnavailable' || code === 'Timeout') {
-      return 'Question interpretation is unavailable. You can complete the report plan below and preview it manually.'
+      return 'DeepSeek could not interpret the question. No deterministic fallback was used. You can adjust the report plan below and preview it manually.'
     }
     if (code === 'InvalidOutput') {
-      return 'The question could not be interpreted safely. Edit the report plan or try a more specific question.'
+      return 'DeepSeek returned a response that failed validation. No deterministic fallback was used. Edit the report plan or try a more specific question.'
     }
     if (code === 'ExecutionLimitExceeded') {
       return 'This report exceeds the current row limit. Narrow the period or add a population filter, then preview again.'
@@ -1294,6 +1294,13 @@ export function PmAnalyticsV3Panel() {
                 : interpretation.status === 'NeedsClarification'
                   ? 'The question needs more detail.'
                   : 'The question is outside the supported report scope.'}
+            </p>
+            <p className="mt-1 text-xs text-[var(--text-neutral)]">
+              {interpretation.interpreter === 'DeepSeek'
+                ? 'Interpreted by DeepSeek.'
+                : interpretation.interpreter === 'DeterministicParser'
+                  ? 'Interpreted by the deterministic parser.'
+                  : 'Handled by UniPM safety rules; no language model was called.'}
             </p>
             {interpretationDescription && (
               <p className="mt-1 text-[var(--text-secondary)]">

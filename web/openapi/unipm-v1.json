@@ -6524,7 +6524,7 @@
         }
       },
       "PmAnalyticsV3InterpretationResponse": {
-        "required": ["status", "plan", "clarificationFields", "code", "detail"],
+        "required": ["status", "plan", "clarificationFields", "code", "detail", "interpreter"],
         "type": "object",
         "properties": {
           "status": {
@@ -6551,6 +6551,9 @@
           },
           "detail": {
             "type": ["null", "string"]
+          },
+          "interpreter": {
+            "type": "string"
           }
         }
       },

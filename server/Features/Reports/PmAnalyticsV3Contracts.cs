@@ -232,4 +232,5 @@ public sealed record PmAnalyticsV3InterpretationResponse(
     PmAnalyticsV3ReportPlan? Plan,
     IReadOnlyList<string> ClarificationFields,
     string? Code,
-    string? Detail);
+    string? Detail,
+    string Interpreter);

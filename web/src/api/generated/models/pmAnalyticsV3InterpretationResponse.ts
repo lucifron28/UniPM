@@ -14,4 +14,5 @@ export interface PmAnalyticsV3InterpretationResponse {
   code: string | null
   /** @nullable */
   detail: string | null
+  interpreter: string
 }
