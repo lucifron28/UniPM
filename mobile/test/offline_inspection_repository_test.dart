@@ -590,6 +590,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Discard this saved change?'), findsNothing);
     expect(immediateRepository.discardCalls, 1);
+    await immediateRepository.waitForDiscard();
     final restoredForm = await immediateRepository.readThroughRepository(
       _formId,
     );
@@ -767,6 +768,7 @@ class _ImmediateScheduleOfflineInspectionRepository
   final WidgetTester tester;
   final PreventiveMaintenanceRepository fakeRemote;
   int discardCalls = 0;
+  Future<bool?>? _discardOperation;
 
   @override
   Future<List<ScheduleOption>> listSchedules({String? assetId}) async =>
@@ -775,13 +777,25 @@ class _ImmediateScheduleOfflineInspectionRepository
   @override
   Future<void> discardConflict(String writeId) async {
     discardCalls++;
-    final completed = await tester.runAsync<bool>(() async {
+    final operation = tester.runAsync<bool>(() async {
       await _discardWithBaseRepository(
         writeId,
       ).timeout(const Duration(seconds: 5));
       return true;
     });
+    _discardOperation = operation;
+    final completed = await operation;
     if (completed != true) {
+      throw StateError('Conflict discard did not finish.');
+    }
+  }
+
+  Future<void> waitForDiscard() async {
+    final operation = _discardOperation;
+    if (operation == null) {
+      throw StateError('Conflict discard was not started.');
+    }
+    if (await operation != true) {
       throw StateError('Conflict discard did not finish.');
     }
   }
