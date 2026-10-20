@@ -86,24 +86,33 @@ jobs:
           fi
       - name: Run Flutter tests
         run: |
-          test_log="${RUNNER_TEMP}/flutter-test.log"
-          if flutter test --reporter expanded >"${test_log}" 2>&1; then
-            cat "${test_log}"
-          else
-            status=$?
-            cat "${test_log}"
-            diagnostics="${RUNNER_TEMP}/flutter-test-diagnostics.log"
-            grep -E -m 30 '(\+[0-9]+([[:space:]]+~[0-9]+)?[[:space:]]+-[0-9]+:|Expected:|Actual:|Which:|TestFailure|Exception|Error:|Some tests failed|Test failed)' "${test_log}" >"${diagnostics}" || true
-            if [ -s "${diagnostics}" ]; then
-              while IFS= read -r diagnostic; do
-                printf '::error title=Flutter test failure::%s\n' "${diagnostic}"
-              done <"${diagnostics}"
+          run_flutter_tests() {
+            label="$1"
+            shift
+            test_log="${RUNNER_TEMP}/flutter-${label}.log"
+            if "$@" >"${test_log}" 2>&1; then
+              cat "${test_log}"
+              return 0
             else
-              printf '::error title=Flutter test failure::flutter test exited with status %s; final output follows\n' "${status}"
-              tail -n 30 "${test_log}" | while IFS= read -r diagnostic; do
-                printf '::error title=Flutter test output::%s\n' "${diagnostic}"
+              status=$?
+              cat "${test_log}"
+              diagnostics="${RUNNER_TEMP}/flutter-${label}-diagnostics.log"
+              grep -E -m 25 '(Expected:|Actual:|Which:|TestFailure|Exception|Error:|Some tests failed|Test failed)' "${test_log}" >"${diagnostics}" || true
+              if [ -s "${diagnostics}" ]; then
+                while IFS= read -r diagnostic; do
+                  diagnostic="${diagnostic//'%'/'%25'}"
+                  printf '::error title=Flutter test failure (%s)::%s\n' "${label}" "${diagnostic}"
+                done <"${diagnostics}"
+              fi
+              printf '::error title=Flutter test output (%s)::last 40 log lines follow\n' "${label}"
+              tail -n 40 "${test_log}" | while IFS= read -r diagnostic; do
+                diagnostic="${diagnostic//'%'/'%25'}"
+                printf '::error title=Flutter test output (%s)::%s\n' "${label}" "${diagnostic}"
               done
+              return "${status}"
             fi
-            exit "${status}"
-          fi
+          }
+
+          run_flutter_tests offline-inspection flutter test --reporter expanded --timeout=2m test/offline_inspection_repository_test.dart
+          run_flutter_tests full-suite flutter test --reporter expanded
       - run: flutter build apk --debug
