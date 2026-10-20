@@ -64,7 +64,7 @@ public static class DemoQrWriter
             <head>
               <meta charset="utf-8">
               <meta name="viewport" content="width=device-width, initial-scale=1">
-              <title>UniPM fictional demo QR sheet</title>
+              <title>UniPM synthetic staging QR sheet</title>
               <style>
                 :root { color-scheme: light; font-family: Arial, sans-serif; }
                 body { margin: 0; padding: 28px; color: #101828; background: #eef2f6; }
@@ -84,8 +84,8 @@ public static class DemoQrWriter
             </head>
             <body>
               <header>
-                <h1>UniPM fictional demo QR codes</h1>
-                <p>Development data only. Open this page at 100% zoom and scan a card from the mobile app.</p>
+                <h1>UniPM staging QR codes</h1>
+                <p>Facility names are publicly documented MSEUF locations. Assets, placements, and maintenance records are synthetic and do not represent work performed by GSD personnel. Scan a code from the mobile app.</p>
               </header>
               <main>
             {{cards}}

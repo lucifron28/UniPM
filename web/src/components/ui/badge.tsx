@@ -9,7 +9,7 @@ export const Badge = ({
 }) => (
   <span
     className={cn(
-      'inline-flex rounded-full px-2.5 py-1 text-xs font-medium',
+      'inline-flex rounded-sm px-2.5 py-1 text-xs font-medium',
       {
         neutral: 'bg-[var(--surface-muted)] text-[var(--text-neutral)]',
         success:

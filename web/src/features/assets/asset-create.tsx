@@ -19,6 +19,7 @@ import {
 } from '@/api/generated/endpoints'
 import { ApiError } from '@/api/problem-details'
 import { Alert } from '@/components/ui/alert'
+import { PageHeading } from '@/components/layout/page-heading'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -305,10 +306,7 @@ export function AssetCreate() {
           <Button type="button" onClick={() => void categories.refetch()}>
             Retry loading categories
           </Button>
-          <Button
-            asChild
-            className="bg-white text-[var(--text-primary)] hover:bg-[var(--page-background)]"
-          >
+          <Button asChild variant="secondary">
             <Link to="/app/assets">Return to assets</Link>
           </Button>
         </div>
@@ -328,21 +326,16 @@ export function AssetCreate() {
         >
           Back to assets
         </Link>
-        <h1
+        <PageHeading
           id="create-asset-title"
-          className="mt-4 text-3xl font-bold tracking-tight text-[var(--text-primary)]"
-        >
-          Add asset
-        </h1>
-        <p className="mt-2 text-[var(--text-secondary)]">
-          Add an asset code, category, and department. Building and location are
-          optional.
-        </p>
+          title="Add asset"
+          description="Add an asset code, category, and department. Building and location are optional."
+        />
       </div>
-      <Card className="shadow-none">
+      <Card className="content-card p-5 sm:p-6">
         <form
           noValidate
-          className="space-y-5"
+          className="space-y-6"
           onSubmit={(event) => {
             event.preventDefault()
             void form.handleSubmit()
@@ -359,101 +352,12 @@ export function AssetCreate() {
               </Alert>
             </div>
           )}
-          <form.Field
-            name="assetCode"
-            validators={{
-              onChange: ({ value }) => {
-                const res = createAssetFieldSchemas.assetCode.safeParse(value)
-                return res.success ? undefined : res.error.issues[0]?.message
-              },
-            }}
-          >
-            {(field) => {
-              const err = fieldErrorText(field.state.meta)
-              return (
-                <div className="space-y-2">
-                  <Label htmlFor="assetCode">Asset code</Label>
-                  <Input
-                    id="assetCode"
-                    value={field.state.value}
-                    onBlur={field.handleBlur}
-                    onChange={(event) => {
-                      clearBackendFieldError('assetCode')
-                      field.handleChange(event.target.value)
-                    }}
-                    aria-invalid={Boolean(err)}
-                    aria-describedby={err ? 'assetCode-error' : undefined}
-                  />
-                  {err && (
-                    <p
-                      id="assetCode-error"
-                      className="text-sm text-[var(--error)]"
-                    >
-                      {err}
-                    </p>
-                  )}
-                </div>
-              )
-            }}
-          </form.Field>
-
-          <form.Field
-            name="assetCategory"
-            validators={{
-              onChange: ({ value }) => {
-                const res =
-                  createAssetFieldSchemas.assetCategory.safeParse(value)
-                return res.success ? undefined : res.error.issues[0]?.message
-              },
-            }}
-          >
-            {(field) => {
-              const err = fieldErrorText(field.state.meta)
-              return (
-                <div className="space-y-2">
-                  <Label htmlFor="assetCategory">Category</Label>
-                  <select
-                    id="assetCategory"
-                    value={field.state.value}
-                    onBlur={field.handleBlur}
-                    onChange={(event) => {
-                      clearBackendFieldError('assetCategory')
-                      field.handleChange(
-                        event.target
-                          .value as CreateAssetValues['assetCategory'],
-                      )
-                    }}
-                    aria-invalid={Boolean(err)}
-                    aria-describedby={err ? 'assetCategory-error' : undefined}
-                    className="min-h-10 w-full rounded-lg border border-[var(--border-soft)] bg-white px-3 text-sm"
-                  >
-                    <option value="">Choose a category</option>
-                    {(categories.data ?? []).map((category) => (
-                      <option key={category.code} value={category.code}>
-                        {category.displayName}
-                      </option>
-                    ))}
-                  </select>
-                  {err && (
-                    <p
-                      id="assetCategory-error"
-                      className="text-sm text-[var(--error)]"
-                    >
-                      {err}
-                    </p>
-                  )}
-                </div>
-              )
-            }}
-          </form.Field>
-
-          {(['building', 'department', 'location'] as const).map((name) => (
+          <div className="grid gap-x-6 gap-y-5 sm:grid-cols-2">
             <form.Field
-              key={name}
-              name={name}
+              name="assetCode"
               validators={{
                 onChange: ({ value }) => {
-                  const res = createAssetFieldSchemas[name].safeParse(value)
+                  const res = createAssetFieldSchemas.assetCode.safeParse(value)
                   return res.success ? undefined : res.error.issues[0]?.message
                 },
               }}
@@ -462,28 +366,21 @@ export function AssetCreate() {
                 const err = fieldErrorText(field.state.meta)
                 return (
                   <div className="space-y-2">
-                    <Label htmlFor={name}>
-                      {name.charAt(0).toUpperCase() + name.slice(1)}{' '}
-                      {name !== 'department' && (
-                        <span className="font-normal text-[var(--text-neutral)]">
-                          (optional)
-                        </span>
-                      )}
-                    </Label>
+                    <Label htmlFor="assetCode">Asset code</Label>
                     <Input
-                      id={name}
-                      value={field.state.value ?? ''}
+                      id="assetCode"
+                      value={field.state.value}
                       onBlur={field.handleBlur}
                       onChange={(event) => {
-                        clearBackendFieldError(name)
+                        clearBackendFieldError('assetCode')
                         field.handleChange(event.target.value)
                       }}
                       aria-invalid={Boolean(err)}
-                      aria-describedby={err ? `${name}-error` : undefined}
+                      aria-describedby={err ? 'assetCode-error' : undefined}
                     />
                     {err && (
                       <p
-                        id={`${name}-error`}
+                        id="assetCode-error"
                         className="text-sm text-[var(--error)]"
                       >
                         {err}
@@ -493,7 +390,109 @@ export function AssetCreate() {
                 )
               }}
             </form.Field>
-          ))}
+
+            <form.Field
+              name="assetCategory"
+              validators={{
+                onChange: ({ value }) => {
+                  const res =
+                    createAssetFieldSchemas.assetCategory.safeParse(value)
+                  return res.success ? undefined : res.error.issues[0]?.message
+                },
+              }}
+            >
+              {(field) => {
+                const err = fieldErrorText(field.state.meta)
+                return (
+                  <div className="space-y-2">
+                    <Label htmlFor="assetCategory">Category</Label>
+                    <select
+                      id="assetCategory"
+                      value={field.state.value}
+                      onBlur={field.handleBlur}
+                      onChange={(event) => {
+                        clearBackendFieldError('assetCategory')
+                        field.handleChange(
+                          event.target
+                            .value as CreateAssetValues['assetCategory'],
+                        )
+                      }}
+                      aria-invalid={Boolean(err)}
+                      aria-describedby={err ? 'assetCategory-error' : undefined}
+                      className="min-h-10 w-full rounded-lg border border-[var(--border-soft)] bg-white px-3 text-sm"
+                    >
+                      <option value="">Choose a category</option>
+                      {(categories.data ?? []).map((category) => (
+                        <option key={category.code} value={category.code}>
+                          {category.displayName}
+                        </option>
+                      ))}
+                    </select>
+                    {err && (
+                      <p
+                        id="assetCategory-error"
+                        className="text-sm text-[var(--error)]"
+                      >
+                        {err}
+                      </p>
+                    )}
+                  </div>
+                )
+              }}
+            </form.Field>
+
+            {(['building', 'department', 'location'] as const).map((name) => (
+              <form.Field
+                key={name}
+                name={name}
+                validators={{
+                  onChange: ({ value }) => {
+                    const res = createAssetFieldSchemas[name].safeParse(value)
+                    return res.success
+                      ? undefined
+                      : res.error.issues[0]?.message
+                  },
+                }}
+              >
+                {(field) => {
+                  const err = fieldErrorText(field.state.meta)
+                  return (
+                    <div
+                      className={`space-y-2 ${name === 'location' ? 'sm:col-span-2' : ''}`}
+                    >
+                      <Label htmlFor={name}>
+                        {name.charAt(0).toUpperCase() + name.slice(1)}{' '}
+                        {name !== 'department' && (
+                          <span className="font-normal text-[var(--text-neutral)]">
+                            (optional)
+                          </span>
+                        )}
+                      </Label>
+                      <Input
+                        id={name}
+                        value={field.state.value ?? ''}
+                        onBlur={field.handleBlur}
+                        onChange={(event) => {
+                          clearBackendFieldError(name)
+                          field.handleChange(event.target.value)
+                        }}
+                        aria-invalid={Boolean(err)}
+                        aria-describedby={err ? `${name}-error` : undefined}
+                      />
+                      {err && (
+                        <p
+                          id={`${name}-error`}
+                          className="text-sm text-[var(--error)]"
+                        >
+                          {err}
+                        </p>
+                      )}
+                    </div>
+                  )
+                }}
+              </form.Field>
+            ))}
+          </div>
 
           <form.Subscribe selector={(state) => state.isSubmitting}>
             {(isSubmitting) => {
@@ -509,10 +508,7 @@ export function AssetCreate() {
                     )}
                     {busy ? 'Creating asset...' : 'Create asset'}
                   </Button>
-                  <Button
-                    asChild
-                    className="bg-white text-[var(--text-primary)] hover:bg-[var(--page-background)]"
-                  >
+                  <Button asChild variant="secondary">
                     <Link to="/app/assets">Cancel</Link>
                   </Button>
                 </div>

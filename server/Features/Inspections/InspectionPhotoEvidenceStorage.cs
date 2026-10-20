@@ -7,8 +7,60 @@ public sealed class InspectionPhotoEvidenceOptions
 {
     public const string SectionName = "InspectionPhotoEvidence";
     public const int MaximumUploadBytes = 4 * 1024 * 1024;
+    public const string FileSystemProvider = "FileSystem";
+    public const string AzureBlobProvider = "AzureBlob";
+    public const string AzureBlobContainerName = "inspection-photos";
 
+    public string StorageProvider { get; set; } = FileSystemProvider;
     public string StorageDirectory { get; set; } = Path.Combine("App_Data", "InspectionPhotos");
+    public string? BlobServiceUri { get; set; }
+
+    public void Validate()
+    {
+        switch (StorageProvider)
+        {
+            case FileSystemProvider:
+                return;
+            case AzureBlobProvider:
+                _ = GetValidatedBlobServiceUri();
+                return;
+            default:
+                throw new InvalidOperationException(
+                    "InspectionPhotoEvidence:StorageProvider must be FileSystem or AzureBlob.");
+        }
+    }
+
+    public Uri GetValidatedBlobServiceUri()
+    {
+        const string blobHostSuffix = ".blob.core.windows.net";
+        if (string.IsNullOrWhiteSpace(BlobServiceUri)
+            || !string.Equals(BlobServiceUri, BlobServiceUri.Trim(), StringComparison.Ordinal)
+            || !Uri.TryCreate(BlobServiceUri, UriKind.Absolute, out var serviceUri))
+        {
+            throw InvalidBlobServiceUri();
+        }
+
+        var host = serviceUri.Host;
+        var accountNameLength = host.Length - blobHostSuffix.Length;
+        if (serviceUri.Scheme != Uri.UriSchemeHttps
+            || !serviceUri.IsDefaultPort
+            || serviceUri.AbsolutePath != "/"
+            || serviceUri.Query.Length > 0
+            || serviceUri.Fragment.Length > 0
+            || serviceUri.UserInfo.Length > 0
+            || serviceUri.HostNameType != UriHostNameType.Dns
+            || !host.EndsWith(blobHostSuffix, StringComparison.OrdinalIgnoreCase)
+            || accountNameLength is < 3 or > 24
+            || host.AsSpan(0, accountNameLength).ContainsAnyExcept("abcdefghijklmnopqrstuvwxyz0123456789"))
+        {
+            throw InvalidBlobServiceUri();
+        }
+
+        return serviceUri;
+    }
+
+    private static InvalidOperationException InvalidBlobServiceUri() => new(
+        "InspectionPhotoEvidence:BlobServiceUri must be the HTTPS root URI of an Azure public Blob Storage account, without query or user information.");
 }
 
 public interface IInspectionPhotoEvidenceStorage
@@ -68,12 +120,7 @@ public sealed class FileSystemInspectionPhotoEvidenceStorage(
 
     private string GetPath(string storageKey)
     {
-        if (storageKey.Length != 36
-            || !storageKey.EndsWith(".jpg", StringComparison.Ordinal)
-            || !Guid.TryParseExact(storageKey.AsSpan(0, 32), "N", out _))
-        {
-            throw new InvalidOperationException("The inspection photo storage key is invalid.");
-        }
+        InspectionPhotoEvidenceStorageKeys.Validate(storageKey);
 
         return Path.Combine(storageDirectory, storageKey);
     }
@@ -99,6 +146,19 @@ public sealed class FileSystemInspectionPhotoEvidenceStorage(
         }
 
         return root;
+    }
+}
+
+internal static class InspectionPhotoEvidenceStorageKeys
+{
+    internal static void Validate(string storageKey)
+    {
+        if (storageKey.Length != 36
+            || !storageKey.EndsWith(".jpg", StringComparison.Ordinal)
+            || !Guid.TryParseExact(storageKey.AsSpan(0, 32), "N", out _))
+        {
+            throw new InvalidOperationException("The inspection photo storage key is invalid.");
+        }
     }
 }
 

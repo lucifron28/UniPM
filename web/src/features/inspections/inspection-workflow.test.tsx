@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import { useState } from 'react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -282,6 +282,84 @@ describe('inspection review workflows', () => {
     )
   })
 
+  it('keeps common filters visible and active advanced filters identifiable when collapsed', async () => {
+    mockInspectionApi()
+    renderWithProviders(
+      <InspectionRegistry
+        search={{
+          assetId,
+          department: 'GSD',
+          year: 2026,
+          quarter: 'Q3',
+          pmCycle: '2026-08',
+          dateFrom: '2026-07-01T00:00:00.000Z',
+          dateTo: '2026-07-31T23:59:59.000Z',
+        }}
+        onSearchChange={vi.fn()}
+      />,
+    )
+
+    await screen.findAllByText('FE-001')
+    const headings = screen
+      .getAllByRole('heading')
+      .map((heading) => heading.textContent?.trim())
+    expect(headings.indexOf('Inspections')).toBeLessThan(
+      headings.indexOf('Find inspections'),
+    )
+    expect(headings.indexOf('Find inspections')).toBeLessThan(
+      headings.indexOf('Inspection summary'),
+    )
+    expect(headings.indexOf('Inspection summary')).toBeLessThan(
+      headings.indexOf('Inspection records'),
+    )
+
+    expect(screen.getByLabelText('Search inspections')).toBeVisible()
+    expect(screen.getByLabelText('Asset category')).toBeVisible()
+    expect(screen.getByLabelText('PM calendar year')).toBeVisible()
+    expect(screen.getByLabelText('Recorded operational result')).toBeVisible()
+    expect(screen.getByLabelText('Corrective follow-up status')).toBeVisible()
+    expect(screen.getByLabelText('Department')).toBeVisible()
+
+    const actor = userEvent.setup()
+    await actor.click(screen.getByText('More filters'))
+    expect(screen.getByLabelText('Department')).toBeVisible()
+    expect(screen.getByLabelText('Specific asset')).not.toBeVisible()
+    expect(
+      screen.getByRole('button', { name: 'Remove Specific asset filter' }),
+    ).toBeVisible()
+    expect(
+      screen.getByRole('button', { name: 'Remove Department filter' }),
+    ).toBeVisible()
+    expect(
+      screen.getByRole('button', { name: 'Remove PM calendar quarter filter' }),
+    ).toBeVisible()
+    expect(
+      screen.getByRole('button', { name: 'Remove Exact PM month filter' }),
+    ).toBeVisible()
+    expect(
+      screen.getByRole('button', { name: 'Remove Inspected from filter' }),
+    ).toBeVisible()
+
+    const zoomGroup = screen.getByRole('group', {
+      name: 'Inspection records zoom controls',
+    })
+    await actor.click(
+      within(zoomGroup).getByRole('button', {
+        name: 'Increase Inspection records zoom',
+      }),
+    )
+    expect(
+      screen
+        .getByRole('region', { name: 'Inspections table' })
+        .querySelector<HTMLElement>(':scope > div')?.style.zoom,
+    ).toBe('1.1')
+    await actor.click(
+      within(zoomGroup).getByRole('button', {
+        name: 'Reset Inspection records zoom to 100 percent',
+      }),
+    )
+  })
+
   it('applies combined inspection filters only after submission and preserves them in detail links', async () => {
     const urls: URL[] = []
     mockInspectionApi()
@@ -437,7 +515,7 @@ describe('inspection review workflows', () => {
     expect(await screen.findByText('August 2026')).toBeInTheDocument()
     expect(screen.getByText('Due date')).toBeInTheDocument()
     expect(await screen.findByText('Aug 31, 2026')).toBeInTheDocument()
-    expect(screen.getByText('Actual inspection date')).toBeInTheDocument()
+    expect(screen.getByText(/Actual inspection date:/)).toBeInTheDocument()
     expect(
       await screen.findByRole('link', { name: 'FE-001' }),
     ).toBeInTheDocument()

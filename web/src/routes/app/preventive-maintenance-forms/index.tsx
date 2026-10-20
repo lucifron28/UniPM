@@ -16,6 +16,7 @@ const searchSchema = z.object({
     .regex(/^(?!0000)\d{4}-(0[1-9]|1[0-2])$/)
     .optional(),
   search: z.string().trim().max(256).optional(),
+  supervisor: z.union([z.literal('unassigned'), z.string().uuid()]).optional(),
   page: z.coerce.number().int().positive().max(10000).optional(),
 })
 

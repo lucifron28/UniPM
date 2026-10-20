@@ -14,12 +14,15 @@ type RegistryPagination = {
 
 type RegistryResultsPanelProps = {
   label: string
+  desktopLabel?: string
+  desktopFrameClassName?: string
   breakpoint: RegistryBreakpoint
   viewportSize: RegistryViewportSize
   desktopContent: ReactNode
   mobileContent: ReactNode
   isUpdating?: boolean
   pagination?: RegistryPagination
+  recordsZoom?: number
 }
 
 function registryDesktopViewportClassName(
@@ -59,16 +62,36 @@ export function RegistryLoadingPanel({
 
 export function RegistryResultsPanel({
   label,
+  desktopLabel,
+  desktopFrameClassName = 'content-card',
   breakpoint,
   viewportSize,
   desktopContent,
   mobileContent,
   isUpdating = false,
   pagination,
+  recordsZoom = 100,
 }: RegistryResultsPanelProps) {
   const desktopClassName =
     breakpoint === 'md' ? 'hidden md:block' : 'hidden lg:block'
   const mobileClassName = breakpoint === 'md' ? 'md:hidden' : 'lg:hidden'
+  const zoomRatio = recordsZoom / 100
+  const recordsStyle = {
+    zoom: zoomRatio,
+    width: `${100 / zoomRatio}%`,
+  }
+  const zoomedDesktopContent =
+    zoomRatio === 1 ? (
+      desktopContent
+    ) : (
+      <div style={recordsStyle}>{desktopContent}</div>
+    )
+  const zoomedMobileContent =
+    zoomRatio === 1 ? (
+      mobileContent
+    ) : (
+      <div style={recordsStyle}>{mobileContent}</div>
+    )
   const pageCount = pagination
     ? Math.max(1, Math.ceil(pagination.total / pagination.pageSize))
     : 1
@@ -84,29 +107,33 @@ export function RegistryResultsPanel({
 
   return (
     <section aria-label={label + ' results'} className="space-y-4">
-      <p
-        className="min-h-5 text-sm text-[var(--text-neutral)]"
-        role={isUpdating ? 'status' : undefined}
-        aria-live="polite"
-      >
-        {isUpdating ? 'Updating results...' : null}
-      </p>
+      {isUpdating && (
+        <p
+          className="min-h-5 text-sm text-[var(--text-neutral)]"
+          role="status"
+          aria-live="polite"
+        >
+          Updating results...
+        </p>
+      )}
       <Card
-        className={'hidden overflow-hidden p-0 shadow-none ' + desktopClassName}
+        className={`hidden overflow-hidden p-0 ${desktopFrameClassName} ${desktopClassName}`}
       >
         <div
           role="region"
-          aria-label={label + ' table'}
+          aria-label={desktopLabel ?? label + ' table'}
           tabIndex={0}
           className={
             'overflow-auto focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:outline-none focus-visible:ring-inset ' +
             registryDesktopViewportClassName(breakpoint, viewportSize)
           }
         >
-          {desktopContent}
+          {zoomedDesktopContent}
         </div>
       </Card>
-      <div className={'space-y-3 ' + mobileClassName}>{mobileContent}</div>
+      <div className={'space-y-3 ' + mobileClassName}>
+        {zoomedMobileContent}
+      </div>
       {pagination && (
         <nav
           aria-label={label + ' pagination'}

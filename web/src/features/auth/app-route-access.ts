@@ -2,6 +2,7 @@ const scheduleReadRoles = ['GSD', 'Inspector', 'Supervisor'] as const
 const scheduleManageRoles = ['GSD', 'Supervisor'] as const
 const assetManageRoles = ['GSD'] as const
 const formReviewRoles = ['GSD', 'Inspector'] as const
+const pmAnalyticsRoles = ['GSD'] as const
 
 function isAtOrBelow(pathname: string, basePath: string) {
   return pathname === basePath || pathname.startsWith(`${basePath}/`)
@@ -10,6 +11,7 @@ function isAtOrBelow(pathname: string, basePath: string) {
 export function getRequiredAppRoles(
   pathname: string,
 ): readonly string[] | null {
+  if (isAtOrBelow(pathname, '/app/analytics')) return pmAnalyticsRoles
   if (isAtOrBelow(pathname, '/app/schedules/new')) return scheduleManageRoles
   if (isAtOrBelow(pathname, '/app/schedules')) return scheduleReadRoles
   if (isAtOrBelow(pathname, '/app/assets/new')) return assetManageRoles

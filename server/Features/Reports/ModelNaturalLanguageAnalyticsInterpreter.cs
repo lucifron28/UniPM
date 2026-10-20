@@ -24,6 +24,10 @@ internal class ModelNaturalLanguageAnalyticsInterpreter(
     }
 }
 
+internal sealed record NaturalLanguageAnalyticsPromptProfile(
+    string SystemPrompt,
+    JsonElement OutputSchema);
+
 internal static class NaturalLanguageAnalyticsInterpretationPrompt
 {
     private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web);
@@ -35,6 +39,8 @@ internal static class NaturalLanguageAnalyticsInterpretationPrompt
     internal static string Fingerprint { get; } = Convert.ToHexString(SHA256.HashData(
         Encoding.UTF8.GetBytes($"{ModelNaturalLanguageAnalyticsInterpreter.PromptVersion}\n{SystemPrompt}")))
         .ToLowerInvariant();
+    internal static NaturalLanguageAnalyticsPromptProfile Profile { get; }
+        = new(SystemPrompt, OutputSchema);
 
     private static object CreateOutputSchema()
     {

@@ -1,0 +1,16 @@
+{
+  "protocolId": "NLA-V3-EVAL-PROTOCOL-001",
+  "corpusId": "NLA-V3-DEV-CANDIDATES-001",
+  "status": "draft",
+  "candidateFile": "dev-candidates.jsonl",
+  "expectedCaseCount": 18,
+  "schemaVersion": 3,
+  "catalogVersion": 2,
+  "interpreterId": "PmAnalyticsV3QuestionGuard+PmAnalyticsV3RuleParser",
+  "frozenSourceCommit": null,
+  "fileSha256": "b7362e13106b8872353b934ceedd33c70e356334c67343a78e55f316453348e6",
+  "freezeSha256": null,
+  "asOfUtc": "2025-06-01T00:00:00+00:00",
+  "heldoutIncluded": false,
+  "reviewed": false
+}

@@ -66,6 +66,63 @@ describe('HTTP client', () => {
     await customInstance({ url: '/api/v1/auth/login', method: 'POST' })
   })
 
+  it('keeps same-origin authentication endpoints free of bearer and refresh handling', async () => {
+    const refresh = vi.fn()
+    configureRuntime({
+      getAccessToken: () => 'synthetic-access-token',
+      refreshAccessToken: refresh,
+    })
+    server.use(
+      http.post(
+        `${window.location.origin}/api/v1/auth/login`,
+        ({ request }) => {
+          expect(request.headers.get('authorization')).toBeNull()
+          return HttpResponse.json({ title: 'Unauthorized' }, { status: 401 })
+        },
+      ),
+    )
+
+    await expect(
+      customInstance({
+        url: '/api/v1/auth/login',
+        baseURL: '',
+        method: 'POST',
+      }),
+    ).rejects.toMatchObject({ status: 401 })
+    expect(refresh).not.toHaveBeenCalled()
+  })
+
+  it('attaches and refreshes bearer tokens for same-origin protected requests', async () => {
+    let requestCount = 0
+    const refresh = vi.fn(async () => 'synthetic-refreshed-token')
+    configureRuntime({
+      getAccessToken: () =>
+        requestCount === 0
+          ? 'synthetic-expired-token'
+          : 'synthetic-refreshed-token',
+      refreshAccessToken: refresh,
+    })
+    server.use(
+      http.get(`${window.location.origin}/api/v1/protected`, ({ request }) => {
+        requestCount += 1
+        expect(request.headers.get('authorization')).toBe(
+          requestCount === 1
+            ? 'Bearer synthetic-expired-token'
+            : 'Bearer synthetic-refreshed-token',
+        )
+        return requestCount === 1
+          ? HttpResponse.json({ title: 'Unauthorized' }, { status: 401 })
+          : HttpResponse.json({ ok: true })
+      }),
+    )
+
+    await expect(
+      customInstance({ url: '/api/v1/protected', baseURL: '' }),
+    ).resolves.toEqual({ ok: true })
+    expect(refresh).toHaveBeenCalledOnce()
+    expect(requestCount).toBe(2)
+  })
+
   it('refreshes and replays an ordinary request once with its request data intact', async () => {
     let requestCount = 0
     const onTerminalUnauthorized = vi.fn()

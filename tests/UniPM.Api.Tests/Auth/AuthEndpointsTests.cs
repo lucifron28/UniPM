@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -441,6 +442,7 @@ public sealed class AuthEndpointsTests
                     options => options.TokenValidationParameters = runtime.CreateValidationParameters());
                 services.RemoveAll<IDbContextFactory<ApplicationDbContext>>();
                 services.RemoveAll<DbContextOptions<ApplicationDbContext>>();
+                services.RemoveAll<IDbContextOptionsConfiguration<ApplicationDbContext>>();
                 services.AddDbContextFactory<ApplicationDbContext>(options =>
                     options.UseInMemoryDatabase(databaseName));
             });
@@ -559,7 +561,8 @@ public sealed class AuthEndpointsTests
                     ["Jwt:Issuer"] = Issuer,
                     ["Jwt:Audience"] = Audience,
                     ["Jwt:SigningKey"] = signingKey,
-                    ["Jwt:AccessTokenMinutes"] = "60"
+                    ["Jwt:AccessTokenMinutes"] = "60",
+                    ["UNIPM_WEB_ORIGIN"] = "https://staging.unipm.example"
                 }));
         }
     }

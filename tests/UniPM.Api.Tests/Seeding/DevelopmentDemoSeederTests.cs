@@ -35,6 +35,7 @@ public sealed class DevelopmentDemoSeederTests
         Assert.Equal(77, await context.InspectionRecords.CountAsync());
         Assert.Equal(42, await context.PreventiveMaintenanceForms.CountAsync());
         Assert.Equal(29, await context.PreventiveMaintenanceAcknowledgements.CountAsync());
+        await CampusSeedAssertions.VerifyAsync(context);
 
         var scenarioAAssetIds = DevelopmentDemoCatalog.Assets
             .Where(asset => asset.Scenario == "scenario-a")
@@ -98,7 +99,7 @@ public sealed class DevelopmentDemoSeederTests
         Assert.Equal(0m, futurePeriod.ProgressPercent);
 
         var studentAffairsPeriod = await dashboard.GetPeriodAsync(
-            new PmPeriodDashboardQuery("2026-06", "emergency-light", "Student Affairs Office", null, null, null),
+            new PmPeriodDashboardQuery("2026-06", "emergency-light", "Office of Student Affairs and Services", null, null, null),
             CancellationToken.None);
         Assert.Equal(2, studentAffairsPeriod.Scheduled);
         Assert.Equal(2, studentAffairsPeriod.Inspected);
@@ -109,13 +110,13 @@ public sealed class DevelopmentDemoSeederTests
         Assert.Equal(50m, studentAffairsPeriod.OnTimeCompliancePercent);
         Assert.Equal(100m, studentAffairsPeriod.ProgressPercent);
         Assert.Contains(studentAffairsPeriod.Batches, batch =>
-            batch.Department == "STUDENT AFFAIRS OFFICE"
+            batch.Department == "OFFICE OF STUDENT AFFAIRS AND SERVICES"
             && batch.Scheduled == 2
             && batch.Inspected == 2
             && batch.FormStatus == "Acknowledged");
 
         var campusFacilitiesPeriod = await dashboard.GetPeriodAsync(
-            new PmPeriodDashboardQuery("2026-06", "emergency-light", "Campus Facilities", null, null, null),
+            new PmPeriodDashboardQuery("2026-06", "emergency-light", "Registrar's Office", null, null, null),
             CancellationToken.None);
         Assert.Equal(1, campusFacilitiesPeriod.Scheduled);
         Assert.Equal(0, campusFacilitiesPeriod.Inspected);

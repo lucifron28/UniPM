@@ -493,7 +493,7 @@ for (const viewport of dashboardViewports) {
 
       await page.getByRole('link', { name: 'FE-001', exact: true }).click()
       await expect(
-        page.getByRole('heading', { name: 'FE-001', level: 1 }),
+        page.getByRole('heading', { name: 'FE-001', level: 2 }),
       ).toBeVisible()
       await expect(
         page.getByRole('link', { name: 'Back to PM dashboard' }),
@@ -502,7 +502,7 @@ for (const viewport of dashboardViewports) {
 
       await page.getByRole('link', { name: 'View source' }).click()
       await expect(
-        page.getByRole('heading', { name: 'FE-001', level: 1 }),
+        page.getByRole('heading', { name: 'FE-001', level: 2 }),
       ).toBeVisible()
       await expect(
         page.getByRole('heading', { name: 'Record information' }),
@@ -514,7 +514,7 @@ for (const viewport of dashboardViewports) {
 
       await page.getByRole('link', { name: 'August 2026', exact: true }).click()
       await expect(
-        page.getByRole('heading', { name: 'FE-001', level: 1 }),
+        page.getByRole('heading', { name: 'FE-001', level: 2 }),
       ).toBeVisible()
       await expect(
         page.getByRole('link', { name: 'Back to inspection' }),
@@ -557,7 +557,7 @@ for (const viewport of dashboardViewports) {
       if (viewport.width === 375) await expectNoHorizontalOverflow(page)
       await page.getByRole('link', { name: 'Back to inspection' }).click()
       await expect(
-        page.getByRole('heading', { name: 'FE-001', level: 1 }),
+        page.getByRole('heading', { name: 'FE-001', level: 2 }),
       ).toBeVisible()
 
       await page.goto('/app/inspections/' + inspectionId)
@@ -578,9 +578,20 @@ test('shows a visible focus indicator on the active desktop navigation link', as
   await installApi(page)
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto('/app/dashboard')
-  await expect(page.getByText(/1 need review · 0 reviewed\./)).toBeVisible()
+  await expect(
+    page.getByRole('heading', {
+      name: 'Preventive Maintenance Dashboard',
+      level: 1,
+    }),
+  ).toBeVisible()
 
+  await expect(page.getByRole('link', { name: 'Dashboard' })).toHaveAttribute(
+    'aria-current',
+    'page',
+  )
   const dashboardLink = await tabToLink(page, 'Dashboard')
+  await expect(dashboardLink).toBeFocused()
+  await expect(dashboardLink).toHaveAttribute('aria-current', 'page')
   await expect(dashboardLink).toHaveCSS('outline-style', 'solid')
   await expect(dashboardLink).toHaveCSS('outline-color', 'rgb(87, 0, 0)')
   await expect(dashboardLink).toHaveCSS('outline-width', '2px')
@@ -623,7 +634,7 @@ test('returns to filtered, paged assets and keeps the back link keyboard reachab
   await expect(finalAssetRow).toBeVisible()
   await finalAssetRow.getByRole('link', { name: 'View details' }).click()
   await expect(
-    page.getByRole('heading', { name: 'FE-026', level: 1 }),
+    page.getByRole('heading', { name: 'FE-026', level: 2 }),
   ).toBeVisible()
 
   await page.setViewportSize({ width: 375, height: 667 })
@@ -660,8 +671,14 @@ test('returns from submitted batch inspection and form detail to the exact revie
       '/review?department=GSD&assetCategory=fire-extinguisher&year=2026&pmCycle=2026-08&condition=NonOperational&timeliness=OnTime&search=FE-001',
   )
   await expect(
-    page.getByRole('heading', { name: 'Review before acknowledgement' }),
+    page.locator('.page-heading-host').getByRole('heading', {
+      name: 'Review before acknowledgement',
+      level: 1,
+    }),
   ).toBeVisible()
+  await expect(
+    page.getByRole('heading', { name: 'Review before acknowledgement' }),
+  ).toHaveCount(1)
   await page.getByRole('link', { name: 'View inspection detail' }).click()
   await expect(
     page.getByRole('link', { name: 'Back to batch review' }),
@@ -676,7 +693,7 @@ test('returns from submitted batch inspection and form detail to the exact revie
 
   await page.getByRole('link', { name: 'View full PM form' }).click()
   await expect(
-    page.getByRole('heading', { name: 'PMF-2026-0001', level: 1 }),
+    page.getByRole('heading', { name: 'PMF-2026-0001', level: 2 }),
   ).toBeVisible()
   await expect(
     page.getByRole('heading', { name: 'Record information' }),

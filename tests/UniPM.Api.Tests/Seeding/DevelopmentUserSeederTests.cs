@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.FileProviders;
@@ -28,7 +29,10 @@ public sealed class DevelopmentUserSeederTests
         Assert.Equal(5, first.UsersCreated);
         Assert.Equal(5, first.RoleAssignmentsRepaired);
         Assert.Equal(new DevelopmentUserSeedResult(0, 0, 0, 0), second);
-        Assert.All(AuthRoleCatalog.Values, role => Assert.True(roleManager.RoleExistsAsync(role).Result));
+        foreach (var role in AuthRoleCatalog.Values)
+        {
+            Assert.True(await roleManager.RoleExistsAsync(role));
+        }
         Assert.Equal(5, userManager.Users.Count());
         Assert.DoesNotContain(Password, first.ToString(), StringComparison.Ordinal);
 
@@ -61,6 +65,38 @@ public sealed class DevelopmentUserSeederTests
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(seeder.SeedAsync);
 
         Assert.Contains("only in Development", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Seeder_can_skip_only_the_legacy_department_head_account_when_configured()
+    {
+        await using var sourceFactory = new AuthEndpointsTests.AuthApplicationFactory();
+        await using var application = sourceFactory.WithWebHostBuilder(builder =>
+            builder.ConfigureAppConfiguration((_, configuration) =>
+                configuration.AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["UNIPM_DEV_SKIP_DEPARTMENT_HEAD_ACCOUNT"] = "true"
+                })));
+        await using var scope = application.Services.CreateAsyncScope();
+        var seeder = scope.ServiceProvider.GetRequiredService<DevelopmentUserSeeder>();
+        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+        var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
+
+        var first = await seeder.SeedAsync();
+        var second = await seeder.SeedAsync();
+
+        Assert.Equal(new DevelopmentUserSeedResult(5, 4, 4, 0), first);
+        Assert.Equal(new DevelopmentUserSeedResult(0, 0, 0, 0), second);
+        foreach (var role in AuthRoleCatalog.Values)
+        {
+            Assert.True(await roleManager.RoleExistsAsync(role));
+        }
+        Assert.Equal(4, userManager.Users.Count());
+        Assert.Null(await userManager.FindByEmailAsync("departmenthead@unipm.local"));
+        Assert.NotNull(await userManager.FindByEmailAsync("admin@unipm.local"));
+        Assert.NotNull(await userManager.FindByEmailAsync("gsd@unipm.local"));
+        Assert.NotNull(await userManager.FindByEmailAsync("inspector@unipm.local"));
+        Assert.NotNull(await userManager.FindByEmailAsync("supervisor@unipm.local"));
     }
 
     private sealed class TestHostEnvironment(string environmentName) : IHostEnvironment

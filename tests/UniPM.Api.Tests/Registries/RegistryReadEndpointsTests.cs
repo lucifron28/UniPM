@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using UniPM.Api.Data;
@@ -303,6 +304,7 @@ public sealed class RegistryReadEndpointsTests
                 services.AddTestAuthentication(roles ?? [AuthRoleCatalog.Gsd]);
                 services.RemoveAll<IDbContextFactory<ApplicationDbContext>>();
                 services.RemoveAll<DbContextOptions<ApplicationDbContext>>();
+                services.RemoveAll<IDbContextOptionsConfiguration<ApplicationDbContext>>();
                 services.AddDbContextFactory<ApplicationDbContext>(options =>
                 {
                     if (sqlConnectionString is null)
@@ -679,24 +681,24 @@ public sealed class RegistryReadEndpointsTests
             string? semester,
             string status,
             DateTimeOffset now) => new()
-        {
-            Id = Guid.NewGuid(),
-            AssetCategory = category,
-            Building = "Main Building",
-            Department = "GSD",
-            PmCycle = cycle,
-            PeriodType = periodType,
-            Quarter = quarter,
-            Semester = semester,
-            Year = int.Parse(cycle[..4]),
-            Status = status,
-            CreatedByUserId = TestAuthenticationHandler.UserId,
-            SubmittedByUserId = status == "Acknowledged" ? TestAuthenticationHandler.UserId : null,
-            SubmittedAt = status == "Acknowledged" ? now : null,
-            FieldWorkCompletedAt = status == "Acknowledged" ? now : null,
-            CreatedAt = now,
-            UpdatedAt = now
-        };
+            {
+                Id = Guid.NewGuid(),
+                AssetCategory = category,
+                Building = "Main Building",
+                Department = "GSD",
+                PmCycle = cycle,
+                PeriodType = periodType,
+                Quarter = quarter,
+                Semester = semester,
+                Year = int.Parse(cycle[..4]),
+                Status = status,
+                CreatedByUserId = TestAuthenticationHandler.UserId,
+                SubmittedByUserId = status == "Acknowledged" ? TestAuthenticationHandler.UserId : null,
+                SubmittedAt = status == "Acknowledged" ? now : null,
+                FieldWorkCompletedAt = status == "Acknowledged" ? now : null,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
 
         private static PreventiveMaintenanceAcknowledgement NewAcknowledgement(
             PreventiveMaintenanceForm form,
@@ -724,22 +726,22 @@ public sealed class RegistryReadEndpointsTests
             bool operational,
             string remarks,
             DateTimeOffset now) => new()
-        {
-            Id = Guid.NewGuid(),
-            ScheduleId = schedule.Id,
-            Schedule = schedule,
-            AssetId = asset.Id,
-            Asset = asset,
-            PreventiveMaintenanceFormId = form?.Id,
-            PreventiveMaintenanceForm = form,
-            InspectorUserId = TestAuthenticationHandler.UserId,
-            DateInspected = dateInspected,
-            DateAccomplished = dateInspected,
-            IsOperational = operational,
-            Remarks = remarks,
-            CreatedAt = now,
-            UpdatedAt = now
-        };
+            {
+                Id = Guid.NewGuid(),
+                ScheduleId = schedule.Id,
+                Schedule = schedule,
+                AssetId = asset.Id,
+                Asset = asset,
+                PreventiveMaintenanceFormId = form?.Id,
+                PreventiveMaintenanceForm = form,
+                InspectorUserId = TestAuthenticationHandler.UserId,
+                DateInspected = dateInspected,
+                DateAccomplished = dateInspected,
+                IsOperational = operational,
+                Remarks = remarks,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
     }
 
     private sealed class SqlServerTestDatabase : IAsyncDisposable

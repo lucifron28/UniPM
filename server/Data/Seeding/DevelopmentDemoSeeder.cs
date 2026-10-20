@@ -4,13 +4,15 @@ using Microsoft.EntityFrameworkCore.Storage;
 using UniPM.Api.Features.PreventiveMaintenanceForms;
 using UniPM.Api.Features.ReferenceData;
 using UniPM.Api.Features.Schedules;
+using UniPM.Api.Features.Auth;
 using UniPM.Api.Models;
 
 namespace UniPM.Api.Data.Seeding;
 
 internal sealed class DevelopmentDemoSeeder(
     IDbContextFactory<ApplicationDbContext> contextFactory,
-    IHostEnvironment environment)
+    IHostEnvironment environment,
+    IConfiguration? configuration = null)
 {
     private static readonly TimeSpan ManilaOffset = TimeSpan.FromHours(8);
     private const string SignatureBase64 =
@@ -22,10 +24,12 @@ internal sealed class DevelopmentDemoSeeder(
         EnsureDevelopment();
         await using var context = await CreateReadyContextAsync(cancellationToken);
         var (inspectorId, gsdId) = await ResolveUsersAsync(context, cancellationToken);
+        var staging = StagingDemoInitialization.Enabled(configuration);
+        if (staging) await StagingDemoInitialization.EnsureReadyAsync(context, true, cancellationToken);
         await ValidateConflictsAsync(context, cancellationToken);
         await using var transaction = await BeginTransactionIfRelationalAsync(context, cancellationToken);
 
-        await RemoveDemoClosureAsync(context, inspectorId, cancellationToken);
+        if (!staging) await RemoveDemoClosureAsync(context, inspectorId, cancellationToken);
 
         var timestamp = AtManila(2026, 6, 1, 8);
         context.Assets.AddRange(DevelopmentDemoCatalog.Assets.Select(asset => new Asset
@@ -58,7 +62,7 @@ internal sealed class DevelopmentDemoSeeder(
             Id = DevelopmentDemoCatalog.AcknowledgementId,
             FormId = acknowledgedForm.Id,
             SignatoryName = "Dr. Elena Mercado",
-            SignatoryPosition = "Fictional Department Head",
+            SignatoryPosition = "Department representative",
             SignatureData = SignatureBase64,
             SignatureContentType = "image/png",
             SignatureChecksum = Convert.ToHexString(SHA256.HashData(signatureBytes)),
@@ -67,7 +71,8 @@ internal sealed class DevelopmentDemoSeeder(
         });
 
         await context.SaveChangesAsync(cancellationToken);
-        var history = await CpmpDemoHistorySeeder.SeedAsync(context, inspectorId, cancellationToken);
+        var history = await CpmpDemoHistorySeeder.SeedAsync(context, inspectorId, cancellationToken,
+            staging ? StagingDemoInitialization.Email(AuthRoleCatalog.Supervisor) : "supervisor@unipm.local");
 
         if (transaction is not null)
         {
@@ -86,6 +91,8 @@ internal sealed class DevelopmentDemoSeeder(
         CancellationToken cancellationToken = default)
     {
         EnsureDevelopment();
+        if (StagingDemoInitialization.Enabled(configuration))
+            throw new InvalidOperationException("Reset is unavailable in staging initialization mode.");
         await using var context = await CreateReadyContextAsync(cancellationToken);
         var inspectorId = await ResolveDemoInspectorIdAsync(context, cancellationToken);
         await using var transaction = await BeginTransactionIfRelationalAsync(context, cancellationToken);
@@ -159,9 +166,9 @@ internal sealed class DevelopmentDemoSeeder(
         return new PreventiveMaintenanceForm
         {
             Id = DevelopmentDemoCatalog.FormIds[0],
-            FileNumber = "PM-2026-DEMO-0801",
+            FileNumber = "PM-2026-LIB-FE-08",
             AssetCategory = "fire-extinguisher",
-            Building = "University Library",
+            Building = "University Library Complex",
             Department = "Library",
             PmCycle = "2026-08",
             PeriodType = "Quarter",
@@ -183,10 +190,10 @@ internal sealed class DevelopmentDemoSeeder(
         return new PreventiveMaintenanceForm
         {
             Id = DevelopmentDemoCatalog.FormIds[1],
-            FileNumber = "PM-2026-DEMO-0601",
+            FileNumber = "PM-2026-OSAS-EL-06",
             AssetCategory = "emergency-light",
             Building = "Administration Building",
-            Department = "Student Affairs Office",
+            Department = "Office of Student Affairs and Services",
             PmCycle = "2026-06",
             PeriodType = "Quarter",
             Quarter = "Q2",
@@ -219,9 +226,9 @@ internal sealed class DevelopmentDemoSeeder(
         {
             "Pressure gauge below the green operating range.",
             "Safety pin seal is worn and should be replaced.",
-            "Mounting bracket is loose near the archives room entrance.",
-            "Emergency light passed the simulated power interruption test.",
-            "Battery duration was below the expected inspection interval."
+            "Mounting bracket is loose in the library corridor.",
+            "Battery backup remained illuminated during the functional test.",
+            "Reduced battery duration observed during the functional test."
         };
         var recommendations = new[]
         {
@@ -259,11 +266,14 @@ internal sealed class DevelopmentDemoSeeder(
         return inspections;
     }
 
-    private static async Task<(Guid InspectorId, Guid GsdId)> ResolveUsersAsync(
+    private async Task<(Guid InspectorId, Guid GsdId)> ResolveUsersAsync(
         ApplicationDbContext context,
         CancellationToken cancellationToken)
     {
-        var emails = new[] { DevelopmentDemoCatalog.InspectorEmail, DevelopmentDemoCatalog.GsdEmail };
+        var staging = StagingDemoInitialization.Enabled(configuration);
+        var inspectorEmail = staging ? StagingDemoInitialization.Email(AuthRoleCatalog.Inspector) : DevelopmentDemoCatalog.InspectorEmail;
+        var gsdEmail = staging ? StagingDemoInitialization.Email(AuthRoleCatalog.Gsd) : DevelopmentDemoCatalog.GsdEmail;
+        var emails = new[] { inspectorEmail, gsdEmail };
         var matchingUsers = await context.Users
             .AsNoTracking()
             .Where(user => user.Email != null && emails.Contains(user.Email))
@@ -274,11 +284,11 @@ internal sealed class DevelopmentDemoSeeder(
             user => user.Id,
             StringComparer.OrdinalIgnoreCase);
 
-        if (!users.TryGetValue(DevelopmentDemoCatalog.InspectorEmail, out var inspectorId)
-            || !users.TryGetValue(DevelopmentDemoCatalog.GsdEmail, out var gsdId))
+        if (!users.TryGetValue(inspectorEmail, out var inspectorId)
+            || !users.TryGetValue(gsdEmail, out var gsdId))
         {
             throw new InvalidOperationException(
-                "Development demo seeding requires inspector@unipm.local and gsd@unipm.local. Run --seed-development-users first.");
+                "Demo seeding requires the configured Inspector and GSD accounts. Run the approved account initialization first.");
         }
 
         return (inspectorId, gsdId);
@@ -318,9 +328,9 @@ internal sealed class DevelopmentDemoSeeder(
         var formIds = DevelopmentDemoCatalog.FormIds.ToHashSet();
         var fileNumbers = new[]
         {
-            "PM-2026-DEMO-0801",
-            "PM-2026-DEMO-0601",
-            "PM-2026-DEMO-0701"
+            "PM-2026-LIB-FE-08",
+            "PM-2026-OSAS-EL-06",
+            "PM-2026-OSAS-EL-07"
         };
         var formConflicts = await context.PreventiveMaintenanceForms
             .AsNoTracking()
@@ -363,9 +373,9 @@ internal sealed class DevelopmentDemoSeeder(
         var formIdentities = new Dictionary<Guid, DemoFormIdentity>
         {
             [DevelopmentDemoCatalog.FormIds[0]] = new(
-                "fire-extinguisher", "University Library", "Library", "2026-08", "PM-2026-DEMO-0801"),
+                "fire-extinguisher", "University Library Complex", "Library", "2026-08", "PM-2026-LIB-FE-08"),
             [DevelopmentDemoCatalog.FormIds[1]] = new(
-                "emergency-light", "Administration Building", "Student Affairs Office", "2026-06", "PM-2026-DEMO-0601")
+                "emergency-light", "Administration Building", "Office of Student Affairs and Services", "2026-06", "PM-2026-OSAS-EL-06")
         };
         var formFileNumbers = formIdentities.Values
             .Where(form => form.FileNumber is not null)
@@ -373,7 +383,7 @@ internal sealed class DevelopmentDemoSeeder(
                 StringComparer.Ordinal);
         foreach (var form in cpmp.Forms)
         {
-            var building = form.Value.Department == "Demo CCMS" ? "CCMS Building" : "University Library";
+            var building = form.Value.Department == "CNAHS" ? "CNAHS Building" : "University Gymnasium";
             var fileNumber = cpmp.FormFileNumbersById[form.Key];
             formIdentities.Add(form.Key, new(
                 form.Value.AssetCategory,
@@ -618,7 +628,7 @@ internal sealed class DevelopmentDemoSeeder(
                 throw new InvalidOperationException("The database is not reachable for demo seeding.");
             }
 
-            if (context.Database.IsRelational())
+            if (context.Database.IsRelational() && !StagingDemoInitialization.Enabled(configuration))
             {
                 await context.Database.MigrateAsync(cancellationToken);
             }

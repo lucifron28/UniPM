@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 
 const scheduleRegistryRoute = /\/api\/v1\/schedules\/registry(?:\?.*)?$/
+const responsiveScheduleWidths = [320, 375, 390, 768]
 
 const assetId = '22222222-2222-4222-8222-222222222222'
 const scheduleId = '11111111-1111-4111-8111-111111111111'
@@ -335,6 +336,67 @@ async function registryLayout(page: Page) {
   })
 }
 
+async function horizontalOverflowGeometry(page: Page) {
+  return page.evaluate(() => {
+    const viewportWidth = document.documentElement.clientWidth
+    const offenders = Array.from(
+      document.body.querySelectorAll<HTMLElement>('*'),
+    )
+      .map((element) => {
+        const rect = element.getBoundingClientRect()
+        if (
+          rect.width < 1 ||
+          rect.height < 1 ||
+          rect.right <= viewportWidth + 1
+        ) {
+          return null
+        }
+        const style = window.getComputedStyle(element)
+        const ancestors: Array<Record<string, string | number>> = []
+        let ancestor = element.parentElement
+        while (ancestor && ancestors.length < 4) {
+          const ancestorRect = ancestor.getBoundingClientRect()
+          const ancestorStyle = window.getComputedStyle(ancestor)
+          ancestors.push({
+            tag: ancestor.tagName.toLowerCase(),
+            id: ancestor.id,
+            className: String(ancestor.className).slice(0, 120),
+            left: Math.round(ancestorRect.left),
+            right: Math.round(ancestorRect.right),
+            width: Math.round(ancestorRect.width),
+            minWidth: ancestorStyle.minWidth,
+            overflowX: ancestorStyle.overflowX,
+          })
+          ancestor = ancestor.parentElement
+        }
+        return {
+          tag: element.tagName.toLowerCase(),
+          id: element.id,
+          className: String(element.className).slice(0, 180),
+          left: Math.round(rect.left),
+          right: Math.round(rect.right),
+          width: Math.round(rect.width),
+          scrollWidth: element.scrollWidth,
+          clientWidth: element.clientWidth,
+          overflowX: style.overflowX,
+          text: (element.innerText || '').replace(/\s+/g, ' ').slice(0, 70),
+          ancestors,
+        }
+      })
+      .filter((item): item is NonNullable<typeof item> => item !== null)
+      .sort((left, right) => right.right - left.right)
+      .slice(0, 12)
+
+    return {
+      viewportWidth: window.innerWidth,
+      clientWidth: viewportWidth,
+      documentScrollWidth: document.documentElement.scrollWidth,
+      bodyScrollWidth: document.body.scrollWidth,
+      offenders,
+    }
+  })
+}
+
 function expectStableRegistryLayout(
   before: Awaited<ReturnType<typeof registryLayout>>,
   after: Awaited<ReturnType<typeof registryLayout>>,
@@ -488,7 +550,7 @@ test.describe('Schedule workflows', () => {
       })
     })
 
-    await page.goto('/app/schedules#schedule-management')
+    await page.goto('/app/schedules?view=history#schedule-management')
     await expect(
       page.getByRole('heading', { name: 'Schedule management' }),
     ).toBeVisible()
@@ -611,7 +673,7 @@ test.describe('Schedule workflows', () => {
 
   test('keeps window scroll position on both pagination directions', async ({
     page,
-  }) => {
+  }, testInfo) => {
     await mockScheduleApi(page)
     const records = Array.from({ length: 26 }, (_, index) => ({
       ...schedule,
@@ -664,7 +726,10 @@ test.describe('Schedule workflows', () => {
       }),
     )
     await page.setViewportSize({ width: 1280, height: 600 })
-    await page.goto('/app/schedules?status=Due&quarter=Q3&year=2026')
+    await page.goto(
+      '/app/schedules?view=history&status=Due&quarter=Q3&year=2026',
+    )
+    await expect(page).toHaveURL(/view=history/)
     // Longer CPMP cells must preserve the viewport even with enlarged text.
     await page.addStyleTag({
       content: 'tbody td { font-size: 18px; line-height: 28px; }',
@@ -672,9 +737,10 @@ test.describe('Schedule workflows', () => {
     const rows = page.getByRole('table').locator('tbody tr')
     await expect(rows).toHaveCount(25)
     const next = page.getByRole('button', { name: 'Next' })
+    const workspace = page.locator('.app-workspace')
     await next.scrollIntoViewIfNeeded()
-    const scrollY = await page.evaluate(() => window.scrollY)
-    expect(scrollY).toBeGreaterThan(0)
+    const scrollTop = await workspace.evaluate((element) => element.scrollTop)
+    expect(scrollTop).toBeGreaterThan(0)
     const firstPageLayout = await registryLayout(page)
     await next.click()
     await expect(page).toHaveURL(/status=Due/)
@@ -683,16 +749,22 @@ test.describe('Schedule workflows', () => {
     await expect(page).toHaveURL(/page=2/)
     await expect(page.getByRole('cell', { name: 'FE-026' })).toBeVisible()
     await expect(rows).toHaveCount(1)
-    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(scrollY)
+    await expect
+      .poll(() => workspace.evaluate((element) => element.scrollTop))
+      .toBe(scrollTop)
     const lastPageLayout = await registryLayout(page)
     expectStableRegistryLayout(firstPageLayout, lastPageLayout)
     await page.getByRole('button', { name: 'Previous' }).click()
     await expect(page).not.toHaveURL(/page=2/)
     await expect(rows).toHaveCount(25)
-    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(scrollY)
+    await expect
+      .poll(() => workspace.evaluate((element) => element.scrollTop))
+      .toBe(scrollTop)
     expectStableRegistryLayout(firstPageLayout, await registryLayout(page))
 
-    await page.goto('/app/schedules?status=Due&quarter=Q3&year=2026&page=2')
+    await page.goto(
+      '/app/schedules?view=history&status=Due&quarter=Q3&year=2026&page=2',
+    )
     await expect(page).toHaveURL(/page=2/)
     await expect(rows).toHaveCount(1)
     await page.reload()
@@ -702,47 +774,76 @@ test.describe('Schedule workflows', () => {
     await expect(page).toHaveURL(/page=2/)
     await expect(rows).toHaveCount(1)
 
-    await page.goto('/app/schedules?status=Due&quarter=Q3&year=2026&page=99')
+    await page.goto(
+      '/app/schedules?view=history&status=Due&quarter=Q3&year=2026&page=99',
+    )
     await expect(page).toHaveURL(/status=Due/)
     await expect(page).toHaveURL(/quarter=Q3/)
     await expect(page).toHaveURL(/year=2026/)
     await expect(page).toHaveURL(/page=2/)
 
-    await page.setViewportSize({ width: 375, height: 667 })
-    await page.goto('/app/schedules?status=Due&quarter=Q3&year=2026&page=2')
-    const mobileSchedule = page
-      .getByRole('heading', { name: 'FE-026' })
-      .locator('xpath=../../..')
-    await expect(mobileSchedule).toBeVisible()
-    const pagination = page.getByRole('navigation', {
-      name: 'Schedules pagination',
-    })
-    await pagination.scrollIntoViewIfNeeded()
-    const [scheduleBounds, paginationBounds] = await Promise.all([
-      mobileSchedule.boundingBox(),
-      pagination.boundingBox(),
-    ])
-    if (!scheduleBounds || !paginationBounds) {
-      throw new Error('Mobile registry geometry could not be measured')
+    const overflowStates: unknown[] = []
+    for (const width of responsiveScheduleWidths) {
+      await page.setViewportSize({ width, height: 667 })
+      await page.goto(
+        '/app/schedules?view=history&status=Due&quarter=Q3&year=2026&page=2',
+      )
+      await page
+        .locator('.app-workspace')
+        .evaluate((workspace) => (workspace.scrollTop = 0))
+      const pagination = page.getByRole('navigation', {
+        name: 'Schedules pagination',
+      })
+
+      if (width < 768) {
+        const mobileSchedule = page
+          .getByRole('heading', { name: 'FE-026' })
+          .locator('xpath=../../..')
+        await expect(mobileSchedule).toBeVisible()
+      } else {
+        await expect(page.getByRole('cell', { name: 'FE-026' })).toBeVisible()
+      }
+
+      const geometry = await horizontalOverflowGeometry(page)
+      console.log(
+        `[schedule-overflow:pagination:${width}] ${JSON.stringify(geometry)}`,
+      )
+      const excessWidth = geometry.documentScrollWidth - geometry.clientWidth
+      if (excessWidth > 1) {
+        overflowStates.push({ width, excessWidth, geometry })
+      }
+      await page.screenshot({
+        path: testInfo.outputPath(`schedule-pagination-${width}.png`),
+      })
+
+      if (width < 768) {
+        const mobileSchedule = page
+          .getByRole('heading', { name: 'FE-026' })
+          .locator('xpath=../../..')
+        await pagination.scrollIntoViewIfNeeded()
+        const [scheduleBounds, paginationBounds] = await Promise.all([
+          mobileSchedule.boundingBox(),
+          pagination.boundingBox(),
+        ])
+        if (!scheduleBounds || !paginationBounds) {
+          throw new Error('Mobile registry geometry could not be measured')
+        }
+        const mobileGap =
+          paginationBounds.y - (scheduleBounds.y + scheduleBounds.height)
+        expect(mobileGap).toBeGreaterThanOrEqual(0)
+        expect(mobileGap).toBeLessThanOrEqual(64)
+      }
     }
-    const mobileGap =
-      paginationBounds.y - (scheduleBounds.y + scheduleBounds.height)
-    expect(mobileGap).toBeGreaterThanOrEqual(0)
-    expect(mobileGap).toBeLessThanOrEqual(64)
-    expect(
-      await page.evaluate(
-        () =>
-          document.documentElement.scrollWidth -
-          document.documentElement.clientWidth,
-      ),
-    ).toBeLessThanOrEqual(1)
+    expect(overflowStates, JSON.stringify(overflowStates)).toEqual([])
   })
 
   test('browses URL-owned filters and restores a direct schedule detail', async ({
     page,
   }) => {
     await mockScheduleApi(page)
-    await page.goto('/app/schedules?status=Due&quarter=Q3&year=2026')
+    await page.goto(
+      '/app/schedules?view=history&status=Due&quarter=Q3&year=2026',
+    )
     await expect(
       page.getByRole('heading', { name: 'Schedules', exact: true }),
     ).toBeVisible()
@@ -761,11 +862,12 @@ test.describe('Schedule workflows', () => {
     await expect(page).toHaveURL(/quarter=Q3/)
     await expect(page).toHaveURL(/year=2026/)
     await expect(page.getByLabel('Schedule status')).toHaveValue('Due')
+    await expect(page).toHaveURL(/view=history/)
   })
 
   test('keeps the re-laid-out sections and management deep links usable', async ({
     page,
-  }) => {
+  }, testInfo) => {
     await mockScheduleApi(page)
     let generationCalls = 0
     await page.route('**/api/v1/schedules/generate', async (route) => {
@@ -817,27 +919,83 @@ test.describe('Schedule workflows', () => {
         }),
       }),
     )
+    await page.route('**/api/v1/schedules/assignment-batches**', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          totalScheduleCount: 1,
+          batches: [
+            {
+              batchKey: 'GSD|fire-extinguisher|2026-08',
+              department: 'GSD',
+              assetCategory: 'fire-extinguisher',
+              pmCycle: '2026-08',
+              scheduleCount: 1,
+              completedCount: 0,
+              ongoingCount: 0,
+              overdueCount: 0,
+              supervisorState: 'Unassigned',
+              supervisorUserId: null,
+              supervisorDisplayName: null,
+              inspectorState: 'Unassigned',
+              inspectorUserId: null,
+              inspectorDisplayName: null,
+              assignmentLocked: false,
+              supervisorOwnershipIsConsistent: true,
+              representativeSchedule: schedule,
+            },
+          ],
+        }),
+      }),
+    )
 
     await page.setViewportSize({ width: 1440, height: 900 })
     await page.goto('/app/schedules')
     await expect(
       page.getByRole('heading', { name: 'Schedules', exact: true }),
     ).toBeVisible()
+    await expect(
+      page.getByRole('heading', { name: 'PM schedule batches' }),
+    ).toBeVisible()
+    await expect(
+      page.getByRole('heading', { name: 'GSD · Fire extinguishers' }),
+    ).toBeVisible()
+    const viewBatchLink = page.getByRole('link', {
+      name: 'View schedules in batch',
+    })
+    await expect(viewBatchLink).toHaveAttribute('href', /view=history/)
+    await page.screenshot({
+      path: 'test-results/web-ui-polish-schedules-planning-desktop.png',
+      fullPage: true,
+      animations: 'disabled',
+    })
+    await viewBatchLink.click()
+    await expect(page).toHaveURL(/view=history/)
+    await expect(page).toHaveURL(/year=2026/)
+    await expect(page).toHaveURL(/department=GSD/)
+    await expect(page).toHaveURL(/assetCategory=fire-extinguisher/)
+    await expect(page).toHaveURL(/pmCycle=2026-08/)
     const sectionHeadings = await page
       .locator('main h1, main h2')
       .allTextContents()
-    expect(sectionHeadings.slice(0, 4)).toEqual([
-      'Schedules',
+    expect(sectionHeadings.slice(0, 3)).toEqual([
       'Find schedules',
       'Schedule summary',
       'Schedule records',
     ])
     await expect(
-      page.getByText('Overall totals for all recorded schedules'),
+      page.getByText(
+        'Overall schedule totals, independent of registry filters.',
+      ),
     ).toBeVisible()
     await expect(
       page.getByRole('link', { name: 'Manage schedules' }),
     ).toHaveAttribute('href', '#schedule-management')
+    await page.screenshot({
+      path: 'test-results/web-ui-polish-schedules-desktop.png',
+      fullPage: true,
+    })
 
     await page.getByRole('link', { name: 'Manage schedules' }).click()
     await expect(page).toHaveURL(/#schedule-management$/)
@@ -852,26 +1010,71 @@ test.describe('Schedule workflows', () => {
     ).toBeVisible()
     expect(generationCalls).toBe(1)
 
-    await page.goto('/app/schedules#schedule-enrollment-deferrals')
+    await page.goto('/app/schedules?view=history#schedule-enrollment-deferrals')
     await expect(page.locator('#schedule-enrollment-deferrals')).toBeVisible()
     await expect(
       page.getByRole('heading', { name: 'Deferred asset enrollment' }),
     ).toBeVisible()
 
-    await page.setViewportSize({ width: 375, height: 667 })
-    await page.goto('/app/schedules#schedule-management')
-    await expect(
-      page.getByRole('heading', { name: 'Schedule management' }),
-    ).toBeVisible()
-    await page.getByText('More filters', { exact: true }).click()
-    await expect(page.getByLabel('Department')).toBeVisible()
-    expect(
-      await page.evaluate(
-        () =>
-          document.documentElement.scrollWidth -
-          document.documentElement.clientWidth,
-      ),
-    ).toBeLessThanOrEqual(1)
+    const overflowStates: unknown[] = []
+    for (const width of responsiveScheduleWidths) {
+      await page.setViewportSize({ width, height: 667 })
+      await page.goto('/app/schedules?view=history#schedule-management')
+      await expect(
+        page.getByRole('heading', { name: 'Schedule management' }),
+      ).toBeVisible()
+      await expect(page.getByLabel('Department')).toBeVisible()
+      await expect(page.getByLabel('Specific asset')).toBeHidden()
+      let geometry = await horizontalOverflowGeometry(page)
+      console.log(
+        `[schedule-overflow:management-collapsed:${width}] ${JSON.stringify(geometry)}`,
+      )
+      let excessWidth = geometry.documentScrollWidth - geometry.clientWidth
+      if (excessWidth > 1) {
+        overflowStates.push({
+          state: 'management-collapsed',
+          width,
+          excessWidth,
+          geometry,
+        })
+      }
+      await page.screenshot({
+        path: testInfo.outputPath(`schedule-management-collapsed-${width}.png`),
+      })
+
+      await page.getByText('More filters', { exact: true }).click()
+      await expect(page.getByLabel('Department')).toBeVisible()
+      await expect(page.getByLabel('Specific asset')).toBeVisible()
+      geometry = await horizontalOverflowGeometry(page)
+      console.log(
+        `[schedule-overflow:management-expanded:${width}] ${JSON.stringify(geometry)}`,
+      )
+      excessWidth = geometry.documentScrollWidth - geometry.clientWidth
+      if (excessWidth > 1) {
+        overflowStates.push({
+          state: 'management-expanded',
+          width,
+          excessWidth,
+          geometry,
+        })
+      }
+      await page.screenshot({
+        path: testInfo.outputPath(`schedule-management-expanded-${width}.png`),
+      })
+
+      await page.getByText('More filters', { exact: true }).click()
+      await expect(page.getByLabel('Department')).toBeVisible()
+      await expect(page.getByLabel('Specific asset')).toBeHidden()
+      if (width === 375) {
+        await page.screenshot({
+          path: testInfo.outputPath(
+            'schedule-management-mobile-full-page-375.png',
+          ),
+          fullPage: true,
+        })
+      }
+    }
+    expect(overflowStates, JSON.stringify(overflowStates)).toEqual([])
   })
 
   test('creates a schedule with only approved fields and opens its detail', async ({
@@ -890,9 +1093,38 @@ test.describe('Schedule workflows', () => {
       }
       return route.fallback()
     })
+    await page.setViewportSize({ width: 1280, height: 720 })
     await page.goto('/app/schedules/new')
     const assetPicker = page.getByRole('combobox', { name: 'Asset' })
     await assetPicker.fill('FE-001')
+    const expectPickerToFit = async () => {
+      const geometry = await page.evaluate(() => {
+        const menu = document.querySelector('[role="listbox"]')?.parentElement
+        const workspace = document.querySelector('.app-workspace')
+        if (!menu || !workspace) return null
+        const menuBounds = menu.getBoundingClientRect()
+        const workspaceBounds = workspace.getBoundingClientRect()
+        return {
+          left: menuBounds.left,
+          right: menuBounds.right,
+          top: menuBounds.top,
+          bottom: menuBounds.bottom,
+          workspaceTop: workspaceBounds.top,
+          workspaceBottom: Math.min(workspaceBounds.bottom, window.innerHeight),
+          viewportWidth: window.innerWidth,
+        }
+      })
+      expect(geometry).not.toBeNull()
+      if (!geometry) throw new Error('Asset picker menu is not mounted')
+      expect(geometry.left).toBeGreaterThanOrEqual(0)
+      expect(geometry.right).toBeLessThanOrEqual(geometry.viewportWidth)
+      expect(geometry.top).toBeGreaterThanOrEqual(geometry.workspaceTop)
+      expect(geometry.bottom).toBeLessThanOrEqual(geometry.workspaceBottom)
+    }
+    await expect(page.getByRole('option', { name: /FE-001/ })).toBeVisible()
+    await expectPickerToFit()
+    await page.setViewportSize({ width: 375, height: 667 })
+    await expectPickerToFit()
     await page.getByRole('option', { name: /FE-001/ }).click()
     await page.getByLabel('Scheduled year').fill('2026')
     await page.getByLabel('Scheduled month').selectOption('8')

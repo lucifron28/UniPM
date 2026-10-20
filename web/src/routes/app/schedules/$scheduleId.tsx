@@ -25,6 +25,7 @@ const searchSchema = z
       .min(2000)
       .max(new Date().getUTCFullYear() + 5)
       .optional(),
+    view: z.enum(['assignments']).optional(),
     page: z.coerce.number().int().positive().max(10000).optional(),
     returnContext: z.unknown().optional(),
   })
@@ -57,6 +58,7 @@ function ScheduleDetailPage() {
     to: detailSearch.to,
     quarter: detailSearch.quarter,
     year: detailSearch.year,
+    view: detailSearch.view,
     page: detailSearch.page,
   }
   return (

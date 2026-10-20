@@ -14,6 +14,7 @@ import {
 } from '@/api/generated/endpoints'
 import { ApiError } from '@/api/problem-details'
 import { Alert } from '@/components/ui/alert'
+import { PageHeading } from '@/components/layout/page-heading'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -261,16 +262,11 @@ export function ScheduleCreate() {
         >
           Back to schedules
         </Link>
-        <h1
+        <PageHeading
           id="create-schedule-title"
-          className="mt-4 text-3xl font-bold tracking-tight text-[var(--text-primary)]"
-        >
-          Add schedule
-        </h1>
-        <p className="mt-2 text-[var(--text-secondary)]">
-          Choose an asset, scheduled year, and allowed PM month. The due date is
-          calculated from the selected month.
-        </p>
+          title="Add schedule"
+          description="Choose an asset, scheduled year, and allowed PM month. The due date is calculated from the selected month."
+        />
       </div>
 
       <Card className="shadow-none">
@@ -473,10 +469,7 @@ export function ScheduleCreate() {
               )}
               {mutation.isPending ? 'Creating schedule...' : 'Create schedule'}
             </Button>
-            <Button
-              asChild
-              className="bg-white text-[var(--text-primary)] hover:bg-[var(--page-background)]"
-            >
+            <Button asChild variant="secondary">
               <Link to="/app/schedules">Cancel</Link>
             </Button>
           </div>

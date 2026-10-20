@@ -16,7 +16,6 @@ export interface DraftInspectionRowResponse {
   /** @nullable */
   completedAt: string | null
   isOperational: boolean
-  hasPhotoEvidence?: boolean
   /** @nullable */
   remarks: string | null
   /** @nullable */
@@ -37,4 +36,13 @@ export interface DraftInspectionRowResponse {
   location?: string | null
   /** @nullable */
   skilledWorkerIdentity?: string | null
+  hasPhotoEvidence?: boolean
+  /** @nullable */
+  currentScheduleInspectorUserId?: string | null
+  /** @nullable */
+  currentScheduleInspectorIdentity?: string | null
+  /** @nullable */
+  currentScheduleSupervisorUserId?: string | null
+  /** @nullable */
+  currentScheduleSupervisorIdentity?: string | null
 }
