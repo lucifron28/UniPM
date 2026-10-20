@@ -574,20 +574,21 @@ public static class PreventiveMaintenanceFormEndpoints
                 return ApiErrors.Conflict("Acknowledgement metadata is unavailable for this form.");
             }
 
-            var sourceRows = await context.InspectionRecords
-                .AsNoTracking()
-                .Where(inspection => inspection.PreventiveMaintenanceFormId == form.Id
+            var sourceRows = await (
+                from inspection in context.InspectionRecords.AsNoTracking()
+                join asset in context.Assets.AsNoTracking()
+                    on inspection.AssetId equals asset.Id
+                where inspection.PreventiveMaintenanceFormId == form.Id
                     && ((inspection.ActionsRecommendations != null
                             && inspection.ActionsRecommendations != "")
-                        || !inspection.IsOperational))
-                .OrderBy(inspection => inspection.DateInspected)
-                .ThenBy(inspection => inspection.Id)
-                .Select(inspection => new CorrectiveMaintenanceHandoffSourceRow(
+                        || !inspection.IsOperational)
+                orderby inspection.DateInspected, inspection.Id
+                select new CorrectiveMaintenanceHandoffSourceRow(
                     inspection.Id,
                     inspection.DateInspected,
                     null,
-                    inspection.Asset.AssetCode,
-                    inspection.Asset.Location,
+                    asset.AssetCode,
+                    asset.Location,
                     inspection.Remarks,
                     inspection.IsOperational,
                     inspection.ActionsRecommendations,

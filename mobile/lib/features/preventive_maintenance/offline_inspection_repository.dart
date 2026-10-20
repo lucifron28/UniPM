@@ -121,6 +121,7 @@ class OfflineInspectionRepository extends ChangeNotifier
   String? _loadedUserId;
   bool _hasNetwork = false;
   bool _isSyncing = false;
+  bool _reauthenticationRequired = false;
   String? _lastIssue;
   bool _disposed = false;
 
@@ -199,6 +200,7 @@ class OfflineInspectionRepository extends ChangeNotifier
       await _exclusive(() async {
         _activeUserId = userId;
         await _ensureLoaded();
+        _reauthenticationRequired = false;
         _hasNetwork = await _connectivity.hasNetwork();
         _notifyListeners();
       });
@@ -227,6 +229,7 @@ class OfflineInspectionRepository extends ChangeNotifier
         _activeUserId = null;
         _loadedUserId = null;
         _data = _OfflineUserData();
+        _reauthenticationRequired = false;
         _lastIssue = null;
         _notifyListeners();
       }
@@ -955,6 +958,7 @@ class OfflineInspectionRepository extends ChangeNotifier
   Future<void> _syncQueue() async {
     if (_activeUserId == null) return;
     await _ensureLoaded();
+    if (_reauthenticationRequired) return;
     if (_data.writes.isEmpty) {
       _lastIssue = null;
       _notifyListeners();
@@ -995,6 +999,15 @@ class OfflineInspectionRepository extends ChangeNotifier
             _lastIssue = write.message;
             blockedFormIds.add(write.formId);
             index++;
+          } else if (error.statusCode == 401) {
+            _reauthenticationRequired = true;
+            _lastIssue = 'Your session expired. Sign in again to sync saved changes.';
+            break;
+          } else if (_isRetryableSyncFailure(error)) {
+            _lastIssue = error.statusCode == null
+                ? 'Connection was lost. Saved changes are waiting to sync.'
+                : 'The service could not sync changes just now. Saved changes remain queued.';
+            break;
           } else if (error.statusCode != null) {
             write.state = 'blocked';
             write.message =
@@ -1311,6 +1324,15 @@ class OfflineInspectionRepository extends ChangeNotifier
     _hasNetwork = false;
     _notifyListeners();
     return true;
+  }
+
+  bool _isRetryableSyncFailure(ApiException error) {
+    final statusCode = error.statusCode;
+    return statusCode == null ||
+        statusCode == 408 ||
+        statusCode == 425 ||
+        statusCode == 429 ||
+        (statusCode >= 500 && statusCode < 600);
   }
 
   Future<void> _ensureLoaded() async {

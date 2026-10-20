@@ -222,6 +222,80 @@ void main() {
   );
 
   test(
+    'retryable HTTP failures preserve queued drafts for the next sync attempt',
+    () async {
+      await repository.activate(_userA);
+
+      for (final statusCode in [408, 429, 500, 503]) {
+        connectivity.connected = false;
+        remote.connected = false;
+        await repository.syncNow();
+
+        final form = await repository.createForm(_createInput());
+        expect(repository.pendingCount, 1);
+
+        remote.connected = true;
+        connectivity.connected = true;
+        remote.failNextCreateFormStatus = statusCode;
+        await repository.syncNow();
+
+        expect(repository.pendingCount, 1, reason: 'HTTP $statusCode');
+        expect(repository.conflictCount, 0, reason: 'HTTP $statusCode');
+        expect(store.values[_userA], contains(form.id));
+        expect(
+          remote.forms.any((saved) => saved.id == form.id),
+          isFalse,
+          reason: 'HTTP $statusCode',
+        );
+
+        await repository.syncNow();
+
+        expect(repository.pendingCount, 0, reason: 'HTTP $statusCode retry');
+        expect(
+          remote.forms.where((saved) => saved.id == form.id).map((saved) => saved.id),
+          [form.id],
+        );
+      }
+    },
+  );
+
+  test(
+    'session expiry preserves the queue until the same user signs in again',
+    () async {
+      await repository.activate(_userA);
+      connectivity.connected = false;
+      remote.connected = false;
+      await repository.syncNow();
+      final form = await repository.createForm(_createInput());
+
+      remote.connected = true;
+      connectivity.connected = true;
+      remote.failNextCreateFormStatus = 401;
+      await repository.syncNow();
+
+      expect(repository.pendingCount, 1);
+      expect(repository.conflictCount, 0);
+      expect(repository.lastIssue, contains('Sign in again'));
+      expect(remote.createFormCalls, 1);
+
+      await repository.syncNow();
+      expect(repository.pendingCount, 1);
+      expect(remote.createFormCalls, 1);
+
+      await repository.deactivate();
+      expect(store.values[_userA], contains(form.id));
+      repository.dispose();
+      repository = createRepository();
+      await repository.activate(_userA);
+      await repository.syncNow();
+
+      expect(repository.pendingCount, 0);
+      expect(remote.forms.map((saved) => saved.id), [form.id]);
+      expect(remote.createFormCalls, 2);
+    },
+  );
+
+  test(
     'automatically syncs an offline Draft when connectivity returns',
     () async {
       await repository.activate(_userA);
@@ -848,10 +922,12 @@ class _FakeRemote
         AssetRepository {
   bool connected = true;
   bool failAcceptedAddOnce = false;
+  int? failNextCreateFormStatus;
   bool conflictNextUpdate = false;
   Completer<List<ScheduleOption>>? pendingScheduleResponse;
   int submitCalls = 0;
   int acknowledgementCalls = 0;
+  int createFormCalls = 0;
   final List<String> addedInspectionIds = <String>[];
   final List<String> deletedInspectionIds = <String>[];
   final List<DateTime> updateExpectedVersions = <DateTime>[];
@@ -890,6 +966,15 @@ class _FakeRemote
     String id,
   ) async {
     _checkConnected();
+    createFormCalls++;
+    final failureStatus = failNextCreateFormStatus;
+    if (failureStatus != null) {
+      failNextCreateFormStatus = null;
+      throw ApiException(
+        statusCode: failureStatus,
+        message: 'Synthetic HTTP $failureStatus response.',
+      );
+    }
     final existing = forms.where((form) => form.id == id).firstOrNull;
     if (existing != null) return existing;
     final now = DateTime.utc(2026, 2, 20, 9);

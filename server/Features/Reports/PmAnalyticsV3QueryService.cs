@@ -207,7 +207,7 @@ internal sealed class PmAnalyticsV3QueryService(
 
         return new PmAnalyticsV3FilterValuesResponse(
             field,
-            distinctValues.Take(MaximumCatalogValueResults).ToArray(),
+            distinctValues.Take(MaximumCatalogValueResults).OfType<string>().ToArray(),
             distinctValues.Count > MaximumCatalogValueResults);
     }
 

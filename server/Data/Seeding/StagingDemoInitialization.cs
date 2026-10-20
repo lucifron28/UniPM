@@ -60,9 +60,16 @@ internal static class StagingDemoInitialization
         foreach (var table in context.Model.GetEntityTypes().Select(entity => entity.GetTableName()).Distinct())
         {
             if (table is null) continue;
-            var safeName = table.Replace("]", "]]", StringComparison.Ordinal);
-            var count = await context.Database.SqlQueryRaw<long>(
-                $"SELECT COUNT_BIG(*) AS [Value] FROM [dbo].[{safeName}]").SingleAsync(cancellationToken);
+            FormattableString countQuery = $"""
+                SELECT COALESCE(SUM(partitions.[rows]), CONVERT(bigint, 0)) AS [Value]
+                FROM sys.tables AS tables
+                INNER JOIN sys.schemas AS schemas ON schemas.schema_id = tables.schema_id
+                INNER JOIN sys.partitions AS partitions ON partitions.object_id = tables.object_id
+                WHERE schemas.name = {"dbo"} AND tables.name = {table}
+                  AND partitions.index_id IN (0, 1)
+                """;
+            var count = await context.Database.SqlQuery<long>(
+                countQuery).SingleAsync(cancellationToken);
             if (count != allowedCounts.GetValueOrDefault(table))
                 throw new InvalidOperationException("Staging database is not in the expected empty initialization state. Stop for partial-state review; do not rerun or reset.");
         }
