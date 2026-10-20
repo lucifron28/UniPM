@@ -12,6 +12,8 @@ import 'routing/app_router.dart';
 import 'ui/app_theme.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+
   final config = AppConfig.fromEnvironment();
   final apiClient = ApiClient(baseUrl: config.apiBaseUrl);
   final authRepository = AuthRepository(apiClient);
