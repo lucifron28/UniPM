@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { SearchablePicker } from '@/components/ui/searchable-picker'
 import { Skeleton } from '@/components/ui/skeleton'
 import type {
   PmPeriodDashboardAssetRowResponse,
@@ -79,6 +80,10 @@ function formatDate(
 
 function formatNumber(value: number | string) {
   return typeof value === 'number' ? value.toLocaleString() : value
+}
+
+function formatPmCycleMonth(pmCycle: string) {
+  return formatPmCycle(pmCycle).replace(/\s+\d{4}$/, '')
 }
 
 function formatPercent(value: number | string | null) {
@@ -258,14 +263,6 @@ function groupForSelection(
       group.assetCategory === assetCategory &&
       (year === undefined || Number(group.year) === year),
   )
-}
-
-function selectionButtonClass(isSelected: boolean) {
-  return `min-h-10 rounded-lg border px-3 py-2 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)] ${
-    isSelected
-      ? 'border-[var(--primary)] bg-[var(--primary)] text-white'
-      : 'border-[var(--border-soft)] bg-white text-[var(--text-primary)] hover:bg-[var(--page-background)]'
-  }`
 }
 
 function BatchOverview({
@@ -774,7 +771,16 @@ export function PmPeriodDashboard({
     currentUser.data?.id && currentUser.data.roles.includes('GSD'),
   )
   const categoryOptions = useMemo(
-    () => [...new Set(cycles.map((group) => group.assetCategory))].sort(),
+    () =>
+      [
+        ...new Set(
+          cycles
+            .filter((group) => group.cycles.length > 0)
+            .map((group) => group.assetCategory),
+        ),
+      ].sort((left, right) =>
+        formatAssetCategory(left).localeCompare(formatAssetCategory(right)),
+      ),
     [cycles],
   )
   const hasRequestedScope = Boolean(
@@ -802,7 +808,10 @@ export function PmPeriodDashboard({
   const yearOptions = useMemo(
     () =>
       cycles
-        .filter((group) => group.assetCategory === draftCategory)
+        .filter(
+          (group) =>
+            group.assetCategory === draftCategory && group.cycles.length > 0,
+        )
         .map((group) => Number(group.year))
         .sort((left, right) => right - left),
     [cycles, draftCategory],
@@ -816,18 +825,28 @@ export function PmPeriodDashboard({
   )
     ? draftCycleValue
     : ''
+  const categoryPickerOptions = useMemo(
+    () =>
+      categoryOptions.map((category) => ({
+        value: category,
+        label: formatAssetCategory(category),
+      })),
+    [categoryOptions],
+  )
+  const selectedCategoryOption = categoryPickerOptions.find(
+    (option) => option.value === draftCategory,
+  )
 
   const generatedGroup = groupForSelection(
     cycles,
     search.assetCategory,
     search.year,
   )
+  const generatedCycle = generatedGroup?.cycles.find(
+    (cycle) => cycle.pmCycle === search.pmCycle,
+  )
   const hasValidGeneratedScope =
-    cyclesQuery.isSuccess &&
-    hasRequestedScope &&
-    Boolean(
-      generatedGroup?.cycles.some((cycle) => cycle.pmCycle === search.pmCycle),
-    )
+    cyclesQuery.isSuccess && hasRequestedScope && Boolean(generatedCycle)
   const reportScopeFilters =
     hasValidGeneratedScope && search.assetCategory && search.pmCycle
       ? { assetCategory: search.assetCategory, pmCycle: search.pmCycle }
@@ -887,6 +906,7 @@ export function PmPeriodDashboard({
       timeliness: undefined,
       search: undefined,
     })
+    setIsChangingSelection(false)
   }
 
   const handleChangeSelection = () => {
@@ -919,7 +939,7 @@ export function PmPeriodDashboard({
     )
   }
 
-  if (cycles.length === 0) {
+  if (categoryOptions.length === 0) {
     return (
       <section aria-labelledby="dashboard-title" className="space-y-4">
         <DashboardHeader canAskNla={canAskNla} />
@@ -968,6 +988,12 @@ export function PmPeriodDashboard({
                           ? formatPmCycleDueDate(dashboardQuery.data.pmCycle)
                           : 'Unavailable'}
                     </p>
+                    {generatedCycle && (
+                      <p className="mt-1 text-xs text-[var(--text-secondary)]">
+                        {formatNumber(generatedCycle.scheduled)} scheduled
+                        assets
+                      </p>
+                    )}
                   </div>
                   <div className="flex flex-wrap gap-2 print:hidden">
                     <Button
@@ -982,7 +1008,7 @@ export function PmPeriodDashboard({
                       variant="secondary"
                       onClick={handleChangeSelection}
                     >
-                      Change selection
+                      Change period
                     </Button>
                   </div>
                 </div>
@@ -1290,107 +1316,103 @@ export function PmPeriodDashboard({
                 </p>
               )}
 
-              <div className="mt-6 space-y-5">
-                <div role="group" aria-labelledby="pm-dashboard-category-step">
-                  <h3
-                    id="pm-dashboard-category-step"
-                    className="text-sm font-semibold text-[var(--text-primary)]"
-                  >
-                    1. Choose a category
-                  </h3>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {categoryOptions.map((category) => (
-                      <Button
-                        key={category}
-                        type="button"
-                        aria-pressed={draftCategory === category}
-                        className={selectionButtonClass(
-                          draftCategory === category,
-                        )}
-                        onClick={() => {
-                          setDraftCategoryValue(category)
-                          setDraftYearValue('')
-                          setDraftCycleValue('')
-                        }}
-                      >
-                        {formatAssetCategory(category)}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
+              <div className="mt-6 space-y-4">
+                <div className="grid min-w-0 gap-4 md:grid-cols-1 lg:grid-cols-[minmax(0,45fr)_minmax(8rem,20fr)_minmax(0,35fr)] lg:items-start">
+                  <SearchablePicker
+                    id="pm-dashboard-category"
+                    label="Asset category"
+                    value={draftCategory || undefined}
+                    options={categoryPickerOptions}
+                    selectedOption={selectedCategoryOption}
+                    placeholder="Select an asset category"
+                    emptyMessage="No scheduled categories match your search."
+                    onChange={(value) => {
+                      setDraftCategoryValue(value ?? '')
+                      setDraftYearValue('')
+                      setDraftCycleValue('')
+                    }}
+                  />
 
-                {draftCategory && (
-                  <div role="group" aria-labelledby="pm-dashboard-year-step">
-                    <h3
-                      id="pm-dashboard-year-step"
-                      className="text-sm font-semibold text-[var(--text-primary)]"
+                  <div className="min-w-0">
+                    <Label
+                      htmlFor="pm-dashboard-year"
+                      className="text-sm font-semibold tracking-normal text-[var(--text-primary)] normal-case"
                     >
-                      2. Choose a year
-                    </h3>
-                    <div className="mt-2 flex flex-wrap gap-2">
+                      Year
+                    </Label>
+                    <select
+                      id="pm-dashboard-year"
+                      value={draftYear === undefined ? '' : String(draftYear)}
+                      disabled={!draftCategory || yearOptions.length === 0}
+                      onChange={(event) => {
+                        setDraftYearValue(event.target.value)
+                        setDraftCycleValue('')
+                      }}
+                      className={`${selectClassName} mt-1`}
+                    >
+                      <option value="">
+                        {draftCategory
+                          ? 'Choose a year'
+                          : 'Choose category first'}
+                      </option>
                       {yearOptions.map((year) => (
-                        <Button
-                          key={year}
-                          type="button"
-                          aria-pressed={draftYear === year}
-                          className={selectionButtonClass(draftYear === year)}
-                          onClick={() => {
-                            setDraftYearValue(String(year))
-                            setDraftCycleValue('')
-                          }}
-                        >
+                        <option key={year} value={year}>
                           {year}
-                        </Button>
+                        </option>
                       ))}
-                    </div>
-                    {yearOptions.length === 0 && (
+                    </select>
+                    {draftCategory && yearOptions.length === 0 && (
                       <p
                         role="status"
-                        className="mt-2 text-sm text-[var(--text-secondary)]"
+                        className="mt-1 text-xs text-[var(--text-secondary)]"
                       >
                         No years with scheduled maintenance are available for
                         this category.
                       </p>
                     )}
                   </div>
-                )}
 
-                {draftYear !== undefined && (
-                  <div role="group" aria-labelledby="pm-dashboard-month-step">
-                    <h3
-                      id="pm-dashboard-month-step"
-                      className="text-sm font-semibold text-[var(--text-primary)]"
+                  <div className="min-w-0">
+                    <Label
+                      htmlFor="pm-dashboard-month"
+                      className="text-sm font-semibold tracking-normal text-[var(--text-primary)] normal-case"
                     >
-                      3. Choose a scheduled month
-                    </h3>
-                    {draftGroup && draftGroup.cycles.length > 0 ? (
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {draftGroup.cycles.map((cycle) => (
-                          <Button
-                            key={cycle.pmCycle}
-                            type="button"
-                            aria-pressed={draftCycle === cycle.pmCycle}
-                            className={selectionButtonClass(
-                              draftCycle === cycle.pmCycle,
-                            )}
-                            onClick={() => setDraftCycleValue(cycle.pmCycle)}
-                          >
-                            {formatPmCycle(cycle.pmCycle)} ·{' '}
-                            {formatNumber(cycle.scheduled)} scheduled
-                          </Button>
-                        ))}
-                      </div>
-                    ) : (
+                      Scheduled month
+                    </Label>
+                    <select
+                      id="pm-dashboard-month"
+                      value={draftCycle}
+                      disabled={
+                        draftYear === undefined || !draftGroup?.cycles.length
+                      }
+                      onChange={(event) =>
+                        setDraftCycleValue(event.target.value)
+                      }
+                      className={`${selectClassName} mt-1`}
+                    >
+                      <option value="">
+                        {draftYear === undefined
+                          ? 'Choose year first'
+                          : 'Choose a scheduled month'}
+                      </option>
+                      {(draftGroup?.cycles ?? []).map((cycle) => (
+                        <option key={cycle.pmCycle} value={cycle.pmCycle}>
+                          {formatPmCycleMonth(cycle.pmCycle)} —{' '}
+                          {formatNumber(cycle.scheduled)} scheduled
+                        </option>
+                      ))}
+                    </select>
+                    {draftYear !== undefined && !draftGroup?.cycles.length && (
                       <p
                         role="status"
-                        className="mt-2 text-sm text-[var(--text-secondary)]"
+                        className="mt-1 text-xs text-[var(--text-secondary)]"
                       >
                         No scheduled months are available for this category and
                         year.
                       </p>
                     )}
                   </div>
-                )}
+                </div>
 
                 <div className="flex gap-2 border-t border-[var(--border-soft)] pt-4">
                   <Button
