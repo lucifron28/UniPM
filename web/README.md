@@ -73,9 +73,9 @@ condition, work-order, or device-specification workflow is implemented.
 Authenticated users can browse `/app/inspections`, apply the existing asset,
 schedule, recorded-result, and inspected-date filters, and open immutable
 source-record details. Asset details include a compact recent inspection-history
-panel. The inspection-review module does not submit inspections or expose
-acknowledgement actions, RMRF, approval, or reporting workflows; field
-submission is handled by the mobile preventive-maintenance workflow.
+panel. This module does not submit inspections or expose acknowledgement
+actions, RMRF, or approval workflows. Form acknowledgement is handled in the
+preventive-maintenance form review; reporting is a separate NLA V3 workflow.
 
 ## Preventive-Maintenance Form Review
 
@@ -94,6 +94,27 @@ checksums, or acknowledgement-response payloads. It provides no draft creation,
 inspection-row editing, submission, export, RMRF, WMS, or handoff-tracking
 action.
 
+## NLA V3 Reporting
+
+The isolated `feature/offline-nla-v3-integration` candidate includes the
+schema-constrained PM Analytics V3 workflow: enter a question, review the
+interpretation, edit the typed plan, inspect a preview, confirm it, and review
+results with supported source-record drill-down. Calculations and SQL execution
+remain backend-controlled; the browser does not generate SQL.
+
+The `pmExecution` subject reports eligible asset-cycle outcomes. The
+`assetInventory` subject reports one current registered asset per row,
+independent of PM schedules and inspection history, with category, building,
+department, location, and registration-status filters. Registration status and
+inspection condition are separate fields. The V3 subject is isolated to the
+review candidate; Phase 5 human label review and native SQL Server 2019
+verification remain open.
+
+Local integration checks are recorded in
+[`TEST-122`](../reference/evidence/test-runs/TEST-122-offline-nla-integration-candidate-verification.md).
+Web CI passed on the exact integration source commit in
+[run #283](https://github.com/lucifron28/UniPM/actions/runs/39364885166).
+
 ## Preventive Maintenance Schedules
 
 Authenticated users can browse `/app/schedules`, apply the supported asset,
@@ -106,8 +127,11 @@ Only provisional `GSD` and `Supervisor` roles see and may use
 `/app/schedules/new`; the backend policy remains authoritative. Creation sends
 only asset, schedule date, period type, optional quarter, and year. Quarter is
 required and visible only for quarterly schedules. Recurrence generation,
-editing, deletion, assignment, status commands, acknowledgement, RMRF, and
-corrective handoff remain outside this module.
+editing, deletion, status commands, acknowledgement, RMRF, and corrective
+handoff remain outside this module. GSD users can use the separate **Planning &
+assignment** view to assign an eligible batch to a Supervisor; Supervisors can
+assign an eligible batch to an Inspector. These actions use existing backend
+authorization and are operational workflows, not NLA V3 reporting subjects.
 
 Registration, password recovery, MFA, SSO, and final institutional RBAC remain
 deferred. The authenticated shell intentionally avoids invented maintenance

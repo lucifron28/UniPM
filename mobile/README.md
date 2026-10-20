@@ -150,6 +150,21 @@ recovery, and the acknowledgement/home UX are integrated on
 `feature/offline-nla-v3-integration`; this candidate has not yet been accepted
 as part of the GSD-validated baseline.
 
+## Integration Candidate Verification
+
+The combined mobile implementation passed exact-commit Flutter CI on
+`a93e71b` in [run #50](https://github.com/lucifron28/UniPM/actions/runs/39364885217):
+formatting, analysis, focused acknowledgement/offline tests, the full Flutter
+suite, and Android debug APK build all passed. The source branches also passed
+Flutter CI at offline commit `60788e1`
+([run #49](https://github.com/lucifron28/UniPM/actions/runs/39362166990)) and
+acknowledgement UX commit `0aa12b9`
+([run #34](https://github.com/lucifron28/UniPM/actions/runs/39359136181)).
+
+These are automated engineering checks. Physical-device behavior and GSD field
+acceptance remain unverified; the integration candidate is not part of the
+accepted release baseline.
+
 ## Dependencies
 
 - `http`: JSON HTTP requests to the existing ASP.NET Core API.

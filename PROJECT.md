@@ -205,8 +205,8 @@ this branch.
 2. Demonstrate the confirmed workflow to GSD.
 3. Collect exact form, report, and process requirements from GSD.
 4. Review the isolated offline/NLA candidate against its open gates: human
-   review of the 18 provisional labels, SQL Server 2019 execution, exact-head
-   CI, and mobile field acceptance.
+   review of the 18 provisional labels, SQL Server 2019 execution, and mobile
+   field acceptance. Integration CI passed on source commit `a93e71b`.
 5. Decide whether additional innovation beyond the current NLA candidate is
    justified; keep it on a separate approved feature branch and defer
    institutional source authorization, final RBAC, audit rules, and other

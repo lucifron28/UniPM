@@ -490,8 +490,10 @@ histories. The backend and Web integration corrections and local regression
 results are recorded in
 [TEST-122](../evidence/test-runs/TEST-122-offline-nla-integration-candidate-verification.md).
 Native SQL Server 2019 remains unverified because the disposable image registry
-request was denied, and exact-head integration-branch CI and GSD acceptance
-remain open. This does not implement Phase 7 or close Phase 5 review gates.
+request was denied, and GSD acceptance remains open. Backend CI #370, Web CI
+#283, and Flutter CI #50 passed on integration source commit `a93e71b`; see
+[TEST-123](../evidence/test-runs/TEST-123-offline-nla-integration-ci-verification.md).
+This does not implement Phase 7 or close Phase 5 review gates.
 
 The subject design, including grain, counts, filters, tests and dependencies,
 is in
