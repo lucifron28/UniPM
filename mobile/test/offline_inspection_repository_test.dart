@@ -743,16 +743,11 @@ class _MemoryStore implements OfflineSnapshotStore {
 class _ImmediateScheduleOfflineInspectionRepository
     extends OfflineInspectionRepository {
   _ImmediateScheduleOfflineInspectionRepository({
-    required PreventiveMaintenanceRepository remote,
-    required AssetRepository remoteAssets,
-    required OfflineSnapshotStore store,
-    required OfflineConnectivityMonitor connectivity,
-  }) : super(
-         remote: remote,
-         remoteAssets: remoteAssets,
-         store: store,
-         connectivity: connectivity,
-       );
+    required super.remote,
+    required super.remoteAssets,
+    required super.store,
+    required super.connectivity,
+  });
 
   @override
   Future<List<ScheduleOption>> listSchedules({String? assetId}) async =>
