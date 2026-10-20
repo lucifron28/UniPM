@@ -113,6 +113,7 @@ jobs:
             fi
           }
 
-          run_flutter_tests offline-inspection timeout --signal=TERM --kill-after=10s 150s flutter test --reporter expanded --timeout=2m --name='conflict details can be reviewed|deleting a queued row preserves ordered create and delete writes' test/offline_inspection_repository_test.dart
+          run_flutter_tests queued-delete timeout --signal=TERM --kill-after=10s 150s flutter test --reporter expanded --plain-name='deleting a queued row preserves ordered create and delete writes' test/offline_inspection_repository_test.dart
+          run_flutter_tests conflict-review timeout --signal=TERM --kill-after=10s 150s flutter test --reporter expanded --plain-name='conflict details can be reviewed and safely discarded' test/offline_inspection_repository_test.dart
           run_flutter_tests full-suite timeout --signal=TERM --kill-after=10s 20m flutter test --reporter expanded
       - run: flutter build apk --debug
