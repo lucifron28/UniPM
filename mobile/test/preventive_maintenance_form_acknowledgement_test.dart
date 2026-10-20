@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -231,19 +233,25 @@ void main() {
     await tester.tap(find.byKey(const Key('open-acknowledgement')));
     await tester.pumpAndSettle();
     expect(find.text('Department Head acknowledgement'), findsOneWidget);
-    expect(find.text('Status: Awaiting acknowledgement'), findsOneWidget);
-    expect(find.text('Asset category: Fire Extinguisher'), findsOneWidget);
-    expect(find.text('Building: Main Building'), findsOneWidget);
-    expect(find.text('Department: GSD'), findsOneWidget);
-    expect(find.text('Asset: FE-2026-0001'), findsOneWidget);
-    expect(find.text('Location: Room 101'), findsOneWidget);
-    expect(find.text('Condition: Non-operational'), findsOneWidget);
+    expect(find.text('Acknowledge PM form'), findsOneWidget);
+    expect(find.text('Awaiting acknowledgement'), findsOneWidget);
+    expect(find.text('Fire Extinguisher'), findsOneWidget);
+    expect(find.text('GSD · Main Building'), findsOneWidget);
+    expect(find.text('FE-2026-0001'), findsOneWidget);
+    expect(find.text('Room 101'), findsOneWidget);
+    expect(find.text('Non-operational'), findsOneWidget);
+    expect(find.text('Low pressure'), findsOneWidget);
+    expect(find.text('Inspect gauge'), findsOneWidget);
+    expect(find.text('Inspection totals'), findsOneWidget);
     final localInspectionDate = DateTime.parse(
       '2026-02-09T16:30:00Z',
     ).toLocal().toIso8601String().substring(0, 10);
-    expect(find.text('Inspection date: $localInspectionDate'), findsOneWidget);
-    expect(find.text('Remarks: Low pressure'), findsOneWidget);
-    expect(find.text('Recommendation: Inspect gauge'), findsOneWidget);
+    expect(find.text('Inspection date'), findsNothing);
+    await tester.tap(find.byKey(Key('inspection-row-$inspectionId')));
+    await tester.pumpAndSettle();
+    expect(find.text(localInspectionDate), findsOneWidget);
+    expect(find.text('Remarks'), findsOneWidget);
+    expect(find.text('Recommendations'), findsOneWidget);
     expect(find.textContaining(inspectionId), findsNothing);
     expect(find.textContaining(scheduleId), findsNothing);
     expect(
@@ -273,8 +281,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Asset: Asset details unavailable'), findsOneWidget);
-    expect(find.textContaining('Location:'), findsNothing);
+    expect(find.text('Asset details unavailable'), findsOneWidget);
+    expect(find.text('Not recorded'), findsOneWidget);
     expect(find.textContaining(inspectionId), findsNothing);
     expect(find.textContaining(scheduleId), findsNothing);
     controller.dispose();
@@ -371,10 +379,160 @@ void main() {
       tester.widget<ListView>(page).physics,
       isNot(isA<NeverScrollableScrollPhysics>()),
     );
+    expect(
+      tester.state<PmSignaturePadState>(find.byType(PmSignaturePad))
+          .hasSignature,
+      isFalse,
+    );
     await _dragAcknowledgementList(tester);
 
     controller.dispose();
   });
+
+  testWidgets(
+    'signature input stops at its bounds and ignores secondary pointers',
+    (tester) async {
+      final repository = FakeAcknowledgementRepository();
+      final controller = PreventiveMaintenanceController(
+        repository: repository,
+        user: testUser(),
+      );
+      controller.selectForm(repository.form);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: PreventiveMaintenanceAcknowledgementPage(
+            controller: controller,
+            form: repository.form,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final canvas = find.byKey(const Key('signature-canvas'));
+      await _ensureVisible(tester, canvas);
+      final bounds = tester.getRect(canvas);
+      final firstPointer = await tester.startGesture(
+        bounds.center,
+        pointer: 21,
+      );
+      await tester.pump();
+      final state = tester.state<PmSignaturePadState>(
+        find.byType(PmSignaturePad),
+      );
+      final secondPointer = await tester.startGesture(
+        bounds.center + const Offset(12, 0),
+        pointer: 22,
+      );
+      await tester.pump();
+
+      expect(state.strokes, hasLength(1));
+      expect(state.strokes.single, hasLength(1));
+      expect(tester.getRect(find.byKey(state.surfaceKey)), bounds);
+      expect(tester.getRect(find.byKey(state.repaintKey)), bounds);
+
+      await firstPointer.moveTo(Offset(bounds.center.dx, bounds.bottom + 12));
+      await tester.pump();
+      expect(state.activePointer, isNull);
+      expect(
+        tester.widget<ListView>(find.byKey(const Key('acknowledgement-page')))
+            .physics,
+        isNot(isA<NeverScrollableScrollPhysics>()),
+      );
+
+      await secondPointer.moveTo(bounds.center + const Offset(48, 20));
+      await firstPointer.moveTo(
+        tester.getCenter(find.byKey(const Key('ack-signatory-name'))),
+      );
+      await tester.pump();
+
+      expect(state.strokes, hasLength(1));
+      expect(state.strokes.single, hasLength(1));
+      final surfaceSize = tester.getSize(find.byKey(state.surfaceKey));
+      for (final point in state.strokes.single) {
+        expect(point.dx, inInclusiveRange(0, surfaceSize.width));
+        expect(point.dy, inInclusiveRange(0, surfaceSize.height));
+      }
+
+      await firstPointer.up();
+      await secondPointer.up();
+      await tester.pump();
+      controller.dispose();
+    },
+  );
+
+  testWidgets(
+    'signature undo and clear update validity and export only signature pixels',
+    (tester) async {
+      var hasSignature = false;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: SizedBox(
+                width: 320,
+                child: PmSignaturePad(
+                  onChanged: (value) => hasSignature = value,
+                  onGestureChanged: (_) {},
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final canvas = find.byKey(const Key('signature-canvas'));
+      final bounds = tester.getRect(canvas);
+      expect(find.byKey(const Key('signature-placeholder')), findsOneWidget);
+
+      Future<void> drawStroke(Offset start, Offset end) async {
+        final gesture = await tester.startGesture(start);
+        await gesture.moveTo(end);
+        await gesture.up();
+        await tester.pump();
+      }
+
+      await drawStroke(
+        Offset(bounds.left + 24, bounds.top + 40),
+        Offset(bounds.left + 56, bounds.top + 40),
+      );
+      await drawStroke(
+        Offset(bounds.left + 64, bounds.top + 72),
+        Offset(bounds.left + 92, bounds.top + 72),
+      );
+
+      final state = tester.state<PmSignaturePadState>(
+        find.byType(PmSignaturePad),
+      );
+      expect(hasSignature, isTrue);
+      expect(find.byKey(const Key('signature-placeholder')), findsNothing);
+      expect(state.strokes, hasLength(2));
+
+      await tester.tap(find.byKey(const Key('undo-signature')));
+      await tester.pumpAndSettle();
+      expect(state.strokes, hasLength(1));
+      expect(hasSignature, isTrue);
+
+      final png = base64Decode((await state.toPngBase64())!);
+      final pngData = ByteData.sublistView(png);
+      final width = pngData.getUint32(16, Endian.big);
+      final height = pngData.getUint32(20, Endian.big);
+      expect(width, bounds.width.ceil());
+      expect(height, bounds.height.ceil());
+      final scanlines = _decodePngScanlines(png);
+      expect(scanlines[40 * (width + 1) + 1 + 40], 0);
+      expect(scanlines[(height ~/ 2) * (width + 1) + 1 + (width ~/ 2)], 255);
+
+      await tester.tap(find.byKey(const Key('clear-signature')));
+      await tester.pumpAndSettle();
+      expect(state.strokes, isEmpty);
+      expect(state.hasSignature, isFalse);
+      expect(hasSignature, isFalse);
+      expect(await state.toPngBase64(), isNull);
+      expect(find.byKey(const Key('signature-placeholder')), findsOneWidget);
+    },
+  );
 
   testWidgets('acknowledgement captures signatory data and locks the form', (
     tester,
@@ -413,12 +571,9 @@ void main() {
     expect(find.byKey(const Key('confirm-acknowledge-form')), findsOneWidget);
     expect(
       find.text(
-        'Field-work completion and acknowledgement are separate. '
-        'Acknowledgement records receipt/noting of the findings and the '
-        'Department Head signatory details and signature, changes the form '
-        'to Acknowledged, and locks it. Its inspection rows become eligible '
-        'for official history. It does not approve corrective work, funding, '
-        'or an RMRF.',
+        'This records receipt of the findings, locks the form, and makes its '
+        'inspection rows eligible for official history. It does not '
+        'authorize repairs, funding, or an RMRF.',
       ),
       findsOneWidget,
     );
@@ -451,13 +606,12 @@ void main() {
     expect(controller.selectedForm?.status, 'Acknowledged');
     expect(find.byKey(const Key('acknowledgement-receipt')), findsOneWidget);
     expect(find.text('Form acknowledged'), findsOneWidget);
-    expect(
-      find.text(
-        'Acknowledgement recorded receipt/noting, locked the form, and '
-        'made its inspection rows eligible for official history.',
-      ),
-      findsOneWidget,
-    );
+    expect(find.text('PM form details'), findsOneWidget);
+    expect(find.text('PM-2026-0001'), findsOneWidget);
+    expect(find.text('Synthetic Department Head'), findsOneWidget);
+    expect(find.text('Department Head'), findsWidgets);
+    expect(find.text('This form is now read-only.'), findsOneWidget);
+    expect(find.textContaining('Signature type'), findsNothing);
     expect(find.byKey(const Key('acknowledge-form-button')), findsNothing);
     controller.dispose();
   });
@@ -616,6 +770,22 @@ Future<void> _drawSignature(WidgetTester tester) async {
   final state = tester.state<PmSignaturePadState>(find.byType(PmSignaturePad));
   expect(state.hasSignature, isTrue);
   expect(await state.toPngBase64(), isNotNull);
+}
+
+Uint8List _decodePngScanlines(Uint8List png) {
+  final data = ByteData.sublistView(png);
+  final compressed = BytesBuilder();
+  var offset = 8;
+  while (offset < png.length) {
+    final length = data.getUint32(offset, Endian.big);
+    final type = String.fromCharCodes(png.sublist(offset + 4, offset + 8));
+    if (type == 'IDAT') {
+      compressed.add(png.sublist(offset + 8, offset + 8 + length));
+    }
+    offset += length + 12;
+    if (type == 'IEND') break;
+  }
+  return Uint8List.fromList(ZLibDecoder().convert(compressed.takeBytes()));
 }
 
 Future<void> _ensureVisible(WidgetTester tester, Finder finder) async {

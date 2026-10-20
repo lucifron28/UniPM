@@ -43,27 +43,42 @@ class _PreventiveMaintenanceAcknowledgementPageState
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Acknowledge PM form')),
-      body: SafeArea(
-        child: AnimatedBuilder(
-          animation: widget.controller,
-          builder: (context, _) {
-            final selectedForm = widget.controller.selectedForm;
-            final form = selectedForm?.id == widget.form.id
-                ? selectedForm!
-                : widget.form;
-            return _buildContent(context, form);
-          },
-        ),
-      ),
+    return AnimatedBuilder(
+      animation: widget.controller,
+      builder: (context, _) {
+        final selectedForm = widget.controller.selectedForm;
+        final form = selectedForm?.id == widget.form.id
+            ? selectedForm!
+            : widget.form;
+        final isAcknowledged =
+            form.status == 'Acknowledged' ||
+            widget.controller.acknowledgement != null;
+
+        return Scaffold(
+          appBar: AppBar(
+            leading: IconButton(
+              tooltip: 'Back to PM forms',
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () => Navigator.of(context).maybePop(),
+            ),
+            title: Text(
+              isAcknowledged ? 'PM form details' : 'Acknowledge PM form',
+            ),
+          ),
+          body: SafeArea(
+            child: _buildContent(context, form, isAcknowledged),
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildContent(BuildContext context, PreventiveMaintenanceForm form) {
+  Widget _buildContent(
+    BuildContext context,
+    PreventiveMaintenanceForm form,
+    bool isAcknowledged,
+  ) {
     final acknowledgement = widget.controller.acknowledgement;
-    final isAcknowledged =
-        form.status == 'Acknowledged' || acknowledgement != null;
 
     return ListView(
       key: const Key('acknowledgement-page'),
@@ -79,7 +94,7 @@ class _PreventiveMaintenanceAcknowledgementPageState
         if (isAcknowledged)
           _AcknowledgementReceipt(
             acknowledgement: acknowledgement,
-            alreadyAcknowledged: form.status == 'Acknowledged',
+            formNumber: form.fileNumber ?? 'Preventive-maintenance form',
           )
         else if (form.status == 'Submitted')
           _AcknowledgementForm(
@@ -129,12 +144,9 @@ class _PreventiveMaintenanceAcknowledgementPageState
       builder: (context) => AlertDialog(
         title: const Text('Acknowledge whole PM form?'),
         content: const Text(
-          'Field-work completion and acknowledgement are separate. '
-          'Acknowledgement records receipt/noting of the findings and the '
-          'Department Head signatory details and signature, changes the form '
-          'to Acknowledged, and locks it. Its inspection rows become eligible '
-          'for official history. It does not approve corrective work, funding, '
-          'or an RMRF.',
+          'This records receipt of the findings, locks the form, and makes its '
+          'inspection rows eligible for official history. It does not '
+          'authorize repairs, funding, or an RMRF.',
         ),
         actions: [
           TextButton(
@@ -170,62 +182,427 @@ class _SubmittedFormSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              form.fileNumber ?? 'Preventive-maintenance form',
-              style: Theme.of(context).textTheme.titleLarge,
+    final total = form.inspections.length;
+    final operational = form.inspections.where((row) => row.isOperational).length;
+    final nonOperational = total - operational;
+    final department = _displayValue(form.department);
+    final building = _displayValue(form.building);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  form.fileNumber ?? 'Preventive-maintenance form',
+                  style: Theme.of(context).textTheme.titleLarge,
+                  softWrap: true,
+                ),
+                const SizedBox(height: 6),
+                _FormStatusBadge(label: _formStatusLabel(form.status)),
+                const SizedBox(height: 8),
+                Text(
+                  displayAssetCategory(form.assetCategory),
+                  style: Theme.of(context).textTheme.titleSmall,
+                  softWrap: true,
+                ),
+                const SizedBox(height: 3),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      Icons.apartment_outlined,
+                      size: 18,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        '$department · $building',
+                        style: Theme.of(context).textTheme.bodyMedium,
+                        softWrap: true,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  'Inspection totals',
+                  style: Theme.of(context).textTheme.labelLarge,
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _InspectionCount(label: 'Total', value: total),
+                    _InspectionCount(label: 'Operational', value: operational),
+                    _InspectionCount(
+                      label: 'Non-operational',
+                      value: nonOperational,
+                      isWarning: nonOperational > 0,
+                    ),
+                  ],
+                ),
+              ],
             ),
-            const SizedBox(height: 8),
-            Text('Status: ${_formStatusLabel(form.status)}'),
-            Text('Asset category: ${displayAssetCategory(form.assetCategory)}'),
-            Text('Building: ${form.building ?? 'Not recorded'}'),
-            Text('Department: ${form.department ?? 'Not recorded'}'),
-            const SizedBox(height: 16),
-            Text(
-              'Review inspection rows (${form.inspections.length})',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 8),
-            ...form.inspections.map((row) => _InspectionSummary(row: row)),
-          ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        Text(
+          'Inspection findings',
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        const SizedBox(height: 4),
+        ...form.inspections.map((row) => _InspectionSummary(row: row)),
+      ],
+    );
+  }
+}
+
+class _FormStatusBadge extends StatelessWidget {
+  const _FormStatusBadge({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isAcknowledged = label == 'Acknowledged';
+    final background = isAcknowledged
+        ? colorScheme.tertiaryContainer
+        : colorScheme.primaryContainer;
+    final foreground = isAcknowledged
+        ? colorScheme.onTertiaryContainer
+        : colorScheme.onPrimaryContainer;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: background,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+          color: foreground,
+          fontWeight: FontWeight.w600,
         ),
       ),
     );
   }
 }
 
-class _InspectionSummary extends StatelessWidget {
+class _InspectionCount extends StatelessWidget {
+  const _InspectionCount({
+    required this.label,
+    required this.value,
+    this.isWarning = false,
+  });
+
+  final String label;
+  final int value;
+  final bool isWarning;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      constraints: const BoxConstraints(minWidth: 76),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: isWarning
+            ? colorScheme.errorContainer.withValues(alpha: 0.55)
+            : colorScheme.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text('$value', style: Theme.of(context).textTheme.titleSmall),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: isWarning
+                  ? colorScheme.onErrorContainer
+                  : colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InspectionSummary extends StatefulWidget {
   const _InspectionSummary({required this.row});
 
   final PreventiveMaintenanceInspection row;
 
   @override
+  State<_InspectionSummary> createState() => _InspectionSummaryState();
+}
+
+class _InspectionSummaryState extends State<_InspectionSummary> {
+  bool isExpanded = false;
+
+  @override
   Widget build(BuildContext context) {
+    final row = widget.row;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Column(
+      children: [
+        Semantics(
+          button: true,
+          expanded: isExpanded,
+          child: InkWell(
+            key: Key('inspection-row-' + row.id),
+            onTap: () => setState(() => isExpanded = !isExpanded),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _assetCodeLabel(row.assetCode),
+                          style: Theme.of(context).textTheme.titleSmall,
+                          softWrap: true,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          _displayValue(row.location),
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                          softWrap: true,
+                        ),
+                        const SizedBox(height: 6),
+                        _ConditionBadge(isOperational: row.isOperational),
+                        if (!row.isOperational && !isExpanded)
+                          _NonOperationalPreview(row: row),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Icon(
+                      isExpanded ? Icons.expand_less : Icons.expand_more,
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        if (isExpanded)
+          Padding(
+            padding: const EdgeInsets.only(left: 8, right: 36, bottom: 12),
+            child: _InspectionDetails(row: row),
+          ),
+        const Divider(height: 1),
+      ],
+    );
+  }
+}
+
+class _ConditionBadge extends StatelessWidget {
+  const _ConditionBadge({required this.isOperational});
+
+  final bool isOperational;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final color = isOperational
+        ? colorScheme.surfaceContainerHigh
+        : colorScheme.errorContainer.withValues(alpha: 0.7);
+    final foreground = isOperational
+        ? colorScheme.onSurfaceVariant
+        : colorScheme.onErrorContainer;
+
     return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        border: Border.all(color: Theme.of(context).colorScheme.outline),
-        borderRadius: BorderRadius.circular(8),
+        color: color,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isOperational ? Icons.check_circle_outline : Icons.warning_amber,
+            size: 15,
+            color: foreground,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            isOperational ? 'Operational' : 'Non-operational',
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: foreground,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NonOperationalPreview extends StatelessWidget {
+  const _NonOperationalPreview({required this.row});
+
+  final PreventiveMaintenanceInspection row;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final labelStyle = Theme.of(context).textTheme.labelSmall?.copyWith(
+      color: colorScheme.error,
+      fontWeight: FontWeight.w600,
+    );
+
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.only(left: 8),
+      decoration: BoxDecoration(
+        border: Border(left: BorderSide(color: colorScheme.error, width: 2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Asset: ${_assetCodeLabel(row.assetCode)}'),
-          if (row.location?.trim().isNotEmpty ?? false)
-            Text('Location: ${row.location!.trim()}'),
-          Text(
-            'Condition: ${row.isOperational ? 'Operational' : 'Non-operational'}',
+          Text('Finding', style: labelStyle),
+          Text(_displayValue(row.remarks)),
+          const SizedBox(height: 6),
+          Text('Recommendation', style: labelStyle),
+          Text(_displayValue(row.actionsRecommendations)),
+        ],
+      ),
+    );
+  }
+}
+
+class _InspectionDetails extends StatelessWidget {
+  const _InspectionDetails({required this.row});
+
+  final PreventiveMaintenanceInspection row;
+
+  @override
+  Widget build(BuildContext context) {
+    final details = <Widget>[
+      _InspectionDetail(label: 'Inspection date', value: _dateText(row.dateInspected)),
+      _InspectionDetail(label: 'Remarks', value: _displayValue(row.remarks)),
+      _InspectionDetail(
+        label: 'Recommendations',
+        value: _displayValue(row.actionsRecommendations),
+      ),
+    ];
+    if (row.startedAt != null) {
+      details.add(
+        _InspectionDetail(label: 'Started', value: _dateTimeText(row.startedAt!)),
+      );
+    }
+    if (row.completedAt != null) {
+      details.add(
+        _InspectionDetail(label: 'Completed', value: _dateTimeText(row.completedAt!)),
+      );
+    }
+    if (row.dateAccomplished != null) {
+      details.add(
+        _InspectionDetail(
+          label: 'Date accomplished',
+          value: _dateText(row.dateAccomplished!),
+        ),
+      );
+    }
+    if (row.waterReplaceCarbonFilter != null ||
+        row.waterReplaceSedimentFilter != null ||
+        row.waterCheckUvLight != null) {
+      details.add(const SizedBox(height: 8));
+      details.add(
+        Text(
+          'Water station checks',
+          style: Theme.of(context).textTheme.labelLarge,
+        ),
+      );
+      if (row.waterReplaceCarbonFilter != null) {
+        details.add(
+          _InspectionDetail(
+            label: 'Carbon filter replaced',
+            value: row.waterReplaceCarbonFilter! ? 'Yes' : 'No',
           ),
-          Text('Inspection date: ${_dateText(row.dateInspected)}'),
-          Text('Remarks: ${_displayValue(row.remarks)}'),
-          Text('Recommendation: ${_displayValue(row.actionsRecommendations)}'),
+        );
+      }
+      if (row.waterReplaceSedimentFilter != null) {
+        details.add(
+          _InspectionDetail(
+            label: 'Sediment filter replaced',
+            value: row.waterReplaceSedimentFilter! ? 'Yes' : 'No',
+          ),
+        );
+      }
+      if (row.waterCheckUvLight != null) {
+        details.add(
+          _InspectionDetail(
+            label: 'UV light checked',
+            value: row.waterCheckUvLight! ? 'Yes' : 'No',
+          ),
+        );
+      }
+    }
+    if (row.hasPhotoEvidence) {
+      details.add(
+        const Padding(
+          padding: EdgeInsets.only(top: 8),
+          child: Row(
+            children: [
+              Icon(Icons.photo_outlined, size: 18),
+              SizedBox(width: 6),
+              Text('Photo evidence attached'),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: details,
+    );
+  }
+}
+
+class _InspectionDetail extends StatelessWidget {
+  const _InspectionDetail({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+          Text(value, softWrap: true),
         ],
       ),
     );
@@ -269,9 +646,12 @@ class _AcknowledgementForm extends StatelessWidget {
                 'Department Head acknowledgement',
                 style: Theme.of(context).textTheme.titleMedium,
               ),
-              const SizedBox(height: 8),
-              const Text(
-                'The skilled worker captures the signatory details and signature in this authenticated mobile session.',
+              const SizedBox(height: 4),
+              Text(
+                'Enter the signatory details and capture their signature.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
               const SizedBox(height: 16),
               TextFormField(
@@ -280,7 +660,7 @@ class _AcknowledgementForm extends StatelessWidget {
                 enabled: !isSaving,
                 textInputAction: TextInputAction.next,
                 decoration: const InputDecoration(
-                  labelText: 'Department Head name',
+                  labelText: 'Full name',
                 ),
                 validator: (value) => value == null || value.trim().isEmpty
                     ? 'Enter the Department Head name.'
@@ -292,20 +672,38 @@ class _AcknowledgementForm extends StatelessWidget {
                 controller: signatoryPositionController,
                 enabled: !isSaving,
                 decoration: const InputDecoration(
-                  labelText: 'Department Head position',
+                  labelText: 'Position',
                 ),
                 validator: (value) => value == null || value.trim().isEmpty
                     ? 'Enter the Department Head position.'
                     : null,
               ),
               const SizedBox(height: 16),
-              const Text('Department Head signature'),
+              Text(
+                'Department Head signature',
+                style: Theme.of(context).textTheme.labelLarge,
+              ),
               const SizedBox(height: 8),
+              Text(
+                'Sign inside the box',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: 6),
               PmSignaturePad(
                 key: signaturePadKey,
                 enabled: !isSaving,
                 onGestureChanged: onSignatureGestureChanged,
                 onChanged: onSignatureChanged,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Acknowledgement confirms receipt of the inspection findings. '
+                'It does not authorize repairs.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
               if (localError != null) ...[
                 const SizedBox(height: 8),
@@ -328,20 +726,32 @@ class _AcknowledgementForm extends StatelessWidget {
 class _AcknowledgementReceipt extends StatelessWidget {
   const _AcknowledgementReceipt({
     required this.acknowledgement,
-    required this.alreadyAcknowledged,
+    required this.formNumber,
   });
 
   final PreventiveMaintenanceAcknowledgement? acknowledgement;
-  final bool alreadyAcknowledged;
+  final String formNumber;
 
   @override
   Widget build(BuildContext context) {
     if (acknowledgement == null) {
-      return const Card(
+      return Card(
         key: Key('acknowledgement-receipt'),
+        color: Theme.of(context).colorScheme.surfaceContainerLow,
         child: Padding(
-          padding: EdgeInsets.all(16),
-          child: Text('This form is already Acknowledged and is read-only.'),
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const _AcknowledgedHeading(),
+              const SizedBox(height: 8),
+              Text(formNumber, style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              const _FormStatusBadge(label: 'Acknowledged'),
+              const SizedBox(height: 12),
+              const _ReadOnlyNote(),
+            ],
+          ),
         ),
       );
     }
@@ -349,33 +759,86 @@ class _AcknowledgementReceipt extends StatelessWidget {
     final value = acknowledgement!;
     return Card(
       key: const Key('acknowledgement-receipt'),
-      color: Theme.of(context).colorScheme.primaryContainer,
+      color: Theme.of(context).colorScheme.surfaceContainerLow,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            const _AcknowledgedHeading(),
+            const SizedBox(height: 8),
+            Text(formNumber, style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
+            const _FormStatusBadge(label: 'Acknowledged'),
+            const SizedBox(height: 12),
+            _InspectionDetail(
+              label: 'Department Head',
+              value: value.signatoryName,
+            ),
+            _InspectionDetail(label: 'Position', value: value.signatoryPosition),
+            _InspectionDetail(
+              label: 'Acknowledged',
+              value: _dateTimeText(value.acknowledgedAt),
+            ),
+            const SizedBox(height: 12),
+            const _ReadOnlyNote(),
+            const SizedBox(height: 6),
             Text(
-              'Form acknowledged',
-              style: Theme.of(context).textTheme.titleLarge,
+              'Receipt only. This does not authorize repairs.',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
-            const SizedBox(height: 8),
-            Text('Department Head: ${value.signatoryName}'),
-            Text('Position: ${value.signatoryPosition}'),
-            Text('Acknowledged: ${_dateTimeText(value.acknowledgedAt)}'),
-            Text('Signature type: ${value.signatureContentType}'),
-            const SizedBox(height: 8),
-            const Text(
-              'Acknowledgement recorded receipt/noting, locked the form, and '
-              'made its inspection rows eligible for official history.',
-            ),
-            if (alreadyAcknowledged) ...[
-              const SizedBox(height: 8),
-              const Text('This form is now read-only.'),
-            ],
           ],
         ),
       ),
+    );
+  }
+}
+
+class _AcknowledgedHeading extends StatelessWidget {
+  const _AcknowledgedHeading();
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Row(
+      children: [
+        Icon(Icons.check_circle, color: colorScheme.tertiary, size: 24),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            'Form acknowledged',
+            style: Theme.of(context).textTheme.titleLarge,
+            softWrap: true,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ReadOnlyNote extends StatelessWidget {
+  const _ReadOnlyNote();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(
+          Icons.lock_outline,
+          size: 18,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        ),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            'This form is now read-only.',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -412,59 +875,127 @@ class PmSignaturePad extends StatefulWidget {
 }
 
 class PmSignaturePadState extends State<PmSignaturePad> {
+  final surfaceKey = GlobalKey();
   final repaintKey = GlobalKey();
   final strokes = <List<Offset>>[];
+  final ignoredPointers = <int>{};
   int? activePointer;
 
   bool get hasSignature => strokes.any((stroke) => stroke.isNotEmpty);
 
+  bool get canUndo {
+    for (var index = strokes.length - 1; index >= 0; index--) {
+      if (strokes[index].isEmpty) continue;
+      if (activePointer != null && index == strokes.length - 1) continue;
+      return true;
+    }
+    return false;
+  }
+
+  Offset? _positionInSurface(PointerEvent event) {
+    final renderObject = surfaceKey.currentContext?.findRenderObject();
+    if (renderObject is! RenderBox || !renderObject.hasSize) return null;
+
+    final localPosition = renderObject.globalToLocal(event.position);
+    final bounds = Offset.zero & renderObject.size;
+    return bounds.contains(localPosition) ? localPosition : null;
+  }
+
   void _startStroke(PointerDownEvent details) {
-    if (!widget.enabled || activePointer != null) return;
+    final position = _positionInSurface(details);
+    if (!widget.enabled || position == null) return;
+    if (activePointer != null || ignoredPointers.isNotEmpty) {
+      ignoredPointers.add(details.pointer);
+      return;
+    }
+
     activePointer = details.pointer;
-    setState(() => strokes.add([details.localPosition]));
+    setState(() => strokes.add([position]));
     widget.onChanged(true);
     widget.onGestureChanged(true);
   }
 
   void _updateStroke(PointerMoveEvent details) {
-    if (!widget.enabled ||
+    if (ignoredPointers.contains(details.pointer) ||
         details.pointer != activePointer ||
         strokes.isEmpty) {
       return;
     }
-    setState(() => strokes.last.add(details.localPosition));
+    if (!widget.enabled) {
+      _cancelActiveStroke(details.pointer);
+      return;
+    }
+
+    final position = _positionInSurface(details);
+    if (position == null) {
+      activePointer = null;
+      ignoredPointers.add(details.pointer);
+      setState(() {});
+      widget.onGestureChanged(false);
+      return;
+    }
+    setState(() => strokes.last.add(position));
   }
 
   void _endStroke(PointerUpEvent details) {
+    if (ignoredPointers.remove(details.pointer)) return;
     if (details.pointer != activePointer || strokes.isEmpty) {
       return;
     }
     activePointer = null;
-    setState(() => strokes.add(const []));
+    setState(() {});
     widget.onGestureChanged(false);
   }
 
   void _cancelStroke(PointerCancelEvent details) {
-    if (details.pointer != activePointer) return;
+    if (ignoredPointers.remove(details.pointer)) return;
+    _cancelActiveStroke(details.pointer);
+  }
+
+  void _cancelActiveStroke(int pointer) {
+    if (pointer != activePointer) return;
     activePointer = null;
+    if (strokes.isNotEmpty) setState(strokes.removeLast);
+    widget.onChanged(hasSignature);
     widget.onGestureChanged(false);
   }
 
   void clear() {
     if (!widget.enabled) return;
-    final hadActivePointer = activePointer != null;
+    final active = activePointer;
     activePointer = null;
+    if (active != null) ignoredPointers.add(active);
     setState(strokes.clear);
     widget.onChanged(false);
-    if (hadActivePointer) widget.onGestureChanged(false);
+    if (active != null) widget.onGestureChanged(false);
+  }
+
+  void undo() {
+    if (!widget.enabled || !canUndo) return;
+    var index = strokes.length - 1;
+    while (index >= 0 &&
+        (strokes[index].isEmpty ||
+            (activePointer != null && index == strokes.length - 1))) {
+      index--;
+    }
+    if (index < 0) return;
+    setState(() => strokes.removeAt(index));
+    widget.onChanged(hasSignature);
   }
 
   Future<String?> toPngBase64() async {
     if (!hasSignature) return null;
-    final renderObject = repaintKey.currentContext?.findRenderObject();
-    final logicalSize = renderObject is RenderBox
-        ? renderObject.size
-        : const Size(480, 180);
+    final surfaceObject = surfaceKey.currentContext?.findRenderObject();
+    final repaintObject = repaintKey.currentContext?.findRenderObject();
+    if (surfaceObject is! RenderBox ||
+        repaintObject is! RenderBox ||
+        !surfaceObject.hasSize ||
+        !repaintObject.hasSize) {
+      return null;
+    }
+    final logicalSize = repaintObject.size;
+    if (logicalSize != surfaceObject.size) return null;
+    if (logicalSize.width <= 0 || logicalSize.height <= 0) return null;
     return base64Encode(_encodeSignaturePng(logicalSize, strokes));
   }
 
@@ -474,43 +1005,84 @@ class PmSignaturePadState extends State<PmSignaturePad> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(
+          key: const Key('signature-canvas'),
           height: 180,
           width: double.infinity,
-          child: Listener(
-            key: const Key('signature-canvas'),
-            behavior: HitTestBehavior.opaque,
-            onPointerDown: widget.enabled ? _startStroke : null,
-            onPointerMove: widget.enabled ? _updateStroke : null,
-            onPointerUp:
-                widget.enabled || activePointer != null ? _endStroke : null,
-            onPointerCancel: widget.enabled || activePointer != null
-                ? _cancelStroke
-                : null,
-            child: RepaintBoundary(
-              key: repaintKey,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  border: Border.all(
-                    color: Theme.of(context).colorScheme.outline,
+          child: Container(
+            clipBehavior: Clip.antiAlias,
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surfaceContainerHigh,
+              border: Border.all(
+                color: Theme.of(context).colorScheme.outlineVariant,
+              ),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Listener(
+              key: surfaceKey,
+              behavior: HitTestBehavior.opaque,
+              onPointerDown: _startStroke,
+              onPointerMove: _updateStroke,
+              onPointerUp: _endStroke,
+              onPointerCancel: _cancelStroke,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  IgnorePointer(
+                    child: ExcludeSemantics(
+                      child: Opacity(
+                        opacity: 0.07,
+                        child: ColorFiltered(
+                          colorFilter: const ColorFilter.mode(
+                            Colors.white,
+                            BlendMode.srcIn,
+                          ),
+                          child: Image.asset(
+                            'assets/unipm-logo.png',
+                            width: 112,
+                            height: 112,
+                            fit: BoxFit.contain,
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: CustomPaint(
-                  painter: _SignaturePainter(strokes),
-                  child: const SizedBox.expand(),
-                ),
+                  RepaintBoundary(
+                    key: repaintKey,
+                    child: CustomPaint(
+                      painter: _SignaturePainter(strokes),
+                      child: const SizedBox.expand(),
+                    ),
+                  ),
+                  if (!hasSignature)
+                    const IgnorePointer(
+                      child: Center(
+                        child: Text(
+                          'Sign here',
+                          key: Key('signature-placeholder'),
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
           ),
         ),
-        Align(
-          alignment: Alignment.centerRight,
-          child: TextButton(
-            key: const Key('clear-signature'),
-            onPressed: widget.enabled && hasSignature ? clear : null,
-            child: const Text('Clear signature'),
-          ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            TextButton.icon(
+              key: const Key('undo-signature'),
+              onPressed: widget.enabled && canUndo ? undo : null,
+              icon: const Icon(Icons.undo),
+              label: const Text('Undo'),
+            ),
+            TextButton.icon(
+              key: const Key('clear-signature'),
+              onPressed: widget.enabled && hasSignature ? clear : null,
+              icon: const Icon(Icons.delete_outline),
+              label: const Text('Clear'),
+            ),
+          ],
         ),
       ],
     );
@@ -524,6 +1096,9 @@ class _SignaturePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    canvas.save();
+    canvas.clipRect(Offset.zero & size);
+
     final paint = Paint()
       ..color = Colors.black
       ..strokeWidth = 3
@@ -540,6 +1115,8 @@ class _SignaturePainter extends CustomPainter {
         canvas.drawLine(stroke[index - 1], stroke[index], paint);
       }
     }
+
+    canvas.restore();
   }
 
   @override
@@ -575,8 +1152,10 @@ String _dateTimeText(DateTime value) {
 }
 
 Uint8List _encodeSignaturePng(Size logicalSize, List<List<Offset>> strokes) {
-  const width = 480;
-  const height = 180;
+  var width = logicalSize.width.ceil();
+  var height = logicalSize.height.ceil();
+  if (width <= 0) width = 480;
+  if (height <= 0) height = 180;
   final pixels = Uint8List(width * height)..fillRange(0, width * height, 255);
   final sourceWidth = logicalSize.width > 0 ? logicalSize.width : width;
   final sourceHeight = logicalSize.height > 0 ? logicalSize.height : height;
