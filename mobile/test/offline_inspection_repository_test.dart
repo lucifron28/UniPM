@@ -463,6 +463,8 @@ void main() {
     await awaitRepositoryAction('synchronize conflict', repository.syncNow);
     expect(repository.hasConflictFor(_formId), isTrue);
     expect(repository.pendingCountFor(_formId), 1);
+    final pendingSchedules = Completer<List<ScheduleOption>>();
+    remote.pendingScheduleResponse = pendingSchedules;
 
     final controller = PreventiveMaintenanceController(
       repository: repository,
@@ -487,26 +489,13 @@ void main() {
       ),
     );
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 300));
-
-    expect(repository.hasConflictFor(_formId), isTrue);
-    final renderedText = find
-        .byType(Text)
-        .evaluate()
-        .map((element) => (element.widget as Text).data)
-        .whereType<String>()
-        .toList(growable: false);
-    if (!renderedText.contains('This draft needs sync review')) {
-      fail(
-        'Conflict banner missing. Rendered text: $renderedText; '
-        'repository=${controller.repository.runtimeType}; '
-        'hasConflict=${repository.hasConflictFor(_formId)}; '
-        'pending=${repository.pendingCountFor(_formId)}; '
-        'hasNetwork=${repository.hasNetwork}.',
-      );
-    }
     expect(find.text('This draft needs sync review'), findsOneWidget);
-    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(find.byKey(const Key('schedules-loading')), findsOneWidget);
+    pendingSchedules.complete(remote.schedules);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.byKey(const Key('schedules-loading')), findsNothing);
+    expect(find.text('This draft needs sync review'), findsOneWidget);
     await tester.tap(find.text('Update inspection needs review'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
@@ -524,8 +513,11 @@ void main() {
     await tester.pump();
 
     expect(repository.pendingCount, 0);
+    final restoredForm = await tester.runAsync(
+      () => repository.getForm(_formId).timeout(const Duration(seconds: 5)),
+    );
     expect(
-      (await repository.getForm(_formId)).inspections.single.remarks,
+      restoredForm!.inspections.single.remarks,
       'Existing server observation.',
     );
   });
@@ -713,6 +705,7 @@ class _FakeRemote
   bool connected = true;
   bool failAcceptedAddOnce = false;
   bool conflictNextUpdate = false;
+  Completer<List<ScheduleOption>>? pendingScheduleResponse;
   int submitCalls = 0;
   int acknowledgementCalls = 0;
   final List<String> addedInspectionIds = <String>[];
@@ -803,7 +796,11 @@ class _FakeRemote
   @override
   Future<List<ScheduleOption>> listSchedules({String? assetId}) async {
     _checkConnected();
-    return schedules
+    final pendingResponse = pendingScheduleResponse;
+    final scheduleResults = pendingResponse == null
+        ? schedules
+        : await pendingResponse.future;
+    return scheduleResults
         .where((schedule) => assetId == null || schedule.assetId == assetId)
         .toList(growable: false);
   }

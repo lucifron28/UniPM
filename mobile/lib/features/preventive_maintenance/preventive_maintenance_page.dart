@@ -626,28 +626,50 @@ class _PreventiveMaintenanceDraftPageState
               onRetry: _retry,
             );
           }
-          return FutureBuilder<List<ScheduleOption>>(
-            future: schedules,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState != ConnectionState.done) {
-                return const Center(
-                  child: CircularProgressIndicator(
-                    key: Key('schedules-loading'),
-                  ),
-                );
-              }
-              final scheduleError = snapshot.hasError
-                  ? friendlyError(snapshot.error!)
-                  : null;
-              final availableSchedules =
-                  snapshot.data ?? const <ScheduleOption>[];
-              return _buildEditor(
-                context,
-                form,
-                availableSchedules,
-                scheduleError,
-              );
-            },
+          final offlineRepository =
+              widget.controller.repository is OfflineInspectionRepository
+              ? widget.controller.repository as OfflineInspectionRepository
+              : null;
+          return ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              if (widget.controller.errorMessage != null)
+                _InlineError(message: widget.controller.errorMessage!),
+              if (offlineRepository != null) ...[
+                _OfflineDraftStatusCard(
+                  repository: offlineRepository,
+                  formId: form.id,
+                  onResolved: () => widget.controller.loadDraft(form.id),
+                ),
+                const SizedBox(height: 12),
+              ],
+              FutureBuilder<List<ScheduleOption>>(
+                future: schedules,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState != ConnectionState.done) {
+                    return const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 24),
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          key: Key('schedules-loading'),
+                        ),
+                      ),
+                    );
+                  }
+                  final scheduleError = snapshot.hasError
+                      ? friendlyError(snapshot.error!)
+                      : null;
+                  final availableSchedules =
+                      snapshot.data ?? const <ScheduleOption>[];
+                  return _buildEditor(
+                    context,
+                    form,
+                    availableSchedules,
+                    scheduleError,
+                  );
+                },
+              ),
+            ],
           );
         },
       ),
@@ -735,10 +757,6 @@ class _PreventiveMaintenanceDraftPageState
           orElse: () => null,
         );
     final displayedInspections = [...form.inspections];
-    final offlineRepository =
-        widget.controller.repository is OfflineInspectionRepository
-        ? widget.controller.repository as OfflineInspectionRepository
-        : null;
     final focusedInspectionId = widget.focusedInspectionId;
     if (focusedInspectionId != null) {
       displayedInspections.sort((left, right) {
@@ -748,19 +766,9 @@ class _PreventiveMaintenanceDraftPageState
       });
     }
 
-    return ListView(
-      padding: const EdgeInsets.all(16),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        if (widget.controller.errorMessage != null)
-          _InlineError(message: widget.controller.errorMessage!),
-        if (offlineRepository != null) ...[
-          _OfflineDraftStatusCard(
-            repository: offlineRepository,
-            formId: form.id,
-            onResolved: () => widget.controller.loadDraft(form.id),
-          ),
-          const SizedBox(height: 12),
-        ],
         _FormMetadata(form: form, pmCycle: canonicalBatchCycle),
         const SizedBox(height: 16),
         if (!canEdit)
