@@ -17,6 +17,8 @@ evidenceLevel: locally-executed
   `feature/nla-v3-asset-inventory` with .NET SDK `10.0.203`.
 - This follow-up verifies the latest evidence/documentation head. It does not
   change Phase 6 behavior or implement Phase 7.
+- The matching roadmap status is in the Phase 6 section of
+  `reference/planning/nla-v3-composable-reporting-design.md`.
 - No SQL Server, Azure/staging service, production data, deployment, migration,
   DeepSeek request, embedding-provider request, or held-out corpus was used.
 

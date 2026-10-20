@@ -471,8 +471,13 @@ a separate authorization step.
 implemented on the isolated `feature/nla-v3-asset-inventory` branch at code
 commit `b2c40f2a39c0e1b326a612cbdf09f77ea6555459`. The follow-up backend, Web,
 API-contract, and browser verification is recorded in
-[TEST-117](../evidence/test-runs/TEST-117-nla-v3-phase6-final-verification.md);
-the earlier [TEST-114](../evidence/test-runs/TEST-114-pm-analytics-v3-asset-inventory.md)
+[TEST-117](../evidence/test-runs/TEST-117-nla-v3-phase6-final-verification.md).
+An exact-head backend and evaluation follow-up at `a9331b2b2cdd04cbf2ecf27d3b08c85dbb6639f0`
+is recorded in
+[TEST-118](../evidence/test-runs/TEST-118-nla-v3-phase6-exact-head-follow-up.md);
+it confirms the current code remains unchanged and records the 18 pending
+labels without scoring them. The earlier
+[TEST-114](../evidence/test-runs/TEST-114-pm-analytics-v3-asset-inventory.md)
 remains the initial implementation evidence. Native SQL Server 2019 is still
 unverified. Phase 5 remains open: all 18 provisional interpretation labels
 still need independent human review, and no score or GSD acceptance claim is
