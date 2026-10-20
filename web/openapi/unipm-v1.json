@@ -7799,6 +7799,7 @@
           "inspectorDisplayName",
           "assignmentLocked",
           "supervisorOwnershipIsConsistent",
+          "buildings",
           "representativeSchedule",
           "unfinishedScheduleCount"
         ],
@@ -7861,6 +7862,12 @@
           },
           "supervisorOwnershipIsConsistent": {
             "type": "boolean"
+          },
+          "buildings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           },
           "representativeSchedule": {
             "$ref": "#/components/schemas/ScheduleResponse"

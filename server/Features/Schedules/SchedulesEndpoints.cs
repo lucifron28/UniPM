@@ -1540,6 +1540,13 @@ public static class SchedulesEndpoints
             .OrderBy(schedule => schedule.Asset?.AssetCode, StringComparer.OrdinalIgnoreCase)
             .ThenBy(schedule => schedule.Id)
             .First();
+        var buildings = schedules
+            .Select(schedule => schedule.Asset?.Building?.Trim())
+            .OfType<string>()
+            .Where(building => !string.IsNullOrWhiteSpace(building))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(building => building, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
         var supervisorDisplayName = supervisor.UserId is Guid supervisorId
             && assigneeDisplayNames.TryGetValue(supervisorId, out var resolvedSupervisorName)
                 ? resolvedSupervisorName
@@ -1577,6 +1584,7 @@ public static class SchedulesEndpoints
                 || !IsAssignableScheduleStatus(row.Schedule.Status)),
             assignmentRows.All(row => row.Schedule.AssignedSupervisorUserId == supervisor.UserId)
                 && supervisor.UserId is not null,
+            buildings,
             representative);
     }
 
@@ -2256,6 +2264,7 @@ public sealed record ScheduleAssignmentQueueBatchResponse(
     string? InspectorDisplayName,
     bool AssignmentLocked,
     bool SupervisorOwnershipIsConsistent,
+    IReadOnlyList<string> Buildings,
     ScheduleResponse RepresentativeSchedule);
 
 internal sealed record ScheduleRegistryStatusCounts(string Status, int Count);

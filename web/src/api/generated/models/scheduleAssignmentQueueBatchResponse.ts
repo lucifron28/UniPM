@@ -31,6 +31,7 @@ export interface ScheduleAssignmentQueueBatchResponse {
   inspectorDisplayName: string | null
   assignmentLocked: boolean
   supervisorOwnershipIsConsistent: boolean
+  buildings: string[]
   representativeSchedule: ScheduleResponse
   /** @pattern ^-?(?:0|[1-9]\d*)$ */
   unfinishedScheduleCount: number | string

@@ -174,6 +174,7 @@ function assignmentBatch(overrides: Record<string, unknown> = {}) {
     completedCount: 0,
     ongoingCount: 0,
     overdueCount: 0,
+    buildings: ['Main'],
     supervisorState: 'Unassigned',
     supervisorUserId: null,
     supervisorDisplayName: null,
@@ -386,11 +387,137 @@ describe('schedule workflows', () => {
     )
 
     expect(await screen.findByText('GSD · Fire extinguishers')).toBeVisible()
-    expect(screen.getByText('1 batch · 2 schedules in view')).toBeVisible()
+    expect(
+      screen.getByText('1 pending batch · 2 unfinished schedules'),
+    ).toBeVisible()
     expect(screen.queryByText('Assigned Supervisor')).toBeNull()
     expect(
       screen.queryByText('Only show batches needing a Supervisor'),
     ).toBeNull()
+  })
+
+  it('assigns each selected full batch once and leaves partial failures selected', async () => {
+    const secondScheduleId = '66666666-6666-4666-8666-666666666666'
+    const successfulBatch = assignmentBatch({
+      batchKey: 'CCMS|fire-extinguisher|2026-08',
+      department: 'CCMS',
+      buildings: ['Library Complex', 'Main Building'],
+      scheduleCount: 5,
+      unfinishedScheduleCount: 5,
+    })
+    const failingBatch = assignmentBatch({
+      batchKey: 'Library|fire-extinguisher|2026-08',
+      department: 'Library',
+      buildings: ['Library Complex'],
+      scheduleCount: 2,
+      unfinishedScheduleCount: 2,
+      representativeSchedule: {
+        ...schedule,
+        id: secondScheduleId,
+        asset: { ...schedule.asset, department: 'Library' },
+      },
+    })
+    const outsideBatch = assignmentBatch({
+      batchKey: 'Administration|fire-extinguisher|2026-08',
+      department: 'Administration',
+      buildings: ['Administration Building'],
+    })
+    let pendingBatches = [successfulBatch, failingBatch, outsideBatch]
+    const assignedScheduleIds: string[] = []
+    server.use(
+      http.get(`${base}/schedules/assignment-batches`, () =>
+        HttpResponse.json({
+          totalScheduleCount: pendingBatches.reduce(
+            (total, batch) => total + Number(batch.scheduleCount),
+            0,
+          ),
+          batches: pendingBatches,
+        }),
+      ),
+      http.put(
+        `${base}/schedules/:scheduleId/supervisor-assignment`,
+        async ({ params }) => {
+          const id = String(params.scheduleId)
+          assignedScheduleIds.push(id)
+          if (id === secondScheduleId) {
+            return HttpResponse.json({}, { status: 409 })
+          }
+          pendingBatches = pendingBatches.filter(
+            (batch) => batch.representativeSchedule.id !== id,
+          )
+          return HttpResponse.json({
+            scheduleIds: [
+              scheduleId,
+              secondScheduleId,
+              assetId,
+              user.id,
+              workerId,
+            ],
+          })
+        },
+      ),
+    )
+
+    const actor = userEvent.setup()
+    renderWithProviders(
+      <ScheduleAssignmentQueue
+        role="GSD"
+        search={{ view: 'assignments', year: 2026 }}
+        onSearchChange={vi.fn()}
+      />,
+    )
+
+    const buildingPicker = await screen.findByRole('combobox', {
+      name: 'Building',
+    })
+    await actor.click(buildingPicker)
+    await actor.type(buildingPicker, 'Library Complex')
+    await actor.click(
+      await screen.findByRole('option', { name: 'Library Complex' }),
+    )
+
+    expect(await screen.findByText('CCMS · Fire extinguishers')).toBeVisible()
+    expect(screen.getByText('Library · Fire extinguishers')).toBeVisible()
+    expect(screen.queryByText('Administration · Fire extinguishers')).toBeNull()
+    await actor.click(
+      screen.getByRole('button', { name: 'Select all visible' }),
+    )
+    await actor.click(
+      screen.getByRole('button', { name: 'Assign Supervisor to 2 batches' }),
+    )
+
+    const dialog = screen.getByRole('dialog')
+    expect(
+      within(dialog).getByText(
+        'This batch spans 2 buildings. Assignment applies to all 5 schedules. Buildings: Library Complex, Main Building.',
+      ),
+    ).toBeVisible()
+    await waitFor(() =>
+      expect(
+        within(dialog).queryByText('Loading eligible Supervisors…'),
+      ).toBeNull(),
+    )
+    await actor.type(
+      within(dialog).getByLabelText('Search active Supervisor'),
+      'Fictional Supervisor',
+    )
+    const confirmButton = within(dialog).getByRole('button', {
+      name: 'Assign Supervisor to 2 batches',
+    })
+    await waitFor(() => expect(confirmButton).toBeEnabled())
+    await actor.click(confirmButton)
+
+    expect(
+      await screen.findByText(
+        '1 of 2 batches assigned. 1 failed; review the refreshed queue.',
+      ),
+    ).toBeVisible()
+    expect(assignedScheduleIds).toEqual([scheduleId, secondScheduleId])
+    expect(
+      screen.getByRole('checkbox', {
+        name: 'Select Library Fire extinguishers August 2026 batch',
+      }),
+    ).toBeChecked()
   })
 
   it('shows only the current Supervisor’s unlocked batches awaiting an Inspector', async () => {
@@ -437,7 +564,9 @@ describe('schedule workflows', () => {
     )
 
     expect(await screen.findByText('GSD · Fire extinguishers')).toBeVisible()
-    expect(screen.getByText('1 batch · 2 schedules in view')).toBeVisible()
+    expect(
+      screen.getByText('1 pending batch · 2 unfinished schedules'),
+    ).toBeVisible()
     expect(screen.queryByText('Another Supervisor')).toBeNull()
     expect(
       screen.queryByText('Only show batches needing an Inspector'),

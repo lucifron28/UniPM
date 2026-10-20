@@ -68,6 +68,13 @@ export type ScheduleSearch = {
   page?: number | undefined
 }
 
+type ScheduleHistoryBatch = {
+  key: string
+  department: string | null
+  assetCategory: string | null
+  pmCycle: string
+}
+
 const scheduleAccessDeniedMessage =
   'Schedule reads require a GSD, Inspector, or Supervisor role. Admin is a technical system administration role and cannot read operational schedules.'
 
@@ -85,6 +92,120 @@ function statusVariant(
   if (status === 'Overdue') return 'danger'
   if (status === 'Due' || status === 'Ongoing') return 'warning'
   return 'neutral'
+}
+
+function ScheduleHistoryRecord({
+  schedule,
+  search,
+  canReassign,
+  onReassign,
+}: {
+  schedule: ScheduleRegistryItem
+  search: ScheduleSearch
+  canReassign: boolean
+  onReassign: (schedule: ScheduleRegistryItem) => void
+}) {
+  const location = [
+    schedule.asset?.building,
+    schedule.asset?.department,
+    schedule.asset?.location,
+  ]
+    .filter(Boolean)
+    .join(' / ')
+
+  return (
+    <Card className="content-card space-y-3 p-3 shadow-none">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="font-semibold text-[var(--primary)]">
+            {schedule.asset ? (
+              <Link
+                to="/app/assets/$assetId"
+                params={{ assetId: schedule.asset.id }}
+                search={{ returnContext: { kind: 'scheduleRegistry', search } }}
+                className="hover:underline"
+              >
+                {schedule.asset.assetCode}
+              </Link>
+            ) : (
+              'Asset details unavailable'
+            )}
+          </p>
+          <p className="text-xs text-[var(--text-neutral)]">
+            {schedule.asset
+              ? formatAssetCategory(schedule.asset.assetCategory)
+              : 'Category not recorded'}
+          </p>
+        </div>
+        <Badge variant={statusVariant(schedule.status)}>
+          {schedule.status}
+        </Badge>
+      </div>
+
+      <dl className="grid gap-3 text-sm sm:grid-cols-2 xl:grid-cols-4">
+        <div>
+          <dt className="text-xs font-semibold text-[var(--text-neutral)]">
+            PM cycle / due date
+          </dt>
+          <dd className="mt-0.5">
+            {formatPmCycle(schedule.pmCycle)} ·{' '}
+            {formatPmCycleDueDate(schedule.pmCycle)}
+          </dd>
+        </div>
+        <div>
+          <dt className="text-xs font-semibold text-[var(--text-neutral)]">
+            Period
+          </dt>
+          <dd className="mt-0.5">{schedule.periodType || 'Not recorded'}</dd>
+        </div>
+        <div>
+          <dt className="text-xs font-semibold text-[var(--text-neutral)]">
+            Period metadata
+          </dt>
+          <dd className="mt-0.5">
+            {[
+              schedule.quarter,
+              schedule.semester,
+              schedule.year,
+              schedule.academicYear,
+            ]
+              .filter((value) => value != null)
+              .join(' / ') || 'Not recorded'}
+          </dd>
+        </div>
+        <div>
+          <dt className="text-xs font-semibold text-[var(--text-neutral)]">
+            Location
+          </dt>
+          <dd className="mt-0.5">{location || 'Not recorded'}</dd>
+        </div>
+      </dl>
+
+      <div className="flex flex-wrap items-center gap-3 border-t border-[var(--border-soft)] pt-3">
+        <Link
+          to="/app/schedules/$scheduleId"
+          params={{ scheduleId: schedule.id }}
+          search={{
+            ...search,
+            returnContext: { kind: 'scheduleRegistry', search },
+          }}
+          className="font-semibold text-[var(--primary)] hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
+        >
+          View details
+        </Link>
+        {canReassign && (
+          <Button
+            type="button"
+            variant="secondary"
+            className="min-h-8 px-2 text-xs"
+            onClick={() => onReassign(schedule)}
+          >
+            Reassign
+          </Button>
+        )}
+      </div>
+    </Card>
+  )
 }
 
 const createColumns = (
@@ -200,6 +321,10 @@ export function ScheduleRegistry({
   const currentUser = useCurrentUser()
   const [reassignmentSchedule, setReassignmentSchedule] =
     useState<ScheduleRegistryItem | null>(null)
+  const [expandedHistoryBatchKey, setExpandedHistoryBatchKey] = useState<
+    string | null
+  >(null)
+  const [historyBatchPage, setHistoryBatchPage] = useState(1)
   const scheduleGeneration = useGenerateSchedules()
   const currentManilaYear = getCurrentManilaYear()
   const [generationYear, setGenerationYear] = useState(() =>
@@ -307,6 +432,27 @@ export function ScheduleRegistry({
   const requestedPage = search.page ?? 1
   const page = Math.min(Math.max(requestedPage, 1), pageCount)
   const pageData = records
+  const scheduleHistoryBatches = useMemo(() => {
+    const groups = new Map<string, ScheduleHistoryBatch>()
+    for (const schedule of pageData) {
+      const department = schedule.asset?.department ?? null
+      const assetCategory = schedule.asset?.assetCategory ?? null
+      const key = JSON.stringify([
+        department?.trim().toLocaleLowerCase() ?? null,
+        assetCategory?.toLocaleLowerCase() ?? null,
+        schedule.pmCycle,
+      ])
+      if (!groups.has(key)) {
+        groups.set(key, {
+          key,
+          department,
+          assetCategory,
+          pmCycle: schedule.pmCycle,
+        })
+      }
+    }
+    return Array.from(groups.values())
+  }, [pageData])
   const departments = filterOptions.data?.departments ?? EMPTY_FILTER_OPTIONS
   const quarterOptions = filterOptions.data?.quarters ?? EMPTY_FILTER_OPTIONS
   const yearOptions = Array.from(
@@ -368,6 +514,50 @@ export function ScheduleRegistry({
     columns: tableColumns,
     getCoreRowModel: getCoreRowModel(),
   })
+  const expandedHistoryBatch = scheduleHistoryBatches.find(
+    (batch) => batch.key === expandedHistoryBatchKey,
+  )
+  const canLoadExpandedHistoryBatch = Boolean(
+    expandedHistoryBatch?.department &&
+    expandedHistoryBatch.assetCategory &&
+    expandedHistoryBatch.pmCycle,
+  )
+  const historyBatchPageSize = 100
+  const historyBatch = useScheduleRegistry(
+    {
+      ...(expandedHistoryBatch?.department
+        ? { department: expandedHistoryBatch.department }
+        : {}),
+      ...(expandedHistoryBatch?.assetCategory
+        ? { assetCategory: expandedHistoryBatch.assetCategory }
+        : {}),
+      ...(expandedHistoryBatch?.pmCycle
+        ? { pmCycle: expandedHistoryBatch.pmCycle }
+        : {}),
+      page: historyBatchPage,
+      pageSize: historyBatchPageSize,
+    },
+    canLoadExpandedHistoryBatch,
+  )
+  const historyBatchPageCount = Math.max(
+    1,
+    Math.ceil((historyBatch.data?.totalCount ?? 0) / historyBatchPageSize),
+  )
+
+  useEffect(() => {
+    if (
+      historyBatch.isSuccess &&
+      !historyBatch.isPlaceholderData &&
+      historyBatchPage > historyBatchPageCount
+    ) {
+      setHistoryBatchPage(historyBatchPageCount)
+    }
+  }, [
+    historyBatch.isSuccess,
+    historyBatch.isPlaceholderData,
+    historyBatchPage,
+    historyBatchPageCount,
+  ])
 
   useEffect(() => {
     if (
@@ -707,6 +897,110 @@ export function ScheduleRegistry({
       )}
     </section>
   )
+
+  const renderExpandedBatchHistory = () => {
+    if (!expandedHistoryBatch) return null
+    if (!canLoadExpandedHistoryBatch) {
+      return (
+        <p role="status" className="text-sm text-[var(--text-secondary)]">
+          This batch cannot be loaded because its department, category, or PM
+          cycle is missing from the source records.
+        </p>
+      )
+    }
+    if (historyBatch.isPending || historyBatch.isPlaceholderData) {
+      return (
+        <p role="status" className="text-sm text-[var(--text-secondary)]">
+          Loading every schedule record in this batch…
+        </p>
+      )
+    }
+    if (historyBatch.isError) {
+      return (
+        <div role="alert" className="space-y-2 text-sm">
+          <p>The full batch history could not be loaded.</p>
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={historyBatch.isFetching}
+            onClick={() => void historyBatch.refetch()}
+          >
+            Retry batch history
+          </Button>
+        </div>
+      )
+    }
+
+    const items = historyBatch.data?.items ?? []
+    const batchTotal = historyBatch.data?.totalCount ?? 0
+    if (items.length === 0) {
+      return (
+        <p role="status" className="text-sm text-[var(--text-secondary)]">
+          No schedule records were found for this batch.
+        </p>
+      )
+    }
+
+    return (
+      <div className="space-y-3">
+        <p className="text-sm text-[var(--text-secondary)]">
+          {batchTotal} schedule {batchTotal === 1 ? 'record' : 'records'} in
+          this batch.
+        </p>
+        <div className="grid gap-3 xl:grid-cols-2">
+          {items.map((schedule) => (
+            <ScheduleHistoryRecord
+              key={schedule.id}
+              schedule={schedule}
+              search={search}
+              canReassign={canReassign}
+              onReassign={openReassignment}
+            />
+          ))}
+        </div>
+        {historyBatchPageCount > 1 && (
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border-soft)] pt-3">
+            <p className="text-sm text-[var(--text-secondary)]">
+              Showing {(historyBatchPage - 1) * historyBatchPageSize + 1}–
+              {Math.min(historyBatchPage * historyBatchPageSize, batchTotal)} of{' '}
+              {batchTotal} records
+            </p>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={historyBatchPage <= 1 || historyBatch.isFetching}
+                onClick={() => setHistoryBatchPage((page) => page - 1)}
+              >
+                Previous batch page
+              </Button>
+              <span className="text-sm text-[var(--text-secondary)]">
+                Page {historyBatchPage} of {historyBatchPageCount}
+              </span>
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={
+                  historyBatchPage >= historyBatchPageCount ||
+                  historyBatch.isFetching
+                }
+                onClick={() => setHistoryBatchPage((page) => page + 1)}
+              >
+                Next batch page
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  const toggleBatchHistory = (batchKey: string) => {
+    setHistoryBatchPage(1)
+    setExpandedHistoryBatchKey((current) =>
+      current === batchKey ? null : batchKey,
+    )
+  }
 
   return (
     <section aria-labelledby="schedules-title" className="space-y-4">
@@ -1095,7 +1389,8 @@ export function ScheduleRegistry({
               Schedule records
             </h2>
             <p className="mt-1 text-sm text-[var(--text-secondary)]">
-              Filtered schedule records and their current recorded status.
+              Results are grouped by department, asset category, and PM cycle.
+              Open a batch to review every asset&apos;s schedule history.
             </p>
           </div>
           <p
@@ -1168,84 +1463,112 @@ export function ScheduleRegistry({
                     </tr>
                   ))}
                 </thead>
-                <tbody className="divide-y divide-[var(--border-soft)]">
-                  {table.getRowModel().rows.map((row) => (
-                    <tr key={row.id}>
-                      {row.getVisibleCells().map((cell) => (
-                        <td key={cell.id} className="px-5 py-2">
-                          {flexRender(
-                            cell.column.columnDef.cell,
-                            cell.getContext(),
-                          )}
+                {scheduleHistoryBatches.map((batch) => {
+                  const isExpanded = expandedHistoryBatchKey === batch.key
+                  const panelId = `schedule-batch-history-desktop-${encodeURIComponent(batch.key)}`
+
+                  return (
+                    <tbody
+                      key={batch.key}
+                      className="divide-y divide-[var(--border-soft)]"
+                    >
+                      <tr className="bg-[var(--surface-muted)]">
+                        <td
+                          colSpan={table.getVisibleLeafColumns().length}
+                          className="px-5 py-3"
+                        >
+                          <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                              <h3 className="font-semibold text-[var(--text-primary)]">
+                                {batch.department ?? 'Department not recorded'}{' '}
+                                ·{' '}
+                                {batch.assetCategory
+                                  ? formatAssetCategory(batch.assetCategory)
+                                  : 'Category not recorded'}
+                              </h3>
+                              <p className="mt-0.5 text-sm text-[var(--text-secondary)]">
+                                {formatPmCycle(batch.pmCycle)} · Due{' '}
+                                {formatPmCycleDueDate(batch.pmCycle)}
+                              </p>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              aria-expanded={isExpanded}
+                              aria-controls={isExpanded ? panelId : undefined}
+                              onClick={() => toggleBatchHistory(batch.key)}
+                            >
+                              {isExpanded
+                                ? 'Close batch history'
+                                : 'Open batch history'}
+                            </Button>
+                          </div>
                         </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
+                      </tr>
+                      {isExpanded && (
+                        <tr>
+                          <td
+                            colSpan={table.getVisibleLeafColumns().length}
+                            className="bg-white p-4"
+                          >
+                            <div id={panelId}>
+                              {renderExpandedBatchHistory()}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  )
+                })}
               </table>
             }
             mobileContent={
               <div className="grid gap-3">
-                {pageData.map((schedule) => (
-                  <Card key={schedule.id} className="content-card space-y-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <h2 className="font-bold">
-                          {schedule.asset ? (
-                            <Link
-                              to="/app/assets/$assetId"
-                              params={{ assetId: schedule.asset.id }}
-                              search={{
-                                returnContext: {
-                                  kind: 'scheduleRegistry',
-                                  search,
-                                },
-                              }}
-                              className="text-[var(--primary)] hover:underline"
-                            >
-                              {schedule.asset.assetCode}
-                            </Link>
-                          ) : (
-                            'Asset details unavailable'
-                          )}
-                        </h2>
-                        <p className="text-xs text-[var(--text-neutral)]">
-                          {schedule.asset
-                            ? formatAssetCategory(schedule.asset.assetCategory)
-                            : 'Category not recorded'}
-                        </p>
-                      </div>
-                      <Badge variant={statusVariant(schedule.status)}>
-                        {schedule.status}
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-[var(--text-secondary)]">
-                      Scheduled month: {formatPmCycle(schedule.pmCycle)}
-                      <br />
-                      Due date: {formatPmCycleDueDate(schedule.pmCycle)}
-                    </p>
-                    <Link
-                      to="/app/schedules/$scheduleId"
-                      params={{ scheduleId: schedule.id }}
-                      search={{
-                        ...search,
-                        returnContext: { kind: 'scheduleRegistry', search },
-                      }}
-                      className="font-semibold text-[var(--primary)] hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
+                {scheduleHistoryBatches.map((batch) => {
+                  const isExpanded = expandedHistoryBatchKey === batch.key
+                  const panelId = `schedule-batch-history-mobile-${encodeURIComponent(batch.key)}`
+
+                  return (
+                    <Card
+                      key={batch.key}
+                      className="content-card space-y-3 p-4 shadow-none"
                     >
-                      View details
-                    </Link>
-                    {canReassign && (
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        onClick={() => openReassignment(schedule)}
-                      >
-                        Review assignment
-                      </Button>
-                    )}
-                  </Card>
-                ))}
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <h3 className="font-semibold text-[var(--text-primary)]">
+                            {batch.department ?? 'Department not recorded'} ·{' '}
+                            {batch.assetCategory
+                              ? formatAssetCategory(batch.assetCategory)
+                              : 'Category not recorded'}
+                          </h3>
+                          <p className="mt-0.5 text-sm text-[var(--text-secondary)]">
+                            {formatPmCycle(batch.pmCycle)} · Due{' '}
+                            {formatPmCycleDueDate(batch.pmCycle)}
+                          </p>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          aria-expanded={isExpanded}
+                          aria-controls={isExpanded ? panelId : undefined}
+                          onClick={() => toggleBatchHistory(batch.key)}
+                        >
+                          {isExpanded
+                            ? 'Close batch history'
+                            : 'Open batch history'}
+                        </Button>
+                      </div>
+                      {isExpanded && (
+                        <div
+                          id={panelId}
+                          className="border-t border-[var(--border-soft)] pt-3"
+                        >
+                          {renderExpandedBatchHistory()}
+                        </div>
+                      )}
+                    </Card>
+                  )
+                })}
               </div>
             }
             pagination={{

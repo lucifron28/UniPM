@@ -636,10 +636,23 @@ class PmSignaturePadState extends State<PmSignaturePad> {
 
   bool get hasSignature => strokes.any((stroke) => stroke.isNotEmpty);
 
+  Offset _positionInCanvas(PointerEvent event) {
+    final renderObject = repaintKey.currentContext?.findRenderObject();
+    if (renderObject is! RenderBox || !renderObject.hasSize) {
+      return event.localPosition;
+    }
+
+    final position = renderObject.globalToLocal(event.position);
+    return Offset(
+      position.dx.clamp(0.0, renderObject.size.width).toDouble(),
+      position.dy.clamp(0.0, renderObject.size.height).toDouble(),
+    );
+  }
+
   void _startStroke(PointerDownEvent details) {
     if (!widget.enabled || activePointer != null) return;
     activePointer = details.pointer;
-    setState(() => strokes.add([details.localPosition]));
+    setState(() => strokes.add([_positionInCanvas(details)]));
     widget.onChanged(true);
     widget.onGestureChanged(true);
   }
@@ -650,7 +663,7 @@ class PmSignaturePadState extends State<PmSignaturePad> {
         strokes.isEmpty) {
       return;
     }
-    setState(() => strokes.last.add(details.localPosition));
+    setState(() => strokes.last.add(_positionInCanvas(details)));
   }
 
   void _endStroke(PointerUpEvent details) {
@@ -743,6 +756,9 @@ class _SignaturePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    canvas.save();
+    canvas.clipRect(Offset.zero & size);
+
     final paint = Paint()
       ..color = Colors.black
       ..strokeWidth = 3
@@ -759,6 +775,8 @@ class _SignaturePainter extends CustomPainter {
         canvas.drawLine(stroke[index - 1], stroke[index], paint);
       }
     }
+
+    canvas.restore();
   }
 
   @override
