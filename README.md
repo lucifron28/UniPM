@@ -135,15 +135,12 @@ or delete Draft rows, and submit the whole form through the API. Submission
 assigns a provisional file number and makes the form read-only.
 
 The mobile client starts signed out after restart, does not persist access
-tokens or cookies, and does not implement refresh/replay. The isolated
-`feature/offline-nla-v3-integration` candidate combines encrypted per-account
-draft storage, queued synchronization, explicit conflict review, and the mobile
-acknowledgement/home UX. It remains outside the accepted release baseline
-pending review and field acceptance; source branches are preserved.
-Web acknowledgement and signature review remain available. The isolated mobile
-candidate also includes the role-aware acknowledgement screen and signature
-capture; acknowledgement, submission, location verification, and photo evidence
-remain online-only. See [mobile/README.md](mobile/README.md).
+tokens or cookies, and does not implement refresh/replay. The integrated mobile
+workflow includes encrypted per-account Draft storage, queued synchronization,
+explicit conflict review, and role-aware acknowledgement/home UX. GSD and
+physical-device acceptance remain pending. Acknowledgement, submission,
+location verification, and photo evidence remain online-only. See
+[mobile/README.md](mobile/README.md).
 
 ## First Run
 
@@ -227,9 +224,10 @@ ReferenceDocument foundation, Full-Text Search, section embeddings, and shared
 provider-neutral embedding components remain.
 
 Schema-constrained NLA V3 PM execution and registered asset inventory reporting
-are implemented on the isolated `feature/offline-nla-v3-integration` candidate.
-Phase 5 human label review and SQL Server 2019 execution remain open. Phases 7–8
-are planning only; the stable PMIS validation baseline is unchanged.
+are integrated into `main` and `deploy/azure-staging`. The Phase 5 evaluation
+corpus is unreviewed and no V3 scoring result is claimed. Native SQL Server 2019
+execution, GSD acceptance, and physical-device acceptance remain open. Phases
+7–8 are planning only. Core PMIS workflows remain independent of AI.
 
 See the historical [API description](reference/api/maintenance-review-v0.1.md)
 and [engineering evidence](reference/evidence/INDEX.md) for prior results.
@@ -247,13 +245,14 @@ It is not an active roadmap item on this branch.
 
 ## Validation Baseline Definition
 
-The active boundary for this branch is documented in
+The PMIS workflow boundary is documented in
 [`reference/planning/mvp-definition.md`](reference/planning/mvp-definition.md):
-the PMIS-only GSD validation baseline. It defines the acknowledged-history,
-form-lifecycle, corrective-handoff, web, and mobile scope demonstrated without
-AI, preserves the previous RAG-inclusive evaluated-MVP definition as history,
-and claims no replacement innovation. Mobile remains part of UniPM but is
-owned by a separate partner workstream.
+the GSD validation baseline for PMIS workflows, which remain independent of AI.
+The document preserves the previous RAG-inclusive evaluated-MVP definition as
+historical context. NLA V3 is a separate, integrated reporting capability; its
+Phase 5 corpus has not been evaluated. Mobile was developed in a separate
+partner workstream, and its current implementation is integrated into the
+maintained branches.
 
 A concise GSD validation note with the prepared validation questions is at
 [`reference/planning/gsd-validation-note.md`](reference/planning/gsd-validation-note.md).
@@ -397,9 +396,10 @@ ReferenceDocument foundation, Full-Text Search, section embeddings, and shared
 provider-neutral embedding components remain.
 
 Schema-constrained NLA V3 PM execution and registered asset inventory reporting
-are implemented on the isolated `feature/offline-nla-v3-integration` candidate.
-Phase 5 human label review and SQL Server 2019 execution remain open. Phases 7–8
-are planning only; the stable PMIS validation baseline is unchanged.
+are integrated into `main` and `deploy/azure-staging`. The Phase 5 evaluation
+corpus is unreviewed and no V3 scoring result is claimed. Native SQL Server 2019
+execution, GSD acceptance, and physical-device acceptance remain open. Phases
+7–8 are planning only. Core PMIS workflows remain independent of AI.
 
 Reference embeddings remain disabled by default. Remote providers require
 explicit configuration and a separate privacy review; ordinary PM workflows

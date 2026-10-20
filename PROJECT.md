@@ -22,18 +22,18 @@ records remain as evidence of prior work. The separate fictional
 ReferenceDocument foundation, Full-Text Search, section embeddings, and shared
 provider-neutral embedding components remain.
 
-Schema-constrained NLA V3 through Phase 6 is implemented on the isolated
-`feature/offline-nla-v3-integration` review candidate. It is not merged into the
-stable PMIS baseline or release-accepted. Phase 5 labels still require
-independent review, native SQL Server 2019 execution remains unverified, and
-Phases 7–8 are planning only.
+Schema-constrained NLA V3 through Phase 6 and the mobile offline/acknowledgement
+workflow are integrated into `main` and `deploy/azure-staging`. GSD and
+physical-device acceptance remain pending. The Phase 5 evaluation corpus is
+unreviewed and has no V3 scoring result; native SQL Server 2019 execution
+remains unverified. Phases 7–8 are planning only.
 
 Older completed RAG entries below describe historical work only.
 
-- **Stable baseline**: `main` retains the PMIS validation workflow and the
-  retirement of maintenance-history RAG. **Review candidate**:
-  `feature/offline-nla-v3-integration` combines the isolated offline/mobile UX
-  and NLA V3 Phase 6 histories; it remains unaccepted and unmerged.
+- **Integrated branches**: `main` and `deploy/azure-staging` contain the PMIS
+  workflows, NLA V3 through Phase 6, and the mobile offline/acknowledgement
+  workflow. Staging retains its separate seed-data baseline. Integration is
+  complete; GSD and physical-device acceptance remain pending.
 - **Proposed architecture**: ASP.NET Core API hosted on IIS + native Windows
   SQL Server 2019 with Full-Text Search. Docker is optional development
   tooling only. IIS deployment is not part of the evaluated capstone result.
@@ -68,24 +68,23 @@ Older completed RAG entries below describe historical work only.
   - React web foundation and browser authentication with memory-only access
     tokens, refresh-cookie restoration, protected routes, current-user display,
     and logout.
-  - Browser authentication integration is implemented and merged. The Flutter
-    mobile foundation, Draft preventive-maintenance form workflow, and
-    whole-form submission are implemented and merged in a separate
-    partner-owned workstream. Encrypted per-account offline drafts, queued
-    synchronization, and reviewable conflict recovery are implemented on
-    `feature/offline-nla-v3-integration`; the offline implementation and
-    acknowledgement/home UX remain pending review and GSD acceptance.
-  - The partner-owned mobile client currently supports authenticated
-    GSD/Inspector access, QR-based asset entry, Draft form creation, Draft
-    inspection-row add/update/delete operations, and whole-form submission.
-    The review candidate also includes the role-aware mobile acknowledgement
-    screen and signature capture; acknowledgement remains online-only.
+  - Browser authentication, the Flutter mobile foundation, Draft forms,
+    whole-form submission, encrypted per-account offline drafts, queued
+    synchronization, conflict review, and acknowledgement/home UX are
+    integrated into `main` and `deploy/azure-staging`. Physical-device and GSD
+    acceptance remain pending.
+  - The mobile client supports authenticated GSD/Inspector access, QR-based
+    asset entry, Draft form creation and editing, whole-form submission,
+    encrypted offline Draft changes with queued synchronization and conflict
+    review, plus role-aware acknowledgement and signature capture.
+    Acknowledgement remains online-only.
   - Authenticated asset registry and preventive maintenance schedule modules
     with route-backed list/detail/create workflows, generated API contracts,
     runtime response validation, and backend-authoritative role policies.
-  - NLA V3 PM execution reporting and registered asset inventory are present on
-    the review candidate. Inventory reports use one registered asset per row;
-    SQL Server 2019 verification and Phase 5 human label review remain open.
+  - NLA V3 PM execution reporting and registered asset inventory are
+    integrated into both maintained branches. Inventory reports use one
+    registered asset per row. The Phase 5 evaluation corpus is unreviewed and
+    no V3 score is claimed; native SQL Server 2019 verification remains open.
   - Confirmed multi-asset preventive-maintenance form lifecycle:
     `Draft -> Submitted -> Acknowledged`, provisional form file numbers,
     field-work-driven schedule completion from `InspectionRecord.CompletedAt`,
@@ -175,18 +174,20 @@ dependency.
 
 ## Validation Baseline Definition
 
-The active boundary for this branch is documented in
+The PMIS workflow boundary is documented in
 [`reference/planning/mvp-definition.md`](reference/planning/mvp-definition.md):
 the PMIS-only GSD validation baseline. It covers authentication, the asset
 registry with QR lookup, schedules, multi-row preventive-maintenance forms,
 the confirmed `Draft -> Submitted -> Acknowledged` lifecycle,
 acknowledged-only official history, deterministic reports already implemented,
 corrective-handoff preparation, and the web/mobile PMIS workflows. Core PMIS
-workflows do not depend on AI. Maintenance-history RAG, its runtime, tooling,
-tests, and derived storage have been retired; historical documentation, evidence,
-and migrations remain. No replacement innovation is approved yet. The previous
-RAG-inclusive evaluated-MVP definition remains preserved in git history and is
-summarized as a historical record inside that file.
+workflows do not depend on AI. NLA V3 is a separate integrated reporting
+workflow with validated plans and backend-controlled deterministic execution;
+it does not restore maintenance-history retrieval. Maintenance-history RAG,
+its runtime, tooling, tests, and derived storage have been retired; historical
+documentation, evidence, and migrations remain. The previous RAG-inclusive
+evaluated-MVP definition remains preserved in git history and summarized as a
+historical record there.
 
 ## Historical Planning Record: RAG-Assisted Inspection-History Analysis
 
@@ -200,21 +201,25 @@ this branch.
 
 ## Next Steps
 
-1. Verify the PMIS-only validation baseline end to end (backend suite, web
-   checks, AI-independent startup).
-2. Demonstrate the confirmed workflow to GSD.
-3. Collect exact form, report, and process requirements from GSD.
-4. Review the isolated offline/NLA candidate against its open gates: human
-   review of the 18 provisional labels, SQL Server 2019 execution, and mobile
-   field acceptance. Integration CI passed on source commit `a93e71b`.
-5. Decide whether additional innovation beyond the current NLA candidate is
-   justified; keep it on a separate approved feature branch and defer
-   institutional source authorization, final RBAC, audit rules, and other
-   unresolved policy decisions until reviewed.
+1. Demonstrate the integrated PMIS and mobile workflows to GSD and record
+   operational feedback.
+2. Complete physical-device acceptance and native SQL Server 2019 execution
+   verification.
+3. Review the Phase 5 NLA V3 corpus and define a scoring method before
+   reporting any evaluation result; no V3 score is currently established.
+4. Keep Phases 7–8 and institutional source authorization, final RBAC, audit
+   rules, and other unresolved policy decisions in planning until reviewed.
 
-The NLA V3 implementation is isolated to the review candidate. The stable PMIS
-baseline remains unchanged; Phase 5 label review and SQL Server 2019 execution
-are still open, and no Phase 7 or Phase 8 reporting subject is implemented.
+NLA V3 through Phase 6 and the mobile offline/acknowledgement workflows are
+integrated into `main` and `deploy/azure-staging`. At the consolidation check,
+`main` was `5a92f9b` and staging was `1266887`; exact-head checks passed for
+[main backend](https://github.com/lucifron28/UniPM/actions/runs/39408165919),
+[main web](https://github.com/lucifron28/UniPM/actions/runs/39408165969),
+[main Flutter](https://github.com/lucifron28/UniPM/actions/runs/39408165986),
+[staging web](https://github.com/lucifron28/UniPM/actions/runs/39408183632), and
+[staging package](https://github.com/lucifron28/UniPM/actions/runs/39408183611).
+This does not establish GSD, physical-device, or native SQL Server 2019
+acceptance.
 
 ## Engineering Evidence
 
@@ -228,11 +233,11 @@ embedding providers prove orchestration only. This repository now includes
 opt-in OpenTelemetry metrics, an optional local Prometheus/Grafana profile, and
 TEST-002 evidence for the local technical-health path. Production monitoring,
 IIS restriction, tracing, centralized logs, alerting, and maintenance KPI
-dashboards remain out of scope. Inspection integrity, retrieval/test
-organization, sanitizer-boundary documentation, the web foundation, browser
-authentication, asset registry, schedule workflows, read-only inspection review,
-and confirmed form workflow foundation are complete. The next client capability
-requires explicit approval.
+dashboards remain out of scope. Inspection integrity, test organization,
+sanitizer-boundary documentation, the web foundation, browser authentication,
+asset registry, schedule workflows, read-only inspection review, the confirmed
+form workflow, NLA V3, and the integrated mobile workflows are implemented.
+Field and platform verification remain open as listed above.
 
 ## Manuscript Platform Guidance
 

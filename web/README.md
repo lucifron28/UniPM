@@ -96,24 +96,26 @@ action.
 
 ## NLA V3 Reporting
 
-The isolated `feature/offline-nla-v3-integration` candidate includes the
-schema-constrained PM Analytics V3 workflow: enter a question, review the
-interpretation, edit the typed plan, inspect a preview, confirm it, and review
-results with supported source-record drill-down. Calculations and SQL execution
+The integrated, schema-constrained PM Analytics V3 workflow lets users enter a
+question, review the interpretation, edit the typed plan, inspect a preview,
+confirm it, and review results with supported source-record drill-down. It is
+available on `main` and `deploy/azure-staging`. Calculations and SQL execution
 remain backend-controlled; the browser does not generate SQL.
 
 The `pmExecution` subject reports eligible asset-cycle outcomes. The
 `assetInventory` subject reports one current registered asset per row,
 independent of PM schedules and inspection history, with category, building,
 department, location, and registration-status filters. Registration status and
-inspection condition are separate fields. The V3 subject is isolated to the
-review candidate; Phase 5 human label review and native SQL Server 2019
-verification remain open.
+inspection condition are separate fields. The Phase 5 evaluation corpus remains
+unreviewed and no V3 scoring result is claimed; native SQL Server 2019 execution
+remains unverified.
 
-Local integration checks are recorded in
+The initial integration checks are recorded in
 [`TEST-122`](../reference/evidence/test-runs/TEST-122-offline-nla-integration-candidate-verification.md).
-Web CI passed on the exact integration source commit in
-[run #283](https://github.com/lucifron28/UniPM/actions/runs/39364885166).
+Current Web CI passed on the checked `main` head `5a92f9b`
+([run](https://github.com/lucifron28/UniPM/actions/runs/39408165969)) and
+staging head `1266887`
+([run](https://github.com/lucifron28/UniPM/actions/runs/39408183632)).
 
 ## Preventive Maintenance Schedules
 
