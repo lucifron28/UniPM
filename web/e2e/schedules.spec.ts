@@ -955,6 +955,7 @@ test.describe('Schedule workflows', () => {
               inspectorDisplayName: null,
               assignmentLocked: false,
               supervisorOwnershipIsConsistent: true,
+              buildings: ['Main Building'],
               representativeSchedule: schedule,
             },
           ],

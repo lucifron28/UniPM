@@ -1,14 +1,25 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
+import {
+  assignScheduleBatchSupervisor,
+  assignScheduleBatchWorker,
+  getListScheduleRegistryQueryKey,
+  getListSchedulesQueryKey,
+} from '@/api/generated/endpoints'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import {
+  SearchableOptionInput,
+  type SearchableOption,
+} from '@/components/ui/searchable-option-input'
+import { SearchablePicker } from '@/components/ui/searchable-picker'
 import {
   categoryLabel,
   formatAssetCategory,
 } from '@/features/assets/asset-presentation'
 import { useCurrentUser } from '@/features/auth/current-user'
-import { ScheduleBatchAssignment } from '@/features/schedules/schedule-batch-assignment'
 import {
   type Schedule,
   type ScheduleAssignmentQueueBatch,
@@ -16,6 +27,8 @@ import {
 import {
   useScheduleAssignmentBatches,
   useScheduleRegistryOptions,
+  useScheduleSupervisorAssignmentOptions,
+  useScheduleWorkerAssignmentOptions,
 } from '@/features/schedules/schedule-queries'
 import {
   formatPmCycle,
@@ -27,6 +40,13 @@ import type { ScheduleSearch } from '@/features/schedules/schedule-registry'
 type ScheduleBatch = ScheduleAssignmentQueueBatch & {
   id: string
   representative: Schedule
+}
+
+type AssignmentResult = {
+  attemptedBatchCount: number
+  assignedBatchIds: string[]
+  failedBatchIds: string[]
+  assignedScheduleCount: number
 }
 
 export function ScheduleAssignmentQueue({
@@ -41,6 +61,16 @@ export function ScheduleAssignmentQueue({
   const currentUser = useCurrentUser()
   const currentYear = getCurrentManilaYear()
   const selectedYear = search.year ?? currentYear
+  const [buildingFilter, setBuildingFilter] = useState('')
+  const [selection, setSelection] = useState<{
+    scopeKey: string
+    batchIds: string[]
+  }>({ scopeKey: '', batchIds: [] })
+  const [assignmentDialogOpen, setAssignmentDialogOpen] = useState(false)
+  const [assignmentDialogBatches, setAssignmentDialogBatches] = useState<
+    ScheduleBatch[] | null
+  >(null)
+  const [assignmentNotice, setAssignmentNotice] = useState('')
   const assignmentScopeKey = [
     role,
     selectedYear,
@@ -48,13 +78,11 @@ export function ScheduleAssignmentQueue({
     search.department ?? '',
     search.pmCycle ?? '',
     search.assignmentFilter ?? '',
+    buildingFilter,
   ].join('|')
-  const [selectedBatch, setSelectedBatch] = useState<{
-    id: string
-    scopeKey: string
-  } | null>(null)
-  const selectedBatchId =
-    selectedBatch?.scopeKey === assignmentScopeKey ? selectedBatch.id : null
+  const selectedBatchIds = new Set(
+    selection.scopeKey === assignmentScopeKey ? selection.batchIds : [],
+  )
   const options = useScheduleRegistryOptions({
     ...(search.assetCategory ? { assetCategory: search.assetCategory } : {}),
     ...(search.department ? { department: search.department } : {}),
@@ -113,7 +141,7 @@ export function ScheduleAssignmentQueue({
       representative: batch.representativeSchedule,
     }),
   )
-  const visibleBatches = batches
+  const eligibleBatches = batches
     .filter((batch) => !batch.assignmentLocked)
     .filter((batch) => batch.unfinishedScheduleCount > 0)
     .filter((batch) =>
@@ -132,19 +160,98 @@ export function ScheduleAssignmentQueue({
         left.assetCategory.localeCompare(right.assetCategory)
       )
     })
+  const buildingNames = [
+    ...new Set(eligibleBatches.flatMap((batch) => batch.buildings)),
+  ].sort((left, right) => left.localeCompare(right))
+  const buildingOptions = buildingNames.map((building) => ({
+    value: building,
+    label: building,
+  }))
+  const visibleBatches = eligibleBatches.filter(
+    (batch) =>
+      !buildingFilter ||
+      batch.buildings.some(
+        (building) =>
+          building.toLocaleLowerCase() === buildingFilter.toLocaleLowerCase(),
+      ),
+  )
+  const selectedBatches = visibleBatches.filter((batch) =>
+    selectedBatchIds.has(batch.id),
+  )
   const visibleScheduleCount = visibleBatches.reduce(
     (total, batch) => total + batch.unfinishedScheduleCount,
     0,
   )
+  const selectedScheduleCount = selectedBatches.reduce(
+    (total, batch) => total + batch.scheduleCount,
+    0,
+  )
+  const allVisibleSelected =
+    visibleBatches.length > 0 &&
+    visibleBatches.every((batch) => selectedBatchIds.has(batch.id))
+
+  const clearSelection = () =>
+    setSelection({ scopeKey: assignmentScopeKey, batchIds: [] })
 
   const updateFilters = (patch: Partial<ScheduleSearch>) => {
-    setSelectedBatch(null)
+    clearSelection()
+    setBuildingFilter('')
+    setAssignmentDialogOpen(false)
+    setAssignmentDialogBatches(null)
+    setAssignmentNotice('')
     onSearchChange({
       ...search,
       ...patch,
       view: 'assignments',
       page: undefined,
     })
+  }
+
+  const updateBuildingFilter = (building: string) => {
+    setBuildingFilter(building)
+    clearSelection()
+    setAssignmentDialogOpen(false)
+    setAssignmentDialogBatches(null)
+    setAssignmentNotice('')
+  }
+
+  const toggleBatch = (batchId: string, checked: boolean) => {
+    const next = new Set(selectedBatchIds)
+    if (checked) next.add(batchId)
+    else next.delete(batchId)
+    setSelection({ scopeKey: assignmentScopeKey, batchIds: [...next] })
+    setAssignmentNotice('')
+  }
+
+  const selectAllVisible = (checked: boolean) => {
+    setSelection({
+      scopeKey: assignmentScopeKey,
+      batchIds: checked ? visibleBatches.map((batch) => batch.id) : [],
+    })
+    setAssignmentNotice('')
+  }
+
+  const openSingleBatchAssignment = (batchId: string) => {
+    const batch = visibleBatches.find((item) => item.id === batchId)
+    if (!batch) return
+    setSelection({ scopeKey: assignmentScopeKey, batchIds: [batch.id] })
+    setAssignmentDialogBatches([batch])
+    setAssignmentNotice('')
+    setAssignmentDialogOpen(true)
+  }
+
+  const handleAssignmentComplete = (result: AssignmentResult) => {
+    setSelection({
+      scopeKey: assignmentScopeKey,
+      batchIds: result.failedBatchIds,
+    })
+    setAssignmentDialogOpen(false)
+    setAssignmentDialogBatches(null)
+    setAssignmentNotice(
+      result.failedBatchIds.length === 0
+        ? `${role === 'GSD' ? 'Supervisor' : 'Inspector'} assigned to ${result.assignedBatchIds.length} ${result.assignedBatchIds.length === 1 ? 'batch' : 'batches'} (${result.assignedScheduleCount} schedules).`
+        : `${result.assignedBatchIds.length} of ${result.attemptedBatchCount} batches assigned. ${result.failedBatchIds.length} failed; review the refreshed queue.`,
+    )
   }
 
   return (
@@ -160,17 +267,17 @@ export function ScheduleAssignmentQueue({
           id="schedule-assignment-queue-title"
           className="mt-1 text-3xl font-bold tracking-tight text-[var(--text-primary)]"
         >
-          {role === 'GSD' ? 'PM schedule batches' : 'My assigned batches'}
+          {role === 'GSD' ? 'Supervisor Assignments' : 'Inspector Assignments'}
         </h1>
         <p className="mt-2 max-w-3xl text-[var(--text-secondary)]">
           {role === 'GSD'
-            ? 'Review current-year batches by department, asset category, and PM month. Assign a Supervisor to an eligible batch.'
-            : 'Review your batches and assign an Inspector to a batch that has not started inspection work.'}
+            ? 'Assign Supervisors to pending PM batches.'
+            : 'Assign Inspectors to your pending PM batches.'}
         </p>
       </div>
 
       <Card className="content-card space-y-3 p-4">
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
           <label className="grid gap-1 text-sm font-medium text-[var(--text-primary)]">
             Year
             <select
@@ -258,8 +365,26 @@ export function ScheduleAssignmentQueue({
               ))}
             </select>
           </label>
+          <SearchablePicker
+            id="assignment-building-filter"
+            label="Building"
+            value={buildingFilter || undefined}
+            options={buildingOptions}
+            allLabel="All buildings"
+            placeholder="Search buildings"
+            description="A matching building shows the complete PM batch."
+            disabled={assignmentsUnavailable || scheduleBatches.isError}
+            loading={scheduleBatches.isPending}
+            onChange={(value) => updateBuildingFilter(value ?? '')}
+          />
         </div>
       </Card>
+
+      {assignmentNotice && (
+        <Card role="status" className="p-3 text-sm shadow-none">
+          {assignmentNotice}
+        </Card>
+      )}
 
       {options.isError && (
         <Card role="alert" className="border-[var(--error)] p-4 shadow-none">
@@ -327,19 +452,58 @@ export function ScheduleAssignmentQueue({
               {assignmentRefreshMessage}
             </Card>
           )}
-          <p className="text-sm text-[var(--text-secondary)]">
-            {visibleBatches.length} batch
-            {visibleBatches.length === 1 ? '' : 'es'} · {visibleScheduleCount}{' '}
-            schedules in view
-          </p>
+          <div className="flex flex-col justify-between gap-3 rounded-lg border border-[var(--border-soft)] bg-white p-3 sm:flex-row sm:items-center">
+            <div className="flex items-center gap-3">
+              <input
+                aria-label="Select all visible batches"
+                type="checkbox"
+                checked={allVisibleSelected}
+                disabled={assignmentsUnavailable}
+                onChange={(event) => selectAllVisible(event.target.checked)}
+                className="size-4 accent-[var(--primary)]"
+              />
+              <p className="text-sm text-[var(--text-secondary)]">
+                {visibleBatches.length} pending batch
+                {visibleBatches.length === 1 ? '' : 'es'} ·{' '}
+                {visibleScheduleCount} unfinished schedules
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={assignmentsUnavailable || visibleBatches.length === 0}
+                onClick={() => selectAllVisible(!allVisibleSelected)}
+              >
+                {allVisibleSelected
+                  ? 'Clear visible selection'
+                  : 'Select all visible'}
+              </Button>
+              {selectedBatches.length > 0 && (
+                <>
+                  <span className="text-sm font-medium">
+                    {selectedBatches.length} selected · {selectedScheduleCount}{' '}
+                    schedules
+                  </span>
+                  <Button
+                    type="button"
+                    disabled={assignmentsUnavailable}
+                    onClick={() => {
+                      setAssignmentDialogBatches(selectedBatches)
+                      setAssignmentDialogOpen(true)
+                    }}
+                  >
+                    Assign {role === 'GSD' ? 'Supervisor' : 'Inspector'} to{' '}
+                    {selectedBatches.length}{' '}
+                    {selectedBatches.length === 1 ? 'batch' : 'batches'}
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
+
           {visibleBatches.map((batch) => {
-            const isSelected = selectedBatchId === batch.id
-            const needsInspector = batch.inspectorState !== 'Assigned'
-            const canAssign =
-              !batch.assignmentLocked &&
-              (role === 'GSD' ||
-                (batch.supervisorOwnershipIsConsistent &&
-                  batch.supervisorUserId === currentUser.data?.id))
+            const isSelected = selectedBatchIds.has(batch.id)
             const supervisorName =
               batch.supervisorState === 'Assigned' && batch.supervisorUserId
                 ? role === 'Supervisor' &&
@@ -355,45 +519,40 @@ export function ScheduleAssignmentQueue({
             return (
               <Card key={batch.id} className="space-y-3 p-4 shadow-none">
                 <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
-                  <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h2 className="font-semibold text-[var(--text-primary)]">
-                        {batch.department} ·{' '}
-                        {formatAssetCategory(batch.assetCategory)}
-                      </h2>
-                      {role === 'Supervisor' && (
-                        <Badge variant={needsInspector ? 'warning' : 'success'}>
-                          {needsInspector
-                            ? 'Needs Inspector'
-                            : 'Inspector assigned'}
-                        </Badge>
-                      )}
+                  <div className="flex items-start gap-3">
+                    <input
+                      aria-label={`Select ${batch.department} ${formatAssetCategory(batch.assetCategory)} ${formatPmCycle(batch.pmCycle)} batch`}
+                      type="checkbox"
+                      checked={isSelected}
+                      disabled={assignmentsUnavailable}
+                      onChange={(event) =>
+                        toggleBatch(batch.id, event.target.checked)
+                      }
+                      className="mt-1 size-4 shrink-0 accent-[var(--primary)]"
+                    />
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h2 className="font-semibold text-[var(--text-primary)]">
+                          {batch.department} ·{' '}
+                          {formatAssetCategory(batch.assetCategory)}
+                        </h2>
+                        {role === 'Supervisor' && (
+                          <Badge variant="warning">Needs Inspector</Badge>
+                        )}
+                      </div>
+                      <p className="mt-1 text-sm text-[var(--text-secondary)]">
+                        {formatPmCycle(batch.pmCycle)} · Due{' '}
+                        {formatPmCycleDueDate(batch.pmCycle)}
+                      </p>
                     </div>
-                    <p className="mt-1 text-sm text-[var(--text-secondary)]">
-                      {formatPmCycle(batch.pmCycle)} · Due{' '}
-                      {formatPmCycleDueDate(batch.pmCycle)}
-                    </p>
                   </div>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-2 pl-7 sm:pl-0">
                     <Button
                       type="button"
-                      variant={isSelected ? 'secondary' : 'primary'}
-                      disabled={
-                        assignmentsUnavailable || (!canAssign && !isSelected)
-                      }
-                      onClick={() =>
-                        setSelectedBatch(
-                          isSelected
-                            ? null
-                            : { id: batch.id, scopeKey: assignmentScopeKey },
-                        )
-                      }
+                      disabled={assignmentsUnavailable}
+                      onClick={() => openSingleBatchAssignment(batch.id)}
                     >
-                      {isSelected
-                        ? 'Close assignment'
-                        : role === 'GSD'
-                          ? 'Assign Supervisor'
-                          : 'Assign Inspector'}
+                      Assign {role === 'GSD' ? 'Supervisor' : 'Inspector'}
                     </Button>
                     {assignmentsUnavailable ? (
                       <Button variant="secondary" disabled>
@@ -419,7 +578,17 @@ export function ScheduleAssignmentQueue({
                   </div>
                 </div>
 
-                <dl className="grid gap-3 text-sm sm:grid-cols-2 xl:grid-cols-4">
+                <dl className="grid gap-3 text-sm sm:grid-cols-2 xl:grid-cols-5">
+                  <div>
+                    <dt className="text-xs font-semibold text-[var(--text-neutral)]">
+                      Buildings
+                    </dt>
+                    <dd className="mt-0.5 font-medium">
+                      {batch.buildings.length > 0
+                        ? batch.buildings.join(', ')
+                        : 'Not recorded'}
+                    </dd>
+                  </div>
                   <div>
                     <dt className="text-xs font-semibold text-[var(--text-neutral)]">
                       Schedules completed
@@ -449,50 +618,298 @@ export function ScheduleAssignmentQueue({
                     <dd className="mt-0.5 font-medium">{inspectorName}</dd>
                   </div>
                 </dl>
-
-                {batch.assignmentLocked && (
-                  <p
-                    role="status"
-                    className="text-sm text-[var(--text-secondary)]"
-                  >
-                    Assignment is locked because inspection work has started or
-                    a schedule is completed or cancelled.
-                  </p>
-                )}
-                {role === 'Supervisor' &&
-                  !batch.supervisorOwnershipIsConsistent && (
-                    <p
-                      role="status"
-                      className="text-sm text-[var(--text-secondary)]"
-                    >
-                      This batch has inconsistent Supervisor assignments. Ask
-                      GSD to review it.
-                    </p>
-                  )}
-
-                {isSelected && canAssign && !assignmentsUnavailable && (
-                  <ScheduleBatchAssignment
-                    key={`${batch.id}-${batch.supervisorUserId ?? ''}-${batch.inspectorUserId ?? ''}`}
-                    schedule={batch.representative}
-                    canAssignSupervisor={role === 'GSD'}
-                    canAssignWorker={role === 'Supervisor'}
-                    hasSupervisorRole={role === 'Supervisor'}
-                    supervisorAssignmentIsMixed={
-                      batch.supervisorState === 'Partially assigned' ||
-                      batch.supervisorState === 'Mixed'
-                    }
-                    inspectorAssignmentIsMixed={
-                      batch.inspectorState === 'Partially assigned' ||
-                      batch.inspectorState === 'Mixed'
-                    }
-                    knownBatchScheduleCount={batch.scheduleCount}
-                  />
-                )}
               </Card>
             )
           })}
         </div>
       )}
+
+      {assignmentDialogOpen &&
+        assignmentDialogBatches &&
+        assignmentDialogBatches.length > 0 && (
+          <ScheduleBatchAssignmentDialog
+            key={`${assignmentScopeKey}-${assignmentDialogBatches.map((batch) => batch.id).join(',')}`}
+            batches={assignmentDialogBatches}
+            role={role}
+            onClose={() => {
+              setAssignmentDialogOpen(false)
+              setAssignmentDialogBatches(null)
+            }}
+            onComplete={handleAssignmentComplete}
+          />
+        )}
     </section>
+  )
+}
+
+function ScheduleBatchAssignmentDialog({
+  batches,
+  role,
+  onClose,
+  onComplete,
+}: {
+  batches: ScheduleBatch[]
+  role: 'GSD' | 'Supervisor'
+  onClose: () => void
+  onComplete: (result: AssignmentResult) => void
+}) {
+  const dialogRef = useRef<HTMLDialogElement>(null)
+  const queryClient = useQueryClient()
+  const [search, setSearch] = useState('')
+  const [selectedUserId, setSelectedUserId] = useState('')
+  const [isSaving, setIsSaving] = useState(false)
+  const supervisors = useScheduleSupervisorAssignmentOptions(
+    role === 'GSD',
+    search,
+    selectedUserId || undefined,
+  )
+  const inspectors = useScheduleWorkerAssignmentOptions(
+    role === 'Supervisor',
+    search,
+    selectedUserId || undefined,
+  )
+  const isGsd = role === 'GSD'
+  const optionQuery = isGsd ? supervisors : inspectors
+  const people = isGsd
+    ? (supervisors.data?.supervisors ?? [])
+    : (inspectors.data?.workers ?? [])
+  const selectedPerson = isGsd
+    ? supervisors.data?.selected
+    : inspectors.data?.selected
+  const peopleWithSelection =
+    selectedPerson && !people.some((person) => person.id === selectedPerson.id)
+      ? [selectedPerson, ...people]
+      : people
+  const nameCounts = new Map<string, number>()
+  for (const person of peopleWithSelection) {
+    nameCounts.set(
+      person.displayName,
+      (nameCounts.get(person.displayName) ?? 0) + 1,
+    )
+  }
+  const personOptions: SearchableOption[] = peopleWithSelection.map(
+    (person) => ({
+      value: person.id,
+      label:
+        nameCounts.get(person.displayName) === 1
+          ? person.displayName
+          : `${person.displayName} · …${person.id.slice(-4)}`,
+    }),
+  )
+  const selectedOption = personOptions.find(
+    (option) => option.value === selectedUserId,
+  )
+  const totalScheduleCount = batches.reduce(
+    (total, batch) => total + batch.scheduleCount,
+    0,
+  )
+  const title = `Assign ${isGsd ? 'Supervisor' : 'Inspector'} to ${batches.length} ${batches.length === 1 ? 'batch' : 'batches'}`
+
+  useEffect(() => {
+    const dialog = dialogRef.current
+    if (!dialog || dialog.open) return
+
+    dialog.showModal()
+    return () => {
+      if (dialog.open) dialog.close()
+    }
+  }, [])
+
+  const handlePersonChange = (value: string) => {
+    setSearch(value)
+    const match = personOptions.find(
+      (option) =>
+        option.label.toLocaleLowerCase() === value.trim().toLocaleLowerCase(),
+    )
+    setSelectedUserId(match?.value ?? '')
+  }
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (!selectedUserId || !selectedOption || isSaving) return
+
+    setIsSaving(true)
+    const assignedBatchIds: string[] = []
+    const failedBatchIds: string[] = []
+    let assignedScheduleCount = 0
+    try {
+      for (const batch of batches) {
+        try {
+          const result = isGsd
+            ? await assignScheduleBatchSupervisor(batch.representative.id, {
+                supervisorUserId: selectedUserId,
+              })
+            : await assignScheduleBatchWorker(batch.representative.id, {
+                workerUserId: selectedUserId,
+              })
+          assignedBatchIds.push(batch.id)
+          assignedScheduleCount += result.scheduleIds.length
+        } catch {
+          failedBatchIds.push(batch.id)
+        }
+      }
+
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: getListSchedulesQueryKey(),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: getListScheduleRegistryQueryKey(),
+        }),
+      ])
+      onComplete({
+        attemptedBatchCount: batches.length,
+        assignedBatchIds,
+        failedBatchIds,
+        assignedScheduleCount,
+      })
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  return (
+    <dialog
+      ref={dialogRef}
+      aria-labelledby="schedule-batch-assignment-dialog-title"
+      className="m-auto max-h-[min(90vh,52rem)] w-[calc(100%-2rem)] max-w-2xl overflow-y-auto rounded-xl border border-[var(--border-soft)] bg-white p-0 text-[var(--text-primary)] shadow-2xl backdrop:bg-black/45"
+      onCancel={(event) => {
+        event.preventDefault()
+        if (!isSaving) onClose()
+      }}
+      onClick={(event) => {
+        if (event.target === event.currentTarget && !isSaving) onClose()
+      }}
+    >
+      <header className="flex items-start justify-between gap-4 border-b border-[var(--border-soft)] p-5">
+        <div>
+          <h2
+            id="schedule-batch-assignment-dialog-title"
+            className="text-xl font-bold"
+          >
+            {title}
+          </h2>
+          <p className="mt-1 text-sm text-[var(--text-secondary)]">
+            {batches.length} canonical PM{' '}
+            {batches.length === 1 ? 'batch' : 'batches'}
+            {' · '}
+            {totalScheduleCount} schedules in selected scope
+          </p>
+        </div>
+        <Button
+          autoFocus
+          variant="secondary"
+          disabled={isSaving}
+          onClick={onClose}
+        >
+          Close
+        </Button>
+      </header>
+      <form onSubmit={handleSubmit} className="space-y-4 p-5">
+        <div>
+          <SearchableOptionInput
+            id="assignment-target-person"
+            label={`Search active ${isGsd ? 'Supervisor' : 'Inspector'}`}
+            value={search || selectedOption?.label || ''}
+            options={personOptions}
+            disabled={isSaving}
+            placeholder={`Type a ${isGsd ? 'Supervisor' : 'Inspector'} name`}
+            helperText={`Choose one active ${isGsd ? 'Supervisor' : 'Inspector'} for every selected batch.`}
+            onChange={handlePersonChange}
+          />
+          {optionQuery.isPending ? (
+            <p
+              role="status"
+              className="mt-2 text-xs text-[var(--text-secondary)]"
+            >
+              Loading eligible {isGsd ? 'Supervisors' : 'Inspectors'}…
+            </p>
+          ) : optionQuery.isError ? (
+            <div
+              role="alert"
+              className="mt-2 flex items-center gap-2 text-sm text-[var(--error)]"
+            >
+              <span>Eligible accounts could not be loaded.</span>
+              <button
+                type="button"
+                disabled={optionQuery.isFetching || isSaving}
+                onClick={() => void optionQuery.refetch()}
+                className="font-semibold underline underline-offset-2"
+              >
+                Retry
+              </button>
+            </div>
+          ) : optionQuery.isFetching ? (
+            <p
+              role="status"
+              className="mt-2 text-xs text-[var(--text-secondary)]"
+            >
+              Searching eligible accounts…
+            </p>
+          ) : people.length === 0 ? (
+            <p
+              role="status"
+              className="mt-2 text-xs text-[var(--text-secondary)]"
+            >
+              No active matches. Search by name or ask an administrator to check
+              the account.
+            </p>
+          ) : null}
+        </div>
+
+        <section aria-label="Selected batch scope" className="space-y-2">
+          <div className="flex items-baseline justify-between gap-3">
+            <h3 className="font-semibold">Review selected batches</h3>
+            <p className="text-xs text-[var(--text-secondary)]">
+              Assignment stays grouped by department, category, and PM cycle.
+            </p>
+          </div>
+          <ul className="max-h-64 space-y-2 overflow-y-auto rounded-lg border border-[var(--border-soft)] p-3">
+            {batches.map((batch) => (
+              <li
+                key={batch.id}
+                className="border-b border-[var(--border-soft)] pb-2 last:border-0 last:pb-0"
+              >
+                <p className="text-sm font-medium">
+                  {batch.department} ·{' '}
+                  {formatAssetCategory(batch.assetCategory)} ·{' '}
+                  {formatPmCycle(batch.pmCycle)}
+                </p>
+                <p className="mt-1 text-xs text-[var(--text-secondary)]">
+                  {batch.buildings.length > 1
+                    ? `This batch spans ${batch.buildings.length} buildings. Assignment applies to all ${batch.scheduleCount} schedules.`
+                    : `Assignment applies to all ${batch.scheduleCount} schedules in this batch.`}
+                  {batch.buildings.length > 0 &&
+                    ` Buildings: ${batch.buildings.join(', ')}.`}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <div className="flex flex-wrap justify-end gap-2 border-t border-[var(--border-soft)] pt-4">
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={isSaving}
+            onClick={onClose}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            disabled={
+              isSaving ||
+              optionQuery.isFetching ||
+              optionQuery.isError ||
+              !selectedUserId ||
+              !selectedOption
+            }
+          >
+            {isSaving ? 'Assigning batches…' : title}
+          </Button>
+        </div>
+      </form>
+    </dialog>
   )
 }

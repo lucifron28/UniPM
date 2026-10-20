@@ -75,6 +75,7 @@ public sealed class ScheduleBatchAssignmentEndpointsTests
             batch.Department.Equals("CCMS", StringComparison.OrdinalIgnoreCase)
             && batch.PmCycle == "2026-08");
         Assert.Equal(3, gsdAugustBatch.ScheduleCount);
+        Assert.Equal(new[] { "Annex", "Library", "Main Building" }, gsdAugustBatch.Buildings);
         Assert.Equal("Mixed", gsdAugustBatch.SupervisorState);
         Assert.Null(gsdAugustBatch.SupervisorUserId);
         Assert.Null(gsdAugustBatch.SupervisorDisplayName);
@@ -719,6 +720,7 @@ public sealed class ScheduleBatchAssignmentEndpointsTests
         string? InspectorDisplayName,
         bool AssignmentLocked,
         bool SupervisorOwnershipIsConsistent,
+        IReadOnlyList<string> Buildings,
         ScheduleResponse RepresentativeSchedule);
     private sealed record AssignmentResponse(
         string Department,

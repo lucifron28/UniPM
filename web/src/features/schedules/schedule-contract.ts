@@ -113,6 +113,7 @@ const scheduleAssignmentQueueBatchSchema = z
     inspectorDisplayName: z.string().nullable(),
     assignmentLocked: z.boolean(),
     supervisorOwnershipIsConsistent: z.boolean(),
+    buildings: z.array(z.string().trim().min(1).max(256)),
     representativeSchedule: scheduleSchema,
   })
   .strict()

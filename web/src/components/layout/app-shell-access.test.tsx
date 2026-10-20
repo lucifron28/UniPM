@@ -377,6 +377,7 @@ describe('app shell role access and layout', () => {
         inspectorDisplayName: null,
         assignmentLocked: false,
         supervisorOwnershipIsConsistent: true,
+        buildings: [`${department} Building`],
         representativeSchedule: {
           id: scheduleId,
           assetId,
