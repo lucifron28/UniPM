@@ -32,4 +32,6 @@ export interface ScheduleAssignmentQueueBatchResponse {
   assignmentLocked: boolean
   supervisorOwnershipIsConsistent: boolean
   representativeSchedule: ScheduleResponse
+  /** @pattern ^-?(?:0|[1-9]\d*)$ */
+  unfinishedScheduleCount: number | string
 }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { PageHeading } from '@/components/layout/page-heading'
 import { Link } from '@tanstack/react-router'
 import {
@@ -43,6 +43,7 @@ import {
 } from '@/features/schedules/schedule-queries'
 import { ScheduleEnrollmentDeferralReview } from '@/features/schedules/schedule-enrollment-deferral-review'
 import { ScheduleCoverageReview } from '@/features/schedules/schedule-coverage-review'
+import { ScheduleBatchReassignmentDialog } from '@/features/schedules/schedule-batch-reassignment-dialog'
 import {
   fromDateTimeLocal,
   formatPmCycle,
@@ -86,7 +87,11 @@ function statusVariant(
   return 'neutral'
 }
 
-const createColumns = (search: ScheduleSearch) => [
+const createColumns = (
+  search: ScheduleSearch,
+  canReassign: boolean,
+  onReassign: (schedule: ScheduleRegistryItem) => void,
+) => [
   columnHelper.accessor('asset', {
     header: 'Asset',
     cell: ({ row }) => (
@@ -155,17 +160,29 @@ const createColumns = (search: ScheduleSearch) => [
     id: 'action',
     header: 'Action',
     cell: ({ row }) => (
-      <Link
-        to="/app/schedules/$scheduleId"
-        params={{ scheduleId: row.original.id }}
-        search={{
-          ...search,
-          returnContext: { kind: 'scheduleRegistry', search },
-        }}
-        className="font-semibold text-[var(--primary)] hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
-      >
-        View details
-      </Link>
+      <div className="flex flex-wrap items-center gap-3">
+        <Link
+          to="/app/schedules/$scheduleId"
+          params={{ scheduleId: row.original.id }}
+          search={{
+            ...search,
+            returnContext: { kind: 'scheduleRegistry', search },
+          }}
+          className="font-semibold text-[var(--primary)] hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
+        >
+          View details
+        </Link>
+        {canReassign && (
+          <Button
+            type="button"
+            variant="secondary"
+            className="min-h-8 px-2 text-xs"
+            onClick={() => onReassign(row.original)}
+          >
+            Reassign
+          </Button>
+        )}
+      </div>
     ),
   }),
 ]
@@ -181,6 +198,8 @@ export function ScheduleRegistry({
   ) => void
 }) {
   const currentUser = useCurrentUser()
+  const [reassignmentSchedule, setReassignmentSchedule] =
+    useState<ScheduleRegistryItem | null>(null)
   const scheduleGeneration = useGenerateSchedules()
   const currentManilaYear = getCurrentManilaYear()
   const [generationYear, setGenerationYear] = useState(() =>
@@ -271,6 +290,14 @@ export function ScheduleRegistry({
   ])
 
   const canGenerate = currentUser.data?.roles.includes('GSD') ?? false
+  const canReassign = Boolean(
+    currentUser.data?.roles.some(
+      (role) => role === 'GSD' || role === 'Supervisor',
+    ),
+  )
+  const openReassignment = useCallback((schedule: ScheduleRegistryItem) => {
+    setReassignmentSchedule(schedule)
+  }, [])
   const parsedGenerationYear = Number(generationYear)
   const generationYearIsValid =
     /^\d{4}$/.test(generationYear) && parsedGenerationYear === currentManilaYear
@@ -329,7 +356,10 @@ export function ScheduleRegistry({
     )
   }
 
-  const tableColumns = useMemo(() => createColumns(search), [search])
+  const tableColumns = useMemo(
+    () => createColumns(search, canReassign, openReassignment),
+    [canReassign, openReassignment, search],
+  )
 
   // TanStack Table intentionally exposes mutable table methods to the renderer.
   // eslint-disable-next-line react-hooks/incompatible-library
@@ -1205,6 +1235,15 @@ export function ScheduleRegistry({
                     >
                       View details
                     </Link>
+                    {canReassign && (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={() => openReassignment(schedule)}
+                      >
+                        Review assignment
+                      </Button>
+                    )}
                   </Card>
                 ))}
               </div>
@@ -1328,6 +1367,12 @@ export function ScheduleRegistry({
           <ScheduleCoverageReview />
           <ScheduleEnrollmentDeferralReview />
         </section>
+      )}
+      {reassignmentSchedule && (
+        <ScheduleBatchReassignmentDialog
+          schedule={reassignmentSchedule}
+          onClose={() => setReassignmentSchedule(null)}
+        />
       )}
     </section>
   )

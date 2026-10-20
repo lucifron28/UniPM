@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react'
 import { useState } from 'react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
@@ -15,6 +21,7 @@ import type { AssetResponse } from '@/api/generated/models'
 import { toast } from 'sonner'
 import { ScheduleCreate } from '@/features/schedules/schedule-create'
 import { ScheduleDetail } from '@/features/schedules/schedule-detail'
+import { ScheduleAssignmentQueue } from '@/features/schedules/schedule-assignment-queue'
 import {
   ScheduleRegistry,
   type ScheduleSearch,
@@ -153,6 +160,30 @@ function scheduleRegistryItem(item: typeof schedule) {
       department: item.asset.department,
       location: item.asset.location,
     },
+  }
+}
+
+function assignmentBatch(overrides: Record<string, unknown> = {}) {
+  return {
+    batchKey: 'GSD|fire-extinguisher|2026-08',
+    department: 'GSD',
+    assetCategory: 'fire-extinguisher',
+    pmCycle: '2026-08',
+    scheduleCount: 2,
+    unfinishedScheduleCount: 2,
+    completedCount: 0,
+    ongoingCount: 0,
+    overdueCount: 0,
+    supervisorState: 'Unassigned',
+    supervisorUserId: null,
+    supervisorDisplayName: null,
+    inspectorState: 'Unassigned',
+    inspectorUserId: null,
+    inspectorDisplayName: null,
+    assignmentLocked: false,
+    supervisorOwnershipIsConsistent: false,
+    representativeSchedule: schedule,
+    ...overrides,
   }
 }
 
@@ -318,6 +349,180 @@ describe('schedule workflows', () => {
   it('uses the Manila calendar year even before UTC reaches the new year', () => {
     expect(getCurrentManilaYear(new Date('2025-12-31T16:30:00.000Z'))).toBe(
       2026,
+    )
+  })
+
+  it('shows only unlocked, unassigned batches in the GSD assignment queue', async () => {
+    server.use(
+      http.get(`${base}/schedules/assignment-batches`, () =>
+        HttpResponse.json({
+          totalScheduleCount: 6,
+          batches: [
+            assignmentBatch(),
+            assignmentBatch({
+              batchKey: 'GSD|fire-extinguisher|2026-11',
+              pmCycle: '2026-11',
+              supervisorState: 'Assigned',
+              supervisorUserId: supervisorId,
+              supervisorDisplayName: 'Assigned Supervisor',
+            }),
+            assignmentBatch({
+              batchKey: 'GSD|fire-alarm|2026-12',
+              assetCategory: 'fire-alarm',
+              pmCycle: '2026-12',
+              assignmentLocked: true,
+            }),
+          ],
+        }),
+      ),
+    )
+
+    renderWithProviders(
+      <ScheduleAssignmentQueue
+        role="GSD"
+        search={{ view: 'assignments' }}
+        onSearchChange={vi.fn()}
+      />,
+    )
+
+    expect(await screen.findByText('GSD · Fire extinguishers')).toBeVisible()
+    expect(screen.getByText('1 batch · 2 schedules in view')).toBeVisible()
+    expect(screen.queryByText('Assigned Supervisor')).toBeNull()
+    expect(
+      screen.queryByText('Only show batches needing a Supervisor'),
+    ).toBeNull()
+  })
+
+  it('shows only the current Supervisor’s unlocked batches awaiting an Inspector', async () => {
+    mockReferences(['Supervisor'])
+    server.use(
+      http.get(`${base}/schedules/assignment-batches`, () =>
+        HttpResponse.json({
+          totalScheduleCount: 6,
+          batches: [
+            assignmentBatch({
+              supervisorState: 'Assigned',
+              supervisorUserId: user.id,
+              supervisorDisplayName: user.displayName,
+              supervisorOwnershipIsConsistent: true,
+            }),
+            assignmentBatch({
+              batchKey: 'Library|fire-extinguisher|2026-08',
+              department: 'Library',
+              supervisorState: 'Assigned',
+              supervisorUserId: supervisorId,
+              supervisorDisplayName: 'Another Supervisor',
+              supervisorOwnershipIsConsistent: true,
+            }),
+            assignmentBatch({
+              batchKey: 'GSD|fire-alarm|2026-12',
+              assetCategory: 'fire-alarm',
+              pmCycle: '2026-12',
+              supervisorState: 'Assigned',
+              supervisorUserId: user.id,
+              supervisorOwnershipIsConsistent: true,
+              assignmentLocked: true,
+            }),
+          ],
+        }),
+      ),
+    )
+
+    renderWithProviders(
+      <ScheduleAssignmentQueue
+        role="Supervisor"
+        search={{ view: 'assignments' }}
+        onSearchChange={vi.fn()}
+      />,
+    )
+
+    expect(await screen.findByText('GSD · Fire extinguishers')).toBeVisible()
+    expect(screen.getByText('1 batch · 2 schedules in view')).toBeVisible()
+    expect(screen.queryByText('Another Supervisor')).toBeNull()
+    expect(
+      screen.queryByText('Only show batches needing an Inspector'),
+    ).toBeNull()
+  })
+
+  it('reassigns the Supervisor from Schedule History with a reason', async () => {
+    let submittedBody: unknown
+    server.use(
+      ...scheduleRegistryHandlers(),
+      http.get(`${base}/schedules/assignment-batches`, () =>
+        HttpResponse.json({
+          totalScheduleCount: 2,
+          batches: [
+            assignmentBatch({
+              supervisorState: 'Assigned',
+              supervisorUserId: supervisorId,
+              supervisorDisplayName: 'Current Supervisor',
+              inspectorState: 'Assigned',
+              inspectorUserId: workerId,
+              inspectorDisplayName: 'Current Inspector',
+              unfinishedScheduleCount: 1,
+              completedCount: 1,
+              assignmentLocked: true,
+            }),
+          ],
+        }),
+      ),
+      http.put(
+        `${base}/schedules/${scheduleId}/supervisor-reassignment`,
+        async ({ request }) => {
+          submittedBody = await request.json()
+          return HttpResponse.json({
+            department: 'GSD',
+            assetCategory: 'fire-extinguisher',
+            pmCycle: '2026-08',
+            workerUserId: workerId,
+            workerDisplayName: 'Current Inspector',
+            supervisorUserId: supervisorId,
+            supervisorDisplayName: 'Fictional Supervisor',
+            scheduleIds: [scheduleId],
+          })
+        },
+      ),
+    )
+
+    renderWithProviders(
+      <ScheduleRegistry search={{ page: 1 }} onSearchChange={vi.fn()} />,
+    )
+    const actor = userEvent.setup()
+    await actor.click(
+      (await screen.findAllByRole('button', { name: 'Reassign' }))[0]!,
+    )
+    const dialog = await screen.findByRole('dialog')
+    expect(
+      await within(dialog).findByText('Current Supervisor', { selector: 'dd' }),
+    ).toBeVisible()
+    expect(
+      within(dialog).getByText('Current Inspector', { selector: 'dd' }),
+    ).toBeVisible()
+    expect(within(dialog).getByText('1', { selector: 'dd' })).toBeVisible()
+    await actor.click(
+      screen.getByRole('button', { name: 'Reassign Supervisor' }),
+    )
+    const replacement = screen.getByRole('combobox', {
+      name: 'Replacement Supervisor',
+    })
+    await actor.type(replacement, 'Fictional Supervisor')
+    const reasonInput = screen.getByRole('textbox', {
+      name: 'Reason for reassignment',
+    })
+    await actor.clear(reasonInput)
+    await actor.type(reasonInput, 'Coverage change')
+    await actor.click(
+      screen.getByRole('button', { name: 'Confirm reassignment' }),
+    )
+
+    await waitFor(() =>
+      expect(submittedBody).toEqual({
+        assigneeUserId: supervisorId,
+        reason: 'Coverage change',
+      }),
+    )
+    expect(toast.success).toHaveBeenCalledWith(
+      'Supervisor reassigned for 1 unfinished schedule.',
     )
   })
 

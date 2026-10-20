@@ -1110,6 +1110,55 @@ namespace UniPM.Api.Migrations
                     b.ToTable("RefreshSessions", (string)null);
                 });
 
+            modelBuilder.Entity("UniPM.Api.Models.ScheduleAssignmentReassignmentAudit", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("AssignmentRole")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)");
+
+                    b.Property<DateTimeOffset>("ChangedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("ChangedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("NewAssigneeUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("PreviousAssigneeUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<Guid>("ScheduleId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ChangedByUserId");
+
+                    b.HasIndex("NewAssigneeUserId");
+
+                    b.HasIndex("PreviousAssigneeUserId");
+
+                    b.HasIndex("ScheduleId", "ChangedAt");
+
+                    b.ToTable("ScheduleAssignmentReassignmentAudits", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_ScheduleAssignmentReassignmentAudits_AssignmentRole_Allowed", "[AssignmentRole] IN ('Supervisor', 'Inspector')");
+
+                            t.HasCheckConstraint("CK_ScheduleAssignmentReassignmentAudits_Reason_NotBlank", "LEN(LTRIM(RTRIM([Reason]))) > 0");
+                        });
+                });
+
             modelBuilder.Entity("UniPM.Api.Models.ScheduleEnrollmentDeferral", b =>
                 {
                     b.Property<Guid>("AssetId")
@@ -1392,6 +1441,32 @@ namespace UniPM.Api.Migrations
                     b.Navigation("ReplacedBySession");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("UniPM.Api.Models.ScheduleAssignmentReassignmentAudit", b =>
+                {
+                    b.HasOne("UniPM.Api.Models.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("ChangedByUserId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("UniPM.Api.Models.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("NewAssigneeUserId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("UniPM.Api.Models.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("PreviousAssigneeUserId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
+                    b.HasOne("UniPM.Api.Models.PreventiveMaintenanceSchedule", null)
+                        .WithMany()
+                        .HasForeignKey("ScheduleId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("UniPM.Api.Models.ScheduleEnrollmentDeferral", b =>

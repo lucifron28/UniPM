@@ -101,6 +101,7 @@ const scheduleAssignmentQueueBatchSchema = z
     assetCategory: z.enum(assetCategoryCodes),
     pmCycle: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/),
     scheduleCount: z.number().int().nonnegative(),
+    unfinishedScheduleCount: z.number().int().nonnegative(),
     completedCount: z.number().int().nonnegative(),
     ongoingCount: z.number().int().nonnegative(),
     overdueCount: z.number().int().nonnegative(),
