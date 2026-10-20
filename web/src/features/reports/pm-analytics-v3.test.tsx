@@ -483,6 +483,7 @@ function makeInterpretation(
     clarificationFields: [],
     code: null,
     detail: null,
+    interpreter: 'DeterministicParser',
     ...overrides,
   }
 }
