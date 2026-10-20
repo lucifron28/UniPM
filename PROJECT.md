@@ -8,8 +8,8 @@
   `ConnectionStrings__DefaultConnection`, run
   `dotnet ef database update --project server`. Maintenance-history rebuild
   commands have been retired.
-- **Optional legacy Docker 2025 experiment**: `docker compose --env-file .env.sqlserver2025 -f docker-compose.sqlserver2025.yml up --build -d`
-- **Optional legacy Docker stop**: `docker compose --env-file .env.sqlserver2025 -f docker-compose.sqlserver2025.yml down`
+- **Optional legacy Docker 2025 experiment**: create the root `.env` from `.env.example` if needed, then run `docker compose --env-file .env -f docker-compose.sqlserver2025.yml up --build -d`.
+- **Optional legacy Docker stop**: `docker compose --env-file .env -f docker-compose.sqlserver2025.yml down`.
 
 ## Active Context
 

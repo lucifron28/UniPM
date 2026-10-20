@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [string]$OutputRoot = (Join-Path (Get-Location) 'artifacts/evidence'),
-    [string]$ComposeEnvironmentFile = '.env.sqlserver2025'
+    [string]$ComposeEnvironmentFile = '.env'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -163,7 +163,7 @@ try {
         Join-Path $repoRoot $ComposeEnvironmentFile
     }
     if (-not (Test-Path -LiteralPath $composeEnvironmentPath -PathType Leaf)) {
-        throw "Optional Compose environment file was not found: $composeEnvironmentPath. Copy .env.sqlserver2025.example to .env.sqlserver2025 or pass -ComposeEnvironmentFile <path>."
+        throw "Optional Compose environment file was not found: $composeEnvironmentPath. Copy .env.example to .env or pass -ComposeEnvironmentFile <path>."
     }
     $composeFilePath = Join-Path $repoRoot 'docker-compose.sqlserver2025.yml'
     $shortCommit = Invoke-GitValue @('rev-parse', '--short=12', 'HEAD')

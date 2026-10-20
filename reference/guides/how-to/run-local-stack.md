@@ -78,6 +78,18 @@ database command to simulate a fixture reset.
 
 ## Optional Legacy Docker Experiment
 
+Local API, web and optional Docker settings share the ignored repository-root
+`.env`. The root `.env.example` is the template; do not overwrite an existing
+configured file. Vite reads the root file but exposes only `VITE_` variables to
+browser code. Backend credentials must never use that prefix. Restart the web
+development server after changing its environment settings.
+
+`UNIPM_DOCKER_` overrides preserve settings that intentionally differ for the
+optional Docker stack. An omitted override inherits the ordinary setting; an
+explicit empty override stays empty. The Azure app-settings template is an
+operator reference, not another local environment file. These local changes do
+not update Azure secrets or deployment configuration automatically.
+
 The retained SQL Server 2025 Compose stack is optional historical development
 tooling. It is not the verified database baseline, is not required to run
 UniPM, and is not part of the IIS target deployment.
@@ -86,8 +98,9 @@ If that experiment is intentionally needed, copy the example environment file
 and pass it explicitly:
 
 ```powershell
-Copy-Item .env.sqlserver2025.example .env.sqlserver2025
-docker compose --env-file .env.sqlserver2025 -f docker-compose.sqlserver2025.yml config
+# Only if .env does not already exist:
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
+docker compose --env-file .env -f docker-compose.sqlserver2025.yml config
 ```
 
 Do not reuse a SQL Server 2019 data volume with the SQL Server 2025 experiment,
