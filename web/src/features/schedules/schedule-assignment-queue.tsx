@@ -55,10 +55,6 @@ export function ScheduleAssignmentQueue({
   } | null>(null)
   const selectedBatchId =
     selectedBatch?.scopeKey === assignmentScopeKey ? selectedBatch.id : null
-  const onlyNeedsSupervisor =
-    role === 'GSD' && search.assignmentFilter === 'needs-supervisor'
-  const onlyNeedsInspector =
-    role === 'Supervisor' && search.assignmentFilter === 'needs-inspector'
   const options = useScheduleRegistryOptions({
     ...(search.assetCategory ? { assetCategory: search.assetCategory } : {}),
     ...(search.department ? { department: search.department } : {}),
@@ -118,26 +114,18 @@ export function ScheduleAssignmentQueue({
     }),
   )
   const visibleBatches = batches
-    .filter(
-      (batch) =>
-        role !== 'GSD' ||
-        !onlyNeedsSupervisor ||
-        batch.supervisorState !== 'Assigned',
-    )
-    .filter(
-      (batch) =>
-        !onlyNeedsInspector ||
-        role !== 'Supervisor' ||
-        batch.inspectorState !== 'Assigned',
+    .filter((batch) => !batch.assignmentLocked)
+    .filter((batch) => batch.unfinishedScheduleCount > 0)
+    .filter((batch) =>
+      role === 'GSD'
+        ? batch.supervisorState === 'Unassigned' &&
+          batch.inspectorState === 'Unassigned'
+        : batch.supervisorState === 'Assigned' &&
+          batch.supervisorOwnershipIsConsistent &&
+          batch.supervisorUserId === currentUser.data?.id &&
+          batch.inspectorState === 'Unassigned',
     )
     .sort((left, right) => {
-      if (role === 'Supervisor') {
-        const leftNeedsInspector = left.inspectorState !== 'Assigned'
-        const rightNeedsInspector = right.inspectorState !== 'Assigned'
-        if (leftNeedsInspector !== rightNeedsInspector) {
-          return leftNeedsInspector ? -1 : 1
-        }
-      }
       return (
         left.pmCycle.localeCompare(right.pmCycle) ||
         left.department.localeCompare(right.department) ||
@@ -145,7 +133,7 @@ export function ScheduleAssignmentQueue({
       )
     })
   const visibleScheduleCount = visibleBatches.reduce(
-    (total, batch) => total + batch.scheduleCount,
+    (total, batch) => total + batch.unfinishedScheduleCount,
     0,
   )
 
@@ -271,38 +259,6 @@ export function ScheduleAssignmentQueue({
             </select>
           </label>
         </div>
-        {role === 'GSD' && (
-          <label className="inline-flex min-h-9 items-center gap-2 text-sm text-[var(--text-primary)]">
-            <input
-              type="checkbox"
-              checked={onlyNeedsSupervisor}
-              onChange={(event) =>
-                updateFilters({
-                  assignmentFilter: event.target.checked
-                    ? 'needs-supervisor'
-                    : undefined,
-                })
-              }
-            />
-            Only show batches needing a Supervisor
-          </label>
-        )}
-        {role === 'Supervisor' && (
-          <label className="inline-flex min-h-9 items-center gap-2 text-sm text-[var(--text-primary)]">
-            <input
-              type="checkbox"
-              checked={onlyNeedsInspector}
-              onChange={(event) =>
-                updateFilters({
-                  assignmentFilter: event.target.checked
-                    ? 'needs-inspector'
-                    : undefined,
-                })
-              }
-            />
-            Only show batches needing an Inspector
-          </label>
-        )}
       </Card>
 
       {options.isError && (
@@ -324,12 +280,8 @@ export function ScheduleAssignmentQueue({
       {scheduleBatches.isPending ? (
         <Card role="status" className="p-4 shadow-none">
           {role === 'GSD'
-            ? onlyNeedsSupervisor
-              ? 'Loading batches needing a Supervisor…'
-              : 'Loading schedule batches…'
-            : onlyNeedsInspector
-              ? 'Loading batches needing an Inspector…'
-              : 'Loading your assigned batches…'}
+            ? 'Loading batches ready for Supervisor assignment…'
+            : 'Loading batches ready for Inspector assignment…'}
         </Card>
       ) : scheduleBatches.isError ? (
         <Card role="alert" className="border-[var(--error)] p-4 shadow-none">
@@ -363,8 +315,8 @@ export function ScheduleAssignmentQueue({
               {assignmentsUnavailable
                 ? 'The selected batch results are updating. Assignment is temporarily unavailable.'
                 : role === 'GSD'
-                  ? 'No batches need a Supervisor for the selected filters.'
-                  : 'No batches assigned to you match the selected filters.'}
+                  ? 'No unassigned batches are eligible for a Supervisor in the selected filters.'
+                  : 'No batches assigned to you are eligible for an Inspector in the selected filters.'}
             </p>
           </Card>
         </>

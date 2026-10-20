@@ -91,6 +91,7 @@ import type {
   PreventiveMaintenanceAcknowledgementResponse,
   PreventiveMaintenanceFormResponse,
   ProblemDetails,
+  ReassignScheduleBatchDto,
   ScheduleAssignmentBatchResponse,
   ScheduleAssignmentQueueResponse,
   ScheduleCoverageReviewPage,
@@ -8462,6 +8463,186 @@ export const useInterpretPmAnalyticsQuestion = <
 > => {
   return useMutation(
     getInterpretPmAnalyticsQuestionMutationOptions(options),
+    queryClient,
+  )
+}
+
+/**
+ * @summary Reassigns a Supervisor for unfinished schedules in a PM batch
+ */
+export const reassignScheduleBatchSupervisor = (
+  id: string,
+  reassignScheduleBatchDto: ReassignScheduleBatchDto,
+  signal?: AbortSignal,
+) => {
+  return customInstance<ScheduleAssignmentBatchResponse>({
+    url: `/api/v1/schedules/${id}/supervisor-reassignment`,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    data: reassignScheduleBatchDto,
+    signal,
+  })
+}
+
+export const getReassignScheduleBatchSupervisorMutationOptions = <
+  TError = ValidationProblemDetails | void | ProblemDetails,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof reassignScheduleBatchSupervisor>>,
+    TError,
+    { id: string; data: ReassignScheduleBatchDto },
+    TContext
+  >
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof reassignScheduleBatchSupervisor>>,
+  TError,
+  { id: string; data: ReassignScheduleBatchDto },
+  TContext
+> => {
+  const mutationKey = ['reassignScheduleBatchSupervisor']
+  const { mutation: mutationOptions } = options
+    ? options.mutation &&
+      'mutationKey' in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey } }
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof reassignScheduleBatchSupervisor>>,
+    { id: string; data: ReassignScheduleBatchDto }
+  > = (props) => {
+    const { id, data } = props ?? {}
+
+    return reassignScheduleBatchSupervisor(id, data)
+  }
+
+  return { mutationFn, ...mutationOptions }
+}
+
+export type ReassignScheduleBatchSupervisorMutationResult = NonNullable<
+  Awaited<ReturnType<typeof reassignScheduleBatchSupervisor>>
+>
+export type ReassignScheduleBatchSupervisorMutationBody =
+  ReassignScheduleBatchDto
+export type ReassignScheduleBatchSupervisorMutationError =
+  ValidationProblemDetails | void | ProblemDetails
+
+/**
+ * @summary Reassigns a Supervisor for unfinished schedules in a PM batch
+ */
+export const useReassignScheduleBatchSupervisor = <
+  TError = ValidationProblemDetails | void | ProblemDetails,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof reassignScheduleBatchSupervisor>>,
+      TError,
+      { id: string; data: ReassignScheduleBatchDto },
+      TContext
+    >
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof reassignScheduleBatchSupervisor>>,
+  TError,
+  { id: string; data: ReassignScheduleBatchDto },
+  TContext
+> => {
+  return useMutation(
+    getReassignScheduleBatchSupervisorMutationOptions(options),
+    queryClient,
+  )
+}
+
+/**
+ * @summary Reassigns an Inspector for unfinished schedules in a PM batch
+ */
+export const reassignScheduleBatchInspector = (
+  id: string,
+  reassignScheduleBatchDto: ReassignScheduleBatchDto,
+  signal?: AbortSignal,
+) => {
+  return customInstance<ScheduleAssignmentBatchResponse>({
+    url: `/api/v1/schedules/${id}/inspector-reassignment`,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    data: reassignScheduleBatchDto,
+    signal,
+  })
+}
+
+export const getReassignScheduleBatchInspectorMutationOptions = <
+  TError = ValidationProblemDetails | void | ProblemDetails,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof reassignScheduleBatchInspector>>,
+    TError,
+    { id: string; data: ReassignScheduleBatchDto },
+    TContext
+  >
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof reassignScheduleBatchInspector>>,
+  TError,
+  { id: string; data: ReassignScheduleBatchDto },
+  TContext
+> => {
+  const mutationKey = ['reassignScheduleBatchInspector']
+  const { mutation: mutationOptions } = options
+    ? options.mutation &&
+      'mutationKey' in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey } }
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof reassignScheduleBatchInspector>>,
+    { id: string; data: ReassignScheduleBatchDto }
+  > = (props) => {
+    const { id, data } = props ?? {}
+
+    return reassignScheduleBatchInspector(id, data)
+  }
+
+  return { mutationFn, ...mutationOptions }
+}
+
+export type ReassignScheduleBatchInspectorMutationResult = NonNullable<
+  Awaited<ReturnType<typeof reassignScheduleBatchInspector>>
+>
+export type ReassignScheduleBatchInspectorMutationBody =
+  ReassignScheduleBatchDto
+export type ReassignScheduleBatchInspectorMutationError =
+  ValidationProblemDetails | void | ProblemDetails
+
+/**
+ * @summary Reassigns an Inspector for unfinished schedules in a PM batch
+ */
+export const useReassignScheduleBatchInspector = <
+  TError = ValidationProblemDetails | void | ProblemDetails,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof reassignScheduleBatchInspector>>,
+      TError,
+      { id: string; data: ReassignScheduleBatchDto },
+      TContext
+    >
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof reassignScheduleBatchInspector>>,
+  TError,
+  { id: string; data: ReassignScheduleBatchDto },
+  TContext
+> => {
+  return useMutation(
+    getReassignScheduleBatchInspectorMutationOptions(options),
     queryClient,
   )
 }

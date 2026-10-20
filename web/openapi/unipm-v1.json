@@ -3897,6 +3897,158 @@
           }
         }
       }
+    },
+    "/api/v1/schedules/{id}/supervisor-reassignment": {
+      "put": {
+        "tags": ["Schedules"],
+        "summary": "Reassigns a Supervisor for unfinished schedules in a PM batch",
+        "operationId": "ReassignScheduleBatchSupervisor",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReassignScheduleBatchDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleAssignmentBatchResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/schedules/{id}/inspector-reassignment": {
+      "put": {
+        "tags": ["Schedules"],
+        "summary": "Reassigns an Inspector for unfinished schedules in a PM batch",
+        "operationId": "ReassignScheduleBatchInspector",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReassignScheduleBatchDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleAssignmentBatchResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -7647,7 +7799,8 @@
           "inspectorDisplayName",
           "assignmentLocked",
           "supervisorOwnershipIsConsistent",
-          "representativeSchedule"
+          "representativeSchedule",
+          "unfinishedScheduleCount"
         ],
         "type": "object",
         "properties": {
@@ -7711,6 +7864,11 @@
           },
           "representativeSchedule": {
             "$ref": "#/components/schemas/ScheduleResponse"
+          },
+          "unfinishedScheduleCount": {
+            "type": ["integer", "string"],
+            "format": "int32",
+            "pattern": "^-?(?:0|[1-9]\\d*)$"
           }
         }
       },
@@ -8451,6 +8609,20 @@
             }
           }
         }
+      },
+      "ReassignScheduleBatchDto": {
+        "properties": {
+          "assigneeUserId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "reason": {
+            "maxLength": 500,
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": ["assigneeUserId", "reason"]
       }
     },
     "securitySchemes": {

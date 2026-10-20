@@ -104,26 +104,31 @@ public sealed class ScheduleBatchAssignmentEndpointsTests
     }
 
     [Fact]
-    public async Task Gsd_supervisor_assignment_covers_matching_batch_and_clears_old_worker()
+    public async Task Gsd_reassigns_supervisor_for_matching_batch_and_preserves_existing_inspector()
     {
         await using var application = new TestApplicationFactory(AuthRoleCatalog.Gsd);
         using var client = application.CreateClient();
+        await application.SeedAuthenticatedUserAsync(AuthRoleCatalog.Gsd);
         var oldWorkerId = await application.SeedUserAsync("old-worker", AuthRoleCatalog.Inspector);
         var oldSupervisorId = await application.SeedUserAsync("old-supervisor", AuthRoleCatalog.Supervisor);
         var supervisorId = await application.SeedUserAsync("new-supervisor", AuthRoleCatalog.Supervisor);
 
         var first = await CreateScheduleAsync(client, "GSD", "Main Building", new DateTimeOffset(2026, 8, 1, 8, 0, 0, TimeSpan.FromHours(8)));
         var second = await CreateScheduleAsync(client, " gsd ", "Annex", new DateTimeOffset(2026, 8, 9, 8, 0, 0, TimeSpan.FromHours(8)));
+        var third = await CreateScheduleAsync(client, "GSD", "Library", new DateTimeOffset(2026, 8, 16, 8, 0, 0, TimeSpan.FromHours(8)));
         var otherDepartment = await CreateScheduleAsync(client, "Library", "Library", new DateTimeOffset(2026, 8, 1, 8, 0, 0, TimeSpan.FromHours(8)));
         var otherCycle = await CreateScheduleAsync(client, "GSD", "Main Building", new DateTimeOffset(2026, 2, 1, 8, 0, 0, TimeSpan.FromHours(8)));
         await application.SetAssignmentsAsync(
-            [first.Id, second.Id, otherDepartment.Id, otherCycle.Id],
+            [first.Id, second.Id, third.Id, otherDepartment.Id, otherCycle.Id],
             oldWorkerId,
             oldSupervisorId);
+        await application.SetScheduleStatusAsync(first.Id, ScheduleStatusCatalog.Completed);
+        await application.AddInspectionWithoutScheduleCompletionAsync(first.Id, first.AssetId, oldWorkerId);
 
-        var response = await client.PutAsJsonAsync($"/api/v1/schedules/{first.Id}/supervisor-assignment", new
+        var response = await client.PutAsJsonAsync($"/api/v1/schedules/{first.Id}/supervisor-reassignment", new
         {
-            supervisorUserId = supervisorId
+            assigneeUserId = supervisorId,
+            reason = "Previous Supervisor is unavailable"
         });
 
         response.EnsureSuccessStatusCode();
@@ -132,20 +137,101 @@ public sealed class ScheduleBatchAssignmentEndpointsTests
         Assert.Equal("GSD", assignedBatch.Department, ignoreCase: true);
         Assert.Equal("fire-extinguisher", assignedBatch.AssetCategory);
         Assert.Equal("2026-08", assignedBatch.PmCycle);
-        Assert.Null(assignedBatch.WorkerUserId);
-        Assert.Null(assignedBatch.WorkerDisplayName);
+        Assert.Equal(oldWorkerId, assignedBatch.WorkerUserId);
         Assert.Equal(supervisorId, assignedBatch.SupervisorUserId);
-        Assert.Equivalent(new[] { first.Id, second.Id }, assignedBatch.ScheduleIds);
+        Assert.Equivalent(new[] { second.Id, third.Id }, assignedBatch.ScheduleIds);
 
         var stored = await application.GetAssignmentsAsync();
-        Assert.Null(stored[first.Id].WorkerId);
-        Assert.Equal(supervisorId, stored[first.Id].SupervisorId);
-        Assert.Null(stored[second.Id].WorkerId);
+        Assert.Equal(oldWorkerId, stored[first.Id].WorkerId);
+        Assert.Equal(oldSupervisorId, stored[first.Id].SupervisorId);
+        Assert.Equal(oldWorkerId, stored[second.Id].WorkerId);
         Assert.Equal(supervisorId, stored[second.Id].SupervisorId);
+        Assert.Equal(oldWorkerId, stored[third.Id].WorkerId);
+        Assert.Equal(supervisorId, stored[third.Id].SupervisorId);
         Assert.Equal(oldWorkerId, stored[otherDepartment.Id].WorkerId);
         Assert.Equal(oldSupervisorId, stored[otherDepartment.Id].SupervisorId);
         Assert.Equal(oldWorkerId, stored[otherCycle.Id].WorkerId);
         Assert.Equal(oldSupervisorId, stored[otherCycle.Id].SupervisorId);
+
+        var audits = await application.GetAssignmentAuditsAsync();
+        Assert.Equal(2, audits.Count);
+        Assert.All(audits, audit =>
+        {
+            Assert.Equal("Supervisor", audit.AssignmentRole);
+            Assert.Equal(oldSupervisorId, audit.PreviousAssigneeUserId);
+            Assert.Equal(supervisorId, audit.NewAssigneeUserId);
+            Assert.Equal(TestAuthenticationHandler.UserId, audit.ChangedByUserId);
+            Assert.Equal("Previous Supervisor is unavailable", audit.Reason);
+        });
+        Assert.Equal(new[] { second.Id, third.Id }, audits.Select(audit => audit.ScheduleId).Order().ToArray());
+        Assert.Equal(oldWorkerId, await application.GetInspectionInspectorAsync(first.Id));
+    }
+
+    [Fact]
+    public async Task Initial_assignment_rejects_a_batch_that_has_started()
+    {
+        await using var application = new TestApplicationFactory(AuthRoleCatalog.Gsd);
+        using var client = application.CreateClient();
+        var supervisorId = await application.SeedUserAsync("supervisor", AuthRoleCatalog.Supervisor);
+        var schedule = await CreateScheduleAsync(
+            client,
+            "GSD",
+            "Main Building",
+            new DateTimeOffset(2026, 8, 1, 8, 0, 0, TimeSpan.FromHours(8)));
+        await application.SetScheduleStatusAsync(schedule.Id, ScheduleStatusCatalog.Ongoing);
+
+        var response = await client.PutAsJsonAsync(
+            $"/api/v1/schedules/{schedule.Id}/supervisor-assignment",
+            new { supervisorUserId });
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Supervisor_reassigns_only_unfinished_inspections_and_wrong_supervisor_is_forbidden()
+    {
+        var databaseName = $"unipm-reassignment-{Guid.NewGuid():N}";
+        await using var gsdApplication = new TestApplicationFactory(AuthRoleCatalog.Gsd, databaseName);
+        await using var supervisorApplication = new TestApplicationFactory(AuthRoleCatalog.Supervisor, databaseName);
+        using var gsdClient = gsdApplication.CreateClient();
+        using var supervisorClient = supervisorApplication.CreateClient();
+        var currentSupervisorId = await supervisorApplication.SeedAuthenticatedUserAsync(AuthRoleCatalog.Supervisor);
+        var firstInspectorId = await gsdApplication.SeedUserAsync("first-inspector", AuthRoleCatalog.Inspector);
+        var replacementInspectorId = await gsdApplication.SeedUserAsync("replacement-inspector", AuthRoleCatalog.Inspector);
+        var completed = await CreateScheduleAsync(gsdClient, "CCMS", "Main Building", new DateTimeOffset(2026, 8, 1, 8, 0, 0, TimeSpan.FromHours(8)));
+        var ongoing = await CreateScheduleAsync(gsdClient, "CCMS", "Annex", new DateTimeOffset(2026, 8, 9, 8, 0, 0, TimeSpan.FromHours(8)));
+        await gsdApplication.SetAssignmentsAsync([completed.Id, ongoing.Id], firstInspectorId, currentSupervisorId);
+        await gsdApplication.SetScheduleStatusAsync(completed.Id, ScheduleStatusCatalog.Completed);
+        await gsdApplication.SetScheduleStatusAsync(ongoing.Id, ScheduleStatusCatalog.Ongoing);
+        await gsdApplication.AddInspectionWithoutScheduleCompletionAsync(completed.Id, completed.AssetId, firstInspectorId);
+
+        var forbidden = await gsdClient.PutAsJsonAsync($"/api/v1/schedules/{ongoing.Id}/inspector-reassignment", new
+        {
+            assigneeUserId = replacementInspectorId,
+            reason = "Coverage change"
+        });
+        Assert.Equal(HttpStatusCode.Forbidden, forbidden.StatusCode);
+
+        var response = await supervisorClient.PutAsJsonAsync($"/api/v1/schedules/{ongoing.Id}/inspector-reassignment", new
+        {
+            assigneeUserId = replacementInspectorId,
+            reason = "Inspector unavailable"
+        });
+
+        response.EnsureSuccessStatusCode();
+        var stored = await gsdApplication.GetAssignmentsAsync();
+        Assert.Equal(firstInspectorId, stored[completed.Id].WorkerId);
+        Assert.Equal(replacementInspectorId, stored[ongoing.Id].WorkerId);
+        Assert.Equal(currentSupervisorId, stored[ongoing.Id].SupervisorId);
+        Assert.Equal(ScheduleStatusCatalog.Completed, await gsdApplication.GetScheduleStatusAsync(completed.Id));
+        Assert.Equal(firstInspectorId, await gsdApplication.GetInspectionInspectorAsync(completed.Id));
+        var audit = Assert.Single(await gsdApplication.GetAssignmentAuditsAsync());
+        Assert.Equal("Inspector", audit.AssignmentRole);
+        Assert.Equal(firstInspectorId, audit.PreviousAssigneeUserId);
+        Assert.Equal(replacementInspectorId, audit.NewAssigneeUserId);
+        Assert.Equal(TestAuthenticationHandler.UserId, audit.ChangedByUserId);
+        Assert.Equal("Inspector unavailable", audit.Reason);
+        Assert.Equal(ongoing.Id, audit.ScheduleId);
     }
 
     [Fact]
@@ -573,6 +659,27 @@ public sealed class ScheduleBatchAssignmentEndpointsTests
                     schedule => schedule.Id,
                     schedule => new ScheduleAssignment(schedule.AssignedToUserId, schedule.AssignedSupervisorUserId));
         }
+
+        public async Task<List<ScheduleAssignmentReassignmentAudit>> GetAssignmentAuditsAsync()
+        {
+            await using var scope = Services.CreateAsyncScope();
+            var factory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
+            await using var context = await factory.CreateDbContextAsync();
+            return await context.ScheduleAssignmentReassignmentAudits
+                .OrderBy(audit => audit.ScheduleId)
+                .ToListAsync();
+        }
+
+        public async Task<Guid> GetInspectionInspectorAsync(Guid scheduleId)
+        {
+            await using var scope = Services.CreateAsyncScope();
+            var factory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
+            await using var context = await factory.CreateDbContextAsync();
+            return await context.InspectionRecords
+                .Where(record => record.ScheduleId == scheduleId)
+                .Select(record => record.InspectorUserId)
+                .SingleAsync();
+        }
     }
 
     private sealed record AssetRef(Guid Id);
@@ -600,6 +707,7 @@ public sealed class ScheduleBatchAssignmentEndpointsTests
         string AssetCategory,
         string PmCycle,
         int ScheduleCount,
+        int UnfinishedScheduleCount,
         int CompletedCount,
         int OngoingCount,
         int OverdueCount,

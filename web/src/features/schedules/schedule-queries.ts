@@ -3,6 +3,8 @@ import { toast } from 'sonner'
 import {
   assignScheduleBatchSupervisor,
   assignScheduleBatchWorker,
+  reassignScheduleBatchInspector,
+  reassignScheduleBatchSupervisor,
   generatePreventiveMaintenanceSchedules,
   getGetScheduleRegistryOptionsQueryKey,
   getGetScheduleRegistrySummaryQueryKey,
@@ -44,6 +46,7 @@ import type {
   ListScheduleWorkerAssignmentOptionsParams,
   ScheduleEnrollmentDeferralReviewRequest,
   ScheduleReferenceResponse,
+  ReassignScheduleBatchDto,
 } from '@/api/generated/models'
 import {
   parseSchedulePeriodTypes,
@@ -71,6 +74,7 @@ export function useSchedules(filters: ScheduleServerFilters = {}) {
 
 export function useScheduleAssignmentBatches(
   filters: ListScheduleAssignmentBatchesParams,
+  enabled = true,
 ) {
   return useQuery({
     queryKey: [...getListSchedulesQueryKey(), 'assignment-batches', filters],
@@ -78,6 +82,7 @@ export function useScheduleAssignmentBatches(
       listScheduleAssignmentBatches(filters, signal).then(
         parseScheduleAssignmentQueue,
       ),
+    enabled,
     placeholderData: (previousData) => previousData,
   })
 }
@@ -280,6 +285,45 @@ export function useAssignScheduleBatchWorker() {
       ])
     },
   })
+}
+
+function useReassignScheduleBatch(assignmentRole: 'Supervisor' | 'Inspector') {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({
+      scheduleId,
+      request,
+    }: {
+      scheduleId: string
+      request: ReassignScheduleBatchDto
+    }) =>
+      assignmentRole === 'Supervisor'
+        ? reassignScheduleBatchSupervisor(scheduleId, request)
+        : reassignScheduleBatchInspector(scheduleId, request),
+    onSuccess: async (result) => {
+      const count = result.scheduleIds.length
+      toast.success(
+        `${assignmentRole} reassigned for ${count} unfinished schedule${count === 1 ? '' : 's'}.`,
+      )
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: getListSchedulesQueryKey(),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: getListScheduleRegistryQueryKey(),
+        }),
+      ])
+    },
+  })
+}
+
+export function useReassignScheduleBatchSupervisor() {
+  return useReassignScheduleBatch('Supervisor')
+}
+
+export function useReassignScheduleBatchInspector() {
+  return useReassignScheduleBatch('Inspector')
 }
 
 export function useGenerateSchedules() {

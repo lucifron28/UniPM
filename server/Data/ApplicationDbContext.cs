@@ -15,6 +15,7 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
 {
     public DbSet<Asset> Assets => Set<Asset>();
     public DbSet<PreventiveMaintenanceSchedule> PreventiveMaintenanceSchedules => Set<PreventiveMaintenanceSchedule>();
+    public DbSet<ScheduleAssignmentReassignmentAudit> ScheduleAssignmentReassignmentAudits => Set<ScheduleAssignmentReassignmentAudit>();
     public DbSet<ScheduleEnrollmentDeferral> ScheduleEnrollmentDeferrals => Set<ScheduleEnrollmentDeferral>();
     public DbSet<InspectionRecord> InspectionRecords => Set<InspectionRecord>();
     public DbSet<InspectionWmsReferral> InspectionWmsReferrals => Set<InspectionWmsReferral>();
@@ -256,6 +257,36 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             table.HasCheckConstraint(
                 "CK_InspectionWmsReferralAudits_Number_NotBlank",
                 "LEN(LTRIM(RTRIM([NewExternalPmNumber]))) > 0");
+        });
+
+        var scheduleAssignmentAudit = modelBuilder.Entity<ScheduleAssignmentReassignmentAudit>();
+        scheduleAssignmentAudit.Property(entity => entity.AssignmentRole).HasMaxLength(16);
+        scheduleAssignmentAudit.Property(entity => entity.Reason).HasMaxLength(500);
+        scheduleAssignmentAudit.HasIndex(entity => new { entity.ScheduleId, entity.ChangedAt });
+        scheduleAssignmentAudit.HasOne<PreventiveMaintenanceSchedule>()
+            .WithMany()
+            .HasForeignKey(entity => entity.ScheduleId)
+            .OnDelete(DeleteBehavior.NoAction);
+        scheduleAssignmentAudit.HasOne<ApplicationUser>()
+            .WithMany()
+            .HasForeignKey(entity => entity.PreviousAssigneeUserId)
+            .OnDelete(DeleteBehavior.NoAction);
+        scheduleAssignmentAudit.HasOne<ApplicationUser>()
+            .WithMany()
+            .HasForeignKey(entity => entity.NewAssigneeUserId)
+            .OnDelete(DeleteBehavior.NoAction);
+        scheduleAssignmentAudit.HasOne<ApplicationUser>()
+            .WithMany()
+            .HasForeignKey(entity => entity.ChangedByUserId)
+            .OnDelete(DeleteBehavior.NoAction);
+        scheduleAssignmentAudit.ToTable("ScheduleAssignmentReassignmentAudits", table =>
+        {
+            table.HasCheckConstraint(
+                "CK_ScheduleAssignmentReassignmentAudits_AssignmentRole_Allowed",
+                "[AssignmentRole] IN ('Supervisor', 'Inspector')");
+            table.HasCheckConstraint(
+                "CK_ScheduleAssignmentReassignmentAudits_Reason_NotBlank",
+                "LEN(LTRIM(RTRIM([Reason]))) > 0");
         });
 
         inspection

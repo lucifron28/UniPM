@@ -797,6 +797,13 @@ public static class PreventiveMaintenanceFormEndpoints
                 return Results.Forbid();
             }
 
+            if (principal.IsInRole(AuthRoleCatalog.Inspector)
+                && schedule.AssignedToUserId is Guid assignedInspectorId
+                && assignedInspectorId != dto.InspectorUserId)
+            {
+                return ApiErrors.Conflict("This schedule was reassigned. Refresh your assigned work before syncing this inspection.");
+            }
+
             if (schedule.Asset is null)
             {
                 return ApiErrors.NotFound("Asset not found.");

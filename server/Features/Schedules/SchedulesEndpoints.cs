@@ -614,16 +614,35 @@ public static class SchedulesEndpoints
                 return ApiErrors.Conflict("A PM batch cannot be assigned after inspection work has started or a schedule is completed or cancelled.");
             }
 
-            var supervisorChanged = batch.Any(schedule => schedule.AssignedSupervisorUserId != supervisor.Id);
+            if (batch.Any(schedule => schedule.AssignedSupervisorUserId is not null
+                || schedule.AssignedToUserId is not null))
+            {
+                if (!batch.All(schedule => schedule.AssignedSupervisorUserId == supervisor.Id))
+                {
+                    return ApiErrors.Conflict("This batch is already assigned. Use Schedule History to reassign unfinished work.");
+                }
+
+                await mutationLock.CommitAsync(cancellationToken);
+                var existingWorkerIds = batch.Select(schedule => schedule.AssignedToUserId).Distinct().ToArray();
+                var existingWorkerId = existingWorkerIds.Length == 1 ? existingWorkerIds[0] : null;
+                var existingWorker = existingWorkerId is { } existingAssignedWorkerId
+                    ? await userManager.FindByIdAsync(existingAssignedWorkerId.ToString())
+                    : null;
+                return Results.Ok(new ScheduleAssignmentBatchResponse(
+                    identity.Department,
+                    selected.Asset.AssetCategory,
+                    identity.PmCycle,
+                    existingWorkerId,
+                    existingWorker?.DisplayName,
+                    supervisor.Id,
+                    supervisor.DisplayName,
+                    batch.Select(schedule => schedule.Id).ToArray()));
+            }
+
             var now = DateTimeOffset.UtcNow;
             foreach (var schedule in batch)
             {
                 schedule.AssignedSupervisorUserId = supervisor.Id;
-                if (supervisorChanged)
-                {
-                    schedule.AssignedToUserId = null;
-                }
-
                 schedule.UpdatedAt = now;
             }
 
@@ -635,7 +654,6 @@ public static class SchedulesEndpoints
             var worker = workerId is { } assignedWorkerId
                 ? await userManager.FindByIdAsync(assignedWorkerId.ToString())
                 : null;
-            var scheduleIds = batch.Select(schedule => schedule.Id).ToArray();
             return Results.Ok(new ScheduleAssignmentBatchResponse(
                 identity.Department,
                 selected.Asset.AssetCategory,
@@ -644,7 +662,7 @@ public static class SchedulesEndpoints
                 worker?.DisplayName,
                 supervisor.Id,
                 supervisor.DisplayName,
-                scheduleIds));
+                batch.Select(schedule => schedule.Id).ToArray()));
         })
         .WithName("AssignScheduleBatchSupervisor")
         .WithSummary("Assigns a Supervisor to all schedules in one PM batch")
@@ -736,18 +754,43 @@ public static class SchedulesEndpoints
                 return ApiErrors.Conflict("No schedules were found in this PM batch.");
             }
 
-            if (batch.Any(schedule => schedule.AssignedSupervisorUserId != supervisor.Id))
+            var assignableSchedules = batch.Where(IsUnfinishedSchedule).ToArray();
+            if (assignableSchedules.Length == 0)
+            {
+                return ApiErrors.Conflict("This PM batch has no unfinished schedules eligible for Inspector assignment.");
+            }
+
+            if (assignableSchedules.Any(schedule => schedule.AssignedSupervisorUserId != supervisor.Id))
             {
                 return Results.Forbid();
             }
 
-            if (await HasAssignmentWorkEvidenceAsync(context, batch, cancellationToken))
+            if (await HasAssignmentWorkEvidenceAsync(context, assignableSchedules, cancellationToken))
             {
                 return ApiErrors.Conflict("A PM batch cannot be assigned after inspection work has started or a schedule is completed or cancelled.");
             }
 
+            if (assignableSchedules.Any(schedule => schedule.AssignedToUserId is not null))
+            {
+                if (!assignableSchedules.All(schedule => schedule.AssignedToUserId == worker.Id))
+                {
+                    return ApiErrors.Conflict("This batch is already assigned. Use Schedule History to reassign unfinished work.");
+                }
+
+                await mutationLock.CommitAsync(cancellationToken);
+                return Results.Ok(new ScheduleAssignmentBatchResponse(
+                    identity.Department,
+                    selected.Asset.AssetCategory,
+                    identity.PmCycle,
+                    worker.Id,
+                    worker.DisplayName,
+                    supervisor.Id,
+                    supervisor.DisplayName,
+                    assignableSchedules.Select(schedule => schedule.Id).ToArray()));
+            }
+
             var now = DateTimeOffset.UtcNow;
-            foreach (var schedule in batch)
+            foreach (var schedule in assignableSchedules)
             {
                 schedule.AssignedToUserId = worker.Id;
                 schedule.UpdatedAt = now;
@@ -765,10 +808,60 @@ public static class SchedulesEndpoints
                 worker.DisplayName,
                 supervisor.Id,
                 supervisor.DisplayName,
-                scheduleIds));
+                assignableSchedules.Select(schedule => schedule.Id).ToArray()));
         })
         .WithName("AssignScheduleBatchWorker")
         .WithSummary("Assigns an Inspector to a PM batch owned by the authenticated Supervisor")
+        .Produces<ScheduleAssignmentBatchResponse>(StatusCodes.Status200OK)
+        .Produces<Microsoft.AspNetCore.Mvc.ValidationProblemDetails>(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status404NotFound)
+        .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status409Conflict)
+        .RequireAuthorization(AuthPolicyCatalog.CanAssignScheduleWorkers);
+
+        group.MapPut("/{id:guid}/supervisor-reassignment", async (
+            Guid id,
+            ReassignScheduleBatchDto dto,
+            ClaimsPrincipal principal,
+            IDbContextFactory<ApplicationDbContext> factory,
+            UserManager<ApplicationUser> userManager,
+            CancellationToken cancellationToken) =>
+            await ReassignScheduleBatchAsync(
+                id,
+                dto,
+                "Supervisor",
+                principal,
+                factory,
+                userManager,
+                cancellationToken))
+        .WithName("ReassignScheduleBatchSupervisor")
+        .WithSummary("Reassigns a Supervisor for unfinished schedules in a PM batch")
+        .Produces<ScheduleAssignmentBatchResponse>(StatusCodes.Status200OK)
+        .Produces<Microsoft.AspNetCore.Mvc.ValidationProblemDetails>(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status404NotFound)
+        .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status409Conflict)
+        .RequireAuthorization(AuthPolicyCatalog.CanAssignScheduleSupervisors);
+
+        group.MapPut("/{id:guid}/inspector-reassignment", async (
+            Guid id,
+            ReassignScheduleBatchDto dto,
+            ClaimsPrincipal principal,
+            IDbContextFactory<ApplicationDbContext> factory,
+            UserManager<ApplicationUser> userManager,
+            CancellationToken cancellationToken) =>
+            await ReassignScheduleBatchAsync(
+                id,
+                dto,
+                "Inspector",
+                principal,
+                factory,
+                userManager,
+                cancellationToken))
+        .WithName("ReassignScheduleBatchInspector")
+        .WithSummary("Reassigns an Inspector for unfinished schedules in a PM batch")
         .Produces<ScheduleAssignmentBatchResponse>(StatusCodes.Status200OK)
         .Produces<Microsoft.AspNetCore.Mvc.ValidationProblemDetails>(StatusCodes.Status400BadRequest)
         .Produces(StatusCodes.Status401Unauthorized)
@@ -1437,8 +1530,12 @@ public static class SchedulesEndpoints
         IReadOnlyDictionary<Guid, string> assigneeDisplayNames)
     {
         var schedules = rows.Select(row => row.Schedule).ToArray();
-        var supervisor = SummarizeAssignment(schedules.Select(schedule => schedule.AssignedSupervisorUserId));
-        var inspector = SummarizeAssignment(schedules.Select(schedule => schedule.AssignedToUserId));
+        var unfinishedRows = rows
+            .Where(row => IsUnfinishedSchedule(row.Schedule) && !row.HasInspectionEvidence)
+            .ToArray();
+        var assignmentRows = unfinishedRows.Length > 0 ? unfinishedRows : rows.ToArray();
+        var supervisor = SummarizeAssignment(assignmentRows.Select(row => row.Schedule.AssignedSupervisorUserId));
+        var inspector = SummarizeAssignment(assignmentRows.Select(row => row.Schedule.AssignedToUserId));
         var representative = schedules
             .OrderBy(schedule => schedule.Asset?.AssetCode, StringComparer.OrdinalIgnoreCase)
             .ThenBy(schedule => schedule.Id)
@@ -1458,6 +1555,7 @@ public static class SchedulesEndpoints
             representative.Asset?.AssetCategory ?? identity.AssetCategory,
             identity.PmCycle,
             schedules.Length,
+            unfinishedRows.Length,
             schedules.Count(schedule => string.Equals(
                 schedule.Status, ScheduleStatusCatalog.Completed, StringComparison.OrdinalIgnoreCase)),
             schedules.Count(schedule => string.Equals(
@@ -1472,8 +1570,13 @@ public static class SchedulesEndpoints
             inspectorDisplayName,
             rows.Any(row => row.HasInspectionEvidence
                 || row.Schedule.CompletedAt is not null
+                || string.Equals(
+                    row.Schedule.Status,
+                    ScheduleStatusCatalog.Ongoing,
+                    StringComparison.OrdinalIgnoreCase)
                 || !IsAssignableScheduleStatus(row.Schedule.Status)),
-            supervisor.State == "Assigned",
+            assignmentRows.All(row => row.Schedule.AssignedSupervisorUserId == supervisor.UserId)
+                && supervisor.UserId is not null,
             representative);
     }
 
@@ -1828,7 +1931,6 @@ public static class SchedulesEndpoints
     {
         if (batch.Any(schedule => schedule.CompletedAt is not null
             || !string.Equals(schedule.Status, ScheduleStatusCatalog.Due, StringComparison.OrdinalIgnoreCase)
-                && !string.Equals(schedule.Status, ScheduleStatusCatalog.Ongoing, StringComparison.OrdinalIgnoreCase)
                 && !string.Equals(schedule.Status, ScheduleStatusCatalog.Overdue, StringComparison.OrdinalIgnoreCase)))
         {
             return true;
@@ -1838,6 +1940,202 @@ public static class SchedulesEndpoints
         return await context.InspectionRecords.AnyAsync(
             inspection => scheduleIds.Contains(inspection.ScheduleId),
             cancellationToken);
+    }
+
+    private static bool IsUnfinishedSchedule(PreventiveMaintenanceSchedule schedule)
+    {
+        return schedule.CompletedAt is null && IsAssignableScheduleStatus(schedule.Status);
+    }
+
+    private static bool IsUnfinishedSchedule(ScheduleResponse schedule)
+    {
+        return schedule.CompletedAt is null && IsAssignableScheduleStatus(schedule.Status);
+    }
+
+    private static async Task<IResult> ReassignScheduleBatchAsync(
+        Guid scheduleId,
+        ReassignScheduleBatchDto dto,
+        string assignmentRole,
+        ClaimsPrincipal principal,
+        IDbContextFactory<ApplicationDbContext> factory,
+        UserManager<ApplicationUser> userManager,
+        CancellationToken cancellationToken)
+    {
+        var errors = dto.Validate();
+        if (errors.Count > 0)
+        {
+            return ApiErrors.Validation(errors);
+        }
+
+        var isSupervisorAssignment = string.Equals(
+            assignmentRole,
+            "Supervisor",
+            StringComparison.Ordinal);
+        var actorRole = isSupervisorAssignment
+            ? AuthRoleCatalog.Gsd
+            : AuthRoleCatalog.Supervisor;
+        var targetRole = isSupervisorAssignment
+            ? AuthRoleCatalog.Supervisor
+            : AuthRoleCatalog.Inspector;
+        if (!principal.IsInRole(actorRole)
+            || !Guid.TryParse(principal.FindFirst(JwtRegisteredClaimNames.Sub)?.Value, out var actorId))
+        {
+            return Results.Forbid();
+        }
+
+        var actor = await userManager.FindByIdAsync(actorId.ToString());
+        if (actor is null || !actor.IsActive
+            || !await userManager.IsInRoleAsync(actor, actorRole))
+        {
+            return Results.Forbid();
+        }
+
+        var target = await userManager.FindByIdAsync(dto.AssigneeUserId.ToString());
+        if (target is null || !target.IsActive
+            || !await userManager.IsInRoleAsync(target, targetRole))
+        {
+            return ApiErrors.Validation(new Dictionary<string, string[]>
+            {
+                [nameof(dto.AssigneeUserId)] = [$"Choose an active {targetRole} account."]
+            });
+        }
+
+        await using var context = await factory.CreateDbContextAsync(cancellationToken);
+        var preview = await context.PreventiveMaintenanceSchedules
+            .AsNoTracking()
+            .Include(schedule => schedule.Asset)
+            .SingleOrDefaultAsync(schedule => schedule.Id == scheduleId, cancellationToken);
+        if (preview?.Asset is null)
+        {
+            return ApiErrors.NotFound("Schedule not found.");
+        }
+
+        if (!ScheduleBatchIdentity.TryCreate(preview, out var identity))
+        {
+            return ApiErrors.Conflict("Schedules without a department and valid PM cycle cannot be reassigned as a batch.");
+        }
+
+        await using var mutationLock = await ScheduleBatchMutationLockLease.AcquireAsync(
+            context,
+            identity,
+            cancellationToken);
+        if (!mutationLock.Acquired)
+        {
+            return ApiErrors.Conflict("This PM batch is being updated. Try again shortly.");
+        }
+
+        var selected = await context.PreventiveMaintenanceSchedules
+            .Include(schedule => schedule.Asset)
+            .SingleOrDefaultAsync(schedule => schedule.Id == scheduleId, cancellationToken);
+        if (selected?.Asset is null)
+        {
+            return ApiErrors.NotFound("Schedule not found.");
+        }
+
+        if (!ScheduleBatchIdentity.TryCreate(selected, out var currentIdentity)
+            || currentIdentity != identity)
+        {
+            return ApiErrors.Conflict("The PM batch changed while reassignment was being prepared. Refresh and try again.");
+        }
+
+        var batch = await LoadBatchAsync(context, identity, cancellationToken);
+        if (batch.Count == 0)
+        {
+            return ApiErrors.Conflict("No schedules were found in this PM batch.");
+        }
+
+        var batchScheduleIds = batch.Select(schedule => schedule.Id).ToArray();
+        var schedulesWithInspection = (await context.InspectionRecords
+            .AsNoTracking()
+            .Where(inspection => batchScheduleIds.Contains(inspection.ScheduleId))
+            .Select(inspection => inspection.ScheduleId)
+            .ToListAsync(cancellationToken))
+            .ToHashSet();
+        var unfinished = batch
+            .Where(schedule => IsUnfinishedSchedule(schedule)
+                && !schedulesWithInspection.Contains(schedule.Id))
+            .ToArray();
+        if (unfinished.Length == 0)
+        {
+            return ApiErrors.Conflict("This PM batch has no unfinished schedules eligible for reassignment.");
+        }
+
+        if (!isSupervisorAssignment
+            && unfinished.Any(schedule => schedule.AssignedSupervisorUserId != actorId))
+        {
+            return Results.Forbid();
+        }
+
+        Guid? CurrentAssignee(PreventiveMaintenanceSchedule schedule) =>
+            isSupervisorAssignment ? schedule.AssignedSupervisorUserId : schedule.AssignedToUserId;
+
+        if (unfinished.All(schedule => CurrentAssignee(schedule) is null))
+        {
+            return ApiErrors.Conflict("This batch has no existing assignment to reassign. Use Planning & Assignment first.");
+        }
+
+        var changed = unfinished
+            .Where(schedule => CurrentAssignee(schedule) != target.Id)
+            .ToArray();
+        if (changed.Length == 0)
+        {
+            return ApiErrors.Conflict("The selected person is already assigned to all unfinished schedules.");
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        foreach (var schedule in changed)
+        {
+            context.ScheduleAssignmentReassignmentAudits.Add(new ScheduleAssignmentReassignmentAudit
+            {
+                Id = Guid.NewGuid(),
+                ScheduleId = schedule.Id,
+                AssignmentRole = assignmentRole,
+                PreviousAssigneeUserId = CurrentAssignee(schedule),
+                NewAssigneeUserId = target.Id,
+                ChangedByUserId = actorId,
+                ChangedAt = now,
+                Reason = dto.Reason.Trim()
+            });
+
+            if (isSupervisorAssignment)
+            {
+                schedule.AssignedSupervisorUserId = target.Id;
+            }
+            else
+            {
+                schedule.AssignedToUserId = target.Id;
+            }
+
+            schedule.UpdatedAt = now;
+        }
+
+        await context.SaveChangesAsync(cancellationToken);
+        await mutationLock.CommitAsync(cancellationToken);
+
+        var workerId = isSupervisorAssignment
+            ? GetSingleAssignment(unfinished.Select(schedule => schedule.AssignedToUserId))
+            : target.Id;
+        var worker = workerId is { } assignedWorkerId
+            ? await userManager.FindByIdAsync(assignedWorkerId.ToString())
+            : null;
+        var supervisorId = isSupervisorAssignment ? target.Id : actorId;
+        var supervisorName = isSupervisorAssignment ? target.DisplayName : actor.DisplayName;
+
+        return Results.Ok(new ScheduleAssignmentBatchResponse(
+            identity.Department,
+            selected.Asset.AssetCategory,
+            identity.PmCycle,
+            workerId,
+            worker?.DisplayName,
+            supervisorId,
+            supervisorName,
+            changed.Select(schedule => schedule.Id).ToArray()));
+    }
+
+    private static Guid? GetSingleAssignment(IEnumerable<Guid?> userIds)
+    {
+        var distinctIds = userIds.Distinct().ToArray();
+        return distinctIds.Length == 1 ? distinctIds[0] : null;
     }
 }
 
@@ -1946,6 +2244,7 @@ public sealed record ScheduleAssignmentQueueBatchResponse(
     string AssetCategory,
     string PmCycle,
     int ScheduleCount,
+    int UnfinishedScheduleCount,
     int CompletedCount,
     int OngoingCount,
     int OverdueCount,
@@ -2026,6 +2325,28 @@ public sealed class AssignScheduleSupervisorDto
         return SupervisorUserId == Guid.Empty
             ? new Dictionary<string, string[]> { [nameof(SupervisorUserId)] = ["A Supervisor must be assigned."] }
             : [];
+    }
+}
+
+public sealed class ReassignScheduleBatchDto
+{
+    public Guid AssigneeUserId { get; set; }
+    public string Reason { get; set; } = string.Empty;
+
+    internal Dictionary<string, string[]> Validate()
+    {
+        var errors = new Dictionary<string, string[]>();
+        if (AssigneeUserId == Guid.Empty)
+        {
+            errors[nameof(AssigneeUserId)] = ["Choose an active assignee."];
+        }
+
+        if (string.IsNullOrWhiteSpace(Reason) || Reason.Trim().Length > 500)
+        {
+            errors[nameof(Reason)] = ["A reassignment reason is required and must be 500 characters or fewer."];
+        }
+
+        return errors;
     }
 }
 
