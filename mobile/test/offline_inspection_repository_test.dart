@@ -461,6 +461,8 @@ void main() {
     remote.connected = true;
     connectivity.connected = true;
     await awaitRepositoryAction('synchronize conflict', repository.syncNow);
+    expect(repository.hasConflictFor(_formId), isTrue);
+    expect(repository.pendingCountFor(_formId), 1);
 
     final controller = PreventiveMaintenanceController(
       repository: repository,
