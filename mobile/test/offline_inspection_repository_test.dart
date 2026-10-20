@@ -480,9 +480,7 @@ void main() {
     );
     addTearDown(controller.dispose);
     final selectedForm = await tester.runAsync(
-      () => repository
-          .getForm(_formId)
-          .timeout(const Duration(seconds: 5)),
+      () => repository.getForm(_formId).timeout(const Duration(seconds: 5)),
     );
     controller.selectForm(selectedForm!);
     debugPrint('conflict-review: selected form');
