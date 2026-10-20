@@ -522,6 +522,71 @@ void main() {
     },
   );
 
+  testWidgets('conflict details can be reviewed and safely discarded', (
+    tester,
+  ) async {
+    repository.dispose();
+    repository = _ImmediateScheduleOfflineInspectionRepository(
+      remote: remote,
+      remoteAssets: remote,
+      store: store,
+      connectivity: connectivity,
+    );
+    await prepareConflict(tester);
+    expect(repository.hasConflictFor(_formId), isTrue);
+    expect(repository.pendingCountFor(_formId), 1);
+
+    final controller = PreventiveMaintenanceController(
+      repository: repository,
+      user: const AuthUser(
+        id: _userA,
+        email: 'inspector@example.test',
+        displayName: 'Synthetic Inspector',
+        roles: ['Inspector'],
+      ),
+    );
+    addTearDown(controller.dispose);
+    final selectedForm = await tester.runAsync(
+      () => repository.getForm(_formId).timeout(const Duration(seconds: 5)),
+    );
+    controller.selectForm(selectedForm!);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: PreventiveMaintenanceDraftPage(
+          controller: controller,
+          formId: _formId,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('This draft needs sync review'), findsOneWidget);
+    expect(find.byKey(const Key('schedules-loading')), findsNothing);
+    await tester.tap(find.text('Update inspection needs review'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.textContaining('Local observation to review.'), findsOneWidget);
+    expect(find.text('Retry my saved change'), findsOneWidget);
+    expect(find.text('Discard local change'), findsOneWidget);
+
+    await tester.tap(find.text('Discard local change'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('Discard this saved change?'), findsOneWidget);
+    await tester.tap(find.text('Discard local change').last);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump();
+
+    expect(repository.pendingCount, 0);
+    final restoredForm = await tester.runAsync(
+      () => repository.getForm(_formId).timeout(const Duration(seconds: 5)),
+    );
+    expect(
+      restoredForm!.inspections.single.remarks,
+      'Existing server observation.',
+    );
+  });
+
   test(
     'deleting a queued row preserves ordered create and delete writes',
     () async {
@@ -673,6 +738,25 @@ class _MemoryStore implements OfflineSnapshotStore {
 
   @override
   Future<void> delete(String userId) async => values.remove(userId);
+}
+
+class _ImmediateScheduleOfflineInspectionRepository
+    extends OfflineInspectionRepository {
+  _ImmediateScheduleOfflineInspectionRepository({
+    required PreventiveMaintenanceRepository remote,
+    required AssetRepository remoteAssets,
+    required OfflineSnapshotStore store,
+    required OfflineConnectivityMonitor connectivity,
+  }) : super(
+         remote: remote,
+         remoteAssets: remoteAssets,
+         store: store,
+         connectivity: connectivity,
+       );
+
+  @override
+  Future<List<ScheduleOption>> listSchedules({String? assetId}) async =>
+      const <ScheduleOption>[];
 }
 
 class _FakeConnectivity implements OfflineConnectivityMonitor {
