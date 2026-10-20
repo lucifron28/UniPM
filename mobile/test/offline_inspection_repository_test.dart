@@ -252,7 +252,9 @@ void main() {
 
         expect(repository.pendingCount, 0, reason: 'HTTP $statusCode retry');
         expect(
-          remote.forms.where((saved) => saved.id == form.id).map((saved) => saved.id),
+          remote.forms
+              .where((saved) => saved.id == form.id)
+              .map((saved) => saved.id),
           [form.id],
         );
       }
