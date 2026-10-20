@@ -535,6 +535,7 @@ void main() {
     await prepareConflict(tester);
     expect(repository.hasConflictFor(_formId), isTrue);
     expect(repository.pendingCountFor(_formId), 1);
+    final conflict = repository.conflictsForForm(_formId).single;
 
     final controller = PreventiveMaintenanceController(
       repository: repository,
@@ -568,19 +569,25 @@ void main() {
     expect(find.text('Retry my saved change'), findsOneWidget);
     expect(find.text('Discard local change'), findsOneWidget);
 
-    await tester.tap(find.text('Discard local change'));
+    await tester.tap(
+      find.byKey(Key('offline-conflict-discard-${conflict.writeId}')),
+    );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.text('Discard this saved change?'), findsOneWidget);
-    await tester.tap(find.text('Discard local change').last);
+    await tester.tap(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.text('Discard local change'),
+      ),
+    );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
-    await tester.pump();
-
-    expect(repository.pendingCount, 0);
+    await tester.pumpAndSettle();
     final restoredForm = await tester.runAsync(
       () => repository.getForm(_formId).timeout(const Duration(seconds: 5)),
     );
+    expect(repository.pendingCount, 0);
     expect(
       restoredForm!.inspections.single.remarks,
       'Existing server observation.',
