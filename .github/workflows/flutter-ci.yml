@@ -58,5 +58,17 @@ jobs:
             done <"${analyze_log}"
             exit "${status}"
           fi
-      - run: flutter test
+      - name: Run Flutter tests
+        run: |
+          test_log="${RUNNER_TEMP}/flutter-test.log"
+          if flutter test --reporter expanded >"${test_log}" 2>&1; then
+            cat "${test_log}"
+          else
+            status=$?
+            cat "${test_log}"
+            while IFS= read -r diagnostic; do
+              printf '::error title=Flutter test failure::%s\n' "${diagnostic}"
+            done < <(rg -n -m 30 '(\+[0-9]+ -[0-9]+:|Expected:|Actual:|Which:|TestFailure|Exception|Error:|Some tests failed)' "${test_log}" || true)
+            exit "${status}"
+          fi
       - run: flutter build apk --debug
