@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
+import '../../api/api_exception.dart';
 import '../../auth/auth_models.dart';
 import '../../ui/display_labels.dart';
 import 'preventive_maintenance_acknowledgement_page.dart';
@@ -10,6 +13,7 @@ import 'preventive_maintenance_repository.dart';
 import 'inspection_completion_sheet.dart';
 import 'inspection_photo_evidence_card.dart';
 import 'inspection_photo_evidence_repository.dart';
+import 'offline_inspection_repository.dart';
 import 'pm_cycle_presentation.dart';
 
 enum PreventiveMaintenanceDraftAction { scanNextAsset }
@@ -622,28 +626,50 @@ class _PreventiveMaintenanceDraftPageState
               onRetry: _retry,
             );
           }
-          return FutureBuilder<List<ScheduleOption>>(
-            future: schedules,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState != ConnectionState.done) {
-                return const Center(
-                  child: CircularProgressIndicator(
-                    key: Key('schedules-loading'),
-                  ),
-                );
-              }
-              final scheduleError = snapshot.hasError
-                  ? friendlyError(snapshot.error!)
-                  : null;
-              final availableSchedules =
-                  snapshot.data ?? const <ScheduleOption>[];
-              return _buildEditor(
-                context,
-                form,
-                availableSchedules,
-                scheduleError,
-              );
-            },
+          final offlineRepository =
+              widget.controller.repository is OfflineInspectionRepository
+              ? widget.controller.repository as OfflineInspectionRepository
+              : null;
+          return ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              if (widget.controller.errorMessage != null)
+                _InlineError(message: widget.controller.errorMessage!),
+              if (offlineRepository != null) ...[
+                _OfflineDraftStatusCard(
+                  repository: offlineRepository,
+                  formId: form.id,
+                  onResolved: () => widget.controller.loadDraft(form.id),
+                ),
+                const SizedBox(height: 12),
+              ],
+              FutureBuilder<List<ScheduleOption>>(
+                future: schedules,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState != ConnectionState.done) {
+                    return const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 24),
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          key: Key('schedules-loading'),
+                        ),
+                      ),
+                    );
+                  }
+                  final scheduleError = snapshot.hasError
+                      ? friendlyError(snapshot.error!)
+                      : null;
+                  final availableSchedules =
+                      snapshot.data ?? const <ScheduleOption>[];
+                  return _buildEditor(
+                    context,
+                    form,
+                    availableSchedules,
+                    scheduleError,
+                  );
+                },
+              ),
+            ],
           );
         },
       ),
@@ -731,6 +757,10 @@ class _PreventiveMaintenanceDraftPageState
           orElse: () => null,
         );
     final displayedInspections = [...form.inspections];
+    final offlineRepository =
+        widget.controller.repository is OfflineInspectionRepository
+        ? widget.controller.repository as OfflineInspectionRepository
+        : null;
     final focusedInspectionId = widget.focusedInspectionId;
     if (focusedInspectionId != null) {
       displayedInspections.sort((left, right) {
@@ -740,11 +770,9 @@ class _PreventiveMaintenanceDraftPageState
       });
     }
 
-    return ListView(
-      padding: const EdgeInsets.all(16),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        if (widget.controller.errorMessage != null)
-          _InlineError(message: widget.controller.errorMessage!),
         _FormMetadata(form: form, pmCycle: canonicalBatchCycle),
         const SizedBox(height: 16),
         if (!canEdit)
@@ -973,6 +1001,9 @@ class _PreventiveMaintenanceDraftPageState
             eligibleScheduleCount: eligibleScheduleIds.length,
             completedWithoutDraftCount: completedWithoutDraftCount,
             hasPendingPhotoEvidence: pendingPhotoEvidenceIds.isNotEmpty,
+            canSubmitOnline:
+                offlineRepository == null ||
+                offlineRepository.canSubmitForm(form.id),
             onSubmit: _confirmSubmit,
           ),
         ],
@@ -1412,6 +1443,274 @@ class _InspectionRowEditor extends StatefulWidget {
   State<_InspectionRowEditor> createState() => _InspectionRowEditorState();
 }
 
+class _OfflineDraftStatusCard extends StatelessWidget {
+  const _OfflineDraftStatusCard({
+    required this.repository,
+    required this.formId,
+    required this.onResolved,
+  });
+
+  final OfflineInspectionRepository repository;
+  final String formId;
+  final Future<void> Function() onResolved;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: repository,
+      builder: (context, _) {
+        final pending = repository.pendingCountFor(formId);
+        final hasConflict = repository.hasConflictFor(formId);
+        final conflicts = repository.conflictsForForm(formId);
+        if (repository.hasNetwork && pending == 0 && !hasConflict) {
+          return const SizedBox.shrink();
+        }
+        final title = hasConflict
+            ? 'This draft needs sync review'
+            : repository.hasNetwork
+            ? 'Saved changes are syncing'
+            : 'Offline draft saved securely';
+        final detail = hasConflict
+            ? repository.lastIssue ??
+                  'Your local draft is preserved on this device.'
+            : pending > 0
+            ? '$pending change(s) for this draft are waiting to sync. '
+                  'Location verification, photo evidence, and submission need a connection.'
+            : 'This device has a cached copy. Connect to refresh schedules and sync changes.';
+        return Card(
+          color: hasConflict
+              ? Theme.of(context).colorScheme.errorContainer
+              : Theme.of(context).colorScheme.surfaceContainerLow,
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      hasConflict
+                          ? Icons.warning_amber_outlined
+                          : repository.hasNetwork
+                          ? Icons.cloud_upload_outlined
+                          : Icons.cloud_off_outlined,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            title,
+                            style: Theme.of(context).textTheme.titleSmall,
+                          ),
+                          const SizedBox(height: 2),
+                          Text(detail),
+                        ],
+                      ),
+                    ),
+                    if (pending > 0 && !hasConflict)
+                      TextButton(
+                        key: const Key('draft-sync-retry'),
+                        onPressed:
+                            repository.syncState == OfflineSyncState.syncing
+                            ? null
+                            : () => unawaited(repository.syncNow()),
+                        child: const Text('Retry sync'),
+                      ),
+                  ],
+                ),
+                if (conflicts.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Compare each saved change with the current server version. Retrying applies your saved values after checking the current version.',
+                  ),
+                  ...conflicts.map(
+                    (conflict) => _OfflineConflictReviewTile(
+                      repository: repository,
+                      conflict: conflict,
+                      onResolved: onResolved,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _OfflineConflictReviewTile extends StatelessWidget {
+  const _OfflineConflictReviewTile({
+    required this.repository,
+    required this.conflict,
+    required this.onResolved,
+  });
+
+  final OfflineInspectionRepository repository;
+  final OfflineConflictReview conflict;
+  final Future<void> Function() onResolved;
+
+  String _operationLabel(String kind) => switch (kind) {
+    'createForm' => 'Create draft',
+    'addInspection' => 'Add inspection',
+    'updateInspection' => 'Update inspection',
+    'deleteInspection' => 'Delete inspection',
+    _ => 'Saved change',
+  };
+
+  Widget _versionDetails(
+    BuildContext context, {
+    required String label,
+    PreventiveMaintenanceInspection? inspection,
+    PreventiveMaintenanceForm? form,
+    required bool isServer,
+  }) {
+    if (inspection == null && form == null) {
+      final description = conflict.kind == 'deleteInspection' && isServer
+          ? 'The inspection row is no longer on the server.'
+          : 'No saved version is available.';
+      return Text('$label: $description');
+    }
+    if (inspection == null) {
+      return Text(
+        '$label: ${form!.assetCategory}, ${form.status} form, ${form.inspections.length} inspection row(s).',
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '$label: ${inspection.isOperational ? 'Operational' : 'Non-operational'}',
+        ),
+        Text(
+          'Inspected ${inspection.dateInspected.toLocal().toString().split(' ').first}',
+        ),
+        if (inspection.remarks?.isNotEmpty == true)
+          Text('Remarks: ${inspection.remarks}'),
+        if (inspection.actionsRecommendations?.isNotEmpty == true)
+          Text('Recommended action: ${inspection.actionsRecommendations}'),
+      ],
+    );
+  }
+
+  Future<void> _retry(BuildContext context) async {
+    try {
+      await repository.retryConflict(conflict.writeId);
+      if (context.mounted) await onResolved();
+    } catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            error is ApiException
+                ? error.message
+                : 'The saved change could not be retried. Your local copy remains saved.',
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _discard(BuildContext context) async {
+    final shouldDiscard = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Discard this saved change?'),
+        content: const Text(
+          'This removes the selected local change. The current server version will be kept. This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Keep local change'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Discard local change'),
+          ),
+        ],
+      ),
+    );
+    if (!context.mounted || shouldDiscard != true) return;
+    try {
+      await repository.discardConflict(conflict.writeId);
+      if (context.mounted) await onResolved();
+    } catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            error is ApiException
+                ? error.message
+                : 'The saved change could not be discarded. Your local copy remains saved.',
+          ),
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => ExpansionTile(
+    key: Key('offline-conflict-${conflict.writeId}'),
+    tilePadding: EdgeInsets.zero,
+    title: Text('${_operationLabel(conflict.kind)} needs review'),
+    subtitle: Text(conflict.message),
+    childrenPadding: const EdgeInsets.only(bottom: 8),
+    children: [
+      Align(
+        alignment: Alignment.centerLeft,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _versionDetails(
+              context,
+              label: 'Saved on this device',
+              inspection: conflict.localInspection,
+              form: conflict.kind == 'createForm' ? conflict.localForm : null,
+              isServer: false,
+            ),
+            const SizedBox(height: 6),
+            _versionDetails(
+              context,
+              label: 'Current server copy',
+              inspection: conflict.serverInspection,
+              form: conflict.kind == 'createForm' ? conflict.serverForm : null,
+              isServer: true,
+            ),
+          ],
+        ),
+      ),
+      const SizedBox(height: 8),
+      Wrap(
+        spacing: 8,
+        runSpacing: 4,
+        children: [
+          if (conflict.canRetry)
+            OutlinedButton(
+              key: Key('offline-conflict-retry-${conflict.writeId}'),
+              onPressed:
+                  repository.hasNetwork &&
+                      repository.syncState != OfflineSyncState.syncing
+                  ? () => _retry(context)
+                  : null,
+              child: const Text('Retry my saved change'),
+            ),
+          if (conflict.canDiscard)
+            TextButton(
+              key: Key('offline-conflict-discard-${conflict.writeId}'),
+              onPressed: () => _discard(context),
+              child: const Text('Discard local change'),
+            ),
+        ],
+      ),
+    ],
+  );
+}
+
 class _SubmitFormCard extends StatelessWidget {
   const _SubmitFormCard({
     required this.hasRows,
@@ -1422,6 +1721,7 @@ class _SubmitFormCard extends StatelessWidget {
     required this.eligibleScheduleCount,
     required this.completedWithoutDraftCount,
     required this.hasPendingPhotoEvidence,
+    required this.canSubmitOnline,
     required this.onSubmit,
   });
 
@@ -1433,6 +1733,7 @@ class _SubmitFormCard extends StatelessWidget {
   final int eligibleScheduleCount;
   final int completedWithoutDraftCount;
   final bool hasPendingPhotoEvidence;
+  final bool canSubmitOnline;
   final VoidCallback onSubmit;
 
   bool get canSubmit =>
@@ -1489,10 +1790,19 @@ class _SubmitFormCard extends StatelessWidget {
                 'A captured photo is not saved. You can still submit the completed inspection without it.',
               ),
             ],
+            if (!canSubmitOnline) ...[
+              const SizedBox(height: 8),
+              const Text(
+                'Reconnect and sync this draft before submitting it.',
+                key: Key('submit-requires-online-sync'),
+              ),
+            ],
             const SizedBox(height: 12),
             FilledButton(
               key: const Key('submit-form-button'),
-              onPressed: isSaving || !canSubmit ? null : onSubmit,
+              onPressed: isSaving || !canSubmit || !canSubmitOnline
+                  ? null
+                  : onSubmit,
               child: Text(isSaving ? 'Submitting...' : 'Submit form'),
             ),
           ],
@@ -1552,6 +1862,7 @@ class _InspectionRowEditorState extends State<_InspectionRowEditor> {
     );
     await widget.onSave(
       UpdateInspectionInput(
+        expectedUpdatedAt: widget.row.updatedAt,
         dateInspected: date,
         dateAccomplished: widget.assetCategory == 'water-drinking-station'
             ? dateAccomplished
@@ -1703,6 +2014,10 @@ class _InspectionRowEditorState extends State<_InspectionRowEditor> {
                       : 'Non-operational',
                   hasSavedPhoto: widget.row.hasPhotoEvidence,
                   editable: widget.editable,
+                  onlineAvailable:
+                      widget.photoRepository is! OfflineInspectionRepository ||
+                      (widget.photoRepository as OfflineInspectionRepository)
+                          .canEditPhoto(widget.row.id),
                   repository: widget.photoRepository!,
                   onPendingStateChanged: widget.onPhotoPendingChanged,
                   capturePhoto: widget.photoCapture ?? captureInspectionPhoto,

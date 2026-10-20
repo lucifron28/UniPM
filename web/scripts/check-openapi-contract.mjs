@@ -185,6 +185,44 @@ const pmAnalyticsV2Operations = [
   ],
 ]
 
+const pmAnalyticsV3Operations = [
+  [
+    '/api/v1/analytics/pm/v3/catalog',
+    'get',
+    'GetPmAnalyticsV3Catalog',
+    null,
+    'PmAnalyticsV3CatalogResponse',
+  ],
+  [
+    '/api/v1/analytics/pm/v3/catalog/values',
+    'get',
+    'GetPmAnalyticsV3FilterValues',
+    null,
+    'PmAnalyticsV3FilterValuesResponse',
+  ],
+  [
+    '/api/v1/analytics/pm/v3/interpret',
+    'post',
+    'InterpretPmAnalyticsV3Question',
+    'PmAnalyticsV3InterpretRequest',
+    'PmAnalyticsV3InterpretationResponse',
+  ],
+  [
+    '/api/v1/analytics/pm/v3/preview',
+    'post',
+    'PreviewPmAnalyticsV3Report',
+    'PmAnalyticsV3PreviewRequest',
+    'PmAnalyticsV3PreviewResponse',
+  ],
+  [
+    '/api/v1/analytics/pm/v3/execute',
+    'post',
+    'ExecutePmAnalyticsV3Report',
+    'PmAnalyticsV3ExecuteRequest',
+    'PmAnalyticsV3ExecutionResponse',
+  ],
+]
+
 const registryOperations = [
   ['/api/v1/assets/registry', 'ListAssetRegistry', 'AssetRegistryPageResponse'],
   [
@@ -280,6 +318,85 @@ for (const [
         `Required schedule operation ${operationId} must return ${schemaName}.`,
       )
     }
+  }
+}
+
+for (const [
+  path,
+  method,
+  operationId,
+  requestSchemaName,
+  responseSchemaName,
+] of pmAnalyticsV3Operations) {
+  const operation = snapshot.paths?.[path]?.[method]
+  const requestSchema = requestSchemaName
+    ? operation?.requestBody?.content?.['application/json']?.schema
+    : null
+  const responseSchema =
+    operation?.responses?.['200']?.content?.['application/json']?.schema
+
+  if (
+    operation?.operationId !== operationId ||
+    (requestSchemaName &&
+      requestSchema?.$ref !== `#/components/schemas/${requestSchemaName}`) ||
+    responseSchema?.$ref !== `#/components/schemas/${responseSchemaName}`
+  ) {
+    throw new Error(
+      `PM analytics V3 operation ${operationId} must use ${requestSchemaName ?? 'no request body'} and return ${responseSchemaName}.`,
+    )
+  }
+}
+
+const pmAnalyticsV3RequiredFields = {
+  PmAnalyticsV3ReportPlan: [
+    'schemaVersion',
+    'catalogVersion',
+    'subject',
+    'mode',
+    'period',
+    'categories',
+    'measures',
+    'baseFilters',
+    'matchingFilters',
+    'aggregateFilters',
+    'orderBy',
+    'presentation',
+    'columns',
+  ],
+  PmAnalyticsV3PreviewResponse: [
+    'previewId',
+    'expiresAtUtc',
+    'plan',
+    'cyclesByCategory',
+    'summary',
+    'scopeNotes',
+  ],
+  PmAnalyticsV3ExecutionResponse: [
+    'schemaVersion',
+    'catalogVersion',
+    'asOfUtc',
+    'plan',
+    'cyclesByCategory',
+    'mode',
+    'columns',
+    'population',
+    'page',
+    'pageSize',
+    'totalPages',
+    'aggregateRows',
+    'records',
+    'scopeNotes',
+  ],
+}
+
+for (const [schemaName, fields] of Object.entries(
+  pmAnalyticsV3RequiredFields,
+)) {
+  const properties = snapshot.components?.schemas?.[schemaName]?.properties
+  if (!properties || fields.some((field) => !(field in properties))) {
+    throw new Error(
+      `PM analytics V3 schema ${schemaName} is missing a required field.`,
+    )
   }
 }
 
@@ -827,5 +944,5 @@ if (
 }
 
 console.log(
-  'OpenAPI auth, asset, schedule, inspection registry, WMS referral, and preventive-maintenance form contract sanity check passed.',
+  'OpenAPI auth, asset, schedule, inspection registry, WMS referral, preventive-maintenance form, and PM analytics V2/V3 contract sanity check passed.',
 )

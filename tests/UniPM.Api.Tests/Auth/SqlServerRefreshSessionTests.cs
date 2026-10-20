@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -166,6 +167,7 @@ public sealed class SqlServerRefreshSessionTests
             }));
             builder.ConfigureServices(services =>
             {
+                services.RemoveAll<IDbContextOptionsConfiguration<ApplicationDbContext>>();
                 services.RemoveAll<IDbContextFactory<ApplicationDbContext>>();
                 services.RemoveAll<DbContextOptions<ApplicationDbContext>>();
                 services.AddDbContextFactory<ApplicationDbContext>(options =>
@@ -188,8 +190,13 @@ public sealed class SqlServerRefreshSessionTests
             var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
             var user = new ApplicationUser
             {
-                Id = Guid.NewGuid(), UserName = Email, Email = Email, EmailConfirmed = true,
-                DisplayName = "SQL Refresh User", IsActive = true, LockoutEnabled = true
+                Id = Guid.NewGuid(),
+                UserName = Email,
+                Email = Email,
+                EmailConfirmed = true,
+                DisplayName = "SQL Refresh User",
+                IsActive = true,
+                LockoutEnabled = true
             };
             Assert.True((await userManager.CreateAsync(user, Password)).Succeeded);
         }

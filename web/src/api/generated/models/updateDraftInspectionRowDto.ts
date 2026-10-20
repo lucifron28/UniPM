@@ -6,6 +6,8 @@
  */
 
 export interface UpdateDraftInspectionRowDto {
+  /** @nullable */
+  expectedUpdatedAt?: string | null
   dateInspected?: string
   /** @nullable */
   dateAccomplished?: string | null

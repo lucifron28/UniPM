@@ -65,6 +65,27 @@ export function normalizeApiError(error: unknown): ApiError {
       return fieldErrors ? [[key, fieldErrors]] : []
     }),
   )
+  const nestedExtensions =
+    typeof record.extensions === 'object' &&
+    record.extensions !== null &&
+    !Array.isArray(record.extensions)
+      ? (record.extensions as Record<string, unknown>)
+      : {}
+  const topLevelExtensions = Object.fromEntries(
+    Object.entries(record).filter(
+      ([key]) =>
+        ![
+          'type',
+          'title',
+          'status',
+          'detail',
+          'instance',
+          'errors',
+          'extensions',
+        ].includes(key),
+    ),
+  )
+  const extensions = { ...nestedExtensions, ...topLevelExtensions }
   const problem: ApiProblemDetails = {
     status:
       typeof record.status === 'number' ? record.status : error.response.status,
@@ -75,6 +96,7 @@ export function normalizeApiError(error: unknown): ApiError {
       ? { instance: record.instance }
       : {}),
     ...(Object.keys(errors).length > 0 ? { errors } : {}),
+    ...(Object.keys(extensions).length > 0 ? { extensions } : {}),
   }
   return new ApiError(
     problem.detail ?? problem.title ?? 'The request could not be completed.',

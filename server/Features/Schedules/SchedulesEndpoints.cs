@@ -14,6 +14,10 @@ namespace UniPM.Api.Features.Schedules;
 
 public static class SchedulesEndpoints
 {
+    private const int AssignmentOptionLimit = 10;
+    private const int MaximumAssigneeSearchLength = 100;
+    private const int MaximumAssignmentOptionPageSize = 100;
+
     public static IEndpointRouteBuilder MapSchedulesEndpoints(this IEndpointRouteBuilder endpoints)
     {
         var group = endpoints.MapGroup("/schedules").WithTags("Schedules");
@@ -773,6 +777,192 @@ public static class SchedulesEndpoints
         .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status409Conflict)
         .RequireAuthorization(AuthPolicyCatalog.CanAssignScheduleWorkers);
 
+        group.MapGet("/assignment-batches", async (
+            int year,
+            string? assetCategory,
+            string? department,
+            string? pmCycle,
+            ClaimsPrincipal user,
+            IDbContextFactory<ApplicationDbContext> factory,
+            CancellationToken cancellationToken) =>
+        {
+            var validationErrors = new Dictionary<string, string[]>();
+            string? normalizedCategory = null;
+            var normalizedDepartment = string.IsNullOrWhiteSpace(department) ? null : department.Trim();
+            string? normalizedCycle = null;
+
+            if (year is < 1 or > 9999)
+            {
+                validationErrors[nameof(year)] = ["Year must be between 1 and 9999."];
+            }
+
+            if (normalizedDepartment?.Length > 256)
+            {
+                validationErrors[nameof(department)] = ["Department must be 256 characters or fewer."];
+            }
+
+            if (!string.IsNullOrWhiteSpace(assetCategory))
+            {
+                if (AssetCategoryCatalog.TryNormalize(assetCategory, out var parsedCategory))
+                {
+                    normalizedCategory = parsedCategory;
+                }
+                else
+                {
+                    validationErrors[nameof(assetCategory)] =
+                        ["Asset category must be one of the selected UniPM study scope categories."];
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(pmCycle))
+            {
+                var cycle = pmCycle.Trim();
+                if (PreventiveMaintenanceCycle.TryParse(cycle, out var cycleYear, out _)
+                    && cycleYear == year)
+                {
+                    normalizedCycle = cycle;
+                }
+                else
+                {
+                    validationErrors[nameof(pmCycle)] =
+                        ["PM cycle must use the yyyy-MM format and match the selected year."];
+                }
+            }
+
+            if (validationErrors.Count > 0)
+            {
+                return ApiErrors.Validation(validationErrors);
+            }
+
+            var isGsd = user.IsInRole(AuthRoleCatalog.Gsd);
+            if (!isGsd && !user.IsInRole(AuthRoleCatalog.Supervisor))
+            {
+                return Results.Forbid();
+            }
+
+            Guid? supervisorId = null;
+            if (!isGsd)
+            {
+                if (!Guid.TryParse(user.FindFirst(JwtRegisteredClaimNames.Sub)?.Value, out var authenticatedUserId))
+                {
+                    return Results.Forbid();
+                }
+
+                supervisorId = authenticatedUserId;
+            }
+
+            await using var context = await factory.CreateDbContextAsync(cancellationToken);
+            var query = context.PreventiveMaintenanceSchedules
+                .AsNoTracking()
+                .Where(schedule => schedule.Year == year && schedule.Asset != null);
+
+            if (normalizedDepartment is not null)
+            {
+                var departmentKey = normalizedDepartment.ToUpperInvariant();
+                query = query.Where(schedule => schedule.Asset!.Department != null
+                    && schedule.Asset.Department.Trim().ToUpper() == departmentKey);
+            }
+
+            if (normalizedCategory is not null)
+            {
+                query = query.Where(schedule => schedule.Asset!.AssetCategory == normalizedCategory);
+            }
+
+            if (normalizedCycle is not null)
+            {
+                query = query.Where(schedule => schedule.PmCycle == normalizedCycle);
+            }
+
+            var rows = await query
+                .OrderBy(schedule => schedule.ScheduleDate)
+                .ThenBy(schedule => schedule.Id)
+                .Select(schedule => new ScheduleAssignmentQueueSourceRow(
+                    new ScheduleResponse(
+                        schedule.Id,
+                        schedule.AssetId,
+                        schedule.ScheduleDate,
+                        schedule.PmCycle,
+                        schedule.PeriodType,
+                        schedule.Status,
+                        schedule.Quarter,
+                        schedule.Semester,
+                        schedule.Year,
+                        schedule.AcademicYear,
+                        schedule.AssignedToUserId,
+                        schedule.AssignedSupervisorUserId,
+                        schedule.CompletedAt,
+                        schedule.CreatedAt,
+                        schedule.UpdatedAt,
+                        new ScheduleAssetResponse(
+                            schedule.Asset!.Id,
+                            schedule.Asset.AssetCode,
+                            schedule.Asset.AssetCategory,
+                            schedule.Asset.Building,
+                            schedule.Asset.Department,
+                            schedule.Asset.Location,
+                            schedule.Asset.Status,
+                            schedule.Asset.QrCodeValue)),
+                    context.InspectionRecords.Any(inspection => inspection.ScheduleId == schedule.Id)))
+                .ToListAsync(cancellationToken);
+
+            var assignedUserIds = rows
+                .SelectMany(row => new Guid?[]
+                {
+                    row.Schedule.AssignedSupervisorUserId,
+                    row.Schedule.AssignedToUserId
+                })
+                .Where(userId => userId.HasValue)
+                .Select(userId => userId!.Value)
+                .Distinct()
+                .ToArray();
+            var assigneeDisplayNames = await context.Users
+                .AsNoTracking()
+                .Where(user => assignedUserIds.Contains(user.Id))
+                .Select(user => new { user.Id, user.DisplayName })
+                .ToDictionaryAsync(user => user.Id, user => user.DisplayName, cancellationToken);
+
+            var groupedRows = new Dictionary<ScheduleBatchIdentity, List<ScheduleAssignmentQueueSourceRow>>();
+            foreach (var row in rows)
+            {
+                if (!ScheduleBatchIdentity.TryCreate(
+                        row.Schedule.Asset?.Department,
+                        row.Schedule.Asset?.AssetCategory,
+                        row.Schedule.PmCycle,
+                        out var identity))
+                {
+                    continue;
+                }
+
+                if (!groupedRows.TryGetValue(identity, out var batchRows))
+                {
+                    batchRows = [];
+                    groupedRows.Add(identity, batchRows);
+                }
+
+                batchRows.Add(row);
+            }
+
+            var batches = groupedRows
+                .Where(pair => supervisorId is null
+                    || pair.Value.Any(row => row.Schedule.AssignedSupervisorUserId == supervisorId))
+                .Select(pair => CreateAssignmentQueueBatch(pair.Key, pair.Value, assigneeDisplayNames))
+                .OrderBy(batch => batch.PmCycle, StringComparer.Ordinal)
+                .ThenBy(batch => batch.Department, StringComparer.OrdinalIgnoreCase)
+                .ThenBy(batch => batch.AssetCategory, StringComparer.Ordinal)
+                .ToArray();
+
+            return Results.Ok(new ScheduleAssignmentQueueResponse(
+                batches.Sum(batch => batch.ScheduleCount),
+                batches));
+        })
+        .WithName("ListScheduleAssignmentBatches")
+        .WithSummary("Lists grouped PM schedule batches for assignment")
+        .Produces<ScheduleAssignmentQueueResponse>(StatusCodes.Status200OK)
+        .Produces<Microsoft.AspNetCore.Mvc.ValidationProblemDetails>(StatusCodes.Status400BadRequest)
+        .Produces(StatusCodes.Status401Unauthorized)
+        .Produces(StatusCodes.Status403Forbidden)
+        .RequireAuthorization(AuthPolicyCatalog.CanReadSchedules);
+
         group.MapGet("/registry", async (
             Guid? assetId,
             string? status,
@@ -1186,7 +1376,9 @@ public static class SchedulesEndpoints
                             schedule.Asset.AssetCategory,
                             schedule.Asset.Building,
                             schedule.Asset.Department,
-                            schedule.Asset.Location)))
+                            schedule.Asset.Location,
+                            schedule.Asset.Status,
+                            schedule.Asset.QrCodeValue)))
                 .ToListAsync(cancellationToken);
 
             return Results.Ok(schedules);
@@ -1238,6 +1430,161 @@ public static class SchedulesEndpoints
 
         return endpoints;
     }
+
+    private static ScheduleAssignmentQueueBatchResponse CreateAssignmentQueueBatch(
+        ScheduleBatchIdentity identity,
+        IReadOnlyCollection<ScheduleAssignmentQueueSourceRow> rows,
+        IReadOnlyDictionary<Guid, string> assigneeDisplayNames)
+    {
+        var schedules = rows.Select(row => row.Schedule).ToArray();
+        var supervisor = SummarizeAssignment(schedules.Select(schedule => schedule.AssignedSupervisorUserId));
+        var inspector = SummarizeAssignment(schedules.Select(schedule => schedule.AssignedToUserId));
+        var representative = schedules
+            .OrderBy(schedule => schedule.Asset?.AssetCode, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(schedule => schedule.Id)
+            .First();
+        var supervisorDisplayName = supervisor.UserId is Guid supervisorId
+            && assigneeDisplayNames.TryGetValue(supervisorId, out var resolvedSupervisorName)
+                ? resolvedSupervisorName
+                : null;
+        var inspectorDisplayName = inspector.UserId is Guid inspectorId
+            && assigneeDisplayNames.TryGetValue(inspectorId, out var resolvedInspectorName)
+                ? resolvedInspectorName
+                : null;
+
+        return new ScheduleAssignmentQueueBatchResponse(
+            identity.CreateLockResource(),
+            representative.Asset?.Department?.Trim() ?? identity.Department,
+            representative.Asset?.AssetCategory ?? identity.AssetCategory,
+            identity.PmCycle,
+            schedules.Length,
+            schedules.Count(schedule => string.Equals(
+                schedule.Status, ScheduleStatusCatalog.Completed, StringComparison.OrdinalIgnoreCase)),
+            schedules.Count(schedule => string.Equals(
+                schedule.Status, ScheduleStatusCatalog.Ongoing, StringComparison.OrdinalIgnoreCase)),
+            schedules.Count(schedule => string.Equals(
+                schedule.Status, ScheduleStatusCatalog.Overdue, StringComparison.OrdinalIgnoreCase)),
+            supervisor.State,
+            supervisor.UserId,
+            supervisorDisplayName,
+            inspector.State,
+            inspector.UserId,
+            inspectorDisplayName,
+            rows.Any(row => row.HasInspectionEvidence
+                || row.Schedule.CompletedAt is not null
+                || !IsAssignableScheduleStatus(row.Schedule.Status)),
+            supervisor.State == "Assigned",
+            representative);
+    }
+
+    private static bool TryNormalizeAssignmentOptionFilters(
+        string? search,
+        int? page,
+        int? pageSize,
+        out string? normalizedSearch,
+        out int pageNumber,
+        out int size,
+        out Dictionary<string, string[]> validationErrors)
+    {
+        normalizedSearch = string.IsNullOrWhiteSpace(search) ? null : search.Trim();
+        pageNumber = page ?? 1;
+        size = pageSize ?? AssignmentOptionLimit;
+        validationErrors = [];
+
+        if (pageNumber < 1)
+        {
+            validationErrors[nameof(page)] = ["Page must be greater than zero."];
+        }
+
+        if (size is < 1 or > MaximumAssignmentOptionPageSize)
+        {
+            validationErrors[nameof(pageSize)] = [
+                $"Page size must be between 1 and {MaximumAssignmentOptionPageSize}."];
+        }
+
+        if (normalizedSearch?.Length > MaximumAssigneeSearchLength)
+        {
+            validationErrors[nameof(search)] = [
+                $"Search must not exceed {MaximumAssigneeSearchLength} characters."];
+        }
+
+        return validationErrors.Count == 0;
+    }
+
+    private static async Task<ScheduleAssignmentOptionsPage> GetAssignmentOptionsAsync(
+        ApplicationDbContext context,
+        string roleName,
+        string? search,
+        int page,
+        int pageSize,
+        Guid? selectedUserId,
+        CancellationToken cancellationToken)
+    {
+        var normalizedRoleName = roleName.ToUpperInvariant();
+        var eligibleUsers =
+            from user in context.Users.AsNoTracking()
+            join userRole in context.UserRoles.AsNoTracking()
+                on user.Id equals userRole.UserId
+            join role in context.Roles.AsNoTracking()
+                on userRole.RoleId equals role.Id
+            where user.IsActive && role.NormalizedName == normalizedRoleName
+            select user;
+        var query = eligibleUsers;
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var normalizedSearch = search.Trim().ToUpperInvariant();
+            query = query.Where(user => user.DisplayName.ToUpper().Contains(normalizedSearch));
+        }
+
+        var totalCount = await query.CountAsync(cancellationToken);
+        var skip = (long)(page - 1) * pageSize;
+        List<ScheduleAssigneeOption> items = skip > int.MaxValue
+            ? []
+            : await query
+                .OrderBy(user => user.DisplayName)
+                .ThenBy(user => user.Id)
+                .Skip((int)skip)
+                .Take(pageSize)
+            .Select(user => new ScheduleAssigneeOption(user.Id, user.DisplayName))
+            .ToListAsync(cancellationToken);
+        var selected = selectedUserId is Guid selectedId
+            ? await eligibleUsers
+                .Where(user => user.Id == selectedId)
+                .Select(user => new ScheduleAssigneeOption(user.Id, user.DisplayName))
+                .SingleOrDefaultAsync(cancellationToken)
+            : null;
+
+        return new ScheduleAssignmentOptionsPage(items, page, pageSize, totalCount, selected);
+    }
+
+    private static ScheduleAssignmentState SummarizeAssignment(IEnumerable<Guid?> userIds)
+    {
+        var distinctIds = userIds.Distinct().ToArray();
+        if (distinctIds.Length == 1)
+        {
+            var userId = distinctIds[0];
+            return userId is not null
+                ? new ScheduleAssignmentState("Assigned", userId)
+                : new ScheduleAssignmentState("Unassigned", null);
+        }
+
+        return distinctIds.Contains(null)
+            ? new ScheduleAssignmentState("Partially assigned", null)
+            : new ScheduleAssignmentState("Mixed", null);
+    }
+
+    private static bool IsAssignableScheduleStatus(string status)
+    {
+        return string.Equals(status, ScheduleStatusCatalog.Due, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(status, ScheduleStatusCatalog.Ongoing, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(status, ScheduleStatusCatalog.Overdue, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private sealed record ScheduleAssignmentQueueSourceRow(
+        ScheduleResponse Schedule,
+        bool HasInspectionEvidence);
+
+    private sealed record ScheduleAssignmentState(string State, Guid? UserId);
 
     private static Task<List<PreventiveMaintenanceSchedule>> LoadBatchAsync(
         ApplicationDbContext context,
@@ -1492,85 +1839,6 @@ public static class SchedulesEndpoints
             inspection => scheduleIds.Contains(inspection.ScheduleId),
             cancellationToken);
     }
-
-    private static bool TryNormalizeAssignmentOptionFilters(
-        string? search,
-        int? page,
-        int? pageSize,
-        out string? normalizedSearch,
-        out int pageNumber,
-        out int size,
-        out Dictionary<string, string[]> validationErrors)
-    {
-        normalizedSearch = string.IsNullOrWhiteSpace(search) ? null : search.Trim();
-        pageNumber = page ?? 1;
-        size = pageSize ?? 25;
-        validationErrors = [];
-
-        if (pageNumber < 1)
-        {
-            validationErrors[nameof(page)] = ["Page must be greater than zero."];
-        }
-
-        if (size is < 1 or > 100)
-        {
-            validationErrors[nameof(pageSize)] = ["Page size must be between 1 and 100."];
-        }
-
-        if (normalizedSearch?.Length > 256)
-        {
-            validationErrors[nameof(search)] = ["Search must be 256 characters or fewer."];
-        }
-
-        return validationErrors.Count == 0;
-    }
-
-    private static async Task<ScheduleAssignmentOptionsPage> GetAssignmentOptionsAsync(
-        ApplicationDbContext context,
-        string roleName,
-        string? search,
-        int page,
-        int pageSize,
-        Guid? selectedUserId,
-        CancellationToken cancellationToken)
-    {
-        var normalizedRole = roleName.ToUpperInvariant();
-        var eligibleUsers =
-            from user in context.Users.AsNoTracking()
-            join userRole in context.UserRoles.AsNoTracking()
-                on user.Id equals userRole.UserId
-            join role in context.Roles.AsNoTracking()
-                on userRole.RoleId equals role.Id
-            where user.IsActive && role.NormalizedName == normalizedRole
-            select user;
-
-        var query = eligibleUsers;
-        if (search is not null)
-        {
-            var searchKey = search.ToUpperInvariant();
-            query = query.Where(user => user.DisplayName.ToUpper().Contains(searchKey));
-        }
-
-        var totalCount = await query.CountAsync(cancellationToken);
-        var skip = (long)(page - 1) * pageSize;
-        List<ScheduleAssigneeOption> items = skip > int.MaxValue
-            ? []
-            : await query
-                .OrderBy(user => user.DisplayName)
-                .ThenBy(user => user.Id)
-                .Skip((int)skip)
-                .Take(pageSize)
-                .Select(user => new ScheduleAssigneeOption(user.Id, user.DisplayName))
-                .ToListAsync(cancellationToken);
-        var selected = selectedUserId is Guid id
-            ? await eligibleUsers
-                .Where(user => user.Id == id)
-                .Select(user => new ScheduleAssigneeOption(user.Id, user.DisplayName))
-                .SingleOrDefaultAsync(cancellationToken)
-            : null;
-
-        return new ScheduleAssignmentOptionsPage(items, page, pageSize, totalCount, selected);
-    }
 }
 
 public sealed record ScheduleResponse(
@@ -1617,7 +1885,9 @@ public sealed record ScheduleResponse(
                     schedule.Asset.AssetCategory,
                     schedule.Asset.Building,
                     schedule.Asset.Department,
-                    schedule.Asset.Location));
+                    schedule.Asset.Location,
+                    schedule.Asset.Status,
+                    schedule.Asset.QrCodeValue));
     }
 }
 
@@ -1665,6 +1935,29 @@ public sealed record ScheduleRegistrySummaryResponse(
     int OverdueCount,
     int CompletedCount,
     int CancelledCount);
+
+public sealed record ScheduleAssignmentQueueResponse(
+    int TotalScheduleCount,
+    IReadOnlyList<ScheduleAssignmentQueueBatchResponse> Batches);
+
+public sealed record ScheduleAssignmentQueueBatchResponse(
+    string BatchKey,
+    string Department,
+    string AssetCategory,
+    string PmCycle,
+    int ScheduleCount,
+    int CompletedCount,
+    int OngoingCount,
+    int OverdueCount,
+    string SupervisorState,
+    Guid? SupervisorUserId,
+    string? SupervisorDisplayName,
+    string InspectorState,
+    Guid? InspectorUserId,
+    string? InspectorDisplayName,
+    bool AssignmentLocked,
+    bool SupervisorOwnershipIsConsistent,
+    ScheduleResponse RepresentativeSchedule);
 
 internal sealed record ScheduleRegistryStatusCounts(string Status, int Count);
 
@@ -1742,7 +2035,9 @@ public sealed record ScheduleAssetResponse(
     string AssetCategory,
     string? Building,
     string? Department,
-    string? Location);
+    string? Location,
+    string Status,
+    string? QrCodeValue);
 
 public class CreateScheduleDto
 {

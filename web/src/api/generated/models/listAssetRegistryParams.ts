@@ -11,6 +11,7 @@ export type ListAssetRegistryParams = {
   building?: string
   department?: string
   search?: string
+  hasDepartment?: boolean
   /**
    * @pattern ^-?(?:0|[1-9]\d*)$
    */
@@ -19,5 +20,4 @@ export type ListAssetRegistryParams = {
    * @pattern ^-?(?:0|[1-9]\d*)$
    */
   pageSize?: number | string
-  hasDepartment?: boolean
 }

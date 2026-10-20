@@ -1,0 +1,81 @@
+{
+  "fixtureSetId": "NLA-V3-SYNTHETIC-CALCULATIONS-001",
+  "status": "engineering-fixtures-review-pending",
+  "clockBasis": "Asia/Manila",
+  "fixtures": [
+    {
+      "fixtureId": "denominator-matching",
+      "asOfUtc": "2025-06-01T00:00:00+00:00",
+      "assets": [
+        { "assetCode": "DEN-A", "category": "fire-extinguisher", "department": "Operations", "building": "North", "cycle": "2024-02", "completedAt": "2024-02-20T12:00:00+08:00", "isOperational": false },
+        { "assetCode": "DEN-B", "category": "fire-extinguisher", "department": "Operations", "building": "North", "cycle": "2024-02", "completedAt": "2024-02-21T12:00:00+08:00", "isOperational": false },
+        { "assetCode": "DEN-C", "category": "fire-extinguisher", "department": "Operations", "building": "North", "cycle": "2024-02", "completedAt": "2024-02-22T12:00:00+08:00", "isOperational": true },
+        { "assetCode": "DEN-D", "category": "fire-extinguisher", "department": "Operations", "building": "North", "cycle": "2024-02", "completedAt": null, "isOperational": null }
+      ],
+      "expected": { "eligibleCount": 4, "matchingCount": 2, "completedCountNumerator": 2, "denominator": 4, "completedCountValue": 2 }
+    },
+    {
+      "fixtureId": "grouped-threshold",
+      "asOfUtc": "2025-06-01T00:00:00+00:00",
+      "assets": [
+        { "assetCode": "THR-O1", "category": "fire-extinguisher", "department": "Operations", "building": "North", "cycle": "2024-02", "completedAt": "2024-02-20T12:00:00+08:00", "isOperational": true },
+        { "assetCode": "THR-O2", "category": "fire-extinguisher", "department": "Operations", "building": "North", "cycle": "2024-02", "completedAt": "2024-02-21T12:00:00+08:00", "isOperational": true },
+        { "assetCode": "THR-O3", "category": "fire-extinguisher", "department": "Operations", "building": "North", "cycle": "2024-02", "completedAt": "2024-03-02T12:00:00+08:00", "isOperational": true },
+        { "assetCode": "THR-R1", "category": "fire-extinguisher", "department": "Research", "building": "South", "cycle": "2024-02", "completedAt": "2024-02-22T12:00:00+08:00", "isOperational": true },
+        { "assetCode": "THR-R2", "category": "fire-extinguisher", "department": "Research", "building": "South", "cycle": "2024-02", "completedAt": null, "isOperational": null }
+      ],
+      "expected": { "eligibleCount": 5, "groupCountBeforeThreshold": 2, "groupCountAfterThreshold": 1, "keptDepartment": "OPERATIONS", "keptNumerator": 2, "keptDenominator": 3, "keptPercent": 66.666666666666666666666666667 }
+    },
+    {
+      "fixtureId": "category-cycles",
+      "asOfUtc": "2025-06-01T00:00:00+00:00",
+      "assets": [
+        { "assetCode": "CAT-FE", "category": "fire-extinguisher", "department": "Operations", "building": "North", "cycle": "2024-02", "completedAt": "2024-02-20T12:00:00+08:00", "isOperational": true },
+        { "assetCode": "CAT-FA", "category": "fire-alarm", "department": "Operations", "building": "North", "cycle": "2024-06", "completedAt": "2024-06-20T12:00:00+08:00", "isOperational": true }
+      ],
+      "expected": {
+        "fire-extinguisher": ["2024-02", "2024-05", "2024-08", "2024-11"],
+        "fire-alarm": ["2024-06", "2024-12"],
+        "eligibleCount": 2,
+        "scheduledByCategory": { "fire-extinguisher": 1, "fire-alarm": 1 }
+      }
+    },
+    {
+      "fixtureId": "quarter-source-records",
+      "asOfUtc": "2025-06-01T00:00:00+00:00",
+      "assets": [
+        { "assetCode": "QTR-FEB", "category": "fire-extinguisher", "department": "Operations", "building": "North", "cycle": "2025-02", "completedAt": "2025-02-20T12:00:00+08:00", "isOperational": false },
+        { "assetCode": "QTR-MAY", "category": "fire-extinguisher", "department": "Operations", "building": "North", "cycle": "2025-05", "completedAt": "2025-05-20T12:00:00+08:00", "isOperational": false },
+        { "assetCode": "QTR-AUG", "category": "fire-extinguisher", "department": "Operations", "building": "South", "cycle": "2025-08", "completedAt": "2025-08-20T12:00:00+08:00", "isOperational": false },
+        { "assetCode": "QTR-NOV", "category": "fire-extinguisher", "department": "Operations", "building": "North", "cycle": "2025-11", "completedAt": "2025-11-20T12:00:00+08:00", "isOperational": false }
+      ],
+      "expected": { "quarter1Cycles": ["2025-02"], "quarter4Cycles": ["2025-11"], "quarter1RecordCodes": ["QTR-FEB"], "quarter4RecordCodes": ["QTR-NOV"] }
+    },
+    {
+      "fixtureId": "records-pagination",
+      "asOfUtc": "2025-06-01T00:00:00+00:00",
+      "assets": [
+        { "assetCode": "PAGE-A", "category": "fire-extinguisher", "department": "Operations", "building": "North", "cycle": "2024-02", "completedAt": "2024-02-20T12:00:00+08:00", "isOperational": false },
+        { "assetCode": "PAGE-B", "category": "fire-extinguisher", "department": "Operations", "building": "North", "cycle": "2024-02", "completedAt": "2024-02-20T12:00:00+08:00", "isOperational": false },
+        { "assetCode": "PAGE-C", "category": "fire-extinguisher", "department": "Operations", "building": "North", "cycle": "2024-02", "completedAt": "2024-02-20T12:00:00+08:00", "isOperational": false },
+        { "assetCode": "PAGE-D", "category": "fire-extinguisher", "department": "Operations", "building": "North", "cycle": "2024-02", "completedAt": "2024-02-20T12:00:00+08:00", "isOperational": false },
+        { "assetCode": "PAGE-E", "category": "fire-extinguisher", "department": "Operations", "building": "North", "cycle": "2024-02", "completedAt": "2024-02-20T12:00:00+08:00", "isOperational": false }
+      ],
+      "expected": { "eligibleCount": 5, "matchingCount": 5, "page": 2, "pageSize": 2, "totalPages": 3, "recordCodes": ["PAGE-C", "PAGE-D"] }
+    },
+    {
+      "fixtureId": "missing-category-coverage",
+      "asOfUtc": "2025-06-15T00:00:00+08:00",
+      "assets": [
+        { "assetCode": "MISS-FE", "category": "fire-extinguisher", "department": "Operations", "building": "North", "cycle": "2025-05", "completedAt": "2025-05-20T12:00:00+08:00", "isOperational": true }
+      ],
+      "expected": { "fire-extinguisher": ["2025-05"], "fire-alarm": ["2025-06"], "eligibleCount": 1, "denominator": 1, "isMeasurable": false, "value": null, "reasonContains": "active or future" }
+    },
+    {
+      "fixtureId": "zero-eligible",
+      "asOfUtc": "2025-06-01T00:00:00+00:00",
+      "assets": [],
+      "expected": { "eligibleCount": 0, "denominator": 0, "isMeasurable": false, "value": null, "reasonContains": "No eligible schedules" }
+    }
+  ]
+}

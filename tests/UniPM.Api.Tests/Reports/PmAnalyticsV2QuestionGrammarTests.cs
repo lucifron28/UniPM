@@ -10,6 +10,10 @@ public sealed class PmAnalyticsV2QuestionGrammarTests
         PmAnalyticsV2Metric.NonOperational,
         PmAnalyticsV2GroupBy.None)]
     [InlineData(
+        "Show me the non-operational water drinking station in 2025 for all the departments",
+        PmAnalyticsV2Metric.NonOperational,
+        PmAnalyticsV2GroupBy.Department)]
+    [InlineData(
         "Show late and non-operational water drinking station inspections during 2025, grouped by department",
         PmAnalyticsV2Metric.CompletedLate,
         PmAnalyticsV2GroupBy.Department)]
@@ -41,6 +45,22 @@ public sealed class PmAnalyticsV2QuestionGrammarTests
         Assert.Null(parsed.Code);
         Assert.Equal(expectedMetric, parsed.Plan.Metric);
         Assert.Equal(expectedGroup, parsed.Plan.GroupBy);
+    }
+
+    [Fact]
+    public void Parses_all_departments_wording_as_a_grouped_annual_non_operational_report()
+    {
+        var parsed = PmAnalyticsV2QuestionGrammar.Parse(
+            "Show me the non-operational water drinking station in 2025 for all the departments");
+
+        Assert.NotNull(parsed.Plan);
+        Assert.False(parsed.NeedsClarification);
+        Assert.Equal(PmAnalyticsV2Metric.NonOperational, parsed.Plan.Metric);
+        Assert.Equal("water-drinking-station", parsed.Plan.AssetCategory);
+        Assert.Equal(PmAnalyticsV2PeriodKind.Year, parsed.Plan.Period!.Kind);
+        Assert.Equal(2025, parsed.Plan.Period.Year);
+        Assert.Equal(PmAnalyticsV2Condition.NonOperational, parsed.Plan.Condition);
+        Assert.Equal(PmAnalyticsV2GroupBy.Department, parsed.Plan.GroupBy);
     }
 
     [Fact]

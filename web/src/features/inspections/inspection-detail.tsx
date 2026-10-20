@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAsset } from '@/features/assets/asset-queries'
+import { useCurrentUser } from '@/features/auth/current-user'
 import {
   useInspection,
   useInspectionPhotoEvidence,
@@ -223,6 +224,7 @@ export function InspectionDetail({
   registrySearch?: InspectionSearch
   returnContext?: DetailReturnContext | undefined
 }) {
+  const currentUser = useCurrentUser()
   const isValidId = uuidPattern.test(inspectionId)
   const inspection = useInspection(inspectionId, isValidId)
   const asset = useAsset(
@@ -320,6 +322,9 @@ export function InspectionDetail({
     record.waterCheckUvLight != null
   const yesNo = (value: boolean | null | undefined) =>
     value == null ? 'Not recorded' : value ? 'Yes' : 'No'
+  const showWmsEntryGuide =
+    currentUser.data?.roles.includes('GSD') === true &&
+    record.correctiveFollowUpStatus !== 'NoReferralRequired'
 
   return (
     <section
@@ -427,6 +432,35 @@ export function InspectionDetail({
           value={formatInspectionDate(record.updatedAt)}
         />
       </Card>
+
+      {showWmsEntryGuide && (
+        <Card className="flex flex-col gap-3 border-[var(--border-soft)] shadow-none sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="font-semibold text-[var(--text-primary)]">
+              Record the external WMS PM number
+            </h2>
+            <p className="mt-1 max-w-3xl text-sm text-[var(--text-secondary)]">
+              Open this asset's acknowledged form, then enter the number in
+              Corrective-action findings. The field appears after the form is
+              acknowledged; UniPM records the supplied reference and does not
+              create WMS work.
+            </p>
+          </div>
+          <Button asChild variant="secondary" className="shrink-0">
+            <Link
+              to="/app/preventive-maintenance-forms"
+              search={{
+                status: 'Acknowledged',
+                ...(asset.data?.assetCode
+                  ? { search: asset.data.assetCode }
+                  : {}),
+              }}
+            >
+              Find this asset's acknowledged form
+            </Link>
+          </Button>
+        </Card>
+      )}
 
       {(asset.isError || schedule.isError) && (
         <Card role="alert" className="border-[var(--warning)] p-4 shadow-none">

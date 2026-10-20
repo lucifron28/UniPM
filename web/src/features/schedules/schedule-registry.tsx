@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { CalendarPlus, Eye } from 'lucide-react'
+import { Eye } from 'lucide-react'
 import { PageHeading } from '@/components/layout/page-heading'
 import { Link } from '@tanstack/react-router'
 import {
@@ -34,6 +34,7 @@ import type {
   ScheduleRegistryOptions,
   ScheduleRegistryItem,
 } from '@/features/schedules/schedule-contract'
+import { quartersForScheduledMonths } from '@/features/schedules/schedule-contract'
 import {
   useGenerateSchedules,
   useScheduleRegistry,
@@ -62,6 +63,8 @@ export type ScheduleSearch = {
   quarter?: NonNullable<Schedule['quarter']> | undefined
   year?: number | undefined
   pmCycle?: string | undefined
+  view?: 'assignments' | 'history' | undefined
+  assignmentFilter?: 'needs-supervisor' | 'needs-inspector' | undefined
   page?: number | undefined
 }
 
@@ -269,10 +272,6 @@ export function ScheduleRegistry({
     search.pmCycle,
   ])
 
-  const canCreate =
-    currentUser.data?.roles.some(
-      (role) => role === 'GSD' || role === 'Supervisor',
-    ) ?? false
   const canGenerate = currentUser.data?.roles.includes('GSD') ?? false
   const parsedGenerationYear = Number(generationYear)
   const generationYearIsValid =
@@ -296,10 +295,17 @@ export function ScheduleRegistry({
     () => new Map(categories.map((category) => [category.code, category])),
     [categories],
   )
+  const selectedCategory = categories.find(
+    (category) => category.code === draft.assetCategory,
+  )
+  const availableQuarters = useMemo<ReadonlySet<string>>(
+    () =>
+      selectedCategory
+        ? quartersForScheduledMonths(selectedCategory.scheduledMonths)
+        : new Set(quarterOptions),
+    [quarterOptions, selectedCategory],
+  )
   const allowedMonths = useMemo(() => {
-    const selectedCategory = categories.find(
-      (category) => category.code === draft.assetCategory,
-    )
     return Array.from({ length: 12 }, (_, index) => index + 1).filter(
       (month) =>
         (!selectedCategory ||
@@ -307,7 +313,7 @@ export function ScheduleRegistry({
         (!draft.quarter ||
           `Q${Math.floor((month - 1) / 3) + 1}` === draft.quarter),
     )
-  }, [categories, draft.assetCategory, draft.quarter])
+  }, [draft.quarter, selectedCategory])
   const dateRangeIsValid = !draft.from || !draft.to || draft.from <= draft.to
   const pmCycleYear = draft.pmCycle
     ? Number(draft.pmCycle.slice(0, 4))
@@ -380,14 +386,58 @@ export function ScheduleRegistry({
   ])
 
   useEffect(() => {
-    if (!draft.pmCycle) return
-    const month = Number(draft.pmCycle.slice(5, 7))
-    if (allowedMonths.includes(month)) return
-    setDraft((current) => ({ ...current, pmCycle: undefined }))
-    setFilterNotice(
-      'The PM month was cleared because it does not match the selected category or quarter.',
+    const invalidQuarter = Boolean(
+      draft.quarter &&
+      selectedCategory &&
+      !availableQuarters.has(draft.quarter),
     )
-  }, [allowedMonths, draft.pmCycle])
+    const invalidPmCycle = Boolean(
+      draft.pmCycle &&
+      !allowedMonths.includes(Number(draft.pmCycle.slice(5, 7))),
+    )
+    if (!invalidQuarter && !invalidPmCycle) return
+    setDraft((current) => ({
+      ...current,
+      ...(invalidQuarter ? { quarter: undefined } : {}),
+      ...(invalidPmCycle ? { pmCycle: undefined } : {}),
+    }))
+    setFilterNotice(
+      invalidQuarter
+        ? 'The quarter and PM month were cleared because the selected category has no scheduled CPMP cycle in that quarter.'
+        : 'The PM month was cleared because it does not match the selected category or quarter.',
+    )
+  }, [
+    allowedMonths,
+    availableQuarters,
+    draft.pmCycle,
+    draft.quarter,
+    selectedCategory,
+  ])
+
+  useEffect(() => {
+    if (!filterOptions.isSuccess || !search.assetCategory || !search.quarter) {
+      return
+    }
+    const appliedCategory = categories.find(
+      (category) => category.code === search.assetCategory,
+    )
+    if (
+      !appliedCategory ||
+      quartersForScheduledMonths(appliedCategory.scheduledMonths).has(
+        search.quarter,
+      )
+    ) {
+      return
+    }
+
+    onSearchChange(
+      { ...search, quarter: undefined, pmCycle: undefined, page: 1 },
+      { replace: true, preserveScroll: true },
+    )
+    setFilterNotice(
+      'The quarter filter was cleared because the selected category has no scheduled CPMP cycle in that quarter.',
+    )
+  }, [categories, filterOptions.isSuccess, onSearchChange, search])
 
   const pmCycleMatchesPeriod =
     !draft.pmCycle ||
@@ -636,24 +686,12 @@ export function ScheduleRegistry({
         id="schedules-title"
         eyebrow="Preventive maintenance"
         title="Schedules"
-        description="Review PM cycles, due dates, and recorded schedule status."
+        description="Review current and historical PM cycles generated from CPMP frequencies, due dates, and recorded schedule status."
         actions={
-          canCreate || canGenerate ? (
-            <>
-              {canGenerate && (
-                <Button asChild variant="secondary">
-                  <a href="#schedule-management">Manage schedules</a>
-                </Button>
-              )}
-              {canCreate && (
-                <Button asChild>
-                  <Link to="/app/schedules/new">
-                    <CalendarPlus aria-hidden="true" className="mr-2 size-4" />
-                    Add schedule
-                  </Link>
-                </Button>
-              )}
-            </>
+          canGenerate ? (
+            <Button asChild variant="secondary">
+              <a href="#schedule-management">Manage schedules</a>
+            </Button>
           ) : undefined
         }
       />
@@ -693,7 +731,7 @@ export function ScheduleRegistry({
                 }
               />
             </label>
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-3 xl:grid-cols-5">
+            <div className="grid grid-cols-1 items-start gap-3 md:grid-cols-3 xl:grid-cols-5">
               <label className="grid gap-1 text-sm font-semibold text-[var(--text-primary)]">
                 Asset category
                 <select
@@ -714,7 +752,7 @@ export function ScheduleRegistry({
                         : null,
                     )
                   }}
-                  className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
+                  className="h-10 w-full min-w-0 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
                 >
                   <option value="">All asset categories</option>
                   {categories.map((category) => (
@@ -737,7 +775,7 @@ export function ScheduleRegistry({
                         Schedule['status'] | undefined,
                     }))
                   }
-                  className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
+                  className="h-10 w-full min-w-0 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
                 >
                   <option value="">All statuses</option>
                   {(statuses.data ?? []).map((status) => (
@@ -766,7 +804,7 @@ export function ScheduleRegistry({
                       )
                     }
                   }}
-                  className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
+                  className="h-10 w-full min-w-0 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
                 >
                   <option value="">All years</option>
                   {yearOptions.map((year) => (
@@ -817,6 +855,7 @@ export function ScheduleRegistry({
                 Calendar quarter
                 <select
                   aria-label="Calendar quarter"
+                  aria-describedby="schedule-quarter-hint"
                   value={draft.quarter ?? pmCycleQuarter ?? ''}
                   onChange={(event) => {
                     setDraft((current) => ({
@@ -831,15 +870,29 @@ export function ScheduleRegistry({
                       )
                     }
                   }}
-                  className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
+                  className="h-10 w-full min-w-0 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
                 >
                   <option value="">All quarters</option>
                   {quarterOptions.map((quarter) => (
-                    <option key={quarter} value={quarter}>
-                      {quarter}
+                    <option
+                      key={quarter}
+                      value={quarter}
+                      disabled={!availableQuarters.has(quarter)}
+                    >
+                      {availableQuarters.has(quarter)
+                        ? quarter
+                        : `${quarter} — no scheduled CPMP cycle`}
                     </option>
                   ))}
                 </select>
+                <span
+                  id="schedule-quarter-hint"
+                  className="text-xs font-normal text-[var(--text-secondary)]"
+                >
+                  {draft.assetCategory
+                    ? 'Disabled quarters have no scheduled cycle for this category.'
+                    : 'Choose a category to limit quarters to its scheduled PM cycles.'}
+                </span>
               </label>
             </div>
             <details
@@ -852,7 +905,7 @@ export function ScheduleRegistry({
               </summary>
               <div
                 id="schedule-more-filters"
-                className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3"
+                className="mt-3 grid grid-cols-1 items-start gap-3 md:grid-cols-2 xl:grid-cols-3"
               >
                 <AssetPicker
                   value={draft.assetId}
@@ -873,7 +926,7 @@ export function ScheduleRegistry({
                         from: fromDateTimeLocal(event.target.value),
                       }))
                     }
-                    className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm font-normal"
+                    className="h-10 w-full min-w-0 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm font-normal"
                   />
                 </label>
                 <label className="grid gap-1 text-xs font-semibold text-[var(--text-secondary)]">
@@ -887,7 +940,7 @@ export function ScheduleRegistry({
                         to: fromDateTimeLocal(event.target.value),
                       }))
                     }
-                    className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm font-normal"
+                    className="h-10 w-full min-w-0 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm font-normal"
                   />
                 </label>
                 <label className="grid gap-1 text-sm font-semibold text-[var(--text-primary)]">
@@ -918,7 +971,7 @@ export function ScheduleRegistry({
                       }))
                       setFilterNotice(null)
                     }}
-                    className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm font-normal"
+                    className="h-10 w-full min-w-0 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm font-normal"
                   >
                     <option value="">All months</option>
                     {allowedMonths.map((month) => (

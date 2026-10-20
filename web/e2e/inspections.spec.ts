@@ -53,6 +53,7 @@ const schedule = {
     building: 'Main Building',
     department: 'GSD',
     location: 'Lobby',
+    status: 'Active',
   },
 }
 const inspection = {
@@ -337,8 +338,26 @@ test.describe('Inspection review workflows', () => {
     await expect(page.getByLabel('Recorded operational result')).toBeVisible()
     await expect(page.getByLabel('Corrective follow-up status')).toBeVisible()
     await expect(page.getByText('WMS-PM-007').first()).toBeVisible()
+    const filterLayout = await registry.locator('form').evaluate((form) => {
+      const columns = getComputedStyle(form).gridTemplateColumns
+      const repeatedColumns = columns.match(/^repeat\((\d+),/)
+      return {
+        className: form.className,
+        columns,
+        count: repeatedColumns
+          ? Number(repeatedColumns[1])
+          : columns.trim().split(/\s+/).length,
+        viewport: innerWidth,
+        md: matchMedia('(min-width: 48rem)').matches,
+        xl: matchMedia('(min-width: 80rem)').matches,
+        twoXl: matchMedia('(min-width: 96rem)').matches,
+      }
+    })
+    expect(filterLayout.count).toBe(3)
+    await page.mouse.move(1270, 5)
     await page.screenshot({
       path: 'test-results/web-ui-polish-inspections-desktop.png',
+      animations: 'disabled',
       fullPage: true,
     })
 

@@ -21,6 +21,11 @@ import { formatAssetCategory } from '@/features/assets/asset-presentation'
 import { formatPmCycle } from '@/features/schedules/schedule-presentation'
 
 const pageSize = 25
+const exampleQuestions = [
+  'Show on-time compliance for fire extinguishers during 2025 by department',
+  'Compare on-time compliance for fire extinguishers in August 2025 and November 2025',
+  'Show late and non-operational fire extinguisher inspections during 2025',
+]
 
 const clarificationPrompts: Record<string, string> = {
   Metric: 'Which PM measure should be used?',
@@ -558,6 +563,7 @@ export function PmAnalyticsPanel() {
 
 function PmAnalyticsQuestionPanel() {
   const [question, setQuestion] = useState('')
+  const questionInputRef = useRef<HTMLTextAreaElement>(null)
   const [interpretation, setInterpretation] =
     useState<PmAnalyticsV2InterpretationResponse | null>(null)
   const [response, setResponse] = useState<PmAnalyticsV2QueryResponse | null>(
@@ -696,83 +702,95 @@ function PmAnalyticsQuestionPanel() {
   const calculationSourceCount = population?.eligibleAssetCycleCount
 
   return (
-    <Card className="p-3 shadow-none sm:p-4">
-      <div className="max-w-3xl print:hidden">
-        <h2 className="text-lg font-semibold text-[var(--text-primary)]">
-          Ask about PM results
-        </h2>
-        <p className="mt-1 text-sm text-[var(--text-secondary)]">
-          Ask about a supported measure, asset category, and time period.
-        </p>
-        <form
-          className="mt-2 space-y-2"
-          onSubmit={(event) => void handleSubmit(event)}
-        >
-          <div>
-            <Label htmlFor="pm-analytics-question">Question</Label>
-            <textarea
-              id="pm-analytics-question"
-              rows={2}
-              className="mt-1 block min-h-16 w-full resize-y rounded-lg border border-[var(--border-soft)] bg-white px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus-visible:border-[var(--primary)] focus-visible:ring-2 focus-visible:ring-[color-mix(in_srgb,var(--primary)_25%,transparent)]"
-              value={question}
-              maxLength={512}
-              onChange={(event) => handleQuestionChange(event.target.value)}
-              placeholder="Show on-time compliance for fire extinguishers during 2025 by department"
-              aria-describedby="pm-analytics-help"
-            />
-            <p
-              id="pm-analytics-help"
-              className="mt-1 text-xs text-[var(--text-neutral)]"
-            >
-              Include a measure, category, and period. Grouping and comparisons
-              are optional.
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-            <details>
-              <summary className="cursor-pointer text-xs font-medium text-[var(--primary)] focus-visible:rounded focus-visible:outline-2 focus-visible:outline-[var(--primary)]">
-                Example questions
-              </summary>
-              <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-[var(--text-secondary)]">
-                <li>
-                  Show on-time compliance for fire extinguishers during 2025 by
-                  department.
-                </li>
-                <li>
-                  Compare on-time compliance for fire extinguishers in August
-                  2025 and November 2025.
-                </li>
-                <li>
-                  Show late and non-operational fire extinguisher inspections
-                  during 2025.
-                </li>
-              </ul>
-            </details>
-            <details>
-              <summary className="cursor-pointer text-xs font-medium text-[var(--primary)] focus-visible:rounded focus-visible:outline-2 focus-visible:outline-[var(--primary)]">
-                Counting notes
-              </summary>
-              <p className="mt-2 text-sm text-[var(--text-secondary)]">
-                Remaining includes unfinished schedules in active cycles only;
-                missed includes unfinished schedules in closed cycles only.
-                Future cycles and unscheduled assets are not counted as missed.
-                Current department and building labels reflect current asset
-                metadata, not a historical snapshot.
+    <Card className="p-4 shadow-none sm:p-5">
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(16rem,0.9fr)] print:hidden">
+        <div className="min-w-0">
+          <h2 className="text-lg font-semibold text-[var(--text-primary)]">
+            Ask about PM results
+          </h2>
+          <p className="mt-1 text-sm text-[var(--text-secondary)]">
+            Ask about a supported measure, asset category, and time period.
+          </p>
+          <form
+            className="mt-4 space-y-2"
+            onSubmit={(event) => void handleSubmit(event)}
+          >
+            <div>
+              <Label htmlFor="pm-analytics-question">Question</Label>
+              <textarea
+                ref={questionInputRef}
+                id="pm-analytics-question"
+                rows={3}
+                className="mt-1 block min-h-24 w-full resize-y rounded-lg border border-[var(--border-soft)] bg-white px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus-visible:border-[var(--primary)] focus-visible:ring-2 focus-visible:ring-[color-mix(in_srgb,var(--primary)_25%,transparent)]"
+                value={question}
+                maxLength={512}
+                onChange={(event) => handleQuestionChange(event.target.value)}
+                placeholder="Show on-time compliance for fire extinguishers during 2025 by department"
+                aria-describedby="pm-analytics-help"
+              />
+              <p
+                id="pm-analytics-help"
+                className="mt-1 text-xs text-[var(--text-neutral)]"
+              >
+                Include a measure, category, and period. Grouping and
+                comparisons are optional.
               </p>
-            </details>
-            <Button
-              className="ml-auto"
-              type="submit"
-              disabled={isPending || !question.trim()}
-            >
-              {isPending
-                ? isInterpreting
-                  ? 'Checking question'
-                  : 'Reading PM results'
-                : 'Show result'}
-            </Button>
-          </div>
-        </form>
+            </div>
+            <div className="flex justify-end pt-1">
+              <Button type="submit" disabled={isPending || !question.trim()}>
+                {isPending
+                  ? isInterpreting
+                    ? 'Checking question'
+                    : 'Reading PM results'
+                  : 'Show result'}
+              </Button>
+            </div>
+          </form>
+        </div>
+
+        <aside
+          aria-labelledby="pm-analytics-examples-title"
+          className="rounded-lg border border-[var(--border-soft)] bg-[var(--surface-muted)] p-4"
+        >
+          <h3
+            id="pm-analytics-examples-title"
+            className="text-sm font-semibold text-[var(--text-primary)]"
+          >
+            Start with an example
+          </h3>
+          <p className="mt-1 text-xs text-[var(--text-secondary)]">
+            Choose one to fill the question field, then review it before
+            running.
+          </p>
+          <ul className="mt-3 space-y-2">
+            {exampleQuestions.map((example) => (
+              <li key={example}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleQuestionChange(example)
+                    questionInputRef.current?.focus()
+                  }}
+                  className="min-h-11 w-full rounded-md border border-[var(--border-soft)] bg-white px-3 py-2 text-left text-sm text-[var(--text-primary)] hover:border-[var(--primary)] hover:text-[var(--primary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
+                >
+                  {example}
+                </button>
+              </li>
+            ))}
+          </ul>
+          <details className="mt-4 border-t border-[var(--border-soft)] pt-3">
+            <summary className="cursor-pointer text-xs font-medium text-[var(--primary)] focus-visible:rounded focus-visible:outline-2 focus-visible:outline-[var(--primary)]">
+              Counting notes
+            </summary>
+            <p className="mt-2 text-sm text-[var(--text-secondary)]">
+              Remaining includes unfinished schedules in active cycles only;
+              missed includes unfinished schedules in closed cycles only. Future
+              cycles and unscheduled assets are not counted as missed. Current
+              department and building labels reflect current asset metadata, not
+              a historical snapshot.
+            </p>
+          </details>
+        </aside>
       </div>
 
       {isPending && (

@@ -623,7 +623,9 @@ export function AssetRegistry({
               label="Department"
               value={department || undefined}
               selectedOption={
-                department ? { value: department, label: department } : undefined
+                department
+                  ? { value: department, label: department }
+                  : undefined
               }
               allLabel="All departments"
               options={departments.map((value) => ({ value, label: value }))}
@@ -759,7 +761,15 @@ export function AssetRegistry({
                         <th
                           key={header.id}
                           scope="col"
-                          className="px-3 py-3 font-semibold whitespace-nowrap text-white"
+                          className={`px-3 py-3 font-semibold whitespace-nowrap text-white ${
+                            header.column.id === 'updatedAt'
+                              ? 'hidden min-[1440px]:table-cell'
+                              : ''
+                          } ${
+                            header.column.id === 'action'
+                              ? 'sticky right-0 z-20 bg-[var(--primary)] shadow-[-8px_0_12px_-12px_rgba(0,0,0,0.6)]'
+                              : ''
+                          }`}
                         >
                           {header.isPlaceholder
                             ? null
@@ -776,14 +786,22 @@ export function AssetRegistry({
                   {table.getRowModel().rows.map((row) => (
                     <tr
                       key={row.id}
-                      className="border-b border-[var(--border-soft)] last:border-0 hover:bg-[var(--page-background)]"
+                      className="group border-b border-[var(--border-soft)] last:border-0 hover:bg-[var(--page-background)]"
                     >
                       {row.getVisibleCells().map((cell, index) => (
                         <td
                           key={cell.id}
                           className={`px-3 py-2 align-top leading-relaxed text-[var(--text-secondary)] ${
-                            index === 0 || index === 7
+                            index === 0 || cell.column.id === 'action'
                               ? 'whitespace-nowrap'
+                              : ''
+                          } ${
+                            cell.column.id === 'updatedAt'
+                              ? 'hidden min-[1440px]:table-cell'
+                              : ''
+                          } ${
+                            cell.column.id === 'action'
+                              ? 'sticky right-0 z-[1] bg-white shadow-[-8px_0_12px_-12px_rgba(0,0,0,0.6)] group-hover:bg-[var(--page-background)]'
                               : ''
                           }`}
                         >

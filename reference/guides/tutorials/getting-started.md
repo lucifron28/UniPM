@@ -116,10 +116,11 @@ device needs a reachable LAN address or an approved HTTPS development setup.
 HTTP is permitted only in debug builds for local development; release builds
 must use HTTPS.
 
-The mobile app starts signed out after restart, keeps access tokens in memory,
-and does not persist cookies or implement offline synchronization. Offline sync
-is deferred and its persistence and synchronization architecture remain
-undecided until a separate approved decision.
+The mobile app starts signed out after restart and keeps access tokens in memory.
+The `feature/offline-inspection-workflow` branch adds encrypted per-user Draft
+storage and queued sync after the same user signs in again. Location verification,
+photo evidence, submission, and acknowledgement still require connectivity;
+see the mobile README for the prototype boundary and status.
 
 ## Where to Go Next
 

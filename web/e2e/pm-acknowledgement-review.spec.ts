@@ -310,6 +310,10 @@ async function mockApi(page: import('@playwright/test').Page) {
     ),
   )
   await page.route(
+    '**/api/v1/schedules/supervisor-assignment-options',
+    (route) => route.fulfill(jsonResponse({ supervisors: [] })),
+  )
+  await page.route(
     `**/api/v1/preventive-maintenance-forms/${formId}`,
     (route) => route.fulfill(jsonResponse(form)),
   )
@@ -373,6 +377,7 @@ async function mockApi(page: import('@playwright/test').Page) {
           building: 'Main Building',
           department: 'GSD',
           location: 'Main hallway',
+          status: 'Active',
         },
       }),
     ),

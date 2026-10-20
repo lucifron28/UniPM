@@ -362,10 +362,10 @@ void main() {
       ),
     );
 
-    expect(find.text('Awaiting Acknowledgement'), findsOneWidget);
+    expect(find.text('Pending acknowledgements'), findsOneWidget);
     expect(repository.listFormsCalls, 1);
     expect(repository.listSchedulesCalls, 1);
-    final captureSignature = find.text('Capture Signature');
+    final captureSignature = find.text('Sign');
     await tester.ensureVisible(captureSignature);
     await tester.pumpAndSettle();
     await tester.tap(captureSignature);
@@ -387,9 +387,16 @@ void main() {
 
     expect(repository.listFormsCalls, 2);
     expect(repository.listSchedulesCalls, 2);
-    expect(find.text('Awaiting Acknowledgement'), findsNothing);
+    expect(find.text('Pending acknowledgements'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('pending-ack-count')),
+        matching: find.text('0'),
+      ),
+      findsOneWidget,
+    );
     expect(find.byKey(const ValueKey('ack-card-submitted-form')), findsNothing);
-    expect(find.text('No assigned PM tasks'), findsOneWidget);
+    expect(find.text('No open PM tasks'), findsOneWidget);
   });
 
   testWidgets('refreshes new PM tasks after asset search returns', (
@@ -421,16 +428,13 @@ void main() {
       ),
     );
 
-    expect(find.text('No assigned PM tasks'), findsOneWidget);
+    expect(find.text('No open PM tasks'), findsOneWidget);
     await tester.tap(find.byKey(const Key('search-assets')));
     await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const Key('child-workflow-action')));
     await tester.pumpAndSettle();
-    expect(
-      find.text('No assigned PM tasks', skipOffstage: false),
-      findsOneWidget,
-    );
+    expect(find.text('No open PM tasks', skipOffstage: false), findsOneWidget);
     expect(repository.listFormsCalls, 1);
     expect(repository.listSchedulesCalls, 1);
     await tester.tap(find.byType(BackButton));
@@ -438,7 +442,7 @@ void main() {
 
     expect(repository.listFormsCalls, 2);
     expect(repository.listSchedulesCalls, 2);
-    expect(find.text('No assigned PM tasks'), findsNothing);
+    expect(find.text('No open PM tasks'), findsNothing);
     expect(find.text('Start inspection'), findsOneWidget);
     expect(find.text('PM cycle: May 2026'), findsOneWidget);
   });
@@ -502,7 +506,17 @@ void main() {
       await _pumpHome(tester, user: _inspector, repository: repository);
 
       final cards = tester.widgetList<BatchPmCard>(find.byType(BatchPmCard));
-      expect(cards.map((card) => card.status).toList(), [
+      expect(cards.map((card) => card.status).toList(), ['Overdue', 'Overdue']);
+      expect(cards.map((card) => card.pmCycle).toList(), [
+        '2026-08',
+        '2026-11',
+      ]);
+      expect(find.text('Other Department'), findsNothing);
+
+      await tester.tap(find.byKey(const Key('view-all-pm-tasks')));
+      await tester.pumpAndSettle();
+      final allCards = tester.widgetList<BatchPmCard>(find.byType(BatchPmCard));
+      expect(allCards.map((card) => card.status).toList(), [
         'Overdue',
         'Overdue',
         'Ongoing',
@@ -510,7 +524,7 @@ void main() {
         'Due',
         'Due',
       ]);
-      expect(cards.map((card) => card.pmCycle).toList(), [
+      expect(allCards.map((card) => card.pmCycle).toList(), [
         '2026-08',
         '2026-11',
         '2026-02',
@@ -521,6 +535,128 @@ void main() {
       expect(find.text('Other Department'), findsNothing);
     },
   );
+
+  testWidgets('shows pending forms by role and opens the complete list', (
+    tester,
+  ) async {
+    final repository = _MutablePmRepository(
+      forms: [
+        _form(id: 'inspector-form-1', status: 'Submitted'),
+        _form(id: 'inspector-form-2', status: 'Submitted'),
+        _form(
+          id: 'gsd-form-3',
+          status: 'Submitted',
+          createdByUserId: _otherInspectorId,
+        ),
+        _form(
+          id: 'other-inspector-form',
+          status: 'Submitted',
+          createdByUserId: _otherInspectorId,
+        ),
+      ],
+      schedules: const [],
+    );
+
+    await _pumpHome(tester, user: _inspector, repository: repository);
+
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('pending-ack-count')),
+        matching: find.text('2'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('ack-card-inspector-form-1')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('ack-card-inspector-form-2')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('ack-card-other-inspector-form')),
+      findsNothing,
+    );
+    expect(
+      tester
+          .getTopLeft(find.byKey(const ValueKey('ack-card-inspector-form-1')))
+          .dy,
+      lessThan(tester.getTopLeft(find.byKey(const Key('scan-asset-qr'))).dy),
+    );
+
+    await _pumpHome(
+      tester,
+      user: _gsdUser,
+      repository: repository,
+      onOpenAcknowledgement: (context, form) => _pushWorkflowPage(
+        context,
+        title: 'Acknowledge PM form',
+        actionLabel: 'Record acknowledgement',
+        onAction: () {
+          repository.forms = repository.forms
+              .map(
+                (candidate) => candidate.id == form.id
+                    ? candidate.copyWith(status: 'Acknowledged')
+                    : candidate,
+              )
+              .toList(growable: false);
+        },
+      ),
+    );
+
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('pending-ack-count')),
+        matching: find.text('4'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('ack-card-other-inspector-form')),
+      findsNothing,
+    );
+    expect(find.byKey(const ValueKey('ack-card-gsd-form-3')), findsNothing);
+    await tester.tap(find.byKey(const Key('view-all-pending-forms')));
+    await tester.pumpAndSettle();
+    expect(find.text('Pending acknowledgements'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('ack-card-other-inspector-form')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('ack-card-gsd-form-3')), findsOneWidget);
+
+    final thirdFormSignButton = find.descendant(
+      of: find.byKey(const ValueKey('ack-card-gsd-form-3')),
+      matching: find.text('Sign'),
+    );
+    await tester.ensureVisible(thirdFormSignButton);
+    await tester.tap(thirdFormSignButton);
+    await tester.pumpAndSettle();
+    expect(find.text('Acknowledge PM form'), findsOneWidget);
+    expect(
+      repository.forms.singleWhere((form) => form.id == 'gsd-form-3').status,
+      'Submitted',
+    );
+
+    await tester.tap(find.byKey(const Key('child-workflow-action')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(BackButton));
+    await tester.pumpAndSettle();
+
+    expect(
+      repository.forms.singleWhere((form) => form.id == 'gsd-form-3').status,
+      'Acknowledged',
+    );
+    expect(repository.listFormsCalls, 2);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('pending-ack-count')),
+        matching: find.text('3'),
+      ),
+      findsOneWidget,
+    );
+  });
 
   testWidgets('refreshes active draft after the GSD PM form list returns', (
     tester,
@@ -550,7 +686,7 @@ void main() {
       ),
     );
 
-    expect(find.text('No assigned PM tasks'), findsOneWidget);
+    expect(find.text('No open PM tasks'), findsOneWidget);
     final adminForms = find.text('Preventive-maintenance forms');
     await tester.ensureVisible(adminForms);
     await tester.pumpAndSettle();
@@ -558,10 +694,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('child-workflow-action')));
     await tester.pumpAndSettle();
-    expect(
-      find.text('No assigned PM tasks', skipOffstage: false),
-      findsOneWidget,
-    );
+    expect(find.text('No open PM tasks', skipOffstage: false), findsOneWidget);
     expect(repository.listFormsCalls, 1);
     expect(repository.listSchedulesCalls, 1);
     await tester.tap(find.byType(BackButton));
@@ -569,7 +702,7 @@ void main() {
 
     expect(repository.listFormsCalls, 2);
     expect(repository.listSchedulesCalls, 2);
-    expect(find.text('No assigned PM tasks'), findsNothing);
+    expect(find.text('No open PM tasks'), findsNothing);
     final createdDraft = find.byKey(
       const ValueKey('draft-card-new-admin-draft'),
     );
@@ -625,10 +758,8 @@ void main() {
       id: _draftId,
       inspections: [_inspection(1, scheduleId: 'draft-schedule')],
     );
-    final repository = _MutablePmRepository(
-      forms: [draft],
-      schedules: const [],
-    )..schedulesFailure = StateError('Schedules are unavailable.');
+    final repository = _MutablePmRepository(forms: [draft], schedules: const [])
+      ..schedulesFailure = StateError('Schedules are unavailable.');
     String? openedFormId;
 
     await _pumpHome(
@@ -657,13 +788,12 @@ void main() {
   testWidgets('does not turn terminal 401 into a PM list error', (
     tester,
   ) async {
-    final repository = _MutablePmRepository(
-      forms: const [],
-      schedules: const [],
-    )..formsFailure = const ApiException(
-      statusCode: 401,
-      message: 'Your session expired. Please sign in again.',
-    );
+    final repository =
+        _MutablePmRepository(forms: const [], schedules: const [])
+          ..formsFailure = const ApiException(
+            statusCode: 401,
+            message: 'Your session expired. Please sign in again.',
+          );
 
     await _pumpHome(tester, user: _inspector, repository: repository);
 

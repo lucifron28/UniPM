@@ -6,6 +6,7 @@ import '../../api/api_exception.dart';
 import '../../auth/auth_models.dart';
 import '../../ui/app_colors.dart';
 import '../../ui/widgets/batch_pm_card.dart';
+import '../preventive_maintenance/offline_inspection_repository.dart';
 import '../preventive_maintenance/preventive_maintenance_models.dart';
 import '../preventive_maintenance/preventive_maintenance_repository.dart';
 
@@ -63,10 +64,7 @@ class _HomePageState extends State<HomePage> {
       _schedulesError = null;
     });
 
-    await Future.wait<void>([
-      _loadForms(repo),
-      _loadSchedules(repo),
-    ]);
+    await Future.wait<void>([_loadForms(repo), _loadSchedules(repo)]);
     if (!mounted) return;
     setState(() => _isLoadingBatches = false);
   }
@@ -105,6 +103,12 @@ class _HomePageState extends State<HomePage> {
     } finally {
       if (mounted) await _loadBatches();
     }
+  }
+
+  Future<void> _runFromList(FutureOr<void> Function()? openWorkflow) async {
+    if (openWorkflow == null) return;
+    await Navigator.of(context).maybePop();
+    await _runChildWorkflow(openWorkflow);
   }
 
   List<PreventiveMaintenanceForm> get _activeDrafts {
@@ -266,7 +270,7 @@ class _HomePageState extends State<HomePage> {
 
   List<_AssignedPmBatch> get _assignedBatches =>
       _groupSchedules(_assignedSchedules);
-  List<_HomePmTask> get _orderedPmTasks {
+  List<_HomePmTask> _buildPmTasks({bool closeListBeforeAction = false}) {
     final tasks = <_HomePmTask>[
       ..._activeDrafts.map((draft) {
         final cycle = _resolvePmCycle(
@@ -279,7 +283,11 @@ class _HomePageState extends State<HomePage> {
           pmCycle: cycle,
           department: draft.department ?? 'General Department',
           assetCategory: draft.assetCategory,
-          card: _draftCard(draft, cycle),
+          card: _draftCard(
+            draft,
+            cycle,
+            closeListBeforeAction: closeListBeforeAction,
+          ),
         );
       }),
       ..._unstartedAssignedBatches.map(
@@ -288,7 +296,10 @@ class _HomePageState extends State<HomePage> {
           pmCycle: batch.pmCycle,
           department: batch.department,
           assetCategory: batch.assetCategory,
-          card: _assignedBatchCard(batch),
+          card: _assignedBatchCard(
+            batch,
+            closeListBeforeAction: closeListBeforeAction,
+          ),
         ),
       ),
     ];
@@ -312,8 +323,22 @@ class _HomePageState extends State<HomePage> {
     return tasks;
   }
 
-  Widget _draftCard(PreventiveMaintenanceForm draft, String cycle) {
+  List<_HomePmTask> get _orderedPmTasks => _buildPmTasks();
+
+  Widget _draftCard(
+    PreventiveMaintenanceForm draft,
+    String cycle, {
+    bool closeListBeforeAction = false,
+  }) {
     final total = _calculateTotalForDraft(draft);
+    Future<void> openDraft() async {
+      if (closeListBeforeAction) {
+        await _runFromList(() => widget.onOpenForm?.call(draft.id));
+      } else {
+        await _runChildWorkflow(() => widget.onOpenForm?.call(draft.id));
+      }
+    }
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: BatchPmCard(
@@ -326,17 +351,23 @@ class _HomePageState extends State<HomePage> {
         totalCount: total,
         building: draft.building,
         actionLabel: 'Continue PM batch',
-        onAction: widget.onOpenForm == null
-            ? null
-            : () => _runChildWorkflow(() => widget.onOpenForm!(draft.id)),
-        onTap: widget.onOpenForm == null
-            ? null
-            : () => _runChildWorkflow(() => widget.onOpenForm!(draft.id)),
+        onAction: widget.onOpenForm == null ? null : openDraft,
+        onTap: widget.onOpenForm == null ? null : openDraft,
       ),
     );
   }
 
-  Widget _assignedBatchCard(_AssignedPmBatch batch) {
+  Widget _assignedBatchCard(
+    _AssignedPmBatch batch, {
+    bool closeListBeforeAction = false,
+  }) {
+    Future<void> startBatch() async {
+      if (closeListBeforeAction) {
+        await Navigator.of(context).maybePop();
+      }
+      await _startBatch(batch);
+    }
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: BatchPmCard(
@@ -353,9 +384,195 @@ class _HomePageState extends State<HomePage> {
         actionLabel: (widget.onStartBatch != null || widget.onScanQr != null)
             ? 'Start inspection'
             : null,
-        onAction: () => _startBatch(batch),
-        onTap: () => _startBatch(batch),
+        onAction: startBatch,
+        onTap: startBatch,
       ),
+    );
+  }
+
+  Widget _acknowledgementCard(
+    PreventiveMaintenanceForm form, {
+    bool closeListBeforeAction = false,
+  }) {
+    Future<void> openAcknowledgement() async {
+      if (closeListBeforeAction) {
+        await _runFromList(() => widget.onOpenAcknowledgement?.call(form));
+      } else {
+        await _runChildWorkflow(() => widget.onOpenAcknowledgement?.call(form));
+      }
+    }
+
+    final cycle = _resolvePmCycle(
+      pmCycle: form.pmCycle,
+      periodType: form.periodType,
+      year: form.year,
+    );
+    return _PendingAcknowledgementCard(
+      key: ValueKey('ack-card-${form.id}'),
+      form: form,
+      cycle: cycle,
+      onOpen: widget.onOpenAcknowledgement == null ? null : openAcknowledgement,
+    );
+  }
+
+  Future<void> _openItemList({
+    required String title,
+    required List<Widget> children,
+  }) async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => _HomeItemListPage(title: title, children: children),
+      ),
+    );
+  }
+
+  Widget _pendingAcknowledgementsSection() {
+    final pending = _awaitingAck;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Expanded(
+              child: Text(
+                'Pending acknowledgements',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ),
+            Container(
+              key: const Key('pending-ack-count'),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: pending.isEmpty
+                    ? AppColors.surfaceMuted
+                    : AppColors.warning.withValues(alpha: 0.14),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                '${pending.length}',
+                style: TextStyle(
+                  color: pending.isEmpty
+                      ? AppColors.textNeutral
+                      : AppColors.warning,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+            if (_isLoadingBatches) ...[
+              const SizedBox(width: 10),
+              const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ],
+          ],
+        ),
+        if (_formsError != null) ...[
+          const SizedBox(height: 8),
+          _BatchLoadErrorCard(message: _formsError!, onRetry: _loadBatches),
+        ] else if (pending.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          ...pending.take(2).map(_acknowledgementCard),
+          if (pending.isNotEmpty)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                key: const Key('view-all-pending-forms'),
+                onPressed: () => _openItemList(
+                  title: 'Pending acknowledgements',
+                  children: pending
+                      .map(
+                        (form) => _acknowledgementCard(
+                          form,
+                          closeListBeforeAction: true,
+                        ),
+                      )
+                      .toList(growable: false),
+                ),
+                icon: const Icon(Icons.list_alt_outlined),
+                label: Text('View all pending forms (${pending.length})'),
+              ),
+            ),
+        ],
+        const SizedBox(height: 20),
+      ],
+    );
+  }
+
+  Widget _pmTasksSection() {
+    final tasks = _orderedPmTasks;
+    final visibleTasks = tasks.take(2).toList(growable: false);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Urgent PM tasks',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            if (_isLoadingBatches)
+              const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        if (_schedulesError != null)
+          _BatchLoadErrorCard(message: _schedulesError!, onRetry: _loadBatches),
+        if (!_isLoadingBatches &&
+            _formsError == null &&
+            _schedulesError == null &&
+            tasks.isEmpty)
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.checklist_rtl_outlined,
+                    color: AppColors.textNeutral,
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Text(
+                      'No open PM tasks',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ...visibleTasks.map((task) => task.card),
+        if (tasks.length > visibleTasks.length)
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              key: const Key('view-all-pm-tasks'),
+              onPressed: () => _openItemList(
+                title: 'All PM tasks',
+                children: _buildPmTasks(
+                  closeListBeforeAction: true,
+                ).map((task) => task.card).toList(growable: false),
+              ),
+              icon: const Icon(Icons.view_list_outlined),
+              label: Text('View all PM tasks (${tasks.length})'),
+            ),
+          ),
+      ],
     );
   }
 
@@ -456,7 +673,20 @@ class _HomePageState extends State<HomePage> {
               ),
             ],
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
+
+          if (widget.preventiveMaintenanceRepository != null) ...[
+            _pendingAcknowledgementsSection(),
+          ],
+          if (widget.preventiveMaintenanceRepository
+              case final OfflineInspectionRepository offlineRepository) ...[
+            _OfflineSyncBanner(
+              repository: offlineRepository,
+              onReviewDrafts: () =>
+                  _runChildWorkflow(widget.onOpenPreventiveMaintenance),
+            ),
+            const SizedBox(height: 16),
+          ],
 
           // Asset Identification Hero
           const Text(
@@ -516,126 +746,9 @@ class _HomePageState extends State<HomePage> {
                   : () => _runChildWorkflow(widget.onSearchAssets),
             ),
           ),
-          const SizedBox(height: 28),
+          const SizedBox(height: 20),
           if (widget.preventiveMaintenanceRepository != null) ...[
-            // My PM Tasks & Active Batches
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'My PM Tasks',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                if (_isLoadingBatches)
-                  const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 12),
-
-            if (_formsError != null)
-              _BatchLoadErrorCard(
-                message: _formsError!,
-                onRetry: _loadBatches,
-              ),
-            if (_schedulesError != null)
-              _BatchLoadErrorCard(
-                message: _schedulesError!,
-                onRetry: _loadBatches,
-              ),
-            if (!_isLoadingBatches &&
-                _formsError == null &&
-                _schedulesError == null &&
-                _activeDrafts.isEmpty &&
-                _unstartedAssignedBatches.isEmpty &&
-                _awaitingAck.isEmpty)
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    children: [
-                      const Icon(
-                        Icons.checklist_rtl_outlined,
-                        size: 44,
-                        color: AppColors.textNeutral,
-                      ),
-                      const SizedBox(height: 12),
-                      const Text(
-                        'No assigned PM tasks',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      const Text(
-                        'You have no assigned PM tasks for this period.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: AppColors.textNeutral,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              )
-            else ...[
-              // Field-work tasks ordered by urgency, then PM cycle.
-              ..._orderedPmTasks.map((task) => task.card),
-
-              // Awaiting Acknowledgement
-              if (_awaitingAck.isNotEmpty) ...[
-                const SizedBox(height: 16),
-                const Text(
-                  'Awaiting Acknowledgement',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                ..._awaitingAck.map((form) {
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 12),
-                    child: BatchPmCard(
-                      key: ValueKey('ack-card-${form.id}'),
-                      department: form.department ?? 'General Department',
-                      assetCategory: form.assetCategory,
-                      pmCycle: _resolvePmCycle(
-                        pmCycle: form.pmCycle,
-                        periodType: form.periodType,
-                        year: form.year,
-                      ),
-                      status: form.status,
-                      completedCount: form.inspections.length,
-                      totalCount: form.inspections.length,
-                      building: form.building,
-                      actionLabel: 'Capture Signature',
-                      onAction: widget.onOpenAcknowledgement == null
-                          ? null
-                          : () => _runChildWorkflow(
-                              () => widget.onOpenAcknowledgement!(form),
-                            ),
-                      onTap: widget.onOpenAcknowledgement == null
-                          ? null
-                          : () => _runChildWorkflow(
-                              () => widget.onOpenAcknowledgement!(form),
-                            ),
-                    ),
-                  );
-                }),
-              ],
-            ],
+            _pmTasksSection(),
           ],
 
           const SizedBox(height: 20),
@@ -657,6 +770,102 @@ class _HomePageState extends State<HomePage> {
         ],
       ),
     );
+  }
+}
+
+class _OfflineSyncBanner extends StatelessWidget {
+  const _OfflineSyncBanner({
+    required this.repository,
+    required this.onReviewDrafts,
+  });
+
+  final OfflineInspectionRepository repository;
+  final FutureOr<void> Function()? onReviewDrafts;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: repository,
+      builder: (context, _) {
+        final state = repository.syncState;
+        if (state == OfflineSyncState.ready) return const SizedBox.shrink();
+        final (icon, title, detail) = switch (state) {
+          OfflineSyncState.offline => (
+            Icons.cloud_off_outlined,
+            'Offline mode',
+            repository.pendingCount > 0
+                ? '${repository.pendingCount} saved change(s) will sync when connected.'
+                : repository.hasCachedSchedules
+                ? 'Cached schedules and drafts are available on this device.'
+                : 'Connect once to cache assigned schedules before field work.',
+          ),
+          OfflineSyncState.queued => (
+            Icons.cloud_upload_outlined,
+            'Changes waiting to sync',
+            '${repository.pendingCount} saved change(s) are queued on this device.',
+          ),
+          OfflineSyncState.syncing => (
+            Icons.sync,
+            'Syncing saved changes',
+            '${repository.pendingCount} change(s) remaining.',
+          ),
+          OfflineSyncState.attention => (
+            Icons.warning_amber_outlined,
+            'Sync needs review',
+            repository.lastIssue ??
+                'Your local changes are preserved on this device.',
+          ),
+          OfflineSyncState.ready => (Icons.cloud_done_outlined, '', ''),
+        };
+        return Card(
+          color: state == OfflineSyncState.attention
+              ? Theme.of(context).colorScheme.errorContainer
+              : Theme.of(context).colorScheme.surfaceContainerLow,
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(
+              children: [
+                Icon(icon),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(detail),
+                    ],
+                  ),
+                ),
+                if (repository.pendingCount > 0 &&
+                    repository.conflictCount == 0)
+                  TextButton(
+                    key: const Key('offline-sync-retry'),
+                    onPressed: repository.syncState == OfflineSyncState.syncing
+                        ? null
+                        : () => unawaited(repository.syncNow()),
+                    child: const Text('Retry sync'),
+                  ),
+                if (state == OfflineSyncState.attention &&
+                    onReviewDrafts != null)
+                  TextButton(
+                    key: const Key('offline-review-drafts'),
+                    onPressed: _openReviewDrafts,
+                    child: const Text('Review saved drafts'),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _openReviewDrafts() async {
+    await onReviewDrafts?.call();
   }
 }
 
@@ -722,11 +931,94 @@ class _QuickActionCard extends StatelessWidget {
   }
 }
 
-class _BatchLoadErrorCard extends StatelessWidget {
-  const _BatchLoadErrorCard({
-    required this.message,
-    required this.onRetry,
+class _PendingAcknowledgementCard extends StatelessWidget {
+  const _PendingAcknowledgementCard({
+    super.key,
+    required this.form,
+    required this.cycle,
+    required this.onOpen,
   });
+
+  final PreventiveMaintenanceForm form;
+  final String cycle;
+  final VoidCallback? onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Row(
+          children: [
+            const Icon(
+              Icons.assignment_late_outlined,
+              color: AppColors.warning,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    form.fileNumber ?? 'PM form awaiting signature',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${form.department ?? 'General Department'} · $cycle · '
+                    '${form.inspections.length} inspections',
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textNeutral,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 4),
+            TextButton.icon(
+              onPressed: onOpen,
+              icon: const Icon(Icons.draw_outlined, size: 18),
+              label: const Text('Sign'),
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                visualDensity: VisualDensity.compact,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _HomeItemListPage extends StatelessWidget {
+  const _HomeItemListPage({required this.title, required this.children});
+
+  final String title;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(title)),
+      body: SafeArea(
+        child: ListView(padding: const EdgeInsets.all(16), children: children),
+      ),
+    );
+  }
+}
+
+class _BatchLoadErrorCard extends StatelessWidget {
+  const _BatchLoadErrorCard({required this.message, required this.onRetry});
 
   final String message;
   final VoidCallback onRetry;
@@ -739,19 +1031,12 @@ class _BatchLoadErrorCard extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         child: Row(
           children: [
-            const Icon(
-              Icons.error_outline,
-              color: AppColors.error,
-              size: 20,
-            ),
+            const Icon(Icons.error_outline, color: AppColors.error, size: 20),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
                 message,
-                style: const TextStyle(
-                  fontSize: 13,
-                  color: AppColors.error,
-                ),
+                style: const TextStyle(fontSize: 13, color: AppColors.error),
               ),
             ),
             TextButton(onPressed: onRetry, child: const Text('Retry')),

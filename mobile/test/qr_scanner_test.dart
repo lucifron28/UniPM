@@ -6,6 +6,7 @@ import 'package:mobile/features/qr_scanner/qr_camera_preview.dart';
 import 'package:mobile/features/qr_scanner/qr_scan_result.dart';
 import 'package:mobile/features/qr_scanner/qr_scanner_controller.dart';
 import 'package:mobile/features/qr_scanner/qr_scanner_page.dart';
+
 void main() {
   test('ignores empty scans and captures the first usable value', () {
     final controller = QrScannerController();

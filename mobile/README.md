@@ -54,6 +54,13 @@ memory-only session and returns the user to sign-in without refresh or replay.
 Only `Inspector` and `GSD` users enter the current mobile shell. This is a
 navigation boundary; backend authorization remains authoritative.
 
+The isolated `feature/offline-nla-v3-integration` candidate places pending
+acknowledgements near the top of the home screen, keeps asset scanning
+prominent, and prioritizes urgent PM tasks. Its acknowledgement screen uses a
+compact summary with expandable inspection details while keeping non-operational
+findings and signatory/signature controls accessible. Existing review,
+confirmation, authorization, and acknowledgement behavior remains intact.
+
 ## Preventive-maintenance Draft Workflow
 
 Inspector and GSD users can open **Preventive-maintenance drafts** from the
@@ -61,8 +68,20 @@ authenticated shell. This phase supports creating a one-page form header,
 adding multiple inspection rows, resuming a saved Draft, and editing or
 deleting Draft rows. A worker can review the rows and submit the whole form;
 submission assigns the provisional file number returned by the API and makes
-the form read-only. Every action is sent to the ASP.NET Core API immediately;
-the mobile app does not keep offline drafts or synchronize a local database.
+the form read-only. Online edits are sent to the ASP.NET Core API immediately.
+The `feature/offline-nla-v3-integration` review candidate caches assigned
+schedules, assets, and reference data, then stores Draft form and
+inspection-row changes in encrypted per-user secure storage. Changes sync
+automatically after connectivity returns and can be retried from the home
+screen. Stable client IDs make create retries idempotent; stale row updates
+remain queued as conflicts for review rather than overwriting newer server
+data. The original offline source branch remains preserved.
+
+The mobile authentication session remains memory-only, so the same account
+must sign in again after an app restart before queued work can sync. Location
+verification, photo evidence, form submission, and acknowledgement remain
+online-only. A queued or conflicted form cannot be submitted. Sign-out locks the
+in-memory cache and preserves encrypted queued work for that account.
 
 The **Scan asset QR** entry sends the complete scanned UniPM QR value to the
 authenticated backend asset lookup. Backend asset data remains authoritative;
@@ -125,9 +144,26 @@ budget, RMRF, or WMS approval.
 
 The four supplied GSD forms are implemented as the authoritative visible
 category-form structure for the current mobile PM pass. Historical form-version
-preservation, corrective handoff, RMRF processing, and offline workflow remain
-outside this mobile implementation. Offline persistence and synchronization
-architecture remain undecided pending a separate approved decision.
+preservation, corrective handoff, and RMRF processing remain outside this mobile
+implementation. Offline persistence, queued synchronization, explicit conflict
+recovery, and the acknowledgement/home UX are integrated on
+`feature/offline-nla-v3-integration`; this candidate has not yet been accepted
+as part of the GSD-validated baseline.
+
+## Integration Candidate Verification
+
+The combined mobile implementation passed exact-commit Flutter CI on
+`a93e71b` in [run #50](https://github.com/lucifron28/UniPM/actions/runs/39364885217):
+formatting, analysis, focused acknowledgement/offline tests, the full Flutter
+suite, and Android debug APK build all passed. The source branches also passed
+Flutter CI at offline commit `60788e1`
+([run #49](https://github.com/lucifron28/UniPM/actions/runs/39362166990)) and
+acknowledgement UX commit `0aa12b9`
+([run #34](https://github.com/lucifron28/UniPM/actions/runs/39359136181)).
+
+These are automated engineering checks. Physical-device behavior and GSD field
+acceptance remain unverified; the integration candidate is not part of the
+accepted release baseline.
 
 ## Dependencies
 

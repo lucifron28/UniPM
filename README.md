@@ -135,12 +135,15 @@ or delete Draft rows, and submit the whole form through the API. Submission
 assigns a provisional file number and makes the form read-only.
 
 The mobile client starts signed out after restart, does not persist access
-tokens or cookies, and does not implement refresh/replay or offline
-synchronization. Offline sync is deferred; its persistence and synchronization
-architecture remain undecided pending a separate approved decision.
-Acknowledgement and signature capture are available in the web review workflow;
-later mobile field actions remain outside the current mobile scope. See
-[mobile/README.md](mobile/README.md).
+tokens or cookies, and does not implement refresh/replay. The isolated
+`feature/offline-nla-v3-integration` candidate combines encrypted per-account
+draft storage, queued synchronization, explicit conflict review, and the mobile
+acknowledgement/home UX. It remains outside the accepted release baseline
+pending review and field acceptance; source branches are preserved.
+Web acknowledgement and signature review remain available. The isolated mobile
+candidate also includes the role-aware acknowledgement screen and signature
+capture; acknowledgement, submission, location verification, and photo evidence
+remain online-only. See [mobile/README.md](mobile/README.md).
 
 ## First Run
 
@@ -223,10 +226,10 @@ records remain as evidence of prior work. The separate fictional
 ReferenceDocument foundation, Full-Text Search, section embeddings, and shared
 provider-neutral embedding components remain.
 
-Schema-constrained natural-language analytics remains a planned post-validation
-direction, pending professor/adviser confirmation. It is not implemented or
-approved for this branch; any implementation requires a separate approved task
-and branch after GSD validation.
+Schema-constrained NLA V3 PM execution and registered asset inventory reporting
+are implemented on the isolated `feature/offline-nla-v3-integration` candidate.
+Phase 5 human label review and SQL Server 2019 execution remain open. Phases 7–8
+are planning only; the stable PMIS validation baseline is unchanged.
 
 See the historical [API description](reference/api/maintenance-review-v0.1.md)
 and [engineering evidence](reference/evidence/INDEX.md) for prior results.
@@ -393,10 +396,10 @@ records remain as evidence of prior work. The separate fictional
 ReferenceDocument foundation, Full-Text Search, section embeddings, and shared
 provider-neutral embedding components remain.
 
-Schema-constrained natural-language analytics remains a planned post-validation
-direction, pending professor/adviser confirmation. It is not implemented or
-approved for this branch; any implementation requires a separate approved task
-and branch after GSD validation.
+Schema-constrained NLA V3 PM execution and registered asset inventory reporting
+are implemented on the isolated `feature/offline-nla-v3-integration` candidate.
+Phase 5 human label review and SQL Server 2019 execution remain open. Phases 7–8
+are planning only; the stable PMIS validation baseline is unchanged.
 
 Reference embeddings remain disabled by default. Remote providers require
 explicit configuration and a separate privacy review; ordinary PM workflows

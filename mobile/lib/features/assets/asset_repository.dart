@@ -46,7 +46,9 @@ class ApiAssetRepository implements AssetRepository {
       params.add('search=${Uri.encodeQueryComponent(search.trim())}');
     }
     if (assetCategory != null && assetCategory.trim().isNotEmpty) {
-      params.add('assetCategory=${Uri.encodeQueryComponent(assetCategory.trim())}');
+      params.add(
+        'assetCategory=${Uri.encodeQueryComponent(assetCategory.trim())}',
+      );
     }
     params.add('limit=${limit.clamp(1, 50)}');
     final path = '/api/v1/assets?${params.join('&')}';
