@@ -438,7 +438,6 @@ void main() {
       expect(completed, isTrue, reason: '$step did not complete.');
     }
 
-    debugPrint('conflict-review: setup');
     remote.forms = [
       _form(inspections: [_inspection()]),
     ];
@@ -446,11 +445,9 @@ void main() {
       'activate user',
       () => repository.activate(_userA),
     );
-    debugPrint('conflict-review: activated');
     await awaitRepositoryAction('list forms', () async {
       await repository.listForms();
     });
-    debugPrint('conflict-review: listed forms');
     connectivity.setConnected(false);
     remote.connected = false;
     await awaitRepositoryAction('save local update', () async {
@@ -460,14 +457,10 @@ void main() {
         _updateInput(remarks: 'Local observation to review.'),
       );
     });
-    debugPrint('conflict-review: saved local update');
     remote.conflictNextUpdate = true;
     remote.connected = true;
-    connectivity.setConnected(true);
-    await Future<void>.delayed(Duration.zero);
-    debugPrint('conflict-review: connectivity event processed');
+    connectivity.connected = true;
     await awaitRepositoryAction('synchronize conflict', repository.syncNow);
-    debugPrint('conflict-review: conflict synchronized');
 
     final controller = PreventiveMaintenanceController(
       repository: repository,
@@ -483,7 +476,6 @@ void main() {
       () => repository.getForm(_formId).timeout(const Duration(seconds: 5)),
     );
     controller.selectForm(selectedForm!);
-    debugPrint('conflict-review: selected form');
     await tester.pumpWidget(
       MaterialApp(
         home: PreventiveMaintenanceDraftPage(
@@ -492,15 +484,12 @@ void main() {
         ),
       ),
     );
-    debugPrint('conflict-review: pumped widget');
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 
     expect(find.text('This draft needs sync review'), findsOneWidget);
     expect(find.byType(CircularProgressIndicator), findsNothing);
-    debugPrint('conflict-review: banner rendered');
     await tester.tap(find.text('Update inspection needs review'));
-    debugPrint('conflict-review: expanded conflict');
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.textContaining('Local observation to review.'), findsOneWidget);
@@ -508,19 +497,15 @@ void main() {
     expect(find.text('Discard local change'), findsOneWidget);
 
     await tester.tap(find.text('Discard local change'));
-    debugPrint('conflict-review: opened discard dialog');
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.text('Discard this saved change?'), findsOneWidget);
     await tester.tap(find.text('Discard local change').last);
-    debugPrint('conflict-review: confirmed discard');
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     await tester.pump();
-    debugPrint('conflict-review: dialog dismissed');
 
     expect(repository.pendingCount, 0);
-    debugPrint('conflict-review: pending changes cleared');
     expect(
       (await repository.getForm(_formId)).inspections.single.remarks,
       'Existing server observation.',
@@ -530,37 +515,27 @@ void main() {
   test(
     'deleting a queued row preserves ordered create and delete writes',
     () async {
-      debugPrint('queued-delete: setup');
       remote.schedules[0] = _schedule(
         scheduleDate: DateTime.now().toUtc().add(const Duration(days: 30)),
       );
       await repository.activate(_userA);
-      debugPrint('queued-delete: activated');
       await repository.listSchedules();
-      debugPrint('queued-delete: schedules cached');
       connectivity.setConnected(false);
       remote.connected = false;
 
       final form = await repository.createForm(_createInput());
-      debugPrint('queued-delete: local form created');
       final row = await repository.addInspection(form.id, _addInput());
-      debugPrint('queued-delete: local row added');
       await repository.deleteInspection(form.id, row.id);
-      debugPrint('queued-delete: local row deleted');
       expect(repository.pendingCount, 3);
       expect((await repository.getForm(form.id)).inspections, isEmpty);
 
       remote.connected = true;
       connectivity.setConnected(true);
       await Future<void>.delayed(Duration.zero);
-      debugPrint('queued-delete: connectivity event processed');
       await repository.syncNow();
-      debugPrint('queued-delete: queue synchronized');
 
       expect(repository.pendingCount, 0);
-      debugPrint('queued-delete: pending count is zero');
       expect(remote.forms.single.inspections, isEmpty);
-      debugPrint('queued-delete: remote row removed');
       expect(remote.schedules.single.status, 'Due');
       expect(remote.addedInspectionIds, [row.id]);
       expect(remote.deletedInspectionIds, [row.id]);
