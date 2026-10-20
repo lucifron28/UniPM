@@ -408,6 +408,7 @@ describe('app shell role access and layout', () => {
             building: `${department} Building`,
             department,
             location: 'Synthetic common area',
+            status: 'Active',
           },
         },
       }
