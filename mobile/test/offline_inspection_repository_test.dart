@@ -492,6 +492,9 @@ void main() {
     expect(find.text('This draft needs sync review'), findsOneWidget);
     expect(find.byKey(const Key('schedules-loading')), findsOneWidget);
     pendingSchedules.complete(remote.schedules);
+    await awaitRepositoryAction('finish schedule loading', () async {
+      await repository.listSchedules();
+    });
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.byKey(const Key('schedules-loading')), findsNothing);
