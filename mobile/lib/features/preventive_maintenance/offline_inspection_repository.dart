@@ -44,13 +44,32 @@ abstract interface class OfflineSnapshotStore {
 }
 
 class SecureOfflineSnapshotStore implements OfflineSnapshotStore {
-  SecureOfflineSnapshotStore({FlutterSecureStorage? storage})
-    : _storage = storage ?? const FlutterSecureStorage();
+  SecureOfflineSnapshotStore({
+    required Uri? apiBaseUrl,
+    FlutterSecureStorage? storage,
+  }) : _apiBaseUrl = apiBaseUrl,
+       _storage = storage ?? const FlutterSecureStorage();
 
+  final Uri? _apiBaseUrl;
   final FlutterSecureStorage _storage;
 
-  String _key(String userId) =>
-      'unipm.offline.v1.${base64Url.encode(utf8.encode(userId))}';
+  String _key(String userId) {
+    final backend = _apiBaseUrl;
+    if (backend == null ||
+        !backend.hasAuthority ||
+        !const ['http', 'https'].contains(backend.scheme.toLowerCase())) {
+      throw StateError('Offline storage requires a configured API backend.');
+    }
+    final path = backend.normalizePath().path;
+    final identity = Uri(
+      scheme: backend.scheme.toLowerCase(),
+      host: backend.host.toLowerCase(),
+      port: backend.port,
+      path: path.endsWith('/') ? path : '$path/',
+    ).toString();
+    final scope = base64Url.encode(utf8.encode(identity));
+    return 'unipm.offline.v2.$scope.${base64Url.encode(utf8.encode(userId))}';
+  }
 
   @override
   Future<String?> read(String userId) => _storage.read(key: _key(userId));

@@ -23,7 +23,7 @@ void main() {
   final offlineInspectionRepository = OfflineInspectionRepository(
     remote: remotePreventiveMaintenanceRepository,
     remoteAssets: remoteAssetRepository,
-    store: SecureOfflineSnapshotStore(),
+    store: SecureOfflineSnapshotStore(apiBaseUrl: config.apiBaseUrl),
     connectivity: DeviceConnectivityMonitor(),
   );
   final assetMaintenanceHistoryRepository =
