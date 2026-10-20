@@ -3,7 +3,7 @@ id: TEST-117
 type: test-run
 title: NLA V3 Phase 6 asset inventory final verification
 status: executed
-recordedAtUtc: 2026-10-20T00:53:33Z
+recordedAtUtc: 2026-10-20T00:57:30Z
 testedCommit: fdeb4268f2b915765a3c5504d510f2c5b301508d
 sourceBranch: feature/nla-v3-asset-inventory
 evidenceLevel: locally-executed
@@ -53,6 +53,9 @@ final web tree was checked locally at the tested source commit.
 
 Backend CI run [#362](https://github.com/lucifron28/UniPM/actions/runs/39346775885)
 passed on the exact source commit `b2c40f2a39c0e1b326a612cbdf09f77ea6555459`.
+After the local verification record was committed, Backend CI run
+[#365](https://github.com/lucifron28/UniPM/actions/runs/39350353241) passed on
+the exact pushed branch head `d1d560ae3f18ce6fd0b2982fc4a9be892fa47c1b`.
 
 ## SQL Server 2019
 
