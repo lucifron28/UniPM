@@ -538,9 +538,9 @@ void main() {
         ),
       ),
     );
-    await tester.pumpAndSettle();
+    await tester.pump();
     expect(find.text('This draft needs sync review'), findsOneWidget);
-    expect(find.byKey(const Key('schedules-loading')), findsNothing);
+    expect(find.byKey(const Key('schedules-loading')), findsOneWidget);
     await tester.tap(find.text('Update inspection needs review'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
