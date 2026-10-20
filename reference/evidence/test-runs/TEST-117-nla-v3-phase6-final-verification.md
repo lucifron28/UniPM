@@ -3,8 +3,8 @@ id: TEST-117
 type: test-run
 title: NLA V3 Phase 6 asset inventory final verification
 status: executed
-recordedAtUtc: 2026-10-20T00:50:04Z
-testedCommit: b2c40f2a39c0e1b326a612cbdf09f77ea6555459
+recordedAtUtc: 2026-10-20T00:53:33Z
+testedCommit: fdeb4268f2b915765a3c5504d510f2c5b301508d
 sourceBranch: feature/nla-v3-asset-inventory
 evidenceLevel: locally-executed
 ---
@@ -13,8 +13,9 @@ evidenceLevel: locally-executed
 
 ## Scope and boundaries
 
-- Source commit: `b2c40f2a39c0e1b326a612cbdf09f77ea6555459` on
-  `feature/nla-v3-asset-inventory`.
+- Source commit: `fdeb4268f2b915765a3c5504d510f2c5b301508d` on
+  `feature/nla-v3-asset-inventory`. This is the evidence-only follow-up to code
+  commit `b2c40f2a39c0e1b326a612cbdf09f77ea6555459`.
 - Verification was limited to the Phase 6 asset inventory subject and existing
   V3/V2 regressions. Phase 7 was not implemented.
 - Test execution used .NET SDK `10.0.203`. The API test process received a
@@ -39,14 +40,14 @@ configuration, not a source change.
 
 ## Web and browser checks
 
-Local checks at this same source commit passed: formatting, lint, typecheck,
+Local checks at the tested source commit passed: formatting, lint, typecheck,
 API contract validation, all 7 negative API contract checks, generated-client
 drift validation, 247/247 unit tests across 31 files, 247/247 coverage tests,
-and the production build (2,211 modules). The focused system-Chromium V3
+and the production build (2,226 modules). The focused system-Chromium V3
 Playwright scenarios passed 2/2, covering source-record drill-down and asset
 inventory. Web CI run [#280](https://github.com/lucifron28/UniPM/actions/runs/39297020004)
-passed at `be07b68`; the later Phase 6 changes were backend tests and evidence,
-and the final web tree was separately checked locally at this source commit.
+passed at `be07b68`; subsequent Phase 6 changes did not change web code. The
+final web tree was checked locally at the tested source commit.
 
 ## Continuous integration
 
