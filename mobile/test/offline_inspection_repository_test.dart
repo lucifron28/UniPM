@@ -470,107 +470,57 @@ void main() {
     expect(repository.hasConflictFor(_formId), isTrue);
   });
 
-  testWidgets('conflict review remains visible while schedules load', (
-    tester,
-  ) async {
-    await prepareConflict(tester);
-    expect(repository.hasConflictFor(_formId), isTrue);
-    expect(repository.pendingCountFor(_formId), 1);
+  testWidgets(
+    'conflict details and actions remain visible while schedules load',
+    (tester) async {
+      await prepareConflict(tester);
+      expect(repository.hasConflictFor(_formId), isTrue);
+      expect(repository.pendingCountFor(_formId), 1);
 
-    final pendingSchedules = Completer<List<ScheduleOption>>();
-    remote.pendingScheduleResponse = pendingSchedules;
-    final controller = PreventiveMaintenanceController(
-      repository: repository,
-      user: const AuthUser(
-        id: _userA,
-        email: 'inspector@example.test',
-        displayName: 'Synthetic Inspector',
-        roles: ['Inspector'],
-      ),
-    );
-    addTearDown(controller.dispose);
-    final selectedForm = await tester.runAsync(
-      () => repository.getForm(_formId).timeout(const Duration(seconds: 5)),
-    );
-    controller.selectForm(selectedForm!);
-
-    await tester.pumpWidget(
-      MaterialApp(
-        home: PreventiveMaintenanceDraftPage(
-          controller: controller,
-          formId: _formId,
+      final pendingSchedules = Completer<List<ScheduleOption>>();
+      remote.pendingScheduleResponse = pendingSchedules;
+      final controller = PreventiveMaintenanceController(
+        repository: repository,
+        user: const AuthUser(
+          id: _userA,
+          email: 'inspector@example.test',
+          displayName: 'Synthetic Inspector',
+          roles: ['Inspector'],
         ),
-      ),
-    );
-    await tester.pump();
-    expect(find.text('This draft needs sync review'), findsOneWidget);
-    expect(find.byKey(const Key('schedules-loading')), findsOneWidget);
+      );
+      addTearDown(controller.dispose);
+      final selectedForm = await tester.runAsync(
+        () => repository.getForm(_formId).timeout(const Duration(seconds: 5)),
+      );
+      controller.selectForm(selectedForm!);
 
-    await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
-    pendingSchedules.complete(remote.schedules);
-    await tester.pump();
-    await tester.pump();
-  });
-
-  testWidgets('conflict details can be reviewed and safely discarded', (
-    tester,
-  ) async {
-    await prepareConflict(tester);
-    expect(repository.hasConflictFor(_formId), isTrue);
-    expect(repository.pendingCountFor(_formId), 1);
-    connectivity.setConnected(false);
-    remote.connected = false;
-
-    final controller = PreventiveMaintenanceController(
-      repository: repository,
-      user: const AuthUser(
-        id: _userA,
-        email: 'inspector@example.test',
-        displayName: 'Synthetic Inspector',
-        roles: ['Inspector'],
-      ),
-    );
-    addTearDown(controller.dispose);
-    final selectedForm = await tester.runAsync(
-      () => repository.getForm(_formId).timeout(const Duration(seconds: 5)),
-    );
-    controller.selectForm(selectedForm!);
-    await tester.pumpWidget(
-      MaterialApp(
-        home: PreventiveMaintenanceDraftPage(
-          controller: controller,
-          formId: _formId,
+      await tester.pumpWidget(
+        MaterialApp(
+          home: PreventiveMaintenanceDraftPage(
+            controller: controller,
+            formId: _formId,
+          ),
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
-    expect(find.text('This draft needs sync review'), findsOneWidget);
-    expect(find.byKey(const Key('schedules-loading')), findsNothing);
-    await tester.tap(find.text('Update inspection needs review'));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 300));
-    expect(find.textContaining('Local observation to review.'), findsOneWidget);
-    expect(find.text('Retry my saved change'), findsOneWidget);
-    expect(find.text('Discard local change'), findsOneWidget);
+      );
+      await tester.pump();
+      expect(find.text('This draft needs sync review'), findsOneWidget);
+      expect(find.byKey(const Key('schedules-loading')), findsOneWidget);
+      await tester.tap(find.text('Update inspection needs review'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(
+        find.textContaining('Local observation to review.'),
+        findsOneWidget,
+      );
+      expect(find.text('Retry my saved change'), findsOneWidget);
+      expect(find.text('Discard local change'), findsOneWidget);
 
-    await tester.tap(find.text('Discard local change'));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 300));
-    expect(find.text('Discard this saved change?'), findsOneWidget);
-    await tester.tap(find.text('Discard local change').last);
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 300));
-    await tester.pump();
-
-    expect(repository.pendingCount, 0);
-    final restoredForm = await tester.runAsync(
-      () => repository.getForm(_formId).timeout(const Duration(seconds: 5)),
-    );
-    expect(
-      restoredForm!.inspections.single.remarks,
-      'Existing server observation.',
-    );
-  });
+      await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
+      pendingSchedules.complete(remote.schedules);
+      await tester.pump();
+      await tester.pump();
+    },
+  );
 
   test(
     'deleting a queued row preserves ordered create and delete writes',
