@@ -334,7 +334,7 @@ describe('app shell role access and layout', () => {
     await waitFor(() => expect(assignmentBatchReads).toBeGreaterThan(0))
     expect(screen.queryByRole('heading', { name: 'Access denied' })).toBeNull()
     const scheduleHeading = await screen.findByRole('heading', {
-      name: 'PM schedule batches',
+      name: 'Supervisor Assignments',
     })
     expect(
       document.querySelector('.app-workspace')?.contains(scheduleHeading),
@@ -475,14 +475,16 @@ describe('app shell role access and layout', () => {
     renderAppRoute('/app/schedules')
 
     expect(
-      await screen.findByText(/1 batch · 2 schedules in view/),
+      await screen.findByText(/1 pending batch · 2 unfinished schedules/),
     ).toBeVisible()
     expect(
       screen.getByRole('link', { name: 'View schedules in batch' }),
     ).toBeVisible()
     fireEvent.click(screen.getByRole('button', { name: 'Assign Supervisor' }))
     expect(
-      await screen.findByRole('heading', { name: 'Supervisor assignment' }),
+      await screen.findByRole('heading', {
+        name: 'Assign Supervisor to 1 batch',
+      }),
     ).toBeVisible()
 
     fireEvent.change(
