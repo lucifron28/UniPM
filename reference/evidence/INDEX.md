@@ -20,6 +20,7 @@ record's evidence level and tested/source commit.
 
 | ID | Type | Title | Status | Evidence level | Tested/source commit | Record | Note |
 |---|---|---|---|---|---|---|---|
+| TEST-122 | test-run | Offline and NLA V3 integration candidate verification | executed | locally-executed | `1a37e86f20a658b97e4b5b51c55632f7a64a8c75` | [record](test-runs/TEST-122-offline-nla-integration-candidate-verification.md) | .NET 10 Release build and suite 558/50 skipped; Web 247 unit and coverage tests, generated API checks and Playwright 60/1 skipped passed. SQL Server 2019 and exact integration-branch CI remain unverified; all 18 V3 labels remain pending. |
 | TEST-121 | test-run | Offline inspection cache recovery verification | executed | locally-executed | `9f3cf7d4d8628147e1fdff3cc30742ef9607f49f` | [record](test-runs/TEST-121-offline-inspection-cache-recovery.md) | Flutter analyzer and 168 tests passed, including cache recovery after restart offline; 8 unchanged paths fail full-tree formatting; no device or SQL Server test connection was available. |
 | TEST-120 | test-run | Offline Draft synchronization follow-up verification | executed | ci-executed | `0ade68d4f30e9e006949f8b0155a612511c8f019` | [record](test-runs/TEST-120-offline-draft-sync-follow-up-verification.md) | Exact-head Web CI passed, including 226 unit tests and Playwright 51/52 (1 skipped); Flutter 167/167 and focused backend 36/36 passed at their listed source commits. SQL Server 2019, device, and GSD acceptance remain pending. |
 | TEST-119 | test-run | Offline-first mobile Draft synchronization verification | executed | locally-executed | `75c005da4f09d0b2b1f2b3a031c30bf03225d329` | [record](test-runs/TEST-119-offline-first-draft-inspection-workflow.md) | Focused backend 36/36, OpenAPI generation, Flutter analysis, full Flutter suite 166/166, and Android debug build passed; SQL Server 2019, physical-device, iOS, and deployment checks remain unverified. |
@@ -230,7 +231,8 @@ record's evidence level and tested/source commit.
   Hosted CI status could not be read because GitHub returned HTTP 403.
 - NLA V3 Phase 6: native SQL Server 2019 inventory query verification and
   broad GSD/accessibility acceptance remain pending; the focused V3 browser
-  scenarios and local engineering checks passed in TEST-114.
+  scenarios and integrated local engineering checks passed in TEST-114 and
+  TEST-122.
 - NLA V2 provisional development-case human review/adjudication, a separate
   held-out set, and any language interpretation evaluation remain pending.
   TEST-083 covers only fake-handler adapter/parser behavior; V1–V3 evidence is

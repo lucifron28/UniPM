@@ -483,6 +483,16 @@ unverified. Phase 5 remains open: all 18 provisional interpretation labels
 still need independent human review, and no score or GSD acceptance claim is
 available.
 
+**Offline/mobile integration verification (2026-10-20):** The asset inventory
+subject is included in the isolated `feature/offline-nla-v3-integration`
+candidate with the offline inspection and mobile acknowledgement/home UX
+histories. The backend and Web integration corrections and local regression
+results are recorded in
+[TEST-122](../evidence/test-runs/TEST-122-offline-nla-integration-candidate-verification.md).
+Native SQL Server 2019 remains unverified because the disposable image registry
+request was denied, and exact-head integration-branch CI and GSD acceptance
+remain open. This does not implement Phase 7 or close Phase 5 review gates.
+
 The subject design, including grain, counts, filters, tests and dependencies,
 is in
 [`nla-v3-phase6-asset-inventory-design.md`](nla-v3-phase6-asset-inventory-design.md).
