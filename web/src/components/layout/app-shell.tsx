@@ -11,12 +11,11 @@ import {
   PanelLeftOpen,
   X,
 } from 'lucide-react'
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Alert } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { BrandMark } from '@/components/brand-mark'
-import { PageHeadingHostContext } from '@/components/layout/page-heading-context'
 import { QuickNavigation } from '@/components/layout/quick-navigation'
 import { LogoutButton } from '@/features/auth/logout-button'
 import { useCurrentUser } from '@/features/auth/current-user'
@@ -45,90 +44,6 @@ function initialSidebarPreference() {
   } catch {
     return false
   }
-}
-
-function fallbackPageHeading(pathname: string) {
-  const [, area, section, item, action] = pathname.split('/')
-  if (area !== 'app') {
-    return { title: 'UniPM', description: 'Preventive maintenance portal' }
-  }
-
-  if (section === 'dashboard') {
-    return {
-      title: 'Preventive Maintenance Dashboard',
-      description: 'Review preventive maintenance with filters or a question.',
-    }
-  }
-  if (section === 'analytics') {
-    return {
-      title: 'Preventive Maintenance Dashboard',
-      description: 'Choose how you want to review PM results.',
-    }
-  }
-  if (section === 'assets') {
-    return item === 'new'
-      ? {
-          title: 'Add asset',
-          description: 'Register equipment for maintenance.',
-        }
-      : item
-        ? {
-            title: 'Asset details',
-            description: 'Review the selected asset record.',
-          }
-        : {
-            title: 'Assets',
-            description:
-              'Find equipment by category, status, location, or asset code.',
-          }
-  }
-  if (section === 'schedules') {
-    return item === 'new'
-      ? {
-          title: 'Add schedule',
-          description: 'Create a preventive maintenance schedule.',
-        }
-      : item
-        ? {
-            title: 'Schedule details',
-            description: 'Review maintenance timing and assignment.',
-          }
-        : {
-            title: 'Schedules',
-            description:
-              'Review PM cycles, due dates, and recorded schedule status.',
-          }
-  }
-  if (section === 'inspections') {
-    return item
-      ? {
-          title: 'Inspection details',
-          description: 'Review the inspection source record.',
-        }
-      : {
-          title: 'Inspections',
-          description:
-            'Review inspection outcomes, source notes, and corrective follow-up.',
-        }
-  }
-  if (section === 'preventive-maintenance-forms') {
-    return action === 'review'
-      ? {
-          title: 'Review before acknowledgement',
-          description: 'Review the submitted form and its inspection rows.',
-        }
-      : item
-        ? {
-            title: 'Form details',
-            description: 'Review the preventive maintenance form.',
-          }
-        : {
-            title: 'Form review',
-            description:
-              'Review submitted forms and open their inspection source rows.',
-          }
-  }
-  return { title: 'UniPM', description: 'Preventive maintenance portal' }
 }
 
 export function UserIdentity() {
@@ -316,11 +231,8 @@ export function AppShell() {
     initialSidebarPreference,
   )
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false)
-  const [headingHost, setHeadingHost] = useState<HTMLDivElement | null>(null)
   const mobileToggleRef = useRef<HTMLButtonElement>(null)
   const mobileCloseRef = useRef<HTMLButtonElement>(null)
-  const navigationRef = useRef<HTMLElement>(null)
-  const activeIndicatorRef = useRef<HTMLSpanElement>(null)
   const roles = currentUser.isSuccess ? currentUser.data.roles : []
   const requiredRoles = getRequiredAppRoles(pathname)
   const isRoleRestrictedRoute = requiredRoles !== null
@@ -329,7 +241,6 @@ export function AppShell() {
     (currentUser.isSuccess && hasAnyRole(roles, requiredRoles))
   const showSchedules = currentUser.isSuccess && canReadSchedules(roles)
   const showFormReview = currentUser.isSuccess && canReviewForms(roles)
-  const fallbackHeading = fallbackPageHeading(pathname)
   const navigationItems = [
     {
       to: '/app/dashboard',
@@ -382,46 +293,6 @@ export function AppShell() {
     return () => document.removeEventListener('keydown', handleEscape)
   }, [mobileNavigationOpen])
 
-  useLayoutEffect(() => {
-    const navigation = navigationRef.current
-    const indicator = activeIndicatorRef.current
-    if (!navigation || !indicator) return
-
-    const updateIndicator = () => {
-      const activeLink = navigation.querySelector<HTMLElement>(
-        '[aria-current="page"]',
-      )
-      if (!activeLink) {
-        indicator.style.opacity = '0'
-        return
-      }
-
-      const navigationBounds = navigation.getBoundingClientRect()
-      const linkBounds = activeLink.getBoundingClientRect()
-      indicator.style.width = `${linkBounds.width}px`
-      indicator.style.height = `${linkBounds.height}px`
-      indicator.style.transform = `translate3d(${linkBounds.left - navigationBounds.left + navigation.scrollLeft}px, ${linkBounds.top - navigationBounds.top + navigation.scrollTop}px, 0)`
-      indicator.style.opacity = '1'
-    }
-
-    updateIndicator()
-    const resizeObserver =
-      typeof ResizeObserver === 'undefined'
-        ? null
-        : new ResizeObserver(updateIndicator)
-    resizeObserver?.observe(navigation)
-    const activeLink = navigation.querySelector<HTMLElement>(
-      '[aria-current="page"]',
-    )
-    if (activeLink) resizeObserver?.observe(activeLink)
-    window.addEventListener('resize', updateIndicator)
-
-    return () => {
-      resizeObserver?.disconnect()
-      window.removeEventListener('resize', updateIndicator)
-    }
-  }, [pathname, sidebarCollapsed, showSchedules, showFormReview])
-
   return (
     <div
       className="app-shell min-h-dvh bg-[var(--page-background)]"
@@ -443,7 +314,7 @@ export function AppShell() {
         className={`app-sidebar fixed inset-y-0 left-0 z-50 w-[min(18rem,calc(100vw-3rem))] flex-col border-r border-[var(--border-soft)] bg-[var(--sidebar-background)] lg:relative lg:z-auto lg:flex lg:h-full lg:min-h-0 lg:w-auto ${mobileNavigationOpen ? 'flex' : 'hidden'}`}
       >
         <div
-          className={`flex shrink-0 items-center gap-2 border-b border-[var(--border-soft)] p-3 ${sidebarCollapsed ? 'lg:flex-col lg:items-center' : 'lg:justify-between'}`}
+          className={`flex shrink-0 items-center gap-2 border-b border-[var(--border-soft)] p-3 ${sidebarCollapsed ? 'lg:flex-col lg:items-center' : 'lg:justify-between lg:px-6 lg:py-5'}`}
         >
           <div className="min-w-0 flex-1 lg:hidden">
             <BrandMark compact />
@@ -487,16 +358,10 @@ export function AppShell() {
           </button>
         </div>
         <nav
-          ref={navigationRef}
           id="primary-navigation"
           aria-label="Primary"
-          className="relative flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto p-2"
+          className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto p-2"
         >
-          <span
-            ref={activeIndicatorRef}
-            aria-hidden="true"
-            className="sidebar-active-indicator"
-          />
           <QuickNavigation
             roles={roles}
             sidebarCollapsed={sidebarCollapsed}
@@ -517,11 +382,11 @@ export function AppShell() {
                 activeProps={{
                   'aria-current': 'page',
                   className:
-                    'sidebar-nav-link relative z-10 flex min-h-11 items-center gap-3 rounded-md px-3 py-2 text-sm font-semibold text-white',
+                    'sidebar-nav-link flex min-h-10 items-center gap-3 rounded-lg bg-[var(--primary-active)] px-4 py-3 text-sm font-semibold text-white shadow-sm',
                 }}
                 inactiveProps={{
                   className:
-                    'sidebar-nav-link relative z-10 flex min-h-11 items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-muted)]',
+                    'sidebar-nav-link flex min-h-10 items-center gap-3 rounded-lg px-4 py-3 text-sm font-semibold text-[var(--text-secondary)] hover:bg-[var(--page-background)]',
                 }}
               >
                 <Icon aria-hidden="true" className="size-5 shrink-0" />
@@ -535,84 +400,84 @@ export function AppShell() {
       </aside>
 
       <div className="app-shell-body min-w-0 lg:min-h-0">
-        <header className="app-page-header relative z-30 flex min-h-20 items-center gap-3 px-4 py-4 sm:px-6 lg:px-6">
-          <button
-            ref={mobileToggleRef}
-            type="button"
-            aria-label="Open navigation"
-            aria-controls="primary-navigation"
-            aria-expanded={mobileNavigationOpen}
-            className="sidebar-control flex size-10 shrink-0 items-center justify-center rounded-md border border-[var(--border-soft)] bg-white text-[var(--text-primary)] focus-visible:outline-2 focus-visible:outline-[var(--primary)] lg:hidden"
-            onClick={() => setMobileNavigationOpen(true)}
-          >
-            <Menu aria-hidden="true" className="size-5" />
-          </button>
-          <div className="page-heading-region min-w-0 flex-1">
-            <div className="page-heading-fallback">
-              <h1 className="text-2xl font-bold tracking-tight text-[var(--text-primary)] sm:text-[1.75rem]">
-                {fallbackHeading.title}
-              </h1>
-              <p className="mt-1 hidden text-sm text-[var(--text-neutral)] sm:block">
-                {fallbackHeading.description}
+        <header className="app-page-header relative z-30 flex min-h-18 items-center justify-between gap-4 border-b border-[var(--border-soft)] bg-white px-4 py-3 sm:px-6 lg:px-8">
+          <div className="flex min-w-0 items-center gap-3">
+            <button
+              ref={mobileToggleRef}
+              type="button"
+              aria-label="Open navigation"
+              aria-controls="primary-navigation"
+              aria-expanded={mobileNavigationOpen}
+              className="sidebar-control flex size-10 shrink-0 items-center justify-center rounded-md border border-[var(--border-soft)] bg-white text-[var(--text-primary)] focus-visible:outline-2 focus-visible:outline-[var(--primary)] lg:hidden"
+              onClick={() => setMobileNavigationOpen(true)}
+            >
+              <Menu aria-hidden="true" className="size-5" />
+            </button>
+            <div className="lg:hidden">
+              <BrandMark compact />
+            </div>
+            <div className="hidden lg:block">
+              <p className="text-sm font-semibold text-[var(--text-primary)]">
+                Preventive Maintenance Portal
+              </p>
+              <p className="text-xs text-[var(--text-neutral)]">
+                Authenticated institutional session
               </p>
             </div>
-            <div ref={setHeadingHost} className="page-heading-host" />
+          </div>
+          <div className="flex items-center gap-2 lg:hidden">
+            <LogoutButton />
           </div>
         </header>
-        <main className="app-shell-main px-4 pb-4 sm:px-6 lg:min-h-0 lg:flex-1 lg:overflow-hidden lg:px-6 lg:pb-6">
-          <div className="app-workspace rounded-xl border border-[var(--border-soft)] bg-white p-4 sm:p-5 lg:h-full lg:min-h-0 lg:overflow-x-hidden lg:overflow-y-auto lg:p-6">
-            <PageHeadingHostContext.Provider value={headingHost}>
-              {isRoleRestrictedRoute && currentUser.isPending ? (
-                <div
-                  role="status"
-                  className="text-sm text-[var(--text-neutral)]"
+        <main className="app-shell-main px-4 py-8 sm:px-6 lg:min-h-0 lg:flex-1 lg:overflow-hidden lg:px-10 lg:py-8">
+          <div className="app-workspace min-w-0 lg:h-full lg:min-h-0 lg:overflow-x-hidden lg:overflow-y-auto">
+            {isRoleRestrictedRoute && currentUser.isPending ? (
+              <div role="status" className="text-sm text-[var(--text-neutral)]">
+                Checking page access…
+              </div>
+            ) : isRoleRestrictedRoute &&
+              (currentUser.isError || !currentUser.data) ? (
+              <section
+                aria-labelledby="app-access-error-title"
+                className="mx-auto max-w-2xl rounded-lg border border-[var(--border-soft)] bg-white p-6"
+              >
+                <h2
+                  id="app-access-error-title"
+                  className="text-xl font-semibold text-[var(--text-primary)]"
                 >
-                  Checking page access…
-                </div>
-              ) : isRoleRestrictedRoute &&
-                (currentUser.isError || !currentUser.data) ? (
-                <section
-                  aria-labelledby="app-access-error-title"
-                  className="mx-auto max-w-2xl rounded-lg border border-[var(--border-soft)] bg-white p-6"
+                  Unable to verify access
+                </h2>
+                <p className="mt-2 text-sm text-[var(--text-secondary)]">
+                  Your account roles could not be loaded. Try checking access
+                  again.
+                </p>
+                <Button
+                  type="button"
+                  className="mt-4"
+                  onClick={() => void currentUser.refetch()}
                 >
-                  <h2
-                    id="app-access-error-title"
-                    className="text-xl font-semibold text-[var(--text-primary)]"
-                  >
-                    Unable to verify access
-                  </h2>
-                  <p className="mt-2 text-sm text-[var(--text-secondary)]">
-                    Your account roles could not be loaded. Try checking access
-                    again.
-                  </p>
-                  <Button
-                    type="button"
-                    className="mt-4"
-                    onClick={() => void currentUser.refetch()}
-                  >
-                    Retry access check
-                  </Button>
-                </section>
-              ) : isRoleRestrictedRoute && !hasPageAccess ? (
-                <section
-                  aria-labelledby="app-access-denied-title"
-                  className="mx-auto max-w-2xl rounded-lg border border-[var(--border-soft)] bg-white p-6"
+                  Retry access check
+                </Button>
+              </section>
+            ) : isRoleRestrictedRoute && !hasPageAccess ? (
+              <section
+                aria-labelledby="app-access-denied-title"
+                className="mx-auto max-w-2xl rounded-lg border border-[var(--border-soft)] bg-white p-6"
+              >
+                <h2
+                  id="app-access-denied-title"
+                  className="text-xl font-semibold text-[var(--text-primary)]"
                 >
-                  <h2
-                    id="app-access-denied-title"
-                    className="text-xl font-semibold text-[var(--text-primary)]"
-                  >
-                    Access denied
-                  </h2>
-                  <p className="mt-2 text-sm text-[var(--text-secondary)]">
-                    This page requires one of these roles:{' '}
-                    {requiredRoles?.join(', ')}.
-                  </p>
-                </section>
-              ) : (
-                <Outlet />
-              )}
-            </PageHeadingHostContext.Provider>
+                  Access denied
+                </h2>
+                <p className="mt-2 text-sm text-[var(--text-secondary)]">
+                  This page requires one of these roles:{' '}
+                  {requiredRoles?.join(', ')}.
+                </p>
+              </section>
+            ) : (
+              <Outlet />
+            )}
           </div>
         </main>
       </div>

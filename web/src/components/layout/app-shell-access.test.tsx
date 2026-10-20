@@ -93,9 +93,6 @@ describe('app shell role access and layout', () => {
     const sidebar = screen.getByRole('complementary')
     const nav = within(sidebar).getByRole('navigation', { name: 'Primary' })
     expect(
-      sidebar.querySelector('.sidebar-active-indicator'),
-    ).toBeInTheDocument()
-    expect(
       within(sidebar).getByRole('button', { name: 'Collapse navigation' }),
     ).toHaveAttribute('aria-expanded', 'true')
     expect(
@@ -153,7 +150,6 @@ describe('app shell role access and layout', () => {
     fireEvent.click(account)
     expect(account.closest('details')).toHaveAttribute('open')
     expect(screen.getByText('admin@example.test')).toBeVisible()
-    expect(screen.getByRole('button', { name: 'Sign out' })).toBeVisible()
     expect(
       within(sidebar).getByRole('button', { name: 'Sign out' }),
     ).toBeVisible()
@@ -215,8 +211,8 @@ describe('app shell role access and layout', () => {
     },
   )
 
-  it('opens Ask about PM results from the dashboard without running a query on page load', async () => {
-    let analyticsRequests = 0
+  it('redirects legacy dashboard question bookmarks to the V3 report builder', async () => {
+    let legacyAnalyticsRequests = 0
     server.use(
       http.get('*/api/v1/*', ({ request }) => {
         const pathname = new URL(request.url).pathname
@@ -226,7 +222,7 @@ describe('app shell role access and layout', () => {
         return HttpResponse.json([])
       }),
       http.post('*/api/v1/analytics/pm/v2/*', () => {
-        analyticsRequests += 1
+        legacyAnalyticsRequests += 1
         return HttpResponse.json({ status: 'Unsupported' })
       }),
     )
@@ -234,17 +230,12 @@ describe('app shell role access and layout', () => {
     renderAppRoute('/app/dashboard?view=question')
 
     expect(
-      await screen.findByRole('heading', { name: 'Ask about PM results' }),
+      await screen.findByRole('heading', { name: 'PM Report Builder' }),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: 'Ask a question' }),
-    ).toHaveAttribute('aria-pressed', 'true')
-    expect(screen.queryByRole('link', { name: 'PM Analytics' })).toBeNull()
-    expect(screen.getByRole('link', { name: 'Dashboard' })).toHaveAttribute(
-      'aria-current',
-      'page',
-    )
-    expect(analyticsRequests).toBe(0)
+      screen.queryByRole('heading', { name: 'Ask about PM results' }),
+    ).toBeNull()
+    expect(legacyAnalyticsRequests).toBe(0)
   })
 
   it('does not deny a role-restricted route while roles are loading', async () => {

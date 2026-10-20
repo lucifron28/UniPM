@@ -111,14 +111,6 @@ export function QuickNavigation({
     ...(roles.includes('GSD')
       ? [
           {
-            id: 'build-pm-report',
-            title: 'Build a PM report',
-            description:
-              'Compose a report with the versioned PM analytics plan.',
-            keywords: ['analytics', 'report builder', 'v3', 'nla'],
-            navigate: () => void router.navigate({ to: '/app/analytics' }),
-          },
-          {
             id: 'add-asset',
             title: 'Assets / Add asset',
             description: 'Open the asset registration form.',
@@ -127,14 +119,10 @@ export function QuickNavigation({
           },
           {
             id: 'ask-pm-results',
-            title: 'Ask about PM results',
-            description: 'Ask a question about preventive-maintenance data.',
-            keywords: ['analytics', 'question', 'report', 'nla'],
-            navigate: () =>
-              void router.navigate({
-                to: '/app/dashboard',
-                search: { view: 'question' },
-              }),
+            title: 'PM reports / Ask or build',
+            description: 'Ask a question or build a report from PM data.',
+            keywords: ['analytics', 'question', 'report builder', 'v3', 'nla'],
+            navigate: () => void router.navigate({ to: '/app/analytics' }),
           },
           {
             id: 'assign-supervisor',

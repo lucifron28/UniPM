@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Eye } from 'lucide-react'
 import { PageHeading } from '@/components/layout/page-heading'
 import { Link } from '@tanstack/react-router'
 import {
@@ -163,9 +162,8 @@ const createColumns = (search: ScheduleSearch) => [
           ...search,
           returnContext: { kind: 'scheduleRegistry', search },
         }}
-        className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-[color-mix(in_srgb,var(--primary)_30%,white)] bg-white px-2.5 text-xs font-semibold text-[var(--primary)] hover:border-[var(--primary)] hover:bg-[color-mix(in_srgb,var(--primary)_5%,white)] focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 focus-visible:outline-none"
+        className="font-semibold text-[var(--primary)] hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
       >
-        <Eye aria-hidden="true" className="size-3.5" />
         View details
       </Link>
     ),
@@ -1124,7 +1122,7 @@ export function ScheduleRegistry({
             isUpdating={registry.isFetching}
             desktopContent={
               <table className="w-full min-w-[760px] text-left text-sm">
-                <thead className="bg-[var(--primary)] text-xs tracking-wide text-white uppercase">
+                <thead className="bg-[var(--page-background)] text-xs tracking-wide text-[var(--text-neutral)] uppercase">
                   {table.getHeaderGroups().map((headerGroup) => (
                     <tr key={headerGroup.id}>
                       {headerGroup.headers.map((header) => (
@@ -1203,9 +1201,8 @@ export function ScheduleRegistry({
                         ...search,
                         returnContext: { kind: 'scheduleRegistry', search },
                       }}
-                      className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-[color-mix(in_srgb,var(--primary)_30%,white)] bg-white px-2.5 text-xs font-semibold text-[var(--primary)] hover:border-[var(--primary)] hover:bg-[color-mix(in_srgb,var(--primary)_5%,white)] focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 focus-visible:outline-none"
+                      className="font-semibold text-[var(--primary)] hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
                     >
-                      <Eye aria-hidden="true" className="size-3.5" />
                       View details
                     </Link>
                   </Card>

@@ -95,12 +95,15 @@ test('desktop shell keeps its header and rail still while the workspace scrolls'
     '/app/dashboard?assetCategory=fire-extinguisher&year=2026&pmCycle=2026-08',
   )
 
-  const heading = page
-    .locator('.app-page-header')
-    .getByRole('heading', { name: 'Preventive Maintenance Dashboard' })
   const workspace = page.locator('.app-workspace')
   const sidebar = page.locator('.app-sidebar')
+  const heading = workspace.getByRole('heading', {
+    name: 'Preventive Maintenance Dashboard',
+  })
   await expect(heading).toBeVisible()
+  await expect(
+    page.getByText('Preventive Maintenance Portal', { exact: true }),
+  ).toBeVisible()
   await expect(sidebar.getByText('UniPM', { exact: true }).last()).toBeVisible()
   await expect(
     sidebar.getByText('Institutional operations').last(),
@@ -109,11 +112,7 @@ test('desktop shell keeps its header and rail still while the workspace scrolls'
   await expect(
     page.getByRole('button', { name: 'Collapse navigation' }),
   ).toBeVisible()
-  await expect(
-    workspace.getByRole('heading', {
-      name: 'Preventive Maintenance Dashboard',
-    }),
-  ).toHaveCount(0)
+  await expect(heading).toHaveCount(1)
   await expect(
     workspace.getByRole('heading', { name: 'Scheduled assets' }),
   ).toBeVisible()
@@ -122,9 +121,7 @@ test('desktop shell keeps its header and rail still while the workspace scrolls'
   await expect(page.getByRole('link', { name: 'Assets' })).not.toHaveAttribute(
     'title',
   )
-  await expect(
-    page.getByRole('button', { name: 'Ask a question' }),
-  ).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Ask a question' })).toBeVisible()
   await expect(page.getByRole('link', { name: 'PM Analytics' })).toHaveCount(0)
   await page.screenshot({
     path: 'test-results/web-ui-polish-sidebar-expanded-default-desktop.png',
@@ -231,27 +228,9 @@ test('desktop shell keeps its header and rail still while the workspace scrolls'
   await expect
     .poll(() => workspace.evaluate((element) => element.scrollTop))
     .toBe(0)
-  await expect
-    .poll(() =>
-      page.evaluate(() => {
-        const navigation = document.querySelector('#primary-navigation')
-        const indicator = navigation?.querySelector('.sidebar-active-indicator')
-        const activeLink = navigation?.querySelector<HTMLElement>(
-          '[aria-current="page"]',
-        )
-        if (!indicator || !activeLink) return false
-
-        const indicatorBounds = indicator.getBoundingClientRect()
-        const linkBounds = activeLink.getBoundingClientRect()
-        return (
-          Math.abs(indicatorBounds.left - linkBounds.left) < 1 &&
-          Math.abs(indicatorBounds.top - linkBounds.top) < 1 &&
-          Math.abs(indicatorBounds.width - linkBounds.width) < 1 &&
-          Math.abs(indicatorBounds.height - linkBounds.height) < 1
-        )
-      }),
-    )
-    .toBe(true)
+  await expect(sidebar.locator('[aria-current="page"]')).toHaveClass(
+    'sidebar-nav-link flex min-h-10 items-center gap-3 rounded-lg bg-[var(--primary-active)] px-4 py-3 text-sm font-semibold text-white shadow-sm',
+  )
   await page.screenshot({
     path: 'test-results/web-ui-polish-sidebar-expanded-desktop.png',
   })
@@ -282,72 +261,58 @@ test('desktop shell keeps its header and rail still while the workspace scrolls'
   })
 })
 
-test('active navigation indicator slides and follows browser history', async ({
+test('dashboard questions open the V3 report builder and legacy links redirect', async ({
   page,
 }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await mockSession(page)
+  await page.route('**/api/v1/pm-period-dashboard/cycles**', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: '[]',
+    }),
+  )
+  await page.goto('/app/dashboard')
+
+  await page.getByRole('link', { name: 'Ask a question' }).click()
+  await expect(page).toHaveURL(/\/app\/analytics(?:\?.*)?$/)
+  await expect(
+    page.getByRole('heading', { name: 'PM Report Builder' }),
+  ).toBeVisible()
+  await expect(
+    page.getByRole('heading', { name: 'Ask about PM results' }),
+  ).toHaveCount(0)
+
+  await page.goto('/app/dashboard?view=question')
+  await expect(page).toHaveURL(/\/app\/analytics(?:\?.*)?$/)
+  await expect(
+    page.getByRole('heading', { name: 'PM Report Builder' }),
+  ).toBeVisible()
+})
+
+test('active navigation styling follows browser history', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 })
   await mockSession(page)
   await page.goto('/app/dashboard')
 
-  const indicator = page.locator('.sidebar-active-indicator')
   const assetsLink = page.getByRole('link', { name: 'Assets' })
-  await expect(indicator).toHaveCSS('opacity', '1')
-  await indicator.evaluate((element) => {
-    const marker = element as HTMLElement
-    const handler = (event: Event) => {
-      if ((event as TransitionEvent).propertyName !== 'transform') return
-      marker.removeEventListener('transitionrun', handler)
-      const samples: number[] = []
-      const startedAt = performance.now()
-      const sample = () => {
-        samples.push(marker.getBoundingClientRect().top)
-        if (performance.now() - startedAt >= 260) {
-          marker.dataset.transitionSamples = JSON.stringify(samples)
-        } else {
-          requestAnimationFrame(sample)
-        }
-      }
-      requestAnimationFrame(sample)
-    }
-    marker.addEventListener('transitionrun', handler)
-  })
-  await assetsLink.click()
-  await expect(assetsLink).toHaveAttribute('aria-current', 'page')
-  await page.waitForFunction(
-    () =>
-      document
-        .querySelector('.sidebar-active-indicator')
-        ?.getAttribute('data-transition-samples') !== null,
-  )
-  const samples = JSON.parse(
-    (await indicator.getAttribute('data-transition-samples')) ?? '[]',
-  ) as number[]
-  expect(samples.length).toBeGreaterThan(3)
-  expect(
-    new Set(samples.map((value) => Math.round(value * 10))).size,
-  ).toBeGreaterThan(2)
-
-  await page.goBack()
   const dashboardLink = page.getByRole('link', { name: 'Dashboard' })
   await expect(dashboardLink).toHaveAttribute('aria-current', 'page')
-  await expect
-    .poll(async () =>
-      indicator.evaluate((element) => {
-        const active = document.querySelector(
-          'nav[aria-label="Primary"] [aria-current="page"]',
-        )!
-        return Math.abs(
-          element.getBoundingClientRect().top -
-            active.getBoundingClientRect().top,
-        )
-      }),
-    )
-    .toBeLessThan(1)
+  await expect(dashboardLink).toHaveClass(/bg-\[var\(--primary-active\)\]/)
+  await assetsLink.click()
+  await expect(assetsLink).toHaveAttribute('aria-current', 'page')
+  await expect(assetsLink).toHaveClass(/bg-\[var\(--primary-active\)\]/)
+
+  await page.goBack()
+  await expect(dashboardLink).toHaveAttribute('aria-current', 'page')
+  await expect(dashboardLink).toHaveClass(/bg-\[var\(--primary-active\)\]/)
   await page.goForward()
   await expect(assetsLink).toHaveAttribute('aria-current', 'page')
+  await expect(assetsLink).toHaveClass(/bg-\[var\(--primary-active\)\]/)
 
   await page.emulateMedia({ reducedMotion: 'reduce' })
-  const reducedMotionDuration = await indicator.evaluate((element) =>
+  const reducedMotionDuration = await assetsLink.evaluate((element) =>
     Number.parseFloat(getComputedStyle(element).transitionDuration),
   )
   expect(reducedMotionDuration).toBeLessThan(0.001)
