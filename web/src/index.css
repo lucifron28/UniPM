@@ -220,6 +220,15 @@ body {
   }
 }
 
+@layer utilities {
+  .app-workspace
+    :is(h1, h2, h3):not([class*='var(--error)']):not(
+      [class*='var(--warning)']
+    ):not([class*='var(--success)']):not([class*='var(--information)']) {
+    color: var(--primary);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .app-shell,
   .sidebar-nav-label,
