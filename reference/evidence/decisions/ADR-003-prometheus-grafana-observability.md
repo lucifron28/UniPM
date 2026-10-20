@@ -69,7 +69,7 @@ stable release, so package upgrades require a focused compatibility review.
 
 The endpoint is not an authentication design. IIS deployments should enable it
 only when network or reverse-proxy policy restricts access. The local Grafana
-password in `.env.sqlserver2025.example` is a development placeholder and must
+password in the root `.env.example` is a development placeholder and must
 be changed.
 No credentials, connection strings, provider endpoints, prompts, or personal
 data are emitted into metrics or committed provisioning files.

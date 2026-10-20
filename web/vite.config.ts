@@ -7,6 +7,8 @@ import path from 'node:path'
 
 // https://vite.dev/config/
 export default defineConfig({
+  // One local environment file at the repository root; only VITE_ reaches clients.
+  envDir: path.resolve(__dirname, '..'),
   plugins: [
     tanstackRouter({
       target: 'react',

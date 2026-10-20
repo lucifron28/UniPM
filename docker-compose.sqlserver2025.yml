@@ -12,7 +12,7 @@ services:
     environment:
       ACCEPT_EULA: "Y"
       MSSQL_PID: "Developer"
-      MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD:?Set MSSQL_SA_PASSWORD through the process environment or the selected Compose environment file.}"
+      MSSQL_SA_PASSWORD: "${UNIPM_DOCKER_MSSQL_SA_PASSWORD-${MSSQL_SA_PASSWORD:?Set MSSQL_SA_PASSWORD through the process environment or the selected Compose environment file.}}"
       TZ: "Asia/Manila"
     ports:
       - "${UNIPM_DB_PORT:-1433}:1433"
@@ -35,7 +35,7 @@ services:
     image: unipm-sqlserver:2025-fts
     container_name: unipm-db-init
     environment:
-      MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD:?Set MSSQL_SA_PASSWORD through the process environment or the selected Compose environment file.}"
+      MSSQL_SA_PASSWORD: "${UNIPM_DOCKER_MSSQL_SA_PASSWORD-${MSSQL_SA_PASSWORD:?Set MSSQL_SA_PASSWORD through the process environment or the selected Compose environment file.}}"
     command:
       [
         "/bin/bash",
@@ -58,25 +58,25 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: "Development"
       ASPNETCORE_HTTP_PORTS: "8080"
-      ConnectionStrings__DefaultConnection: "Server=unipm-db,1433;Database=${UNIPM_DB_NAME:-UniPMDb};User Id=sa;Password=${MSSQL_SA_PASSWORD:?Set MSSQL_SA_PASSWORD through the process environment or the selected Compose environment file.};Encrypt=True;TrustServerCertificate=True;"
+      ConnectionStrings__DefaultConnection: "Server=unipm-db,1433;Database=${UNIPM_DB_NAME:-UniPMDb};User Id=sa;Password=${UNIPM_DOCKER_MSSQL_SA_PASSWORD-${MSSQL_SA_PASSWORD:?Set MSSQL_SA_PASSWORD through the process environment or the selected Compose environment file.}};Encrypt=True;TrustServerCertificate=True;"
       Jwt__Issuer: "${UNIPM_JWT_ISSUER:?Set UNIPM_JWT_ISSUER through the process environment or the selected Compose environment file.}"
       Jwt__Audience: "${UNIPM_JWT_AUDIENCE:?Set UNIPM_JWT_AUDIENCE through the process environment or the selected Compose environment file.}"
       Jwt__SigningKey: "${UNIPM_JWT_SIGNING_KEY:?Set UNIPM_JWT_SIGNING_KEY through the process environment or the selected Compose environment file.}"
-      Jwt__AccessTokenMinutes: "${UNIPM_JWT_ACCESS_TOKEN_MINUTES:-15}"
+      Jwt__AccessTokenMinutes: "${UNIPM_DOCKER_JWT_ACCESS_TOKEN_MINUTES-${UNIPM_JWT_ACCESS_TOKEN_MINUTES:-15}}"
       AuthSession__RefreshTokenDays: "${UNIPM_AUTH_REFRESH_TOKEN_DAYS:-7}"
       AuthSession__WebOrigin: "${UNIPM_WEB_ORIGIN:-http://localhost:5173}"
-      UNIPM_DEV_USER_PASSWORD: "${UNIPM_DEV_USER_PASSWORD:-}"
-      Embeddings__Enabled: "${UNIPM_EMBEDDINGS_ENABLED:-false}"
-      Embeddings__ProviderKey: "${UNIPM_EMBEDDINGS_PROVIDER_KEY:-}"
-      Embeddings__BaseAddress: "${UNIPM_EMBEDDINGS_BASE_ADDRESS:-}"
+      UNIPM_DEV_USER_PASSWORD: "${UNIPM_DOCKER_DEV_USER_PASSWORD-${UNIPM_DEV_USER_PASSWORD:-}}"
+      Embeddings__Enabled: "${UNIPM_DOCKER_EMBEDDINGS_ENABLED-${UNIPM_EMBEDDINGS_ENABLED:-false}}"
+      Embeddings__ProviderKey: "${UNIPM_DOCKER_EMBEDDINGS_PROVIDER_KEY-${UNIPM_EMBEDDINGS_PROVIDER_KEY:-}}"
+      Embeddings__BaseAddress: "${UNIPM_DOCKER_EMBEDDINGS_BASE_ADDRESS-${UNIPM_EMBEDDINGS_BASE_ADDRESS:-}}"
       Embeddings__Path: "${UNIPM_EMBEDDINGS_PATH:-/v1/embeddings}"
-      Embeddings__Model: "${UNIPM_EMBEDDINGS_MODEL:-}"
-      Embeddings__ApiKey: "${UNIPM_EMBEDDINGS_API_KEY:-}"
-      Embeddings__Dimensions: "${UNIPM_EMBEDDINGS_DIMENSIONS:-}"
+      Embeddings__Model: "${UNIPM_DOCKER_EMBEDDINGS_MODEL-${UNIPM_EMBEDDINGS_MODEL:-}}"
+      Embeddings__ApiKey: "${UNIPM_DOCKER_EMBEDDINGS_API_KEY-${UNIPM_EMBEDDINGS_API_KEY:-}}"
+      Embeddings__Dimensions: "${UNIPM_DOCKER_EMBEDDINGS_DIMENSIONS-${UNIPM_EMBEDDINGS_DIMENSIONS:-}}"
       Embeddings__TimeoutSeconds: "${UNIPM_EMBEDDINGS_TIMEOUT_SECONDS:-30}"
       Embeddings__MaxBatchSize: "${UNIPM_EMBEDDINGS_MAX_BATCH_SIZE:-16}"
       Embeddings__MaxInputCharacters: "${UNIPM_EMBEDDINGS_MAX_INPUT_CHARACTERS:-4000}"
-      Embeddings__AllowRemoteProvider: "${UNIPM_EMBEDDINGS_ALLOW_REMOTE_PROVIDER:-false}"
+      Embeddings__AllowRemoteProvider: "${UNIPM_DOCKER_EMBEDDINGS_ALLOW_REMOTE_PROVIDER-${UNIPM_EMBEDDINGS_ALLOW_REMOTE_PROVIDER:-false}}"
       Observability__MetricsEnabled: "${UNIPM_METRICS_ENABLED:-false}"
     ports:
       - "${UNIPM_API_PORT:-5000}:8080"
