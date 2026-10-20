@@ -54,12 +54,12 @@ memory-only session and returns the user to sign-in without refresh or replay.
 Only `Inspector` and `GSD` users enter the current mobile shell. This is a
 navigation boundary; backend authorization remains authoritative.
 
-The isolated `feature/offline-nla-v3-integration` candidate places pending
-acknowledgements near the top of the home screen, keeps asset scanning
-prominent, and prioritizes urgent PM tasks. Its acknowledgement screen uses a
-compact summary with expandable inspection details while keeping non-operational
-findings and signatory/signature controls accessible. Existing review,
-confirmation, authorization, and acknowledgement behavior remains intact.
+The integrated mobile home screen places pending acknowledgements near the top,
+keeps asset scanning prominent, and prioritizes urgent PM tasks. Its
+acknowledgement screen uses a compact summary with expandable inspection details
+while keeping non-operational findings and signatory/signature controls
+accessible. Existing review, confirmation, authorization, and acknowledgement
+behavior remains intact. GSD and physical-device acceptance remain pending.
 
 ## Preventive-maintenance Draft Workflow
 
@@ -69,13 +69,12 @@ adding multiple inspection rows, resuming a saved Draft, and editing or
 deleting Draft rows. A worker can review the rows and submit the whole form;
 submission assigns the provisional file number returned by the API and makes
 the form read-only. Online edits are sent to the ASP.NET Core API immediately.
-The `feature/offline-nla-v3-integration` review candidate caches assigned
-schedules, assets, and reference data, then stores Draft form and
-inspection-row changes in encrypted per-user secure storage. Changes sync
-automatically after connectivity returns and can be retried from the home
-screen. Stable client IDs make create retries idempotent; stale row updates
-remain queued as conflicts for review rather than overwriting newer server
-data. The original offline source branch remains preserved.
+For offline work, the mobile client uses cached assigned schedules, assets, and
+reference data, and stores Draft form and inspection-row changes in encrypted
+per-user secure storage. Changes sync automatically after connectivity returns
+and can be retried from the home screen. Stable client IDs make create retries
+idempotent; stale row updates remain queued as conflicts for review rather than
+overwriting newer server data.
 
 The mobile authentication session remains memory-only, so the same account
 must sign in again after an app restart before queued work can sync. Location
@@ -146,24 +145,18 @@ The four supplied GSD forms are implemented as the authoritative visible
 category-form structure for the current mobile PM pass. Historical form-version
 preservation, corrective handoff, and RMRF processing remain outside this mobile
 implementation. Offline persistence, queued synchronization, explicit conflict
-recovery, and the acknowledgement/home UX are integrated on
-`feature/offline-nla-v3-integration`; this candidate has not yet been accepted
-as part of the GSD-validated baseline.
+recovery, and the acknowledgement/home UX are integrated into `main` and
+`deploy/azure-staging`; GSD and physical-device acceptance remain pending.
 
-## Integration Candidate Verification
+## Integration Verification
 
-The combined mobile implementation passed exact-commit Flutter CI on
-`a93e71b` in [run #50](https://github.com/lucifron28/UniPM/actions/runs/39364885217):
-formatting, analysis, focused acknowledgement/offline tests, the full Flutter
-suite, and Android debug APK build all passed. The source branches also passed
-Flutter CI at offline commit `60788e1`
-([run #49](https://github.com/lucifron28/UniPM/actions/runs/39362166990)) and
-acknowledgement UX commit `0aa12b9`
-([run #34](https://github.com/lucifron28/UniPM/actions/runs/39359136181)).
+The mobile integration passed Flutter CI on the checked `main` head `5a92f9b`
+([run](https://github.com/lucifron28/UniPM/actions/runs/39408165986)). The
+branch consolidation report also records successful exact-head checks for the
+maintained branches. These are automated engineering checks, not field
+acceptance.
 
-These are automated engineering checks. Physical-device behavior and GSD field
-acceptance remain unverified; the integration candidate is not part of the
-accepted release baseline.
+Physical-device behavior and GSD field acceptance remain unverified.
 
 ## Dependencies
 

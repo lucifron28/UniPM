@@ -3,10 +3,11 @@
 ## Project Identity
 
 UniPM is a web and mobile preventive-maintenance information system for a
-university General Services Department. This retirement branch preserves the PMIS-only GSD validation baseline: the confirmed preventive-maintenance
-workflow is demonstrated without any AI feature so GSD can validate workflows,
-forms, reports, and remaining operational needs before a replacement innovation
-is selected.
+university General Services Department. The current `main` and
+`deploy/azure-staging` branches include the confirmed PMIS workflows, schema-
+constrained NLA V3 reporting, and the mobile offline/acknowledgement workflow.
+Core maintenance operations remain available without AI. NLA V3 report plans
+are validated and executed by backend-controlled deterministic analytics.
 
 Maintenance-history RAG has been retired. Its review endpoint, summary
 provider, maintenance retrieval/fusion, projection, rebuild commands,
@@ -17,13 +18,13 @@ records remain as evidence of prior work. The separate fictional
 ReferenceDocument foundation, Full-Text Search, section embeddings, and shared
 provider-neutral embedding components remain.
 
-The separate `feature/offline-nla-v3-integration` candidate combines the
-composable NLA V3 implementation through Phase 6 with the offline inspection
-and mobile acknowledgement UX work. It remains isolated from `main` and
-`deploy/azure-staging`, and it is not an accepted release baseline. Phase 5
-question labels still require independent review, SQL Server 2019 execution is
-unverified, and Phases 7–8 remain planning only. The stable PMIS baseline
-described by this document remains unchanged.
+The NLA V3 and mobile workflow integrations are merged into `main` and
+`deploy/azure-staging`. Integration is complete; CI passed on the consolidation-
+checked heads, but this does not establish GSD or physical-device acceptance.
+The Phase 5 evaluation corpus remains unreviewed and has no V3 scoring result;
+native SQL Server 2019 execution is still unverified. Phases 7–8 remain planning
+only. Do not describe these limitations as completed evaluation or field
+validation.
 
 The safety rules below still apply to any code path that could contact an
 external AI provider, and chatbot-style open-ended AI behavior remains
@@ -53,12 +54,11 @@ Do not change the stack without discussion.
   - Avoid Docker-only assumptions in application code.
 - Web frontend: React + TypeScript + Vite
 - Mobile: Flutter
-  - The integration candidate combines the offline inspection workflow and
-    mobile acknowledgement/home UX. It adds encrypted, per-user Draft and
-    assigned-schedule caching with an ordered retry queue. Authentication stays
-    memory-only; location verification, photo evidence, submission, and
-    acknowledgement remain online-only. The feature is not part of the merged
-    GSD validation baseline until reviewed and accepted.
+  - The integrated mobile workflow includes encrypted per-user Draft and
+    assigned-schedule caching, queued synchronization, conflict review, and
+    acknowledgement/home UX. Authentication stays memory-only; location
+    verification, photo evidence, form submission, and acknowledgement remain
+    online-only. GSD and physical-device acceptance remain pending.
   - Do not assume constant connectivity in mobile-facing API contracts.
 - Testing: xUnit
 
@@ -259,13 +259,15 @@ Acceptable temporary/MVP work:
 - implement minimal sanitizer required for safe MVP AI calls
 - implement read-side endpoints that do not finalize deferred workflow semantics
 
-## Current Capability Status (Validation Branch)
+## Current Capability Status (Integrated Branches)
 
 The PMIS runtime exposes authentication, assets with QR lookup, schedules,
 multi-row preventive-maintenance forms covering the full
 `Draft -> Submitted -> Acknowledged` lifecycle, acknowledged-only official
-history, and GSD-only corrective-action handoff preparation. No endpoint
-requires an AI provider.
+history, and GSD-only corrective-action handoff preparation. PM Analytics V3
+adds validated report planning, preview, confirmation, and backend-controlled
+execution for its supported subjects. Core PMIS workflows do not require an AI
+provider.
 
 The retired `/api/v1/maintenance-review` route, configuration, services,
 maintenance retrieval/fusion, and derived storage no longer exist. The
@@ -279,28 +281,26 @@ was a planning direction that was never implemented; it is not an active
 priority on this branch. The active boundary is defined in
 [`reference/planning/mvp-definition.md`](reference/planning/mvp-definition.md).
 
-Browser authentication integration, the reference-document foundation, and the
-Flutter mobile foundation are implemented and merged in the separate,
-partner-owned mobile workstream. The mobile foundation includes memory-only
-authentication, QR-based asset entry, the Draft preventive-maintenance form
-workflow, and whole-form submission. The isolated integration candidate adds
-the acknowledged mobile UX and encrypted offline Draft persistence with queued
-synchronization and conflict review; session and online-only workflow
-boundaries remain unchanged. Treat this as a feature candidate until its review
-and acceptance are recorded.
+Browser authentication, the reference-document foundation, and the Flutter
+mobile workflow are integrated in `main` and `deploy/azure-staging`. The mobile
+client includes memory-only authentication, QR-based asset entry, Draft
+preventive-maintenance forms, whole-form submission, encrypted offline Draft
+persistence, queued synchronization, conflict review, and acknowledgement UX.
+Session and online-only workflow boundaries remain as documented above.
 
 ## Current Unblocked Work
 
-Priority order on this branch is the GSD validation phase:
+Priority order on the integrated branches is:
 
-1. Keep the PMIS validation branch stable and runnable.
-2. Verify the confirmed preventive-maintenance workflow end to end.
-3. Verify AI-independent startup and operation.
-4. Confirm acknowledged-only official history and corrective-handoff preparation.
-5. Prepare and run the GSD demonstration.
-6. Collect exact form, report, and process requirements from GSD.
-7. Record findings and defer all innovation selection until a separate
-   approved decision and branch.
+1. Keep `main` and `deploy/azure-staging` stable and runnable.
+2. Verify the confirmed preventive-maintenance workflow end to end, including
+   acknowledged-only official history and corrective-handoff preparation.
+3. Exercise NLA V3 against the existing synthetic data. Do not claim Phase 5
+   evaluation results until the corpus is reviewed and a scoring method exists.
+4. Verify native SQL Server 2019 execution and mobile behavior on physical
+   devices, then prepare the GSD demonstration and collect workflow feedback.
+5. Record findings. Keep Phases 7–8 and unresolved institutional policies in
+   planning until separately reviewed.
 
 The deterministic synthetic fixture, Development-only seed/reset commands,
 reset dependency protection, inspection list/detail reads, the committed
@@ -313,10 +313,11 @@ authentication integration, asset registry, preventive maintenance schedule
 workflows, read-only inspection review, multi-asset form drafting, form
 submission, whole-form acknowledgement, acknowledged-only history publication,
 and GSD-only corrective-action handoff preparation are also complete. The
-Flutter mobile foundation and initial Draft form workflow are complete.
-Encrypted offline synchronization, conflict recovery, and acknowledgement/home
-UX are implemented on the isolated integration candidate; review and GSD
-acceptance remain open. The multilingual
+Flutter mobile foundation, Draft form workflow, encrypted offline
+synchronization, conflict recovery, and acknowledgement/home UX are integrated
+on `main` and `deploy/azure-staging`; GSD and physical-device acceptance remain
+open. NLA V3 is also integrated, while its Phase 5 corpus remains unreviewed
+and native SQL Server 2019 execution remains unverified. The multilingual
 embedding baseline is recorded as controlled development evidence; it does not
 establish real institutional performance.
 
@@ -364,7 +365,8 @@ Unblocked areas:
 - Maintenance-history RAG:
   - runtime, tooling, tests, and derived storage retired;
   - historical evidence and migrations preserved;
-  - replacement innovation requires a separately approved post-GSD decision.
+  - NLA V3 is a separate integrated reporting feature, not a restoration of
+    maintenance-history retrieval or open-ended chatbot behavior.
 
 ## Historical RAG behavior boundaries
 
