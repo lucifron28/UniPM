@@ -1397,8 +1397,7 @@ export function PmPeriodDashboard({
                       </option>
                       {(draftGroup?.cycles ?? []).map((cycle) => (
                         <option key={cycle.pmCycle} value={cycle.pmCycle}>
-                          {formatPmCycleMonth(cycle.pmCycle)} —{' '}
-                          {formatNumber(cycle.scheduled)} scheduled
+                          {formatPmCycleMonth(cycle.pmCycle)}
                         </option>
                       ))}
                     </select>
