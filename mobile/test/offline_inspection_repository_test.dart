@@ -466,10 +466,7 @@ void main() {
     connectivity.setConnected(true);
     await Future<void>.delayed(Duration.zero);
     debugPrint('conflict-review: connectivity event processed');
-    await awaitRepositoryAction(
-      'synchronize conflict',
-      repository.syncNow,
-    );
+    await awaitRepositoryAction('synchronize conflict', repository.syncNow);
     debugPrint('conflict-review: conflict synchronized');
 
     final controller = PreventiveMaintenanceController(
