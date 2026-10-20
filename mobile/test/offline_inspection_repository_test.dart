@@ -604,10 +604,8 @@ PreventiveMaintenanceInspection _inspection({
   updatedAt: updatedAt ?? DateTime.utc(2026, 2, 20),
 );
 
-ScheduleOption _schedule({
-  String status = 'Due',
-  DateTime? scheduleDate,
-}) => ScheduleOption(
+ScheduleOption _schedule({String status = 'Due', DateTime? scheduleDate}) =>
+    ScheduleOption(
   id: _scheduleId,
   assetId: _assetId,
   scheduleDate: scheduleDate ?? DateTime.utc(2026, 2, 28, 15, 59, 59),
