@@ -378,7 +378,7 @@ test.describe('Asset Registry E2E Specs', () => {
 
     const registry = page.locator('section[aria-labelledby="assets-title"]')
     await expect(
-      page.locator('.app-page-header').getByRole('heading', {
+      page.locator('.app-workspace').getByRole('heading', {
         name: 'Assets',
         exact: true,
       }),
@@ -394,6 +394,7 @@ test.describe('Asset Registry E2E Specs', () => {
     ).toBeVisible()
     const headingOrder = await registry.locator('h1, h2').allTextContents()
     expect(headingOrder).toEqual([
+      'Assets',
       'Find assets',
       'Overall asset inventory',
       'Asset records',

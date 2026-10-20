@@ -151,7 +151,7 @@ test('keeps Form Review cards readable and zoom-contained across desktop and mob
 
   const registry = page.locator('section[aria-labelledby="forms-title"]')
   await expect(
-    page.locator('.app-page-header').getByRole('heading', {
+    page.locator('.app-workspace').getByRole('heading', {
       name: 'Form review',
       exact: true,
     }),
@@ -163,6 +163,7 @@ test('keeps Form Review cards readable and zoom-contained across desktop and mob
     registry.getByRole('heading', { name: 'Form records' }),
   ).toBeVisible()
   expect(await registry.locator('h1, h2').allTextContents()).toEqual([
+    'Form review',
     'Find forms',
     'Form records',
   ])

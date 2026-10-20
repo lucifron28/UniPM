@@ -853,7 +853,10 @@ test.describe('Schedule workflows', () => {
       '/app/schedules?view=history&status=Due&quarter=Q3&year=2026',
     )
     await expect(
-      page.getByRole('heading', { name: 'Schedules', exact: true }),
+      page.locator('.app-workspace').getByRole('heading', {
+        name: 'Schedules',
+        exact: true,
+      }),
     ).toBeVisible()
     await expect(page.getByLabel('Schedule status')).toHaveValue('Due')
     await expect(
@@ -961,7 +964,10 @@ test.describe('Schedule workflows', () => {
     await page.setViewportSize({ width: 1440, height: 900 })
     await page.goto('/app/schedules')
     await expect(
-      page.getByRole('heading', { name: 'Schedules', exact: true }),
+      page.locator('.app-workspace').getByRole('heading', {
+        name: 'Schedules',
+        exact: true,
+      }),
     ).toBeVisible()
     await expect(
       page.getByRole('heading', { name: 'PM schedule batches' }),
@@ -987,7 +993,8 @@ test.describe('Schedule workflows', () => {
     const sectionHeadings = await page
       .locator('main h1, main h2')
       .allTextContents()
-    expect(sectionHeadings.slice(0, 3)).toEqual([
+    expect(sectionHeadings.slice(0, 4)).toEqual([
+      'Schedules',
       'Find schedules',
       'Schedule summary',
       'Schedule records',
