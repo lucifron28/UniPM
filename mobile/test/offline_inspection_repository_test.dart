@@ -36,6 +36,50 @@ void main() {
     connectivity: connectivity,
   );
 
+  Future<void> awaitRepositoryAction(
+    WidgetTester tester,
+    String step,
+    Future<void> Function() action,
+  ) async {
+    final completed = await tester.runAsync<bool>(() async {
+      await action().timeout(
+        const Duration(seconds: 5),
+        onTimeout: () => throw TimeoutException('$step did not complete.'),
+      );
+      return true;
+    });
+    expect(completed, isTrue, reason: '$step did not complete.');
+  }
+
+  Future<void> prepareConflict(WidgetTester tester) async {
+    remote.forms = [_form(inspections: [_inspection()])];
+    await awaitRepositoryAction(
+      tester,
+      'activate user',
+      () => repository.activate(_userA),
+    );
+    await awaitRepositoryAction(tester, 'list forms', () async {
+      await repository.listForms();
+    });
+    connectivity.setConnected(false);
+    remote.connected = false;
+    await awaitRepositoryAction(tester, 'save local update', () async {
+      await repository.updateInspection(
+        _formId,
+        _inspectionId,
+        _updateInput(remarks: 'Local observation to review.'),
+      );
+    });
+    remote.conflictNextUpdate = true;
+    remote.connected = true;
+    connectivity.connected = true;
+    await awaitRepositoryAction(
+      tester,
+      'synchronize conflict',
+      repository.syncNow,
+    );
+  }
+
   setUp(() {
     store = _MemoryStore();
     connectivity = _FakeConnectivity(connected: true);
@@ -421,50 +465,54 @@ void main() {
     expect(repository.hasConflictFor(_formId), isTrue);
   });
 
+  testWidgets('conflict review remains visible while schedules load', (
+    tester,
+  ) async {
+    await prepareConflict(tester);
+    expect(repository.hasConflictFor(_formId), isTrue);
+    expect(repository.pendingCountFor(_formId), 1);
+
+    final pendingSchedules = Completer<List<ScheduleOption>>();
+    remote.pendingScheduleResponse = pendingSchedules;
+    final controller = PreventiveMaintenanceController(
+      repository: repository,
+      user: const AuthUser(
+        id: _userA,
+        email: 'inspector@example.test',
+        displayName: 'Synthetic Inspector',
+        roles: ['Inspector'],
+      ),
+    );
+    addTearDown(controller.dispose);
+    final selectedForm = await tester.runAsync(
+      () => repository.getForm(_formId).timeout(const Duration(seconds: 5)),
+    );
+    controller.selectForm(selectedForm!);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: PreventiveMaintenanceDraftPage(
+          controller: controller,
+          formId: _formId,
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(find.text('This draft needs sync review'), findsOneWidget);
+    expect(find.byKey(const Key('schedules-loading')), findsOneWidget);
+
+    await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
+    pendingSchedules.complete(remote.schedules);
+    await tester.pump();
+    await tester.pump();
+  });
+
   testWidgets('conflict details can be reviewed and safely discarded', (
     tester,
   ) async {
-    Future<void> awaitRepositoryAction(
-      String step,
-      Future<void> Function() action,
-    ) async {
-      final completed = await tester.runAsync<bool>(() async {
-        await action().timeout(
-          const Duration(seconds: 5),
-          onTimeout: () => throw TimeoutException('$step did not complete.'),
-        );
-        return true;
-      });
-      expect(completed, isTrue, reason: '$step did not complete.');
-    }
-
-    remote.forms = [
-      _form(inspections: [_inspection()]),
-    ];
-    await awaitRepositoryAction(
-      'activate user',
-      () => repository.activate(_userA),
-    );
-    await awaitRepositoryAction('list forms', () async {
-      await repository.listForms();
-    });
-    connectivity.setConnected(false);
-    remote.connected = false;
-    await awaitRepositoryAction('save local update', () async {
-      await repository.updateInspection(
-        _formId,
-        _inspectionId,
-        _updateInput(remarks: 'Local observation to review.'),
-      );
-    });
-    remote.conflictNextUpdate = true;
-    remote.connected = true;
-    connectivity.connected = true;
-    await awaitRepositoryAction('synchronize conflict', repository.syncNow);
+    await prepareConflict(tester);
     expect(repository.hasConflictFor(_formId), isTrue);
     expect(repository.pendingCountFor(_formId), 1);
-    final pendingSchedules = Completer<List<ScheduleOption>>();
-    remote.pendingScheduleResponse = pendingSchedules;
 
     final controller = PreventiveMaintenanceController(
       repository: repository,
@@ -488,18 +536,9 @@ void main() {
         ),
       ),
     );
-    await tester.pump();
+    await tester.pumpAndSettle();
     expect(find.text('This draft needs sync review'), findsOneWidget);
-    expect(find.byKey(const Key('schedules-loading')), findsOneWidget);
-    pendingSchedules.complete(remote.schedules);
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 300));
-    await awaitRepositoryAction('finish schedule loading', () async {
-      await repository.listSchedules();
-    });
-    await tester.pump();
     expect(find.byKey(const Key('schedules-loading')), findsNothing);
-    expect(find.text('This draft needs sync review'), findsOneWidget);
     await tester.tap(find.text('Update inspection needs review'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
