@@ -7203,7 +7203,9 @@
           "formId",
           "formStatus",
           "isAcknowledged",
-          "acknowledgedAt"
+          "acknowledgedAt",
+          "correctiveFollowUpStatus",
+          "externalPmNumber"
         ],
         "type": "object",
         "properties": {
@@ -7283,6 +7285,12 @@
           "acknowledgedAt": {
             "type": ["null", "string"],
             "format": "date-time"
+          },
+          "correctiveFollowUpStatus": {
+            "type": ["null", "string"]
+          },
+          "externalPmNumber": {
+            "type": ["null", "string"]
           }
         }
       },
