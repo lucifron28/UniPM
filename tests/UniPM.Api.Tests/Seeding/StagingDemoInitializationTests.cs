@@ -18,6 +18,31 @@ namespace UniPM.Api.Tests;
 
 public sealed class StagingDemoInitializationTests(Xunit.Abstractions.ITestOutputHelper output)
 {
+    [Theory]
+    [InlineData("dbo", "Assets", "SELECT COUNT_BIG(*) FROM [dbo].[Assets]")]
+    [InlineData("dbo", "Asset]History", "SELECT COUNT_BIG(*) FROM [dbo].[Asset]]History]")]
+    public void Exact_count_command_quotes_validated_identifiers(string schema, string table, string expected)
+    {
+        Assert.Equal(expected, StagingDemoInitialization.BuildExactCountCommandText(schema, table));
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("bad\nname")]
+    public void Exact_count_command_rejects_invalid_identifiers(string identifier)
+    {
+        Assert.Throws<InvalidOperationException>(
+            () => StagingDemoInitialization.QuoteSqlIdentifier(identifier));
+    }
+
+    [Fact]
+    public void Exact_count_command_rejects_identifiers_longer_than_sql_server_limit()
+    {
+        Assert.Throws<InvalidOperationException>(
+            () => StagingDemoInitialization.QuoteSqlIdentifier(new string('x', 129)));
+    }
+
     private static Dictionary<string, string?> Credentials(bool shared = false)
     {
         var values = new Dictionary<string, string?> { [StagingDemoInitialization.ModeSetting] = "true" };
@@ -119,6 +144,7 @@ public sealed class StagingDemoInitializationTests(Xunit.Abstractions.ITestOutpu
             Assert.Empty(await context.Users.ToListAsync());
             await context.Database.MigrateAsync();
             Assert.Equal(22, (await context.Database.GetAppliedMigrationsAsync()).Count());
+            await StagingDemoInitialization.EnsureReadyAsync(context, accountsCreated: false);
             var credentialName = shared ? "UNIPM_STAGING_DEMO_PASSWORD" : StagingDemoInitialization.PasswordSetting(AuthRoleCatalog.Gsd);
             var originalPassword = configuration[credentialName];
             configuration[credentialName] = "invalid";
@@ -142,6 +168,7 @@ public sealed class StagingDemoInitializationTests(Xunit.Abstractions.ITestOutpu
                     foreach (var otherRole in StagingDemoInitialization.Roles.Where(other => other != role))
                         Assert.False(await manager.CheckPasswordAsync(user, passwords[otherRole]));
             }
+            await StagingDemoInitialization.EnsureReadyAsync(context, accountsCreated: true);
             // A users-only partial initialization cannot restart from the beginning.
             await Assert.ThrowsAsync<InvalidOperationException>(userSeeder.SeedAsync);
             // Partial operational data is rejected, without deleting it.
@@ -175,6 +202,15 @@ public sealed class StagingDemoInitializationTests(Xunit.Abstractions.ITestOutpu
             });
             Assert.Equal(migrations, (await context.Database.GetAppliedMigrationsAsync()).ToArray());
             Assert.True((await context.Users.AsNoTracking().ToListAsync()).All(user => user.PasswordHash == hashes[user.Id]));
+
+            await context.Database.ExecuteSqlRawAsync(
+                "CREATE SCHEMA [UniPmStagingGuardTest]; ALTER SCHEMA [UniPmStagingGuardTest] TRANSFER [dbo].[RefreshSessions];");
+            await Assert.ThrowsAsync<SqlException>(
+                () => StagingDemoInitialization.EnsureReadyAsync(context, accountsCreated: true));
+            await context.Database.ExecuteSqlRawAsync(
+                "DROP TABLE [UniPmStagingGuardTest].[RefreshSessions]");
+            await Assert.ThrowsAsync<SqlException>(
+                () => StagingDemoInitialization.EnsureReadyAsync(context, accountsCreated: true));
         }
         finally
         {

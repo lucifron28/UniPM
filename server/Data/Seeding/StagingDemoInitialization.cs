@@ -1,4 +1,7 @@
+using System.Data;
+using System.Globalization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using UniPM.Api.Features.Auth;
 
 namespace UniPM.Api.Data.Seeding;
@@ -57,21 +60,48 @@ internal static class StagingDemoInitialization
             ["AspNetUsers"] = Roles.Length,
             ["AspNetUserRoles"] = Roles.Length
         } : [];
-        foreach (var table in context.Model.GetEntityTypes().Select(entity => entity.GetTableName()).Distinct())
+        var mappedTables = context.Model.GetEntityTypes()
+            .Select(entity =>
+            {
+                var table = entity.GetTableName();
+                var schema = entity.GetSchema() ?? context.Model.GetDefaultSchema() ?? "dbo";
+                return (Schema: schema, Table: table);
+            })
+            .Where(mapping => mapping.Table is not null)
+            .Select(mapping => (mapping.Schema, Table: mapping.Table!))
+            .Distinct()
+            .ToArray();
+        foreach (var (schema, table) in mappedTables)
         {
-            if (table is null) continue;
-            FormattableString countQuery = $"""
-                SELECT COALESCE(SUM(partitions.[rows]), CONVERT(bigint, 0)) AS [Value]
-                FROM sys.tables AS tables
-                INNER JOIN sys.schemas AS schemas ON schemas.schema_id = tables.schema_id
-                INNER JOIN sys.partitions AS partitions ON partitions.object_id = tables.object_id
-                WHERE schemas.name = {"dbo"} AND tables.name = {table}
-                  AND partitions.index_id IN (0, 1)
-                """;
-            var count = await context.Database.SqlQuery<long>(
-                countQuery).SingleAsync(cancellationToken);
-            if (count != allowedCounts.GetValueOrDefault(table))
-                throw new InvalidOperationException("Staging database is not in the expected empty initialization state. Stop for partial-state review; do not rerun or reset.");
+            if (!string.Equals(schema, "dbo", StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("Staging demo initialization requires every mapped table to remain in the dbo schema.");
+            _ = BuildExactCountCommandText(schema, table);
+        }
+
+        var connection = context.Database.GetDbConnection();
+        var connectionWasOpen = connection.State == ConnectionState.Open;
+        if (!connectionWasOpen)
+            await context.Database.OpenConnectionAsync(cancellationToken);
+        try
+        {
+            foreach (var (schema, table) in mappedTables)
+            {
+                await using var command = connection.CreateCommand();
+                command.CommandText = BuildExactCountCommandText(schema, table);
+                if (context.Database.CurrentTransaction is { } transaction)
+                    command.Transaction = transaction.GetDbTransaction();
+                var result = await command.ExecuteScalarAsync(cancellationToken);
+                if (result is null or DBNull)
+                    throw new InvalidOperationException("Staging database row-count validation returned no value.");
+                var count = Convert.ToInt64(result, CultureInfo.InvariantCulture);
+                if (count != allowedCounts.GetValueOrDefault(table))
+                    throw new InvalidOperationException("Staging database is not in the expected empty initialization state. Stop for partial-state review; do not rerun or reset.");
+            }
+        }
+        finally
+        {
+            if (!connectionWasOpen)
+                await context.Database.CloseConnectionAsync();
         }
         if (!accountsCreated) return;
         var users = await context.Users.AsNoTracking().ToListAsync(cancellationToken);
@@ -84,5 +114,16 @@ internal static class StagingDemoInitialization
             if (user is null || !user.IsActive || !assignments.Any(item => item.UserId == user.Id && item.Name == role))
                 throw new InvalidOperationException("Staging demo account identities or role assignments do not match the expected initialization state.");
         }
+    }
+
+    internal static string BuildExactCountCommandText(string schema, string table) =>
+        $"SELECT COUNT_BIG(*) FROM {QuoteSqlIdentifier(schema)}.{QuoteSqlIdentifier(table)}";
+
+    internal static string QuoteSqlIdentifier(string identifier)
+    {
+        if (string.IsNullOrWhiteSpace(identifier) || identifier.Length > 128
+            || identifier.Any(char.IsControl))
+            throw new InvalidOperationException("Staging database metadata contains an invalid SQL identifier.");
+        return $"[{identifier.Replace("]", "]]", StringComparison.Ordinal)}]";
     }
 }
