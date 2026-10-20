@@ -219,7 +219,9 @@ class PreventiveMaintenanceController extends ChangeNotifier {
           final currentRepository = repository;
           if (inspection != null &&
               currentRepository is OfflineSafePreventiveMaintenanceRepository) {
-            await currentRepository.deleteInspectionIfUnchanged(
+            final safeRepository =
+                currentRepository as OfflineSafePreventiveMaintenanceRepository;
+            await safeRepository.deleteInspectionIfUnchanged(
               form.id,
               inspectionId,
               inspection.updatedAt,
