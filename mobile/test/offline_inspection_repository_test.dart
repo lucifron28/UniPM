@@ -496,10 +496,18 @@ void main() {
         .map((element) => (element.widget as Text).data)
         .whereType<String>()
         .toList(growable: false);
+    if (!renderedText.contains('This draft needs sync review')) {
+      fail(
+        'Conflict banner missing. Rendered text: $renderedText; '
+        'repository=${controller.repository.runtimeType}; '
+        'hasConflict=${repository.hasConflictFor(_formId)}; '
+        'pending=${repository.pendingCountFor(_formId)}; '
+        'hasNetwork=${repository.hasNetwork}.',
+      );
+    }
     expect(
       find.text('This draft needs sync review'),
       findsOneWidget,
-      reason: 'Rendered draft text: $renderedText',
     );
     expect(find.byType(CircularProgressIndicator), findsNothing);
     await tester.tap(find.text('Update inspection needs review'));
