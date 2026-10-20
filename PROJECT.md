@@ -22,16 +22,18 @@ records remain as evidence of prior work. The separate fictional
 ReferenceDocument foundation, Full-Text Search, section embeddings, and shared
 provider-neutral embedding components remain.
 
-Schema-constrained natural-language analytics remains a planned post-validation
-direction, pending professor/adviser confirmation. It is not implemented or
-approved for this branch; any implementation requires a separate approved task
-and branch after GSD validation.
+Schema-constrained NLA V3 through Phase 6 is implemented on the isolated
+`feature/offline-nla-v3-integration` review candidate. It is not merged into the
+stable PMIS baseline or release-accepted. Phase 5 labels still require
+independent review, native SQL Server 2019 execution remains unverified, and
+Phases 7–8 are planning only.
 
 Older completed RAG entries below describe historical work only.
 
-- **Active work**: `refactor/retire-maintenance-history-rag`. Retire the old
-  maintenance-history RAG implementation and derived storage while preserving
-  the confirmed PMIS validation workflows and ReferenceDocument foundation.
+- **Stable baseline**: `main` retains the PMIS validation workflow and the
+  retirement of maintenance-history RAG. **Review candidate**:
+  `feature/offline-nla-v3-integration` combines the isolated offline/mobile UX
+  and NLA V3 Phase 6 histories; it remains unaccepted and unmerged.
 - **Proposed architecture**: ASP.NET Core API hosted on IIS + native Windows
   SQL Server 2019 with Full-Text Search. Docker is optional development
   tooling only. IIS deployment is not part of the evaluated capstone result.
@@ -69,16 +71,21 @@ Older completed RAG entries below describe historical work only.
   - Browser authentication integration is implemented and merged. The Flutter
     mobile foundation, Draft preventive-maintenance form workflow, and
     whole-form submission are implemented and merged in a separate
-    partner-owned workstream; offline synchronization remains deferred and
-    architecture-undecided.
+    partner-owned workstream. Encrypted per-account offline drafts, queued
+    synchronization, and reviewable conflict recovery are implemented on
+    `feature/offline-nla-v3-integration`; the offline implementation and
+    acknowledgement/home UX remain pending review and GSD acceptance.
   - The partner-owned mobile client currently supports authenticated
     GSD/Inspector access, QR-based asset entry, Draft form creation, Draft
     inspection-row add/update/delete operations, and whole-form submission.
-    Web acknowledgement and signature capture are implemented separately;
-    later mobile field workflows remain separately approved work.
+    The review candidate also includes the role-aware mobile acknowledgement
+    screen and signature capture; acknowledgement remains online-only.
   - Authenticated asset registry and preventive maintenance schedule modules
     with route-backed list/detail/create workflows, generated API contracts,
     runtime response validation, and backend-authoritative role policies.
+  - NLA V3 PM execution reporting and registered asset inventory are present on
+    the review candidate. Inventory reports use one registered asset per row;
+    SQL Server 2019 verification and Phase 5 human label review remain open.
   - Confirmed multi-asset preventive-maintenance form lifecycle:
     `Draft -> Submitted -> Acknowledged`, provisional form file numbers,
     field-work-driven schedule completion from `InspectionRecord.CompletedAt`,
@@ -197,16 +204,17 @@ this branch.
    checks, AI-independent startup).
 2. Demonstrate the confirmed workflow to GSD.
 3. Collect exact form, report, and process requirements from GSD.
-4. Decide whether schema-driven protocols, AI report consolidation, analytics,
-   or another innovation is justified by the collected requirements.
-5. Only then create a separate implementation branch; keep institutional
-   source authorization, final RBAC, audit rules, and other unresolved policy
-   decisions deferred until then.
+4. Review the isolated offline/NLA candidate against its open gates: human
+   review of the 18 provisional labels, SQL Server 2019 execution, and mobile
+   field acceptance. Integration CI passed on source commit `a93e71b`.
+5. Decide whether additional innovation beyond the current NLA candidate is
+   justified; keep it on a separate approved feature branch and defer
+   institutional source authorization, final RBAC, audit rules, and other
+   unresolved policy decisions until reviewed.
 
-Schema-constrained natural-language analytics remains a planned post-validation
-direction, pending professor/adviser confirmation. It is not implemented or
-approved for this branch; any implementation requires a separate approved task
-and branch after GSD validation.
+The NLA V3 implementation is isolated to the review candidate. The stable PMIS
+baseline remains unchanged; Phase 5 label review and SQL Server 2019 execution
+are still open, and no Phase 7 or Phase 8 reporting subject is implemented.
 
 ## Engineering Evidence
 

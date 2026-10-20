@@ -6,6 +6,8 @@
  */
 
 export interface CreatePreventiveMaintenanceFormDto {
+  /** @nullable */
+  id?: string | null
   assetCategory?: string
   /** @nullable */
   building?: string | null

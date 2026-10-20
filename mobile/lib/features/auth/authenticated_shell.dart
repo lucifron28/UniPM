@@ -10,6 +10,7 @@ import '../preventive_maintenance/preventive_maintenance_acknowledgement_page.da
 import '../preventive_maintenance/preventive_maintenance_controller.dart';
 import '../preventive_maintenance/preventive_maintenance_models.dart';
 import '../preventive_maintenance/preventive_maintenance_page.dart';
+import '../preventive_maintenance/offline_inspection_repository.dart';
 import '../preventive_maintenance/preventive_maintenance_repository.dart';
 import '../qr_scanner/qr_scanner_page.dart';
 import '../qr_scanner/qr_scan_result.dart';
@@ -21,13 +22,56 @@ class AuthenticatedShell extends StatelessWidget {
     required this.controller,
     this.assetRepository,
     this.preventiveMaintenanceRepository,
+    this.offlineInspectionRepository,
     this.assetMaintenanceHistoryRepository,
   });
 
   final SessionController controller;
   final AssetRepository? assetRepository;
   final PreventiveMaintenanceRepository? preventiveMaintenanceRepository;
+  final OfflineInspectionRepository? offlineInspectionRepository;
   final AssetMaintenanceHistoryRepository? assetMaintenanceHistoryRepository;
+
+  Future<void> _logout(BuildContext context) async {
+    final offline = offlineInspectionRepository;
+    if (offline != null && offline.pendingCount > 0) {
+      final shouldKeepWork = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Sign out with saved changes?'),
+          content: Text(
+            '${offline.pendingCount} unsynced change(s) will remain encrypted on this device for your account.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Stay signed in'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Sign out and keep changes'),
+            ),
+          ],
+        ),
+      );
+      if (shouldKeepWork != true || !context.mounted) return;
+    }
+
+    try {
+      await offline?.deactivate();
+    } catch (_) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Offline changes could not be secured. Stay signed in and retry.',
+          ),
+        ),
+      );
+      return;
+    }
+    await controller.logout();
+  }
 
   Future<void> _openAssetLookup(
     BuildContext context,
@@ -181,7 +225,7 @@ class AuthenticatedShell extends StatelessWidget {
         ),
         actions: [
           IconButton(
-            onPressed: controller.logout,
+            onPressed: () => _logout(context),
             tooltip: 'Log out',
             icon: const Icon(Icons.logout),
           ),
@@ -210,9 +254,7 @@ class AuthenticatedShell extends StatelessWidget {
         onOpenForm: (formId) => _handleOpenBatch(context, formId),
         onOpenAcknowledgement: (form) =>
             _handleOpenAcknowledgement(context, form),
-        onOpenPreventiveMaintenance:
-            (controller.user?.roles.contains('GSD') == true &&
-                preventiveMaintenanceRepository != null)
+        onOpenPreventiveMaintenance: preventiveMaintenanceRepository != null
             ? () async {
                 await Navigator.of(context).push<void>(
                   MaterialPageRoute<void>(

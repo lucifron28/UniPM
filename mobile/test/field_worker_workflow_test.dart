@@ -251,7 +251,7 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        expect(find.text('My PM Tasks'), findsOneWidget);
+        expect(find.text('Urgent PM tasks'), findsOneWidget);
         expect(find.text('2 of 3 assets inspected'), findsOneWidget);
         expect(find.text('Continue PM batch'), findsOneWidget);
         await tester.ensureVisible(find.text('Continue PM batch'));
@@ -261,14 +261,14 @@ void main() {
         expect(openedFormId, 'draft-form-1');
 
         await tester.scrollUntilVisible(
-          find.text('Capture Signature'),
-          250,
+          find.text('Sign'),
+          -200,
           scrollable: find.byType(Scrollable).first,
         );
         await tester.pumpAndSettle();
-        expect(find.text('Awaiting Acknowledgement'), findsOneWidget);
-        expect(find.text('Capture Signature'), findsOneWidget);
-        await tester.tap(find.text('Capture Signature'));
+        expect(find.text('Pending acknowledgements'), findsOneWidget);
+        expect(find.text('Sign'), findsOneWidget);
+        await tester.tap(find.text('Sign'));
         await tester.pumpAndSettle();
         expect(acknowledgedFormId, 'sub-form-2');
       },

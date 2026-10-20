@@ -38,7 +38,7 @@ function LoginPage() {
   const navigate = Route.useNavigate()
 
   return (
-    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[var(--page-background)] px-5 py-12 sm:px-8">
+    <main className="login-page relative flex min-h-screen items-center justify-center overflow-hidden bg-[var(--page-background)] px-5 py-12 sm:px-8">
       <div
         aria-hidden="true"
         className="absolute -top-24 -left-20 h-80 w-44 rounded-full bg-white/75 blur-3xl"
@@ -49,14 +49,14 @@ function LoginPage() {
       />
 
       <div className="relative w-full max-w-[46rem]">
-        <div className="mb-9 flex flex-col items-center">
+        <div className="login-brand mb-9 flex flex-col items-center">
           <BrandMark />
           <p className="mt-3 text-center text-base text-[var(--text-secondary)]">
             Institutional Management Portal
           </p>
         </div>
 
-        <Card className="mx-auto w-full max-w-[40rem] px-7 py-8 shadow-[0_18px_48px_rgba(25,28,29,0.08)] sm:px-10 sm:py-10">
+        <Card className="login-card mx-auto w-full max-w-[40rem] px-7 py-8 shadow-[0_18px_48px_rgba(25,28,29,0.08)] sm:px-10 sm:py-10">
           <h1 className="text-2xl font-bold tracking-tight text-[var(--text-primary)]">
             Welcome back
           </h1>
@@ -73,7 +73,7 @@ function LoginPage() {
           />
         </Card>
 
-        <div className="mt-10 text-center">
+        <div className="login-footer mt-10 text-center">
           <p className="inline-flex items-center gap-2 rounded-full bg-white/70 px-4 py-2 text-xs font-semibold tracking-[0.1em] text-[var(--text-neutral)] uppercase">
             <LockKeyhole
               aria-hidden="true"

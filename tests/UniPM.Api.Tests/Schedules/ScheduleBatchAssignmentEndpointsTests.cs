@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -17,6 +18,91 @@ namespace UniPM.Api.Tests;
 
 public sealed class ScheduleBatchAssignmentEndpointsTests
 {
+    [Fact]
+    public async Task Assignment_queue_returns_complete_grouped_batches_only_for_the_authenticated_supervisor_scope()
+    {
+        var databaseName = $"unipm-assignment-queue-{Guid.NewGuid():N}";
+        await using var gsdApplication = new TestApplicationFactory(AuthRoleCatalog.Gsd, databaseName);
+        await using var supervisorApplication = new TestApplicationFactory(AuthRoleCatalog.Supervisor, databaseName);
+        using var gsdClient = gsdApplication.CreateClient();
+        using var supervisorClient = supervisorApplication.CreateClient();
+        var supervisorId = await supervisorApplication.SeedAuthenticatedUserAsync(AuthRoleCatalog.Supervisor);
+        var otherSupervisorId = await gsdApplication.SeedUserAsync("other-supervisor", AuthRoleCatalog.Supervisor);
+        var inspectorId = await gsdApplication.SeedUserAsync("inspector", AuthRoleCatalog.Inspector);
+
+        var ownedFirst = await CreateScheduleAsync(
+            gsdClient,
+            "CCMS",
+            "Main Building",
+            new DateTimeOffset(2026, 8, 1, 8, 0, 0, TimeSpan.FromHours(8)));
+        var ownedSecond = await CreateScheduleAsync(
+            gsdClient,
+            " ccms ",
+            "Annex",
+            new DateTimeOffset(2026, 8, 9, 8, 0, 0, TimeSpan.FromHours(8)));
+        var mixedOwner = await CreateScheduleAsync(
+            gsdClient,
+            "CCMS",
+            "Library",
+            new DateTimeOffset(2026, 8, 16, 8, 0, 0, TimeSpan.FromHours(8)));
+        var otherCycle = await CreateScheduleAsync(
+            gsdClient,
+            "CCMS",
+            "Main Building",
+            new DateTimeOffset(2026, 2, 1, 8, 0, 0, TimeSpan.FromHours(8)));
+        var otherDepartment = await CreateScheduleAsync(
+            gsdClient,
+            "Library",
+            "Library",
+            new DateTimeOffset(2026, 8, 1, 8, 0, 0, TimeSpan.FromHours(8)));
+        await gsdApplication.SetAssignmentsAsync([ownedFirst.Id, ownedSecond.Id], inspectorId, supervisorId);
+        await gsdApplication.SetAssignmentsAsync([mixedOwner.Id], null, otherSupervisorId);
+        await gsdApplication.SetAssignmentsAsync([otherCycle.Id], null, otherSupervisorId);
+        await gsdApplication.SetAssignmentsAsync([otherDepartment.Id], inspectorId, otherSupervisorId);
+        await gsdApplication.AddInspectionWithoutScheduleCompletionAsync(
+            ownedSecond.Id,
+            ownedSecond.AssetId,
+            inspectorId);
+
+        var gsdResponse = await gsdClient.GetAsync(
+            "/api/v1/schedules/assignment-batches?year=2026&assetCategory=fire-extinguisher&pmCycle=2026-08");
+        gsdResponse.EnsureSuccessStatusCode();
+        var gsdQueue = await gsdResponse.Content.ReadFromJsonAsync<AssignmentQueueResponse>();
+        Assert.NotNull(gsdQueue);
+        Assert.Equal(4, gsdQueue.TotalScheduleCount);
+        Assert.Equal(2, gsdQueue.Batches.Count);
+        var gsdAugustBatch = Assert.Single(gsdQueue.Batches, batch =>
+            batch.Department.Equals("CCMS", StringComparison.OrdinalIgnoreCase)
+            && batch.PmCycle == "2026-08");
+        Assert.Equal(3, gsdAugustBatch.ScheduleCount);
+        Assert.Equal("Mixed", gsdAugustBatch.SupervisorState);
+        Assert.Null(gsdAugustBatch.SupervisorUserId);
+        Assert.Null(gsdAugustBatch.SupervisorDisplayName);
+        Assert.False(gsdAugustBatch.SupervisorOwnershipIsConsistent);
+        Assert.Equal("Partially assigned", gsdAugustBatch.InspectorState);
+        Assert.Null(gsdAugustBatch.InspectorUserId);
+        Assert.Null(gsdAugustBatch.InspectorDisplayName);
+        Assert.True(gsdAugustBatch.AssignmentLocked);
+
+        var libraryBatch = Assert.Single(gsdQueue.Batches, batch =>
+            batch.Department.Equals("Library", StringComparison.OrdinalIgnoreCase));
+        Assert.Equal("other-supervisor user", libraryBatch.SupervisorDisplayName);
+        Assert.Equal("inspector user", libraryBatch.InspectorDisplayName);
+
+        var supervisorResponse = await supervisorClient.GetAsync(
+            "/api/v1/schedules/assignment-batches?year=2026&assetCategory=fire-extinguisher&pmCycle=2026-08");
+        supervisorResponse.EnsureSuccessStatusCode();
+        var supervisorQueue = await supervisorResponse.Content.ReadFromJsonAsync<AssignmentQueueResponse>();
+        Assert.NotNull(supervisorQueue);
+        Assert.Equal(3, supervisorQueue.TotalScheduleCount);
+        var supervisorAugustBatch = Assert.Single(supervisorQueue.Batches);
+        Assert.Equal("2026-08", supervisorAugustBatch.PmCycle);
+        Assert.Equal(3, supervisorAugustBatch.ScheduleCount);
+        Assert.Equal("Mixed", supervisorAugustBatch.SupervisorState);
+        Assert.False(supervisorAugustBatch.SupervisorOwnershipIsConsistent);
+        Assert.True(supervisorAugustBatch.AssignmentLocked);
+    }
+
     [Fact]
     public async Task Gsd_supervisor_assignment_covers_matching_batch_and_clears_old_worker()
     {
@@ -114,14 +200,32 @@ public sealed class ScheduleBatchAssignmentEndpointsTests
         using var gsdClient = gsdApplication.CreateClient();
         using var supervisorClient = supervisorApplication.CreateClient();
         using var inspectorClient = inspectorApplication.CreateClient();
-        var workerId = await gsdApplication.SeedUserAsync("active-worker", AuthRoleCatalog.Inspector);
-        var supervisorId = await gsdApplication.SeedUserAsync("active-supervisor", AuthRoleCatalog.Supervisor);
+        var workerIds = new List<Guid>();
+        var supervisorIds = new List<Guid>();
+        for (var index = 0; index < 12; index++)
+        {
+            workerIds.Add(await gsdApplication.SeedUserAsync(
+                $"active-worker-{index:D2}", AuthRoleCatalog.Inspector));
+            supervisorIds.Add(await gsdApplication.SeedUserAsync(
+                $"active-supervisor-{index:D2}", AuthRoleCatalog.Supervisor));
+        }
+
+        var workerId = workerIds[^1];
+        var supervisorId = supervisorIds[^1];
 
         var supervisorOptionsResponse = await gsdClient.GetAsync("/api/v1/schedules/supervisor-assignment-options");
         supervisorOptionsResponse.EnsureSuccessStatusCode();
         var supervisorOptions = await supervisorOptionsResponse.Content.ReadFromJsonAsync<SupervisorOptionsResponse>();
         Assert.NotNull(supervisorOptions);
-        Assert.Contains(supervisorOptions.Supervisors, option => option.Id == supervisorId);
+        Assert.Equal(10, supervisorOptions.Supervisors.Count);
+        Assert.DoesNotContain(supervisorOptions.Supervisors, option => option.Id == supervisorId);
+        var searchedSupervisorsResponse = await gsdClient.GetAsync(
+            $"/api/v1/schedules/supervisor-assignment-options?search=active-supervisor-11&selectedUserId={supervisorIds[10]}");
+        searchedSupervisorsResponse.EnsureSuccessStatusCode();
+        var searchedSupervisors = await searchedSupervisorsResponse.Content.ReadFromJsonAsync<SupervisorOptionsResponse>();
+        Assert.NotNull(searchedSupervisors);
+        Assert.Contains(searchedSupervisors.Supervisors, option => option.Id == supervisorId);
+        Assert.Equal(supervisorIds[10], searchedSupervisors.Selected?.Id);
         Assert.Equal(HttpStatusCode.Forbidden,
             (await gsdClient.GetAsync("/api/v1/schedules/assignment-options")).StatusCode);
 
@@ -129,7 +233,17 @@ public sealed class ScheduleBatchAssignmentEndpointsTests
         workerOptionsResponse.EnsureSuccessStatusCode();
         var workerOptions = await workerOptionsResponse.Content.ReadFromJsonAsync<WorkerOptionsResponse>();
         Assert.NotNull(workerOptions);
-        Assert.Contains(workerOptions.Workers, option => option.Id == workerId);
+        Assert.Equal(10, workerOptions.Workers.Count);
+        Assert.DoesNotContain(workerOptions.Workers, option => option.Id == workerId);
+        var searchedWorkersResponse = await supervisorClient.GetAsync(
+            $"/api/v1/schedules/assignment-options?search=active-worker-11&selectedUserId={workerIds[10]}");
+        searchedWorkersResponse.EnsureSuccessStatusCode();
+        var searchedWorkers = await searchedWorkersResponse.Content.ReadFromJsonAsync<WorkerOptionsResponse>();
+        Assert.NotNull(searchedWorkers);
+        Assert.Contains(searchedWorkers.Workers, option => option.Id == workerId);
+        Assert.Equal(workerIds[10], searchedWorkers.Selected?.Id);
+        Assert.Equal(HttpStatusCode.BadRequest,
+            (await supervisorClient.GetAsync($"/api/v1/schedules/assignment-options?search={new string('x', 101)}")).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden,
             (await supervisorClient.GetAsync("/api/v1/schedules/supervisor-assignment-options")).StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden,
@@ -142,6 +256,21 @@ public sealed class ScheduleBatchAssignmentEndpointsTests
             (await supervisorClient.PutAsJsonAsync(
                 $"/api/v1/schedules/{Guid.NewGuid()}/supervisor-assignment",
                 new { supervisorUserId = supervisorId })).StatusCode);
+
+        var schedule = await CreateScheduleAsync(
+            gsdClient,
+            "CCMS",
+            "Main Building",
+            new DateTimeOffset(2026, 8, 1, 8, 0, 0, TimeSpan.FromHours(8)));
+        await gsdApplication.SetAssignmentsAsync([schedule.Id], workerId, supervisorId);
+        var queueResponse = await gsdClient.GetAsync(
+            "/api/v1/schedules/assignment-batches?year=2026&department=CCMS&pmCycle=2026-08");
+        queueResponse.EnsureSuccessStatusCode();
+        var queue = await queueResponse.Content.ReadFromJsonAsync<AssignmentQueueResponse>();
+        Assert.NotNull(queue);
+        var assignedBatch = Assert.Single(queue.Batches);
+        Assert.Equal("active-supervisor-11 user", assignedBatch.SupervisorDisplayName);
+        Assert.Equal("active-worker-11 user", assignedBatch.InspectorDisplayName);
     }
 
     [Fact]
@@ -171,8 +300,8 @@ public sealed class ScheduleBatchAssignmentEndpointsTests
         Assert.Equal(2, workers.Page);
         Assert.Equal(1, workers.PageSize);
         Assert.Equal(2, workers.TotalCount);
-        Assert.Equal(secondInspector, Assert.Single(workers.Workers).Id);
         Assert.Equal(firstInspector, workers.Selected?.Id);
+        Assert.Equal(secondInspector, Assert.Single(workers.Workers).Id);
 
         var supervisorResponse = await gsdClient.GetAsync(
             "/api/v1/schedules/supervisor-assignment-options?search=searchable&page=1&pageSize=5");
@@ -317,8 +446,10 @@ public sealed class ScheduleBatchAssignmentEndpointsTests
             builder.ConfigureServices(services =>
             {
                 services.AddTestAuthentication(role);
+                services.RemoveAll<IDbContextOptionsConfiguration<ApplicationDbContext>>();
                 services.RemoveAll<IDbContextFactory<ApplicationDbContext>>();
                 services.RemoveAll<DbContextOptions<ApplicationDbContext>>();
+                services.RemoveAll<IDbContextOptionsConfiguration<ApplicationDbContext>>();
                 services.AddDbContextFactory<ApplicationDbContext>(options =>
                     options.UseInMemoryDatabase(
                         databaseName,
@@ -460,6 +591,27 @@ public sealed class ScheduleBatchAssignmentEndpointsTests
         int PageSize,
         int TotalCount,
         AssigneeOption? Selected);
+    private sealed record AssignmentQueueResponse(
+        int TotalScheduleCount,
+        IReadOnlyList<AssignmentQueueBatchResponse> Batches);
+    private sealed record AssignmentQueueBatchResponse(
+        string BatchKey,
+        string Department,
+        string AssetCategory,
+        string PmCycle,
+        int ScheduleCount,
+        int CompletedCount,
+        int OngoingCount,
+        int OverdueCount,
+        string SupervisorState,
+        Guid? SupervisorUserId,
+        string? SupervisorDisplayName,
+        string InspectorState,
+        Guid? InspectorUserId,
+        string? InspectorDisplayName,
+        bool AssignmentLocked,
+        bool SupervisorOwnershipIsConsistent,
+        ScheduleResponse RepresentativeSchedule);
     private sealed record AssignmentResponse(
         string Department,
         string AssetCategory,

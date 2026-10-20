@@ -14,6 +14,8 @@ import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useCurrentUser } from '@/features/auth/current-user'
 import { formatAssetCategory } from '@/features/assets/asset-presentation'
+import { excerpt } from '@/features/inspections/inspection-presentation'
+import { formatPmCycle } from '@/features/schedules/schedule-presentation'
 import {
   canReviewPreventiveMaintenanceForms,
   isGsdRole,
@@ -425,103 +427,143 @@ function InspectionRow({
     row.waterCheckUvLight !== null
   const yesNo = (value: boolean | null | undefined) =>
     value == null ? 'Not recorded' : value ? 'Yes' : 'No'
+  const assignmentLabel = (
+    id: string | null | undefined,
+    identity: string | null | undefined,
+    role: 'Inspector' | 'Supervisor',
+  ) =>
+    id === undefined
+      ? 'Not recorded'
+      : id === null
+        ? 'Unassigned'
+        : identity?.trim() || `Assigned ${role}`
 
   return (
-    <article className="rounded-xl border border-[var(--border-soft)] bg-white p-5 shadow-sm">
-      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
+    <article className="rounded-lg border border-[var(--border-soft)] bg-white p-3">
+      <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-start">
         <div>
           <p className="text-sm font-semibold text-[var(--text-primary)]">
             {row.assetCode ?? `Inspection ${row.id}`}
           </p>
-          <p className="mt-1 text-xs text-[var(--text-neutral)]">
+          <p className="mt-0.5 text-xs text-[var(--text-neutral)]">
             Actual inspection date: {formatFormDate(row.dateInspected)}
+            {row.location ? ` · ${row.location}` : ''}
           </p>
         </div>
-        <Badge
-          className={
-            row.isOperational
-              ? 'bg-emerald-100 text-emerald-800'
-              : 'bg-amber-100 text-amber-800'
-          }
-        >
-          {inspectionConditionLabel(row.isOperational)}
-        </Badge>
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant={row.isOperational ? 'success' : 'danger'}>
+            {inspectionConditionLabel(row.isOperational)}
+          </Badge>
+          {showWmsPending && (
+            <Badge variant="warning">Corrective follow-up pending</Badge>
+          )}
+        </div>
       </div>
-      {showWmsPending && (
-        <p role="status" className="mt-4 text-sm text-[var(--warning)]">
-          Corrective follow-up pending. A WMS PM number can be recorded after
-          field work is complete and the form is acknowledged.
-        </p>
-      )}
-      <dl className="mt-5 grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-3">
-        <DetailItem label="Asset code" value={row.assetCode ?? ''} />
-        <DetailItem label="Location" value={row.location ?? ''} />
-        <DetailItem
-          label="Skilled worker"
-          value={row.skilledWorkerIdentity ?? ''}
-        />
-        <DetailItem
-          label="Actual inspection date"
-          value={formatFormDate(row.dateInspected)}
-        />
-      </dl>
-      <details className="mt-4 text-xs text-[var(--text-neutral)]">
-        <summary className="cursor-pointer font-semibold">
-          Technical identifiers
+      <p className="mt-2 text-sm text-[var(--text-secondary)]">
+        {excerpt(row.remarks) || 'No finding was recorded.'}
+      </p>
+      <details className="mt-2 border-t border-[var(--border-soft)] pt-2 text-sm">
+        <summary className="cursor-pointer font-semibold text-[var(--primary)]">
+          Row details
         </summary>
-        <dl className="mt-3 grid gap-3 sm:grid-cols-3">
-          <DetailItem label="Inspection ID" value={row.id} />
-          <DetailItem label="Asset ID" value={row.assetId} />
-          <DetailItem label="Schedule ID" value={row.scheduleId} />
+        {showWmsPending && (
+          <p role="status" className="mt-3 text-sm text-[var(--warning)]">
+            A WMS PM number can be recorded after field work is complete and the
+            form is acknowledged.
+          </p>
+        )}
+        <dl className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <DetailItem
-            label="Skilled worker user ID"
-            value={row.inspectorUserId}
+            label="Inspected by"
+            value={row.skilledWorkerIdentity ?? 'Not recorded'}
+          />
+          <DetailItem
+            label="Current assigned Inspector"
+            value={assignmentLabel(
+              row.currentScheduleInspectorUserId,
+              row.currentScheduleInspectorIdentity,
+              'Inspector',
+            )}
+          />
+          <DetailItem
+            label="Current assigned Supervisor"
+            value={assignmentLabel(
+              row.currentScheduleSupervisorUserId,
+              row.currentScheduleSupervisorIdentity,
+              'Supervisor',
+            )}
           />
         </dl>
-      </details>
-      {hasWaterWorkItems && (
-        <section className="mt-5 border-t border-[var(--border-soft)] pt-4">
-          <h3 className="text-xs font-semibold tracking-[0.08em] text-[var(--text-neutral)] uppercase">
-            Water drinking station work items
-          </h3>
-          <dl className="mt-3 grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
+        <p className="mt-2 text-xs text-[var(--text-secondary)]">
+          Current schedule assignments may differ from the people assigned when
+          this inspection was completed.
+        </p>
+        <div className="mt-3 grid gap-3 border-t border-[var(--border-soft)] pt-3 sm:grid-cols-2">
+          <div>
+            <h3 className="text-xs font-semibold tracking-[0.08em] text-[var(--text-neutral)] uppercase">
+              Remarks
+            </h3>
+            <p className="mt-1 leading-6 whitespace-pre-wrap text-[var(--text-secondary)]">
+              {row.remarks || 'No remarks were recorded.'}
+            </p>
+          </div>
+          <div>
+            <h3 className="text-xs font-semibold tracking-[0.08em] text-[var(--text-neutral)] uppercase">
+              Recommendation
+            </h3>
+            <p className="mt-1 leading-6 whitespace-pre-wrap text-[var(--text-secondary)]">
+              {row.actionsRecommendations || 'No recommendation was recorded.'}
+            </p>
+          </div>
+        </div>
+        {hasWaterWorkItems && (
+          <section className="mt-3 border-t border-[var(--border-soft)] pt-3">
+            <h3 className="text-xs font-semibold tracking-[0.08em] text-[var(--text-neutral)] uppercase">
+              Water drinking station work items
+            </h3>
+            <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+              <DetailItem
+                label="Date accomplished"
+                value={formatFormDate(row.dateAccomplished ?? null)}
+              />
+              <DetailItem
+                label="Replace carbon filter"
+                value={yesNo(row.waterReplaceCarbonFilter)}
+              />
+              <DetailItem
+                label="Replace sediment filter"
+                value={yesNo(row.waterReplaceSedimentFilter)}
+              />
+              <DetailItem
+                label="Check UV light"
+                value={yesNo(row.waterCheckUvLight)}
+              />
+            </dl>
+          </section>
+        )}
+        <details className="mt-3 border-t border-[var(--border-soft)] pt-3 text-xs text-[var(--text-neutral)]">
+          <summary className="cursor-pointer font-semibold">
+            Technical identifiers
+          </summary>
+          <dl className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <DetailItem label="Inspection ID" value={row.id} />
+            <DetailItem label="Asset ID" value={row.assetId} />
+            <DetailItem label="Schedule ID" value={row.scheduleId} />
             <DetailItem
-              label="Date accomplished"
-              value={formatFormDate(row.dateAccomplished ?? null)}
+              label="Skilled worker user ID"
+              value={row.inspectorUserId}
             />
             <DetailItem
-              label="Replace carbon filter"
-              value={yesNo(row.waterReplaceCarbonFilter)}
+              label="Current assigned Inspector user ID"
+              value={row.currentScheduleInspectorUserId ?? 'Not recorded'}
             />
             <DetailItem
-              label="Replace sediment filter"
-              value={yesNo(row.waterReplaceSedimentFilter)}
-            />
-            <DetailItem
-              label="Check UV light"
-              value={yesNo(row.waterCheckUvLight)}
+              label="Current assigned Supervisor user ID"
+              value={row.currentScheduleSupervisorUserId ?? 'Not recorded'}
             />
           </dl>
-        </section>
-      )}
-      <div className="mt-5 grid gap-4 border-t border-[var(--border-soft)] pt-4 sm:grid-cols-2">
-        <div>
-          <h3 className="text-xs font-semibold tracking-[0.08em] text-[var(--text-neutral)] uppercase">
-            Remarks
-          </h3>
-          <p className="mt-1 text-sm leading-6 whitespace-pre-wrap text-[var(--text-secondary)]">
-            {row.remarks || 'No remarks were recorded.'}
-          </p>
-        </div>
-        <div>
-          <h3 className="text-xs font-semibold tracking-[0.08em] text-[var(--text-neutral)] uppercase">
-            Recommendation
-          </h3>
-          <p className="mt-1 text-sm leading-6 whitespace-pre-wrap text-[var(--text-secondary)]">
-            {row.actionsRecommendations || 'No recommendation was recorded.'}
-          </p>
-        </div>
-      </div>
+        </details>
+      </details>
     </article>
   )
 }
@@ -529,10 +571,12 @@ function InspectionRow({
 function SignaturePad({
   canvasRef,
   disabled,
+  error,
   onDrawnChange,
 }: {
   canvasRef: RefObject<HTMLCanvasElement | null>
   disabled: boolean
+  error?: string | null
   onDrawnChange: (drawn: boolean) => void
 }) {
   const [isDrawing, setIsDrawing] = useState(false)
@@ -605,9 +649,11 @@ function SignaturePad({
       <canvas
         ref={canvasRef}
         aria-label="Signature"
+        aria-invalid={Boolean(error)}
+        aria-describedby={error ? 'signature-error' : 'signature-hint'}
         width={640}
         height={180}
-        className="h-36 w-full rounded-lg border border-[var(--border-soft)] bg-white"
+        className="block aspect-[32/9] w-full max-w-[25rem] rounded-lg border border-[var(--border-soft)] bg-white"
         style={{ touchAction: 'none' }}
         onPointerDown={begin}
         onPointerMove={move}
@@ -615,8 +661,8 @@ function SignaturePad({
         onPointerCancel={end}
       />
       <div className="mt-2 flex items-center justify-between gap-3">
-        <p className="text-xs text-[var(--text-neutral)]">
-          Draw the department-head signature in the box.
+        <p id="signature-hint" className="text-xs text-[var(--text-neutral)]">
+          Draw the department-head signature here.
         </p>
         <Button
           type="button"
@@ -693,20 +739,28 @@ export function AcknowledgeForm({
   const [signatoryName, setSignatoryName] = useState('')
   const [signatoryPosition, setSignatoryPosition] = useState('')
   const [signatureDrawn, setSignatureDrawn] = useState(false)
+  const [nameError, setNameError] = useState<string | null>(null)
+  const [positionError, setPositionError] = useState<string | null>(null)
   const [validationError, setValidationError] = useState<string | null>(null)
   const [isConfirming, setIsConfirming] = useState(false)
 
   async function acknowledge(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    const nextNameError = signatoryName.trim()
+      ? null
+      : 'Enter the signatory name.'
+    const nextPositionError = signatoryPosition.trim()
+      ? null
+      : 'Enter the signatory position.'
+    setNameError(nextNameError)
+    setPositionError(nextPositionError)
     setValidationError(null)
-    if (!signatoryName.trim() || !signatoryPosition.trim()) {
-      setValidationError('Signatory name and position are required.')
-      return
-    }
     if (!signatureDrawn) {
       setValidationError(
         'Capture the department-head signature before continuing.',
       )
+    }
+    if (nextNameError || nextPositionError || !signatureDrawn) {
       return
     }
 
@@ -741,42 +795,82 @@ export function AcknowledgeForm({
   }
 
   return (
-    <Card className="space-y-5 shadow-none">
+    <Card className="space-y-3 shadow-none">
       <div>
         <p className="text-sm font-semibold tracking-[0.08em] text-[var(--primary)] uppercase">
           Department-head acknowledgement
         </p>
-        <h2 className="mt-1 text-2xl font-bold text-[var(--text-primary)]">
+        <h2 className="mt-1 text-xl font-bold text-[var(--text-primary)]">
           {title}
         </h2>
-        <p className="mt-1 text-sm text-[var(--text-secondary)]">
-          Field-work completion and acknowledgement are separate. For the whole
-          PM batch, acknowledgement records receipt/noting, locks the form, and
-          makes its inspection rows eligible for official history. It is not
-          personal witnessing. It does not approve corrective work, funding, or
-          an RMRF.
+        <p className="mt-1 max-w-3xl text-sm text-[var(--text-secondary)]">
+          This records the department head's receipt and signatory details. It
+          locks the form and makes its inspection rows eligible for official
+          history. It does not approve corrective work or create an RMRF.
         </p>
       </div>
-      <form className="space-y-4" onSubmit={acknowledge}>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <label className="text-sm font-semibold text-[var(--text-primary)]">
-            Signatory name
+      <form className="space-y-3" onSubmit={acknowledge}>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <label
+              htmlFor="signatory-name"
+              className="text-sm font-semibold text-[var(--text-primary)]"
+            >
+              Signatory name
+            </label>
             <input
-              className="mt-2 min-h-10 w-full rounded-lg border border-[var(--border-soft)] px-3 font-normal outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary-active)]"
+              id="signatory-name"
+              aria-invalid={Boolean(nameError)}
+              aria-describedby={nameError ? 'signatory-name-error' : undefined}
+              className="mt-1 min-h-10 w-full rounded-lg border border-[var(--border-soft)] px-3 font-normal outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary-active)]"
               value={signatoryName}
               maxLength={160}
-              onChange={(event) => setSignatoryName(event.target.value)}
+              onChange={(event) => {
+                setSignatoryName(event.target.value)
+                if (event.target.value.trim()) setNameError(null)
+              }}
             />
-          </label>
-          <label className="text-sm font-semibold text-[var(--text-primary)]">
-            Signatory position
+            {nameError && (
+              <p
+                id="signatory-name-error"
+                role="alert"
+                className="mt-1 text-sm text-[var(--error)]"
+              >
+                {nameError}
+              </p>
+            )}
+          </div>
+          <div>
+            <label
+              htmlFor="signatory-position"
+              className="text-sm font-semibold text-[var(--text-primary)]"
+            >
+              Signatory position
+            </label>
             <input
-              className="mt-2 min-h-10 w-full rounded-lg border border-[var(--border-soft)] px-3 font-normal outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary-active)]"
+              id="signatory-position"
+              aria-invalid={Boolean(positionError)}
+              aria-describedby={
+                positionError ? 'signatory-position-error' : undefined
+              }
+              className="mt-1 min-h-10 w-full rounded-lg border border-[var(--border-soft)] px-3 font-normal outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary-active)]"
               value={signatoryPosition}
               maxLength={160}
-              onChange={(event) => setSignatoryPosition(event.target.value)}
+              onChange={(event) => {
+                setSignatoryPosition(event.target.value)
+                if (event.target.value.trim()) setPositionError(null)
+              }}
             />
-          </label>
+            {positionError && (
+              <p
+                id="signatory-position-error"
+                role="alert"
+                className="mt-1 text-sm text-[var(--error)]"
+              >
+                {positionError}
+              </p>
+            )}
+          </div>
         </div>
         <div>
           <p className="text-sm font-semibold text-[var(--text-primary)]">
@@ -786,12 +880,20 @@ export function AcknowledgeForm({
             <SignaturePad
               canvasRef={canvasRef}
               disabled={mutation.isPending}
-              onDrawnChange={setSignatureDrawn}
+              error={validationError}
+              onDrawnChange={(drawn) => {
+                setSignatureDrawn(drawn)
+                if (drawn) setValidationError(null)
+              }}
             />
           </div>
         </div>
         {validationError && (
-          <p role="alert" className="text-sm text-[var(--danger)]">
+          <p
+            id="signature-error"
+            role="alert"
+            className="text-sm text-[var(--error)]"
+          >
             {validationError}
           </p>
         )}
@@ -818,10 +920,9 @@ export function AcknowledgeForm({
               Confirm department-head acknowledgement
             </h3>
             <p className="mt-2 text-sm text-[var(--text-secondary)]">
-              This records receipt/noting of the whole PM batch, locks this
-              form, and makes its inspection rows eligible for official history.
-              It is not personal witnessing. It does not approve corrective
-              work, funding, or an RMRF.
+              This records receipt of the completed form, locks it, and makes
+              its inspection rows eligible for official history. It does not
+              approve corrective work or create an RMRF.
             </p>
             <div className="mt-4 flex flex-wrap justify-end gap-3">
               <Button
@@ -1000,6 +1101,18 @@ export function FormDetail({
   }
 
   const record = form.data
+  const periodLabel = record.pmCycle
+    ? formatPmCycle(record.pmCycle)
+    : formatFormPeriod(record) || 'Cycle not recorded'
+  const detailTitle =
+    record.fileNumber ??
+    [
+      formatAssetCategory(record.assetCategory),
+      record.department || 'Department not recorded',
+      periodLabel,
+    ]
+      .filter(Boolean)
+      .join(' · ')
 
   return (
     <section
@@ -1012,12 +1125,12 @@ export function FormDetail({
           <p className="text-sm font-semibold tracking-[0.08em] text-[var(--primary)] uppercase">
             Preventive-maintenance form
           </p>
-          <h1
+          <h2
             id="form-detail-title"
             className="mt-2 text-3xl font-bold tracking-tight text-[var(--text-primary)]"
           >
-            {record.fileNumber ?? 'Unsubmitted form'}
-          </h1>
+            {detailTitle}
+          </h2>
         </div>
         <Badge className={formStatusClass(record.status)}>
           {formStatusLabel(record.status)}
@@ -1030,7 +1143,7 @@ export function FormDetail({
         />
         <DetailItem label="Building" value={record.building ?? ''} />
         <DetailItem label="Department" value={record.department ?? ''} />
-        <DetailItem label="Period" value={formatFormPeriod(record)} />
+        <DetailItem label="Period" value={periodLabel} />
         <DetailItem
           label="Submitted"
           value={formatFormDate(record.submittedAt)}

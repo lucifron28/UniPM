@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+using UniPM.Api.Features.Auth;
 using UniPM.Api.Features.PreventiveMaintenanceForms;
 using UniPM.Api.Features.ReferenceData;
 using UniPM.Api.Features.Schedules;
@@ -10,7 +11,8 @@ namespace UniPM.Api.Data.Seeding;
 
 internal sealed class DevelopmentDemoSeeder(
     IDbContextFactory<ApplicationDbContext> contextFactory,
-    IHostEnvironment environment)
+    IHostEnvironment environment,
+    IConfiguration? configuration = null)
 {
     private static readonly TimeSpan ManilaOffset = TimeSpan.FromHours(8);
     private const string SignatureBase64 =
@@ -21,11 +23,13 @@ internal sealed class DevelopmentDemoSeeder(
     {
         EnsureDevelopment();
         await using var context = await CreateReadyContextAsync(cancellationToken);
+        var staging = StagingDemoInitialization.Enabled(configuration);
+        if (staging) await StagingDemoInitialization.EnsureReadyAsync(context, true, cancellationToken);
         var (inspectorId, gsdId) = await ResolveUsersAsync(context, cancellationToken);
         await ValidateConflictsAsync(context, cancellationToken);
         await using var transaction = await BeginTransactionIfRelationalAsync(context, cancellationToken);
 
-        await RemoveDemoClosureAsync(context, inspectorId, cancellationToken);
+        if (!staging) await RemoveDemoClosureAsync(context, inspectorId, cancellationToken);
 
         var timestamp = AtManila(2026, 6, 1, 8);
         context.Assets.AddRange(DevelopmentDemoCatalog.Assets.Select(asset => new Asset
@@ -67,7 +71,8 @@ internal sealed class DevelopmentDemoSeeder(
         });
 
         await context.SaveChangesAsync(cancellationToken);
-        var history = await CpmpDemoHistorySeeder.SeedAsync(context, inspectorId, cancellationToken);
+        var history = await CpmpDemoHistorySeeder.SeedAsync(context, inspectorId, cancellationToken,
+            staging ? StagingDemoInitialization.Email(AuthRoleCatalog.Supervisor) : "supervisor@unipm.local");
 
         if (transaction is not null)
         {
@@ -86,6 +91,8 @@ internal sealed class DevelopmentDemoSeeder(
         CancellationToken cancellationToken = default)
     {
         EnsureDevelopment();
+        if (StagingDemoInitialization.Enabled(configuration))
+            throw new InvalidOperationException("Reset is unavailable in staging initialization mode.");
         await using var context = await CreateReadyContextAsync(cancellationToken);
         var inspectorId = await ResolveDemoInspectorIdAsync(context, cancellationToken);
         await using var transaction = await BeginTransactionIfRelationalAsync(context, cancellationToken);
@@ -259,11 +266,14 @@ internal sealed class DevelopmentDemoSeeder(
         return inspections;
     }
 
-    private static async Task<(Guid InspectorId, Guid GsdId)> ResolveUsersAsync(
+    private async Task<(Guid InspectorId, Guid GsdId)> ResolveUsersAsync(
         ApplicationDbContext context,
         CancellationToken cancellationToken)
     {
-        var emails = new[] { DevelopmentDemoCatalog.InspectorEmail, DevelopmentDemoCatalog.GsdEmail };
+        var staging = StagingDemoInitialization.Enabled(configuration);
+        var inspectorEmail = staging ? StagingDemoInitialization.Email(AuthRoleCatalog.Inspector) : DevelopmentDemoCatalog.InspectorEmail;
+        var gsdEmail = staging ? StagingDemoInitialization.Email(AuthRoleCatalog.Gsd) : DevelopmentDemoCatalog.GsdEmail;
+        var emails = new[] { inspectorEmail, gsdEmail };
         var matchingUsers = await context.Users
             .AsNoTracking()
             .Where(user => user.Email != null && emails.Contains(user.Email))
@@ -274,11 +284,11 @@ internal sealed class DevelopmentDemoSeeder(
             user => user.Id,
             StringComparer.OrdinalIgnoreCase);
 
-        if (!users.TryGetValue(DevelopmentDemoCatalog.InspectorEmail, out var inspectorId)
-            || !users.TryGetValue(DevelopmentDemoCatalog.GsdEmail, out var gsdId))
+        if (!users.TryGetValue(inspectorEmail, out var inspectorId)
+            || !users.TryGetValue(gsdEmail, out var gsdId))
         {
             throw new InvalidOperationException(
-                "Development demo seeding requires inspector@unipm.local and gsd@unipm.local. Run --seed-development-users first.");
+                "Demo seeding requires the configured Inspector and GSD accounts. Run the approved account initialization first.");
         }
 
         return (inspectorId, gsdId);
@@ -618,7 +628,7 @@ internal sealed class DevelopmentDemoSeeder(
                 throw new InvalidOperationException("The database is not reachable for demo seeding.");
             }
 
-            if (context.Database.IsRelational())
+            if (context.Database.IsRelational() && !StagingDemoInitialization.Enabled(configuration))
             {
                 await context.Database.MigrateAsync(cancellationToken);
             }

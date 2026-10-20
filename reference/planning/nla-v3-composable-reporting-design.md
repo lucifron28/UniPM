@@ -1,9 +1,38 @@
 # NLA V3 composable reporting design
 
 Date: 19 October 2026.
-Status: design and planning authorized; implementation, release and new domain
-measures are not approved by this document. Initial scope and limits below are
-proposals for implementation review, not measured capacity or GSD acceptance.
+Status: reporting correctness, interpretation and React workflow hardening is
+committed on the feature branch as `e2f90bba35707a7142b3dccb1afb8eeec6143ad4`.
+
+### Historical verification at `e2f90bba` (TEST-110)
+
+The web production build (including TypeScript), lint, changed-file formatting,
+7 focused V3 React tests, OpenAPI generation/drift check and 7 negative contract
+checks passed. Backend regression and authorization tests were added but could
+not be run because this environment has no .NET SDK. The browser scenario was
+added but could not launch because Chromium is absent and the official browser
+download returned HTTP 403. Native SQL Server 2019 behavior and runtime API
+authorization remain unverified; no SQL test connection is configured. No
+DeepSeek request was made. First-release acceptance and deployment remain
+unverified. Preview state is carried in signed, stateless, user-bound tokens
+that expire after ten minutes; the preview store has no in-memory state to
+replicate. The cross-instance, tampering, user-binding, and expiry regression
+test is present in source but was not executed in TEST-110 because the .NET SDK
+was unavailable. This status does not authorize deployment, release, external
+provider calls, database changes or new domain measures.
+
+### Quarterly drill-down follow-up at `b0289382` (TEST-111)
+
+Quarter grouping now uses the floored month-to-quarter calculation. Focused
+React regressions cover February/Q1 and November/Q4, including category
+selection, quarter period, retained filters, and returned source records. The
+.NET 10 build and focused V3 regression/authorization tests passed; the focused
+React tests, relevant Web CI checks, and narrow-viewport Playwright scenario
+also passed. Native SQL Server 2019 integration remains unverified because no
+dedicated SQL test connection is configured. First-release acceptance and
+deployment remain unverified. No DeepSeek request was made. See
+[TEST-111](../evidence/test-runs/TEST-111-pm-analytics-v3-quarterly-drilldown.md)
+for exact commands and results.
 
 ## Goal and source baseline
 
@@ -12,10 +41,20 @@ fixed sentence template. The model composes a report from an approved catalog;
 the backend validates, authorizes and calculates it. Users review the meaning
 before execution and can resolve ambiguity through choices.
 
-Source reviewed: `e2cce3ea87a6a141c37bee710df5919990a20c38` on
-`deploy/azure-staging`. This is source inspection, not executed verification.
-The existing local generated route-tree modification and untracked Admin plan
-are unrelated and must remain untouched by this planning task.
+Implementation base: `9db2c111910a12906bf2cf264dc46631333b0377` on
+`deploy/azure-staging`, checked out as
+`feature/nla-v3-composable-reporting`. This records the source baseline only;
+it does not establish the deployed version or deployment acceptance.
+
+Implemented on the feature branch: the closed plan contract and versioned
+catalog; category-specific period expansion and validation; GSD-only catalog,
+interpret, preview and execute endpoints; local asset-value resolution; bounded
+read-only execution; signed, stateless, user-bound preview tokens that expire
+after ten minutes; deterministic question parsing with an optional
+Development-only, separately flagged
+DeepSeek Flash path; and a V3 report builder with preview, confirmation, typed output,
+pagination and the existing V2 reports retained as a fallback. These are source
+changes, not deployment or first-release acceptance evidence.
 
 Relevant sources:
 
@@ -24,11 +63,18 @@ Relevant sources:
 - [V2 query service](../../server/Features/Reports/PmAnalyticsV2QueryService.cs).
 - [Rule interpreter](../../server/Features/Reports/PmAnalyticsV2QuestionInterpreter.cs).
 - [Experimental model interpreter](../../server/Features/Reports/PmAnalyticsV2ModelPlanInterpreter.cs).
+- [V3 contracts](../../server/Features/Reports/PmAnalyticsV3Contracts.cs).
+- [V3 catalog](../../server/Features/Reports/PmAnalyticsV3Catalog.cs).
+- [V3 validator](../../server/Features/Reports/PmAnalyticsV3PlanValidator.cs).
+- [V3 query service](../../server/Features/Reports/PmAnalyticsV3QueryService.cs).
+- [V3 question interpreter](../../server/Features/Reports/PmAnalyticsV3QuestionInterpreter.cs).
+- [V3 preview store](../../server/Features/Reports/PmAnalyticsV3PreviewStore.cs).
+- [V3 report builder](../../web/src/features/reports/pm-analytics-v3.tsx).
 - [Confirmed workflow](confirmed-gsd-workflow.md).
 
-V2 currently permits one measure/category/grouping field, annual and quarterly
-periods, bounded ranges, outcome filters, limited department ranking and
-two-cycle comparisons. Its model interpreter is Development-only; the V2
+V2 currently permits one measure/category/grouping field, monthly, quarterly
+and annual periods, bounded ranges, outcome filters, limited department ranking
+and two-cycle comparisons. Its model interpreter is Development-only; the V2
 question endpoint uses deterministic grammar. V3 must not silently enable that
 experimental interpreter in Production.
 
@@ -87,8 +133,8 @@ cycles. Do not label workload counts as personnel performance.
 Time basis is scheduled PM cycle for the first release. Deadlines and cycle
 boundaries use Asia/Manila. Requests based on inspection dates must be explained
 as outside the initial time-basis capability, not silently treated as PM cycles.
-Resolve relative dates against the server time zone and show the resulting
-absolute period in the preview.
+Resolve relative dates against Asia/Manila and show the resulting absolute
+period in the preview.
 
 Expand calendar periods into valid CPMP cycles separately for each selected
 category. Grouping by quarter does not create extra scheduled months. Report
@@ -274,8 +320,11 @@ new provider calls are authorized by this planning task.
 
 ## Full delivery roadmap
 
-All phases are pending. This roadmap defines intended work and completion
-criteria; it does not authorize implementation, provider spending, held-out runs,
+Phase 0 selected the source base and dedicated feature branch. The first-release
+implementation work for Phases 1-4 is present in source; their independent
+verification and completion criteria remain pending. Phase 0 deployment
+evidence and Phases 5-11 remain pending. This roadmap defines intended work and
+completion criteria; it does not authorize provider spending, held-out runs,
 database changes, merge or deployment. Sequence is dependency-based, not a dated
 delivery promise. Do not expand the first release to include every later phase.
 
@@ -294,6 +343,12 @@ unrelated Admin/account-management work is bundled into NLA.
 
 ### Phase 1: freeze the first contract and semantic catalog
 
+The versioned plan, code-first measure/dimension/filter catalog, period and
+clause validation, typed errors, preview and execution contracts are implemented.
+The catalog is exposed to the UI, including allowed filter values and current
+asset-value lookup. Independent fixture calculations and SQL-backed contract
+verification remain open, so this is not a frozen acceptance contract.
+
 - Write exact request/response DTO examples and the field compatibility matrix
   for PM execution. Define aggregate versus records mode, multiple measures,
   categories, grouping, thresholds, order and output-column legality.
@@ -309,6 +364,12 @@ unsupported or unmeasurable outcome. Calculations are independently specified.
 Unresolved future measures are excluded rather than assigned invented formulas.
 
 ### Phase 2: deterministic PM execution engine
+
+The read-only executor now calculates the approved PM execution measures over a
+shared eligible population, applies matching and aggregate filters, groups on
+up to two dimensions, sorts, ranks and paginates. It returns per-measure
+provenance, population counts, category-specific cycles, as-of time and scope
+notes. Build success does not verify SQL translation or expected results.
 
 - Reuse V2 calculations through approved query primitives and cardinality-safe
   projections. Add compatible measures, two-dimensional grouping, aggregate
@@ -326,10 +387,18 @@ Existing V2 contracts and comparisons continue to work.
 
 ### Phase 3: report preview and typed presentation
 
+The analytics page now presents the V3 builder, catalog-driven filters, typed
+preview, explicit confirmation, result tables and pagination. Existing V2
+reporting remains available below the V3 builder. Users can request matching
+records as a separate report; metric-linked source drill-down and calculation
+source views are not implemented. Keyboard, responsive-screen and browser
+acceptance review remains pending.
+
 - Add the plan preview, edit controls, confirmation and execution states using
-  existing React components and generated API clients.
-- Render table columns from approved typed metadata. Add ungrouped summary,
-  per-measure matching records, calculation sources and metric definitions.
+  existing React components and typed API clients.
+- Render table columns from approved typed metadata. Add ungrouped summary and
+  metric definitions. Metric-linked matching records and calculation sources
+  remain outstanding.
 - Handle empty data, partial measurability, stale/expired previews, failed
   execution and cancellation without showing old results as current.
 - Keep the existing dashboard flow available. Review keyboard use and desktop
@@ -340,9 +409,17 @@ and inspect evidence without understanding the JSON contract.
 
 ### Phase 4: model interpretation and clarification
 
-- Adapt existing provider infrastructure to produce the new typed contract from
-  safe catalog definitions and sanitized input. Configure the provider/model
-  explicitly, with a feature flag, budget and bounded call count.
+The default interpreter is deterministic. Recognized question scope is retained
+in a draft when the category, period or measure needs clarification; local
+catalog suggestions support population-filter choices. The optional DeepSeek
+Flash path requires Development mode, `NaturalLanguageAnalytics:V3DeepSeekEnabled`
+and `DEEPSEEK_API_KEY`; the feature flag defaults off. No provider was called
+during this implementation.
+
+- Use the existing DeepSeek Flash client (`deepseek-flash`) to produce the new
+  typed contract from safe catalog definitions and sanitized input. Keep the
+  provider fixed, with an explicit feature flag, API-key requirement, budget
+  and bounded call count.
 - Resolve catalog values locally and validate model output before preview.
   Generate preview wording from the normalized plan.
 - Offer bounded clarification choices, preserve resolved fields and revalidate
@@ -352,9 +429,25 @@ and inspect evidence without understanding the JSON contract.
 
 Exit: development questions yield correct plans or appropriate clarification and
 rejection, with no unauthorized executable output. This is development evidence,
-not a held-out accuracy or production-language claim.
+not a held-out accuracy or production-language claim. No question corpus or
+provider-quality acceptance has been run for this implementation.
 
 ### Phase 5: first-release evaluation and controlled acceptance
+
+**Preparation status (2026-10-19):** A protocol outline and provisional English
+development question set have been drafted in
+[`reference/evaluation/pm-analytics-v3/`](../evaluation/pm-analytics-v3/README.md).
+They are not independently reviewed, frozen, or evaluated. Held-out questions
+have not been created or accessed for this phase. The acceptance exit criteria
+below remain open.
+
+**Engineering follow-up (2026-10-19):** A V3-only corpus validator and
+deterministic diagnostic/scoring gate, pending-review labels, and synthetic
+calculation fixtures have been added on the Phase 5 work branch. All 18
+provisional labels remain pending, so no question accuracy score or acceptance
+claim is available. Diagnostics surfaced two material candidate-label
+differences (the `or` filter and “not late” questions); both need reviewer
+adjudication. SQL Server 2019 and GSD task acceptance remain open.
 
 - Create a separately identified protocol and reviewed question set. Separate
   V2/V3 shared tasks from newly supported tasks and include unsafe, ambiguous,
@@ -374,7 +467,37 @@ a separate authorization step.
 
 ### Phase 6: asset inventory reporting
 
-Depends on the stable contract and executor, not on adding arbitrary joins.
+**Engineering status (2026-10-20):** The bounded inventory subject is
+implemented on the isolated `feature/nla-v3-asset-inventory` branch at code
+commit `b2c40f2a39c0e1b326a612cbdf09f77ea6555459`. The follow-up backend, Web,
+API-contract, and browser verification is recorded in
+[TEST-117](../evidence/test-runs/TEST-117-nla-v3-phase6-final-verification.md).
+An exact-head backend and evaluation follow-up at `a9331b2b2cdd04cbf2ecf27d3b08c85dbb6639f0`
+is recorded in
+[TEST-118](../evidence/test-runs/TEST-118-nla-v3-phase6-exact-head-follow-up.md);
+it confirms the current code remains unchanged and records the 18 pending
+labels without scoring them. The earlier
+[TEST-114](../evidence/test-runs/TEST-114-pm-analytics-v3-asset-inventory.md)
+remains the initial implementation evidence. Native SQL Server 2019 is still
+unverified. Phase 5 remains open: all 18 provisional interpretation labels
+still need independent human review, and no score or GSD acceptance claim is
+available.
+
+**Offline/mobile integration verification (2026-10-20):** The asset inventory
+subject is included in the isolated `feature/offline-nla-v3-integration`
+candidate with the offline inspection and mobile acknowledgement/home UX
+histories. The backend and Web integration corrections and local regression
+results are recorded in
+[TEST-122](../evidence/test-runs/TEST-122-offline-nla-integration-candidate-verification.md).
+Native SQL Server 2019 remains unverified because the disposable image registry
+request was denied, and GSD acceptance remains open. Backend CI #370, Web CI
+#283, and Flutter CI #50 passed on integration source commit `a93e71b`; see
+[TEST-123](../evidence/test-runs/TEST-123-offline-nla-integration-ci-verification.md).
+This does not implement Phase 7 or close Phase 5 review gates.
+
+The subject design, including grain, counts, filters, tests and dependencies,
+is in
+[`nla-v3-phase6-asset-inventory-design.md`](nla-v3-phase6-asset-inventory-design.md).
 
 - Add a subject whose row is one registered asset. Support category, department,
   building, general location and registration-status filters and counts.
@@ -387,6 +510,12 @@ Exit: inventory counts agree with authorized registry results and never count
 one asset once per historical schedule. Extend protocol coverage independently.
 
 ### Phase 7: batches and assignment coverage
+
+**Status:** planning only. The implementation requirements and open semantic
+decisions are in
+[`nla-v3-phase7-batch-assignment-design.md`](nla-v3-phase7-batch-assignment-design.md).
+Resolve those decisions before adding the subject; Phase 7 is not part of the
+current implementation branch.
 
 - Add a batch subject keyed by department, category and PM cycle. Building does
   not split a batch. Distinguish batch counts from asset-cycle counts.
@@ -402,6 +531,9 @@ Exit: batch counts and eligibility match the operational assignment workflow.
 Reports cannot silently assign work or present workload as employee performance.
 
 ### Phase 8: forms and inspection follow-up
+
+The bounded requirements and dependencies are listed in the Phase 6 design's
+[Phase 8 planning notes](nla-v3-phase6-asset-inventory-design.md#phase-8-forms-and-follow-up-reporting).
 
 - Add form reports at one row per form, with Draft, Submitted and Acknowledged
   states. Define ageing from an explicit event timestamp and a fixed as-of time.

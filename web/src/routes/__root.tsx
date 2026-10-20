@@ -38,7 +38,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
       <Card>
         <h1 className="text-xl font-semibold">Page not found</h1>
         <p className="mt-2 text-slate-600">
-          This route is not part of the current web foundation.
+          This page could not be found. Check the address or return to UniPM.
         </p>
         <Link className="mt-4 inline-block underline" to="/">
           Return to UniPM

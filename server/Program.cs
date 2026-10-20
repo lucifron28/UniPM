@@ -17,6 +17,7 @@ using Microsoft.OpenApi;
 using UniPM.Api.Features.Auth;
 using UniPM.Api.Features.Inspections;
 using UniPM.Api.Features.Schedules;
+using UniPM.Api.Hosting;
 
 var maintenanceCommand = SyntheticMaintenanceCommandParser.Parse(args);
 var builder = WebApplication.CreateBuilder(args);
@@ -56,6 +57,22 @@ var jwtRuntimeConfiguration = maintenanceCommand == SyntheticMaintenanceCommand.
 var authSessionRuntimeConfiguration = AuthSessionRuntimeConfiguration.Create(
     builder.Configuration.GetSection(AuthSessionOptions.SectionName).Get<AuthSessionOptions>()
     ?? new AuthSessionOptions());
+if (maintenanceCommand == SyntheticMaintenanceCommand.None
+    && !builder.Environment.IsDevelopment())
+{
+    var configuredWebOrigin = builder.Configuration["UNIPM_WEB_ORIGIN"];
+    var webOrigin = new Uri(authSessionRuntimeConfiguration.WebOrigin);
+    var localHost = webOrigin.IsLoopback
+        || webOrigin.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase)
+        || webOrigin.Host.EndsWith(".localhost", StringComparison.OrdinalIgnoreCase);
+    if (string.IsNullOrWhiteSpace(configuredWebOrigin)
+        || webOrigin.Scheme != Uri.UriSchemeHttps
+        || localHost)
+    {
+        throw new InvalidOperationException(
+            "UNIPM_WEB_ORIGIN must be explicitly configured as an HTTPS origin outside Development.");
+    }
+}
 
 builder.Services.Configure<ObservabilityOptions>(
     builder.Configuration.GetSection(ObservabilityOptions.SectionName));
@@ -149,9 +166,33 @@ builder.Services.AddScoped<ILexicalInstitutionalReferenceRetriever, SqlServerLex
 builder.Services.AddScoped<ISemanticInstitutionalReferenceRetriever, SqlServerSemanticInstitutionalReferenceRetriever>();
 builder.Services.AddScoped<PmPeriodDashboardService>();
 builder.Services.AddScoped<PmAnalyticsService>();
-builder.Services.Configure<InspectionPhotoEvidenceOptions>(
-    builder.Configuration.GetSection(InspectionPhotoEvidenceOptions.SectionName));
-builder.Services.AddSingleton<IInspectionPhotoEvidenceStorage, FileSystemInspectionPhotoEvidenceStorage>();
+builder.Services.AddScoped<PmAnalyticsV2QueryService>();
+builder.Services.AddScoped<PmAnalyticsV2QuestionInterpreter>();
+builder.Services.AddScoped<PmAnalyticsV3QueryService>();
+builder.Services.AddSingleton<PmAnalyticsV3PreviewStore>();
+builder.Services.AddScoped<PmAnalyticsV3QuestionInterpreter>();
+builder.Services
+    .AddOptions<InspectionPhotoEvidenceOptions>()
+    .Bind(builder.Configuration.GetSection(InspectionPhotoEvidenceOptions.SectionName))
+    .Validate(options =>
+    {
+        options.Validate();
+        return true;
+    }, "Inspection photo storage configuration is invalid.")
+    .ValidateOnStart();
+builder.Services.AddSingleton<IInspectionPhotoEvidenceStorage>(serviceProvider =>
+{
+    var options = serviceProvider.GetRequiredService<IOptions<InspectionPhotoEvidenceOptions>>();
+    return options.Value.StorageProvider switch
+    {
+        InspectionPhotoEvidenceOptions.FileSystemProvider =>
+            ActivatorUtilities.CreateInstance<FileSystemInspectionPhotoEvidenceStorage>(serviceProvider),
+        InspectionPhotoEvidenceOptions.AzureBlobProvider =>
+            ActivatorUtilities.CreateInstance<AzureBlobInspectionPhotoEvidenceStorage>(serviceProvider),
+        _ => throw new InvalidOperationException(
+            "InspectionPhotoEvidence:StorageProvider must be FileSystem or AzureBlob.")
+    };
+});
 builder.Services.Configure<NaturalLanguageAnalyticsOptions>(
     builder.Configuration.GetSection(NaturalLanguageAnalyticsOptions.SectionName));
 builder.Services.AddScoped<RuleBasedNaturalLanguageAnalyticsInterpreter>();
@@ -282,6 +323,9 @@ if (maintenanceCommand != SyntheticMaintenanceCommand.None)
     return;
 }
 
+var frontendPackaged = PackagedFrontend.IsPackaged(app.Environment);
+PackagedFrontend.Configure(app);
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
@@ -306,12 +350,15 @@ app.UseCors("UniPMWeb");
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapGet("/", () => Results.Ok(new
-{
-    name = "UniPM API",
-    status = "running"
-}))
+app.MapGet("/api/info", GetApiInfo)
 .WithName("GetApiInfo");
+
+if (!frontendPackaged)
+{
+    app.MapGet("/", GetApiInfo)
+    .WithName("GetApiInfoRoot")
+    .ExcludeFromDescription();
+}
 
 app.MapApiEndpoints();
 
@@ -326,5 +373,11 @@ app.MapHealthChecks("/health/ready", new HealthCheckOptions
 }).DisableHttpMetrics();
 
 app.Run();
+
+static IResult GetApiInfo() => Results.Ok(new
+{
+    name = "UniPM API",
+    status = "running"
+});
 
 public partial class Program;

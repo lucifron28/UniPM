@@ -53,6 +53,7 @@ const schedule = {
     building: 'Main Building',
     department: 'GSD',
     location: 'Lobby',
+    status: 'Active',
   },
 }
 const inspection = {
@@ -277,6 +278,152 @@ function expectStableRegistryLayout(
 }
 
 test.describe('Inspection review workflows', () => {
+  test('groups advanced filters, preserves their indicators, and contains zoom across breakpoints', async ({
+    page,
+  }) => {
+    await mockInspectionApi(page)
+    await page.route(inspectionRegistryRoute, (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          items: [
+            {
+              ...registryInspection,
+              externalPmNumber: 'WMS-PM-007',
+              correctiveFollowUpStatus: 'ReferredToWms',
+            },
+          ],
+          page: 1,
+          pageSize: 25,
+          totalCount: 1,
+          overallCount: 1,
+        }),
+      }),
+    )
+    await page.setViewportSize({ width: 1280, height: 900 })
+    await page.goto(
+      '/app/inspections?assetId=' +
+        `${assetId}&department=GSD&year=2026&quarter=Q3&pmCycle=2026-08&dateFrom=2026-07-01T00%3A00%3A00.000Z&dateTo=2026-07-31T23%3A59%3A59.000Z`,
+    )
+
+    const registry = page.locator(
+      'section[aria-labelledby="inspections-title"]',
+    )
+    await expect(
+      page.locator('.app-page-header').getByRole('heading', {
+        name: 'Inspections',
+        exact: true,
+      }),
+    ).toBeVisible()
+    await expect(
+      registry.getByRole('heading', { name: 'Find inspections' }),
+    ).toBeVisible()
+    await expect(
+      registry.getByRole('heading', { name: 'Inspection summary' }),
+    ).toBeVisible()
+    await expect(
+      registry.getByRole('heading', { name: 'Inspection records' }),
+    ).toBeVisible()
+    expect(await registry.locator('h1, h2').allTextContents()).toEqual([
+      'Find inspections',
+      'Inspection summary',
+      'Inspection records',
+    ])
+    await expect(page.getByLabel('Search inspections')).toBeVisible()
+    await expect(page.getByLabel('Asset category')).toBeVisible()
+    await expect(
+      page.getByLabel('PM calendar year', { exact: true }),
+    ).toBeVisible()
+    await expect(page.getByLabel('Recorded operational result')).toBeVisible()
+    await expect(page.getByLabel('Corrective follow-up status')).toBeVisible()
+    await expect(page.getByText('WMS-PM-007').first()).toBeVisible()
+    const filterLayout = await registry.locator('form').evaluate((form) => {
+      const columns = getComputedStyle(form).gridTemplateColumns
+      const repeatedColumns = columns.match(/^repeat\((\d+),/)
+      return {
+        className: form.className,
+        columns,
+        count: repeatedColumns
+          ? Number(repeatedColumns[1])
+          : columns.trim().split(/\s+/).length,
+        viewport: innerWidth,
+        md: matchMedia('(min-width: 48rem)').matches,
+        xl: matchMedia('(min-width: 80rem)').matches,
+        twoXl: matchMedia('(min-width: 96rem)').matches,
+      }
+    })
+    expect(filterLayout.count).toBe(3)
+    await page.mouse.move(1270, 5)
+    await page.screenshot({
+      path: 'test-results/web-ui-polish-inspections-desktop.png',
+      animations: 'disabled',
+      fullPage: true,
+    })
+
+    await page.getByText('More filters').click()
+    await expect(page.getByLabel('Department', { exact: true })).toBeVisible()
+    await expect(
+      page.getByLabel('Specific asset', { exact: true }),
+    ).toBeHidden()
+    for (const filter of [
+      'Specific asset',
+      'Department',
+      'PM calendar quarter',
+      'Exact PM month',
+      'Inspected from',
+      'Inspected to',
+    ]) {
+      await expect(
+        page.getByRole('button', { name: `Remove ${filter} filter` }),
+      ).toBeVisible()
+    }
+
+    const zoomGroup = page.getByRole('group', {
+      name: 'Inspection records zoom controls',
+    })
+    const increase = zoomGroup.getByRole('button', {
+      name: 'Increase Inspection records zoom',
+    })
+    await increase.click()
+    await increase.click()
+    await increase.click()
+    await expect(zoomGroup).toContainText('130%')
+    await expect(increase).toBeDisabled()
+
+    await page.getByRole('link', { name: 'View details' }).click()
+    await expect(page).toHaveURL(new RegExp(`/app/inspections/${inspectionId}`))
+    await page.getByRole('link', { name: 'Back to inspections' }).click()
+    await expect(page).toHaveURL(/department=GSD/)
+    await expect(page).toHaveURL(/pmCycle=2026-08/)
+    await expect(
+      page.getByRole('button', { name: 'Remove Exact PM month filter' }),
+    ).toBeVisible()
+
+    await page.setViewportSize({ width: 375, height: 812 })
+    await expect(
+      page.getByRole('link', { name: 'FE-001' }).first(),
+    ).toBeVisible()
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () =>
+            document.documentElement.scrollWidth -
+            document.documentElement.clientWidth,
+        ),
+      )
+      .toBeLessThanOrEqual(1)
+    await zoomGroup
+      .getByRole('button', {
+        name: 'Reset Inspection records zoom to 100 percent',
+      })
+      .click()
+    await page.screenshot({
+      path: 'test-results/web-ui-polish-inspections-mobile.png',
+      fullPage: true,
+    })
+  })
+
   test('keeps window scroll position on both pagination directions', async ({
     page,
   }) => {
@@ -323,22 +470,27 @@ test.describe('Inspection review workflows', () => {
     const rows = page.getByRole('table').locator('tbody tr')
     await expect(rows).toHaveCount(25)
     const next = page.getByRole('button', { name: 'Next' })
+    const workspace = page.locator('.app-workspace')
     await next.scrollIntoViewIfNeeded()
-    const scrollY = await page.evaluate(() => window.scrollY)
-    expect(scrollY).toBeGreaterThan(0)
+    const scrollTop = await workspace.evaluate((element) => element.scrollTop)
+    expect(scrollTop).toBeGreaterThan(0)
     const firstPageLayout = await registryLayout(page)
     await next.click()
     await expect(page).toHaveURL(/isOperational=false/)
     await expect(page).toHaveURL(/page=2/)
     await expect(page.getByRole('cell', { name: 'Finding 26' })).toBeVisible()
     await expect(rows).toHaveCount(1)
-    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(scrollY)
+    await expect
+      .poll(() => workspace.evaluate((element) => element.scrollTop))
+      .toBe(scrollTop)
     const lastPageLayout = await registryLayout(page)
     expectStableRegistryLayout(firstPageLayout, lastPageLayout)
     await page.getByRole('button', { name: 'Previous' }).click()
     await expect(page).not.toHaveURL(/page=2/)
     await expect(rows).toHaveCount(25)
-    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(scrollY)
+    await expect
+      .poll(() => workspace.evaluate((element) => element.scrollTop))
+      .toBe(scrollTop)
     expectStableRegistryLayout(firstPageLayout, await registryLayout(page))
 
     await page.goto('/app/inspections?isOperational=false&page=2')
@@ -391,7 +543,7 @@ test.describe('Inspection review workflows', () => {
     await mockInspectionApi(page)
     await page.goto('/app/inspections?isOperational=false')
     await expect(
-      page.getByRole('heading', { name: 'Inspections' }),
+      page.getByRole('heading', { name: 'Inspections', exact: true }),
     ).toBeVisible()
     await expect(page.getByLabel('Recorded operational result')).toHaveValue(
       'false',

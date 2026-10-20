@@ -19,6 +19,17 @@ class Asset {
   final String qrCodeValue;
   final String status;
 
+  Map<String, dynamic> toJson() => <String, dynamic>{
+    'id': id,
+    'assetCode': assetCode,
+    'assetCategory': assetCategory,
+    'building': building,
+    'department': department,
+    'location': location,
+    'qrCodeValue': qrCodeValue,
+    'status': status,
+  };
+
   factory Asset.fromJson(Map<String, dynamic> json) {
     return Asset(
       id: _requiredUuid(json, 'id'),

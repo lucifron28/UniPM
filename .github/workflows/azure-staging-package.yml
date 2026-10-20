@@ -1,0 +1,50 @@
+name: Azure staging package
+
+on:
+  push:
+    branches:
+      - "deploy/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: azure-staging-package-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  package:
+    name: Build ZIP artifact
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Set up .NET SDK
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Build the combined App Service package
+        run: pwsh -NoLogo -NoProfile -File scripts/package-azure-staging.ps1
+
+      - name: Upload package and provenance
+        uses: actions/upload-artifact@v4
+        with:
+          name: unipm-azure-staging-${{ github.sha }}
+          path: |
+            artifacts/azure-staging/${{ github.sha }}/unipm-azure-staging.zip
+            artifacts/azure-staging/${{ github.sha }}/unipm-azure-staging.zip.sha256
+            artifacts/azure-staging/${{ github.sha }}/provenance.json
+          if-no-files-found: error
+          retention-days: 14

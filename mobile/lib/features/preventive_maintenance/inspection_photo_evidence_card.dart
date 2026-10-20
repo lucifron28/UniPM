@@ -20,6 +20,7 @@ class InspectionPhotoEvidenceCard extends StatefulWidget {
     this.conditionLabel = 'Not selected',
     required this.hasSavedPhoto,
     required this.editable,
+    this.onlineAvailable = true,
     required this.repository,
     required this.onPendingStateChanged,
     this.capturePhoto = captureInspectionPhoto,
@@ -30,6 +31,7 @@ class InspectionPhotoEvidenceCard extends StatefulWidget {
   final String conditionLabel;
   final bool hasSavedPhoto;
   final bool editable;
+  final bool onlineAvailable;
   final InspectionPhotoEvidenceRepository repository;
   final ValueChanged<bool> onPendingStateChanged;
   final InspectionPhotoCapture capturePhoto;
@@ -278,7 +280,7 @@ class _InspectionPhotoEvidenceCardState
           spacing: 8,
           runSpacing: 8,
           children: [
-            if (widget.editable)
+            if (widget.editable && widget.onlineAvailable)
               OutlinedButton.icon(
                 key: Key('capture-inspection-photo-${widget.inspectionId}'),
                 onPressed: isSaving ? null : _capture,
@@ -301,14 +303,19 @@ class _InspectionPhotoEvidenceCardState
                 child: const Text('Remove'),
               ),
             ],
-            if (hasSavedPhoto && candidate == null)
+            if (hasSavedPhoto &&
+                candidate == null &&
+                (savedPreview != null || widget.onlineAvailable))
               OutlinedButton.icon(
                 key: Key('view-inspection-photo-${widget.inspectionId}'),
                 onPressed: isLoadingPhoto ? null : _viewSavedPhoto,
                 icon: const Icon(Icons.visibility_outlined),
                 label: const Text('View photo'),
               ),
-            if (hasSavedPhoto && widget.editable && candidate == null)
+            if (hasSavedPhoto &&
+                widget.editable &&
+                widget.onlineAvailable &&
+                candidate == null)
               TextButton(
                 key: Key('remove-inspection-photo-${widget.inspectionId}'),
                 onPressed: isSaving ? null : _removeSavedPhoto,
@@ -316,6 +323,11 @@ class _InspectionPhotoEvidenceCardState
               ),
             if (!widget.editable && !hasSavedPhoto)
               const Text('No photo evidence recorded.'),
+            if (widget.editable && !widget.onlineAvailable)
+              const Text(
+                'Connect and sync this inspection before adding or removing photo evidence.',
+                key: Key('inspection-photo-online-required'),
+              ),
           ],
         ),
       ],

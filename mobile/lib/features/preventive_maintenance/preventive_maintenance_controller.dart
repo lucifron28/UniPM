@@ -209,7 +209,26 @@ class PreventiveMaintenanceController extends ChangeNotifier {
     final form = selectedForm;
     if (form == null) return false;
     return (await _runSaving(() async {
-          await repository.deleteInspection(form.id, inspectionId);
+          PreventiveMaintenanceInspection? inspection;
+          for (final row in form.inspections) {
+            if (row.id == inspectionId) {
+              inspection = row;
+              break;
+            }
+          }
+          final currentRepository = repository;
+          if (inspection != null &&
+              currentRepository is OfflineSafePreventiveMaintenanceRepository) {
+            final safeRepository =
+                currentRepository as OfflineSafePreventiveMaintenanceRepository;
+            await safeRepository.deleteInspectionIfUnchanged(
+              form.id,
+              inspectionId,
+              inspection.updatedAt,
+            );
+          } else {
+            await currentRepository.deleteInspection(form.id, inspectionId);
+          }
           _replaceSelected(
             form.copyWith(
               inspections: form.inspections

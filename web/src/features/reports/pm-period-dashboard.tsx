@@ -1,17 +1,28 @@
-import {
-  useEffect,
-  useMemo,
-  useState,
-  type MouseEvent,
-  type ReactNode,
-} from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link } from '@tanstack/react-router'
+import {
+  Activity,
+  CalendarClock,
+  CalendarDays,
+  CircleAlert,
+  CircleCheck,
+  CircleX,
+  ClipboardCheck,
+  Clock,
+  Gauge,
+  type LucideIcon,
+} from 'lucide-react'
 import { formatAssetCategory } from '@/features/assets/asset-presentation'
+import { PageHeading } from '@/components/layout/page-heading'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
+import {
+  SummaryMetricCard,
+  type SummaryMetricTone,
+} from '@/components/ui/summary-metric-card'
 import type {
   PmPeriodDashboardAssetRowResponse,
   PmPeriodDashboardBatchResponse,
@@ -22,7 +33,6 @@ import {
   usePmPeriodDashboard,
   usePmPeriodDashboardCycles,
 } from '@/features/reports/pm-period-dashboard-queries'
-import { PmAnalyticsPanel } from '@/features/reports/pm-analytics'
 import { useCurrentUser } from '@/features/auth/current-user'
 import { useScheduleEnrollmentDeferrals } from '@/features/schedules/schedule-queries'
 import {
@@ -32,6 +42,7 @@ import {
 import './pm-dashboard-print.css'
 
 export type PmPeriodDashboardSearch = {
+  view?: 'question' | undefined
   assetCategory?: string | undefined
   year?: number | undefined
   pmCycle?: string | undefined
@@ -46,6 +57,8 @@ type DashboardMetricProps = {
   label: string
   value: ReactNode
   note?: string
+  icon: LucideIcon
+  tone: SummaryMetricTone
 }
 
 const selectClassName =
@@ -68,7 +81,6 @@ const timelinessOptions = [
 ]
 
 const dashboardTitleId = 'dashboard-title'
-const dashboardNlaSectionId = 'pm-analytics-section'
 
 function formatDate(
   value: string | null | undefined,
@@ -161,19 +173,58 @@ function formatLocation(
   )
 }
 
-function DashboardMetric({ label, value, note }: DashboardMetricProps) {
+function DashboardMetric({
+  label,
+  value,
+  note,
+  icon,
+  tone,
+}: DashboardMetricProps) {
   return (
-    <Card className="p-4 shadow-none">
-      <p className="text-xs font-semibold tracking-[0.08em] text-[var(--text-neutral)] uppercase">
-        {label}
-      </p>
-      <p className="mt-2 text-2xl font-bold tracking-tight text-[var(--text-primary)]">
-        {value}
-      </p>
-      {note && (
-        <p className="mt-1 text-xs text-[var(--text-secondary)]">{note}</p>
-      )}
-    </Card>
+    <SummaryMetricCard
+      label={label}
+      value={value}
+      {...(note === undefined ? {} : { note })}
+      icon={icon}
+      tone={tone}
+    />
+  )
+}
+
+export function DashboardModeSwitch({
+  view,
+  canAskNla,
+  onChange,
+}: {
+  view: 'report' | 'question'
+  canAskNla: boolean
+  onChange: (view: 'report' | 'question') => void
+}) {
+  if (!canAskNla) return null
+
+  return (
+    <div
+      role="group"
+      aria-label="Choose how to review PM results"
+      className="flex w-fit flex-wrap gap-2 rounded-xl border border-[var(--border-soft)] bg-white p-1"
+    >
+      <Button
+        type="button"
+        variant={view === 'report' ? 'primary' : 'secondary'}
+        aria-pressed={view === 'report'}
+        onClick={() => onChange('report')}
+      >
+        Build a report
+      </Button>
+      <Button
+        type="button"
+        variant={view === 'question' ? 'primary' : 'secondary'}
+        aria-pressed={view === 'question'}
+        onClick={() => onChange('question')}
+      >
+        Ask a question
+      </Button>
+    </div>
   )
 }
 
@@ -275,30 +326,6 @@ function selectionButtonClass(isSelected: boolean) {
   }`
 }
 
-function navigateToDashboardSection(
-  event: MouseEvent<HTMLAnchorElement>,
-  targetId: string,
-) {
-  event.preventDefault()
-  const target = document.getElementById(targetId)
-  if (!target) return
-
-  const prefersReducedMotion =
-    typeof window.matchMedia === 'function' &&
-    window.matchMedia('(prefers-reduced-motion: reduce)').matches
-
-  window.history.replaceState(
-    window.history.state,
-    '',
-    `${window.location.pathname}${window.location.search}#${targetId}`,
-  )
-  target.scrollIntoView?.({
-    behavior: prefersReducedMotion ? 'auto' : 'smooth',
-    block: 'start',
-  })
-  target.focus({ preventScroll: true })
-}
-
 function BatchOverview({
   batches,
   periodState,
@@ -311,7 +338,7 @@ function BatchOverview({
   const isClosed = periodState === 'Closed'
 
   return (
-    <Card className="p-4 shadow-none sm:p-5">
+    <Card className="content-card p-4 sm:p-5">
       <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h2 className="text-lg font-semibold text-[var(--text-primary)]">
@@ -450,7 +477,7 @@ function AssetRows({
   dashboardSearch?: PmPeriodDashboardSearch | undefined
 }) {
   return (
-    <Card className="p-4 shadow-none sm:p-5">
+    <Card className="content-card p-4 sm:p-5">
       <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h2 className="text-lg font-semibold text-[var(--text-primary)]">
@@ -596,28 +623,27 @@ function PeriodStateSummary({
           : 'The backend returned an unrecognized period state. Review the row-level status values for this period.'
 
   return (
-    <Card role="status" className="p-4 shadow-none sm:p-5">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-xs font-semibold tracking-[0.08em] text-[var(--text-neutral)] uppercase">
-            Period state
-          </p>
-          <p className="mt-1 text-lg font-semibold text-[var(--text-primary)]">
-            {state}
-          </p>
-        </div>
-        <StatusText
-          value={state}
-          tone={
-            dashboard.periodState === 'Closed'
-              ? 'success'
-              : dashboard.periodState === 'Active'
-                ? 'warning'
-                : 'neutral'
-          }
-        />
-      </div>
-      <p className="mt-3 text-sm text-[var(--text-secondary)]">{message}</p>
+    <Card
+      role="status"
+      className="flex flex-wrap items-center gap-x-3 gap-y-1 p-3 shadow-none"
+    >
+      <p className="text-xs font-semibold tracking-[0.08em] text-[var(--text-neutral)] uppercase">
+        Period state
+      </p>
+      <p className="font-semibold text-[var(--text-primary)]">{state}</p>
+      <StatusText
+        value={state}
+        tone={
+          dashboard.periodState === 'Closed'
+            ? 'success'
+            : dashboard.periodState === 'Active'
+              ? 'warning'
+              : 'neutral'
+        }
+      />
+      <p className="basis-full text-sm text-[var(--text-secondary)]">
+        {message}
+      </p>
     </Card>
   )
 }
@@ -632,58 +658,11 @@ function DashboardMetrics({
   return (
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
       <DashboardMetric
-        label="Scheduled"
-        value={formatNumber(dashboard.scheduled)}
-      />
-      <DashboardMetric
-        label="Inspected"
-        value={formatNumber(dashboard.inspected)}
-      />
-      <DashboardMetric
-        label="Completed on time"
-        value={formatNumber(dashboard.completedOnTime)}
-      />
-      <DashboardMetric
-        label="Completed late"
-        value={formatNumber(dashboard.completedLate)}
-      />
-      {isClosed && (
-        <DashboardMetric
-          label="Not completed"
-          value={formatNumber(dashboard.notCompleted)}
-        />
-      )}
-      <DashboardMetric
-        label="Remaining"
-        value={formatNumber(dashboard.remaining)}
-        note="Backend-reported unfinished scheduled work"
-      />
-      {dashboard.inspectionResultsAvailable ? (
-        <>
-          <DashboardMetric
-            label="Operational"
-            value={formatNumber(dashboard.operational)}
-          />
-          <DashboardMetric
-            label="Non-operational"
-            value={formatNumber(dashboard.nonOperational)}
-          />
-        </>
-      ) : (
-        <Card role="status" className="p-4 shadow-none">
-          <p className="text-sm font-semibold text-[var(--text-primary)]">
-            No completed inspection results yet
-          </p>
-          <p className="mt-2 text-xs text-[var(--text-secondary)]">
-            Operational and non-operational counts are not meaningful for this
-            period yet.
-          </p>
-        </Card>
-      )}
-      <DashboardMetric
         label="Progress"
         value={formatPercent(dashboard.progressPercent)}
-        note="Backend-reported inspection progress"
+        note="Inspected / scheduled asset cycles"
+        icon={Activity}
+        tone="information"
       />
       <DashboardMetric
         label="Compliance rate"
@@ -694,10 +673,77 @@ function DashboardMetrics({
         }
         note={
           dashboard.complianceMeasurable
-            ? 'Backend-reported result'
+            ? 'Completed on time / scheduled asset cycles'
             : 'Backend reports this period is not measurable yet'
         }
+        icon={Gauge}
+        tone={dashboard.complianceMeasurable ? 'success' : 'neutral'}
       />
+      <DashboardMetric
+        label="Scheduled"
+        value={formatNumber(dashboard.scheduled)}
+        icon={CalendarDays}
+        tone="brand"
+      />
+      <DashboardMetric
+        label="Inspected"
+        value={formatNumber(dashboard.inspected)}
+        icon={ClipboardCheck}
+        tone="information"
+      />
+      <DashboardMetric
+        label="Completed on time"
+        value={formatNumber(dashboard.completedOnTime)}
+        icon={CircleCheck}
+        tone="success"
+      />
+      <DashboardMetric
+        label="Completed late"
+        value={formatNumber(dashboard.completedLate)}
+        icon={Clock}
+        tone="warning"
+      />
+      {isClosed && (
+        <DashboardMetric
+          label="Not completed"
+          value={formatNumber(dashboard.notCompleted)}
+          icon={CircleX}
+          tone="danger"
+        />
+      )}
+      <DashboardMetric
+        label="Remaining"
+        value={formatNumber(dashboard.remaining)}
+        note="Unfinished scheduled work"
+        icon={CalendarClock}
+        tone="neutral"
+      />
+      {dashboard.inspectionResultsAvailable ? (
+        <>
+          <DashboardMetric
+            label="Operational"
+            value={formatNumber(dashboard.operational)}
+            icon={CircleCheck}
+            tone="success"
+          />
+          <DashboardMetric
+            label="Non-operational"
+            value={formatNumber(dashboard.nonOperational)}
+            icon={CircleAlert}
+            tone="danger"
+          />
+        </>
+      ) : (
+        <Card role="status" className="content-card rounded-lg p-4">
+          <p className="text-sm font-semibold text-[var(--text-primary)]">
+            No completed inspection results yet
+          </p>
+          <p className="mt-2 text-xs text-[var(--text-secondary)]">
+            Operational and non-operational counts are not meaningful for this
+            period yet.
+          </p>
+        </Card>
+      )}
     </div>
   )
 }
@@ -741,22 +787,22 @@ function DeferredEnrollmentDashboardSummary() {
   return (
     <Card
       aria-labelledby="dashboard-deferred-enrollment-title"
-      className="flex flex-wrap items-center justify-between gap-4 border-[color-mix(in_srgb,var(--warning)_35%,white)] p-4 shadow-none"
+      className="content-card flex flex-wrap items-center justify-between gap-3 rounded-lg p-3"
     >
-      <div>
+      <div className="min-w-0 flex-1">
         <h2
           id="dashboard-deferred-enrollment-title"
-          className="font-semibold text-[var(--text-primary)]"
+          className="text-sm font-semibold text-[var(--text-primary)]"
         >
-          Deferred enrollment across all PM periods
+          Deferred enrollment: {pendingCount} need review · {reviewedCount}{' '}
+          reviewed
         </h2>
-        <p className="mt-1 text-sm text-[var(--text-secondary)]">
-          {pendingCount} need review · {reviewedCount} reviewed. Deferred cycles
-          have no schedule and are not completed maintenance. They stay outside
-          the scheduled and compliance totals.
+        <p className="mt-1 text-xs text-[var(--text-secondary)]">
+          These cycles have no schedule, are not completed maintenance, and stay
+          outside scheduled and compliance totals.
         </p>
       </div>
-      <Button asChild variant="secondary">
+      <Button asChild variant="secondary" className="h-9 min-h-0 px-3">
         <Link to="/app/schedules" hash="schedule-enrollment-deferrals">
           Review deferred cycles
         </Link>
@@ -776,8 +822,8 @@ export function PmPeriodDashboardPresentation({
 }) {
   return (
     <>
-      <PeriodStateSummary dashboard={dashboard} />
       <DashboardMetrics dashboard={dashboard} />
+      <PeriodStateSummary dashboard={dashboard} />
       {showBatch && (
         <BatchOverview
           batches={dashboard.batches}
@@ -804,6 +850,18 @@ export function PmPeriodDashboard({
   const currentUser = useCurrentUser()
   const canAskNla = Boolean(
     currentUser.data?.id && currentUser.data.roles.includes('GSD'),
+  )
+  const changeView = (nextView: 'report' | 'question') =>
+    onSearchChange(
+      { ...search, view: nextView === 'question' ? 'question' : undefined },
+      { replace: true },
+    )
+  const modeSwitch = (
+    <DashboardModeSwitch
+      view="report"
+      canAskNla={canAskNla}
+      onChange={changeView}
+    />
   )
   const categoryOptions = useMemo(
     () => [...new Set(cycles.map((group) => group.assetCategory))].sort(),
@@ -930,11 +988,9 @@ export function PmPeriodDashboard({
 
   if (cyclesQuery.isPending) {
     return (
-      <section
-        aria-labelledby="dashboard-title"
-        className="max-w-7xl space-y-5"
-      >
+      <section aria-labelledby="dashboard-title" className="space-y-4">
         <DashboardHeader />
+        {modeSwitch}
         <DeferredEnrollmentDashboardSummary />
         <CyclesLoading />
       </section>
@@ -943,11 +999,9 @@ export function PmPeriodDashboard({
 
   if (cyclesQuery.isError) {
     return (
-      <section
-        aria-labelledby="dashboard-title"
-        className="max-w-7xl space-y-5"
-      >
+      <section aria-labelledby="dashboard-title" className="space-y-4">
         <DashboardHeader />
+        {modeSwitch}
         <DeferredEnrollmentDashboardSummary />
         <QueryError
           message="PM period options could not be loaded."
@@ -959,12 +1013,9 @@ export function PmPeriodDashboard({
 
   if (cycles.length === 0) {
     return (
-      <section
-        aria-labelledby="dashboard-title"
-        className="max-w-7xl space-y-5"
-      >
+      <section aria-labelledby="dashboard-title" className="space-y-4">
         <DashboardHeader />
-        <DeferredEnrollmentDashboardSummary />
+        {modeSwitch}
         <Card className="p-6 shadow-none">
           <h2 className="text-lg font-semibold text-[var(--text-primary)]">
             No PM periods are scheduled
@@ -973,58 +1024,44 @@ export function PmPeriodDashboard({
             Schedule a PM period to make it available for report generation.
           </p>
         </Card>
+        <DeferredEnrollmentDashboardSummary />
       </section>
     )
   }
 
   return (
-    <section aria-labelledby="dashboard-title" className="max-w-7xl space-y-5">
-      <DashboardHeader showNlaShortcut={canAskNla} />
+    <section aria-labelledby="dashboard-title" className="space-y-4">
+      <DashboardHeader />
+      {modeSwitch}
 
       {showGeneratedReport ? (
         <>
-          <div className="pm-dashboard-report space-y-5">
+          <div className="pm-dashboard-report space-y-4">
             <section aria-labelledby="pm-dashboard-reporting-period">
-              <Card className="p-4 shadow-none sm:p-5">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <Card className="content-card p-3 sm:p-4">
+                <div className="flex flex-wrap items-center justify-between gap-x-5 gap-y-3">
                   <div>
-                    <p className="text-sm font-semibold tracking-[0.08em] text-[var(--primary)] uppercase">
+                    <p className="text-xs font-semibold tracking-[0.08em] text-[var(--primary)] uppercase">
                       Reporting period
                     </p>
                     <h2
                       id="pm-dashboard-reporting-period"
-                      className="mt-1 text-xl font-semibold text-[var(--text-primary)]"
+                      className="mt-1 text-base font-semibold text-[var(--text-primary)]"
                     >
-                      Selected maintenance scope
+                      {formatAssetCategory(search.assetCategory ?? '')} ·{' '}
+                      {search.pmCycle
+                        ? formatPmCycle(search.pmCycle)
+                        : 'Not selected'}
                     </h2>
-                    <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
-                      <div>
-                        <dt className="text-xs font-semibold text-[var(--text-neutral)]">
-                          Asset category
-                        </dt>
-                        <dd className="mt-1 font-medium text-[var(--text-primary)]">
-                          {formatAssetCategory(search.assetCategory ?? '')}
-                        </dd>
-                      </div>
-                      <div>
-                        <dt className="text-xs font-semibold text-[var(--text-neutral)]">
-                          PM year
-                        </dt>
-                        <dd className="mt-1 font-medium text-[var(--text-primary)]">
-                          {search.year ?? 'Not selected'}
-                        </dd>
-                      </div>
-                      <div>
-                        <dt className="text-xs font-semibold text-[var(--text-neutral)]">
-                          PM month
-                        </dt>
-                        <dd className="mt-1 font-medium text-[var(--text-primary)]">
-                          {search.pmCycle
-                            ? formatPmCycle(search.pmCycle)
-                            : 'Not selected'}
-                        </dd>
-                      </div>
-                    </dl>
+                    <p className="mt-1 text-xs text-[var(--text-secondary)]">
+                      PM year {search.year ?? 'Not selected'} · Due
+                      (Asia/Manila){' '}
+                      {dashboardQuery.isPending
+                        ? 'Loading...'
+                        : dashboardQuery.data
+                          ? formatPmCycleDueDate(dashboardQuery.data.pmCycle)
+                          : 'Unavailable'}
+                    </p>
                   </div>
                   <div className="flex flex-wrap gap-2 print:hidden">
                     <Button
@@ -1036,91 +1073,45 @@ export function PmPeriodDashboard({
                     </Button>
                     <Button
                       type="button"
-                      className="bg-white text-[var(--text-primary)] hover:bg-[var(--page-background)]"
+                      variant="secondary"
                       onClick={handleChangeSelection}
                     >
                       Change selection
                     </Button>
                   </div>
                 </div>
-                <div className="mt-5 grid gap-3 border-t border-[var(--border-soft)] pt-4 sm:grid-cols-[minmax(0,18rem)_1fr] sm:items-end">
-                  <div>
-                    <Label htmlFor="pm-dashboard-department">
-                      Department (report scope)
-                    </Label>
-                    <select
-                      id="pm-dashboard-department"
-                      value={search.department ?? ''}
-                      onChange={(event) =>
-                        onSearchChange({
-                          ...search,
-                          department: event.target.value || undefined,
-                        })
-                      }
-                      disabled={scopeDashboardQuery.isPending}
-                      className={`${selectClassName} mt-2`}
-                    >
-                      <option value="">All departments</option>
-                      {search.department &&
-                        !departmentOptions.includes(search.department) && (
-                          <option value={search.department}>
-                            {search.department}
-                          </option>
-                        )}
-                      {departmentOptions.map((value) => (
-                        <option key={value} value={value}>
-                          {value}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <p className="text-xs text-[var(--text-secondary)]">
-                    Department is part of the report scope and updates summary
-                    totals. Condition, timeliness, and asset search are
-                    row-level filters below.
-                  </p>
-                </div>
-                <p className="mt-4 text-sm text-[var(--text-secondary)]">
-                  <span className="font-semibold text-[var(--text-primary)]">
-                    Due date (Asia/Manila):
-                  </span>{' '}
-                  {dashboardQuery.isPending
-                    ? 'Loading...'
-                    : dashboardQuery.data
-                      ? formatPmCycleDueDate(dashboardQuery.data.pmCycle)
-                      : 'Unavailable'}
-                </p>
               </Card>
             </section>
 
-            <DeferredEnrollmentDashboardSummary />
-
             {dashboardQuery.isPending ? (
-              <DashboardLoading />
+              <>
+                <DeferredEnrollmentDashboardSummary />
+                <DashboardLoading />
+              </>
             ) : dashboardQuery.isError ? (
-              <QueryError
-                message="The selected PM period could not be loaded."
-                onRetry={() => void dashboardQuery.refetch()}
-              />
+              <>
+                <DeferredEnrollmentDashboardSummary />
+                <QueryError
+                  message="The selected PM period could not be loaded."
+                  onRetry={() => void dashboardQuery.refetch()}
+                />
+              </>
             ) : dashboardQuery.data ? (
               <>
                 <section
                   aria-labelledby="pm-dashboard-period-status"
-                  className="space-y-3"
+                  className="space-y-2"
                 >
                   <div>
-                    <p className="text-sm font-semibold tracking-[0.08em] text-[var(--primary)] uppercase">
-                      Period status and maintenance metrics
-                    </p>
                     <h2
                       id="pm-dashboard-period-status"
-                      className="mt-1 text-xl font-semibold text-[var(--text-primary)]"
+                      className="text-xl font-bold text-[var(--text-primary)]"
                     >
                       Period overview
                     </h2>
                     <p className="mt-1 text-sm text-[var(--text-secondary)]">
-                      The status explanation is followed by the backend-reported
-                      maintenance metrics for this scope.
+                      Progress and compliance lead the report. Period state and
+                      the remaining backend-reported measures follow.
                     </p>
                   </div>
                   <PmPeriodDashboardPresentation
@@ -1130,8 +1121,47 @@ export function PmPeriodDashboard({
                   />
                 </section>
 
+                <DeferredEnrollmentDashboardSummary />
+
                 <section aria-labelledby="pm-dashboard-detailed-filters">
-                  <Card className="p-4 shadow-none sm:p-5">
+                  <Card className="content-card p-4 sm:p-5">
+                    <div className="grid gap-4 border-b border-[var(--border-soft)] pb-4 md:grid-cols-[minmax(0,18rem)_1fr] md:items-end">
+                      <div>
+                        <Label htmlFor="pm-dashboard-department">
+                          Department (report scope)
+                        </Label>
+                        <select
+                          id="pm-dashboard-department"
+                          value={search.department ?? ''}
+                          onChange={(event) =>
+                            onSearchChange({
+                              ...search,
+                              department: event.target.value || undefined,
+                            })
+                          }
+                          disabled={scopeDashboardQuery.isPending}
+                          className={`${selectClassName} mt-2`}
+                        >
+                          <option value="">All departments</option>
+                          {search.department &&
+                            !departmentOptions.includes(search.department) && (
+                              <option value={search.department}>
+                                {search.department}
+                              </option>
+                            )}
+                          {departmentOptions.map((value) => (
+                            <option key={value} value={value}>
+                              {value}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <p className="text-xs text-[var(--text-secondary)]">
+                        Department is part of the report scope and updates
+                        summary totals. The row-level filters below narrow
+                        records only.
+                      </p>
+                    </div>
                     <div>
                       <p className="text-sm font-semibold tracking-[0.08em] text-[var(--primary)] uppercase">
                         Row-level filters
@@ -1219,7 +1249,7 @@ export function PmPeriodDashboard({
                         <Button type="submit">Apply search</Button>
                         <Button
                           type="button"
-                          className="bg-white text-[var(--text-primary)] hover:bg-[var(--page-background)]"
+                          variant="secondary"
                           onClick={() => {
                             setText('')
                             onSearchChange({
@@ -1309,12 +1339,12 @@ export function PmPeriodDashboard({
               </>
             ) : null}
           </div>
-          {canAskNla && <DashboardNlaSection />}
         </>
       ) : (
         <>
+          <DeferredEnrollmentDashboardSummary />
           <section aria-labelledby="pm-dashboard-reporting-period">
-            <Card className="p-4 shadow-none sm:p-5">
+            <Card className="content-card p-4 sm:p-5">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                   <p className="text-sm font-semibold tracking-[0.08em] text-[var(--primary)] uppercase">
@@ -1331,15 +1361,17 @@ export function PmPeriodDashboard({
                     loads only after you generate it.
                   </p>
                 </div>
-                {hasValidGeneratedScope && isChangingSelection && (
-                  <Button
-                    type="button"
-                    className="bg-white text-[var(--text-primary)] hover:bg-[var(--page-background)]"
-                    onClick={() => setIsChangingSelection(false)}
-                  >
-                    Cancel
-                  </Button>
-                )}
+                <div className="flex flex-wrap gap-2 print:hidden">
+                  {hasValidGeneratedScope && isChangingSelection && (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => setIsChangingSelection(false)}
+                    >
+                      Cancel
+                    </Button>
+                  )}
+                </div>
               </div>
 
               {hasRequestedScope && !hasValidGeneratedScope && (
@@ -1466,75 +1498,20 @@ export function PmPeriodDashboard({
               </div>
             </Card>
           </section>
-          <DeferredEnrollmentDashboardSummary />
         </>
       )}
-      {!showGeneratedReport && canAskNla && <DashboardNlaSection />}
     </section>
   )
 }
 
-export function DashboardHeader({
-  showNlaShortcut = false,
-}: {
-  showNlaShortcut?: boolean
-}) {
+export function DashboardHeader() {
   return (
-    <div
-      data-print-hide
-      className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"
-    >
-      <div>
-        <p className="text-sm font-semibold tracking-[0.08em] text-[var(--primary)] uppercase">
-          UniPM
-        </p>
-        <h1
-          id={dashboardTitleId}
-          tabIndex={-1}
-          className="mt-2 text-3xl font-bold tracking-tight text-[var(--text-primary)] outline-none sm:text-4xl"
-        >
-          Preventive Maintenance Dashboard
-        </h1>
-        <p className="mt-2 max-w-3xl text-[var(--text-secondary)]">
-          Choose the maintenance period you want to review.
-        </p>
-      </div>
-      {showNlaShortcut && (
-        <Button asChild variant="secondary" className="self-start">
-          <a
-            href={`#${dashboardNlaSectionId}`}
-            onClick={(event) =>
-              navigateToDashboardSection(event, dashboardNlaSectionId)
-            }
-          >
-            Ask NLA
-          </a>
-        </Button>
-      )}
-    </div>
-  )
-}
-
-export function DashboardNlaSection() {
-  return (
-    <section
-      id={dashboardNlaSectionId}
+    <PageHeading
+      id={dashboardTitleId}
       tabIndex={-1}
-      aria-label="Natural Language Analytics"
-      className="scroll-mt-6 outline-none print:hidden"
-    >
-      <PmAnalyticsPanel />
-      <div className="mt-3 flex justify-end">
-        <a
-          href={`#${dashboardTitleId}`}
-          onClick={(event) =>
-            navigateToDashboardSection(event, dashboardTitleId)
-          }
-          className="text-sm font-semibold text-[var(--primary)] underline-offset-2 hover:underline focus-visible:rounded focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:outline-none"
-        >
-          Back to top
-        </a>
-      </div>
-    </section>
+      eyebrow="UniPM"
+      title="Preventive Maintenance Dashboard"
+      description="Review preventive maintenance with filters or a question."
+    />
   )
 }

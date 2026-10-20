@@ -231,7 +231,8 @@ class ApiClient {
       );
     }
     if (response.statusCode >= 500) {
-      throw const ApiException(
+      throw ApiException(
+        statusCode: response.statusCode,
         message: 'The mobile service is unavailable. Please try again.',
       );
     }

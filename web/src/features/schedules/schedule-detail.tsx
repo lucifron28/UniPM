@@ -142,12 +142,12 @@ export function ScheduleDetail({
           <p className="text-sm font-semibold tracking-[0.08em] text-[var(--primary)] uppercase">
             Preventive maintenance schedule
           </p>
-          <h1
+          <h2
             id="schedule-detail-title"
             className="mt-2 text-3xl font-bold tracking-tight text-[var(--text-primary)]"
           >
             {record.asset?.assetCode ?? 'Schedule record'}
-          </h1>
+          </h2>
           <p className="mt-2 text-[var(--text-secondary)]">
             Scheduled month: {formatPmCycle(record.pmCycle)}
           </p>

@@ -6,13 +6,13 @@
   },
   "servers": [
     {
-      "url": "http://127.0.0.1:5057/"
+      "url": "http://localhost:5254/"
     }
   ],
   "paths": {
-    "/": {
+    "/api/info": {
       "get": {
-        "tags": ["UniPM.Api"],
+        "tags": ["Program"],
         "operationId": "GetApiInfo",
         "responses": {
           "200": {
@@ -584,6 +584,161 @@
         }
       }
     },
+    "/api/v1/assets/registry": {
+      "get": {
+        "tags": ["Assets"],
+        "summary": "Lists a bounded page of assets for the web registry",
+        "operationId": "ListAssetRegistry",
+        "parameters": [
+          {
+            "name": "assetCategory",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "building",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "department",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "hasDepartment",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": ["integer", "string"],
+              "format": "int32"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": ["integer", "string"],
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetRegistryPageResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/assets/registry/options": {
+      "get": {
+        "tags": ["Assets"],
+        "summary": "Lists small asset registry filter options",
+        "operationId": "GetAssetRegistryOptions",
+        "parameters": [
+          {
+            "name": "assetCategory",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "department",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetRegistryOptionsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/assets/registry/summary": {
+      "get": {
+        "tags": ["Assets"],
+        "summary": "Returns overall asset totals by category and status",
+        "operationId": "GetAssetRegistrySummary",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetRegistrySummaryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/assets/by-code/{assetCode}": {
       "get": {
         "tags": ["Assets"],
@@ -682,18 +837,170 @@
         }
       }
     },
-    "/api/v1/schedules/assignment-options": {
-      "get": {
+    "/api/v1/schedules/generate": {
+      "post": {
         "tags": ["Schedules"],
-        "summary": "Searches a bounded page of active Inspectors for schedule assignment",
-        "operationId": "ListScheduleWorkerAssignmentOptions",
+        "summary": "Ensures missing CPMP schedules for one calendar year",
+        "operationId": "GeneratePreventiveMaintenanceSchedules",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateScheduleCyclesDto"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ScheduleWorkerAssignmentOptionsResponse"
+                  "$ref": "#/components/schemas/ScheduleGenerationResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/schedules/coverage-review": {
+      "get": {
+        "tags": ["Schedules"],
+        "summary": "Lists past CPMP cycles missing both a schedule and a deferral for GSD review",
+        "operationId": "ListScheduleCoverageReview",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": ["integer", "string"],
+              "format": "int32"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": ["integer", "string"],
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleCoverageReviewPage"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      }
+    },
+    "/api/v1/schedules/enrollment-deferrals": {
+      "get": {
+        "tags": ["Schedules"],
+        "summary": "Lists deferred asset cycles and their GSD review status",
+        "operationId": "ListScheduleEnrollmentDeferrals",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": ["integer", "string"],
+              "format": "int32"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": ["integer", "string"],
+              "format": "int32"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "pmCycle",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "assetCategory",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "department",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleEnrollmentDeferralPage"
                 }
               }
             }
@@ -714,7 +1021,70 @@
           "403": {
             "description": "Forbidden"
           }
+        }
+      }
+    },
+    "/api/v1/schedules/enrollment-deferrals/{assetId}/{pmCycle}/review": {
+      "post": {
+        "tags": ["Schedules"],
+        "summary": "Marks one deferred asset cycle as reviewed by GSD",
+        "operationId": "ReviewScheduleEnrollmentDeferral",
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "pmCycle",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScheduleEnrollmentDeferralReviewRequest"
+              }
+            }
+          },
+          "required": true
         },
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict"
+          }
+        }
+      }
+    },
+    "/api/v1/schedules/supervisor-assignment-options": {
+      "get": {
+        "tags": ["Schedules"],
+        "summary": "Searches a bounded page of active Supervisors for GSD batch assignment",
+        "operationId": "ListScheduleSupervisorAssignmentOptions",
         "parameters": [
           {
             "name": "search",
@@ -749,14 +1119,7 @@
               "format": "uuid"
             }
           }
-        ]
-      }
-    },
-    "/api/v1/schedules/supervisor-assignment-options": {
-      "get": {
-        "tags": ["Schedules"],
-        "summary": "Searches a bounded page of active Supervisors for schedule assignment",
-        "operationId": "ListScheduleSupervisorAssignmentOptions",
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -784,7 +1147,14 @@
           "403": {
             "description": "Forbidden"
           }
-        },
+        }
+      }
+    },
+    "/api/v1/schedules/assignment-options": {
+      "get": {
+        "tags": ["Schedules"],
+        "summary": "Searches a bounded page of active Inspectors for Supervisor batch assignment",
+        "operationId": "ListScheduleWorkerAssignmentOptions",
         "parameters": [
           {
             "name": "search",
@@ -819,7 +1189,35 @@
               "format": "uuid"
             }
           }
-        ]
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleWorkerAssignmentOptionsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
       }
     },
     "/api/v1/schedules": {
@@ -1007,6 +1405,82 @@
         }
       }
     },
+    "/api/v1/schedules/{id}/supervisor-assignment": {
+      "put": {
+        "tags": ["Schedules"],
+        "summary": "Assigns a Supervisor to all schedules in one PM batch",
+        "operationId": "AssignScheduleBatchSupervisor",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignScheduleSupervisorDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleAssignmentBatchResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/schedules/{id}/assignment": {
       "put": {
         "tags": ["Schedules"],
@@ -1083,39 +1557,51 @@
         }
       }
     },
-    "/api/v1/schedules/{id}/supervisor-assignment": {
-      "put": {
+    "/api/v1/schedules/assignment-batches": {
+      "get": {
         "tags": ["Schedules"],
-        "summary": "Assigns a Supervisor to all schedules in one PM batch",
-        "operationId": "AssignScheduleBatchSupervisor",
+        "summary": "Lists grouped PM schedule batches for assignment",
+        "operationId": "ListScheduleAssignmentBatches",
         "parameters": [
           {
-            "name": "id",
-            "in": "path",
+            "name": "year",
+            "in": "query",
             "required": true,
             "schema": {
-              "type": "string",
-              "format": "uuid"
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": ["integer", "string"],
+              "format": "int32"
+            }
+          },
+          {
+            "name": "assetCategory",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "department",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "pmCycle",
+            "in": "query",
+            "schema": {
+              "type": "string"
             }
           }
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AssignScheduleSupervisorDto"
-              }
-            }
-          },
-          "required": true
-        },
         "responses": {
           "200": {
             "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ScheduleAssignmentBatchResponse"
+                  "$ref": "#/components/schemas/ScheduleAssignmentQueueResponse"
                 }
               }
             }
@@ -1135,26 +1621,212 @@
           },
           "403": {
             "description": "Forbidden"
+          }
+        }
+      }
+    },
+    "/api/v1/schedules/registry": {
+      "get": {
+        "tags": ["Schedules"],
+        "summary": "Lists a bounded page of schedules for the web registry",
+        "operationId": "ListScheduleRegistry",
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
           },
-          "404": {
-            "description": "Not Found",
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "quarter",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "year",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": ["integer", "string"],
+              "format": "int32"
+            }
+          },
+          {
+            "name": "pmCycle",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "department",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "assetCategory",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": ["integer", "string"],
+              "format": "int32"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": ["integer", "string"],
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ScheduleRegistryPageResponse"
                 }
               }
             }
           },
-          "409": {
-            "description": "Conflict",
+          "400": {
+            "description": "Bad Request",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
                 }
               }
             }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      }
+    },
+    "/api/v1/schedules/registry/options": {
+      "get": {
+        "tags": ["Schedules"],
+        "summary": "Lists scoped schedule registry filter options",
+        "operationId": "GetScheduleRegistryOptions",
+        "parameters": [
+          {
+            "name": "assetCategory",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "department",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleRegistryOptionsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      }
+    },
+    "/api/v1/schedules/registry/summary": {
+      "get": {
+        "tags": ["Schedules"],
+        "summary": "Returns status totals for the authenticated schedule read scope",
+        "operationId": "GetScheduleRegistrySummary",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleRegistrySummaryResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           }
         }
       }
@@ -1328,6 +2000,329 @@
         }
       }
     },
+    "/api/v1/inspections/{id}/wms-referral": {
+      "get": {
+        "tags": ["Inspections"],
+        "summary": "Gets the manually recorded WMS PM number and its change audit",
+        "operationId": "GetInspectionWmsReferral",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InspectionWmsReferralDetailResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["Inspections"],
+        "summary": "Records or corrects the external WMS PM number without changing the inspection",
+        "operationId": "UpdateInspectionWmsReferral",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateInspectionWmsReferralDto"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InspectionWmsReferralResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inspections/registry": {
+      "get": {
+        "tags": ["Inspections"],
+        "summary": "Lists a bounded page of acknowledged or legacy official inspections for the web registry",
+        "operationId": "ListInspectionRegistry",
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "scheduleId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "isOperational",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "dateFrom",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "dateTo",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "year",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": ["integer", "string"],
+              "format": "int32"
+            }
+          },
+          {
+            "name": "quarter",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "pmCycle",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "department",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "assetCategory",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "wmsReferralStatus",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": ["integer", "string"],
+              "format": "int32"
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": ["integer", "string"],
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InspectionRegistryPageResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inspections/registry/options": {
+      "get": {
+        "tags": ["Inspections"],
+        "summary": "Lists lightweight official inspection filter options",
+        "operationId": "GetInspectionRegistryOptions",
+        "parameters": [
+          {
+            "name": "assetCategory",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "department",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InspectionRegistryOptionsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/inspections/registry/summary": {
+      "get": {
+        "tags": ["Inspections"],
+        "summary": "Returns overall official inspection totals",
+        "operationId": "GetInspectionRegistrySummary",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InspectionRegistrySummaryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/inspections": {
       "get": {
         "tags": ["Inspections"],
@@ -1470,44 +2465,6 @@
       }
     },
     "/api/v1/inspections/{id}/photo": {
-      "get": {
-        "tags": ["UniPM.Api"],
-        "summary": "Gets authorized private JPEG photo evidence for an inspection row",
-        "operationId": "GetInspectionPhotoEvidence",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "image/jpeg": {
-                "schema": {
-                  "type": "string",
-                  "format": "byte"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          },
-          "404": {
-            "description": "Not Found"
-          }
-        }
-      },
       "put": {
         "tags": ["UniPM.Api"],
         "summary": "Uploads or replaces one private JPEG photo for a draft inspection row",
@@ -1568,6 +2525,44 @@
           }
         }
       },
+      "get": {
+        "tags": ["UniPM.Api"],
+        "summary": "Gets authorized private JPEG photo evidence for an inspection row",
+        "operationId": "GetInspectionPhotoEvidence",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "image/jpeg": {
+                "schema": {
+                  "type": "string",
+                  "format": "byte"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      },
       "delete": {
         "tags": ["UniPM.Api"],
         "summary": "Removes optional photo evidence from a draft inspection row",
@@ -1602,126 +2597,6 @@
         }
       }
     },
-    "/api/v1/inspections/{id}/wms-referral": {
-      "get": {
-        "tags": ["Inspections"],
-        "summary": "Gets the manually recorded WMS PM number and its change audit",
-        "operationId": "GetInspectionWmsReferral",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/InspectionWmsReferralDetailResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      },
-      "put": {
-        "tags": ["Inspections"],
-        "summary": "Records or corrects the external WMS PM number without changing the inspection",
-        "operationId": "UpdateInspectionWmsReferral",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateInspectionWmsReferralDto"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/InspectionWmsReferralResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationProblemDetails"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Conflict",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/v1/preventive-maintenance-forms": {
       "post": {
         "tags": ["Preventive Maintenance Forms"],
@@ -1738,6 +2613,16 @@
           "required": true
         },
         "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreventiveMaintenanceFormResponse"
+                }
+              }
+            }
+          },
           "201": {
             "description": "Created",
             "content": {
@@ -2089,6 +2974,16 @@
           "required": true
         },
         "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DraftInspectionRowResponse"
+                }
+              }
+            }
+          },
           "201": {
             "description": "Created",
             "content": {
@@ -2243,6 +3138,14 @@
             "schema": {
               "type": "string",
               "format": "uuid"
+            }
+          },
+          {
+            "name": "expectedUpdatedAt",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
             }
           }
         ],
@@ -2402,6 +3305,471 @@
         }
       }
     },
+    "/api/v1/analytics/pm/v3/catalog": {
+      "get": {
+        "tags": ["PM Analytics"],
+        "summary": "Returns a versioned V3 report subject catalog",
+        "operationId": "GetPmAnalyticsV3Catalog",
+        "parameters": [
+          {
+            "name": "subject",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PmAnalyticsV3CatalogResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analytics/pm/v3/catalog/values": {
+      "get": {
+        "tags": ["PM Analytics"],
+        "summary": "Searches current asset catalog values for a V3 population filter",
+        "operationId": "GetPmAnalyticsV3FilterValues",
+        "parameters": [
+          {
+            "name": "field",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "subject",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "categories",
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PmAnalyticsV3FilterValuesResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analytics/pm/v2/interpret": {
+      "post": {
+        "tags": ["PM Analytics"],
+        "summary": "Interprets a bounded preventive-maintenance analytics question using the V2 deterministic grammar",
+        "operationId": "InterpretPmAnalyticsV2Question",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PmAnalyticsV2InterpretRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PmAnalyticsV2InterpretationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analytics/pm/v3/preview": {
+      "post": {
+        "tags": ["PM Analytics"],
+        "summary": "Validates a V3 report plan and creates a short-lived user-bound preview",
+        "operationId": "PreviewPmAnalyticsV3Report",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PmAnalyticsV3PreviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PmAnalyticsV3PreviewResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analytics/pm/v3/interpret": {
+      "post": {
+        "tags": ["PM Analytics"],
+        "summary": "Interprets a PM execution question into a V3 report plan without running it",
+        "operationId": "InterpretPmAnalyticsV3Question",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PmAnalyticsV3InterpretRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PmAnalyticsV3InterpretationResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analytics/pm/v3/execute": {
+      "post": {
+        "tags": ["PM Analytics"],
+        "summary": "Revalidates and executes a confirmed V3 PM execution report",
+        "operationId": "ExecutePmAnalyticsV3Report",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PmAnalyticsV3ExecuteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PmAnalyticsV3ExecutionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/analytics/pm/v2/query": {
+      "post": {
+        "tags": ["PM Analytics"],
+        "summary": "Executes a validated typed V2 preventive-maintenance analytics plan",
+        "operationId": "QueryPmAnalyticsV2",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PmAnalyticsV2QueryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PmAnalyticsV2QueryResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationProblemDetails"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/analytics/pm/query": {
       "post": {
         "tags": ["PM Analytics"],
@@ -2529,881 +3897,10 @@
           }
         }
       }
-    },
-    "/api/v1/schedules/generate": {
-      "post": {
-        "tags": ["Schedules"],
-        "summary": "Ensures missing CPMP schedules for one calendar year",
-        "operationId": "GeneratePreventiveMaintenanceSchedules",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/GenerateScheduleCyclesDto"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ScheduleGenerationResult"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationProblemDetails"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/schedules/coverage-review": {
-      "get": {
-        "tags": ["Schedules"],
-        "summary": "Lists past CPMP cycles missing both a schedule and a deferral for GSD review",
-        "operationId": "ListScheduleCoverageReview",
-        "parameters": [
-          {
-            "name": "page",
-            "in": "query",
-            "schema": {
-              "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": ["integer", "string"],
-              "format": "int32"
-            }
-          },
-          {
-            "name": "pageSize",
-            "in": "query",
-            "schema": {
-              "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": ["integer", "string"],
-              "format": "int32"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ScheduleCoverageReviewPage"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          }
-        }
-      }
-    },
-    "/api/v1/schedules/enrollment-deferrals": {
-      "get": {
-        "tags": ["Schedules"],
-        "summary": "Lists deferred asset cycles and their GSD review status",
-        "operationId": "ListScheduleEnrollmentDeferrals",
-        "parameters": [
-          {
-            "name": "page",
-            "in": "query",
-            "schema": {
-              "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": ["integer", "string"],
-              "format": "int32"
-            }
-          },
-          {
-            "name": "pageSize",
-            "in": "query",
-            "schema": {
-              "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": ["integer", "string"],
-              "format": "int32"
-            }
-          },
-          {
-            "name": "status",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "pmCycle",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "assetCategory",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "department",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ScheduleEnrollmentDeferralPage"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationProblemDetails"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          }
-        }
-      }
-    },
-    "/api/v1/schedules/enrollment-deferrals/{assetId}/{pmCycle}/review": {
-      "post": {
-        "tags": ["Schedules"],
-        "summary": "Marks one deferred asset cycle as reviewed by GSD",
-        "operationId": "ReviewScheduleEnrollmentDeferral",
-        "parameters": [
-          {
-            "name": "assetId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          {
-            "name": "pmCycle",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ScheduleEnrollmentDeferralReviewRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "204": {
-            "description": "No Content"
-          },
-          "400": {
-            "description": "Bad Request"
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          },
-          "404": {
-            "description": "Not Found"
-          },
-          "409": {
-            "description": "Conflict"
-          }
-        }
-      }
-    },
-    "/api/v1/assets/registry": {
-      "get": {
-        "tags": ["Assets"],
-        "summary": "Lists a bounded page of assets for the web registry",
-        "operationId": "ListAssetRegistry",
-        "parameters": [
-          {
-            "name": "assetCategory",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "status",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "building",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "department",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "search",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "page",
-            "in": "query",
-            "schema": {
-              "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": ["integer", "string"],
-              "format": "int32"
-            }
-          },
-          {
-            "name": "pageSize",
-            "in": "query",
-            "schema": {
-              "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": ["integer", "string"],
-              "format": "int32"
-            }
-          },
-          {
-            "name": "hasDepartment",
-            "in": "query",
-            "schema": {
-              "type": "boolean"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AssetRegistryPageResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/assets/registry/options": {
-      "get": {
-        "tags": ["Assets"],
-        "summary": "Lists small asset registry filter options",
-        "operationId": "GetAssetRegistryOptions",
-        "parameters": [
-          {
-            "name": "assetCategory",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "department",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AssetRegistryOptionsResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/assets/registry/summary": {
-      "get": {
-        "tags": ["Assets"],
-        "summary": "Returns overall asset totals by category and status",
-        "operationId": "GetAssetRegistrySummary",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AssetRegistrySummaryResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/schedules/registry": {
-      "get": {
-        "tags": ["Schedules"],
-        "summary": "Lists a bounded page of schedules for the web registry",
-        "operationId": "ListScheduleRegistry",
-        "parameters": [
-          {
-            "name": "assetId",
-            "in": "query",
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          {
-            "name": "status",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "from",
-            "in": "query",
-            "schema": {
-              "type": "string",
-              "format": "date-time"
-            }
-          },
-          {
-            "name": "to",
-            "in": "query",
-            "schema": {
-              "type": "string",
-              "format": "date-time"
-            }
-          },
-          {
-            "name": "quarter",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "year",
-            "in": "query",
-            "schema": {
-              "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": ["integer", "string"],
-              "format": "int32"
-            }
-          },
-          {
-            "name": "pmCycle",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "department",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "assetCategory",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "search",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "page",
-            "in": "query",
-            "schema": {
-              "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": ["integer", "string"],
-              "format": "int32"
-            }
-          },
-          {
-            "name": "pageSize",
-            "in": "query",
-            "schema": {
-              "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": ["integer", "string"],
-              "format": "int32"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ScheduleRegistryPageResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationProblemDetails"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          }
-        }
-      }
-    },
-    "/api/v1/schedules/registry/options": {
-      "get": {
-        "tags": ["Schedules"],
-        "summary": "Lists scoped schedule registry filter options",
-        "operationId": "GetScheduleRegistryOptions",
-        "parameters": [
-          {
-            "name": "assetCategory",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "department",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ScheduleRegistryOptionsResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationProblemDetails"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          }
-        }
-      }
-    },
-    "/api/v1/schedules/registry/summary": {
-      "get": {
-        "tags": ["Schedules"],
-        "summary": "Returns status totals for the authenticated schedule read scope",
-        "operationId": "GetScheduleRegistrySummary",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ScheduleRegistrySummaryResponse"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          }
-        }
-      }
-    },
-    "/api/v1/inspections/registry": {
-      "get": {
-        "tags": ["Inspections"],
-        "summary": "Lists a bounded page of acknowledged or legacy official inspections for the web registry",
-        "operationId": "ListInspectionRegistry",
-        "parameters": [
-          {
-            "name": "assetId",
-            "in": "query",
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          {
-            "name": "scheduleId",
-            "in": "query",
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          },
-          {
-            "name": "isOperational",
-            "in": "query",
-            "schema": {
-              "type": "boolean"
-            }
-          },
-          {
-            "name": "dateFrom",
-            "in": "query",
-            "schema": {
-              "type": "string",
-              "format": "date-time"
-            }
-          },
-          {
-            "name": "dateTo",
-            "in": "query",
-            "schema": {
-              "type": "string",
-              "format": "date-time"
-            }
-          },
-          {
-            "name": "year",
-            "in": "query",
-            "schema": {
-              "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": ["integer", "string"],
-              "format": "int32"
-            }
-          },
-          {
-            "name": "quarter",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "pmCycle",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "department",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "assetCategory",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "search",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "wmsReferralStatus",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "page",
-            "in": "query",
-            "schema": {
-              "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": ["integer", "string"],
-              "format": "int32"
-            }
-          },
-          {
-            "name": "pageSize",
-            "in": "query",
-            "schema": {
-              "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": ["integer", "string"],
-              "format": "int32"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/InspectionRegistryPageResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/inspections/registry/options": {
-      "get": {
-        "tags": ["Inspections"],
-        "summary": "Lists lightweight official inspection filter options",
-        "operationId": "GetInspectionRegistryOptions",
-        "parameters": [
-          {
-            "name": "assetCategory",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "department",
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/InspectionRegistryOptionsResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidationProblemDetails"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/inspections/registry/summary": {
-      "get": {
-        "tags": ["Inspections"],
-        "summary": "Returns overall official inspection totals",
-        "operationId": "GetInspectionRegistrySummary",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/InspectionRegistrySummaryResponse"
-                }
-              }
-            }
-          }
-        }
-      }
     }
   },
   "components": {
     "schemas": {
-      "ScheduleCoverageReviewItem": {
-        "required": [
-          "assetId",
-          "assetCode",
-          "department",
-          "assetCategory",
-          "pmCycle",
-          "reason"
-        ],
-        "type": "object",
-        "properties": {
-          "assetId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "assetCode": {
-            "type": "string"
-          },
-          "department": {
-            "type": "string"
-          },
-          "assetCategory": {
-            "type": "string"
-          },
-          "pmCycle": {
-            "type": "string"
-          },
-          "reason": {
-            "type": "string"
-          }
-        }
-      },
-      "ScheduleCoverageReviewPage": {
-        "required": ["year", "page", "pageSize", "total", "items"],
-        "type": "object",
-        "properties": {
-          "year": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": ["integer", "string"],
-            "format": "int32"
-          },
-          "page": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": ["integer", "string"],
-            "format": "int32"
-          },
-          "pageSize": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": ["integer", "string"],
-            "format": "int32"
-          },
-          "total": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": ["integer", "string"],
-            "format": "int32"
-          },
-          "items": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ScheduleCoverageReviewItem"
-            }
-          }
-        }
-      },
       "AcknowledgePreventiveMaintenanceFormDto": {
         "type": "object",
         "properties": {
@@ -3437,6 +3934,140 @@
               "pattern": "^-?(?:0|[1-9]\\d*)$",
               "type": ["integer", "string"],
               "format": "int32"
+            }
+          }
+        }
+      },
+      "AssetRegistryCategorySummaryResponse": {
+        "required": [
+          "assetCategory",
+          "displayName",
+          "totalCount",
+          "activeCount",
+          "inactiveCount",
+          "retiredCount"
+        ],
+        "type": "object",
+        "properties": {
+          "assetCategory": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "totalCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "activeCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "inactiveCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "retiredCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          }
+        }
+      },
+      "AssetRegistryOptionsResponse": {
+        "required": ["categories", "statuses", "departments", "buildings"],
+        "type": "object",
+        "properties": {
+          "categories": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssetCategoryResponse"
+            }
+          },
+          "statuses": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "departments": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "buildings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "AssetRegistryPageResponse": {
+        "required": ["items", "page", "pageSize", "totalCount"],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssetResponse"
+            }
+          },
+          "page": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "pageSize": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "totalCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          }
+        }
+      },
+      "AssetRegistrySummaryResponse": {
+        "required": [
+          "totalCount",
+          "activeCount",
+          "inactiveCount",
+          "retiredCount",
+          "categories"
+        ],
+        "type": "object",
+        "properties": {
+          "totalCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "activeCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "inactiveCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "retiredCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "categories": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssetRegistryCategorySummaryResponse"
             }
           }
         }
@@ -3754,6 +4385,10 @@
       "CreatePreventiveMaintenanceFormDto": {
         "type": "object",
         "properties": {
+          "id": {
+            "type": ["null", "string"],
+            "format": "uuid"
+          },
           "assetCategory": {
             "type": "string"
           },
@@ -3812,6 +4447,10 @@
       "DraftInspectionRowDto": {
         "type": "object",
         "properties": {
+          "id": {
+            "type": ["null", "string"],
+            "format": "uuid"
+          },
           "scheduleId": {
             "type": "string",
             "format": "uuid"
@@ -3900,10 +4539,6 @@
           "isOperational": {
             "type": "boolean"
           },
-          "hasPhotoEvidence": {
-            "type": "boolean",
-            "default": false
-          },
           "remarks": {
             "type": ["null", "string"]
           },
@@ -3939,6 +4574,34 @@
           },
           "skilledWorkerIdentity": {
             "type": ["null", "string"]
+          },
+          "hasPhotoEvidence": {
+            "type": "boolean",
+            "default": false
+          },
+          "currentScheduleInspectorUserId": {
+            "type": ["null", "string"],
+            "format": "uuid"
+          },
+          "currentScheduleInspectorIdentity": {
+            "type": ["null", "string"]
+          },
+          "currentScheduleSupervisorUserId": {
+            "type": ["null", "string"],
+            "format": "uuid"
+          },
+          "currentScheduleSupervisorIdentity": {
+            "type": ["null", "string"]
+          }
+        }
+      },
+      "GenerateScheduleCyclesDto": {
+        "type": "object",
+        "properties": {
+          "year": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
           }
         }
       },
@@ -4065,6 +4728,274 @@
           }
         }
       },
+      "InspectionRegistryAssetContext": {
+        "required": [
+          "id",
+          "assetCode",
+          "assetCategory",
+          "department",
+          "building",
+          "location"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "assetCode": {
+            "type": "string"
+          },
+          "assetCategory": {
+            "type": "string"
+          },
+          "department": {
+            "type": ["null", "string"]
+          },
+          "building": {
+            "type": ["null", "string"]
+          },
+          "location": {
+            "type": ["null", "string"]
+          }
+        }
+      },
+      "InspectionRegistryItemResponse": {
+        "required": [
+          "id",
+          "scheduleId",
+          "assetId",
+          "dateInspected",
+          "isOperational",
+          "remarks",
+          "actionsRecommendations",
+          "createdAt",
+          "updatedAt",
+          "dateAccomplished",
+          "waterReplaceCarbonFilter",
+          "waterReplaceSedimentFilter",
+          "waterCheckUvLight",
+          "externalPmNumber",
+          "wmsReferralRevision",
+          "correctiveFollowUpStatus",
+          "hasPhotoEvidence",
+          "asset",
+          "schedule"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "scheduleId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "assetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "dateInspected": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "isOperational": {
+            "type": "boolean"
+          },
+          "remarks": {
+            "type": ["null", "string"]
+          },
+          "actionsRecommendations": {
+            "type": ["null", "string"]
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "dateAccomplished": {
+            "type": ["null", "string"],
+            "format": "date-time"
+          },
+          "waterReplaceCarbonFilter": {
+            "type": ["null", "boolean"]
+          },
+          "waterReplaceSedimentFilter": {
+            "type": ["null", "boolean"]
+          },
+          "waterCheckUvLight": {
+            "type": ["null", "boolean"]
+          },
+          "externalPmNumber": {
+            "type": ["null", "string"]
+          },
+          "wmsReferralRevision": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "correctiveFollowUpStatus": {
+            "type": "string"
+          },
+          "hasPhotoEvidence": {
+            "type": "boolean"
+          },
+          "asset": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/InspectionRegistryAssetContext"
+              }
+            ]
+          },
+          "schedule": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/InspectionRegistryScheduleContext"
+              }
+            ]
+          }
+        }
+      },
+      "InspectionRegistryOptionsResponse": {
+        "required": [
+          "categories",
+          "quarters",
+          "wmsReferralStatuses",
+          "departments",
+          "years"
+        ],
+        "type": "object",
+        "properties": {
+          "categories": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AssetCategoryResponse"
+            }
+          },
+          "quarters": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "wmsReferralStatuses": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "departments": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "years": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "InspectionRegistryPageResponse": {
+        "required": ["items", "page", "pageSize", "totalCount", "overallCount"],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InspectionRegistryItemResponse"
+            }
+          },
+          "page": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "pageSize": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "totalCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "overallCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          }
+        }
+      },
+      "InspectionRegistryScheduleContext": {
+        "required": ["id", "pmCycle"],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "pmCycle": {
+            "type": "string"
+          }
+        }
+      },
+      "InspectionRegistrySummaryResponse": {
+        "required": [
+          "totalCount",
+          "operationalCount",
+          "nonOperationalCount",
+          "noReferralCount",
+          "pendingFollowUpCount",
+          "referredCount"
+        ],
+        "type": "object",
+        "properties": {
+          "totalCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "operationalCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "nonOperationalCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "noReferralCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "pendingFollowUpCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "referredCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          }
+        }
+      },
       "InspectionResponse": {
         "required": [
           "id",
@@ -4146,6 +5077,144 @@
           "hasPhotoEvidence": {
             "type": "boolean",
             "default": false
+          }
+        }
+      },
+      "InspectionWmsReferralAuditResponse": {
+        "required": [
+          "previousExternalPmNumber",
+          "newExternalPmNumber",
+          "revision",
+          "changedByUserId",
+          "changedAt"
+        ],
+        "type": "object",
+        "properties": {
+          "previousExternalPmNumber": {
+            "type": ["null", "string"]
+          },
+          "newExternalPmNumber": {
+            "type": "string"
+          },
+          "revision": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "changedByUserId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "changedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "InspectionWmsReferralDetailResponse": {
+        "required": [
+          "inspectionId",
+          "followUpStatus",
+          "externalPmNumber",
+          "revision",
+          "recordedByUserId",
+          "recordedAt",
+          "lastUpdatedByUserId",
+          "lastUpdatedAt",
+          "canRecordReferral",
+          "eligibilityMessage",
+          "audit"
+        ],
+        "type": "object",
+        "properties": {
+          "inspectionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "followUpStatus": {
+            "type": "string"
+          },
+          "externalPmNumber": {
+            "type": ["null", "string"]
+          },
+          "revision": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "recordedByUserId": {
+            "type": ["null", "string"],
+            "format": "uuid"
+          },
+          "recordedAt": {
+            "type": ["null", "string"],
+            "format": "date-time"
+          },
+          "lastUpdatedByUserId": {
+            "type": ["null", "string"],
+            "format": "uuid"
+          },
+          "lastUpdatedAt": {
+            "type": ["null", "string"],
+            "format": "date-time"
+          },
+          "canRecordReferral": {
+            "type": "boolean"
+          },
+          "eligibilityMessage": {
+            "type": ["null", "string"]
+          },
+          "audit": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/InspectionWmsReferralAuditResponse"
+            }
+          }
+        }
+      },
+      "InspectionWmsReferralResponse": {
+        "required": [
+          "inspectionId",
+          "externalPmNumber",
+          "revision",
+          "recordedByUserId",
+          "recordedAt",
+          "lastUpdatedByUserId",
+          "lastUpdatedAt",
+          "followUpStatus"
+        ],
+        "type": "object",
+        "properties": {
+          "inspectionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "externalPmNumber": {
+            "type": "string"
+          },
+          "revision": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "recordedByUserId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "recordedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastUpdatedByUserId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "lastUpdatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "followUpStatus": {
+            "type": "string"
           }
         }
       },
@@ -4409,6 +5478,1554 @@
             "type": ["null", "string"]
           }
         }
+      },
+      "PmAnalyticsV2Comparison": {
+        "required": ["earlierCycle", "laterCycle"],
+        "type": "object",
+        "properties": {
+          "earlierCycle": {
+            "type": "string"
+          },
+          "laterCycle": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "PmAnalyticsV2ComparisonResponse": {
+        "required": [
+          "earlierCycle",
+          "laterCycle",
+          "earlier",
+          "later",
+          "delta",
+          "deltaUnit"
+        ],
+        "type": "object",
+        "properties": {
+          "earlierCycle": {
+            "type": "string"
+          },
+          "laterCycle": {
+            "type": "string"
+          },
+          "earlier": {
+            "$ref": "#/components/schemas/PmAnalyticsV2MeasureResponse"
+          },
+          "later": {
+            "$ref": "#/components/schemas/PmAnalyticsV2MeasureResponse"
+          },
+          "delta": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": ["null", "number", "string"],
+            "format": "double"
+          },
+          "deltaUnit": {
+            "type": "string"
+          }
+        }
+      },
+      "PmAnalyticsV2Condition": {
+        "enum": ["Operational", "NonOperational", "NotInspected", null]
+      },
+      "PmAnalyticsV2CountBasis": {
+        "enum": ["AssetCycles", "DistinctAssets"]
+      },
+      "PmAnalyticsV2CycleResponse": {
+        "required": [
+          "pmCycle",
+          "deadline",
+          "state",
+          "eligibleAssetCycleCount",
+          "eligibleDistinctAssetCount",
+          "inspectedCount",
+          "completedOnTimeCount",
+          "completedLateCount",
+          "nonOperationalCount",
+          "remainingCount",
+          "missedCount",
+          "legacyDateFallbackCount"
+        ],
+        "type": "object",
+        "properties": {
+          "pmCycle": {
+            "type": "string"
+          },
+          "deadline": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "state": {
+            "type": "string"
+          },
+          "eligibleAssetCycleCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "eligibleDistinctAssetCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "inspectedCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "completedOnTimeCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "completedLateCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "nonOperationalCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "remainingCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "missedCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "legacyDateFallbackCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          }
+        }
+      },
+      "PmAnalyticsV2Direction": {
+        "enum": ["Highest", "Lowest"]
+      },
+      "PmAnalyticsV2GroupBy": {
+        "enum": ["None", "Department", "Building", "PmCycle"]
+      },
+      "PmAnalyticsV2GroupResponse": {
+        "required": [
+          "groupBy",
+          "value",
+          "result",
+          "eligibleAssetCycleCount",
+          "eligibleDistinctAssetCount",
+          "matchingAssetCycleCount",
+          "matchingDistinctAssetCount"
+        ],
+        "type": "object",
+        "properties": {
+          "groupBy": {
+            "$ref": "#/components/schemas/PmAnalyticsV2GroupBy"
+          },
+          "value": {
+            "type": ["null", "string"]
+          },
+          "result": {
+            "$ref": "#/components/schemas/PmAnalyticsV2MeasureResponse"
+          },
+          "eligibleAssetCycleCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "eligibleDistinctAssetCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "matchingAssetCycleCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "matchingDistinctAssetCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          }
+        }
+      },
+      "PmAnalyticsV2InterpretationResponse": {
+        "required": ["status", "plan", "clarificationFields", "code", "detail"],
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "plan": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PmAnalyticsV2Plan"
+              }
+            ]
+          },
+          "clarificationFields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "code": {
+            "type": ["null", "string"]
+          },
+          "detail": {
+            "type": ["null", "string"]
+          }
+        }
+      },
+      "PmAnalyticsV2InterpretRequest": {
+        "required": ["question"],
+        "type": "object",
+        "properties": {
+          "question": {
+            "type": ["null", "string"]
+          }
+        },
+        "additionalProperties": false
+      },
+      "PmAnalyticsV2MeasureResponse": {
+        "required": [
+          "numerator",
+          "denominator",
+          "value",
+          "unit",
+          "isMeasurable",
+          "unmeasurableReason"
+        ],
+        "type": "object",
+        "properties": {
+          "numerator": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "denominator": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "value": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": ["null", "number", "string"],
+            "format": "double"
+          },
+          "unit": {
+            "type": "string"
+          },
+          "isMeasurable": {
+            "type": "boolean"
+          },
+          "unmeasurableReason": {
+            "type": ["null", "string"]
+          }
+        }
+      },
+      "PmAnalyticsV2Metric": {
+        "enum": [
+          "Progress",
+          "OnTimeCompliance",
+          "CompletedLate",
+          "NonOperational",
+          "Remaining",
+          "Missed"
+        ]
+      },
+      "PmAnalyticsV2Period": {
+        "required": ["kind"],
+        "type": "object",
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/PmAnalyticsV2PeriodKind"
+          },
+          "year": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["null", "integer", "string"],
+            "format": "int32"
+          },
+          "month": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["null", "integer", "string"],
+            "format": "int32"
+          },
+          "quarter": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["null", "integer", "string"],
+            "format": "int32"
+          },
+          "startCycle": {
+            "type": ["null", "string"]
+          },
+          "endCycle": {
+            "type": ["null", "string"]
+          }
+        },
+        "additionalProperties": false
+      },
+      "PmAnalyticsV2PeriodKind": {
+        "enum": ["Month", "Quarter", "Year", "Range"]
+      },
+      "PmAnalyticsV2Plan": {
+        "required": [
+          "schemaVersion",
+          "metric",
+          "assetCategory",
+          "period",
+          "comparison",
+          "presentation",
+          "countBasis",
+          "department",
+          "building",
+          "assetCode",
+          "condition",
+          "timeliness",
+          "groupBy",
+          "ranking"
+        ],
+        "type": "object",
+        "properties": {
+          "schemaVersion": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "metric": {
+            "$ref": "#/components/schemas/PmAnalyticsV2Metric"
+          },
+          "assetCategory": {
+            "type": "string"
+          },
+          "period": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PmAnalyticsV2Period"
+              }
+            ]
+          },
+          "comparison": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PmAnalyticsV2Comparison"
+              }
+            ]
+          },
+          "presentation": {
+            "$ref": "#/components/schemas/PmAnalyticsV2Presentation"
+          },
+          "countBasis": {
+            "$ref": "#/components/schemas/PmAnalyticsV2CountBasis"
+          },
+          "department": {
+            "type": ["null", "string"]
+          },
+          "building": {
+            "type": ["null", "string"]
+          },
+          "assetCode": {
+            "type": ["null", "string"]
+          },
+          "condition": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PmAnalyticsV2Condition"
+              }
+            ]
+          },
+          "timeliness": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PmAnalyticsV2Timeliness"
+              }
+            ]
+          },
+          "groupBy": {
+            "$ref": "#/components/schemas/PmAnalyticsV2GroupBy"
+          },
+          "ranking": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PmAnalyticsV2Ranking"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "PmAnalyticsV2PopulationResponse": {
+        "required": [
+          "eligibleAssetCycleCount",
+          "eligibleDistinctAssetCount",
+          "matchingAssetCycleCount",
+          "matchingDistinctAssetCount",
+          "sourceTotalCount",
+          "totalPages"
+        ],
+        "type": "object",
+        "properties": {
+          "eligibleAssetCycleCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "eligibleDistinctAssetCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "matchingAssetCycleCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "matchingDistinctAssetCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "sourceTotalCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "totalPages": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          }
+        }
+      },
+      "PmAnalyticsV2Presentation": {
+        "enum": ["Count", "Percent", "Records"]
+      },
+      "PmAnalyticsV2QueryRequest": {
+        "required": ["plan"],
+        "type": "object",
+        "properties": {
+          "plan": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PmAnalyticsV2Plan"
+              }
+            ]
+          },
+          "sourceScope": {
+            "$ref": "#/components/schemas/PmAnalyticsV2SourceScope"
+          },
+          "page": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32",
+            "default": 1
+          },
+          "pageSize": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32",
+            "default": 25
+          }
+        },
+        "additionalProperties": false
+      },
+      "PmAnalyticsV2QueryResponse": {
+        "required": [
+          "schemaVersion",
+          "asOfUtc",
+          "plan",
+          "sourceScope",
+          "page",
+          "pageSize",
+          "population",
+          "result",
+          "cycles",
+          "groups",
+          "rankingExclusions",
+          "comparison",
+          "sources",
+          "scopeNote"
+        ],
+        "type": "object",
+        "properties": {
+          "schemaVersion": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "asOfUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "plan": {
+            "$ref": "#/components/schemas/PmAnalyticsV2Plan"
+          },
+          "sourceScope": {
+            "$ref": "#/components/schemas/PmAnalyticsV2SourceScope"
+          },
+          "page": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "pageSize": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "population": {
+            "$ref": "#/components/schemas/PmAnalyticsV2PopulationResponse"
+          },
+          "result": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PmAnalyticsV2MeasureResponse"
+              }
+            ]
+          },
+          "cycles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PmAnalyticsV2CycleResponse"
+            }
+          },
+          "groups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PmAnalyticsV2GroupResponse"
+            }
+          },
+          "rankingExclusions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PmAnalyticsV2RankingExclusionResponse"
+            }
+          },
+          "comparison": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PmAnalyticsV2ComparisonResponse"
+              }
+            ]
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PmAnalyticsV2SourceResponse"
+            }
+          },
+          "scopeNote": {
+            "type": "string"
+          }
+        }
+      },
+      "PmAnalyticsV2Ranking": {
+        "required": ["limit", "direction"],
+        "type": "object",
+        "properties": {
+          "limit": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "direction": {
+            "$ref": "#/components/schemas/PmAnalyticsV2Direction"
+          }
+        },
+        "additionalProperties": false
+      },
+      "PmAnalyticsV2RankingExclusionResponse": {
+        "required": ["department", "reason"],
+        "type": "object",
+        "properties": {
+          "department": {
+            "type": ["null", "string"]
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
+      },
+      "PmAnalyticsV2SourceResponse": {
+        "required": [
+          "scheduleId",
+          "assetId",
+          "inspectionId",
+          "assetCode",
+          "assetCategory",
+          "currentDepartment",
+          "currentBuilding",
+          "pmCycle",
+          "deadline",
+          "completedAt",
+          "scheduleStatus",
+          "formStatus",
+          "condition",
+          "timeliness",
+          "usedLegacyDateFallback"
+        ],
+        "type": "object",
+        "properties": {
+          "scheduleId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "assetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "inspectionId": {
+            "type": ["null", "string"],
+            "format": "uuid"
+          },
+          "assetCode": {
+            "type": "string"
+          },
+          "assetCategory": {
+            "type": "string"
+          },
+          "currentDepartment": {
+            "type": ["null", "string"]
+          },
+          "currentBuilding": {
+            "type": ["null", "string"]
+          },
+          "pmCycle": {
+            "type": "string"
+          },
+          "deadline": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "completedAt": {
+            "type": ["null", "string"],
+            "format": "date-time"
+          },
+          "scheduleStatus": {
+            "type": "string"
+          },
+          "formStatus": {
+            "type": ["null", "string"]
+          },
+          "condition": {
+            "type": "string"
+          },
+          "timeliness": {
+            "type": "string"
+          },
+          "usedLegacyDateFallback": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PmAnalyticsV2SourceScope": {
+        "enum": ["Matching", "Calculation"]
+      },
+      "PmAnalyticsV2Timeliness": {
+        "enum": ["OnTime", "Late", "Remaining", "Missed", "Future", null]
+      },
+      "PmAnalyticsV3AggregateFilter": {
+        "required": ["measure", "operator", "value"],
+        "type": "object",
+        "properties": {
+          "measure": {
+            "type": "string"
+          },
+          "operator": {
+            "$ref": "#/components/schemas/PmAnalyticsV3NumericOperator"
+          },
+          "value": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": ["number", "string"],
+            "format": "double"
+          }
+        },
+        "additionalProperties": false
+      },
+      "PmAnalyticsV3AggregateRow": {
+        "required": ["values", "measures"],
+        "type": "object",
+        "properties": {
+          "values": {
+            "type": "object"
+          },
+          "measures": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/PmAnalyticsV3MeasureResult"
+            }
+          }
+        }
+      },
+      "PmAnalyticsV3CatalogResponse": {
+        "required": [
+          "schemaVersion",
+          "catalogVersion",
+          "subject",
+          "subjects",
+          "categories",
+          "measures",
+          "dimensions",
+          "filterFields",
+          "recordColumns"
+        ],
+        "type": "object",
+        "properties": {
+          "schemaVersion": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "catalogVersion": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "subjects": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PmAnalyticsV3SubjectDefinition"
+            }
+          },
+          "categories": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PmAnalyticsV3CategoryDefinition"
+            }
+          },
+          "measures": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PmAnalyticsV3MeasureDefinition"
+            }
+          },
+          "dimensions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PmAnalyticsV3DimensionDefinition"
+            }
+          },
+          "filterFields": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PmAnalyticsV3FilterFieldDefinition"
+            }
+          },
+          "recordColumns": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PmAnalyticsV3RecordColumnDefinition"
+            }
+          }
+        }
+      },
+      "PmAnalyticsV3CategoryDefinition": {
+        "required": ["id", "label", "scheduledMonths"],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "scheduledMonths": {
+            "type": "array",
+            "items": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": ["integer", "string"],
+              "format": "int32"
+            }
+          }
+        }
+      },
+      "PmAnalyticsV3Column": {
+        "required": ["id", "label", "valueType", "unit", "nullSemantics"],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "valueType": {
+            "type": "string"
+          },
+          "unit": {
+            "type": "string"
+          },
+          "nullSemantics": {
+            "type": ["null", "string"]
+          }
+        }
+      },
+      "PmAnalyticsV3DimensionDefinition": {
+        "required": [
+          "id",
+          "label",
+          "valueType",
+          "nullSemantics",
+          "grain",
+          "definition"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "valueType": {
+            "type": "string"
+          },
+          "nullSemantics": {
+            "type": "string"
+          },
+          "grain": {
+            "type": "string"
+          },
+          "definition": {
+            "type": "string"
+          }
+        }
+      },
+      "PmAnalyticsV3ExecuteRequest": {
+        "required": ["previewId"],
+        "type": "object",
+        "properties": {
+          "previewId": {
+            "type": "string"
+          },
+          "page": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32",
+            "default": 1
+          },
+          "pageSize": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32",
+            "default": 25
+          }
+        },
+        "additionalProperties": false
+      },
+      "PmAnalyticsV3ExecutionResponse": {
+        "required": [
+          "schemaVersion",
+          "catalogVersion",
+          "asOfUtc",
+          "plan",
+          "cyclesByCategory",
+          "mode",
+          "columns",
+          "population",
+          "page",
+          "pageSize",
+          "totalPages",
+          "aggregateRows",
+          "records",
+          "scopeNotes"
+        ],
+        "type": "object",
+        "properties": {
+          "schemaVersion": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "catalogVersion": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "asOfUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "plan": {
+            "$ref": "#/components/schemas/PmAnalyticsV3ReportPlan"
+          },
+          "cyclesByCategory": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "mode": {
+            "$ref": "#/components/schemas/PmAnalyticsV3Mode"
+          },
+          "columns": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PmAnalyticsV3Column"
+            }
+          },
+          "population": {
+            "$ref": "#/components/schemas/PmAnalyticsV3Population"
+          },
+          "page": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "pageSize": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "totalPages": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "aggregateRows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PmAnalyticsV3AggregateRow"
+            }
+          },
+          "records": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PmAnalyticsV3RecordRow"
+            }
+          },
+          "scopeNotes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "PmAnalyticsV3Filter": {
+        "required": ["field", "operator"],
+        "type": "object",
+        "properties": {
+          "field": {
+            "type": "string"
+          },
+          "operator": {
+            "$ref": "#/components/schemas/PmAnalyticsV3FilterOperator"
+          },
+          "values": {
+            "type": ["null", "array"],
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "PmAnalyticsV3FilterFieldDefinition": {
+        "required": [
+          "id",
+          "label",
+          "isBaseFilter",
+          "valueType",
+          "maximumLength",
+          "allowedValues",
+          "operators"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "isBaseFilter": {
+            "type": "boolean"
+          },
+          "valueType": {
+            "type": "string"
+          },
+          "maximumLength": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "allowedValues": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "operators": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PmAnalyticsV3FilterOperator"
+            }
+          }
+        }
+      },
+      "PmAnalyticsV3FilterOperator": {
+        "enum": ["Equal", "In", "IsNull"]
+      },
+      "PmAnalyticsV3FilterValuesResponse": {
+        "required": ["field", "values", "hasMore"],
+        "type": "object",
+        "properties": {
+          "field": {
+            "type": "string"
+          },
+          "values": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "hasMore": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PmAnalyticsV3InterpretationResponse": {
+        "required": [
+          "status",
+          "plan",
+          "clarificationFields",
+          "code",
+          "detail",
+          "interpreter"
+        ],
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "plan": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PmAnalyticsV3ReportPlan"
+              }
+            ]
+          },
+          "clarificationFields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "code": {
+            "type": ["null", "string"]
+          },
+          "detail": {
+            "type": ["null", "string"]
+          },
+          "interpreter": {
+            "type": "string"
+          }
+        }
+      },
+      "PmAnalyticsV3InterpretRequest": {
+        "required": ["question"],
+        "type": "object",
+        "properties": {
+          "question": {
+            "type": ["null", "string"]
+          }
+        }
+      },
+      "PmAnalyticsV3MeasureDefinition": {
+        "required": [
+          "id",
+          "label",
+          "valueType",
+          "unit",
+          "grain",
+          "population",
+          "definition"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "valueType": {
+            "type": "string"
+          },
+          "unit": {
+            "type": "string"
+          },
+          "grain": {
+            "type": "string"
+          },
+          "population": {
+            "type": "string"
+          },
+          "definition": {
+            "type": "string"
+          }
+        }
+      },
+      "PmAnalyticsV3MeasureResult": {
+        "required": [
+          "value",
+          "numerator",
+          "denominator",
+          "unit",
+          "isMeasurable",
+          "unmeasurableReason",
+          "eligibleRowCount",
+          "matchingRowCount"
+        ],
+        "type": "object",
+        "properties": {
+          "value": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": ["null", "number", "string"],
+            "format": "double"
+          },
+          "numerator": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "denominator": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "unit": {
+            "type": "string"
+          },
+          "isMeasurable": {
+            "type": "boolean"
+          },
+          "unmeasurableReason": {
+            "type": ["null", "string"]
+          },
+          "eligibleRowCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "matchingRowCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          }
+        }
+      },
+      "PmAnalyticsV3Mode": {
+        "enum": ["Aggregate", "Records"]
+      },
+      "PmAnalyticsV3NumericOperator": {
+        "enum": [
+          "Equal",
+          "NotEqual",
+          "GreaterThan",
+          "GreaterThanOrEqual",
+          "LessThan",
+          "LessThanOrEqual"
+        ]
+      },
+      "PmAnalyticsV3OrderBy": {
+        "required": ["field", "direction"],
+        "type": "object",
+        "properties": {
+          "field": {
+            "type": "string"
+          },
+          "direction": {
+            "$ref": "#/components/schemas/PmAnalyticsV3SortDirection"
+          }
+        },
+        "additionalProperties": false
+      },
+      "PmAnalyticsV3Period": {
+        "required": ["basis", "kind"],
+        "type": "object",
+        "properties": {
+          "basis": {
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/PmAnalyticsV3PeriodKind"
+          },
+          "year": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["null", "integer", "string"],
+            "format": "int32"
+          },
+          "month": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["null", "integer", "string"],
+            "format": "int32"
+          },
+          "quarter": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["null", "integer", "string"],
+            "format": "int32"
+          },
+          "startCycle": {
+            "type": ["null", "string"]
+          },
+          "endCycle": {
+            "type": ["null", "string"]
+          }
+        },
+        "additionalProperties": false
+      },
+      "PmAnalyticsV3PeriodKind": {
+        "enum": ["Month", "Quarter", "Year", "Range"]
+      },
+      "PmAnalyticsV3Population": {
+        "required": [
+          "eligibleAssetCycleCount",
+          "eligibleDistinctAssetCount",
+          "matchingAssetCycleCount",
+          "matchingDistinctAssetCount",
+          "sourceTotalCount",
+          "groupsBeforeAggregateFilters",
+          "groupsAfterAggregateFilters",
+          "groupsReturnedAfterTop"
+        ],
+        "type": "object",
+        "properties": {
+          "eligibleAssetCycleCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "eligibleDistinctAssetCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "matchingAssetCycleCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "matchingDistinctAssetCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "sourceTotalCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "groupsBeforeAggregateFilters": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "groupsAfterAggregateFilters": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "groupsReturnedAfterTop": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          }
+        }
+      },
+      "PmAnalyticsV3Presentation": {
+        "enum": ["Table", "Summary"]
+      },
+      "PmAnalyticsV3PreviewRequest": {
+        "required": ["plan"],
+        "type": "object",
+        "properties": {
+          "plan": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PmAnalyticsV3ReportPlan"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "PmAnalyticsV3PreviewResponse": {
+        "required": [
+          "previewId",
+          "expiresAtUtc",
+          "plan",
+          "cyclesByCategory",
+          "summary",
+          "scopeNotes"
+        ],
+        "type": "object",
+        "properties": {
+          "previewId": {
+            "type": "string"
+          },
+          "expiresAtUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "plan": {
+            "$ref": "#/components/schemas/PmAnalyticsV3ReportPlan"
+          },
+          "cyclesByCategory": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "summary": {
+            "type": "string"
+          },
+          "scopeNotes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "PmAnalyticsV3RecordColumnDefinition": {
+        "required": ["id", "label", "valueType", "unit", "nullSemantics"],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "valueType": {
+            "type": "string"
+          },
+          "unit": {
+            "type": "string"
+          },
+          "nullSemantics": {
+            "type": ["null", "string"]
+          }
+        }
+      },
+      "PmAnalyticsV3RecordRow": {
+        "required": ["scheduleId", "assetId", "inspectionId", "values"],
+        "type": "object",
+        "properties": {
+          "scheduleId": {
+            "type": ["null", "string"],
+            "format": "uuid"
+          },
+          "assetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "inspectionId": {
+            "type": ["null", "string"],
+            "format": "uuid"
+          },
+          "values": {
+            "type": "object"
+          }
+        }
+      },
+      "PmAnalyticsV3ReportPlan": {
+        "required": [
+          "schemaVersion",
+          "catalogVersion",
+          "subject",
+          "mode",
+          "period",
+          "categories",
+          "measures",
+          "groupBy",
+          "baseFilters",
+          "matchingFilters",
+          "aggregateFilters",
+          "orderBy",
+          "top",
+          "presentation",
+          "columns"
+        ],
+        "type": "object",
+        "properties": {
+          "schemaVersion": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "catalogVersion": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "subject": {
+            "type": "string"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/PmAnalyticsV3Mode"
+          },
+          "period": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PmAnalyticsV3Period"
+              }
+            ]
+          },
+          "categories": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "measures": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "groupBy": {
+            "type": ["null", "array"],
+            "items": {
+              "type": "string"
+            }
+          },
+          "baseFilters": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PmAnalyticsV3Filter"
+            }
+          },
+          "matchingFilters": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PmAnalyticsV3Filter"
+            }
+          },
+          "aggregateFilters": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PmAnalyticsV3AggregateFilter"
+            }
+          },
+          "orderBy": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PmAnalyticsV3OrderBy"
+            }
+          },
+          "top": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PmAnalyticsV3Top"
+              }
+            ]
+          },
+          "presentation": {
+            "$ref": "#/components/schemas/PmAnalyticsV3Presentation"
+          },
+          "columns": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "PmAnalyticsV3SortDirection": {
+        "enum": ["Ascending", "Descending"]
+      },
+      "PmAnalyticsV3SubjectDefinition": {
+        "required": ["id", "label", "description", "requiresPeriod"],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "requiresPeriod": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PmAnalyticsV3Top": {
+        "required": ["measure", "limit", "direction"],
+        "type": "object",
+        "properties": {
+          "measure": {
+            "type": "string"
+          },
+          "limit": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "direction": {
+            "$ref": "#/components/schemas/PmAnalyticsV3SortDirection"
+          }
+        },
+        "additionalProperties": false
       },
       "PmPeriodDashboardAssetRowResponse": {
         "required": [
@@ -4921,7 +7538,9 @@
           "assetCategory",
           "building",
           "department",
-          "location"
+          "location",
+          "status",
+          "qrCodeValue"
         ],
         "type": "object",
         "properties": {
@@ -4942,6 +7561,12 @@
             "type": ["null", "string"]
           },
           "location": {
+            "type": ["null", "string"]
+          },
+          "status": {
+            "type": "string"
+          },
+          "qrCodeValue": {
             "type": ["null", "string"]
           }
         }
@@ -5004,318 +7629,169 @@
           }
         }
       },
-      "ScheduleSupervisorAssignmentOptionsResponse": {
+      "ScheduleAssignmentQueueBatchResponse": {
         "required": [
-          "supervisors",
-          "page",
-          "pageSize",
-          "totalCount",
-          "selected"
-        ],
-        "type": "object",
-        "properties": {
-          "supervisors": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ScheduleAssigneeOption"
-            }
-          },
-          "page": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": ["integer", "string"],
-            "format": "int32"
-          },
-          "pageSize": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": ["integer", "string"],
-            "format": "int32"
-          },
-          "totalCount": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": ["integer", "string"],
-            "format": "int32"
-          },
-          "selected": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/ScheduleAssigneeOption"
-              }
-            ]
-          }
-        }
-      },
-      "ScheduleWorkerAssignmentOptionsResponse": {
-        "required": ["workers", "page", "pageSize", "totalCount", "selected"],
-        "type": "object",
-        "properties": {
-          "workers": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ScheduleAssigneeOption"
-            }
-          },
-          "page": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": ["integer", "string"],
-            "format": "int32"
-          },
-          "pageSize": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": ["integer", "string"],
-            "format": "int32"
-          },
-          "totalCount": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": ["integer", "string"],
-            "format": "int32"
-          },
-          "selected": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/ScheduleAssigneeOption"
-              }
-            ]
-          }
-        }
-      },
-      "ScheduleReferenceResponse": {
-        "required": ["code", "displayName"],
-        "type": "object",
-        "properties": {
-          "code": {
-            "type": "string"
-          },
-          "displayName": {
-            "type": "string"
-          }
-        }
-      },
-      "ScheduleResponse": {
-        "required": [
-          "id",
-          "assetId",
-          "scheduleDate",
+          "batchKey",
+          "department",
+          "assetCategory",
           "pmCycle",
-          "periodType",
-          "status",
-          "quarter",
-          "semester",
-          "year",
-          "academicYear",
-          "assignedToUserId",
-          "assignedSupervisorUserId",
-          "completedAt",
-          "createdAt",
-          "updatedAt",
-          "asset"
+          "scheduleCount",
+          "completedCount",
+          "ongoingCount",
+          "overdueCount",
+          "supervisorState",
+          "supervisorUserId",
+          "supervisorDisplayName",
+          "inspectorState",
+          "inspectorUserId",
+          "inspectorDisplayName",
+          "assignmentLocked",
+          "supervisorOwnershipIsConsistent",
+          "representativeSchedule"
         ],
         "type": "object",
         "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
+          "batchKey": {
+            "type": "string"
           },
-          "assetId": {
-            "type": "string",
-            "format": "uuid"
+          "department": {
+            "type": "string"
           },
-          "scheduleDate": {
-            "type": "string",
-            "format": "date-time"
+          "assetCategory": {
+            "type": "string"
           },
           "pmCycle": {
             "type": "string"
           },
-          "periodType": {
-            "type": "string"
-          },
-          "status": {
-            "type": "string"
-          },
-          "quarter": {
-            "type": ["null", "string"]
-          },
-          "semester": {
-            "type": ["null", "string"]
-          },
-          "year": {
+          "scheduleCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": ["null", "integer", "string"],
+            "type": ["integer", "string"],
             "format": "int32"
           },
-          "academicYear": {
+          "completedCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "ongoingCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "overdueCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "supervisorState": {
+            "type": "string"
+          },
+          "supervisorUserId": {
+            "type": ["null", "string"],
+            "format": "uuid"
+          },
+          "supervisorDisplayName": {
             "type": ["null", "string"]
           },
-          "assignedToUserId": {
+          "inspectorState": {
+            "type": "string"
+          },
+          "inspectorUserId": {
             "type": ["null", "string"],
             "format": "uuid"
           },
-          "assignedSupervisorUserId": {
-            "type": ["null", "string"],
-            "format": "uuid"
+          "inspectorDisplayName": {
+            "type": ["null", "string"]
           },
-          "completedAt": {
-            "type": ["null", "string"],
-            "format": "date-time"
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "updatedAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "asset": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/ScheduleAssetResponse"
-              }
-            ]
-          }
-        }
-      },
-      "UpdateAssetVerificationLocationDto": {
-        "type": "object",
-        "properties": {
-          "verificationLatitude": {
-            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
-            "type": ["null", "number", "string"],
-            "format": "double"
-          },
-          "verificationLongitude": {
-            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
-            "type": ["null", "number", "string"],
-            "format": "double"
-          },
-          "verificationRadiusMeters": {
-            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
-            "type": ["null", "number", "string"],
-            "format": "double"
-          }
-        }
-      },
-      "UpdateDraftInspectionRowDto": {
-        "type": "object",
-        "properties": {
-          "dateInspected": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "dateAccomplished": {
-            "type": ["null", "string"],
-            "format": "date-time"
-          },
-          "isOperational": {
+          "assignmentLocked": {
             "type": "boolean"
           },
-          "remarks": {
-            "type": ["null", "string"]
+          "supervisorOwnershipIsConsistent": {
+            "type": "boolean"
           },
-          "actionsRecommendations": {
-            "type": ["null", "string"]
-          },
-          "waterReplaceCarbonFilter": {
-            "type": ["null", "boolean"]
-          },
-          "waterReplaceSedimentFilter": {
-            "type": ["null", "boolean"]
-          },
-          "waterCheckUvLight": {
-            "type": ["null", "boolean"]
+          "representativeSchedule": {
+            "$ref": "#/components/schemas/ScheduleResponse"
           }
         }
       },
-      "ValidationProblemDetails": {
+      "ScheduleAssignmentQueueResponse": {
+        "required": ["totalScheduleCount", "batches"],
         "type": "object",
         "properties": {
-          "type": {
-            "type": ["null", "string"]
-          },
-          "title": {
-            "type": ["null", "string"]
-          },
-          "status": {
+          "totalScheduleCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": ["null", "integer", "string"],
+            "type": ["integer", "string"],
             "format": "int32"
           },
-          "detail": {
-            "type": ["null", "string"]
-          },
-          "instance": {
-            "type": ["null", "string"]
-          },
-          "errors": {
-            "type": "object",
-            "additionalProperties": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+          "batches": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScheduleAssignmentQueueBatchResponse"
             }
           }
         }
       },
-      "GenerateScheduleCyclesDto": {
-        "type": "object",
-        "properties": {
-          "year": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": ["integer", "string"],
-            "format": "int32"
-          }
-        }
-      },
-      "ScheduleGenerationResult": {
+      "ScheduleCoverageReviewItem": {
         "required": [
-          "year",
-          "eligibleAssets",
-          "existingSchedules",
-          "createdSchedules",
-          "deferredSchedules",
-          "cyclesRequiringGsdCoverageReview"
+          "assetId",
+          "assetCode",
+          "department",
+          "assetCategory",
+          "pmCycle",
+          "reason"
         ],
         "type": "object",
         "properties": {
+          "assetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "assetCode": {
+            "type": "string"
+          },
+          "department": {
+            "type": "string"
+          },
+          "assetCategory": {
+            "type": "string"
+          },
+          "pmCycle": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
+      },
+      "ScheduleCoverageReviewPage": {
+        "required": ["year", "page", "pageSize", "total", "items"],
+        "type": "object",
+        "properties": {
           "year": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": ["integer", "string"],
             "format": "int32"
           },
-          "eligibleAssets": {
+          "page": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": ["integer", "string"],
             "format": "int32"
           },
-          "existingSchedules": {
+          "pageSize": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": ["integer", "string"],
             "format": "int32"
           },
-          "createdSchedules": {
+          "total": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
             "type": ["integer", "string"],
             "format": "int32"
           },
-          "deferredSchedules": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": ["integer", "string"],
-            "format": "int32"
-          },
-          "cyclesRequiringGsdCoverageReview": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": ["integer", "string"],
-            "format": "int32"
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScheduleCoverageReviewItem"
+            }
           }
         }
       },
@@ -5430,157 +7906,6 @@
           }
         }
       },
-      "InspectionWmsReferralAuditResponse": {
-        "required": [
-          "previousExternalPmNumber",
-          "newExternalPmNumber",
-          "revision",
-          "changedByUserId",
-          "changedAt"
-        ],
-        "type": "object",
-        "properties": {
-          "previousExternalPmNumber": {
-            "type": ["null", "string"]
-          },
-          "newExternalPmNumber": {
-            "type": "string"
-          },
-          "revision": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": ["integer", "string"],
-            "format": "int32"
-          },
-          "changedByUserId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "changedAt": {
-            "type": "string",
-            "format": "date-time"
-          }
-        }
-      },
-      "InspectionWmsReferralDetailResponse": {
-        "required": [
-          "inspectionId",
-          "followUpStatus",
-          "externalPmNumber",
-          "revision",
-          "recordedByUserId",
-          "recordedAt",
-          "lastUpdatedByUserId",
-          "lastUpdatedAt",
-          "canRecordReferral",
-          "eligibilityMessage",
-          "audit"
-        ],
-        "type": "object",
-        "properties": {
-          "inspectionId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "followUpStatus": {
-            "type": "string"
-          },
-          "externalPmNumber": {
-            "type": ["null", "string"]
-          },
-          "revision": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": ["integer", "string"],
-            "format": "int32"
-          },
-          "recordedByUserId": {
-            "type": ["null", "string"],
-            "format": "uuid"
-          },
-          "recordedAt": {
-            "type": ["null", "string"],
-            "format": "date-time"
-          },
-          "lastUpdatedByUserId": {
-            "type": ["null", "string"],
-            "format": "uuid"
-          },
-          "lastUpdatedAt": {
-            "type": ["null", "string"],
-            "format": "date-time"
-          },
-          "canRecordReferral": {
-            "type": "boolean"
-          },
-          "eligibilityMessage": {
-            "type": ["null", "string"]
-          },
-          "audit": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/InspectionWmsReferralAuditResponse"
-            }
-          }
-        }
-      },
-      "InspectionWmsReferralResponse": {
-        "required": [
-          "inspectionId",
-          "externalPmNumber",
-          "revision",
-          "recordedByUserId",
-          "recordedAt",
-          "lastUpdatedByUserId",
-          "lastUpdatedAt",
-          "followUpStatus"
-        ],
-        "type": "object",
-        "properties": {
-          "inspectionId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "externalPmNumber": {
-            "type": "string"
-          },
-          "revision": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": ["integer", "string"],
-            "format": "int32"
-          },
-          "recordedByUserId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "recordedAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "lastUpdatedByUserId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "lastUpdatedAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "followUpStatus": {
-            "type": "string"
-          }
-        }
-      },
-      "UpdateInspectionWmsReferralDto": {
-        "type": "object",
-        "properties": {
-          "externalPmNumber": {
-            "type": "string"
-          },
-          "expectedRevision": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": ["integer", "string"],
-            "format": "int32"
-          }
-        }
-      },
       "ScheduleEnrollmentDeferralReviewRequest": {
         "required": ["note"],
         "type": "object",
@@ -5590,405 +7915,58 @@
           }
         }
       },
-      "AssetRegistryCategorySummaryResponse": {
+      "ScheduleGenerationResult": {
         "required": [
-          "assetCategory",
-          "displayName",
-          "totalCount",
-          "activeCount",
-          "inactiveCount",
-          "retiredCount"
+          "year",
+          "eligibleAssets",
+          "existingSchedules",
+          "createdSchedules",
+          "deferredSchedules",
+          "cyclesRequiringGsdCoverageReview"
         ],
         "type": "object",
         "properties": {
-          "assetCategory": {
+          "year": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "eligibleAssets": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "existingSchedules": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "createdSchedules": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "deferredSchedules": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "cyclesRequiringGsdCoverageReview": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          }
+        }
+      },
+      "ScheduleReferenceResponse": {
+        "required": ["code", "displayName"],
+        "type": "object",
+        "properties": {
+          "code": {
             "type": "string"
           },
           "displayName": {
             "type": "string"
-          },
-          "totalCount": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": ["integer", "string"],
-            "format": "int32"
-          },
-          "activeCount": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": ["integer", "string"],
-            "format": "int32"
-          },
-          "inactiveCount": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": ["integer", "string"],
-            "format": "int32"
-          },
-          "retiredCount": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": ["integer", "string"],
-            "format": "int32"
-          }
-        }
-      },
-      "AssetRegistryOptionsResponse": {
-        "required": ["categories", "statuses", "departments", "buildings"],
-        "type": "object",
-        "properties": {
-          "categories": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/AssetCategoryResponse"
-            }
-          },
-          "statuses": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "departments": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "buildings": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
-        }
-      },
-      "AssetRegistryPageResponse": {
-        "required": ["items", "page", "pageSize", "totalCount"],
-        "type": "object",
-        "properties": {
-          "items": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/AssetResponse"
-            }
-          },
-          "page": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": ["integer", "string"],
-            "format": "int32"
-          },
-          "pageSize": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": ["integer", "string"],
-            "format": "int32"
-          },
-          "totalCount": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": ["integer", "string"],
-            "format": "int32"
-          }
-        }
-      },
-      "AssetRegistrySummaryResponse": {
-        "required": [
-          "totalCount",
-          "activeCount",
-          "inactiveCount",
-          "retiredCount",
-          "categories"
-        ],
-        "type": "object",
-        "properties": {
-          "totalCount": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": ["integer", "string"],
-            "format": "int32"
-          },
-          "activeCount": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": ["integer", "string"],
-            "format": "int32"
-          },
-          "inactiveCount": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": ["integer", "string"],
-            "format": "int32"
-          },
-          "retiredCount": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": ["integer", "string"],
-            "format": "int32"
-          },
-          "categories": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/AssetRegistryCategorySummaryResponse"
-            }
-          }
-        }
-      },
-      "InspectionRegistryAssetContext": {
-        "required": [
-          "id",
-          "assetCode",
-          "assetCategory",
-          "department",
-          "building",
-          "location"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "assetCode": {
-            "type": "string"
-          },
-          "assetCategory": {
-            "type": "string"
-          },
-          "department": {
-            "type": ["null", "string"]
-          },
-          "building": {
-            "type": ["null", "string"]
-          },
-          "location": {
-            "type": ["null", "string"]
-          }
-        }
-      },
-      "InspectionRegistryItemResponse": {
-        "required": [
-          "id",
-          "scheduleId",
-          "assetId",
-          "dateInspected",
-          "isOperational",
-          "remarks",
-          "actionsRecommendations",
-          "createdAt",
-          "updatedAt",
-          "dateAccomplished",
-          "waterReplaceCarbonFilter",
-          "waterReplaceSedimentFilter",
-          "waterCheckUvLight",
-          "externalPmNumber",
-          "wmsReferralRevision",
-          "correctiveFollowUpStatus",
-          "hasPhotoEvidence",
-          "asset",
-          "schedule"
-        ],
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "scheduleId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "assetId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "dateInspected": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "isOperational": {
-            "type": "boolean"
-          },
-          "remarks": {
-            "type": ["null", "string"]
-          },
-          "actionsRecommendations": {
-            "type": ["null", "string"]
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "updatedAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "dateAccomplished": {
-            "type": ["null", "string"],
-            "format": "date-time"
-          },
-          "waterReplaceCarbonFilter": {
-            "type": ["null", "boolean"]
-          },
-          "waterReplaceSedimentFilter": {
-            "type": ["null", "boolean"]
-          },
-          "waterCheckUvLight": {
-            "type": ["null", "boolean"]
-          },
-          "externalPmNumber": {
-            "type": ["null", "string"]
-          },
-          "wmsReferralRevision": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": ["integer", "string"],
-            "format": "int32"
-          },
-          "correctiveFollowUpStatus": {
-            "type": "string"
-          },
-          "hasPhotoEvidence": {
-            "type": "boolean"
-          },
-          "asset": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/InspectionRegistryAssetContext"
-              }
-            ]
-          },
-          "schedule": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/InspectionRegistryScheduleContext"
-              }
-            ]
-          }
-        }
-      },
-      "InspectionRegistryOptionsResponse": {
-        "required": [
-          "categories",
-          "quarters",
-          "wmsReferralStatuses",
-          "departments",
-          "years"
-        ],
-        "type": "object",
-        "properties": {
-          "categories": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/AssetCategoryResponse"
-            }
-          },
-          "quarters": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "wmsReferralStatuses": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "departments": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "years": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
-        }
-      },
-      "InspectionRegistryPageResponse": {
-        "required": ["items", "page", "pageSize", "totalCount", "overallCount"],
-        "type": "object",
-        "properties": {
-          "items": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/InspectionRegistryItemResponse"
-            }
-          },
-          "page": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": ["integer", "string"],
-            "format": "int32"
-          },
-          "pageSize": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": ["integer", "string"],
-            "format": "int32"
-          },
-          "totalCount": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": ["integer", "string"],
-            "format": "int32"
-          },
-          "overallCount": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": ["integer", "string"],
-            "format": "int32"
-          }
-        }
-      },
-      "InspectionRegistryScheduleContext": {
-        "required": ["id", "pmCycle"],
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "pmCycle": {
-            "type": "string"
-          }
-        }
-      },
-      "InspectionRegistrySummaryResponse": {
-        "required": [
-          "totalCount",
-          "operationalCount",
-          "nonOperationalCount",
-          "noReferralCount",
-          "pendingFollowUpCount",
-          "referredCount"
-        ],
-        "type": "object",
-        "properties": {
-          "totalCount": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": ["integer", "string"],
-            "format": "int32"
-          },
-          "operationalCount": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": ["integer", "string"],
-            "format": "int32"
-          },
-          "nonOperationalCount": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": ["integer", "string"],
-            "format": "int32"
-          },
-          "noReferralCount": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": ["integer", "string"],
-            "format": "int32"
-          },
-          "pendingFollowUpCount": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": ["integer", "string"],
-            "format": "int32"
-          },
-          "referredCount": {
-            "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": ["integer", "string"],
-            "format": "int32"
           }
         }
       },
@@ -6206,6 +8184,273 @@
             "format": "int32"
           }
         }
+      },
+      "ScheduleResponse": {
+        "required": [
+          "id",
+          "assetId",
+          "scheduleDate",
+          "pmCycle",
+          "periodType",
+          "status",
+          "quarter",
+          "semester",
+          "year",
+          "academicYear",
+          "assignedToUserId",
+          "assignedSupervisorUserId",
+          "completedAt",
+          "createdAt",
+          "updatedAt",
+          "asset"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "assetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "scheduleDate": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "pmCycle": {
+            "type": "string"
+          },
+          "periodType": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "quarter": {
+            "type": ["null", "string"]
+          },
+          "semester": {
+            "type": ["null", "string"]
+          },
+          "year": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["null", "integer", "string"],
+            "format": "int32"
+          },
+          "academicYear": {
+            "type": ["null", "string"]
+          },
+          "assignedToUserId": {
+            "type": ["null", "string"],
+            "format": "uuid"
+          },
+          "assignedSupervisorUserId": {
+            "type": ["null", "string"],
+            "format": "uuid"
+          },
+          "completedAt": {
+            "type": ["null", "string"],
+            "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "asset": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ScheduleAssetResponse"
+              }
+            ]
+          }
+        }
+      },
+      "ScheduleSupervisorAssignmentOptionsResponse": {
+        "required": [
+          "supervisors",
+          "page",
+          "pageSize",
+          "totalCount",
+          "selected"
+        ],
+        "type": "object",
+        "properties": {
+          "supervisors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScheduleAssigneeOption"
+            }
+          },
+          "page": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "pageSize": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "totalCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "selected": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ScheduleAssigneeOption"
+              }
+            ]
+          }
+        }
+      },
+      "ScheduleWorkerAssignmentOptionsResponse": {
+        "required": ["workers", "page", "pageSize", "totalCount", "selected"],
+        "type": "object",
+        "properties": {
+          "workers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScheduleAssigneeOption"
+            }
+          },
+          "page": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "pageSize": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "totalCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "selected": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ScheduleAssigneeOption"
+              }
+            ]
+          }
+        }
+      },
+      "UpdateAssetVerificationLocationDto": {
+        "type": "object",
+        "properties": {
+          "verificationLatitude": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": ["null", "number", "string"],
+            "format": "double"
+          },
+          "verificationLongitude": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": ["null", "number", "string"],
+            "format": "double"
+          },
+          "verificationRadiusMeters": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
+            "type": ["null", "number", "string"],
+            "format": "double"
+          }
+        }
+      },
+      "UpdateDraftInspectionRowDto": {
+        "type": "object",
+        "properties": {
+          "expectedUpdatedAt": {
+            "type": ["null", "string"],
+            "format": "date-time"
+          },
+          "dateInspected": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "dateAccomplished": {
+            "type": ["null", "string"],
+            "format": "date-time"
+          },
+          "isOperational": {
+            "type": "boolean"
+          },
+          "remarks": {
+            "type": ["null", "string"]
+          },
+          "actionsRecommendations": {
+            "type": ["null", "string"]
+          },
+          "waterReplaceCarbonFilter": {
+            "type": ["null", "boolean"]
+          },
+          "waterReplaceSedimentFilter": {
+            "type": ["null", "boolean"]
+          },
+          "waterCheckUvLight": {
+            "type": ["null", "boolean"]
+          }
+        }
+      },
+      "UpdateInspectionWmsReferralDto": {
+        "type": "object",
+        "properties": {
+          "externalPmNumber": {
+            "type": "string"
+          },
+          "expectedRevision": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          }
+        }
+      },
+      "ValidationProblemDetails": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": ["null", "string"]
+          },
+          "title": {
+            "type": ["null", "string"]
+          },
+          "status": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["null", "integer", "string"],
+            "format": "int32"
+          },
+          "detail": {
+            "type": ["null", "string"]
+          },
+          "instance": {
+            "type": ["null", "string"]
+          },
+          "errors": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
       }
     },
     "securitySchemes": {
@@ -6219,7 +8464,7 @@
   },
   "tags": [
     {
-      "name": "UniPM.Api"
+      "name": "Program"
     },
     {
       "name": "Reference Data"
@@ -6235,6 +8480,9 @@
     },
     {
       "name": "Inspections"
+    },
+    {
+      "name": "UniPM.Api"
     },
     {
       "name": "Preventive Maintenance Forms"

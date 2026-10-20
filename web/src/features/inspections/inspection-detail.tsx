@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useAsset } from '@/features/assets/asset-queries'
+import { useCurrentUser } from '@/features/auth/current-user'
 import {
   useInspection,
   useInspectionPhotoEvidence,
@@ -144,12 +145,12 @@ function InspectionPhotoEvidencePanel({
                 type="button"
                 aria-label="Open inspection photo preview"
                 onClick={() => setShowPreview(true)}
-                className="overflow-hidden rounded-md border border-[var(--border-soft)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
+                className="flex max-h-40 max-w-64 items-center justify-center overflow-hidden rounded-md border border-[var(--border-soft)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
               >
                 <img
                   src={photoUrl}
                   alt="Inspection photo thumbnail"
-                  className="h-32 w-32 object-cover"
+                  className="block h-auto max-h-40 w-auto max-w-64 object-contain"
                 />
               </button>
               <p className="text-sm text-[var(--text-secondary)]">
@@ -223,6 +224,7 @@ export function InspectionDetail({
   registrySearch?: InspectionSearch
   returnContext?: DetailReturnContext | undefined
 }) {
+  const currentUser = useCurrentUser()
   const isValidId = uuidPattern.test(inspectionId)
   const inspection = useInspection(inspectionId, isValidId)
   const asset = useAsset(
@@ -320,6 +322,9 @@ export function InspectionDetail({
     record.waterCheckUvLight != null
   const yesNo = (value: boolean | null | undefined) =>
     value == null ? 'Not recorded' : value ? 'Yes' : 'No'
+  const showWmsEntryGuide =
+    currentUser.data?.roles.includes('GSD') === true &&
+    record.correctiveFollowUpStatus !== 'NoReferralRequired'
 
   return (
     <section
@@ -335,12 +340,12 @@ export function InspectionDetail({
           <p className="text-sm font-semibold tracking-[0.08em] text-[var(--primary)] uppercase">
             Inspection source record
           </p>
-          <h1
+          <h2
             id="inspection-detail-title"
             className="mt-2 text-3xl font-bold tracking-tight text-[var(--text-primary)]"
           >
             {asset.data?.assetCode ?? 'Inspection record'}
-          </h1>
+          </h2>
           <p className="mt-2 text-[var(--text-secondary)]">
             Actual inspection date: {formatInspectionDate(record.dateInspected)}
           </p>
@@ -401,10 +406,6 @@ export function InspectionDetail({
           value={formatPmCycleDueDate(schedule.data?.pmCycle)}
         />
         <DetailItem
-          label="Actual inspection date"
-          value={formatInspectionDate(record.dateInspected)}
-        />
-        <DetailItem
           label="Recorded operational result"
           value={inspectionOutcome(record.isOperational)}
         />
@@ -431,6 +432,35 @@ export function InspectionDetail({
           value={formatInspectionDate(record.updatedAt)}
         />
       </Card>
+
+      {showWmsEntryGuide && (
+        <Card className="flex flex-col gap-3 border-[var(--border-soft)] shadow-none sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="font-semibold text-[var(--text-primary)]">
+              Record the external WMS PM number
+            </h2>
+            <p className="mt-1 max-w-3xl text-sm text-[var(--text-secondary)]">
+              Open this asset's acknowledged form, then enter the number in
+              Corrective-action findings. The field appears after the form is
+              acknowledged; UniPM records the supplied reference and does not
+              create WMS work.
+            </p>
+          </div>
+          <Button asChild variant="secondary" className="shrink-0">
+            <Link
+              to="/app/preventive-maintenance-forms"
+              search={{
+                status: 'Acknowledged',
+                ...(asset.data?.assetCode
+                  ? { search: asset.data.assetCode }
+                  : {}),
+              }}
+            >
+              Find this asset's acknowledged form
+            </Link>
+          </Button>
+        </Card>
+      )}
 
       {(asset.isError || schedule.isError) && (
         <Card role="alert" className="border-[var(--warning)] p-4 shadow-none">

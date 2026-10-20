@@ -8,6 +8,7 @@ import type {
   PmPeriodDashboardAssetRowResponse,
   PmPeriodDashboardBatchResponse,
 } from '@/api/generated/models'
+import { PageHeading } from '@/components/layout/page-heading'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -152,17 +153,13 @@ function Summary({
       aria-label="Submitted batch review summary"
       className="space-y-4 p-4 shadow-none sm:p-5"
     >
+      <PageHeading
+        id="pm-acknowledgement-review-title"
+        eyebrow="Submitted batch review"
+        title="Review before acknowledgement"
+      />
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
         <div>
-          <p className="text-sm font-semibold tracking-[0.08em] text-[var(--primary)] uppercase">
-            Submitted batch review
-          </p>
-          <h1
-            id="pm-acknowledgement-review-title"
-            className="mt-1 text-2xl font-bold tracking-tight text-[var(--text-primary)] sm:text-3xl"
-          >
-            Review before acknowledgement
-          </h1>
           <p className="mt-2 max-w-3xl text-sm text-[var(--text-secondary)]">
             Acknowledgement records receipt/noting of the completed PM form. It
             is not personal witnessing. It does not approve corrective work,

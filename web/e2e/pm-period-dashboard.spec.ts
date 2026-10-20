@@ -534,6 +534,20 @@ test.describe('PM period dashboard', () => {
       '67%',
       'Not measurable yet',
     ])
+    await page.screenshot({
+      path: 'test-results/web-ui-refinement-dashboard-desktop.png',
+    })
+    await page.setViewportSize({ width: 375, height: 812 })
+    await page.screenshot({
+      path: 'test-results/web-ui-refinement-dashboard-mobile.png',
+      fullPage: true,
+    })
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth - window.innerWidth,
+      ),
+    ).toBeLessThanOrEqual(1)
+    await page.setViewportSize({ width: 1280, height: 900 })
 
     await page.getByLabel('Condition').selectOption('NonOperational')
     await expectRequest(requests, {
@@ -853,104 +867,178 @@ test.describe('PM period dashboard', () => {
     await mockDashboardApi(page)
     const analyticsRequests: unknown[] = []
     const interpretationRequests: unknown[] = []
-    await page.route('**/api/v1/analytics/pm/interpret', async (route) => {
+    await page.route('**/api/v1/analytics/pm/v2/interpret', async (route) => {
       interpretationRequests.push(route.request().postDataJSON())
       await route.fulfill(
         jsonResponse({
           status: 'Valid',
           plan: {
+            schemaVersion: 2,
             metric: 'NonOperational',
             assetCategory: 'fire-extinguisher',
-            pmCycle: '2026-11',
+            period: {
+              kind: 'Month',
+              year: 2026,
+              month: 11,
+              quarter: null,
+              startCycle: null,
+              endCycle: null,
+            },
+            comparison: null,
+            presentation: 'Count',
+            countBasis: 'AssetCycles',
             department: null,
+            building: null,
+            assetCode: null,
+            condition: null,
+            timeliness: null,
             groupBy: 'None',
+            ranking: null,
           },
           clarificationFields: [],
-          presentation: 'Count',
           code: null,
-          canonicalQuestion:
-            'Show non-operational assets for fire-extinguisher in 2026-11',
+          detail: null,
         }),
       )
     })
-    await page.route('**/api/v1/analytics/pm/query', async (route) => {
-      analyticsRequests.push(route.request().postDataJSON())
+    await page.route('**/api/v1/analytics/pm/v2/query', async (route) => {
+      const request = route.request().postDataJSON() as {
+        sourceScope: string
+      }
+      analyticsRequests.push(request)
+      const matchingSource = {
+        scheduleId: assetIds.onTime,
+        assetId: assetIds.onTime,
+        inspectionId: assetIds.onTime,
+        assetCode: 'FE-001',
+        assetCategory: 'fire-extinguisher',
+        currentDepartment: 'GSD',
+        currentBuilding: 'Library',
+        pmCycle: '2026-11',
+        deadline: '2026-11-30T15:59:59.999Z',
+        completedAt: '2026-12-01T04:00:00Z',
+        scheduleStatus: 'Completed',
+        timeliness: 'Late',
+        condition: 'NonOperational',
+        formStatus: 'Draft',
+        usedLegacyDateFallback: false,
+      }
+      const calculationSources = [
+        matchingSource,
+        {
+          ...matchingSource,
+          scheduleId: assetIds.pending,
+          assetId: assetIds.pending,
+          inspectionId: null,
+          assetCode: 'FE-002',
+          completedAt: null,
+          scheduleStatus: 'Due',
+          timeliness: 'Missed',
+          condition: 'NotInspected',
+          formStatus: null,
+        },
+        {
+          ...matchingSource,
+          scheduleId: assetIds.notCompleted,
+          assetId: assetIds.notCompleted,
+          inspectionId: null,
+          assetCode: 'FE-003',
+          completedAt: null,
+          scheduleStatus: 'Due',
+          timeliness: 'Missed',
+          condition: 'NotInspected',
+          formStatus: null,
+        },
+      ]
       await route.fulfill(
         jsonResponse({
+          schemaVersion: 2,
+          asOfUtc: '2026-12-01T05:00:00Z',
           plan: {
+            schemaVersion: 2,
             metric: 'NonOperational',
             assetCategory: 'fire-extinguisher',
-            pmCycle: '2026-11',
+            period: {
+              kind: 'Month',
+              year: 2026,
+              month: 11,
+              quarter: null,
+              startCycle: null,
+              endCycle: null,
+            },
+            comparison: null,
+            presentation: 'Count',
+            countBasis: 'AssetCycles',
             department: null,
+            building: null,
+            assetCode: null,
+            condition: null,
+            timeliness: null,
             groupBy: 'None',
+            ranking: null,
           },
-          deadline: '2026-11-30T15:59:59.999Z',
-          periodState: 'Closed',
+          sourceScope: request.sourceScope,
+          page: 1,
+          pageSize: 25,
+          population: {
+            eligibleAssetCycleCount: 3,
+            eligibleDistinctAssetCount: 3,
+            matchingAssetCycleCount: 1,
+            matchingDistinctAssetCount: 1,
+            sourceTotalCount:
+              request.sourceScope === 'Matching'
+                ? 1
+                : calculationSources.length,
+            totalPages: 1,
+          },
           result: {
-            department: null,
             numerator: 1,
             denominator: 3,
             value: 1,
             unit: 'Count',
             isMeasurable: true,
+            unmeasurableReason: null,
           },
+          cycles: [],
           groups: [],
-          sources: [
-            {
-              scheduleId: assetIds.onTime,
-              assetId: assetIds.onTime,
-              inspectionId: assetIds.onTime,
-              assetCode: 'FE-001',
-              department: 'GSD',
-              pmCycle: '2026-11',
-              deadline: '2026-11-30T15:59:59.999Z',
-              inspectionCompletedAt: '2026-12-01T04:00:00Z',
-              timeliness: 'Late',
-              condition: 'NonOperational',
-              formStatus: 'Draft',
-            },
-            {
-              scheduleId: assetIds.pending,
-              assetId: assetIds.pending,
-              inspectionId: null,
-              assetCode: 'FE-002',
-              department: 'GSD',
-              pmCycle: '2026-11',
-              deadline: '2026-11-30T15:59:59.999Z',
-              inspectionCompletedAt: null,
-              timeliness: 'NotCompleted',
-              condition: 'NotInspected',
-              formStatus: null,
-            },
-            {
-              scheduleId: assetIds.notCompleted,
-              assetId: assetIds.notCompleted,
-              inspectionId: null,
-              assetCode: 'FE-003',
-              department: 'GSD',
-              pmCycle: '2026-11',
-              deadline: '2026-11-30T15:59:59.999Z',
-              inspectionCompletedAt: null,
-              timeliness: 'NotCompleted',
-              condition: 'NotInspected',
-              formStatus: null,
-            },
-          ],
-          totalSourceCount: 3,
-          sourcesTruncated: false,
+          rankingExclusions: [],
+          comparison: null,
+          sources:
+            request.sourceScope === 'Matching'
+              ? [matchingSource]
+              : calculationSources,
           scopeNote:
-            'These are live PM results for the selected scope, not acknowledged-only official history.',
+            'These are operational PM schedule results, not official history.',
         }),
       )
     })
 
-    // This legacy dashboard cycle checks that the question sets its own scope.
+    // The dashboard keeps structured reports and questions in one workspace.
+    await page.setViewportSize({ width: 1440, height: 900 })
     await page.goto(
       '/app/dashboard?assetCategory=fire-extinguisher&year=2026&pmCycle=2026-08',
     )
+    const askAQuestion = page.getByRole('button', { name: 'Ask a question' })
+    await expect(
+      page.getByRole('button', { name: 'Build a report' }),
+    ).toBeVisible()
+    await expect(askAQuestion).toBeVisible()
+    await page.screenshot({
+      path: 'test-results/web-ui-polish-dashboard-desktop.png',
+    })
+    await askAQuestion.click()
+    await expect(page).toHaveURL(/\/app\/dashboard\?.*view=question/)
+    await expect(
+      page.getByRole('heading', {
+        name: 'Preventive Maintenance Dashboard',
+      }),
+    ).toBeVisible()
     await expect(
       page.getByRole('heading', { name: 'Ask about PM results' }),
     ).toBeVisible()
+    await page.screenshot({
+      path: 'test-results/web-ui-polish-pm-analytics-desktop.png',
+    })
     await page
       .getByRole('textbox', { name: 'Question' })
       .fill(
@@ -958,32 +1046,97 @@ test.describe('PM period dashboard', () => {
       )
     await page.getByRole('button', { name: 'Show result' }).click()
 
-    const results = page.getByRole('region', { name: 'PM result' })
+    const results = page.getByRole('region', {
+      name: 'PM analytics result',
+    })
     await expect(
-      results.getByText('Non-operational assets', { exact: true }),
+      results.getByText('Non-operational inspections', { exact: true }),
     ).toBeVisible()
-    await expect(results.getByText('1 shown', { exact: true })).toBeVisible()
+    await expect(results.getByText(/1 shown on this page of 1/)).toBeVisible()
     await expect(
-      results.getByRole('heading', { name: 'Matching records' }),
+      results.getByRole('heading', { name: 'Matching source records' }),
     ).toBeVisible()
     await expect(
-      results.getByText(/Deadline: Nov 30, 2026.*11:59 PM.*GMT\+8/),
-    ).toBeVisible()
+      results.getByRole('button', { name: 'Matching only' }),
+    ).toHaveAttribute('aria-pressed', 'true')
+    await expect(
+      results.getByRole('button', { name: 'Matching only' }),
+    ).toContainText('1')
+    await expect(
+      results.getByRole('button', { name: 'Calculation sources' }),
+    ).toContainText('3')
+    await results
+      .locator('li')
+      .filter({ hasText: 'FE-001' })
+      .getByText('Record details', { exact: true })
+      .click()
+    await expect(results.getByText(/Scheduled deadline/)).toBeVisible()
     await expect(
       results.getByRole('link', { name: 'FE-001', exact: true }),
     ).toBeVisible()
     await expect(results.getByText('FE-002', { exact: true })).toHaveCount(0)
     await expect(results.getByText('FE-003', { exact: true })).toHaveCount(0)
 
-    await results
-      .getByRole('checkbox', { name: 'Show all calculation source records' })
-      .check()
-    await expect(results.getByText('3 shown of 3')).toBeVisible()
+    const calculationSourcesButton = results.getByRole('button', {
+      name: 'Calculation sources',
+    })
+    await calculationSourcesButton.scrollIntoViewIfNeeded()
+    const readShellPositions = () =>
+      page.evaluate(() => {
+        const sidebar = document.querySelector<HTMLElement>('.app-sidebar')
+        const header = document.querySelector<HTMLElement>('.app-page-header')
+        const workspace = document.querySelector<HTMLElement>('.app-workspace')
+        if (!sidebar || !header || !workspace) {
+          throw new Error('Application shell geometry is unavailable')
+        }
+        return {
+          windowScrollY: window.scrollY,
+          sidebarTop: sidebar.getBoundingClientRect().top,
+          headerTop: header.getBoundingClientRect().top,
+          workspaceTop: workspace.getBoundingClientRect().top,
+          workspaceScrollTop: workspace.scrollTop,
+        }
+      })
+    const beforeCalculationSources = await readShellPositions()
+    await calculationSourcesButton.click()
+    await expect(results.getByText(/3 shown on this page of 3/)).toBeVisible()
+    const sourcesTitle = page.locator('#pm-analytics-sources-title')
+    await expect(sourcesTitle).toBeVisible()
+    await sourcesTitle.evaluate((element) =>
+      element.scrollIntoView({ block: 'start' }),
+    )
+    const afterCalculationSources = await readShellPositions()
+    expect(afterCalculationSources.windowScrollY).toBe(
+      beforeCalculationSources.windowScrollY,
+    )
+    expect(afterCalculationSources.sidebarTop).toBeCloseTo(
+      beforeCalculationSources.sidebarTop,
+      2,
+    )
+    expect(afterCalculationSources.headerTop).toBeCloseTo(
+      beforeCalculationSources.headerTop,
+      2,
+    )
+    expect(afterCalculationSources.workspaceTop).toBeCloseTo(
+      beforeCalculationSources.workspaceTop,
+      2,
+    )
+    expect(afterCalculationSources.workspaceScrollTop).toBeGreaterThan(
+      beforeCalculationSources.workspaceScrollTop,
+    )
     await expect(
-      results.getByRole('heading', { name: 'Source records' }),
+      results.getByRole('heading', { name: 'Calculation source records' }),
     ).toBeVisible()
     await expect(results.getByRole('link', { name: 'FE-002' })).toBeVisible()
     await expect(results.getByRole('link', { name: 'FE-003' })).toBeVisible()
+    await expect(
+      results.getByRole('button', { name: 'Calculation sources' }),
+    ).toHaveAttribute('aria-pressed', 'true')
+    await results
+      .locator('li')
+      .filter({ hasText: 'FE-002' })
+      .getByText('Record details', { exact: true })
+      .click()
     await expect(results.getByText('Form status')).toBeVisible()
     await expect(results.getByText('Draft', { exact: true })).toBeVisible()
     await expect(
@@ -1001,8 +1154,32 @@ test.describe('PM period dashboard', () => {
       .poll(() => analyticsRequests)
       .toEqual([
         {
-          question:
-            'Show non-operational assets for fire-extinguisher in 2026-11',
+          plan: expect.objectContaining({
+            schemaVersion: 2,
+            metric: 'NonOperational',
+            assetCategory: 'fire-extinguisher',
+            period: {
+              kind: 'Month',
+              year: 2026,
+              month: 11,
+              quarter: null,
+              startCycle: null,
+              endCycle: null,
+            },
+          }),
+          sourceScope: 'Matching',
+          page: 1,
+          pageSize: 25,
+        },
+        {
+          plan: expect.objectContaining({
+            schemaVersion: 2,
+            metric: 'NonOperational',
+            assetCategory: 'fire-extinguisher',
+          }),
+          sourceScope: 'Calculation',
+          page: 1,
+          pageSize: 25,
         },
       ])
 
@@ -1023,5 +1200,18 @@ test.describe('PM period dashboard', () => {
         }),
       )}`,
     )
+    await page.screenshot({
+      path: 'test-results/web-ui-polish-pm-analytics-result-desktop.png',
+    })
+
+    await page.setViewportSize({ width: 375, height: 812 })
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth - window.innerWidth,
+      ),
+    ).toBeLessThanOrEqual(1)
+    await page.screenshot({
+      path: 'test-results/web-ui-polish-pm-analytics-mobile.png',
+    })
   })
 })

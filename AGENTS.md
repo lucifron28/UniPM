@@ -17,10 +17,13 @@ records remain as evidence of prior work. The separate fictional
 ReferenceDocument foundation, Full-Text Search, section embeddings, and shared
 provider-neutral embedding components remain.
 
-Schema-constrained natural-language analytics remains a planned post-validation
-direction, pending professor/adviser confirmation. It is not implemented or
-approved for this branch; any implementation requires a separate approved task
-and branch after GSD validation.
+The separate `feature/offline-nla-v3-integration` candidate combines the
+composable NLA V3 implementation through Phase 6 with the offline inspection
+and mobile acknowledgement UX work. It remains isolated from `main` and
+`deploy/azure-staging`, and it is not an accepted release baseline. Phase 5
+question labels still require independent review, SQL Server 2019 execution is
+unverified, and Phases 7–8 remain planning only. The stable PMIS baseline
+described by this document remains unchanged.
 
 The safety rules below still apply to any code path that could contact an
 external AI provider, and chatbot-style open-ended AI behavior remains
@@ -50,8 +53,12 @@ Do not change the stack without discussion.
   - Avoid Docker-only assumptions in application code.
 - Web frontend: React + TypeScript + Vite
 - Mobile: Flutter
-  - Offline sync is deferred; its persistence and synchronization architecture
-    remain undecided until a separate approved decision.
+  - The integration candidate combines the offline inspection workflow and
+    mobile acknowledgement/home UX. It adds encrypted, per-user Draft and
+    assigned-schedule caching with an ordered retry queue. Authentication stays
+    memory-only; location verification, photo evidence, submission, and
+    acknowledgement remain online-only. The feature is not part of the merged
+    GSD validation baseline until reviewed and accepted.
   - Do not assume constant connectivity in mobile-facing API contracts.
 - Testing: xUnit
 
@@ -276,10 +283,11 @@ Browser authentication integration, the reference-document foundation, and the
 Flutter mobile foundation are implemented and merged in the separate,
 partner-owned mobile workstream. The mobile foundation includes memory-only
 authentication, QR-based asset entry, the Draft preventive-maintenance form
-workflow, and whole-form submission. Web acknowledgement and signature capture
-are implemented separately. Offline synchronization is deferred and its
-persistence and synchronization architecture remain undecided; later mobile
-field actions remain outside this workstream.
+workflow, and whole-form submission. The isolated integration candidate adds
+the acknowledged mobile UX and encrypted offline Draft persistence with queued
+synchronization and conflict review; session and online-only workflow
+boundaries remain unchanged. Treat this as a feature candidate until its review
+and acceptance are recorded.
 
 ## Current Unblocked Work
 
@@ -305,9 +313,10 @@ authentication integration, asset registry, preventive maintenance schedule
 workflows, read-only inspection review, multi-asset form drafting, form
 submission, whole-form acknowledgement, acknowledged-only history publication,
 and GSD-only corrective-action handoff preparation are also complete. The
-Flutter mobile foundation, initial Draft form workflow, and whole-form
-submission are complete; later mobile field actions remain separately approved
-work. The multilingual
+Flutter mobile foundation and initial Draft form workflow are complete.
+Encrypted offline synchronization, conflict recovery, and acknowledgement/home
+UX are implemented on the isolated integration candidate; review and GSD
+acceptance remain open. The multilingual
 embedding baseline is recorded as controlled development evidence; it does not
 establish real institutional performance.
 

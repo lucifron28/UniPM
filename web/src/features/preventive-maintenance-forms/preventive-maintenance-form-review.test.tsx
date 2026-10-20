@@ -5,6 +5,7 @@ import {
   waitFor,
   within,
 } from '@testing-library/react'
+import { useState } from 'react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import {
@@ -17,7 +18,10 @@ import { http, HttpResponse } from 'msw'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { configureApiRuntime } from '@/api/http-client'
 import { FormDetail } from '@/features/preventive-maintenance-forms/form-detail'
-import { FormRegistry } from '@/features/preventive-maintenance-forms/form-registry'
+import {
+  FormRegistry,
+  type FormSearch,
+} from '@/features/preventive-maintenance-forms/form-registry'
 import { PmAcknowledgementReview } from '@/features/preventive-maintenance-forms/pm-acknowledgement-review'
 import { useAcknowledgePreventiveMaintenanceFormMutation } from '@/features/preventive-maintenance-forms/form-queries'
 import type { PmPeriodDashboardSearch } from '@/features/reports/pm-period-dashboard'
@@ -29,11 +33,14 @@ import { server } from '@/test/server'
 
 const meUrl = '*/api/v1/auth/me'
 const formsUrl = '*/api/v1/preventive-maintenance-forms'
+const supervisorOptionsUrl = '*/api/v1/schedules/supervisor-assignment-options'
 const formId = '22222222-2222-4222-8222-222222222222'
 const inspectionId = '33333333-3333-4333-8333-333333333333'
 const scheduleId = '44444444-4444-4444-8444-444444444444'
 const assetId = '55555555-5555-4555-8555-555555555555'
 const inspectorId = '66666666-6666-4666-8666-666666666666'
+const firstSupervisorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaa0001'
+const secondSupervisorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaa0002'
 
 const timestamps = {
   createdAt: '2026-07-29T00:00:00Z',
@@ -344,10 +351,29 @@ describe('preventive-maintenance form review', () => {
     expect(
       await screen.findByRole('heading', { name: 'Form review' }),
     ).toBeInTheDocument()
+    const headings = screen
+      .getAllByRole('heading')
+      .map((heading) => heading.textContent?.trim())
+    expect(headings.indexOf('Form review')).toBeLessThan(
+      headings.indexOf('Find forms'),
+    )
+    expect(headings.indexOf('Find forms')).toBeLessThan(
+      headings.indexOf('Form records'),
+    )
+    expect(screen.getByRole('textbox', { name: 'Search forms' })).toBeVisible()
+    expect(screen.getByLabelText('Form status')).toBeVisible()
+    expect(screen.getByLabelText('Asset category')).toBeVisible()
+    expect(screen.getByLabelText('Department')).toBeVisible()
+    expect(screen.getByLabelText('PM cycle')).toBeVisible()
     expect(screen.getAllByText('Draft')).toHaveLength(3)
     expect(screen.getAllByText('Awaiting acknowledgement')).toHaveLength(3)
     expect(screen.getAllByText('Acknowledged')).toHaveLength(3)
     // jsdom includes both responsive lists: three forms rendered twice.
+    expect(
+      screen.getAllByRole('link', {
+        name: 'Fire extinguishers · GSD · Quarter / Q3 / 2026',
+      }),
+    ).toHaveLength(2)
     expect(screen.getAllByText('Main Building / GSD')).toHaveLength(6)
     expect(screen.getAllByText('Inspection rows')).toHaveLength(6)
     expect(screen.queryByText(formId)).not.toBeInTheDocument()
@@ -363,6 +389,30 @@ describe('preventive-maintenance form review', () => {
       'href',
       '/app/preventive-maintenance-forms/77777777-7777-4777-8777-777777777777?returnContext=%7B%22kind%22%3A%22formRegistry%22%7D',
     )
+    expect(
+      screen.getAllByRole('link', { name: 'View form details' }),
+    ).toHaveLength(6)
+
+    const zoomGroup = screen.getByRole('group', {
+      name: 'Form records zoom controls',
+    })
+    await userEvent.setup().click(
+      within(zoomGroup).getByRole('button', {
+        name: 'Increase Form records zoom',
+      }),
+    )
+    expect(
+      screen
+        .getByRole('region', {
+          name: 'Preventive-maintenance form records',
+        })
+        .querySelector<HTMLElement>(':scope > div')?.style.zoom,
+    ).toBe('1.1')
+    await userEvent.setup().click(
+      within(zoomGroup).getByRole('button', {
+        name: 'Reset Form records zoom to 100 percent',
+      }),
+    )
   })
 
   it('applies combined form filters and preserves them through the detail link', async () => {
@@ -374,6 +424,29 @@ describe('preventive-maintenance form review', () => {
         requests.push(new URL(request.url))
         return HttpResponse.json([submittedForm])
       }),
+      http.get('*/api/v1/schedules/registry/options', () =>
+        HttpResponse.json({
+          categories: [
+            {
+              code: 'fire-extinguisher',
+              displayName: 'Fire extinguishers',
+              scheduledMonths: [2, 5, 8, 11],
+            },
+          ],
+          quarters: ['Q1', 'Q2', 'Q3', 'Q4'],
+          departments: ['GSD'],
+          years: ['2026'],
+        }),
+      ),
+      http.get(supervisorOptionsUrl, () =>
+        HttpResponse.json({
+          supervisors: [],
+          page: 1,
+          pageSize: 10,
+          totalCount: 0,
+          selected: null,
+        }),
+      ),
     )
 
     const router = renderAppRouter('/app/preventive-maintenance-forms')
@@ -393,11 +466,9 @@ describe('preventive-maintenance form review', () => {
     const departmentFilter = screen.getByRole('combobox', {
       name: 'Department',
     })
-    await actor.type(departmentFilter, 'GSD')
-    await actor.keyboard('{ArrowDown}{Enter}')
+    await actor.selectOptions(departmentFilter, 'GSD')
     const cycleFilter = screen.getByRole('combobox', { name: 'PM cycle' })
-    await actor.type(cycleFilter, '2026-07')
-    await actor.keyboard('{ArrowDown}{Enter}')
+    await actor.selectOptions(cycleFilter, '2026-07')
     expect(requests).toHaveLength(1)
 
     await actor.click(screen.getByRole('button', { name: 'Apply filters' }))
@@ -438,6 +509,140 @@ describe('preventive-maintenance form review', () => {
         search: 'FE-TEST',
         page: 1,
       },
+    })
+  })
+
+  it('filters forms by current supervisor account and shows assignments separately from inspection work', async () => {
+    const assignedForms = [
+      {
+        ...form('Submitted'),
+        id: '11111111-1111-4111-8111-111111111111',
+        fileNumber: 'PM-SUPERVISOR-A',
+        inspections: form('Submitted').inspections.map((row) => ({
+          ...row,
+          currentScheduleSupervisorUserId: firstSupervisorId,
+          currentScheduleSupervisorIdentity: 'Alex Supervisor',
+          currentScheduleInspectorUserId: inspectorId,
+          currentScheduleInspectorIdentity: 'Assigned Inspector',
+        })),
+      },
+      {
+        ...form('Submitted'),
+        id: '22222222-2222-4222-8222-222222222223',
+        fileNumber: 'PM-SUPERVISOR-B',
+        inspections: form('Submitted').inspections.map((row) => ({
+          ...row,
+          currentScheduleSupervisorUserId: secondSupervisorId,
+          currentScheduleSupervisorIdentity: 'Alex Supervisor',
+        })),
+      },
+      {
+        ...form('Submitted'),
+        id: '33333333-3333-4333-8333-333333333334',
+        fileNumber: 'PM-SUPERVISOR-UNASSIGNED',
+        inspections: form('Submitted').inspections.map((row) => ({
+          ...row,
+          currentScheduleSupervisorUserId: null,
+          currentScheduleSupervisorIdentity: null,
+        })),
+      },
+    ]
+    server.use(
+      http.get(meUrl, () => HttpResponse.json(currentUser(['GSD']))),
+      http.get(formsUrl, () => HttpResponse.json(assignedForms)),
+      http.get(supervisorOptionsUrl, ({ request }) => {
+        const params = new URL(request.url).searchParams
+        const search = params.get('search')?.toLocaleLowerCase()
+        const allSupervisors = [
+          { id: firstSupervisorId, displayName: 'Alex Supervisor' },
+          { id: secondSupervisorId, displayName: 'Alex Supervisor' },
+        ]
+        const supervisors = allSupervisors.filter(
+          (supervisor) =>
+            !search ||
+            supervisor.displayName.toLocaleLowerCase().includes(search),
+        )
+        const selected = allSupervisors.find(
+          ({ id }) => id === params.get('selectedUserId'),
+        )
+        if (selected && !supervisors.some(({ id }) => id === selected.id)) {
+          supervisors.push(selected)
+        }
+        return HttpResponse.json({ supervisors })
+      }),
+    )
+
+    let lastSearch: FormSearch = {}
+    function ControlledFormRegistry() {
+      const [search, setSearch] = useState<FormSearch>({})
+      return (
+        <FormRegistry
+          search={search}
+          onSearchChange={(next) => {
+            lastSearch = next
+            setSearch(next)
+          }}
+        />
+      )
+    }
+
+    renderWithProviders(<ControlledFormRegistry />)
+    const actor = userEvent.setup()
+    const firstOption = 'Alex Supervisor · …0001'
+    const secondOption = 'Alex Supervisor · …0002'
+    await screen.findByRole('heading', { name: 'Form review' })
+    const supervisorPicker = await screen.findByRole('combobox', {
+      name: 'Supervisor filter',
+    })
+    await actor.type(supervisorPicker, 'Alex Sup')
+    const suggestions = document.getElementById('supervisor-filter-suggestions')
+    const suggestionValues = () =>
+      Array.from(
+        suggestions?.querySelectorAll('option') ?? [],
+        (option) => option.value,
+      )
+    await waitFor(() => expect(suggestionValues()).toContain(firstOption))
+    expect(suggestionValues()).toContain(secondOption)
+
+    fireEvent.change(supervisorPicker, { target: { value: firstOption } })
+    await actor.click(screen.getByRole('button', { name: 'Apply filters' }))
+
+    const firstFormLinks = await screen.findAllByRole('link', {
+      name: 'PM-SUPERVISOR-A',
+    })
+    expect(firstFormLinks).toHaveLength(2)
+    expect(
+      screen.queryByRole('link', { name: 'PM-SUPERVISOR-B' }),
+    ).not.toBeInTheDocument()
+    const firstFormCard = firstFormLinks[0]?.closest('article')
+    expect(firstFormCard).not.toBeNull()
+    expect(
+      within(firstFormCard!).getByText('Current supervisor assignment'),
+    ).toBeInTheDocument()
+    expect(
+      within(firstFormCard!).getByText('Alex Supervisor'),
+    ).toBeInTheDocument()
+    expect(
+      within(firstFormCard!).getByText('Current inspector assignment'),
+    ).toBeInTheDocument()
+    expect(
+      within(firstFormCard!).getByText('Assigned Inspector'),
+    ).toBeInTheDocument()
+
+    await actor.click(screen.getByRole('button', { name: 'Clear filters' }))
+    const clearedSupervisorPicker = await screen.findByRole('combobox', {
+      name: 'Supervisor filter',
+    })
+    await actor.type(clearedSupervisorPicker, 'Unassigned')
+    await actor.click(screen.getByRole('button', { name: 'Apply filters' }))
+    expect(lastSearch.supervisor).toBe('unassigned')
+    await waitFor(() => {
+      expect(
+        screen.getAllByRole('link', { name: 'PM-SUPERVISOR-UNASSIGNED' }),
+      ).toHaveLength(2)
+      expect(
+        screen.queryAllByRole('link', { name: 'PM-SUPERVISOR-A' }),
+      ).toHaveLength(0)
     })
   })
 
@@ -494,11 +699,23 @@ describe('preventive-maintenance form review', () => {
 
     renderWithProviders(<FormDetail formId={formId} />)
 
-    expect(await screen.findAllByText('WDS-MAIN-001')).toHaveLength(2)
-    expect(screen.getByText('Main Building lobby')).toBeInTheDocument()
-    expect(screen.getByText('Synthetic Inspector')).toBeInTheDocument()
+    expect(await screen.findAllByText('WDS-MAIN-001')).toHaveLength(1)
+    const inspectionRow = screen.getByText('WDS-MAIN-001').closest('article')
+    expect(inspectionRow).toHaveTextContent(/Main Building lobby/)
     expect(screen.getByText('Awaiting acknowledgement')).toBeInTheDocument()
     expect(screen.getByText(/Corrective follow-up pending/)).toBeInTheDocument()
+    const rowDetailsSummary = screen.getByText('Row details')
+    const rowDetails = rowDetailsSummary.closest('details')
+    if (!(rowDetails instanceof HTMLDetailsElement)) {
+      throw new Error('Inspection row details section was not found')
+    }
+    expect(rowDetails).not.toHaveAttribute('open')
+    expect(screen.getByText('Synthetic Inspector')).not.toBeVisible()
+    expect(
+      screen.getByText('Water drinking station work items'),
+    ).not.toBeVisible()
+    fireEvent.click(rowDetailsSummary)
+    expect(screen.getByText('Synthetic Inspector')).toBeVisible()
     expect(screen.getByText('Recommendation')).toBeInTheDocument()
     expect(
       screen.getByText('Water drinking station work items'),
@@ -513,9 +730,7 @@ describe('preventive-maintenance form review', () => {
 
     renderWithProviders(<AppShell />)
 
-    expect(
-      await screen.findByText('Preventive Maintenance Portal'),
-    ).toBeInTheDocument()
+    expect(await screen.findByLabelText('Account menu')).toBeInTheDocument()
     expect(
       await screen.findByRole('link', { name: 'Form review' }),
     ).toBeInTheDocument()
@@ -737,6 +952,11 @@ describe('preventive-maintenance form review', () => {
     renderWithProviders(<FormDetail formId={formId} />)
 
     expect(
+      await screen.findByRole('heading', {
+        name: 'Fire extinguishers · GSD · Quarter / Q3 / 2026',
+      }),
+    ).toBeInTheDocument()
+    expect(
       await screen.findByRole('heading', { name: 'Inspection rows' }),
     ).toBeInTheDocument()
     expect(
@@ -824,21 +1044,60 @@ describe('preventive-maintenance form review', () => {
         name: 'Acknowledge submitted form',
       }),
     ).toBeInTheDocument()
-    const acknowledgementCopy = screen.getByText(
-      /Field-work completion and acknowledgement are separate/,
+    expect(
+      screen.getByText(
+        /This records the department head's receipt and signatory details\./,
+      ),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        /locks the form and makes its inspection rows eligible for official history\./,
+      ),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        /It does not approve corrective work or create an RMRF\./,
+      ),
+    ).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Acknowledge form' }))
+    const signatoryNameInput = screen.getByLabelText('Signatory name')
+    const signatoryPositionInput = screen.getByLabelText('Signatory position')
+    expect(signatoryNameInput).toHaveAttribute('aria-invalid', 'true')
+    expect(signatoryNameInput).toHaveAttribute(
+      'aria-describedby',
+      'signatory-name-error',
     )
-    expect(acknowledgementCopy).toHaveTextContent(
-      /For the whole PM batch, acknowledgement records receipt\/noting, locks the form, and makes its inspection rows eligible for official history\./,
+    expect(screen.getByText('Enter the signatory name.')).toBeInTheDocument()
+    expect(signatoryPositionInput).toHaveAttribute('aria-invalid', 'true')
+    expect(signatoryPositionInput).toHaveAttribute(
+      'aria-describedby',
+      'signatory-position-error',
     )
-    expect(acknowledgementCopy).toHaveTextContent(
-      /It does not approve corrective work, funding, or an RMRF\./,
-    )
+    expect(
+      screen.getByText('Enter the signatory position.'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'Capture the department-head signature before continuing.',
+      ),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('dialog', {
+        name: 'Confirm department-head acknowledgement',
+      }),
+    ).not.toBeInTheDocument()
     fireEvent.change(screen.getByLabelText('Signatory name'), {
       target: { value: 'Synthetic Department Head' },
     })
     fireEvent.change(screen.getByLabelText('Signatory position'), {
       target: { value: 'Department Head' },
     })
+    expect(
+      screen.queryByText('Enter the signatory name.'),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('Enter the signatory position.'),
+    ).not.toBeInTheDocument()
     const signatureCanvas = screen.getByLabelText('Signature')
     const bounds = {
       x: 0,
@@ -931,7 +1190,7 @@ describe('preventive-maintenance form review', () => {
         screen.getByRole('dialog', {
           name: 'Confirm department-head acknowledgement',
         }),
-      ).getByText(/does not approve corrective work, funding, or an RMRF/),
+      ).getByText(/does not approve corrective work or create an RMRF/),
     ).toBeInTheDocument()
     fireEvent.click(
       screen.getByRole('button', { name: 'Confirm acknowledgement' }),
@@ -983,6 +1242,7 @@ describe('preventive-maintenance form review', () => {
           name: 'Review before acknowledgement',
         }),
       ).toBeInTheDocument()
+      await screen.findByText('Awaiting acknowledgement')
       expect(screen.getByText('Awaiting acknowledgement')).toBeInTheDocument()
       expect(screen.getByText('Compliance rate')).toBeInTheDocument()
       expect(screen.getByText('100%')).toBeInTheDocument()
@@ -1021,7 +1281,7 @@ describe('preventive-maintenance form review', () => {
       expect(
         await screen.findByRole('heading', {
           name: 'FE-TEST-001',
-          level: 1,
+          level: 2,
         }),
       ).toBeInTheDocument()
       expect(
@@ -1073,8 +1333,10 @@ describe('preventive-maintenance form review', () => {
       expect(screen.getByLabelText('Timeliness / status')).toHaveValue('Late')
       expect(screen.getByLabelText('Search assets')).toHaveValue('FE-TEST-001')
       expect(
-        screen.getByText('Asset category').parentElement,
-      ).toHaveTextContent('Fire extinguishers')
+        screen.getByRole('heading', {
+          name: 'Fire extinguishers · July 2026',
+        }),
+      ).toBeInTheDocument()
       const scheduledAssetRow = screen.getByRole('row', {
         name: /FE-TEST-001/,
       })

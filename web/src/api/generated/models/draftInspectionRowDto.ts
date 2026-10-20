@@ -6,6 +6,8 @@
  */
 
 export interface DraftInspectionRowDto {
+  /** @nullable */
+  id?: string | null
   scheduleId?: string
   inspectorUserId?: string
   /** @nullable */

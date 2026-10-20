@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import { useState } from 'react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
@@ -228,6 +228,23 @@ describe('AssetRegistry feature component', () => {
 
     expect((await screen.findAllByText('FE-001')).length).toBeGreaterThan(0)
     expect(screen.getAllByText('FA-002').length).toBeGreaterThan(0)
+    const headingOrder = screen
+      .getAllByRole('heading')
+      .map((heading) => heading.textContent?.trim())
+    expect(headingOrder.indexOf('Assets')).toBeLessThan(
+      headingOrder.indexOf('Find assets'),
+    )
+    expect(headingOrder.indexOf('Find assets')).toBeLessThan(
+      headingOrder.indexOf('Overall asset inventory'),
+    )
+    expect(headingOrder.indexOf('Overall asset inventory')).toBeLessThan(
+      headingOrder.indexOf('Asset records'),
+    )
+    expect(screen.getByLabelText('Search assets')).toBeVisible()
+    expect(screen.getByLabelText('Asset category')).toBeVisible()
+    expect(screen.getByLabelText('Status')).toBeVisible()
+    expect(screen.getByLabelText('Building')).toBeVisible()
+    expect(screen.getByLabelText('Department')).toBeVisible()
     expect(
       screen.getByRole('columnheader', { name: 'QR label' }),
     ).toBeInTheDocument()
@@ -238,6 +255,24 @@ describe('AssetRegistry feature component', () => {
     expect(screen.queryByText('UNIPM-FE-001')).not.toBeInTheDocument()
 
     const actor = userEvent.setup()
+    const zoomGroup = screen.getByRole('group', {
+      name: 'Asset records zoom controls',
+    })
+    await actor.click(
+      within(zoomGroup).getByRole('button', {
+        name: 'Increase Asset records zoom',
+      }),
+    )
+    expect(
+      screen
+        .getByRole('region', { name: 'Assets table' })
+        .querySelector<HTMLElement>(':scope > div')?.style.zoom,
+    ).toBe('1.1')
+    await actor.click(
+      within(zoomGroup).getByRole('button', {
+        name: 'Reset Asset records zoom to 100 percent',
+      }),
+    )
     const searchInput = screen.getByPlaceholderText(
       'Asset code, QR, building, department, or location',
     )
@@ -597,7 +632,7 @@ describe('AssetRegistry feature component', () => {
     expect(
       await screen.findByText('Categories unavailable'),
     ).toBeInTheDocument()
-    expect(screen.getByText('Overall by asset category')).toBeInTheDocument()
+    expect(screen.getByText('Overall asset inventory')).toBeInTheDocument()
 
     const actor = userEvent.setup()
     await actor.click(screen.getByRole('button', { name: 'Retry categories' }))

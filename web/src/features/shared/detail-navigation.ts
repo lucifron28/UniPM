@@ -166,6 +166,7 @@ const scheduleSearchSchema = z.object({
     .string()
     .regex(/^(?!0000)\d{4}-(0[1-9]|1[0-2])$/)
     .optional(),
+  view: z.enum(['assignments']).optional(),
   page: pageSchema,
 })
 const formSearchSchema = z.object({

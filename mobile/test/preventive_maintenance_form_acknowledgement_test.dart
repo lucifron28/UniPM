@@ -68,6 +68,38 @@ Map<String, dynamic> _submittedFormJson({bool includeAssetMetadata = true}) =>
       ],
     };
 
+PreventiveMaintenanceForm submittedFormWithInspectionCount(
+  int count, {
+  int nonOperationalInspectionCount = 1,
+}) {
+  final json = _submittedFormJson();
+  final template =
+      (json['inspections'] as List<dynamic>).single as Map<String, dynamic>;
+  json['inspections'] = List<Map<String, dynamic>>.generate(count, (index) {
+    final date = DateTime.utc(2026, 2, 9, 16, 30 + index);
+    final isOperational = index >= nonOperationalInspectionCount;
+    return {
+      ...template,
+      'id': _syntheticUuid('10000000', index),
+      'scheduleId': _syntheticUuid('20000000', index),
+      'assetId': _syntheticUuid('30000000', index),
+      'assetCode': 'FE-2026-${(index + 1).toString().padLeft(4, '0')}',
+      'dateInspected': date.toIso8601String(),
+      'isOperational': isOperational,
+      'remarks': isOperational
+          ? 'Routine check'
+          : 'Low pressure detected at the gauge. Verify pressure stability and inspect the valve assembly.',
+      'actionsRecommendations': isOperational
+          ? 'None'
+          : 'Inspect the gauge and valve assembly with the approved test instrument, then record the follow-up maintenance action.',
+    };
+  });
+  return PreventiveMaintenanceForm.fromJson(json);
+}
+
+String _syntheticUuid(String namespace, int index) =>
+    '$namespace-0000-4000-8000-${(index + 1).toRadixString(16).padLeft(12, '0')}';
+
 PreventiveMaintenanceAcknowledgement testAcknowledgement() {
   return PreventiveMaintenanceAcknowledgement(
     id: acknowledgementId,
@@ -235,6 +267,12 @@ void main() {
     expect(find.text('Asset category: Fire Extinguisher'), findsOneWidget);
     expect(find.text('Building: Main Building'), findsOneWidget);
     expect(find.text('Department: GSD'), findsOneWidget);
+    expect(find.text('1 non-operational'), findsOneWidget);
+    expect(find.text('FE-2026-0001 · Non-operational'), findsOneWidget);
+    final details = find.text('All inspection details (1)');
+    await tester.ensureVisible(details);
+    await tester.tap(details);
+    await tester.pumpAndSettle();
     expect(find.text('Asset: FE-2026-0001'), findsOneWidget);
     expect(find.text('Location: Room 101'), findsOneWidget);
     expect(find.text('Condition: Non-operational'), findsOneWidget);
@@ -273,6 +311,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    final details = find.text('All inspection details (1)');
+    await tester.ensureVisible(details);
+    await tester.tap(details);
+    await tester.pumpAndSettle();
     expect(find.text('Asset: Asset details unavailable'), findsOneWidget);
     expect(find.textContaining('Location:'), findsNothing);
     expect(find.textContaining(inspectionId), findsNothing);
@@ -280,101 +322,176 @@ void main() {
     controller.dispose();
   });
 
-  testWidgets('signature drawing locks and restores acknowledgement scrolling', (
-    tester,
-  ) async {
-    final repository = FakeAcknowledgementRepository();
-    final controller = PreventiveMaintenanceController(
-      repository: repository,
-      user: testUser(),
-    );
-    controller.selectForm(repository.form);
+  testWidgets(
+    'long forms with multiple findings keep signature access reachable',
+    (tester) async {
+      tester.view.physicalSize = const Size(360, 640);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
 
-    await tester.pumpWidget(
-      MaterialApp(
-        home: PreventiveMaintenanceAcknowledgementPage(
-          controller: controller,
-          form: repository.form,
+      final repository = FakeAcknowledgementRepository()
+        ..form = submittedFormWithInspectionCount(
+          24,
+          nonOperationalInspectionCount: 8,
+        );
+      final controller = PreventiveMaintenanceController(
+        repository: repository,
+        user: testUser(),
+      );
+      controller.selectForm(repository.form);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: PreventiveMaintenanceAcknowledgementPage(
+            controller: controller,
+            form: repository.form,
+          ),
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
+      );
+      await tester.pumpAndSettle();
 
-    final page = find.byKey(const Key('acknowledgement-page'));
-    final canvas = find.byKey(const Key('signature-canvas'));
-    await _ensureVisible(tester, canvas);
-    final initialOffset = _acknowledgementScrollPosition(tester).pixels;
+      expect(find.text('24 inspections'), findsOneWidget);
+      expect(find.text('8 non-operational'), findsOneWidget);
+      expect(find.text('FE-2026-0001 · Non-operational'), findsOneWidget);
+      expect(find.text('FE-2026-0002 · Non-operational'), findsOneWidget);
+      expect(find.text('FE-2026-0003 · Non-operational'), findsOneWidget);
+      expect(
+        find.text('5 more findings are included in all inspection details.'),
+        findsOneWidget,
+      );
+      expect(find.text('Asset: FE-2026-0024'), findsNothing);
 
-    final drawing = await tester.startGesture(tester.getCenter(canvas));
-    await tester.pump();
-    expect(
-      tester.widget<ListView>(page).physics,
-      isA<NeverScrollableScrollPhysics>(),
-    );
-    await drawing.moveBy(const Offset(0, -80));
-    await tester.pump();
-    expect(_acknowledgementScrollPosition(tester).pixels, initialOffset);
-    expect(
-      tester.state<PmSignaturePadState>(find.byType(PmSignaturePad))
-          .hasSignature,
-      isTrue,
-    );
+      final details = find.text('All inspection details (24)');
+      final scrollable = find
+          .descendant(
+            of: find.byKey(const Key('acknowledgement-page')),
+            matching: find.byType(Scrollable),
+          )
+          .first;
+      await tester.scrollUntilVisible(details, 200, scrollable: scrollable);
+      await tester.tap(details);
+      await tester.pumpAndSettle();
+      final finalInspection = find.text('Asset: FE-2026-0024');
+      await tester.scrollUntilVisible(
+        finalInspection,
+        200,
+        scrollable: scrollable,
+      );
+      expect(finalInspection, findsOneWidget);
 
-    await drawing.up();
-    await tester.pump();
-    expect(
-      tester.widget<ListView>(page).physics,
-      isNot(isA<NeverScrollableScrollPhysics>()),
-    );
-    await _dragAcknowledgementList(tester);
+      await tester.tap(find.byKey(const Key('jump-to-acknowledgement-form')));
+      await tester.pumpAndSettle();
+      final nameField = find.byKey(const Key('ack-signatory-name'));
+      expect(nameField, findsOneWidget);
+      expect(tester.getRect(nameField).bottom, lessThan(640));
 
-    final clearButton = find.byKey(const Key('clear-signature'));
-    await _ensureVisible(tester, clearButton);
-    final drawingDuringClear = await tester.startGesture(
-      tester.getCenter(canvas),
-      pointer: 10,
-    );
-    await tester.pump();
-    expect(
-      tester.widget<ListView>(page).physics,
-      isA<NeverScrollableScrollPhysics>(),
-    );
-    final clearTap = await tester.startGesture(
-      tester.getCenter(clearButton),
-      pointer: 11,
-    );
-    await clearTap.up();
-    await tester.pump();
-    expect(
-      tester.state<PmSignaturePadState>(find.byType(PmSignaturePad))
-          .hasSignature,
-      isFalse,
-    );
-    expect(
-      tester.widget<ListView>(page).physics,
-      isNot(isA<NeverScrollableScrollPhysics>()),
-    );
-    await drawingDuringClear.up();
-    await tester.pump();
-    await _dragAcknowledgementList(tester);
+      final canvas = find.byKey(const Key('signature-canvas'));
+      await tester.ensureVisible(canvas);
+      await tester.pumpAndSettle();
+      expect(tester.getRect(canvas).bottom, lessThan(640));
+      controller.dispose();
+    },
+  );
 
-    await _ensureVisible(tester, canvas);
-    final cancellation = await tester.startGesture(tester.getCenter(canvas));
-    await tester.pump();
-    expect(
-      tester.widget<ListView>(page).physics,
-      isA<NeverScrollableScrollPhysics>(),
-    );
-    await cancellation.cancel();
-    await tester.pump();
-    expect(
-      tester.widget<ListView>(page).physics,
-      isNot(isA<NeverScrollableScrollPhysics>()),
-    );
-    await _dragAcknowledgementList(tester);
+  testWidgets(
+    'signature drawing locks and restores acknowledgement scrolling',
+    (tester) async {
+      final repository = FakeAcknowledgementRepository();
+      final controller = PreventiveMaintenanceController(
+        repository: repository,
+        user: testUser(),
+      );
+      controller.selectForm(repository.form);
 
-    controller.dispose();
-  });
+      await tester.pumpWidget(
+        MaterialApp(
+          home: PreventiveMaintenanceAcknowledgementPage(
+            controller: controller,
+            form: repository.form,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final page = find.byKey(const Key('acknowledgement-page'));
+      final canvas = find.byKey(const Key('signature-canvas'));
+      await _ensureVisible(tester, canvas);
+      final initialOffset = _acknowledgementScrollPosition(tester).pixels;
+
+      final drawing = await tester.startGesture(tester.getCenter(canvas));
+      await tester.pump();
+      expect(
+        tester.widget<ListView>(page).physics,
+        isA<NeverScrollableScrollPhysics>(),
+      );
+      await drawing.moveBy(const Offset(0, -80));
+      await tester.pump();
+      expect(_acknowledgementScrollPosition(tester).pixels, initialOffset);
+      expect(
+        tester
+            .state<PmSignaturePadState>(find.byType(PmSignaturePad))
+            .hasSignature,
+        isTrue,
+      );
+
+      await drawing.up();
+      await tester.pump();
+      expect(
+        tester.widget<ListView>(page).physics,
+        isNot(isA<NeverScrollableScrollPhysics>()),
+      );
+      await _dragAcknowledgementList(tester);
+
+      final clearButton = find.byKey(const Key('clear-signature'));
+      await _ensureVisible(tester, clearButton);
+      final drawingDuringClear = await tester.startGesture(
+        tester.getCenter(canvas),
+        pointer: 10,
+      );
+      await tester.pump();
+      expect(
+        tester.widget<ListView>(page).physics,
+        isA<NeverScrollableScrollPhysics>(),
+      );
+      final clearTap = await tester.startGesture(
+        tester.getCenter(clearButton),
+        pointer: 11,
+      );
+      await clearTap.up();
+      await tester.pump();
+      expect(
+        tester
+            .state<PmSignaturePadState>(find.byType(PmSignaturePad))
+            .hasSignature,
+        isFalse,
+      );
+      expect(
+        tester.widget<ListView>(page).physics,
+        isNot(isA<NeverScrollableScrollPhysics>()),
+      );
+      await drawingDuringClear.up();
+      await tester.pump();
+      await _dragAcknowledgementList(tester);
+
+      await _ensureVisible(tester, canvas);
+      final cancellation = await tester.startGesture(tester.getCenter(canvas));
+      await tester.pump();
+      expect(
+        tester.widget<ListView>(page).physics,
+        isA<NeverScrollableScrollPhysics>(),
+      );
+      await cancellation.cancel();
+      await tester.pump();
+      expect(
+        tester.widget<ListView>(page).physics,
+        isNot(isA<NeverScrollableScrollPhysics>()),
+      );
+      await _dragAcknowledgementList(tester);
+
+      controller.dispose();
+    },
+  );
 
   testWidgets('acknowledgement captures signatory data and locks the form', (
     tester,

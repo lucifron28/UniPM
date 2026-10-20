@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { CalendarPlus } from 'lucide-react'
+import { Eye } from 'lucide-react'
+import { PageHeading } from '@/components/layout/page-heading'
 import { Link } from '@tanstack/react-router'
 import {
   createColumnHelper,
@@ -33,6 +34,7 @@ import type {
   ScheduleRegistryOptions,
   ScheduleRegistryItem,
 } from '@/features/schedules/schedule-contract'
+import { quartersForScheduledMonths } from '@/features/schedules/schedule-contract'
 import {
   useGenerateSchedules,
   useScheduleRegistry,
@@ -61,6 +63,8 @@ export type ScheduleSearch = {
   quarter?: NonNullable<Schedule['quarter']> | undefined
   year?: number | undefined
   pmCycle?: string | undefined
+  view?: 'assignments' | 'history' | undefined
+  assignmentFilter?: 'needs-supervisor' | 'needs-inspector' | undefined
   page?: number | undefined
 }
 
@@ -69,19 +73,6 @@ const scheduleAccessDeniedMessage =
 
 function isScheduleAccessDenied(error: unknown) {
   return error instanceof ApiError && error.status === 403
-}
-
-function SummaryCard({ label, count }: { label: string; count: number }) {
-  return (
-    <Card className="p-4 shadow-none">
-      <p className="text-xs font-semibold tracking-[0.08em] text-[var(--text-neutral)] uppercase">
-        {label}
-      </p>
-      <p className="mt-2 text-2xl font-bold text-[var(--text-primary)]">
-        {count}
-      </p>
-    </Card>
-  )
 }
 
 const columnHelper = createColumnHelper<ScheduleRegistryItem>()
@@ -172,8 +163,9 @@ const createColumns = (search: ScheduleSearch) => [
           ...search,
           returnContext: { kind: 'scheduleRegistry', search },
         }}
-        className="font-semibold text-[var(--primary)] hover:underline"
+        className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-[color-mix(in_srgb,var(--primary)_30%,white)] bg-white px-2.5 text-xs font-semibold text-[var(--primary)] hover:border-[var(--primary)] hover:bg-[color-mix(in_srgb,var(--primary)_5%,white)] focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 focus-visible:outline-none"
       >
+        <Eye aria-hidden="true" className="size-3.5" />
         View details
       </Link>
     ),
@@ -215,14 +207,7 @@ export function ScheduleRegistry({
   }))
   const [filterNotice, setFilterNotice] = useState<string | null>(null)
   const [showMoreFilters, setShowMoreFilters] = useState(() =>
-    Boolean(
-      search.assetId ||
-      search.department ||
-      search.from ||
-      search.to ||
-      search.quarter ||
-      search.pmCycle,
-    ),
+    Boolean(search.assetId || search.from || search.to || search.pmCycle),
   )
   const filterOptions = useScheduleRegistryOptions({
     ...(draft.assetCategory ? { assetCategory: draft.assetCategory } : {}),
@@ -287,10 +272,6 @@ export function ScheduleRegistry({
     search.pmCycle,
   ])
 
-  const canCreate =
-    currentUser.data?.roles.some(
-      (role) => role === 'GSD' || role === 'Supervisor',
-    ) ?? false
   const canGenerate = currentUser.data?.roles.includes('GSD') ?? false
   const parsedGenerationYear = Number(generationYear)
   const generationYearIsValid =
@@ -314,10 +295,17 @@ export function ScheduleRegistry({
     () => new Map(categories.map((category) => [category.code, category])),
     [categories],
   )
+  const selectedCategory = categories.find(
+    (category) => category.code === draft.assetCategory,
+  )
+  const availableQuarters = useMemo<ReadonlySet<string>>(
+    () =>
+      selectedCategory
+        ? quartersForScheduledMonths(selectedCategory.scheduledMonths)
+        : new Set(quarterOptions),
+    [quarterOptions, selectedCategory],
+  )
   const allowedMonths = useMemo(() => {
-    const selectedCategory = categories.find(
-      (category) => category.code === draft.assetCategory,
-    )
     return Array.from({ length: 12 }, (_, index) => index + 1).filter(
       (month) =>
         (!selectedCategory ||
@@ -325,7 +313,7 @@ export function ScheduleRegistry({
         (!draft.quarter ||
           `Q${Math.floor((month - 1) / 3) + 1}` === draft.quarter),
     )
-  }, [categories, draft.assetCategory, draft.quarter])
+  }, [draft.quarter, selectedCategory])
   const dateRangeIsValid = !draft.from || !draft.to || draft.from <= draft.to
   const pmCycleYear = draft.pmCycle
     ? Number(draft.pmCycle.slice(0, 4))
@@ -398,14 +386,58 @@ export function ScheduleRegistry({
   ])
 
   useEffect(() => {
-    if (!draft.pmCycle) return
-    const month = Number(draft.pmCycle.slice(5, 7))
-    if (allowedMonths.includes(month)) return
-    setDraft((current) => ({ ...current, pmCycle: undefined }))
-    setFilterNotice(
-      'The PM month was cleared because it does not match the selected category or quarter.',
+    const invalidQuarter = Boolean(
+      draft.quarter &&
+      selectedCategory &&
+      !availableQuarters.has(draft.quarter),
     )
-  }, [allowedMonths, draft.pmCycle])
+    const invalidPmCycle = Boolean(
+      draft.pmCycle &&
+      !allowedMonths.includes(Number(draft.pmCycle.slice(5, 7))),
+    )
+    if (!invalidQuarter && !invalidPmCycle) return
+    setDraft((current) => ({
+      ...current,
+      ...(invalidQuarter ? { quarter: undefined } : {}),
+      ...(invalidPmCycle ? { pmCycle: undefined } : {}),
+    }))
+    setFilterNotice(
+      invalidQuarter
+        ? 'The quarter and PM month were cleared because the selected category has no scheduled CPMP cycle in that quarter.'
+        : 'The PM month was cleared because it does not match the selected category or quarter.',
+    )
+  }, [
+    allowedMonths,
+    availableQuarters,
+    draft.pmCycle,
+    draft.quarter,
+    selectedCategory,
+  ])
+
+  useEffect(() => {
+    if (!filterOptions.isSuccess || !search.assetCategory || !search.quarter) {
+      return
+    }
+    const appliedCategory = categories.find(
+      (category) => category.code === search.assetCategory,
+    )
+    if (
+      !appliedCategory ||
+      quartersForScheduledMonths(appliedCategory.scheduledMonths).has(
+        search.quarter,
+      )
+    ) {
+      return
+    }
+
+    onSearchChange(
+      { ...search, quarter: undefined, pmCycle: undefined, page: 1 },
+      { replace: true, preserveScroll: true },
+    )
+    setFilterNotice(
+      'The quarter filter was cleared because the selected category has no scheduled CPMP cycle in that quarter.',
+    )
+  }, [categories, filterOptions.isSuccess, onSearchChange, search])
 
   const pmCycleMatchesPeriod =
     !draft.pmCycle ||
@@ -580,27 +612,30 @@ export function ScheduleRegistry({
   ]
 
   const summarySection = (
-    <section aria-labelledby="schedule-summary-title" className="space-y-3">
-      <div>
+    <section aria-labelledby="schedule-summary-title" className="space-y-2">
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <h2
           id="schedule-summary-title"
-          className="text-xl font-bold text-[var(--text-primary)]"
+          className="text-sm font-semibold text-[var(--text-primary)]"
         >
           Schedule summary
         </h2>
-        <p className="mt-1 text-sm text-[var(--text-secondary)]">
-          Overall totals for all recorded schedules, independent of the registry
-          filters below.
+        <p className="text-xs text-[var(--text-secondary)]">
+          Overall schedule totals, independent of registry filters.
         </p>
       </div>
       {summary.isPending ? (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3" role="status">
+        <div
+          className="grid grid-cols-2 gap-2 rounded-lg border border-[var(--border-soft)] bg-white p-3 sm:grid-cols-3 xl:grid-cols-6"
+          role="status"
+          aria-label="Loading schedule summary"
+        >
           <span className="sr-only">Loading schedule summary...</span>
-          {Array.from({ length: 3 }, (_, index) => (
-            <Card key={index} className="p-4 shadow-none">
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="mt-2 h-8 w-12" />
-            </Card>
+          {Array.from({ length: 6 }, (_, index) => (
+            <div key={index} className="space-y-2 px-2 py-1">
+              <Skeleton className="h-3 w-16" />
+              <Skeleton className="h-5 w-10" />
+            </div>
           ))}
         </div>
       ) : summary.isError ? (
@@ -621,55 +656,47 @@ export function ScheduleRegistry({
           </Button>
         </Card>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          <SummaryCard label="All schedules" count={summary.data.totalCount} />
-          <SummaryCard label="Due" count={summary.data.dueCount} />
-          <SummaryCard label="Ongoing" count={summary.data.ongoingCount} />
-          <SummaryCard label="Overdue" count={summary.data.overdueCount} />
-          <SummaryCard label="Completed" count={summary.data.completedCount} />
-          <SummaryCard label="Cancelled" count={summary.data.cancelledCount} />
-        </div>
+        <dl
+          aria-label="Overall schedule totals"
+          className="grid grid-cols-2 divide-x divide-y divide-[var(--border-soft)] rounded-lg border border-[var(--border-soft)] bg-white sm:grid-cols-3 xl:grid-cols-6"
+        >
+          {[
+            ['All schedules', summary.data.totalCount],
+            ['Due', summary.data.dueCount],
+            ['Ongoing', summary.data.ongoingCount],
+            ['Overdue', summary.data.overdueCount],
+            ['Completed', summary.data.completedCount],
+            ['Cancelled', summary.data.cancelledCount],
+          ].map(([label, value]) => (
+            <div key={label} className="px-3 py-2">
+              <dt className="text-xs text-[var(--text-neutral)]">{label}</dt>
+              <dd className="mt-0.5 text-lg leading-5 font-semibold text-[var(--text-primary)]">
+                {Number(value).toLocaleString()}
+              </dd>
+            </div>
+          ))}
+        </dl>
       )}
     </section>
   )
 
   return (
-    <section aria-labelledby="schedules-title" className="space-y-8">
-      <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-        <div>
-          <p className="text-sm font-semibold tracking-[0.08em] text-[var(--primary)] uppercase">
-            Preventive maintenance
-          </p>
-          <h1
-            id="schedules-title"
-            className="mt-2 text-3xl font-bold tracking-tight text-[var(--text-primary)]"
-          >
-            Schedules
-          </h1>
-          <p className="mt-2 max-w-2xl text-[var(--text-secondary)]">
-            Review PM cycles, due dates, and recorded schedule status.
-          </p>
-        </div>
-        {(canCreate || canGenerate) && (
-          <div className="flex flex-wrap items-center gap-2">
-            {canGenerate && (
-              <Button asChild variant="secondary">
-                <a href="#schedule-management">Manage schedules</a>
-              </Button>
-            )}
-            {canCreate && (
-              <Button asChild>
-                <Link to="/app/schedules/new">
-                  <CalendarPlus aria-hidden="true" className="mr-2 size-4" />
-                  Add schedule
-                </Link>
-              </Button>
-            )}
-          </div>
-        )}
-      </header>
+    <section aria-labelledby="schedules-title" className="space-y-4">
+      <PageHeading
+        id="schedules-title"
+        eyebrow="Preventive maintenance"
+        title="Schedules"
+        description="Review current and historical PM cycles generated from CPMP frequencies, due dates, and recorded schedule status."
+        actions={
+          canGenerate ? (
+            <Button asChild variant="secondary">
+              <a href="#schedule-management">Manage schedules</a>
+            </Button>
+          ) : undefined
+        }
+      />
 
-      <section aria-labelledby="schedule-filters-title" className="space-y-3">
+      <section aria-labelledby="schedule-filters-title" className="space-y-2">
         <div>
           <h2
             id="schedule-filters-title"
@@ -681,9 +708,9 @@ export function ScheduleRegistry({
             Search by asset, then refine by status or PM cycle.
           </p>
         </div>
-        <Card className="p-4 shadow-none">
+        <Card className="content-card p-3">
           <form
-            className="space-y-4"
+            className="space-y-3"
             onSubmit={(event) => {
               event.preventDefault()
               apply()
@@ -704,7 +731,7 @@ export function ScheduleRegistry({
                 }
               />
             </label>
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-3 xl:grid-cols-5">
               <label className="grid gap-1 text-sm font-semibold text-[var(--text-primary)]">
                 Asset category
                 <select
@@ -787,6 +814,86 @@ export function ScheduleRegistry({
                   ))}
                 </select>
               </label>
+              <SearchablePicker
+                label="Department"
+                value={draft.department}
+                selectedOption={
+                  draft.department
+                    ? {
+                        value: draft.department,
+                        label: draft.department,
+                      }
+                    : undefined
+                }
+                allLabel="All departments"
+                options={departments.map((department) => ({
+                  value: department,
+                  label: department,
+                }))}
+                loading={filterOptions.isPending}
+                errorMessage={
+                  filterOptions.isError
+                    ? 'Department options could not be loaded.'
+                    : undefined
+                }
+                emptyMessage="No matching departments."
+                onRetry={() => void filterOptions.refetch()}
+                onChange={(department) => {
+                  setDraft((current) => ({
+                    ...current,
+                    department,
+                    assetId: undefined,
+                  }))
+                  setFilterNotice(
+                    draft.assetId
+                      ? 'Specific asset was cleared because the department filter changed.'
+                      : null,
+                  )
+                }}
+              />
+              <label className="grid gap-1 text-sm font-semibold text-[var(--text-primary)]">
+                Calendar quarter
+                <select
+                  aria-label="Calendar quarter"
+                  aria-describedby="schedule-quarter-hint"
+                  value={draft.quarter ?? pmCycleQuarter ?? ''}
+                  onChange={(event) => {
+                    setDraft((current) => ({
+                      ...current,
+                      quarter: (event.target.value || undefined) as
+                        NonNullable<Schedule['quarter']> | undefined,
+                      pmCycle: undefined,
+                    }))
+                    if (draft.pmCycle) {
+                      setFilterNotice(
+                        'The exact PM month was cleared because the quarter changed.',
+                      )
+                    }
+                  }}
+                  className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
+                >
+                  <option value="">All quarters</option>
+                  {quarterOptions.map((quarter) => (
+                    <option
+                      key={quarter}
+                      value={quarter}
+                      disabled={!availableQuarters.has(quarter)}
+                    >
+                      {availableQuarters.has(quarter)
+                        ? quarter
+                        : `${quarter} — no scheduled CPMP cycle`}
+                    </option>
+                  ))}
+                </select>
+                <span
+                  id="schedule-quarter-hint"
+                  className="text-xs font-normal text-[var(--text-secondary)]"
+                >
+                  {draft.assetCategory
+                    ? 'Disabled quarters have no scheduled cycle for this category.'
+                    : 'Choose a category to limit quarters to its scheduled PM cycles.'}
+                </span>
+              </label>
             </div>
             <details
               open={showMoreFilters}
@@ -798,7 +905,7 @@ export function ScheduleRegistry({
               </summary>
               <div
                 id="schedule-more-filters"
-                className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3"
+                className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3"
               >
                 <AssetPicker
                   value={draft.assetId}
@@ -807,43 +914,6 @@ export function ScheduleRegistry({
                   onChange={(assetId) =>
                     setDraft((current) => ({ ...current, assetId }))
                   }
-                />
-                <SearchablePicker
-                  label="Department"
-                  value={draft.department}
-                  selectedOption={
-                    draft.department
-                      ? {
-                          value: draft.department,
-                          label: draft.department,
-                        }
-                      : undefined
-                  }
-                  allLabel="All departments"
-                  options={departments.map((department) => ({
-                    value: department,
-                    label: department,
-                  }))}
-                  loading={filterOptions.isPending}
-                  errorMessage={
-                    filterOptions.isError
-                      ? 'Department options could not be loaded.'
-                      : undefined
-                  }
-                  emptyMessage="No matching departments."
-                  onRetry={() => void filterOptions.refetch()}
-                  onChange={(department) => {
-                    setDraft((current) => ({
-                      ...current,
-                      department,
-                      assetId: undefined,
-                    }))
-                    setFilterNotice(
-                      draft.assetId
-                        ? 'Specific asset was cleared because the department filter changed.'
-                        : null,
-                    )
-                  }}
                 />
                 <label className="grid gap-1 text-xs font-semibold text-[var(--text-secondary)]">
                   From
@@ -872,34 +942,6 @@ export function ScheduleRegistry({
                     }
                     className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm font-normal"
                   />
-                </label>
-                <label className="grid gap-1 text-sm font-semibold text-[var(--text-primary)]">
-                  Calendar quarter
-                  <select
-                    aria-label="Calendar quarter"
-                    value={draft.quarter ?? pmCycleQuarter ?? ''}
-                    onChange={(event) => {
-                      setDraft((current) => ({
-                        ...current,
-                        quarter: (event.target.value || undefined) as
-                          NonNullable<Schedule['quarter']> | undefined,
-                        pmCycle: undefined,
-                      }))
-                      if (draft.pmCycle) {
-                        setFilterNotice(
-                          'The exact PM month was cleared because the quarter changed.',
-                        )
-                      }
-                    }}
-                    className="min-h-10 rounded-lg border border-[var(--border-control)] bg-white px-3 text-sm"
-                  >
-                    <option value="">All quarters</option>
-                    {quarterOptions.map((quarter) => (
-                      <option key={quarter} value={quarter}>
-                        {quarter}
-                      </option>
-                    ))}
-                  </select>
                 </label>
                 <label className="grid gap-1 text-sm font-semibold text-[var(--text-primary)]">
                   Exact PM month
@@ -1082,7 +1124,7 @@ export function ScheduleRegistry({
             isUpdating={registry.isFetching}
             desktopContent={
               <table className="w-full min-w-[760px] text-left text-sm">
-                <thead className="bg-[var(--page-background)] text-xs tracking-wide text-[var(--text-neutral)] uppercase">
+                <thead className="bg-[var(--primary)] text-xs tracking-wide text-white uppercase">
                   {table.getHeaderGroups().map((headerGroup) => (
                     <tr key={headerGroup.id}>
                       {headerGroup.headers.map((header) => (
@@ -1117,7 +1159,7 @@ export function ScheduleRegistry({
             mobileContent={
               <div className="grid gap-3">
                 {pageData.map((schedule) => (
-                  <Card key={schedule.id} className="space-y-3 shadow-none">
+                  <Card key={schedule.id} className="content-card space-y-3">
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <h2 className="font-bold">
@@ -1161,8 +1203,9 @@ export function ScheduleRegistry({
                         ...search,
                         returnContext: { kind: 'scheduleRegistry', search },
                       }}
-                      className="inline-block font-semibold text-[var(--primary)] hover:underline"
+                      className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-[color-mix(in_srgb,var(--primary)_30%,white)] bg-white px-2.5 text-xs font-semibold text-[var(--primary)] hover:border-[var(--primary)] hover:bg-[color-mix(in_srgb,var(--primary)_5%,white)] focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 focus-visible:outline-none"
                     >
+                      <Eye aria-hidden="true" className="size-3.5" />
                       View details
                     </Link>
                   </Card>

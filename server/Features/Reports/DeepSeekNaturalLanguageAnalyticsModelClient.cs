@@ -9,13 +9,15 @@ internal sealed class DeepSeekNaturalLanguageAnalyticsModelClient(
     HttpMessageHandler? handler = null,
     Func<TimeSpan, CancellationToken, Task>? retryDelay = null,
     Func<int>? retryJitterMilliseconds = null,
-    string? modelId = null)
+    string? modelId = null,
+    NaturalLanguageAnalyticsPromptProfile? promptProfile = null)
     : NaturalLanguageAnalyticsApiModelClientBase(
         apiKey,
         ledger,
         handler,
         retryDelay,
-        retryJitterMilliseconds)
+        retryJitterMilliseconds,
+        promptProfile)
 {
     internal const string ConfiguredModelId = "deepseek-flash";
     internal const string V4ProModelId = "deepseek-v4-pro";
@@ -43,7 +45,7 @@ internal sealed class DeepSeekNaturalLanguageAnalyticsModelClient(
                 new
                 {
                     role = "system",
-                    content = NaturalLanguageAnalyticsInterpretationPrompt.SystemPrompt
+                    content = PromptProfile.SystemPrompt
                 },
                 new { role = "user", content = sanitizedQuestion }
             },

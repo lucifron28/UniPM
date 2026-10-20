@@ -279,6 +279,24 @@ void main() {
     },
   );
 
+  test('API client preserves server status for retry classification', () async {
+    final client = ApiClient(
+      baseUrl: Uri.parse('http://localhost:5000/'),
+      httpClient: MockClient((_) async => http.Response('', 503)),
+    );
+
+    await expectLater(
+      client.getJson('/api/v1/assets'),
+      throwsA(
+        isA<ApiException>().having(
+          (error) => error.statusCode,
+          'status code',
+          503,
+        ),
+      ),
+    );
+  });
+
   test(
     'asset lookup 401 uses the existing terminal session boundary',
     () async {

@@ -52,9 +52,13 @@ internal sealed class TestAuthenticationHandler(
 
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
+        var userId = Request.Headers.TryGetValue("X-Test-UserId", out var suppliedUserId)
+            && Guid.TryParse(suppliedUserId.ToString(), out var parsedUserId)
+                ? parsedUserId
+                : UserId;
         var claims = new List<Claim>
         {
-            new("sub", UserId.ToString()),
+            new("sub", userId.ToString()),
             new("display_name", "Test User")
         };
         claims.AddRange(roles.Values.Select(role => new Claim("role", role)));

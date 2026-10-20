@@ -27,6 +27,7 @@ class PreventiveMaintenanceAcknowledgementPage extends StatefulWidget {
 
 class _PreventiveMaintenanceAcknowledgementPageState
     extends State<PreventiveMaintenanceAcknowledgementPage> {
+  final pageScrollController = ScrollController();
   final formKey = GlobalKey<FormState>();
   final signaturePadKey = GlobalKey<PmSignaturePadState>();
   final signatoryNameController = TextEditingController();
@@ -36,6 +37,7 @@ class _PreventiveMaintenanceAcknowledgementPageState
 
   @override
   void dispose() {
+    pageScrollController.dispose();
     signatoryNameController.dispose();
     signatoryPositionController.dispose();
     super.dispose();
@@ -43,20 +45,32 @@ class _PreventiveMaintenanceAcknowledgementPageState
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Acknowledge PM form')),
-      body: SafeArea(
-        child: AnimatedBuilder(
-          animation: widget.controller,
-          builder: (context, _) {
-            final selectedForm = widget.controller.selectedForm;
-            final form = selectedForm?.id == widget.form.id
-                ? selectedForm!
-                : widget.form;
-            return _buildContent(context, form);
-          },
-        ),
-      ),
+    return AnimatedBuilder(
+      animation: widget.controller,
+      builder: (context, _) {
+        final selectedForm = widget.controller.selectedForm;
+        final form = selectedForm?.id == widget.form.id
+            ? selectedForm!
+            : widget.form;
+        final isAcknowledged =
+            form.status == 'Acknowledged' ||
+            widget.controller.acknowledgement != null;
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Acknowledge PM form'),
+            actions: [
+              if (!isAcknowledged && form.status == 'Submitted')
+                IconButton(
+                  key: const Key('jump-to-acknowledgement-form'),
+                  tooltip: 'Go to signatory fields',
+                  onPressed: _jumpToAcknowledgementForm,
+                  icon: const Icon(Icons.draw_outlined),
+                ),
+            ],
+          ),
+          body: SafeArea(child: _buildContent(context, form)),
+        );
+      },
     );
   }
 
@@ -67,12 +81,15 @@ class _PreventiveMaintenanceAcknowledgementPageState
 
     return ListView(
       key: const Key('acknowledgement-page'),
+      controller: pageScrollController,
       padding: const EdgeInsets.all(16),
       physics: isSignatureGestureActive
           ? const NeverScrollableScrollPhysics()
           : null,
       children: [
         _SubmittedFormSummary(form: form),
+        const SizedBox(height: 12),
+        _InspectionDetails(form: form),
         const SizedBox(height: 16),
         if (widget.controller.errorMessage != null && !isAcknowledged)
           _AcknowledgementInlineError(message: widget.controller.errorMessage!),
@@ -111,6 +128,66 @@ class _PreventiveMaintenanceAcknowledgementPageState
             ),
           ),
       ],
+    );
+  }
+
+  Future<void> _jumpToAcknowledgementForm() async {
+    for (var attempt = 0; attempt < 8; attempt++) {
+      final target = formKey.currentContext;
+      if (target != null) {
+        if (!target.mounted) {
+          _showScrollFailure();
+          return;
+        }
+        await Scrollable.ensureVisible(
+          target,
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeInOut,
+          alignment: 0.04,
+        );
+        return;
+      }
+
+      if (!pageScrollController.hasClients) {
+        _showScrollFailure();
+        return;
+      }
+      final position = pageScrollController.position;
+      if (!position.hasContentDimensions) {
+        await WidgetsBinding.instance.endOfFrame;
+        if (!mounted) return;
+        continue;
+      }
+      await position.animateTo(
+        position.maxScrollExtent,
+        duration: const Duration(milliseconds: 150),
+        curve: Curves.easeOut,
+      );
+      await WidgetsBinding.instance.endOfFrame;
+      if (!mounted) return;
+    }
+
+    final target = formKey.currentContext;
+    if (target != null) {
+      if (!target.mounted) {
+        _showScrollFailure();
+        return;
+      }
+      await Scrollable.ensureVisible(
+        target,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeInOut,
+        alignment: 0.04,
+      );
+    } else {
+      _showScrollFailure();
+    }
+  }
+
+  void _showScrollFailure() {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Could not reach the signatory fields.')),
     );
   }
 
@@ -170,6 +247,9 @@ class _SubmittedFormSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final nonOperational = form.inspections
+        .where((row) => !row.isOperational)
+        .toList(growable: false);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -185,15 +265,153 @@ class _SubmittedFormSummary extends StatelessWidget {
             Text('Asset category: ${displayAssetCategory(form.assetCategory)}'),
             Text('Building: ${form.building ?? 'Not recorded'}'),
             Text('Department: ${form.department ?? 'Not recorded'}'),
-            const SizedBox(height: 16),
-            Text(
-              'Review inspection rows (${form.inspections.length})',
-              style: Theme.of(context).textTheme.titleMedium,
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _InspectionCountChip(
+                  icon: Icons.fact_check_outlined,
+                  label: '${form.inspections.length} inspections',
+                ),
+                _InspectionCountChip(
+                  icon: nonOperational.isEmpty
+                      ? Icons.check_circle_outline
+                      : Icons.warning_amber_rounded,
+                  label: '${nonOperational.length} non-operational',
+                  isWarning: nonOperational.isNotEmpty,
+                ),
+              ],
             ),
-            const SizedBox(height: 8),
-            ...form.inspections.map((row) => _InspectionSummary(row: row)),
+            if (nonOperational.isEmpty && form.inspections.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              const Text('All inspected assets are marked operational.'),
+            ],
+            if (nonOperational.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Text(
+                'Findings to note',
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  color: Theme.of(context).colorScheme.error,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 4),
+              ...nonOperational
+                  .take(3)
+                  .map((row) => _NonOperationalFinding(row: row)),
+              if (nonOperational.length > 3) ...[
+                const SizedBox(height: 6),
+                Text(
+                  '${nonOperational.length - 3} more findings are included in all inspection details.',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+            ],
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _InspectionCountChip extends StatelessWidget {
+  const _InspectionCountChip({
+    required this.icon,
+    required this.label,
+    this.isWarning = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool isWarning;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = isWarning
+        ? Theme.of(context).colorScheme.error
+        : Theme.of(context).colorScheme.primary;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.w700,
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NonOperationalFinding extends StatelessWidget {
+  const _NonOperationalFinding({required this.row});
+
+  final PreventiveMaintenanceInspection row;
+
+  @override
+  Widget build(BuildContext context) {
+    final errorColor = Theme.of(context).colorScheme.error;
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(top: 6),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: errorColor.withValues(alpha: 0.06),
+        border: Border.all(color: errorColor.withValues(alpha: 0.25)),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '${_assetCodeLabel(row.assetCode)} · Non-operational',
+            style: TextStyle(color: errorColor, fontWeight: FontWeight.w700),
+          ),
+          Text(
+            'Remarks: ${_displayValue(row.remarks)}',
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          Text(
+            'Recommendation: ${_displayValue(row.actionsRecommendations)}',
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InspectionDetails extends StatelessWidget {
+  const _InspectionDetails({required this.form});
+
+  final PreventiveMaintenanceForm form;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: ExpansionTile(
+        key: const Key('inspection-details'),
+        title: Text('All inspection details (${form.inspections.length})'),
+        subtitle: const Text('Review dates, locations, and recommendations'),
+        childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+        children: form.inspections
+            .map((row) => _InspectionSummary(row: row))
+            .toList(growable: false),
       ),
     );
   }
@@ -481,8 +699,9 @@ class PmSignaturePadState extends State<PmSignaturePad> {
             behavior: HitTestBehavior.opaque,
             onPointerDown: widget.enabled ? _startStroke : null,
             onPointerMove: widget.enabled ? _updateStroke : null,
-            onPointerUp:
-                widget.enabled || activePointer != null ? _endStroke : null,
+            onPointerUp: widget.enabled || activePointer != null
+                ? _endStroke
+                : null,
             onPointerCancel: widget.enabled || activePointer != null
                 ? _cancelStroke
                 : null,

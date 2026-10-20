@@ -5,10 +5,14 @@ import type {
   ScheduleRegistryOptionsResponse,
   ScheduleRegistryPageResponse,
   ScheduleRegistrySummaryResponse,
+  ScheduleAssignmentQueueResponse,
   ScheduleReferenceResponse,
   ScheduleResponse,
 } from '@/api/generated/models'
-import { assetCategorySchema } from '@/features/assets/asset-contract'
+import {
+  assetCategoryCodes,
+  assetCategorySchema,
+} from '@/features/assets/asset-contract'
 import { getCurrentManilaYear } from '@/features/schedules/schedule-presentation'
 
 export const scheduleStatusCodes = [
@@ -25,7 +29,18 @@ export const schedulePeriodTypeCodes = [
   'Custom',
 ] as const
 export const scheduleQuarterCodes = ['Q1', 'Q2', 'Q3', 'Q4'] as const
+export type ScheduleQuarter = (typeof scheduleQuarterCodes)[number]
 export const scheduleSemesterCodes = ['First', 'Second', 'Summer'] as const
+
+export function quartersForScheduledMonths(
+  months: readonly number[],
+): Set<ScheduleQuarter> {
+  return new Set(
+    months.map(
+      (month) => `Q${Math.floor((month - 1) / 3) + 1}` as ScheduleQuarter,
+    ),
+  )
+}
 
 const optionalText = z.string().max(256).nullable()
 const scheduleAssetSchema = z
@@ -36,6 +51,9 @@ const scheduleAssetSchema = z
     building: optionalText,
     department: optionalText,
     location: optionalText,
+    status: z.string().trim().min(1).max(32),
+    // Older cached schedules do not include the backend-issued QR value.
+    qrCodeValue: optionalText.optional(),
   })
   .strict()
 
@@ -68,6 +86,46 @@ export const scheduleSchema = z
   .strict()
 
 export type Schedule = z.infer<typeof scheduleSchema>
+
+const scheduleAssignmentStateSchema = z.enum([
+  'Unassigned',
+  'Assigned',
+  'Partially assigned',
+  'Mixed',
+])
+
+const scheduleAssignmentQueueBatchSchema = z
+  .object({
+    batchKey: z.string().trim().min(1).max(128),
+    department: z.string().trim().min(1).max(256),
+    assetCategory: z.enum(assetCategoryCodes),
+    pmCycle: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/),
+    scheduleCount: z.number().int().nonnegative(),
+    completedCount: z.number().int().nonnegative(),
+    ongoingCount: z.number().int().nonnegative(),
+    overdueCount: z.number().int().nonnegative(),
+    supervisorState: scheduleAssignmentStateSchema,
+    supervisorUserId: z.string().uuid().nullable(),
+    supervisorDisplayName: z.string().nullable(),
+    inspectorState: scheduleAssignmentStateSchema,
+    inspectorUserId: z.string().uuid().nullable(),
+    inspectorDisplayName: z.string().nullable(),
+    assignmentLocked: z.boolean(),
+    supervisorOwnershipIsConsistent: z.boolean(),
+    representativeSchedule: scheduleSchema,
+  })
+  .strict()
+
+const scheduleAssignmentQueueSchema = z
+  .object({
+    totalScheduleCount: z.number().int().nonnegative(),
+    batches: z.array(scheduleAssignmentQueueBatchSchema),
+  })
+  .strict()
+
+export type ScheduleAssignmentQueueBatch = z.infer<
+  typeof scheduleAssignmentQueueBatchSchema
+>
 
 const scheduleRegistryAssetSchema = z
   .object({
@@ -271,6 +329,12 @@ export function parseSchedule(value: ScheduleResponseCompat): Schedule {
 
 export function parseSchedules(values: ScheduleResponseCompat[]): Schedule[] {
   return z.array(scheduleSchema).parse(values)
+}
+
+export function parseScheduleAssignmentQueue(
+  value: ScheduleAssignmentQueueResponse,
+) {
+  return scheduleAssignmentQueueSchema.parse(value)
 }
 
 export function parseScheduleRegistryItem(

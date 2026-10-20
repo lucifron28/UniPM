@@ -5,10 +5,12 @@ on:
   pull_request:
     paths:
       - 'web/**'
+      - 'server/**'
       - '.github/workflows/web-ci.yml'
   push:
     paths:
       - 'web/**'
+      - 'server/**'
       - '.github/workflows/web-ci.yml'
 
 jobs:
