@@ -757,6 +757,10 @@ class _PreventiveMaintenanceDraftPageState
           orElse: () => null,
         );
     final displayedInspections = [...form.inspections];
+    final offlineRepository =
+        widget.controller.repository is OfflineInspectionRepository
+        ? widget.controller.repository as OfflineInspectionRepository
+        : null;
     final focusedInspectionId = widget.focusedInspectionId;
     if (focusedInspectionId != null) {
       displayedInspections.sort((left, right) {
