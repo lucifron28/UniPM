@@ -672,7 +672,7 @@ test('returns from submitted batch inspection and form detail to the exact revie
       '/review?department=GSD&assetCategory=fire-extinguisher&year=2026&pmCycle=2026-08&condition=NonOperational&timeliness=OnTime&search=FE-001',
   )
   await expect(
-    page.locator('.page-heading-host').getByRole('heading', {
+    page.locator('.app-workspace').getByRole('heading', {
       name: 'Review before acknowledgement',
       level: 1,
     }),

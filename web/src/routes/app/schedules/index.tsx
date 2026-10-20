@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { z } from 'zod'
+import { PageHeading } from '@/components/layout/page-heading'
 import { Button } from '@/components/ui/button'
 import { useCurrentUser } from '@/features/auth/current-user'
 import {
@@ -72,6 +73,14 @@ function SchedulesPage() {
 
   return (
     <div className="space-y-5">
+      {showAssignments && (
+        <PageHeading
+          id="schedules-title"
+          eyebrow="Preventive maintenance"
+          title="Schedules"
+          description="Review current PM batches and assignments."
+        />
+      )}
       {assignmentRole && (
         <nav aria-label="Schedule views" className="flex flex-wrap gap-2">
           <Button asChild variant={showAssignments ? 'secondary' : 'primary'}>

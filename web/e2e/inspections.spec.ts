@@ -311,7 +311,7 @@ test.describe('Inspection review workflows', () => {
       'section[aria-labelledby="inspections-title"]',
     )
     await expect(
-      page.locator('.app-page-header').getByRole('heading', {
+      page.locator('.app-workspace').getByRole('heading', {
         name: 'Inspections',
         exact: true,
       }),
@@ -326,6 +326,7 @@ test.describe('Inspection review workflows', () => {
       registry.getByRole('heading', { name: 'Inspection records' }),
     ).toBeVisible()
     expect(await registry.locator('h1, h2').allTextContents()).toEqual([
+      'Inspections',
       'Find inspections',
       'Inspection summary',
       'Inspection records',
