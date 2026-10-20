@@ -457,7 +457,10 @@ class _HomePageState extends State<HomePage> {
           const SizedBox(height: 24),
           if (widget.preventiveMaintenanceRepository
               case final OfflineInspectionRepository offlineRepository) ...[
-            _OfflineSyncBanner(repository: offlineRepository),
+            _OfflineSyncBanner(
+              repository: offlineRepository,
+              onReviewDrafts: widget.onOpenPreventiveMaintenance,
+            ),
             const SizedBox(height: 16),
           ],
 
@@ -661,9 +664,13 @@ class _HomePageState extends State<HomePage> {
 }
 
 class _OfflineSyncBanner extends StatelessWidget {
-  const _OfflineSyncBanner({required this.repository});
+  const _OfflineSyncBanner({
+    required this.repository,
+    required this.onReviewDrafts,
+  });
 
   final OfflineInspectionRepository repository;
+  final FutureOr<void> Function()? onReviewDrafts;
 
   @override
   Widget build(BuildContext context) {
@@ -731,6 +738,13 @@ class _OfflineSyncBanner extends StatelessWidget {
                         ? null
                         : () => unawaited(repository.syncNow()),
                     child: const Text('Retry sync'),
+                  ),
+                if (state == OfflineSyncState.attention &&
+                    onReviewDrafts != null)
+                  TextButton(
+                    key: const Key('offline-review-drafts'),
+                    onPressed: () => _runChildWorkflow(onReviewDrafts),
+                    child: const Text('Review saved drafts'),
                   ),
               ],
             ),

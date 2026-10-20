@@ -65,6 +65,30 @@ class SecureOfflineSnapshotStore implements OfflineSnapshotStore {
 
 enum OfflineSyncState { ready, offline, queued, syncing, attention }
 
+class OfflineConflictReview {
+  const OfflineConflictReview({
+    required this.writeId,
+    required this.kind,
+    required this.message,
+    required this.canRetry,
+    required this.canDiscard,
+    this.localForm,
+    this.serverForm,
+    this.localInspection,
+    this.serverInspection,
+  });
+
+  final String writeId;
+  final String kind;
+  final String message;
+  final bool canRetry;
+  final bool canDiscard;
+  final PreventiveMaintenanceForm? localForm;
+  final PreventiveMaintenanceForm? serverForm;
+  final PreventiveMaintenanceInspection? localInspection;
+  final PreventiveMaintenanceInspection? serverInspection;
+}
+
 class OfflineInspectionRepository extends ChangeNotifier
     with WidgetsBindingObserver
     implements
@@ -126,6 +150,41 @@ class OfflineInspectionRepository extends ChangeNotifier
   bool hasConflictFor(String formId) => _data.writes.any(
     (write) => write.formId == formId && write.state != 'pending',
   );
+
+  List<OfflineConflictReview> conflictsForForm(String formId) => _data.writes
+      .where((write) => write.formId == formId && write.state != 'pending')
+      .map((write) {
+        final serverForm = _data.serverForms[formId];
+        final localInspection = write.inspectionId == null
+            ? null
+            : _findInspection(formId, write.inspectionId!);
+        final serverInspection = write.inspectionId == null
+            ? null
+            : serverForm?.inspections
+                      .where((row) => row.id == write.inspectionId)
+                      .firstOrNull ??
+                  (write.kind == 'addInspection'
+                      ? serverForm?.inspections
+                            .where(
+                              (row) =>
+                                  row.scheduleId == write.data['scheduleId'],
+                            )
+                            .firstOrNull
+                      : null);
+        return OfflineConflictReview(
+          writeId: write.id,
+          kind: write.kind,
+          message:
+              write.message ?? 'Review the saved local and server versions.',
+          canRetry: write.state == 'conflict',
+          canDiscard: serverForm != null || write.kind == 'createForm',
+          localForm: _data.forms[formId],
+          serverForm: serverForm,
+          localInspection: localInspection,
+          serverInspection: serverInspection,
+        );
+      })
+      .toList(growable: false);
 
   bool canSubmitForm(String formId) => _hasNetwork && !isFormPending(formId);
 
@@ -477,6 +536,10 @@ class OfflineInspectionRepository extends ChangeNotifier
         ...pendingAdd.data,
         ..._updateInspectionData(input),
       };
+      if (pendingAdd.state == 'blocked') {
+        pendingAdd.state = 'pending';
+        pendingAdd.message = null;
+      }
     } else {
       final pendingUpdate = _data.writes.cast<_PendingWrite?>().firstWhere(
         (write) =>
@@ -486,6 +549,10 @@ class OfflineInspectionRepository extends ChangeNotifier
       );
       if (pendingUpdate != null) {
         pendingUpdate.data = _updateInspectionData(input);
+        if (pendingUpdate.state == 'blocked') {
+          pendingUpdate.state = 'pending';
+          pendingUpdate.message = null;
+        }
       } else {
         _data.writes.add(
           _PendingWrite(
@@ -493,7 +560,7 @@ class OfflineInspectionRepository extends ChangeNotifier
             kind: 'updateInspection',
             formId: formId,
             inspectionId: inspectionId,
-            expectedUpdatedAt: current.updatedAt,
+            expectedUpdatedAt: input.expectedUpdatedAt ?? current.updatedAt,
             data: _updateInspectionData(input),
           ),
         );
@@ -523,9 +590,13 @@ class OfflineInspectionRepository extends ChangeNotifier
   );
 
   @override
-  Future<void> deleteInspection(
+  Future<void> deleteInspection(String formId, String inspectionId) =>
+      _deleteInspection(formId, inspectionId, null);
+
+  Future<void> _deleteInspection(
     String formId,
     String inspectionId,
+    DateTime? expectedUpdatedAt,
   ) => _exclusive(() async {
     await _ensureLoaded();
     final form = _data.forms[formId];
@@ -558,13 +629,22 @@ class OfflineInspectionRepository extends ChangeNotifier
       );
     }
     final hasQueuedMutation = addWrite != null || updateWrite != null;
+    if (_data.writes.any(
+      (write) =>
+          write.kind == 'deleteInspection' &&
+          write.inspectionId == inspectionId,
+    )) {
+      return;
+    }
     _data.writes.add(
       _PendingWrite(
         id: _newUuid(),
         kind: 'deleteInspection',
         formId: formId,
         inspectionId: inspectionId,
-        expectedUpdatedAt: hasQueuedMutation ? null : row.updatedAt,
+        expectedUpdatedAt: hasQueuedMutation
+            ? null
+            : expectedUpdatedAt ?? row.updatedAt,
         data: const <String, dynamic>{},
       ),
     );
@@ -583,7 +663,142 @@ class OfflineInspectionRepository extends ChangeNotifier
     String formId,
     String inspectionId,
     DateTime? expectedUpdatedAt,
-  ) => deleteInspection(formId, inspectionId);
+  ) => _deleteInspection(formId, inspectionId, expectedUpdatedAt);
+
+  Future<void> retryConflict(String writeId) => _exclusive(() async {
+    await _ensureLoaded();
+    final write = _data.writes.where((item) => item.id == writeId).firstOrNull;
+    if (write == null || write.state != 'conflict') {
+      throw const ApiException(
+        statusCode: 409,
+        message: 'This saved change is no longer available to retry.',
+      );
+    }
+    if (!_hasNetwork) {
+      throw const ApiException(
+        message: 'Reconnect before retrying a saved conflict.',
+      );
+    }
+
+    final serverForm = await _remote.getForm(write.formId);
+    _data.serverForms[write.formId] = serverForm;
+    switch (write.kind) {
+      case 'createForm':
+        if (!_matchesCreateForm(serverForm, write)) {
+          throw const ApiException(
+            statusCode: 409,
+            message:
+                'The server form differs from this saved draft. Review it before discarding the local copy.',
+          );
+        }
+        break;
+      case 'addInspection':
+        final existingScheduleRow = serverForm.inspections
+            .where((row) => row.scheduleId == write.data['scheduleId'])
+            .firstOrNull;
+        if (existingScheduleRow != null &&
+            existingScheduleRow.id != write.inspectionId) {
+          throw const ApiException(
+            statusCode: 409,
+            message:
+                'The server already has an inspection for this schedule. Compare both rows before discarding the local copy.',
+          );
+        }
+        break;
+      case 'updateInspection':
+        final serverInspection = serverForm.inspections
+            .where((row) => row.id == write.inspectionId)
+            .firstOrNull;
+        if (serverInspection == null) {
+          throw const ApiException(
+            statusCode: 409,
+            message:
+                'The server inspection no longer exists. Review the local copy before discarding it.',
+          );
+        }
+        write.expectedUpdatedAt = serverInspection.updatedAt;
+        break;
+      case 'deleteInspection':
+        final serverInspection = serverForm.inspections
+            .where((row) => row.id == write.inspectionId)
+            .firstOrNull;
+        if (serverInspection != null) {
+          write.expectedUpdatedAt = serverInspection.updatedAt;
+        }
+        break;
+      default:
+        throw const ApiException(
+          statusCode: 409,
+          message: 'This saved change cannot be retried safely.',
+        );
+    }
+
+    write.state = 'pending';
+    write.message = null;
+    await _persist();
+    await _syncIfConnected();
+  });
+
+  Future<void> discardConflict(String writeId) => _exclusive(() async {
+    await _ensureLoaded();
+    final write = _data.writes.where((item) => item.id == writeId).firstOrNull;
+    if (write == null || write.state == 'pending') {
+      throw const ApiException(
+        statusCode: 409,
+        message: 'This saved change is no longer available to discard.',
+      );
+    }
+
+    if (write.kind == 'createForm') {
+      if (_hasNetwork) {
+        final latest = await _tryGetServerForm(write.formId);
+        if (latest != null) _data.serverForms[write.formId] = latest;
+      }
+      final serverForm = _data.serverForms[write.formId];
+      _data.writes.removeWhere((item) => item.formId == write.formId);
+      if (serverForm == null) {
+        final local = _data.forms.remove(write.formId);
+        for (final row in local?.inspections ?? const []) {
+          _restoreScheduleStatus(row.scheduleId);
+        }
+      } else {
+        _rememberRemoteForm(serverForm);
+      }
+    } else if (write.inspectionId != null) {
+      if (_hasNetwork) {
+        final latest = await _tryGetServerForm(write.formId);
+        if (latest != null) _data.serverForms[write.formId] = latest;
+      }
+      final serverForm = _data.serverForms[write.formId];
+      if (serverForm == null) {
+        throw const ApiException(
+          message:
+              'The latest server version is unavailable. Reconnect before discarding this conflict.',
+        );
+      }
+      final inspectionId = write.inspectionId!;
+      final localInspection = _findInspection(write.formId, inspectionId);
+      _data.writes.removeWhere(
+        (item) =>
+            item.formId == write.formId && item.inspectionId == inspectionId,
+      );
+      _rememberRemoteForm(serverForm);
+      final serverInspection = serverForm.inspections
+          .where((row) => row.id == inspectionId)
+          .firstOrNull;
+      if (serverInspection == null) {
+        if (localInspection != null) {
+          _restoreScheduleStatus(localInspection.scheduleId);
+        }
+      } else {
+        _setScheduleStatus(serverInspection.scheduleId, 'Completed');
+      }
+    } else {
+      _data.writes.remove(write);
+    }
+
+    await _persist();
+  });
 
   @override
   Future<Asset> getByQr(String scannedValue) async {
@@ -748,12 +963,25 @@ class OfflineInspectionRepository extends ChangeNotifier
     _isSyncing = true;
     _notifyListeners();
     try {
-      while (_data.writes.isNotEmpty) {
-        final write = _data.writes.first;
-        if (write.state != 'pending') break;
+      final blockedFormIds = _data.writes
+          .where((write) => write.state != 'pending')
+          .map((write) => write.formId)
+          .toSet();
+      var index = 0;
+      while (index < _data.writes.length) {
+        final write = _data.writes[index];
+        if (write.state != 'pending') {
+          blockedFormIds.add(write.formId);
+          index++;
+          continue;
+        }
+        if (blockedFormIds.contains(write.formId)) {
+          index++;
+          continue;
+        }
         try {
           await _applyWrite(write);
-          _data.writes.removeAt(0);
+          _data.writes.removeAt(index);
           _hasNetwork = true;
           _lastIssue = null;
           await _persist();
@@ -765,18 +993,22 @@ class OfflineInspectionRepository extends ChangeNotifier
             await _refreshConflictedForm(write.formId);
             await _persist();
             _lastIssue = write.message;
+            blockedFormIds.add(write.formId);
+            index++;
           } else if (error.statusCode != null) {
             write.state = 'blocked';
             write.message =
                 'The server rejected a saved change. Review the draft before retrying.';
             await _persist();
             _lastIssue = write.message;
+            blockedFormIds.add(write.formId);
+            index++;
           } else {
             _hasNetwork = false;
             _lastIssue =
                 'Connection was lost. Saved changes are waiting to sync.';
+            break;
           }
-          break;
         } catch (_) {
           _hasNetwork = false;
           _lastIssue =
@@ -859,6 +1091,27 @@ class OfflineInspectionRepository extends ChangeNotifier
     }
   }
 
+  Future<PreventiveMaintenanceForm?> _tryGetServerForm(String formId) async {
+    try {
+      return await _remote.getForm(formId);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  bool _matchesCreateForm(PreventiveMaintenanceForm form, _PendingWrite write) {
+    final data = write.data;
+    return form.createdByUserId == _activeUserId &&
+        form.assetCategory == data['assetCategory'] &&
+        form.building == data['building'] &&
+        form.department == data['department'] &&
+        form.periodType == data['periodType'] &&
+        form.quarter == data['quarter'] &&
+        form.semester == data['semester'] &&
+        form.year == data['year'] &&
+        form.academicYear == data['academicYear'];
+  }
+
   void _rememberRemoteForms(List<PreventiveMaintenanceForm> forms) {
     final remoteIds = forms.map((form) => form.id).toSet();
     for (final form in forms) {
@@ -890,19 +1143,25 @@ class OfflineInspectionRepository extends ChangeNotifier
     PreventiveMaintenanceForm remote,
     PreventiveMaintenanceForm local,
   ) {
-    final pendingInspectionIds = _data.writes
+    final pendingInspectionWrites = _data.writes
         .where(
           (write) => write.formId == local.id && write.inspectionId != null,
         )
-        .map((write) => write.inspectionId)
-        .toSet();
-    final localRows = local.inspections
-        .where((row) => pendingInspectionIds.contains(row.id))
         .toList(growable: false);
     final merged = <String, PreventiveMaintenanceInspection>{
       for (final row in remote.inspections) row.id: row,
-      for (final row in localRows) row.id: row,
     };
+    for (final write in pendingInspectionWrites) {
+      final inspectionId = write.inspectionId!;
+      if (write.kind == 'deleteInspection') {
+        merged.remove(inspectionId);
+        continue;
+      }
+      final localRow = local.inspections
+          .where((row) => row.id == inspectionId)
+          .firstOrNull;
+      if (localRow != null) merged[inspectionId] = localRow;
+    }
     return remote.copyWith(inspections: merged.values.toList(growable: false));
   }
 
@@ -977,9 +1236,19 @@ class OfflineInspectionRepository extends ChangeNotifier
 
   void _cacheScheduleAsset(ScheduleOption schedule) {
     final asset = schedule.asset;
-    if (asset == null || asset.status == null) return;
+    final qrCodeValue = asset?.qrCodeValue?.trim();
+    if (asset == null ||
+        asset.status == null ||
+        qrCodeValue == null ||
+        qrCodeValue.isEmpty) {
+      return;
+    }
+    try {
+      validateUniPmQrValue(qrCodeValue);
+    } on InvalidUniPmQrException {
+      return;
+    }
     final id = asset.id;
-    final categoryToken = asset.assetCategory.replaceAll(' ', '').toUpperCase();
     _data.assets[id] = Asset(
       id: id,
       assetCode: asset.assetCode,
@@ -987,7 +1256,7 @@ class OfflineInspectionRepository extends ChangeNotifier
       building: asset.building,
       department: asset.department,
       location: asset.location,
-      qrCodeValue: 'UNIPM-$categoryToken-${id.substring(0, 8).toUpperCase()}',
+      qrCodeValue: qrCodeValue,
       status: asset.status!,
     );
   }

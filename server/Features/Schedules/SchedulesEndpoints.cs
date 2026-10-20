@@ -1187,7 +1187,8 @@ public static class SchedulesEndpoints
                             schedule.Asset.Building,
                             schedule.Asset.Department,
                             schedule.Asset.Location,
-                            schedule.Asset.Status)) )
+                            schedule.Asset.Status,
+                            schedule.Asset.QrCodeValue)))
                 .ToListAsync(cancellationToken);
 
             return Results.Ok(schedules);
@@ -1619,7 +1620,8 @@ public sealed record ScheduleResponse(
                     schedule.Asset.Building,
                     schedule.Asset.Department,
                     schedule.Asset.Location,
-                    schedule.Asset.Status));
+                    schedule.Asset.Status,
+                    schedule.Asset.QrCodeValue));
     }
 }
 
@@ -1745,7 +1747,8 @@ public sealed record ScheduleAssetResponse(
     string? Building,
     string? Department,
     string? Location,
-    string Status);
+    string Status,
+    string? QrCodeValue);
 
 public class CreateScheduleDto
 {

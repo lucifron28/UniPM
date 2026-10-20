@@ -381,6 +381,7 @@ class ScheduleAssetOption {
     required this.department,
     required this.location,
     this.status,
+    this.qrCodeValue,
   });
 
   final String id;
@@ -390,6 +391,7 @@ class ScheduleAssetOption {
   final String? department;
   final String? location;
   final String? status;
+  final String? qrCodeValue;
 
   Map<String, dynamic> toJson() => <String, dynamic>{
     'id': id,
@@ -399,6 +401,7 @@ class ScheduleAssetOption {
     'department': department,
     'location': location,
     'status': status,
+    'qrCodeValue': qrCodeValue,
   };
 
   factory ScheduleAssetOption.fromJson(Map<String, dynamic> json) {
@@ -410,6 +413,7 @@ class ScheduleAssetOption {
       department: _nullableString(json, 'department'),
       location: _nullableString(json, 'location'),
       status: _nullableString(json, 'status'),
+      qrCodeValue: _nullableString(json, 'qrCodeValue'),
     );
   }
 }

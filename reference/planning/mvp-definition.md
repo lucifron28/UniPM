@@ -123,9 +123,10 @@ category-form structure for the current mobile PM pass. Broader category
 procedures, requiredness, historical form-version preservation, attachments,
 alerts, and persistent session restoration remain separately approved or
 GSD-validated work; the current mobile authentication session remains
-memory-only. An encrypted offline-Draft workflow is being prototyped on
-`feature/offline-inspection-workflow`; it has not changed the accepted MVP or
-GSD validation baseline.
+memory-only. Encrypted per-account offline Draft storage, queued
+synchronization, and reviewable conflict recovery are implemented on
+`feature/offline-inspection-workflow`; they have not changed the accepted MVP
+or GSD validation baseline.
 
 ## Core PM Acceptance Status
 

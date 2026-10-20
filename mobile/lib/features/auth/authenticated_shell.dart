@@ -254,9 +254,7 @@ class AuthenticatedShell extends StatelessWidget {
         onOpenForm: (formId) => _handleOpenBatch(context, formId),
         onOpenAcknowledgement: (form) =>
             _handleOpenAcknowledgement(context, form),
-        onOpenPreventiveMaintenance:
-            (controller.user?.roles.contains('GSD') == true &&
-                preventiveMaintenanceRepository != null)
+        onOpenPreventiveMaintenance: preventiveMaintenanceRepository != null
             ? () async {
                 await Navigator.of(context).push<void>(
                   MaterialPageRoute<void>(

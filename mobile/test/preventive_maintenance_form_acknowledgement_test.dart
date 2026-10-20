@@ -280,101 +280,104 @@ void main() {
     controller.dispose();
   });
 
-  testWidgets('signature drawing locks and restores acknowledgement scrolling', (
-    tester,
-  ) async {
-    final repository = FakeAcknowledgementRepository();
-    final controller = PreventiveMaintenanceController(
-      repository: repository,
-      user: testUser(),
-    );
-    controller.selectForm(repository.form);
+  testWidgets(
+    'signature drawing locks and restores acknowledgement scrolling',
+    (tester) async {
+      final repository = FakeAcknowledgementRepository();
+      final controller = PreventiveMaintenanceController(
+        repository: repository,
+        user: testUser(),
+      );
+      controller.selectForm(repository.form);
 
-    await tester.pumpWidget(
-      MaterialApp(
-        home: PreventiveMaintenanceAcknowledgementPage(
-          controller: controller,
-          form: repository.form,
+      await tester.pumpWidget(
+        MaterialApp(
+          home: PreventiveMaintenanceAcknowledgementPage(
+            controller: controller,
+            form: repository.form,
+          ),
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
+      );
+      await tester.pumpAndSettle();
 
-    final page = find.byKey(const Key('acknowledgement-page'));
-    final canvas = find.byKey(const Key('signature-canvas'));
-    await _ensureVisible(tester, canvas);
-    final initialOffset = _acknowledgementScrollPosition(tester).pixels;
+      final page = find.byKey(const Key('acknowledgement-page'));
+      final canvas = find.byKey(const Key('signature-canvas'));
+      await _ensureVisible(tester, canvas);
+      final initialOffset = _acknowledgementScrollPosition(tester).pixels;
 
-    final drawing = await tester.startGesture(tester.getCenter(canvas));
-    await tester.pump();
-    expect(
-      tester.widget<ListView>(page).physics,
-      isA<NeverScrollableScrollPhysics>(),
-    );
-    await drawing.moveBy(const Offset(0, -80));
-    await tester.pump();
-    expect(_acknowledgementScrollPosition(tester).pixels, initialOffset);
-    expect(
-      tester.state<PmSignaturePadState>(find.byType(PmSignaturePad))
-          .hasSignature,
-      isTrue,
-    );
+      final drawing = await tester.startGesture(tester.getCenter(canvas));
+      await tester.pump();
+      expect(
+        tester.widget<ListView>(page).physics,
+        isA<NeverScrollableScrollPhysics>(),
+      );
+      await drawing.moveBy(const Offset(0, -80));
+      await tester.pump();
+      expect(_acknowledgementScrollPosition(tester).pixels, initialOffset);
+      expect(
+        tester
+            .state<PmSignaturePadState>(find.byType(PmSignaturePad))
+            .hasSignature,
+        isTrue,
+      );
 
-    await drawing.up();
-    await tester.pump();
-    expect(
-      tester.widget<ListView>(page).physics,
-      isNot(isA<NeverScrollableScrollPhysics>()),
-    );
-    await _dragAcknowledgementList(tester);
+      await drawing.up();
+      await tester.pump();
+      expect(
+        tester.widget<ListView>(page).physics,
+        isNot(isA<NeverScrollableScrollPhysics>()),
+      );
+      await _dragAcknowledgementList(tester);
 
-    final clearButton = find.byKey(const Key('clear-signature'));
-    await _ensureVisible(tester, clearButton);
-    final drawingDuringClear = await tester.startGesture(
-      tester.getCenter(canvas),
-      pointer: 10,
-    );
-    await tester.pump();
-    expect(
-      tester.widget<ListView>(page).physics,
-      isA<NeverScrollableScrollPhysics>(),
-    );
-    final clearTap = await tester.startGesture(
-      tester.getCenter(clearButton),
-      pointer: 11,
-    );
-    await clearTap.up();
-    await tester.pump();
-    expect(
-      tester.state<PmSignaturePadState>(find.byType(PmSignaturePad))
-          .hasSignature,
-      isFalse,
-    );
-    expect(
-      tester.widget<ListView>(page).physics,
-      isNot(isA<NeverScrollableScrollPhysics>()),
-    );
-    await drawingDuringClear.up();
-    await tester.pump();
-    await _dragAcknowledgementList(tester);
+      final clearButton = find.byKey(const Key('clear-signature'));
+      await _ensureVisible(tester, clearButton);
+      final drawingDuringClear = await tester.startGesture(
+        tester.getCenter(canvas),
+        pointer: 10,
+      );
+      await tester.pump();
+      expect(
+        tester.widget<ListView>(page).physics,
+        isA<NeverScrollableScrollPhysics>(),
+      );
+      final clearTap = await tester.startGesture(
+        tester.getCenter(clearButton),
+        pointer: 11,
+      );
+      await clearTap.up();
+      await tester.pump();
+      expect(
+        tester
+            .state<PmSignaturePadState>(find.byType(PmSignaturePad))
+            .hasSignature,
+        isFalse,
+      );
+      expect(
+        tester.widget<ListView>(page).physics,
+        isNot(isA<NeverScrollableScrollPhysics>()),
+      );
+      await drawingDuringClear.up();
+      await tester.pump();
+      await _dragAcknowledgementList(tester);
 
-    await _ensureVisible(tester, canvas);
-    final cancellation = await tester.startGesture(tester.getCenter(canvas));
-    await tester.pump();
-    expect(
-      tester.widget<ListView>(page).physics,
-      isA<NeverScrollableScrollPhysics>(),
-    );
-    await cancellation.cancel();
-    await tester.pump();
-    expect(
-      tester.widget<ListView>(page).physics,
-      isNot(isA<NeverScrollableScrollPhysics>()),
-    );
-    await _dragAcknowledgementList(tester);
+      await _ensureVisible(tester, canvas);
+      final cancellation = await tester.startGesture(tester.getCenter(canvas));
+      await tester.pump();
+      expect(
+        tester.widget<ListView>(page).physics,
+        isA<NeverScrollableScrollPhysics>(),
+      );
+      await cancellation.cancel();
+      await tester.pump();
+      expect(
+        tester.widget<ListView>(page).physics,
+        isNot(isA<NeverScrollableScrollPhysics>()),
+      );
+      await _dragAcknowledgementList(tester);
 
-    controller.dispose();
-  });
+      controller.dispose();
+    },
+  );
 
   testWidgets('acknowledgement captures signatory data and locks the form', (
     tester,

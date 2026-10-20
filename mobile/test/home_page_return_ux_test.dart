@@ -625,10 +625,8 @@ void main() {
       id: _draftId,
       inspections: [_inspection(1, scheduleId: 'draft-schedule')],
     );
-    final repository = _MutablePmRepository(
-      forms: [draft],
-      schedules: const [],
-    )..schedulesFailure = StateError('Schedules are unavailable.');
+    final repository = _MutablePmRepository(forms: [draft], schedules: const [])
+      ..schedulesFailure = StateError('Schedules are unavailable.');
     String? openedFormId;
 
     await _pumpHome(
@@ -657,13 +655,12 @@ void main() {
   testWidgets('does not turn terminal 401 into a PM list error', (
     tester,
   ) async {
-    final repository = _MutablePmRepository(
-      forms: const [],
-      schedules: const [],
-    )..formsFailure = const ApiException(
-      statusCode: 401,
-      message: 'Your session expired. Please sign in again.',
-    );
+    final repository =
+        _MutablePmRepository(forms: const [], schedules: const [])
+          ..formsFailure = const ApiException(
+            statusCode: 401,
+            message: 'Your session expired. Please sign in again.',
+          );
 
     await _pumpHome(tester, user: _inspector, repository: repository);
 

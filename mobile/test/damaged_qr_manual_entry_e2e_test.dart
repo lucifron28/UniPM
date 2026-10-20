@@ -44,8 +44,7 @@ class TrackingAssetRepository implements AssetRepository {
     String? search,
     String? assetCategory,
     int limit = 25,
-  }) async =>
-      assets;
+  }) async => assets;
 }
 
 /// A representative caller workflow matching the application contract.
@@ -73,11 +72,12 @@ class _DamagedQrWorkflowHostState extends State<DamagedQrWorkflowHost> {
     final result = await Navigator.of(context).push<QrScanResult>(
       MaterialPageRoute<QrScanResult>(
         builder: (_) => QrScannerPage(
-          previewBuilder: widget.previewBuilder ??
+          previewBuilder:
+              widget.previewBuilder ??
               (context, onDetected) => const ColoredBox(
-                    key: Key('mock-camera-preview'),
-                    color: Colors.black,
-                  ),
+                key: Key('mock-camera-preview'),
+                color: Colors.black,
+              ),
         ),
       ),
     );
@@ -124,10 +124,7 @@ class _DamagedQrWorkflowHostState extends State<DamagedQrWorkflowHost> {
               label: const Text('Open Scanner'),
             ),
             if (lastResult != null)
-              Text(
-                'Result: $lastResult',
-                key: const Key('last-scan-result'),
-              ),
+              Text('Result: $lastResult', key: const Key('last-scan-result')),
           ],
         ),
       ),
@@ -157,9 +154,7 @@ void main() {
         final repository = TrackingAssetRepository([testAsset]);
 
         await tester.pumpWidget(
-          MaterialApp(
-            home: DamagedQrWorkflowHost(repository: repository),
-          ),
+          MaterialApp(home: DamagedQrWorkflowHost(repository: repository)),
         );
 
         // 1. User opens scanner
@@ -171,7 +166,9 @@ void main() {
         expect(find.byKey(const Key('mock-camera-preview')), findsOneWidget);
 
         // 2. User taps "Damaged QR? Enter asset code"
-        final damagedQrButton = find.byKey(const Key('enter-code-manually-button'));
+        final damagedQrButton = find.byKey(
+          const Key('enter-code-manually-button'),
+        );
         expect(damagedQrButton, findsOneWidget);
         expect(find.text('Damaged QR? Enter asset code'), findsOneWidget);
         await tester.tap(damagedQrButton);
@@ -213,9 +210,7 @@ void main() {
         final repository = TrackingAssetRepository([testAsset]);
 
         await tester.pumpWidget(
-          MaterialApp(
-            home: DamagedQrWorkflowHost(repository: repository),
-          ),
+          MaterialApp(home: DamagedQrWorkflowHost(repository: repository)),
         );
 
         await tester.tap(find.byKey(const Key('open-scanner-button')));
@@ -246,9 +241,7 @@ void main() {
         final repository = TrackingAssetRepository([testAsset]);
 
         await tester.pumpWidget(
-          MaterialApp(
-            home: DamagedQrWorkflowHost(repository: repository),
-          ),
+          MaterialApp(home: DamagedQrWorkflowHost(repository: repository)),
         );
 
         await tester.tap(find.byKey(const Key('open-scanner-button')));

@@ -137,9 +137,9 @@ budget, RMRF, or WMS approval.
 The four supplied GSD forms are implemented as the authoritative visible
 category-form structure for the current mobile PM pass. Historical form-version
 preservation, corrective handoff, and RMRF processing remain outside this mobile
-implementation. Offline persistence and queued synchronization are prototyped
-on `feature/offline-inspection-workflow`; this branch has not yet been accepted
-as part of the GSD-validated baseline.
+implementation. Offline persistence, queued synchronization, and explicit
+conflict recovery are implemented on `feature/offline-inspection-workflow`;
+this branch has not yet been accepted as part of the GSD-validated baseline.
 
 ## Dependencies
 

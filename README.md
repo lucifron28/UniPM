@@ -135,9 +135,10 @@ or delete Draft rows, and submit the whole form through the API. Submission
 assigns a provisional file number and makes the form read-only.
 
 The mobile client starts signed out after restart, does not persist access
-tokens or cookies, and does not implement refresh/replay or offline
-synchronization. Offline sync is deferred; its persistence and synchronization
-architecture remain undecided pending a separate approved decision.
+tokens or cookies, and does not implement refresh/replay. The
+`feature/offline-inspection-workflow` branch adds encrypted per-account draft
+storage and queued synchronization with explicit conflict review; that work
+remains outside the accepted release baseline pending CI and field review.
 Acknowledgement and signature capture are available in the web review workflow;
 later mobile field actions remain outside the current mobile scope. See
 [mobile/README.md](mobile/README.md).

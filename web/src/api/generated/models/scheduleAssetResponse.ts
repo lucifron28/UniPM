@@ -16,4 +16,6 @@ export interface ScheduleAssetResponse {
   /** @nullable */
   location: string | null
   status: string
+  /** @nullable */
+  qrCodeValue: string | null
 }

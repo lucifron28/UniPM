@@ -481,8 +481,9 @@ class PmSignaturePadState extends State<PmSignaturePad> {
             behavior: HitTestBehavior.opaque,
             onPointerDown: widget.enabled ? _startStroke : null,
             onPointerMove: widget.enabled ? _updateStroke : null,
-            onPointerUp:
-                widget.enabled || activePointer != null ? _endStroke : null,
+            onPointerUp: widget.enabled || activePointer != null
+                ? _endStroke
+                : null,
             onPointerCancel: widget.enabled || activePointer != null
                 ? _cancelStroke
                 : null,

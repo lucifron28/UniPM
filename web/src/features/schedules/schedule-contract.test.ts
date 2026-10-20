@@ -34,6 +34,7 @@ const schedule = {
     department: 'GSD',
     location: 'Lobby',
     status: 'Active',
+    qrCodeValue: null,
   },
 }
 

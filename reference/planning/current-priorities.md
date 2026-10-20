@@ -113,9 +113,9 @@ schedules.
   verification remain outside this milestone. Broader category-procedure,
   requiredness, and historical form-version decisions remain separately
   approved or GSD-validated work. An encrypted offline-Draft and queued-sync
-  prototype now exists on `feature/offline-inspection-workflow`, but it has not
-  been accepted or evaluated as part of the GSD baseline. Attachments, alerts,
-  persistent session restoration, and AI/RAG remain deferred and are not
+  implementation now exists on `feature/offline-inspection-workflow`, but it
+  has not been accepted or evaluated as part of the GSD baseline. Attachments,
+  alerts, persistent session restoration, and AI/RAG remain deferred and are not
   blockers.
 
 The active boundary for this branch is documented in

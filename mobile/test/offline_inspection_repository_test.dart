@@ -2,18 +2,24 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/api/api_exception.dart';
+import 'package:mobile/auth/auth_models.dart';
 import 'package:mobile/features/assets/asset_models.dart';
 import 'package:mobile/features/assets/asset_repository.dart';
+import 'package:mobile/features/auth/home_page.dart';
 import 'package:mobile/features/preventive_maintenance/offline_inspection_repository.dart';
+import 'package:mobile/features/preventive_maintenance/preventive_maintenance_controller.dart';
 import 'package:mobile/features/preventive_maintenance/preventive_maintenance_models.dart';
+import 'package:mobile/features/preventive_maintenance/preventive_maintenance_page.dart';
 import 'package:mobile/features/preventive_maintenance/preventive_maintenance_repository.dart';
 
 const _userA = '11111111-1111-4111-8111-111111111111';
 const _userB = '22222222-2222-4222-8222-222222222222';
 const _formId = '33333333-3333-4333-8333-333333333333';
+const _formBId = '33333333-3333-4333-8333-333333333334';
 const _scheduleId = '44444444-4444-4444-8444-444444444444';
 const _assetId = '55555555-5555-4555-8555-555555555555';
 const _inspectionId = '66666666-6666-4666-8666-666666666666';
+const _inspectionBId = '66666666-6666-4666-8666-666666666667';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -155,8 +161,12 @@ void main() {
       expect((await repository.listQuarters()).single.code, 'Q1');
       expect((await repository.getByCode('FE-CCMS-001')).id, _assetId);
       expect(
-        (await repository.getByQr('UNIPM-FIRE-EXTINGUISHER-55555555')).id,
+        (await repository.getByQr('UNIPM-LEGACY-CUSTOM-LABEL')).id,
         _assetId,
+      );
+      await expectLater(
+        repository.getByQr('UNIPM-FIRE-EXTINGUISHER-55555555'),
+        throwsA(isA<ApiException>()),
       );
       expect(repository.hasNetwork, isFalse);
     },
@@ -234,6 +244,246 @@ void main() {
   );
 
   test(
+    'a conflict in one form does not stop unrelated forms from syncing',
+    () async {
+      remote.forms = [
+        _form(inspections: [_inspection()]),
+        _form(
+          id: _formBId,
+          inspections: [_inspection(id: _inspectionBId)],
+        ),
+      ];
+      await repository.activate(_userA);
+      await repository.listForms();
+      connectivity.setConnected(false);
+      remote.connected = false;
+      await repository.updateInspection(
+        _formId,
+        _inspectionId,
+        _updateInput(remarks: 'Local conflict.'),
+      );
+      await repository.updateInspection(
+        _formBId,
+        _inspectionBId,
+        _updateInput(remarks: 'Independent update.'),
+      );
+
+      remote.conflictNextUpdate = true;
+      remote.connected = true;
+      connectivity.setConnected(true);
+      await Future<void>.delayed(Duration.zero);
+      await repository.syncNow();
+
+      expect(repository.pendingCountFor(_formId), 1);
+      expect(repository.hasConflictFor(_formId), isTrue);
+      expect(repository.pendingCountFor(_formBId), 0);
+      expect(
+        remote.forms
+            .singleWhere((form) => form.id == _formBId)
+            .inspections
+            .single
+            .remarks,
+        'Independent update.',
+      );
+    },
+  );
+
+  test('retry uses the reviewed current server version', () async {
+    remote.forms = [
+      _form(inspections: [_inspection()]),
+    ];
+    await repository.activate(_userA);
+    await repository.listForms();
+    connectivity.setConnected(false);
+    remote.connected = false;
+    await repository.updateInspection(
+      _formId,
+      _inspectionId,
+      _updateInput(remarks: 'Keep my local observation.'),
+    );
+
+    remote.conflictNextUpdate = true;
+    remote.connected = true;
+    connectivity.setConnected(true);
+    await Future<void>.delayed(Duration.zero);
+    await repository.syncNow();
+    final conflict = repository.conflictsForForm(_formId).single;
+    expect(conflict.localInspection?.remarks, 'Keep my local observation.');
+    expect(conflict.canRetry, isTrue);
+
+    remote.forms = [
+      _form(
+        inspections: [
+          _inspection(
+            remarks: 'Server changed this row.',
+            updatedAt: DateTime.utc(2026, 2, 21),
+          ),
+        ],
+      ),
+    ];
+    await repository.retryConflict(conflict.writeId);
+
+    expect(repository.pendingCount, 0);
+    expect(
+      remote.forms.single.inspections.single.remarks,
+      'Keep my local observation.',
+    );
+    expect(remote.updateExpectedVersions.last, DateTime.utc(2026, 2, 21));
+  });
+
+  test(
+    'discard restores the latest server row and removes the local write',
+    () async {
+      remote.forms = [
+        _form(inspections: [_inspection()]),
+      ];
+      await repository.activate(_userA);
+      await repository.listForms();
+      connectivity.setConnected(false);
+      remote.connected = false;
+      await repository.updateInspection(
+        _formId,
+        _inspectionId,
+        _updateInput(remarks: 'Discard this local change.'),
+      );
+
+      remote.conflictNextUpdate = true;
+      remote.connected = true;
+      connectivity.setConnected(true);
+      await Future<void>.delayed(Duration.zero);
+      await repository.syncNow();
+      final conflict = repository.conflictsForForm(_formId).single;
+      remote.forms = [
+        _form(
+          inspections: [
+            _inspection(
+              remarks: 'Keep the newer server version.',
+              updatedAt: DateTime.utc(2026, 2, 21),
+            ),
+          ],
+        ),
+      ];
+
+      await repository.discardConflict(conflict.writeId);
+
+      expect(repository.pendingCount, 0);
+      expect(
+        (await repository.getForm(_formId)).inspections.single.remarks,
+        'Keep the newer server version.',
+      );
+    },
+  );
+
+  test(
+    'supplied optimistic versions are sent for updates and deletions',
+    () async {
+      final staleVersion = DateTime.utc(2026, 2, 19);
+      remote.forms = [
+        _form(inspections: [_inspection()]),
+      ];
+      await repository.activate(_userA);
+      await repository.listForms();
+      connectivity.setConnected(false);
+      remote.connected = false;
+      await repository.updateInspection(
+        _formId,
+        _inspectionId,
+        _updateInput(remarks: 'Stale update.', expectedUpdatedAt: staleVersion),
+      );
+      remote.connected = true;
+      connectivity.setConnected(true);
+      await Future<void>.delayed(Duration.zero);
+      await repository.syncNow();
+      expect(remote.updateExpectedVersions.last, staleVersion);
+      expect(repository.hasConflictFor(_formId), isTrue);
+    },
+  );
+
+  test('supplied optimistic version is sent for deletion', () async {
+    final staleVersion = DateTime.utc(2026, 2, 19);
+    remote.forms = [
+      _form(inspections: [_inspection()]),
+    ];
+    await repository.activate(_userA);
+    await repository.listForms();
+    connectivity.setConnected(false);
+    remote.connected = false;
+    await repository.deleteInspectionIfUnchanged(
+      _formId,
+      _inspectionId,
+      staleVersion,
+    );
+    remote.connected = true;
+    connectivity.setConnected(true);
+    await Future<void>.delayed(Duration.zero);
+    await repository.syncNow();
+    expect(remote.deleteExpectedVersions.last, staleVersion);
+    expect(repository.hasConflictFor(_formId), isTrue);
+  });
+
+  testWidgets('conflict details can be reviewed and safely discarded', (
+    tester,
+  ) async {
+    remote.forms = [
+      _form(inspections: [_inspection()]),
+    ];
+    await repository.activate(_userA);
+    await repository.listForms();
+    connectivity.setConnected(false);
+    remote.connected = false;
+    await repository.updateInspection(
+      _formId,
+      _inspectionId,
+      _updateInput(remarks: 'Local observation to review.'),
+    );
+    remote.conflictNextUpdate = true;
+    remote.connected = true;
+    connectivity.setConnected(true);
+    await Future<void>.delayed(Duration.zero);
+    await repository.syncNow();
+
+    final controller = PreventiveMaintenanceController(
+      repository: repository,
+      user: const AuthUser(
+        id: _userA,
+        email: 'inspector@example.test',
+        displayName: 'Synthetic Inspector',
+        roles: ['Inspector'],
+      ),
+    );
+    addTearDown(controller.dispose);
+    controller.selectForm(await repository.getForm(_formId));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: PreventiveMaintenanceDraftPage(
+          controller: controller,
+          formId: _formId,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('This draft needs sync review'), findsOneWidget);
+    await tester.tap(find.text('Update inspection needs review'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Local observation to review.'), findsOneWidget);
+    expect(find.text('Retry my saved change'), findsOneWidget);
+    expect(find.text('Discard local change'), findsOneWidget);
+
+    await tester.tap(find.text('Discard local change'));
+    await tester.pumpAndSettle();
+    expect(find.text('Discard this saved change?'), findsOneWidget);
+    await tester.tap(find.text('Discard local change').last);
+    await tester.pumpAndSettle();
+
+    expect(repository.pendingCount, 0);
+    expect(
+      (await repository.getForm(_formId)).inspections.single.remarks,
+      'Existing server observation.',
+    );
+  });
+
+  test(
     'deleting a queued row preserves ordered create and delete writes',
     () async {
       await repository.activate(_userA);
@@ -291,18 +541,22 @@ AddInspectionInput _addInput() => AddInspectionInput(
   actionsRecommendations: 'GSD follow-up required.',
 );
 
-UpdateInspectionInput _updateInput({required String remarks}) =>
-    UpdateInspectionInput(
-      dateInspected: DateTime.utc(2026, 2, 20),
-      isOperational: false,
-      remarks: remarks,
-      actionsRecommendations: 'GSD follow-up required.',
-    );
+UpdateInspectionInput _updateInput({
+  required String remarks,
+  DateTime? expectedUpdatedAt,
+}) => UpdateInspectionInput(
+  expectedUpdatedAt: expectedUpdatedAt,
+  dateInspected: DateTime.utc(2026, 2, 20),
+  isOperational: false,
+  remarks: remarks,
+  actionsRecommendations: 'GSD follow-up required.',
+);
 
 PreventiveMaintenanceForm _form({
+  String id = _formId,
   required List<PreventiveMaintenanceInspection> inspections,
 }) => PreventiveMaintenanceForm(
-  id: _formId,
+  id: id,
   fileNumber: null,
   assetCategory: 'fire-extinguisher',
   building: 'CCMS Building',
@@ -323,9 +577,11 @@ PreventiveMaintenanceForm _form({
 );
 
 PreventiveMaintenanceInspection _inspection({
+  String id = _inspectionId,
   String remarks = 'Existing server observation.',
+  DateTime? updatedAt,
 }) => PreventiveMaintenanceInspection(
-  id: _inspectionId,
+  id: id,
   scheduleId: _scheduleId,
   assetId: _assetId,
   assetCode: 'FE-CCMS-001',
@@ -336,7 +592,7 @@ PreventiveMaintenanceInspection _inspection({
   remarks: remarks,
   actionsRecommendations: 'GSD follow-up required.',
   createdAt: DateTime.utc(2026, 2, 20),
-  updatedAt: DateTime.utc(2026, 2, 20),
+  updatedAt: updatedAt ?? DateTime.utc(2026, 2, 20),
 );
 
 ScheduleOption _schedule({String status = 'Due'}) => ScheduleOption(
@@ -359,6 +615,7 @@ ScheduleOption _schedule({String status = 'Due'}) => ScheduleOption(
     department: 'CCMS',
     location: 'CL-01',
     status: 'Active',
+    qrCodeValue: 'UNIPM-LEGACY-CUSTOM-LABEL',
   ),
 );
 
@@ -409,6 +666,8 @@ class _FakeRemote
   int acknowledgementCalls = 0;
   final List<String> addedInspectionIds = <String>[];
   final List<String> deletedInspectionIds = <String>[];
+  final List<DateTime> updateExpectedVersions = <DateTime>[];
+  final List<DateTime?> deleteExpectedVersions = <DateTime?>[];
   List<PreventiveMaintenanceForm> forms = <PreventiveMaintenanceForm>[];
   final List<ScheduleOption> schedules = <ScheduleOption>[_schedule()];
   final Map<String, Asset> assets = <String, Asset>{};
@@ -609,6 +868,7 @@ class _FakeRemote
     DateTime expectedUpdatedAt,
   ) async {
     _checkConnected();
+    updateExpectedVersions.add(expectedUpdatedAt);
     if (conflictNextUpdate) {
       conflictNextUpdate = false;
       throw const ApiException(statusCode: 409, message: 'Server changed.');
@@ -671,6 +931,7 @@ class _FakeRemote
     DateTime? expectedUpdatedAt,
   ) async {
     _checkConnected();
+    deleteExpectedVersions.add(expectedUpdatedAt);
     deletedInspectionIds.add(inspectionId);
     final form = await getForm(formId);
     final row = form.inspections

@@ -4958,7 +4958,8 @@
           "building",
           "department",
           "location",
-          "status"
+          "status",
+          "qrCodeValue"
         ],
         "type": "object",
         "properties": {
@@ -4983,6 +4984,9 @@
           },
           "status": {
             "type": "string"
+          },
+          "qrCodeValue": {
+            "type": ["null", "string"]
           }
         }
       },
