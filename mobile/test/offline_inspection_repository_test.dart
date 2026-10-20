@@ -52,7 +52,9 @@ void main() {
   }
 
   Future<void> prepareConflict(WidgetTester tester) async {
-    remote.forms = [_form(inspections: [_inspection()])];
+    remote.forms = [
+      _form(inspections: [_inspection()]),
+    ];
     await awaitRepositoryAction(
       tester,
       'activate user',
