@@ -43,6 +43,20 @@ jobs:
 
       - run: flutter pub get
       - run: dart format --output=none --set-exit-if-changed lib test
-      - run: flutter analyze
+      - name: Analyze Flutter app
+        run: |
+          analyze_log="${RUNNER_TEMP}/flutter-analyze.log"
+          if flutter analyze >"${analyze_log}" 2>&1; then
+            cat "${analyze_log}"
+          else
+            status=$?
+            cat "${analyze_log}"
+            while IFS= read -r diagnostic; do
+              case "${diagnostic}" in
+                *" • "*) printf '::error::%s\n' "${diagnostic}" ;;
+              esac
+            done <"${analyze_log}"
+            exit "${status}"
+          fi
       - run: flutter test
       - run: flutter build apk --debug

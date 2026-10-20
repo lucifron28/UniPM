@@ -42,6 +42,14 @@ describe('schedule contracts', () => {
   it('parses the public schedule response and rejects private or unknown fields', () => {
     expect(parseSchedule(schedule).asset?.assetCode).toBe('FE-001')
     expect(parseSchedule(schedule).asset?.status).toBe('Active')
+    expect(parseSchedule(schedule).asset?.qrCodeValue).toBeNull()
+    const legacyAsset = Object.fromEntries(
+      Object.entries(schedule.asset).filter(([key]) => key !== 'qrCodeValue'),
+    )
+    expect(
+      parseSchedule({ ...schedule, asset: legacyAsset } as never).asset
+        ?.assetCode,
+    ).toBe('FE-001')
     expect(() =>
       parseSchedule({ ...schedule, privateNote: 'nope' } as never),
     ).toThrow(ZodError)
