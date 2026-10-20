@@ -424,28 +424,52 @@ void main() {
   testWidgets('conflict details can be reviewed and safely discarded', (
     tester,
   ) async {
+    Future<void> awaitRepositoryAction(
+      String step,
+      Future<void> Function() action,
+    ) async {
+      final completed = await tester.runAsync<bool>(() async {
+        await action().timeout(
+          const Duration(seconds: 5),
+          onTimeout: () => throw TimeoutException('$step did not complete.'),
+        );
+        return true;
+      });
+      expect(completed, isTrue, reason: '$step did not complete.');
+    }
+
     debugPrint('conflict-review: setup');
     remote.forms = [
       _form(inspections: [_inspection()]),
     ];
-    await repository.activate(_userA);
+    await awaitRepositoryAction(
+      'activate user',
+      () => repository.activate(_userA),
+    );
     debugPrint('conflict-review: activated');
-    await repository.listForms();
+    await awaitRepositoryAction('list forms', () async {
+      await repository.listForms();
+    });
     debugPrint('conflict-review: listed forms');
     connectivity.setConnected(false);
     remote.connected = false;
-    await repository.updateInspection(
-      _formId,
-      _inspectionId,
-      _updateInput(remarks: 'Local observation to review.'),
-    );
+    await awaitRepositoryAction('save local update', () async {
+      await repository.updateInspection(
+        _formId,
+        _inspectionId,
+        _updateInput(remarks: 'Local observation to review.'),
+      );
+    });
     debugPrint('conflict-review: saved local update');
     remote.conflictNextUpdate = true;
     remote.connected = true;
     connectivity.setConnected(true);
     await Future<void>.delayed(Duration.zero);
     debugPrint('conflict-review: connectivity event processed');
-    await repository.syncNow();
+    await awaitRepositoryAction(
+      'synchronize conflict',
+      repository.syncNow,
+    );
     debugPrint('conflict-review: conflict synchronized');
 
     final controller = PreventiveMaintenanceController(
@@ -458,7 +482,12 @@ void main() {
       ),
     );
     addTearDown(controller.dispose);
-    controller.selectForm(await repository.getForm(_formId));
+    final selectedForm = await tester.runAsync(
+      () => repository
+          .getForm(_formId)
+          .timeout(const Duration(seconds: 5)),
+    );
+    controller.selectForm(selectedForm!);
     debugPrint('conflict-review: selected form');
     await tester.pumpWidget(
       MaterialApp(
