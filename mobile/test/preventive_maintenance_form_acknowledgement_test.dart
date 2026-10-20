@@ -362,6 +362,24 @@ void main() {
       );
       expect(find.text('Asset: FE-2026-0024'), findsNothing);
 
+      final details = find.text('All inspection details (24)');
+      final scrollable = find
+          .descendant(
+            of: find.byKey(const Key('acknowledgement-page')),
+            matching: find.byType(Scrollable),
+          )
+          .first;
+      await tester.scrollUntilVisible(details, 200, scrollable: scrollable);
+      await tester.tap(details);
+      await tester.pumpAndSettle();
+      final finalInspection = find.text('Asset: FE-2026-0024');
+      await tester.scrollUntilVisible(
+        finalInspection,
+        200,
+        scrollable: scrollable,
+      );
+      expect(finalInspection, findsOneWidget);
+
       await tester.tap(find.byKey(const Key('jump-to-acknowledgement-form')));
       await tester.pumpAndSettle();
       final nameField = find.byKey(const Key('ack-signatory-name'));
@@ -372,13 +390,6 @@ void main() {
       await tester.ensureVisible(canvas);
       await tester.pumpAndSettle();
       expect(tester.getRect(canvas).bottom, lessThan(640));
-
-      final details = find.text('All inspection details (24)');
-      await tester.ensureVisible(details);
-      await tester.tap(details);
-      await tester.pumpAndSettle();
-      await tester.ensureVisible(find.text('Asset: FE-2026-0024'));
-      expect(find.text('Asset: FE-2026-0024'), findsOneWidget);
       controller.dispose();
     },
   );
