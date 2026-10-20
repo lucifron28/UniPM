@@ -943,6 +943,7 @@ test.describe('Schedule workflows', () => {
               assetCategory: 'fire-extinguisher',
               pmCycle: '2026-08',
               scheduleCount: 1,
+              unfinishedScheduleCount: 1,
               completedCount: 0,
               ongoingCount: 0,
               overdueCount: 0,
