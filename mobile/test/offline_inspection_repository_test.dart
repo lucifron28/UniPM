@@ -769,7 +769,6 @@ class _ImmediateScheduleOfflineInspectionRepository
   @override
   Future<PreventiveMaintenanceForm> getForm(String id) =>
       fakeRemote.getForm(id);
-  }
 }
 
 class _FakeConnectivity implements OfflineConnectivityMonitor {
