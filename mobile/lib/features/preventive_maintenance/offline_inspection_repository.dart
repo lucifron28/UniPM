@@ -1322,7 +1322,8 @@ class OfflineInspectionRepository extends ChangeNotifier
 
   bool _canUseCacheFor(ApiException error) {
     final statusCode = error.statusCode;
-    final canUseCache = statusCode == null ||
+    final canUseCache =
+        statusCode == null ||
         statusCode == 408 ||
         statusCode == 425 ||
         statusCode == 429 ||
