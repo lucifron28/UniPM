@@ -505,10 +505,7 @@ void main() {
         'hasNetwork=${repository.hasNetwork}.',
       );
     }
-    expect(
-      find.text('This draft needs sync review'),
-      findsOneWidget,
-    );
+    expect(find.text('This draft needs sync review'), findsOneWidget);
     expect(find.byType(CircularProgressIndicator), findsNothing);
     await tester.tap(find.text('Update inspection needs review'));
     await tester.pump();
