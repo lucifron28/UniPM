@@ -776,8 +776,9 @@ class _ImmediateScheduleOfflineInspectionRepository
   Future<void> discardConflict(String writeId) async {
     discardCalls++;
     final completed = await tester.runAsync<bool>(() async {
-      await _discardWithBaseRepository(writeId)
-          .timeout(const Duration(seconds: 5));
+      await _discardWithBaseRepository(
+        writeId,
+      ).timeout(const Duration(seconds: 5));
       return true;
     });
     if (completed != true) {
