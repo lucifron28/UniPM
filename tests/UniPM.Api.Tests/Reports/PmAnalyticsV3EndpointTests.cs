@@ -171,16 +171,16 @@ public sealed class PmAnalyticsV3EndpointTests
         Assert.Contains(preview.ScopeNotes, note => note.Contains("does not join PM schedules", StringComparison.Ordinal));
 
         var execution = await ExecuteAsync(client, preview.PreviewId);
-        Assert.Equal(3, execution.Population.EligibleDistinctAssetCount);
-        Assert.Equal(3, execution.Population.MatchingDistinctAssetCount);
-        Assert.Equal(3, execution.Population.SourceTotalCount);
+        Assert.Equal(6, execution.Population.EligibleDistinctAssetCount);
+        Assert.Equal(6, execution.Population.MatchingDistinctAssetCount);
+        Assert.Equal(6, execution.Population.SourceTotalCount);
         Assert.Equal(0, execution.Population.EligibleAssetCycleCount);
         Assert.Equal(3, execution.AggregateRows.Count);
-        Assert.Equal(1, execution.AggregateRows.Single(row => JsonText(row.Values[PmAnalyticsV3Catalog.RegistrationStatus]) == "Active")
+        Assert.Equal(3, execution.AggregateRows.Single(row => JsonText(row.Values[PmAnalyticsV3Catalog.RegistrationStatus]) == "Active")
             .Measures[PmAnalyticsV3Catalog.RegisteredAssetCount].Value);
         Assert.Equal(1, execution.AggregateRows.Single(row => JsonText(row.Values[PmAnalyticsV3Catalog.RegistrationStatus]) == "Retired")
             .Measures[PmAnalyticsV3Catalog.RegisteredAssetCount].Value);
-        Assert.Equal(1, execution.AggregateRows.Single(row => JsonText(row.Values[PmAnalyticsV3Catalog.RegistrationStatus]) == "Inactive")
+        Assert.Equal(2, execution.AggregateRows.Single(row => JsonText(row.Values[PmAnalyticsV3Catalog.RegistrationStatus]) == "Inactive")
             .Measures[PmAnalyticsV3Catalog.RegisteredAssetCount].Value);
         Assert.All(execution.AggregateRows, row =>
         {
@@ -214,6 +214,7 @@ public sealed class PmAnalyticsV3EndpointTests
 
         var pageOne = await ExecuteAsync(client, preview.PreviewId, pageSize: 1);
         var pageTwo = await ExecuteAsync(client, preview.PreviewId, page: 2, pageSize: 1);
+        var pageThree = await ExecuteAsync(client, preview.PreviewId, page: 3, pageSize: 1);
         Assert.Equal(2, pageOne.Population.SourceTotalCount);
         Assert.Equal(2, pageOne.TotalPages);
         var first = Assert.Single(pageOne.Records);
@@ -222,6 +223,8 @@ public sealed class PmAnalyticsV3EndpointTests
         Assert.Null(first.InspectionId);
         Assert.Null(second.ScheduleId);
         Assert.Null(second.InspectionId);
+        Assert.Empty(pageThree.Records);
+        Assert.Equal(2, pageThree.TotalPages);
         Assert.NotEqual(first.AssetId, second.AssetId);
         var expectedIds = assets.Where(asset => asset.AssetCategory == "fire-extinguisher").Select(asset => asset.Id).ToHashSet();
         Assert.True(expectedIds.SetEquals([first.AssetId, second.AssetId]));
@@ -230,6 +233,90 @@ public sealed class PmAnalyticsV3EndpointTests
             Assert.Equal(row.AssetId.ToString(), ((JsonElement)row.Values[PmAnalyticsV3Catalog.AssetId]!).GetString());
             Assert.True(new[] { "Active", "Retired" }.Contains(JsonText(row.Values[PmAnalyticsV3Catalog.RegistrationStatus])));
         });
+    }
+
+    [Fact]
+    public async Task Inventory_groups_null_and_blank_locations_and_ranks_tied_counts_stably()
+    {
+        await using var application = new AnalyticsApplicationFactory(authenticated: true, AuthRoleCatalog.Gsd);
+        using var client = application.CreateClient();
+        await SeedInventoryAsync(application.Services);
+        var plan = CreateInventoryAggregatePlan(
+            [],
+            [PmAnalyticsV3Catalog.Location],
+            [PmAnalyticsV3Catalog.Location, PmAnalyticsV3Catalog.RegisteredAssetCount]) with
+        {
+            Top = new PmAnalyticsV3Top(
+                PmAnalyticsV3Catalog.RegisteredAssetCount,
+                3,
+                PmAnalyticsV3SortDirection.Descending)
+        };
+
+        var preview = await CreatePreviewAsync(client, plan);
+        var firstPage = await ExecuteAsync(client, preview.PreviewId, pageSize: 2);
+        var finalPage = await ExecuteAsync(client, preview.PreviewId, page: 2, pageSize: 2);
+        var rows = firstPage.AggregateRows.Concat(finalPage.AggregateRows).ToArray();
+
+        Assert.Equal(6, firstPage.Population.SourceTotalCount);
+        Assert.Equal(3, firstPage.Population.GroupsReturnedAfterTop);
+        Assert.Equal(2, firstPage.TotalPages);
+        Assert.Equal(3, rows.Length);
+        Assert.Null(JsonText(rows[0].Values[PmAnalyticsV3Catalog.Location]));
+        Assert.Equal("SYNTHETIC EAST", JsonText(rows[1].Values[PmAnalyticsV3Catalog.Location]));
+        Assert.Equal("SYNTHETIC NORTH", JsonText(rows[2].Values[PmAnalyticsV3Catalog.Location]));
+        Assert.Equal(2, rows[0].Measures[PmAnalyticsV3Catalog.RegisteredAssetCount].Value);
+        Assert.Equal(1, rows[1].Measures[PmAnalyticsV3Catalog.RegisteredAssetCount].Value);
+        Assert.Equal(2, rows[2].Measures[PmAnalyticsV3Catalog.RegisteredAssetCount].Value);
+    }
+
+    [Fact]
+    public async Task Inventory_empty_scope_and_preview_tokens_are_user_bound_expiring_and_signed()
+    {
+        var clock = new FixedTimeProvider(new DateTimeOffset(2025, 6, 1, 0, 0, 0, TimeSpan.Zero));
+        await using var application = new AnalyticsApplicationFactory(true, clock, AuthRoleCatalog.Gsd);
+        using var client = application.CreateClient();
+        await SeedInventoryAsync(application.Services);
+
+        var emptyPlan = CreateInventoryAggregatePlan(
+            [],
+            [PmAnalyticsV3Catalog.Location],
+            [PmAnalyticsV3Catalog.Location, PmAnalyticsV3Catalog.RegisteredAssetCount]) with
+        {
+            BaseFilters =
+            [
+                new PmAnalyticsV3Filter(PmAnalyticsV3Catalog.Department, PmAnalyticsV3FilterOperator.Equal, ["Synthetic GSD"]),
+                new PmAnalyticsV3Filter(PmAnalyticsV3Catalog.Building, PmAnalyticsV3FilterOperator.Equal, ["Synthetic South"])
+            ]
+        };
+        var emptyPreview = await CreatePreviewAsync(client, emptyPlan);
+        var empty = await ExecuteAsync(client, emptyPreview.PreviewId, pageSize: 1);
+        Assert.Equal(0, empty.Population.SourceTotalCount);
+        Assert.Equal(0, empty.TotalPages);
+        Assert.Empty(empty.AggregateRows);
+
+        var inventoryPreview = await CreatePreviewAsync(
+            client,
+            CreateInventoryAggregatePlan([], [], [PmAnalyticsV3Catalog.RegisteredAssetCount]));
+        using var tamperedResponse = await client.PostAsJsonAsync(
+            "/api/v1/analytics/pm/v3/execute",
+            new PmAnalyticsV3ExecuteRequest(Tamper(inventoryPreview.PreviewId)));
+        Assert.Equal(HttpStatusCode.Conflict, tamperedResponse.StatusCode);
+
+        using var otherUserRequest = new HttpRequestMessage(HttpMethod.Post, "/api/v1/analytics/pm/v3/execute")
+        {
+            Content = JsonContent.Create(new PmAnalyticsV3ExecuteRequest(inventoryPreview.PreviewId))
+        };
+        otherUserRequest.Headers.Add("X-Test-UserId", Guid.NewGuid().ToString());
+        using var otherUserResponse = await client.SendAsync(otherUserRequest);
+        Assert.Equal(HttpStatusCode.Conflict, otherUserResponse.StatusCode);
+
+        clock.Advance(TimeSpan.FromMinutes(11));
+        using var expiredResponse = await client.PostAsJsonAsync(
+            "/api/v1/analytics/pm/v3/execute",
+            new PmAnalyticsV3ExecuteRequest(inventoryPreview.PreviewId));
+        Assert.Equal(HttpStatusCode.Conflict, expiredResponse.StatusCode);
+        var expiredProblem = await expiredResponse.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal("PreviewUnavailable", expiredProblem.GetProperty("code").GetString());
     }
 
     [Fact]
@@ -264,8 +351,15 @@ public sealed class PmAnalyticsV3EndpointTests
         }
     }
 
-    private static string? JsonText(object? value) =>
-        value is JsonElement element ? element.GetString() : value as string;
+    private static string? JsonText(object? value) => value switch
+    {
+        JsonElement { ValueKind: JsonValueKind.String } element => element.GetString(),
+        JsonElement { ValueKind: JsonValueKind.Null } => null,
+        _ => value as string
+    };
+
+    private static string Tamper(string token) =>
+        (token[0] == 'A' ? "B" : "A") + token[1..];
 
     private static PmAnalyticsV3ReportPlan CreateInventoryAggregatePlan(
         IReadOnlyList<string> categories,
@@ -387,6 +481,21 @@ public sealed class PmAnalyticsV3EndpointTests
             {
                 Id = Guid.NewGuid(), AssetCode = "INV-EL-001", AssetCategory = "emergency-light",
                 Department = "Synthetic Facilities", Building = "Synthetic South", Location = "Synthetic South", Status = "Inactive"
+            },
+            new Asset
+            {
+                Id = Guid.NewGuid(), AssetCode = "INV-EL-002", AssetCategory = "emergency-light",
+                Department = "Synthetic Facilities", Building = "Synthetic South", Location = null!, Status = "Active"
+            },
+            new Asset
+            {
+                Id = Guid.NewGuid(), AssetCode = "INV-EL-003", AssetCategory = "emergency-light",
+                Department = "Synthetic Facilities", Building = "Synthetic South", Location = "   ", Status = "Active"
+            },
+            new Asset
+            {
+                Id = Guid.NewGuid(), AssetCode = "INV-EL-004", AssetCategory = "emergency-light",
+                Department = "Synthetic Facilities", Building = "Synthetic East", Location = "Synthetic East", Status = "Inactive"
             }
         };
         context.Assets.AddRange(assets);

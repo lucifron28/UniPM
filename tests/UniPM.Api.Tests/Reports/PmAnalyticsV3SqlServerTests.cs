@@ -74,6 +74,63 @@ public sealed class PmAnalyticsV3SqlServerTests
         }
     }
 
+    [SqlServer2019Fact]
+    public async Task Inventory_null_location_filter_counts_assets_without_schedule_joins_on_sql_server_2019()
+    {
+        var database = await DisposableDatabase.CreateAsync(RequireConnection());
+        try
+        {
+            var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+                .UseUniPmSqlServer(database.ConnectionString)
+                .Options;
+            await using (var context = new ApplicationDbContext(options))
+            {
+                await context.Database.MigrateAsync();
+                context.Assets.AddRange(
+                    CreateInventoryAsset("SQL-INVENTORY-NULL", null),
+                    CreateInventoryAsset("SQL-INVENTORY-BLANK", "   "),
+                    CreateInventoryAsset("SQL-INVENTORY-ROOM", "SQL TEST ROOM"));
+                await context.SaveChangesAsync();
+            }
+
+            Assert.Equal(150, await database.GetCompatibilityLevelAsync());
+            Assert.StartsWith("15.", await database.GetProductVersionAsync(), StringComparison.Ordinal);
+
+            var service = new PmAnalyticsV3QueryService(new SqlContextFactory(options), new FixedTimeProvider(AsOf));
+            var plan = new PmAnalyticsV3ReportPlan(
+                3,
+                PmAnalyticsV3Catalog.Version,
+                PmAnalyticsV3Catalog.SubjectAssetInventory,
+                PmAnalyticsV3Mode.Aggregate,
+                null,
+                ["fire-extinguisher"],
+                [PmAnalyticsV3Catalog.RegisteredAssetCount],
+                [PmAnalyticsV3Catalog.Location],
+                [
+                    new PmAnalyticsV3Filter(PmAnalyticsV3Catalog.Department, PmAnalyticsV3FilterOperator.Equal, ["SQL INVENTORY"]),
+                    new PmAnalyticsV3Filter(PmAnalyticsV3Catalog.Location, PmAnalyticsV3FilterOperator.IsNull)
+                ],
+                [],
+                [],
+                [],
+                null,
+                PmAnalyticsV3Presentation.Table,
+                [PmAnalyticsV3Catalog.Location, PmAnalyticsV3Catalog.RegisteredAssetCount]);
+            var resolution = await service.NormalizeAndResolveAsync(plan, CancellationToken.None);
+            Assert.NotNull(resolution.Plan);
+            var execution = await service.ExecuteAsync(resolution.Plan, 1, 25, CancellationToken.None);
+
+            Assert.Equal(2, execution.Population.SourceTotalCount);
+            var row = Assert.Single(execution.AggregateRows);
+            Assert.Null(row.Values[PmAnalyticsV3Catalog.Location]);
+            Assert.Equal(2, row.Measures[PmAnalyticsV3Catalog.RegisteredAssetCount].Value);
+        }
+        finally
+        {
+            await database.DisposeAsync();
+        }
+    }
+
     private static async Task<PmAnalyticsV3ExecutionResponse> ExecuteRecordsAsync(
         PmAnalyticsV3QueryService service,
         int quarter)
@@ -167,6 +224,17 @@ public sealed class PmAnalyticsV3SqlServerTests
         context.PreventiveMaintenanceSchedules.Add(schedule);
         context.InspectionRecords.Add(inspection);
     }
+
+    private static Asset CreateInventoryAsset(string code, string? location) => new()
+    {
+        Id = Guid.NewGuid(),
+        AssetCode = code,
+        AssetCategory = "fire-extinguisher",
+        Department = "SQL INVENTORY",
+        Building = "SQL INVENTORY BUILDING",
+        Location = location,
+        Status = AssetStatusCatalog.Active
+    };
 
     private static string RequireConnection()
     {

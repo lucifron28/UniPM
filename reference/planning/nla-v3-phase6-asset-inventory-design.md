@@ -90,18 +90,18 @@ route policy tests. The React test and narrow browser scenario exercise subject
 selection, null period, editable grouping, preview, confirmation, provenance,
 and results.
 
-Additional checks still needed before broad acceptance include:
+Phase 6 regression coverage now also includes tied location-group rankings
+with stable ordering, null and blank locations grouped into the documented
+null bucket, duplicated values, an empty filtered population, the empty final
+record page, and inventory-specific tampered, cross-user, and expired preview
+confirmation requests. Filtered record assertions verify registration status
+and ensure schedule/inspection IDs remain null. These tests use the full API
+preview and execution routes.
 
-1. Grouping and ranking by category, building, department, and location, with
-   tied counts and stable tie-breaks.
-2. Null and duplicate current location values, with the documented null group
-   and stable ordering.
-3. Empty inventory scope, zero-count results, and final-page boundaries.
-4. Inventory-specific expired-preview and cross-user confirmation tests. The
-   shared token implementation has V3 expiry and user-binding regressions, but
-   the inventory API flow currently exercises a normal same-user confirmation.
-5. Native SQL Server 2019 translation and execution against a disposable test
-   database.
+Native SQL Server 2019 translation and execution against a disposable test
+database remain unverified. The focused integration tests are present and
+loopback-only, but the local SQL Server image download was denied by the
+container registry and no `UNIPM_SQLSERVER2019_TEST_CONNECTION` was configured.
 
 The highest-value fanout regression seeds one asset with multiple schedules,
 inspection records and referral audit rows, then verifies an inventory count
@@ -117,9 +117,9 @@ does not alter or approve those PM interpretation expectations. No acceptance
 score is claimed. The API contract reuses the existing four categories and
 three stored status codes; no status or registry data was changed.
 
-The current inventory tests use the EF InMemory provider. Do not describe the
-SQL Server query as verified until the focused integration test runs against a
-disposable SQL Server 2019 database.
+The API regressions use EF InMemory. Do not describe the SQL Server query as
+verified until the focused integration test runs against a disposable SQL
+Server 2019 database.
 
 ## Implemented contract
 
