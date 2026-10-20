@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [string]$OutputRoot = (Join-Path (Get-Location) 'artifacts/evidence'),
-    [string]$ComposeEnvironmentFile = '.env.sqlserver2025',
+    [string]$ComposeEnvironmentFile = '.env',
 
     [switch]$CleanupVolumes,
 
@@ -250,7 +250,7 @@ try {
         Join-Path $repositoryRoot $ComposeEnvironmentFile
     }
     if (-not (Test-Path -LiteralPath $script:composeEnvironmentPath -PathType Leaf)) {
-        throw "Optional Compose environment file was not found: $script:composeEnvironmentPath. Copy .env.sqlserver2025.example to .env.sqlserver2025 or pass -ComposeEnvironmentFile <path>."
+        throw "Optional Compose environment file was not found: $script:composeEnvironmentPath. Copy .env.example to .env or pass -ComposeEnvironmentFile <path>."
     }
     $script:composeFilePath = Join-Path $repositoryRoot 'docker-compose.sqlserver2025.yml'
 

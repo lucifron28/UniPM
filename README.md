@@ -412,8 +412,9 @@ not the verified platform baseline or a deployment requirement. It retains its
 existing named volume and must be invoked explicitly:
 
 ```powershell
-Copy-Item .env.sqlserver2025.example .env.sqlserver2025
-docker compose --env-file .env.sqlserver2025 -f docker-compose.sqlserver2025.yml up --build -d
+# Only if .env does not already exist:
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
+docker compose --env-file .env -f docker-compose.sqlserver2025.yml up --build -d
 ```
 
 Do not start, remove, or reuse that SQL Server 2025 volume for a SQL Server 2019
@@ -427,7 +428,7 @@ using the retained SQL Server 2025 experiment:
 
 ```powershell
 $env:UNIPM_METRICS_ENABLED = "true"
-docker compose --env-file .env.sqlserver2025 -f docker-compose.sqlserver2025.yml `
+docker compose --env-file .env -f docker-compose.sqlserver2025.yml `
   --profile observability up --build -d
 ```
 
@@ -439,7 +440,7 @@ Then use:
 
 Grafana provisions the `unipm-prometheus` datasource and the
 `unipm-system-health` dashboard automatically. The sample credentials in
-`.env.sqlserver2025.example` are local-development placeholders and must be
+`.env.example` are local-development placeholders and must be
 changed. The dashboard covers HTTP and runtime technical health. Maintenance
 RAG instruments and panels are removed. It does not measure maintenance KPIs.
 
