@@ -281,10 +281,7 @@ void main() {
 
       for (final statusCode in [401, 403]) {
         remote.readFailureStatusCode = statusCode;
-        await expectLater(
-          repository.listForms(),
-          throwsA(isA<ApiException>()),
-        );
+        await expectLater(repository.listForms(), throwsA(isA<ApiException>()));
         await expectLater(
           repository.getByQr('UNIPM-LEGACY-CUSTOM-LABEL'),
           throwsA(isA<ApiException>()),
