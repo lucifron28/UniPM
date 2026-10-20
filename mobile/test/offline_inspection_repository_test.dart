@@ -222,6 +222,74 @@ void main() {
   );
 
   test(
+    'cached forms, schedules, references, and QR lookups survive transient HTTP failures',
+    () async {
+      remote.forms = [_form(inspections: [_inspection()])];
+      await repository.activate(_userA);
+      await repository.listForms();
+      await repository.listSchedules();
+      await repository.listAssetCategories();
+      await repository.listPeriodTypes();
+      await repository.listQuarters();
+
+      for (final statusCode in [408, 425, 429, 500, 503, 599]) {
+        remote.readFailureStatusCode = statusCode;
+
+        expect((await repository.listForms()).single.id, _formId);
+        expect((await repository.getForm(_formId)).id, _formId);
+        expect((await repository.listSchedules()).single.id, _scheduleId);
+        expect(
+          (await repository.listAssetCategories()).single.code,
+          'fire-extinguisher',
+        );
+        expect((await repository.listPeriodTypes()).single.code, 'Quarter');
+        expect((await repository.listQuarters()).single.code, 'Q1');
+        expect(
+          (await repository.getByQr('UNIPM-LEGACY-CUSTOM-LABEL')).id,
+          _assetId,
+        );
+      }
+
+      remote.readFailureStatusCode = null;
+      remote.connected = false;
+      expect((await repository.listForms()).single.id, _formId);
+      expect((await repository.listSchedules()).single.id, _scheduleId);
+      expect(
+        (await repository.listAssetCategories()).single.code,
+        'fire-extinguisher',
+      );
+      expect((await repository.listPeriodTypes()).single.code, 'Quarter');
+      expect((await repository.listQuarters()).single.code, 'Q1');
+      expect(
+        (await repository.getByQr('UNIPM-LEGACY-CUSTOM-LABEL')).id,
+        _assetId,
+      );
+    },
+  );
+
+  test(
+    'cached reads never bypass authentication or authorization failures',
+    () async {
+      remote.forms = [_form(inspections: [_inspection()])];
+      await repository.activate(_userA);
+      await repository.listForms();
+      await repository.listSchedules();
+
+      for (final statusCode in [401, 403]) {
+        remote.readFailureStatusCode = statusCode;
+        await expectLater(
+          repository.listForms(),
+          throwsA(isA<ApiException>()),
+        );
+        await expectLater(
+          repository.getByQr('UNIPM-LEGACY-CUSTOM-LABEL'),
+          throwsA(isA<ApiException>()),
+        );
+      }
+    },
+  );
+
+  test(
     'retryable HTTP failures preserve queued drafts for the next sync attempt',
     () async {
       await repository.activate(_userA);
@@ -924,6 +992,7 @@ class _FakeRemote
         AssetRepository {
   bool connected = true;
   bool failAcceptedAddOnce = false;
+  int? readFailureStatusCode;
   int? failNextCreateFormStatus;
   bool conflictNextUpdate = false;
   Completer<List<ScheduleOption>>? pendingScheduleResponse;
@@ -939,6 +1008,13 @@ class _FakeRemote
   final Map<String, Asset> assets = <String, Asset>{};
 
   void _checkConnected() {
+    final failureStatusCode = readFailureStatusCode;
+    if (failureStatusCode != null) {
+      throw ApiException(
+        statusCode: failureStatusCode,
+        message: 'Synthetic HTTP $failureStatusCode response.',
+      );
+    }
     if (!connected) {
       throw const ApiException(message: 'The mobile service is unavailable.');
     }

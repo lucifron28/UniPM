@@ -1321,7 +1321,14 @@ class OfflineInspectionRepository extends ChangeNotifier
   }
 
   bool _canUseCacheFor(ApiException error) {
-    if (error.statusCode != null) return false;
+    final statusCode = error.statusCode;
+    final canUseCache = statusCode == null ||
+        statusCode == 408 ||
+        statusCode == 425 ||
+        statusCode == 429 ||
+        (statusCode >= 500 && statusCode < 600);
+    if (!canUseCache) return false;
+
     _hasNetwork = false;
     _notifyListeners();
     return true;
