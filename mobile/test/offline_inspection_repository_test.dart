@@ -63,6 +63,9 @@ void main() {
     await awaitRepositoryAction(tester, 'list forms', () async {
       await repository.listForms();
     });
+    await awaitRepositoryAction(tester, 'cache schedules', () async {
+      await repository.listSchedules();
+    });
     connectivity.setConnected(false);
     remote.connected = false;
     await awaitRepositoryAction(tester, 'save local update', () async {
@@ -515,6 +518,8 @@ void main() {
     await prepareConflict(tester);
     expect(repository.hasConflictFor(_formId), isTrue);
     expect(repository.pendingCountFor(_formId), 1);
+    connectivity.setConnected(false);
+    remote.connected = false;
 
     final controller = PreventiveMaintenanceController(
       repository: repository,
@@ -538,9 +543,9 @@ void main() {
         ),
       ),
     );
-    await tester.pump();
+    await tester.pumpAndSettle();
     expect(find.text('This draft needs sync review'), findsOneWidget);
-    expect(find.byKey(const Key('schedules-loading')), findsOneWidget);
+    expect(find.byKey(const Key('schedules-loading')), findsNothing);
     await tester.tap(find.text('Update inspection needs review'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
