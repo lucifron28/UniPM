@@ -66,9 +66,18 @@ jobs:
           else
             status=$?
             cat "${test_log}"
-            while IFS= read -r diagnostic; do
-              printf '::error title=Flutter test failure::%s\n' "${diagnostic}"
-            done < <(rg -n -m 30 '(\+[0-9]+ -[0-9]+:|Expected:|Actual:|Which:|TestFailure|Exception|Error:|Some tests failed)' "${test_log}" || true)
+            diagnostics="${RUNNER_TEMP}/flutter-test-diagnostics.log"
+            grep -E -m 30 '(\+[0-9]+([[:space:]]+~[0-9]+)?[[:space:]]+-[0-9]+:|Expected:|Actual:|Which:|TestFailure|Exception|Error:|Some tests failed|Test failed)' "${test_log}" >"${diagnostics}" || true
+            if [ -s "${diagnostics}" ]; then
+              while IFS= read -r diagnostic; do
+                printf '::error title=Flutter test failure::%s\n' "${diagnostic}"
+              done <"${diagnostics}"
+            else
+              printf '::error title=Flutter test failure::flutter test exited with status %s; final output follows\n' "${status}"
+              tail -n 30 "${test_log}" | while IFS= read -r diagnostic; do
+                printf '::error title=Flutter test output::%s\n' "${diagnostic}"
+              done
+            fi
             exit "${status}"
           fi
       - run: flutter build apk --debug
