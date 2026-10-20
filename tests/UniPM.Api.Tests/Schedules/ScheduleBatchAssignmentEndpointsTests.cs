@@ -182,7 +182,7 @@ public sealed class ScheduleBatchAssignmentEndpointsTests
 
         var response = await client.PutAsJsonAsync(
             $"/api/v1/schedules/{schedule.Id}/supervisor-assignment",
-            new { supervisorUserId });
+            new { supervisorUserId = supervisorId });
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
     }
