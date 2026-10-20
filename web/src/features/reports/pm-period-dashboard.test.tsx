@@ -212,17 +212,24 @@ describe('PM period dashboard period terminology', () => {
     expect(formatPmCycleDueDate('2028-02')).toBe('Feb 29, 2028')
   })
 
-  it('keeps analytics navigation out of the page heading actions', () => {
-    render(<DashboardHeader />)
+  it('links GSD to the report builder from the dashboard heading', async () => {
+    const rootRoute = createRootRoute({
+      component: () => <DashboardHeader canAskNla />,
+    })
+    const router = createRouter({
+      routeTree: rootRoute,
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+    render(<RouterProvider router={router} />)
 
     expect(
-      screen.getByRole('heading', {
+      await screen.findByRole('heading', {
         name: 'Preventive Maintenance Dashboard',
       }),
     ).toBeInTheDocument()
     expect(
-      screen.queryByRole('link', { name: 'Ask about PM data' }),
-    ).not.toBeInTheDocument()
+      screen.getByRole('link', { name: 'Ask a question' }),
+    ).toHaveAttribute('href', '/app/analytics')
   })
 
   it('shows deferred enrollment counts separately from PM period metrics', async () => {

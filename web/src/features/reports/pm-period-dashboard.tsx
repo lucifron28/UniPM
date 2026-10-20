@@ -1,17 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link } from '@tanstack/react-router'
-import {
-  Activity,
-  CalendarClock,
-  CalendarDays,
-  CircleAlert,
-  CircleCheck,
-  CircleX,
-  ClipboardCheck,
-  Clock,
-  Gauge,
-  type LucideIcon,
-} from 'lucide-react'
 import { formatAssetCategory } from '@/features/assets/asset-presentation'
 import { PageHeading } from '@/components/layout/page-heading'
 import { Button } from '@/components/ui/button'
@@ -19,10 +7,6 @@ import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
-import {
-  SummaryMetricCard,
-  type SummaryMetricTone,
-} from '@/components/ui/summary-metric-card'
 import type {
   PmPeriodDashboardAssetRowResponse,
   PmPeriodDashboardBatchResponse,
@@ -42,7 +26,6 @@ import {
 import './pm-dashboard-print.css'
 
 export type PmPeriodDashboardSearch = {
-  view?: 'question' | undefined
   assetCategory?: string | undefined
   year?: number | undefined
   pmCycle?: string | undefined
@@ -57,8 +40,6 @@ type DashboardMetricProps = {
   label: string
   value: ReactNode
   note?: string
-  icon: LucideIcon
-  tone: SummaryMetricTone
 }
 
 const selectClassName =
@@ -173,58 +154,19 @@ function formatLocation(
   )
 }
 
-function DashboardMetric({
-  label,
-  value,
-  note,
-  icon,
-  tone,
-}: DashboardMetricProps) {
+function DashboardMetric({ label, value, note }: DashboardMetricProps) {
   return (
-    <SummaryMetricCard
-      label={label}
-      value={value}
-      {...(note === undefined ? {} : { note })}
-      icon={icon}
-      tone={tone}
-    />
-  )
-}
-
-export function DashboardModeSwitch({
-  view,
-  canAskNla,
-  onChange,
-}: {
-  view: 'report' | 'question'
-  canAskNla: boolean
-  onChange: (view: 'report' | 'question') => void
-}) {
-  if (!canAskNla) return null
-
-  return (
-    <div
-      role="group"
-      aria-label="Choose how to review PM results"
-      className="flex w-fit flex-wrap gap-2 rounded-xl border border-[var(--border-soft)] bg-white p-1"
-    >
-      <Button
-        type="button"
-        variant={view === 'report' ? 'primary' : 'secondary'}
-        aria-pressed={view === 'report'}
-        onClick={() => onChange('report')}
-      >
-        Build a report
-      </Button>
-      <Button
-        type="button"
-        variant={view === 'question' ? 'primary' : 'secondary'}
-        aria-pressed={view === 'question'}
-        onClick={() => onChange('question')}
-      >
-        Ask a question
-      </Button>
-    </div>
+    <Card className="p-4 shadow-none">
+      <p className="text-xs font-semibold tracking-[0.08em] text-[var(--text-neutral)] uppercase">
+        {label}
+      </p>
+      <p className="mt-2 text-2xl font-bold tracking-tight text-[var(--text-primary)]">
+        {value}
+      </p>
+      {note && (
+        <p className="mt-1 text-xs text-[var(--text-secondary)]">{note}</p>
+      )}
+    </Card>
   )
 }
 
@@ -661,8 +603,6 @@ function DashboardMetrics({
         label="Progress"
         value={formatPercent(dashboard.progressPercent)}
         note="Inspected / scheduled asset cycles"
-        icon={Activity}
-        tone="information"
       />
       <DashboardMetric
         label="Compliance rate"
@@ -676,61 +616,43 @@ function DashboardMetrics({
             ? 'Completed on time / scheduled asset cycles'
             : 'Backend reports this period is not measurable yet'
         }
-        icon={Gauge}
-        tone={dashboard.complianceMeasurable ? 'success' : 'neutral'}
       />
       <DashboardMetric
         label="Scheduled"
         value={formatNumber(dashboard.scheduled)}
-        icon={CalendarDays}
-        tone="brand"
       />
       <DashboardMetric
         label="Inspected"
         value={formatNumber(dashboard.inspected)}
-        icon={ClipboardCheck}
-        tone="information"
       />
       <DashboardMetric
         label="Completed on time"
         value={formatNumber(dashboard.completedOnTime)}
-        icon={CircleCheck}
-        tone="success"
       />
       <DashboardMetric
         label="Completed late"
         value={formatNumber(dashboard.completedLate)}
-        icon={Clock}
-        tone="warning"
       />
       {isClosed && (
         <DashboardMetric
           label="Not completed"
           value={formatNumber(dashboard.notCompleted)}
-          icon={CircleX}
-          tone="danger"
         />
       )}
       <DashboardMetric
         label="Remaining"
         value={formatNumber(dashboard.remaining)}
         note="Unfinished scheduled work"
-        icon={CalendarClock}
-        tone="neutral"
       />
       {dashboard.inspectionResultsAvailable ? (
         <>
           <DashboardMetric
             label="Operational"
             value={formatNumber(dashboard.operational)}
-            icon={CircleCheck}
-            tone="success"
           />
           <DashboardMetric
             label="Non-operational"
             value={formatNumber(dashboard.nonOperational)}
-            icon={CircleAlert}
-            tone="danger"
           />
         </>
       ) : (
@@ -850,18 +772,6 @@ export function PmPeriodDashboard({
   const currentUser = useCurrentUser()
   const canAskNla = Boolean(
     currentUser.data?.id && currentUser.data.roles.includes('GSD'),
-  )
-  const changeView = (nextView: 'report' | 'question') =>
-    onSearchChange(
-      { ...search, view: nextView === 'question' ? 'question' : undefined },
-      { replace: true },
-    )
-  const modeSwitch = (
-    <DashboardModeSwitch
-      view="report"
-      canAskNla={canAskNla}
-      onChange={changeView}
-    />
   )
   const categoryOptions = useMemo(
     () => [...new Set(cycles.map((group) => group.assetCategory))].sort(),
@@ -989,8 +899,7 @@ export function PmPeriodDashboard({
   if (cyclesQuery.isPending) {
     return (
       <section aria-labelledby="dashboard-title" className="space-y-4">
-        <DashboardHeader />
-        {modeSwitch}
+        <DashboardHeader canAskNla={canAskNla} />
         <DeferredEnrollmentDashboardSummary />
         <CyclesLoading />
       </section>
@@ -1000,8 +909,7 @@ export function PmPeriodDashboard({
   if (cyclesQuery.isError) {
     return (
       <section aria-labelledby="dashboard-title" className="space-y-4">
-        <DashboardHeader />
-        {modeSwitch}
+        <DashboardHeader canAskNla={canAskNla} />
         <DeferredEnrollmentDashboardSummary />
         <QueryError
           message="PM period options could not be loaded."
@@ -1014,8 +922,7 @@ export function PmPeriodDashboard({
   if (cycles.length === 0) {
     return (
       <section aria-labelledby="dashboard-title" className="space-y-4">
-        <DashboardHeader />
-        {modeSwitch}
+        <DashboardHeader canAskNla={canAskNla} />
         <Card className="p-6 shadow-none">
           <h2 className="text-lg font-semibold text-[var(--text-primary)]">
             No PM periods are scheduled
@@ -1031,8 +938,7 @@ export function PmPeriodDashboard({
 
   return (
     <section aria-labelledby="dashboard-title" className="space-y-4">
-      <DashboardHeader />
-      {modeSwitch}
+      <DashboardHeader canAskNla={canAskNla} />
 
       {showGeneratedReport ? (
         <>
@@ -1504,14 +1410,21 @@ export function PmPeriodDashboard({
   )
 }
 
-export function DashboardHeader() {
+export function DashboardHeader({ canAskNla }: { canAskNla: boolean }) {
   return (
     <PageHeading
       id={dashboardTitleId}
       tabIndex={-1}
       eyebrow="UniPM"
       title="Preventive Maintenance Dashboard"
-      description="Review preventive maintenance with filters or a question."
+      description="Choose a scheduled PM period to review."
+      actions={
+        canAskNla ? (
+          <Button asChild>
+            <Link to="/app/analytics">Ask a question</Link>
+          </Button>
+        ) : undefined
+      }
     />
   )
 }

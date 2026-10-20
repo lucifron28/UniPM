@@ -121,9 +121,7 @@ test('desktop shell keeps its header and rail still while the workspace scrolls'
   await expect(page.getByRole('link', { name: 'Assets' })).not.toHaveAttribute(
     'title',
   )
-  await expect(
-    page.getByRole('button', { name: 'Ask a question' }),
-  ).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Ask a question' })).toBeVisible()
   await expect(page.getByRole('link', { name: 'PM Analytics' })).toHaveCount(0)
   await page.screenshot({
     path: 'test-results/web-ui-polish-sidebar-expanded-default-desktop.png',
@@ -263,9 +261,37 @@ test('desktop shell keeps its header and rail still while the workspace scrolls'
   })
 })
 
-test('active navigation indicator slides and follows browser history', async ({
+test('dashboard questions open the V3 report builder and legacy links redirect', async ({
   page,
 }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await mockSession(page)
+  await page.route('**/api/v1/pm-period-dashboard/cycles**', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: '[]',
+    }),
+  )
+  await page.goto('/app/dashboard')
+
+  await page.getByRole('link', { name: 'Ask a question' }).click()
+  await expect(page).toHaveURL(/\/app\/analytics(?:\?.*)?$/)
+  await expect(
+    page.getByRole('heading', { name: 'PM Report Builder' }),
+  ).toBeVisible()
+  await expect(
+    page.getByRole('heading', { name: 'Ask about PM results' }),
+  ).toHaveCount(0)
+
+  await page.goto('/app/dashboard?view=question')
+  await expect(page).toHaveURL(/\/app\/analytics(?:\?.*)?$/)
+  await expect(
+    page.getByRole('heading', { name: 'PM Report Builder' }),
+  ).toBeVisible()
+})
+
+test('active navigation styling follows browser history', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 })
   await mockSession(page)
   await page.goto('/app/dashboard')
