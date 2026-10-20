@@ -52,6 +52,20 @@ jobs:
             cat "${format_log}"
             while IFS= read -r diagnostic; do
               printf '::error title=Dart formatting::%s\n' "${diagnostic}"
+              case "${diagnostic}" in
+                Changed\ *)
+                  formatted_file="${diagnostic#Changed }"
+                  formatted_preview="${RUNNER_TEMP}/formatted-preview.dart"
+                  format_diff="${RUNNER_TEMP}/formatted-diff.log"
+                  if dart format --output=show "${formatted_file}" >"${formatted_preview}"; then
+                    diff -u "${formatted_file}" "${formatted_preview}" >"${format_diff}" || true
+                    while IFS= read -r diff_line; do
+                      diff_line="${diff_line//'%'/'%25'}"
+                      printf '::error title=Dart format diff::%s\n' "${diff_line}"
+                    done <"${format_diff}"
+                  fi
+                  ;;
+              esac
             done <"${format_log}"
             exit "${status}"
           fi
