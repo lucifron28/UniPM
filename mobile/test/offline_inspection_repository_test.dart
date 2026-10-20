@@ -606,28 +606,28 @@ PreventiveMaintenanceInspection _inspection({
 
 ScheduleOption _schedule({String status = 'Due', DateTime? scheduleDate}) =>
     ScheduleOption(
-  id: _scheduleId,
-  assetId: _assetId,
-  scheduleDate: scheduleDate ?? DateTime.utc(2026, 2, 28, 15, 59, 59),
-  pmCycle: '2026-02',
-  periodType: 'Quarter',
-  status: status,
-  quarter: 'Q1',
-  semester: null,
-  year: 2026,
-  academicYear: '2025-2026',
-  assignedToUserId: _userA,
-  asset: const ScheduleAssetOption(
-    id: _assetId,
-    assetCode: 'FE-CCMS-001',
-    assetCategory: 'fire-extinguisher',
-    building: 'CCMS Building',
-    department: 'CCMS',
-    location: 'CL-01',
-    status: 'Active',
-    qrCodeValue: 'UNIPM-LEGACY-CUSTOM-LABEL',
-  ),
-);
+      id: _scheduleId,
+      assetId: _assetId,
+      scheduleDate: scheduleDate ?? DateTime.utc(2026, 2, 28, 15, 59, 59),
+      pmCycle: '2026-02',
+      periodType: 'Quarter',
+      status: status,
+      quarter: 'Q1',
+      semester: null,
+      year: 2026,
+      academicYear: '2025-2026',
+      assignedToUserId: _userA,
+      asset: const ScheduleAssetOption(
+        id: _assetId,
+        assetCode: 'FE-CCMS-001',
+        assetCategory: 'fire-extinguisher',
+        building: 'CCMS Building',
+        department: 'CCMS',
+        location: 'CL-01',
+        status: 'Active',
+        qrCodeValue: 'UNIPM-LEGACY-CUSTOM-LABEL',
+      ),
+    );
 
 class _MemoryStore implements OfflineSnapshotStore {
   final Map<String, String> values = <String, String>{};
