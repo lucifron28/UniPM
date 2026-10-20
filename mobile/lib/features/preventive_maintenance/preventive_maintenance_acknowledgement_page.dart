@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import '../../ui/display_labels.dart';
@@ -58,15 +57,7 @@ class _PreventiveMaintenanceAcknowledgementPageState
             widget.controller.acknowledgement != null;
         return Scaffold(
           appBar: AppBar(
-            leading: IconButton(
-              key: const Key('back-to-pm-forms'),
-              tooltip: 'Back',
-              onPressed: () => Navigator.of(context).maybePop(),
-              icon: const Icon(Icons.arrow_back),
-            ),
-            title: Text(
-              isAcknowledged ? 'PM form details' : 'Acknowledge PM form',
-            ),
+            title: const Text('Acknowledge PM form'),
             actions: [
               if (!isAcknowledged && form.status == 'Submitted')
                 IconButton(
@@ -106,7 +97,6 @@ class _PreventiveMaintenanceAcknowledgementPageState
           _AcknowledgementReceipt(
             acknowledgement: acknowledgement,
             alreadyAcknowledged: form.status == 'Acknowledged',
-            formNumber: form.fileNumber ?? 'Preventive-maintenance form',
           )
         else if (form.status == 'Submitted')
           _AcknowledgementForm(
@@ -257,46 +247,24 @@ class _SubmittedFormSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final operationalCount = form.inspections
-        .where((row) => row.isOperational)
-        .length;
     final nonOperational = form.inspections
         .where((row) => !row.isOperational)
-        .length;
-    final colors = Theme.of(context).colorScheme;
+        .toList(growable: false);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Wrap(
-              spacing: 8,
-              runSpacing: 6,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                Text(
-                  form.fileNumber ?? 'Preventive-maintenance form',
-                  style: Theme.of(context).textTheme.titleLarge,
-                  softWrap: true,
-                ),
-                _FormStatusBadge(status: form.status),
-              ],
-            ),
-            const SizedBox(height: 6),
             Text(
-              displayAssetCategory(form.assetCategory),
-              style: Theme.of(
-                context,
-              ).textTheme.labelLarge?.copyWith(color: colors.primary),
+              form.fileNumber ?? 'Preventive-maintenance form',
+              style: Theme.of(context).textTheme.titleLarge,
             ),
-            const SizedBox(height: 2),
-            Text(
-              '${form.department ?? 'Department not recorded'} · '
-              '${form.building ?? 'Building not recorded'}',
-              style: Theme.of(context).textTheme.bodyMedium,
-              softWrap: true,
-            ),
+            const SizedBox(height: 8),
+            Text('Status: ${_formStatusLabel(form.status)}'),
+            Text('Asset category: ${displayAssetCategory(form.assetCategory)}'),
+            Text('Building: ${form.building ?? 'Not recorded'}'),
+            Text('Department: ${form.department ?? 'Not recorded'}'),
             const SizedBox(height: 12),
             Wrap(
               spacing: 8,
@@ -304,62 +272,44 @@ class _SubmittedFormSummary extends StatelessWidget {
               children: [
                 _InspectionCountChip(
                   icon: Icons.fact_check_outlined,
-                  label: '${form.inspections.length} total',
+                  label: '${form.inspections.length} inspections',
                 ),
                 _InspectionCountChip(
-                  icon: Icons.check_circle_outline,
-                  label: '$operationalCount operational',
-                ),
-                _InspectionCountChip(
-                  icon: nonOperational == 0
+                  icon: nonOperational.isEmpty
                       ? Icons.check_circle_outline
                       : Icons.warning_amber_rounded,
-                  label: '$nonOperational non-operational',
-                  isWarning: nonOperational > 0,
+                  label: '${nonOperational.length} non-operational',
+                  isWarning: nonOperational.isNotEmpty,
                 ),
               ],
             ),
+            if (nonOperational.isEmpty && form.inspections.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              const Text('All inspected assets are marked operational.'),
+            ],
+            if (nonOperational.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Text(
+                'Findings to note',
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  color: Theme.of(context).colorScheme.error,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 4),
+              ...nonOperational
+                  .take(3)
+                  .map((row) => _NonOperationalFinding(row: row)),
+              if (nonOperational.length > 3) ...[
+                const SizedBox(height: 6),
+                Text(
+                  '${nonOperational.length - 3} more findings are included in all inspection details.',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+            ],
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _FormStatusBadge extends StatelessWidget {
-  const _FormStatusBadge({required this.status});
-
-  final String status;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final isAcknowledged = status == 'Acknowledged';
-    final background = isAcknowledged
-        ? colors.primaryContainer
-        : status == 'Submitted'
-        ? colors.secondaryContainer
-        : colors.surfaceContainerHighest;
-    final foreground = isAcknowledged
-        ? colors.onPrimaryContainer
-        : status == 'Submitted'
-        ? colors.onSecondaryContainer
-        : colors.onSurfaceVariant;
-    return Container(
-      constraints: const BoxConstraints(maxWidth: 180),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        _formStatusLabel(status),
-        style: Theme.of(context).textTheme.labelMedium?.copyWith(
-          color: foreground,
-          fontWeight: FontWeight.w700,
-        ),
-        textAlign: TextAlign.center,
-        softWrap: true,
       ),
     );
   }
@@ -378,8 +328,9 @@ class _InspectionCountChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final color = isWarning ? colors.error : colors.primary;
+    final color = isWarning
+        ? Theme.of(context).colorScheme.error
+        : Theme.of(context).colorScheme.primary;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
@@ -391,15 +342,53 @@ class _InspectionCountChip extends StatelessWidget {
         children: [
           Icon(icon, size: 16, color: color),
           const SizedBox(width: 6),
-          Flexible(
-            child: Text(
-              label,
-              style: TextStyle(
-                color: color,
-                fontWeight: FontWeight.w700,
-                fontSize: 12,
-              ),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.w700,
+              fontSize: 12,
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NonOperationalFinding extends StatelessWidget {
+  const _NonOperationalFinding({required this.row});
+
+  final PreventiveMaintenanceInspection row;
+
+  @override
+  Widget build(BuildContext context) {
+    final errorColor = Theme.of(context).colorScheme.error;
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(top: 6),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: errorColor.withValues(alpha: 0.06),
+        border: Border.all(color: errorColor.withValues(alpha: 0.25)),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '${_assetCodeLabel(row.assetCode)} · Non-operational',
+            style: TextStyle(color: errorColor, fontWeight: FontWeight.w700),
+          ),
+          Text(
+            'Remarks: ${_displayValue(row.remarks)}',
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          Text(
+            'Recommendation: ${_displayValue(row.actionsRecommendations)}',
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
@@ -414,24 +403,16 @@ class _InspectionDetails extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4),
-          child: Text(
-            'Inspection details (${form.inspections.length})',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-        ),
-        if (form.inspections.isEmpty)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 12),
-            child: Text('No inspection rows are attached to this form.'),
-          )
-        else
-          ...form.inspections.map((row) => _InspectionSummary(row: row)),
-      ],
+    return Card(
+      child: ExpansionTile(
+        key: const Key('inspection-details'),
+        title: Text('All inspection details (${form.inspections.length})'),
+        subtitle: const Text('Review dates, locations, and recommendations'),
+        childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+        children: form.inspections
+            .map((row) => _InspectionSummary(row: row))
+            .toList(growable: false),
+      ),
     );
   }
 }
@@ -443,176 +424,31 @@ class _InspectionSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final warningColor = colors.error;
     return Container(
-      key: Key('inspection-row-${row.id}'),
       width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 2),
-      child: Material(
-        color: row.isOperational
-            ? colors.surface
-            : warningColor.withValues(alpha: 0.04),
-        shape: row.isOperational
-            ? Border(bottom: BorderSide(color: colors.outlineVariant))
-            : RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-                side: BorderSide(color: warningColor.withValues(alpha: 0.22)),
-              ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            ExpansionTile(
-              key: Key('inspection-row-expansion-${row.id}'),
-              tilePadding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 2,
-              ),
-              childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-              title: Text(
-                _assetCodeLabel(row.assetCode),
-                style: Theme.of(context).textTheme.titleSmall,
-                softWrap: true,
-              ),
-              subtitle: Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      row.location?.trim().isNotEmpty == true
-                          ? row.location!.trim()
-                          : 'Location not recorded',
-                      softWrap: true,
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      row.isOperational ? 'Operational' : 'Non-operational',
-                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                        color: row.isOperational
-                            ? colors.primary
-                            : warningColor,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              children: [_InspectionExpandedDetails(row: row)],
-            ),
-            if (!row.isOperational)
-              Padding(
-                key: Key('non-operational-preview-${row.id}'),
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _InspectionDetailLine(
-                      label: 'Remarks',
-                      value: _displayValue(row.remarks),
-                    ),
-                    const SizedBox(height: 4),
-                    _InspectionDetailLine(
-                      label: 'Recommendations',
-                      value: _displayValue(row.actionsRecommendations),
-                    ),
-                  ],
-                ),
-              ),
-          ],
-        ),
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        border: Border.all(color: Theme.of(context).colorScheme.outline),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Asset: ${_assetCodeLabel(row.assetCode)}'),
+          if (row.location?.trim().isNotEmpty ?? false)
+            Text('Location: ${row.location!.trim()}'),
+          Text(
+            'Condition: ${row.isOperational ? 'Operational' : 'Non-operational'}',
+          ),
+          Text('Inspection date: ${_dateText(row.dateInspected)}'),
+          Text('Remarks: ${_displayValue(row.remarks)}'),
+          Text('Recommendation: ${_displayValue(row.actionsRecommendations)}'),
+        ],
       ),
     );
   }
 }
-
-class _InspectionExpandedDetails extends StatelessWidget {
-  const _InspectionExpandedDetails({required this.row});
-
-  final PreventiveMaintenanceInspection row;
-
-  @override
-  Widget build(BuildContext context) {
-    final hasWaterStationDetails =
-        row.waterReplaceCarbonFilter != null ||
-        row.waterReplaceSedimentFilter != null ||
-        row.waterCheckUvLight != null;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _InspectionDetailLine(
-          label: 'Inspection date',
-          value: _dateText(row.dateInspected),
-        ),
-        if (row.dateAccomplished != null)
-          _InspectionDetailLine(
-            label: 'Date accomplished',
-            value: _dateText(row.dateAccomplished!),
-          ),
-        if (row.startedAt != null)
-          _InspectionDetailLine(
-            label: 'Started',
-            value: _dateTimeText(row.startedAt!),
-          ),
-        if (row.completedAt != null)
-          _InspectionDetailLine(
-            label: 'Completed',
-            value: _dateTimeText(row.completedAt!),
-          ),
-        if (row.isOperational) ...[
-          _InspectionDetailLine(
-            label: 'Remarks',
-            value: _displayValue(row.remarks),
-          ),
-          _InspectionDetailLine(
-            label: 'Recommendations',
-            value: _displayValue(row.actionsRecommendations),
-          ),
-        ],
-        if (row.hasPhotoEvidence)
-          const _InspectionDetailLine(
-            label: 'Photo evidence',
-            value: 'Available',
-          ),
-        if (hasWaterStationDetails) ...[
-          _InspectionDetailLine(
-            label: 'Replace carbon filter',
-            value: _inspectionBooleanValue(row.waterReplaceCarbonFilter),
-          ),
-          _InspectionDetailLine(
-            label: 'Replace sediment filter',
-            value: _inspectionBooleanValue(row.waterReplaceSedimentFilter),
-          ),
-          _InspectionDetailLine(
-            label: 'Check UV light',
-            value: _inspectionBooleanValue(row.waterCheckUvLight),
-          ),
-        ],
-      ],
-    );
-  }
-}
-
-class _InspectionDetailLine extends StatelessWidget {
-  const _InspectionDetailLine({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 5),
-      child: Text('$label: $value', softWrap: true),
-    );
-  }
-}
-
-String _inspectionBooleanValue(bool? value) => switch (value) {
-  true => 'Yes',
-  false => 'No',
-  null => 'Not recorded',
-};
 
 class _AcknowledgementForm extends StatelessWidget {
   const _AcknowledgementForm({
@@ -653,7 +489,7 @@ class _AcknowledgementForm extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               const Text(
-                'Enter the signatory details and capture their signature.',
+                'The skilled worker captures the signatory details and signature in this authenticated mobile session.',
               ),
               const SizedBox(height: 16),
               TextFormField(
@@ -661,7 +497,9 @@ class _AcknowledgementForm extends StatelessWidget {
                 controller: signatoryNameController,
                 enabled: !isSaving,
                 textInputAction: TextInputAction.next,
-                decoration: const InputDecoration(labelText: 'Full name'),
+                decoration: const InputDecoration(
+                  labelText: 'Department Head name',
+                ),
                 validator: (value) => value == null || value.trim().isEmpty
                     ? 'Enter the Department Head name.'
                     : null,
@@ -671,28 +509,21 @@ class _AcknowledgementForm extends StatelessWidget {
                 key: const Key('ack-signatory-position'),
                 controller: signatoryPositionController,
                 enabled: !isSaving,
-                decoration: const InputDecoration(labelText: 'Position'),
+                decoration: const InputDecoration(
+                  labelText: 'Department Head position',
+                ),
                 validator: (value) => value == null || value.trim().isEmpty
                     ? 'Enter the Department Head position.'
                     : null,
               ),
               const SizedBox(height: 16),
-              Text(
-                'Sign inside the box',
-                style: Theme.of(context).textTheme.labelLarge,
-              ),
+              const Text('Department Head signature'),
               const SizedBox(height: 8),
               PmSignaturePad(
                 key: signaturePadKey,
                 enabled: !isSaving,
                 onGestureChanged: onSignatureGestureChanged,
                 onChanged: onSignatureChanged,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Acknowledgement confirms receipt of the inspection findings. '
-                'It does not authorize repairs.',
-                style: Theme.of(context).textTheme.bodySmall,
               ),
               if (localError != null) ...[
                 const SizedBox(height: 8),
@@ -716,78 +547,50 @@ class _AcknowledgementReceipt extends StatelessWidget {
   const _AcknowledgementReceipt({
     required this.acknowledgement,
     required this.alreadyAcknowledged,
-    required this.formNumber,
   });
 
   final PreventiveMaintenanceAcknowledgement? acknowledgement;
   final bool alreadyAcknowledged;
-  final String formNumber;
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final value = acknowledgement;
+    if (acknowledgement == null) {
+      return const Card(
+        key: Key('acknowledgement-receipt'),
+        child: Padding(
+          padding: EdgeInsets.all(16),
+          child: Text('This form is already Acknowledged and is read-only.'),
+        ),
+      );
+    }
+
+    final value = acknowledgement!;
     return Card(
       key: const Key('acknowledgement-receipt'),
+      color: Theme.of(context).colorScheme.primaryContainer,
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Row(
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(Icons.check_circle, color: colors.primary, size: 24),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Form acknowledged',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    formNumber,
-                    style: Theme.of(context).textTheme.bodyLarge,
-                  ),
-                  const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 5,
-                    ),
-                    decoration: BoxDecoration(
-                      color: colors.primaryContainer,
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Text(
-                      'Acknowledged',
-                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                        color: colors.onPrimaryContainer,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                  if (value != null) ...[
-                    const SizedBox(height: 8),
-                    Text('Department Head: ${value.signatoryName}'),
-                    Text('Position: ${value.signatoryPosition}'),
-                    Text(
-                      'Acknowledged: ${_dateTimeText(value.acknowledgedAt)}',
-                    ),
-                  ],
-                  if (alreadyAcknowledged || value != null) ...[
-                    const SizedBox(height: 6),
-                    Text(
-                      'Read-only form',
-                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                        color: colors.onSurfaceVariant,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
+            Text(
+              'Form acknowledged',
+              style: Theme.of(context).textTheme.titleLarge,
             ),
+            const SizedBox(height: 8),
+            Text('Department Head: ${value.signatoryName}'),
+            Text('Position: ${value.signatoryPosition}'),
+            Text('Acknowledged: ${_dateTimeText(value.acknowledgedAt)}'),
+            Text('Signature type: ${value.signatureContentType}'),
+            const SizedBox(height: 8),
+            const Text(
+              'Acknowledgement recorded receipt/noting, locked the form, and '
+              'made its inspection rows eligible for official history.',
+            ),
+            if (alreadyAcknowledged) ...[
+              const SizedBox(height: 8),
+              const Text('This form is now read-only.'),
+            ],
           ],
         ),
       ),
@@ -830,103 +633,61 @@ class PmSignaturePadState extends State<PmSignaturePad> {
   final repaintKey = GlobalKey();
   final strokes = <List<Offset>>[];
   int? activePointer;
-  bool isStrokeActive = false;
 
   bool get hasSignature => strokes.any((stroke) => stroke.isNotEmpty);
 
-  Offset? _positionInSurface(PointerEvent event) {
+  Offset _positionInCanvas(PointerEvent event) {
     final renderObject = repaintKey.currentContext?.findRenderObject();
     if (renderObject is! RenderBox || !renderObject.hasSize) {
-      return null;
+      return event.localPosition;
     }
 
     final position = renderObject.globalToLocal(event.position);
-    return (Offset.zero & renderObject.size).contains(position)
-        ? position
-        : null;
+    return Offset(
+      position.dx.clamp(0.0, renderObject.size.width).toDouble(),
+      position.dy.clamp(0.0, renderObject.size.height).toDouble(),
+    );
   }
 
   void _startStroke(PointerDownEvent details) {
-    if (!widget.enabled ||
-        activePointer != null ||
-        details.buttons != kPrimaryButton) {
-      return;
-    }
-    final position = _positionInSurface(details);
-    if (position == null) return;
-
+    if (!widget.enabled || activePointer != null) return;
     activePointer = details.pointer;
-    isStrokeActive = true;
-    setState(() => strokes.add([position]));
+    setState(() => strokes.add([_positionInCanvas(details)]));
     widget.onChanged(true);
     widget.onGestureChanged(true);
   }
 
   void _updateStroke(PointerMoveEvent details) {
-    if (details.pointer != activePointer ||
-        !isStrokeActive ||
+    if (!widget.enabled ||
+        details.pointer != activePointer ||
         strokes.isEmpty) {
       return;
     }
-    if (!widget.enabled) {
-      _finishStroke();
-      return;
-    }
-
-    final position = _positionInSurface(details);
-    if (position == null) {
-      _finishStroke();
-      return;
-    }
-    setState(() => strokes.last.add(position));
+    setState(() => strokes.last.add(_positionInCanvas(details)));
   }
 
   void _endStroke(PointerUpEvent details) {
-    if (details.pointer != activePointer) return;
-
-    _finishStroke(
-      finalPosition: _positionInSurface(details),
-      releasePointer: true,
-    );
+    if (details.pointer != activePointer || strokes.isEmpty) {
+      return;
+    }
+    activePointer = null;
+    setState(() => strokes.add(const []));
+    widget.onGestureChanged(false);
   }
 
   void _cancelStroke(PointerCancelEvent details) {
     if (details.pointer != activePointer) return;
-    _finishStroke(releasePointer: true);
-  }
-
-  void _finishStroke({Offset? finalPosition, bool releasePointer = false}) {
-    if (activePointer == null) return;
-    final wasActive = isStrokeActive;
-    setState(() {
-      if (wasActive &&
-          finalPosition != null &&
-          strokes.isNotEmpty &&
-          strokes.last.isNotEmpty &&
-          strokes.last.last != finalPosition) {
-        strokes.last.add(finalPosition);
-      }
-      isStrokeActive = false;
-      if (releasePointer) activePointer = null;
-    });
-    if (wasActive) widget.onGestureChanged(false);
-  }
-
-  void undo() {
-    if (!widget.enabled || isStrokeActive || strokes.isEmpty) return;
-    setState(strokes.removeLast);
-    widget.onChanged(hasSignature);
+    activePointer = null;
+    widget.onGestureChanged(false);
   }
 
   void clear() {
     if (!widget.enabled) return;
-    final hadActiveStroke = isStrokeActive;
-    setState(() {
-      isStrokeActive = false;
-      strokes.clear();
-    });
+    final hadActivePointer = activePointer != null;
+    activePointer = null;
+    setState(strokes.clear);
     widget.onChanged(false);
-    if (hadActiveStroke) widget.onGestureChanged(false);
+    if (hadActivePointer) widget.onGestureChanged(false);
   }
 
   Future<String?> toPngBase64() async {
@@ -943,99 +704,45 @@ class PmSignaturePadState extends State<PmSignaturePad> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Align(
-          alignment: Alignment.centerLeft,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 960),
-            child: SizedBox(
-              height: 180,
-              width: double.infinity,
-              child: Listener(
-                key: const Key('signature-canvas'),
-                behavior: HitTestBehavior.opaque,
-                onPointerDown: widget.enabled ? _startStroke : null,
-                onPointerMove: widget.enabled || activePointer != null
-                    ? _updateStroke
-                    : null,
-                onPointerUp: widget.enabled || activePointer != null
-                    ? _endStroke
-                    : null,
-                onPointerCancel: widget.enabled || activePointer != null
-                    ? _cancelStroke
-                    : null,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF3F1EE),
-                    border: Border.all(color: const Color(0xFFD0CBC4)),
-                    borderRadius: BorderRadius.circular(8),
+        SizedBox(
+          height: 180,
+          width: double.infinity,
+          child: Listener(
+            key: const Key('signature-canvas'),
+            behavior: HitTestBehavior.opaque,
+            onPointerDown: widget.enabled ? _startStroke : null,
+            onPointerMove: widget.enabled ? _updateStroke : null,
+            onPointerUp: widget.enabled || activePointer != null
+                ? _endStroke
+                : null,
+            onPointerCancel: widget.enabled || activePointer != null
+                ? _cancelStroke
+                : null,
+            child: RepaintBoundary(
+              key: repaintKey,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.outline,
                   ),
-                  child: RepaintBoundary(
-                    key: repaintKey,
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          IgnorePointer(
-                            child: Center(
-                              child: Opacity(
-                                opacity: 0.08,
-                                child: Image.asset(
-                                  'assets/unipm-logo.png',
-                                  width: 128,
-                                  height: 128,
-                                  fit: BoxFit.contain,
-                                  color: Colors.white,
-                                  colorBlendMode: BlendMode.srcIn,
-                                  errorBuilder: (context, error, stackTrace) =>
-                                      const SizedBox.shrink(),
-                                ),
-                              ),
-                            ),
-                          ),
-                          IgnorePointer(
-                            child: CustomPaint(
-                              painter: _SignaturePainter(strokes),
-                              child: const SizedBox.expand(),
-                            ),
-                          ),
-                          if (!hasSignature)
-                            IgnorePointer(
-                              child: Center(
-                                child: Text(
-                                  'Sign here',
-                                  style: Theme.of(context).textTheme.bodySmall
-                                      ?.copyWith(
-                                        color: const Color(0xFF6E6963),
-                                      ),
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: CustomPaint(
+                  painter: _SignaturePainter(strokes),
+                  child: const SizedBox.expand(),
                 ),
               ),
             ),
           ),
         ),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            TextButton(
-              key: const Key('undo-signature'),
-              onPressed: widget.enabled && hasSignature && !isStrokeActive
-                  ? undo
-                  : null,
-              child: const Text('Undo'),
-            ),
-            TextButton(
-              key: const Key('clear-signature'),
-              onPressed: widget.enabled && hasSignature ? clear : null,
-              child: const Text('Clear'),
-            ),
-          ],
+        Align(
+          alignment: Alignment.centerRight,
+          child: TextButton(
+            key: const Key('clear-signature'),
+            onPressed: widget.enabled && hasSignature ? clear : null,
+            child: const Text('Clear signature'),
+          ),
         ),
       ],
     );
@@ -1105,9 +812,13 @@ String _dateTimeText(DateTime value) {
 }
 
 Uint8List _encodeSignaturePng(Size logicalSize, List<List<Offset>> strokes) {
-  final width = logicalSize.width > 0 ? logicalSize.width.ceil() : 480;
-  final height = logicalSize.height > 0 ? logicalSize.height.ceil() : 180;
+  const width = 480;
+  const height = 180;
   final pixels = Uint8List(width * height)..fillRange(0, width * height, 255);
+  final sourceWidth = logicalSize.width > 0 ? logicalSize.width : width;
+  final sourceHeight = logicalSize.height > 0 ? logicalSize.height : height;
+  final scaleX = width / sourceWidth;
+  final scaleY = height / sourceHeight;
 
   void drawPoint(double x, double y) {
     final centerX = x.round();
@@ -1126,10 +837,10 @@ Uint8List _encodeSignaturePng(Size logicalSize, List<List<Offset>> strokes) {
   }
 
   void drawSegment(Offset start, Offset end) {
-    final startX = start.dx;
-    final startY = start.dy;
-    final endX = end.dx;
-    final endY = end.dy;
+    final startX = start.dx * scaleX;
+    final startY = start.dy * scaleY;
+    final endX = end.dx * scaleX;
+    final endY = end.dy * scaleY;
     final distance = (endX - startX).abs() > (endY - startY).abs()
         ? (endX - startX).abs()
         : (endY - startY).abs();
@@ -1150,7 +861,7 @@ Uint8List _encodeSignaturePng(Size logicalSize, List<List<Offset>> strokes) {
   for (final stroke in strokes) {
     if (stroke.isEmpty) continue;
     if (stroke.length == 1) {
-      drawPoint(stroke.single.dx, stroke.single.dy);
+      drawPoint(stroke.single.dx * scaleX, stroke.single.dy * scaleY);
       continue;
     }
     for (var index = 1; index < stroke.length; index++) {

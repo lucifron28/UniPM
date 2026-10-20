@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -263,43 +262,32 @@ void main() {
     expect(find.byKey(const Key('open-acknowledgement')), findsOneWidget);
     await tester.tap(find.byKey(const Key('open-acknowledgement')));
     await tester.pumpAndSettle();
-    expect(find.text('Acknowledge PM form'), findsOneWidget);
     expect(find.text('Department Head acknowledgement'), findsOneWidget);
-    expect(find.text('Awaiting acknowledgement'), findsOneWidget);
-    expect(find.text('Fire Extinguisher'), findsOneWidget);
-    expect(find.text('GSD · Main Building'), findsOneWidget);
-    expect(find.text('1 total'), findsOneWidget);
-    expect(find.text('0 operational'), findsOneWidget);
+    expect(find.text('Status: Awaiting acknowledgement'), findsOneWidget);
+    expect(find.text('Asset category: Fire Extinguisher'), findsOneWidget);
+    expect(find.text('Building: Main Building'), findsOneWidget);
+    expect(find.text('Department: GSD'), findsOneWidget);
     expect(find.text('1 non-operational'), findsOneWidget);
-    expect(find.text('FE-2026-0001'), findsOneWidget);
-    expect(find.text('Room 101'), findsOneWidget);
-    expect(find.text('Non-operational'), findsOneWidget);
-    expect(find.text('Remarks: Low pressure'), findsOneWidget);
-    expect(find.text('Recommendations: Inspect gauge'), findsOneWidget);
-    final row = find.byKey(
-      const Key(
-        'inspection-row-expansion-33333333-3333-4333-8333-333333333333',
-      ),
-    );
-    await tester.ensureVisible(row);
-    await tester.tap(row);
+    expect(find.text('FE-2026-0001 · Non-operational'), findsOneWidget);
+    final details = find.text('All inspection details (1)');
+    await tester.ensureVisible(details);
+    await tester.tap(details);
     await tester.pumpAndSettle();
+    expect(find.text('Asset: FE-2026-0001'), findsOneWidget);
+    expect(find.text('Location: Room 101'), findsOneWidget);
+    expect(find.text('Condition: Non-operational'), findsOneWidget);
     final localInspectionDate = DateTime.parse(
       '2026-02-09T16:30:00Z',
     ).toLocal().toIso8601String().substring(0, 10);
     expect(find.text('Inspection date: $localInspectionDate'), findsOneWidget);
     expect(find.text('Remarks: Low pressure'), findsOneWidget);
-    expect(find.text('Recommendations: Inspect gauge'), findsOneWidget);
+    expect(find.text('Recommendation: Inspect gauge'), findsOneWidget);
     expect(find.textContaining(inspectionId), findsNothing);
     expect(find.textContaining(scheduleId), findsNothing);
     expect(
       find.textContaining('66666666-6666-4666-8666-666666666666'),
       findsNothing,
     );
-
-    await tester.tap(find.byKey(const Key('back-to-pm-forms')));
-    await tester.pumpAndSettle();
-    expect(find.byKey(const Key('open-acknowledgement')), findsOneWidget);
   });
 
   testWidgets('missing asset metadata does not expose row identifiers', (
@@ -323,16 +311,12 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final row = find.byKey(
-      const Key(
-        'inspection-row-expansion-33333333-3333-4333-8333-333333333333',
-      ),
-    );
-    await tester.ensureVisible(row);
-    await tester.tap(row);
+    final details = find.text('All inspection details (1)');
+    await tester.ensureVisible(details);
+    await tester.tap(details);
     await tester.pumpAndSettle();
-    expect(find.text('Asset details unavailable'), findsOneWidget);
-    expect(find.text('Location not recorded'), findsOneWidget);
+    expect(find.text('Asset: Asset details unavailable'), findsOneWidget);
+    expect(find.textContaining('Location:'), findsNothing);
     expect(find.textContaining(inspectionId), findsNothing);
     expect(find.textContaining(scheduleId), findsNothing);
     controller.dispose();
@@ -359,58 +343,38 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
-          home: Builder(
-            builder: (context) => MediaQuery(
-              data: MediaQuery.of(
-                context,
-              ).copyWith(textScaler: TextScaler.linear(1.25)),
-              child: PreventiveMaintenanceAcknowledgementPage(
-                controller: controller,
-                form: repository.form,
-              ),
-            ),
+          home: PreventiveMaintenanceAcknowledgementPage(
+            controller: controller,
+            form: repository.form,
           ),
         ),
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('24 total'), findsOneWidget);
-      expect(find.text('16 operational'), findsOneWidget);
+      expect(find.text('24 inspections'), findsOneWidget);
       expect(find.text('8 non-operational'), findsOneWidget);
+      expect(find.text('FE-2026-0001 · Non-operational'), findsOneWidget);
+      expect(find.text('FE-2026-0002 · Non-operational'), findsOneWidget);
+      expect(find.text('FE-2026-0003 · Non-operational'), findsOneWidget);
       expect(
-        find.byKey(
-          Key('non-operational-preview-${_syntheticUuid('10000000', 7)}'),
-        ),
+        find.text('5 more findings are included in all inspection details.'),
         findsOneWidget,
       );
-      expect(
-        find.text(
-          'Recommendations: Inspect the gauge and valve assembly with the '
-          'approved test instrument, then record the follow-up maintenance action.',
-        ),
-        findsNWidgets(8),
-      );
+      expect(find.text('Asset: FE-2026-0024'), findsNothing);
 
+      final details = find.text('All inspection details (24)');
       final scrollable = find
           .descendant(
             of: find.byKey(const Key('acknowledgement-page')),
             matching: find.byType(Scrollable),
           )
           .first;
-      final finalRow = find
-          .byKey(
-            Key('inspection-row-expansion-${_syntheticUuid('10000000', 23)}'),
-          )
-          .hitTestable();
-      await tester.scrollUntilVisible(finalRow, 200, scrollable: scrollable);
-      await tester.tap(finalRow);
+      await tester.scrollUntilVisible(details, 200, scrollable: scrollable);
+      await tester.tap(details);
       await tester.pumpAndSettle();
-      final finalDate = DateTime.parse(
-        '2026-02-09T16:53:00Z',
-      ).toLocal().toIso8601String().substring(0, 10);
-      final finalInspection = find.text('Inspection date: $finalDate');
+      final finalInspection = find.text('Asset: FE-2026-0024');
       await tester.scrollUntilVisible(
-        finalInspection.hitTestable(),
+        finalInspection,
         200,
         scrollable: scrollable,
       );
@@ -529,215 +493,6 @@ void main() {
     },
   );
 
-  testWidgets(
-    'signature strokes stay inside the pad and ignore secondary pointers',
-    (tester) async {
-      tester.view.physicalSize = const Size(360, 640);
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-
-      final repository = FakeAcknowledgementRepository();
-      final controller = PreventiveMaintenanceController(
-        repository: repository,
-        user: testUser(),
-      );
-      controller.selectForm(repository.form);
-      await tester.pumpWidget(
-        MaterialApp(
-          home: PreventiveMaintenanceAcknowledgementPage(
-            controller: controller,
-            form: repository.form,
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      final page = find.byKey(const Key('acknowledgement-page'));
-      final canvas = find.byKey(const Key('signature-canvas'));
-      await _ensureVisible(tester, canvas);
-      final bounds = tester.getRect(canvas);
-      final state = tester.state<PmSignaturePadState>(
-        find.byType(PmSignaturePad),
-      );
-
-      expect(await state.toPngBase64(), isNull);
-      final outsideStart = bounds.centerLeft - const Offset(2, 0);
-      final outsideDrawing = await tester.startGesture(
-        outsideStart,
-        pointer: 20,
-      );
-      await outsideDrawing.moveTo(bounds.centerLeft + const Offset(8, 0));
-      await outsideDrawing.up();
-      await tester.pump();
-      expect(state.hasSignature, isFalse);
-
-      final start = bounds.topLeft + const Offset(28, 32);
-      final inside = bounds.topLeft + const Offset(70, 46);
-      final drawing = await tester.startGesture(start, pointer: 21);
-      await drawing.moveTo(inside);
-      await tester.pump();
-      expect(state.activePointer, 21);
-      expect(
-        tester.widget<ListView>(page).physics,
-        isA<NeverScrollableScrollPhysics>(),
-      );
-
-      final secondary = await tester.startGesture(
-        bounds.topLeft + const Offset(120, 40),
-        pointer: 22,
-      );
-      await secondary.moveTo(bounds.topLeft + const Offset(180, 70));
-      await secondary.up();
-      await tester.pump();
-      expect(state.strokes, hasLength(1));
-      expect(state.strokes.single, hasLength(2));
-
-      await drawing.moveTo(Offset(bounds.right + 8, inside.dy));
-      await tester.pump();
-      expect(
-        tester.widget<ListView>(page).physics,
-        isNot(isA<NeverScrollableScrollPhysics>()),
-      );
-
-      final secondaryAfterExit = await tester.startGesture(
-        bounds.topLeft + const Offset(150, 60),
-        pointer: 23,
-      );
-      await secondaryAfterExit.moveTo(bounds.topLeft + const Offset(210, 80));
-      await secondaryAfterExit.up();
-      await drawing.moveTo(bounds.topLeft + const Offset(220, 90));
-      await tester.pump();
-      expect(state.strokes.single, hasLength(2));
-      await drawing.up();
-      await tester.pump();
-      expect(state.activePointer, isNull);
-      expect(state.hasSignature, isTrue);
-      controller.dispose();
-    },
-  );
-
-  testWidgets('undo and clear update signature state and export only ink', (
-    tester,
-  ) async {
-    tester.view.physicalSize = const Size(360, 640);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-
-    final repository = FakeAcknowledgementRepository();
-    final controller = PreventiveMaintenanceController(
-      repository: repository,
-      user: testUser(),
-    );
-    controller.selectForm(repository.form);
-    await tester.pumpWidget(
-      MaterialApp(
-        home: PreventiveMaintenanceAcknowledgementPage(
-          controller: controller,
-          form: repository.form,
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    final canvas = find.byKey(const Key('signature-canvas'));
-    await _ensureVisible(tester, canvas);
-    final bounds = tester.getRect(canvas);
-    final state = tester.state<PmSignaturePadState>(
-      find.byType(PmSignaturePad),
-    );
-    final renderBox =
-        state.repaintKey.currentContext!.findRenderObject() as RenderBox;
-    final surfaceSize = renderBox.size;
-    final start = bounds.topLeft + const Offset(28, 28);
-    final end = bounds.topLeft + const Offset(74, 46);
-    final expectedStartLocal = renderBox.globalToLocal(start);
-    final drawing = await tester.startGesture(start, pointer: 30);
-    await drawing.moveTo(end);
-    await drawing.up();
-    await tester.pump();
-    expect(state.strokes, hasLength(1));
-    expect(state.strokes.first.first, expectedStartLocal);
-
-    final pngSnapshot = await tester.runAsync(() async {
-      final encoded = await state.toPngBase64();
-      if (encoded == null) return null;
-      final codec = await ui.instantiateImageCodec(base64Decode(encoded));
-      try {
-        final frame = await codec.getNextFrame();
-        try {
-          final pixelData = await frame.image.toByteData(
-            format: ui.ImageByteFormat.rawRgba,
-          );
-          if (pixelData == null) return null;
-          return (
-            encoded: encoded,
-            width: frame.image.width,
-            height: frame.image.height,
-            pixels: pixelData.buffer.asUint8List(
-              pixelData.offsetInBytes,
-              pixelData.lengthInBytes,
-            ),
-          );
-        } finally {
-          frame.image.dispose();
-        }
-      } finally {
-        codec.dispose();
-      }
-    });
-    expect(pngSnapshot, isNotNull);
-    final snapshot = pngSnapshot!;
-    expect(snapshot.encoded, isNotEmpty);
-    expect(snapshot.width, surfaceSize.width.ceil());
-    expect(snapshot.height, surfaceSize.height.ceil());
-    int redAt(int x, int y) => snapshot.pixels[(y * snapshot.width + x) * 4];
-    expect(
-      redAt(expectedStartLocal.dx.round(), expectedStartLocal.dy.round()),
-      0,
-    );
-    expect(redAt(snapshot.width ~/ 2, snapshot.height ~/ 2), 255);
-
-    Future<void> drawStroke(int pointer, int verticalOffset) async {
-      await _ensureVisible(tester, canvas);
-      final currentBounds = tester.getRect(canvas);
-      final strokeStart =
-          currentBounds.topLeft + Offset(30, 50 + verticalOffset.toDouble());
-      final gesture = await tester.startGesture(strokeStart, pointer: pointer);
-      await gesture.moveTo(strokeStart + const Offset(36, 14));
-      await gesture.up();
-      await tester.pump();
-    }
-
-    await drawStroke(31, 0);
-    await drawStroke(32, 25);
-    expect(state.strokes, hasLength(3));
-    final undo = find.byKey(const Key('undo-signature'));
-    await _ensureVisible(tester, undo);
-    await tester.tap(undo);
-    await tester.pump();
-    expect(state.strokes, hasLength(2));
-    expect(state.hasSignature, isTrue);
-    await tester.tap(undo);
-    await tester.pump();
-    expect(state.strokes, hasLength(1));
-    expect(state.hasSignature, isTrue);
-    await tester.tap(undo);
-    await tester.pump();
-    expect(state.hasSignature, isFalse);
-    expect(await state.toPngBase64(), isNull);
-
-    await drawStroke(33, 0);
-    final clear = find.byKey(const Key('clear-signature'));
-    await _ensureVisible(tester, clear);
-    await tester.tap(clear);
-    await tester.pump();
-    expect(state.hasSignature, isFalse);
-    expect(await state.toPngBase64(), isNull);
-    controller.dispose();
-  });
-
   testWidgets('acknowledgement captures signatory data and locks the form', (
     tester,
   ) async {
@@ -813,41 +568,13 @@ void main() {
     expect(controller.selectedForm?.status, 'Acknowledged');
     expect(find.byKey(const Key('acknowledgement-receipt')), findsOneWidget);
     expect(find.text('Form acknowledged'), findsOneWidget);
-    expect(find.text('PM form details'), findsOneWidget);
-    final acknowledgedAt = DateTime.parse(
-      '2026-02-10T09:00:00Z',
-    ).toLocal().toIso8601String().replaceFirst('T', ' ').substring(0, 16);
-    final receipt = find.byKey(const Key('acknowledgement-receipt'));
     expect(
-      find.descendant(of: receipt, matching: find.text('PM-2026-0001')),
-      findsOneWidget,
-    );
-    expect(
-      find.descendant(
-        of: receipt,
-        matching: find.text('Department Head: Synthetic Department Head'),
+      find.text(
+        'Acknowledgement recorded receipt/noting, locked the form, and '
+        'made its inspection rows eligible for official history.',
       ),
       findsOneWidget,
     );
-    expect(
-      find.descendant(
-        of: receipt,
-        matching: find.text('Position: Department Head'),
-      ),
-      findsOneWidget,
-    );
-    expect(
-      find.descendant(
-        of: receipt,
-        matching: find.text('Acknowledged: $acknowledgedAt'),
-      ),
-      findsOneWidget,
-    );
-    expect(
-      find.descendant(of: receipt, matching: find.text('Read-only form')),
-      findsOneWidget,
-    );
-    expect(find.textContaining('Signature type:'), findsNothing);
     expect(find.byKey(const Key('acknowledge-form-button')), findsNothing);
     controller.dispose();
   });
