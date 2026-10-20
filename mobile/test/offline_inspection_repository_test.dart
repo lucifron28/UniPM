@@ -224,7 +224,9 @@ void main() {
   test(
     'cached forms, schedules, references, and QR lookups survive transient HTTP failures',
     () async {
-      remote.forms = [_form(inspections: [_inspection()])];
+      remote.forms = [
+        _form(inspections: [_inspection()]),
+      ];
       await repository.activate(_userA);
       await repository.listForms();
       await repository.listSchedules();
@@ -270,7 +272,9 @@ void main() {
   test(
     'cached reads never bypass authentication or authorization failures',
     () async {
-      remote.forms = [_form(inspections: [_inspection()])];
+      remote.forms = [
+        _form(inspections: [_inspection()]),
+      ];
       await repository.activate(_userA);
       await repository.listForms();
       await repository.listSchedules();
