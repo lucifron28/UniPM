@@ -726,7 +726,7 @@ export function FormRegistry({ search, onSearchChange }: FormRegistryProps) {
   }
 
   return (
-    <section aria-labelledby="forms-title" className="space-y-4">
+    <section aria-labelledby="forms-title" className="max-w-6xl space-y-4">
       <PageHeading
         id="forms-title"
         eyebrow="Preventive maintenance"
@@ -804,7 +804,6 @@ export function FormRegistry({ search, onSearchChange }: FormRegistryProps) {
           <RegistryResultsPanel
             label="Preventive-maintenance forms"
             desktopLabel="Preventive-maintenance form records"
-            desktopFrameClassName="border-0 bg-transparent"
             breakpoint="md"
             viewportSize="standard"
             isUpdating={forms.isFetching}

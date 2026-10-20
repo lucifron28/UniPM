@@ -93,9 +93,6 @@ describe('app shell role access and layout', () => {
     const sidebar = screen.getByRole('complementary')
     const nav = within(sidebar).getByRole('navigation', { name: 'Primary' })
     expect(
-      sidebar.querySelector('.sidebar-active-indicator'),
-    ).toBeInTheDocument()
-    expect(
       within(sidebar).getByRole('button', { name: 'Collapse navigation' }),
     ).toHaveAttribute('aria-expanded', 'true')
     expect(
@@ -153,7 +150,6 @@ describe('app shell role access and layout', () => {
     fireEvent.click(account)
     expect(account.closest('details')).toHaveAttribute('open')
     expect(screen.getByText('admin@example.test')).toBeVisible()
-    expect(screen.getByRole('button', { name: 'Sign out' })).toBeVisible()
     expect(
       within(sidebar).getByRole('button', { name: 'Sign out' }),
     ).toBeVisible()

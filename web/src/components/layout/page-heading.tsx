@@ -1,7 +1,4 @@
-import { useContext } from 'react'
 import type { ReactNode, Ref } from 'react'
-import { createPortal } from 'react-dom'
-import { PageHeadingHostContext } from '@/components/layout/page-heading-context'
 
 export function PageHeading({
   id,
@@ -20,7 +17,6 @@ export function PageHeading({
   tabIndex?: number
   actions?: ReactNode
 }) {
-  const host = useContext(PageHeadingHostContext)
   const content = (
     <div
       data-page-heading
@@ -54,6 +50,5 @@ export function PageHeading({
     </div>
   )
 
-  if (host === undefined) return content
-  return host ? createPortal(content, host) : null
+  return content
 }

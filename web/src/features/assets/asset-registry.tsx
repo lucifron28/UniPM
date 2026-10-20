@@ -6,7 +6,7 @@ import {
   getCoreRowModel,
   useReactTable,
 } from '@tanstack/react-table'
-import { Eye, Plus, Search } from 'lucide-react'
+import { Plus, Search } from 'lucide-react'
 import { PageHeading } from '@/components/layout/page-heading'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -95,9 +95,8 @@ const createColumns = (search: AssetSearch) => [
         to="/app/assets/$assetId"
         params={{ assetId: row.original.id }}
         search={{ ...search, returnContext: { kind: 'assetRegistry', search } }}
-        className="inline-flex min-h-9 items-center gap-2 rounded-lg border border-[color-mix(in_srgb,var(--primary)_30%,white)] bg-white px-2.5 text-xs font-semibold text-[var(--primary)] hover:border-[var(--primary)] hover:bg-[color-mix(in_srgb,var(--primary)_5%,white)] focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:ring-offset-2 focus-visible:outline-none"
+        className="font-semibold text-[var(--primary)] hover:underline focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
       >
-        <Eye aria-hidden="true" className="size-3.5" />
         View details
       </Link>
     ),
@@ -125,28 +124,22 @@ function SummaryCard({
       type="button"
       aria-pressed={selected}
       onClick={onSelect}
-      className={`content-card grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 rounded-lg border px-3 py-2 text-left focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:outline-none ${
+      className={`rounded-xl border bg-white p-4 text-left transition-colors hover:border-[var(--primary)] focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:outline-none ${
         selected
-          ? 'border-[var(--primary)] bg-[var(--primary)] text-white'
-          : 'border-[var(--border-soft)] bg-white text-[var(--text-primary)] hover:border-[var(--primary)]'
+          ? 'border-[var(--primary)] ring-1 ring-[var(--primary)]'
+          : 'border-[var(--border-soft)]'
       }`}
     >
-      <span
-        className={`min-w-0 text-sm font-semibold ${selected ? 'text-white' : 'text-[var(--text-primary)]'}`}
-      >
+      <span className="block text-xs font-semibold tracking-[0.08em] text-[var(--text-neutral)] uppercase">
         {category.displayName}
       </span>
-      <span
-        className={`text-xl leading-none font-bold ${selected ? 'text-white' : 'text-[var(--text-primary)]'}`}
-      >
+      <span className="mt-2 block text-2xl font-bold text-[var(--text-primary)]">
         {category.totalCount.toLocaleString()}
       </span>
-      <span
-        className={`col-span-2 flex min-w-0 flex-wrap gap-x-2 gap-y-1 text-xs font-medium ${selected ? 'text-white/90' : 'text-[var(--text-secondary)]'}`}
-      >
-        <span>Active {category.activeCount.toLocaleString()}</span>
-        <span>Inactive {category.inactiveCount.toLocaleString()}</span>
-        <span>Retired {category.retiredCount.toLocaleString()}</span>
+      <span className="mt-1 block text-xs text-[var(--text-secondary)]">
+        Overall total · Active {category.activeCount.toLocaleString()} ·
+        Inactive {category.inactiveCount.toLocaleString()} · Retired{' '}
+        {category.retiredCount.toLocaleString()}
       </span>
     </button>
   )
@@ -754,20 +747,20 @@ export function AssetRegistry({
             recordsZoom={recordZoom.zoom}
             desktopContent={
               <table className="w-full min-w-[960px] text-left text-sm">
-                <thead className="border-b border-[var(--primary)] bg-[var(--primary)] text-white">
+                <thead className="border-b border-[var(--border-soft)] bg-[var(--page-background)]">
                   {table.getHeaderGroups().map((headerGroup) => (
                     <tr key={headerGroup.id}>
                       {headerGroup.headers.map((header) => (
                         <th
                           key={header.id}
                           scope="col"
-                          className={`px-3 py-3 font-semibold whitespace-nowrap text-white ${
+                          className={`px-3 py-3 font-semibold whitespace-nowrap text-[var(--text-primary)] ${
                             header.column.id === 'updatedAt'
                               ? 'hidden min-[1440px]:table-cell'
                               : ''
                           } ${
                             header.column.id === 'action'
-                              ? 'sticky right-0 z-20 bg-[var(--primary)] shadow-[-8px_0_12px_-12px_rgba(0,0,0,0.6)]'
+                              ? 'sticky right-0 z-20 bg-[var(--page-background)] shadow-[-8px_0_12px_-12px_rgba(0,0,0,0.35)]'
                               : ''
                           }`}
                         >
@@ -877,10 +870,6 @@ export function AssetRegistry({
                         {asset.qrCodeValue ? 'QR ready' : 'QR unavailable'}
                       </Badge>
                     </div>
-                    <span className="mt-4 inline-flex min-h-9 items-center gap-2 rounded-lg border border-[color-mix(in_srgb,var(--primary)_30%,white)] px-2.5 text-xs font-semibold text-[var(--primary)]">
-                      <Eye aria-hidden="true" className="size-3.5" />
-                      View details
-                    </span>
                   </Link>
                 ))}
               </div>
