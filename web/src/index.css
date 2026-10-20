@@ -220,6 +220,12 @@ body {
   }
 }
 
+@layer utilities {
+  .app-workspace table thead th {
+    color: var(--primary);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .app-shell,
   .sidebar-nav-label,
