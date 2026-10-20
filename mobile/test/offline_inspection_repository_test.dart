@@ -527,6 +527,7 @@ void main() {
   ) async {
     repository.dispose();
     repository = _ImmediateScheduleOfflineInspectionRepository(
+      tester: tester,
       remote: remote,
       fakeRemote: remote,
       remoteAssets: remote,
@@ -589,6 +590,14 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Discard this saved change?'), findsNothing);
     expect(immediateRepository.discardCalls, 1);
+    final restoredForm = await immediateRepository.readThroughRepository(
+      _formId,
+    );
+    expect(repository.pendingCount, 0);
+    expect(
+      restoredForm.inspections.single.remarks,
+      'Existing server observation.',
+    );
   });
 
   test(
@@ -747,6 +756,7 @@ class _MemoryStore implements OfflineSnapshotStore {
 class _ImmediateScheduleOfflineInspectionRepository
     extends OfflineInspectionRepository {
   _ImmediateScheduleOfflineInspectionRepository({
+    required this.tester,
     required super.remote,
     required this.fakeRemote,
     required super.remoteAssets,
@@ -754,6 +764,7 @@ class _ImmediateScheduleOfflineInspectionRepository
     required super.connectivity,
   });
 
+  final WidgetTester tester;
   final PreventiveMaintenanceRepository fakeRemote;
   int discardCalls = 0;
 
@@ -764,11 +775,34 @@ class _ImmediateScheduleOfflineInspectionRepository
   @override
   Future<void> discardConflict(String writeId) async {
     discardCalls++;
+    final completed = await tester.runAsync<bool>(() async {
+      await _discardWithBaseRepository(writeId).timeout(
+        const Duration(seconds: 5),
+      );
+      return true;
+    });
+    if (completed != true) {
+      throw StateError('Conflict discard did not finish.');
+    }
   }
 
   @override
   Future<PreventiveMaintenanceForm> getForm(String id) =>
       fakeRemote.getForm(id);
+
+  Future<PreventiveMaintenanceForm> readThroughRepository(String id) async {
+    final form = await tester.runAsync(
+      () => _getFromBaseRepository(id).timeout(const Duration(seconds: 5)),
+    );
+    if (form == null) throw StateError('The repository read did not finish.');
+    return form;
+  }
+
+  Future<void> _discardWithBaseRepository(String writeId) =>
+      super.discardConflict(writeId);
+
+  Future<PreventiveMaintenanceForm> _getFromBaseRepository(String id) =>
+      super.getForm(id);
 }
 
 class _FakeConnectivity implements OfflineConnectivityMonitor {
