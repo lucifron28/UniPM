@@ -489,7 +489,18 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 
-    expect(find.text('This draft needs sync review'), findsOneWidget);
+    expect(repository.hasConflictFor(_formId), isTrue);
+    final renderedText = find
+        .byType(Text)
+        .evaluate()
+        .map((element) => (element.widget as Text).data)
+        .whereType<String>()
+        .toList(growable: false);
+    expect(
+      find.text('This draft needs sync review'),
+      findsOneWidget,
+      reason: 'Rendered draft text: $renderedText',
+    );
     expect(find.byType(CircularProgressIndicator), findsNothing);
     await tester.tap(find.text('Update inspection needs review'));
     await tester.pump();
