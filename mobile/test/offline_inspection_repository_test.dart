@@ -461,20 +461,26 @@ void main() {
         ),
       ),
     );
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
 
     expect(find.text('This draft needs sync review'), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
     await tester.tap(find.text('Update inspection needs review'));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
     expect(find.textContaining('Local observation to review.'), findsOneWidget);
     expect(find.text('Retry my saved change'), findsOneWidget);
     expect(find.text('Discard local change'), findsOneWidget);
 
     await tester.tap(find.text('Discard local change'));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
     expect(find.text('Discard this saved change?'), findsOneWidget);
     await tester.tap(find.text('Discard local change').last);
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump();
 
     expect(repository.pendingCount, 0);
     expect(
@@ -486,6 +492,9 @@ void main() {
   test(
     'deleting a queued row preserves ordered create and delete writes',
     () async {
+      remote.schedules[0] = _schedule(
+        scheduleDate: DateTime.now().toUtc().add(const Duration(days: 30)),
+      );
       await repository.activate(_userA);
       await repository.listSchedules();
       connectivity.setConnected(false);
@@ -595,10 +604,13 @@ PreventiveMaintenanceInspection _inspection({
   updatedAt: updatedAt ?? DateTime.utc(2026, 2, 20),
 );
 
-ScheduleOption _schedule({String status = 'Due'}) => ScheduleOption(
+ScheduleOption _schedule({
+  String status = 'Due',
+  DateTime? scheduleDate,
+}) => ScheduleOption(
   id: _scheduleId,
   assetId: _assetId,
-  scheduleDate: DateTime.utc(2026, 2, 28, 15, 59, 59),
+  scheduleDate: scheduleDate ?? DateTime.utc(2026, 2, 28, 15, 59, 59),
   pmCycle: '2026-02',
   periodType: 'Quarter',
   status: status,
