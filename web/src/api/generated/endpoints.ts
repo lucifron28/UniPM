@@ -36,6 +36,7 @@ import type {
   CreateInspectionLocationAttemptDto,
   CreatePreventiveMaintenanceFormDto,
   CreateScheduleDto,
+  DeletePreventiveMaintenanceFormDraftInspectionParams,
   DraftInspectionRowDto,
   DraftInspectionRowResponse,
   GenerateScheduleCyclesDto,
@@ -7088,11 +7089,13 @@ export const useUpdatePreventiveMaintenanceFormDraftInspection = <
 export const deletePreventiveMaintenanceFormDraftInspection = (
   id: string,
   inspectionId: string,
+  params?: DeletePreventiveMaintenanceFormDraftInspectionParams,
   signal?: AbortSignal,
 ) => {
   return customInstance<void>({
     url: `/api/v1/preventive-maintenance-forms/${id}/inspections/${inspectionId}`,
     method: 'DELETE',
+    params,
     signal,
   })
 }
@@ -7104,13 +7107,21 @@ export const getDeletePreventiveMaintenanceFormDraftInspectionMutationOptions =
         ReturnType<typeof deletePreventiveMaintenanceFormDraftInspection>
       >,
       TError,
-      { id: string; inspectionId: string },
+      {
+        id: string
+        inspectionId: string
+        params?: DeletePreventiveMaintenanceFormDraftInspectionParams
+      },
       TContext
     >
   }): UseMutationOptions<
     Awaited<ReturnType<typeof deletePreventiveMaintenanceFormDraftInspection>>,
     TError,
-    { id: string; inspectionId: string },
+    {
+      id: string
+      inspectionId: string
+      params?: DeletePreventiveMaintenanceFormDraftInspectionParams
+    },
     TContext
   > => {
     const mutationKey = ['deletePreventiveMaintenanceFormDraftInspection']
@@ -7126,11 +7137,19 @@ export const getDeletePreventiveMaintenanceFormDraftInspectionMutationOptions =
       Awaited<
         ReturnType<typeof deletePreventiveMaintenanceFormDraftInspection>
       >,
-      { id: string; inspectionId: string }
+      {
+        id: string
+        inspectionId: string
+        params?: DeletePreventiveMaintenanceFormDraftInspectionParams
+      }
     > = (props) => {
-      const { id, inspectionId } = props ?? {}
+      const { id, inspectionId, params } = props ?? {}
 
-      return deletePreventiveMaintenanceFormDraftInspection(id, inspectionId)
+      return deletePreventiveMaintenanceFormDraftInspection(
+        id,
+        inspectionId,
+        params,
+      )
     }
 
     return { mutationFn, ...mutationOptions }
@@ -7157,7 +7176,11 @@ export const useDeletePreventiveMaintenanceFormDraftInspection = <
         ReturnType<typeof deletePreventiveMaintenanceFormDraftInspection>
       >,
       TError,
-      { id: string; inspectionId: string },
+      {
+        id: string
+        inspectionId: string
+        params?: DeletePreventiveMaintenanceFormDraftInspectionParams
+      },
       TContext
     >
   },
@@ -7165,7 +7188,11 @@ export const useDeletePreventiveMaintenanceFormDraftInspection = <
 ): UseMutationResult<
   Awaited<ReturnType<typeof deletePreventiveMaintenanceFormDraftInspection>>,
   TError,
-  { id: string; inspectionId: string },
+  {
+    id: string
+    inspectionId: string
+    params?: DeletePreventiveMaintenanceFormDraftInspectionParams
+  },
   TContext
 > => {
   return useMutation(

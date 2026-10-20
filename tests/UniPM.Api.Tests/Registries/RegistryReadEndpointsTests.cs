@@ -302,6 +302,7 @@ public sealed class RegistryReadEndpointsTests
             builder.ConfigureServices(services =>
             {
                 services.AddTestAuthentication(roles ?? [AuthRoleCatalog.Gsd]);
+                services.RemoveAll<IDbContextOptionsConfiguration<ApplicationDbContext>>();
                 services.RemoveAll<IDbContextFactory<ApplicationDbContext>>();
                 services.RemoveAll<DbContextOptions<ApplicationDbContext>>();
                 services.RemoveAll<IDbContextOptionsConfiguration<ApplicationDbContext>>();

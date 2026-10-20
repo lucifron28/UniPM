@@ -308,6 +308,7 @@ public sealed class AssetReadEndpointsTests
             builder.ConfigureServices(services =>
             {
                 services.AddTestAuthentication(AuthRoleCatalog.Gsd);
+                services.RemoveAll<IDbContextOptionsConfiguration<ApplicationDbContext>>();
                 services.RemoveAll<IDbContextFactory<ApplicationDbContext>>();
                 services.RemoveAll<DbContextOptions<ApplicationDbContext>>();
 

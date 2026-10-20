@@ -812,6 +812,7 @@ public sealed class PreventiveMaintenanceScheduleGenerationTests
                 {
                     services.AddTestAuthentication(role);
                 }
+                services.RemoveAll<IDbContextOptionsConfiguration<ApplicationDbContext>>();
                 services.RemoveAll<IDbContextFactory<ApplicationDbContext>>();
                 services.RemoveAll<DbContextOptions<ApplicationDbContext>>();
                 services.RemoveAll<IDbContextOptionsConfiguration<ApplicationDbContext>>();

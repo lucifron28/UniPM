@@ -61,8 +61,19 @@ authenticated shell. This phase supports creating a one-page form header,
 adding multiple inspection rows, resuming a saved Draft, and editing or
 deleting Draft rows. A worker can review the rows and submit the whole form;
 submission assigns the provisional file number returned by the API and makes
-the form read-only. Every action is sent to the ASP.NET Core API immediately;
-the mobile app does not keep offline drafts or synchronize a local database.
+the form read-only. Online edits are sent to the ASP.NET Core API immediately.
+The offline-inspection feature branch caches assigned schedules, assets, and
+reference data, then stores Draft form and inspection-row changes in encrypted
+per-user secure storage. Changes sync automatically after connectivity returns
+and can be retried from the home screen. Stable client IDs make create retries
+idempotent; stale row updates remain queued as conflicts for review rather than
+overwriting newer server data.
+
+The mobile authentication session remains memory-only, so the same account
+must sign in again after an app restart before queued work can sync. Location
+verification, photo evidence, form submission, and acknowledgement remain
+online-only. A queued or conflicted form cannot be submitted. Sign-out locks the
+in-memory cache and preserves encrypted queued work for that account.
 
 The **Scan asset QR** entry sends the complete scanned UniPM QR value to the
 authenticated backend asset lookup. Backend asset data remains authoritative;
@@ -125,9 +136,10 @@ budget, RMRF, or WMS approval.
 
 The four supplied GSD forms are implemented as the authoritative visible
 category-form structure for the current mobile PM pass. Historical form-version
-preservation, corrective handoff, RMRF processing, and offline workflow remain
-outside this mobile implementation. Offline persistence and synchronization
-architecture remain undecided pending a separate approved decision.
+preservation, corrective handoff, and RMRF processing remain outside this mobile
+implementation. Offline persistence, queued synchronization, and explicit
+conflict recovery are implemented on `feature/offline-inspection-workflow`;
+this branch has not yet been accepted as part of the GSD-validated baseline.
 
 ## Dependencies
 

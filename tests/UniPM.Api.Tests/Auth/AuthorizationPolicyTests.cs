@@ -101,6 +101,7 @@ public sealed class AuthorizationPolicyTests
             builder.ConfigureServices(services =>
             {
                 services.AddTestAuthentication(roles);
+                services.RemoveAll<IDbContextOptionsConfiguration<ApplicationDbContext>>();
                 services.RemoveAll<IDbContextFactory<ApplicationDbContext>>();
                 services.RemoveAll<DbContextOptions<ApplicationDbContext>>();
                 services.RemoveAll<IDbContextOptionsConfiguration<ApplicationDbContext>>();

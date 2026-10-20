@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../auth/session_controller.dart';
@@ -8,6 +10,7 @@ import '../features/auth/login_page.dart';
 import '../features/auth/unsupported_role_page.dart';
 import '../features/maintenance_history/asset_maintenance_history_repository.dart';
 import '../features/preventive_maintenance/preventive_maintenance_repository.dart';
+import '../features/preventive_maintenance/offline_inspection_repository.dart';
 
 class AppRouter extends StatefulWidget {
   const AppRouter({
@@ -16,6 +19,7 @@ class AppRouter extends StatefulWidget {
     required this.navigatorKey,
     this.assetRepository,
     this.preventiveMaintenanceRepository,
+    this.offlineInspectionRepository,
     this.assetMaintenanceHistoryRepository,
     this.configurationError,
   });
@@ -24,6 +28,7 @@ class AppRouter extends StatefulWidget {
   final GlobalKey<NavigatorState> navigatorKey;
   final AssetRepository? assetRepository;
   final PreventiveMaintenanceRepository? preventiveMaintenanceRepository;
+  final OfflineInspectionRepository? offlineInspectionRepository;
   final AssetMaintenanceHistoryRepository? assetMaintenanceHistoryRepository;
   final String? configurationError;
 
@@ -82,13 +87,19 @@ class _AppRouterState extends State<AppRouter> {
           case SessionStatus.signingIn:
             return LoginPage(controller: widget.sessionController);
           case SessionStatus.authenticated:
-            return AuthenticatedShell(
-              controller: widget.sessionController,
-              assetRepository: widget.assetRepository,
-              preventiveMaintenanceRepository:
-                  widget.preventiveMaintenanceRepository,
-              assetMaintenanceHistoryRepository:
-                  widget.assetMaintenanceHistoryRepository,
+            final user = widget.sessionController.user!;
+            return _OfflineSessionScope(
+              repository: widget.offlineInspectionRepository,
+              userId: user.id,
+              child: AuthenticatedShell(
+                controller: widget.sessionController,
+                assetRepository: widget.assetRepository,
+                preventiveMaintenanceRepository:
+                    widget.preventiveMaintenanceRepository,
+                offlineInspectionRepository: widget.offlineInspectionRepository,
+                assetMaintenanceHistoryRepository:
+                    widget.assetMaintenanceHistoryRepository,
+              ),
             );
           case SessionStatus.unsupportedRole:
             return UnsupportedRolePage(controller: widget.sessionController);
@@ -96,4 +107,63 @@ class _AppRouterState extends State<AppRouter> {
       },
     );
   }
+}
+
+class _OfflineSessionScope extends StatefulWidget {
+  const _OfflineSessionScope({
+    required this.repository,
+    required this.userId,
+    required this.child,
+  });
+
+  final OfflineInspectionRepository? repository;
+  final String userId;
+  final Widget child;
+
+  @override
+  State<_OfflineSessionScope> createState() => _OfflineSessionScopeState();
+}
+
+class _OfflineSessionScopeState extends State<_OfflineSessionScope> {
+  @override
+  void initState() {
+    super.initState();
+    _activate();
+  }
+
+  @override
+  void didUpdateWidget(covariant _OfflineSessionScope oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.repository != widget.repository ||
+        oldWidget.userId != widget.userId) {
+      unawaited(_switchScope());
+    }
+  }
+
+  Future<void> _switchScope() async {
+    await widget.repository?.deactivate();
+    await widget.repository?.activate(widget.userId);
+  }
+
+  void _activate() {
+    final repository = widget.repository;
+    if (repository != null) unawaited(repository.activate(widget.userId));
+  }
+
+  Future<void> _deactivateSafely() async {
+    try {
+      await widget.repository?.deactivate();
+    } catch (_) {
+      // The authenticated scope is discarded; the encrypted snapshot remains.
+    }
+  }
+
+  @override
+  void dispose() {
+    unawaited(_deactivateSafely());
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }

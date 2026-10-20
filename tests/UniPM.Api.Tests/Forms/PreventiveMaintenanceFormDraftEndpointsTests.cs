@@ -24,6 +24,127 @@ public sealed class PreventiveMaintenanceFormDraftEndpointsTests
         "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl2lD8AAAAASUVORK5CYII=";
 
     [Fact]
+    public async Task Client_form_id_makes_create_retry_idempotent()
+    {
+        await using var application = new TestApplicationFactory();
+        using var client = application.CreateClient();
+        await application.EnsureAuthenticatedUserAsync();
+        var formId = Guid.NewGuid();
+        var request = new
+        {
+            id = formId,
+            assetCategory = "fire-extinguisher",
+            building = "Main Building",
+            department = "GSD",
+            periodType = "Quarter",
+            quarter = "Q1",
+            year = 2026
+        };
+
+        var first = await client.PostAsJsonAsync("/api/v1/preventive-maintenance-forms/", request);
+        var firstForm = await first.Content.ReadFromJsonAsync<PreventiveMaintenanceFormResponse>();
+        var retry = await client.PostAsJsonAsync("/api/v1/preventive-maintenance-forms/", request);
+        var retryForm = await retry.Content.ReadFromJsonAsync<PreventiveMaintenanceFormResponse>();
+
+        Assert.Equal(HttpStatusCode.Created, first.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, retry.StatusCode);
+        Assert.NotNull(firstForm);
+        Assert.NotNull(retryForm);
+        Assert.Equal(formId, firstForm.Id);
+        Assert.Equal(firstForm.Id, retryForm.Id);
+    }
+
+    [Fact]
+    public async Task Client_inspection_id_prevents_duplicate_row_after_lost_response()
+    {
+        await using var application = new TestApplicationFactory();
+        using var client = application.CreateClient();
+        await application.EnsureAuthenticatedUserAsync();
+        var asset = await CreateAssetAsync(client, "FE-OFFLINE-IDEMPOTENCY-001", "fire-extinguisher");
+        var schedule = await CreateScheduleAsync(client, asset.Id, 2);
+        var form = await CreateFormAsync(client, asset.AssetCategory);
+        var inspectionId = Guid.NewGuid();
+        var request = new
+        {
+            id = inspectionId,
+            scheduleId = schedule.Id,
+            inspectorUserId = TestAuthenticationHandler.UserId,
+            dateInspected = new DateTimeOffset(2026, 1, 15, 8, 0, 0, TimeSpan.FromHours(8)),
+            isOperational = true,
+            remarks = "Stable client row",
+            actionsRecommendations = (string?)null
+        };
+
+        var first = await client.PostAsJsonAsync(
+            $"/api/v1/preventive-maintenance-forms/{form.Id}/inspections",
+            request);
+        var firstRow = await first.Content.ReadFromJsonAsync<DraftInspectionRowResponse>();
+        var retry = await client.PostAsJsonAsync(
+            $"/api/v1/preventive-maintenance-forms/{form.Id}/inspections",
+            request);
+        var retryRow = await retry.Content.ReadFromJsonAsync<DraftInspectionRowResponse>();
+
+        Assert.Equal(HttpStatusCode.Created, first.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, retry.StatusCode);
+        Assert.NotNull(firstRow);
+        Assert.NotNull(retryRow);
+        Assert.Equal(inspectionId, firstRow.Id);
+        Assert.Equal(firstRow.Id, retryRow.Id);
+        await using var scope = application.Services.CreateAsyncScope();
+        var factory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
+        await using var context = await factory.CreateDbContextAsync();
+        Assert.Equal(1, await context.InspectionRecords.CountAsync(row => row.ScheduleId == schedule.Id));
+    }
+
+    [Fact]
+    public async Task Offline_update_retries_are_idempotent_and_stale_edits_conflict()
+    {
+        await using var application = new TestApplicationFactory();
+        using var client = application.CreateClient();
+        await application.EnsureAuthenticatedUserAsync();
+        var asset = await CreateAssetAsync(client, "FE-OFFLINE-CONFLICT-001", "fire-extinguisher");
+        var schedule = await CreateScheduleAsync(client, asset.Id, 2);
+        var form = await CreateFormAsync(client, asset.AssetCategory);
+        var row = await AddInspectionRowAsync(client, form.Id, schedule.Id, "Initial text");
+        var expectedUpdatedAt = row.UpdatedAt;
+        var update = new
+        {
+            expectedUpdatedAt,
+            dateInspected = row.DateInspected,
+            isOperational = true,
+            remarks = "Saved while offline",
+            actionsRecommendations = (string?)null
+        };
+
+        var first = await client.PutAsJsonAsync(
+            $"/api/v1/preventive-maintenance-forms/{form.Id}/inspections/{row.Id}",
+            update);
+        var firstUpdatedRow = await first.Content.ReadFromJsonAsync<DraftInspectionRowResponse>();
+        var retry = await client.PutAsJsonAsync(
+            $"/api/v1/preventive-maintenance-forms/{form.Id}/inspections/{row.Id}",
+            update);
+        var retryRow = await retry.Content.ReadFromJsonAsync<DraftInspectionRowResponse>();
+        var conflicting = await client.PutAsJsonAsync(
+            $"/api/v1/preventive-maintenance-forms/{form.Id}/inspections/{row.Id}",
+            new
+            {
+                expectedUpdatedAt,
+                dateInspected = row.DateInspected,
+                isOperational = false,
+                remarks = "Different stale edit",
+                actionsRecommendations = (string?)null
+            });
+
+        Assert.Equal(HttpStatusCode.OK, first.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, retry.StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, conflicting.StatusCode);
+        Assert.NotNull(firstUpdatedRow);
+        Assert.NotNull(retryRow);
+        Assert.Equal("Saved while offline", retryRow.Remarks);
+        Assert.Equal(firstUpdatedRow.UpdatedAt, retryRow.UpdatedAt);
+    }
+
+    [Fact]
     public async Task Create_draft_form_can_contain_multiple_inspection_rows()
     {
         await using var application = new TestApplicationFactory();
@@ -1189,6 +1310,7 @@ public sealed class PreventiveMaintenanceFormDraftEndpointsTests
             builder.ConfigureServices(services =>
             {
                 services.AddTestAuthentication(roles);
+                services.RemoveAll<IDbContextOptionsConfiguration<ApplicationDbContext>>();
                 services.RemoveAll<IDbContextFactory<ApplicationDbContext>>();
                 services.RemoveAll<DbContextOptions<ApplicationDbContext>>();
                 services.RemoveAll<IDbContextOptionsConfiguration<ApplicationDbContext>>();

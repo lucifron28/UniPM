@@ -50,8 +50,11 @@ Do not change the stack without discussion.
   - Avoid Docker-only assumptions in application code.
 - Web frontend: React + TypeScript + Vite
 - Mobile: Flutter
-  - Offline sync is deferred; its persistence and synchronization architecture
-    remain undecided until a separate approved decision.
+  - The offline-inspection feature branch adds encrypted, per-user Draft and
+    assigned-schedule caching with an ordered retry queue. Authentication stays
+    memory-only; location verification, photo evidence, submission, and
+    acknowledgement remain online-only. The feature is not part of the merged
+    GSD validation baseline until reviewed and accepted.
   - Do not assume constant connectivity in mobile-facing API contracts.
 - Testing: xUnit
 
@@ -277,9 +280,11 @@ Flutter mobile foundation are implemented and merged in the separate,
 partner-owned mobile workstream. The mobile foundation includes memory-only
 authentication, QR-based asset entry, the Draft preventive-maintenance form
 workflow, and whole-form submission. Web acknowledgement and signature capture
-are implemented separately. Offline synchronization is deferred and its
-persistence and synchronization architecture remain undecided; later mobile
-field actions remain outside this workstream.
+are implemented separately. The current offline-inspection feature branch adds
+encrypted per-user Draft persistence and queued synchronization; the session
+remains memory-only and online-only workflow boundaries remain unchanged. Treat
+this as an unevaluated feature branch until its review and acceptance are
+recorded.
 
 ## Current Unblocked Work
 

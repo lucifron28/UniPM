@@ -51,6 +51,9 @@ const scheduleAssetSchema = z
     building: optionalText,
     department: optionalText,
     location: optionalText,
+    status: z.string().trim().min(1).max(32),
+    // Older cached schedules do not include the backend-issued QR value.
+    qrCodeValue: optionalText.optional(),
   })
   .strict()
 

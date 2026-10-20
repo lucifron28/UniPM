@@ -446,6 +446,7 @@ public sealed class ScheduleBatchAssignmentEndpointsTests
             builder.ConfigureServices(services =>
             {
                 services.AddTestAuthentication(role);
+                services.RemoveAll<IDbContextOptionsConfiguration<ApplicationDbContext>>();
                 services.RemoveAll<IDbContextFactory<ApplicationDbContext>>();
                 services.RemoveAll<DbContextOptions<ApplicationDbContext>>();
                 services.RemoveAll<IDbContextOptionsConfiguration<ApplicationDbContext>>();

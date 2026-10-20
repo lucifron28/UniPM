@@ -373,6 +373,7 @@ async function mockApi(page: import('@playwright/test').Page) {
           building: 'Main Building',
           department: 'GSD',
           location: 'Main hallway',
+          status: 'Active',
         },
       }),
     ),

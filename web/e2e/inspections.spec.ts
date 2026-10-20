@@ -53,6 +53,7 @@ const schedule = {
     building: 'Main Building',
     department: 'GSD',
     location: 'Lobby',
+    status: 'Active',
   },
 }
 const inspection = {

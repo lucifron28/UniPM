@@ -51,6 +51,7 @@ const schedule = {
     building: asset.building,
     department: asset.department,
     location: asset.location,
+    status: asset.status,
   },
 }
 const scheduleRegistryItem = {
@@ -67,7 +68,14 @@ const scheduleRegistryItem = {
   completedAt: schedule.completedAt,
   createdAt: schedule.createdAt,
   updatedAt: schedule.updatedAt,
-  asset: schedule.asset,
+  asset: {
+    id: schedule.asset.id,
+    assetCode: schedule.asset.assetCode,
+    assetCategory: schedule.asset.assetCategory,
+    building: schedule.asset.building,
+    department: schedule.asset.department,
+    location: schedule.asset.location,
+  },
 }
 
 async function mockScheduleApi(page: Page, roles = ['GSD']) {

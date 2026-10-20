@@ -6,6 +6,7 @@ import '../../api/api_exception.dart';
 import '../../auth/auth_models.dart';
 import '../../ui/app_colors.dart';
 import '../../ui/widgets/batch_pm_card.dart';
+import '../preventive_maintenance/offline_inspection_repository.dart';
 import '../preventive_maintenance/preventive_maintenance_models.dart';
 import '../preventive_maintenance/preventive_maintenance_repository.dart';
 
@@ -677,6 +678,15 @@ class _HomePageState extends State<HomePage> {
           if (widget.preventiveMaintenanceRepository != null) ...[
             _pendingAcknowledgementsSection(),
           ],
+          if (widget.preventiveMaintenanceRepository
+              case final OfflineInspectionRepository offlineRepository) ...[
+            _OfflineSyncBanner(
+              repository: offlineRepository,
+              onReviewDrafts: () =>
+                  _runChildWorkflow(widget.onOpenPreventiveMaintenance),
+            ),
+            const SizedBox(height: 16),
+          ],
 
           // Asset Identification Hero
           const Text(
@@ -760,6 +770,102 @@ class _HomePageState extends State<HomePage> {
         ],
       ),
     );
+  }
+}
+
+class _OfflineSyncBanner extends StatelessWidget {
+  const _OfflineSyncBanner({
+    required this.repository,
+    required this.onReviewDrafts,
+  });
+
+  final OfflineInspectionRepository repository;
+  final FutureOr<void> Function()? onReviewDrafts;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: repository,
+      builder: (context, _) {
+        final state = repository.syncState;
+        if (state == OfflineSyncState.ready) return const SizedBox.shrink();
+        final (icon, title, detail) = switch (state) {
+          OfflineSyncState.offline => (
+            Icons.cloud_off_outlined,
+            'Offline mode',
+            repository.pendingCount > 0
+                ? '${repository.pendingCount} saved change(s) will sync when connected.'
+                : repository.hasCachedSchedules
+                ? 'Cached schedules and drafts are available on this device.'
+                : 'Connect once to cache assigned schedules before field work.',
+          ),
+          OfflineSyncState.queued => (
+            Icons.cloud_upload_outlined,
+            'Changes waiting to sync',
+            '${repository.pendingCount} saved change(s) are queued on this device.',
+          ),
+          OfflineSyncState.syncing => (
+            Icons.sync,
+            'Syncing saved changes',
+            '${repository.pendingCount} change(s) remaining.',
+          ),
+          OfflineSyncState.attention => (
+            Icons.warning_amber_outlined,
+            'Sync needs review',
+            repository.lastIssue ??
+                'Your local changes are preserved on this device.',
+          ),
+          OfflineSyncState.ready => (Icons.cloud_done_outlined, '', ''),
+        };
+        return Card(
+          color: state == OfflineSyncState.attention
+              ? Theme.of(context).colorScheme.errorContainer
+              : Theme.of(context).colorScheme.surfaceContainerLow,
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(
+              children: [
+                Icon(icon),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(detail),
+                    ],
+                  ),
+                ),
+                if (repository.pendingCount > 0 &&
+                    repository.conflictCount == 0)
+                  TextButton(
+                    key: const Key('offline-sync-retry'),
+                    onPressed: repository.syncState == OfflineSyncState.syncing
+                        ? null
+                        : () => unawaited(repository.syncNow()),
+                    child: const Text('Retry sync'),
+                  ),
+                if (state == OfflineSyncState.attention &&
+                    onReviewDrafts != null)
+                  TextButton(
+                    key: const Key('offline-review-drafts'),
+                    onPressed: _openReviewDrafts,
+                    child: const Text('Review saved drafts'),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _openReviewDrafts() async {
+    await onReviewDrafts?.call();
   }
 }
 

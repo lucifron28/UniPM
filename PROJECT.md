@@ -69,8 +69,10 @@ Older completed RAG entries below describe historical work only.
   - Browser authentication integration is implemented and merged. The Flutter
     mobile foundation, Draft preventive-maintenance form workflow, and
     whole-form submission are implemented and merged in a separate
-    partner-owned workstream; offline synchronization remains deferred and
-    architecture-undecided.
+    partner-owned workstream. Encrypted per-account offline drafts, queued
+    synchronization, and reviewable conflict recovery are implemented on
+    `feature/offline-inspection-workflow`; release and GSD acceptance remain
+    pending.
   - The partner-owned mobile client currently supports authenticated
     GSD/Inspector access, QR-based asset entry, Draft form creation, Draft
     inspection-row add/update/delete operations, and whole-form submission.

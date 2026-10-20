@@ -440,6 +440,7 @@ public sealed class AuthEndpointsTests
                 services.PostConfigure<JwtBearerOptions>(
                     JwtBearerDefaults.AuthenticationScheme,
                     options => options.TokenValidationParameters = runtime.CreateValidationParameters());
+                services.RemoveAll<IDbContextOptionsConfiguration<ApplicationDbContext>>();
                 services.RemoveAll<IDbContextFactory<ApplicationDbContext>>();
                 services.RemoveAll<DbContextOptions<ApplicationDbContext>>();
                 services.RemoveAll<IDbContextOptionsConfiguration<ApplicationDbContext>>();

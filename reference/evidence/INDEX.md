@@ -13,11 +13,16 @@ record's evidence level and tested/source commit.
 
 ## Records
 
+> Offline evidence originally labeled TEST-084 through TEST-086 is assigned TEST-119 through TEST-121 here to avoid collisions with earlier historical records. The test results, timestamps, and tested source commits are unchanged; the original IDs are retained in this crosswalk.
+
 
 > Historical feature-branch records reuse TEST-060 and TEST-061 IDs already present above. Their filenames and source commits distinguish the entries; the original IDs are retained.
 
 | ID | Type | Title | Status | Evidence level | Tested/source commit | Record | Note |
 |---|---|---|---|---|---|---|---|
+| TEST-121 | test-run | Offline inspection cache recovery verification | executed | locally-executed | `9f3cf7d4d8628147e1fdff3cc30742ef9607f49f` | [record](test-runs/TEST-121-offline-inspection-cache-recovery.md) | Flutter analyzer and 168 tests passed, including cache recovery after restart offline; 8 unchanged paths fail full-tree formatting; no device or SQL Server test connection was available. |
+| TEST-120 | test-run | Offline Draft synchronization follow-up verification | executed | ci-executed | `0ade68d4f30e9e006949f8b0155a612511c8f019` | [record](test-runs/TEST-120-offline-draft-sync-follow-up-verification.md) | Exact-head Web CI passed, including 226 unit tests and Playwright 51/52 (1 skipped); Flutter 167/167 and focused backend 36/36 passed at their listed source commits. SQL Server 2019, device, and GSD acceptance remain pending. |
+| TEST-119 | test-run | Offline-first mobile Draft synchronization verification | executed | locally-executed | `75c005da4f09d0b2b1f2b3a031c30bf03225d329` | [record](test-runs/TEST-119-offline-first-draft-inspection-workflow.md) | Focused backend 36/36, OpenAPI generation, Flutter analysis, full Flutter suite 166/166, and Android debug build passed; SQL Server 2019, physical-device, iOS, and deployment checks remain unverified. |
 | TEST-118 | test-run | NLA V3 Phase 6 exact-head backend and evaluation follow-up | executed | locally-executed | `a9331b2b2cdd04cbf2ecf27d3b08c85dbb6639f0` | [record](test-runs/TEST-118-nla-v3-phase6-exact-head-follow-up.md) | .NET 10 Release backend build, full suite, focused V3/V2 regressions and V3 corpus validation passed at the branch head. Two SQL Server 2019 cases remain skipped; all 18 labels are pending, with two diagnostic differences and no score. |
 | TEST-117 | test-run | NLA V3 Phase 6 asset inventory final verification | executed | locally-executed | `fdeb4268f2b915765a3c5504d510f2c5b301508d` | [record](test-runs/TEST-117-nla-v3-phase6-final-verification.md) | .NET 10 Release build and full suite 555/50 skipped; V3 25/2 SQL skips, V2 44/1 SQL skip. Web checks and Playwright 2/2 passed locally; backend CI #365 passed on exact branch head `d1d560a`. Native SQL Server and 18-label review remain open. |
 | TEST-114 | test-run | PM analytics V3 asset inventory verification | executed | locally-executed | `fcd6e6b7b1ab71bdc64e3c4520fcb558b7551920` | [record](test-runs/TEST-114-pm-analytics-v3-asset-inventory.md) | .NET 10 Release suite 553 passed/49 skipped; focused V3 23/1-skip, V2 44/1-skip. Web 247/247, coverage, build, generated API checks, and Playwright 2/2 passed. SQL Server and label review remain open. |

@@ -58,6 +58,7 @@ public sealed class ScheduleQueryEndpointsTests
         Assert.Equal(2026, schedule.Year);
         Assert.NotNull(targetSchedule.Asset);
         Assert.Equal("FE-010", targetSchedule.Asset.AssetCode);
+        Assert.Equal(fireExtinguisher.QrCodeValue, targetSchedule.Asset.QrCodeValue);
     }
 
     [Fact]
@@ -182,6 +183,7 @@ public sealed class ScheduleQueryEndpointsTests
         Assert.Equal(asset.Id, schedule.AssetId);
         Assert.NotNull(schedule.Asset);
         Assert.Equal("WDS-010", schedule.Asset.AssetCode);
+        Assert.Equal(asset.QrCodeValue, schedule.Asset.QrCodeValue);
     }
 
     [Fact]
@@ -752,6 +754,7 @@ public sealed class ScheduleQueryEndpointsTests
                     services.AddTestAuthentication(roles ?? [AuthRoleCatalog.Gsd]);
                 }
 
+                services.RemoveAll<IDbContextOptionsConfiguration<ApplicationDbContext>>();
                 services.RemoveAll<IDbContextFactory<ApplicationDbContext>>();
                 services.RemoveAll<DbContextOptions<ApplicationDbContext>>();
 
@@ -852,7 +855,8 @@ public sealed class ScheduleQueryEndpointsTests
         string AssetCategory,
         string? Building,
         string? Department,
-        string? Location);
+        string? Location,
+        string? QrCodeValue);
 
     private sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider
     {

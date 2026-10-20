@@ -239,6 +239,7 @@ public sealed class InspectionWmsReferralEndpointsTests
                         services.Remove(scheduleWorker);
                     }
                 }
+                services.RemoveAll<IDbContextOptionsConfiguration<ApplicationDbContext>>();
                 services.RemoveAll<IDbContextFactory<ApplicationDbContext>>();
                 services.RemoveAll<DbContextOptions<ApplicationDbContext>>();
                 services.RemoveAll<IDbContextOptionsConfiguration<ApplicationDbContext>>();

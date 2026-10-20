@@ -992,7 +992,7 @@ void main() {
 
     expect(repository.submitCallCount, 1);
     expect(repository.savedPhotos, isEmpty);
-    expect(find.text('No photo evidence recorded.'), findsOneWidget);
+    expect(find.text('No photo evidence recorded.'), findsNWidgets(2));
   });
 
   testWidgets('submission confirmation can be cancelled without an API write', (
