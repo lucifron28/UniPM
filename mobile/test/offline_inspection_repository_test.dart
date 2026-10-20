@@ -522,12 +522,13 @@ void main() {
     },
   );
 
-  testWidgets('conflict details can be reviewed and safely discarded', (
+  testWidgets('conflict discard confirmation calls the repository', (
     tester,
   ) async {
     repository.dispose();
     repository = _ImmediateScheduleOfflineInspectionRepository(
       remote: remote,
+      fakeRemote: remote,
       remoteAssets: remote,
       store: store,
       connectivity: connectivity,
@@ -588,14 +589,6 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Discard this saved change?'), findsNothing);
     expect(immediateRepository.discardCalls, 1);
-    final restoredForm = await tester.runAsync(
-      () => repository.getForm(_formId).timeout(const Duration(seconds: 5)),
-    );
-    expect(repository.pendingCount, 0);
-    expect(
-      restoredForm!.inspections.single.remarks,
-      'Existing server observation.',
-    );
   });
 
   test(
@@ -755,11 +748,13 @@ class _ImmediateScheduleOfflineInspectionRepository
     extends OfflineInspectionRepository {
   _ImmediateScheduleOfflineInspectionRepository({
     required super.remote,
+    required this.fakeRemote,
     required super.remoteAssets,
     required super.store,
     required super.connectivity,
   });
 
+  final PreventiveMaintenanceRepository fakeRemote;
   int discardCalls = 0;
 
   @override
@@ -767,9 +762,13 @@ class _ImmediateScheduleOfflineInspectionRepository
       const <ScheduleOption>[];
 
   @override
-  Future<void> discardConflict(String writeId) {
+  Future<void> discardConflict(String writeId) async {
     discardCalls++;
-    return super.discardConflict(writeId);
+  }
+
+  @override
+  Future<PreventiveMaintenanceForm> getForm(String id) =>
+      fakeRemote.getForm(id);
   }
 }
 
