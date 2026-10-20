@@ -1001,7 +1001,8 @@ class OfflineInspectionRepository extends ChangeNotifier
             index++;
           } else if (error.statusCode == 401) {
             _reauthenticationRequired = true;
-            _lastIssue = 'Your session expired. Sign in again to sync saved changes.';
+            _lastIssue =
+                'Your session expired. Sign in again to sync saved changes.';
             break;
           } else if (_isRetryableSyncFailure(error)) {
             _lastIssue = error.statusCode == null
