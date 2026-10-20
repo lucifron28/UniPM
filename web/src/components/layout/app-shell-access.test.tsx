@@ -365,6 +365,7 @@ describe('app shell role access and layout', () => {
         assetCategory: 'fire-extinguisher',
         pmCycle,
         scheduleCount,
+        unfinishedScheduleCount: scheduleCount,
         completedCount: 0,
         ongoingCount: 0,
         overdueCount: 0,
@@ -472,14 +473,6 @@ describe('app shell role access and layout', () => {
 
     renderAppRoute('/app/schedules')
 
-    expect(
-      await screen.findByText(/2 batches · 5 schedules in view/),
-    ).toBeVisible()
-    fireEvent.click(
-      screen.getByRole('checkbox', {
-        name: 'Only show batches needing a Supervisor',
-      }),
-    )
     expect(
       await screen.findByText(/1 batch · 2 schedules in view/),
     ).toBeVisible()
