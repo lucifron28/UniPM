@@ -16,6 +16,7 @@ class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  bool _isPasswordObscured = true;
 
   @override
   void dispose() {
@@ -90,8 +91,28 @@ class _LoginPageState extends State<LoginPage> {
                   TextFormField(
                     controller: _passwordController,
                     enabled: !isBusy,
-                    obscureText: true,
-                    decoration: const InputDecoration(labelText: 'Password'),
+                    obscureText: _isPasswordObscured,
+                    decoration: InputDecoration(
+                      labelText: 'Password',
+                      suffixIcon: IconButton(
+                        tooltip: _isPasswordObscured
+                            ? 'Show password'
+                            : 'Hide password',
+                        onPressed: isBusy
+                            ? null
+                            : () {
+                                setState(() {
+                                  _isPasswordObscured =
+                                      !_isPasswordObscured;
+                                });
+                              },
+                        icon: Icon(
+                          _isPasswordObscured
+                              ? Icons.visibility
+                              : Icons.visibility_off,
+                        ),
+                      ),
+                    ),
                     validator: (value) => value == null || value.isEmpty
                         ? 'Enter your password.'
                         : null,
