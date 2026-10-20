@@ -899,7 +899,9 @@ public static class SchedulesEndpoints
                             schedule.Asset.AssetCategory,
                             schedule.Asset.Building,
                             schedule.Asset.Department,
-                            schedule.Asset.Location)),
+                            schedule.Asset.Location,
+                            schedule.Asset.Status,
+                            schedule.Asset.QrCodeValue)),
                     context.InspectionRecords.Any(inspection => inspection.ScheduleId == schedule.Id)))
                 .ToListAsync(cancellationToken);
 
