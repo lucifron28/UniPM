@@ -145,6 +145,8 @@ builder.Services.AddSingleton<SyntheticMaintenanceSeedOptions>();
 builder.Services.AddSingleton<SyntheticMaintenanceDatasetValidator>();
 builder.Services.AddSingleton<SyntheticMaintenanceDatasetLoader>();
 builder.Services.AddScoped<SyntheticMaintenanceSeeder>();
+builder.Services.AddScoped<GsdValidationUserSeeder>();
+builder.Services.AddScoped<GsdValidationDatasetSeeder>();
 builder.Services.AddScoped<DevelopmentDemoSeeder>();
 builder.Services.AddScoped<ReferenceDocumentRegistrationService>();
 builder.Services.AddScoped<SyntheticReferenceDocumentSeeder>();
@@ -227,7 +229,9 @@ if (maintenanceCommand != SyntheticMaintenanceCommand.None)
             or SyntheticMaintenanceCommand.SeedDemo
             or SyntheticMaintenanceCommand.ResetDemo
             or SyntheticMaintenanceCommand.SeedReferenceDocuments
-            or SyntheticMaintenanceCommand.ResetReferenceDocuments)
+            or SyntheticMaintenanceCommand.ResetReferenceDocuments
+            or SyntheticMaintenanceCommand.SeedGsdValidationUsers
+            or SyntheticMaintenanceCommand.SeedGsdValidation)
         && !app.Environment.IsDevelopment())
     {
         await Console.Error.WriteLineAsync("Development seed commands are available only in Development.");
@@ -264,6 +268,20 @@ if (maintenanceCommand != SyntheticMaintenanceCommand.None)
             var result = await seeder.SeedAsync();
             await Console.Out.WriteLineAsync(
                 $"Development users ready ({result.RolesCreated} roles created, {result.UsersCreated} users created, {result.RoleAssignmentsRepaired} role assignments repaired, {result.UsersReactivated} users reactivated).");
+        }
+        else if (maintenanceCommand == SyntheticMaintenanceCommand.SeedGsdValidationUsers)
+        {
+            var seeder = scope.ServiceProvider.GetRequiredService<GsdValidationUserSeeder>();
+            var result = await seeder.SeedAsync();
+            await Console.Out.WriteLineAsync(
+                $"GSD validation accounts initialized ({result.RolesCreated} roles created, {result.UsersCreated} users created).");
+        }
+        else if (maintenanceCommand == SyntheticMaintenanceCommand.SeedGsdValidation)
+        {
+            var seeder = scope.ServiceProvider.GetRequiredService<GsdValidationDatasetSeeder>();
+            var result = await seeder.SeedAsync();
+            await Console.Out.WriteLineAsync(
+                $"GSD validation dataset loaded ({result.Assets} assets, {result.Schedules} schedules, {result.Inspections} inspections, {result.Forms} forms, {result.Acknowledgements} acknowledgements, {result.WmsReferrals} WMS referrals).");
         }
         else if (maintenanceCommand is SyntheticMaintenanceCommand.SeedDemo
                  or SyntheticMaintenanceCommand.ResetDemo)

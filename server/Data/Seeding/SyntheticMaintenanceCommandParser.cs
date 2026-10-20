@@ -12,6 +12,8 @@ internal enum SyntheticMaintenanceCommand
     ResetDemo,
     SeedReferenceDocuments,
     ResetReferenceDocuments,
+    SeedGsdValidationUsers,
+    SeedGsdValidation,
     Ambiguous
 }
 
@@ -65,6 +67,16 @@ internal static class SyntheticMaintenanceCommandParser
         if (arguments.Contains("--reset-reference-documents"))
         {
             requestedCommands.Add(SyntheticMaintenanceCommand.ResetReferenceDocuments);
+        }
+
+        if (arguments.Contains("--seed-gsd-validation-users"))
+        {
+            requestedCommands.Add(SyntheticMaintenanceCommand.SeedGsdValidationUsers);
+        }
+
+        if (arguments.Contains("--seed-gsd-validation"))
+        {
+            requestedCommands.Add(SyntheticMaintenanceCommand.SeedGsdValidation);
         }
 
         return requestedCommands.Count switch
