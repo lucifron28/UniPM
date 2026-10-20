@@ -532,6 +532,8 @@ void main() {
       store: store,
       connectivity: connectivity,
     );
+    final immediateRepository =
+        repository as _ImmediateScheduleOfflineInspectionRepository;
     await prepareConflict(tester);
     expect(repository.hasConflictFor(_formId), isTrue);
     expect(repository.pendingCountFor(_formId), 1);
@@ -584,6 +586,8 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     await tester.pumpAndSettle();
+    expect(find.text('Discard this saved change?'), findsNothing);
+    expect(immediateRepository.discardCalls, 1);
     final restoredForm = await tester.runAsync(
       () => repository.getForm(_formId).timeout(const Duration(seconds: 5)),
     );
@@ -756,9 +760,17 @@ class _ImmediateScheduleOfflineInspectionRepository
     required super.connectivity,
   });
 
+  int discardCalls = 0;
+
   @override
   Future<List<ScheduleOption>> listSchedules({String? assetId}) async =>
       const <ScheduleOption>[];
+
+  @override
+  Future<void> discardConflict(String writeId) {
+    discardCalls++;
+    return super.discardConflict(writeId);
+  }
 }
 
 class _FakeConnectivity implements OfflineConnectivityMonitor {
