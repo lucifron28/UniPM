@@ -222,7 +222,8 @@ body {
 
 @layer utilities {
   .app-workspace table thead th {
-    color: var(--primary);
+    background-color: var(--primary);
+    color: #fff;
   }
 }
 
