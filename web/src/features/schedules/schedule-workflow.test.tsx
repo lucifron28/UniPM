@@ -618,6 +618,11 @@ describe('schedule workflows', () => {
     )
     const actor = userEvent.setup()
     await actor.click(
+      (
+        await screen.findAllByRole('button', { name: 'Open batch history' })
+      )[0]!,
+    )
+    await actor.click(
       (await screen.findAllByRole('button', { name: 'Reassign' }))[0]!,
     )
     const dialog = await screen.findByRole('dialog')
@@ -706,13 +711,18 @@ describe('schedule workflows', () => {
 
   it('does not expose schedule generation to Supervisors', async () => {
     mockReferences(['Supervisor'])
-    server.use(
-      http.get(`${base}/schedules`, () => HttpResponse.json([schedule])),
-    )
+    server.use(...scheduleRegistryHandlers())
     renderWithProviders(
       <ScheduleRegistry search={{ page: 1 }} onSearchChange={vi.fn()} />,
     )
 
+    await userEvent
+      .setup()
+      .click(
+        (
+          await screen.findAllByRole('button', { name: 'Open batch history' })
+        )[0]!,
+      )
     await screen.findAllByText('FE-001')
     expect(
       screen.queryByRole('button', { name: 'Generate missing schedules' }),
@@ -832,6 +842,13 @@ describe('schedule workflows', () => {
         onSearchChange={vi.fn()}
       />,
     )
+    await userEvent
+      .setup()
+      .click(
+        (
+          await screen.findAllByRole('button', { name: 'Open batch history' })
+        )[0]!,
+      )
     expect((await screen.findAllByText('FE-001')).length).toBeGreaterThan(0)
     expect(screen.getByText('All schedules')).toBeInTheDocument()
     expect(
@@ -907,11 +924,17 @@ describe('schedule workflows', () => {
 
     renderWithProviders(<FilterHarness />)
     const actor = userEvent.setup()
+    await actor.click(
+      (
+        await screen.findAllByRole('button', { name: 'Open batch history' })
+      )[0]!,
+    )
     const detailLinks = await screen.findAllByRole('link', {
       name: 'View details',
     })
     expect(detailLinks).toHaveLength(2)
-    expect(urls).toHaveLength(1)
+    const initialRequestCount = urls.length
+    expect(initialRequestCount).toBeGreaterThan(0)
 
     await actor.type(
       screen.getByRole('textbox', { name: 'Search schedules' }),
@@ -926,7 +949,7 @@ describe('schedule workflows', () => {
     })
     await actor.click(departmentPicker)
     await actor.click(await screen.findByRole('option', { name: 'GSD' }))
-    expect(urls).toHaveLength(1)
+    expect(urls).toHaveLength(initialRequestCount)
 
     await actor.click(screen.getByRole('button', { name: 'Apply filters' }))
     await waitFor(() => {

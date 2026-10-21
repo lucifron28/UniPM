@@ -1,10 +1,12 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using System.Collections.Concurrent;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.DependencyInjection;
@@ -105,6 +107,173 @@ public sealed class ScheduleBatchAssignmentEndpointsTests
     }
 
     [Fact]
+    public async Task Tracking_search_and_combined_filters_keep_complete_batches_and_supervisor_scope()
+    {
+        var databaseName = $"unipm-tracking-query-{Guid.NewGuid():N}";
+        await using var gsdApplication = new TestApplicationFactory(AuthRoleCatalog.Gsd, databaseName);
+        await using var supervisorApplication = new TestApplicationFactory(AuthRoleCatalog.Supervisor, databaseName);
+        using var gsdClient = gsdApplication.CreateClient();
+        using var supervisorClient = supervisorApplication.CreateClient();
+        var supervisorId = await supervisorApplication.SeedAuthenticatedUserAsync(AuthRoleCatalog.Supervisor);
+        var otherSupervisorId = await gsdApplication.SeedUserAsync("other-supervisor", AuthRoleCatalog.Supervisor);
+        var inspectorId = await gsdApplication.SeedUserAsync("tracking-inspector", AuthRoleCatalog.Inspector);
+
+        var ongoing = await CreateScheduleAsync(
+            gsdClient,
+            "CCMS",
+            "Main Building",
+            new DateTimeOffset(2026, 8, 1, 8, 0, 0, TimeSpan.FromHours(8)));
+        var overdue = await CreateScheduleAsync(
+            gsdClient,
+            "CCMS",
+            "Annex",
+            new DateTimeOffset(2026, 8, 9, 8, 0, 0, TimeSpan.FromHours(8)));
+        var otherOwner = await CreateScheduleAsync(
+            gsdClient,
+            "Library",
+            "Library Building",
+            new DateTimeOffset(2026, 8, 1, 8, 0, 0, TimeSpan.FromHours(8)));
+        await gsdApplication.SetAssignmentsAsync([ongoing.Id, overdue.Id], inspectorId, supervisorId);
+        await gsdApplication.SetAssignmentsAsync([otherOwner.Id], inspectorId, otherSupervisorId);
+        await gsdApplication.SetScheduleStatusAsync(ongoing.Id, ScheduleStatusCatalog.Ongoing);
+        await gsdApplication.SetScheduleStatusAsync(overdue.Id, ScheduleStatusCatalog.Due);
+
+        var matchingAssetCode = await gsdApplication.GetAssetCodeAsync(overdue.AssetId);
+        var search = Uri.EscapeDataString(matchingAssetCode);
+        var response = await gsdClient.GetAsync(
+            $"/api/v1/schedules/assignment-batches?year=2026&tracking=true&page=1&pageSize=10&search={search}&progress=in-progress&overdueOnly=true&inspectorUserId={inspectorId}");
+
+        response.EnsureSuccessStatusCode();
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var root = document.RootElement;
+        Assert.Equal(1, root.GetProperty("totalBatchCount").GetInt32());
+        var batch = Assert.Single(root.GetProperty("batches").EnumerateArray());
+        Assert.Equal(2, batch.GetProperty("scheduleCount").GetInt32());
+        Assert.Equal(2, batch.GetProperty("activeScheduleCount").GetInt32());
+        Assert.Equal(1, batch.GetProperty("ongoingCount").GetInt32());
+        Assert.Equal(1, batch.GetProperty("overdueCount").GetInt32());
+        Assert.Equal(1, root.GetProperty("summary").GetProperty("inProgressBatchCount").GetInt32());
+        Assert.Equal(1, root.GetProperty("summary").GetProperty("overdueScheduleCount").GetInt32());
+
+        var supervisorResponse = await supervisorClient.GetAsync(
+            $"/api/v1/schedules/assignment-batches?year=2026&tracking=true&page=1&pageSize=10&search={Uri.EscapeDataString(await gsdApplication.GetAssetCodeAsync(otherOwner.AssetId))}");
+        supervisorResponse.EnsureSuccessStatusCode();
+        using var supervisorDocument = JsonDocument.Parse(await supervisorResponse.Content.ReadAsStringAsync());
+        Assert.Equal(0, supervisorDocument.RootElement.GetProperty("totalBatchCount").GetInt32());
+    }
+
+    [Fact]
+    public async Task Assigned_inspector_can_start_a_schedule_and_repeat_the_request_safely()
+    {
+        var databaseName = $"unipm-start-inspection-{Guid.NewGuid():N}";
+        await using var gsdApplication = new TestApplicationFactory(AuthRoleCatalog.Gsd, databaseName);
+        await using var inspectorApplication = new TestApplicationFactory(AuthRoleCatalog.Inspector, databaseName);
+        using var gsdClient = gsdApplication.CreateClient();
+        using var inspectorClient = inspectorApplication.CreateClient();
+        var inspectorId = await inspectorApplication.SeedAuthenticatedUserAsync(AuthRoleCatalog.Inspector);
+
+        var schedule = await CreateScheduleAsync(
+            gsdClient,
+            "CCMS",
+            "Main Building",
+            new DateTimeOffset(2026, 8, 1, 8, 0, 0, TimeSpan.FromHours(8)));
+        var unassignedSchedule = await CreateScheduleAsync(
+            gsdClient,
+            "CCMS",
+            "Annex",
+            new DateTimeOffset(2026, 8, 9, 8, 0, 0, TimeSpan.FromHours(8)));
+        var unassignedScheduleStatus =
+            await gsdApplication.GetScheduleStatusAsync(unassignedSchedule.Id);
+        await gsdApplication.SetAssignmentsAsync([schedule.Id], inspectorId, null);
+
+        var response = await inspectorClient.PostAsync(
+            $"/api/v1/schedules/{schedule.Id}/start-inspection",
+            content: null);
+
+        response.EnsureSuccessStatusCode();
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal("Ongoing", document.RootElement.GetProperty("status").GetString());
+        Assert.Equal(ScheduleStatusCatalog.Ongoing, await gsdApplication.GetScheduleStatusAsync(schedule.Id));
+
+        var repeatedResponse = await inspectorClient.PostAsync(
+            $"/api/v1/schedules/{schedule.Id}/start-inspection",
+            content: null);
+
+        Assert.Equal(HttpStatusCode.OK, repeatedResponse.StatusCode);
+        Assert.Equal(ScheduleStatusCatalog.Ongoing, await gsdApplication.GetScheduleStatusAsync(schedule.Id));
+
+        var forbiddenResponse = await inspectorClient.PostAsync(
+            $"/api/v1/schedules/{unassignedSchedule.Id}/start-inspection",
+            content: null);
+
+        Assert.Equal(HttpStatusCode.Forbidden, forbiddenResponse.StatusCode);
+        Assert.Equal(
+            unassignedScheduleStatus,
+            await gsdApplication.GetScheduleStatusAsync(unassignedSchedule.Id));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Start_inspection_uses_schedule_state_changed_after_the_initial_read(bool completeDuringRead)
+    {
+        var databaseName = $"unipm-start-inspection-race-{Guid.NewGuid():N}";
+        var mutation = new ScheduleMutationOnMaterialization();
+        await using var gsdApplication = new TestApplicationFactory(AuthRoleCatalog.Gsd, databaseName, mutation);
+        using var gsdClient = gsdApplication.CreateClient();
+        var schedule = await CreateScheduleAsync(
+            gsdClient,
+            "CCMS",
+            "Main Building",
+            new DateTimeOffset(2026, 8, 1, 8, 0, 0, TimeSpan.FromHours(8)));
+        var originalStatus = await gsdApplication.GetScheduleStatusAsync(schedule.Id);
+        var reassignedInspectorId = completeDuringRead
+            ? TestAuthenticationHandler.UserId
+            : await gsdApplication.SeedUserAsync("replacement-inspector", AuthRoleCatalog.Inspector);
+        mutation.Configure(
+            schedule.Id,
+            current =>
+            {
+                if (completeDuringRead)
+                {
+                    current.Status = ScheduleStatusCatalog.Completed;
+                    current.CompletedAt = DateTimeOffset.UtcNow;
+                }
+                else
+                {
+                    current.AssignedToUserId = reassignedInspectorId;
+                }
+            },
+            gsdApplication.CreateDbContext);
+        await using var inspectorApplication = new TestApplicationFactory(
+            AuthRoleCatalog.Inspector,
+            databaseName,
+            mutation);
+        await inspectorApplication.SeedAuthenticatedUserAsync(AuthRoleCatalog.Inspector);
+        var inspectorId = TestAuthenticationHandler.UserId;
+        await gsdApplication.SetAssignmentsAsync([schedule.Id], inspectorId, null);
+        using var inspectorClient = inspectorApplication.CreateClient();
+        mutation.Arm();
+
+        var response = await inspectorClient.PostAsync(
+            $"/api/v1/schedules/{schedule.Id}/start-inspection",
+            content: null);
+
+        Assert.True(mutation.WasTriggered);
+        Assert.Equal(
+            completeDuringRead ? HttpStatusCode.Conflict : HttpStatusCode.Forbidden,
+            response.StatusCode);
+        Assert.Equal(
+            completeDuringRead ? ScheduleStatusCatalog.Completed : originalStatus,
+            await gsdApplication.GetScheduleStatusAsync(schedule.Id));
+        if (!completeDuringRead)
+        {
+            var assignment = (await gsdApplication.GetAssignmentsAsync())[schedule.Id];
+            Assert.Equal(reassignedInspectorId, assignment.WorkerId);
+        }
+    }
+
+    [Fact]
     public async Task Gsd_reassigns_supervisor_for_matching_batch_and_preserves_existing_inspector()
     {
         await using var application = new TestApplicationFactory(AuthRoleCatalog.Gsd);
@@ -140,7 +309,9 @@ public sealed class ScheduleBatchAssignmentEndpointsTests
         Assert.Equal("2026-08", assignedBatch.PmCycle);
         Assert.Equal(oldWorkerId, assignedBatch.WorkerUserId);
         Assert.Equal(supervisorId, assignedBatch.SupervisorUserId);
-        Assert.Equivalent(new[] { second.Id, third.Id }, assignedBatch.ScheduleIds);
+        Assert.Equal(
+            new[] { second.Id, third.Id }.Order().ToArray(),
+            assignedBatch.ScheduleIds.Order().ToArray());
 
         var stored = await application.GetAssignmentsAsync();
         Assert.Equal(oldWorkerId, stored[first.Id].WorkerId);
@@ -164,7 +335,9 @@ public sealed class ScheduleBatchAssignmentEndpointsTests
             Assert.Equal(TestAuthenticationHandler.UserId, audit.ChangedByUserId);
             Assert.Equal("Previous Supervisor is unavailable", audit.Reason);
         });
-        Assert.Equal(new[] { second.Id, third.Id }, audits.Select(audit => audit.ScheduleId).Order().ToArray());
+        Assert.Equal(
+            new[] { second.Id, third.Id }.Order().ToArray(),
+            audits.Select(audit => audit.ScheduleId).Order().ToArray());
         Assert.Equal(oldWorkerId, await application.GetInspectionInspectorAsync(first.Id));
     }
 
@@ -523,10 +696,22 @@ public sealed class ScheduleBatchAssignmentEndpointsTests
         return schedule;
     }
 
-    private sealed class TestApplicationFactory(string role, string? sharedDatabaseName = null) : WebApplicationFactory<Program>
+    private sealed class TestApplicationFactory : WebApplicationFactory<Program>
     {
         private static readonly ConcurrentDictionary<string, InMemoryDatabaseRoot> DatabaseRoots = new();
-        private readonly string databaseName = sharedDatabaseName ?? $"unipm-assignment-{Guid.NewGuid():N}";
+        private readonly string databaseName;
+        private readonly string role;
+        private readonly ScheduleMutationOnMaterialization? scheduleMutation;
+
+        public TestApplicationFactory(
+            string role,
+            string? sharedDatabaseName = null,
+            ScheduleMutationOnMaterialization? scheduleMutation = null)
+        {
+            this.role = role;
+            this.scheduleMutation = scheduleMutation;
+            databaseName = sharedDatabaseName ?? $"unipm-assignment-{Guid.NewGuid():N}";
+        }
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
@@ -538,9 +723,15 @@ public sealed class ScheduleBatchAssignmentEndpointsTests
                 services.RemoveAll<DbContextOptions<ApplicationDbContext>>();
                 services.RemoveAll<IDbContextOptionsConfiguration<ApplicationDbContext>>();
                 services.AddDbContextFactory<ApplicationDbContext>(options =>
+                {
                     options.UseInMemoryDatabase(
                         databaseName,
-                        DatabaseRoots.GetOrAdd(databaseName, _ => new InMemoryDatabaseRoot())));
+                        DatabaseRoots.GetOrAdd(databaseName, _ => new InMemoryDatabaseRoot()));
+                    if (scheduleMutation is not null)
+                    {
+                        options.AddInterceptors(scheduleMutation);
+                    }
+                });
                 services.RemoveAll<TimeProvider>();
                 services.AddSingleton<TimeProvider>(new FixedTimeProvider(
                     new DateTimeOffset(2026, 10, 9, 8, 0, 0, TimeSpan.FromHours(8))));
@@ -555,6 +746,12 @@ public sealed class ScheduleBatchAssignmentEndpointsTests
         public Task<Guid> SeedAuthenticatedUserAsync(string role)
         {
             return SeedUserAsync(TestAuthenticationHandler.UserId, "authenticated-supervisor", role);
+        }
+
+        public ApplicationDbContext CreateDbContext()
+        {
+            var factory = Services.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
+            return factory.CreateDbContext();
         }
 
         private async Task<Guid> SeedUserAsync(Guid id, string suffix, string role)
@@ -650,6 +847,17 @@ public sealed class ScheduleBatchAssignmentEndpointsTests
                 .SingleAsync();
         }
 
+        public async Task<string> GetAssetCodeAsync(Guid assetId)
+        {
+            await using var scope = Services.CreateAsyncScope();
+            var factory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
+            await using var context = await factory.CreateDbContextAsync();
+            return await context.Assets
+                .Where(asset => asset.Id == assetId)
+                .Select(asset => asset.AssetCode)
+                .SingleAsync();
+        }
+
         public async Task<Dictionary<Guid, ScheduleAssignment>> GetAssignmentsAsync()
         {
             await using var scope = Services.CreateAsyncScope();
@@ -680,6 +888,45 @@ public sealed class ScheduleBatchAssignmentEndpointsTests
                 .Where(record => record.ScheduleId == scheduleId)
                 .Select(record => record.InspectorUserId)
                 .SingleAsync();
+        }
+    }
+
+    private sealed class ScheduleMutationOnMaterialization : IMaterializationInterceptor
+    {
+        private Guid scheduleId;
+        private Action<PreventiveMaintenanceSchedule>? mutation;
+        private Func<ApplicationDbContext>? contextFactory;
+        private int armed;
+
+        internal bool WasTriggered { get; private set; }
+
+        internal void Configure(
+            Guid targetScheduleId,
+            Action<PreventiveMaintenanceSchedule> update,
+            Func<ApplicationDbContext> createContext)
+        {
+            scheduleId = targetScheduleId;
+            mutation = update;
+            contextFactory = createContext;
+        }
+
+        internal void Arm() => Interlocked.Exchange(ref armed, 1);
+
+        public object InitializedInstance(MaterializationInterceptionData materializationData, object entity)
+        {
+            if (entity is not PreventiveMaintenanceSchedule schedule
+                || schedule.Id != scheduleId
+                || Interlocked.Exchange(ref armed, 0) != 1)
+            {
+                return entity;
+            }
+
+            using var context = contextFactory!();
+            var current = context.PreventiveMaintenanceSchedules.Single(candidate => candidate.Id == scheduleId);
+            mutation!(current);
+            context.SaveChanges();
+            WasTriggered = true;
+            return entity;
         }
     }
 

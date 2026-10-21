@@ -4,4 +4,5 @@ internal static class AuthClaimNames
 {
     public const string DisplayName = "display_name";
     public const string Role = "role";
+    public const string SecurityStampHash = "unipm_security_stamp";
 }

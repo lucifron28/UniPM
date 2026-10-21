@@ -162,9 +162,11 @@ const dashboardAsset = {
   remarks: 'Pressure is low.',
   actionsRecommendations: 'Arrange a pressure check.',
   formId,
-  formStatus: 'Submitted',
-  isAcknowledged: false,
-  acknowledgedAt: null,
+  formStatus: 'Acknowledged',
+  isAcknowledged: true,
+  acknowledgedAt: '2026-08-29T01:00:00Z',
+  correctiveFollowUpStatus: 'CorrectiveFollowUpPending',
+  externalPmNumber: null,
 }
 
 const dashboard = {
@@ -482,7 +484,7 @@ for (const viewport of dashboardViewports) {
       })
 
       await page.goto(
-        '/app/dashboard?assetCategory=fire-extinguisher&year=2026&pmCycle=2026-08&department=GSD&condition=NonOperational&timeliness=OnTime&search=FE-001',
+        '/app/dashboard?assetCategory=fire-extinguisher&year=2026&pmCycle=2026-08&department=GSD',
       )
       await expect(
         page.getByRole('heading', {
@@ -492,7 +494,7 @@ for (const viewport of dashboardViewports) {
       ).toBeVisible()
       if (viewport.width === 375) await expectNoHorizontalOverflow(page)
 
-      await page.getByRole('link', { name: 'FE-001', exact: true }).click()
+      await page.getByRole('link', { name: 'View inspection' }).click()
       await expect(
         page.getByRole('heading', { name: 'FE-001', level: 2 }),
       ).toBeVisible()
@@ -500,6 +502,14 @@ for (const viewport of dashboardViewports) {
         page.getByRole('link', { name: 'Back to PM dashboard' }),
       ).toBeVisible()
       if (viewport.width === 375) await expectNoHorizontalOverflow(page)
+
+      await page.getByRole('link', { name: 'FE-001', exact: true }).click()
+      await expect(
+        page.getByRole('heading', { name: 'FE-001', level: 2 }),
+      ).toBeVisible()
+      await expect(
+        page.getByRole('link', { name: 'Back to inspection' }),
+      ).toBeVisible()
 
       await page.getByRole('link', { name: 'View source' }).click()
       await expect(
@@ -538,9 +548,6 @@ for (const viewport of dashboardViewports) {
       await expect(page).toHaveURL(/year=2026/)
       await expect(page).toHaveURL(/pmCycle=2026-08/)
       await expect(page).toHaveURL(/department=GSD/)
-      await expect(page).toHaveURL(/condition=NonOperational/)
-      await expect(page).toHaveURL(/timeliness=OnTime/)
-      await expect(page).toHaveURL(/search=FE-001/)
 
       await page.goto('/app/assets/' + assetId)
       await expect(

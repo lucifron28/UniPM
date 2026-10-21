@@ -24,6 +24,83 @@ public sealed class PreventiveMaintenanceFormDraftEndpointsTests
         "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl2lD8AAAAASUVORK5CYII=";
 
     [Fact]
+    public async Task Admin_can_create_a_valid_draft_inspection_row()
+    {
+        await using var application = new TestApplicationFactory(AuthRoleCatalog.Admin);
+        using var client = application.CreateClient();
+        await application.EnsureAuthenticatedUserAsync();
+        var asset = await CreateAssetAsync(client, "FE-ADMIN-MANAGE-001", "fire-extinguisher");
+        var schedule = await CreateScheduleAsync(client, asset.Id, 2);
+        var form = await CreateFormAsync(client, asset.AssetCategory);
+
+        var response = await client.PostAsJsonAsync(
+            $"/api/v1/preventive-maintenance-forms/{form.Id}/inspections",
+            DraftInspectionRequest(schedule.Id, "Admin managed validation row"));
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        await using var scope = application.Services.CreateAsyncScope();
+        var factory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
+        await using var context = await factory.CreateDbContextAsync();
+        var savedSchedule = await context.PreventiveMaintenanceSchedules.SingleAsync(candidate => candidate.Id == schedule.Id);
+        Assert.Equal(ScheduleStatusCatalog.Completed, savedSchedule.Status);
+        Assert.Equal(form.Id, await context.InspectionRecords
+            .Where(candidate => candidate.ScheduleId == schedule.Id)
+            .Select(candidate => candidate.PreventiveMaintenanceFormId)
+            .SingleAsync());
+    }
+
+    [Fact]
+    public async Task Inspector_cannot_add_a_draft_row_to_an_unassigned_schedule()
+    {
+        await using var application = new TestApplicationFactory(AuthRoleCatalog.Inspector);
+        using var client = application.CreateClient();
+        await application.EnsureAuthenticatedUserAsync();
+        Guid scheduleId;
+        await using (var scope = application.Services.CreateAsyncScope())
+        {
+            var factory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
+            await using var context = await factory.CreateDbContextAsync();
+            var asset = new Asset
+            {
+                Id = Guid.NewGuid(),
+                AssetCode = $"FE-UNASSIGNED-{Guid.NewGuid():N}"[..24],
+                AssetCategory = "fire-extinguisher",
+                Building = "Main Building",
+                Department = "GSD",
+                Location = "Test Area",
+                Status = AssetStatusCatalog.Active,
+                CreatedAt = DateTimeOffset.UtcNow,
+                UpdatedAt = DateTimeOffset.UtcNow
+            };
+            var schedule = new PreventiveMaintenanceSchedule
+            {
+                Id = Guid.NewGuid(),
+                AssetId = asset.Id,
+                ScheduleDate = new DateTimeOffset(2026, 2, 10, 8, 0, 0, TimeSpan.FromHours(8)),
+                PmCycle = "2026-02",
+                PeriodType = "Quarter",
+                Quarter = "Q1",
+                Year = 2026,
+                Status = ScheduleStatusCatalog.Due,
+                AssignedToUserId = null,
+                CreatedAt = DateTimeOffset.UtcNow,
+                UpdatedAt = DateTimeOffset.UtcNow
+            };
+            context.Assets.Add(asset);
+            context.PreventiveMaintenanceSchedules.Add(schedule);
+            await context.SaveChangesAsync();
+            scheduleId = schedule.Id;
+        }
+        var form = await CreateFormAsync(client, "fire-extinguisher");
+
+        var response = await client.PostAsJsonAsync(
+            $"/api/v1/preventive-maintenance-forms/{form.Id}/inspections",
+            DraftInspectionRequest(scheduleId, "Must remain restricted"));
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
     public async Task Client_form_id_makes_create_retry_idempotent()
     {
         await using var application = new TestApplicationFactory();

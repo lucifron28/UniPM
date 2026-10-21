@@ -21,7 +21,8 @@ internal sealed class PreventiveMaintenanceScheduleAuthorizationHandler
         PreventiveMaintenanceScheduleAccessRequirement requirement,
         PreventiveMaintenanceSchedule schedule)
     {
-        if (context.User.IsInRole(AuthRoleCatalog.Gsd))
+        if (context.User.IsInRole(AuthRoleCatalog.Gsd)
+            || context.User.IsInRole(AuthRoleCatalog.Admin))
         {
             context.Succeed(requirement);
             return Task.CompletedTask;

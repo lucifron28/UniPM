@@ -318,14 +318,15 @@ public sealed class ScheduleQueryEndpointsTests
     [Theory]
     [InlineData(AuthRoleCatalog.Admin)]
     [InlineData(AuthRoleCatalog.DepartmentHead)]
-    public async Task Unrelated_roles_cannot_list_or_read_schedules(string role)
+    public async Task Schedule_reads_allow_admin_and_deny_department_head(string role)
     {
         await using var application = new TestApplicationFactory([role]);
         using var client = application.CreateClient();
 
-        Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync("/api/v1/schedules")).StatusCode);
+        Assert.Equal(role == AuthRoleCatalog.Admin ? HttpStatusCode.OK : HttpStatusCode.Forbidden,
+            (await client.GetAsync("/api/v1/schedules")).StatusCode);
         Assert.Equal(
-            HttpStatusCode.Forbidden,
+            role == AuthRoleCatalog.Admin ? HttpStatusCode.NotFound : HttpStatusCode.Forbidden,
             (await client.GetAsync($"/api/v1/schedules/{Guid.NewGuid()}")).StatusCode);
     }
 

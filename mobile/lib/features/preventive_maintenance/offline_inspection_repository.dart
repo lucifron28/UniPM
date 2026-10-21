@@ -45,16 +45,15 @@ abstract interface class OfflineSnapshotStore {
 
 class SecureOfflineSnapshotStore implements OfflineSnapshotStore {
   SecureOfflineSnapshotStore({
-    required Uri? apiBaseUrl,
+    required this.apiBaseUrl,
     FlutterSecureStorage? storage,
-  }) : _apiBaseUrl = apiBaseUrl,
-       _storage = storage ?? const FlutterSecureStorage();
+  }) : _storage = storage ?? const FlutterSecureStorage();
 
-  final Uri? _apiBaseUrl;
+  final Uri? apiBaseUrl;
   final FlutterSecureStorage _storage;
 
   String _key(String userId) {
-    final backend = _apiBaseUrl;
+    final backend = apiBaseUrl;
     if (backend == null ||
         !backend.hasAuthority ||
         !const ['http', 'https'].contains(backend.scheme.toLowerCase())) {
@@ -113,6 +112,7 @@ class OfflineInspectionRepository extends ChangeNotifier
     implements
         PreventiveMaintenanceRepository,
         OfflineSafePreventiveMaintenanceRepository,
+        ScheduleInspectionStartRepository,
         AssetRepository,
         InspectionPhotoEvidenceRepository {
   OfflineInspectionRepository({
@@ -424,6 +424,26 @@ class OfflineInspectionRepository extends ChangeNotifier
           return _schedulesFor(assetId);
         }
       });
+
+  @override
+  Future<bool> startInspection(String scheduleId) => _exclusive(() async {
+    await _ensureLoaded();
+    if (!_hasNetwork || _remote is! ScheduleInspectionStartRepository) {
+      return false;
+    }
+
+    try {
+      final recorded = await (_remote as ScheduleInspectionStartRepository)
+          .startInspection(scheduleId);
+      _hasNetwork = true;
+      return recorded;
+    } on ApiException catch (error) {
+      if (error.statusCode != null && error.statusCode! < 500) rethrow;
+      _hasNetwork = false;
+      notifyListeners();
+      return false;
+    }
+  });
 
   @override
   Future<List<ReferenceOption>> listAssetCategories() => _loadReferenceList(
