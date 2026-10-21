@@ -1334,11 +1334,10 @@ describe('preventive-maintenance form review', () => {
           name: 'Fire extinguishers · July 2026',
         }),
       ).toBeInTheDocument()
-      const scheduledAssetRow = screen.getByRole('row', {
-        name: /FE-TEST-001/,
-      })
       expect(
-        within(scheduledAssetRow).getByText('July 2026', { exact: true }),
+        screen.getByText(
+          'No acknowledged non-operational findings are recorded for this PM period.',
+        ),
       ).toBeInTheDocument()
 
       await openAcknowledgementReview(router, dashboardSearch)
