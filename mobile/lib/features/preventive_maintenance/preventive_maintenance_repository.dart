@@ -54,10 +54,17 @@ abstract interface class OfflineSafePreventiveMaintenanceRepository {
   );
 }
 
+abstract interface class ScheduleInspectionStartRepository {
+  /// Returns true when the in-progress state was recorded by the API.
+  /// Offline implementations may return false so field work can continue.
+  Future<bool> startInspection(String scheduleId);
+}
+
 class ApiPreventiveMaintenanceRepository
     implements
         PreventiveMaintenanceRepository,
         OfflineSafePreventiveMaintenanceRepository,
+        ScheduleInspectionStartRepository,
         InspectionPhotoEvidenceRepository {
   const ApiPreventiveMaintenanceRepository(this._client);
 
@@ -136,6 +143,12 @@ class ApiPreventiveMaintenanceRepository
         : '/api/v1/schedules?assetId=${Uri.encodeQueryComponent(assetId)}';
     final values = await _client.getJsonList(path);
     return values.map(_scheduleFromValue).toList(growable: false);
+  }
+
+  @override
+  Future<bool> startInspection(String scheduleId) async {
+    await _client.postEmpty('/api/v1/schedules/$scheduleId/start-inspection');
+    return true;
   }
 
   @override

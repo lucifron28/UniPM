@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../api/api_exception.dart';
 import '../../auth/auth_models.dart';
 import '../assets/asset_models.dart';
 import 'preventive_maintenance_controller.dart';
@@ -195,8 +196,39 @@ class _ScannedAssetPmEntryState extends State<ScannedAssetPmEntry> {
       return;
     }
 
+    bool? progressRecorded;
+    final startRepository = widget.repository;
+    if (schedule.isEligibleForFieldWork &&
+        startRepository is ScheduleInspectionStartRepository) {
+      try {
+        progressRecorded = await startRepository.startInspection(schedule.id);
+      } on ApiException catch (error) {
+        if (error.statusCode == null || error.statusCode! >= 500) {
+          progressRecorded = false;
+        } else {
+          if (!mounted) return;
+          setState(() {
+            isOpening = false;
+            errorMessage = friendlyError(error);
+          });
+          return;
+        }
+      }
+    }
+
     controller.selectForm(form);
     setState(() => isOpening = false);
+    if (progressRecorded == false) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Offline: GSD and your supervisor will see schedule progress after this work syncs.',
+            ),
+          ),
+        );
+    }
     final result = await Navigator.of(context)
         .push<PreventiveMaintenanceDraftAction>(
           MaterialPageRoute<PreventiveMaintenanceDraftAction>(

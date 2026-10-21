@@ -113,6 +113,7 @@ class OfflineInspectionRepository extends ChangeNotifier
     implements
         PreventiveMaintenanceRepository,
         OfflineSafePreventiveMaintenanceRepository,
+        ScheduleInspectionStartRepository,
         AssetRepository,
         InspectionPhotoEvidenceRepository {
   OfflineInspectionRepository({
@@ -424,6 +425,26 @@ class OfflineInspectionRepository extends ChangeNotifier
           return _schedulesFor(assetId);
         }
       });
+
+  @override
+  Future<bool> startInspection(String scheduleId) => _exclusive(() async {
+    await _ensureLoaded();
+    if (!_hasNetwork || _remote is! ScheduleInspectionStartRepository) {
+      return false;
+    }
+
+    try {
+      final recorded = await (_remote as ScheduleInspectionStartRepository)
+          .startInspection(scheduleId);
+      _hasNetwork = true;
+      return recorded;
+    } on ApiException catch (error) {
+      if (error.statusCode != null && error.statusCode! < 500) rethrow;
+      _hasNetwork = false;
+      notifyListeners();
+      return false;
+    }
+  });
 
   @override
   Future<List<ReferenceOption>> listAssetCategories() => _loadReferenceList(
