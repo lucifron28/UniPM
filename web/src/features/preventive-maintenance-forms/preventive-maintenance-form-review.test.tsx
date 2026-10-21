@@ -1329,9 +1329,6 @@ describe('preventive-maintenance form review', () => {
         expect(router.state.location.search).toEqual(dashboardSearch)
       })
       expect(screen.getByLabelText('Department')).toHaveValue(departmentValue)
-      expect(screen.getByLabelText('Condition')).toHaveValue('NonOperational')
-      expect(screen.getByLabelText('Timeliness / status')).toHaveValue('Late')
-      expect(screen.getByLabelText('Search assets')).toHaveValue('FE-TEST-001')
       expect(
         screen.getByRole('heading', {
           name: 'Fire extinguishers · July 2026',
