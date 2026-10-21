@@ -8,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using UniPM.Api.Data;
 using UniPM.Api.Features.Auth;
+using UniPM.Api.Features.Schedules;
 using UniPM.Api.Models;
 
 namespace UniPM.Api.Tests;
@@ -27,17 +28,15 @@ public sealed class AuthorizationPolicyTests
         Assert.Equal(HttpStatusCode.OK, read.StatusCode);
     }
 
-    [Theory]
-    [InlineData("/api/v1/assets/")]
-    [InlineData("/api/v1/schedules/")]
-    public async Task Admin_only_user_is_forbidden_from_operational_endpoints(string route)
+    [Fact]
+    public async Task Admin_can_manage_assets()
     {
         await using var application = new PolicyApplicationFactory(AuthRoleCatalog.Admin);
         using var client = application.CreateClient();
 
-        var response = await client.PostAsJsonAsync(route, new { });
+        var response = await client.PostAsJsonAsync("/api/v1/assets/", AssetRequest("AUTH-ADMIN"));
 
-        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
     }
 
     [Fact]
@@ -65,7 +64,8 @@ public sealed class AuthorizationPolicyTests
     [Theory]
     [InlineData(AuthRoleCatalog.Gsd)]
     [InlineData(AuthRoleCatalog.Supervisor)]
-    public async Task Gsd_and_supervisor_can_manage_schedules(string role)
+    [InlineData(AuthRoleCatalog.Admin)]
+    public async Task Gsd_supervisor_and_admin_can_manage_schedules(string role)
     {
         await using var application = new PolicyApplicationFactory(role);
         var assetId = await application.SeedAssetAsync();
@@ -79,6 +79,27 @@ public sealed class AuthorizationPolicyTests
         });
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Admin_can_start_inspection_on_a_schedule()
+    {
+        await using var application = new PolicyApplicationFactory(AuthRoleCatalog.Admin);
+        var assetId = await application.SeedAssetAsync();
+        using var client = application.CreateClient();
+        var scheduleResponse = await client.PostAsJsonAsync("/api/v1/schedules/", new
+        {
+            assetId,
+            pmCycle = $"{DateTimeOffset.UtcNow.Year}-11",
+            periodType = "Quarter"
+        });
+        var schedule = await scheduleResponse.Content.ReadFromJsonAsync<ScheduleResponse>();
+        Assert.Equal(HttpStatusCode.Created, scheduleResponse.StatusCode);
+        Assert.NotNull(schedule);
+
+        var response = await client.PostAsync($"/api/v1/schedules/{schedule.Id}/start-inspection", null);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
     private static object AssetRequest(string code) => new

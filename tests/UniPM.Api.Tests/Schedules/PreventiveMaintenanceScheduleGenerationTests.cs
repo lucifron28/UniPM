@@ -417,10 +417,10 @@ public sealed class PreventiveMaintenanceScheduleGenerationTests
     }
 
     [Fact]
-    public async Task Generation_route_is_gsd_only_and_rejects_future_years()
+    public async Task Generation_route_allows_gsd_and_admin_and_rejects_other_roles_or_invalid_years()
     {
         var now = new DateTimeOffset(2026, 8, 15, 4, 0, 0, TimeSpan.Zero);
-        foreach (var role in new[] { AuthRoleCatalog.Supervisor, AuthRoleCatalog.Inspector, AuthRoleCatalog.Admin })
+        foreach (var role in new[] { AuthRoleCatalog.Supervisor, AuthRoleCatalog.Inspector })
         {
             await using var restricted = new TestApplicationFactory(role, now);
             using var restrictedClient = restricted.CreateClient();
@@ -429,6 +429,13 @@ public sealed class PreventiveMaintenanceScheduleGenerationTests
                 new { year = 2026 });
             Assert.Equal(HttpStatusCode.Forbidden, forbidden.StatusCode);
         }
+
+        await using var admin = new TestApplicationFactory(AuthRoleCatalog.Admin, now);
+        using var adminClient = admin.CreateClient();
+        using var generated = await adminClient.PostAsJsonAsync(
+            "/api/v1/schedules/generate",
+            new { year = 2026 });
+        Assert.Equal(HttpStatusCode.OK, generated.StatusCode);
 
         await using var gsd = new TestApplicationFactory(AuthRoleCatalog.Gsd, now);
         using var gsdClient = gsd.CreateClient();
@@ -531,7 +538,7 @@ public sealed class PreventiveMaintenanceScheduleGenerationTests
     [InlineData(AuthRoleCatalog.Supervisor)]
     [InlineData(AuthRoleCatalog.Inspector)]
     [InlineData(AuthRoleCatalog.Admin)]
-    public async Task Enrollment_deferral_review_is_gsd_only(string role)
+    public async Task Enrollment_deferral_review_allows_admin_and_denies_field_roles(string role)
     {
         await using var application = new TestApplicationFactory(
             role,
@@ -543,8 +550,8 @@ public sealed class PreventiveMaintenanceScheduleGenerationTests
             $"/api/v1/schedules/enrollment-deferrals/{Guid.NewGuid()}/2026-08/review",
             new { note = "review" });
 
-        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
-        Assert.Equal(HttpStatusCode.Forbidden, reviewResponse.StatusCode);
+        Assert.Equal(role == AuthRoleCatalog.Admin ? HttpStatusCode.OK : HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.Equal(role == AuthRoleCatalog.Admin ? HttpStatusCode.NotFound : HttpStatusCode.Forbidden, reviewResponse.StatusCode);
     }
 
     [Fact]

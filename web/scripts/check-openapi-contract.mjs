@@ -20,6 +20,239 @@ const requiredOperations = [
   ['/api/v1/auth/me', 'get', 'GetCurrentUser', true],
 ]
 
+const adminOperations = [
+  [
+    '/api/v1/admin/accounts',
+    'get',
+    'ListAdminManagedAccounts',
+    '200',
+    'AdminAccountPageResponse',
+  ],
+  [
+    '/api/v1/admin/accounts',
+    'post',
+    'CreateAdminManagedAccount',
+    '201',
+    'AdminAccountResponse',
+  ],
+  [
+    '/api/v1/admin/accounts/{id}',
+    'put',
+    'UpdateAdminManagedAccount',
+    '200',
+    'AdminAccountResponse',
+  ],
+  [
+    '/api/v1/admin/accounts/{id}',
+    'delete',
+    'DeleteAdminManagedAccount',
+    '200',
+    'AdminAccountDeleteResponse',
+  ],
+  [
+    '/api/v1/admin/accounts/{id}/reset-password',
+    'post',
+    'ResetAdminManagedAccountPassword',
+    '204',
+    null,
+  ],
+  [
+    '/api/v1/admin/accounts/gsd-head',
+    'get',
+    'GetAdminGsdHead',
+    '200',
+    'AdminGsdHeadResponse',
+  ],
+  [
+    '/api/v1/admin/accounts/gsd-head',
+    'patch',
+    'UpdateAdminGsdHead',
+    '200',
+    'AdminAccountResponse',
+  ],
+  [
+    '/api/v1/admin/accounts/gsd-head',
+    'put',
+    'ReplaceAdminGsdHead',
+    '200',
+    'AdminGsdHeadResponse',
+  ],
+  [
+    '/api/v1/admin/overview',
+    'get',
+    'GetAdminOverview',
+    '200',
+    'AdminOverviewResponse',
+  ],
+  [
+    '/api/v1/admin/assets',
+    'get',
+    'ListAdminAssets',
+    '200',
+    'AdminAssetPageResponse',
+  ],
+  ['/api/v1/admin/assets', 'post', 'CreateAdminAsset', '201', 'AdminAssetRow'],
+  [
+    '/api/v1/admin/assets/{id}',
+    'put',
+    'UpdateAdminAsset',
+    '200',
+    'AdminAssetRow',
+  ],
+  [
+    '/api/v1/admin/assets/{id}',
+    'delete',
+    'DeleteAdminAsset',
+    '200',
+    'AdminDeleteResult',
+  ],
+  [
+    '/api/v1/admin/assets/bulk-delete',
+    'post',
+    'BulkDeleteAdminAssets',
+    '200',
+    'AdminDeleteResult',
+  ],
+  [
+    '/api/v1/admin/assets/all',
+    'delete',
+    'ClearAdminAssets',
+    '200',
+    'AdminDeleteResult',
+  ],
+  [
+    '/api/v1/admin/maintenance/schedules',
+    'get',
+    'ListAdminSchedules',
+    '200',
+    'AdminSchedulePageResponse',
+  ],
+  [
+    '/api/v1/admin/maintenance/schedules/{id}',
+    'put',
+    'UpdateAdminSchedule',
+    '200',
+    'ScheduleResponse',
+  ],
+  [
+    '/api/v1/admin/maintenance/schedules/{id}',
+    'delete',
+    'DeleteAdminSchedule',
+    '200',
+    'AdminDeleteResult',
+  ],
+  [
+    '/api/v1/admin/maintenance/schedules/bulk-delete',
+    'post',
+    'BulkDeleteAdminSchedules',
+    '200',
+    'AdminDeleteResult',
+  ],
+  [
+    '/api/v1/admin/maintenance/inspections',
+    'get',
+    'ListAdminInspections',
+    '200',
+    'AdminInspectionPageResponse',
+  ],
+  [
+    '/api/v1/admin/maintenance/inspections/{id}',
+    'delete',
+    'DeleteAdminInspection',
+    '200',
+    'AdminDeleteResult',
+  ],
+  [
+    '/api/v1/admin/maintenance/inspections/bulk-delete',
+    'post',
+    'BulkDeleteAdminInspections',
+    '200',
+    'AdminDeleteResult',
+  ],
+  [
+    '/api/v1/admin/maintenance/forms',
+    'get',
+    'ListAdminForms',
+    '200',
+    'AdminFormPageResponse',
+  ],
+  [
+    '/api/v1/admin/maintenance/forms/{id}',
+    'put',
+    'UpdateAdminForm',
+    '200',
+    'AdminFormRow',
+  ],
+  [
+    '/api/v1/admin/maintenance/forms/{id}',
+    'delete',
+    'DeleteAdminForm',
+    '200',
+    'AdminDeleteResult',
+  ],
+  [
+    '/api/v1/admin/maintenance/forms/{id}/acknowledgement',
+    'delete',
+    'DeleteAdminAcknowledgement',
+    '200',
+    'AdminDeleteResult',
+  ],
+  [
+    '/api/v1/admin/maintenance/forms/{id}/return-to-draft',
+    'post',
+    'ReturnAdminFormToDraft',
+    '204',
+    null,
+  ],
+  [
+    '/api/v1/admin/demo-data/maintenance',
+    'delete',
+    'ClearAdminMaintenanceData',
+    '200',
+    'AdminDeleteResult',
+  ],
+  [
+    '/api/v1/admin/demo-data/assets',
+    'delete',
+    'ClearAdminAssetsAndMaintenance',
+    '200',
+    'AdminDeleteResult',
+  ],
+  [
+    '/api/v1/admin/demo-data/validation/load',
+    'post',
+    'LoadAdminValidationDataset',
+    '200',
+    'AdminValidationDatasetResponse',
+  ],
+  [
+    '/api/v1/admin/demo-data/validation/reset',
+    'post',
+    'ResetAndSeedAdminValidationDataset',
+    '200',
+    'AdminValidationDatasetResponse',
+  ],
+]
+
+const adminRequestSchemas = [
+  ['/api/v1/admin/accounts', 'post', 'AdminCreateAccountRequest'],
+  ['/api/v1/admin/accounts/{id}', 'put', 'AdminUpdateAccountRequest'],
+  [
+    '/api/v1/admin/accounts/{id}/reset-password',
+    'post',
+    'AdminResetPasswordRequest',
+  ],
+  ['/api/v1/admin/assets', 'post', 'CreateAssetDto'],
+  ['/api/v1/admin/assets/{id}', 'put', 'AdminUpdateAssetRequest'],
+  ['/api/v1/admin/assets/bulk-delete', 'post', 'AdminBulkDeleteRequest'],
+  [
+    '/api/v1/admin/maintenance/schedules/{id}',
+    'put',
+    'AdminUpdateScheduleRequest',
+  ],
+  ['/api/v1/admin/maintenance/forms/{id}', 'put', 'AdminUpdateFormRequest'],
+]
+
 const assetOperations = [
   ['/api/v1/assets', 'post', 'CreateAsset', '201', 'AssetResponse'],
   ['/api/v1/assets', 'get', 'ListAssets', '200', null],
@@ -281,6 +514,62 @@ for (const [path, method, operationId, requiresSchema] of requiredOperations) {
       )
     }
   }
+}
+
+for (const [
+  path,
+  method,
+  operationId,
+  status,
+  responseSchemaName,
+] of adminOperations) {
+  const operation = snapshot.paths?.[path]?.[method]
+  if (operation?.operationId !== operationId) {
+    throw new Error(`Missing required Admin operation: ${operationId}.`)
+  }
+  const response = operation.responses?.[status]
+  if (!response) {
+    throw new Error(
+      `Required Admin operation ${operationId} is missing its ${status} response.`,
+    )
+  }
+  if (responseSchemaName) {
+    const schema = response.content?.['application/json']?.schema
+    if (schema?.$ref !== `#/components/schemas/${responseSchemaName}`) {
+      throw new Error(
+        `Admin operation ${operationId} must return ${responseSchemaName}.`,
+      )
+    }
+  }
+}
+
+for (const [path, method, schemaName] of adminRequestSchemas) {
+  const schema =
+    snapshot.paths?.[path]?.[method]?.requestBody?.content?.['application/json']
+      ?.schema
+  if (schema?.$ref !== `#/components/schemas/${schemaName}`) {
+    throw new Error(
+      `Admin operation ${method.toUpperCase()} ${path} must use ${schemaName}.`,
+    )
+  }
+}
+
+const adminScheduleParameters =
+  snapshot.paths?.['/api/v1/admin/maintenance/schedules']?.get?.parameters ?? []
+if (!adminScheduleParameters.some((parameter) => parameter.name === 'status')) {
+  throw new Error('ListAdminSchedules is missing its status filter.')
+}
+
+const adminAccountProperties =
+  snapshot.components?.schemas?.AdminAccountResponse?.properties
+if (
+  !adminAccountProperties ||
+  adminAccountProperties.password ||
+  adminAccountProperties.passwordHash
+) {
+  throw new Error(
+    'Admin account responses must not expose passwords or password hashes.',
+  )
 }
 
 for (const [
@@ -944,5 +1233,5 @@ if (
 }
 
 console.log(
-  'OpenAPI auth, asset, schedule, inspection registry, WMS referral, preventive-maintenance form, and PM analytics V2/V3 contract sanity check passed.',
+  'OpenAPI auth, Admin, asset, schedule, inspection registry, WMS referral, preventive-maintenance form, and PM analytics V2/V3 contract sanity check passed.',
 )

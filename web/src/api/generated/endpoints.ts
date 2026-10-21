@@ -22,6 +22,28 @@ import type {
 
 import type {
   AcknowledgePreventiveMaintenanceFormDto,
+  AdminAccountDeleteResponse,
+  AdminAccountPageResponse,
+  AdminAccountResponse,
+  AdminAssetPageResponse,
+  AdminAssetRow,
+  AdminBulkDeleteRequest,
+  AdminCreateAccountRequest,
+  AdminDeleteResult,
+  AdminFormPageResponse,
+  AdminFormRow,
+  AdminGsdHeadResponse,
+  AdminInspectionPageResponse,
+  AdminOverviewResponse,
+  AdminReplaceGsdHeadRequest,
+  AdminResetPasswordRequest,
+  AdminSchedulePageResponse,
+  AdminUpdateAccountRequest,
+  AdminUpdateAssetRequest,
+  AdminUpdateFormRequest,
+  AdminUpdateGsdHeadRequest,
+  AdminUpdateScheduleRequest,
+  AdminValidationDatasetResponse,
   AssetCategoryResponse,
   AssetRegistryOptionsResponse,
   AssetRegistryPageResponse,
@@ -55,6 +77,11 @@ import type {
   InspectionResponse,
   InspectionWmsReferralDetailResponse,
   InspectionWmsReferralResponse,
+  ListAdminAssetsParams,
+  ListAdminFormsParams,
+  ListAdminInspectionsParams,
+  ListAdminManagedAccountsParams,
+  ListAdminSchedulesParams,
   ListAssetRegistryParams,
   ListAssetsParams,
   ListInspectionRegistryParams,
@@ -8725,6 +8752,2890 @@ export const useReassignScheduleBatchInspector = <
 > => {
   return useMutation(
     getReassignScheduleBatchInspectorMutationOptions(options),
+    queryClient,
+  )
+}
+
+export const listAdminManagedAccounts = (
+  params?: ListAdminManagedAccountsParams,
+  signal?: AbortSignal,
+) => {
+  return customInstance<AdminAccountPageResponse>({
+    url: `/api/v1/admin/accounts`,
+    method: 'GET',
+    params,
+    signal,
+  })
+}
+
+export const getListAdminManagedAccountsQueryKey = (
+  params?: ListAdminManagedAccountsParams,
+) => {
+  return [`/api/v1/admin/accounts`, ...(params ? [params] : [])] as const
+}
+
+export const getListAdminManagedAccountsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listAdminManagedAccounts>>,
+  TError = HttpValidationProblemDetails,
+>(
+  params?: ListAdminManagedAccountsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listAdminManagedAccounts>>,
+        TError,
+        TData
+      >
+    >
+  },
+) => {
+  const { query: queryOptions } = options ?? {}
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListAdminManagedAccountsQueryKey(params)
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listAdminManagedAccounts>>
+  > = ({ signal }) => listAdminManagedAccounts(params, signal)
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listAdminManagedAccounts>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListAdminManagedAccountsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listAdminManagedAccounts>>
+>
+export type ListAdminManagedAccountsQueryError = HttpValidationProblemDetails
+
+export function useListAdminManagedAccounts<
+  TData = Awaited<ReturnType<typeof listAdminManagedAccounts>>,
+  TError = HttpValidationProblemDetails,
+>(
+  params: undefined | ListAdminManagedAccountsParams,
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listAdminManagedAccounts>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listAdminManagedAccounts>>,
+          TError,
+          Awaited<ReturnType<typeof listAdminManagedAccounts>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useListAdminManagedAccounts<
+  TData = Awaited<ReturnType<typeof listAdminManagedAccounts>>,
+  TError = HttpValidationProblemDetails,
+>(
+  params?: ListAdminManagedAccountsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listAdminManagedAccounts>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listAdminManagedAccounts>>,
+          TError,
+          Awaited<ReturnType<typeof listAdminManagedAccounts>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useListAdminManagedAccounts<
+  TData = Awaited<ReturnType<typeof listAdminManagedAccounts>>,
+  TError = HttpValidationProblemDetails,
+>(
+  params?: ListAdminManagedAccountsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listAdminManagedAccounts>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+
+export function useListAdminManagedAccounts<
+  TData = Awaited<ReturnType<typeof listAdminManagedAccounts>>,
+  TError = HttpValidationProblemDetails,
+>(
+  params?: ListAdminManagedAccountsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listAdminManagedAccounts>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+} {
+  const queryOptions = getListAdminManagedAccountsQueryOptions(params, options)
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+
+  return withQueryKey(query, queryOptions.queryKey)
+}
+
+export const createAdminManagedAccount = (
+  adminCreateAccountRequest: AdminCreateAccountRequest,
+  signal?: AbortSignal,
+) => {
+  return customInstance<AdminAccountResponse>({
+    url: `/api/v1/admin/accounts`,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    data: adminCreateAccountRequest,
+    signal,
+  })
+}
+
+export const getCreateAdminManagedAccountMutationOptions = <
+  TError = HttpValidationProblemDetails | ProblemDetails,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createAdminManagedAccount>>,
+    TError,
+    { data: AdminCreateAccountRequest },
+    TContext
+  >
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createAdminManagedAccount>>,
+  TError,
+  { data: AdminCreateAccountRequest },
+  TContext
+> => {
+  const mutationKey = ['createAdminManagedAccount']
+  const { mutation: mutationOptions } = options
+    ? options.mutation &&
+      'mutationKey' in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey } }
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createAdminManagedAccount>>,
+    { data: AdminCreateAccountRequest }
+  > = (props) => {
+    const { data } = props ?? {}
+
+    return createAdminManagedAccount(data)
+  }
+
+  return { mutationFn, ...mutationOptions }
+}
+
+export type CreateAdminManagedAccountMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createAdminManagedAccount>>
+>
+export type CreateAdminManagedAccountMutationBody = AdminCreateAccountRequest
+export type CreateAdminManagedAccountMutationError =
+  HttpValidationProblemDetails | ProblemDetails
+
+export const useCreateAdminManagedAccount = <
+  TError = HttpValidationProblemDetails | ProblemDetails,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof createAdminManagedAccount>>,
+      TError,
+      { data: AdminCreateAccountRequest },
+      TContext
+    >
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof createAdminManagedAccount>>,
+  TError,
+  { data: AdminCreateAccountRequest },
+  TContext
+> => {
+  return useMutation(
+    getCreateAdminManagedAccountMutationOptions(options),
+    queryClient,
+  )
+}
+
+export const updateAdminManagedAccount = (
+  id: string,
+  adminUpdateAccountRequest: AdminUpdateAccountRequest,
+  signal?: AbortSignal,
+) => {
+  return customInstance<AdminAccountResponse>({
+    url: `/api/v1/admin/accounts/${id}`,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    data: adminUpdateAccountRequest,
+    signal,
+  })
+}
+
+export const getUpdateAdminManagedAccountMutationOptions = <
+  TError = HttpValidationProblemDetails | ProblemDetails,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateAdminManagedAccount>>,
+    TError,
+    { id: string; data: AdminUpdateAccountRequest },
+    TContext
+  >
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateAdminManagedAccount>>,
+  TError,
+  { id: string; data: AdminUpdateAccountRequest },
+  TContext
+> => {
+  const mutationKey = ['updateAdminManagedAccount']
+  const { mutation: mutationOptions } = options
+    ? options.mutation &&
+      'mutationKey' in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey } }
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateAdminManagedAccount>>,
+    { id: string; data: AdminUpdateAccountRequest }
+  > = (props) => {
+    const { id, data } = props ?? {}
+
+    return updateAdminManagedAccount(id, data)
+  }
+
+  return { mutationFn, ...mutationOptions }
+}
+
+export type UpdateAdminManagedAccountMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateAdminManagedAccount>>
+>
+export type UpdateAdminManagedAccountMutationBody = AdminUpdateAccountRequest
+export type UpdateAdminManagedAccountMutationError =
+  HttpValidationProblemDetails | ProblemDetails
+
+export const useUpdateAdminManagedAccount = <
+  TError = HttpValidationProblemDetails | ProblemDetails,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof updateAdminManagedAccount>>,
+      TError,
+      { id: string; data: AdminUpdateAccountRequest },
+      TContext
+    >
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof updateAdminManagedAccount>>,
+  TError,
+  { id: string; data: AdminUpdateAccountRequest },
+  TContext
+> => {
+  return useMutation(
+    getUpdateAdminManagedAccountMutationOptions(options),
+    queryClient,
+  )
+}
+
+export const deleteAdminManagedAccount = (id: string, signal?: AbortSignal) => {
+  return customInstance<AdminAccountDeleteResponse>({
+    url: `/api/v1/admin/accounts/${id}`,
+    method: 'DELETE',
+    signal,
+  })
+}
+
+export const getDeleteAdminManagedAccountMutationOptions = <
+  TError = ProblemDetails,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteAdminManagedAccount>>,
+    TError,
+    { id: string },
+    TContext
+  >
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteAdminManagedAccount>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ['deleteAdminManagedAccount']
+  const { mutation: mutationOptions } = options
+    ? options.mutation &&
+      'mutationKey' in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey } }
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteAdminManagedAccount>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {}
+
+    return deleteAdminManagedAccount(id)
+  }
+
+  return { mutationFn, ...mutationOptions }
+}
+
+export type DeleteAdminManagedAccountMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteAdminManagedAccount>>
+>
+
+export type DeleteAdminManagedAccountMutationError = ProblemDetails
+
+export const useDeleteAdminManagedAccount = <
+  TError = ProblemDetails,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof deleteAdminManagedAccount>>,
+      TError,
+      { id: string },
+      TContext
+    >
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof deleteAdminManagedAccount>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(
+    getDeleteAdminManagedAccountMutationOptions(options),
+    queryClient,
+  )
+}
+
+export const resetAdminManagedAccountPassword = (
+  id: string,
+  adminResetPasswordRequest: AdminResetPasswordRequest,
+  signal?: AbortSignal,
+) => {
+  return customInstance<void>({
+    url: `/api/v1/admin/accounts/${id}/reset-password`,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    data: adminResetPasswordRequest,
+    signal,
+  })
+}
+
+export const getResetAdminManagedAccountPasswordMutationOptions = <
+  TError = HttpValidationProblemDetails | ProblemDetails,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof resetAdminManagedAccountPassword>>,
+    TError,
+    { id: string; data: AdminResetPasswordRequest },
+    TContext
+  >
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof resetAdminManagedAccountPassword>>,
+  TError,
+  { id: string; data: AdminResetPasswordRequest },
+  TContext
+> => {
+  const mutationKey = ['resetAdminManagedAccountPassword']
+  const { mutation: mutationOptions } = options
+    ? options.mutation &&
+      'mutationKey' in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey } }
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof resetAdminManagedAccountPassword>>,
+    { id: string; data: AdminResetPasswordRequest }
+  > = (props) => {
+    const { id, data } = props ?? {}
+
+    return resetAdminManagedAccountPassword(id, data)
+  }
+
+  return { mutationFn, ...mutationOptions }
+}
+
+export type ResetAdminManagedAccountPasswordMutationResult = NonNullable<
+  Awaited<ReturnType<typeof resetAdminManagedAccountPassword>>
+>
+export type ResetAdminManagedAccountPasswordMutationBody =
+  AdminResetPasswordRequest
+export type ResetAdminManagedAccountPasswordMutationError =
+  HttpValidationProblemDetails | ProblemDetails
+
+export const useResetAdminManagedAccountPassword = <
+  TError = HttpValidationProblemDetails | ProblemDetails,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof resetAdminManagedAccountPassword>>,
+      TError,
+      { id: string; data: AdminResetPasswordRequest },
+      TContext
+    >
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof resetAdminManagedAccountPassword>>,
+  TError,
+  { id: string; data: AdminResetPasswordRequest },
+  TContext
+> => {
+  return useMutation(
+    getResetAdminManagedAccountPasswordMutationOptions(options),
+    queryClient,
+  )
+}
+
+export const getAdminGsdHead = (signal?: AbortSignal) => {
+  return customInstance<AdminGsdHeadResponse>({
+    url: `/api/v1/admin/accounts/gsd-head`,
+    method: 'GET',
+    signal,
+  })
+}
+
+export const getGetAdminGsdHeadQueryKey = () => {
+  return [`/api/v1/admin/accounts/gsd-head`] as const
+}
+
+export const getGetAdminGsdHeadQueryOptions = <
+  TData = Awaited<ReturnType<typeof getAdminGsdHead>>,
+  TError = unknown,
+>(options?: {
+  query?: Partial<
+    UseQueryOptions<Awaited<ReturnType<typeof getAdminGsdHead>>, TError, TData>
+  >
+}) => {
+  const { query: queryOptions } = options ?? {}
+
+  const queryKey = queryOptions?.queryKey ?? getGetAdminGsdHeadQueryKey()
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminGsdHead>>> = ({
+    signal,
+  }) => getAdminGsdHead(signal)
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getAdminGsdHead>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetAdminGsdHeadQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getAdminGsdHead>>
+>
+export type GetAdminGsdHeadQueryError = unknown
+
+export function useGetAdminGsdHead<
+  TData = Awaited<ReturnType<typeof getAdminGsdHead>>,
+  TError = unknown,
+>(
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getAdminGsdHead>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAdminGsdHead>>,
+          TError,
+          Awaited<ReturnType<typeof getAdminGsdHead>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useGetAdminGsdHead<
+  TData = Awaited<ReturnType<typeof getAdminGsdHead>>,
+  TError = unknown,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getAdminGsdHead>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAdminGsdHead>>,
+          TError,
+          Awaited<ReturnType<typeof getAdminGsdHead>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useGetAdminGsdHead<
+  TData = Awaited<ReturnType<typeof getAdminGsdHead>>,
+  TError = unknown,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getAdminGsdHead>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+
+export function useGetAdminGsdHead<
+  TData = Awaited<ReturnType<typeof getAdminGsdHead>>,
+  TError = unknown,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getAdminGsdHead>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+} {
+  const queryOptions = getGetAdminGsdHeadQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+
+  return withQueryKey(query, queryOptions.queryKey)
+}
+
+export const updateAdminGsdHead = (
+  adminUpdateGsdHeadRequest: AdminUpdateGsdHeadRequest,
+  signal?: AbortSignal,
+) => {
+  return customInstance<AdminAccountResponse>({
+    url: `/api/v1/admin/accounts/gsd-head`,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    data: adminUpdateGsdHeadRequest,
+    signal,
+  })
+}
+
+export const getUpdateAdminGsdHeadMutationOptions = <
+  TError = HttpValidationProblemDetails | ProblemDetails,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateAdminGsdHead>>,
+    TError,
+    { data: AdminUpdateGsdHeadRequest },
+    TContext
+  >
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateAdminGsdHead>>,
+  TError,
+  { data: AdminUpdateGsdHeadRequest },
+  TContext
+> => {
+  const mutationKey = ['updateAdminGsdHead']
+  const { mutation: mutationOptions } = options
+    ? options.mutation &&
+      'mutationKey' in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey } }
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateAdminGsdHead>>,
+    { data: AdminUpdateGsdHeadRequest }
+  > = (props) => {
+    const { data } = props ?? {}
+
+    return updateAdminGsdHead(data)
+  }
+
+  return { mutationFn, ...mutationOptions }
+}
+
+export type UpdateAdminGsdHeadMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateAdminGsdHead>>
+>
+export type UpdateAdminGsdHeadMutationBody = AdminUpdateGsdHeadRequest
+export type UpdateAdminGsdHeadMutationError =
+  HttpValidationProblemDetails | ProblemDetails
+
+export const useUpdateAdminGsdHead = <
+  TError = HttpValidationProblemDetails | ProblemDetails,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof updateAdminGsdHead>>,
+      TError,
+      { data: AdminUpdateGsdHeadRequest },
+      TContext
+    >
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof updateAdminGsdHead>>,
+  TError,
+  { data: AdminUpdateGsdHeadRequest },
+  TContext
+> => {
+  return useMutation(getUpdateAdminGsdHeadMutationOptions(options), queryClient)
+}
+
+export const replaceAdminGsdHead = (
+  adminReplaceGsdHeadRequest: AdminReplaceGsdHeadRequest,
+  signal?: AbortSignal,
+) => {
+  return customInstance<AdminGsdHeadResponse>({
+    url: `/api/v1/admin/accounts/gsd-head`,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    data: adminReplaceGsdHeadRequest,
+    signal,
+  })
+}
+
+export const getReplaceAdminGsdHeadMutationOptions = <
+  TError = HttpValidationProblemDetails | ProblemDetails,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof replaceAdminGsdHead>>,
+    TError,
+    { data: AdminReplaceGsdHeadRequest },
+    TContext
+  >
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof replaceAdminGsdHead>>,
+  TError,
+  { data: AdminReplaceGsdHeadRequest },
+  TContext
+> => {
+  const mutationKey = ['replaceAdminGsdHead']
+  const { mutation: mutationOptions } = options
+    ? options.mutation &&
+      'mutationKey' in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey } }
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof replaceAdminGsdHead>>,
+    { data: AdminReplaceGsdHeadRequest }
+  > = (props) => {
+    const { data } = props ?? {}
+
+    return replaceAdminGsdHead(data)
+  }
+
+  return { mutationFn, ...mutationOptions }
+}
+
+export type ReplaceAdminGsdHeadMutationResult = NonNullable<
+  Awaited<ReturnType<typeof replaceAdminGsdHead>>
+>
+export type ReplaceAdminGsdHeadMutationBody = AdminReplaceGsdHeadRequest
+export type ReplaceAdminGsdHeadMutationError =
+  HttpValidationProblemDetails | ProblemDetails
+
+export const useReplaceAdminGsdHead = <
+  TError = HttpValidationProblemDetails | ProblemDetails,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof replaceAdminGsdHead>>,
+      TError,
+      { data: AdminReplaceGsdHeadRequest },
+      TContext
+    >
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof replaceAdminGsdHead>>,
+  TError,
+  { data: AdminReplaceGsdHeadRequest },
+  TContext
+> => {
+  return useMutation(
+    getReplaceAdminGsdHeadMutationOptions(options),
+    queryClient,
+  )
+}
+
+export const getAdminOverview = (signal?: AbortSignal) => {
+  return customInstance<AdminOverviewResponse>({
+    url: `/api/v1/admin/overview`,
+    method: 'GET',
+    signal,
+  })
+}
+
+export const getGetAdminOverviewQueryKey = () => {
+  return [`/api/v1/admin/overview`] as const
+}
+
+export const getGetAdminOverviewQueryOptions = <
+  TData = Awaited<ReturnType<typeof getAdminOverview>>,
+  TError = unknown,
+>(options?: {
+  query?: Partial<
+    UseQueryOptions<Awaited<ReturnType<typeof getAdminOverview>>, TError, TData>
+  >
+}) => {
+  const { query: queryOptions } = options ?? {}
+
+  const queryKey = queryOptions?.queryKey ?? getGetAdminOverviewQueryKey()
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getAdminOverview>>
+  > = ({ signal }) => getAdminOverview(signal)
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getAdminOverview>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetAdminOverviewQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getAdminOverview>>
+>
+export type GetAdminOverviewQueryError = unknown
+
+export function useGetAdminOverview<
+  TData = Awaited<ReturnType<typeof getAdminOverview>>,
+  TError = unknown,
+>(
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getAdminOverview>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAdminOverview>>,
+          TError,
+          Awaited<ReturnType<typeof getAdminOverview>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useGetAdminOverview<
+  TData = Awaited<ReturnType<typeof getAdminOverview>>,
+  TError = unknown,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getAdminOverview>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAdminOverview>>,
+          TError,
+          Awaited<ReturnType<typeof getAdminOverview>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useGetAdminOverview<
+  TData = Awaited<ReturnType<typeof getAdminOverview>>,
+  TError = unknown,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getAdminOverview>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+
+export function useGetAdminOverview<
+  TData = Awaited<ReturnType<typeof getAdminOverview>>,
+  TError = unknown,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof getAdminOverview>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+} {
+  const queryOptions = getGetAdminOverviewQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+
+  return withQueryKey(query, queryOptions.queryKey)
+}
+
+export const listAdminAssets = (
+  params?: ListAdminAssetsParams,
+  signal?: AbortSignal,
+) => {
+  return customInstance<AdminAssetPageResponse>({
+    url: `/api/v1/admin/assets`,
+    method: 'GET',
+    params,
+    signal,
+  })
+}
+
+export const getListAdminAssetsQueryKey = (params?: ListAdminAssetsParams) => {
+  return [`/api/v1/admin/assets`, ...(params ? [params] : [])] as const
+}
+
+export const getListAdminAssetsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listAdminAssets>>,
+  TError = HttpValidationProblemDetails,
+>(
+  params?: ListAdminAssetsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listAdminAssets>>,
+        TError,
+        TData
+      >
+    >
+  },
+) => {
+  const { query: queryOptions } = options ?? {}
+
+  const queryKey = queryOptions?.queryKey ?? getListAdminAssetsQueryKey(params)
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listAdminAssets>>> = ({
+    signal,
+  }) => listAdminAssets(params, signal)
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listAdminAssets>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListAdminAssetsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listAdminAssets>>
+>
+export type ListAdminAssetsQueryError = HttpValidationProblemDetails
+
+export function useListAdminAssets<
+  TData = Awaited<ReturnType<typeof listAdminAssets>>,
+  TError = HttpValidationProblemDetails,
+>(
+  params: undefined | ListAdminAssetsParams,
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listAdminAssets>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listAdminAssets>>,
+          TError,
+          Awaited<ReturnType<typeof listAdminAssets>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useListAdminAssets<
+  TData = Awaited<ReturnType<typeof listAdminAssets>>,
+  TError = HttpValidationProblemDetails,
+>(
+  params?: ListAdminAssetsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listAdminAssets>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listAdminAssets>>,
+          TError,
+          Awaited<ReturnType<typeof listAdminAssets>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useListAdminAssets<
+  TData = Awaited<ReturnType<typeof listAdminAssets>>,
+  TError = HttpValidationProblemDetails,
+>(
+  params?: ListAdminAssetsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listAdminAssets>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+
+export function useListAdminAssets<
+  TData = Awaited<ReturnType<typeof listAdminAssets>>,
+  TError = HttpValidationProblemDetails,
+>(
+  params?: ListAdminAssetsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listAdminAssets>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+} {
+  const queryOptions = getListAdminAssetsQueryOptions(params, options)
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+
+  return withQueryKey(query, queryOptions.queryKey)
+}
+
+export const createAdminAsset = (
+  createAssetDto: CreateAssetDto,
+  signal?: AbortSignal,
+) => {
+  return customInstance<AdminAssetRow>({
+    url: `/api/v1/admin/assets`,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    data: createAssetDto,
+    signal,
+  })
+}
+
+export const getCreateAdminAssetMutationOptions = <
+  TError = HttpValidationProblemDetails | ProblemDetails,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createAdminAsset>>,
+    TError,
+    { data: CreateAssetDto },
+    TContext
+  >
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createAdminAsset>>,
+  TError,
+  { data: CreateAssetDto },
+  TContext
+> => {
+  const mutationKey = ['createAdminAsset']
+  const { mutation: mutationOptions } = options
+    ? options.mutation &&
+      'mutationKey' in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey } }
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createAdminAsset>>,
+    { data: CreateAssetDto }
+  > = (props) => {
+    const { data } = props ?? {}
+
+    return createAdminAsset(data)
+  }
+
+  return { mutationFn, ...mutationOptions }
+}
+
+export type CreateAdminAssetMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createAdminAsset>>
+>
+export type CreateAdminAssetMutationBody = CreateAssetDto
+export type CreateAdminAssetMutationError =
+  HttpValidationProblemDetails | ProblemDetails
+
+export const useCreateAdminAsset = <
+  TError = HttpValidationProblemDetails | ProblemDetails,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof createAdminAsset>>,
+      TError,
+      { data: CreateAssetDto },
+      TContext
+    >
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof createAdminAsset>>,
+  TError,
+  { data: CreateAssetDto },
+  TContext
+> => {
+  return useMutation(getCreateAdminAssetMutationOptions(options), queryClient)
+}
+
+export const updateAdminAsset = (
+  id: string,
+  adminUpdateAssetRequest: AdminUpdateAssetRequest,
+  signal?: AbortSignal,
+) => {
+  return customInstance<AdminAssetRow>({
+    url: `/api/v1/admin/assets/${id}`,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    data: adminUpdateAssetRequest,
+    signal,
+  })
+}
+
+export const getUpdateAdminAssetMutationOptions = <
+  TError = HttpValidationProblemDetails | ProblemDetails,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateAdminAsset>>,
+    TError,
+    { id: string; data: AdminUpdateAssetRequest },
+    TContext
+  >
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateAdminAsset>>,
+  TError,
+  { id: string; data: AdminUpdateAssetRequest },
+  TContext
+> => {
+  const mutationKey = ['updateAdminAsset']
+  const { mutation: mutationOptions } = options
+    ? options.mutation &&
+      'mutationKey' in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey } }
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateAdminAsset>>,
+    { id: string; data: AdminUpdateAssetRequest }
+  > = (props) => {
+    const { id, data } = props ?? {}
+
+    return updateAdminAsset(id, data)
+  }
+
+  return { mutationFn, ...mutationOptions }
+}
+
+export type UpdateAdminAssetMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateAdminAsset>>
+>
+export type UpdateAdminAssetMutationBody = AdminUpdateAssetRequest
+export type UpdateAdminAssetMutationError =
+  HttpValidationProblemDetails | ProblemDetails
+
+export const useUpdateAdminAsset = <
+  TError = HttpValidationProblemDetails | ProblemDetails,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof updateAdminAsset>>,
+      TError,
+      { id: string; data: AdminUpdateAssetRequest },
+      TContext
+    >
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof updateAdminAsset>>,
+  TError,
+  { id: string; data: AdminUpdateAssetRequest },
+  TContext
+> => {
+  return useMutation(getUpdateAdminAssetMutationOptions(options), queryClient)
+}
+
+export const deleteAdminAsset = (id: string, signal?: AbortSignal) => {
+  return customInstance<AdminDeleteResult>({
+    url: `/api/v1/admin/assets/${id}`,
+    method: 'DELETE',
+    signal,
+  })
+}
+
+export const getDeleteAdminAssetMutationOptions = <
+  TError = ProblemDetails,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteAdminAsset>>,
+    TError,
+    { id: string },
+    TContext
+  >
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteAdminAsset>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ['deleteAdminAsset']
+  const { mutation: mutationOptions } = options
+    ? options.mutation &&
+      'mutationKey' in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey } }
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteAdminAsset>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {}
+
+    return deleteAdminAsset(id)
+  }
+
+  return { mutationFn, ...mutationOptions }
+}
+
+export type DeleteAdminAssetMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteAdminAsset>>
+>
+
+export type DeleteAdminAssetMutationError = ProblemDetails
+
+export const useDeleteAdminAsset = <
+  TError = ProblemDetails,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof deleteAdminAsset>>,
+      TError,
+      { id: string },
+      TContext
+    >
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof deleteAdminAsset>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getDeleteAdminAssetMutationOptions(options), queryClient)
+}
+
+export const bulkDeleteAdminAssets = (
+  adminBulkDeleteRequest: AdminBulkDeleteRequest,
+  signal?: AbortSignal,
+) => {
+  return customInstance<AdminDeleteResult>({
+    url: `/api/v1/admin/assets/bulk-delete`,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    data: adminBulkDeleteRequest,
+    signal,
+  })
+}
+
+export const getBulkDeleteAdminAssetsMutationOptions = <
+  TError = HttpValidationProblemDetails,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof bulkDeleteAdminAssets>>,
+    TError,
+    { data: AdminBulkDeleteRequest },
+    TContext
+  >
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof bulkDeleteAdminAssets>>,
+  TError,
+  { data: AdminBulkDeleteRequest },
+  TContext
+> => {
+  const mutationKey = ['bulkDeleteAdminAssets']
+  const { mutation: mutationOptions } = options
+    ? options.mutation &&
+      'mutationKey' in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey } }
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof bulkDeleteAdminAssets>>,
+    { data: AdminBulkDeleteRequest }
+  > = (props) => {
+    const { data } = props ?? {}
+
+    return bulkDeleteAdminAssets(data)
+  }
+
+  return { mutationFn, ...mutationOptions }
+}
+
+export type BulkDeleteAdminAssetsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof bulkDeleteAdminAssets>>
+>
+export type BulkDeleteAdminAssetsMutationBody = AdminBulkDeleteRequest
+export type BulkDeleteAdminAssetsMutationError = HttpValidationProblemDetails
+
+export const useBulkDeleteAdminAssets = <
+  TError = HttpValidationProblemDetails,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof bulkDeleteAdminAssets>>,
+      TError,
+      { data: AdminBulkDeleteRequest },
+      TContext
+    >
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof bulkDeleteAdminAssets>>,
+  TError,
+  { data: AdminBulkDeleteRequest },
+  TContext
+> => {
+  return useMutation(
+    getBulkDeleteAdminAssetsMutationOptions(options),
+    queryClient,
+  )
+}
+
+export const clearAdminAssets = (signal?: AbortSignal) => {
+  return customInstance<AdminDeleteResult>({
+    url: `/api/v1/admin/assets/all`,
+    method: 'DELETE',
+    signal,
+  })
+}
+
+export const getClearAdminAssetsMutationOptions = <
+  TError = unknown,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof clearAdminAssets>>,
+    TError,
+    void,
+    TContext
+  >
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof clearAdminAssets>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ['clearAdminAssets']
+  const { mutation: mutationOptions } = options
+    ? options.mutation &&
+      'mutationKey' in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey } }
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof clearAdminAssets>>,
+    void
+  > = () => {
+    return clearAdminAssets()
+  }
+
+  return { mutationFn, ...mutationOptions }
+}
+
+export type ClearAdminAssetsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof clearAdminAssets>>
+>
+
+export type ClearAdminAssetsMutationError = unknown
+
+export const useClearAdminAssets = <TError = unknown, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof clearAdminAssets>>,
+      TError,
+      void,
+      TContext
+    >
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof clearAdminAssets>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getClearAdminAssetsMutationOptions(options), queryClient)
+}
+
+export const listAdminSchedules = (
+  params?: ListAdminSchedulesParams,
+  signal?: AbortSignal,
+) => {
+  return customInstance<AdminSchedulePageResponse>({
+    url: `/api/v1/admin/maintenance/schedules`,
+    method: 'GET',
+    params,
+    signal,
+  })
+}
+
+export const getListAdminSchedulesQueryKey = (
+  params?: ListAdminSchedulesParams,
+) => {
+  return [
+    `/api/v1/admin/maintenance/schedules`,
+    ...(params ? [params] : []),
+  ] as const
+}
+
+export const getListAdminSchedulesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listAdminSchedules>>,
+  TError = HttpValidationProblemDetails,
+>(
+  params?: ListAdminSchedulesParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listAdminSchedules>>,
+        TError,
+        TData
+      >
+    >
+  },
+) => {
+  const { query: queryOptions } = options ?? {}
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListAdminSchedulesQueryKey(params)
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listAdminSchedules>>
+  > = ({ signal }) => listAdminSchedules(params, signal)
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listAdminSchedules>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListAdminSchedulesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listAdminSchedules>>
+>
+export type ListAdminSchedulesQueryError = HttpValidationProblemDetails
+
+export function useListAdminSchedules<
+  TData = Awaited<ReturnType<typeof listAdminSchedules>>,
+  TError = HttpValidationProblemDetails,
+>(
+  params: undefined | ListAdminSchedulesParams,
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listAdminSchedules>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listAdminSchedules>>,
+          TError,
+          Awaited<ReturnType<typeof listAdminSchedules>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useListAdminSchedules<
+  TData = Awaited<ReturnType<typeof listAdminSchedules>>,
+  TError = HttpValidationProblemDetails,
+>(
+  params?: ListAdminSchedulesParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listAdminSchedules>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listAdminSchedules>>,
+          TError,
+          Awaited<ReturnType<typeof listAdminSchedules>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useListAdminSchedules<
+  TData = Awaited<ReturnType<typeof listAdminSchedules>>,
+  TError = HttpValidationProblemDetails,
+>(
+  params?: ListAdminSchedulesParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listAdminSchedules>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+
+export function useListAdminSchedules<
+  TData = Awaited<ReturnType<typeof listAdminSchedules>>,
+  TError = HttpValidationProblemDetails,
+>(
+  params?: ListAdminSchedulesParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listAdminSchedules>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+} {
+  const queryOptions = getListAdminSchedulesQueryOptions(params, options)
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+
+  return withQueryKey(query, queryOptions.queryKey)
+}
+
+export const updateAdminSchedule = (
+  id: string,
+  adminUpdateScheduleRequest: AdminUpdateScheduleRequest,
+  signal?: AbortSignal,
+) => {
+  return customInstance<ScheduleResponse>({
+    url: `/api/v1/admin/maintenance/schedules/${id}`,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    data: adminUpdateScheduleRequest,
+    signal,
+  })
+}
+
+export const getUpdateAdminScheduleMutationOptions = <
+  TError = HttpValidationProblemDetails | ProblemDetails,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateAdminSchedule>>,
+    TError,
+    { id: string; data: AdminUpdateScheduleRequest },
+    TContext
+  >
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateAdminSchedule>>,
+  TError,
+  { id: string; data: AdminUpdateScheduleRequest },
+  TContext
+> => {
+  const mutationKey = ['updateAdminSchedule']
+  const { mutation: mutationOptions } = options
+    ? options.mutation &&
+      'mutationKey' in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey } }
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateAdminSchedule>>,
+    { id: string; data: AdminUpdateScheduleRequest }
+  > = (props) => {
+    const { id, data } = props ?? {}
+
+    return updateAdminSchedule(id, data)
+  }
+
+  return { mutationFn, ...mutationOptions }
+}
+
+export type UpdateAdminScheduleMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateAdminSchedule>>
+>
+export type UpdateAdminScheduleMutationBody = AdminUpdateScheduleRequest
+export type UpdateAdminScheduleMutationError =
+  HttpValidationProblemDetails | ProblemDetails
+
+export const useUpdateAdminSchedule = <
+  TError = HttpValidationProblemDetails | ProblemDetails,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof updateAdminSchedule>>,
+      TError,
+      { id: string; data: AdminUpdateScheduleRequest },
+      TContext
+    >
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof updateAdminSchedule>>,
+  TError,
+  { id: string; data: AdminUpdateScheduleRequest },
+  TContext
+> => {
+  return useMutation(
+    getUpdateAdminScheduleMutationOptions(options),
+    queryClient,
+  )
+}
+
+export const deleteAdminSchedule = (id: string, signal?: AbortSignal) => {
+  return customInstance<AdminDeleteResult>({
+    url: `/api/v1/admin/maintenance/schedules/${id}`,
+    method: 'DELETE',
+    signal,
+  })
+}
+
+export const getDeleteAdminScheduleMutationOptions = <
+  TError = ProblemDetails,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteAdminSchedule>>,
+    TError,
+    { id: string },
+    TContext
+  >
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteAdminSchedule>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ['deleteAdminSchedule']
+  const { mutation: mutationOptions } = options
+    ? options.mutation &&
+      'mutationKey' in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey } }
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteAdminSchedule>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {}
+
+    return deleteAdminSchedule(id)
+  }
+
+  return { mutationFn, ...mutationOptions }
+}
+
+export type DeleteAdminScheduleMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteAdminSchedule>>
+>
+
+export type DeleteAdminScheduleMutationError = ProblemDetails
+
+export const useDeleteAdminSchedule = <
+  TError = ProblemDetails,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof deleteAdminSchedule>>,
+      TError,
+      { id: string },
+      TContext
+    >
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof deleteAdminSchedule>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(
+    getDeleteAdminScheduleMutationOptions(options),
+    queryClient,
+  )
+}
+
+export const bulkDeleteAdminSchedules = (
+  adminBulkDeleteRequest: AdminBulkDeleteRequest,
+  signal?: AbortSignal,
+) => {
+  return customInstance<AdminDeleteResult>({
+    url: `/api/v1/admin/maintenance/schedules/bulk-delete`,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    data: adminBulkDeleteRequest,
+    signal,
+  })
+}
+
+export const getBulkDeleteAdminSchedulesMutationOptions = <
+  TError = HttpValidationProblemDetails,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof bulkDeleteAdminSchedules>>,
+    TError,
+    { data: AdminBulkDeleteRequest },
+    TContext
+  >
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof bulkDeleteAdminSchedules>>,
+  TError,
+  { data: AdminBulkDeleteRequest },
+  TContext
+> => {
+  const mutationKey = ['bulkDeleteAdminSchedules']
+  const { mutation: mutationOptions } = options
+    ? options.mutation &&
+      'mutationKey' in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey } }
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof bulkDeleteAdminSchedules>>,
+    { data: AdminBulkDeleteRequest }
+  > = (props) => {
+    const { data } = props ?? {}
+
+    return bulkDeleteAdminSchedules(data)
+  }
+
+  return { mutationFn, ...mutationOptions }
+}
+
+export type BulkDeleteAdminSchedulesMutationResult = NonNullable<
+  Awaited<ReturnType<typeof bulkDeleteAdminSchedules>>
+>
+export type BulkDeleteAdminSchedulesMutationBody = AdminBulkDeleteRequest
+export type BulkDeleteAdminSchedulesMutationError = HttpValidationProblemDetails
+
+export const useBulkDeleteAdminSchedules = <
+  TError = HttpValidationProblemDetails,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof bulkDeleteAdminSchedules>>,
+      TError,
+      { data: AdminBulkDeleteRequest },
+      TContext
+    >
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof bulkDeleteAdminSchedules>>,
+  TError,
+  { data: AdminBulkDeleteRequest },
+  TContext
+> => {
+  return useMutation(
+    getBulkDeleteAdminSchedulesMutationOptions(options),
+    queryClient,
+  )
+}
+
+export const listAdminInspections = (
+  params?: ListAdminInspectionsParams,
+  signal?: AbortSignal,
+) => {
+  return customInstance<AdminInspectionPageResponse>({
+    url: `/api/v1/admin/maintenance/inspections`,
+    method: 'GET',
+    params,
+    signal,
+  })
+}
+
+export const getListAdminInspectionsQueryKey = (
+  params?: ListAdminInspectionsParams,
+) => {
+  return [
+    `/api/v1/admin/maintenance/inspections`,
+    ...(params ? [params] : []),
+  ] as const
+}
+
+export const getListAdminInspectionsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listAdminInspections>>,
+  TError = HttpValidationProblemDetails,
+>(
+  params?: ListAdminInspectionsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listAdminInspections>>,
+        TError,
+        TData
+      >
+    >
+  },
+) => {
+  const { query: queryOptions } = options ?? {}
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListAdminInspectionsQueryKey(params)
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listAdminInspections>>
+  > = ({ signal }) => listAdminInspections(params, signal)
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listAdminInspections>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListAdminInspectionsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listAdminInspections>>
+>
+export type ListAdminInspectionsQueryError = HttpValidationProblemDetails
+
+export function useListAdminInspections<
+  TData = Awaited<ReturnType<typeof listAdminInspections>>,
+  TError = HttpValidationProblemDetails,
+>(
+  params: undefined | ListAdminInspectionsParams,
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listAdminInspections>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listAdminInspections>>,
+          TError,
+          Awaited<ReturnType<typeof listAdminInspections>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useListAdminInspections<
+  TData = Awaited<ReturnType<typeof listAdminInspections>>,
+  TError = HttpValidationProblemDetails,
+>(
+  params?: ListAdminInspectionsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listAdminInspections>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listAdminInspections>>,
+          TError,
+          Awaited<ReturnType<typeof listAdminInspections>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useListAdminInspections<
+  TData = Awaited<ReturnType<typeof listAdminInspections>>,
+  TError = HttpValidationProblemDetails,
+>(
+  params?: ListAdminInspectionsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listAdminInspections>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+
+export function useListAdminInspections<
+  TData = Awaited<ReturnType<typeof listAdminInspections>>,
+  TError = HttpValidationProblemDetails,
+>(
+  params?: ListAdminInspectionsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listAdminInspections>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+} {
+  const queryOptions = getListAdminInspectionsQueryOptions(params, options)
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+
+  return withQueryKey(query, queryOptions.queryKey)
+}
+
+export const deleteAdminInspection = (id: string, signal?: AbortSignal) => {
+  return customInstance<AdminDeleteResult>({
+    url: `/api/v1/admin/maintenance/inspections/${id}`,
+    method: 'DELETE',
+    signal,
+  })
+}
+
+export const getDeleteAdminInspectionMutationOptions = <
+  TError = ProblemDetails,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteAdminInspection>>,
+    TError,
+    { id: string },
+    TContext
+  >
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteAdminInspection>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ['deleteAdminInspection']
+  const { mutation: mutationOptions } = options
+    ? options.mutation &&
+      'mutationKey' in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey } }
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteAdminInspection>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {}
+
+    return deleteAdminInspection(id)
+  }
+
+  return { mutationFn, ...mutationOptions }
+}
+
+export type DeleteAdminInspectionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteAdminInspection>>
+>
+
+export type DeleteAdminInspectionMutationError = ProblemDetails
+
+export const useDeleteAdminInspection = <
+  TError = ProblemDetails,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof deleteAdminInspection>>,
+      TError,
+      { id: string },
+      TContext
+    >
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof deleteAdminInspection>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(
+    getDeleteAdminInspectionMutationOptions(options),
+    queryClient,
+  )
+}
+
+export const bulkDeleteAdminInspections = (
+  adminBulkDeleteRequest: AdminBulkDeleteRequest,
+  signal?: AbortSignal,
+) => {
+  return customInstance<AdminDeleteResult>({
+    url: `/api/v1/admin/maintenance/inspections/bulk-delete`,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    data: adminBulkDeleteRequest,
+    signal,
+  })
+}
+
+export const getBulkDeleteAdminInspectionsMutationOptions = <
+  TError = HttpValidationProblemDetails,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof bulkDeleteAdminInspections>>,
+    TError,
+    { data: AdminBulkDeleteRequest },
+    TContext
+  >
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof bulkDeleteAdminInspections>>,
+  TError,
+  { data: AdminBulkDeleteRequest },
+  TContext
+> => {
+  const mutationKey = ['bulkDeleteAdminInspections']
+  const { mutation: mutationOptions } = options
+    ? options.mutation &&
+      'mutationKey' in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey } }
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof bulkDeleteAdminInspections>>,
+    { data: AdminBulkDeleteRequest }
+  > = (props) => {
+    const { data } = props ?? {}
+
+    return bulkDeleteAdminInspections(data)
+  }
+
+  return { mutationFn, ...mutationOptions }
+}
+
+export type BulkDeleteAdminInspectionsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof bulkDeleteAdminInspections>>
+>
+export type BulkDeleteAdminInspectionsMutationBody = AdminBulkDeleteRequest
+export type BulkDeleteAdminInspectionsMutationError =
+  HttpValidationProblemDetails
+
+export const useBulkDeleteAdminInspections = <
+  TError = HttpValidationProblemDetails,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof bulkDeleteAdminInspections>>,
+      TError,
+      { data: AdminBulkDeleteRequest },
+      TContext
+    >
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof bulkDeleteAdminInspections>>,
+  TError,
+  { data: AdminBulkDeleteRequest },
+  TContext
+> => {
+  return useMutation(
+    getBulkDeleteAdminInspectionsMutationOptions(options),
+    queryClient,
+  )
+}
+
+export const listAdminForms = (
+  params?: ListAdminFormsParams,
+  signal?: AbortSignal,
+) => {
+  return customInstance<AdminFormPageResponse>({
+    url: `/api/v1/admin/maintenance/forms`,
+    method: 'GET',
+    params,
+    signal,
+  })
+}
+
+export const getListAdminFormsQueryKey = (params?: ListAdminFormsParams) => {
+  return [
+    `/api/v1/admin/maintenance/forms`,
+    ...(params ? [params] : []),
+  ] as const
+}
+
+export const getListAdminFormsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listAdminForms>>,
+  TError = HttpValidationProblemDetails,
+>(
+  params?: ListAdminFormsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof listAdminForms>>, TError, TData>
+    >
+  },
+) => {
+  const { query: queryOptions } = options ?? {}
+
+  const queryKey = queryOptions?.queryKey ?? getListAdminFormsQueryKey(params)
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listAdminForms>>> = ({
+    signal,
+  }) => listAdminForms(params, signal)
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listAdminForms>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListAdminFormsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listAdminForms>>
+>
+export type ListAdminFormsQueryError = HttpValidationProblemDetails
+
+export function useListAdminForms<
+  TData = Awaited<ReturnType<typeof listAdminForms>>,
+  TError = HttpValidationProblemDetails,
+>(
+  params: undefined | ListAdminFormsParams,
+  options: {
+    query: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof listAdminForms>>, TError, TData>
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listAdminForms>>,
+          TError,
+          Awaited<ReturnType<typeof listAdminForms>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useListAdminForms<
+  TData = Awaited<ReturnType<typeof listAdminForms>>,
+  TError = HttpValidationProblemDetails,
+>(
+  params?: ListAdminFormsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof listAdminForms>>, TError, TData>
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listAdminForms>>,
+          TError,
+          Awaited<ReturnType<typeof listAdminForms>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useListAdminForms<
+  TData = Awaited<ReturnType<typeof listAdminForms>>,
+  TError = HttpValidationProblemDetails,
+>(
+  params?: ListAdminFormsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof listAdminForms>>, TError, TData>
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+
+export function useListAdminForms<
+  TData = Awaited<ReturnType<typeof listAdminForms>>,
+  TError = HttpValidationProblemDetails,
+>(
+  params?: ListAdminFormsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof listAdminForms>>, TError, TData>
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+} {
+  const queryOptions = getListAdminFormsQueryOptions(params, options)
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+
+  return withQueryKey(query, queryOptions.queryKey)
+}
+
+export const updateAdminForm = (
+  id: string,
+  adminUpdateFormRequest: AdminUpdateFormRequest,
+  signal?: AbortSignal,
+) => {
+  return customInstance<AdminFormRow>({
+    url: `/api/v1/admin/maintenance/forms/${id}`,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    data: adminUpdateFormRequest,
+    signal,
+  })
+}
+
+export const getUpdateAdminFormMutationOptions = <
+  TError = HttpValidationProblemDetails | ProblemDetails,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateAdminForm>>,
+    TError,
+    { id: string; data: AdminUpdateFormRequest },
+    TContext
+  >
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateAdminForm>>,
+  TError,
+  { id: string; data: AdminUpdateFormRequest },
+  TContext
+> => {
+  const mutationKey = ['updateAdminForm']
+  const { mutation: mutationOptions } = options
+    ? options.mutation &&
+      'mutationKey' in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey } }
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateAdminForm>>,
+    { id: string; data: AdminUpdateFormRequest }
+  > = (props) => {
+    const { id, data } = props ?? {}
+
+    return updateAdminForm(id, data)
+  }
+
+  return { mutationFn, ...mutationOptions }
+}
+
+export type UpdateAdminFormMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateAdminForm>>
+>
+export type UpdateAdminFormMutationBody = AdminUpdateFormRequest
+export type UpdateAdminFormMutationError =
+  HttpValidationProblemDetails | ProblemDetails
+
+export const useUpdateAdminForm = <
+  TError = HttpValidationProblemDetails | ProblemDetails,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof updateAdminForm>>,
+      TError,
+      { id: string; data: AdminUpdateFormRequest },
+      TContext
+    >
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof updateAdminForm>>,
+  TError,
+  { id: string; data: AdminUpdateFormRequest },
+  TContext
+> => {
+  return useMutation(getUpdateAdminFormMutationOptions(options), queryClient)
+}
+
+export const deleteAdminForm = (id: string, signal?: AbortSignal) => {
+  return customInstance<AdminDeleteResult>({
+    url: `/api/v1/admin/maintenance/forms/${id}`,
+    method: 'DELETE',
+    signal,
+  })
+}
+
+export const getDeleteAdminFormMutationOptions = <
+  TError = ProblemDetails,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteAdminForm>>,
+    TError,
+    { id: string },
+    TContext
+  >
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteAdminForm>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ['deleteAdminForm']
+  const { mutation: mutationOptions } = options
+    ? options.mutation &&
+      'mutationKey' in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey } }
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteAdminForm>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {}
+
+    return deleteAdminForm(id)
+  }
+
+  return { mutationFn, ...mutationOptions }
+}
+
+export type DeleteAdminFormMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteAdminForm>>
+>
+
+export type DeleteAdminFormMutationError = ProblemDetails
+
+export const useDeleteAdminForm = <TError = ProblemDetails, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof deleteAdminForm>>,
+      TError,
+      { id: string },
+      TContext
+    >
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof deleteAdminForm>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getDeleteAdminFormMutationOptions(options), queryClient)
+}
+
+export const deleteAdminAcknowledgement = (
+  id: string,
+  signal?: AbortSignal,
+) => {
+  return customInstance<AdminDeleteResult>({
+    url: `/api/v1/admin/maintenance/forms/${id}/acknowledgement`,
+    method: 'DELETE',
+    signal,
+  })
+}
+
+export const getDeleteAdminAcknowledgementMutationOptions = <
+  TError = ProblemDetails,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteAdminAcknowledgement>>,
+    TError,
+    { id: string },
+    TContext
+  >
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteAdminAcknowledgement>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ['deleteAdminAcknowledgement']
+  const { mutation: mutationOptions } = options
+    ? options.mutation &&
+      'mutationKey' in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey } }
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteAdminAcknowledgement>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {}
+
+    return deleteAdminAcknowledgement(id)
+  }
+
+  return { mutationFn, ...mutationOptions }
+}
+
+export type DeleteAdminAcknowledgementMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteAdminAcknowledgement>>
+>
+
+export type DeleteAdminAcknowledgementMutationError = ProblemDetails
+
+export const useDeleteAdminAcknowledgement = <
+  TError = ProblemDetails,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof deleteAdminAcknowledgement>>,
+      TError,
+      { id: string },
+      TContext
+    >
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof deleteAdminAcknowledgement>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(
+    getDeleteAdminAcknowledgementMutationOptions(options),
+    queryClient,
+  )
+}
+
+export const returnAdminFormToDraft = (id: string, signal?: AbortSignal) => {
+  return customInstance<void>({
+    url: `/api/v1/admin/maintenance/forms/${id}/return-to-draft`,
+    method: 'POST',
+    signal,
+  })
+}
+
+export const getReturnAdminFormToDraftMutationOptions = <
+  TError = ProblemDetails,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof returnAdminFormToDraft>>,
+    TError,
+    { id: string },
+    TContext
+  >
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof returnAdminFormToDraft>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ['returnAdminFormToDraft']
+  const { mutation: mutationOptions } = options
+    ? options.mutation &&
+      'mutationKey' in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey } }
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof returnAdminFormToDraft>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {}
+
+    return returnAdminFormToDraft(id)
+  }
+
+  return { mutationFn, ...mutationOptions }
+}
+
+export type ReturnAdminFormToDraftMutationResult = NonNullable<
+  Awaited<ReturnType<typeof returnAdminFormToDraft>>
+>
+
+export type ReturnAdminFormToDraftMutationError = ProblemDetails
+
+export const useReturnAdminFormToDraft = <
+  TError = ProblemDetails,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof returnAdminFormToDraft>>,
+      TError,
+      { id: string },
+      TContext
+    >
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof returnAdminFormToDraft>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(
+    getReturnAdminFormToDraftMutationOptions(options),
+    queryClient,
+  )
+}
+
+export const clearAdminMaintenanceData = (signal?: AbortSignal) => {
+  return customInstance<AdminDeleteResult>({
+    url: `/api/v1/admin/demo-data/maintenance`,
+    method: 'DELETE',
+    signal,
+  })
+}
+
+export const getClearAdminMaintenanceDataMutationOptions = <
+  TError = unknown,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof clearAdminMaintenanceData>>,
+    TError,
+    void,
+    TContext
+  >
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof clearAdminMaintenanceData>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ['clearAdminMaintenanceData']
+  const { mutation: mutationOptions } = options
+    ? options.mutation &&
+      'mutationKey' in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey } }
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof clearAdminMaintenanceData>>,
+    void
+  > = () => {
+    return clearAdminMaintenanceData()
+  }
+
+  return { mutationFn, ...mutationOptions }
+}
+
+export type ClearAdminMaintenanceDataMutationResult = NonNullable<
+  Awaited<ReturnType<typeof clearAdminMaintenanceData>>
+>
+
+export type ClearAdminMaintenanceDataMutationError = unknown
+
+export const useClearAdminMaintenanceData = <
+  TError = unknown,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof clearAdminMaintenanceData>>,
+      TError,
+      void,
+      TContext
+    >
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof clearAdminMaintenanceData>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(
+    getClearAdminMaintenanceDataMutationOptions(options),
+    queryClient,
+  )
+}
+
+export const clearAdminAssetsAndMaintenance = (signal?: AbortSignal) => {
+  return customInstance<AdminDeleteResult>({
+    url: `/api/v1/admin/demo-data/assets`,
+    method: 'DELETE',
+    signal,
+  })
+}
+
+export const getClearAdminAssetsAndMaintenanceMutationOptions = <
+  TError = unknown,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof clearAdminAssetsAndMaintenance>>,
+    TError,
+    void,
+    TContext
+  >
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof clearAdminAssetsAndMaintenance>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ['clearAdminAssetsAndMaintenance']
+  const { mutation: mutationOptions } = options
+    ? options.mutation &&
+      'mutationKey' in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey } }
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof clearAdminAssetsAndMaintenance>>,
+    void
+  > = () => {
+    return clearAdminAssetsAndMaintenance()
+  }
+
+  return { mutationFn, ...mutationOptions }
+}
+
+export type ClearAdminAssetsAndMaintenanceMutationResult = NonNullable<
+  Awaited<ReturnType<typeof clearAdminAssetsAndMaintenance>>
+>
+
+export type ClearAdminAssetsAndMaintenanceMutationError = unknown
+
+export const useClearAdminAssetsAndMaintenance = <
+  TError = unknown,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof clearAdminAssetsAndMaintenance>>,
+      TError,
+      void,
+      TContext
+    >
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof clearAdminAssetsAndMaintenance>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(
+    getClearAdminAssetsAndMaintenanceMutationOptions(options),
+    queryClient,
+  )
+}
+
+export const loadAdminValidationDataset = (signal?: AbortSignal) => {
+  return customInstance<AdminValidationDatasetResponse>({
+    url: `/api/v1/admin/demo-data/validation/load`,
+    method: 'POST',
+    signal,
+  })
+}
+
+export const getLoadAdminValidationDatasetMutationOptions = <
+  TError = ProblemDetails,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof loadAdminValidationDataset>>,
+    TError,
+    void,
+    TContext
+  >
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof loadAdminValidationDataset>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ['loadAdminValidationDataset']
+  const { mutation: mutationOptions } = options
+    ? options.mutation &&
+      'mutationKey' in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey } }
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof loadAdminValidationDataset>>,
+    void
+  > = () => {
+    return loadAdminValidationDataset()
+  }
+
+  return { mutationFn, ...mutationOptions }
+}
+
+export type LoadAdminValidationDatasetMutationResult = NonNullable<
+  Awaited<ReturnType<typeof loadAdminValidationDataset>>
+>
+
+export type LoadAdminValidationDatasetMutationError = ProblemDetails
+
+export const useLoadAdminValidationDataset = <
+  TError = ProblemDetails,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof loadAdminValidationDataset>>,
+      TError,
+      void,
+      TContext
+    >
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof loadAdminValidationDataset>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(
+    getLoadAdminValidationDatasetMutationOptions(options),
+    queryClient,
+  )
+}
+
+export const resetAndSeedAdminValidationDataset = (signal?: AbortSignal) => {
+  return customInstance<AdminValidationDatasetResponse>({
+    url: `/api/v1/admin/demo-data/validation/reset`,
+    method: 'POST',
+    signal,
+  })
+}
+
+export const getResetAndSeedAdminValidationDatasetMutationOptions = <
+  TError = ProblemDetails,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof resetAndSeedAdminValidationDataset>>,
+    TError,
+    void,
+    TContext
+  >
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof resetAndSeedAdminValidationDataset>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ['resetAndSeedAdminValidationDataset']
+  const { mutation: mutationOptions } = options
+    ? options.mutation &&
+      'mutationKey' in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey } }
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof resetAndSeedAdminValidationDataset>>,
+    void
+  > = () => {
+    return resetAndSeedAdminValidationDataset()
+  }
+
+  return { mutationFn, ...mutationOptions }
+}
+
+export type ResetAndSeedAdminValidationDatasetMutationResult = NonNullable<
+  Awaited<ReturnType<typeof resetAndSeedAdminValidationDataset>>
+>
+
+export type ResetAndSeedAdminValidationDatasetMutationError = ProblemDetails
+
+export const useResetAndSeedAdminValidationDataset = <
+  TError = ProblemDetails,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof resetAndSeedAdminValidationDataset>>,
+      TError,
+      void,
+      TContext
+    >
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof resetAndSeedAdminValidationDataset>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(
+    getResetAndSeedAdminValidationDatasetMutationOptions(options),
     queryClient,
   )
 }

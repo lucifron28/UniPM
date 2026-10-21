@@ -1,5 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
+using System.Security.Cryptography;
 using System.Security.Claims;
+using System.Text;
 using Microsoft.IdentityModel.Tokens;
 using UniPM.Api.Models;
 
@@ -21,7 +23,8 @@ internal sealed class JwtTokenService(JwtRuntimeConfiguration configuration)
             new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
             new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString("N")),
             new(JwtRegisteredClaimNames.Email, user.Email ?? string.Empty),
-            new(AuthClaimNames.DisplayName, user.DisplayName)
+            new(AuthClaimNames.DisplayName, user.DisplayName),
+            new(AuthClaimNames.SecurityStampHash, HashSecurityStamp(user.SecurityStamp))
         };
         claims.AddRange(roles
             .OrderBy(role => role, StringComparer.Ordinal)
@@ -41,5 +44,11 @@ internal sealed class JwtTokenService(JwtRuntimeConfiguration configuration)
         return new IssuedAccessToken(
             new JwtSecurityTokenHandler().WriteToken(token),
             expires);
+    }
+
+    internal static string HashSecurityStamp(string? securityStamp)
+    {
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(securityStamp ?? string.Empty));
+        return Convert.ToHexString(hash);
     }
 }

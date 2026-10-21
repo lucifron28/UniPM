@@ -1,4 +1,5 @@
 using UniPM.Api.Features.Assets;
+using UniPM.Api.Features.AdminManagement;
 using UniPM.Api.Features.Auth;
 using UniPM.Api.Features.Inspections;
 using UniPM.Api.Features.PreventiveMaintenanceForms;
@@ -16,6 +17,8 @@ public static class ApiEndpointRouteBuilderExtensions
 
         api.MapReferenceDataEndpoints();
         api.MapAuthEndpoints();
+        api.MapAdminAccountEndpoints();
+        api.MapAdminOperationalEndpoints();
         api.MapAssetsEndpoints();
         api.MapSchedulesEndpoints();
         api.MapInspectionLocationVerificationEndpoints();
