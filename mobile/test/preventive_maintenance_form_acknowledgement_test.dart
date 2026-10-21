@@ -1009,6 +1009,13 @@ Future<void> _drawSignature(WidgetTester tester) async {
 }
 
 Future<void> _ensureVisible(WidgetTester tester, Finder finder) async {
+  if (finder.evaluate().isEmpty) {
+    final scrollable = find.descendant(
+      of: find.byKey(const Key('acknowledgement-page')),
+      matching: find.byType(Scrollable),
+    );
+    await tester.scrollUntilVisible(finder, 200, scrollable: scrollable.first);
+  }
   await tester.ensureVisible(finder);
   await tester.pumpAndSettle();
 }
