@@ -151,6 +151,31 @@ internal sealed class RefreshSessionService(
         }
     }
 
+    public async Task RevokeAllForUserAsync(
+        Guid userId,
+        string reason,
+        CancellationToken cancellationToken = default)
+    {
+        await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
+        var now = timeProvider.GetUtcNow();
+        var sessions = context.RefreshSessions.Where(session =>
+            session.UserId == userId && session.RevokedAtUtc == null);
+        if (context.Database.IsRelational())
+        {
+            await sessions.ExecuteUpdateAsync(setters => setters
+                .SetProperty(session => session.RevokedAtUtc, now)
+                .SetProperty(session => session.RevocationReason, reason), cancellationToken);
+            return;
+        }
+
+        foreach (var session in await sessions.ToListAsync(cancellationToken))
+        {
+            session.RevokedAtUtc = now;
+            session.RevocationReason = reason;
+        }
+        await context.SaveChangesAsync(cancellationToken);
+    }
+
     private async Task<IssuedRefreshSession> CreateAsync(ApplicationUser user, Guid familyId, DateTimeOffset now, DateTimeOffset expiresAtUtc, CancellationToken cancellationToken)
     {
         await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);

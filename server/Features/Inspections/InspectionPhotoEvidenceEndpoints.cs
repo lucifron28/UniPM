@@ -365,7 +365,8 @@ public static class InspectionPhotoEvidenceEndpoints
             return inspection.InspectorUserId == actorId;
         }
 
-        return principal.IsInRole(AuthRoleCatalog.Gsd)
+        return (principal.IsInRole(AuthRoleCatalog.Gsd)
+            || principal.IsInRole(AuthRoleCatalog.Admin))
             && (inspection.PreventiveMaintenanceFormId is null
                 || inspection.PreventiveMaintenanceForm?.Status
                     == PreventiveMaintenanceFormStatusCatalog.Acknowledged);

@@ -2,6 +2,8 @@ using System.IdentityModel.Tokens.Jwt;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using System.Security.Cryptography;
+using System.Text;
 using UniPM.Api.Data;
 using UniPM.Api.Models;
 
@@ -65,9 +67,20 @@ internal static class AuthServiceCollectionExtensions
                         var userManager = context.HttpContext.RequestServices
                             .GetRequiredService<UserManager<ApplicationUser>>();
                         var user = await userManager.FindByIdAsync(userId.ToString());
-                        if (user is null || !user.IsActive)
+                        var tokenStampHash = context.Principal?
+                            .FindFirst(AuthClaimNames.SecurityStampHash)?.Value;
+                        var currentStampHash = user is null
+                            ? null
+                            : JwtTokenService.HashSecurityStamp(user.SecurityStamp);
+                        if (user is null
+                            || !user.IsActive
+                            || tokenStampHash is null
+                            || currentStampHash is null
+                            || !CryptographicOperations.FixedTimeEquals(
+                                Encoding.ASCII.GetBytes(tokenStampHash),
+                                Encoding.ASCII.GetBytes(currentStampHash)))
                         {
-                            context.Fail("The access token user is no longer active.");
+                            context.Fail("The access token user session is no longer valid.");
                         }
                     }
                 };
@@ -76,11 +89,14 @@ internal static class AuthServiceCollectionExtensions
         services.AddAuthorization(options =>
         {
             options.AddPolicy(
+                AuthPolicyCatalog.CanManageAdminManagement,
+                policy => policy.RequireRole(AuthRoleCatalog.Admin));
+            options.AddPolicy(
                 AuthPolicyCatalog.CanManageAssets,
-                policy => policy.RequireRole(AuthRoleCatalog.Gsd));
+                policy => policy.RequireRole(AuthRoleCatalog.Gsd, AuthRoleCatalog.Admin));
             options.AddPolicy(
                 AuthPolicyCatalog.CanManageSchedules,
-                policy => policy.RequireRole(AuthRoleCatalog.Gsd, AuthRoleCatalog.Supervisor));
+                policy => policy.RequireRole(AuthRoleCatalog.Gsd, AuthRoleCatalog.Supervisor, AuthRoleCatalog.Admin));
             options.AddPolicy(
                 AuthPolicyCatalog.CanGenerateSchedules,
                 policy => policy.RequireRole(AuthRoleCatalog.Gsd));
@@ -91,16 +107,17 @@ internal static class AuthServiceCollectionExtensions
                     .RequireRole(
                         AuthRoleCatalog.Gsd,
                         AuthRoleCatalog.Inspector,
-                        AuthRoleCatalog.Supervisor));
+                        AuthRoleCatalog.Supervisor,
+                        AuthRoleCatalog.Admin));
             options.AddPolicy(
                 AuthPolicyCatalog.CanAssignScheduleSupervisors,
-                policy => policy.RequireRole(AuthRoleCatalog.Gsd));
+                policy => policy.RequireRole(AuthRoleCatalog.Gsd, AuthRoleCatalog.Admin));
             options.AddPolicy(
                 AuthPolicyCatalog.CanAssignScheduleWorkers,
-                policy => policy.RequireRole(AuthRoleCatalog.Supervisor));
+                policy => policy.RequireRole(AuthRoleCatalog.Supervisor, AuthRoleCatalog.Admin));
             options.AddPolicy(
                 AuthPolicyCatalog.CanManagePreventiveMaintenanceForms,
-                policy => policy.RequireRole(AuthRoleCatalog.Gsd, AuthRoleCatalog.Inspector));
+                policy => policy.RequireRole(AuthRoleCatalog.Gsd, AuthRoleCatalog.Inspector, AuthRoleCatalog.Admin));
             options.AddPolicy(
                 AuthPolicyCatalog.CanInspectPreventiveMaintenanceSchedule,
                 policy =>
