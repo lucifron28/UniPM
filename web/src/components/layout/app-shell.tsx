@@ -9,6 +9,7 @@ import {
   Menu,
   PanelLeftClose,
   PanelLeftOpen,
+  ShieldCheck,
   X,
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
@@ -241,6 +242,7 @@ export function AppShell() {
     (currentUser.isSuccess && hasAnyRole(roles, requiredRoles))
   const showSchedules = currentUser.isSuccess && canReadSchedules(roles)
   const showFormReview = currentUser.isSuccess && canReviewForms(roles)
+  const showAdmin = currentUser.isSuccess && roles.includes('Admin')
   const navigationItems = [
     {
       to: '/app/dashboard',
@@ -266,6 +268,12 @@ export function AppShell() {
       label: 'Form review',
       icon: ClipboardList,
       visible: showFormReview,
+    },
+    {
+      to: '/app/admin',
+      label: 'Admin',
+      icon: ShieldCheck,
+      visible: showAdmin,
     },
   ] as const
 
