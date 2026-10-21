@@ -617,7 +617,7 @@ export function PmPeriodDashboard({
   if (cyclesQuery.isPending) {
     return (
       <section aria-labelledby="dashboard-title" className="space-y-4">
-        <DashboardHeader canAskNla={canAskNla} />
+        <DashboardHeader canAskNla={canAskNla} search={search} />
         <CyclesLoading />
       </section>
     )
@@ -626,7 +626,7 @@ export function PmPeriodDashboard({
   if (cyclesQuery.isError) {
     return (
       <section aria-labelledby="dashboard-title" className="space-y-4">
-        <DashboardHeader canAskNla={canAskNla} />
+        <DashboardHeader canAskNla={canAskNla} search={search} />
         <QueryError
           message="PM period options could not be loaded."
           onRetry={() => void cyclesQuery.refetch()}
@@ -638,7 +638,7 @@ export function PmPeriodDashboard({
   if (categoryOptions.length === 0) {
     return (
       <section aria-labelledby="dashboard-title" className="space-y-4">
-        <DashboardHeader canAskNla={canAskNla} />
+        <DashboardHeader canAskNla={canAskNla} search={search} />
         <Card className="p-6 shadow-none">
           <h2 className="text-lg font-semibold text-[var(--text-primary)]">
             No PM periods are scheduled
@@ -653,7 +653,7 @@ export function PmPeriodDashboard({
 
   return (
     <section aria-labelledby="dashboard-title" className="space-y-4">
-      <DashboardHeader canAskNla={canAskNla} />
+      <DashboardHeader canAskNla={canAskNla} search={search} />
 
       {showGeneratedReport ? (
         <>
@@ -937,7 +937,13 @@ export function PmPeriodDashboard({
   )
 }
 
-export function DashboardHeader({ canAskNla }: { canAskNla: boolean }) {
+export function DashboardHeader({
+  canAskNla,
+  search = {},
+}: {
+  canAskNla: boolean
+  search?: PmPeriodDashboardSearch
+}) {
   return (
     <PageHeading
       id={dashboardTitleId}
@@ -948,7 +954,12 @@ export function DashboardHeader({ canAskNla }: { canAskNla: boolean }) {
       actions={
         canAskNla ? (
           <Button asChild>
-            <Link to="/app/analytics">Ask a question</Link>
+            <Link
+              to="/app/analytics"
+              search={{ returnContext: { kind: 'dashboard', search } }}
+            >
+              Ask a question
+            </Link>
           </Button>
         ) : undefined
       }

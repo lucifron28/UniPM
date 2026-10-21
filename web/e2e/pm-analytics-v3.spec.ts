@@ -308,24 +308,24 @@ test('runs a V3 report through source-record review at a narrow viewport', async
 
   await page.goto('/app/analytics')
   await page
-    .getByRole('textbox', { name: 'Describe the report' })
+    .getByRole('textbox', { name: 'Question' })
     .fill('Show progress for fire extinguishers during 2024')
-  await page.getByRole('button', { name: 'Fill plan from question' }).click()
-  await expect(
-    page.getByText('A report plan is ready to review.'),
-  ).toBeVisible()
+  await page.getByRole('button', { name: 'Generate report' }).click()
+  await expect(page.getByText('Report ready for review')).toBeVisible()
   await page.getByRole('button', { name: 'Preview report' }).click()
   await expect(
     page.getByRole('heading', { name: 'Report preview' }),
   ).toBeVisible()
   await expect(page.getByText(/Measure definitions/)).toBeVisible()
-  await page.getByRole('button', { name: 'Confirm and run report' }).click()
+  await page.getByRole('button', { name: 'Confirm and generate' }).click()
   await expect(page.getByText('100%', { exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'View contributing records' }).click()
   await expect(
     page.getByText(/records plan for Progress is ready/),
   ).toBeVisible()
-  await page.getByRole('button', { name: 'Preview report' }).click()
+  await expect(
+    page.getByRole('heading', { name: 'Report preview' }),
+  ).toBeVisible()
   await expect.poll(() => previewPlans).toHaveLength(2)
   expect(previewPlans[1].mode).toBe('Records')
   expect(previewPlans[1].matchingFilters).toEqual([
@@ -335,7 +335,7 @@ test('runs a V3 report through source-record review at a narrow viewport', async
       values: ['Operational', 'NonOperational'],
     },
   ])
-  await page.getByRole('button', { name: 'Confirm and run report' }).click()
+  await page.getByRole('button', { name: 'Confirm and generate' }).click()
   await expect(
     page.getByRole('link', { name: 'Review inspection' }),
   ).toHaveAttribute(
@@ -428,6 +428,36 @@ test('runs a registered asset inventory report without a PM period', async ({
       json: subject === 'assetInventory' ? inventoryCatalog : catalog,
     })
   })
+
+  const inventoryPlan = {
+    schemaVersion: 3,
+    catalogVersion: 2,
+    subject: 'assetInventory',
+    mode: 'Aggregate',
+    period: null,
+    categories: ['fire-extinguisher'],
+    measures: ['registeredAssetCount'],
+    groupBy: ['registrationStatus'],
+    baseFilters: [],
+    matchingFilters: [],
+    aggregateFilters: [],
+    orderBy: [],
+    top: null,
+    presentation: 'Table',
+    columns: ['registrationStatus', 'registeredAssetCount'],
+  }
+  await page.route('**/api/v1/analytics/pm/v3/interpret', (route) =>
+    route.fulfill({
+      json: {
+        status: 'Valid',
+        plan: inventoryPlan,
+        clarificationFields: [],
+        code: null,
+        detail: null,
+        interpreter: 'DeterministicParser',
+      },
+    }),
+  )
 
   let previewPlan: Record<string, unknown> | null = null
   await page.route('**/api/v1/analytics/pm/v3/preview', async (route) => {
@@ -527,16 +557,13 @@ test('runs a registered asset inventory report without a PM period', async ({
   )
 
   await page.goto('/app/analytics')
-  await page.getByLabel('Report subject').selectOption('assetInventory')
-  await expect(
-    page.getByRole('heading', { name: 'Build an asset inventory report' }),
-  ).toBeVisible()
-  await expect(page.getByLabel('Scheduled PM cycle period')).toHaveCount(0)
-  await expect(page.getByLabel('Describe the report')).toHaveCount(0)
+  await expect(page.getByRole('heading', { name: 'Ask UniPM' })).toBeVisible()
   await page
-    .getByRole('group', { name: 'Group results by' })
-    .getByRole('checkbox', { name: 'Registration status' })
-    .check()
+    .getByRole('textbox', { name: 'Question' })
+    .fill('How many fire extinguishers are registered by status?')
+  await page.getByRole('button', { name: 'Generate report' }).click()
+  await expect(page.getByText('Asset inventory')).toBeVisible()
+  await expect(page.getByLabel('Scheduled PM cycle period')).toHaveCount(0)
   await page.getByRole('button', { name: 'Preview report' }).click()
   await expect(
     page.getByRole('heading', { name: 'Report preview' }),
@@ -546,8 +573,9 @@ test('runs a registered asset inventory report without a PM period', async ({
     period: null,
     groupBy: ['registrationStatus'],
   })
+  expect(previewPlan).toEqual(inventoryPlan)
   await expect(page.getByText('Included PM cycles by category')).toHaveCount(0)
-  await page.getByRole('button', { name: 'Confirm and run report' }).click()
+  await page.getByRole('button', { name: 'Confirm and generate' }).click()
   await expect(
     page.getByRole('heading', { name: 'Registered asset inventory results' }),
   ).toBeVisible()

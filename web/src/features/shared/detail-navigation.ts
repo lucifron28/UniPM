@@ -17,6 +17,7 @@ import type { PmPeriodDashboardSearch } from '@/features/reports/pm-period-dashb
 
 export type DetailReturnContext =
   | { kind: 'dashboard'; search?: PmPeriodDashboardSearch | undefined }
+  | { kind: 'analytics'; sessionId: string }
   | { kind: 'assetRegistry'; search?: AssetSearch | undefined }
   | { kind: 'inspectionRegistry'; search?: InspectionSearch | undefined }
   | { kind: 'scheduleRegistry'; search?: ScheduleSearch | undefined }
@@ -58,6 +59,7 @@ export type DetailReturnFallback = Extract<
 
 export type DetailReturnTarget =
   | { kind: 'dashboard'; search: PmPeriodDashboardSearch; label: string }
+  | { kind: 'analytics'; sessionId: string; label: string }
   | { kind: 'assetRegistry'; search: AssetSearch; label: string }
   | { kind: 'inspectionRegistry'; search: InspectionSearch; label: string }
   | { kind: 'scheduleRegistry'; search: ScheduleSearch; label: string }
@@ -194,6 +196,10 @@ const detailReturnContextSchema: z.ZodType<DetailReturnContext> = z.lazy(
         search: dashboardSearchSchema.optional(),
       }),
       z.object({
+        kind: z.literal('analytics'),
+        sessionId: z.string().uuid(),
+      }),
+      z.object({
         kind: z.literal('assetRegistry'),
         search: assetSearchSchema.optional(),
       }),
@@ -277,7 +283,10 @@ function entityDepth(context: DetailReturnContext | undefined): number {
 
 function terminalOrigin(
   context: DetailReturnContext | undefined,
-): DetailReturnFallback | undefined {
+):
+  | DetailReturnFallback
+  | Extract<DetailReturnContext, { kind: 'analytics' }>
+  | undefined {
   if (!context) return undefined
   if (!isEntityContext(context)) return context
   return terminalOrigin(context.parent)
@@ -292,7 +301,7 @@ function removeRepeatedEntity(
   id: string,
 ): DetailReturnContext | undefined {
   if (!context) return undefined
-  if (context.kind === kind) {
+  if (isEntityContext(context) && context.kind === kind) {
     const contextId =
       context.kind === 'assetDetail'
         ? context.assetId
@@ -376,6 +385,12 @@ export function resolveDetailReturn(
         kind: origin.kind,
         search: origin.search ?? {},
         label: 'Back to PM dashboard',
+      }
+    case 'analytics':
+      return {
+        kind: origin.kind,
+        sessionId: origin.sessionId,
+        label: 'Back to report',
       }
     case 'assetRegistry':
       return {
