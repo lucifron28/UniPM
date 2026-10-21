@@ -273,7 +273,9 @@ public sealed class ScheduleBatchAssignmentEndpointsTests
             Assert.Equal(TestAuthenticationHandler.UserId, audit.ChangedByUserId);
             Assert.Equal("Previous Supervisor is unavailable", audit.Reason);
         });
-        Assert.Equal(new[] { second.Id, third.Id }, audits.Select(audit => audit.ScheduleId).Order().ToArray());
+        Assert.Equal(
+            new[] { second.Id, third.Id }.Order().ToArray(),
+            audits.Select(audit => audit.ScheduleId).Order().ToArray());
         Assert.Equal(oldWorkerId, await application.GetInspectionInspectorAsync(first.Id));
     }
 
