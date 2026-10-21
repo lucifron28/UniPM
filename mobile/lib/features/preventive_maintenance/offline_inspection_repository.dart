@@ -45,16 +45,15 @@ abstract interface class OfflineSnapshotStore {
 
 class SecureOfflineSnapshotStore implements OfflineSnapshotStore {
   SecureOfflineSnapshotStore({
-    required Uri? apiBaseUrl,
+    required this.apiBaseUrl,
     FlutterSecureStorage? storage,
-  }) : _apiBaseUrl = apiBaseUrl,
-       _storage = storage ?? const FlutterSecureStorage();
+  }) : _storage = storage ?? const FlutterSecureStorage();
 
-  final Uri? _apiBaseUrl;
+  final Uri? apiBaseUrl;
   final FlutterSecureStorage _storage;
 
   String _key(String userId) {
-    final backend = _apiBaseUrl;
+    final backend = apiBaseUrl;
     if (backend == null ||
         !backend.hasAuthority ||
         !const ['http', 'https'].contains(backend.scheme.toLowerCase())) {
