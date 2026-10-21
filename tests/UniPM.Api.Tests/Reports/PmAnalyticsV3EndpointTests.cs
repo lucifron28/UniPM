@@ -59,6 +59,19 @@ public sealed class PmAnalyticsV3EndpointTests
         Assert.Equal("Valid", interpretation.Status);
         Assert.NotNull(interpretation.Plan);
 
+        using var ambiguousPeriodResponse = await client.PostAsJsonAsync(
+            "/api/v1/analytics/pm/v3/interpret",
+            new PmAnalyticsV3InterpretRequest(
+                "How many emergency lights were inspected in June 2026?"));
+        Assert.Equal(HttpStatusCode.OK, ambiguousPeriodResponse.StatusCode);
+        var ambiguousPeriod = await ambiguousPeriodResponse.Content
+            .ReadFromJsonAsync<PmAnalyticsV3InterpretationResponse>();
+        Assert.NotNull(ambiguousPeriod);
+        Assert.Equal("NeedsClarification", ambiguousPeriod.Status);
+        Assert.Equal("PeriodBasisNeedsClarification", ambiguousPeriod.Code);
+        Assert.Contains("Period", ambiguousPeriod.ClarificationFields);
+        Assert.Null(ambiguousPeriod.Plan);
+
         using var previewResponse = await client.PostAsJsonAsync(
             "/api/v1/analytics/pm/v3/preview",
             new PmAnalyticsV3PreviewRequest(interpretation.Plan));

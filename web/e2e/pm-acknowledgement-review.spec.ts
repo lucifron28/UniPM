@@ -137,7 +137,7 @@ function jsonResponse(body: unknown) {
   }
 }
 
-test('keeps Form Review cards readable and zoom-contained across desktop and mobile', async ({
+test('keeps Form Review content aligned and contained across desktop and mobile', async ({
   page,
 }) => {
   await mockApi(page)
@@ -169,6 +169,7 @@ test('keeps Form Review cards readable and zoom-contained across desktop and mob
   ])
   await expect(page.getByLabel('Search forms')).toBeVisible()
   await expect(page.getByLabel('Form status')).toBeVisible()
+  await page.getByText('More filters', { exact: true }).click()
   await expect(page.getByLabel('Asset category')).toBeVisible()
   await expect(page.getByLabel('Department')).toBeVisible()
   await expect(page.getByLabel('PM cycle')).toBeVisible()
@@ -178,13 +179,12 @@ test('keeps Form Review cards readable and zoom-contained across desktop and mob
   ).toBeVisible()
   await expect(
     page
-      .locator('article')
+      .getByRole('row')
       .filter({ hasText: 'PMF-2026-0001' })
-      .first()
       .getByText('Awaiting acknowledgement', { exact: true }),
   ).toBeVisible()
   await expect(
-    page.getByRole('link', { name: 'View form details' }).first(),
+    page.getByRole('link', { name: /PMF-2026-0001/ }).first(),
   ).toBeVisible()
   await expect(page).toHaveURL(/department=GSD/)
   await expect(page).toHaveURL(/pmCycle=2026-08/)
@@ -193,19 +193,21 @@ test('keeps Form Review cards readable and zoom-contained across desktop and mob
       'section[aria-labelledby="forms-title"]',
     )!
     const findHeading = registry.querySelector('#find-forms-title')!
-    const filterCard = findHeading.nextElementSibling!
+    const filterCard = findHeading
+      .closest('section')!
+      .querySelector('.content-card')!
     const recordsHeading = registry.querySelector('#form-records-title')!
     const recordsSection = recordsHeading.closest('section')!
-    const zoomControls = registry.querySelector(
-      '[aria-label="Form records zoom controls"]',
-    )!
+    const tableWrapper = registry
+      .querySelector('table')!
+      .closest('.overflow-x-auto')!
     const rect = (element: Element) => element.getBoundingClientRect()
     return {
       registry: rect(registry),
       filterCard: rect(filterCard),
       recordsHeading: rect(recordsHeading),
       recordsSection: rect(recordsSection),
-      zoomControls: rect(zoomControls),
+      tableWrapper: rect(tableWrapper),
     }
   })
   expect(
@@ -232,8 +234,8 @@ test('keeps Form Review cards readable and zoom-contained across desktop and mob
   ).toBeLessThan(1)
   expect(
     Math.abs(
-      formReviewAlignment.zoomControls.right -
-        formReviewAlignment.recordsSection.right,
+      formReviewAlignment.tableWrapper.width -
+        formReviewAlignment.recordsSection.width,
     ),
   ).toBeLessThan(1)
   await page.screenshot({
@@ -241,21 +243,9 @@ test('keeps Form Review cards readable and zoom-contained across desktop and mob
     fullPage: true,
   })
 
-  const zoomGroup = page.getByRole('group', {
-    name: 'Form records zoom controls',
-  })
-  const increase = zoomGroup.getByRole('button', {
-    name: 'Increase Form records zoom',
-  })
-  await increase.click()
-  await increase.click()
-  await increase.click()
-  await expect(zoomGroup).toContainText('130%')
-  await expect(increase).toBeDisabled()
-
   await page.setViewportSize({ width: 375, height: 812 })
   await expect(
-    page.getByRole('link', { name: 'View form details' }).first(),
+    page.getByRole('link', { name: /PMF-2026-0001/ }).first(),
   ).toBeVisible()
   await expect
     .poll(() =>
@@ -266,11 +256,9 @@ test('keeps Form Review cards readable and zoom-contained across desktop and mob
       ),
     )
     .toBeLessThanOrEqual(1)
-  await zoomGroup
-    .getByRole('button', {
-      name: 'Reset Form records zoom to 100 percent',
-    })
-    .click()
+  await expect(
+    page.getByRole('link', { name: /PMF-2026-0001/ }).last(),
+  ).toBeVisible()
   await page.screenshot({
     path: 'test-results/web-ui-polish-form-review-mobile.png',
     fullPage: true,
@@ -389,134 +377,59 @@ test('demonstrates the submitted PM batch acknowledgement review workflow', asyn
   page,
 }) => {
   await mockApi(page)
-
-  // 1. Generate the PM dashboard and 2. confirm the submitted batch action.
-  await page.goto('/app/dashboard')
-  await expect(
-    page
-      .getByRole('heading', { name: 'Preventive Maintenance Dashboard' })
-      .first(),
-  ).toBeVisible()
-  await page.getByRole('button', { name: 'Fire extinguishers' }).click()
-  await page.getByRole('button', { name: '2026' }).click()
-  await page.getByRole('button', { name: /August 2026/ }).click()
-  await page.getByRole('button', { name: 'Generate dashboard' }).click()
-  await expect(page.getByRole('link', { name: 'Review batch' })).toBeVisible()
-
-  // 3. Open the exact Department + Category + PM cycle batch review.
-  await page.getByRole('link', { name: 'Review batch' }).click()
-  await expect(page).toHaveURL(
-    new RegExp(`/app/preventive-maintenance-forms/${formId}/review`),
+  await page.route(
+    /\/api\/v1\/preventive-maintenance-forms(?:\?.*)?$/,
+    (route) => route.fulfill(jsonResponse([form])),
   )
-  const reviewUrl = page.url()
 
-  // 4. Confirm the whole-batch context and submitted lifecycle status.
-  await expect(
-    page.getByRole('heading', { name: 'Review before acknowledgement' }),
-  ).toBeVisible()
-  const summary = page.getByLabel('Submitted batch review summary')
-  const summaryValue = (label: string) =>
-    summary.locator('dt').filter({ hasText: label }).locator('..').locator('dd')
+  const registrySearch = {
+    status: 'Submitted',
+    assetCategory: 'fire-extinguisher',
+    department: 'GSD',
+    pmCycle: '2026-08',
+  }
+  await page.goto(
+    '/app/preventive-maintenance-forms?status=Submitted&assetCategory=fire-extinguisher&department=GSD&pmCycle=2026-08',
+  )
+  await expect(page.getByRole('link', { name: 'PMF-2026-0001' })).toBeVisible()
+  await page.getByRole('link', { name: /PMF-2026-0001/ }).click()
+  await expect(page).toHaveURL(
+    new RegExp(`/app/preventive-maintenance-forms/${formId}`),
+  )
+  const detailUrl = new URL(page.url())
+  expect(detailUrl.pathname).toBe(`/app/preventive-maintenance-forms/${formId}`)
+  expect(
+    JSON.parse(detailUrl.searchParams.get('returnContext') ?? 'null'),
+  ).toEqual({ kind: 'formRegistry', search: registrySearch })
 
-  await expect(summary.getByText('Department', { exact: true })).toBeVisible()
-  await expect(summary.getByText('GSD', { exact: true })).toBeVisible()
   await expect(
-    summary.getByText('Fire extinguishers', { exact: true }),
-  ).toBeVisible()
-  await expect(summary.getByText('August 2026', { exact: true })).toBeVisible()
-  await expect(
-    summary.getByText('Awaiting acknowledgement', { exact: true }),
-  ).toBeVisible()
-
-  // 5. Check backend-reported metrics and 6. the full asset row evidence.
-  await expect(summaryValue('Scheduled')).toHaveText('1')
-  await expect(summaryValue('Inspected')).toHaveText('1')
-  await expect(summaryValue('Completed on time')).toHaveText('1')
-  await expect(summaryValue('Compliance rate')).toHaveText('100%')
-  await expect(summaryValue('Field-work completion')).toHaveText(/Aug 28, 2026/)
-  await expect(summaryValue('Submitted timestamp')).toHaveText(/Aug 29, 2026/)
-  const acknowledgementCard = page
-    .getByRole('heading', { name: 'Acknowledge whole PM batch' })
-    .locator('..')
-    .locator('..')
-  await expect(
-    acknowledgementCard.getByText(
-      /This records the department head's receipt and signatory details\./,
-    ),
-  ).toBeVisible()
-  await expect(
-    acknowledgementCard.getByText(
-      /It locks the form and makes its inspection rows eligible for official history\./,
-    ),
-  ).toBeVisible()
-  await expect(
-    acknowledgementCard.getByText(
-      /It does not approve corrective work or create an RMRF\./,
-    ),
+    page.getByRole('heading', { name: 'PMF-2026-0001' }),
   ).toBeVisible()
   await expect(page.getByText('FE-TEST-001', { exact: true })).toBeVisible()
-  await expect(
-    page.getByText('Main Building · Main hallway', { exact: true }),
-  ).toBeVisible()
+  await expect(page.getByText(/Main hallway/)).toBeVisible()
   await expect(page.getByText('Not operational', { exact: true })).toBeVisible()
   await expect(
-    page.getByText('Pressure is low.', { exact: true }),
+    page.getByText('Pressure is low.', { exact: true }).first(),
   ).toBeVisible()
+  await page.getByText('Row details', { exact: true }).click()
   await expect(
     page.getByText('Inspect and recharge the unit.', { exact: true }),
   ).toBeVisible()
 
-  // 7. Follow the row inspection ID and 8. return with the stable review query.
-  await page.getByRole('link', { name: 'View inspection detail' }).click()
   await expect(
-    page.getByRole('heading', { name: 'FE-TEST-001', level: 2 }),
+    page.getByRole('heading', { name: 'Acknowledge submitted form' }),
   ).toBeVisible()
+  await expect(page.getByLabel('Signatory name')).toBeVisible()
+  await expect(page.getByLabel('Signatory position')).toBeVisible()
+  await expect(page.getByText('Signature', { exact: true })).toBeVisible()
   await expect(
-    page.getByRole('heading', { name: 'Record information' }),
+    page.getByRole('button', { name: 'Acknowledge form' }),
   ).toBeVisible()
-  await expect(page.getByText('Arrange', { exact: false })).toHaveCount(0)
-  await page.getByRole('link', { name: 'Back to batch review' }).click()
-  await expect(page).toHaveURL(
-    new RegExp(`/app/preventive-maintenance-forms/${formId}/review`),
-  )
-  await expect(page).toHaveURL(reviewUrl)
 
-  // 9. Open the complete PM form in read-only mode.
-  await page.getByRole('link', { name: 'View full PM form' }).click()
-  await expect(
-    page.getByText('Read-only submitted form', { exact: true }),
-  ).toBeVisible()
-  await expect(
-    page.getByRole('heading', { name: 'Inspection rows' }),
-  ).toBeVisible()
-  await expect(
-    page.getByRole('heading', { name: 'Acknowledge whole PM batch' }),
-  ).toHaveCount(0)
-
-  // 10. Confirm the review table remains contained and scrollable on mobile.
-  await page.goto(
-    `/app/preventive-maintenance-forms/${formId}/review?department=GSD&assetCategory=fire-extinguisher&pmCycle=2026-08`,
-  )
-  await page.setViewportSize({ width: 375, height: 667 })
-  const table = page.getByRole('table', {
-    name: 'Submitted batch asset review',
-  })
-  await expect(table).toBeVisible()
-  const container = table.locator('..')
-  await expect(container).toHaveCSS('overflow-x', 'auto')
-  const dimensions = await container.evaluate((element) => ({
-    clientWidth: element.clientWidth,
-    scrollWidth: element.scrollWidth,
-  }))
-  expect(dimensions.scrollWidth).toBeGreaterThan(dimensions.clientWidth)
-  const pageDimensions = await page.evaluate(() => ({
-    viewportWidth: window.innerWidth,
-    documentWidth: Math.max(
-      document.documentElement.scrollWidth,
-      document.body.scrollWidth,
-    ),
-  }))
-  expect(pageDimensions.documentWidth).toBeLessThanOrEqual(
-    pageDimensions.viewportWidth,
-  )
+  await page.getByRole('link', { name: 'Back to form review' }).click()
+  await expect(page).toHaveURL(/status=Submitted/)
+  await expect(page).toHaveURL(/assetCategory=fire-extinguisher/)
+  await expect(page).toHaveURL(/department=GSD/)
+  await expect(page).toHaveURL(/pmCycle=2026-08/)
+  await expect(page.getByLabel('Form status')).toHaveValue('Submitted')
 })

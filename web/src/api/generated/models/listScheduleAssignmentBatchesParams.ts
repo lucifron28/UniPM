@@ -13,4 +13,22 @@ export type ListScheduleAssignmentBatchesParams = {
   assetCategory?: string
   department?: string
   pmCycle?: string
+  /**
+   * @nullable
+   */
+  tracking?: boolean | null
+  search?: string
+  progress?: string
+  overdueOnly?: boolean
+  building?: string
+  inspectorUserId?: string
+  supervisorUserId?: string
+  /**
+   * @pattern ^-?(?:0|[1-9]\d*)$
+   */
+  page?: number | string
+  /**
+   * @pattern ^-?(?:0|[1-9]\d*)$
+   */
+  pageSize?: number | string
 }

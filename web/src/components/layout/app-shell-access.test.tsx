@@ -71,11 +71,12 @@ function renderAppRoute(initialEntry: string) {
     history: createMemoryHistory({ initialEntries: [initialEntry] }),
   })
 
-  return render(
+  const rendered = render(
     <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} />
     </QueryClientProvider>,
   )
+  return { router, ...rendered }
 }
 
 describe('app shell role access and layout', () => {
@@ -227,15 +228,33 @@ describe('app shell role access and layout', () => {
       }),
     )
 
-    renderAppRoute('/app/dashboard?view=question')
+    const { router } = renderAppRoute(
+      '/app/dashboard?view=question&assetCategory=fire-extinguisher&year=2026&pmCycle=2026-07&department=GSD',
+    )
 
     expect(
-      await screen.findByRole('heading', { name: 'PM Report Builder' }),
+      await screen.findByRole('heading', {
+        name: 'Natural Language Analytics',
+      }),
     ).toBeInTheDocument()
     expect(
       screen.queryByRole('heading', { name: 'Ask about PM results' }),
     ).toBeNull()
     expect(legacyAnalyticsRequests).toBe(0)
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/app/analytics')
+      expect(router.state.location.search).toEqual({
+        returnContext: {
+          kind: 'dashboard',
+          search: {
+            assetCategory: 'fire-extinguisher',
+            year: 2026,
+            pmCycle: '2026-07',
+            department: 'GSD',
+          },
+        },
+      })
+    })
   })
 
   it('does not deny a role-restricted route while roles are loading', async () => {

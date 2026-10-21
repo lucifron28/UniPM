@@ -63,7 +63,12 @@ export type ScheduleSearch = {
   quarter?: NonNullable<Schedule['quarter']> | undefined
   year?: number | undefined
   pmCycle?: string | undefined
-  view?: 'assignments' | 'history' | undefined
+  view?: 'assignments' | 'tracking' | 'history' | undefined
+  progress?: 'not-started' | 'in-progress' | undefined
+  overdueOnly?: boolean | undefined
+  building?: string | undefined
+  inspectorUserId?: string | undefined
+  supervisorUserId?: string | undefined
   assignmentFilter?: 'needs-supervisor' | 'needs-inspector' | undefined
   page?: number | undefined
 }

@@ -121,7 +121,7 @@ public sealed class PmAnalyticsV3RegressionTests
             "Show progress for fire extinguishers during 2024",
             now);
         var inspectionCount = PmAnalyticsV3RuleParser.Parse(
-            "How many emergency lights were inspected in June 2026?",
+            "How many emergency lights were inspected in the June 2026 PM cycle?",
             now);
         var inventory = PmAnalyticsV3RuleParser.Parse(
             "How many fire extinguishers are registered in the CCMS building by status?",

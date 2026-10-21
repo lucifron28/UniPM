@@ -25,7 +25,19 @@ const searchSchema = z.object({
 export const Route = createFileRoute('/app/dashboard')({
   beforeLoad: ({ location }) => {
     if (new URLSearchParams(location.searchStr).get('view') === 'question') {
-      throw redirect({ to: '/app/analytics', replace: true })
+      const dashboardSearch = searchSchema.safeParse(
+        Object.fromEntries(new URLSearchParams(location.searchStr)),
+      )
+      throw redirect({
+        to: '/app/analytics',
+        search: {
+          returnContext: {
+            kind: 'dashboard',
+            search: dashboardSearch.success ? dashboardSearch.data : {},
+          },
+        },
+        replace: true,
+      })
     }
   },
   validateSearch: (search): PmPeriodDashboardSearch => {

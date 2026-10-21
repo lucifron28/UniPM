@@ -181,23 +181,36 @@ void main() {
         .widget<TextFormField>(passwordField)
         .controller!;
     await tester.enterText(passwordField, 'fictional-password');
+    final passwordEditableText = find.descendant(
+      of: passwordField,
+      matching: find.byType(EditableText),
+    );
 
     expect(result.controller.status, SessionStatus.signedOut);
     expect(find.widgetWithText(FilledButton, 'Sign in'), findsOneWidget);
-    expect(tester.widget<TextFormField>(passwordField).obscureText, isTrue);
+    expect(
+      tester.widget<EditableText>(passwordEditableText).obscureText,
+      isTrue,
+    );
     expect(find.byTooltip('Show password'), findsOneWidget);
 
     await tester.tap(find.byTooltip('Show password'));
     await tester.pump();
 
-    expect(tester.widget<TextFormField>(passwordField).obscureText, isFalse);
+    expect(
+      tester.widget<EditableText>(passwordEditableText).obscureText,
+      isFalse,
+    );
     expect(passwordController.text, 'fictional-password');
     expect(find.byTooltip('Hide password'), findsOneWidget);
 
     await tester.tap(find.byTooltip('Hide password'));
     await tester.pump();
 
-    expect(tester.widget<TextFormField>(passwordField).obscureText, isTrue);
+    expect(
+      tester.widget<EditableText>(passwordEditableText).obscureText,
+      isTrue,
+    );
     expect(passwordController.text, 'fictional-password');
     expect(find.byTooltip('Show password'), findsOneWidget);
   });
