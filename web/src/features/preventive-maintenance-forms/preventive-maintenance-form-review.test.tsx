@@ -185,6 +185,7 @@ function installDashboardNavigationHandlers(
             inspectionCompletedAt: '2026-07-28T03:00:00Z',
             timeliness: 'OnTime',
             condition: 'NonOperational',
+            correctiveFollowUpStatus: 'CorrectiveFollowUpPending',
             remarks: 'Pressure is low.',
             actionsRecommendations: 'Inspect and recharge the unit.',
             formId,
@@ -315,6 +316,20 @@ function renderDashboardReviewWithProviders(
     if (value !== undefined) searchParams.set(key, String(value))
   }
   return renderAppRouter(`/app/dashboard?${searchParams}`)
+}
+
+function openAcknowledgementReview(
+  router: ReturnType<typeof renderAppRouter>,
+  dashboardSearch: PmPeriodDashboardSearch,
+) {
+  return router.navigate({
+    to: '/app/preventive-maintenance-forms/$formId/review',
+    params: { formId },
+    search: {
+      ...dashboardSearch,
+      returnContext: { kind: 'dashboard', search: dashboardSearch },
+    },
+  })
 }
 
 function currentUser(roles: string[]) {
@@ -1217,7 +1232,10 @@ describe('preventive-maintenance form review', () => {
       installDashboardNavigationHandlers('Submitted')
       const router = renderDashboardReviewWithProviders(dashboardSearch)
 
-      fireEvent.click(await screen.findByRole('link', { name: 'Review batch' }))
+      await screen.findByRole('heading', {
+        name: 'Preventive Maintenance Dashboard',
+      })
+      await openAcknowledgementReview(router, dashboardSearch)
 
       expect(
         await screen.findByRole('heading', {
@@ -1303,14 +1321,14 @@ describe('preventive-maintenance form review', () => {
       fireEvent.click(
         screen.getByRole('link', { name: 'Back to PM dashboard' }),
       )
-      await screen.findByRole('link', { name: 'Review batch' })
+      await screen.findByRole('heading', {
+        name: 'Preventive Maintenance Dashboard',
+      })
       await waitFor(() => {
         expect(router.state.location.pathname).toBe('/app/dashboard')
         expect(router.state.location.search).toEqual(dashboardSearch)
       })
-      expect(screen.getByLabelText('Department (report scope)')).toHaveValue(
-        departmentValue,
-      )
+      expect(screen.getByLabelText('Department')).toHaveValue(departmentValue)
       expect(screen.getByLabelText('Condition')).toHaveValue('NonOperational')
       expect(screen.getByLabelText('Timeliness / status')).toHaveValue('Late')
       expect(screen.getByLabelText('Search assets')).toHaveValue('FE-TEST-001')
@@ -1326,7 +1344,7 @@ describe('preventive-maintenance form review', () => {
         within(scheduledAssetRow).getByText('July 2026', { exact: true }),
       ).toBeInTheDocument()
 
-      fireEvent.click(screen.getByRole('link', { name: 'Review batch' }))
+      await openAcknowledgementReview(router, dashboardSearch)
       await screen.findByRole('heading', {
         name: 'Review before acknowledgement',
       })
@@ -1369,14 +1387,14 @@ describe('preventive-maintenance form review', () => {
       fireEvent.click(
         screen.getByRole('link', { name: 'Back to PM dashboard' }),
       )
-      await screen.findByRole('link', { name: 'Review batch' })
+      await screen.findByRole('heading', {
+        name: 'Preventive Maintenance Dashboard',
+      })
       await waitFor(() => {
         expect(router.state.location.pathname).toBe('/app/dashboard')
         expect(router.state.location.search).toEqual(dashboardSearch)
       })
-      expect(screen.getByLabelText('Department (report scope)')).toHaveValue(
-        departmentValue,
-      )
+      expect(screen.getByLabelText('Department')).toHaveValue(departmentValue)
     },
   )
 
@@ -1386,7 +1404,7 @@ describe('preventive-maintenance form review', () => {
       allDepartmentDashboardSearch,
     )
 
-    fireEvent.click(await screen.findByRole('link', { name: 'View batch' }))
+    fireEvent.click(await screen.findByRole('link', { name: 'Open PM form' }))
     expect(
       await screen.findByRole('heading', { name: 'GSD-ACKNOWLEDGED-001' }),
     ).toBeInTheDocument()
@@ -1396,7 +1414,6 @@ describe('preventive-maintenance form review', () => {
       )
       expect(router.state.location.search).toEqual({
         readonly: true,
-        ...allDepartmentDashboardSearch,
         returnContext: {
           kind: 'dashboard',
           search: allDepartmentDashboardSearch,
@@ -1405,12 +1422,12 @@ describe('preventive-maintenance form review', () => {
     })
 
     fireEvent.click(screen.getByRole('link', { name: 'Back to PM dashboard' }))
-    await screen.findByRole('link', { name: 'View batch' })
+    await screen.findByRole('link', { name: 'Open PM form' })
     await waitFor(() => {
       expect(router.state.location.pathname).toBe('/app/dashboard')
       expect(router.state.location.search).toEqual(allDepartmentDashboardSearch)
     })
-    expect(screen.getByLabelText('Department (report scope)')).toHaveValue('')
+    expect(screen.getByLabelText('Department')).toHaveValue('')
   })
 
   it('preserves omitted dashboard scope fields across the review-form return path', async () => {
