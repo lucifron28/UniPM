@@ -33,6 +33,7 @@ internal static class AuthServiceCollectionExtensions
                 options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
             })
             .AddRoles<IdentityRole<Guid>>()
+            .AddDefaultTokenProviders()
             .AddSignInManager()
             .AddEntityFrameworkStores<ApplicationDbContext>();
 
@@ -99,7 +100,7 @@ internal static class AuthServiceCollectionExtensions
                 policy => policy.RequireRole(AuthRoleCatalog.Gsd, AuthRoleCatalog.Supervisor, AuthRoleCatalog.Admin));
             options.AddPolicy(
                 AuthPolicyCatalog.CanGenerateSchedules,
-                policy => policy.RequireRole(AuthRoleCatalog.Gsd));
+                policy => policy.RequireRole(AuthRoleCatalog.Gsd, AuthRoleCatalog.Admin));
             options.AddPolicy(
                 AuthPolicyCatalog.CanReadSchedules,
                 policy => policy
@@ -122,7 +123,7 @@ internal static class AuthServiceCollectionExtensions
                 AuthPolicyCatalog.CanInspectPreventiveMaintenanceSchedule,
                 policy =>
                 {
-                    policy.RequireRole(AuthRoleCatalog.Gsd, AuthRoleCatalog.Inspector);
+                    policy.RequireRole(AuthRoleCatalog.Gsd, AuthRoleCatalog.Inspector, AuthRoleCatalog.Admin);
                     policy.AddRequirements(PreventiveMaintenanceScheduleAccessRequirement.Instance);
                 });
             options.AddPolicy(

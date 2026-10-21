@@ -451,8 +451,14 @@ public static class AdminOperationalEndpoints
         {
             return ApiErrors.Conflict("The form identifier or batch already exists.");
         }
+        var inspectionCount = await context.InspectionRecords.CountAsync(
+            inspection => inspection.PreventiveMaintenanceFormId == form.Id, cancellationToken);
+        var hasAcknowledgement = await context.PreventiveMaintenanceAcknowledgements.AnyAsync(
+            acknowledgement => acknowledgement.FormId == form.Id, cancellationToken);
         return Results.Ok(new AdminFormRow(form.Id, form.FileNumber, form.AssetCategory,
-            form.Building, form.Department, form.PmCycle, form.Status, 0, false, form.UpdatedAt));
+            form.Building, form.Department, form.PmCycle, form.PeriodType, form.Quarter,
+            form.Semester, form.Year, form.AcademicYear, form.Status, inspectionCount,
+            hasAcknowledgement, form.UpdatedAt));
     }
 
     private static async Task<IResult> DeleteFormAsync(

@@ -194,7 +194,8 @@ internal sealed class AdminOperationalDataService(
             .Select(acknowledgement => acknowledgement.FormId).ToHashSetAsync(cancellationToken);
         return new AdminFormPageResponse(total, page, pageSize, forms.Select(form =>
             new AdminFormRow(form.Id, form.FileNumber, form.AssetCategory, form.Building,
-                form.Department, form.PmCycle, form.Status, form.Inspections.Count,
+                form.Department, form.PmCycle, form.PeriodType, form.Quarter, form.Semester,
+                form.Year, form.AcademicYear, form.Status, form.Inspections.Count,
                 acknowledgedIds.Contains(form.Id), form.UpdatedAt)).ToArray());
     }
 
@@ -596,7 +597,8 @@ public sealed record AdminInspectionPageResponse(int TotalCount, int Page, int P
 
 public sealed record AdminFormRow(
     Guid Id, string? FileNumber, string AssetCategory, string? Building, string? Department,
-    string? PmCycle, string Status, int InspectionCount, bool HasAcknowledgement, DateTimeOffset UpdatedAt);
+    string? PmCycle, string PeriodType, string? Quarter, string? Semester, int? Year,
+    string? AcademicYear, string Status, int InspectionCount, bool HasAcknowledgement, DateTimeOffset UpdatedAt);
 public sealed record AdminFormPageResponse(int TotalCount, int Page, int PageSize, IReadOnlyList<AdminFormRow> Items);
 
 public sealed record AdminDeleteResult(
