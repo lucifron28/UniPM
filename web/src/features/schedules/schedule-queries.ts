@@ -178,8 +178,11 @@ export function useScheduleSupervisorAssignmentOptions(
   enabled: boolean,
   search = '',
   selectedUserId?: string,
+  page = 1,
 ) {
   const params: ListScheduleSupervisorAssignmentOptionsParams = {
+    page,
+    pageSize: 20,
     ...(search.trim() ? { search: search.trim() } : {}),
     ...(selectedUserId ? { selectedUserId } : {}),
   }
@@ -196,8 +199,11 @@ export function useScheduleWorkerAssignmentOptions(
   enabled: boolean,
   search = '',
   selectedUserId?: string,
+  page = 1,
 ) {
   const params: ListScheduleWorkerAssignmentOptionsParams = {
+    page,
+    pageSize: 20,
     ...(search.trim() ? { search: search.trim() } : {}),
     ...(selectedUserId ? { selectedUserId } : {}),
   }

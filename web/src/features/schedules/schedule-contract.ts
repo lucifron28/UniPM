@@ -102,9 +102,12 @@ const scheduleAssignmentQueueBatchSchema = z
     pmCycle: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/),
     scheduleCount: z.number().int().nonnegative(),
     unfinishedScheduleCount: z.number().int().nonnegative(),
+    activeUnfinishedScheduleCount: z.number().int().nonnegative().optional(),
     completedCount: z.number().int().nonnegative(),
     ongoingCount: z.number().int().nonnegative(),
     overdueCount: z.number().int().nonnegative(),
+    cancelledCount: z.number().int().nonnegative().optional(),
+    activeScheduleCount: z.number().int().nonnegative().optional(),
     supervisorState: scheduleAssignmentStateSchema,
     supervisorUserId: z.string().uuid().nullable(),
     supervisorDisplayName: z.string().nullable(),
@@ -117,13 +120,46 @@ const scheduleAssignmentQueueBatchSchema = z
     representativeSchedule: scheduleSchema,
   })
   .strict()
+  .transform((batch) => ({
+    ...batch,
+    activeUnfinishedScheduleCount:
+      batch.activeUnfinishedScheduleCount ?? batch.unfinishedScheduleCount,
+    cancelledCount: batch.cancelledCount ?? 0,
+    activeScheduleCount: batch.activeScheduleCount ?? batch.scheduleCount,
+  }))
 
 const scheduleAssignmentQueueSchema = z
   .object({
     totalScheduleCount: z.number().int().nonnegative(),
+    totalBatchCount: z.number().int().nonnegative().optional(),
+    page: z.number().int().positive().optional(),
+    pageSize: z.number().int().positive().optional(),
+    summary: z
+      .object({
+        notStartedBatchCount: z.number().int().nonnegative(),
+        inProgressBatchCount: z.number().int().nonnegative(),
+        ongoingScheduleCount: z.number().int().nonnegative(),
+        overdueScheduleCount: z.number().int().nonnegative(),
+      })
+      .strict()
+      .optional(),
+    buildingOptions: z.array(z.string().trim().min(1).max(256)).optional(),
     batches: z.array(scheduleAssignmentQueueBatchSchema),
   })
   .strict()
+  .transform((queue) => ({
+    ...queue,
+    totalBatchCount: queue.totalBatchCount ?? queue.batches.length,
+    page: queue.page ?? 1,
+    pageSize: queue.pageSize ?? Math.max(1, queue.batches.length),
+    summary: queue.summary ?? {
+      notStartedBatchCount: 0,
+      inProgressBatchCount: 0,
+      ongoingScheduleCount: 0,
+      overdueScheduleCount: 0,
+    },
+    buildingOptions: queue.buildingOptions ?? [],
+  }))
 
 export type ScheduleAssignmentQueueBatch = z.infer<
   typeof scheduleAssignmentQueueBatchSchema

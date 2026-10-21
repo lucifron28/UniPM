@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using System.Collections.Concurrent;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
@@ -102,6 +103,108 @@ public sealed class ScheduleBatchAssignmentEndpointsTests
         Assert.Equal("Mixed", supervisorAugustBatch.SupervisorState);
         Assert.False(supervisorAugustBatch.SupervisorOwnershipIsConsistent);
         Assert.True(supervisorAugustBatch.AssignmentLocked);
+    }
+
+    [Fact]
+    public async Task Tracking_search_and_combined_filters_keep_complete_batches_and_supervisor_scope()
+    {
+        var databaseName = $"unipm-tracking-query-{Guid.NewGuid():N}";
+        await using var gsdApplication = new TestApplicationFactory(AuthRoleCatalog.Gsd, databaseName);
+        await using var supervisorApplication = new TestApplicationFactory(AuthRoleCatalog.Supervisor, databaseName);
+        using var gsdClient = gsdApplication.CreateClient();
+        using var supervisorClient = supervisorApplication.CreateClient();
+        var supervisorId = await supervisorApplication.SeedAuthenticatedUserAsync(AuthRoleCatalog.Supervisor);
+        var otherSupervisorId = await gsdApplication.SeedUserAsync("other-supervisor", AuthRoleCatalog.Supervisor);
+        var inspectorId = await gsdApplication.SeedUserAsync("tracking-inspector", AuthRoleCatalog.Inspector);
+
+        var ongoing = await CreateScheduleAsync(
+            gsdClient,
+            "CCMS",
+            "Main Building",
+            new DateTimeOffset(2026, 8, 1, 8, 0, 0, TimeSpan.FromHours(8)));
+        var overdue = await CreateScheduleAsync(
+            gsdClient,
+            "CCMS",
+            "Annex",
+            new DateTimeOffset(2026, 8, 9, 8, 0, 0, TimeSpan.FromHours(8)));
+        var otherOwner = await CreateScheduleAsync(
+            gsdClient,
+            "Library",
+            "Library Building",
+            new DateTimeOffset(2026, 8, 1, 8, 0, 0, TimeSpan.FromHours(8)));
+        await gsdApplication.SetAssignmentsAsync([ongoing.Id, overdue.Id], inspectorId, supervisorId);
+        await gsdApplication.SetAssignmentsAsync([otherOwner.Id], inspectorId, otherSupervisorId);
+        await gsdApplication.SetScheduleStatusAsync(ongoing.Id, ScheduleStatusCatalog.Ongoing);
+        await gsdApplication.SetScheduleStatusAsync(overdue.Id, ScheduleStatusCatalog.Due);
+
+        var matchingAssetCode = await gsdApplication.GetAssetCodeAsync(overdue.AssetId);
+        var search = Uri.EscapeDataString(matchingAssetCode);
+        var response = await gsdClient.GetAsync(
+            $"/api/v1/schedules/assignment-batches?year=2026&tracking=true&page=1&pageSize=10&search={search}&progress=in-progress&overdueOnly=true&inspectorUserId={inspectorId}");
+
+        response.EnsureSuccessStatusCode();
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var root = document.RootElement;
+        Assert.Equal(1, root.GetProperty("totalBatchCount").GetInt32());
+        var batch = Assert.Single(root.GetProperty("batches").EnumerateArray());
+        Assert.Equal(2, batch.GetProperty("scheduleCount").GetInt32());
+        Assert.Equal(2, batch.GetProperty("activeScheduleCount").GetInt32());
+        Assert.Equal(1, batch.GetProperty("ongoingCount").GetInt32());
+        Assert.Equal(1, batch.GetProperty("overdueCount").GetInt32());
+        Assert.Equal(1, root.GetProperty("summary").GetProperty("inProgressBatchCount").GetInt32());
+        Assert.Equal(1, root.GetProperty("summary").GetProperty("overdueScheduleCount").GetInt32());
+
+        var supervisorResponse = await supervisorClient.GetAsync(
+            $"/api/v1/schedules/assignment-batches?year=2026&tracking=true&page=1&pageSize=10&search={Uri.EscapeDataString(await gsdApplication.GetAssetCodeAsync(otherOwner.AssetId))}");
+        supervisorResponse.EnsureSuccessStatusCode();
+        using var supervisorDocument = JsonDocument.Parse(await supervisorResponse.Content.ReadAsStringAsync());
+        Assert.Equal(0, supervisorDocument.RootElement.GetProperty("totalBatchCount").GetInt32());
+    }
+
+    [Fact]
+    public async Task Assigned_inspector_can_start_a_schedule_and_repeat_the_request_safely()
+    {
+        var databaseName = $"unipm-start-inspection-{Guid.NewGuid():N}";
+        await using var gsdApplication = new TestApplicationFactory(AuthRoleCatalog.Gsd, databaseName);
+        await using var inspectorApplication = new TestApplicationFactory(AuthRoleCatalog.Inspector, databaseName);
+        using var gsdClient = gsdApplication.CreateClient();
+        using var inspectorClient = inspectorApplication.CreateClient();
+        var inspectorId = await inspectorApplication.SeedAuthenticatedUserAsync(AuthRoleCatalog.Inspector);
+
+        var schedule = await CreateScheduleAsync(
+            gsdClient,
+            "CCMS",
+            "Main Building",
+            new DateTimeOffset(2026, 8, 1, 8, 0, 0, TimeSpan.FromHours(8)));
+        var unassignedSchedule = await CreateScheduleAsync(
+            gsdClient,
+            "CCMS",
+            "Annex",
+            new DateTimeOffset(2026, 8, 9, 8, 0, 0, TimeSpan.FromHours(8)));
+        await gsdApplication.SetAssignmentsAsync([schedule.Id], inspectorId, null);
+
+        var response = await inspectorClient.PostAsync(
+            $"/api/v1/schedules/{schedule.Id}/start-inspection",
+            content: null);
+
+        response.EnsureSuccessStatusCode();
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal("Ongoing", document.RootElement.GetProperty("status").GetString());
+        Assert.Equal(ScheduleStatusCatalog.Ongoing, await gsdApplication.GetScheduleStatusAsync(schedule.Id));
+
+        var repeatedResponse = await inspectorClient.PostAsync(
+            $"/api/v1/schedules/{schedule.Id}/start-inspection",
+            content: null);
+
+        Assert.Equal(HttpStatusCode.OK, repeatedResponse.StatusCode);
+        Assert.Equal(ScheduleStatusCatalog.Ongoing, await gsdApplication.GetScheduleStatusAsync(schedule.Id));
+
+        var forbiddenResponse = await inspectorClient.PostAsync(
+            $"/api/v1/schedules/{unassignedSchedule.Id}/start-inspection",
+            content: null);
+
+        Assert.Equal(HttpStatusCode.Forbidden, forbiddenResponse.StatusCode);
+        Assert.Equal(ScheduleStatusCatalog.Due, await gsdApplication.GetScheduleStatusAsync(unassignedSchedule.Id));
     }
 
     [Fact]
@@ -647,6 +750,17 @@ public sealed class ScheduleBatchAssignmentEndpointsTests
             return await context.PreventiveMaintenanceSchedules
                 .Where(schedule => schedule.Id == scheduleId)
                 .Select(schedule => schedule.Status)
+                .SingleAsync();
+        }
+
+        public async Task<string> GetAssetCodeAsync(Guid assetId)
+        {
+            await using var scope = Services.CreateAsyncScope();
+            var factory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
+            await using var context = await factory.CreateDbContextAsync();
+            return await context.Assets
+                .Where(asset => asset.Id == assetId)
+                .Select(asset => asset.AssetCode)
                 .SingleAsync();
         }
 
