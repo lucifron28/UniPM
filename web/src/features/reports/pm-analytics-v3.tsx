@@ -481,7 +481,7 @@ function getProblemCode(error: unknown) {
   return typeof code === 'string' ? code : null
 }
 
-function useScheduledCycleWording(question: string) {
+function withScheduledCycleWording(question: string) {
   return question.replace(
     /\b(?:inspected|inspection|inspections)(?:\s+date)?\s+(?:in|during|on)\s+(january|jan|february|feb|march|mar|april|apr|may|june|jun|july|jul|august|aug|september|sept|sep|october|oct|november|nov|december|dec)\.?\s*,?\s*(\d{4})\b/i,
     (_match, month: string, year: string) =>
@@ -1807,7 +1807,7 @@ export function PmAnalyticsV3Panel({
                       variant="secondary"
                       disabled={pending}
                       onClick={() => {
-                        setQuestion(useScheduledCycleWording(question))
+                        setQuestion(withScheduledCycleWording(question))
                         setInterpretation(null)
                         setError(null)
                         setInterpretationFailureCode(null)
