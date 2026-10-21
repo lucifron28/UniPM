@@ -471,7 +471,9 @@ class _InspectionSummary extends StatelessWidget {
               childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
               title: Text(
                 _assetCodeLabel(row.assetCode),
-                style: Theme.of(context).textTheme.titleSmall,
+                style: Theme.of(
+                  context,
+                ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
                 softWrap: true,
               ),
               subtitle: Padding(
@@ -483,16 +485,32 @@ class _InspectionSummary extends StatelessWidget {
                       row.location?.trim().isNotEmpty == true
                           ? row.location!.trim()
                           : 'Location not recorded',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: colors.onSurfaceVariant,
+                      ),
                       softWrap: true,
                     ),
                     const SizedBox(height: 3),
-                    Text(
-                      row.isOperational ? 'Operational' : 'Non-operational',
-                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
                         color: row.isOperational
-                            ? colors.primary
-                            : warningColor,
-                        fontWeight: FontWeight.w700,
+                            ? const Color(0xFFE2F3EA)
+                            : colors.errorContainer,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        row.isOperational ? 'Operational' : 'Non-operational',
+                        style: Theme.of(context).textTheme.labelMedium
+                            ?.copyWith(
+                              color: row.isOperational
+                                  ? const Color(0xFF176B4B)
+                                  : colors.onErrorContainer,
+                              fontWeight: FontWeight.w700,
+                            ),
                       ),
                     ),
                   ],
@@ -510,11 +528,13 @@ class _InspectionSummary extends StatelessWidget {
                     _InspectionDetailLine(
                       label: 'Remarks',
                       value: _displayValue(row.remarks),
+                      isNote: true,
                     ),
                     const SizedBox(height: 4),
                     _InspectionDetailLine(
                       label: 'Recommendations',
                       value: _displayValue(row.actionsRecommendations),
+                      isNote: true,
                     ),
                   ],
                 ),
@@ -540,33 +560,49 @@ class _InspectionExpandedDetails extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _InspectionDetailLine(
-          label: 'Inspection date',
-          value: _dateText(row.dateInspected),
+        Container(
+          width: double.infinity,
+          margin: const EdgeInsets.only(top: 8, bottom: 4),
+          padding: const EdgeInsets.fromLTRB(12, 4, 12, 10),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surfaceContainerLow,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _InspectionDetailLine(
+                label: 'Inspection date',
+                value: _dateText(row.dateInspected),
+              ),
+              if (row.dateAccomplished != null)
+                _InspectionDetailLine(
+                  label: 'Date accomplished',
+                  value: _dateText(row.dateAccomplished!),
+                ),
+              if (row.startedAt != null)
+                _InspectionDetailLine(
+                  label: 'Started',
+                  value: _dateTimeText(row.startedAt!),
+                ),
+              if (row.completedAt != null)
+                _InspectionDetailLine(
+                  label: 'Completed',
+                  value: _dateTimeText(row.completedAt!),
+                ),
+            ],
+          ),
         ),
-        if (row.dateAccomplished != null)
-          _InspectionDetailLine(
-            label: 'Date accomplished',
-            value: _dateText(row.dateAccomplished!),
-          ),
-        if (row.startedAt != null)
-          _InspectionDetailLine(
-            label: 'Started',
-            value: _dateTimeText(row.startedAt!),
-          ),
-        if (row.completedAt != null)
-          _InspectionDetailLine(
-            label: 'Completed',
-            value: _dateTimeText(row.completedAt!),
-          ),
         if (row.isOperational) ...[
           _InspectionDetailLine(
             label: 'Remarks',
             value: _displayValue(row.remarks),
+            isNote: true,
           ),
           _InspectionDetailLine(
             label: 'Recommendations',
             value: _displayValue(row.actionsRecommendations),
+            isNote: true,
           ),
         ],
         if (row.hasPhotoEvidence)
@@ -594,16 +630,54 @@ class _InspectionExpandedDetails extends StatelessWidget {
 }
 
 class _InspectionDetailLine extends StatelessWidget {
-  const _InspectionDetailLine({required this.label, required this.value});
+  const _InspectionDetailLine({
+    required this.label,
+    required this.value,
+    this.isNote = false,
+  });
 
   final String label;
   final String value;
+  final bool isNote;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 5),
-      child: Text('$label: $value', softWrap: true),
+    final theme = Theme.of(context);
+    return Container(
+      width: double.infinity,
+      margin: EdgeInsets.only(top: isNote ? 8 : 6),
+      padding: isNote ? const EdgeInsets.all(12) : EdgeInsets.zero,
+      decoration: isNote
+          ? BoxDecoration(
+              color: theme.colorScheme.surfaceContainerLow,
+              border: Border(
+                left: BorderSide(color: theme.colorScheme.primary, width: 3),
+              ),
+            )
+          : null,
+      child: Text.rich(
+        TextSpan(
+          children: [
+            TextSpan(
+              text: '$label: ',
+              style: TextStyle(
+                color: isNote
+                    ? theme.colorScheme.primary
+                    : theme.colorScheme.onSurfaceVariant,
+                fontWeight: isNote ? FontWeight.w700 : FontWeight.w400,
+              ),
+            ),
+            TextSpan(
+              text: value,
+              style: TextStyle(
+                fontWeight: isNote ? FontWeight.w400 : FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+        style: theme.textTheme.bodyMedium?.copyWith(height: 1.5),
+        softWrap: true,
+      ),
     );
   }
 }
