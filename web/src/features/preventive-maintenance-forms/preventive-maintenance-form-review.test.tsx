@@ -95,7 +95,7 @@ const allDepartmentDashboardSearch: PmPeriodDashboardSearch = {
   year: 2026,
   pmCycle: '2026-07',
   condition: 'NonOperational',
-  timeliness: 'Late',
+  timeliness: 'OnTime',
   search: 'FE-TEST-001',
 }
 const selectedDepartmentDashboardSearch: PmPeriodDashboardSearch = {
