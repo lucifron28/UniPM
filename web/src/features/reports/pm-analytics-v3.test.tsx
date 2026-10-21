@@ -1043,7 +1043,9 @@ describe('PM analytics V3 workflow', () => {
     api.execute.mockResolvedValueOnce(makeExecution())
     render(<PmAnalyticsV3Panel />)
     await interpretAndPreview()
-    fireEvent.click(screen.getByRole('button', { name: 'Confirm and generate' }))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Confirm and generate' }),
+    )
     expect(
       await screen.findByRole('heading', { name: 'PM execution results' }),
     ).toBeInTheDocument()
@@ -1081,7 +1083,9 @@ describe('PM analytics V3 workflow', () => {
     render(<PmAnalyticsV3Panel />)
     await interpretAndPreview()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Ask another question' }))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Ask another question' }),
+    )
     expect(screen.getByRole('textbox', { name: 'Question' })).toHaveValue('')
     expect(
       screen.queryByRole('heading', { name: 'Report preview' }),
@@ -1090,7 +1094,9 @@ describe('PM analytics V3 workflow', () => {
       target: { value: 'Show progress for fire extinguishers during 2023' },
     })
     fireEvent.click(screen.getByRole('button', { name: 'Generate report' }))
-    expect(await screen.findByText('Report ready for review')).toBeInTheDocument()
+    expect(
+      await screen.findByText('Report ready for review'),
+    ).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Preview report' }))
     expect(
       await screen.findByRole('heading', { name: 'Report preview' }),
