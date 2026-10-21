@@ -13,6 +13,7 @@ import {
   type ScheduleSearch,
 } from '@/features/schedules/schedule-registry'
 import { ScheduleAssignmentQueue } from '@/features/schedules/schedule-assignment-queue'
+import { ScheduleOngoingWork } from '@/features/schedules/schedule-ongoing-work'
 
 const dateTime = z.string().datetime({ offset: true })
 const searchSchema = z
@@ -35,7 +36,12 @@ const searchSchema = z
       .min(2000)
       .max(new Date().getUTCFullYear() + 5)
       .optional(),
-    view: z.enum(['assignments', 'history']).optional(),
+    view: z.enum(['assignments', 'tracking', 'history']).optional(),
+    progress: z.enum(['not-started', 'in-progress']).optional(),
+    overdueOnly: z.boolean().optional(),
+    building: z.string().trim().max(256).optional(),
+    inspectorUserId: z.string().uuid().optional(),
+    supervisorUserId: z.string().uuid().optional(),
     assignmentFilter: z
       .enum(['needs-supervisor', 'needs-inspector'])
       .optional(),
@@ -69,11 +75,15 @@ function SchedulesPage() {
     : roles.includes('Supervisor')
       ? 'Supervisor'
       : null
-  const showAssignments = assignmentRole !== null && search.view !== 'history'
+  const scheduleView = search.view ?? 'assignments'
+  const showAssignments =
+    assignmentRole !== null && scheduleView === 'assignments'
+  const showTracking = assignmentRole !== null && scheduleView === 'tracking'
+  const showPlanningOrTracking = showAssignments || showTracking
 
   return (
     <div className="space-y-5">
-      {showAssignments && (
+      {showPlanningOrTracking && (
         <PageHeading
           id="schedules-title"
           eyebrow="Preventive maintenance"
@@ -83,7 +93,10 @@ function SchedulesPage() {
       )}
       {assignmentRole && (
         <nav aria-label="Schedule views" className="flex flex-wrap gap-2">
-          <Button asChild variant={showAssignments ? 'secondary' : 'primary'}>
+          <Button
+            asChild
+            variant={scheduleView === 'history' ? 'primary' : 'secondary'}
+          >
             <Link
               to="/app/schedules"
               search={{ ...search, view: 'history', page: undefined }}
@@ -99,13 +112,42 @@ function SchedulesPage() {
               Planning &amp; assignment
             </Link>
           </Button>
+          <Button asChild variant={showTracking ? 'primary' : 'secondary'}>
+            <Link
+              to="/app/schedules"
+              search={{ ...search, view: 'tracking', page: undefined }}
+            >
+              Work tracking
+            </Link>
+          </Button>
         </nav>
       )}
-      <div id={showAssignments ? 'schedule-assignments' : 'schedule-history'}>
+      <div
+        id={
+          showAssignments
+            ? 'schedule-assignments'
+            : showTracking
+              ? 'schedule-tracking'
+              : 'schedule-history'
+        }
+      >
         {showAssignments ? (
           <ScheduleAssignmentQueue
             role={assignmentRole === 'Supervisor' ? 'Supervisor' : 'GSD'}
             search={search}
+            onSearchChange={(next) =>
+              void navigate({
+                search: {
+                  ...next,
+                  ...(search.view ? { view: search.view } : {}),
+                },
+              })
+            }
+          />
+        ) : showTracking ? (
+          <ScheduleOngoingWork
+            search={search}
+            role={assignmentRole === 'Supervisor' ? 'Supervisor' : 'GSD'}
             onSearchChange={(next) =>
               void navigate({
                 search: {
