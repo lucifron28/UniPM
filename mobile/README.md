@@ -16,7 +16,19 @@ flutter analyze --no-pub
 flutter test --no-pub
 ```
 
-Configure the backend URL at runtime; it is not committed to the repository:
+To run against the deployed Azure backend, from the repository root:
+
+```powershell
+.\scripts\start-mobile-deployed.ps1
+# Optional, when selecting a specific connected Android device:
+.\scripts\start-mobile-deployed.ps1 -DeviceId emulator-5554
+```
+
+This uses the existing Android launcher with the deployed HTTPS URL. It does
+not start a local server or set up ADB port forwarding. Flutter and ADB must be
+on PATH, with an Android phone or emulator connected.
+
+To configure a local backend URL directly:
 
 ```powershell
 flutter run --dart-define=UNIPM_API_BASE_URL=http://10.0.2.2:5000/
