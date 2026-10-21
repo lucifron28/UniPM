@@ -1,6 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Globalization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using UniPM.Api.Data;
@@ -21,6 +22,90 @@ public static class SchedulesEndpoints
     public static IEndpointRouteBuilder MapSchedulesEndpoints(this IEndpointRouteBuilder endpoints)
     {
         var group = endpoints.MapGroup("/schedules").WithTags("Schedules");
+
+        group.MapPost("/{id:guid}/start-inspection", async (
+            Guid id,
+            ClaimsPrincipal user,
+            IAuthorizationService authorizationService,
+            IDbContextFactory<ApplicationDbContext> factory,
+            TimeProvider timeProvider,
+            CancellationToken cancellationToken) =>
+        {
+            await using var context = await factory.CreateDbContextAsync(cancellationToken);
+            var schedule = await context.PreventiveMaintenanceSchedules
+                .AsNoTracking()
+                .Include(candidate => candidate.Asset)
+                .SingleOrDefaultAsync(candidate => candidate.Id == id, cancellationToken);
+            if (schedule is null || schedule.Asset is null)
+            {
+                return ApiErrors.NotFound("Schedule not found.");
+            }
+
+            if (!ScheduleBatchIdentity.TryCreate(schedule, out var identity))
+            {
+                return ApiErrors.Conflict("The schedule does not have a valid PM batch identity.");
+            }
+
+            await using var mutationLock = await ScheduleBatchMutationLockLease.AcquireAsync(
+                context,
+                identity,
+                cancellationToken);
+            if (!mutationLock.Acquired)
+            {
+                return ApiErrors.Conflict("This PM batch changed. Refresh the assigned work and retry.");
+            }
+
+            schedule = await context.PreventiveMaintenanceSchedules
+                .Include(candidate => candidate.Asset)
+                .SingleOrDefaultAsync(candidate => candidate.Id == id, cancellationToken);
+            if (schedule is null || schedule.Asset is null)
+            {
+                return ApiErrors.NotFound("Schedule not found.");
+            }
+
+            if (!ScheduleBatchIdentity.TryCreate(schedule, out var currentIdentity)
+                || currentIdentity != identity)
+            {
+                return ApiErrors.Conflict("The schedule moved to another PM batch. Refresh and retry.");
+            }
+
+            var scheduleAccess = await authorizationService.AuthorizeAsync(
+                user,
+                schedule,
+                AuthPolicyCatalog.CanInspectPreventiveMaintenanceSchedule);
+            if (!scheduleAccess.Succeeded)
+            {
+                return Results.Forbid();
+            }
+
+            if (string.Equals(schedule.Status, ScheduleStatusCatalog.Ongoing, StringComparison.OrdinalIgnoreCase))
+            {
+                await mutationLock.CommitAsync(cancellationToken);
+                return Results.Ok(ScheduleResponse.FromSchedule(schedule));
+            }
+
+            if ((!string.Equals(schedule.Status, ScheduleStatusCatalog.Due, StringComparison.OrdinalIgnoreCase)
+                    && !string.Equals(schedule.Status, ScheduleStatusCatalog.Overdue, StringComparison.OrdinalIgnoreCase))
+                || schedule.CompletedAt is not null)
+            {
+                return ApiErrors.Conflict("Only an unfinished PM schedule can be started.");
+            }
+
+            schedule.Status = ScheduleStatusCatalog.Ongoing;
+            schedule.UpdatedAt = timeProvider.GetUtcNow();
+            await context.SaveChangesAsync(cancellationToken);
+            await mutationLock.CommitAsync(cancellationToken);
+
+            return Results.Ok(ScheduleResponse.FromSchedule(schedule));
+        })
+        .WithName("StartScheduleInspection")
+        .WithSummary("Marks an assigned PM schedule as in progress when field work starts")
+        .Produces<ScheduleResponse>(StatusCodes.Status200OK)
+        .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status401Unauthorized)
+        .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status403Forbidden)
+        .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status404NotFound)
+        .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status409Conflict)
+        .RequireAuthorization(AuthPolicyCatalog.CanManagePreventiveMaintenanceForms);
 
         group.MapPost("/generate", async (
             GenerateScheduleCyclesDto dto,
@@ -875,14 +960,30 @@ public static class SchedulesEndpoints
             string? assetCategory,
             string? department,
             string? pmCycle,
+            bool? tracking,
+            string? search,
+            string? progress,
+            string? building,
+            Guid? inspectorUserId,
+            Guid? supervisorUserId,
+            int? page,
+            int? pageSize,
             ClaimsPrincipal user,
             IDbContextFactory<ApplicationDbContext> factory,
-            CancellationToken cancellationToken) =>
+            TimeProvider timeProvider,
+            CancellationToken cancellationToken,
+            bool overdueOnly = false) =>
         {
+            var isTracking = tracking ?? false;
             var validationErrors = new Dictionary<string, string[]>();
             string? normalizedCategory = null;
             var normalizedDepartment = string.IsNullOrWhiteSpace(department) ? null : department.Trim();
             string? normalizedCycle = null;
+            var normalizedSearch = string.IsNullOrWhiteSpace(search) ? null : search.Trim();
+            var normalizedBuilding = string.IsNullOrWhiteSpace(building) ? null : building.Trim();
+            var normalizedProgress = string.IsNullOrWhiteSpace(progress) ? null : progress.Trim();
+            var pageNumber = page ?? 1;
+            var size = pageSize ?? (isTracking ? 10 : 1000);
 
             if (year is < 1 or > 9999)
             {
@@ -892,6 +993,34 @@ public static class SchedulesEndpoints
             if (normalizedDepartment?.Length > 256)
             {
                 validationErrors[nameof(department)] = ["Department must be 256 characters or fewer."];
+            }
+
+            if (normalizedSearch?.Length > 256)
+            {
+                validationErrors[nameof(search)] = ["Search must be 256 characters or fewer."];
+            }
+
+            if (normalizedBuilding?.Length > 256)
+            {
+                validationErrors[nameof(building)] = ["Building must be 256 characters or fewer."];
+            }
+
+            if (isTracking && (pageNumber < 1 || size is < 1 or > 100))
+            {
+                validationErrors[nameof(page)] = ["Tracking page must be positive and page size must be between 1 and 100."];
+            }
+
+            if (isTracking && normalizedProgress is not null
+                && normalizedProgress is not ("not-started" or "in-progress"))
+            {
+                validationErrors[nameof(progress)] = ["Progress must be not-started or in-progress."];
+            }
+
+            if (!isTracking && (normalizedSearch is not null || normalizedProgress is not null
+                || overdueOnly || normalizedBuilding is not null || inspectorUserId is not null
+                || supervisorUserId is not null || page.HasValue || pageSize.HasValue))
+            {
+                validationErrors[nameof(tracking)] = ["Tracking filters require tracking=true."];
             }
 
             if (!string.IsNullOrWhiteSpace(assetCategory))
@@ -1043,10 +1172,112 @@ public static class SchedulesEndpoints
                 .ThenBy(batch => batch.Department, StringComparer.OrdinalIgnoreCase)
                 .ThenBy(batch => batch.AssetCategory, StringComparer.Ordinal)
                 .ToArray();
+            var rowsByBatchKey = groupedRows.ToDictionary(
+                pair => pair.Key.CreateLockResource(),
+                pair => pair.Value,
+                StringComparer.Ordinal);
+
+            var trackingBaseBatches = batches.Where(batch =>
+                (batch.SupervisorState == "Assigned" || batch.InspectorState == "Assigned")
+                && batch.ActiveUnfinishedScheduleCount > 0).ToArray();
+            var buildingOptions = trackingBaseBatches
+                .SelectMany(batch => batch.Buildings)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(value => value, StringComparer.OrdinalIgnoreCase)
+                .ToArray();
+
+            var resultBatches = batches.AsEnumerable();
+            if (isTracking)
+            {
+                var institutionalNow = PreventiveMaintenanceCycle.ToInstitutionalTime(timeProvider.GetUtcNow());
+                resultBatches = trackingBaseBatches.Select(batch => batch with
+                {
+                    OverdueCount = rowsByBatchKey[batch.BatchKey].Count(row => IsScheduleOverdueAt(
+                        row.Schedule,
+                        institutionalNow))
+                });
+
+                if (normalizedBuilding is not null)
+                {
+                    resultBatches = resultBatches.Where(batch => batch.Buildings.Any(value =>
+                        string.Equals(value, normalizedBuilding, StringComparison.OrdinalIgnoreCase)));
+                }
+
+                if (inspectorUserId is Guid inspectorFilter)
+                {
+                    resultBatches = resultBatches.Where(batch => rowsByBatchKey[batch.BatchKey]
+                        .Any(row => row.Schedule.AssignedToUserId == inspectorFilter));
+                }
+
+                if (supervisorUserId is Guid supervisorFilter)
+                {
+                    resultBatches = resultBatches.Where(batch => rowsByBatchKey[batch.BatchKey]
+                        .Any(row => row.Schedule.AssignedSupervisorUserId == supervisorFilter));
+                }
+
+                if (overdueOnly)
+                {
+                    resultBatches = resultBatches.Where(batch => batch.OverdueCount > 0);
+                }
+
+                if (normalizedProgress == "not-started")
+                {
+                    resultBatches = resultBatches.Where(batch => batch.OngoingCount == 0 && batch.CompletedCount == 0);
+                }
+                else if (normalizedProgress == "in-progress")
+                {
+                    resultBatches = resultBatches.Where(batch => batch.ActiveUnfinishedScheduleCount > 0
+                        && (batch.OngoingCount > 0 || batch.CompletedCount > 0));
+                }
+
+                if (normalizedSearch is not null)
+                {
+                    var searchKey = normalizedSearch.ToUpperInvariant();
+                    resultBatches = resultBatches.Where(batch =>
+                        batch.Department.ToUpperInvariant().Contains(searchKey)
+                        || batch.AssetCategory.ToUpperInvariant().Contains(searchKey)
+                        || batch.Buildings.Any(value => value.ToUpperInvariant().Contains(searchKey))
+                        || batch.InspectorDisplayName?.ToUpperInvariant().Contains(searchKey) == true
+                        || batch.SupervisorDisplayName?.ToUpperInvariant().Contains(searchKey) == true
+                        || rowsByBatchKey[batch.BatchKey].Any(row =>
+                            (row.Schedule.AssignedToUserId is Guid inspectorId
+                                && assigneeDisplayNames.TryGetValue(inspectorId, out var inspectorName)
+                                && inspectorName.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase))
+                            || (row.Schedule.AssignedSupervisorUserId is Guid supervisorId
+                                && assigneeDisplayNames.TryGetValue(supervisorId, out var supervisorName)
+                                && supervisorName.Contains(normalizedSearch, StringComparison.OrdinalIgnoreCase)))
+                        || batch.PmCycle.ToUpperInvariant().Contains(searchKey)
+                        || PmCycleSearchLabel(batch.PmCycle).Contains(searchKey, StringComparison.OrdinalIgnoreCase)
+                        || rowsByBatchKey[batch.BatchKey]
+                            .Any(row => row.Schedule.Asset?.AssetCode.Contains(
+                                normalizedSearch,
+                                StringComparison.OrdinalIgnoreCase) == true));
+                }
+            }
+
+            var filteredBatches = resultBatches.ToArray();
+            var summary = CreateScheduleTrackingSummary(filteredBatches);
+            var totalBatchCount = filteredBatches.Length;
+            var sortedBatches = isTracking
+                ? filteredBatches
+                    .OrderByDescending(batch => batch.OverdueCount > 0)
+                    .ThenByDescending(batch => batch.OngoingCount > 0 || batch.CompletedCount > 0)
+                    .ThenBy(batch => batch.RepresentativeSchedule.ScheduleDate)
+                    .ThenBy(batch => batch.BatchKey, StringComparer.Ordinal)
+                    .ToArray()
+                : filteredBatches;
+            var pageBatches = isTracking
+                ? sortedBatches.Skip((int)Math.Min(int.MaxValue, (long)(pageNumber - 1) * size)).Take(size).ToArray()
+                : sortedBatches;
 
             return Results.Ok(new ScheduleAssignmentQueueResponse(
-                batches.Sum(batch => batch.ScheduleCount),
-                batches));
+                (isTracking ? filteredBatches : batches).Sum(batch => batch.ScheduleCount),
+                totalBatchCount,
+                isTracking ? pageNumber : 1,
+                isTracking ? size : Math.Max(1, pageBatches.Length),
+                summary,
+                buildingOptions,
+                pageBatches));
         })
         .WithName("ListScheduleAssignmentBatches")
         .WithSummary("Lists grouped PM schedule batches for assignment")
@@ -1071,6 +1302,7 @@ public static class SchedulesEndpoints
             int? pageSize,
             ClaimsPrincipal user,
             IDbContextFactory<ApplicationDbContext> factory,
+            TimeProvider timeProvider,
             CancellationToken cancellationToken) =>
         {
             var pageNumber = page ?? 1;
@@ -1117,7 +1349,8 @@ public static class SchedulesEndpoints
                 normalizedPmCycle,
                 normalizedDepartment,
                 normalizedCategory,
-                normalizedSearch);
+                normalizedSearch,
+                PreventiveMaintenanceCycle.ToInstitutionalTime(timeProvider.GetUtcNow()));
             var totalCount = await query.CountAsync(cancellationToken);
             var skip = (long)(pageNumber - 1) * size;
             List<ScheduleRegistryItemResponse> items = skip > int.MaxValue
@@ -1151,6 +1384,11 @@ public static class SchedulesEndpoints
                                 schedule.Asset.Department,
                                 schedule.Asset.Location)))
                     .ToListAsync(cancellationToken);
+            var institutionalNow = PreventiveMaintenanceCycle.ToInstitutionalTime(timeProvider.GetUtcNow());
+            items = items.Select(item => item with
+            {
+                Status = CanonicalScheduleStatus(item.Status, item.CompletedAt, item.ScheduleDate, institutionalNow)
+            }).ToList();
 
             return Results.Ok(new ScheduleRegistryPageResponse(
                 items,
@@ -1563,12 +1801,20 @@ public static class SchedulesEndpoints
             identity.PmCycle,
             schedules.Length,
             unfinishedRows.Length,
-            schedules.Count(schedule => string.Equals(
-                schedule.Status, ScheduleStatusCatalog.Completed, StringComparison.OrdinalIgnoreCase)),
+            schedules.Count(IsUnfinishedSchedule),
+            rows.Count(row => row.HasInspectionEvidence
+                && string.Equals(
+                    row.Schedule.Status,
+                    ScheduleStatusCatalog.Completed,
+                    StringComparison.OrdinalIgnoreCase)),
             schedules.Count(schedule => string.Equals(
                 schedule.Status, ScheduleStatusCatalog.Ongoing, StringComparison.OrdinalIgnoreCase)),
+            schedules.Count(schedule => IsUnfinishedSchedule(schedule)
+                && string.Equals(schedule.Status, ScheduleStatusCatalog.Overdue, StringComparison.OrdinalIgnoreCase)),
             schedules.Count(schedule => string.Equals(
-                schedule.Status, ScheduleStatusCatalog.Overdue, StringComparison.OrdinalIgnoreCase)),
+                schedule.Status, ScheduleStatusCatalog.Cancelled, StringComparison.OrdinalIgnoreCase)),
+            schedules.Count(schedule => !string.Equals(
+                schedule.Status, ScheduleStatusCatalog.Cancelled, StringComparison.OrdinalIgnoreCase)),
             supervisor.State,
             supervisor.UserId,
             supervisorDisplayName,
@@ -1586,6 +1832,25 @@ public static class SchedulesEndpoints
                 && supervisor.UserId is not null,
             buildings,
             representative);
+    }
+
+    private static string PmCycleSearchLabel(string pmCycle)
+    {
+        return PreventiveMaintenanceCycle.TryParse(pmCycle, out var year, out var month)
+            ? $"{CultureInfo.InvariantCulture.DateTimeFormat.GetMonthName(month)} {year}"
+            : pmCycle;
+    }
+
+    private static ScheduleAssignmentQueueSummary CreateScheduleTrackingSummary(
+        IReadOnlyCollection<ScheduleAssignmentQueueBatchResponse> batches)
+    {
+        var activeBatches = batches.Where(batch => batch.ActiveScheduleCount > 0).ToArray();
+        return new ScheduleAssignmentQueueSummary(
+            activeBatches.Count(batch => batch.OngoingCount == 0 && batch.CompletedCount == 0),
+            activeBatches.Count(batch => batch.ActiveUnfinishedScheduleCount > 0
+                && (batch.OngoingCount > 0 || batch.CompletedCount > 0)),
+            activeBatches.Sum(batch => batch.OngoingCount),
+            activeBatches.Sum(batch => batch.OverdueCount));
     }
 
     private static bool TryNormalizeAssignmentOptionFilters(
@@ -1853,7 +2118,8 @@ public static class SchedulesEndpoints
         string? pmCycle,
         string? department,
         string? assetCategory,
-        string? search)
+        string? search,
+        DateTimeOffset institutionalNow)
     {
         if (assetId is not null)
         {
@@ -1863,7 +2129,22 @@ public static class SchedulesEndpoints
         if (!string.IsNullOrWhiteSpace(status)
             && ScheduleStatusCatalog.TryNormalize(status, out var normalizedStatus))
         {
-            query = query.Where(schedule => schedule.Status == normalizedStatus);
+            if (normalizedStatus == ScheduleStatusCatalog.Overdue)
+            {
+                query = query.Where(schedule => schedule.CompletedAt == null
+                    && (schedule.Status == ScheduleStatusCatalog.Due || schedule.Status == ScheduleStatusCatalog.Overdue)
+                    && schedule.ScheduleDate < institutionalNow);
+            }
+            else if (normalizedStatus == ScheduleStatusCatalog.Due)
+            {
+                query = query.Where(schedule => schedule.CompletedAt == null
+                    && (schedule.Status == ScheduleStatusCatalog.Due || schedule.Status == ScheduleStatusCatalog.Overdue)
+                    && schedule.ScheduleDate >= institutionalNow);
+            }
+            else
+            {
+                query = query.Where(schedule => schedule.Status == normalizedStatus);
+            }
         }
 
         if (from is not null)
@@ -1934,6 +2215,23 @@ public static class SchedulesEndpoints
         return query;
     }
 
+    private static string CanonicalScheduleStatus(
+        string status,
+        DateTimeOffset? completedAt,
+        DateTimeOffset scheduleDate,
+        DateTimeOffset institutionalNow)
+    {
+        if (completedAt is not null
+            || (status != ScheduleStatusCatalog.Due && status != ScheduleStatusCatalog.Overdue))
+        {
+            return status;
+        }
+
+        return scheduleDate < institutionalNow
+            ? ScheduleStatusCatalog.Overdue
+            : ScheduleStatusCatalog.Due;
+    }
+
     private static async Task<bool> HasAssignmentWorkEvidenceAsync(
         ApplicationDbContext context,
         IReadOnlyCollection<PreventiveMaintenanceSchedule> batch,
@@ -1960,6 +2258,14 @@ public static class SchedulesEndpoints
     private static bool IsUnfinishedSchedule(ScheduleResponse schedule)
     {
         return schedule.CompletedAt is null && IsAssignableScheduleStatus(schedule.Status);
+    }
+
+    private static bool IsScheduleOverdueAt(ScheduleResponse schedule, DateTimeOffset institutionalNow)
+    {
+        return schedule.CompletedAt is null
+            && (string.Equals(schedule.Status, ScheduleStatusCatalog.Due, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(schedule.Status, ScheduleStatusCatalog.Overdue, StringComparison.OrdinalIgnoreCase))
+            && schedule.ScheduleDate < institutionalNow;
     }
 
     private static async Task<IResult> ReassignScheduleBatchAsync(
@@ -2246,7 +2552,18 @@ public sealed record ScheduleRegistrySummaryResponse(
 
 public sealed record ScheduleAssignmentQueueResponse(
     int TotalScheduleCount,
+    int TotalBatchCount,
+    int Page,
+    int PageSize,
+    ScheduleAssignmentQueueSummary Summary,
+    IReadOnlyList<string> BuildingOptions,
     IReadOnlyList<ScheduleAssignmentQueueBatchResponse> Batches);
+
+public sealed record ScheduleAssignmentQueueSummary(
+    int NotStartedBatchCount,
+    int InProgressBatchCount,
+    int OngoingScheduleCount,
+    int OverdueScheduleCount);
 
 public sealed record ScheduleAssignmentQueueBatchResponse(
     string BatchKey,
@@ -2255,9 +2572,12 @@ public sealed record ScheduleAssignmentQueueBatchResponse(
     string PmCycle,
     int ScheduleCount,
     int UnfinishedScheduleCount,
+    int ActiveUnfinishedScheduleCount,
     int CompletedCount,
     int OngoingCount,
     int OverdueCount,
+    int CancelledCount,
+    int ActiveScheduleCount,
     string SupervisorState,
     Guid? SupervisorUserId,
     string? SupervisorDisplayName,

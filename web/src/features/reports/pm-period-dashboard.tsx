@@ -580,6 +580,9 @@ export function PmPeriodDashboard({
     year: search.year,
     pmCycle: search.pmCycle,
     department: search.department,
+    condition: search.condition,
+    timeliness: search.timeliness,
+    search: search.search,
   }
 
   const handleGenerate = () => {

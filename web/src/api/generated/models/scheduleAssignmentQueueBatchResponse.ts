@@ -14,6 +14,12 @@ export interface ScheduleAssignmentQueueBatchResponse {
   /** @pattern ^-?(?:0|[1-9]\d*)$ */
   scheduleCount: number | string
   /** @pattern ^-?(?:0|[1-9]\d*)$ */
+  activeUnfinishedScheduleCount: number | string
+  /** @pattern ^-?(?:0|[1-9]\d*)$ */
+  activeScheduleCount: number | string
+  /** @pattern ^-?(?:0|[1-9]\d*)$ */
+  cancelledCount: number | string
+  /** @pattern ^-?(?:0|[1-9]\d*)$ */
   completedCount: number | string
   /** @pattern ^-?(?:0|[1-9]\d*)$ */
   ongoingCount: number | string

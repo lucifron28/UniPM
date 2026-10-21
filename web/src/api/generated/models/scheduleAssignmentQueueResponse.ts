@@ -5,9 +5,18 @@
  * OpenAPI spec version: 1.0.0
  */
 import type { ScheduleAssignmentQueueBatchResponse } from './scheduleAssignmentQueueBatchResponse'
+import type { ScheduleAssignmentQueueSummary } from './scheduleAssignmentQueueSummary'
 
 export interface ScheduleAssignmentQueueResponse {
   /** @pattern ^-?(?:0|[1-9]\d*)$ */
   totalScheduleCount: number | string
+  /** @pattern ^-?(?:0|[1-9]\d*)$ */
+  totalBatchCount: number | string
+  /** @pattern ^-?(?:0|[1-9]\d*)$ */
+  page: number | string
+  /** @pattern ^-?(?:0|[1-9]\d*)$ */
+  pageSize: number | string
+  summary: ScheduleAssignmentQueueSummary
+  buildingOptions: string[]
   batches: ScheduleAssignmentQueueBatchResponse[]
 }

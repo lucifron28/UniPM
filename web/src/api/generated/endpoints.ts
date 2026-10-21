@@ -4540,6 +4540,88 @@ export function useGetSchedule<
 }
 
 /**
+ * @summary Marks an assigned PM schedule as in progress when field work starts
+ */
+export const startScheduleInspection = (id: string, signal?: AbortSignal) => {
+  return customInstance<ScheduleResponse>({
+    url: `/api/v1/schedules/${id}/start-inspection`,
+    method: 'POST',
+    signal,
+  })
+}
+
+export const getStartScheduleInspectionMutationOptions = <
+  TError = void | ProblemDetails,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof startScheduleInspection>>,
+    TError,
+    { id: string },
+    TContext
+  >
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof startScheduleInspection>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ['startScheduleInspection']
+  const { mutation: mutationOptions } = options
+    ? options.mutation &&
+      'mutationKey' in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey } }
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof startScheduleInspection>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {}
+
+    return startScheduleInspection(id)
+  }
+
+  return { mutationFn, ...mutationOptions }
+}
+
+export type StartScheduleInspectionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof startScheduleInspection>>
+>
+
+export type StartScheduleInspectionMutationError = void | ProblemDetails
+
+/**
+ * @summary Marks an assigned PM schedule as in progress when field work starts
+ */
+export const useStartScheduleInspection = <
+  TError = void | ProblemDetails,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof startScheduleInspection>>,
+      TError,
+      { id: string },
+      TContext
+    >
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof startScheduleInspection>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(
+    getStartScheduleInspectionMutationOptions(options),
+    queryClient,
+  )
+}
+
+/**
  * @summary Records an inspection location verification attempt
  */
 export const createInspectionLocationAttempt = (

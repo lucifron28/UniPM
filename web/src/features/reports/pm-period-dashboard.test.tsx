@@ -321,9 +321,16 @@ describe('PM period dashboard period terminology', () => {
         name: 'Preventive Maintenance Dashboard',
       }),
     ).toBeInTheDocument()
-    expect(
-      screen.getByRole('link', { name: 'Ask a question' }),
-    ).toHaveAttribute('href', '/app/analytics')
+    const analyticsUrl = new URL(
+      screen
+        .getByRole('link', { name: 'Ask a question' })
+        .getAttribute('href')!,
+      'http://localhost',
+    )
+    expect(analyticsUrl.pathname).toBe('/app/analytics')
+    expect(JSON.parse(analyticsUrl.searchParams.get('returnContext')!)).toEqual(
+      { kind: 'dashboard', search: {} },
+    )
   })
 
   it('keeps deferred enrollment review outside the PM dashboard', async () => {

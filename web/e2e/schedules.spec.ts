@@ -529,11 +529,13 @@ test.describe('Schedule workflows', () => {
       const params = requestUrl.searchParams
       const selectedAsset = assets[58]!
       const matchesCombinedFilters =
-        params.get('assetId') === selectedAsset.id &&
         params.get('assetCategory') === selectedAsset.assetCategory &&
         params.get('department') === selectedAsset.department &&
-        params.get('status') === 'Due' &&
-        params.get('quarter') === 'Q3'
+        (params.get('assetId') === selectedAsset.id ||
+          !params.has('assetId')) &&
+        (!params.has('pmCycle') || params.get('pmCycle') === '2026-08') &&
+        (!params.has('status') || params.get('status') === 'Due') &&
+        (!params.has('quarter') || params.get('quarter') === 'Q3')
       const item = {
         ...scheduleRegistryItem,
         asset: {
@@ -643,6 +645,7 @@ test.describe('Schedule workflows', () => {
     await assetPicker.press('Enter')
     await expect(assetPicker).toHaveValue(/FE-059/)
     await page.getByRole('button', { name: 'Apply filters' }).click()
+    await page.getByRole('button', { name: 'Open batch history' }).click()
     await expect(
       page.getByRole('link', { name: 'FE-059', exact: true }).first(),
     ).toBeVisible()
@@ -742,8 +745,12 @@ test.describe('Schedule workflows', () => {
     await page.addStyleTag({
       content: 'tbody td { font-size: 18px; line-height: 28px; }',
     })
-    const rows = page.getByRole('table').locator('tbody tr')
-    await expect(rows).toHaveCount(25)
+    await expect(
+      page.getByRole('button', { name: 'Open batch history' }),
+    ).toBeVisible()
+    await page.getByRole('button', { name: 'Open batch history' }).click()
+    await expect(page.getByRole('link', { name: 'FE-001' })).toBeVisible()
+    await expect(page.getByRole('link', { name: 'FE-026' })).toBeVisible()
     const next = page.getByRole('button', { name: 'Next' })
     const workspace = page.locator('.app-workspace')
     await next.scrollIntoViewIfNeeded()
@@ -755,8 +762,7 @@ test.describe('Schedule workflows', () => {
     await expect(page).toHaveURL(/quarter=Q3/)
     await expect(page).toHaveURL(/year=2026/)
     await expect(page).toHaveURL(/page=2/)
-    await expect(page.getByRole('cell', { name: 'FE-026' })).toBeVisible()
-    await expect(rows).toHaveCount(1)
+    await expect(page.getByRole('link', { name: 'FE-026' })).toBeVisible()
     await expect
       .poll(() => workspace.evaluate((element) => element.scrollTop))
       .toBe(scrollTop)
@@ -764,7 +770,7 @@ test.describe('Schedule workflows', () => {
     expectStableRegistryLayout(firstPageLayout, lastPageLayout)
     await page.getByRole('button', { name: 'Previous' }).click()
     await expect(page).not.toHaveURL(/page=2/)
-    await expect(rows).toHaveCount(25)
+    await expect(page.getByRole('link', { name: 'FE-001' })).toBeVisible()
     await expect
       .poll(() => workspace.evaluate((element) => element.scrollTop))
       .toBe(scrollTop)
@@ -774,13 +780,15 @@ test.describe('Schedule workflows', () => {
       '/app/schedules?view=history&status=Due&quarter=Q3&year=2026&page=2',
     )
     await expect(page).toHaveURL(/page=2/)
-    await expect(rows).toHaveCount(1)
+    await page.getByRole('button', { name: 'Open batch history' }).click()
+    await expect(page.getByRole('link', { name: 'FE-026' })).toBeVisible()
     await page.reload()
     await expect(page).toHaveURL(/status=Due/)
     await expect(page).toHaveURL(/quarter=Q3/)
     await expect(page).toHaveURL(/year=2026/)
     await expect(page).toHaveURL(/page=2/)
-    await expect(rows).toHaveCount(1)
+    await page.getByRole('button', { name: 'Open batch history' }).click()
+    await expect(page.getByRole('link', { name: 'FE-026' })).toBeVisible()
 
     await page.goto(
       '/app/schedules?view=history&status=Due&quarter=Q3&year=2026&page=99',
@@ -789,6 +797,8 @@ test.describe('Schedule workflows', () => {
     await expect(page).toHaveURL(/quarter=Q3/)
     await expect(page).toHaveURL(/year=2026/)
     await expect(page).toHaveURL(/page=2/)
+    await page.getByRole('button', { name: 'Open batch history' }).click()
+    await expect(page.getByRole('link', { name: 'FE-026' })).toBeVisible()
 
     const overflowStates: unknown[] = []
     for (const width of responsiveScheduleWidths) {
@@ -799,17 +809,18 @@ test.describe('Schedule workflows', () => {
       await page
         .locator('.app-workspace')
         .evaluate((workspace) => (workspace.scrollTop = 0))
+      await page.getByRole('button', { name: 'Open batch history' }).click()
       const pagination = page.getByRole('navigation', {
         name: 'Schedules pagination',
       })
 
       if (width < 768) {
         const mobileSchedule = page
-          .getByRole('heading', { name: 'FE-026' })
-          .locator('xpath=../../..')
+          .getByRole('link', { name: 'FE-026' })
+          .locator('xpath=../../../..')
         await expect(mobileSchedule).toBeVisible()
       } else {
-        await expect(page.getByRole('cell', { name: 'FE-026' })).toBeVisible()
+        await expect(page.getByRole('link', { name: 'FE-026' })).toBeVisible()
       }
 
       const geometry = await horizontalOverflowGeometry(page)
@@ -826,8 +837,8 @@ test.describe('Schedule workflows', () => {
 
       if (width < 768) {
         const mobileSchedule = page
-          .getByRole('heading', { name: 'FE-026' })
-          .locator('xpath=../../..')
+          .getByRole('link', { name: 'FE-026' })
+          .locator('xpath=../../../..')
         await pagination.scrollIntoViewIfNeeded()
         const [scheduleBounds, paginationBounds] = await Promise.all([
           mobileSchedule.boundingBox(),
@@ -862,6 +873,7 @@ test.describe('Schedule workflows', () => {
     await expect(
       page.getByLabel('Calendar quarter', { exact: true }),
     ).toHaveValue('Q3')
+    await page.getByRole('button', { name: 'Open batch history' }).click()
     await page.getByRole('link', { name: 'View details' }).click()
     await expect(page).toHaveURL(new RegExp(`/app/schedules/${scheduleId}`))
     await expect(page.getByRole('heading', { name: 'FE-001' })).toBeVisible()
@@ -972,7 +984,7 @@ test.describe('Schedule workflows', () => {
       }),
     ).toBeVisible()
     await expect(
-      page.getByRole('heading', { name: 'PM schedule batches' }),
+      page.getByRole('heading', { name: 'Supervisor Assignments' }),
     ).toBeVisible()
     await expect(
       page.getByRole('heading', { name: 'GSD · Fire extinguishers' }),

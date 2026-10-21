@@ -1,4 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
   assignScheduleBatchSupervisor,
@@ -178,8 +183,11 @@ export function useScheduleSupervisorAssignmentOptions(
   enabled: boolean,
   search = '',
   selectedUserId?: string,
+  page = 1,
 ) {
   const params: ListScheduleSupervisorAssignmentOptionsParams = {
+    page,
+    pageSize: 20,
     ...(search.trim() ? { search: search.trim() } : {}),
     ...(selectedUserId ? { selectedUserId } : {}),
   }
@@ -196,8 +204,11 @@ export function useScheduleWorkerAssignmentOptions(
   enabled: boolean,
   search = '',
   selectedUserId?: string,
+  page = 1,
 ) {
   const params: ListScheduleWorkerAssignmentOptionsParams = {
+    page,
+    pageSize: 20,
     ...(search.trim() ? { search: search.trim() } : {}),
     ...(selectedUserId ? { selectedUserId } : {}),
   }
@@ -208,6 +219,67 @@ export function useScheduleWorkerAssignmentOptions(
       listScheduleWorkerAssignmentOptions(params, signal),
     enabled,
   })
+}
+
+export function useInfiniteScheduleSupervisorAssignmentOptions(
+  enabled: boolean,
+  search = '',
+  selectedUserId?: string,
+) {
+  const normalizedSearch = search.trim()
+  const params = {
+    pageSize: 20,
+    ...(normalizedSearch ? { search: normalizedSearch } : {}),
+    ...(selectedUserId ? { selectedUserId } : {}),
+  }
+
+  return useInfiniteQuery({
+    queryKey: ['schedule-supervisor-assignment-options', params],
+    initialPageParam: 1,
+    queryFn: ({ pageParam, signal }) =>
+      listScheduleSupervisorAssignmentOptions(
+        { ...params, page: pageParam },
+        signal,
+      ),
+    getNextPageParam: nextAssignmentOptionsPage,
+    enabled,
+  })
+}
+
+export function useInfiniteScheduleWorkerAssignmentOptions(
+  enabled: boolean,
+  search = '',
+  selectedUserId?: string,
+) {
+  const normalizedSearch = search.trim()
+  const params = {
+    pageSize: 20,
+    ...(normalizedSearch ? { search: normalizedSearch } : {}),
+    ...(selectedUserId ? { selectedUserId } : {}),
+  }
+
+  return useInfiniteQuery({
+    queryKey: ['schedule-worker-assignment-options', params],
+    initialPageParam: 1,
+    queryFn: ({ pageParam, signal }) =>
+      listScheduleWorkerAssignmentOptions(
+        { ...params, page: pageParam },
+        signal,
+      ),
+    getNextPageParam: nextAssignmentOptionsPage,
+    enabled,
+  })
+}
+
+function nextAssignmentOptionsPage(lastPage: {
+  page: number | string
+  pageSize: number | string
+  totalCount: number | string
+}) {
+  const page = Number(lastPage.page)
+  return page * Number(lastPage.pageSize) < Number(lastPage.totalCount)
+    ? page + 1
+    : undefined
 }
 
 export function useAssignScheduleBatchSupervisor() {

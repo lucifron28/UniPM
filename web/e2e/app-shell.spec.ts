@@ -114,7 +114,7 @@ test('desktop shell keeps its header and rail still while the workspace scrolls'
   ).toBeVisible()
   await expect(heading).toHaveCount(1)
   await expect(
-    workspace.getByRole('heading', { name: 'Scheduled assets' }),
+    workspace.getByRole('heading', { name: 'Inspection breakdown' }),
   ).toBeVisible()
   await expect(workspace.getByText('50%', { exact: true })).toBeVisible()
   await expect(workspace.getByText('25%', { exact: true })).toBeVisible()
@@ -273,22 +273,65 @@ test('dashboard questions open the V3 report builder and legacy links redirect',
       body: '[]',
     }),
   )
-  await page.goto('/app/dashboard')
+  const dashboardSearch = {
+    assetCategory: 'fire-extinguisher',
+    year: 2026,
+    pmCycle: '2026-08',
+    department: 'GSD',
+    condition: 'NonOperational',
+    timeliness: 'OnTime',
+    search: 'FE-001',
+  }
+  const dashboardParams = new URLSearchParams({
+    assetCategory: dashboardSearch.assetCategory,
+    year: String(dashboardSearch.year),
+    pmCycle: dashboardSearch.pmCycle,
+    department: dashboardSearch.department,
+    condition: dashboardSearch.condition,
+    timeliness: dashboardSearch.timeliness,
+    search: dashboardSearch.search,
+  })
+  await page.goto('/app/dashboard?' + dashboardParams.toString())
 
   await page.getByRole('link', { name: 'Ask a question' }).click()
   await expect(page).toHaveURL(/\/app\/analytics(?:\?.*)?$/)
   await expect(
-    page.getByRole('heading', { name: 'PM Report Builder' }),
+    page.getByRole('heading', { name: 'Natural Language Analytics' }),
   ).toBeVisible()
+  let analyticsUrl = new URL(page.url())
+  expect(analyticsUrl.pathname).toBe('/app/analytics')
+  expect(
+    JSON.parse(analyticsUrl.searchParams.get('returnContext') ?? 'null'),
+  ).toEqual({ kind: 'dashboard', search: dashboardSearch })
   await expect(
     page.getByRole('heading', { name: 'Ask about PM results' }),
   ).toHaveCount(0)
 
-  await page.goto('/app/dashboard?view=question')
-  await expect(page).toHaveURL(/\/app\/analytics(?:\?.*)?$/)
+  const legacyPage = await page.context().newPage()
+  await mockSession(legacyPage)
+  await legacyPage.goto(
+    '/app/dashboard?view=question&' + dashboardParams.toString(),
+  )
+  await expect(legacyPage).toHaveURL(/\/app\/analytics(?:\?.*)?$/)
   await expect(
-    page.getByRole('heading', { name: 'PM Report Builder' }),
+    legacyPage.getByRole('heading', { name: 'Natural Language Analytics' }),
   ).toBeVisible()
+  analyticsUrl = new URL(legacyPage.url())
+  expect(analyticsUrl.pathname).toBe('/app/analytics')
+  const legacyReturnLink = new URL(
+    (await legacyPage
+      .getByRole('link', { name: 'Back to PM dashboard' })
+      .getAttribute('href'))!,
+    'http://localhost',
+  )
+  expect(
+    JSON.parse(analyticsUrl.searchParams.get('returnContext') ?? 'null'),
+  ).toEqual({ kind: 'dashboard', search: dashboardSearch })
+  expect(legacyReturnLink.pathname).toBe('/app/dashboard')
+  for (const [key, value] of dashboardParams) {
+    expect(legacyReturnLink.searchParams.get(key)).toBe(value)
+  }
+  await legacyPage.close()
 })
 
 test('active navigation styling follows browser history', async ({ page }) => {
@@ -433,6 +476,6 @@ test('quick search resets its active destination when results are filtered', asy
   await expect(page).toHaveURL(/\/app\/schedules\?view=assignments/)
   await expect(page).toHaveURL(/assignmentFilter=needs-supervisor/)
   await expect(
-    page.getByRole('heading', { name: 'PM schedule batches' }),
+    page.getByRole('heading', { name: 'Supervisor Assignments' }),
   ).toBeVisible()
 })
