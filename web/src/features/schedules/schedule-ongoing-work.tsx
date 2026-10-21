@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { Badge } from '@/components/ui/badge'
@@ -58,8 +58,14 @@ export function ScheduleOngoingWork({
   const queryClient = useQueryClient()
   currentRouteState.current = { search, onSearchChange }
   const options = useScheduleRegistryOptions()
-  const categories = options.data?.categories ?? []
-  const departments = options.data?.departments ?? []
+  const categories = useMemo(
+    () => options.data?.categories ?? [],
+    [options.data],
+  )
+  const departments = useMemo(
+    () => options.data?.departments ?? [],
+    [options.data],
+  )
   const selectedCategory = categories.find(
     (category) => category.code === search.assetCategory,
   )
@@ -947,7 +953,7 @@ function usePagedAssigneeOptions(
             ),
           ],
     )
-  }, [data, page])
+  }, [data, page, pageItems])
 
   const search = (value: string) => {
     setTerm(value)
