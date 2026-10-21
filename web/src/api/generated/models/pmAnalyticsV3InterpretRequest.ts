@@ -4,10 +4,11 @@
  * UniPM.Api | v1
  * OpenAPI spec version: 1.0.0
  */
+import type { PmAnalyticsV3InterpretRequestInterpreter } from './pmAnalyticsV3InterpretRequestInterpreter'
 
 export interface PmAnalyticsV3InterpretRequest {
   /** @nullable */
   question: string | null
   /** @nullable */
-  interpreter?: 'DeepSeek' | 'DeterministicParser' | null
+  interpreter?: PmAnalyticsV3InterpretRequestInterpreter
 }
