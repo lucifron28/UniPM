@@ -181,6 +181,8 @@ public sealed class ScheduleBatchAssignmentEndpointsTests
             "CCMS",
             "Annex",
             new DateTimeOffset(2026, 8, 9, 8, 0, 0, TimeSpan.FromHours(8)));
+        var unassignedScheduleStatus =
+            await gsdApplication.GetScheduleStatusAsync(unassignedSchedule.Id);
         await gsdApplication.SetAssignmentsAsync([schedule.Id], inspectorId, null);
 
         var response = await inspectorClient.PostAsync(
@@ -204,7 +206,9 @@ public sealed class ScheduleBatchAssignmentEndpointsTests
             content: null);
 
         Assert.Equal(HttpStatusCode.Forbidden, forbiddenResponse.StatusCode);
-        Assert.Equal(ScheduleStatusCatalog.Due, await gsdApplication.GetScheduleStatusAsync(unassignedSchedule.Id));
+        Assert.Equal(
+            unassignedScheduleStatus,
+            await gsdApplication.GetScheduleStatusAsync(unassignedSchedule.Id));
     }
 
     [Fact]
