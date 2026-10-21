@@ -961,7 +961,6 @@ public static class SchedulesEndpoints
             bool? tracking,
             string? search,
             string? progress,
-            bool overdueOnly,
             string? building,
             Guid? inspectorUserId,
             Guid? supervisorUserId,
@@ -970,7 +969,8 @@ public static class SchedulesEndpoints
             ClaimsPrincipal user,
             IDbContextFactory<ApplicationDbContext> factory,
             TimeProvider timeProvider,
-            CancellationToken cancellationToken) =>
+            CancellationToken cancellationToken,
+            bool overdueOnly = false) =>
         {
             var isTracking = tracking ?? false;
             var validationErrors = new Dictionary<string, string[]>();
