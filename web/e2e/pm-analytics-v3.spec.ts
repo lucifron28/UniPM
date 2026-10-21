@@ -336,12 +336,21 @@ test('runs a V3 report through source-record review at a narrow viewport', async
     },
   ])
   await page.getByRole('button', { name: 'Confirm and generate' }).click()
-  await expect(
-    page.getByRole('link', { name: 'Review inspection' }),
-  ).toHaveAttribute(
-    'href',
+  const reviewInspectionLink = page.getByRole('link', {
+    name: 'Review inspection',
+  })
+  const inspectionUrl = new URL(
+    (await reviewInspectionLink.getAttribute('href'))!,
+    'http://localhost',
+  )
+  expect(inspectionUrl.pathname).toBe(
     '/app/inspections/33333333-3333-4333-8333-333333333333',
   )
+  const inspectionReturnContext = JSON.parse(
+    inspectionUrl.searchParams.get('returnContext') ?? 'null',
+  )
+  expect(inspectionReturnContext.kind).toBe('analytics')
+  expect(inspectionReturnContext.sessionId).toBeTruthy()
 
   const pageWidth = await page.evaluate(
     () => document.documentElement.scrollWidth,
