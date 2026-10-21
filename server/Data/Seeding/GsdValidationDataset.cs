@@ -27,7 +27,8 @@ internal sealed record GsdValidationDatasetContents(
 
 internal static class GsdValidationDatasetBuilder
 {
-    private static readonly DateTimeOffset AssetRegistrationDate = At(2026, 4, 1, 8);
+    private static readonly DateTimeOffset AssetRegistrationDate = At(2024, 1, 1, 8);
+    private static readonly DateTimeOffset OriginalFixtureUpdatedAt = At(2026, 4, 1, 8);
     private const string SyntheticSignaturePng =
         "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl2lD8AAAAASUVORK5CYII=";
     private static readonly string[] FictionalSignatories =
@@ -35,18 +36,25 @@ internal static class GsdValidationDatasetBuilder
 
     private static readonly DepartmentDefinition[] Departments =
     [
-        new("CCMS", "CCMS Building", ["Ground floor corridor", "Second floor laboratory entrance", "Third floor stair landing", "North wing exit"]),
-        new("Administration", "Administration Building", ["Ground floor service counter", "Second floor corridor", "Third floor stair landing", "East wing exit"]),
-        new("Library", "University Library", ["Ground floor reading area", "Second floor stacks", "Third floor study area", "West wing exit"]),
-        new("CNAHS", "CNAHS Building", ["Ground floor clinic corridor", "Second floor skills laboratory", "Third floor stair landing", "South wing exit"])
+        new("CCMS", "CCMS", "CCMS Building", ["Ground floor corridor", "Second floor laboratory entrance", "Third floor stair landing", "North wing exit"]),
+        new("Administration", "Administration", "Administration Building", ["Ground floor service counter", "Second floor corridor", "Third floor stair landing", "East wing exit"]),
+        new("Library", "Library", "Library Complex", ["Ground floor reading area", "Second floor stacks", "Third floor study area", "West wing exit"]),
+        new("CNAHS", "CNAHS", "CNAHS Building", ["Ground floor clinic corridor", "Second floor skills laboratory", "Third floor stair landing", "South wing exit"])
+    ];
+
+    private static readonly DepartmentDefinition[] AdditionalDepartments =
+    [
+        new("GSD", "General Services Department", "Library Complex", ["Ground floor service office", "Ground floor equipment room", "First floor corridor", "West service entrance"]),
+        new("PROC", "Procurement", "Library Complex", ["Ground floor receiving area", "Ground floor records office", "First floor corridor", "East service entrance"]),
+        new("ICTD", "ICTD", "Library Complex", ["Ground floor support desk", "Ground floor network room entrance", "First floor corridor", "North service entrance"])
     ];
 
     private static readonly CategoryDefinition[] Categories =
     [
-        new(AssetCategoryCatalog.FireExtinguisher, "FE", "CCMS", [5, 8, 11]),
+        new(AssetCategoryCatalog.FireExtinguisher, "FE", "CCMS", [2, 5, 8, 11]),
         new(AssetCategoryCatalog.FireAlarm, "FA", "Library", [6, 12]),
         new(AssetCategoryCatalog.EmergencyLight, "EL", "CNAHS", [6, 12]),
-        new(AssetCategoryCatalog.WaterDrinkingStation, "WDS", "Administration", [5, 8, 11])
+        new(AssetCategoryCatalog.WaterDrinkingStation, "WDS", "Administration", [2, 5, 8, 11])
     ];
 
     internal static GsdValidationDatasetContents Build(
@@ -54,17 +62,19 @@ internal static class GsdValidationDatasetBuilder
         Guid supervisorUserId,
         Guid gsdUserId)
     {
-        var assets = new List<Asset>(200);
-        var schedules = new List<PreventiveMaintenanceSchedule>(500);
+        var assets = new List<Asset>(248);
+        var schedules = new List<PreventiveMaintenanceSchedule>(2_232);
         var assetsById = new Dictionary<Guid, Asset>();
+        var originalAssetIds = new HashSet<Guid>();
 
         foreach (var category in Categories)
         {
             var departmentOrder = DepartmentOrderFor(category.LiveDepartment);
-            for (var departmentIndex = 0; departmentIndex < departmentOrder.Count; departmentIndex++)
+            var assetDepartments = departmentOrder
+                .Select((department, index) => (Department: department, Count: index < 2 ? 13 : 12, IsOriginal: true))
+                .Concat(AdditionalDepartments.Select(department => (Department: department, Count: 4, IsOriginal: false)));
+            foreach (var (department, departmentCount, isOriginal) in assetDepartments)
             {
-                var department = departmentOrder[departmentIndex];
-                var departmentCount = departmentIndex < 2 ? 13 : 12;
                 for (var localNumber = 1; localNumber <= departmentCount; localNumber++)
                 {
                     var id = StableId($"asset:{category.AssetCategory}:{department.Code}:{localNumber:D3}");
@@ -74,25 +84,38 @@ internal static class GsdValidationDatasetBuilder
                         AssetCode = $"{category.Code}-{department.Code.ToUpperInvariant()}-{localNumber:D3}",
                         AssetCategory = category.AssetCategory,
                         Building = department.Building,
-                        Department = department.Code,
+                        Department = department.Name,
                         Location = department.Locations[(localNumber - 1) % department.Locations.Length],
                         QrCodeValue = AssetQrCodeValue.Create(category.AssetCategory, id),
                         Status = AssetStatusCatalog.Active,
                         CreatedAt = AssetRegistrationDate,
-                        UpdatedAt = AssetRegistrationDate
+                        UpdatedAt = isOriginal ? OriginalFixtureUpdatedAt : AssetRegistrationDate
                     };
                     assets.Add(asset);
                     assetsById.Add(id, asset);
+                    if (isOriginal)
+                    {
+                        originalAssetIds.Add(id);
+                    }
                 }
             }
 
             foreach (var asset in assets.Where(asset => asset.AssetCategory == category.AssetCategory))
+            foreach (var year in new[] { 2024, 2025, 2026 })
             foreach (var month in category.ScheduleMonths)
             {
-                var pmCycle = $"2026-{month:D2}";
-                var isLiveBatch = month == LiveMonth(category)
+                var pmCycle = $"{year}-{month:D2}";
+                var isLiveBatch = year == 2026
+                    && month == LiveMonth(category)
                     && asset.Department == category.LiveDepartment;
-                var isCompletedCycle = month < 10 && !isLiveBatch;
+                var isUpcomingCycle = year == 2026 && month >= 10;
+                var isCompletedCycle = !isUpcomingCycle && !isLiveBatch;
+                var isOriginal2026Schedule = year == 2026
+                    && month != 2
+                    && originalAssetIds.Contains(asset.Id);
+                var createdAt = isOriginal2026Schedule
+                    ? OriginalFixtureUpdatedAt
+                    : At(year, 1, 1, 8);
                 var schedule = new PreventiveMaintenanceSchedule
                 {
                     Id = StableId($"schedule:{asset.Id:D}:{pmCycle}"),
@@ -102,35 +125,45 @@ internal static class GsdValidationDatasetBuilder
                     ScheduleDate = PreventiveMaintenanceCycle.DeadlineForCycle(pmCycle),
                     PeriodType = SchedulePeriodTypeCatalog.Quarter,
                     Quarter = $"Q{(month - 1) / 3 + 1}",
-                    Year = 2026,
-                    AcademicYear = AcademicYearFor(month),
+                    Year = year,
+                    AcademicYear = AcademicYearFor(year, month),
                     Status = isCompletedCycle ? ScheduleStatusCatalog.Completed : ScheduleStatusCatalog.Due,
                     AssignedToUserId = isCompletedCycle ? inspectorUserId : null,
                     AssignedSupervisorUserId = isCompletedCycle ? supervisorUserId : null,
-                    CreatedAt = AssetRegistrationDate,
-                    UpdatedAt = AssetRegistrationDate
+                    CreatedAt = createdAt,
+                    UpdatedAt = createdAt
                 };
                 schedules.Add(schedule);
             }
         }
 
-        var completedBatches = schedules
+        var completedBatchGroups = schedules
             .Where(schedule => schedule.Status == ScheduleStatusCatalog.Completed)
             .GroupBy(schedule =>
             {
                 var asset = assetsById[schedule.AssetId];
                 return new BatchKey(asset.AssetCategory, asset.Department!, schedule.PmCycle);
             })
+            .ToArray();
+        var original2026Batches = completedBatchGroups
+            .Where(batch => IsOriginal2026Batch(batch.Key))
             .OrderBy(batch => CategoryOrder(batch.Key.AssetCategory))
             .ThenBy(batch => batch.Key.PmCycle, StringComparer.Ordinal)
-            .ThenBy(batch => batch.Key.Department, StringComparer.Ordinal)
-            .ToArray();
+            .ThenBy(batch => batch.Key.Department, StringComparer.Ordinal);
+        var appendedBatches = completedBatchGroups
+            .Where(batch => !IsOriginal2026Batch(batch.Key))
+            .OrderByDescending(batch => CycleYear(batch.Key.PmCycle))
+            .ThenBy(batch => CategoryOrder(batch.Key.AssetCategory))
+            .ThenBy(batch => batch.Key.PmCycle, StringComparer.Ordinal)
+            .ThenBy(batch => batch.Key.Department, StringComparer.Ordinal);
+        var completedBatches = original2026Batches.Concat(appendedBatches).ToArray();
 
-        var forms = new List<PreventiveMaintenanceForm>(20);
-        var inspections = new List<InspectionRecord>(248);
-        var acknowledgements = new List<PreventiveMaintenanceAcknowledgement>(10);
+        var forms = new List<PreventiveMaintenanceForm>(220);
+        var inspections = new List<InspectionRecord>(1_932);
+        var acknowledgements = new List<PreventiveMaintenanceAcknowledgement>(110);
         var referrals = new List<InspectionWmsReferral>();
         var referralAudits = new List<InspectionWmsReferralAudit>();
+        var wmsNumberByYear = new Dictionary<int, int>();
         var inspectionOrdinal = 0;
         var onTime = 0;
         var late = 0;
@@ -145,32 +178,34 @@ internal static class GsdValidationDatasetBuilder
             var batch = completedBatches[batchOrdinal];
             var batchSchedules = batch.OrderBy(schedule => assetsById[schedule.AssetId].AssetCode, StringComparer.Ordinal).ToArray();
             var category = Categories.Single(item => item.AssetCategory == batch.Key.AssetCategory);
+            var year = CycleYear(batch.Key.PmCycle);
             var month = int.Parse(batch.Key.PmCycle.AsSpan(5), CultureInfo.InvariantCulture);
+            var departmentCode = DepartmentCodeFor(batch.Key.Department);
             var isAcknowledged = batchOrdinal % 2 == 0;
             var form = new PreventiveMaintenanceForm
             {
                 Id = StableId($"form:{batch.Key.AssetCategory}:{batch.Key.Department}:{batch.Key.PmCycle}"),
-                FileNumber = $"PM-2026-{category.Code}-{batch.Key.Department.ToUpperInvariant()}-{month:D2}",
+                FileNumber = $"PM-{year}-{category.Code}-{departmentCode.ToUpperInvariant()}-{month:D2}",
                 AssetCategory = batch.Key.AssetCategory,
                 Building = assetsById[batchSchedules[0].AssetId].Building,
                 Department = batch.Key.Department,
                 PmCycle = batch.Key.PmCycle,
                 PeriodType = SchedulePeriodTypeCatalog.Quarter,
                 Quarter = $"Q{(month - 1) / 3 + 1}",
-                Year = 2026,
-                AcademicYear = AcademicYearFor(month),
+                Year = year,
+                AcademicYear = AcademicYearFor(year, month),
                 Status = isAcknowledged
                     ? PreventiveMaintenanceFormStatusCatalog.Acknowledged
                     : PreventiveMaintenanceFormStatusCatalog.Submitted,
                 CreatedByUserId = inspectorUserId,
                 SubmittedByUserId = inspectorUserId,
-                CreatedAt = At(2026, month, 1, 9),
-                UpdatedAt = At(2026, month, 1, 9)
+                CreatedAt = At(year, month, 1, 9),
+                UpdatedAt = At(year, month, 1, 9)
             };
             forms.Add(form);
 
             var batchInspections = new List<InspectionRecord>(batchSchedules.Length);
-            var batchReferrals = new List<(InspectionRecord Inspection, string ExternalPmNumber)>();
+            var batchReferrals = new List<InspectionRecord>();
             foreach (var schedule in batchSchedules)
             {
                 var asset = assetsById[schedule.AssetId];
@@ -252,7 +287,7 @@ internal static class GsdValidationDatasetBuilder
                 }
                 if (hasReferral)
                 {
-                    batchReferrals.Add((inspection, $"WMS-2026-{referrals.Count + batchReferrals.Count + 1:D4}"));
+                    batchReferrals.Add(inspection);
                 }
 
                 inspectionOrdinal++;
@@ -281,8 +316,11 @@ internal static class GsdValidationDatasetBuilder
                 });
             }
 
-            foreach (var (inspection, externalPmNumber) in batchReferrals)
+            foreach (var inspection in batchReferrals)
             {
+                var wmsNumber = wmsNumberByYear.GetValueOrDefault(year) + 1;
+                wmsNumberByYear[year] = wmsNumber;
+                var externalPmNumber = $"WMS-{year}-{wmsNumber:D4}";
                 var recordedAt = acknowledgedAt.AddHours(1);
                 referrals.Add(new InspectionWmsReferral
                 {
@@ -333,8 +371,8 @@ internal static class GsdValidationDatasetBuilder
         return new Guid(bytes);
     }
 
-    private static string AcademicYearFor(int month) =>
-        month <= 6 ? "2025-2026" : "2026-2027";
+    private static string AcademicYearFor(int year, int month) =>
+        month <= 6 ? $"{year - 1}-{year}" : $"{year}-{year + 1}";
 
     private static string RemarksFor(string category, bool operational, int ordinal)
     {
@@ -418,6 +456,19 @@ internal static class GsdValidationDatasetBuilder
             .ToArray();
     }
 
+    private static string DepartmentCodeFor(string departmentName) =>
+        Departments.Concat(AdditionalDepartments)
+            .Single(department => department.Name == departmentName)
+            .Code;
+
+    private static bool IsOriginal2026Batch(BatchKey key) =>
+        CycleYear(key.PmCycle) == 2026
+        && int.Parse(key.PmCycle.AsSpan(5), CultureInfo.InvariantCulture) != 2
+        && Departments.Any(department => department.Name == key.Department);
+
+    private static int CycleYear(string pmCycle) =>
+        int.Parse(pmCycle.AsSpan(0, 4), CultureInfo.InvariantCulture);
+
     private static int CategoryOrder(string category) =>
         Array.FindIndex(Categories, item => item.AssetCategory == category);
 
@@ -431,6 +482,7 @@ internal static class GsdValidationDatasetBuilder
 
     private sealed record DepartmentDefinition(
         string Code,
+        string Name,
         string Building,
         string[] Locations);
 

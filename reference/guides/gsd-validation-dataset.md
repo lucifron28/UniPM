@@ -1,46 +1,52 @@
 # GSD validation dataset
 
-This is a deterministic, fictional validation fixture for preparing separate
-local and Azure SQL targets. The PDF forms are guidance only; no real assets,
-inspection entries, people, personnel signatures, or locations were imported.
-Acknowledgement names and the small PNG signatures are synthetic. A WMS
-reference means a fictional external handoff record, not a completed repair.
+This deterministic validation fixture is fictional and intended for separate
+local and Azure SQL targets. The PDF forms provide layout guidance only; no
+real asset records, inspection entries, personnel, signatures, or equipment
+locations were imported. A WMS number is a synthetic external handoff record,
+not evidence of a completed repair.
 
 ## Expected baseline
 
 | Measure | Expected count |
 | --- | ---: |
-| Fire extinguishers | 50 |
-| Fire alarm systems | 50 |
-| Emergency lights | 50 |
-| Water drinking stations | 50 |
-| Assets | 200 |
-| Persisted schedules | 500 |
-| Completed inspections | 248 |
-| On-time inspections | 186 |
-| Late inspections | 62 |
-| Operational inspection rows | 198 |
-| Non-operational inspection rows | 50 |
-| Forms | 20 |
-| Submitted forms | 10 |
-| Acknowledged forms | 10 |
-| Acknowledged non-operational findings awaiting WMS referral | 12 |
-| Acknowledged non-operational findings with WMS references | 15 |
-| WMS referral revision-1 audit rows | 15 |
+| Fire extinguishers | 62 |
+| Fire alarm systems | 62 |
+| Emergency lights | 62 |
+| Water drinking stations | 62 |
+| Assets | 248 |
+| Persisted schedules | 2,232 |
+| Completed inspections | 1,932 |
+| On-time inspections | 1,449 |
+| Late inspections | 483 |
+| Operational inspection rows | 1,545 |
+| Non-operational inspection rows | 387 |
+| Forms | 220 |
+| Submitted forms | 110 |
+| Acknowledged forms | 110 |
+| WMS referral records | 103 |
+| WMS referral revision-1 audit rows | 103 |
 
-Submitted forms remain outside official history; the 248 inspection rows are
-not all official-history records. The 15 fictional WMS PM numbers are attached
-only to qualifying findings on acknowledged forms. Each referral has a
-revision-1 audit row, and the fixture records no repair outcome.
+The 1,932 inspection rows are not all official-history records. Submitted
+forms remain outside official history; acknowledged-form rows are eligible.
+Each synthetic WMS reference is attached to a qualifying acknowledged finding
+and has a matching revision-1 audit row. The fixture records no repair outcome.
 
-Each category contains 50 assets distributed across CCMS, Administration,
-Library, and CNAHS. Codes use category and department labels, for example
-`FE-CCMS-001`. Identifiers are stable across separate targets and QR values
-are unique. Building names follow the existing campus fixture vocabulary;
-floor, wing, corridor, room, and equipment placements are synthetic assumptions,
-not a verified MSEUF floor plan or inventory. Persisted cycles follow the existing CPMP frequencies. The 200
-November/December schedules are upcoming; four additional 13-row batches are
-left due and unassigned for the live workflow:
+The original 200 asset IDs and codes remain stable. The 48 additional assets
+add four assets per category to each of General Services Department (`GSD`),
+Procurement (`PROC`), and ICTD. Those departments use natural names in the
+Department field and compact codes in asset codes, such as `FE-GSD-001`. All
+three share the owner-confirmed Library Complex building label with the
+Library department. Internal floors, rooms, wings, and equipment placements
+are synthetic assumptions, not a verified campus floor plan or inventory.
+
+Every asset is registered on January 1, 2024 so the historical schedules fall
+after registration. The fixture includes the valid recurring cycles for
+2024–2026: fire extinguishers and water drinking stations in February, May,
+August, and November; fire alarm systems and emergency lights in June and
+December. It contains 744 schedules for each of 2024 and 2025, all completed.
+For 2026, November and December contribute 248 upcoming schedules. Four
+13-row batches remain due and unassigned for live workflow validation:
 
 | Category | Department | PM cycle | Example asset |
 | --- | --- | --- | --- |
@@ -49,23 +55,23 @@ left due and unassigned for the live workflow:
 | Fire alarm systems | Library | 2026-06 | `FA-LIBRARY-001` |
 | Emergency lights | CNAHS | 2026-06 | `EL-CNAHS-001` |
 
-These batches contain persisted schedules only: no inspection, completed row,
-or PM form is pre-created for them. For a controlled live non-operational
-scenario, mark `FE-CCMS-001` non-operational during the session rather than
-pre-seeding a finding. Complete the batch through normal assignment, inspection,
-submission, acknowledgement, and WMS referral workflows.
+These live batches contain schedules only: no inspection, completed row, or PM
+form is pre-created. For a controlled live non-operational scenario, mark
+`FE-CCMS-001` non-operational during the session rather than pre-seeding a
+finding. Complete the batch through normal assignment, inspection, submission,
+acknowledgement, and WMS referral workflows.
 
 ## Representative analytics expectations
 
-The following values are derived from the fixture and existing schedule
-semantics; no dashboard or NLA query execution is claimed here:
+The following values follow the fixture and existing schedule semantics; no
+dashboard or NLA query execution is claimed here:
 
-- Inventory for fire extinguishers: 50 assets.
+- Inventory for fire extinguishers: 62 assets.
 - Fire extinguisher schedules for CCMS in `2026-08`: 13 eligible and 0
   completed at the initial baseline.
 - The four live batches each begin with 13 due, unassigned schedules.
-- Official history can include acknowledged-form rows only; submitted-form
-  rows must remain excluded.
+- Official history includes acknowledged-form rows only; submitted-form rows
+  remain excluded.
 
 Run the focused seeded-dataset test and later report checks before treating
 these expectations as executed evidence.
@@ -95,9 +101,9 @@ compatibility level 150, local SQL Server or Azure SQL Database, Full-Text
 Search, and an empty mapped-data target. The account command creates the five
 application roles and four active `.test` role accounts. The dataset command
 accepts only those expected accounts and otherwise-empty mapped tables. Azure
-SQL also requires explicit encryption and
-`TrustServerCertificate=False`. Each seed uses a transaction; a repeated or
-partially initialized target is rejected for manual review and is never reset.
+SQL also requires explicit encryption and `TrustServerCertificate=False`.
+Each seed uses a transaction; a repeated or partially initialized target is
+rejected for manual review and is never reset.
 
 The two environments must be seeded independently. Do not point the local
 backup at Azure SQL; local and Azure changes do not synchronize. No database

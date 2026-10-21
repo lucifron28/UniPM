@@ -178,11 +178,13 @@ Azure operator process, derive the confirmation from the explicitly selected
 Azure connection target and follow the Azure replacement gates below; the local
 launcher intentionally rejects remote SQL.
 
-The planned validation fixture contains 200 assets, 500 schedules, 248
-historical inspections, and 20 forms (10 Submitted and 10 Acknowledged), split
-across fictional Fire Extinguishers / CCMS, Water Drinking Stations /
-Administration, Fire Alarm Systems / Library, and Emergency Lights / CNAHS
-batches. The fixture also plans 15 WMS referrals. These are planned counts
+The validation fixture contains 248 assets, 2,232 schedules, 1,932 historical
+inspections, and 220 forms (110 Submitted and 110 Acknowledged). History covers
+2024 through 2026. General Services Department, Procurement, and ICTD share
+Library Complex with the Library department. The four original live batches
+remain Fire Extinguishers / CCMS, Water Drinking Stations / Administration,
+Fire Alarm Systems / Library, and Emergency Lights / CNAHS. The fixture has
+103 synthetic WMS referrals. These are expected baseline counts
 until the guarded seed completes and is reviewed. The first operator-created
 case is `FE-CCMS-001`; it has no seeded finding. Normal schedule generation may
 change counts as real work is performed.
