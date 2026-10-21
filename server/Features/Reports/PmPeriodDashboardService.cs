@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using UniPM.Api.Data;
+using UniPM.Api.Features.Inspections;
 using UniPM.Api.Features.ReferenceData;
 using UniPM.Api.Features.Schedules;
 using UniPM.Api.Models;
@@ -88,7 +89,10 @@ internal sealed class PmPeriodDashboardService(
                     inspection.CompletedAt,
                     inspection.IsOperational,
                     inspection.Remarks,
-                    inspection.ActionsRecommendations))
+                    inspection.ActionsRecommendations,
+                    inspection.WmsReferral == null
+                        ? null
+                        : inspection.WmsReferral.ExternalPmNumber))
                 .ToListAsync(cancellationToken);
 
         var forms = await context.PreventiveMaintenanceForms
@@ -239,6 +243,12 @@ internal sealed class PmPeriodDashboardService(
             };
 
         var form = ResolveForm(snapshot, inspection, formById, forms);
+        var correctiveFollowUpStatus = form?.Acknowledgement is not null
+            && inspection is { CompletedAt: not null, IsOperational: false }
+                ? InspectionFollowUpStatusCatalog.For(
+                    inspection.IsOperational,
+                    inspection.ExternalPmNumber is not null)
+                : null;
         var response = new PmPeriodDashboardAssetRowResponse(
             snapshot.ScheduleId,
             snapshot.AssetId,
@@ -262,7 +272,11 @@ internal sealed class PmPeriodDashboardService(
             form?.Id,
             form?.Status,
             form?.Acknowledgement is not null,
-            form?.Acknowledgement?.AcknowledgedAt);
+            form?.Acknowledgement?.AcknowledgedAt,
+            correctiveFollowUpStatus,
+            correctiveFollowUpStatus == InspectionFollowUpStatusCatalog.ReferredToWms
+                ? inspection?.ExternalPmNumber
+                : null);
 
         return new DashboardRow(
             snapshot.Department,
@@ -453,7 +467,8 @@ internal sealed class PmPeriodDashboardService(
         DateTimeOffset? CompletedAt,
         bool IsOperational,
         string? Remarks,
-        string? ActionsRecommendations);
+        string? ActionsRecommendations,
+        string? ExternalPmNumber);
 
     private sealed record DashboardRow(
         string? Department,

@@ -39,4 +39,8 @@ export interface PmPeriodDashboardAssetRowResponse {
   isAcknowledged: boolean
   /** @nullable */
   acknowledgedAt: string | null
+  /** @nullable */
+  correctiveFollowUpStatus: string | null
+  /** @nullable */
+  externalPmNumber: string | null
 }

@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import { render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import {
   createMemoryHistory,
@@ -6,10 +8,11 @@ import {
   createRouter,
   RouterProvider,
 } from '@tanstack/react-router'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import { http, HttpResponse } from 'msw'
 import { configureApiRuntime, resetApiRuntimeForTests } from '@/api/http-client'
 import type {
+  PmPeriodDashboardAssetRowResponse,
   PmPeriodDashboardBatchResponse,
   PmPeriodDashboardResponse,
 } from '@/api/generated/models'
@@ -74,6 +77,39 @@ function dashboardFor(periodState: PeriodState): PmPeriodDashboardResponse {
   }
 }
 
+function dashboardAsset(
+  overrides: Partial<PmPeriodDashboardAssetRowResponse> = {},
+): PmPeriodDashboardAssetRowResponse {
+  return {
+    scheduleId: '33333333-3333-4333-8333-333333333301',
+    assetId: '33333333-3333-4333-8333-333333333302',
+    inspectionId: '33333333-3333-4333-8333-333333333303',
+    assetCode: 'FE-PENDING',
+    assetCategory: 'fire-extinguisher',
+    building: 'CCMS Building',
+    location: 'CL-01',
+    department: 'CCMS',
+    pmCycle: '2026-06',
+    scheduleDate: '2026-06-01T04:00:00Z',
+    deadline: '2026-06-30T16:00:00Z',
+    scheduleStatus: 'Completed',
+    executionStatus: 'Completed',
+    isInspected: true,
+    inspectionCompletedAt: '2026-06-20T04:00:00Z',
+    timeliness: 'OnTime',
+    condition: 'NonOperational',
+    remarks: 'Pressure is below the operating range.',
+    actionsRecommendations: 'Arrange a pressure check.',
+    formId: '33333333-3333-4333-8333-333333333304',
+    formStatus: 'Acknowledged',
+    isAcknowledged: true,
+    acknowledgedAt: '2026-07-02T04:00:00Z',
+    correctiveFollowUpStatus: 'CorrectiveFollowUpPending',
+    externalPmNumber: null,
+    ...overrides,
+  }
+}
+
 function renderState(periodState: PeriodState) {
   return render(
     <PmPeriodDashboardPresentation dashboard={dashboardFor(periodState)} />,
@@ -100,27 +136,112 @@ function renderPresentationWithRouter(
   return render(<RouterProvider router={router} />)
 }
 
-function expectSearchParams(
-  searchParams: URLSearchParams,
-  expected: Record<string, string>,
-) {
-  for (const [key, value] of Object.entries(expected)) {
-    expect(searchParams.get(key)).toBe(value)
-  }
-}
+const availableCycles = [
+  {
+    assetCategory: 'fire-extinguisher',
+    year: 2025,
+    cycles: [
+      { pmCycle: '2025-02', scheduled: 4 },
+      { pmCycle: '2025-11', scheduled: 8 },
+    ],
+  },
+  {
+    assetCategory: 'fire-extinguisher',
+    year: 2026,
+    cycles: [
+      { pmCycle: '2026-06', scheduled: 7 },
+      { pmCycle: '2026-12', scheduled: 12 },
+    ],
+  },
+  {
+    assetCategory: 'fire-alarm',
+    year: 2026,
+    cycles: [{ pmCycle: '2026-06', scheduled: 3 }],
+  },
+]
 
-function expectMetricLabel(label: string) {
-  expect(
-    screen
-      .getAllByText(label, { exact: true })
-      .some((element) => element.tagName === 'P'),
-  ).toBe(true)
+function renderInteractiveDashboard(
+  initialSearch: PmPeriodDashboardSearch = {},
+  deferralSummary = { total: 0, pendingCount: '0', reviewedCount: '0' },
+) {
+  const user = userEvent.setup()
+  const dashboardRequests: Array<{
+    assetCategory: string | null
+    pmCycle: string | null
+  }> = []
+
+  useAuthStore
+    .getState()
+    .establishSession('synthetic-gsd-period-dashboard-token')
+  configureApiRuntime({
+    getAccessToken: () => useAuthStore.getState().accessToken,
+    getSessionGeneration: () => 0,
+    refreshAccessToken: async () => null,
+    onTerminalUnauthorized: () => undefined,
+  })
+  server.use(
+    http.get('*/api/v1/auth/me', () =>
+      HttpResponse.json({
+        id: '11111111-1111-4111-8111-111111111111',
+        email: 'gsd@example.test',
+        displayName: 'GSD Personnel',
+        roles: ['GSD'],
+      }),
+    ),
+    http.get('*/api/v1/pm-period-dashboard/cycles', () =>
+      HttpResponse.json(availableCycles),
+    ),
+    http.get('*/api/v1/schedules/enrollment-deferrals', () =>
+      HttpResponse.json({
+        page: 1,
+        pageSize: 1,
+        total: deferralSummary.total,
+        pendingCount: deferralSummary.pendingCount,
+        reviewedCount: deferralSummary.reviewedCount,
+        items: [],
+      }),
+    ),
+    http.get('*/api/v1/pm-period-dashboard', ({ request }) => {
+      const url = new URL(request.url)
+      const assetCategory = url.searchParams.get('assetCategory')
+      const pmCycle = url.searchParams.get('pmCycle')
+      dashboardRequests.push({ assetCategory, pmCycle })
+
+      return HttpResponse.json({
+        ...dashboardFor('Closed'),
+        ...(assetCategory ? { assetCategory } : {}),
+        ...(pmCycle ? { pmCycle } : {}),
+      })
+    }),
+  )
+
+  function DashboardHarness() {
+    const [search, setSearch] = useState(initialSearch)
+    return <PmPeriodDashboard search={search} onSearchChange={setSearch} />
+  }
+
+  const rootRoute = createRootRoute({ component: DashboardHarness })
+  const router = createRouter({
+    routeTree: rootRoute,
+    history: createMemoryHistory({ initialEntries: ['/'] }),
+  })
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  })
+
+  render(
+    <QueryClientProvider client={queryClient}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>,
+  )
+
+  return { user, dashboardRequests }
 }
 
 function expectMetricValue(label: string, value: string) {
   const labelElement = screen
     .getAllByText(label, { exact: true })
-    .find((element) => element.tagName === 'P')
+    .find((element) => ['P', 'DT'].includes(element.tagName))
 
   if (!labelElement?.parentElement) {
     throw new Error(`Metric card not found: ${label}`)
@@ -137,73 +258,46 @@ describe('PM period dashboard period terminology', () => {
     resetApiRuntimeForTests()
   })
 
-  it('uses Remaining and not Not completed for Future periods', () => {
+  it('shows concise upcoming metrics and breakdown for Future periods', () => {
     renderState('Future')
 
-    expectMetricLabel('Scheduled')
-    expectMetricLabel('Remaining')
-    expectMetricValue('Scheduled', '5')
-    expectMetricValue('Remaining', '2')
-    expectMetricLabel('Compliance rate')
-    expectMetricValue('Compliance rate', 'Not measurable yet')
+    expectMetricValue('Inspected / scheduled', '3 / 5')
+    expectMetricValue('Progress', '60%')
+    expectMetricValue('On-time compliance', 'Not measurable yet')
+    expectMetricValue('Non-operational', '1')
     expect(
-      screen.getByText('Not measurable yet', { exact: true }),
+      screen.getByRole('heading', { name: 'Inspection breakdown' }),
     ).toBeInTheDocument()
+    expectMetricValue('Scheduled', '2')
     expect(
       screen.queryByText('Not completed', { exact: true }),
-    ).not.toBeInTheDocument()
-    expect(
-      screen.getByRole('columnheader', { name: 'Remaining' }),
-    ).toBeInTheDocument()
-    expect(
-      screen.queryByRole('columnheader', { name: 'Not completed' }),
     ).not.toBeInTheDocument()
   })
 
-  it('uses Remaining and not Not completed for Active periods', () => {
+  it('shows pending inspections for Active periods', () => {
     renderState('Active')
 
-    expectMetricLabel('Progress')
-    expectMetricLabel('Compliance rate')
-    expectMetricLabel('Remaining')
+    expectMetricValue('Inspected / scheduled', '3 / 5')
     expectMetricValue('Progress', '60%')
-    expectMetricValue('Compliance rate', 'Not measurable yet')
-    expectMetricValue('Remaining', '2')
-    expect(
-      screen.getByText('Not measurable yet', { exact: true }),
-    ).toBeInTheDocument()
+    expectMetricValue('On-time compliance', 'Not measurable yet')
+    expectMetricValue('Pending', '2')
     expect(
       screen.queryByText('Not completed', { exact: true }),
-    ).not.toBeInTheDocument()
-    expect(
-      screen.getByRole('columnheader', { name: 'Remaining' }),
-    ).toBeInTheDocument()
-    expect(
-      screen.queryByRole('columnheader', { name: 'Not completed' }),
     ).not.toBeInTheDocument()
   })
 
   it('uses final completion terminology for Closed periods', () => {
     renderState('Closed')
 
-    expectMetricLabel('Completed on time')
-    expectMetricLabel('Completed late')
-    expectMetricLabel('Not completed')
-    expectMetricValue('Scheduled', '5')
-    expectMetricValue('Inspected', '3')
+    expectMetricValue('Inspected / scheduled', '3 / 5')
+    expectMetricValue('Progress', '60%')
+    expectMetricValue('On-time compliance', '50%')
+    expectMetricValue('Non-operational', '1')
     expectMetricValue('Completed on time', '2')
     expectMetricValue('Completed late', '1')
     expectMetricValue('Not completed', '1')
-    expectMetricValue('Remaining', '0')
-    expectMetricValue('Operational', '2')
-    expectMetricValue('Non-operational', '1')
-    expectMetricValue('Compliance rate', '50%')
-    expect(screen.getByText('50%', { exact: true })).toBeInTheDocument()
     expect(
-      screen.getByRole('columnheader', { name: 'Not completed' }),
-    ).toBeInTheDocument()
-    expect(
-      screen.queryByRole('columnheader', { name: 'Remaining' }),
+      screen.queryByText('Remaining', { exact: true }),
     ).not.toBeInTheDocument()
   })
 
@@ -232,134 +326,229 @@ describe('PM period dashboard period terminology', () => {
     ).toHaveAttribute('href', '/app/analytics')
   })
 
-  it('shows deferred enrollment counts separately from PM period metrics', async () => {
-    useAuthStore.getState().establishSession('synthetic-gsd-dashboard-token')
-    configureApiRuntime({
-      getAccessToken: () => useAuthStore.getState().accessToken,
-      getSessionGeneration: () => 0,
-      refreshAccessToken: async () => null,
-      onTerminalUnauthorized: () => undefined,
-    })
-    server.use(
-      http.get('*/api/v1/auth/me', () =>
-        HttpResponse.json({
-          id: '11111111-1111-4111-8111-111111111111',
-          email: 'gsd@example.test',
-          displayName: 'GSD Personnel',
-          roles: ['GSD'],
-        }),
-      ),
-      http.get('*/api/v1/pm-period-dashboard/cycles', () =>
-        HttpResponse.json([]),
-      ),
-      http.get('*/api/v1/schedules/enrollment-deferrals', () =>
-        HttpResponse.json({
-          page: 1,
-          pageSize: 1,
-          total: 3,
-          pendingCount: '2',
-          reviewedCount: '1',
-          items: [],
-        }),
-      ),
-    )
-
-    const rootRoute = createRootRoute({
-      component: () => (
-        <PmPeriodDashboard search={{}} onSearchChange={vi.fn()} />
-      ),
-    })
-    const router = createRouter({
-      routeTree: rootRoute,
-      history: createMemoryHistory({ initialEntries: ['/'] }),
-    })
-    const queryClient = new QueryClient({
-      defaultOptions: { queries: { retry: false } },
-    })
-
-    render(
-      <QueryClientProvider client={queryClient}>
-        <RouterProvider router={router} />
-      </QueryClientProvider>,
+  it('keeps deferred enrollment review outside the PM dashboard', async () => {
+    renderInteractiveDashboard(
+      {},
+      { total: 3, pendingCount: '2', reviewedCount: '1' },
     )
 
     expect(
-      await screen.findByRole('heading', {
-        name: /Deferred enrollment: 2 need review · 1 reviewed/,
-      }),
+      await screen.findByRole('combobox', { name: 'Asset category' }),
     ).toBeInTheDocument()
-    expect(screen.getByText(/2 need review · 1 reviewed/)).toBeInTheDocument()
-    expect(screen.getByText(/not completed maintenance/)).toBeInTheDocument()
+    expect(screen.queryByText(/Deferred enrollment/i)).not.toBeInTheDocument()
     expect(
-      screen.getByRole('link', { name: 'Review deferred cycles' }),
-    ).toHaveAttribute(
-      'href',
-      expect.stringContaining('#schedule-enrollment-deferrals'),
-    )
-    expect(screen.getByText('No PM periods are scheduled')).toBeInTheDocument()
-    expect(screen.queryByText('Compliance rate')).not.toBeInTheDocument()
+      screen.queryByRole('link', { name: 'Review deferred cycles' }),
+    ).not.toBeInTheDocument()
   })
 
-  it('routes acknowledged batches to read-only form detail', async () => {
-    const formId = '22222222-2222-4222-8222-222222222222'
-    const acknowledgedBatch: PmPeriodDashboardBatchResponse = {
-      ...batch,
+  it('lists corrective follow-up and links to its inspection and form', async () => {
+    const inspectionId = '33333333-3333-4333-8333-333333333311'
+    const formId = '33333333-3333-4333-8333-333333333312'
+    const pendingInspectionId = '33333333-3333-4333-8333-333333333310'
+    const referred = dashboardAsset({
+      inspectionId,
+      assetCode: 'FE-REFERRED',
       formId,
-      formStatus: 'Acknowledged',
-      isAcknowledged: true,
-      acknowledgedAt: '2026-07-01T08:00:00Z',
-    }
-
-    renderPresentationWithRouter({
-      ...dashboardFor('Closed'),
-      batches: [acknowledgedBatch],
+      correctiveFollowUpStatus: 'ReferredToWms',
+      externalPmNumber: 'WMS-PM-2026-014',
     })
-
-    const link = await screen.findByRole('link', { name: 'View batch' })
-    expect(link).toHaveAttribute(
-      'href',
-      expect.stringContaining(`/app/preventive-maintenance-forms/${formId}?`),
-    )
-    expect(link).toHaveAttribute(
-      'href',
-      expect.stringContaining('readonly=true'),
-    )
-    expect(link).not.toHaveAttribute('href', expect.stringContaining('/review'))
-  })
-
-  it('preserves dashboard scope and filters when opening a submitted batch review', async () => {
-    const reviewFormId = '22222222-2222-4222-8222-222222222222'
-    const reviewSearch: PmPeriodDashboardSearch = {
-      assetCategory: 'fire-extinguisher',
-      year: 2026,
-      pmCycle: '2026-06',
-      department: 'GSD',
-      condition: 'NonOperational',
-      timeliness: 'Late',
-      search: 'FE-TEST-001',
-    }
+    const pending = dashboardAsset({
+      inspectionId: pendingInspectionId,
+      formId: null,
+      assetCode: 'FE-PENDING',
+    })
+    const operational = dashboardAsset({
+      inspectionId: '33333333-3333-4333-8333-333333333313',
+      assetCode: 'FE-OPERATIONAL',
+      condition: 'Operational',
+      correctiveFollowUpStatus: null,
+      externalPmNumber: null,
+    })
+    const unacknowledged = dashboardAsset({
+      inspectionId: '33333333-3333-4333-8333-333333333314',
+      assetCode: 'FE-UNACKNOWLEDGED',
+      isAcknowledged: false,
+      correctiveFollowUpStatus: null,
+    })
 
     renderPresentationWithRouter(
       {
         ...dashboardFor('Closed'),
-        batches: [{ ...batch, formId: reviewFormId }],
+        assets: [pending, referred, operational, unacknowledged],
       },
-      reviewSearch,
+      {
+        assetCategory: 'fire-extinguisher',
+        year: 2026,
+        pmCycle: '2026-06',
+        department: 'CCMS',
+      },
     )
 
-    const link = await screen.findByRole('link', { name: 'Review batch' })
-    const reviewUrl = new URL(link.getAttribute('href')!, 'http://localhost')
-    expect(reviewUrl.pathname).toBe(
-      `/app/preventive-maintenance-forms/${reviewFormId}/review`,
-    )
-    expectSearchParams(reviewUrl.searchParams, {
-      assetCategory: 'fire-extinguisher',
-      year: '2026',
-      pmCycle: '2026-06',
-      department: 'GSD',
-      condition: 'NonOperational',
-      timeliness: 'Late',
-      search: 'FE-TEST-001',
+    expect(await screen.findByText('FE-PENDING')).toBeInTheDocument()
+    expect(screen.getByText('FE-REFERRED')).toBeInTheDocument()
+    expect(screen.getByText('WMS-PM-2026-014')).toBeInTheDocument()
+    expect(screen.queryByText('FE-OPERATIONAL')).not.toBeInTheDocument()
+    expect(screen.queryByText('FE-UNACKNOWLEDGED')).not.toBeInTheDocument()
+    const inspectionLinks = screen.getAllByRole('link', {
+      name: 'View inspection',
     })
+    expect(
+      inspectionLinks.some((link) =>
+        link
+          .getAttribute('href')
+          ?.includes(`/app/inspections/${inspectionId}?`),
+      ),
+    ).toBe(true)
+    const formLink = screen.getByRole('link', { name: 'Open PM form' })
+    expect(formLink).toHaveAttribute(
+      'href',
+      expect.stringContaining(`/app/preventive-maintenance-forms/${formId}?`),
+    )
+    expect(formLink).toHaveAttribute(
+      'href',
+      expect.stringContaining('readonly=true'),
+    )
+  })
+})
+
+describe('PM period dashboard period selection', () => {
+  afterEach(() => {
+    useAuthStore.getState().clearSession()
+    resetApiRuntimeForTests()
+  })
+
+  it('limits dependent period options and waits for explicit generation', async () => {
+    const { user, dashboardRequests } = renderInteractiveDashboard()
+    const category = await screen.findByRole('combobox', {
+      name: 'Asset category',
+    })
+
+    await user.click(category)
+    await user.type(category, 'ext')
+    await user.click(
+      await screen.findByRole('option', { name: 'Fire extinguishers' }),
+    )
+
+    const year = screen.getByRole('combobox', { name: 'Year' })
+    expect(
+      within(year)
+        .getAllByRole('option')
+        .map((option) => option.textContent?.trim()),
+    ).toEqual(['Choose a year', '2026', '2025'])
+
+    await user.selectOptions(year, '2026')
+    const month = screen.getByRole('combobox', { name: 'Scheduled month' })
+    expect(
+      within(month)
+        .getAllByRole('option')
+        .map((option) => option.textContent?.trim()),
+    ).toEqual(['Choose a scheduled month', 'June', 'December'])
+    expect(
+      screen.getByRole('button', { name: 'Generate dashboard' }),
+    ).toBeDisabled()
+    expect(dashboardRequests).toHaveLength(0)
+
+    await user.selectOptions(year, '2025')
+    expect(
+      within(month)
+        .getAllByRole('option')
+        .map((option) => option.textContent?.trim()),
+    ).toEqual(['Choose a scheduled month', 'February', 'November'])
+
+    await user.click(category)
+    await user.type(category, 'alarm')
+    await user.click(
+      await screen.findByRole('option', { name: 'Fire alarm systems' }),
+    )
+    expect(year).toHaveValue('')
+    expect(month).toBeDisabled()
+    expect(
+      screen.getByRole('button', { name: 'Generate dashboard' }),
+    ).toBeDisabled()
+
+    await user.selectOptions(year, '2026')
+    await user.selectOptions(month, '2026-06')
+    await user.click(screen.getByRole('button', { name: 'Generate dashboard' }))
+
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Fire alarm systems · June 2026',
+      }),
+    ).toBeInTheDocument()
+    expect(dashboardRequests).toContainEqual({
+      assetCategory: 'fire-alarm',
+      pmCycle: '2026-06',
+    })
+  })
+
+  it('preserves a generated report when period changes are cancelled', async () => {
+    const { user, dashboardRequests } = renderInteractiveDashboard({
+      assetCategory: 'fire-extinguisher',
+      year: 2026,
+      pmCycle: '2026-06',
+    })
+
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Fire extinguishers · June 2026',
+      }),
+    ).toBeInTheDocument()
+    expect(
+      await screen.findByText('3 / 5', { exact: true }),
+    ).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Change period' }))
+    const month = screen.getByRole('combobox', { name: 'Scheduled month' })
+    await user.selectOptions(month, '2026-12')
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+
+    expect(
+      screen.getByRole('heading', {
+        name: 'Fire extinguishers · June 2026',
+      }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('heading', { name: 'Inspection breakdown' }),
+    ).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Change period' }))
+    const changedMonth = screen.getByRole('combobox', {
+      name: 'Scheduled month',
+    })
+    await user.selectOptions(changedMonth, '2026-12')
+    expect(changedMonth).toHaveValue('2026-12')
+    await user.click(screen.getByRole('button', { name: 'Generate dashboard' }))
+
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Fire extinguishers · December 2026',
+      }),
+    ).toBeInTheDocument()
+    expect(dashboardRequests).toContainEqual({
+      assetCategory: 'fire-extinguisher',
+      pmCycle: '2026-12',
+    })
+  })
+
+  it('explains an unavailable saved period and prevents accidental generation', async () => {
+    const { dashboardRequests } = renderInteractiveDashboard({
+      assetCategory: 'retired-category',
+      year: 2024,
+      pmCycle: '2024-06',
+    })
+
+    expect(
+      await screen.findByText(
+        'This saved report period is no longer available. Choose a scheduled period and generate a new report.',
+      ),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: 'Year' })).toBeDisabled()
+    expect(
+      screen.getByRole('combobox', { name: 'Scheduled month' }),
+    ).toBeDisabled()
+    expect(
+      screen.getByRole('button', { name: 'Generate dashboard' }),
+    ).toBeDisabled()
+    expect(dashboardRequests).toHaveLength(0)
   })
 })

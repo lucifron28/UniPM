@@ -72,7 +72,9 @@ public sealed record PmPeriodDashboardAssetRowResponse(
     Guid? FormId,
     string? FormStatus,
     bool IsAcknowledged,
-    DateTimeOffset? AcknowledgedAt);
+    DateTimeOffset? AcknowledgedAt,
+    string? CorrectiveFollowUpStatus,
+    string? ExternalPmNumber);
 
 internal sealed record PmPeriodDashboardQuery(
     string PmCycle,

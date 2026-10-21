@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using UniPM.Api.Data;
+using UniPM.Api.Features.Inspections;
 using UniPM.Api.Features.PreventiveMaintenanceForms;
 using UniPM.Api.Features.Reports;
 using UniPM.Api.Features.Schedules;
@@ -174,6 +175,124 @@ public sealed class PmPeriodDashboardTests
         var otherBatch = Assert.Single(response.Batches, batch => batch.Department == "OTHER");
         Assert.Equal(1, otherBatch.Scheduled);
         Assert.Null(otherBatch.FormId);
+    }
+
+    [Fact]
+    public async Task Corrective_follow_up_includes_only_acknowledged_completed_nonoperational_rows_in_scope()
+    {
+        var response = await GetClosedDashboardAsync(
+            CreateQuery(department: "CCMS"),
+            context =>
+            {
+                var acknowledgedForm = CreateForm(
+                    Guid.Parse("00000000-0000-0000-0000-000000000211"),
+                    "CCMS",
+                    PmCycle,
+                    PreventiveMaintenanceFormStatusCatalog.Acknowledged);
+                var draftForm = CreateForm(
+                    Guid.Parse("00000000-0000-0000-0000-000000000212"),
+                    "CCMS",
+                    PmCycle,
+                    PreventiveMaintenanceFormStatusCatalog.Draft);
+                var otherDepartmentForm = CreateForm(
+                    Guid.Parse("00000000-0000-0000-0000-000000000213"),
+                    "OTHER",
+                    PmCycle,
+                    PreventiveMaintenanceFormStatusCatalog.Acknowledged);
+                var otherCycleForm = CreateForm(
+                    Guid.Parse("00000000-0000-0000-0000-000000000214"),
+                    "CCMS",
+                    "2026-08",
+                    PreventiveMaintenanceFormStatusCatalog.Acknowledged);
+
+                var pendingAsset = CreateAsset("FE-FOLLOW-UP-PENDING", "CCMS");
+                var referredAsset = CreateAsset("FE-FOLLOW-UP-REFERRED", "CCMS");
+                var operationalAsset = CreateAsset("FE-FOLLOW-UP-OPERATIONAL", "CCMS");
+                var draftAsset = CreateAsset("FE-FOLLOW-UP-DRAFT", "CCMS");
+                var incompleteAsset = CreateAsset("FE-FOLLOW-UP-INCOMPLETE", "CCMS");
+                var otherDepartmentAsset = CreateAsset("FE-FOLLOW-UP-OTHER-DEPT", "OTHER");
+                var otherCycleAsset = CreateAsset("FE-FOLLOW-UP-OTHER-CYCLE", "CCMS");
+                var assets = new[]
+                {
+                    pendingAsset,
+                    referredAsset,
+                    operationalAsset,
+                    draftAsset,
+                    incompleteAsset,
+                    otherDepartmentAsset,
+                    otherCycleAsset
+                };
+                var schedules = assets.Select((asset, index) => CreateSchedule(
+                    asset,
+                    index == assets.Length - 1 ? "2026-08" : PmCycle)).ToArray();
+
+                var pendingInspection = CreateInspection(
+                    schedules[0], pendingAsset, AtManila(2026, 6, 20), false,
+                    acknowledgedForm.Id, "Pressure below operating range.", "Arrange a pressure check.");
+                var referredInspection = CreateInspection(
+                    schedules[1], referredAsset, AtManila(2026, 6, 21), false,
+                    acknowledgedForm.Id, "Detector response requires review.", "Coordinate corrective follow-up.");
+                var operationalInspection = CreateInspection(
+                    schedules[2], operationalAsset, AtManila(2026, 6, 22), true,
+                    acknowledgedForm.Id);
+                var draftInspection = CreateInspection(
+                    schedules[3], draftAsset, AtManila(2026, 6, 23), false,
+                    draftForm.Id);
+                var incompleteInspection = CreateInspection(
+                    schedules[4], incompleteAsset, AtManila(2026, 6, 24), false,
+                    acknowledgedForm.Id);
+                incompleteInspection.CompletedAt = null;
+                var otherDepartmentInspection = CreateInspection(
+                    schedules[5], otherDepartmentAsset, AtManila(2026, 6, 25), false,
+                    otherDepartmentForm.Id);
+                var otherCycleInspection = CreateInspection(
+                    schedules[6], otherCycleAsset, AtManila(2026, 8, 20), false,
+                    otherCycleForm.Id);
+
+                context.Assets.AddRange(assets);
+                context.PreventiveMaintenanceSchedules.AddRange(schedules);
+                context.PreventiveMaintenanceForms.AddRange(
+                    acknowledgedForm,
+                    draftForm,
+                    otherDepartmentForm,
+                    otherCycleForm);
+                context.PreventiveMaintenanceAcknowledgements.AddRange(
+                    CreateAcknowledgement(acknowledgedForm),
+                    CreateAcknowledgement(otherDepartmentForm),
+                    CreateAcknowledgement(otherCycleForm));
+                context.InspectionRecords.AddRange(
+                    pendingInspection,
+                    referredInspection,
+                    operationalInspection,
+                    draftInspection,
+                    incompleteInspection,
+                    otherDepartmentInspection,
+                    otherCycleInspection);
+                context.InspectionWmsReferrals.Add(new InspectionWmsReferral
+                {
+                    InspectionId = referredInspection.Id,
+                    Inspection = referredInspection,
+                    ExternalPmNumber = "WMS-PM-2026-014",
+                    Revision = 1,
+                    RecordedByUserId = Guid.NewGuid(),
+                    RecordedAt = AtManila(2026, 7, 2),
+                    LastUpdatedByUserId = Guid.NewGuid(),
+                    LastUpdatedAt = AtManila(2026, 7, 2)
+                });
+            });
+
+        var pending = Assert.Single(response.Assets, asset => asset.AssetCode == "FE-FOLLOW-UP-PENDING");
+        Assert.Equal(InspectionFollowUpStatusCatalog.CorrectiveFollowUpPending, pending.CorrectiveFollowUpStatus);
+        Assert.Null(pending.ExternalPmNumber);
+
+        var referred = Assert.Single(response.Assets, asset => asset.AssetCode == "FE-FOLLOW-UP-REFERRED");
+        Assert.Equal(InspectionFollowUpStatusCatalog.ReferredToWms, referred.CorrectiveFollowUpStatus);
+        Assert.Equal("WMS-PM-2026-014", referred.ExternalPmNumber);
+
+        Assert.Null(Assert.Single(response.Assets, asset => asset.AssetCode == "FE-FOLLOW-UP-OPERATIONAL").CorrectiveFollowUpStatus);
+        Assert.Null(Assert.Single(response.Assets, asset => asset.AssetCode == "FE-FOLLOW-UP-DRAFT").CorrectiveFollowUpStatus);
+        Assert.Null(Assert.Single(response.Assets, asset => asset.AssetCode == "FE-FOLLOW-UP-INCOMPLETE").CorrectiveFollowUpStatus);
+        Assert.DoesNotContain(response.Assets, asset => asset.AssetCode is "FE-FOLLOW-UP-OTHER-DEPT" or "FE-FOLLOW-UP-OTHER-CYCLE");
     }
 
     [Fact]
@@ -507,6 +626,43 @@ public sealed class PmPeriodDashboardTests
             Department = department,
             Location = "Lobby",
             Status = "Active"
+        };
+    }
+
+    private static PreventiveMaintenanceForm CreateForm(
+        Guid id,
+        string department,
+        string pmCycle,
+        string status)
+    {
+        var createdAt = AtManila(2026, 6, 1);
+        return new PreventiveMaintenanceForm
+        {
+            Id = id,
+            AssetCategory = AssetCategory,
+            Department = department,
+            PmCycle = pmCycle,
+            PeriodType = "Quarter",
+            Status = status,
+            CreatedByUserId = Guid.NewGuid(),
+            SubmittedAt = AtManila(2026, 6, 30),
+            CreatedAt = createdAt,
+            UpdatedAt = createdAt
+        };
+    }
+
+    private static PreventiveMaintenanceAcknowledgement CreateAcknowledgement(
+        PreventiveMaintenanceForm form)
+    {
+        return new PreventiveMaintenanceAcknowledgement
+        {
+            Id = Guid.NewGuid(),
+            FormId = form.Id,
+            Form = form,
+            SignatoryName = "Synthetic Signatory",
+            SignatoryPosition = "Department Head",
+            CapturedByUserId = Guid.NewGuid(),
+            AcknowledgedAt = AtManila(2026, 7, 2)
         };
     }
 

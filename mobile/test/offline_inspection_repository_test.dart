@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:mobile/api/api_exception.dart';
 import 'package:mobile/auth/auth_models.dart';
 import 'package:mobile/features/assets/asset_models.dart';
@@ -23,6 +25,37 @@ const _inspectionBId = '66666666-6666-4666-8666-666666666667';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  test('encrypted snapshots are isolated by backend and user', () async {
+    final legacyKey =
+        'unipm.offline.v1.${base64Url.encode(utf8.encode(_userB))}';
+    FlutterSecureStorage.setMockInitialValues({legacyKey: 'legacy queue'});
+    final cloud = SecureOfflineSnapshotStore(
+      apiBaseUrl: Uri.parse('https://cloud.example.test/'),
+    );
+    final cloudAlias = SecureOfflineSnapshotStore(
+      apiBaseUrl: Uri.parse('https://CLOUD.example.test:443'),
+    );
+    final lan = SecureOfflineSnapshotStore(
+      apiBaseUrl: Uri.parse('http://192.168.1.10:5254/'),
+    );
+    final otherPath = SecureOfflineSnapshotStore(
+      apiBaseUrl: Uri.parse('https://cloud.example.test/other/'),
+    );
+    await cloud.write(_userA, 'cloud queue');
+    expect(await cloudAlias.read(_userA), 'cloud queue');
+    expect(await lan.read(_userA), isNull);
+    expect(await otherPath.read(_userA), isNull);
+    expect(await cloud.read(_userB), isNull);
+    expect(await lan.read(_userB), isNull);
+    await lan.write(_userA, 'local queue');
+    await lan.delete(_userA);
+    expect(await cloud.read(_userA), 'cloud queue');
+    expect(
+      await const FlutterSecureStorage().read(key: legacyKey),
+      'legacy queue',
+    );
+  });
 
   late _MemoryStore store;
   late _FakeConnectivity connectivity;

@@ -362,20 +362,28 @@ describe('preventive-maintenance form review', () => {
     )
     expect(screen.getByRole('textbox', { name: 'Search forms' })).toBeVisible()
     expect(screen.getByLabelText('Form status')).toBeVisible()
+    expect(screen.getByLabelText('Asset category')).not.toBeVisible()
+    expect(screen.getByLabelText('Department')).not.toBeVisible()
+    expect(screen.getByLabelText('PM cycle')).not.toBeVisible()
+    await userEvent.setup().click(screen.getByText('More filters'))
     expect(screen.getByLabelText('Asset category')).toBeVisible()
     expect(screen.getByLabelText('Department')).toBeVisible()
     expect(screen.getByLabelText('PM cycle')).toBeVisible()
     expect(screen.getAllByText('Draft')).toHaveLength(3)
     expect(screen.getAllByText('Awaiting acknowledgement')).toHaveLength(3)
     expect(screen.getAllByText('Acknowledged')).toHaveLength(3)
-    // jsdom includes both responsive lists: three forms rendered twice.
+    const table = screen.getByRole('table', {
+      name: 'Preventive-maintenance forms',
+    })
+    expect(table).toHaveTextContent('Fire extinguishers')
+    expect(table).toHaveTextContent('GSD')
+    expect(table).toHaveTextContent('Quarter / Q3 / 2026')
+    expect(table).not.toHaveTextContent('Current supervisor assignment')
+    expect(table).not.toHaveTextContent('Current inspector assignment')
+    expect(table).not.toHaveTextContent('Inspection rows')
     expect(
-      screen.getAllByRole('link', {
-        name: 'Fire extinguishers · GSD · Quarter / Q3 / 2026',
-      }),
-    ).toHaveLength(2)
-    expect(screen.getAllByText('Main Building / GSD')).toHaveLength(6)
-    expect(screen.getAllByText('Inspection rows')).toHaveLength(6)
+      screen.queryByRole('group', { name: 'Form records zoom controls' }),
+    ).not.toBeInTheDocument()
     expect(screen.queryByText(formId)).not.toBeInTheDocument()
     expect(
       screen.queryByText('77777777-7777-4777-8777-777777777777'),
@@ -389,29 +397,8 @@ describe('preventive-maintenance form review', () => {
       'href',
       '/app/preventive-maintenance-forms/77777777-7777-4777-8777-777777777777?returnContext=%7B%22kind%22%3A%22formRegistry%22%7D',
     )
-    expect(
-      screen.getAllByRole('link', { name: 'View form details' }),
-    ).toHaveLength(6)
-
-    const zoomGroup = screen.getByRole('group', {
-      name: 'Form records zoom controls',
-    })
-    await userEvent.setup().click(
-      within(zoomGroup).getByRole('button', {
-        name: 'Increase Form records zoom',
-      }),
-    )
-    expect(
-      screen
-        .getByRole('region', {
-          name: 'Preventive-maintenance form records',
-        })
-        .querySelector<HTMLElement>(':scope > div')?.style.zoom,
-    ).toBe('1.1')
-    await userEvent.setup().click(
-      within(zoomGroup).getByRole('button', {
-        name: 'Reset Form records zoom to 100 percent',
-      }),
+    expect(screen.getAllByRole('link', { name: 'View details' })).toHaveLength(
+      3,
     )
   })
 
@@ -459,6 +446,7 @@ describe('preventive-maintenance form review', () => {
       'FE-TEST',
     )
     await actor.selectOptions(screen.getByLabelText('Form status'), 'Submitted')
+    await actor.click(screen.getByText('More filters'))
     await actor.selectOptions(
       screen.getByLabelText('Asset category'),
       'fire-extinguisher',
@@ -512,7 +500,7 @@ describe('preventive-maintenance form review', () => {
     })
   })
 
-  it('filters forms by current supervisor account and shows assignments separately from inspection work', async () => {
+  it('filters forms by current supervisor account without listing assignment details', async () => {
     const assignedForms = [
       {
         ...form('Submitted'),
@@ -591,6 +579,7 @@ describe('preventive-maintenance form review', () => {
     const firstOption = 'Alex Supervisor · …0001'
     const secondOption = 'Alex Supervisor · …0002'
     await screen.findByRole('heading', { name: 'Form review' })
+    await actor.click(screen.getByText('More filters'))
     const supervisorPicker = await screen.findByRole('combobox', {
       name: 'Supervisor filter',
     })
@@ -610,24 +599,17 @@ describe('preventive-maintenance form review', () => {
     const firstFormLinks = await screen.findAllByRole('link', {
       name: 'PM-SUPERVISOR-A',
     })
-    expect(firstFormLinks).toHaveLength(2)
+    expect(firstFormLinks).toHaveLength(1)
     expect(
       screen.queryByRole('link', { name: 'PM-SUPERVISOR-B' }),
     ).not.toBeInTheDocument()
-    const firstFormCard = firstFormLinks[0]?.closest('article')
-    expect(firstFormCard).not.toBeNull()
     expect(
-      within(firstFormCard!).getByText('Current supervisor assignment'),
-    ).toBeInTheDocument()
+      screen.queryByText('Current supervisor assignment'),
+    ).not.toBeInTheDocument()
     expect(
-      within(firstFormCard!).getByText('Alex Supervisor'),
-    ).toBeInTheDocument()
-    expect(
-      within(firstFormCard!).getByText('Current inspector assignment'),
-    ).toBeInTheDocument()
-    expect(
-      within(firstFormCard!).getByText('Assigned Inspector'),
-    ).toBeInTheDocument()
+      screen.queryByText('Current inspector assignment'),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByText('Assigned Inspector')).not.toBeInTheDocument()
 
     await actor.click(screen.getByRole('button', { name: 'Clear filters' }))
     const clearedSupervisorPicker = await screen.findByRole('combobox', {
@@ -639,7 +621,7 @@ describe('preventive-maintenance form review', () => {
     await waitFor(() => {
       expect(
         screen.getAllByRole('link', { name: 'PM-SUPERVISOR-UNASSIGNED' }),
-      ).toHaveLength(2)
+      ).toHaveLength(1)
       expect(
         screen.queryAllByRole('link', { name: 'PM-SUPERVISOR-A' }),
       ).toHaveLength(0)
@@ -671,7 +653,7 @@ describe('preventive-maintenance form review', () => {
     await userEvent.setup().click(screen.getByRole('button', { name: 'Retry' }))
     expect(
       await screen.findAllByRole('link', { name: 'GSD-SUBMITTED-001' }),
-    ).toHaveLength(2)
+    ).toHaveLength(1)
   })
 
   it('renders human-readable row context and water-station work items', async () => {
