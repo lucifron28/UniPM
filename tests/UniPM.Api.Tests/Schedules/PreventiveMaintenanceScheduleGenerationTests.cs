@@ -538,7 +538,7 @@ public sealed class PreventiveMaintenanceScheduleGenerationTests
     [InlineData(AuthRoleCatalog.Supervisor)]
     [InlineData(AuthRoleCatalog.Inspector)]
     [InlineData(AuthRoleCatalog.Admin)]
-    public async Task Enrollment_deferral_review_is_gsd_only(string role)
+    public async Task Enrollment_deferral_review_allows_admin_and_denies_field_roles(string role)
     {
         await using var application = new TestApplicationFactory(
             role,
@@ -550,8 +550,8 @@ public sealed class PreventiveMaintenanceScheduleGenerationTests
             $"/api/v1/schedules/enrollment-deferrals/{Guid.NewGuid()}/2026-08/review",
             new { note = "review" });
 
-        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
-        Assert.Equal(HttpStatusCode.Forbidden, reviewResponse.StatusCode);
+        Assert.Equal(role == AuthRoleCatalog.Admin ? HttpStatusCode.OK : HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.Equal(role == AuthRoleCatalog.Admin ? HttpStatusCode.NotFound : HttpStatusCode.Forbidden, reviewResponse.StatusCode);
     }
 
     [Fact]
