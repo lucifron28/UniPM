@@ -247,7 +247,9 @@ public sealed class ScheduleBatchAssignmentEndpointsTests
         Assert.Equal("2026-08", assignedBatch.PmCycle);
         Assert.Equal(oldWorkerId, assignedBatch.WorkerUserId);
         Assert.Equal(supervisorId, assignedBatch.SupervisorUserId);
-        Assert.Equivalent(new[] { second.Id, third.Id }, assignedBatch.ScheduleIds);
+        Assert.Equal(
+            new[] { second.Id, third.Id }.Order().ToArray(),
+            assignedBatch.ScheduleIds.Order().ToArray());
 
         var stored = await application.GetAssignmentsAsync();
         Assert.Equal(oldWorkerId, stored[first.Id].WorkerId);
