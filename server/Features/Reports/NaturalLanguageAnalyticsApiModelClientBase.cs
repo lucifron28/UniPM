@@ -18,7 +18,7 @@ internal abstract class NaturalLanguageAnalyticsApiModelClientBase : INaturalLan
     internal const int MinimumJitterMilliseconds = 0;
     internal const int MaximumJitterMilliseconds = 250;
 
-    private const int MaximumRequestBytes = 16 * 1024;
+    private const int MaximumRequestBytes = 32 * 1024;
     private readonly string _apiKey;
     private readonly HttpClient _httpClient;
     private readonly NaturalLanguageAnalyticsModelClientRunLedger _ledger;
@@ -81,7 +81,8 @@ internal abstract class NaturalLanguageAnalyticsApiModelClientBase : INaturalLan
         if (requestBody.Length > MaximumRequestBytes)
         {
             throw new NaturalLanguageAnalyticsProviderException(
-                NaturalLanguageAnalyticsProviderFailure.InvalidOutput);
+                NaturalLanguageAnalyticsProviderFailure.InvalidOutput,
+                "RequestTooLarge");
         }
 
         _ledger.BeginLogicalCall();

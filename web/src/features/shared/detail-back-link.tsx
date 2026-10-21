@@ -29,6 +29,21 @@ export function DetailBackLink({
           {target.label}
         </Link>
       )
+    case 'analytics':
+      return (
+        <Link
+          to="/app/analytics"
+          search={{
+            returnContext: {
+              kind: 'analytics',
+              sessionId: target.sessionId,
+            },
+          }}
+          className={className}
+        >
+          {target.label}
+        </Link>
+      )
     case 'assetRegistry':
       return (
         <Link to="/app/assets" search={target.search} className={className}>

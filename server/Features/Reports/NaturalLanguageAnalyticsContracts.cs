@@ -58,10 +58,14 @@ internal enum NaturalLanguageAnalyticsProviderFailure
 }
 
 internal sealed class NaturalLanguageAnalyticsProviderException(
-    NaturalLanguageAnalyticsProviderFailure failure)
+    NaturalLanguageAnalyticsProviderFailure failure,
+    string? diagnosticCode = null,
+    IReadOnlyList<string>? outputFields = null)
     : Exception("The natural language analytics interpreter is unavailable.")
 {
     internal NaturalLanguageAnalyticsProviderFailure Failure { get; } = failure;
+    internal string? DiagnosticCode { get; } = diagnosticCode;
+    internal IReadOnlyList<string> OutputFields { get; } = outputFields ?? [];
 }
 
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]

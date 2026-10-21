@@ -8,4 +8,6 @@
 export interface PmAnalyticsV3InterpretRequest {
   /** @nullable */
   question: string | null
+  /** @nullable */
+  interpreter?: 'DeepSeek' | 'DeterministicParser' | null
 }

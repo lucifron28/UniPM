@@ -29,6 +29,8 @@ import { ApiError } from '@/api/problem-details'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
+import { DetailBackLink } from '@/features/shared/detail-back-link'
+import type { DetailReturnContext } from '@/features/shared/detail-navigation'
 
 type Mode = PmAnalyticsV3Mode
 type Presentation = PmAnalyticsV3Presentation
@@ -75,6 +77,50 @@ type PreviewResponse = PmAnalyticsV3PreviewResponse
 type ExecutionResponse = PmAnalyticsV3ExecutionResponse
 type Interpretation = PmAnalyticsV3InterpretationResponse
 type FilterValues = PmAnalyticsV3FilterValuesResponse
+type AnalyticsStage = 'question' | 'plan' | 'preview' | 'results'
+
+type AnalyticsViewSnapshot = {
+  catalog: Catalog | null
+  selectedSubject: string
+  plan: ReportPlan
+  question: string
+  submittedQuestion: string
+  interpretation: Interpretation | null
+  preview: PreviewResponse | null
+  response: ExecutionResponse | null
+  stage: AnalyticsStage
+  originContext: DetailReturnContext
+  manualEditorOpen: boolean
+  error: string | null
+  interpretationFailureCode: string | null
+  drilldownNotice: string | null
+  scrollY: number
+}
+
+type AnalyticsPanelSnapshot = AnalyticsViewSnapshot & {
+  parentReport: AnalyticsViewSnapshot | null
+}
+
+const analyticsReturnSnapshots = new Map<string, AnalyticsPanelSnapshot>()
+
+function createAnalyticsSessionId() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (marker) => {
+    const value = Math.floor(Math.random() * 16)
+    return (marker === 'x' ? value : (value & 0x3) | 0x8).toString(16)
+  })
+}
+
+function saveAnalyticsReturnSnapshot(
+  sessionId: string,
+  snapshot: AnalyticsPanelSnapshot,
+) {
+  analyticsReturnSnapshots.set(sessionId, snapshot)
+  while (analyticsReturnSnapshots.size > 8) {
+    const oldestSession = analyticsReturnSnapshots.keys().next().value
+    if (oldestSession === undefined) break
+    analyticsReturnSnapshots.delete(oldestSession)
+  }
+}
 
 const inputClass =
   'mt-1 block min-h-10 w-full rounded-md border border-[var(--border-soft)] bg-white px-3 py-2 text-sm text-[var(--text-primary)] outline-none focus-visible:border-[var(--primary)] focus-visible:ring-2 focus-visible:ring-[color-mix(in_srgb,var(--primary)_25%,transparent)] disabled:cursor-not-allowed disabled:bg-[var(--surface-muted)]'
@@ -346,6 +392,9 @@ function normalizePlan(value: PmAnalyticsV3ReportPlan): ReportPlan {
 function getErrorMessage(error: unknown) {
   if (error instanceof ApiError) {
     const code = error.problem?.extensions?.code
+    if (code === 'RequestTooLarge') {
+      return 'The interpreter request exceeds the server limit. This is a server configuration issue; changing your question will not fix it.'
+    }
     if (code === 'PreviewUnavailable') {
       return 'This preview expired or is no longer available. Create and review a new preview before running the report.'
     }
@@ -353,10 +402,47 @@ function getErrorMessage(error: unknown) {
       return 'The selected report values changed. Update the plan and create a new preview before running it.'
     }
     if (code === 'ProviderUnavailable' || code === 'Timeout') {
-      return 'DeepSeek could not interpret the question. No deterministic fallback was used. You can adjust the report plan below and preview it manually.'
+      return 'The configured interpreter is unavailable. Your question is unchanged. Retry, or choose the deterministic parser explicitly.'
     }
-    if (code === 'InvalidOutput') {
-      return 'DeepSeek returned a response that failed validation. No deterministic fallback was used. Edit the report plan or try a more specific question.'
+    if (code === 'InvalidJson') {
+      return 'DeepSeek replied, but its response was not valid JSON. Your question is unchanged. Retry or choose the deterministic parser explicitly.'
+    }
+    if (code === 'InvalidEnvelope' || code === 'InvalidOutput') {
+      return 'The selected interpreter returned incomplete or malformed report details. Your question is unchanged. Retry or choose the deterministic parser explicitly.'
+    }
+    if (code === 'InvalidPlan') {
+      const fields = Array.isArray(error.problem?.extensions?.fields)
+        ? error.problem.extensions.fields.filter(
+            (field): field is string => typeof field === 'string',
+          )
+        : []
+      const labels: Record<string, string> = {
+        Subject: 'report type',
+        Mode: 'report view',
+        Period: 'PM cycle period',
+        Categories: 'asset category',
+        Measures: 'measure',
+        GroupBy: 'grouping',
+        BaseFilters: 'asset filters',
+        MatchingFilters: 'inspection filters',
+        AggregateFilters: 'thresholds',
+        Columns: 'output columns',
+        Presentation: 'presentation',
+        OrderBy: 'sorting',
+        Top: 'ranking',
+        'top.measure': 'ranking',
+        'top.limit': 'ranking',
+        'top.direction': 'ranking',
+        SchemaVersion: 'report format',
+        CatalogVersion: 'report catalog',
+        plan: 'report structure',
+      }
+      const affected = [
+        ...new Set(fields.map((field) => labels[field]).filter(Boolean)),
+      ].join(', ')
+      return affected
+        ? `The selected interpreter suggested a report that UniPM could not validate (${affected}). No report ran. Retry, choose the deterministic parser, or revise the question.`
+        : 'The selected interpreter suggested a report that UniPM could not validate. No report ran. Retry, choose the deterministic parser, or revise the question.'
     }
     if (code === 'ExecutionLimitExceeded') {
       return 'This report exceeds the current row limit. Narrow the period or add a population filter, then preview again.'
@@ -387,6 +473,20 @@ function getErrorMessage(error: unknown) {
     return detail
   }
   return 'The request could not be completed. Please try again.'
+}
+
+function getProblemCode(error: unknown) {
+  if (!(error instanceof ApiError)) return null
+  const code = error.problem?.extensions?.code
+  return typeof code === 'string' ? code : null
+}
+
+function useScheduledCycleWording(question: string) {
+  return question.replace(
+    /\b(?:inspected|inspection|inspections)(?:\s+date)?\s+(?:in|during|on)\s+(january|jan|february|feb|march|mar|april|apr|may|june|jun|july|jul|august|aug|september|sept|sep|october|oct|november|nov|december|dec)\.?\s*,?\s*(\d{4})\b/i,
+    (_match, month: string, year: string) =>
+      `for the ${month} ${year} PM cycle`,
+  )
 }
 
 function formatLabel(value: string | null | undefined, catalog?: Catalog) {
@@ -683,25 +783,154 @@ function BaseFilterPicker({
   )
 }
 
-export function PmAnalyticsV3Panel() {
-  const [catalog, setCatalog] = useState<Catalog | null>(null)
-  const [selectedSubject, setSelectedSubject] = useState('pmExecution')
-  const [catalogError, setCatalogError] = useState<string | null>(null)
-  const [catalogLoading, setCatalogLoading] = useState(true)
-  const [catalogAttempt, setCatalogAttempt] = useState(0)
-  const [plan, setPlan] = useState<ReportPlan>(initialPlan)
-  const [question, setQuestion] = useState('')
-  const [interpretation, setInterpretation] = useState<Interpretation | null>(
-    null,
+export function PmAnalyticsV3Panel({
+  returnContext,
+}: {
+  returnContext?: DetailReturnContext | undefined
+}) {
+  const [analyticsSessionId] = useState(() =>
+    returnContext?.kind === 'analytics'
+      ? returnContext.sessionId
+      : createAnalyticsSessionId(),
   )
-  const [preview, setPreview] = useState<PreviewResponse | null>(null)
-  const [response, setResponse] = useState<ExecutionResponse | null>(null)
+  const [restoredSnapshot] = useState<AnalyticsPanelSnapshot | null>(() =>
+    returnContext?.kind === 'analytics'
+      ? (analyticsReturnSnapshots.get(returnContext.sessionId) ?? null)
+      : null,
+  )
+  const [originContext] = useState<DetailReturnContext>(
+    () =>
+      restoredSnapshot?.originContext ??
+      (returnContext?.kind === 'dashboard'
+        ? returnContext
+        : { kind: 'dashboard' }),
+  )
+  const [catalog, setCatalog] = useState<Catalog | null>(
+    () => restoredSnapshot?.catalog ?? null,
+  )
+  const [selectedSubject, setSelectedSubject] = useState(
+    () => restoredSnapshot?.selectedSubject ?? 'pmExecution',
+  )
+  const [catalogError, setCatalogError] = useState<string | null>(null)
+  const [catalogLoading, setCatalogLoading] = useState(
+    () => !restoredSnapshot?.catalog,
+  )
+  const [catalogAttempt, setCatalogAttempt] = useState(0)
+  const [plan, setPlan] = useState<ReportPlan>(
+    () => restoredSnapshot?.plan ?? initialPlan(),
+  )
+  const [question, setQuestion] = useState(
+    () => restoredSnapshot?.question ?? '',
+  )
+  const [submittedQuestion, setSubmittedQuestion] = useState(
+    () => restoredSnapshot?.submittedQuestion ?? '',
+  )
+  const [stage, setStage] = useState<AnalyticsStage>(
+    () => restoredSnapshot?.stage ?? 'question',
+  )
+  const [manualEditorOpen, setManualEditorOpen] = useState(
+    () => restoredSnapshot?.manualEditorOpen ?? false,
+  )
+  const [interpretation, setInterpretation] = useState<Interpretation | null>(
+    () => restoredSnapshot?.interpretation ?? null,
+  )
+  const [preview, setPreview] = useState<PreviewResponse | null>(
+    () => restoredSnapshot?.preview ?? null,
+  )
+  const [response, setResponse] = useState<ExecutionResponse | null>(
+    () => restoredSnapshot?.response ?? null,
+  )
   const [error, setError] = useState<string | null>(null)
+  const [interpretationFailureCode, setInterpretationFailureCode] = useState<
+    string | null
+  >(null)
   const [pending, setPending] = useState(false)
   const [pendingLabel, setPendingLabel] = useState('')
   const [drilldownNotice, setDrilldownNotice] = useState<string | null>(null)
+  const [parentReport, setParentReport] =
+    useState<AnalyticsViewSnapshot | null>(
+      () => restoredSnapshot?.parentReport ?? null,
+    )
+  const [isEditingQuestion, setIsEditingQuestion] = useState(false)
+  const [editingSnapshot, setEditingSnapshot] =
+    useState<AnalyticsPanelSnapshot | null>(null)
   const activeController = useRef<AbortController | null>(null)
   const requestId = useRef(0)
+  const returnSessionId =
+    returnContext?.kind === 'analytics' ? returnContext.sessionId : undefined
+
+  useEffect(() => {
+    if (!returnSessionId || !restoredSnapshot) return
+    const frame = window.requestAnimationFrame(() =>
+      window.scrollTo(0, restoredSnapshot.scrollY),
+    )
+    return () => window.cancelAnimationFrame(frame)
+  }, [returnSessionId, restoredSnapshot])
+
+  const captureView = (): AnalyticsViewSnapshot => ({
+    catalog,
+    selectedSubject,
+    plan,
+    question,
+    submittedQuestion,
+    interpretation,
+    preview,
+    response,
+    stage,
+    originContext,
+    manualEditorOpen,
+    error,
+    interpretationFailureCode,
+    drilldownNotice,
+    scrollY: window.scrollY,
+  })
+  const capturePanel = (): AnalyticsPanelSnapshot => ({
+    ...captureView(),
+    parentReport,
+  })
+  const restoreView = (snapshot: AnalyticsViewSnapshot) => {
+    setCatalog(snapshot.catalog)
+    setSelectedSubject(snapshot.selectedSubject)
+    setPlan(snapshot.plan)
+    setQuestion(snapshot.question)
+    setSubmittedQuestion(snapshot.submittedQuestion)
+    setInterpretation(snapshot.interpretation)
+    setPreview(snapshot.preview)
+    setResponse(snapshot.response)
+    setStage(snapshot.stage)
+    setManualEditorOpen(snapshot.manualEditorOpen)
+    setError(snapshot.error)
+    setInterpretationFailureCode(snapshot.interpretationFailureCode)
+    setDrilldownNotice(snapshot.drilldownNotice)
+    setIsEditingQuestion(false)
+    setEditingSnapshot(null)
+    window.requestAnimationFrame(() => window.scrollTo(0, snapshot.scrollY))
+  }
+  const restorePanel = (snapshot: AnalyticsPanelSnapshot) => {
+    restoreView(snapshot)
+    setParentReport(snapshot.parentReport)
+  }
+  const startEditingQuestion = () => {
+    setEditingSnapshot(capturePanel())
+    setIsEditingQuestion(true)
+    setQuestion(submittedQuestion)
+    setInterpretation(null)
+    setError(null)
+    setInterpretationFailureCode(null)
+    setStage('question')
+  }
+  const cancelQuestionEdit = () => {
+    if (editingSnapshot) restorePanel(editingSnapshot)
+    else setStage('question')
+  }
+  const returnToParentReport = () => {
+    if (!parentReport) return
+    restoreView(parentReport)
+    setParentReport(null)
+  }
+  const saveBeforeSourceNavigation = () => {
+    saveAnalyticsReturnSnapshot(analyticsSessionId, capturePanel())
+  }
 
   useEffect(() => {
     const controller = new AbortController()
@@ -795,23 +1024,34 @@ export function PmAnalyticsV3Panel() {
     setPreview(null)
     setResponse(null)
     setError(null)
+    setInterpretationFailureCode(null)
     setInterpretation(null)
     setDrilldownNotice(null)
   }
 
-  const changeSubject = (nextSubject: string) => {
-    if (nextSubject === selectedSubject) return
+  const startNewQuestion = () => {
     cancelPending()
-    setSelectedSubject(nextSubject)
-    setCatalog(null)
-    setCatalogLoading(true)
-    setCatalogError(null)
+    analyticsReturnSnapshots.delete(analyticsSessionId)
+    setQuestion('')
+    setSubmittedQuestion('')
+    setPlan(initialPlan())
     setInterpretation(null)
     setPreview(null)
     setResponse(null)
     setError(null)
+    setInterpretationFailureCode(null)
     setDrilldownNotice(null)
-    setQuestion('')
+    setManualEditorOpen(false)
+    setParentReport(null)
+    setIsEditingQuestion(false)
+    setEditingSnapshot(null)
+    setStage('question')
+    if (selectedSubject !== 'pmExecution') {
+      setSelectedSubject('pmExecution')
+      setCatalog(null)
+      setCatalogLoading(true)
+      setCatalogError(null)
+    }
   }
 
   const handleMeasureSources = (
@@ -832,11 +1072,17 @@ export function PmAnalyticsV3Panel() {
 
     const measureLabel =
       measures.find((measure) => measure.id === measureId)?.label ?? measureId
+    setParentReport(captureView())
     setQuestion('')
+    setSubmittedQuestion('')
+    setIsEditingQuestion(false)
+    setEditingSnapshot(null)
     updatePlan(sourcePlan)
+    setStage('preview')
     setDrilldownNotice(
       `A records plan for ${measureLabel} is ready. Preview it to review the contributing source records.`,
     )
+    void handlePreview(sourcePlan)
   }
 
   const beginRequest = (label: string) => {
@@ -856,24 +1102,50 @@ export function PmAnalyticsV3Panel() {
     }
   }
 
-  const handleInterpret = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
+  const runInterpretation = async (
+    requestedInterpreter?: 'DeepSeek' | 'DeterministicParser',
+  ) => {
     const cleanQuestion = question.trim()
     if (!cleanQuestion) return
-    setPreview(null)
-    setResponse(null)
     setInterpretation(null)
+    setInterpretationFailureCode(null)
     const request = beginRequest('Interpreting the question')
     try {
       const result = await interpretPmAnalyticsV3Question(
-        { question: cleanQuestion },
+        {
+          question: cleanQuestion,
+          ...(requestedInterpreter
+            ? { interpreter: requestedInterpreter }
+            : {}),
+        },
         request.controller.signal,
       )
       if (!request.isCurrent()) return
       setInterpretation(result)
-      if (result.plan) setPlan(normalizePlan(result.plan))
+      if (result.status === 'Valid' && result.plan) {
+        const nextPlan = normalizePlan(result.plan)
+        setPlan(nextPlan)
+        setSubmittedQuestion(cleanQuestion)
+        setPreview(null)
+        setResponse(null)
+        setParentReport(null)
+        setIsEditingQuestion(false)
+        setEditingSnapshot(null)
+        setStage('plan')
+        if (nextPlan.subject !== selectedSubject) {
+          setSelectedSubject(nextPlan.subject)
+          setCatalog(null)
+          setCatalogLoading(true)
+          setCatalogError(null)
+        }
+      } else {
+        setStage('question')
+      }
     } catch (requestError) {
-      if (request.isCurrent()) setError(getErrorMessage(requestError))
+      if (request.isCurrent()) {
+        setInterpretationFailureCode(getProblemCode(requestError))
+        setError(getErrorMessage(requestError))
+      }
     } finally {
       if (request.isCurrent()) {
         activeController.current = null
@@ -883,16 +1155,24 @@ export function PmAnalyticsV3Panel() {
     }
   }
 
-  const handlePreview = async () => {
+  const handleInterpret = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    void runInterpretation()
+  }
+
+  const handlePreview = async (targetPlan: ReportPlan = plan) => {
     const request = beginRequest('Preparing the preview')
-    setPreview(null)
-    setResponse(null)
     try {
       const result = await previewPmAnalyticsV3Report(
-        { plan: toApiPlan(plan) },
+        { plan: toApiPlan(targetPlan) },
         request.controller.signal,
       )
-      if (request.isCurrent()) setPreview(result)
+      if (request.isCurrent()) {
+        setPreview(result)
+        setResponse(null)
+        setManualEditorOpen(false)
+        setStage('preview')
+      }
     } catch (requestError) {
       if (request.isCurrent()) setError(getErrorMessage(requestError))
     } finally {
@@ -912,7 +1192,10 @@ export function PmAnalyticsV3Panel() {
         { previewId: preview.previewId, page, pageSize: 25 },
         request.controller.signal,
       )
-      if (request.isCurrent()) setResponse(result)
+      if (request.isCurrent()) {
+        setResponse(result)
+        setStage('results')
+      }
     } catch (requestError) {
       if (request.isCurrent()) {
         const code =
@@ -922,6 +1205,7 @@ export function PmAnalyticsV3Panel() {
         if (code === 'PreviewUnavailable' || code === 'PreviewStale') {
           setPreview(null)
           setResponse(null)
+          setStage('plan')
         }
         setError(getErrorMessage(requestError))
       }
@@ -1137,10 +1421,11 @@ export function PmAnalyticsV3Panel() {
     ? interpretation.clarificationFields
         .map((field) => {
           const prompts: Record<string, string> = {
+            Subject: 'report type',
             Categories: 'asset category',
             Period: 'report period',
             Measures: 'measure',
-            Mode: 'report type',
+            Mode: 'count or record list',
             GroupBy: 'grouping',
             Presentation: 'presentation',
             Department: 'department',
@@ -1158,91 +1443,196 @@ export function PmAnalyticsV3Panel() {
         .join(', ')
     : null
 
+  const interpretationSummary = [
+    { label: 'Question', value: question },
+    { label: 'Report type', value: subject?.label ?? 'Report' },
+    ...(subject?.requiresPeriod
+      ? [{ label: 'Period', value: planPeriodDescription(plan.period) }]
+      : []),
+    {
+      label: 'Asset categories',
+      value:
+        plan.categories
+          .map((category) => formatLabel(category, catalog ?? undefined))
+          .join(', ') || 'None selected',
+    },
+    {
+      label: plan.mode === 'Records' ? 'Report view' : 'Measures',
+      value:
+        plan.mode === 'Records'
+          ? 'Matching records'
+          : plan.measures
+              .map((measure) => formatLabel(measure, catalog ?? undefined))
+              .join(', ') || 'None selected',
+    },
+    {
+      label: 'Grouping',
+      value:
+        plan.groupBy
+          .map((dimension) => formatLabel(dimension, catalog ?? undefined))
+          .join(', ') || 'None',
+    },
+    ...([...plan.baseFilters, ...plan.matchingFilters].length > 0
+      ? [
+          {
+            label: 'Filters',
+            value: [...plan.baseFilters, ...plan.matchingFilters]
+              .map((filter) => {
+                const field = formatLabel(filter.field, catalog ?? undefined)
+                const operation = filter.operator === 'In' ? 'is one of' : 'is'
+                const values = (filter.values ?? [])
+                  .map((value) => formatLabel(value, catalog ?? undefined))
+                  .join(', ')
+                return `${field} ${operation} ${values}`
+              })
+              .join('; '),
+          },
+        ]
+      : []),
+  ]
+  const showQuestionForm = stage === 'question' && !manualEditorOpen
+  const showQuestionExamples = showQuestionForm && interpretation === null
+  const showPlanSummary =
+    stage === 'plan' &&
+    interpretation?.status === 'Valid' &&
+    !manualEditorOpen &&
+    catalog?.subject === plan.subject &&
+    !catalogLoading
+
   return (
     <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-4">
+        <DetailBackLink
+          context={originContext}
+          fallback={{ kind: 'dashboard' }}
+        />
+        {parentReport && (
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={pending}
+            onClick={returnToParentReport}
+          >
+            Back to report
+          </Button>
+        )}
+      </div>
       <Card className="space-y-4 p-4 shadow-none sm:p-5">
-        <div>
-          <h2 className="text-lg font-semibold text-[var(--text-primary)]">
-            {selectedSubject === 'assetInventory'
-              ? 'Build an asset inventory report'
-              : 'Build a PM report'}
-          </h2>
-          <p className="mt-1 max-w-3xl text-sm text-[var(--text-secondary)]">
-            {selectedSubject === 'assetInventory'
-              ? 'Count registered assets directly from the asset inventory. Review the filters and scope before running the report.'
-              : 'Describe a question to fill the report plan, or use the controls below. Review the scope before running it.'}
-          </p>
-        </div>
-
-        {catalog && (
-          <div className="max-w-md">
-            <Label htmlFor="pm-v3-subject">Report subject</Label>
-            <select
-              id="pm-v3-subject"
-              className={inputClass}
-              value={selectedSubject}
-              disabled={catalogLoading}
-              onChange={(event) => changeSubject(event.target.value)}
-            >
-              {catalog.subjects.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.label}
-                </option>
-              ))}
-            </select>
-            {subject && (
-              <p className="mt-1 text-xs text-[var(--text-neutral)]">
-                {subject.description}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-[var(--text-primary)]">
+              {stage === 'results'
+                ? 'Report results'
+                : stage === 'preview'
+                  ? 'Review your report'
+                  : stage === 'plan'
+                    ? 'Review the report'
+                    : 'Ask UniPM'}
+            </h2>
+            <p className="mt-1 max-w-3xl text-sm text-[var(--text-secondary)]">
+              {stage === 'results'
+                ? 'The report has finished. Results and source records are shown below.'
+                : stage === 'preview'
+                  ? 'Review the scope before confirming the report.'
+                  : stage === 'plan'
+                    ? 'Check what the report will show. It has not run yet.'
+                    : 'Ask questions about university assets and preventive maintenance.'}
+            </p>
+            {stage !== 'question' && submittedQuestion && (
+              <p className="mt-2 rounded-md bg-[var(--surface-muted)] px-3 py-2 text-sm text-[var(--text-secondary)]">
+                <span className="font-medium text-[var(--text-primary)]">
+                  Question:
+                </span>{' '}
+                {submittedQuestion}
               </p>
             )}
           </div>
-        )}
+        </div>
 
-        {selectedSubject === 'pmExecution' ? (
-          <form
-            className="max-w-4xl space-y-2"
-            onSubmit={(event) => void handleInterpret(event)}
-          >
-            <Label htmlFor="pm-analytics-v3-question">
-              Describe the report
-            </Label>
-            <textarea
-              id="pm-analytics-v3-question"
-              className={`${inputClass} min-h-20 resize-y`}
-              value={question}
-              maxLength={512}
-              onChange={(event) => {
-                cancelPending()
-                setQuestion(event.target.value)
-                setInterpretation(null)
-                setPreview(null)
-                setResponse(null)
-                setError(null)
-                setDrilldownNotice(null)
-              }}
-              placeholder="Which departments had 100% fire-extinguisher compliance in 2025?"
-            />
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-xs text-[var(--text-neutral)]">
-                Interpretation prepares a plan only. It does not run a report.
-              </p>
-              <Button
-                type="submit"
-                variant="secondary"
-                disabled={pending || catalog === null || !question.trim()}
-              >
-                {pending && pendingLabel === 'Interpreting the question'
-                  ? 'Interpreting…'
-                  : 'Fill plan from question'}
-              </Button>
-            </div>
-          </form>
-        ) : (
-          <p className="max-w-4xl rounded-md bg-[var(--surface-muted)] p-3 text-sm text-[var(--text-secondary)]">
-            Natural-language interpretation is currently supported for PM
-            execution reports. Configure this inventory report with the editable
-            controls below.
-          </p>
+        {showQuestionForm && (
+          <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(15rem,0.65fr)]">
+            <form
+              className="space-y-3"
+              onSubmit={(event) => void handleInterpret(event)}
+            >
+              <Label htmlFor="pm-analytics-v3-question">Question</Label>
+              <textarea
+                id="pm-analytics-v3-question"
+                className={`${inputClass} min-h-28 resize-y`}
+                value={question}
+                maxLength={512}
+                onChange={(event) => {
+                  cancelPending()
+                  setQuestion(event.target.value)
+                  setInterpretation(null)
+                  setError(null)
+                  setInterpretationFailureCode(null)
+                  setDrilldownNotice(null)
+                }}
+                placeholder="How many fire extinguishers are registered in the CCMS building?"
+              />
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-xs text-[var(--text-neutral)]">
+                  You’ll review the report scope before it runs.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {isEditingQuestion && (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      disabled={pending}
+                      onClick={cancelQuestionEdit}
+                    >
+                      Cancel
+                    </Button>
+                  )}
+                  <Button
+                    type="submit"
+                    disabled={pending || catalog === null || !question.trim()}
+                  >
+                    {pending && pendingLabel === 'Interpreting the question'
+                      ? 'Interpreting…'
+                      : 'Generate report'}
+                  </Button>
+                </div>
+              </div>
+            </form>
+
+            {showQuestionExamples && (
+              <section aria-labelledby="pm-v3-question-examples-title">
+                <h3
+                  id="pm-v3-question-examples-title"
+                  className="text-sm font-semibold text-[var(--text-primary)]"
+                >
+                  Example questions
+                </h3>
+                <div className="mt-2 space-y-2">
+                  {[
+                    'Show missed fire-extinguisher inspections by department in 2026.',
+                    'How many fire extinguishers are registered in the CCMS building?',
+                    'Show non-operational emergency lights for the June 2026 PM cycle.',
+                    'Which departments achieved 100% fire-extinguisher PM compliance in 2025?',
+                  ].map((example) => (
+                    <button
+                      key={example}
+                      type="button"
+                      className="w-full rounded-md border border-[var(--border-soft)] px-3 py-2 text-left text-sm text-[var(--text-secondary)] hover:bg-[var(--surface-muted)] focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:outline-none"
+                      onClick={() => {
+                        cancelPending()
+                        setQuestion(example)
+                        setInterpretation(null)
+                        setError(null)
+                        setInterpretationFailureCode(null)
+                        setDrilldownNotice(null)
+                      }}
+                    >
+                      {example}
+                    </button>
+                  ))}
+                </div>
+              </section>
+            )}
+          </div>
         )}
 
         {catalogError && (
@@ -1283,945 +1673,1150 @@ export function PmAnalyticsV3Panel() {
             {drilldownNotice}
           </p>
         )}
-        {interpretation && (
-          <div
-            role="status"
-            className="rounded-md border border-[var(--border-soft)] bg-[var(--surface-muted)] p-3 text-sm"
-          >
-            <p className="font-semibold text-[var(--text-primary)]">
-              {interpretation.status === 'Valid'
-                ? 'A report plan is ready to review.'
-                : interpretation.status === 'NeedsClarification'
+        {showPlanSummary && (
+          <section aria-labelledby="pm-v3-interpretation-title">
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <div>
+                <h3
+                  id="pm-v3-interpretation-title"
+                  className="font-semibold text-[var(--text-primary)]"
+                >
+                  Report ready for review
+                </h3>
+                <p className="mt-1 text-xs text-[var(--text-neutral)]">
+                  Check the scope before previewing. The report has not run.
+                </p>
+              </div>
+              <p className="text-xs text-[var(--text-neutral)]">
+                {interpretation.interpreter === 'DeepSeek'
+                  ? 'Interpreted by DeepSeek'
+                  : interpretation.interpreter === 'DeterministicParser'
+                    ? 'Interpreted by the deterministic parser'
+                    : 'Handled by UniPM safety rules'}
+              </p>
+            </div>
+            <dl className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {interpretationSummary.map((item) => (
+                <div key={item.label}>
+                  <dt className="text-xs font-medium text-[var(--text-neutral)]">
+                    {item.label}
+                  </dt>
+                  <dd className="mt-1 text-sm text-[var(--text-primary)]">
+                    {item.value}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+            <div className="mt-4 flex flex-wrap gap-2 border-t border-[var(--border-soft)] pt-3">
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={pending}
+                onClick={startEditingQuestion}
+              >
+                Edit question
+              </Button>
+              <Button
+                type="button"
+                disabled={!planReady || pending}
+                onClick={() => void handlePreview()}
+              >
+                {pending && pendingLabel === 'Preparing the preview'
+                  ? 'Preparing…'
+                  : 'Preview report'}
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={startNewQuestion}
+              >
+                {selectedSubject === 'pmExecution'
+                  ? 'Ask another question'
+                  : 'Start another report'}
+              </Button>
+            </div>
+          </section>
+        )}
+
+        {interpretation &&
+          interpretation.status !== 'Valid' &&
+          !manualEditorOpen && (
+            <section
+              aria-labelledby="pm-v3-interpretation-title"
+              className="rounded-md border border-[var(--border-soft)] bg-[var(--surface-muted)] p-3 text-sm"
+            >
+              <h3
+                id="pm-v3-interpretation-title"
+                className="font-semibold text-[var(--text-primary)]"
+              >
+                {interpretation.status === 'NeedsClarification'
                   ? 'The question needs more detail.'
                   : 'The question is outside the supported report scope.'}
-            </p>
-            <p className="mt-1 text-xs text-[var(--text-neutral)]">
-              {interpretation.interpreter === 'DeepSeek'
-                ? 'Interpreted by DeepSeek.'
-                : interpretation.interpreter === 'DeterministicParser'
-                  ? 'Interpreted by the deterministic parser.'
-                  : 'Handled by UniPM safety rules; no language model was called.'}
-            </p>
-            {interpretationDescription && (
-              <p className="mt-1 text-[var(--text-secondary)]">
-                Please clarify: {interpretationDescription}.
-              </p>
-            )}
-            {interpretation.detail && (
-              <p className="mt-1 text-[var(--text-secondary)]">
-                {interpretation.detail}
-              </p>
-            )}
-            {interpretation.status !== 'Valid' && (
+              </h3>
               <p className="mt-1 text-xs text-[var(--text-neutral)]">
-                Complete or adjust the controls below, then preview the plan.
+                {interpretation.interpreter === 'DeepSeek'
+                  ? 'Interpreted by DeepSeek.'
+                  : interpretation.interpreter === 'DeterministicParser'
+                    ? 'Interpreted by the deterministic parser.'
+                    : 'Handled by UniPM safety rules; no language model was called.'}
               </p>
-            )}
-          </div>
-        )}
-      </Card>
+              {interpretationDescription && (
+                <p className="mt-1 text-[var(--text-secondary)]">
+                  Please clarify: {interpretationDescription}.
+                </p>
+              )}
+              {interpretation.detail && (
+                <p className="mt-1 text-[var(--text-secondary)]">
+                  {interpretation.detail}
+                </p>
+              )}
+              {interpretation.status === 'NeedsClarification' &&
+                interpretation.clarificationFields.includes('Categories') && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {[
+                      { id: 'all', label: 'All supported categories' },
+                      ...categories,
+                    ].map((category) => (
+                      <Button
+                        key={category.id}
+                        type="button"
+                        variant="secondary"
+                        disabled={pending}
+                        onClick={() => {
+                          setQuestion(
+                            `${question.trim().replace(/[.!?]+$/, '')} for ${category.label.toLowerCase()}.`,
+                          )
+                          setInterpretation(null)
+                          setError(null)
+                          setInterpretationFailureCode(null)
+                        }}
+                      >
+                        {category.label}
+                      </Button>
+                    ))}
+                  </div>
+                )}
+              {interpretation.code === 'PeriodBasisNeedsClarification' && (
+                <div className="mt-3 rounded-md border border-[var(--border-soft)] bg-white p-3">
+                  <p className="text-sm font-medium text-[var(--text-primary)]">
+                    Choose the period meaning
+                  </p>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      disabled={pending}
+                      onClick={() => {
+                        setQuestion(useScheduledCycleWording(question))
+                        setInterpretation(null)
+                        setError(null)
+                        setInterpretationFailureCode(null)
+                      }}
+                    >
+                      Use scheduled PM cycle
+                    </Button>
+                    <span className="text-xs text-[var(--text-neutral)]">
+                      Actual inspection-date filtering is not supported.
+                    </span>
+                  </div>
+                  <p className="mt-2 text-xs text-[var(--text-neutral)]">
+                    Review the revised question above, then generate the report.
+                  </p>
+                </div>
+              )}
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+                <p className="text-xs text-[var(--text-neutral)]">
+                  Refine the question to continue.
+                </p>
+              </div>
+            </section>
+          )}
 
-      {catalog?.subject === selectedSubject ? (
-        <Card className="space-y-6 p-4 shadow-none sm:p-5">
-          <div
-            className={`grid gap-4 ${subject?.requiresPeriod ? 'md:grid-cols-2' : 'md:grid-cols-1'}`}
-          >
-            <div>
-              <Label htmlFor="pm-v3-mode">Report type</Label>
-              <select
-                id="pm-v3-mode"
-                className={inputClass}
-                value={plan.mode}
-                onChange={(event) => changeMode(event.target.value as Mode)}
+        {selectedSubject === 'pmExecution' &&
+          manualEditorOpen &&
+          !preview &&
+          !response && (
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border-soft)] pt-3">
+              <p className="text-xs text-[var(--text-neutral)]">
+                Your current report values are kept while you switch views.
+              </p>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setManualEditorOpen(false)}
               >
-                <option value="Aggregate">Measures and groups</option>
-                <option value="Records">Matching records</option>
-              </select>
+                Back to question
+              </Button>
             </div>
-            {subject?.requiresPeriod && (
-              <div>
-                <Label htmlFor="pm-v3-period-kind">
-                  Scheduled PM cycle period
-                </Label>
-                <select
-                  id="pm-v3-period-kind"
-                  className={inputClass}
-                  value={plan.period.kind}
-                  onChange={(event) =>
-                    setPeriodKind(event.target.value as PeriodKind)
-                  }
+          )}
+
+        {error && (
+          <div
+            role="alert"
+            className="flex flex-wrap items-center justify-between gap-3 text-sm text-[var(--error)]"
+          >
+            <p>{error}</p>
+            {stage === 'question' && (
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={pending || !question.trim()}
+                  onClick={() => void runInterpretation()}
                 >
-                  <option value="Month">Month</option>
-                  <option value="Quarter">Quarter</option>
-                  <option value="Year">Year</option>
-                  <option value="Range">Cycle range</option>
-                </select>
+                  Retry
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={pending || !question.trim()}
+                  onClick={() => void runInterpretation('DeterministicParser')}
+                >
+                  Use deterministic parser
+                </Button>
               </div>
             )}
           </div>
+        )}
+        {pending && (
+          <p role="status" className="text-sm text-[var(--text-secondary)]">
+            {pendingLabel}…
+          </p>
+        )}
+      </Card>
 
-          {subject?.requiresPeriod &&
-            (plan.period.kind !== 'Range' ? (
-              <div className="grid gap-4 md:grid-cols-3">
+      {manualEditorOpen &&
+        (catalog?.subject === selectedSubject ? (
+          <Card className="space-y-6 p-4 shadow-none sm:p-5">
+            <div className="border-b border-[var(--border-soft)] pb-3">
+              <h2 className="text-lg font-semibold text-[var(--text-primary)]">
+                {isInventory
+                  ? 'Asset inventory parameters'
+                  : 'Report parameters'}
+              </h2>
+              <p className="mt-1 text-sm text-[var(--text-secondary)]">
+                Any change clears an existing preview and result. Your selected
+                values remain editable.
+              </p>
+            </div>
+            <div
+              className={`grid gap-4 ${subject?.requiresPeriod ? 'md:grid-cols-2' : 'md:grid-cols-1'}`}
+            >
+              <div>
+                <Label htmlFor="pm-v3-mode">Report type</Label>
+                <select
+                  id="pm-v3-mode"
+                  className={inputClass}
+                  value={plan.mode}
+                  onChange={(event) => changeMode(event.target.value as Mode)}
+                >
+                  <option value="Aggregate">Measures and groups</option>
+                  <option value="Records">Matching records</option>
+                </select>
+              </div>
+              {subject?.requiresPeriod && (
                 <div>
-                  <Label htmlFor="pm-v3-period-year">Year</Label>
-                  <input
-                    id="pm-v3-period-year"
+                  <Label htmlFor="pm-v3-period-kind">
+                    Scheduled PM cycle period
+                  </Label>
+                  <select
+                    id="pm-v3-period-kind"
                     className={inputClass}
-                    type="number"
-                    min={2000}
-                    max={9998}
-                    value={plan.period.year ?? ''}
+                    value={plan.period.kind}
                     onChange={(event) =>
-                      updatePlan({
-                        ...plan,
-                        period: {
-                          ...plan.period,
-                          year: Number(event.target.value) || null,
-                        },
-                      })
+                      setPeriodKind(event.target.value as PeriodKind)
                     }
-                  />
+                  >
+                    <option value="Month">Month</option>
+                    <option value="Quarter">Quarter</option>
+                    <option value="Year">Year</option>
+                    <option value="Range">Cycle range</option>
+                  </select>
                 </div>
-                {plan.period.kind === 'Month' && (
+              )}
+            </div>
+
+            {subject?.requiresPeriod &&
+              (plan.period.kind !== 'Range' ? (
+                <div className="grid gap-4 md:grid-cols-3">
                   <div>
-                    <Label htmlFor="pm-v3-period-month">Month</Label>
-                    <select
-                      id="pm-v3-period-month"
+                    <Label htmlFor="pm-v3-period-year">Year</Label>
+                    <input
+                      id="pm-v3-period-year"
                       className={inputClass}
-                      value={plan.period.month ?? ''}
+                      type="number"
+                      min={2000}
+                      max={9998}
+                      value={plan.period.year ?? ''}
                       onChange={(event) =>
                         updatePlan({
                           ...plan,
                           period: {
                             ...plan.period,
-                            month: Number(event.target.value) || null,
+                            year: Number(event.target.value) || null,
                           },
                         })
                       }
-                    >
-                      <option value="">Choose a month</option>
-                      {Array.from({ length: 12 }, (_, index) => index + 1).map(
-                        (month) => (
+                    />
+                  </div>
+                  {plan.period.kind === 'Month' && (
+                    <div>
+                      <Label htmlFor="pm-v3-period-month">Month</Label>
+                      <select
+                        id="pm-v3-period-month"
+                        className={inputClass}
+                        value={plan.period.month ?? ''}
+                        onChange={(event) =>
+                          updatePlan({
+                            ...plan,
+                            period: {
+                              ...plan.period,
+                              month: Number(event.target.value) || null,
+                            },
+                          })
+                        }
+                      >
+                        <option value="">Choose a month</option>
+                        {Array.from(
+                          { length: 12 },
+                          (_, index) => index + 1,
+                        ).map((month) => (
                           <option key={month} value={month}>
                             {new Intl.DateTimeFormat('en-PH', {
                               month: 'long',
                             }).format(new Date(Date.UTC(2020, month - 1, 1)))}
                           </option>
-                        ),
-                      )}
-                    </select>
-                  </div>
-                )}
-                {plan.period.kind === 'Quarter' && (
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                  {plan.period.kind === 'Quarter' && (
+                    <div>
+                      <Label htmlFor="pm-v3-period-quarter">Quarter</Label>
+                      <select
+                        id="pm-v3-period-quarter"
+                        className={inputClass}
+                        value={plan.period.quarter ?? ''}
+                        onChange={(event) =>
+                          updatePlan({
+                            ...plan,
+                            period: {
+                              ...plan.period,
+                              quarter: Number(event.target.value) || null,
+                            },
+                          })
+                        }
+                      >
+                        <option value="">Choose a quarter</option>
+                        {[1, 2, 3, 4].map((quarter) => (
+                          <option key={quarter} value={quarter}>
+                            Q{quarter}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2">
                   <div>
-                    <Label htmlFor="pm-v3-period-quarter">Quarter</Label>
-                    <select
-                      id="pm-v3-period-quarter"
+                    <Label htmlFor="pm-v3-range-start">
+                      First cycle (YYYY-MM)
+                    </Label>
+                    <input
+                      id="pm-v3-range-start"
                       className={inputClass}
-                      value={plan.period.quarter ?? ''}
+                      type="month"
+                      min="2000-01"
+                      max="9998-12"
+                      value={plan.period.startCycle ?? ''}
                       onChange={(event) =>
                         updatePlan({
                           ...plan,
                           period: {
                             ...plan.period,
-                            quarter: Number(event.target.value) || null,
+                            startCycle: event.target.value || null,
                           },
                         })
                       }
-                    >
-                      <option value="">Choose a quarter</option>
-                      {[1, 2, 3, 4].map((quarter) => (
-                        <option key={quarter} value={quarter}>
-                          Q{quarter}
-                        </option>
-                      ))}
-                    </select>
+                    />
                   </div>
-                )}
-              </div>
-            ) : (
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <Label htmlFor="pm-v3-range-start">
-                    First cycle (YYYY-MM)
-                  </Label>
-                  <input
-                    id="pm-v3-range-start"
-                    className={inputClass}
-                    type="month"
-                    min="2000-01"
-                    max="9998-12"
-                    value={plan.period.startCycle ?? ''}
-                    onChange={(event) =>
-                      updatePlan({
-                        ...plan,
-                        period: {
-                          ...plan.period,
-                          startCycle: event.target.value || null,
-                        },
-                      })
-                    }
-                  />
+                  <div>
+                    <Label htmlFor="pm-v3-range-end">
+                      Last cycle (YYYY-MM)
+                    </Label>
+                    <input
+                      id="pm-v3-range-end"
+                      className={inputClass}
+                      type="month"
+                      min="2000-01"
+                      max="9998-12"
+                      value={plan.period.endCycle ?? ''}
+                      onChange={(event) =>
+                        updatePlan({
+                          ...plan,
+                          period: {
+                            ...plan.period,
+                            endCycle: event.target.value || null,
+                          },
+                        })
+                      }
+                    />
+                  </div>
                 </div>
-                <div>
-                  <Label htmlFor="pm-v3-range-end">Last cycle (YYYY-MM)</Label>
-                  <input
-                    id="pm-v3-range-end"
-                    className={inputClass}
-                    type="month"
-                    min="2000-01"
-                    max="9998-12"
-                    value={plan.period.endCycle ?? ''}
-                    onChange={(event) =>
-                      updatePlan({
-                        ...plan,
-                        period: {
-                          ...plan.period,
-                          endCycle: event.target.value || null,
-                        },
-                      })
-                    }
-                  />
-                </div>
-              </div>
-            ))}
-
-          <fieldset className="space-y-2">
-            <legend className="text-xs font-semibold tracking-[0.08em] text-[var(--text-secondary)] uppercase">
-              Asset categories
-            </legend>
-            <p className="text-xs text-[var(--text-neutral)]">
-              {selectedSubject === 'assetInventory'
-                ? 'Choose which registered asset categories to count. PM schedules and inspections do not change inventory counts.'
-                : 'Choose every category to include. Each category has its own scheduled PM cycles.'}
-            </p>
-            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-              {categories.map((category) => (
-                <label
-                  key={category.id}
-                  className="flex min-h-10 items-center gap-2 rounded-md border border-[var(--border-soft)] px-3 text-sm"
-                >
-                  <input
-                    className={checkboxClass}
-                    type="checkbox"
-                    checked={plan.categories.includes(category.id)}
-                    onChange={() => toggleCategory(category.id)}
-                  />
-                  <span>{category.label}</span>
-                </label>
               ))}
-            </div>
-          </fieldset>
 
-          {plan.mode === 'Aggregate' && (
-            <>
-              <fieldset className="space-y-2">
-                <legend className="text-xs font-semibold tracking-[0.08em] text-[var(--text-secondary)] uppercase">
-                  Measures
-                </legend>
-                <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-                  {measures.map((measure) => (
-                    <label
-                      key={measure.id}
-                      className="flex min-h-10 items-start gap-2 rounded-md border border-[var(--border-soft)] px-3 py-2 text-sm"
-                    >
-                      <input
-                        className={`${checkboxClass} mt-0.5`}
-                        type="checkbox"
-                        checked={plan.measures.includes(measure.id)}
-                        disabled={
-                          plan.measures.length >= 4 &&
-                          !plan.measures.includes(measure.id)
-                        }
-                        onChange={() => toggleMeasure(measure.id)}
-                      />
-                      <span>
-                        <span className="block font-medium">
-                          {measure.label}
-                        </span>
-                        <span className="text-xs text-[var(--text-neutral)]">
-                          {measure.definition}
-                        </span>
-                      </span>
-                    </label>
-                  ))}
-                </div>
-              </fieldset>
-
-              <fieldset className="space-y-2">
-                <legend className="text-xs font-semibold tracking-[0.08em] text-[var(--text-secondary)] uppercase">
-                  Group results by
-                </legend>
-                <p className="text-xs text-[var(--text-neutral)]">
-                  Choose up to two dimensions. Current department and building
-                  values reflect current asset records.
-                </p>
-                <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-                  {dimensions.map((dimension) => (
-                    <label
-                      key={dimension.id}
-                      className="flex min-h-10 items-center gap-2 rounded-md border border-[var(--border-soft)] px-3 text-sm"
-                    >
-                      <input
-                        className={checkboxClass}
-                        type="checkbox"
-                        checked={plan.groupBy.includes(dimension.id)}
-                        disabled={
-                          plan.groupBy.length >= 2 &&
-                          !plan.groupBy.includes(dimension.id)
-                        }
-                        onChange={() => toggleDimension(dimension.id)}
-                      />
-                      <span>{dimension.label}</span>
-                    </label>
-                  ))}
-                </div>
-              </fieldset>
-            </>
-          )}
-
-          <section
-            className="space-y-3"
-            aria-labelledby="pm-v3-population-filters-title"
-          >
-            <div>
-              <h3
-                id="pm-v3-population-filters-title"
-                className="text-xs font-semibold tracking-[0.08em] text-[var(--text-secondary)] uppercase"
-              >
-                Population filters
-              </h3>
-              <p className="mt-1 text-xs text-[var(--text-neutral)]">
-                These filters narrow the eligible population before measures are
-                calculated.
+            <fieldset className="space-y-2">
+              <legend className="text-xs font-semibold tracking-[0.08em] text-[var(--text-secondary)] uppercase">
+                Asset categories
+              </legend>
+              <p className="text-xs text-[var(--text-neutral)]">
+                {selectedSubject === 'assetInventory'
+                  ? 'Choose which registered asset categories to count. PM schedules and inspections do not change inventory counts.'
+                  : 'Choose every category to include. Each category has its own scheduled PM cycles.'}
               </p>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {baseFilterFields.map((field) => {
-                const active = findFilter(plan, field.id)
-                if (field.allowedValues.length > 0) {
-                  return (
-                    <div key={field.id}>
-                      <Label htmlFor={`pm-v3-base-${field.id}`}>
-                        {field.label}
-                      </Label>
-                      <select
-                        id={`pm-v3-base-${field.id}`}
-                        className={inputClass}
-                        multiple
-                        size={Math.min(4, field.allowedValues.length)}
-                        value={active?.values ?? []}
-                        disabled={
-                          catalogLoading || plan.categories.length === 0
-                        }
-                        onChange={(event) =>
-                          updateBaseFilterValues(
-                            field.id,
-                            Array.from(
-                              event.target.selectedOptions,
-                              (option) => option.value,
-                            ),
-                            false,
-                          )
-                        }
+              <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                {categories.map((category) => (
+                  <label
+                    key={category.id}
+                    className="flex min-h-10 items-center gap-2 rounded-md border border-[var(--border-soft)] px-3 text-sm"
+                  >
+                    <input
+                      className={checkboxClass}
+                      type="checkbox"
+                      checked={plan.categories.includes(category.id)}
+                      onChange={() => toggleCategory(category.id)}
+                    />
+                    <span>{category.label}</span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+
+            {plan.mode === 'Aggregate' && (
+              <>
+                <fieldset className="space-y-2">
+                  <legend className="text-xs font-semibold tracking-[0.08em] text-[var(--text-secondary)] uppercase">
+                    Measures
+                  </legend>
+                  <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                    {measures.map((measure) => (
+                      <label
+                        key={measure.id}
+                        className="flex min-h-10 items-start gap-2 rounded-md border border-[var(--border-soft)] px-3 py-2 text-sm"
                       >
-                        {field.allowedValues.map((value) => (
-                          <option key={value} value={value}>
-                            {formatLabel(value, catalog ?? undefined)}
-                          </option>
-                        ))}
-                      </select>
-                      <p className="mt-1 text-xs text-[var(--text-neutral)]">
-                        Stored registration status. This does not describe
-                        inspection condition.
-                      </p>
-                    </div>
-                  )
-                }
+                        <input
+                          className={`${checkboxClass} mt-0.5`}
+                          type="checkbox"
+                          checked={plan.measures.includes(measure.id)}
+                          disabled={
+                            plan.measures.length >= 4 &&
+                            !plan.measures.includes(measure.id)
+                          }
+                          onChange={() => toggleMeasure(measure.id)}
+                        />
+                        <span>
+                          <span className="block font-medium">
+                            {measure.label}
+                          </span>
+                          <span className="text-xs text-[var(--text-neutral)]">
+                            {measure.definition}
+                          </span>
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
 
-                return (
-                  <BaseFilterPicker
-                    key={field.id}
-                    subject={selectedSubject}
-                    field={field.id}
-                    label={field.label}
-                    categories={plan.categories}
-                    values={active?.values ?? []}
-                    isNull={active?.operator === 'IsNull'}
-                    maximumLength={field.maximumLength}
-                    allowNull={field.operators?.includes('IsNull') ?? false}
-                    searchable={field.valueType === 'string'}
-                    disabled={catalogLoading || plan.categories.length === 0}
-                    onChange={(values, isNull) =>
-                      updateBaseFilterValues(field.id, values, isNull)
-                    }
-                  />
-                )
-              })}
-            </div>
-          </section>
+                <fieldset className="space-y-2">
+                  <legend className="text-xs font-semibold tracking-[0.08em] text-[var(--text-secondary)] uppercase">
+                    Group results by
+                  </legend>
+                  <p className="text-xs text-[var(--text-neutral)]">
+                    Choose up to two dimensions. Current department and building
+                    values reflect current asset records.
+                  </p>
+                  <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                    {dimensions.map((dimension) => (
+                      <label
+                        key={dimension.id}
+                        className="flex min-h-10 items-center gap-2 rounded-md border border-[var(--border-soft)] px-3 text-sm"
+                      >
+                        <input
+                          className={checkboxClass}
+                          type="checkbox"
+                          checked={plan.groupBy.includes(dimension.id)}
+                          disabled={
+                            plan.groupBy.length >= 2 &&
+                            !plan.groupBy.includes(dimension.id)
+                          }
+                          onChange={() => toggleDimension(dimension.id)}
+                        />
+                        <span>{dimension.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+              </>
+            )}
 
-          {outcomeFilterFields.length > 0 && (
             <section
               className="space-y-3"
-              aria-labelledby="pm-v3-matching-filters-title"
+              aria-labelledby="pm-v3-population-filters-title"
             >
               <div>
                 <h3
-                  id="pm-v3-matching-filters-title"
+                  id="pm-v3-population-filters-title"
                   className="text-xs font-semibold tracking-[0.08em] text-[var(--text-secondary)] uppercase"
                 >
-                  Matching record filters
+                  Population filters
                 </h3>
                 <p className="mt-1 text-xs text-[var(--text-neutral)]">
-                  These filters define matching rows and count numerators. They
-                  cannot be combined with percentage measures.
+                  These filters narrow the eligible population before measures
+                  are calculated.
                 </p>
               </div>
-              {matchingFiltersConflict && (
-                <p
-                  role="alert"
-                  className="rounded-md border border-[var(--error)]/30 bg-[var(--error)]/5 p-3 text-sm text-[var(--error)]"
-                >
-                  Clear the matching record filters or remove percentage
-                  measures before previewing.
-                </p>
-              )}
               <div className="grid gap-3 sm:grid-cols-2">
-                {outcomeFilterFields.map((field) => {
-                  const active = findMatchingFilter(plan, field.id)
-                  const values =
-                    active?.operator === 'IsNull' ? [] : (active?.values ?? [])
+                {baseFilterFields.map((field) => {
+                  const active = findFilter(plan, field.id)
+                  if (field.allowedValues.length > 0) {
+                    return (
+                      <div key={field.id}>
+                        <Label htmlFor={`pm-v3-base-${field.id}`}>
+                          {field.label}
+                        </Label>
+                        <select
+                          id={`pm-v3-base-${field.id}`}
+                          className={inputClass}
+                          multiple
+                          size={Math.min(4, field.allowedValues.length)}
+                          value={active?.values ?? []}
+                          disabled={
+                            catalogLoading || plan.categories.length === 0
+                          }
+                          onChange={(event) =>
+                            updateBaseFilterValues(
+                              field.id,
+                              Array.from(
+                                event.target.selectedOptions,
+                                (option) => option.value,
+                              ),
+                              false,
+                            )
+                          }
+                        >
+                          {field.allowedValues.map((value) => (
+                            <option key={value} value={value}>
+                              {formatLabel(value, catalog ?? undefined)}
+                            </option>
+                          ))}
+                        </select>
+                        <p className="mt-1 text-xs text-[var(--text-neutral)]">
+                          Stored registration status. This does not describe
+                          inspection condition.
+                        </p>
+                      </div>
+                    )
+                  }
+
                   return (
-                    <div key={field.id}>
-                      <Label htmlFor={`pm-v3-match-${field.id}`}>
-                        {field.label}
-                      </Label>
-                      <select
-                        id={`pm-v3-match-${field.id}`}
-                        className={inputClass}
-                        multiple
-                        size={Math.min(4, field.values.length)}
-                        value={values}
-                        onChange={(event) =>
-                          setMatchingValues(
-                            field.id,
-                            Array.from(
-                              event.target.selectedOptions,
-                              (option) => option.value,
-                            ),
-                          )
-                        }
-                      >
-                        {field.values.map((option) => (
-                          <option key={option} value={option}>
-                            {formatLabel(option)}
-                          </option>
-                        ))}
-                      </select>
-                      <p className="mt-1 text-xs text-[var(--text-neutral)]">
-                        Select multiple values with Ctrl or Command. No
-                        selection means any.
-                      </p>
-                      {field.allowUnknown && (
-                        <label className="mt-1 flex items-center gap-2 text-xs text-[var(--text-secondary)]">
-                          <input
-                            className={checkboxClass}
-                            type="checkbox"
-                            checked={active?.operator === 'IsNull'}
-                            disabled={values.length > 0}
-                            onChange={(event) =>
-                              setMatchingValues(
-                                field.id,
-                                event.target.checked ? ['__unknown__'] : [],
-                              )
-                            }
-                          />
-                          No form recorded
-                        </label>
-                      )}
-                    </div>
+                    <BaseFilterPicker
+                      key={field.id}
+                      subject={selectedSubject}
+                      field={field.id}
+                      label={field.label}
+                      categories={plan.categories}
+                      values={active?.values ?? []}
+                      isNull={active?.operator === 'IsNull'}
+                      maximumLength={field.maximumLength}
+                      allowNull={field.operators?.includes('IsNull') ?? false}
+                      searchable={field.valueType === 'string'}
+                      disabled={catalogLoading || plan.categories.length === 0}
+                      onChange={(values, isNull) =>
+                        updateBaseFilterValues(field.id, values, isNull)
+                      }
+                    />
                   )
                 })}
               </div>
             </section>
-          )}
 
-          {plan.mode === 'Aggregate' && (
-            <>
+            {outcomeFilterFields.length > 0 && (
               <section
                 className="space-y-3"
-                aria-labelledby="pm-v3-threshold-title"
+                aria-labelledby="pm-v3-matching-filters-title"
               >
-                <div className="flex flex-wrap items-end justify-between gap-2">
-                  <div>
-                    <h3
-                      id="pm-v3-threshold-title"
-                      className="text-xs font-semibold tracking-[0.08em] text-[var(--text-secondary)] uppercase"
-                    >
-                      Calculated measure thresholds
-                    </h3>
-                    <p className="mt-1 text-xs text-[var(--text-neutral)]">
-                      Thresholds apply after aggregation. An unmeasurable group
-                      stops the report with an explanation.
-                    </p>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    disabled={
-                      plan.aggregateFilters.length >= 4 ||
-                      plan.measures.length === 0
-                    }
-                    onClick={addAggregateFilter}
-                  >
-                    Add threshold
-                  </Button>
-                </div>
-                {plan.aggregateFilters.map((filter, index) => {
-                  const definition = measures.find(
-                    (measure) => measure.id === filter.measure,
-                  )
-                  return (
-                    <div
-                      key={`${index}-${filter.measure}`}
-                      className="grid items-end gap-2 rounded-md border border-[var(--border-soft)] p-3 sm:grid-cols-[1.4fr_1fr_1fr_auto]"
-                    >
-                      <div>
-                        <Label htmlFor={`pm-v3-threshold-measure-${index}`}>
-                          Measure
-                        </Label>
-                        <select
-                          id={`pm-v3-threshold-measure-${index}`}
-                          className={inputClass}
-                          value={filter.measure}
-                          onChange={(event) =>
-                            setAggregateFilter(index, {
-                              ...filter,
-                              measure: event.target.value,
-                            })
-                          }
-                        >
-                          {selectedMeasureDefinitions.map((measure) => (
-                            <option key={measure.id} value={measure.id}>
-                              {measure.label}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <Label htmlFor={`pm-v3-threshold-operator-${index}`}>
-                          Comparison
-                        </Label>
-                        <select
-                          id={`pm-v3-threshold-operator-${index}`}
-                          className={inputClass}
-                          value={filter.operator}
-                          onChange={(event) =>
-                            setAggregateFilter(index, {
-                              ...filter,
-                              operator: event.target.value as NumericOperator,
-                            })
-                          }
-                        >
-                          <option value="Equal">equals</option>
-                          <option value="NotEqual">does not equal</option>
-                          <option value="GreaterThan">greater than</option>
-                          <option value="GreaterThanOrEqual">at least</option>
-                          <option value="LessThan">less than</option>
-                          <option value="LessThanOrEqual">at most</option>
-                        </select>
-                      </div>
-                      <div>
-                        <Label htmlFor={`pm-v3-threshold-value-${index}`}>
-                          Value {definition?.unit === 'percent' ? '(%)' : ''}
-                        </Label>
-                        <input
-                          id={`pm-v3-threshold-value-${index}`}
-                          className={inputClass}
-                          type="number"
-                          min="0"
-                          max={definition?.unit === 'percent' ? 100 : undefined}
-                          step={definition?.valueType === 'integer' ? 1 : 0.01}
-                          value={filter.value}
-                          onChange={(event) =>
-                            setAggregateFilter(index, {
-                              ...filter,
-                              value: Number(event.target.value),
-                            })
-                          }
-                        />
-                      </div>
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        aria-label="Remove threshold"
-                        onClick={() =>
-                          updatePlan({
-                            ...plan,
-                            aggregateFilters: plan.aggregateFilters.filter(
-                              (_, itemIndex) => itemIndex !== index,
-                            ),
-                          })
-                        }
-                      >
-                        Remove
-                      </Button>
-                    </div>
-                  )
-                })}
-              </section>
-
-              <section
-                className="grid gap-4 md:grid-cols-2"
-                aria-labelledby="pm-v3-ranking-title"
-              >
-                <div className="space-y-2">
+                <div>
                   <h3
-                    id="pm-v3-ranking-title"
+                    id="pm-v3-matching-filters-title"
                     className="text-xs font-semibold tracking-[0.08em] text-[var(--text-secondary)] uppercase"
                   >
-                    Top or bottom groups
+                    Matching record filters
                   </h3>
-                  <label className="flex min-h-10 items-center gap-2 text-sm">
-                    <input
-                      className={checkboxClass}
-                      type="checkbox"
-                      checked={plan.top !== null}
-                      disabled={plan.measures.length === 0}
-                      onChange={(event) => setTopEnabled(event.target.checked)}
-                    />
-                    <span>Limit results to ranked groups</span>
-                  </label>
-                  {plan.top && (
-                    <div className="grid gap-3 sm:grid-cols-3">
-                      <div>
-                        <Label htmlFor="pm-v3-top-direction">Selection</Label>
-                        <select
-                          id="pm-v3-top-direction"
-                          className={inputClass}
-                          value={plan.top.direction}
-                          onChange={(event) =>
-                            updatePlan({
-                              ...plan,
-                              top: {
-                                ...plan.top!,
-                                direction: event.target.value as Direction,
-                              },
-                            })
-                          }
-                        >
-                          <option value="Descending">Top</option>
-                          <option value="Ascending">Bottom</option>
-                        </select>
-                      </div>
-                      <div>
-                        <Label htmlFor="pm-v3-top-limit">
-                          Number of groups
+                  <p className="mt-1 text-xs text-[var(--text-neutral)]">
+                    These filters define matching rows and count numerators.
+                    They cannot be combined with percentage measures.
+                  </p>
+                </div>
+                {matchingFiltersConflict && (
+                  <p
+                    role="alert"
+                    className="rounded-md border border-[var(--error)]/30 bg-[var(--error)]/5 p-3 text-sm text-[var(--error)]"
+                  >
+                    Clear the matching record filters or remove percentage
+                    measures before previewing.
+                  </p>
+                )}
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {outcomeFilterFields.map((field) => {
+                    const active = findMatchingFilter(plan, field.id)
+                    const values =
+                      active?.operator === 'IsNull'
+                        ? []
+                        : (active?.values ?? [])
+                    return (
+                      <div key={field.id}>
+                        <Label htmlFor={`pm-v3-match-${field.id}`}>
+                          {field.label}
                         </Label>
-                        <input
-                          id="pm-v3-top-limit"
-                          className={inputClass}
-                          type="number"
-                          min="1"
-                          max="20"
-                          value={plan.top.limit}
-                          onChange={(event) =>
-                            updatePlan({
-                              ...plan,
-                              top: {
-                                ...plan.top!,
-                                limit: Number(event.target.value),
-                              },
-                            })
-                          }
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="pm-v3-top-measure">Rank by</Label>
                         <select
-                          id="pm-v3-top-measure"
+                          id={`pm-v3-match-${field.id}`}
                           className={inputClass}
-                          value={plan.top.measure}
+                          multiple
+                          size={Math.min(4, field.values.length)}
+                          value={values}
                           onChange={(event) =>
-                            updatePlan({
-                              ...plan,
-                              top: {
-                                ...plan.top!,
-                                measure: event.target.value,
-                              },
-                            })
+                            setMatchingValues(
+                              field.id,
+                              Array.from(
+                                event.target.selectedOptions,
+                                (option) => option.value,
+                              ),
+                            )
                           }
                         >
-                          {selectedMeasureDefinitions.map((measure) => (
-                            <option key={measure.id} value={measure.id}>
-                              {measure.label}
+                          {field.values.map((option) => (
+                            <option key={option} value={option}>
+                              {formatLabel(option)}
                             </option>
                           ))}
                         </select>
-                      </div>
-                      {plan.groupBy.length === 0 && (
-                        <p className="text-xs text-[var(--error)] sm:col-span-3">
-                          Choose at least one grouping dimension to rank groups.
+                        <p className="mt-1 text-xs text-[var(--text-neutral)]">
+                          Select multiple values with Ctrl or Command. No
+                          selection means any.
                         </p>
-                      )}
-                    </div>
-                  )}
-                </div>
-                <div>
-                  <Label htmlFor="pm-v3-presentation">Presentation</Label>
-                  <select
-                    id="pm-v3-presentation"
-                    className={inputClass}
-                    value={plan.presentation}
-                    disabled={plan.groupBy.length > 0}
-                    onChange={(event) =>
-                      updatePlan({
-                        ...plan,
-                        presentation: event.target.value as Presentation,
-                      })
-                    }
-                  >
-                    <option value="Summary">Summary</option>
-                    <option value="Table">Table</option>
-                  </select>
-                  {plan.groupBy.length > 0 && (
-                    <p className="mt-1 text-xs text-[var(--text-neutral)]">
-                      Grouped reports use table presentation.
-                    </p>
-                  )}
+                        {field.allowUnknown && (
+                          <label className="mt-1 flex items-center gap-2 text-xs text-[var(--text-secondary)]">
+                            <input
+                              className={checkboxClass}
+                              type="checkbox"
+                              checked={active?.operator === 'IsNull'}
+                              disabled={values.length > 0}
+                              onChange={(event) =>
+                                setMatchingValues(
+                                  field.id,
+                                  event.target.checked ? ['__unknown__'] : [],
+                                )
+                              }
+                            />
+                            No form recorded
+                          </label>
+                        )}
+                      </div>
+                    )
+                  })}
                 </div>
               </section>
-            </>
-          )}
+            )}
 
-          <section className="space-y-2" aria-labelledby="pm-v3-columns-title">
-            <div>
-              <h3
-                id="pm-v3-columns-title"
-                className="text-xs font-semibold tracking-[0.08em] text-[var(--text-secondary)] uppercase"
-              >
-                Output columns
-              </h3>
-              <p className="mt-1 text-xs text-[var(--text-neutral)]">
-                Select the fields shown in the result. Grouping fields stay
-                included.
-              </p>
-            </div>
-            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-              {(plan.mode === 'Aggregate'
-                ? [...dimensions, ...measures]
-                : recordColumns
-              ).map((column) => {
-                const selected = plan.columns.includes(column.id)
-                const required =
-                  plan.mode === 'Aggregate' && plan.groupBy.includes(column.id)
-                const allowed =
-                  plan.mode === 'Aggregate'
-                    ? plan.groupBy.includes(column.id) ||
-                      plan.measures.includes(column.id)
-                    : true
-                return (
-                  <label
-                    key={column.id}
-                    className={`flex min-h-10 items-center gap-2 rounded-md border border-[var(--border-soft)] px-3 text-sm ${!allowed ? 'opacity-50' : ''}`}
-                  >
-                    <input
-                      className={checkboxClass}
-                      type="checkbox"
-                      checked={selected}
-                      disabled={!allowed || required}
-                      onChange={() => {
-                        const nextColumns = selected
-                          ? plan.columns.filter((value) => value !== column.id)
-                          : [...plan.columns, column.id]
+            {plan.mode === 'Aggregate' && (
+              <>
+                <section
+                  className="space-y-3"
+                  aria-labelledby="pm-v3-threshold-title"
+                >
+                  <div className="flex flex-wrap items-end justify-between gap-2">
+                    <div>
+                      <h3
+                        id="pm-v3-threshold-title"
+                        className="text-xs font-semibold tracking-[0.08em] text-[var(--text-secondary)] uppercase"
+                      >
+                        Calculated measure thresholds
+                      </h3>
+                      <p className="mt-1 text-xs text-[var(--text-neutral)]">
+                        Thresholds apply after aggregation. An unmeasurable
+                        group stops the report with an explanation.
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      disabled={
+                        plan.aggregateFilters.length >= 4 ||
+                        plan.measures.length === 0
+                      }
+                      onClick={addAggregateFilter}
+                    >
+                      Add threshold
+                    </Button>
+                  </div>
+                  {plan.aggregateFilters.map((filter, index) => {
+                    const definition = measures.find(
+                      (measure) => measure.id === filter.measure,
+                    )
+                    return (
+                      <div
+                        key={`${index}-${filter.measure}`}
+                        className="grid items-end gap-2 rounded-md border border-[var(--border-soft)] p-3 sm:grid-cols-[1.4fr_1fr_1fr_auto]"
+                      >
+                        <div>
+                          <Label htmlFor={`pm-v3-threshold-measure-${index}`}>
+                            Measure
+                          </Label>
+                          <select
+                            id={`pm-v3-threshold-measure-${index}`}
+                            className={inputClass}
+                            value={filter.measure}
+                            onChange={(event) =>
+                              setAggregateFilter(index, {
+                                ...filter,
+                                measure: event.target.value,
+                              })
+                            }
+                          >
+                            {selectedMeasureDefinitions.map((measure) => (
+                              <option key={measure.id} value={measure.id}>
+                                {measure.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <Label htmlFor={`pm-v3-threshold-operator-${index}`}>
+                            Comparison
+                          </Label>
+                          <select
+                            id={`pm-v3-threshold-operator-${index}`}
+                            className={inputClass}
+                            value={filter.operator}
+                            onChange={(event) =>
+                              setAggregateFilter(index, {
+                                ...filter,
+                                operator: event.target.value as NumericOperator,
+                              })
+                            }
+                          >
+                            <option value="Equal">equals</option>
+                            <option value="NotEqual">does not equal</option>
+                            <option value="GreaterThan">greater than</option>
+                            <option value="GreaterThanOrEqual">at least</option>
+                            <option value="LessThan">less than</option>
+                            <option value="LessThanOrEqual">at most</option>
+                          </select>
+                        </div>
+                        <div>
+                          <Label htmlFor={`pm-v3-threshold-value-${index}`}>
+                            Value {definition?.unit === 'percent' ? '(%)' : ''}
+                          </Label>
+                          <input
+                            id={`pm-v3-threshold-value-${index}`}
+                            className={inputClass}
+                            type="number"
+                            min="0"
+                            max={
+                              definition?.unit === 'percent' ? 100 : undefined
+                            }
+                            step={
+                              definition?.valueType === 'integer' ? 1 : 0.01
+                            }
+                            value={filter.value}
+                            onChange={(event) =>
+                              setAggregateFilter(index, {
+                                ...filter,
+                                value: Number(event.target.value),
+                              })
+                            }
+                          />
+                        </div>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          aria-label="Remove threshold"
+                          onClick={() =>
+                            updatePlan({
+                              ...plan,
+                              aggregateFilters: plan.aggregateFilters.filter(
+                                (_, itemIndex) => itemIndex !== index,
+                              ),
+                            })
+                          }
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    )
+                  })}
+                </section>
+
+                <section
+                  className="grid gap-4 md:grid-cols-2"
+                  aria-labelledby="pm-v3-ranking-title"
+                >
+                  <div className="space-y-2">
+                    <h3
+                      id="pm-v3-ranking-title"
+                      className="text-xs font-semibold tracking-[0.08em] text-[var(--text-secondary)] uppercase"
+                    >
+                      Top or bottom groups
+                    </h3>
+                    <label className="flex min-h-10 items-center gap-2 text-sm">
+                      <input
+                        className={checkboxClass}
+                        type="checkbox"
+                        checked={plan.top !== null}
+                        disabled={plan.measures.length === 0}
+                        onChange={(event) =>
+                          setTopEnabled(event.target.checked)
+                        }
+                      />
+                      <span>Limit results to ranked groups</span>
+                    </label>
+                    {plan.top && (
+                      <div className="grid gap-3 sm:grid-cols-3">
+                        <div>
+                          <Label htmlFor="pm-v3-top-direction">Selection</Label>
+                          <select
+                            id="pm-v3-top-direction"
+                            className={inputClass}
+                            value={plan.top.direction}
+                            onChange={(event) =>
+                              updatePlan({
+                                ...plan,
+                                top: {
+                                  ...plan.top!,
+                                  direction: event.target.value as Direction,
+                                },
+                              })
+                            }
+                          >
+                            <option value="Descending">Top</option>
+                            <option value="Ascending">Bottom</option>
+                          </select>
+                        </div>
+                        <div>
+                          <Label htmlFor="pm-v3-top-limit">
+                            Number of groups
+                          </Label>
+                          <input
+                            id="pm-v3-top-limit"
+                            className={inputClass}
+                            type="number"
+                            min="1"
+                            max="20"
+                            value={plan.top.limit}
+                            onChange={(event) =>
+                              updatePlan({
+                                ...plan,
+                                top: {
+                                  ...plan.top!,
+                                  limit: Number(event.target.value),
+                                },
+                              })
+                            }
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="pm-v3-top-measure">Rank by</Label>
+                          <select
+                            id="pm-v3-top-measure"
+                            className={inputClass}
+                            value={plan.top.measure}
+                            onChange={(event) =>
+                              updatePlan({
+                                ...plan,
+                                top: {
+                                  ...plan.top!,
+                                  measure: event.target.value,
+                                },
+                              })
+                            }
+                          >
+                            {selectedMeasureDefinitions.map((measure) => (
+                              <option key={measure.id} value={measure.id}>
+                                {measure.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        {plan.groupBy.length === 0 && (
+                          <p className="text-xs text-[var(--error)] sm:col-span-3">
+                            Choose at least one grouping dimension to rank
+                            groups.
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <Label htmlFor="pm-v3-presentation">Presentation</Label>
+                    <select
+                      id="pm-v3-presentation"
+                      className={inputClass}
+                      value={plan.presentation}
+                      disabled={plan.groupBy.length > 0}
+                      onChange={(event) =>
                         updatePlan({
                           ...plan,
-                          columns: nextColumns,
-                          orderBy: plan.orderBy.filter((order) =>
-                            nextColumns.includes(order.field),
-                          ),
+                          presentation: event.target.value as Presentation,
                         })
-                      }}
-                    />
-                    <span>{column.label}</span>
-                  </label>
-                )
-              })}
-            </div>
-            {catalog &&
-              plan.mode === 'Aggregate' &&
-              !plan.columns.some((column) =>
-                plan.measures.includes(column),
-              ) && (
-                <p role="status" className="text-xs text-[var(--text-neutral)]">
-                  Choose at least one measure to include in the result.
-                </p>
-              )}
-          </section>
+                      }
+                    >
+                      <option value="Summary">Summary</option>
+                      <option value="Table">Table</option>
+                    </select>
+                    {plan.groupBy.length > 0 && (
+                      <p className="mt-1 text-xs text-[var(--text-neutral)]">
+                        Grouped reports use table presentation.
+                      </p>
+                    )}
+                  </div>
+                </section>
+              </>
+            )}
 
-          <section className="space-y-3" aria-labelledby="pm-v3-order-title">
-            <div className="flex flex-wrap items-end justify-between gap-2">
+            <section
+              className="space-y-2"
+              aria-labelledby="pm-v3-columns-title"
+            >
               <div>
                 <h3
-                  id="pm-v3-order-title"
+                  id="pm-v3-columns-title"
                   className="text-xs font-semibold tracking-[0.08em] text-[var(--text-secondary)] uppercase"
                 >
-                  Sort results
+                  Output columns
                 </h3>
                 <p className="mt-1 text-xs text-[var(--text-neutral)]">
-                  A stable tie-break is applied automatically.
+                  Select the fields shown in the result. Grouping fields stay
+                  included.
                 </p>
               </div>
-              <Button
-                type="button"
-                variant="secondary"
-                disabled={
-                  plan.orderBy.length >= 2 ||
-                  plan.orderBy.length >= plan.columns.length ||
-                  plan.columns.length === 0
-                }
-                onClick={() => {
-                  const field =
-                    plan.columns.find(
-                      (column) =>
-                        !plan.orderBy.some((order) => order.field === column),
-                    ) ?? plan.columns[0]
-                  if (!field) return
-                  updatePlan({
-                    ...plan,
-                    orderBy: [
-                      ...plan.orderBy,
-                      { field, direction: 'Ascending' },
-                    ],
-                  })
-                }}
-              >
-                Add sort field
-              </Button>
-            </div>
-            {plan.orderBy.map((order, index) => (
-              <div
-                key={`${index}-${order.field}`}
-                className="grid items-end gap-2 sm:grid-cols-[1fr_1fr_auto]"
-              >
-                <div>
-                  <Label htmlFor={`pm-v3-order-field-${index}`}>Field</Label>
-                  <select
-                    id={`pm-v3-order-field-${index}`}
-                    className={inputClass}
-                    value={order.field}
-                    onChange={(event) => {
-                      const nextOrder = [...plan.orderBy]
-                      nextOrder[index] = { ...order, field: event.target.value }
-                      updatePlan({ ...plan, orderBy: nextOrder })
-                    }}
+              <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                {(plan.mode === 'Aggregate'
+                  ? [...dimensions, ...measures]
+                  : recordColumns
+                ).map((column) => {
+                  const selected = plan.columns.includes(column.id)
+                  const required =
+                    plan.mode === 'Aggregate' &&
+                    plan.groupBy.includes(column.id)
+                  const allowed =
+                    plan.mode === 'Aggregate'
+                      ? plan.groupBy.includes(column.id) ||
+                        plan.measures.includes(column.id)
+                      : true
+                  return (
+                    <label
+                      key={column.id}
+                      className={`flex min-h-10 items-center gap-2 rounded-md border border-[var(--border-soft)] px-3 text-sm ${!allowed ? 'opacity-50' : ''}`}
+                    >
+                      <input
+                        className={checkboxClass}
+                        type="checkbox"
+                        checked={selected}
+                        disabled={!allowed || required}
+                        onChange={() => {
+                          const nextColumns = selected
+                            ? plan.columns.filter(
+                                (value) => value !== column.id,
+                              )
+                            : [...plan.columns, column.id]
+                          updatePlan({
+                            ...plan,
+                            columns: nextColumns,
+                            orderBy: plan.orderBy.filter((order) =>
+                              nextColumns.includes(order.field),
+                            ),
+                          })
+                        }}
+                      />
+                      <span>{column.label}</span>
+                    </label>
+                  )
+                })}
+              </div>
+              {catalog &&
+                plan.mode === 'Aggregate' &&
+                !plan.columns.some((column) =>
+                  plan.measures.includes(column),
+                ) && (
+                  <p
+                    role="status"
+                    className="text-xs text-[var(--text-neutral)]"
                   >
-                    {plan.columns.map((column) => (
-                      <option
-                        key={column}
-                        value={column}
-                        disabled={plan.orderBy.some(
-                          (item, itemIndex) =>
-                            itemIndex !== index && item.field === column,
-                        )}
-                      >
-                        {formatLabel(column, catalog ?? undefined)}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                    Choose at least one measure to include in the result.
+                  </p>
+                )}
+            </section>
+
+            <section className="space-y-3" aria-labelledby="pm-v3-order-title">
+              <div className="flex flex-wrap items-end justify-between gap-2">
                 <div>
-                  <Label htmlFor={`pm-v3-order-direction-${index}`}>
-                    Direction
-                  </Label>
-                  <select
-                    id={`pm-v3-order-direction-${index}`}
-                    className={inputClass}
-                    value={order.direction}
-                    onChange={(event) => {
-                      const nextOrder = [...plan.orderBy]
-                      nextOrder[index] = {
-                        ...order,
-                        direction: event.target.value as Direction,
-                      }
-                      updatePlan({ ...plan, orderBy: nextOrder })
-                    }}
+                  <h3
+                    id="pm-v3-order-title"
+                    className="text-xs font-semibold tracking-[0.08em] text-[var(--text-secondary)] uppercase"
                   >
-                    <option value="Ascending">Ascending</option>
-                    <option value="Descending">Descending</option>
-                  </select>
+                    Sort results
+                  </h3>
+                  <p className="mt-1 text-xs text-[var(--text-neutral)]">
+                    A stable tie-break is applied automatically.
+                  </p>
                 </div>
                 <Button
                   type="button"
                   variant="secondary"
-                  aria-label="Remove sort field"
-                  onClick={() =>
+                  disabled={
+                    plan.orderBy.length >= 2 ||
+                    plan.orderBy.length >= plan.columns.length ||
+                    plan.columns.length === 0
+                  }
+                  onClick={() => {
+                    const field =
+                      plan.columns.find(
+                        (column) =>
+                          !plan.orderBy.some((order) => order.field === column),
+                      ) ?? plan.columns[0]
+                    if (!field) return
                     updatePlan({
                       ...plan,
-                      orderBy: plan.orderBy.filter(
-                        (_, itemIndex) => itemIndex !== index,
-                      ),
+                      orderBy: [
+                        ...plan.orderBy,
+                        { field, direction: 'Ascending' },
+                      ],
                     })
-                  }
+                  }}
                 >
-                  Remove
+                  Add sort field
                 </Button>
               </div>
-            ))}
-          </section>
+              {plan.orderBy.map((order, index) => (
+                <div
+                  key={`${index}-${order.field}`}
+                  className="grid items-end gap-2 sm:grid-cols-[1fr_1fr_auto]"
+                >
+                  <div>
+                    <Label htmlFor={`pm-v3-order-field-${index}`}>Field</Label>
+                    <select
+                      id={`pm-v3-order-field-${index}`}
+                      className={inputClass}
+                      value={order.field}
+                      onChange={(event) => {
+                        const nextOrder = [...plan.orderBy]
+                        nextOrder[index] = {
+                          ...order,
+                          field: event.target.value,
+                        }
+                        updatePlan({ ...plan, orderBy: nextOrder })
+                      }}
+                    >
+                      {plan.columns.map((column) => (
+                        <option
+                          key={column}
+                          value={column}
+                          disabled={plan.orderBy.some(
+                            (item, itemIndex) =>
+                              itemIndex !== index && item.field === column,
+                          )}
+                        >
+                          {formatLabel(column, catalog ?? undefined)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <Label htmlFor={`pm-v3-order-direction-${index}`}>
+                      Direction
+                    </Label>
+                    <select
+                      id={`pm-v3-order-direction-${index}`}
+                      className={inputClass}
+                      value={order.direction}
+                      onChange={(event) => {
+                        const nextOrder = [...plan.orderBy]
+                        nextOrder[index] = {
+                          ...order,
+                          direction: event.target.value as Direction,
+                        }
+                        updatePlan({ ...plan, orderBy: nextOrder })
+                      }}
+                    >
+                      <option value="Ascending">Ascending</option>
+                      <option value="Descending">Descending</option>
+                    </select>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    aria-label="Remove sort field"
+                    onClick={() =>
+                      updatePlan({
+                        ...plan,
+                        orderBy: plan.orderBy.filter(
+                          (_, itemIndex) => itemIndex !== index,
+                        ),
+                      })
+                    }
+                  >
+                    Remove
+                  </Button>
+                </div>
+              ))}
+            </section>
 
-          {plan.mode === 'Aggregate' && percentageSelected && (
-            <p className="rounded-md border border-[var(--border-soft)] bg-[var(--surface-muted)] p-3 text-sm text-[var(--text-secondary)]">
-              Percentages use the eligible scheduled population as their
-              denominator. A selected cycle that is active or future makes
-              on-time compliance not measurable.
-            </p>
-          )}
+            {plan.mode === 'Aggregate' && percentageSelected && (
+              <p className="rounded-md border border-[var(--border-soft)] bg-[var(--surface-muted)] p-3 text-sm text-[var(--text-secondary)]">
+                Percentages use the eligible scheduled population as their
+                denominator. A selected cycle that is active or future makes
+                on-time compliance not measurable.
+              </p>
+            )}
 
-          {error && (
-            <p role="alert" className="text-sm text-[var(--error)]">
-              {error}
-            </p>
-          )}
-          {pending && (
+            {pending && (
+              <p role="status" className="text-sm text-[var(--text-secondary)]">
+                {pendingLabel}…
+              </p>
+            )}
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border-soft)] pt-4">
+              <p className="max-w-2xl text-xs text-[var(--text-neutral)]">
+                {subject?.requiresPeriod && (
+                  <>Period: {planPeriodDescription(plan.period)} · </>
+                )}
+                {plan.categories.length} categories ·{' '}
+                {plan.mode === 'Records'
+                  ? 'record rows'
+                  : `${plan.measures.length} measures`}
+              </p>
+              <Button
+                type="button"
+                disabled={!planReady || pending}
+                onClick={() => void handlePreview()}
+              >
+                {pending && pendingLabel === 'Preparing the preview'
+                  ? 'Preparing…'
+                  : 'Preview report'}
+              </Button>
+            </div>
+          </Card>
+        ) : (
+          <Card className="p-4 shadow-none sm:p-5">
             <p role="status" className="text-sm text-[var(--text-secondary)]">
-              {pendingLabel}…
+              {catalogLoading
+                ? 'Loading the selected report subject…'
+                : 'The selected report catalog is unavailable.'}
             </p>
-          )}
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border-soft)] pt-4">
-            <p className="max-w-2xl text-xs text-[var(--text-neutral)]">
-              {subject?.requiresPeriod && (
-                <>Period: {planPeriodDescription(plan.period)} · </>
-              )}
-              {plan.categories.length} categories ·{' '}
-              {plan.mode === 'Records'
-                ? 'record rows'
-                : `${plan.measures.length} measures`}
-            </p>
-            <Button
-              type="button"
-              disabled={!planReady || pending}
-              onClick={() => void handlePreview()}
-            >
-              {pending && pendingLabel === 'Preparing the preview'
-                ? 'Preparing…'
-                : 'Preview report'}
-            </Button>
-          </div>
-        </Card>
-      ) : (
-        <Card className="p-4 shadow-none sm:p-5">
-          <p role="status" className="text-sm text-[var(--text-secondary)]">
-            {catalogLoading
-              ? 'Loading the selected report subject…'
-              : 'The selected report catalog is unavailable.'}
-          </p>
-        </Card>
-      )}
+          </Card>
+        ))}
 
-      {preview && (
+      {preview && stage === 'preview' && (
         <Card
           className="space-y-4 border-[color-mix(in_srgb,var(--primary)_30%,var(--border-soft))] p-4 shadow-none sm:p-5"
           aria-labelledby="pm-v3-preview-title"
@@ -2307,20 +2902,52 @@ export function PmAnalyticsV3Panel() {
                 ? 'This report reads current registered asset records directly. It does not include PM schedules, inspection findings, or change stored records.'
                 : 'Running this report reads current persisted PM schedules and inspections. Execution does not change maintenance records.'}
             </p>
-            <Button
-              type="button"
-              disabled={pending}
-              onClick={() => void executePage(1)}
-            >
-              {pending && pendingLabel === 'Running the confirmed report'
-                ? 'Running…'
-                : 'Confirm and run report'}
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={pending}
+                onClick={() => setStage(response ? 'results' : 'plan')}
+              >
+                {response ? 'Return to results' : 'Back to report details'}
+              </Button>
+              {!response && (
+                <>
+                  <Button
+                    type="button"
+                    disabled={pending}
+                    onClick={() => void executePage(1)}
+                  >
+                    {pending && pendingLabel === 'Running the confirmed report'
+                      ? 'Running…'
+                      : 'Confirm and generate'}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    disabled={pending}
+                    onClick={startEditingQuestion}
+                  >
+                    Edit question
+                  </Button>
+                </>
+              )}
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={pending}
+                onClick={startNewQuestion}
+              >
+                {selectedSubject === 'pmExecution'
+                  ? 'Ask another question'
+                  : 'Start another report'}
+              </Button>
+            </div>
           </div>
         </Card>
       )}
 
-      {response && catalog && (
+      {response && catalog && stage === 'results' && (
         <Card
           className="space-y-5 p-4 shadow-none sm:p-5"
           aria-live="polite"
@@ -2349,15 +2976,52 @@ export function PmAnalyticsV3Panel() {
                 Manila time.
               </p>
             </div>
-            <Button
-              type="button"
-              variant="secondary"
-              className="print:hidden"
-              onClick={() => window.print()}
-            >
-              Print result
-            </Button>
+            <div className="flex flex-wrap gap-2 print:hidden">
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={pending}
+                onClick={() => setStage('preview')}
+              >
+                Back to preview
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={pending}
+                onClick={startEditingQuestion}
+              >
+                Edit question
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => window.print()}
+              >
+                Print result
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={startNewQuestion}
+              >
+                {selectedSubject === 'pmExecution'
+                  ? 'Ask another question'
+                  : 'Start another report'}
+              </Button>
+            </div>
           </div>
+
+          {preview && (
+            <details className="rounded-md border border-[var(--border-soft)] px-3 py-2">
+              <summary className="cursor-pointer text-sm font-medium text-[var(--primary)]">
+                Report scope
+              </summary>
+              <p className="mt-2 text-sm text-[var(--text-secondary)]">
+                {preview.summary}
+              </p>
+            </details>
+          )}
 
           <dl className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {(isInventory
@@ -2482,6 +3146,11 @@ export function PmAnalyticsV3Panel() {
                 mode="Aggregate"
                 catalog={catalog}
                 groupBy={plan.groupBy}
+                sourceReturnContext={{
+                  kind: 'analytics',
+                  sessionId: analyticsSessionId,
+                }}
+                onSourceNavigate={saveBeforeSourceNavigation}
                 {...(!isInventory && {
                   onMeasureSource: (
                     values: Record<string, unknown>,
@@ -2502,6 +3171,11 @@ export function PmAnalyticsV3Panel() {
                 rows={response.records}
                 mode="Records"
                 catalog={catalog}
+                sourceReturnContext={{
+                  kind: 'analytics',
+                  sessionId: analyticsSessionId,
+                }}
+                onSourceNavigate={saveBeforeSourceNavigation}
               />
             ) : (
               <p
@@ -2611,6 +3285,8 @@ function ResultTable({
   catalog,
   groupBy = [],
   onMeasureSource,
+  sourceReturnContext,
+  onSourceNavigate,
 }: {
   columns: Column[]
   rows: Array<{
@@ -2624,7 +3300,13 @@ function ResultTable({
   catalog: Catalog
   groupBy?: string[]
   onMeasureSource?: (values: Record<string, unknown>, measure: string) => void
+  sourceReturnContext: DetailReturnContext
+  onSourceNavigate: () => void
 }) {
+  const visibleColumns = columns.filter(
+    (column) => column.id !== 'scheduleId' && column.id !== 'assetId',
+  )
+
   return (
     <div className="overflow-x-auto rounded-md border border-[var(--border-soft)]">
       <table className="min-w-full border-collapse text-left text-sm">
@@ -2637,7 +3319,7 @@ function ResultTable({
         </caption>
         <thead className="bg-[var(--surface-muted)] text-xs font-semibold text-[var(--text-secondary)] uppercase">
           <tr>
-            {columns.map((column) => (
+            {visibleColumns.map((column) => (
               <th
                 key={column.id}
                 scope="col"
@@ -2670,7 +3352,7 @@ function ResultTable({
               key={String(row.scheduleId ?? row.assetId ?? index)}
               className="align-top"
             >
-              {columns.map((column) => {
+              {visibleColumns.map((column) => {
                 const measure = row.measures?.[column.id]
                 const value = measure ? measure.value : row.values[column.id]
                 return (
@@ -2713,6 +3395,8 @@ function ResultTable({
                     <Link
                       to="/app/inspections/$inspectionId"
                       params={{ inspectionId: row.inspectionId }}
+                      search={{ returnContext: sourceReturnContext }}
+                      onClick={onSourceNavigate}
                       className="font-medium text-[var(--primary)] underline-offset-2 hover:underline focus-visible:rounded focus-visible:ring-2 focus-visible:outline-none"
                     >
                       Review inspection
@@ -2721,6 +3405,8 @@ function ResultTable({
                     <Link
                       to="/app/assets/$assetId"
                       params={{ assetId: row.assetId }}
+                      search={{ returnContext: sourceReturnContext }}
+                      onClick={onSourceNavigate}
                       className="font-medium text-[var(--primary)] underline-offset-2 hover:underline focus-visible:rounded focus-visible:ring-2 focus-visible:outline-none"
                     >
                       View asset

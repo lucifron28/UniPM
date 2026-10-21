@@ -132,6 +132,21 @@ internal sealed class PmAnalyticsV3QueryService(
                     selector,
                     normalized.Plan.Categories,
                     cancellationToken);
+                const string departmentSuffix = " department";
+                var departmentName = value.Trim();
+                if (matches.Count == 0
+                    && filter.Field == PmAnalyticsV3Catalog.Department
+                    && departmentName.EndsWith(departmentSuffix, StringComparison.OrdinalIgnoreCase)
+                    && departmentName.Length > departmentSuffix.Length)
+                {
+                    matches = await ResolveCatalogValueAsync(
+                        context,
+                        departmentName[..^departmentSuffix.Length].Trim(),
+                        selector,
+                        normalized.Plan.Categories,
+                        cancellationToken);
+                }
+
                 if (matches.Count != 1)
                 {
                     AddResolutionError(

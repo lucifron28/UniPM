@@ -201,22 +201,38 @@ public static class PmAnalyticsEndpoints
 
             try
             {
-                var response = await interpreter.InterpretAsync(request.Question, cancellationToken);
+                var response = await interpreter.InterpretAsync(
+                    request.Question,
+                    cancellationToken,
+                    request.Interpreter);
                 return Results.Ok(response);
             }
             catch (NaturalLanguageAnalyticsProviderException exception)
             {
-                var failure = exception.Failure switch
+                var failure = exception.DiagnosticCode switch
                 {
-                    NaturalLanguageAnalyticsProviderFailure.Timeout => "Timeout",
-                    NaturalLanguageAnalyticsProviderFailure.InvalidOutput => "InvalidOutput",
-                    _ => "ProviderUnavailable"
+                    "InvalidJson" => "InvalidJson",
+                    "InvalidEnvelope" => "InvalidEnvelope",
+                    "InvalidPlan" => "InvalidPlan",
+                    "RequestTooLarge" => "RequestTooLarge",
+                    _ => exception.Failure switch
+                    {
+                        NaturalLanguageAnalyticsProviderFailure.Timeout => "Timeout",
+                        NaturalLanguageAnalyticsProviderFailure.InvalidOutput => "InvalidOutput",
+                        _ => "ProviderUnavailable"
+                    }
                 };
+                var extensions = new Dictionary<string, object?> { ["code"] = failure };
+                if (exception.OutputFields.Count > 0)
+                {
+                    extensions["fields"] = exception.OutputFields;
+                }
+
                 return Results.Problem(
                     statusCode: StatusCodes.Status503ServiceUnavailable,
                     title: "V3 report interpretation is unavailable.",
                     detail: "The question could not be interpreted safely.",
-                    extensions: new Dictionary<string, object?> { ["code"] = failure });
+                    extensions: extensions);
             }
         })
         .WithName("InterpretPmAnalyticsV3Question")

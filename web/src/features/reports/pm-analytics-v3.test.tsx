@@ -624,23 +624,16 @@ async function interpretAndPreview(
   plan = makePlan(),
   question = 'Show progress for fire extinguishers during 2024',
 ) {
-  fireEvent.change(
-    screen.getByRole('textbox', { name: 'Describe the report' }),
-    {
-      target: { value: question },
-    },
-  )
+  fireEvent.change(screen.getByRole('textbox', { name: 'Question' }), {
+    target: { value: question },
+  })
   await waitFor(() =>
     expect(
-      screen.getByRole('button', { name: 'Fill plan from question' }),
+      screen.getByRole('button', { name: 'Generate report' }),
     ).toBeEnabled(),
   )
-  fireEvent.click(
-    screen.getByRole('button', { name: 'Fill plan from question' }),
-  )
-  expect(
-    await screen.findByText('A report plan is ready to review.'),
-  ).toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'Generate report' }))
+  expect(await screen.findByText('Report ready for review')).toBeInTheDocument()
   fireEvent.click(screen.getByRole('button', { name: 'Preview report' }))
   expect(
     await screen.findByRole('heading', { name: 'Report preview' }),
@@ -665,7 +658,126 @@ describe('PM analytics V3 workflow', () => {
     api.execute.mockReset()
   })
 
+  it('starts with one question input and no subject or manual report controls', async () => {
+    render(<PmAnalyticsV3Panel />)
+
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Ask UniPM',
+      }),
+    ).toBeInTheDocument()
+    expect(screen.queryByLabelText('Report subject')).not.toBeInTheDocument()
+    expect(
+      screen.getByRole('textbox', { name: 'Question' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByLabelText('Report type')).not.toBeInTheDocument()
+    expect(
+      screen.queryByLabelText('Scheduled PM cycle period'),
+    ).not.toBeInTheDocument()
+
+    const example = screen.getByRole('button', {
+      name: 'How many fire extinguishers are registered in the CCMS building?',
+    })
+    fireEvent.click(example)
+    expect(screen.getByRole('textbox', { name: 'Question' })).toHaveValue(
+      'How many fire extinguishers are registered in the CCMS building?',
+    )
+    expect(api.interpret).not.toHaveBeenCalled()
+
+    expect(
+      screen.queryByRole('button', { name: 'Build report manually' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('summarizes the returned plan without exposing the manual builder', async () => {
+    const plan = makePlan({
+      groupBy: ['department'],
+      presentation: 'Table',
+      columns: ['department', 'progressPercent'],
+    })
+    api.interpret.mockResolvedValueOnce(
+      makeInterpretation(plan, { interpreter: 'DeepSeek' }),
+    )
+    render(<PmAnalyticsV3Panel />)
+    fireEvent.change(screen.getByRole('textbox', { name: 'Question' }), {
+      target: { value: 'Show progress by department in 2024' },
+    })
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Generate report' }),
+      ).toBeEnabled(),
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Generate report' }))
+
+    expect(
+      await screen.findByRole('heading', { name: 'Report ready for review' }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Interpreted by DeepSeek')).toBeInTheDocument()
+    expect(screen.getByText('PM execution')).toBeInTheDocument()
+    expect(screen.getByText('2024')).toBeInTheDocument()
+    expect(screen.getByText('Fire Extinguisher')).toBeInTheDocument()
+    expect(screen.getByText('Progress')).toBeInTheDocument()
+    expect(screen.getByText('Department')).toBeInTheDocument()
+    expect(api.preview).not.toHaveBeenCalled()
+    expect(api.execute).not.toHaveBeenCalled()
+
+    expect(
+      screen.queryByRole('button', { name: 'Edit report parameters' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('keeps provider failures visible and leaves the question editable', async () => {
+    api.interpret.mockRejectedValueOnce(
+      new ApiError('DeepSeek unavailable', 503, {
+        extensions: { code: 'ProviderUnavailable' },
+      }),
+    )
+    render(<PmAnalyticsV3Panel />)
+    fireEvent.change(screen.getByRole('textbox', { name: 'Question' }), {
+      target: { value: 'Show progress for fire extinguishers during 2024' },
+    })
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Generate report' }),
+      ).toBeEnabled(),
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Generate report' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'No deterministic fallback was used',
+    )
+    expect(screen.getByRole('textbox', { name: 'Question' })).toHaveValue(
+      'Show progress for fire extinguishers during 2024',
+    )
+    expect(
+      screen.queryByRole('button', { name: 'Build report manually' }),
+    ).not.toBeInTheDocument()
+  })
+
   it('builds, previews, and runs a schedule-independent inventory report', async () => {
+    const plan: PmAnalyticsV3ReportPlan = {
+      ...makePlan(),
+      subject: 'assetInventory',
+      mode: 'Aggregate',
+      period: null,
+      categories: ['fire-extinguisher'],
+      measures: ['registeredAssetCount'],
+      groupBy: ['registrationStatus'],
+      baseFilters: [
+        {
+          field: 'building',
+          operator: PmAnalyticsV3FilterOperator.Equal,
+          values: ['CCMS'],
+        },
+      ],
+      matchingFilters: [],
+      aggregateFilters: [],
+      orderBy: [],
+      top: null,
+      presentation: 'Table',
+      columns: ['registrationStatus', 'registeredAssetCount'],
+    }
+    api.interpret.mockResolvedValueOnce(makeInterpretation(plan))
     api.catalog.mockImplementation(async (params?: { subject?: string }) =>
       params?.subject === 'assetInventory'
         ? makeInventoryCatalog()
@@ -686,24 +798,38 @@ describe('PM analytics V3 workflow', () => {
     })
 
     render(<PmAnalyticsV3Panel />)
-    await screen.findByRole('heading', { name: 'Build a PM report' })
-    fireEvent.change(screen.getByLabelText('Report subject'), {
-      target: { value: 'assetInventory' },
+    await screen.findByRole('heading', {
+      name: 'Ask UniPM',
     })
+    fireEvent.change(screen.getByRole('textbox', { name: 'Question' }), {
+      target: {
+        value:
+          'How many fire extinguishers are registered in the CCMS building by status?',
+      },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Generate report' }))
 
     expect(
-      await screen.findByRole('heading', {
-        name: 'Build an asset inventory report',
-      }),
+      await screen.findByRole('heading', { name: 'Report ready for review' }),
     ).toBeInTheDocument()
+    expect(await screen.findByText('Asset inventory')).toBeInTheDocument()
+    expect(screen.getByText('CCMS')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Preview report' }))
     expect(
-      await screen.findByText(
-        'Count unique registered asset IDs after category and population filters.',
-      ),
+      await screen.findByRole('heading', { name: 'Report preview' }),
     ).toBeInTheDocument()
-    expect(
-      screen.queryByLabelText('Describe the report'),
-    ).not.toBeInTheDocument()
+    expect(api.interpret).toHaveBeenCalledWith(
+      {
+        question:
+          'How many fire extinguishers are registered in the CCMS building by status?',
+      },
+      expect.any(AbortSignal),
+    )
+    const previewPlan = api.preview.mock.calls.at(-1)?.[0]
+      .plan as PmAnalyticsV3ReportPlan
+    expect(previewPlan.subject).toBe('assetInventory')
+    expect(previewPlan.period).toBeNull()
+    expect(previewPlan.baseFilters).toEqual(plan.baseFilters)
     expect(
       screen.queryByLabelText('Scheduled PM cycle period'),
     ).not.toBeInTheDocument()
@@ -711,26 +837,12 @@ describe('PM analytics V3 workflow', () => {
       screen.queryByText('Matching record filters'),
     ).not.toBeInTheDocument()
 
-    const registrationStatusGroup = screen
-      .getAllByRole('checkbox', { name: 'Registration status' })
-      .find((element) => !element.hasAttribute('disabled'))
-    expect(registrationStatusGroup).toBeDefined()
-    fireEvent.click(registrationStatusGroup!)
-    fireEvent.click(screen.getByRole('button', { name: 'Preview report' }))
-    expect(
-      await screen.findByRole('heading', { name: 'Report preview' }),
-    ).toBeInTheDocument()
-    const previewPlan = api.preview.mock.calls.at(-1)?.[0]
-      .plan as PmAnalyticsV3ReportPlan
-    expect(previewPlan.subject).toBe('assetInventory')
-    expect(previewPlan.period).toBeNull()
-    expect(previewPlan.groupBy).toEqual(['registrationStatus'])
     expect(
       screen.queryByText('Included PM cycles by category'),
     ).not.toBeInTheDocument()
 
     fireEvent.click(
-      screen.getByRole('button', { name: 'Confirm and run report' }),
+      screen.getByRole('button', { name: 'Confirm and generate' }),
     )
     expect(
       await screen.findByRole('heading', {
@@ -740,7 +852,7 @@ describe('PM analytics V3 workflow', () => {
     expect(
       screen.getAllByText(/no denominator applies/i).length,
     ).toBeGreaterThan(0)
-    expect(api.interpret).not.toHaveBeenCalled()
+    expect(api.interpret).toHaveBeenCalledTimes(1)
   })
 
   it('loads the catalog, carries an interpreted plan through confirmation, and drills into numerator sources', async () => {
@@ -758,7 +870,7 @@ describe('PM analytics V3 workflow', () => {
     await interpretAndPreview(plan)
     expect(screen.getByText(/Measure definitions/)).toBeInTheDocument()
     fireEvent.click(
-      screen.getByRole('button', { name: 'Confirm and run report' }),
+      screen.getByRole('button', { name: 'Confirm and generate' }),
     )
     expect(await screen.findByText('100%')).toBeInTheDocument()
     expect(screen.getByText(/2 of 2 eligible asset cycles/)).toBeInTheDocument()
@@ -772,7 +884,9 @@ describe('PM analytics V3 workflow', () => {
     expect(
       screen.queryByRole('heading', { name: 'PM execution results' }),
     ).not.toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Preview report' }))
+    expect(
+      await screen.findByRole('heading', { name: 'Report preview' }),
+    ).toBeInTheDocument()
     await waitFor(() => expect(api.preview).toHaveBeenCalledTimes(2))
     const sourcePlan = api.preview.mock.calls.at(1)?.[0]
       .plan as PmAnalyticsV3ReportPlan
@@ -785,7 +899,7 @@ describe('PM analytics V3 workflow', () => {
       },
     ])
     fireEvent.click(
-      await screen.findByRole('button', { name: 'Confirm and run report' }),
+      await screen.findByRole('button', { name: 'Confirm and generate' }),
     )
     expect(
       await screen.findByRole('link', { name: 'Review inspection' }),
@@ -872,7 +986,7 @@ describe('PM analytics V3 workflow', () => {
         'Show progress by calendar quarter for fire extinguishers, water stations, and fire alarms during 2024',
       )
       fireEvent.click(
-        screen.getByRole('button', { name: 'Confirm and run report' }),
+        screen.getByRole('button', { name: 'Confirm and generate' }),
       )
       fireEvent.click(
         await screen.findByRole('button', {
@@ -916,7 +1030,7 @@ describe('PM analytics V3 workflow', () => {
       })
 
       fireEvent.click(
-        await screen.findByRole('button', { name: 'Confirm and run report' }),
+        await screen.findByRole('button', { name: 'Confirm and generate' }),
       )
       expect(await screen.findByText('WDS-001')).toBeInTheDocument()
       expect(await screen.findByText(sourceCycle)).toBeInTheDocument()
@@ -926,23 +1040,20 @@ describe('PM analytics V3 workflow', () => {
     },
   )
 
-  it('clears a previous preview and result when the question changes', async () => {
+  it('clears a previous preview and result when starting another question', async () => {
     api.execute.mockResolvedValueOnce(makeExecution())
     render(<PmAnalyticsV3Panel />)
     await interpretAndPreview()
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Confirm and run report' }),
-    )
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm and generate' }))
     expect(
       await screen.findByRole('heading', { name: 'PM execution results' }),
     ).toBeInTheDocument()
 
-    fireEvent.change(
-      screen.getByRole('textbox', { name: 'Describe the report' }),
-      {
-        target: { value: 'Show something else' },
-      },
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Ask another question' }),
     )
+
+    expect(screen.getByRole('textbox', { name: 'Question' })).toHaveValue('')
 
     expect(
       screen.queryByRole('heading', { name: 'Report preview' }),
@@ -951,6 +1062,42 @@ describe('PM analytics V3 workflow', () => {
       screen.queryByRole('heading', { name: 'PM execution results' }),
     ).not.toBeInTheDocument()
     expect(screen.queryByText('100%', { exact: true })).not.toBeInTheDocument()
+  })
+
+  it('clears a preview when starting a new question and previews its new scope', async () => {
+    const updatedPlan = makePlan({
+      period: {
+        basis: 'pmCycle',
+        kind: 'Year',
+        year: 2023,
+        month: null,
+        quarter: null,
+        startCycle: null,
+        endCycle: null,
+      },
+    })
+    api.interpret
+      .mockResolvedValueOnce(makeInterpretation())
+      .mockResolvedValueOnce(makeInterpretation(updatedPlan))
+    render(<PmAnalyticsV3Panel />)
+    await interpretAndPreview()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ask another question' }))
+    expect(screen.getByRole('textbox', { name: 'Question' })).toHaveValue('')
+    expect(
+      screen.queryByRole('heading', { name: 'Report preview' }),
+    ).not.toBeInTheDocument()
+    fireEvent.change(screen.getByRole('textbox', { name: 'Question' }), {
+      target: { value: 'Show progress for fire extinguishers during 2023' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Generate report' }))
+    expect(await screen.findByText('Report ready for review')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Preview report' }))
+    expect(
+      await screen.findByRole('heading', { name: 'Report preview' }),
+    ).toBeInTheDocument()
+    await waitFor(() => expect(api.preview).toHaveBeenCalledTimes(2))
+    expect(api.preview.mock.calls[1]?.[0].plan.period?.year).toBe(2023)
   })
 
   it('does not offer an inaccurate source drill-down for distinct asset counts', async () => {
@@ -968,7 +1115,7 @@ describe('PM analytics V3 workflow', () => {
       'Show distinct assets for fire extinguishers by department in 2024',
     )
     fireEvent.click(
-      screen.getByRole('button', { name: 'Confirm and run report' }),
+      screen.getByRole('button', { name: 'Confirm and generate' }),
     )
 
     expect(
@@ -988,7 +1135,7 @@ describe('PM analytics V3 workflow', () => {
     render(<PmAnalyticsV3Panel />)
     await interpretAndPreview()
     fireEvent.click(
-      screen.getByRole('button', { name: 'Confirm and run report' }),
+      screen.getByRole('button', { name: 'Confirm and generate' }),
     )
 
     expect(
@@ -1005,7 +1152,7 @@ describe('PM analytics V3 workflow', () => {
     render(<PmAnalyticsV3Panel />)
     await interpretAndPreview()
     fireEvent.click(
-      screen.getByRole('button', { name: 'Confirm and run report' }),
+      screen.getByRole('button', { name: 'Confirm and generate' }),
     )
 
     expect(
@@ -1032,14 +1179,11 @@ describe('PM analytics V3 workflow', () => {
       'role',
       'status',
     )
-    fireEvent.change(
-      screen.getByRole('textbox', { name: 'Describe the report' }),
-      {
-        target: { value: 'Show scheduled fire extinguishers in 2024' },
-      },
-    )
+    fireEvent.change(screen.getByRole('textbox', { name: 'Question' }), {
+      target: { value: 'Show scheduled fire extinguishers in 2024' },
+    })
     const submit = screen.getByRole('button', {
-      name: 'Fill plan from question',
+      name: 'Generate report',
     })
     expect(submit).toBeDisabled()
 
@@ -1070,15 +1214,10 @@ describe('PM analytics V3 workflow', () => {
       ).not.toBeInTheDocument(),
     )
 
-    fireEvent.change(
-      screen.getByRole('textbox', { name: 'Describe the report' }),
-      {
-        target: { value: 'Show top department results' },
-      },
-    )
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Fill plan from question' }),
-    )
+    fireEvent.change(screen.getByRole('textbox', { name: 'Question' }), {
+      target: { value: 'Show top department results' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Generate report' }))
     expect(
       await screen.findByText('The question needs more detail.'),
     ).toBeInTheDocument()
@@ -1086,7 +1225,7 @@ describe('PM analytics V3 workflow', () => {
       screen.getByText(/Please clarify: ranking measure and limit/),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('button', { name: 'Preview report' }),
-    ).toBeDisabled()
+      screen.queryByRole('button', { name: 'Preview report' }),
+    ).not.toBeInTheDocument()
   })
 })

@@ -114,6 +114,74 @@ public sealed class PmAnalyticsV3RegressionTests
     }
 
     [Fact]
+    public void Question_parser_selects_and_validates_pm_and_inventory_subjects_without_crossing_scope()
+    {
+        var now = new DateTimeOffset(2025, 6, 1, 0, 0, 0, TimeSpan.Zero);
+        var pm = PmAnalyticsV3RuleParser.Parse(
+            "Show progress for fire extinguishers during 2024",
+            now);
+        var inspectionCount = PmAnalyticsV3RuleParser.Parse(
+            "How many emergency lights were inspected in June 2026?",
+            now);
+        var inventory = PmAnalyticsV3RuleParser.Parse(
+            "How many fire extinguishers are registered in the CCMS building by status?",
+            now);
+        var ambiguous = PmAnalyticsV3RuleParser.Parse(
+            "How many emergency lights are in the CCMS building?",
+            now);
+        var crossSubject = PmAnalyticsV3RuleParser.Parse(
+            "How many fire extinguishers are registered in the CCMS building with overdue inspections?",
+            now);
+        var historicalInventory = PmAnalyticsV3RuleParser.Parse(
+            "How many fire extinguishers are registered in 2025?",
+            now);
+
+        Assert.Equal("Valid", pm.Status);
+        Assert.Equal(PmAnalyticsV3Catalog.SubjectPmExecution, pm.Plan?.Subject);
+        Assert.True(PmAnalyticsV3PlanValidator.TryNormalize(pm.Plan!, out _, out _));
+        Assert.Equal("Valid", inspectionCount.Status);
+        Assert.Equal(PmAnalyticsV3Catalog.SubjectPmExecution, inspectionCount.Plan?.Subject);
+        Assert.Equal(new[] { PmAnalyticsV3Catalog.CompletedCount }, inspectionCount.Plan?.Measures);
+        Assert.True(PmAnalyticsV3PlanValidator.TryNormalize(inspectionCount.Plan!, out _, out _));
+
+        Assert.Equal("Valid", inventory.Status);
+        Assert.Equal(PmAnalyticsV3Catalog.SubjectAssetInventory, inventory.Plan?.Subject);
+        Assert.Null(inventory.Plan?.Period);
+        Assert.Equal(new[] { PmAnalyticsV3Catalog.RegisteredAssetCount }, inventory.Plan?.Measures);
+        Assert.Equal(new[] { PmAnalyticsV3Catalog.RegistrationStatus }, inventory.Plan?.GroupBy);
+        Assert.Contains(inventory.Plan!.BaseFilters, filter =>
+            filter.Field == PmAnalyticsV3Catalog.Building
+                && filter.Values?.Contains("CCMS", StringComparer.Ordinal) == true);
+        Assert.True(PmAnalyticsV3PlanValidator.TryNormalize(inventory.Plan, out _, out _));
+
+        Assert.Equal("NeedsClarification", ambiguous.Status);
+        Assert.Contains("Subject", ambiguous.ClarificationFields);
+        Assert.Equal("Unsupported", crossSubject.Status);
+        Assert.Equal("CrossSubjectQuestionNotSupported", crossSubject.Code);
+        Assert.Null(crossSubject.Plan);
+        Assert.Equal("Unsupported", historicalInventory.Status);
+        Assert.Equal("HistoricalInventoryNotSupported", historicalInventory.Code);
+
+        var planSchema = PmAnalyticsV3ModelPrompt.OutputSchema
+            .GetProperty("properties")
+            .GetProperty("plan")
+            .GetProperty("anyOf")[0];
+        var subjects = planSchema
+            .GetProperty("properties")
+            .GetProperty("subject")
+            .GetProperty("enum")
+            .EnumerateArray()
+            .Select(item => item.GetString())
+            .ToArray();
+        Assert.Contains(PmAnalyticsV3Catalog.SubjectPmExecution, subjects);
+        Assert.Contains(PmAnalyticsV3Catalog.SubjectAssetInventory, subjects);
+        Assert.Contains(
+            planSchema.GetProperty("properties").GetProperty("period").GetProperty("anyOf")
+                .EnumerateArray(),
+            item => item.GetProperty("type").GetString() == "null");
+    }
+
+    [Fact]
     public void Ambiguous_dates_filters_and_rank_measures_are_clarified_without_broadening_the_plan()
     {
         var now = new DateTimeOffset(2025, 6, 1, 0, 0, 0, TimeSpan.Zero);
