@@ -744,7 +744,7 @@ describe('PM analytics V3 workflow', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Generate report' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'No deterministic fallback was used',
+      'choose the deterministic parser explicitly',
     )
     expect(screen.getByRole('textbox', { name: 'Question' })).toHaveValue(
       'Show progress for fire extinguishers during 2024',
@@ -813,7 +813,7 @@ describe('PM analytics V3 workflow', () => {
       await screen.findByRole('heading', { name: 'Report ready for review' }),
     ).toBeInTheDocument()
     expect(await screen.findByText('Asset inventory')).toBeInTheDocument()
-    expect(screen.getByText('CCMS')).toBeInTheDocument()
+    expect(screen.getByText('Building is CCMS')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Preview report' }))
     expect(
       await screen.findByRole('heading', { name: 'Report preview' }),
@@ -997,7 +997,6 @@ describe('PM analytics V3 workflow', () => {
       expect(
         await screen.findByText(/records plan for Progress is ready/),
       ).toBeInTheDocument()
-      fireEvent.click(screen.getByRole('button', { name: 'Preview report' }))
       await waitFor(() => expect(api.preview).toHaveBeenCalledTimes(2))
       const sourcePlan = api.preview.mock.calls.at(1)?.[0]
         .plan as PmAnalyticsV3ReportPlan
