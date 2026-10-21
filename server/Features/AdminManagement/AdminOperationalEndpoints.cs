@@ -119,6 +119,14 @@ public static class AdminOperationalEndpoints
         group.MapDelete("/demo-data/assets", ClearAllDemoDataAsync)
             .WithName("ClearAdminAssetsAndMaintenance")
             .Produces<AdminDeleteResult>();
+        group.MapPost("/demo-data/validation/load", LoadValidationDatasetAsync)
+            .WithName("LoadAdminValidationDataset")
+            .Produces<AdminValidationDatasetResponse>()
+            .ProducesProblem(StatusCodes.Status409Conflict);
+        group.MapPost("/demo-data/validation/reset", ResetAndSeedValidationDatasetAsync)
+            .WithName("ResetAndSeedAdminValidationDataset")
+            .Produces<AdminValidationDatasetResponse>()
+            .ProducesProblem(StatusCodes.Status409Conflict);
 
         return endpoints;
     }
@@ -478,6 +486,32 @@ public static class AdminOperationalEndpoints
     private static async Task<IResult> ClearAllDemoDataAsync(
         AdminOperationalDataService service, CancellationToken cancellationToken) =>
         Results.Ok(await service.ClearAssetsAndMaintenanceAsync(cancellationToken));
+
+    private static async Task<IResult> LoadValidationDatasetAsync(
+        AdminOperationalDataService service, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return Results.Ok(await service.LoadValidationDatasetAsync(cancellationToken));
+        }
+        catch (AdminDemoDataConflictException exception)
+        {
+            return ApiErrors.Conflict(exception.Message);
+        }
+    }
+
+    private static async Task<IResult> ResetAndSeedValidationDatasetAsync(
+        AdminOperationalDataService service, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return Results.Ok(await service.ResetAndSeedValidationDatasetAsync(cancellationToken));
+        }
+        catch (AdminDemoDataConflictException exception)
+        {
+            return ApiErrors.Conflict(exception.Message);
+        }
+    }
 
     private static Dictionary<string, string[]> ValidatePage(int? page, int? pageSize)
     {

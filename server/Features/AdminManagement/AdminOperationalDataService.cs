@@ -2,6 +2,8 @@ using System.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using UniPM.Api.Data;
+using UniPM.Api.Data.Seeding;
+using UniPM.Api.Features.Auth;
 using UniPM.Api.Features.Inspections;
 using UniPM.Api.Features.PreventiveMaintenanceForms;
 using UniPM.Api.Features.Schedules;
@@ -15,6 +17,8 @@ internal sealed class AdminOperationalDataService(
     TimeProvider timeProvider,
     ILogger<AdminOperationalDataService> logger)
 {
+    private static readonly SemaphoreSlim DemoDataMutationGate = new(1, 1);
+
     public async Task<AdminOverviewResponse> GetOverviewAsync(CancellationToken cancellationToken)
     {
         await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
@@ -216,11 +220,140 @@ internal sealed class AdminOperationalDataService(
     public Task<AdminDeleteResult> DeleteFormAsync(Guid formId, CancellationToken cancellationToken) =>
         DeleteAsync(formIds: [formId], cancellationToken: cancellationToken);
 
-    public Task<AdminDeleteResult> ClearMaintenanceAsync(CancellationToken cancellationToken) =>
-        DeleteAsync(allMaintenance: true, cancellationToken: cancellationToken);
+    public async Task<AdminDeleteResult> ClearMaintenanceAsync(CancellationToken cancellationToken)
+    {
+        await DemoDataMutationGate.WaitAsync(cancellationToken);
+        try
+        {
+            return await DeleteAsync(allMaintenance: true, cancellationToken: cancellationToken);
+        }
+        finally
+        {
+            DemoDataMutationGate.Release();
+        }
+    }
 
-    public Task<AdminDeleteResult> ClearAssetsAndMaintenanceAsync(CancellationToken cancellationToken) =>
-        DeleteAsync(allMaintenance: true, deleteAssets: true, allAssets: true, cancellationToken: cancellationToken);
+    public async Task<AdminDeleteResult> ClearAssetsAndMaintenanceAsync(CancellationToken cancellationToken)
+    {
+        await DemoDataMutationGate.WaitAsync(cancellationToken);
+        try
+        {
+            return await DeleteAsync(allMaintenance: true, deleteAssets: true, allAssets: true,
+                cancellationToken: cancellationToken);
+        }
+        finally
+        {
+            DemoDataMutationGate.Release();
+        }
+    }
+
+    public Task<AdminValidationDatasetResponse> LoadValidationDatasetAsync(CancellationToken cancellationToken) =>
+        SeedValidationDatasetAsync(resetExistingData: false, cancellationToken);
+
+    public Task<AdminValidationDatasetResponse> ResetAndSeedValidationDatasetAsync(
+        CancellationToken cancellationToken) =>
+        SeedValidationDatasetAsync(resetExistingData: true, cancellationToken);
+
+    private async Task<AdminValidationDatasetResponse> SeedValidationDatasetAsync(
+        bool resetExistingData,
+        CancellationToken cancellationToken)
+    {
+        await DemoDataMutationGate.WaitAsync(cancellationToken);
+        try
+        {
+            Guid inspectorUserId = Guid.Empty;
+            Guid supervisorUserId = Guid.Empty;
+            Guid gsdUserId = Guid.Empty;
+            GsdValidationDatasetContents? dataset = null;
+
+            var deleted = await DeleteAsync(
+                deleteAssets: resetExistingData,
+                allAssets: resetExistingData,
+                allMaintenance: resetExistingData,
+                beforeDelete: async (context, token) =>
+                {
+                    if (!resetExistingData && await HasOperationalDataAsync(context, token))
+                        throw new AdminDemoDataConflictException(
+                            "Clear all assets and maintenance data before loading the validation dataset.");
+
+                    var roleUsers = await (from assignment in context.UserRoles.AsNoTracking()
+                                           join role in context.Roles.AsNoTracking()
+                                               on assignment.RoleId equals role.Id
+                                           join user in context.Users.AsNoTracking()
+                                               on assignment.UserId equals user.Id
+                                           where user.IsActive && role.Name != null
+                                               && (role.Name == AuthRoleCatalog.Gsd
+                                                   || role.Name == AuthRoleCatalog.Inspector
+                                                   || role.Name == AuthRoleCatalog.Supervisor)
+                                           select new { Role = role.Name, user.Id, user.DisplayName })
+                        .ToListAsync(token);
+
+                    var activeHeads = roleUsers.Where(user => user.Role == AuthRoleCatalog.Gsd)
+                        .Select(user => user.Id).Distinct().ToArray();
+                    if (activeHeads.Length != 1)
+                        throw new AdminDemoDataConflictException(
+                            "Set exactly one active GSD head before loading the validation dataset.");
+                    gsdUserId = activeHeads[0];
+
+                    var inspector = roleUsers.Where(user => user.Role == AuthRoleCatalog.Inspector)
+                        .OrderBy(user => user.DisplayName, StringComparer.Ordinal)
+                        .ThenBy(user => user.Id).FirstOrDefault();
+                    if (inspector is null)
+                        throw new AdminDemoDataConflictException(
+                            "Create or reactivate an Inspector account before loading the validation dataset.");
+                    inspectorUserId = inspector.Id;
+
+                    var supervisor = roleUsers.Where(user => user.Role == AuthRoleCatalog.Supervisor)
+                        .OrderBy(user => user.DisplayName, StringComparer.Ordinal)
+                        .ThenBy(user => user.Id).FirstOrDefault();
+                    if (supervisor is null)
+                        throw new AdminDemoDataConflictException(
+                            "Create or reactivate a Supervisor account before loading the validation dataset.");
+                    supervisorUserId = supervisor.Id;
+                },
+                afterDelete: async (context, token) =>
+                {
+                    context.ChangeTracker.Clear();
+                    dataset = GsdValidationDatasetBuilder.Build(
+                        inspectorUserId, supervisorUserId, gsdUserId);
+                    context.Assets.AddRange(dataset.Assets);
+                    context.PreventiveMaintenanceSchedules.AddRange(dataset.Schedules);
+                    context.PreventiveMaintenanceForms.AddRange(dataset.Forms);
+                    context.InspectionRecords.AddRange(dataset.Inspections);
+                    context.PreventiveMaintenanceAcknowledgements.AddRange(dataset.Acknowledgements);
+                    context.InspectionWmsReferrals.AddRange(dataset.WmsReferrals);
+                    context.InspectionWmsReferralAudits.AddRange(dataset.WmsReferralAudits);
+                    await context.SaveChangesAsync(token);
+                },
+                cancellationToken: cancellationToken);
+
+            if (dataset is null)
+                throw new InvalidOperationException("The validation dataset was not created.");
+            return new AdminValidationDatasetResponse(
+                deleted, dataset.Assets.Count, dataset.Schedules.Count, dataset.Inspections.Count,
+                dataset.Forms.Count, dataset.Acknowledgements.Count,
+                dataset.WmsReferrals.Count, dataset.WmsReferralAudits.Count);
+        }
+        finally
+        {
+            DemoDataMutationGate.Release();
+        }
+    }
+
+    private static async Task<bool> HasOperationalDataAsync(
+        ApplicationDbContext context,
+        CancellationToken cancellationToken) =>
+        await context.Assets.AnyAsync(cancellationToken)
+        || await context.PreventiveMaintenanceSchedules.AnyAsync(cancellationToken)
+        || await context.InspectionRecords.AnyAsync(cancellationToken)
+        || await context.PreventiveMaintenanceForms.AnyAsync(cancellationToken)
+        || await context.PreventiveMaintenanceAcknowledgements.AnyAsync(cancellationToken)
+        || await context.InspectionPhotoEvidence.AnyAsync(cancellationToken)
+        || await context.InspectionWmsReferrals.AnyAsync(cancellationToken)
+        || await context.InspectionWmsReferralAudits.AnyAsync(cancellationToken)
+        || await context.InspectionLocationAttempts.AnyAsync(cancellationToken)
+        || await context.ScheduleAssignmentReassignmentAudits.AnyAsync(cancellationToken)
+        || await context.ScheduleEnrollmentDeferrals.AnyAsync(cancellationToken);
 
     public async Task<AdminDeleteResult> DeleteAcknowledgementAsync(Guid formId, CancellationToken cancellationToken)
     {
@@ -259,12 +392,15 @@ internal sealed class AdminOperationalDataService(
         bool deleteAssets = false,
         bool allAssets = false,
         bool allMaintenance = false,
+        Func<ApplicationDbContext, CancellationToken, Task>? beforeDelete = null,
+        Func<ApplicationDbContext, CancellationToken, Task>? afterDelete = null,
         CancellationToken cancellationToken = default)
     {
         await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
         await using var transaction = context.Database.IsRelational()
             ? await context.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken)
             : null;
+        if (beforeDelete is not null) await beforeDelete(context, cancellationToken);
 
         var targetAssetIds = (assetIds ?? []).ToHashSet();
         if (allAssets)
@@ -396,6 +532,7 @@ internal sealed class AdminOperationalDataService(
         context.Assets.RemoveRange(assets);
 
         await context.SaveChangesAsync(cancellationToken);
+        if (afterDelete is not null) await afterDelete(context, cancellationToken);
         if (transaction is not null) await transaction.CommitAsync(cancellationToken);
 
         var filesRemoved = 0;
@@ -407,7 +544,7 @@ internal sealed class AdminOperationalDataService(
                 await photoStorage.DeleteAsync(photo.StorageKey, CancellationToken.None);
                 filesRemoved++;
             }
-            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            catch (Exception exception)
             {
                 fileFailures++;
                 logger.LogError(exception, "Admin record cleanup could not remove an inspection photo file.");
@@ -424,6 +561,8 @@ internal sealed class AdminOperationalDataService(
             fileFailures);
     }
 }
+
+internal sealed class AdminDemoDataConflictException(string message) : Exception(message);
 
 public sealed record AdminOverviewResponse(
     int ActiveAccounts,
@@ -468,3 +607,13 @@ public sealed record AdminDeleteResult(
     int AcknowledgementsRemoved = 0,
     int PhotoFilesRemoved = 0,
     int PhotoFileCleanupFailures = 0);
+
+public sealed record AdminValidationDatasetResponse(
+    AdminDeleteResult Deleted,
+    int AssetsSeeded,
+    int SchedulesSeeded,
+    int InspectionsSeeded,
+    int FormsSeeded,
+    int AcknowledgementsSeeded,
+    int WmsReferralsSeeded,
+    int WmsReferralAuditsSeeded);

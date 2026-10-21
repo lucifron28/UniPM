@@ -344,9 +344,9 @@ public static class AdminAccountEndpoints
         if (errors.Count > 0) return ApiErrors.Validation(errors);
         var currentHeads = await (from assignment in context.UserRoles
                                   join role in context.Roles on assignment.RoleId equals role.Id
-                                  join user in context.Users on assignment.UserId equals user.Id
-                                  where role.Name == AuthRoleCatalog.Gsd && user.IsActive
-                                  select user).ToListAsync(cancellationToken);
+                                  join candidate in context.Users on assignment.UserId equals candidate.Id
+                                  where role.Name == AuthRoleCatalog.Gsd && candidate.IsActive
+                                  select candidate).ToListAsync(cancellationToken);
         if (currentHeads.Count != 1)
             return ApiErrors.Conflict("Resolve the active GSD head before editing its details.");
         var user = currentHeads[0];
