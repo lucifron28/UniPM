@@ -33,6 +33,7 @@ public static class SchedulesEndpoints
         {
             await using var context = await factory.CreateDbContextAsync(cancellationToken);
             var schedule = await context.PreventiveMaintenanceSchedules
+                .AsNoTracking()
                 .Include(candidate => candidate.Asset)
                 .SingleOrDefaultAsync(candidate => candidate.Id == id, cancellationToken);
             if (schedule is null || schedule.Asset is null)
@@ -79,6 +80,7 @@ public static class SchedulesEndpoints
 
             if (string.Equals(schedule.Status, ScheduleStatusCatalog.Ongoing, StringComparison.OrdinalIgnoreCase))
             {
+                await mutationLock.CommitAsync(cancellationToken);
                 return Results.Ok(ScheduleResponse.FromSchedule(schedule));
             }
 

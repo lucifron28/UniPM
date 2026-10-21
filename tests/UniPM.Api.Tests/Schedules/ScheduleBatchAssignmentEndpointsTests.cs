@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.DependencyInjection;
@@ -209,6 +210,67 @@ public sealed class ScheduleBatchAssignmentEndpointsTests
         Assert.Equal(
             unassignedScheduleStatus,
             await gsdApplication.GetScheduleStatusAsync(unassignedSchedule.Id));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Start_inspection_uses_schedule_state_changed_after_the_initial_read(bool completeDuringRead)
+    {
+        var databaseName = $"unipm-start-inspection-race-{Guid.NewGuid():N}";
+        var mutation = new ScheduleMutationOnMaterialization();
+        await using var gsdApplication = new TestApplicationFactory(AuthRoleCatalog.Gsd, databaseName, mutation);
+        using var gsdClient = gsdApplication.CreateClient();
+        var schedule = await CreateScheduleAsync(
+            gsdClient,
+            "CCMS",
+            "Main Building",
+            new DateTimeOffset(2026, 8, 1, 8, 0, 0, TimeSpan.FromHours(8)));
+        var originalStatus = await gsdApplication.GetScheduleStatusAsync(schedule.Id);
+        var reassignedInspectorId = completeDuringRead
+            ? TestAuthenticationHandler.UserId
+            : await gsdApplication.SeedUserAsync("replacement-inspector", AuthRoleCatalog.Inspector);
+        mutation.Configure(
+            schedule.Id,
+            current =>
+            {
+                if (completeDuringRead)
+                {
+                    current.Status = ScheduleStatusCatalog.Completed;
+                    current.CompletedAt = DateTimeOffset.UtcNow;
+                }
+                else
+                {
+                    current.AssignedToUserId = reassignedInspectorId;
+                }
+            },
+            gsdApplication.CreateDbContext);
+        await using var inspectorApplication = new TestApplicationFactory(
+            AuthRoleCatalog.Inspector,
+            databaseName,
+            mutation);
+        await inspectorApplication.SeedAuthenticatedUserAsync(AuthRoleCatalog.Inspector);
+        var inspectorId = TestAuthenticationHandler.UserId;
+        await gsdApplication.SetAssignmentsAsync([schedule.Id], inspectorId, null);
+        using var inspectorClient = inspectorApplication.CreateClient();
+        mutation.Arm();
+
+        var response = await inspectorClient.PostAsync(
+            $"/api/v1/schedules/{schedule.Id}/start-inspection",
+            content: null);
+
+        Assert.True(mutation.WasTriggered);
+        Assert.Equal(
+            completeDuringRead ? HttpStatusCode.Conflict : HttpStatusCode.Forbidden,
+            response.StatusCode);
+        Assert.Equal(
+            completeDuringRead ? ScheduleStatusCatalog.Completed : originalStatus,
+            await gsdApplication.GetScheduleStatusAsync(schedule.Id));
+        if (!completeDuringRead)
+        {
+            var assignment = (await gsdApplication.GetAssignmentsAsync())[schedule.Id];
+            Assert.Equal(reassignedInspectorId, assignment.WorkerId);
+        }
     }
 
     [Fact]
@@ -634,10 +696,22 @@ public sealed class ScheduleBatchAssignmentEndpointsTests
         return schedule;
     }
 
-    private sealed class TestApplicationFactory(string role, string? sharedDatabaseName = null) : WebApplicationFactory<Program>
+    private sealed class TestApplicationFactory : WebApplicationFactory<Program>
     {
         private static readonly ConcurrentDictionary<string, InMemoryDatabaseRoot> DatabaseRoots = new();
-        private readonly string databaseName = sharedDatabaseName ?? $"unipm-assignment-{Guid.NewGuid():N}";
+        private readonly string databaseName;
+        private readonly string role;
+        private readonly ScheduleMutationOnMaterialization? scheduleMutation;
+
+        public TestApplicationFactory(
+            string role,
+            string? sharedDatabaseName = null,
+            ScheduleMutationOnMaterialization? scheduleMutation = null)
+        {
+            this.role = role;
+            this.scheduleMutation = scheduleMutation;
+            databaseName = sharedDatabaseName ?? $"unipm-assignment-{Guid.NewGuid():N}";
+        }
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
@@ -649,9 +723,15 @@ public sealed class ScheduleBatchAssignmentEndpointsTests
                 services.RemoveAll<DbContextOptions<ApplicationDbContext>>();
                 services.RemoveAll<IDbContextOptionsConfiguration<ApplicationDbContext>>();
                 services.AddDbContextFactory<ApplicationDbContext>(options =>
+                {
                     options.UseInMemoryDatabase(
                         databaseName,
-                        DatabaseRoots.GetOrAdd(databaseName, _ => new InMemoryDatabaseRoot())));
+                        DatabaseRoots.GetOrAdd(databaseName, _ => new InMemoryDatabaseRoot()));
+                    if (scheduleMutation is not null)
+                    {
+                        options.AddInterceptors(scheduleMutation);
+                    }
+                });
                 services.RemoveAll<TimeProvider>();
                 services.AddSingleton<TimeProvider>(new FixedTimeProvider(
                     new DateTimeOffset(2026, 10, 9, 8, 0, 0, TimeSpan.FromHours(8))));
@@ -666,6 +746,12 @@ public sealed class ScheduleBatchAssignmentEndpointsTests
         public Task<Guid> SeedAuthenticatedUserAsync(string role)
         {
             return SeedUserAsync(TestAuthenticationHandler.UserId, "authenticated-supervisor", role);
+        }
+
+        public ApplicationDbContext CreateDbContext()
+        {
+            var factory = Services.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
+            return factory.CreateDbContext();
         }
 
         private async Task<Guid> SeedUserAsync(Guid id, string suffix, string role)
@@ -802,6 +888,45 @@ public sealed class ScheduleBatchAssignmentEndpointsTests
                 .Where(record => record.ScheduleId == scheduleId)
                 .Select(record => record.InspectorUserId)
                 .SingleAsync();
+        }
+    }
+
+    private sealed class ScheduleMutationOnMaterialization : IMaterializationInterceptor
+    {
+        private Guid scheduleId;
+        private Action<PreventiveMaintenanceSchedule>? mutation;
+        private Func<ApplicationDbContext>? contextFactory;
+        private int armed;
+
+        internal bool WasTriggered { get; private set; }
+
+        internal void Configure(
+            Guid targetScheduleId,
+            Action<PreventiveMaintenanceSchedule> update,
+            Func<ApplicationDbContext> createContext)
+        {
+            scheduleId = targetScheduleId;
+            mutation = update;
+            contextFactory = createContext;
+        }
+
+        internal void Arm() => Interlocked.Exchange(ref armed, 1);
+
+        public object InitializedInstance(MaterializationInterceptionData materializationData, object entity)
+        {
+            if (entity is not PreventiveMaintenanceSchedule schedule
+                || schedule.Id != scheduleId
+                || Interlocked.Exchange(ref armed, 0) != 1)
+            {
+                return entity;
+            }
+
+            using var context = contextFactory!();
+            var current = context.PreventiveMaintenanceSchedules.Single(candidate => candidate.Id == scheduleId);
+            mutation!(current);
+            context.SaveChanges();
+            WasTriggered = true;
+            return entity;
         }
     }
 
