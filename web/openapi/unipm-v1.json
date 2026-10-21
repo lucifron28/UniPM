@@ -6722,6 +6722,10 @@
         "properties": {
           "question": {
             "type": ["null", "string"]
+          },
+          "interpreter": {
+            "type": ["null", "string"],
+            "enum": ["DeepSeek", "DeterministicParser", null]
           }
         }
       },

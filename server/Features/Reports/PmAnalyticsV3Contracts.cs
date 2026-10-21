@@ -51,6 +51,13 @@ public enum PmAnalyticsV3SortDirection
     Descending
 }
 
+[JsonConverter(typeof(JsonStringEnumConverter<PmAnalyticsV3Interpreter>))]
+public enum PmAnalyticsV3Interpreter
+{
+    DeepSeek,
+    DeterministicParser
+}
+
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 public sealed record PmAnalyticsV3Period(
     [property: JsonRequired]
@@ -225,7 +232,8 @@ public sealed record PmAnalyticsV3ExecutionResponse(
 
 public sealed record PmAnalyticsV3InterpretRequest(
     [property: JsonRequired]
-    string? Question);
+    string? Question,
+    PmAnalyticsV3Interpreter? Interpreter = null);
 
 public sealed record PmAnalyticsV3InterpretationResponse(
     string Status,

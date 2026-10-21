@@ -337,7 +337,7 @@ internal static class PmAnalyticsV3Catalog
 
     internal static IReadOnlyList<string> ClarificationFields { get; } = Array.AsReadOnly(new[]
     {
-        "Categories", "Period", "Measures", "Mode", "GroupBy", "Presentation", "Department", "Building", "Location", "AssetCode", "AssetId", "Filters", "Thresholds", "Top", "Columns"
+        "Subject", "Categories", "Period", "Measures", "Mode", "GroupBy", "Presentation", "Department", "Building", "Location", "AssetCode", "AssetId", "Filters", "Thresholds", "Top", "Columns"
     });
 
     internal static bool IsSubject(string? id) =>
