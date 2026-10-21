@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { Badge } from '@/components/ui/badge'
@@ -13,10 +13,10 @@ import {
 import type { ScheduleSearch } from '@/features/schedules/schedule-registry'
 import {
   useScheduleAssignmentBatches,
+  useInfiniteScheduleSupervisorAssignmentOptions,
+  useInfiniteScheduleWorkerAssignmentOptions,
   useScheduleRegistry,
   useScheduleRegistryOptions,
-  useScheduleSupervisorAssignmentOptions,
-  useScheduleWorkerAssignmentOptions,
 } from '@/features/schedules/schedule-queries'
 import {
   formatPmCycle,
@@ -31,8 +31,6 @@ import { getListScheduleRegistryQueryKey } from '@/api/generated/endpoints'
 
 const BATCH_PAGE_SIZE = 10
 const DETAIL_PAGE_SIZE = 10
-const ASSIGNEE_PAGE_SIZE = 20
-
 type AssignmentRole = 'GSD' | 'Supervisor'
 type AssigneeOption = { id: string; displayName: string }
 
@@ -48,15 +46,21 @@ export function ScheduleOngoingWork({
   const currentYear = getCurrentManilaYear()
   const selectedYear = search.year ?? currentYear
   const page = search.page ?? 1
-  const [searchText, setSearchText] = useState(search.search ?? '')
   const [moreFiltersOpen, setMoreFiltersOpen] = useState(false)
-  const [openBatchKey, setOpenBatchKey] = useState<string | null>(null)
+  const [openBatchSelection, setOpenBatchSelection] = useState<{
+    batchKey: string
+    routeKey: string
+  } | null>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const openerRef = useRef<HTMLButtonElement | null>(null)
+  const searchDebounceRef = useRef<number | null>(null)
   const currentRouteState = useRef({ search, onSearchChange })
-  const closeBatchRef = useRef<() => void>(() => {})
   const queryClient = useQueryClient()
-  currentRouteState.current = { search, onSearchChange }
+  const routeKey = JSON.stringify(search)
+  const openBatchKey =
+    openBatchSelection?.routeKey === routeKey
+      ? openBatchSelection.batchKey
+      : null
   const options = useScheduleRegistryOptions()
   const categories = useMemo(
     () => options.data?.categories ?? [],
@@ -123,8 +127,23 @@ export function ScheduleOngoingWork({
   )
 
   useEffect(() => {
-    setSearchText(search.search ?? '')
+    currentRouteState.current = { search, onSearchChange }
+  }, [onSearchChange, search])
+
+  useEffect(() => {
+    if (searchInputRef.current) {
+      searchInputRef.current.value = search.search ?? ''
+    }
   }, [search.search])
+
+  useEffect(
+    () => () => {
+      if (searchDebounceRef.current !== null) {
+        window.clearTimeout(searchDebounceRef.current)
+      }
+    },
+    [],
+  )
 
   useEffect(() => {
     if (!search.pmCycle || options.isPending || options.isError) return
@@ -153,38 +172,26 @@ export function ScheduleOngoingWork({
     selectedYear,
   ])
 
-  useEffect(() => {
-    const timeout = window.setTimeout(() => {
-      const normalized = searchText.trim()
-      const current = currentRouteState.current
-      if (normalized !== (current.search.search ?? '')) {
-        current.onSearchChange({
-          ...current.search,
-          search: normalized || undefined,
-          page: undefined,
-          view: 'tracking',
-        })
-      }
-    }, 250)
-    return () => window.clearTimeout(timeout)
-  }, [searchText])
+  const closeBatch = useCallback(() => {
+    setOpenBatchSelection(null)
+    requestAnimationFrame(() => {
+      if (openerRef.current?.isConnected) openerRef.current.focus()
+      else searchInputRef.current?.focus()
+      openerRef.current = null
+    })
+  }, [setOpenBatchSelection])
 
   useEffect(() => {
     if (!openBatch) return
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') closeBatchRef.current()
+      if (event.key === 'Escape') closeBatch()
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [openBatch])
-
-  useEffect(() => {
-    if (!openBatchKey || batchesUnavailable || openBatch) return
-    setOpenBatchKey(null)
-    requestAnimationFrame(() => searchInputRef.current?.focus())
-  }, [batchesUnavailable, openBatch, openBatchKey])
+  }, [closeBatch, openBatch])
 
   const updateFilters = (patch: Partial<ScheduleSearch>) => {
+    setOpenBatchSelection(null)
     onSearchChange({
       ...search,
       ...patch,
@@ -194,18 +201,13 @@ export function ScheduleOngoingWork({
     })
   }
 
-  function closeBatch() {
-    setOpenBatchKey(null)
-    requestAnimationFrame(() => {
-      if (openerRef.current?.isConnected) openerRef.current.focus()
-      else searchInputRef.current?.focus()
-      openerRef.current = null
-    })
-  }
-  closeBatchRef.current = closeBatch
-
   const clearFilters = () => {
-    setSearchText('')
+    if (searchDebounceRef.current !== null) {
+      window.clearTimeout(searchDebounceRef.current)
+      searchDebounceRef.current = null
+    }
+    if (searchInputRef.current) searchInputRef.current.value = ''
+    setOpenBatchSelection(null)
     onSearchChange({ year: currentYear, view: 'tracking' })
   }
 
@@ -414,9 +416,26 @@ export function ScheduleOngoingWork({
           <Input
             ref={searchInputRef}
             type="search"
-            value={searchText}
+            defaultValue={search.search ?? ''}
             placeholder="Department, building, asset code, inspector, supervisor, or PM cycle"
-            onChange={(event) => setSearchText(event.target.value)}
+            onChange={(event) => {
+              const value = event.currentTarget.value
+              if (searchDebounceRef.current !== null) {
+                window.clearTimeout(searchDebounceRef.current)
+              }
+              searchDebounceRef.current = window.setTimeout(() => {
+                const current = currentRouteState.current
+                const normalized = value.trim()
+                if (normalized === (current.search.search ?? '')) return
+                setOpenBatchSelection(null)
+                current.onSearchChange({
+                  ...current.search,
+                  search: normalized || undefined,
+                  page: undefined,
+                  view: 'tracking',
+                })
+              }, 250)
+            }}
           />
         </label>
         <div className="grid items-end gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -810,7 +829,10 @@ export function ScheduleOngoingWork({
                         disabled={batchesUnavailable}
                         onClick={(event) => {
                           openerRef.current = event.currentTarget
-                          setOpenBatchKey(batch.batchKey)
+                          setOpenBatchSelection({
+                            batchKey: batch.batchKey,
+                            routeKey,
+                          })
                         }}
                       >
                         View progress
@@ -871,7 +893,10 @@ export function ScheduleOngoingWork({
                   disabled={batchesUnavailable}
                   onClick={(event) => {
                     openerRef.current = event.currentTarget
-                    setOpenBatchKey(batch.batchKey)
+                    setOpenBatchSelection({
+                      batchKey: batch.batchKey,
+                      routeKey,
+                    })
                   }}
                 >
                   View progress
@@ -917,59 +942,36 @@ function usePagedAssigneeOptions(
   selectedId?: string,
 ) {
   const [term, setTerm] = useState('')
-  const [page, setPage] = useState(1)
-  const [items, setItems] = useState<AssigneeOption[]>([])
-  const inspectorQuery = useScheduleWorkerAssignmentOptions(
+  const inspectorQuery = useInfiniteScheduleWorkerAssignmentOptions(
     enabled && role === 'Inspector',
     term,
     selectedId,
-    page,
   )
-  const supervisorQuery = useScheduleSupervisorAssignmentOptions(
+  const supervisorQuery = useInfiniteScheduleSupervisorAssignmentOptions(
     enabled && role === 'Supervisor',
     term,
     selectedId,
-    page,
   )
   const query = role === 'Supervisor' ? supervisorQuery : inspectorQuery
-  const data = query.data
-  const pageItems: AssigneeOption[] = data
-    ? 'supervisors' in data
-      ? data.supervisors
-      : data.workers
-    : []
-  const totalCount = data ? Number(data.totalCount) : 0
-  const selected = data?.selected ?? undefined
-
-  useEffect(() => {
-    if (!data) return
-    setItems((current) =>
-      page === 1
-        ? pageItems
-        : [
-            ...current,
-            ...pageItems.filter(
-              (option) => !current.some((item) => item.id === option.id),
-            ),
-          ],
-    )
-  }, [data, page, pageItems])
+  const pages = query.data?.pages ?? []
+  const items: AssigneeOption[] = pages.flatMap((page) =>
+    'supervisors' in page ? page.supervisors : page.workers,
+  )
+  const selected = pages[0]?.selected ?? undefined
 
   const search = (value: string) => {
     setTerm(value)
-    setPage(1)
-    setItems([])
   }
 
   return {
     items,
     selected,
     loading: query.isPending,
-    loadingMore: query.isFetching && page > 1,
+    loadingMore: query.isFetchingNextPage,
     error: query.isError,
-    hasMore: page * ASSIGNEE_PAGE_SIZE < totalCount,
+    hasMore: query.hasNextPage ?? false,
     retry: () => void query.refetch(),
-    loadMore: () => setPage((current) => current + 1),
+    loadMore: () => void query.fetchNextPage(),
     search,
   }
 }
