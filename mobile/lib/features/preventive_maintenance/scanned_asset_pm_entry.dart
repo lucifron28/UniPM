@@ -201,7 +201,9 @@ class _ScannedAssetPmEntryState extends State<ScannedAssetPmEntry> {
     if (schedule.isEligibleForFieldWork &&
         startRepository is ScheduleInspectionStartRepository) {
       try {
-        progressRecorded = await startRepository.startInspection(schedule.id);
+        progressRecorded =
+            await (startRepository as ScheduleInspectionStartRepository)
+                .startInspection(schedule.id);
       } on ApiException catch (error) {
         if (error.statusCode == null || error.statusCode! >= 500) {
           progressRecorded = false;
@@ -216,6 +218,7 @@ class _ScannedAssetPmEntryState extends State<ScannedAssetPmEntry> {
       }
     }
 
+    if (!mounted) return;
     controller.selectForm(form);
     setState(() => isOpening = false);
     if (progressRecorded == false) {
