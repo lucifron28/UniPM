@@ -277,7 +277,7 @@ export function ScheduleAssignmentQueue({
       </div>
 
       <Card className="content-card space-y-3 p-4">
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        <div className="grid items-start gap-3 sm:grid-cols-2 xl:grid-cols-5">
           <label className="grid gap-1 text-sm font-medium text-[var(--text-primary)]">
             Year
             <select
