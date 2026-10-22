@@ -1268,17 +1268,22 @@ describe('PM analytics V3 workflow', () => {
       await screen.findByRole('heading', { name: 'Clarify the report scope' }),
     ).toBeInTheDocument()
     expect(
-      screen.getByText('Choose a ranking measure and group limit.'),
+      screen.getByText(
+        'UniPM did not return a safe partial plan, so there is no report scope to preview. Edit the question to make the missing scope clear, or try interpretation again.',
+      ),
     ).toBeInTheDocument()
     expect(
-      screen.getByText(/UniPM did not return a safe partial plan/),
+      screen.getByRole('button', { name: 'Edit question' }),
     ).toBeInTheDocument()
+    expect(
+      screen.queryByText('Choose a ranking measure and group limit.'),
+    ).not.toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: 'Preview report' }),
     ).not.toBeInTheDocument()
   })
 
-  it('guides clarification with choice chips for Period and Measures, updating locally without interpretation until complete', async () => {
+  it('guides clarification one question at a time and preserves answers when navigating back or changing them', async () => {
     const partialPlan = makePlan({
       categories: ['fire-extinguisher'],
       measures: ['progressPercent'],
@@ -1330,31 +1335,66 @@ describe('PM analytics V3 workflow', () => {
       await screen.findByRole('heading', { name: 'Clarify the report scope' }),
     ).toBeInTheDocument()
 
-    const periodChip = screen.getByRole('button', { name: '2026' })
     const completedLateChip = screen.getByRole('button', {
       name: 'Completed late',
     })
-    const overdueMissedChip = screen.getByRole('button', {
-      name: 'Overdue missed',
-    })
-
-    expect(periodChip).toBeInTheDocument()
+    expect(screen.getByText('Question 1 of 2')).toBeInTheDocument()
+    expect(
+      screen.getByText('What should the report measure?'),
+    ).toBeInTheDocument()
     expect(completedLateChip).toBeInTheDocument()
-    expect(overdueMissedChip).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Overdue and unfinished' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByText('Which scheduled PM period should be included?'),
+    ).not.toBeInTheDocument()
 
-    const previewButton = screen.getByRole('button', { name: 'Preview report' })
-    expect(previewButton).toBeDisabled()
-
-    // Clicking Period chip updates plan locally without calling interpretPmAnalyticsV3Question
-    fireEvent.click(periodChip)
-    expect(api.interpret).toHaveBeenCalledTimes(1)
-    expect(previewButton).toBeDisabled()
-
-    // Clicking Measure chip updates plan locally without calling interpretPmAnalyticsV3Question
+    // Answer the measure question locally. The period is the next step.
     fireEvent.click(completedLateChip)
+    expect(
+      await screen.findByText('Which scheduled PM period should be included?'),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Question 2 of 2')).toBeInTheDocument()
+    expect(
+      screen.queryByText('What should the report measure?'),
+    ).not.toBeInTheDocument()
+    expect(api.interpret).toHaveBeenCalledTimes(1)
+    expect(screen.getByRole('button', { name: '2026' })).toBeInTheDocument()
+
+    // Back returns to the measure question and keeps its chosen value.
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }))
+    expect(screen.getByText('Question 1 of 2')).toBeInTheDocument()
+    const preservedMeasureChip = screen.getByRole('button', {
+      name: 'Completed late',
+    })
+    expect(preservedMeasureChip).toHaveAttribute('aria-pressed', 'true')
     expect(api.interpret).toHaveBeenCalledTimes(1)
 
-    // All required fields answered -> preview button enabled
+    // Reconfirm the measure and complete the period question.
+    fireEvent.click(preservedMeasureChip)
+    const periodChip = await screen.findByRole('button', { name: '2026' })
+    fireEvent.click(periodChip)
+    expect(await screen.findByText('Review scope')).toBeInTheDocument()
+
+    // Change navigates to an answered step without losing either value.
+    fireEvent.click(screen.getByRole('button', { name: 'Change measure' }))
+    expect(screen.getByText('Question 1 of 2')).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Completed late' }),
+    ).toHaveAttribute('aria-pressed', 'true')
+    fireEvent.click(screen.getByRole('button', { name: 'Completed late' }))
+    expect(await screen.findByText('Review scope')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Change period' }))
+    expect(screen.getByText('Question 2 of 2')).toBeInTheDocument()
+    const preservedPeriodChip = screen.getByRole('button', { name: '2026' })
+    expect(preservedPeriodChip).toHaveAttribute('aria-pressed', 'true')
+    expect(api.interpret).toHaveBeenCalledTimes(1)
+
+    // Returning to Review scope is also local; no second interpretation runs.
+    fireEvent.click(preservedPeriodChip)
+    expect(await screen.findByText('Review scope')).toBeInTheDocument()
+    const previewButton = screen.getByRole('button', { name: 'Preview report' })
     expect(previewButton).toBeEnabled()
 
     api.preview.mockResolvedValueOnce(makePreview())
@@ -1382,6 +1422,7 @@ describe('PM analytics V3 workflow', () => {
     expect(
       await screen.findByRole('heading', { name: 'Report preview' }),
     ).toBeInTheDocument()
+    expect(api.interpret).toHaveBeenCalledTimes(1)
     expect(
       screen.getByText(
         /Using Completed late removed threshold for Progress, ranking by Progress, sorting by Progress/,
@@ -1389,7 +1430,7 @@ describe('PM analytics V3 workflow', () => {
     ).toBeVisible()
   })
 
-  it('only shows quick measure choices present in the selected subject catalog', async () => {
+  it('does not show PM-specific measure or period choices for asset inventory', async () => {
     const partialInventoryPlan = makePlan({
       subject: 'assetInventory',
       period: null,
@@ -1422,16 +1463,44 @@ describe('PM analytics V3 workflow', () => {
     )
     fireEvent.click(screen.getByRole('button', { name: 'Generate report' }))
 
+    expect(
+      await screen.findByRole('heading', { name: 'Clarify the report scope' }),
+    ).toBeInTheDocument()
+    await waitFor(() => {
+      expect(
+        api.catalog.mock.calls.some(
+          ([params]) =>
+            (params as { subject?: string } | undefined)?.subject ===
+            'assetInventory',
+        ),
+      ).toBe(true)
+      expect(
+        screen.getByRole('button', { name: 'More report options' }),
+      ).toBeEnabled()
+    })
+    const measureOptionsButton = screen.getByRole('button', {
+      name: 'More report options',
+    })
+    fireEvent.click(measureOptionsButton)
+    expect(measureOptionsButton).toHaveAttribute('aria-expanded', 'true')
     expect(await screen.findByText('Registered assets')).toBeInTheDocument()
-    expect(screen.queryByText('Quick choices:')).not.toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: 'Completed late' }),
     ).not.toBeInTheDocument()
     expect(
-      screen.queryByRole('button', { name: 'Overdue missed' }),
+      screen.queryByRole('button', { name: 'Overdue and unfinished' }),
     ).not.toBeInTheDocument()
     expect(
-      screen.queryByText(/Missed counts past-due cycles/),
+      screen.queryByRole('button', { name: 'Completion progress' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByText(/Overdue work is unfinished past its due date/),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByText('Which scheduled PM period should be included?'),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: '2026' }),
     ).not.toBeInTheDocument()
   })
 
