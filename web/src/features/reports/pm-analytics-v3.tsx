@@ -78,6 +78,14 @@ type ExecutionResponse = PmAnalyticsV3ExecutionResponse
 type Interpretation = PmAnalyticsV3InterpretationResponse
 type FilterValues = PmAnalyticsV3FilterValuesResponse
 type AnalyticsStage = 'question' | 'plan' | 'preview' | 'results'
+type ClarificationChoices = {
+  scopeRecovered: boolean
+  requiredFields: string[]
+  answeredFields: string[]
+  periodKindChosen: boolean
+  periodBasis: 'pmCycle' | 'inspectionDate' | null
+  filterTarget: string | 'none' | null
+}
 
 type AnalyticsViewSnapshot = {
   catalog: Catalog | null
@@ -86,6 +94,7 @@ type AnalyticsViewSnapshot = {
   question: string
   submittedQuestion: string
   interpretation: Interpretation | null
+  clarificationChoices: ClarificationChoices
   preview: PreviewResponse | null
   response: ExecutionResponse | null
   stage: AnalyticsStage
@@ -296,20 +305,7 @@ function createMeasureSourcePlan(
   }
 }
 
-function manilaParts() {
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'Asia/Manila',
-    year: 'numeric',
-    month: 'numeric',
-  }).formatToParts(new Date())
-  return {
-    year: Number(parts.find((part) => part.type === 'year')?.value),
-    month: Number(parts.find((part) => part.type === 'month')?.value),
-  }
-}
-
 function initialPlan(): ReportPlan {
-  const { year } = manilaParts()
   return {
     schemaVersion: 3,
     catalogVersion: 2,
@@ -318,7 +314,7 @@ function initialPlan(): ReportPlan {
     period: {
       basis: 'pmCycle',
       kind: 'Year',
-      year,
+      year: null,
       month: null,
       quarter: null,
       startCycle: null,
@@ -334,6 +330,29 @@ function initialPlan(): ReportPlan {
     top: null,
     presentation: 'Summary',
     columns: [],
+  }
+}
+
+function emptyPeriod(): Period {
+  return {
+    basis: 'pmCycle',
+    kind: 'Year',
+    year: null,
+    month: null,
+    quarter: null,
+    startCycle: null,
+    endCycle: null,
+  }
+}
+
+function emptyClarificationChoices(): ClarificationChoices {
+  return {
+    scopeRecovered: false,
+    requiredFields: [],
+    answeredFields: [],
+    periodKindChosen: false,
+    periodBasis: null,
+    filterTarget: null,
   }
 }
 
@@ -355,7 +374,7 @@ function normalizeCatalog(value: PmAnalyticsV3CatalogResponse): Catalog {
 }
 
 function normalizePlan(value: PmAnalyticsV3ReportPlan): ReportPlan {
-  const period = value.period ?? initialPlan().period
+  const period = value.period ?? emptyPeriod()
   return {
     ...value,
     schemaVersion: Number(value.schemaVersion),
@@ -475,18 +494,19 @@ function getErrorMessage(error: unknown) {
   return 'The request could not be completed. Please try again.'
 }
 
+function interpretationSourceLabel(interpreter: string) {
+  if (interpreter === 'DeepSeek') return 'Interpreted by DeepSeek'
+  if (interpreter === 'DeterministicParser')
+    return 'Interpreted by the deterministic parser'
+  if (interpreter === 'ApprovedInterpretation')
+    return 'Matched an approved interpretation'
+  return 'Handled by UniPM safety rules'
+}
+
 function getProblemCode(error: unknown) {
   if (!(error instanceof ApiError)) return null
   const code = error.problem?.extensions?.code
   return typeof code === 'string' ? code : null
-}
-
-function withScheduledCycleWording(question: string) {
-  return question.replace(
-    /\b(?:inspected|inspection|inspections)(?:\s+date)?\s+(?:in|during|on)\s+(january|jan|february|feb|march|mar|april|apr|may|june|jun|july|jul|august|aug|september|sept|sep|october|oct|november|nov|december|dec)\.?\s*,?\s*(\d{4})\b/i,
-    (_match, month: string, year: string) =>
-      `for the ${month} ${year} PM cycle`,
-  )
 }
 
 function formatLabel(value: string | null | undefined, catalog?: Catalog) {
@@ -834,6 +854,11 @@ export function PmAnalyticsV3Panel({
   const [interpretation, setInterpretation] = useState<Interpretation | null>(
     () => restoredSnapshot?.interpretation ?? null,
   )
+  const [clarificationChoices, setClarificationChoices] =
+    useState<ClarificationChoices>(
+      () =>
+        restoredSnapshot?.clarificationChoices ?? emptyClarificationChoices(),
+    )
   const [preview, setPreview] = useState<PreviewResponse | null>(
     () => restoredSnapshot?.preview ?? null,
   )
@@ -874,6 +899,7 @@ export function PmAnalyticsV3Panel({
     question,
     submittedQuestion,
     interpretation,
+    clarificationChoices,
     preview,
     response,
     stage,
@@ -895,6 +921,9 @@ export function PmAnalyticsV3Panel({
     setQuestion(snapshot.question)
     setSubmittedQuestion(snapshot.submittedQuestion)
     setInterpretation(snapshot.interpretation)
+    setClarificationChoices(
+      snapshot.clarificationChoices ?? emptyClarificationChoices(),
+    )
     setPreview(snapshot.preview)
     setResponse(snapshot.response)
     setStage(snapshot.stage)
@@ -1029,6 +1058,38 @@ export function PmAnalyticsV3Panel({
     setDrilldownNotice(null)
   }
 
+  const clearClarificationResults = () => {
+    cancelPending()
+    setPreview(null)
+    setResponse(null)
+    setError(null)
+    setInterpretationFailureCode(null)
+    setDrilldownNotice(null)
+  }
+
+  const updateClarificationPlan = (next: ReportPlan) => {
+    clearClarificationResults()
+    setPlan(next)
+  }
+
+  const answerClarification = (field: string) => {
+    clearClarificationResults()
+    setClarificationChoices((current) => ({
+      ...current,
+      answeredFields: current.answeredFields.includes(field)
+        ? current.answeredFields
+        : [...current.answeredFields, field],
+    }))
+  }
+
+  const reopenClarification = (field: string) => {
+    clearClarificationResults()
+    setClarificationChoices((current) => ({
+      ...current,
+      answeredFields: current.answeredFields.filter((item) => item !== field),
+    }))
+  }
+
   const startNewQuestion = () => {
     cancelPending()
     analyticsReturnSnapshots.delete(analyticsSessionId)
@@ -1036,6 +1097,7 @@ export function PmAnalyticsV3Panel({
     setSubmittedQuestion('')
     setPlan(initialPlan())
     setInterpretation(null)
+    setClarificationChoices(emptyClarificationChoices())
     setPreview(null)
     setResponse(null)
     setError(null)
@@ -1122,15 +1184,25 @@ export function PmAnalyticsV3Panel({
       )
       if (!request.isCurrent()) return
       setInterpretation(result)
+      setSubmittedQuestion(cleanQuestion)
+      setPreview(null)
+      setResponse(null)
+      setParentReport(null)
+      setIsEditingQuestion(false)
+      setEditingSnapshot(null)
+      setManualEditorOpen(false)
       if (result.status === 'Valid' && result.plan) {
         const nextPlan = normalizePlan(result.plan)
         setPlan(nextPlan)
-        setSubmittedQuestion(cleanQuestion)
-        setPreview(null)
-        setResponse(null)
-        setParentReport(null)
-        setIsEditingQuestion(false)
-        setEditingSnapshot(null)
+        setClarificationChoices({
+          scopeRecovered: true,
+          requiredFields: [],
+          answeredFields: [],
+          periodKindChosen: result.plan.period !== null,
+          periodBasis:
+            result.plan.period?.basis === 'pmCycle' ? 'pmCycle' : null,
+          filterTarget: null,
+        })
         setStage('plan')
         if (nextPlan.subject !== selectedSubject) {
           setSelectedSubject(nextPlan.subject)
@@ -1138,8 +1210,58 @@ export function PmAnalyticsV3Panel({
           setCatalogLoading(true)
           setCatalogError(null)
         }
+      } else if (result.status === 'NeedsClarification') {
+        setStage('question')
+        if (result.plan) {
+          const partialPlan = normalizePlan(result.plan)
+          const hasBasisClarification =
+            result.code === 'PeriodBasisNeedsClarification' ||
+            result.clarificationFields.includes('PeriodBasis')
+          setPlan(partialPlan)
+          setClarificationChoices({
+            scopeRecovered: true,
+            requiredFields: [
+              ...new Set([
+                ...result.clarificationFields,
+                ...(partialPlan.categories.length === 0 ? ['Categories'] : []),
+                ...(partialPlan.mode === 'Aggregate' &&
+                partialPlan.measures.length === 0
+                  ? ['Measures']
+                  : []),
+              ]),
+            ],
+            answeredFields: [],
+            periodKindChosen: result.plan.period !== null,
+            periodBasis:
+              !hasBasisClarification && result.plan.period?.basis === 'pmCycle'
+                ? 'pmCycle'
+                : null,
+            filterTarget: null,
+          })
+          if (partialPlan.subject !== selectedSubject) {
+            setSelectedSubject(partialPlan.subject)
+            setCatalog(null)
+            setCatalogLoading(true)
+            setCatalogError(null)
+          }
+        } else {
+          setPlan({
+            ...initialPlan(),
+            period: {
+              basis: 'pmCycle',
+              kind: 'Year',
+              year: null,
+              month: null,
+              quarter: null,
+              startCycle: null,
+              endCycle: null,
+            },
+          })
+          setClarificationChoices(emptyClarificationChoices())
+        }
       } else {
         setStage('question')
+        setClarificationChoices(emptyClarificationChoices())
       }
     } catch (requestError) {
       if (request.isCurrent()) {
@@ -1226,17 +1348,14 @@ export function PmAnalyticsV3Panel({
   }
 
   const setPeriodKind = (kind: PeriodKind) => {
-    const { year, month } = manilaParts()
     const nextPeriod: Period = {
       basis: 'pmCycle',
       kind,
-      year: kind === 'Range' ? null : (plan.period.year ?? year),
-      month: kind === 'Month' ? (plan.period.month ?? month) : null,
-      quarter: kind === 'Quarter' ? (plan.period.quarter ?? 1) : null,
-      startCycle:
-        kind === 'Range' ? (plan.period.startCycle ?? `${year}-01`) : null,
-      endCycle:
-        kind === 'Range' ? (plan.period.endCycle ?? `${year}-12`) : null,
+      year: kind === 'Range' ? null : plan.period.year,
+      month: null,
+      quarter: null,
+      startCycle: kind === 'Range' ? plan.period.startCycle : null,
+      endCycle: kind === 'Range' ? plan.period.endCycle : null,
     }
     updatePlan({ ...plan, period: nextPeriod })
   }
@@ -1257,6 +1376,149 @@ export function PmAnalyticsV3Panel({
       })
     }
     updatePlan({ ...plan, baseFilters: existing })
+  }
+
+  const updateClarificationFilterValues = (
+    field: string,
+    values: string[],
+    isNull: boolean,
+  ) => {
+    const existing = plan.baseFilters.filter((filter) => filter.field !== field)
+    if (isNull) {
+      existing.push({ field, operator: 'IsNull', values: [] })
+    } else if (values.length > 0) {
+      existing.push({
+        field,
+        operator: values.length > 1 ? 'In' : 'Equal',
+        values,
+      })
+    }
+    updateClarificationPlan({ ...plan, baseFilters: existing })
+  }
+
+  const chooseClarificationSubject = (subjectId: string) => {
+    if (plan.subject === subjectId) {
+      answerClarification('Subject')
+      return
+    }
+
+    const nextPlan: ReportPlan = {
+      ...initialPlan(),
+      subject: subjectId,
+      schemaVersion: catalog?.schemaVersion ?? plan.schemaVersion,
+      catalogVersion: catalog?.catalogVersion ?? plan.catalogVersion,
+      period: emptyPeriod(),
+    }
+    updateClarificationPlan(nextPlan)
+    setClarificationChoices({
+      scopeRecovered: true,
+      requiredFields: [
+        'Mode',
+        'Categories',
+        'Measures',
+        'Period',
+        'PeriodBasis',
+      ],
+      answeredFields: ['Subject'],
+      periodKindChosen: false,
+      periodBasis: null,
+      filterTarget: null,
+    })
+    setSelectedSubject(subjectId)
+    setCatalog(null)
+    setCatalogLoading(true)
+    setCatalogError(null)
+  }
+
+  const chooseClarificationMode = (mode: Mode) => {
+    if (mode === plan.mode) {
+      answerClarification('Mode')
+      return
+    }
+    const next: ReportPlan =
+      mode === 'Records'
+        ? {
+            ...plan,
+            mode,
+            measures: [],
+            groupBy: [],
+            aggregateFilters: [],
+            orderBy: [],
+            top: null,
+            presentation: 'Table',
+            columns:
+              plan.subject === 'assetInventory'
+                ? recordColumns.map((column) => column.id)
+                : defaultRecordColumns,
+          }
+        : {
+            ...plan,
+            mode,
+            measures: [],
+            groupBy: [],
+            aggregateFilters: [],
+            orderBy: [],
+            top: null,
+            presentation: 'Summary',
+            columns: [],
+          }
+    updateClarificationPlan(next)
+    answerClarification('Mode')
+  }
+
+  const chooseClarificationPeriodKind = (kind: PeriodKind) => {
+    const nextPeriod: Period = {
+      basis: 'pmCycle',
+      kind,
+      year: kind === 'Range' ? null : plan.period.year,
+      month: null,
+      quarter: null,
+      startCycle: kind === 'Range' ? plan.period.startCycle : null,
+      endCycle: kind === 'Range' ? plan.period.endCycle : null,
+    }
+    updateClarificationPlan({ ...plan, period: nextPeriod })
+    setClarificationChoices((current) => ({
+      ...current,
+      periodKindChosen: true,
+      answeredFields: isPeriodReady(nextPeriod)
+        ? [...new Set([...current.answeredFields, 'Period'])]
+        : current.answeredFields.filter((field) => field !== 'Period'),
+    }))
+  }
+
+  const updateClarificationPeriod = (period: Period) => {
+    updateClarificationPlan({ ...plan, period })
+    setClarificationChoices((current) => ({
+      ...current,
+      answeredFields: isPeriodReady(period)
+        ? [...new Set([...current.answeredFields, 'Period'])]
+        : current.answeredFields.filter((field) => field !== 'Period'),
+    }))
+  }
+
+  const chooseClarificationPeriodBasis = (
+    periodBasis: 'pmCycle' | 'inspectionDate',
+  ) => {
+    clearClarificationResults()
+    setClarificationChoices((current) => ({
+      ...current,
+      periodBasis,
+      answeredFields: current.answeredFields.includes('PeriodBasis')
+        ? current.answeredFields
+        : [...current.answeredFields, 'PeriodBasis'],
+    }))
+  }
+
+  const chooseClarificationFilterTarget = (filterTarget: string | 'none') => {
+    clearClarificationResults()
+    setClarificationChoices((current) => ({
+      ...current,
+      filterTarget,
+      answeredFields:
+        filterTarget === 'none'
+          ? [...new Set([...current.answeredFields, 'Filters'])]
+          : current.answeredFields.filter((field) => field !== 'Filters'),
+    }))
   }
 
   const toggleMeasure = (measure: string) => {
@@ -1386,6 +1648,108 @@ export function PmAnalyticsV3Panel({
     })
   }
 
+  const clarificationInterpretation =
+    interpretation?.status === 'NeedsClarification' ? interpretation : null
+  const isClarification = clarificationInterpretation !== null
+  const canGuideClarification =
+    clarificationInterpretation !== null &&
+    clarificationInterpretation.plan !== null &&
+    clarificationChoices.scopeRecovered
+  const clarificationFieldSet = new Set(
+    clarificationInterpretation?.clarificationFields ?? [],
+  )
+  const clarificationRequiredFieldSet = new Set(
+    clarificationChoices.requiredFields,
+  )
+  const clarificationWasAnswered = (field: string) =>
+    clarificationChoices.answeredFields.includes(field)
+  const needsSubjectAnswer =
+    canGuideClarification &&
+    clarificationFieldSet.has('Subject') &&
+    !clarificationWasAnswered('Subject')
+  const needsCategoriesAnswer =
+    canGuideClarification &&
+    clarificationRequiredFieldSet.has('Categories') &&
+    !clarificationWasAnswered('Categories')
+  const needsMeasuresAnswer =
+    canGuideClarification &&
+    plan.mode === 'Aggregate' &&
+    clarificationRequiredFieldSet.has('Measures') &&
+    !clarificationWasAnswered('Measures')
+  const needsModeAnswer =
+    canGuideClarification &&
+    clarificationFieldSet.has('Mode') &&
+    !clarificationWasAnswered('Mode')
+  const needsGroupingAnswer =
+    canGuideClarification &&
+    clarificationFieldSet.has('GroupBy') &&
+    !clarificationWasAnswered('GroupBy')
+  const periodBasisWasRequested =
+    clarificationFieldSet.has('PeriodBasis') ||
+    clarificationInterpretation?.code === 'PeriodBasisNeedsClarification'
+  const needsPeriodBasisAnswer =
+    canGuideClarification &&
+    subject?.requiresPeriod === true &&
+    (clarificationChoices.periodBasis !== 'pmCycle' ||
+      (periodBasisWasRequested && !clarificationWasAnswered('PeriodBasis')))
+  const needsPeriodAnswer =
+    canGuideClarification &&
+    subject?.requiresPeriod === true &&
+    (!clarificationChoices.periodKindChosen ||
+      !isPeriodReady(plan.period) ||
+      (clarificationFieldSet.has('Period') &&
+        !clarificationWasAnswered('Period')))
+  const needsGenericFilterAnswer =
+    canGuideClarification &&
+    clarificationFieldSet.has('Filters') &&
+    !clarificationWasAnswered('Filters')
+  const requestedNamedFilterFields = [
+    'Department',
+    'Building',
+    'Location',
+  ].filter((field) => clarificationFieldSet.has(field))
+  const findBaseFilterForClarification = (name: string) =>
+    baseFilterFields.find((field) =>
+      `${field.id} ${field.label}`.toLowerCase().includes(name.toLowerCase()),
+    )
+  const missingNamedFilterDefinitions = requestedNamedFilterFields.filter(
+    (field) => !findBaseFilterForClarification(field),
+  )
+  const needsNamedFilterAnswers = requestedNamedFilterFields.filter(
+    (field) => !clarificationWasAnswered(field),
+  )
+  const supportedClarificationFields = new Set([
+    'Subject',
+    'Categories',
+    'Measures',
+    'Period',
+    'PeriodBasis',
+    'Mode',
+    'GroupBy',
+    'Filters',
+    'Department',
+    'Building',
+    'Location',
+  ])
+  const unresolvedUnsupportedClarificationFields = clarificationInterpretation
+    ? clarificationInterpretation.clarificationFields.filter(
+        (field) =>
+          !supportedClarificationFields.has(field) ||
+          missingNamedFilterDefinitions.includes(field),
+      )
+    : []
+  const guidedClarificationReady =
+    canGuideClarification &&
+    !needsSubjectAnswer &&
+    !needsCategoriesAnswer &&
+    !needsMeasuresAnswer &&
+    !needsModeAnswer &&
+    !needsGroupingAnswer &&
+    !needsPeriodBasisAnswer &&
+    !needsPeriodAnswer &&
+    !needsGenericFilterAnswer &&
+    needsNamedFilterAnswers.length === 0 &&
+    unresolvedUnsupportedClarificationFields.length === 0
   const planReady =
     catalog !== null &&
     catalog.subject === selectedSubject &&
@@ -1398,8 +1762,14 @@ export function PmAnalyticsV3Panel({
     plan.columns.length > 0 &&
     (plan.mode === 'Records' ||
       plan.columns.some((column) => plan.measures.includes(column))) &&
-    (!subject?.requiresPeriod || isPeriodReady(plan.period)) &&
-    (interpretation === null || interpretation.status === 'Valid') &&
+    (!subject?.requiresPeriod ||
+      (isPeriodReady(plan.period) &&
+        (isClarification
+          ? clarificationChoices.periodBasis === 'pmCycle'
+          : plan.period.basis === 'pmCycle'))) &&
+    (interpretation === null ||
+      interpretation.status === 'Valid' ||
+      (isClarification && guidedClarificationReady)) &&
     plan.aggregateFilters.every((filter) => {
       const measure = measures.find((item) => item.id === filter.measure)
       return (
@@ -1444,7 +1814,7 @@ export function PmAnalyticsV3Panel({
     : null
 
   const interpretationSummary = [
-    { label: 'Question', value: question },
+    { label: 'Question', value: submittedQuestion || question },
     { label: 'Report type', value: subject?.label ?? 'Report' },
     ...(subject?.requiresPeriod
       ? [{ label: 'Period', value: planPeriodDescription(plan.period) }]
@@ -1490,7 +1860,15 @@ export function PmAnalyticsV3Panel({
         ]
       : []),
   ]
-  const showQuestionForm = stage === 'question' && !manualEditorOpen
+  const showClarificationPanel =
+    clarificationInterpretation !== null &&
+    stage === 'question' &&
+    !manualEditorOpen &&
+    !isEditingQuestion
+  const showQuestionForm =
+    stage === 'question' &&
+    !manualEditorOpen &&
+    (!showClarificationPanel || isEditingQuestion)
   const showQuestionExamples = showQuestionForm && interpretation === null
   const showPlanSummary =
     stage === 'plan' &&
@@ -1688,11 +2066,7 @@ export function PmAnalyticsV3Panel({
                 </p>
               </div>
               <p className="text-xs text-[var(--text-neutral)]">
-                {interpretation.interpreter === 'DeepSeek'
-                  ? 'Interpreted by DeepSeek'
-                  : interpretation.interpreter === 'DeterministicParser'
-                    ? 'Interpreted by the deterministic parser'
-                    : 'Handled by UniPM safety rules'}
+                {interpretationSourceLabel(interpretation.interpreter)}
               </p>
             </div>
             <dl className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -1738,8 +2112,839 @@ export function PmAnalyticsV3Panel({
           </section>
         )}
 
+        {showClarificationPanel && clarificationInterpretation && (
+          <section
+            aria-labelledby="pm-v3-clarification-title"
+            className="space-y-4 rounded-md border border-[var(--border-soft)] bg-[var(--surface-muted)] p-3"
+          >
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <div>
+                <h3
+                  id="pm-v3-clarification-title"
+                  className="font-semibold text-[var(--text-primary)]"
+                >
+                  Clarify the report scope
+                </h3>
+                <p className="mt-1 text-sm text-[var(--text-secondary)]">
+                  Question: {submittedQuestion || question}
+                </p>
+              </div>
+              <p className="text-xs text-[var(--text-neutral)]">
+                {interpretationSourceLabel(
+                  clarificationInterpretation.interpreter,
+                )}
+              </p>
+            </div>
+            {clarificationInterpretation.detail && (
+              <p className="text-sm text-[var(--text-secondary)]">
+                {clarificationInterpretation.detail}
+              </p>
+            )}
+            {clarificationInterpretation.plan &&
+              clarificationInterpretation.plan.subject !== plan.subject && (
+                <p
+                  role="status"
+                  className="rounded-md border border-[var(--border-soft)] bg-white p-3 text-sm text-[var(--text-secondary)]"
+                >
+                  Changing the report type cleared the previous categories,
+                  measures, period, grouping, and filters. Choose the new scope
+                  below; the original question is still shown above.
+                </p>
+              )}
+
+            {!canGuideClarification ? (
+              <div className="space-y-3 rounded-md border border-[var(--border-soft)] bg-white p-3">
+                <p className="text-sm text-[var(--text-secondary)]">
+                  {clarificationInterpretation.plan === null
+                    ? 'UniPM did not return a safe partial plan, so there is no report scope to preview. Edit the question to make the missing scope clear, or try interpretation again.'
+                    : 'Changing the report type cleared the prior scope. Edit the question and retry to recover a safe draft for this report type.'}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    disabled={pending}
+                    onClick={startEditingQuestion}
+                  >
+                    Edit question
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    disabled={pending || !question.trim()}
+                    onClick={() => void runInterpretation()}
+                  >
+                    Retry
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    disabled={pending || !question.trim()}
+                    onClick={() =>
+                      void runInterpretation('DeterministicParser')
+                    }
+                  >
+                    Use deterministic parser
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="space-y-4 rounded-md border border-[var(--border-soft)] bg-white p-3">
+                  {needsSubjectAnswer && (
+                    <fieldset className="space-y-2">
+                      <legend className="text-sm font-medium text-[var(--text-primary)]">
+                        Which report type do you mean?
+                      </legend>
+                      <div className="flex flex-wrap gap-2">
+                        {(catalog?.subjects ?? []).map((option) => (
+                          <Button
+                            key={option.id}
+                            type="button"
+                            variant={
+                              plan.subject === option.id
+                                ? 'primary'
+                                : 'secondary'
+                            }
+                            disabled={pending || catalogLoading}
+                            onClick={() =>
+                              chooseClarificationSubject(option.id)
+                            }
+                          >
+                            {option.label}
+                          </Button>
+                        ))}
+                      </div>
+                    </fieldset>
+                  )}
+
+                  {needsCategoriesAnswer && (
+                    <fieldset className="space-y-2">
+                      <legend className="text-sm font-medium text-[var(--text-primary)]">
+                        Which asset categories should be included?
+                      </legend>
+                      <div className="flex flex-wrap gap-2">
+                        {categories.map((category) => (
+                          <label
+                            key={category.id}
+                            className="flex min-h-10 items-center gap-2 rounded-md border border-[var(--border-soft)] px-3 text-sm"
+                          >
+                            <input
+                              className={checkboxClass}
+                              type="checkbox"
+                              checked={plan.categories.includes(category.id)}
+                              disabled={pending || catalogLoading}
+                              onChange={(event) => {
+                                const next = event.target.checked
+                                  ? [...plan.categories, category.id]
+                                  : plan.categories.filter(
+                                      (value) => value !== category.id,
+                                    )
+                                updateClarificationPlan({
+                                  ...plan,
+                                  categories: next,
+                                })
+                              }}
+                            />
+                            {category.label}
+                          </label>
+                        ))}
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          disabled={
+                            pending || catalogLoading || categories.length === 0
+                          }
+                          onClick={() => {
+                            updateClarificationPlan({
+                              ...plan,
+                              categories: categories.map((item) => item.id),
+                            })
+                            answerClarification('Categories')
+                          }}
+                        >
+                          All supported categories
+                        </Button>
+                      </div>
+                      {plan.categories.length > 0 &&
+                        !clarificationWasAnswered('Categories') && (
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            disabled={pending || catalogLoading}
+                            onClick={() => answerClarification('Categories')}
+                          >
+                            Use selected categories
+                          </Button>
+                        )}
+                    </fieldset>
+                  )}
+
+                  {needsMeasuresAnswer && (
+                    <fieldset className="space-y-2">
+                      <legend className="text-sm font-medium text-[var(--text-primary)]">
+                        What should the report measure?
+                      </legend>
+                      <p className="text-xs text-[var(--text-secondary)]">
+                        Missed counts past-due cycles without completion.
+                        Completed late counts work finished after its PM
+                        deadline. On-time compliance counts work finished by
+                        that deadline, while progress includes completed work
+                        even when it was late.
+                      </p>
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {measures.map((measure) => (
+                          <label
+                            key={measure.id}
+                            className="flex min-h-10 items-start gap-2 rounded-md border border-[var(--border-soft)] px-3 py-2 text-sm"
+                          >
+                            <input
+                              className={`${checkboxClass} mt-0.5`}
+                              type="checkbox"
+                              checked={plan.measures.includes(measure.id)}
+                              disabled={
+                                pending ||
+                                catalogLoading ||
+                                (plan.measures.length >= 4 &&
+                                  !plan.measures.includes(measure.id))
+                              }
+                              onChange={() => {
+                                const selected = plan.measures.includes(
+                                  measure.id,
+                                )
+                                const nextMeasures = selected
+                                  ? plan.measures.filter(
+                                      (value) => value !== measure.id,
+                                    )
+                                  : [...plan.measures, measure.id]
+                                const nextColumns = selected
+                                  ? plan.columns.filter(
+                                      (value) => value !== measure.id,
+                                    )
+                                  : [...plan.columns, measure.id]
+                                updateClarificationPlan({
+                                  ...plan,
+                                  measures: nextMeasures,
+                                  columns: nextColumns,
+                                  aggregateFilters: selected
+                                    ? plan.aggregateFilters.filter(
+                                        (filter) =>
+                                          filter.measure !== measure.id,
+                                      )
+                                    : plan.aggregateFilters,
+                                  top:
+                                    plan.top?.measure === measure.id
+                                      ? null
+                                      : plan.top,
+                                  orderBy: plan.orderBy.filter((order) =>
+                                    nextColumns.includes(order.field),
+                                  ),
+                                })
+                              }}
+                            />
+                            <span>
+                              <span className="block font-medium">
+                                {measure.label}
+                              </span>
+                              <span className="text-xs text-[var(--text-neutral)]">
+                                {measure.definition}
+                              </span>
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                      {plan.measures.length > 0 &&
+                        !clarificationWasAnswered('Measures') && (
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            disabled={pending || catalogLoading}
+                            onClick={() => answerClarification('Measures')}
+                          >
+                            Use selected measures
+                          </Button>
+                        )}
+                    </fieldset>
+                  )}
+
+                  {needsPeriodBasisAnswer && (
+                    <fieldset className="space-y-2">
+                      <legend className="text-sm font-medium text-[var(--text-primary)]">
+                        Which date defines this reporting period?
+                      </legend>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          type="button"
+                          variant={
+                            clarificationChoices.periodBasis === 'pmCycle'
+                              ? 'primary'
+                              : 'secondary'
+                          }
+                          disabled={pending}
+                          onClick={() =>
+                            chooseClarificationPeriodBasis('pmCycle')
+                          }
+                        >
+                          Scheduled PM cycle
+                        </Button>
+                        <Button
+                          type="button"
+                          variant={
+                            clarificationChoices.periodBasis ===
+                            'inspectionDate'
+                              ? 'primary'
+                              : 'secondary'
+                          }
+                          disabled={pending}
+                          onClick={() =>
+                            chooseClarificationPeriodBasis('inspectionDate')
+                          }
+                        >
+                          Actual inspection date
+                        </Button>
+                      </div>
+                      {clarificationChoices.periodBasis ===
+                        'inspectionDate' && (
+                        <p className="text-xs text-[var(--error)]">
+                          Reports cannot filter by actual inspection date.
+                          Choose scheduled PM cycle or edit the question.
+                        </p>
+                      )}
+                    </fieldset>
+                  )}
+
+                  {needsPeriodAnswer && (
+                    <fieldset className="space-y-3">
+                      <legend className="text-sm font-medium text-[var(--text-primary)]">
+                        Which scheduled PM period should be included?
+                      </legend>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div>
+                          <Label htmlFor="pm-v3-clarification-period-kind">
+                            Period type
+                          </Label>
+                          <select
+                            id="pm-v3-clarification-period-kind"
+                            className={inputClass}
+                            value={
+                              clarificationChoices.periodKindChosen
+                                ? plan.period.kind
+                                : ''
+                            }
+                            disabled={pending || catalogLoading}
+                            onChange={(event) =>
+                              chooseClarificationPeriodKind(
+                                event.target.value as PeriodKind,
+                              )
+                            }
+                          >
+                            <option value="">Choose a period type</option>
+                            <option value="Month">Month</option>
+                            <option value="Quarter">Quarter</option>
+                            <option value="Year">Year</option>
+                            <option value="Range">Cycle range</option>
+                          </select>
+                        </div>
+                      </div>
+                      {clarificationChoices.periodKindChosen &&
+                        (plan.period.kind === 'Range' ? (
+                          <div className="grid gap-3 sm:grid-cols-2">
+                            <div>
+                              <Label htmlFor="pm-v3-clarification-range-start">
+                                First cycle
+                              </Label>
+                              <input
+                                id="pm-v3-clarification-range-start"
+                                className={inputClass}
+                                type="month"
+                                min="2000-01"
+                                max="9998-12"
+                                value={plan.period.startCycle ?? ''}
+                                disabled={pending || catalogLoading}
+                                onChange={(event) =>
+                                  updateClarificationPeriod({
+                                    ...plan.period,
+                                    startCycle: event.target.value || null,
+                                  })
+                                }
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="pm-v3-clarification-range-end">
+                                Last cycle
+                              </Label>
+                              <input
+                                id="pm-v3-clarification-range-end"
+                                className={inputClass}
+                                type="month"
+                                min="2000-01"
+                                max="9998-12"
+                                value={plan.period.endCycle ?? ''}
+                                disabled={pending || catalogLoading}
+                                onChange={(event) =>
+                                  updateClarificationPeriod({
+                                    ...plan.period,
+                                    endCycle: event.target.value || null,
+                                  })
+                                }
+                              />
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="grid gap-3 sm:grid-cols-3">
+                            <div>
+                              <Label htmlFor="pm-v3-clarification-period-year">
+                                Year
+                              </Label>
+                              <input
+                                id="pm-v3-clarification-period-year"
+                                className={inputClass}
+                                type="number"
+                                min={2000}
+                                max={9998}
+                                value={plan.period.year ?? ''}
+                                disabled={pending || catalogLoading}
+                                onChange={(event) =>
+                                  updateClarificationPeriod({
+                                    ...plan.period,
+                                    year: Number(event.target.value) || null,
+                                  })
+                                }
+                              />
+                            </div>
+                            {plan.period.kind === 'Month' && (
+                              <div>
+                                <Label htmlFor="pm-v3-clarification-period-month">
+                                  Month
+                                </Label>
+                                <select
+                                  id="pm-v3-clarification-period-month"
+                                  className={inputClass}
+                                  value={plan.period.month ?? ''}
+                                  disabled={pending || catalogLoading}
+                                  onChange={(event) =>
+                                    updateClarificationPeriod({
+                                      ...plan.period,
+                                      month: Number(event.target.value) || null,
+                                    })
+                                  }
+                                >
+                                  <option value="">Choose a month</option>
+                                  {Array.from(
+                                    { length: 12 },
+                                    (_, index) => index + 1,
+                                  ).map((month) => (
+                                    <option key={month} value={month}>
+                                      {new Intl.DateTimeFormat('en-PH', {
+                                        month: 'long',
+                                      }).format(
+                                        new Date(Date.UTC(2020, month - 1, 1)),
+                                      )}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                            )}
+                            {plan.period.kind === 'Quarter' && (
+                              <div>
+                                <Label htmlFor="pm-v3-clarification-period-quarter">
+                                  Quarter
+                                </Label>
+                                <select
+                                  id="pm-v3-clarification-period-quarter"
+                                  className={inputClass}
+                                  value={plan.period.quarter ?? ''}
+                                  disabled={pending || catalogLoading}
+                                  onChange={(event) =>
+                                    updateClarificationPeriod({
+                                      ...plan.period,
+                                      quarter:
+                                        Number(event.target.value) || null,
+                                    })
+                                  }
+                                >
+                                  <option value="">Choose a quarter</option>
+                                  {[1, 2, 3, 4].map((quarter) => (
+                                    <option key={quarter} value={quarter}>
+                                      Q{quarter}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      {isPeriodReady(plan.period) &&
+                        clarificationFieldSet.has('Period') &&
+                        !clarificationWasAnswered('Period') && (
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            disabled={pending || catalogLoading}
+                            onClick={() => answerClarification('Period')}
+                          >
+                            Use this period
+                          </Button>
+                        )}
+                    </fieldset>
+                  )}
+
+                  {needsModeAnswer && (
+                    <fieldset className="space-y-2">
+                      <legend className="text-sm font-medium text-[var(--text-primary)]">
+                        Do you want measures or matching records?
+                      </legend>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          type="button"
+                          variant={
+                            plan.mode === 'Aggregate' ? 'primary' : 'secondary'
+                          }
+                          disabled={pending || catalogLoading}
+                          onClick={() => chooseClarificationMode('Aggregate')}
+                        >
+                          Measures and groups
+                        </Button>
+                        <Button
+                          type="button"
+                          variant={
+                            plan.mode === 'Records' ? 'primary' : 'secondary'
+                          }
+                          disabled={pending || catalogLoading}
+                          onClick={() => chooseClarificationMode('Records')}
+                        >
+                          Matching records
+                        </Button>
+                      </div>
+                    </fieldset>
+                  )}
+
+                  {needsGroupingAnswer && (
+                    <fieldset className="space-y-2">
+                      <legend className="text-sm font-medium text-[var(--text-primary)]">
+                        How should results be grouped?
+                      </legend>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          disabled={pending || catalogLoading}
+                          onClick={() => {
+                            const dimensionIds = new Set(
+                              dimensions.map((item) => item.id),
+                            )
+                            updateClarificationPlan({
+                              ...plan,
+                              groupBy: [],
+                              columns: plan.columns.filter(
+                                (column) => !dimensionIds.has(column),
+                              ),
+                              presentation:
+                                plan.presentation === 'Table'
+                                  ? 'Summary'
+                                  : plan.presentation,
+                            })
+                            answerClarification('GroupBy')
+                          }}
+                        >
+                          No grouping
+                        </Button>
+                        {dimensions.map((dimension) => (
+                          <label
+                            key={dimension.id}
+                            className="flex min-h-10 items-center gap-2 rounded-md border border-[var(--border-soft)] px-3 text-sm"
+                          >
+                            <input
+                              className={checkboxClass}
+                              type="checkbox"
+                              checked={plan.groupBy.includes(dimension.id)}
+                              disabled={
+                                pending ||
+                                catalogLoading ||
+                                (plan.groupBy.length >= 2 &&
+                                  !plan.groupBy.includes(dimension.id))
+                              }
+                              onChange={(event) => {
+                                const nextGroups = event.target.checked
+                                  ? [...plan.groupBy, dimension.id]
+                                  : plan.groupBy.filter(
+                                      (value) => value !== dimension.id,
+                                    )
+                                const dimensionIds = new Set(
+                                  dimensions.map((item) => item.id),
+                                )
+                                const nextColumns = [
+                                  ...plan.columns.filter(
+                                    (column) =>
+                                      !dimensionIds.has(column) ||
+                                      nextGroups.includes(column),
+                                  ),
+                                  ...nextGroups.filter(
+                                    (value) => !plan.columns.includes(value),
+                                  ),
+                                ]
+                                updateClarificationPlan({
+                                  ...plan,
+                                  groupBy: nextGroups,
+                                  columns: nextColumns,
+                                  presentation:
+                                    nextGroups.length > 0
+                                      ? 'Table'
+                                      : plan.presentation,
+                                })
+                              }}
+                            />
+                            {dimension.label}
+                          </label>
+                        ))}
+                      </div>
+                      {plan.groupBy.length > 0 &&
+                        !clarificationWasAnswered('GroupBy') && (
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            disabled={pending || catalogLoading}
+                            onClick={() => answerClarification('GroupBy')}
+                          >
+                            Use selected grouping
+                          </Button>
+                        )}
+                    </fieldset>
+                  )}
+
+                  {needsGenericFilterAnswer && (
+                    <div className="space-y-2">
+                      <Label htmlFor="pm-v3-clarification-filter">
+                        Which filter should narrow the results?
+                      </Label>
+                      <select
+                        id="pm-v3-clarification-filter"
+                        className={inputClass}
+                        value={clarificationChoices.filterTarget ?? ''}
+                        disabled={pending || catalogLoading}
+                        onChange={(event) =>
+                          chooseClarificationFilterTarget(
+                            event.target.value as string | 'none',
+                          )
+                        }
+                      >
+                        <option value="">Choose a filter</option>
+                        <option value="none">No additional filter</option>
+                        {baseFilterFields.map((field) => (
+                          <option key={field.id} value={field.id}>
+                            {field.label}
+                          </option>
+                        ))}
+                      </select>
+                      {clarificationChoices.filterTarget === 'none' && (
+                        <p className="text-xs text-[var(--text-secondary)]">
+                          Existing filters from the interpreted question stay in
+                          place.
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {needsNamedFilterAnswers.map((name) => {
+                    const field = findBaseFilterForClarification(name)
+                    if (!field) return null
+                    const active = findFilter(plan, field.id)
+                    const noFilterSelected =
+                      !active && clarificationWasAnswered(name)
+                    return (
+                      <div key={name} className="space-y-2">
+                        <BaseFilterPicker
+                          subject={selectedSubject}
+                          field={field.id}
+                          label={field.label}
+                          categories={plan.categories}
+                          values={active?.values ?? []}
+                          isNull={active?.operator === 'IsNull'}
+                          maximumLength={field.maximumLength}
+                          allowNull={
+                            field.operators?.includes('IsNull') ?? false
+                          }
+                          searchable={field.valueType === 'string'}
+                          disabled={
+                            pending ||
+                            catalogLoading ||
+                            plan.categories.length === 0
+                          }
+                          onChange={(values, isNull) =>
+                            updateClarificationFilterValues(
+                              field.id,
+                              values,
+                              isNull,
+                            )
+                          }
+                        />
+                        {active &&
+                          ((active.values?.length ?? 0) > 0 ||
+                            active.operator === 'IsNull') &&
+                          !clarificationWasAnswered(name) && (
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              disabled={pending || catalogLoading}
+                              onClick={() => answerClarification(name)}
+                            >
+                              Use selected {name.toLowerCase()}
+                            </Button>
+                          )}
+                        <label className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
+                          <input
+                            className={checkboxClass}
+                            type="checkbox"
+                            checked={noFilterSelected}
+                            disabled={pending || catalogLoading}
+                            onChange={(event) => {
+                              const existing = plan.baseFilters.filter(
+                                (item) => item.field !== field.id,
+                              )
+                              updateClarificationPlan({
+                                ...plan,
+                                baseFilters: existing,
+                              })
+                              if (event.target.checked)
+                                answerClarification(name)
+                              else reopenClarification(name)
+                            }}
+                          />
+                          Include all {name.toLowerCase()} values
+                        </label>
+                      </div>
+                    )
+                  })}
+
+                  {needsGenericFilterAnswer &&
+                    clarificationChoices.filterTarget &&
+                    clarificationChoices.filterTarget !== 'none' &&
+                    (() => {
+                      const field = baseFilterFields.find(
+                        (item) => item.id === clarificationChoices.filterTarget,
+                      )
+                      if (!field) return null
+                      const active = findFilter(plan, field.id)
+                      return (
+                        <div className="space-y-2">
+                          <BaseFilterPicker
+                            subject={selectedSubject}
+                            field={field.id}
+                            label={field.label}
+                            categories={plan.categories}
+                            values={active?.values ?? []}
+                            isNull={active?.operator === 'IsNull'}
+                            maximumLength={field.maximumLength}
+                            allowNull={
+                              field.operators?.includes('IsNull') ?? false
+                            }
+                            searchable={field.valueType === 'string'}
+                            disabled={
+                              pending ||
+                              catalogLoading ||
+                              plan.categories.length === 0
+                            }
+                            onChange={(values, isNull) =>
+                              updateClarificationFilterValues(
+                                field.id,
+                                values,
+                                isNull,
+                              )
+                            }
+                          />
+                          {active &&
+                            ((active.values?.length ?? 0) > 0 ||
+                              active.operator === 'IsNull') &&
+                            !clarificationWasAnswered('Filters') && (
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                disabled={pending || catalogLoading}
+                                onClick={() => answerClarification('Filters')}
+                              >
+                                Use selected filter
+                              </Button>
+                            )}
+                        </div>
+                      )
+                    })()}
+                </div>
+
+                {unresolvedUnsupportedClarificationFields.length > 0 && (
+                  <p className="text-sm text-[var(--text-secondary)]">
+                    This question also needs clarification about{' '}
+                    {unresolvedUnsupportedClarificationFields.join(', ')}. Edit
+                    the question to resolve that detail safely.
+                  </p>
+                )}
+
+                <div>
+                  <h4 className="text-xs font-semibold tracking-[0.08em] text-[var(--text-secondary)] uppercase">
+                    Scope so far
+                  </h4>
+                  <dl className="mt-2 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {interpretationSummary
+                      .filter((item) => item.label !== 'Question')
+                      .map((item) => (
+                        <div key={item.label}>
+                          <dt className="text-xs font-medium text-[var(--text-neutral)]">
+                            {item.label}
+                          </dt>
+                          <dd className="mt-1 text-sm text-[var(--text-primary)]">
+                            {item.value}
+                          </dd>
+                        </div>
+                      ))}
+                  </dl>
+                </div>
+
+                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border-soft)] pt-3">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    disabled={pending}
+                    onClick={startEditingQuestion}
+                  >
+                    Edit question
+                  </Button>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      disabled={pending || !question.trim()}
+                      onClick={() => void runInterpretation()}
+                    >
+                      Retry interpretation
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      disabled={pending || !question.trim()}
+                      onClick={() =>
+                        void runInterpretation('DeterministicParser')
+                      }
+                    >
+                      Use deterministic parser
+                    </Button>
+                    <Button
+                      type="button"
+                      disabled={!planReady || pending}
+                      onClick={() => void handlePreview()}
+                    >
+                      {pending && pendingLabel === 'Preparing the preview'
+                        ? 'Preparing…'
+                        : 'Preview report'}
+                    </Button>
+                  </div>
+                </div>
+              </>
+            )}
+          </section>
+        )}
+
         {interpretation &&
           interpretation.status !== 'Valid' &&
+          interpretation.status !== 'NeedsClarification' &&
           !manualEditorOpen && (
             <section
               aria-labelledby="pm-v3-interpretation-title"
@@ -1749,16 +2954,10 @@ export function PmAnalyticsV3Panel({
                 id="pm-v3-interpretation-title"
                 className="font-semibold text-[var(--text-primary)]"
               >
-                {interpretation.status === 'NeedsClarification'
-                  ? 'The question needs more detail.'
-                  : 'The question is outside the supported report scope.'}
+                The question is outside the supported report scope.
               </h3>
               <p className="mt-1 text-xs text-[var(--text-neutral)]">
-                {interpretation.interpreter === 'DeepSeek'
-                  ? 'Interpreted by DeepSeek.'
-                  : interpretation.interpreter === 'DeterministicParser'
-                    ? 'Interpreted by the deterministic parser.'
-                    : 'Handled by UniPM safety rules; no language model was called.'}
+                {interpretationSourceLabel(interpretation.interpreter)}.
               </p>
               {interpretationDescription && (
                 <p className="mt-1 text-[var(--text-secondary)]">
@@ -1770,65 +2969,9 @@ export function PmAnalyticsV3Panel({
                   {interpretation.detail}
                 </p>
               )}
-              {interpretation.status === 'NeedsClarification' &&
-                interpretation.clarificationFields.includes('Categories') && (
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {[
-                      { id: 'all', label: 'All supported categories' },
-                      ...categories,
-                    ].map((category) => (
-                      <Button
-                        key={category.id}
-                        type="button"
-                        variant="secondary"
-                        disabled={pending}
-                        onClick={() => {
-                          setQuestion(
-                            `${question.trim().replace(/[.!?]+$/, '')} for ${category.label.toLowerCase()}.`,
-                          )
-                          setInterpretation(null)
-                          setError(null)
-                          setInterpretationFailureCode(null)
-                        }}
-                      >
-                        {category.label}
-                      </Button>
-                    ))}
-                  </div>
-                )}
-              {interpretation.code === 'PeriodBasisNeedsClarification' && (
-                <div className="mt-3 rounded-md border border-[var(--border-soft)] bg-white p-3">
-                  <p className="text-sm font-medium text-[var(--text-primary)]">
-                    Choose the period meaning
-                  </p>
-                  <div className="mt-2 flex flex-wrap items-center gap-2">
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      disabled={pending}
-                      onClick={() => {
-                        setQuestion(withScheduledCycleWording(question))
-                        setInterpretation(null)
-                        setError(null)
-                        setInterpretationFailureCode(null)
-                      }}
-                    >
-                      Use scheduled PM cycle
-                    </Button>
-                    <span className="text-xs text-[var(--text-neutral)]">
-                      Actual inspection-date filtering is not supported.
-                    </span>
-                  </div>
-                  <p className="mt-2 text-xs text-[var(--text-neutral)]">
-                    Review the revised question above, then generate the report.
-                  </p>
-                </div>
-              )}
-              <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-                <p className="text-xs text-[var(--text-neutral)]">
-                  Refine the question to continue.
-                </p>
-              </div>
+              <p className="mt-3 text-xs text-[var(--text-neutral)]">
+                Edit the question to continue.
+              </p>
             </section>
           )}
 
