@@ -5,6 +5,17 @@ status: draft
 
 # PM analytics V3 first-release evaluation protocol (draft)
 
+## October 23 researcher-reviewed development result
+
+The repository owner approved the 18 declared expected outcomes in chat.
+V3D-008 and V3D-009 were revised after diagnostics to expect clarification
+without a partial draft. The revised corpus is frozen in `corpus-manifest.json`.
+The deterministic evaluator matched 18/18 declared outcomes and 69/69 plan
+assertions. See [TEST-139](../../evidence/test-runs/TEST-139-researcher-reviewed-nla-development-score.md).
+This is researcher-reviewed development evidence, not independent external
+review, held-out accuracy, live DeepSeek verification or numerical correctness.
+The preparation-status statements below describe the earlier draft state.
+
 ## Purpose and status
 
 This draft prepares Phase 5 of the NLA V3 roadmap. It defines a proposed

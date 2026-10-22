@@ -1,5 +1,13 @@
 # V3 provisional question review notes
 
+## October 23 disposition
+
+The notes below preserve the pre-review questions and limitations. The user
+subsequently approved the declared outcomes as researcher reviewer; see the
+ledger and TEST-139. V3D-008 and V3D-009 now expect no draft until ambiguity is
+resolved. Other assertions were approved as declared, not expanded to cover
+every concern below. Do not imply external or GSD approval.
+
 Protocol `NLA-V3-EVAL-PROTOCOL-001` remains draft. Every decision in
 [`review-decisions.json`](review-decisions.json) is pending. These observations
 identify questions for an independent domain/reporting reviewer; they do not
