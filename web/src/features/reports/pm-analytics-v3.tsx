@@ -82,6 +82,7 @@ type ClarificationChoices = {
   scopeRecovered: boolean
   requiredFields: string[]
   answeredFields: string[]
+  scopeNotices: string[]
   periodKindChosen: boolean
   periodBasis: 'pmCycle' | 'inspectionDate' | null
   filterTarget: string | 'none' | null
@@ -350,6 +351,7 @@ function emptyClarificationChoices(): ClarificationChoices {
     scopeRecovered: false,
     requiredFields: [],
     answeredFields: [],
+    scopeNotices: [],
     periodKindChosen: false,
     periodBasis: null,
     filterTarget: null,
@@ -1015,6 +1017,15 @@ export function PmAnalyticsV3Panel({
 
   const categories = catalog?.categories ?? []
   const measures = catalog?.measures ?? []
+  const quickMeasureChoices =
+    catalog?.subject === selectedSubject && catalog.subject === plan.subject
+      ? [
+          { id: 'completedLateCount', label: 'Completed late' },
+          { id: 'missedCount', label: 'Overdue missed' },
+        ].filter((choice) =>
+          measures.some((measure) => measure.id === choice.id),
+        )
+      : []
   const dimensions = catalog?.dimensions ?? []
   const recordColumns = catalog?.recordColumns ?? []
   const subject = catalog?.subjects.find((item) => item.id === selectedSubject)
@@ -1198,6 +1209,7 @@ export function PmAnalyticsV3Panel({
           scopeRecovered: true,
           requiredFields: [],
           answeredFields: [],
+          scopeNotices: [],
           periodKindChosen: result.plan.period !== null,
           periodBasis:
             result.plan.period?.basis === 'pmCycle' ? 'pmCycle' : null,
@@ -1231,6 +1243,7 @@ export function PmAnalyticsV3Panel({
               ]),
             ],
             answeredFields: [],
+            scopeNotices: [],
             periodKindChosen: result.plan.period !== null,
             periodBasis:
               !hasBasisClarification && result.plan.period?.basis === 'pmCycle'
@@ -1420,6 +1433,7 @@ export function PmAnalyticsV3Panel({
         'PeriodBasis',
       ],
       answeredFields: ['Subject'],
+      scopeNotices: [],
       periodKindChosen: false,
       periodBasis: null,
       filterTarget: null,
@@ -1521,26 +1535,65 @@ export function PmAnalyticsV3Panel({
     }))
   }
 
+  const reconcileMeasures = (nextMeasures: string[]) => {
+    const selectedMeasures = new Set(nextMeasures)
+    const measureColumns = new Set([
+      ...plan.measures,
+      ...measures.map((measure) => measure.id),
+    ])
+    const columns = [
+      ...plan.columns.filter(
+        (column) => !measureColumns.has(column) || selectedMeasures.has(column),
+      ),
+      ...nextMeasures.filter((measure) => !plan.columns.includes(measure)),
+    ]
+    const aggregateFilters = plan.aggregateFilters.filter((filter) =>
+      selectedMeasures.has(filter.measure),
+    )
+    const top =
+      plan.top && !selectedMeasures.has(plan.top.measure) ? null : plan.top
+    const orderBy = plan.orderBy.filter((order) =>
+      columns.includes(order.field),
+    )
+    const removedIntent = [
+      ...new Set(
+        plan.aggregateFilters
+          .filter((filter) => !selectedMeasures.has(filter.measure))
+          .map(
+            (filter) =>
+              `threshold for ${formatLabel(filter.measure, catalog ?? undefined)}`,
+          ),
+      ),
+      ...(plan.top && !top
+        ? [`ranking by ${formatLabel(plan.top.measure, catalog ?? undefined)}`]
+        : []),
+      ...plan.orderBy
+        .filter((order) => !orderBy.includes(order))
+        .map(
+          (order) =>
+            `sorting by ${formatLabel(order.field, catalog ?? undefined)}`,
+        ),
+    ]
+
+    return {
+      plan: {
+        ...plan,
+        measures: nextMeasures,
+        columns,
+        aggregateFilters,
+        orderBy,
+        top,
+      },
+      removedIntent,
+    }
+  }
+
   const toggleMeasure = (measure: string) => {
     const selected = plan.measures.includes(measure)
     const nextMeasures = selected
       ? plan.measures.filter((value) => value !== measure)
       : [...plan.measures, measure]
-    const nextColumns = selected
-      ? plan.columns.filter((value) => value !== measure)
-      : [...plan.columns, measure]
-    updatePlan({
-      ...plan,
-      measures: nextMeasures,
-      columns: nextColumns,
-      aggregateFilters: selected
-        ? plan.aggregateFilters.filter((filter) => filter.measure !== measure)
-        : plan.aggregateFilters,
-      top: plan.top?.measure === measure ? null : plan.top,
-      orderBy: plan.orderBy.filter((order) =>
-        nextColumns.includes(order.field),
-      ),
-    })
+    updatePlan(reconcileMeasures(nextMeasures).plan)
   }
 
   const toggleDimension = (dimension: string) => {
@@ -1650,6 +1703,15 @@ export function PmAnalyticsV3Panel({
 
   const clarificationInterpretation =
     interpretation?.status === 'NeedsClarification' ? interpretation : null
+  const scopeNoticeItems = clarificationChoices.scopeNotices.map((notice) => (
+    <p
+      key={notice}
+      role="status"
+      className="rounded-md border border-[var(--border-soft)] bg-white p-3 text-sm text-[var(--text-secondary)]"
+    >
+      {notice}
+    </p>
+  ))
   const isClarification = clarificationInterpretation !== null
   const canGuideClarification =
     clarificationInterpretation !== null &&
@@ -1675,7 +1737,11 @@ export function PmAnalyticsV3Panel({
     canGuideClarification &&
     plan.mode === 'Aggregate' &&
     clarificationRequiredFieldSet.has('Measures') &&
-    !clarificationWasAnswered('Measures')
+    (plan.measures.length === 0 || !clarificationWasAnswered('Measures'))
+  const showMeasuresClarification =
+    canGuideClarification &&
+    plan.mode === 'Aggregate' &&
+    clarificationRequiredFieldSet.has('Measures')
   const needsModeAnswer =
     canGuideClarification &&
     clarificationFieldSet.has('Mode') &&
@@ -1699,6 +1765,10 @@ export function PmAnalyticsV3Panel({
       !isPeriodReady(plan.period) ||
       (clarificationFieldSet.has('Period') &&
         !clarificationWasAnswered('Period')))
+  const showPeriodClarification =
+    canGuideClarification &&
+    subject?.requiresPeriod === true &&
+    (clarificationFieldSet.has('Period') || !isPeriodReady(plan.period))
   const needsGenericFilterAnswer =
     canGuideClarification &&
     clarificationFieldSet.has('Filters') &&
@@ -1943,6 +2013,8 @@ export function PmAnalyticsV3Panel({
                   cancelPending()
                   setQuestion(event.target.value)
                   setInterpretation(null)
+                  setPreview(null)
+                  setResponse(null)
                   setError(null)
                   setInterpretationFailureCode(null)
                   setDrilldownNotice(null)
@@ -2140,6 +2212,7 @@ export function PmAnalyticsV3Panel({
                 {clarificationInterpretation.detail}
               </p>
             )}
+            {scopeNoticeItems}
             {clarificationInterpretation.plan &&
               clarificationInterpretation.plan.subject !== plan.subject && (
                 <p
@@ -2280,18 +2353,66 @@ export function PmAnalyticsV3Panel({
                     </fieldset>
                   )}
 
-                  {needsMeasuresAnswer && (
+                  {showMeasuresClarification && (
                     <fieldset className="space-y-2">
                       <legend className="text-sm font-medium text-[var(--text-primary)]">
                         What should the report measure?
                       </legend>
-                      <p className="text-xs text-[var(--text-secondary)]">
-                        Missed counts past-due cycles without completion.
-                        Completed late counts work finished after its PM
-                        deadline. On-time compliance counts work finished by
-                        that deadline, while progress includes completed work
-                        even when it was late.
-                      </p>
+                      {quickMeasureChoices.length > 0 && (
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-xs text-[var(--text-secondary)]">
+                            Quick choices:
+                          </span>
+                          {quickMeasureChoices.map((choice) => {
+                            const isSelected =
+                              plan.measures.includes(choice.id) &&
+                              clarificationWasAnswered('Measures')
+                            return (
+                              <Button
+                                key={choice.id}
+                                type="button"
+                                variant={isSelected ? 'primary' : 'secondary'}
+                                disabled={pending || catalogLoading}
+                                onClick={() => {
+                                  const nextMeasures = isSelected
+                                    ? plan.measures.filter(
+                                        (m) => m !== choice.id,
+                                      )
+                                    : [choice.id]
+                                  const { plan: nextPlan, removedIntent } =
+                                    reconcileMeasures(nextMeasures)
+                                  updateClarificationPlan(nextPlan)
+                                  if (!isSelected) {
+                                    answerClarification('Measures')
+                                  }
+                                  if (removedIntent.length > 0) {
+                                    const notice = `Using ${choice.label} removed ${removedIntent.join(', ')} from the interpreted scope. Review the original question before previewing.`
+                                    setClarificationChoices((current) => ({
+                                      ...current,
+                                      scopeNotices: current.scopeNotices.includes(
+                                        notice,
+                                      )
+                                        ? current.scopeNotices
+                                        : [...current.scopeNotices, notice],
+                                    }))
+                                  }
+                                }}
+                              >
+                                {choice.label}
+                              </Button>
+                            )
+                          })}
+                        </div>
+                      )}
+                      {quickMeasureChoices.length > 0 && (
+                        <p className="text-xs text-[var(--text-secondary)]">
+                          Missed counts past-due cycles without completion.
+                          Completed late counts work finished after its PM
+                          deadline. On-time compliance counts work finished by
+                          that deadline, while progress includes completed work
+                          even when it was late.
+                        </p>
+                      )}
                       <div className="grid gap-2 sm:grid-cols-2">
                         {measures.map((measure) => (
                           <label
@@ -2413,11 +2534,54 @@ export function PmAnalyticsV3Panel({
                     </fieldset>
                   )}
 
-                  {needsPeriodAnswer && (
+                  {showPeriodClarification && (
                     <fieldset className="space-y-3">
                       <legend className="text-sm font-medium text-[var(--text-primary)]">
                         Which scheduled PM period should be included?
                       </legend>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-xs text-[var(--text-secondary)]">
+                          Quick choices:
+                        </span>
+                        {['2026', '2025', '2024'].map((yearStr) => {
+                          const yearNum = Number(yearStr)
+                          const isSelected =
+                            plan.period.kind === 'Year' &&
+                            plan.period.year === yearNum &&
+                            clarificationWasAnswered('Period')
+                          return (
+                            <Button
+                              key={yearStr}
+                              type="button"
+                              variant={isSelected ? 'primary' : 'secondary'}
+                              disabled={pending || catalogLoading}
+                              onClick={() => {
+                                updateClarificationPeriod({
+                                  basis: 'pmCycle',
+                                  kind: 'Year',
+                                  year: yearNum,
+                                  month: null,
+                                  quarter: null,
+                                  startCycle: null,
+                                  endCycle: null,
+                                })
+                                setClarificationChoices((current) => ({
+                                  ...current,
+                                  periodKindChosen: true,
+                                  answeredFields: [
+                                    ...new Set([
+                                      ...current.answeredFields,
+                                      'Period',
+                                    ]),
+                                  ],
+                                }))
+                              }}
+                            >
+                              {yearStr}
+                            </Button>
+                          )
+                        })}
+                      </div>
                       <div className="grid gap-3 sm:grid-cols-2">
                         <div>
                           <Label htmlFor="pm-v3-clarification-period-kind">
@@ -3987,6 +4151,7 @@ export function PmAnalyticsV3Panel({
               Manila time.
             </p>
           </div>
+          {scopeNoticeItems}
           {Object.keys(preview.cyclesByCategory).length > 0 && (
             <section
               aria-label="Scheduled PM cycles by category"

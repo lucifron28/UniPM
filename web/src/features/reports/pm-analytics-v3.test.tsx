@@ -143,6 +143,26 @@ function makeCatalog(): PmAnalyticsV3CatalogResponse {
         definition: 'Count eligible persisted asset-cycle rows.',
       },
       {
+        id: 'completedLateCount',
+        label: 'Completed late',
+        valueType: 'integer',
+        unit: 'asset-cycles',
+        grain: 'one eligible persisted schedule for one asset and PM cycle',
+        population: 'eligible population',
+        definition:
+          'Count completed eligible rows whose completion is after the PM-cycle deadline.',
+      },
+      {
+        id: 'missedCount',
+        label: 'Missed',
+        valueType: 'integer',
+        unit: 'asset-cycles',
+        grain: 'one eligible persisted schedule for one asset and PM cycle',
+        population: 'eligible population',
+        definition:
+          'Count incomplete eligible rows whose PM-cycle deadline has passed.',
+      },
+      {
         id: 'distinctAssetCount',
         label: 'Distinct assets',
         valueType: 'integer',
@@ -489,7 +509,7 @@ function makeInterpretation(
 }
 
 function makePreview(
-  plan: PmAnalyticsV3ReportPlan,
+  plan: PmAnalyticsV3ReportPlan = makePlan(),
 ): PmAnalyticsV3PreviewResponse {
   return {
     previewId: 'signed-preview-token',
@@ -726,7 +746,7 @@ describe('PM analytics V3 workflow', () => {
     ).not.toBeInTheDocument()
   })
 
-  it('keeps provider failures visible and leaves the question editable', async () => {
+  it('keeps provider failures visible, leaves the question editable, and offers deterministic parser', async () => {
     api.interpret.mockRejectedValueOnce(
       new ApiError('DeepSeek unavailable', 503, {
         extensions: { code: 'ProviderUnavailable' },
@@ -752,6 +772,27 @@ describe('PM analytics V3 workflow', () => {
     expect(
       screen.queryByRole('button', { name: 'Build report manually' }),
     ).not.toBeInTheDocument()
+
+    const parserButton = screen.getByRole('button', {
+      name: 'Use deterministic parser',
+    })
+    expect(parserButton).toBeVisible()
+    api.interpret.mockResolvedValueOnce(
+      makeInterpretation(makePlan(), { interpreter: 'DeterministicParser' }),
+    )
+    fireEvent.click(parserButton)
+    await waitFor(() =>
+      expect(api.interpret).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          question: 'Show progress for fire extinguishers during 2024',
+          interpreter: 'DeterministicParser',
+        }),
+        expect.anything(),
+      ),
+    )
+    expect(
+      await screen.findByText(/Interpreted by the deterministic parser/),
+    ).toBeInTheDocument()
   })
 
   it('builds, previews, and runs a schedule-independent inventory report', async () => {
@@ -1224,13 +1265,258 @@ describe('PM analytics V3 workflow', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: 'Generate report' }))
     expect(
-      await screen.findByText('The question needs more detail.'),
+      await screen.findByRole('heading', { name: 'Clarify the report scope' }),
     ).toBeInTheDocument()
     expect(
-      screen.getByText(/Please clarify: ranking measure and limit/),
+      screen.getByText('Choose a ranking measure and group limit.'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(/UniPM did not return a safe partial plan/),
     ).toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: 'Preview report' }),
     ).not.toBeInTheDocument()
+  })
+
+  it('guides clarification with choice chips for Period and Measures, updating locally without interpretation until complete', async () => {
+    const partialPlan = makePlan({
+      categories: ['fire-extinguisher'],
+      measures: ['progressPercent'],
+      groupBy: ['department'],
+      columns: ['department', 'progressPercent'],
+      aggregateFilters: [
+        {
+          measure: 'progressPercent',
+          operator: 'GreaterThanOrEqual',
+          value: 70,
+        },
+      ],
+      orderBy: [{ field: 'progressPercent', direction: 'Descending' }],
+      top: { measure: 'progressPercent', limit: 5, direction: 'Descending' },
+      presentation: 'Table',
+      period: {
+        basis: 'pmCycle',
+        kind: 'Year',
+        year: null,
+        month: null,
+        quarter: null,
+        startCycle: null,
+        endCycle: null,
+      },
+    })
+    api.interpret.mockResolvedValueOnce(
+      makeInterpretation(partialPlan, {
+        status: 'NeedsClarification',
+        clarificationFields: ['Period', 'Measures'],
+        detail:
+          'Choose whether falling behind means overdue unfinished work or late completed work, and specify the period.',
+      }),
+    )
+
+    render(<PmAnalyticsV3Panel />)
+    fireEvent.change(screen.getByRole('textbox', { name: 'Question' }), {
+      target: {
+        value: 'Which departments are falling behind on extinguisher checks?',
+      },
+    })
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Generate report' }),
+      ).toBeEnabled(),
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Generate report' }))
+
+    expect(
+      await screen.findByRole('heading', { name: 'Clarify the report scope' }),
+    ).toBeInTheDocument()
+
+    const periodChip = screen.getByRole('button', { name: '2026' })
+    const completedLateChip = screen.getByRole('button', {
+      name: 'Completed late',
+    })
+    const overdueMissedChip = screen.getByRole('button', {
+      name: 'Overdue missed',
+    })
+
+    expect(periodChip).toBeInTheDocument()
+    expect(completedLateChip).toBeInTheDocument()
+    expect(overdueMissedChip).toBeInTheDocument()
+
+    const previewButton = screen.getByRole('button', { name: 'Preview report' })
+    expect(previewButton).toBeDisabled()
+
+    // Clicking Period chip updates plan locally without calling interpretPmAnalyticsV3Question
+    fireEvent.click(periodChip)
+    expect(api.interpret).toHaveBeenCalledTimes(1)
+    expect(previewButton).toBeDisabled()
+
+    // Clicking Measure chip updates plan locally without calling interpretPmAnalyticsV3Question
+    fireEvent.click(completedLateChip)
+    expect(api.interpret).toHaveBeenCalledTimes(1)
+
+    // All required fields answered -> preview button enabled
+    expect(previewButton).toBeEnabled()
+
+    api.preview.mockResolvedValueOnce(makePreview())
+    fireEvent.click(previewButton)
+
+    await waitFor(() =>
+      expect(api.preview).toHaveBeenCalledWith(
+        {
+          plan: expect.objectContaining({
+            measures: ['completedLateCount'],
+            categories: ['fire-extinguisher'],
+            groupBy: ['department'],
+            columns: ['department', 'completedLateCount'],
+            aggregateFilters: [],
+            orderBy: [],
+            top: null,
+            period: expect.objectContaining({
+              year: 2026,
+            }),
+          }),
+        },
+        expect.anything(),
+      ),
+    )
+    expect(
+      await screen.findByRole('heading', { name: 'Report preview' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        /Using Completed late removed threshold for Progress, ranking by Progress, sorting by Progress/,
+      ),
+    ).toBeVisible()
+  })
+
+  it('only shows quick measure choices present in the selected subject catalog', async () => {
+    const partialInventoryPlan = makePlan({
+      subject: 'assetInventory',
+      period: null,
+      categories: ['fire-extinguisher'],
+      measures: [],
+      groupBy: [],
+      columns: [],
+      presentation: 'Summary',
+    })
+    api.catalog.mockImplementation(async (params?: { subject?: string }) =>
+      params?.subject === 'assetInventory'
+        ? makeInventoryCatalog()
+        : makeCatalog(),
+    )
+    api.interpret.mockResolvedValueOnce(
+      makeInterpretation(partialInventoryPlan, {
+        status: 'NeedsClarification',
+        clarificationFields: ['Measures'],
+      }),
+    )
+
+    render(<PmAnalyticsV3Panel />)
+    fireEvent.change(screen.getByRole('textbox', { name: 'Question' }), {
+      target: { value: 'How many fire extinguishers are registered?' },
+    })
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Generate report' }),
+      ).toBeEnabled(),
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Generate report' }))
+
+    expect(await screen.findByText('Registered assets')).toBeInTheDocument()
+    expect(screen.queryByText('Quick choices:')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Completed late' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Overdue missed' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByText(/Missed counts past-due cycles/),
+    ).not.toBeInTheDocument()
+  })
+
+  it('invalidates stale preview when question text is edited, preventing confirmation of old preview', async () => {
+    api.execute.mockResolvedValue(makeExecution())
+    render(<PmAnalyticsV3Panel />)
+    await interpretAndPreview()
+
+    expect(
+      screen.getByRole('heading', { name: 'Report preview' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Confirm and generate' }),
+    ).toBeInTheDocument()
+
+    // From preview, clicking "Edit question" returns to question stage
+    fireEvent.click(screen.getByRole('button', { name: 'Edit question' }))
+    expect(
+      screen.getByRole('textbox', { name: 'Question' }),
+    ).toBeInTheDocument()
+
+    // Editing question text immediately clears existing preview
+    fireEvent.change(screen.getByRole('textbox', { name: 'Question' }), {
+      target: { value: 'Show progress for fire extinguishers during 2025' },
+    })
+
+    expect(
+      screen.queryByRole('heading', { name: 'Report preview' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Confirm and generate' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('supports back navigation from results to preview, and from plan to question retaining question text', async () => {
+    api.execute.mockResolvedValue(makeExecution())
+    render(<PmAnalyticsV3Panel />)
+
+    // Stage: question -> plan
+    fireEvent.change(screen.getByRole('textbox', { name: 'Question' }), {
+      target: { value: 'Show progress for fire extinguishers during 2024' },
+    })
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Generate report' }),
+      ).toBeEnabled(),
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Generate report' }))
+    expect(
+      await screen.findByText('Report ready for review'),
+    ).toBeInTheDocument()
+
+    // Back navigation: From plan, "Edit question" returns to question stage with question text retained
+    fireEvent.click(screen.getByRole('button', { name: 'Edit question' }))
+    expect(screen.getByRole('textbox', { name: 'Question' })).toHaveValue(
+      'Show progress for fire extinguishers during 2024',
+    )
+    expect(
+      screen.queryByText('Report ready for review'),
+    ).not.toBeInTheDocument()
+
+    // Move to preview and results
+    fireEvent.click(screen.getByRole('button', { name: 'Generate report' }))
+    expect(
+      await screen.findByText('Report ready for review'),
+    ).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Preview report' }))
+    expect(
+      await screen.findByRole('heading', { name: 'Report preview' }),
+    ).toBeInTheDocument()
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Confirm and generate' }),
+    )
+    expect(
+      await screen.findByRole('heading', { name: 'PM execution results' }),
+    ).toBeInTheDocument()
+
+    // Back navigation: From results, "Back to preview" returns to preview stage
+    fireEvent.click(screen.getByRole('button', { name: 'Back to preview' }))
+    expect(
+      await screen.findByRole('heading', { name: 'Report preview' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Return to results' }),
+    ).toBeInTheDocument()
   })
 })
