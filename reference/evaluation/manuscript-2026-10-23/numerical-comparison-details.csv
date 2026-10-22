@@ -1,0 +1,76 @@
+﻿case_id,field,expected_value,actual_value,comparison,calculation,source_asset_codes,result
+NUM-01,eligibleAssetCycleCount,3,3,Exact,Count eligible persisted asset-cycle rows,"THR-O1, THR-O2, THR-O3",Pass
+NUM-01,matchingAssetCycleCount,3,3,Exact,Count rows satisfying outcome filters,"THR-O1, THR-O2, THR-O3",Pass
+NUM-01,scheduledCount,3,3,Exact,Count Operations schedules,"THR-O1, THR-O2, THR-O3",Pass
+NUM-01,scheduledCount.numerator,3,3,Exact,Count contributing rows,"THR-O1, THR-O2, THR-O3",Pass
+NUM-01,scheduledCount.denominator,3,3,Exact,Count eligible persisted schedule rows,"THR-O1, THR-O2, THR-O3",Pass
+NUM-01,scheduledCount.isMeasurable,true,true,Exact,Null percentage when denominator is zero or selected cycle remains open,"THR-O1, THR-O2, THR-O3",Pass
+NUM-01,completedCount,3,3,Exact,Count non-null completion timestamps,"THR-O1, THR-O2, THR-O3",Pass
+NUM-01,completedCount.numerator,3,3,Exact,Count contributing rows,"THR-O1, THR-O2, THR-O3",Pass
+NUM-01,completedCount.denominator,3,3,Exact,Count eligible persisted schedule rows,"THR-O1, THR-O2, THR-O3",Pass
+NUM-01,completedCount.isMeasurable,true,true,Exact,Null percentage when denominator is zero or selected cycle remains open,"THR-O1, THR-O2, THR-O3",Pass
+NUM-01,completedLateCount,1,1,Exact,Count completions after February 2024 deadline,"THR-O1, THR-O2, THR-O3",Pass
+NUM-01,completedLateCount.numerator,1,1,Exact,Count contributing rows,"THR-O1, THR-O2, THR-O3",Pass
+NUM-01,completedLateCount.denominator,3,3,Exact,Count eligible persisted schedule rows,"THR-O1, THR-O2, THR-O3",Pass
+NUM-01,completedLateCount.isMeasurable,true,true,Exact,Null percentage when denominator is zero or selected cycle remains open,"THR-O1, THR-O2, THR-O3",Pass
+NUM-01,onTimeCompliancePercent,66.66666666666666666666666667,66.666666666666666666666666667,Two decimal places,2/3 x 100; late work excluded from numerator,"THR-O1, THR-O2, THR-O3",Pass
+NUM-01,onTimeCompliancePercent.numerator,2,2,Exact,Count contributing rows,"THR-O1, THR-O2, THR-O3",Pass
+NUM-01,onTimeCompliancePercent.denominator,3,3,Exact,Count eligible persisted schedule rows,"THR-O1, THR-O2, THR-O3",Pass
+NUM-01,onTimeCompliancePercent.isMeasurable,true,true,Exact,Null percentage when denominator is zero or selected cycle remains open,"THR-O1, THR-O2, THR-O3",Pass
+NUM-02,eligibleAssetCycleCount,3,3,Exact,Count eligible persisted asset-cycle rows,"THR-O1, THR-O2, THR-O3",Pass
+NUM-02,matchingAssetCycleCount,3,3,Exact,Count rows satisfying outcome filters,"THR-O1, THR-O2, THR-O3",Pass
+NUM-02,progressPercent,100,100,Two decimal places,3/3 x 100; late completions included,"THR-O1, THR-O2, THR-O3",Pass
+NUM-02,progressPercent.numerator,3,3,Exact,Count contributing rows,"THR-O1, THR-O2, THR-O3",Pass
+NUM-02,progressPercent.denominator,3,3,Exact,Count eligible persisted schedule rows,"THR-O1, THR-O2, THR-O3",Pass
+NUM-02,progressPercent.isMeasurable,true,true,Exact,Null percentage when denominator is zero or selected cycle remains open,"THR-O1, THR-O2, THR-O3",Pass
+NUM-02,missedCount,0,0,Exact,Count unfinished schedules past deadline,"THR-O1, THR-O2, THR-O3",Pass
+NUM-02,missedCount.numerator,0,0,Exact,Count contributing rows,"THR-O1, THR-O2, THR-O3",Pass
+NUM-02,missedCount.denominator,3,3,Exact,Count eligible persisted schedule rows,"THR-O1, THR-O2, THR-O3",Pass
+NUM-02,missedCount.isMeasurable,true,true,Exact,Null percentage when denominator is zero or selected cycle remains open,"THR-O1, THR-O2, THR-O3",Pass
+NUM-02,nonOperationalCount,0,0,Exact,Count completed inspections marked non-operational,"THR-O1, THR-O2, THR-O3",Pass
+NUM-02,nonOperationalCount.numerator,0,0,Exact,Count contributing rows,"THR-O1, THR-O2, THR-O3",Pass
+NUM-02,nonOperationalCount.denominator,3,3,Exact,Count eligible persisted schedule rows,"THR-O1, THR-O2, THR-O3",Pass
+NUM-02,nonOperationalCount.isMeasurable,true,true,Exact,Null percentage when denominator is zero or selected cycle remains open,"THR-O1, THR-O2, THR-O3",Pass
+NUM-03,eligibleAssetCycleCount,4,4,Exact,Count eligible persisted asset-cycle rows,"DEN-A, DEN-B, DEN-C, DEN-D",Pass
+NUM-03,matchingAssetCycleCount,2,2,Exact,Count rows satisfying outcome filters,"DEN-A, DEN-B, DEN-C, DEN-D",Pass
+NUM-03,completedCount,2,2,Exact,2 non-operational completed rows; all 4 eligible schedules retained as denominator,"DEN-A, DEN-B, DEN-C, DEN-D",Pass
+NUM-03,completedCount.numerator,2,2,Exact,Count contributing rows,"DEN-A, DEN-B, DEN-C, DEN-D",Pass
+NUM-03,completedCount.denominator,4,4,Exact,Count eligible persisted schedule rows,"DEN-A, DEN-B, DEN-C, DEN-D",Pass
+NUM-03,completedCount.isMeasurable,true,true,Exact,Null percentage when denominator is zero or selected cycle remains open,"DEN-A, DEN-B, DEN-C, DEN-D",Pass
+NUM-04,eligibleAssetCycleCount,5,5,Exact,Count eligible persisted asset-cycle rows,"THR-O1, THR-O2, THR-O3, THR-R1, THR-R2",Pass
+NUM-04,matchingAssetCycleCount,5,5,Exact,Count rows satisfying outcome filters,"THR-O1, THR-O2, THR-O3, THR-R1, THR-R2",Pass
+NUM-04,groupsBeforeAggregateFilters,2,2,Exact,Operations and Research are separate groups,"THR-O1, THR-O2, THR-O3, THR-R1, THR-R2",Pass
+NUM-04,groupsAfterAggregateFilters,1,1,Exact,"Keep compliance >=60%; Operations 2/3, Research 1/2","THR-O1, THR-O2, THR-O3, THR-R1, THR-R2",Pass
+NUM-04,keptDepartments,"[""OPERATIONS""]","[""OPERATIONS""]",Exact,Compare qualifying group membership,"THR-O1, THR-O2, THR-O3, THR-R1, THR-R2",Pass
+NUM-04,onTimeCompliancePercent,66.66666666666666666666666667,66.666666666666666666666666667,Two decimal places,"Operations: 2/3 x100=66.67%; Research:1/2 x100=50%, excluded","THR-O1, THR-O2, THR-O3",Pass
+NUM-04,onTimeCompliancePercent.numerator,2,2,Exact,Count contributing rows,"THR-O1, THR-O2, THR-O3",Pass
+NUM-04,onTimeCompliancePercent.denominator,3,3,Exact,Count eligible persisted schedule rows,"THR-O1, THR-O2, THR-O3",Pass
+NUM-04,onTimeCompliancePercent.isMeasurable,true,true,Exact,Null percentage when denominator is zero or selected cycle remains open,"THR-O1, THR-O2, THR-O3",Pass
+NUM-05,eligibleAssetCycleCount,2,2,Exact,Count eligible persisted asset-cycle rows,"CAT-FE, CAT-FA",Pass
+NUM-05,matchingAssetCycleCount,2,2,Exact,Count rows satisfying outcome filters,"CAT-FE, CAT-FA",Pass
+NUM-05,fire-extinguisher.scheduledCount,1,1,Exact,"Count persisted rows per category, not possible calendar months",CAT-FE,Pass
+NUM-05,fire-extinguisher.cycles,"[""2024-02"", ""2024-05"", ""2024-08"", ""2024-11""]","[""2024-02"", ""2024-05"", ""2024-08"", ""2024-11""]",Exact,Category-specific PM month calendar,CAT-FE,Pass
+NUM-05,fire-alarm.scheduledCount,1,1,Exact,"Count persisted rows per category, not possible calendar months",CAT-FA,Pass
+NUM-05,fire-alarm.cycles,"[""2024-06"", ""2024-12""]","[""2024-06"", ""2024-12""]",Exact,Category-specific PM month calendar,CAT-FA,Pass
+NUM-06,eligibleAssetCycleCount,1,1,Exact,Count eligible persisted asset-cycle rows,QTR-FEB,Pass
+NUM-06,matchingAssetCycleCount,1,1,Exact,Count rows satisfying outcome filters,QTR-FEB,Pass
+NUM-06,sourceRecordCodes,"[""QTR-FEB""]","[""QTR-FEB""]",Exact,"2025 Q1, North building, non-operational findings","QTR-FEB, QTR-MAY, QTR-AUG, QTR-NOV",Pass
+NUM-07,eligibleAssetCycleCount,1,1,Exact,Count eligible persisted asset-cycle rows,QTR-NOV,Pass
+NUM-07,matchingAssetCycleCount,1,1,Exact,Count rows satisfying outcome filters,QTR-NOV,Pass
+NUM-07,sourceRecordCodes,"[""QTR-NOV""]","[""QTR-NOV""]",Exact,"2025 Q4, North building, non-operational findings","QTR-FEB, QTR-MAY, QTR-AUG, QTR-NOV",Pass
+NUM-08,eligibleAssetCycleCount,5,5,Exact,Count eligible persisted asset-cycle rows,"PAGE-A, PAGE-B, PAGE-C, PAGE-D, PAGE-E",Pass
+NUM-08,matchingAssetCycleCount,5,5,Exact,Count rows satisfying outcome filters,"PAGE-A, PAGE-B, PAGE-C, PAGE-D, PAGE-E",Pass
+NUM-08,totalPages,3,3,Exact,Ceiling of 5/2 = 3 pages,"PAGE-A, PAGE-B, PAGE-C, PAGE-D, PAGE-E",Pass
+NUM-08,page2RecordCodes,"[""PAGE-C"", ""PAGE-D""]","[""PAGE-C"", ""PAGE-D""]",Exact,Asset-code order; page2 offsets2 and3; page size2,"PAGE-A, PAGE-B, PAGE-C, PAGE-D, PAGE-E",Pass
+NUM-09,eligibleAssetCycleCount,1,1,Exact,Count eligible persisted asset-cycle rows,MISS-FE,Pass
+NUM-09,matchingAssetCycleCount,1,1,Exact,Count rows satisfying outcome filters,MISS-FE,Pass
+NUM-09,onTimeCompliancePercent,Not measurable (null),Not measurable (null),Exact,"Selected fire-alarm June cycle is still open on June15; return null, not 100%",MISS-FE,Pass
+NUM-09,onTimeCompliancePercent.numerator,1,1,Exact,Count contributing rows,MISS-FE,Pass
+NUM-09,onTimeCompliancePercent.denominator,1,1,Exact,Count eligible persisted schedule rows,MISS-FE,Pass
+NUM-09,onTimeCompliancePercent.isMeasurable,false,false,Exact,Null percentage when denominator is zero or selected cycle remains open,MISS-FE,Pass
+NUM-10,eligibleAssetCycleCount,0,0,Exact,Count eligible persisted asset-cycle rows,,Pass
+NUM-10,matchingAssetCycleCount,0,0,Exact,Count rows satisfying outcome filters,,Pass
+NUM-10,progressPercent,Not measurable (null),Not measurable (null),Exact,"Zero eligible denominator; return null, not 0% or100%",,Pass
+NUM-10,progressPercent.numerator,0,0,Exact,Count contributing rows,,Pass
+NUM-10,progressPercent.denominator,0,0,Exact,Count eligible persisted schedule rows,,Pass
+NUM-10,progressPercent.isMeasurable,false,false,Exact,Null percentage when denominator is zero or selected cycle remains open,,Pass

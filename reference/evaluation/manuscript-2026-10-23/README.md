@@ -6,10 +6,17 @@ for traceable execution. It does not claim those 32 cases have passed.
 The [manuscript-ready NLA tables and paragraph](manuscript-nla-interpretation-tables.md)
 are prepared for Section 7.3.4 and Appendix A, with scope notes and evidence links.
 
+The [controlled numerical verification table](manuscript-nla-numerical-verification.md)
+is prepared for Section 7.3.5 and Appendix B. TEST-141 records ten captured
+backend InMemory scenarios and 75/75 field matches against separate Python
+calculations. Source rows, expected/actual comparisons and selected backend
+observations are included. This is not native SQL or deployed-data verification.
+
 Update after researcher review: the user approved the 18 declared NLA outcomes.
 The revised, frozen deterministic development evaluation matched 18/18 cases
-and 69/69 assertions; see TEST-139. This does not complete manual BB cases or
-numerical verification. The researcher also reviewed and approved this evidence
+and 69/69 assertions; see TEST-139. TEST-141 separately records controlled
+numerical execution; neither result completes the manual BB cases or native
+SQL verification. The researcher also reviewed and approved the earlier evidence
 package on October 23, 2026. Approval covers the recorded results, proposed BB
 expected outcomes, tables and stated limitations; it does not establish
 unrecorded test execution or external adviser/GSD approval.
@@ -56,9 +63,9 @@ recreate missing historical execution records from the manuscript's summaries.
 1. Identify the exact working version and dataset for the approved BB cases.
 2. Review the retained diagnostic and disagreements. The line-ending discrepancy
    is resolved; the expected labels have not been changed to fit the output.
-3. Retain the completed 18-question researcher review and TEST-139 score.
-   Complete numerical verification separately using controlled records and
-   checked expected values before claiming numerical correctness.
+3. Retain the completed 18-question researcher review, TEST-139 score and
+   TEST-141 controlled numerical evidence. Review the new numerical tables
+   and retain the InMemory/native-SQL distinction when reporting results.
 4. Execute the API/browser cases against an identified disposable dataset, and
    record physical-device offline, QR and acknowledgement cases separately.
 5. Align manuscript survey reporting with the final supplied results PDF and
