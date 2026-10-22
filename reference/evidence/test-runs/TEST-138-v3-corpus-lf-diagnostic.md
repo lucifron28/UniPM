@@ -2,7 +2,10 @@
 id: TEST-138
 type: test-run
 title: V3 corpus line-ending correction and deterministic diagnostic
-status: executed
+status: reviewed
+reviewedAt: 2026-10-23
+reviewedBy: Researcher / repository owner, approval in this chat
+reviewScope: Evidence record and stated limitations; no additional execution asserted
 recordedAtUtc: 2026-10-23
 testedCommit: 79852bf075ca082781365bdeb5981e8a2d0422a2
 sourceBranch: feature/nla-guided-interpretation

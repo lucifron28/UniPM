@@ -22,10 +22,10 @@ This draft prepares Phase 5 of the NLA V3 roadmap. It defines a proposed
 development evaluation for the current `pmExecution` subject and a provisional
 question set in [`dev-candidates.jsonl`](dev-candidates.jsonl).
 
-The protocol and labels are developer-authored and **not independently
-reviewed**. They are not a frozen evaluation, quality result, release
-acceptance, or institutional validation. The candidate file is for review and
-development use only. No held-out partition is included in this preparation.
+The protocol and labels were developer-authored. The researcher approved all
+18 declared outcomes, and the revised development corpus is frozen and scored
+as documented above. External independent review, release acceptance and
+institutional validation are not established. No held-out partition is included.
 
 ## Scope
 
@@ -136,12 +136,11 @@ dotnet run --project tools/UniPM.PmAnalytics.V3Evaluation -- diagnose
 dotnet run --project tools/UniPM.PmAnalytics.V3Evaluation -- score
 ```
 
-`validate` currently passes for 18 structurally valid candidates and reports
-all 18 labels pending. `diagnose` is a review aid, not an accuracy result. The
-`score` command currently exits without a score because labels are unreviewed.
-After human approval and freezing, the score report will include status,
-clarification-set, disposition, and declared-plan-assertion results grouped by
-case class and intent family, plus deterministic parser elapsed time. It
+The researcher-approved corpus contains 18 cases with no pending label
+approvals. `diagnose` remains a review aid rather than a scored result. The
+executed `score` run in TEST-139 matched 18/18 declared outcomes and 69/69
+assertions, reporting status, clarification-set, disposition and assertion
+results by case class and intent family, plus deterministic parser elapsed time. It
 measures the safety guard and rule parser; it does not run catalog resolution,
 query execution, a provider, or end-to-end API latency.
 The separate [`review-notes.md`](review-notes.md) lists per-case issues. The

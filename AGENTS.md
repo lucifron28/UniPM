@@ -21,8 +21,10 @@ provider-neutral embedding components remain.
 The NLA V3 and mobile workflow integrations are merged into `main` and
 `deploy/azure-staging`. Integration is complete; CI passed on the consolidation-
 checked heads, but this does not establish GSD or physical-device acceptance.
-The Phase 5 evaluation corpus remains unreviewed and has no V3 scoring result;
-native SQL Server 2019 execution is still unverified. Phases 7–8 remain planning
+TEST-139 records researcher approval of 18 development cases and deterministic
+agreement on 18/18 declared outcomes and 69/69 assertions. This is not held-out,
+DeepSeek, numerical or independent GSD evaluation. Native SQL Server 2019
+execution is still unverified. Phases 7–8 remain planning
 only. Do not describe these limitations as completed evaluation or field
 validation.
 
@@ -295,8 +297,9 @@ Priority order on the integrated branches is:
 1. Keep `main` and `deploy/azure-staging` stable and runnable.
 2. Verify the confirmed preventive-maintenance workflow end to end, including
    acknowledged-only official history and corrective-handoff preparation.
-3. Exercise NLA V3 against the existing synthetic data. Do not claim Phase 5
-   evaluation results until the corpus is reviewed and a scoring method exists.
+3. Exercise NLA V3 against existing synthetic data. Report TEST-139 only as
+   researcher-reviewed deterministic development-set agreement; numerical,
+   live-provider and broader acceptance evidence remain separate.
 4. Verify native SQL Server 2019 execution and mobile behavior on physical
    devices, then prepare the GSD demonstration and collect workflow feedback.
 5. Record findings. Keep Phases 7–8 and unresolved institutional policies in
@@ -316,8 +319,9 @@ and GSD-only corrective-action handoff preparation are also complete. The
 Flutter mobile foundation, Draft form workflow, encrypted offline
 synchronization, conflict recovery, and acknowledgement/home UX are integrated
 on `main` and `deploy/azure-staging`; GSD and physical-device acceptance remain
-open. NLA V3 is also integrated, while its Phase 5 corpus remains unreviewed
-and native SQL Server 2019 execution remains unverified. The multilingual
+open. NLA V3 is also integrated. TEST-139 records researcher-reviewed
+deterministic development results; native SQL Server 2019 execution remains
+unverified. The multilingual
 embedding baseline is recorded as controlled development evidence; it does not
 establish real institutional performance.
 

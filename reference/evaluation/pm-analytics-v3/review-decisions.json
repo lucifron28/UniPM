@@ -165,5 +165,11 @@
       "rationale": "Researcher approved the declared expected outcome; development-set review, not held-out evaluation."
     }
   ],
-  "reviewScope": "User approved the 18 expected outcomes in chat after reviewing the diagnostic packet; no adviser/GSD independent approval asserted. Manual execution is user-attested, not supported by per-case captures here."
+  "reviewScope": "User approved the 18 expected outcomes in chat after reviewing the diagnostic packet; no adviser/GSD independent approval asserted. Manual execution is user-attested, not supported by per-case captures here.",
+  "evidencePackageReview": {
+    "status": "approved",
+    "reviewer": "Researcher / repository owner, approval in this chat",
+    "reviewDate": "2026-10-23",
+    "scope": "TEST-137 through TEST-139, manuscript tables, review records and stated limitations. No additional test execution, independent external review or adviser/GSD approval implied."
+  }
 }
