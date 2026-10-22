@@ -741,7 +741,7 @@ internal static class PmAnalyticsV3RuleParser
         RegexOptions.CultureInvariant | RegexOptions.IgnoreCase,
         TimeSpan.FromMilliseconds(100));
     private static readonly Regex PmExecutionIntentRegex = new(
-        @"\b(?:pm|preventive\s+maintenance|schedules?|scheduled|inspections?|inspect(?:ed|ion)?|progress|overdue|compliance|on[ -]?time|late|missed|non[ -]?operational|operational|completed)\b",
+        @"\b(?:pm|preventive\s+maintenance|schedules?|scheduled|inspections?|inspect(?:ed|ion)?|checks?|falling\s+behind|progress|overdue|compliance|on[ -]?time|late|missed|non[ -]?operational|operational|completed)\b",
         RegexOptions.CultureInvariant | RegexOptions.IgnoreCase,
         TimeSpan.FromMilliseconds(100));
     private static readonly Regex UnsupportedNegatedOutcomeRegex = new(
