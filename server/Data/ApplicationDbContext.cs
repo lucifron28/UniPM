@@ -29,10 +29,19 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     public DbSet<ReferenceDocumentSection> ReferenceDocumentSections => Set<ReferenceDocumentSection>();
     public DbSet<ReferenceDocumentSectionEmbedding> ReferenceDocumentSectionEmbeddings => Set<ReferenceDocumentSectionEmbedding>();
     public DbSet<RefreshSession> RefreshSessions => Set<RefreshSession>();
+    public DbSet<SavedAnalyticsReport> SavedAnalyticsReports => Set<SavedAnalyticsReport>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        var savedReport = modelBuilder.Entity<SavedAnalyticsReport>();
+        savedReport.Property(entity => entity.Name).HasMaxLength(120);
+        savedReport.Property(entity => entity.PeriodMode).HasMaxLength(16);
+        savedReport.Property(entity => entity.Revision).IsConcurrencyToken();
+        savedReport.HasIndex(entity => new { entity.OwnerUserId, entity.UpdatedAtUtc });
+        savedReport.HasOne<ApplicationUser>().WithMany().HasForeignKey(entity => entity.OwnerUserId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         var user = modelBuilder.Entity<ApplicationUser>();
         user.Property(entity => entity.DisplayName)

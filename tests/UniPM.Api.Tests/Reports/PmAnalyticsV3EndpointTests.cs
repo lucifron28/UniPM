@@ -19,6 +19,109 @@ namespace UniPM.Api.Tests;
 public sealed class PmAnalyticsV3EndpointTests
 {
     [Fact]
+    public async Task Saved_reports_are_private_revalidated_and_execute_current_data_without_AI()
+    {
+        var clock = new FixedTimeProvider(new DateTimeOffset(2026, 12, 31, 16, 5, 0, TimeSpan.Zero));
+        await using var application = new AnalyticsApplicationFactory(true, clock, AuthRoleCatalog.Gsd);
+        using var client = application.CreateClient();
+        await SeedAsync(application.Services);
+        const string route = "/api/v1/analytics/pm/v3/saved-reports";
+        var plan = new PmAnalyticsV3ReportPlan(3, PmAnalyticsV3Catalog.Version, "assetInventory",
+            PmAnalyticsV3Mode.Aggregate, null, ["fire-extinguisher"], ["registeredAssetCount"], [],
+            [], [], [], [], null, PmAnalyticsV3Presentation.Summary, []);
+        var request = new SavedAnalyticsReportRequest("My inventory", plan);
+        using var create = await client.PostAsJsonAsync(route, request);
+        Assert.Equal(HttpStatusCode.Created, create.StatusCode);
+        var saved = (await create.Content.ReadFromJsonAsync<SavedAnalyticsReportResponse>())!;
+        var item = $"{route}/{saved.Id}";
+        Assert.Single((await client.GetFromJsonAsync<SavedAnalyticsReportResponse[]>(route))!);
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync(route,
+            request with { Name = " " })).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync(route,
+            request with { PeriodMode = "LastYear" })).StatusCode);
+
+        using var other = application.CreateClient();
+        other.DefaultRequestHeaders.Add("X-Test-UserId", Guid.NewGuid().ToString());
+        Assert.Empty((await other.GetFromJsonAsync<SavedAnalyticsReportResponse[]>(route))!);
+        Assert.Equal(HttpStatusCode.NotFound, (await other.PutAsJsonAsync(item, request)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await other.DeleteAsync(item)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await other.PostAsync($"{item}/preview", null)).StatusCode);
+        Assert.Equal(HttpStatusCode.Conflict, (await client.PutAsJsonAsync(item, request)).StatusCode);
+        using var rename = await client.PutAsJsonAsync(item, request with { Name = "Renamed", Revision = saved.Revision });
+        Assert.Equal(HttpStatusCode.OK, rename.StatusCode);
+        saved = (await rename.Content.ReadFromJsonAsync<SavedAnalyticsReportResponse>())!;
+        Assert.Equal("Renamed", saved.Name);
+
+        async Task<PmAnalyticsV3ExecutionResponse> Run()
+        {
+            using var previewResponse = await client.PostAsync($"{item}/preview", null);
+            Assert.Equal(HttpStatusCode.OK, previewResponse.StatusCode);
+            var preview = (await previewResponse.Content.ReadFromJsonAsync<PmAnalyticsV3PreviewResponse>())!;
+            using var execute = await client.PostAsJsonAsync("/api/v1/analytics/pm/v3/execute",
+                new PmAnalyticsV3ExecuteRequest(preview.PreviewId));
+            Assert.Equal(HttpStatusCode.OK, execute.StatusCode);
+            return (await execute.Content.ReadFromJsonAsync<PmAnalyticsV3ExecutionResponse>())!;
+        }
+        var before = await Run();
+        using (var scope = application.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            db.Assets.Add(new Asset { Id = Guid.NewGuid(), AssetCode = "SAVED-FE-NEW", AssetCategory = "fire-extinguisher",
+                Department = "Synthetic GSD", Building = "Synthetic Building", Location = "Synthetic North", Status = "Active" });
+            await db.SaveChangesAsync();
+        }
+        var after = await Run();
+        Assert.Equal(before.AggregateRows[0].Measures["registeredAssetCount"].Value + 1,
+            after.AggregateRows[0].Measures["registeredAssetCount"].Value);
+
+        var pm = plan with { Subject = "pmExecution", Measures = ["scheduledCount"],
+            Period = new("pmCycle", PmAnalyticsV3PeriodKind.Year, 2024) };
+        using var relativeCreate = await client.PostAsJsonAsync(route, new SavedAnalyticsReportRequest("Monthly", pm, "ThisMonth"));
+        Assert.Equal(HttpStatusCode.Created, relativeCreate.StatusCode);
+        var relative = (await relativeCreate.Content.ReadFromJsonAsync<SavedAnalyticsReportResponse>())!;
+        async Task<PmAnalyticsV3Period> RelativePreview()
+        {
+            using var result = await client.PostAsync($"{route}/{relative.Id}/preview", null);
+            Assert.Equal(HttpStatusCode.OK, result.StatusCode);
+            return (await result.Content.ReadFromJsonAsync<PmAnalyticsV3PreviewResponse>())!.Plan.Period!;
+        }
+        Assert.Equal(new PmAnalyticsV3Period("pmCycle", PmAnalyticsV3PeriodKind.Month, 2027, 1), await RelativePreview());
+        clock.Advance(TimeSpan.FromDays(32));
+        Assert.Equal(2, (await RelativePreview()).Month);
+        foreach (var (mode, year, month) in new[] { ("LastMonth", 2027, (int?)1), ("ThisYear", 2027, null), ("LastYear", 2026, null), ("Fixed", 2024, null) })
+        {
+            using var update = await client.PutAsJsonAsync($"{route}/{relative.Id}",
+                new SavedAnalyticsReportRequest("Period", pm, mode, relative.Revision));
+            Assert.Equal(HttpStatusCode.OK, update.StatusCode);
+            relative = (await update.Content.ReadFromJsonAsync<SavedAnalyticsReportResponse>())!;
+            var resolved = await RelativePreview();
+            Assert.Equal(year, resolved.Year);
+            Assert.Equal(month, resolved.Month);
+        }
+        using (var scope = application.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var row = await db.SavedAnalyticsReports.FindAsync(saved.Id);
+            row!.PlanJson = row.PlanJson.Replace("\"catalogVersion\":" + PmAnalyticsV3Catalog.Version, "\"catalogVersion\":0");
+            await db.SaveChangesAsync();
+        }
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsync($"{item}/preview", null)).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await client.DeleteAsync(item)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.PostAsync($"{item}/preview", null)).StatusCode);
+
+        await using var supervisor = new AnalyticsApplicationFactory(true, AuthRoleCatalog.Supervisor);
+        using var forbidden = supervisor.CreateClient();
+        Assert.Equal(HttpStatusCode.Forbidden, (await forbidden.GetAsync(route)).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await forbidden.PostAsJsonAsync(route, request)).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await forbidden.PutAsJsonAsync(item, request)).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await forbidden.DeleteAsync(item)).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await forbidden.PostAsync($"{item}/preview", null)).StatusCode);
+        // Export the actual API contract from this isolated host for client generation.
+        if (Environment.GetEnvironmentVariable("UNIPM_SAVED_REPORT_OPENAPI_OUTPUT") is { Length: > 0 } output)
+            await File.WriteAllTextAsync(output, await client.GetStringAsync("/openapi/v1.json"));
+    }
+
+    [Fact]
     public async Task Gsd_can_interpret_preview_and_execute_without_a_provider_call()
     {
         await using var application = new AnalyticsApplicationFactory(authenticated: true, AuthRoleCatalog.Gsd);
