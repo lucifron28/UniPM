@@ -558,11 +558,13 @@ signatory details remain excluded from remote interpretation.
 - Add bounded bar/line chart mappings using an existing suitable library if
   available. Validate field types, units, nulls and temporal axes. Tables remain
   the accessible alternative and numerical source of truth.
-- Saved reports / My reports: requested as a follow-up on October 23, 2026;
-  planned only, not implemented. Let users explicitly save a reviewed report
-  definition for repeated use, then run, edit, rename or delete it. Reopening
-  and running the saved definition uses the backend directly without another
-  AI interpretation call.
+- Saved reports / My reports: implemented on `feature/nla-saved-reports` on
+  October 23, 2026. Users can explicitly save reviewed report definitions,
+  open new previews, edit, rename or delete them. Reopening uses backend plan
+  validation without another AI interpretation call. TEST-148 records a
+  targeted InMemory backend check; TEST-149 records TypeScript checking.
+  The migration remains unapplied and browser/native SQL verification is
+  pending. See [usage and setup](../guides/how-to/use-saved-reports.md).
   - Save the report settings, not a frozen result set. Each Run or Refresh
     calculates fresh results from currently authorized records.
   - Support clearly labeled fixed periods, such as 2025, and relative periods,
