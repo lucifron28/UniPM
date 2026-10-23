@@ -1,16 +1,16 @@
 {
   "protocolId": "NLA-V3-EVAL-PROTOCOL-001",
   "corpusId": "NLA-V3-DEV-CANDIDATES-001",
-  "status": "draft",
+  "status": "frozen",
   "candidateFile": "dev-candidates.jsonl",
   "expectedCaseCount": 18,
   "schemaVersion": 3,
   "catalogVersion": 2,
   "interpreterId": "PmAnalyticsV3QuestionGuard+PmAnalyticsV3RuleParser",
-  "frozenSourceCommit": null,
-  "fileSha256": "b7362e13106b8872353b934ceedd33c70e356334c67343a78e55f316453348e6",
-  "freezeSha256": null,
+  "frozenSourceCommit": "79852bf075ca082781365bdeb5981e8a2d0422a2",
+  "fileSha256": "dd313076a40ea5dd8eddfef610ff8db37ca6c5ba1934a286c6023a1586ca0e25",
+  "freezeSha256": "dd313076a40ea5dd8eddfef610ff8db37ca6c5ba1934a286c6023a1586ca0e25",
   "asOfUtc": "2025-06-01T00:00:00+00:00",
   "heldoutIncluded": false,
-  "reviewed": false
+  "reviewed": true
 }

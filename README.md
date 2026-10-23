@@ -224,8 +224,10 @@ ReferenceDocument foundation, Full-Text Search, section embeddings, and shared
 provider-neutral embedding components remain.
 
 Schema-constrained NLA V3 PM execution and registered asset inventory reporting
-are integrated into `main` and `deploy/azure-staging`. The Phase 5 evaluation
-corpus is unreviewed and no V3 scoring result is claimed. Native SQL Server 2019
+are integrated into `main` and `deploy/azure-staging`. TEST-139 records
+researcher-reviewed deterministic agreement on 18/18 declared development
+outcomes and 69/69 assertions. This is not held-out, live-provider or GSD
+acceptance evidence. Native SQL Server 2019
 execution, GSD acceptance, and physical-device acceptance remain open. Phases
 7–8 are planning only. Core PMIS workflows remain independent of AI.
 
@@ -396,8 +398,10 @@ ReferenceDocument foundation, Full-Text Search, section embeddings, and shared
 provider-neutral embedding components remain.
 
 Schema-constrained NLA V3 PM execution and registered asset inventory reporting
-are integrated into `main` and `deploy/azure-staging`. The Phase 5 evaluation
-corpus is unreviewed and no V3 scoring result is claimed. Native SQL Server 2019
+are integrated into `main` and `deploy/azure-staging`. TEST-139 records
+researcher-reviewed deterministic agreement on 18/18 declared development
+outcomes and 69/69 assertions. This is not held-out, live-provider or GSD
+acceptance evidence. Native SQL Server 2019
 execution, GSD acceptance, and physical-device acceptance remain open. Phases
 7–8 are planning only. Core PMIS workflows remain independent of AI.
 

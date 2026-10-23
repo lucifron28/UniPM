@@ -1,24 +1,175 @@
 {
   "corpusId": "NLA-V3-DEV-CANDIDATES-001",
-  "status": "pending-human-review",
+  "status": "researcher-reviewed",
   "decisions": [
-    { "caseId": "V3D-001", "status": "pending", "reviewers": [], "reviewDate": null },
-    { "caseId": "V3D-002", "status": "pending", "reviewers": [], "reviewDate": null },
-    { "caseId": "V3D-003", "status": "pending", "reviewers": [], "reviewDate": null },
-    { "caseId": "V3D-004", "status": "pending", "reviewers": [], "reviewDate": null },
-    { "caseId": "V3D-005", "status": "pending", "reviewers": [], "reviewDate": null },
-    { "caseId": "V3D-006", "status": "pending", "reviewers": [], "reviewDate": null },
-    { "caseId": "V3D-007", "status": "pending", "reviewers": [], "reviewDate": null },
-    { "caseId": "V3D-008", "status": "pending", "reviewers": [], "reviewDate": null },
-    { "caseId": "V3D-009", "status": "pending", "reviewers": [], "reviewDate": null },
-    { "caseId": "V3D-010", "status": "pending", "reviewers": [], "reviewDate": null },
-    { "caseId": "V3D-011", "status": "pending", "reviewers": [], "reviewDate": null },
-    { "caseId": "V3D-012", "status": "pending", "reviewers": [], "reviewDate": null },
-    { "caseId": "V3D-013", "status": "pending", "reviewers": [], "reviewDate": null },
-    { "caseId": "V3D-014", "status": "pending", "reviewers": [], "reviewDate": null },
-    { "caseId": "V3D-015", "status": "pending", "reviewers": [], "reviewDate": null },
-    { "caseId": "V3D-016", "status": "pending", "reviewers": [], "reviewDate": null },
-    { "caseId": "V3D-017", "status": "pending", "reviewers": [], "reviewDate": null },
-    { "caseId": "V3D-018", "status": "pending", "reviewers": [], "reviewDate": null }
-  ]
+    {
+      "caseId": "V3D-001",
+      "status": "approved",
+      "reviewers": [
+        "Researcher / repository owner, approval in this chat"
+      ],
+      "reviewDate": "2026-10-23",
+      "rationale": "Researcher approved the declared expected outcome; development-set review, not held-out evaluation."
+    },
+    {
+      "caseId": "V3D-002",
+      "status": "approved",
+      "reviewers": [
+        "Researcher / repository owner, approval in this chat"
+      ],
+      "reviewDate": "2026-10-23",
+      "rationale": "Researcher approved the declared expected outcome; development-set review, not held-out evaluation."
+    },
+    {
+      "caseId": "V3D-003",
+      "status": "approved",
+      "reviewers": [
+        "Researcher / repository owner, approval in this chat"
+      ],
+      "reviewDate": "2026-10-23",
+      "rationale": "Researcher approved the declared expected outcome; development-set review, not held-out evaluation."
+    },
+    {
+      "caseId": "V3D-004",
+      "status": "approved",
+      "reviewers": [
+        "Researcher / repository owner, approval in this chat"
+      ],
+      "reviewDate": "2026-10-23",
+      "rationale": "Researcher approved the declared expected outcome; development-set review, not held-out evaluation."
+    },
+    {
+      "caseId": "V3D-005",
+      "status": "approved",
+      "reviewers": [
+        "Researcher / repository owner, approval in this chat"
+      ],
+      "reviewDate": "2026-10-23",
+      "rationale": "Researcher approved the declared expected outcome; development-set review, not held-out evaluation."
+    },
+    {
+      "caseId": "V3D-006",
+      "status": "approved",
+      "reviewers": [
+        "Researcher / repository owner, approval in this chat"
+      ],
+      "reviewDate": "2026-10-23",
+      "rationale": "Researcher approved the declared expected outcome; development-set review, not held-out evaluation."
+    },
+    {
+      "caseId": "V3D-007",
+      "status": "approved",
+      "reviewers": [
+        "Researcher / repository owner, approval in this chat"
+      ],
+      "reviewDate": "2026-10-23",
+      "rationale": "Researcher approved the declared expected outcome; development-set review, not held-out evaluation."
+    },
+    {
+      "caseId": "V3D-008",
+      "status": "approved",
+      "reviewers": [
+        "Researcher / repository owner, approval in this chat"
+      ],
+      "reviewDate": "2026-10-23",
+      "rationale": "Researcher accepted the discussed clarification-with-no-draft outcome. Ambiguous OR/negation must not produce an executable plan. Revised after development diagnostics, not an unseen-data result."
+    },
+    {
+      "caseId": "V3D-009",
+      "status": "approved",
+      "reviewers": [
+        "Researcher / repository owner, approval in this chat"
+      ],
+      "reviewDate": "2026-10-23",
+      "rationale": "Researcher accepted the discussed clarification-with-no-draft outcome. Ambiguous OR/negation must not produce an executable plan. Revised after development diagnostics, not an unseen-data result."
+    },
+    {
+      "caseId": "V3D-010",
+      "status": "approved",
+      "reviewers": [
+        "Researcher / repository owner, approval in this chat"
+      ],
+      "reviewDate": "2026-10-23",
+      "rationale": "Researcher approved the declared expected outcome; development-set review, not held-out evaluation."
+    },
+    {
+      "caseId": "V3D-011",
+      "status": "approved",
+      "reviewers": [
+        "Researcher / repository owner, approval in this chat"
+      ],
+      "reviewDate": "2026-10-23",
+      "rationale": "Researcher approved the declared expected outcome; development-set review, not held-out evaluation."
+    },
+    {
+      "caseId": "V3D-012",
+      "status": "approved",
+      "reviewers": [
+        "Researcher / repository owner, approval in this chat"
+      ],
+      "reviewDate": "2026-10-23",
+      "rationale": "Researcher approved the declared expected outcome; development-set review, not held-out evaluation."
+    },
+    {
+      "caseId": "V3D-013",
+      "status": "approved",
+      "reviewers": [
+        "Researcher / repository owner, approval in this chat"
+      ],
+      "reviewDate": "2026-10-23",
+      "rationale": "Researcher approved the declared expected outcome; development-set review, not held-out evaluation."
+    },
+    {
+      "caseId": "V3D-014",
+      "status": "approved",
+      "reviewers": [
+        "Researcher / repository owner, approval in this chat"
+      ],
+      "reviewDate": "2026-10-23",
+      "rationale": "Researcher approved the declared expected outcome; development-set review, not held-out evaluation."
+    },
+    {
+      "caseId": "V3D-015",
+      "status": "approved",
+      "reviewers": [
+        "Researcher / repository owner, approval in this chat"
+      ],
+      "reviewDate": "2026-10-23",
+      "rationale": "Researcher approved the declared expected outcome; development-set review, not held-out evaluation."
+    },
+    {
+      "caseId": "V3D-016",
+      "status": "approved",
+      "reviewers": [
+        "Researcher / repository owner, approval in this chat"
+      ],
+      "reviewDate": "2026-10-23",
+      "rationale": "Researcher approved the declared expected outcome; development-set review, not held-out evaluation."
+    },
+    {
+      "caseId": "V3D-017",
+      "status": "approved",
+      "reviewers": [
+        "Researcher / repository owner, approval in this chat"
+      ],
+      "reviewDate": "2026-10-23",
+      "rationale": "Researcher approved the declared expected outcome; development-set review, not held-out evaluation."
+    },
+    {
+      "caseId": "V3D-018",
+      "status": "approved",
+      "reviewers": [
+        "Researcher / repository owner, approval in this chat"
+      ],
+      "reviewDate": "2026-10-23",
+      "rationale": "Researcher approved the declared expected outcome; development-set review, not held-out evaluation."
+    }
+  ],
+  "reviewScope": "User approved the 18 expected outcomes in chat after reviewing the diagnostic packet; no adviser/GSD independent approval asserted. Manual execution is user-attested, not supported by per-case captures here.",
+  "evidencePackageReview": {
+    "status": "approved",
+    "reviewer": "Researcher / repository owner, approval in this chat",
+    "reviewDate": "2026-10-23",
+    "scope": "TEST-137 through TEST-139, manuscript tables, review records and stated limitations. No additional test execution, independent external review or adviser/GSD approval implied."
+  }
 }

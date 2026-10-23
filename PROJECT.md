@@ -24,9 +24,10 @@ provider-neutral embedding components remain.
 
 Schema-constrained NLA V3 through Phase 6 and the mobile offline/acknowledgement
 workflow are integrated into `main` and `deploy/azure-staging`. GSD and
-physical-device acceptance remain pending. The Phase 5 evaluation corpus is
-unreviewed and has no V3 scoring result; native SQL Server 2019 execution
-remains unverified. Phases 7–8 are planning only.
+physical-device acceptance remain pending. TEST-139 records researcher-reviewed
+deterministic development agreement on 18/18 declared outcomes and 69/69
+assertions; this is not held-out, live-provider or GSD acceptance evidence.
+Native SQL Server 2019 execution remains unverified. Phases 7–8 are planning only.
 
 Older completed RAG entries below describe historical work only.
 
@@ -83,8 +84,8 @@ Older completed RAG entries below describe historical work only.
     runtime response validation, and backend-authoritative role policies.
   - NLA V3 PM execution reporting and registered asset inventory are
     integrated into both maintained branches. Inventory reports use one
-    registered asset per row. The Phase 5 evaluation corpus is unreviewed and
-    no V3 score is claimed; native SQL Server 2019 verification remains open.
+    registered asset per row. TEST-139 records the researcher-reviewed deterministic
+    development score; native SQL Server 2019 verification remains open.
   - Confirmed multi-asset preventive-maintenance form lifecycle:
     `Draft -> Submitted -> Acknowledged`, provisional form file numbers,
     field-work-driven schedule completion from `InspectionRecord.CompletedAt`,
@@ -205,8 +206,9 @@ this branch.
    operational feedback.
 2. Complete physical-device acceptance and native SQL Server 2019 execution
    verification.
-3. Review the Phase 5 NLA V3 corpus and define a scoring method before
-   reporting any evaluation result; no V3 score is currently established.
+3. Use TEST-139 for the completed researcher-reviewed deterministic development
+   evaluation. Complete numerical, live-provider and broader acceptance checks
+   separately; do not generalize the development score.
 4. Keep Phases 7–8 and institutional source authorization, final RBAC, audit
    rules, and other unresolved policy decisions in planning until reviewed.
 

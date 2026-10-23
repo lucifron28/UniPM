@@ -1,0 +1,912 @@
+[
+  {
+    "caseId": "NUM-01",
+    "fixtureId": "grouped-threshold",
+    "asOfUtc": "2025-06-01T00:00:00+00:00",
+    "plan": {
+      "schemaVersion": 3,
+      "catalogVersion": 2,
+      "subject": "pmExecution",
+      "mode": "Aggregate",
+      "period": {
+        "basis": "pmCycle",
+        "kind": "Month",
+        "year": 2024,
+        "month": 2,
+        "quarter": null,
+        "startCycle": null,
+        "endCycle": null
+      },
+      "categories": [
+        "fire-extinguisher"
+      ],
+      "measures": [
+        "scheduledCount",
+        "completedCount",
+        "completedLateCount",
+        "onTimeCompliancePercent"
+      ],
+      "groupBy": [],
+      "baseFilters": [
+        {
+          "field": "department",
+          "operator": "Equal",
+          "values": [
+            "Operations"
+          ]
+        }
+      ],
+      "matchingFilters": [],
+      "aggregateFilters": [],
+      "orderBy": [],
+      "top": null,
+      "presentation": "Table",
+      "columns": [
+        "scheduledCount",
+        "completedCount",
+        "completedLateCount",
+        "onTimeCompliancePercent"
+      ]
+    },
+    "population": {
+      "eligibleAssetCycleCount": 3,
+      "eligibleDistinctAssetCount": 3,
+      "matchingAssetCycleCount": 3,
+      "matchingDistinctAssetCount": 3,
+      "sourceTotalCount": 3,
+      "groupsBeforeAggregateFilters": 1,
+      "groupsAfterAggregateFilters": 1,
+      "groupsReturnedAfterTop": 1
+    },
+    "cyclesByCategory": {
+      "fire-extinguisher": [
+        "2024-02"
+      ]
+    },
+    "aggregateRows": [
+      {
+        "values": {
+          "scheduledCount": 3,
+          "completedCount": 3,
+          "completedLateCount": 1,
+          "onTimeCompliancePercent": "66.666666666666666666666666667"
+        },
+        "measures": {
+          "scheduledCount": {
+            "value": 3,
+            "numerator": 3,
+            "denominator": 3,
+            "unit": "asset-cycles",
+            "isMeasurable": true,
+            "unmeasurableReason": null,
+            "eligibleRowCount": 3,
+            "matchingRowCount": 3
+          },
+          "completedCount": {
+            "value": 3,
+            "numerator": 3,
+            "denominator": 3,
+            "unit": "asset-cycles",
+            "isMeasurable": true,
+            "unmeasurableReason": null,
+            "eligibleRowCount": 3,
+            "matchingRowCount": 3
+          },
+          "completedLateCount": {
+            "value": 1,
+            "numerator": 1,
+            "denominator": 3,
+            "unit": "asset-cycles",
+            "isMeasurable": true,
+            "unmeasurableReason": null,
+            "eligibleRowCount": 3,
+            "matchingRowCount": 3
+          },
+          "onTimeCompliancePercent": {
+            "value": "66.666666666666666666666666667",
+            "numerator": 2,
+            "denominator": 3,
+            "unit": "percent",
+            "isMeasurable": true,
+            "unmeasurableReason": null,
+            "eligibleRowCount": 3,
+            "matchingRowCount": 3
+          }
+        }
+      }
+    ],
+    "records": [],
+    "page": 1,
+    "pageSize": 100,
+    "totalPages": 1
+  },
+  {
+    "caseId": "NUM-02",
+    "fixtureId": "grouped-threshold",
+    "asOfUtc": "2025-06-01T00:00:00+00:00",
+    "plan": {
+      "schemaVersion": 3,
+      "catalogVersion": 2,
+      "subject": "pmExecution",
+      "mode": "Aggregate",
+      "period": {
+        "basis": "pmCycle",
+        "kind": "Month",
+        "year": 2024,
+        "month": 2,
+        "quarter": null,
+        "startCycle": null,
+        "endCycle": null
+      },
+      "categories": [
+        "fire-extinguisher"
+      ],
+      "measures": [
+        "progressPercent",
+        "missedCount",
+        "nonOperationalCount"
+      ],
+      "groupBy": [],
+      "baseFilters": [
+        {
+          "field": "department",
+          "operator": "Equal",
+          "values": [
+            "Operations"
+          ]
+        }
+      ],
+      "matchingFilters": [],
+      "aggregateFilters": [],
+      "orderBy": [],
+      "top": null,
+      "presentation": "Table",
+      "columns": [
+        "progressPercent",
+        "missedCount",
+        "nonOperationalCount"
+      ]
+    },
+    "population": {
+      "eligibleAssetCycleCount": 3,
+      "eligibleDistinctAssetCount": 3,
+      "matchingAssetCycleCount": 3,
+      "matchingDistinctAssetCount": 3,
+      "sourceTotalCount": 3,
+      "groupsBeforeAggregateFilters": 1,
+      "groupsAfterAggregateFilters": 1,
+      "groupsReturnedAfterTop": 1
+    },
+    "cyclesByCategory": {
+      "fire-extinguisher": [
+        "2024-02"
+      ]
+    },
+    "aggregateRows": [
+      {
+        "values": {
+          "progressPercent": 100,
+          "missedCount": 0,
+          "nonOperationalCount": 0
+        },
+        "measures": {
+          "progressPercent": {
+            "value": 100,
+            "numerator": 3,
+            "denominator": 3,
+            "unit": "percent",
+            "isMeasurable": true,
+            "unmeasurableReason": null,
+            "eligibleRowCount": 3,
+            "matchingRowCount": 3
+          },
+          "missedCount": {
+            "value": 0,
+            "numerator": 0,
+            "denominator": 3,
+            "unit": "asset-cycles",
+            "isMeasurable": true,
+            "unmeasurableReason": null,
+            "eligibleRowCount": 3,
+            "matchingRowCount": 3
+          },
+          "nonOperationalCount": {
+            "value": 0,
+            "numerator": 0,
+            "denominator": 3,
+            "unit": "asset-cycles",
+            "isMeasurable": true,
+            "unmeasurableReason": null,
+            "eligibleRowCount": 3,
+            "matchingRowCount": 3
+          }
+        }
+      }
+    ],
+    "records": [],
+    "page": 1,
+    "pageSize": 100,
+    "totalPages": 1
+  },
+  {
+    "caseId": "NUM-03",
+    "fixtureId": "denominator-matching",
+    "asOfUtc": "2025-06-01T00:00:00+00:00",
+    "plan": {
+      "schemaVersion": 3,
+      "catalogVersion": 2,
+      "subject": "pmExecution",
+      "mode": "Aggregate",
+      "period": {
+        "basis": "pmCycle",
+        "kind": "Month",
+        "year": 2024,
+        "month": 2,
+        "quarter": null,
+        "startCycle": null,
+        "endCycle": null
+      },
+      "categories": [
+        "fire-extinguisher"
+      ],
+      "measures": [
+        "completedCount"
+      ],
+      "groupBy": [],
+      "baseFilters": [],
+      "matchingFilters": [
+        {
+          "field": "condition",
+          "operator": "Equal",
+          "values": [
+            "NonOperational"
+          ]
+        }
+      ],
+      "aggregateFilters": [],
+      "orderBy": [],
+      "top": null,
+      "presentation": "Table",
+      "columns": [
+        "completedCount"
+      ]
+    },
+    "population": {
+      "eligibleAssetCycleCount": 4,
+      "eligibleDistinctAssetCount": 4,
+      "matchingAssetCycleCount": 2,
+      "matchingDistinctAssetCount": 2,
+      "sourceTotalCount": 2,
+      "groupsBeforeAggregateFilters": 1,
+      "groupsAfterAggregateFilters": 1,
+      "groupsReturnedAfterTop": 1
+    },
+    "cyclesByCategory": {
+      "fire-extinguisher": [
+        "2024-02"
+      ]
+    },
+    "aggregateRows": [
+      {
+        "values": {
+          "completedCount": 2
+        },
+        "measures": {
+          "completedCount": {
+            "value": 2,
+            "numerator": 2,
+            "denominator": 4,
+            "unit": "asset-cycles",
+            "isMeasurable": true,
+            "unmeasurableReason": null,
+            "eligibleRowCount": 4,
+            "matchingRowCount": 2
+          }
+        }
+      }
+    ],
+    "records": [],
+    "page": 1,
+    "pageSize": 100,
+    "totalPages": 1
+  },
+  {
+    "caseId": "NUM-04",
+    "fixtureId": "grouped-threshold",
+    "asOfUtc": "2025-06-01T00:00:00+00:00",
+    "plan": {
+      "schemaVersion": 3,
+      "catalogVersion": 2,
+      "subject": "pmExecution",
+      "mode": "Aggregate",
+      "period": {
+        "basis": "pmCycle",
+        "kind": "Month",
+        "year": 2024,
+        "month": 2,
+        "quarter": null,
+        "startCycle": null,
+        "endCycle": null
+      },
+      "categories": [
+        "fire-extinguisher"
+      ],
+      "measures": [
+        "onTimeCompliancePercent"
+      ],
+      "groupBy": [
+        "department"
+      ],
+      "baseFilters": [],
+      "matchingFilters": [],
+      "aggregateFilters": [
+        {
+          "measure": "onTimeCompliancePercent",
+          "operator": "GreaterThanOrEqual",
+          "value": 60
+        }
+      ],
+      "orderBy": [],
+      "top": null,
+      "presentation": "Table",
+      "columns": [
+        "department",
+        "onTimeCompliancePercent"
+      ]
+    },
+    "population": {
+      "eligibleAssetCycleCount": 5,
+      "eligibleDistinctAssetCount": 5,
+      "matchingAssetCycleCount": 5,
+      "matchingDistinctAssetCount": 5,
+      "sourceTotalCount": 5,
+      "groupsBeforeAggregateFilters": 2,
+      "groupsAfterAggregateFilters": 1,
+      "groupsReturnedAfterTop": 1
+    },
+    "cyclesByCategory": {
+      "fire-extinguisher": [
+        "2024-02"
+      ]
+    },
+    "aggregateRows": [
+      {
+        "values": {
+          "department": "OPERATIONS",
+          "onTimeCompliancePercent": "66.666666666666666666666666667"
+        },
+        "measures": {
+          "onTimeCompliancePercent": {
+            "value": "66.666666666666666666666666667",
+            "numerator": 2,
+            "denominator": 3,
+            "unit": "percent",
+            "isMeasurable": true,
+            "unmeasurableReason": null,
+            "eligibleRowCount": 3,
+            "matchingRowCount": 3
+          }
+        }
+      }
+    ],
+    "records": [],
+    "page": 1,
+    "pageSize": 100,
+    "totalPages": 1
+  },
+  {
+    "caseId": "NUM-05",
+    "fixtureId": "category-cycles",
+    "asOfUtc": "2025-06-01T00:00:00+00:00",
+    "plan": {
+      "schemaVersion": 3,
+      "catalogVersion": 2,
+      "subject": "pmExecution",
+      "mode": "Aggregate",
+      "period": {
+        "basis": "pmCycle",
+        "kind": "Year",
+        "year": 2024,
+        "month": null,
+        "quarter": null,
+        "startCycle": null,
+        "endCycle": null
+      },
+      "categories": [
+        "fire-extinguisher",
+        "fire-alarm"
+      ],
+      "measures": [
+        "scheduledCount"
+      ],
+      "groupBy": [
+        "assetCategory"
+      ],
+      "baseFilters": [],
+      "matchingFilters": [],
+      "aggregateFilters": [],
+      "orderBy": [],
+      "top": null,
+      "presentation": "Table",
+      "columns": [
+        "assetCategory",
+        "scheduledCount"
+      ]
+    },
+    "population": {
+      "eligibleAssetCycleCount": 2,
+      "eligibleDistinctAssetCount": 2,
+      "matchingAssetCycleCount": 2,
+      "matchingDistinctAssetCount": 2,
+      "sourceTotalCount": 2,
+      "groupsBeforeAggregateFilters": 2,
+      "groupsAfterAggregateFilters": 2,
+      "groupsReturnedAfterTop": 2
+    },
+    "cyclesByCategory": {
+      "fire-extinguisher": [
+        "2024-02",
+        "2024-05",
+        "2024-08",
+        "2024-11"
+      ],
+      "fire-alarm": [
+        "2024-06",
+        "2024-12"
+      ]
+    },
+    "aggregateRows": [
+      {
+        "values": {
+          "assetCategory": "fire-alarm",
+          "scheduledCount": 1
+        },
+        "measures": {
+          "scheduledCount": {
+            "value": 1,
+            "numerator": 1,
+            "denominator": 1,
+            "unit": "asset-cycles",
+            "isMeasurable": true,
+            "unmeasurableReason": null,
+            "eligibleRowCount": 1,
+            "matchingRowCount": 1
+          }
+        }
+      },
+      {
+        "values": {
+          "assetCategory": "fire-extinguisher",
+          "scheduledCount": 1
+        },
+        "measures": {
+          "scheduledCount": {
+            "value": 1,
+            "numerator": 1,
+            "denominator": 1,
+            "unit": "asset-cycles",
+            "isMeasurable": true,
+            "unmeasurableReason": null,
+            "eligibleRowCount": 1,
+            "matchingRowCount": 1
+          }
+        }
+      }
+    ],
+    "records": [],
+    "page": 1,
+    "pageSize": 100,
+    "totalPages": 1
+  },
+  {
+    "caseId": "NUM-06",
+    "fixtureId": "quarter-source-records",
+    "asOfUtc": "2025-06-01T00:00:00+00:00",
+    "plan": {
+      "schemaVersion": 3,
+      "catalogVersion": 2,
+      "subject": "pmExecution",
+      "mode": "Records",
+      "period": {
+        "basis": "pmCycle",
+        "kind": "Quarter",
+        "year": 2025,
+        "month": null,
+        "quarter": 1,
+        "startCycle": null,
+        "endCycle": null
+      },
+      "categories": [
+        "fire-extinguisher"
+      ],
+      "measures": [],
+      "groupBy": [],
+      "baseFilters": [
+        {
+          "field": "building",
+          "operator": "Equal",
+          "values": [
+            "North"
+          ]
+        }
+      ],
+      "matchingFilters": [
+        {
+          "field": "condition",
+          "operator": "Equal",
+          "values": [
+            "NonOperational"
+          ]
+        }
+      ],
+      "aggregateFilters": [],
+      "orderBy": [],
+      "top": null,
+      "presentation": "Table",
+      "columns": [
+        "assetCode",
+        "assetCategory",
+        "department",
+        "building",
+        "pmCycle",
+        "condition"
+      ]
+    },
+    "population": {
+      "eligibleAssetCycleCount": 1,
+      "eligibleDistinctAssetCount": 1,
+      "matchingAssetCycleCount": 1,
+      "matchingDistinctAssetCount": 1,
+      "sourceTotalCount": 1,
+      "groupsBeforeAggregateFilters": 0,
+      "groupsAfterAggregateFilters": 0,
+      "groupsReturnedAfterTop": 0
+    },
+    "cyclesByCategory": {
+      "fire-extinguisher": [
+        "2025-02"
+      ]
+    },
+    "aggregateRows": [],
+    "records": [
+      {
+        "assetCode": "QTR-FEB",
+        "assetCategory": "fire-extinguisher",
+        "department": "Operations",
+        "building": "North",
+        "pmCycle": "2025-02",
+        "condition": "NonOperational"
+      }
+    ],
+    "page": 1,
+    "pageSize": 100,
+    "totalPages": 1
+  },
+  {
+    "caseId": "NUM-07",
+    "fixtureId": "quarter-source-records",
+    "asOfUtc": "2025-06-01T00:00:00+00:00",
+    "plan": {
+      "schemaVersion": 3,
+      "catalogVersion": 2,
+      "subject": "pmExecution",
+      "mode": "Records",
+      "period": {
+        "basis": "pmCycle",
+        "kind": "Quarter",
+        "year": 2025,
+        "month": null,
+        "quarter": 4,
+        "startCycle": null,
+        "endCycle": null
+      },
+      "categories": [
+        "fire-extinguisher"
+      ],
+      "measures": [],
+      "groupBy": [],
+      "baseFilters": [
+        {
+          "field": "building",
+          "operator": "Equal",
+          "values": [
+            "North"
+          ]
+        }
+      ],
+      "matchingFilters": [
+        {
+          "field": "condition",
+          "operator": "Equal",
+          "values": [
+            "NonOperational"
+          ]
+        }
+      ],
+      "aggregateFilters": [],
+      "orderBy": [],
+      "top": null,
+      "presentation": "Table",
+      "columns": [
+        "assetCode",
+        "assetCategory",
+        "department",
+        "building",
+        "pmCycle",
+        "condition"
+      ]
+    },
+    "population": {
+      "eligibleAssetCycleCount": 1,
+      "eligibleDistinctAssetCount": 1,
+      "matchingAssetCycleCount": 1,
+      "matchingDistinctAssetCount": 1,
+      "sourceTotalCount": 1,
+      "groupsBeforeAggregateFilters": 0,
+      "groupsAfterAggregateFilters": 0,
+      "groupsReturnedAfterTop": 0
+    },
+    "cyclesByCategory": {
+      "fire-extinguisher": [
+        "2025-11"
+      ]
+    },
+    "aggregateRows": [],
+    "records": [
+      {
+        "assetCode": "QTR-NOV",
+        "assetCategory": "fire-extinguisher",
+        "department": "Operations",
+        "building": "North",
+        "pmCycle": "2025-11",
+        "condition": "NonOperational"
+      }
+    ],
+    "page": 1,
+    "pageSize": 100,
+    "totalPages": 1
+  },
+  {
+    "caseId": "NUM-08",
+    "fixtureId": "records-pagination",
+    "asOfUtc": "2025-06-01T00:00:00+00:00",
+    "plan": {
+      "schemaVersion": 3,
+      "catalogVersion": 2,
+      "subject": "pmExecution",
+      "mode": "Records",
+      "period": {
+        "basis": "pmCycle",
+        "kind": "Month",
+        "year": 2024,
+        "month": 2,
+        "quarter": null,
+        "startCycle": null,
+        "endCycle": null
+      },
+      "categories": [
+        "fire-extinguisher"
+      ],
+      "measures": [],
+      "groupBy": [],
+      "baseFilters": [],
+      "matchingFilters": [
+        {
+          "field": "condition",
+          "operator": "Equal",
+          "values": [
+            "NonOperational"
+          ]
+        }
+      ],
+      "aggregateFilters": [],
+      "orderBy": [],
+      "top": null,
+      "presentation": "Table",
+      "columns": [
+        "assetCode",
+        "assetCategory",
+        "department",
+        "building",
+        "pmCycle",
+        "condition"
+      ]
+    },
+    "population": {
+      "eligibleAssetCycleCount": 5,
+      "eligibleDistinctAssetCount": 5,
+      "matchingAssetCycleCount": 5,
+      "matchingDistinctAssetCount": 5,
+      "sourceTotalCount": 5,
+      "groupsBeforeAggregateFilters": 0,
+      "groupsAfterAggregateFilters": 0,
+      "groupsReturnedAfterTop": 0
+    },
+    "cyclesByCategory": {
+      "fire-extinguisher": [
+        "2024-02"
+      ]
+    },
+    "aggregateRows": [],
+    "records": [
+      {
+        "assetCode": "PAGE-C",
+        "assetCategory": "fire-extinguisher",
+        "department": "Operations",
+        "building": "North",
+        "pmCycle": "2024-02",
+        "condition": "NonOperational"
+      },
+      {
+        "assetCode": "PAGE-D",
+        "assetCategory": "fire-extinguisher",
+        "department": "Operations",
+        "building": "North",
+        "pmCycle": "2024-02",
+        "condition": "NonOperational"
+      }
+    ],
+    "page": 2,
+    "pageSize": 2,
+    "totalPages": 3
+  },
+  {
+    "caseId": "NUM-09",
+    "fixtureId": "missing-category-coverage",
+    "asOfUtc": "2025-06-15T00:00:00+08:00",
+    "plan": {
+      "schemaVersion": 3,
+      "catalogVersion": 2,
+      "subject": "pmExecution",
+      "mode": "Aggregate",
+      "period": {
+        "basis": "pmCycle",
+        "kind": "Range",
+        "year": null,
+        "month": null,
+        "quarter": null,
+        "startCycle": "2025-05",
+        "endCycle": "2025-06"
+      },
+      "categories": [
+        "fire-extinguisher",
+        "fire-alarm"
+      ],
+      "measures": [
+        "onTimeCompliancePercent"
+      ],
+      "groupBy": [
+        "department"
+      ],
+      "baseFilters": [],
+      "matchingFilters": [],
+      "aggregateFilters": [],
+      "orderBy": [],
+      "top": null,
+      "presentation": "Table",
+      "columns": [
+        "department",
+        "onTimeCompliancePercent"
+      ]
+    },
+    "population": {
+      "eligibleAssetCycleCount": 1,
+      "eligibleDistinctAssetCount": 1,
+      "matchingAssetCycleCount": 1,
+      "matchingDistinctAssetCount": 1,
+      "sourceTotalCount": 1,
+      "groupsBeforeAggregateFilters": 1,
+      "groupsAfterAggregateFilters": 1,
+      "groupsReturnedAfterTop": 1
+    },
+    "cyclesByCategory": {
+      "fire-extinguisher": [
+        "2025-05"
+      ],
+      "fire-alarm": [
+        "2025-06"
+      ]
+    },
+    "aggregateRows": [
+      {
+        "values": {
+          "department": "OPERATIONS",
+          "onTimeCompliancePercent": null
+        },
+        "measures": {
+          "onTimeCompliancePercent": {
+            "value": null,
+            "numerator": 1,
+            "denominator": 1,
+            "unit": "percent",
+            "isMeasurable": false,
+            "unmeasurableReason": "At least one selected PM cycle is active or future.",
+            "eligibleRowCount": 1,
+            "matchingRowCount": 1
+          }
+        }
+      }
+    ],
+    "records": [],
+    "page": 1,
+    "pageSize": 100,
+    "totalPages": 1
+  },
+  {
+    "caseId": "NUM-10",
+    "fixtureId": "zero-eligible",
+    "asOfUtc": "2025-06-01T00:00:00+00:00",
+    "plan": {
+      "schemaVersion": 3,
+      "catalogVersion": 2,
+      "subject": "pmExecution",
+      "mode": "Aggregate",
+      "period": {
+        "basis": "pmCycle",
+        "kind": "Year",
+        "year": 2024,
+        "month": null,
+        "quarter": null,
+        "startCycle": null,
+        "endCycle": null
+      },
+      "categories": [
+        "fire-extinguisher"
+      ],
+      "measures": [
+        "progressPercent"
+      ],
+      "groupBy": [],
+      "baseFilters": [],
+      "matchingFilters": [],
+      "aggregateFilters": [],
+      "orderBy": [],
+      "top": null,
+      "presentation": "Table",
+      "columns": [
+        "progressPercent"
+      ]
+    },
+    "population": {
+      "eligibleAssetCycleCount": 0,
+      "eligibleDistinctAssetCount": 0,
+      "matchingAssetCycleCount": 0,
+      "matchingDistinctAssetCount": 0,
+      "sourceTotalCount": 0,
+      "groupsBeforeAggregateFilters": 1,
+      "groupsAfterAggregateFilters": 1,
+      "groupsReturnedAfterTop": 1
+    },
+    "cyclesByCategory": {
+      "fire-extinguisher": [
+        "2024-02",
+        "2024-05",
+        "2024-08",
+        "2024-11"
+      ]
+    },
+    "aggregateRows": [
+      {
+        "values": {
+          "progressPercent": null
+        },
+        "measures": {
+          "progressPercent": {
+            "value": null,
+            "numerator": 0,
+            "denominator": 0,
+            "unit": "percent",
+            "isMeasurable": false,
+            "unmeasurableReason": "No eligible schedules are in this group.",
+            "eligibleRowCount": 0,
+            "matchingRowCount": 0
+          }
+        }
+      }
+    ],
+    "records": [],
+    "page": 1,
+    "pageSize": 100,
+    "totalPages": 1
+  }
+]
