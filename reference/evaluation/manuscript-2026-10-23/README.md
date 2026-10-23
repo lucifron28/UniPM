@@ -15,6 +15,12 @@ controls. Five final differences remain, including an ambiguous ranking
 accepted without the expected clarification. The case CSV and sanitized typed
 observations retain every result. No report was executed or model case retried.
 
+The [recorded conclusion and correction plan](../../planning/nla-v3-deepseek-correction-plan.md)
+trace the five differences to the tested source and distinguish backend
+defects, interpretation-policy choices and catalog-normalization scoring.
+This follow-up is source inspection and planning only; it makes no correction
+or additional verification claim.
+
 The [controlled numerical verification table](manuscript-nla-numerical-verification.md)
 is prepared for Section 7.3.5 and Appendix B. TEST-141 records ten captured
 backend InMemory scenarios and 75/75 field matches against separate Python
