@@ -1,5 +1,12 @@
 # Manuscript evidence collection, October 23, 2026
 
+The [post-correction DeepSeek rerun](manuscript-deepseek-correction-results.md)
+records TEST-143's focused local regression and TEST-144's new live comparison.
+Exact agreement improved from 13/18 to 16/18, with one retained catalog
+normalization difference and one inconsistent model envelope rejected safely.
+The latter remains a failure; no case was retried or relabeled. This is
+development verification using questions already inspected during correction.
+
 This collection prepares the manuscript's existing BB-01 through BB-32 cases
 for traceable execution. It does not claim those 32 cases have passed.
 

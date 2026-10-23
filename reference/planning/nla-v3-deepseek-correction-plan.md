@@ -313,3 +313,20 @@ and time-basis policy choices remain explicit review points. Provider-internal
 reasoning, browser effects and correction effectiveness remain unverified.
 Implementation, tests, additional provider calls and manuscript DOCX edits
 have not started under this plan.
+
+## Subsequent implementation and verification
+
+After the planning task, the researcher requested implementation and a rerun.
+The preferred compatibility defaults were adopted in prompt guidance, ranking
+and canonical clarification checks were implemented, and no frozen label or
+original evidence was changed. TEST-143 records the focused controlled
+regression, and TEST-144 records the new live development comparison.
+
+The rerun matched all declared expectations in 16/18 cases. V3D-006 retains
+the original catalog normalization mismatch. V3D-011 now returned a contradictory
+Valid envelope with a Top clarification, which the existing validator rejected
+without a final plan. That response-consistency failure remains unresolved.
+No further fix or repeat provider run followed it. See the
+[correction results](../evaluation/manuscript-2026-10-23/manuscript-deepseek-correction-results.md).
+The earlier planning-time statements above are preserved as the record of
+what was proposed before implementation.
