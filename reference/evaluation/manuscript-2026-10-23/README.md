@@ -1,5 +1,12 @@
 # Manuscript evidence collection, October 23, 2026
 
+The [ranking recovery result](manuscript-ranking-recovery-results.md) records
+TEST-145's three focused checks and TEST-146's new live run. Strict agreement
+is 17/18; the separately predeclared catalog-equivalence result is 18/18.
+The backend recovered the observed ranking contradiction once, while the raw
+model result remains 11/17 exact matches. No errors, retries or report execution
+occurred. Keep these development results distinct from the earlier runs.
+
 The [post-correction DeepSeek rerun](manuscript-deepseek-correction-results.md)
 records TEST-143's focused local regression and TEST-144's new live comparison.
 Exact agreement improved from 13/18 to 16/18, with one retained catalog

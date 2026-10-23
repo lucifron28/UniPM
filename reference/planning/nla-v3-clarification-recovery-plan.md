@@ -206,3 +206,16 @@ scoring rule and observation stage achieved that result. It establishes
 conformance on this fixed development set, not guaranteed model reliability,
 unseen-question accuracy, numerical correctness, SQL Server execution,
 historical respondent behavior or independent GSD acceptance.
+
+## Execution follow-up
+
+The researcher subsequently authorized executing this plan. The backend
+recovery and versioned auxiliary comparator were implemented and verified in
+TEST-145 and TEST-146. Three focused checks passed in one invocation. The
+single live run returned the expected classification and clarification for
+all 18 cases, with one observed backend recovery, 17/18 strict exact matches
+and 18/18 under the separately declared catalog-equivalence rule. The remaining
+strict mismatch is catalog capitalization. Original evidence and labels were
+preserved, and no inline ranking selector or saved-reports feature was added.
+See the [execution results](../evaluation/manuscript-2026-10-23/manuscript-ranking-recovery-results.md).
+The original planning snapshot above is retained for traceability.
