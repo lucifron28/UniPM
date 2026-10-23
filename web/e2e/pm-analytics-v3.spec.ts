@@ -181,6 +181,148 @@ const population = {
   groupsReturnedAfterTop: 1,
 }
 
+test('saved reports can be reused, edited, renamed and deleted without repeated interpretation', async ({ page }) => {
+  test.setTimeout(60_000)
+  await page.setViewportSize({ width: 390, height: 844 })
+  const pageErrors: string[] = []
+  page.on('pageerror', (error) => pageErrors.push(error.message))
+  const unexpectedAnalytics: string[] = []
+  await page.route('**/api/v1/**', (route) => {
+    if (route.request().url().includes('/analytics/')) unexpectedAnalytics.push(route.request().url())
+    return route.fulfill({ status: 503, json: { title: 'Unmocked API request' } })
+  })
+  await page.route('**/api/v1/auth/refresh', (route) => route.fulfill({ json: session }))
+  await page.route('**/api/v1/auth/me', (route) => route.fulfill({ json: session.user }))
+  await page.route('**/api/v1/analytics/pm/v3/catalog**', (route) => route.fulfill({ json: catalog }))
+
+  let interpretationCalls = 0
+  let executionCalls = 0
+  let savedPreviewCalls = 0
+  let currentProgress = 50
+  let activePlan = structuredClone(plan)
+  let revision = 0
+  let rejectNextSave = false
+  type Saved = { id: string; name: string; plan: typeof plan; periodMode: string; revision: string; updatedAtUtc: string }
+  let saved: Saved | null = null
+  const writes: Array<{ name: string; plan: typeof plan; periodMode: string; revision?: string }> = []
+
+  await page.route('**/api/v1/analytics/pm/v3/interpret', (route) => {
+    interpretationCalls += 1
+    return route.fulfill({ json: { status: 'Valid', plan, clarificationFields: [], code: null, detail: null, interpreter: 'DeterministicParser' } })
+  })
+  const makeCurrentPreview = () => ({
+    ...preview, plan: activePlan,
+    expiresAtUtc: new Date(Date.now() + 600_000).toISOString(),
+    summary: `Reviewed PM report for ${activePlan.period.year}.`,
+  })
+  await page.route('**/api/v1/analytics/pm/v3/preview', (route) => {
+    activePlan = route.request().postDataJSON().plan
+    return route.fulfill({ json: makeCurrentPreview() })
+  })
+  await page.route('**/api/v1/analytics/pm/v3/saved-reports**', (route) => {
+    const request = route.request()
+    if (request.method() === 'GET') return route.fulfill({ json: saved ? [saved] : [] })
+    if (request.url().endsWith('/preview')) {
+      savedPreviewCalls += 1
+      if (!saved) return route.fulfill({ status: 404 })
+      activePlan = structuredClone(saved.plan)
+      if (saved.periodMode === 'ThisYear') activePlan.period.year = 2026
+      return route.fulfill({ json: makeCurrentPreview() })
+    }
+    if (request.method() === 'DELETE') {
+      saved = null
+      return route.fulfill({ status: 204 })
+    }
+    const input = request.postDataJSON() as (typeof writes)[number]
+    if (rejectNextSave) {
+      rejectNextSave = false
+      return route.fulfill({ status: 400, json: { title: 'Validation failed', errors: { name: ['Choose another report name.'] } } })
+    }
+    writes.push(input)
+    revision += 1
+    saved = { id: '99999999-9999-4999-8999-999999999999', name: input.name,
+      plan: input.plan, periodMode: input.periodMode,
+      revision: `00000000-0000-4000-8000-${String(revision).padStart(12, '0')}`,
+      updatedAtUtc: new Date().toISOString() }
+    return route.fulfill({ status: request.method() === 'POST' ? 201 : 200, json: saved })
+  })
+  await page.route('**/api/v1/analytics/pm/v3/execute', (route) => {
+    executionCalls += 1
+    expect(route.request().postDataJSON().previewId).toBe(preview.previewId)
+    return route.fulfill({ json: {
+      schemaVersion: 3, catalogVersion: 2, asOfUtc: new Date().toISOString(), plan: activePlan,
+      cyclesByCategory: preview.cyclesByCategory, mode: 'Aggregate',
+      columns: [{ id: 'progressPercent', label: 'Progress', valueType: 'decimal', unit: 'percent', nullSemantics: null }],
+      population, page: 1, pageSize: 25, totalPages: 1,
+      aggregateRows: [{ values: {}, measures: { progressPercent: {
+        value: currentProgress, numerator: currentProgress === 50 ? 1 : 2, denominator: 2,
+        unit: 'percent', isMeasurable: true, unmeasurableReason: null, eligibleRowCount: 2, matchingRowCount: 2,
+      } } }], records: [], scopeNotes: ['Controlled browser fixture.'],
+    } })
+  })
+
+  await page.goto('/app/analytics')
+  await page.getByRole('textbox', { name: 'Question' }).fill('Show progress for fire extinguishers during 2024')
+  await page.getByRole('button', { name: 'Generate report', exact: true }).click()
+  await page.getByRole('button', { name: 'Preview report', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Report preview', exact: true })).toBeVisible()
+  expect(executionCalls).toBe(0)
+  await page.getByLabel('Report name', { exact: true }).fill('Routine progress')
+  await page.getByLabel('Dates on future runs').selectOption('ThisYear')
+  rejectNextSave = true
+  await page.getByRole('button', { name: 'Save as new report' }).click()
+  await expect(page.getByRole('alert')).toContainText('Choose another report name.')
+  await page.getByRole('button', { name: 'Save as new report' }).click()
+  await expect(page.getByRole('status').filter({ hasText: 'Report settings saved.' })).toBeVisible()
+  expect(writes[0]).toMatchObject({ name: 'Routine progress', plan, periodMode: 'ThisYear' })
+
+  // A page reload clears component state; only the API fixture retains the definition.
+  await page.reload()
+  await page.getByText('My reports (1)', { exact: true }).click()
+  await page.getByRole('button', { name: 'Open preview', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Report preview', exact: true })).toBeVisible()
+  await expect(page.getByText('Reviewed PM report for 2026.', { exact: true })).toBeVisible()
+  expect(interpretationCalls).toBe(1)
+  expect(executionCalls).toBe(0)
+  await page.getByRole('button', { name: 'Confirm and generate', exact: true }).click()
+  await expect(page.getByText('50%', { exact: true })).toBeVisible()
+
+  currentProgress = 100
+  await page.getByRole('button', { name: 'Open preview', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Report preview', exact: true })).toBeVisible()
+  expect(executionCalls).toBe(1)
+  await page.getByRole('button', { name: 'Confirm and generate', exact: true }).click()
+  await expect(page.getByText('100%', { exact: true })).toBeVisible()
+  expect(executionCalls).toBe(2)
+  expect(savedPreviewCalls).toBe(2)
+  expect(interpretationCalls).toBe(1)
+
+  await page.getByRole('button', { name: 'Edit settings', exact: true }).click()
+  await page.getByLabel('Year', { exact: true }).fill('2025')
+  await page.getByRole('button', { name: 'Preview report', exact: true }).click()
+  await expect(page.getByText('Reviewed PM report for 2025.', { exact: true })).toBeVisible()
+  await page.getByLabel('Dates on future runs').selectOption('Fixed')
+  await page.getByRole('button', { name: 'Replace settings for Routine progress' }).click()
+  await expect.poll(() => writes.length).toBe(2)
+  expect(writes[1]).toMatchObject({ periodMode: 'Fixed', plan: { period: { year: 2025 } }, revision: '00000000-0000-4000-8000-000000000001' })
+  await page.getByRole('button', { name: 'Rename', exact: true }).click()
+  await page.getByRole('textbox', { name: 'New name for Routine progress' }).fill('Annual progress')
+  await page.getByRole('button', { name: 'Save name', exact: true }).click()
+  await expect(page.getByText('Annual progress', { exact: true })).toBeVisible()
+  expect(writes[2]).toMatchObject({ name: 'Annual progress', periodMode: 'Fixed' })
+
+  await page.getByRole('button', { name: 'Delete', exact: true }).click()
+  expect(saved).not.toBeNull()
+  await page.getByRole('button', { name: 'Confirm delete', exact: true }).click()
+  await expect(page.getByText('No saved reports yet. Preview a report to save its settings.')).toBeVisible()
+  expect(saved).toBeNull()
+  expect(interpretationCalls).toBe(1)
+  expect(executionCalls).toBe(2)
+  expect(unexpectedAnalytics).toEqual([])
+  expect(pageErrors).toEqual([])
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
+})
+
 test('runs a V3 report through source-record review at a narrow viewport', async ({
   page,
 }) => {
