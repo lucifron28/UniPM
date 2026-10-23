@@ -6,6 +6,15 @@ for traceable execution. It does not claim those 32 cases have passed.
 The [manuscript-ready NLA tables and paragraph](manuscript-nla-interpretation-tables.md)
 are prepared for Section 7.3.4 and Appendix A, with scope notes and evidence links.
 
+The [supplementary live DeepSeek comparison](manuscript-deepseek-comparison.md)
+now records the same frozen 18 questions, with 17 provider responses and one
+pre-provider safety rejection. TEST-142 records final status matches of 16/18,
+exact declared-expectation matches of 13/18 and plan assertion matches of
+67/69. Typed model candidates matched exactly in 9/17 cases before backend
+controls. Five final differences remain, including an ambiguous ranking
+accepted without the expected clarification. The case CSV and sanitized typed
+observations retain every result. No report was executed or model case retried.
+
 The [controlled numerical verification table](manuscript-nla-numerical-verification.md)
 is prepared for Section 7.3.5 and Appendix B. TEST-141 records ten captured
 backend InMemory scenarios and 75/75 field matches against separate Python
