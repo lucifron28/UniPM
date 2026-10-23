@@ -7,6 +7,11 @@ normalization difference and one inconsistent model envelope rejected safely.
 The latter remains a failure; no case was retried or relabeled. This is
 development verification using questions already inspected during correction.
 
+The [next correction plan](../../planning/nla-v3-clarification-recovery-plan.md)
+defines a narrow recovery for the contradictory ranking envelope and a
+prospective, separately reported catalog-equivalence comparison. It is
+planning only and preserves the original strict results.
+
 This collection prepares the manuscript's existing BB-01 through BB-32 cases
 for traceable execution. It does not claim those 32 cases have passed.
 
