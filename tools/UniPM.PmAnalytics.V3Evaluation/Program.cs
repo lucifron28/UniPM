@@ -10,9 +10,14 @@ internal static class Program
 {
     public static int Main(string[] args)
     {
+        if (args.Length == 2 && args[0] == "deepseek")
+        {
+            return DeepSeekDevelopmentEvaluation.RunAsync(args[1]).GetAwaiter().GetResult();
+        }
+
         if (args.Length != 1 || args[0] is not ("validate" or "diagnose" or "score"))
         {
-            Console.Error.WriteLine("Usage: dotnet run --project tools/UniPM.PmAnalytics.V3Evaluation -- <validate|diagnose|score>");
+            Console.Error.WriteLine("Usage: dotnet run --project tools/UniPM.PmAnalytics.V3Evaluation -- <validate|diagnose|score> | deepseek <new-output-directory>");
             return 2;
         }
 
@@ -635,7 +640,7 @@ internal static class V3EvaluationHarness
 
     private static string[] ReadStringArray(JsonElement value) => value.EnumerateArray().Select(item => item.GetString() ?? string.Empty).ToArray();
 
-    private static void ComparePartial(JsonElement expected, JsonElement actual, string path, ICollection<string> mismatches, ref int assertionCount, ref int matchedAssertionCount)
+    internal static void ComparePartial(JsonElement expected, JsonElement actual, string path, ICollection<string> mismatches, ref int assertionCount, ref int matchedAssertionCount)
     {
         if (expected.ValueKind == JsonValueKind.Object)
         {
