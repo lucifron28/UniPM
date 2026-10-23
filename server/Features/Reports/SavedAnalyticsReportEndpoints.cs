@@ -26,8 +26,7 @@ internal static class SavedAnalyticsReportEndpoints
     internal static void MapSavedAnalyticsReports(this RouteGroupBuilder analytics)
     {
         // Inherits the authenticated GSD policy from the existing analytics group.
-        var group = analytics.MapGroup("/pm/v3/saved-reports")
-            .Produces<ProblemDetails>(401).Produces<ProblemDetails>(403);
+        var group = analytics.MapGroup("/pm/v3/saved-reports");
 
         group.MapGet("", async (HttpContext http, IDbContextFactory<ApplicationDbContext> factory,
             CancellationToken ct) =>
@@ -39,7 +38,8 @@ internal static class SavedAnalyticsReportEndpoints
                 .ToListAsync(ct);
             return Results.Ok(rows.Select(ToResponse).ToArray());
         }).WithName("ListSavedAnalyticsReports")
-            .Produces<SavedAnalyticsReportResponse[]>();
+            .Produces<SavedAnalyticsReportResponse[]>()
+            .Produces<ProblemDetails>(401).Produces<ProblemDetails>(403);
 
         group.MapPost("", async (SavedAnalyticsReportRequest request, HttpContext http,
             IDbContextFactory<ApplicationDbContext> factory, PmAnalyticsV3QueryService service,
@@ -58,7 +58,7 @@ internal static class SavedAnalyticsReportEndpoints
             return Results.Created($"/api/v1/analytics/pm/v3/saved-reports/{row.Id}", ToResponse(row));
         }).WithName("CreateSavedAnalyticsReport")
             .Produces<SavedAnalyticsReportResponse>(201).Produces<ValidationProblemDetails>(400)
-            .Produces<ProblemDetails>(409);
+            .Produces<ProblemDetails>(409).Produces<ProblemDetails>(401).Produces<ProblemDetails>(403);
 
         group.MapPut("/{id:guid}", async (Guid id, SavedAnalyticsReportRequest request, HttpContext http,
             IDbContextFactory<ApplicationDbContext> factory, PmAnalyticsV3QueryService service,
@@ -78,7 +78,7 @@ internal static class SavedAnalyticsReportEndpoints
             return Results.Ok(ToResponse(row));
         }).WithName("UpdateSavedAnalyticsReport")
             .Produces<SavedAnalyticsReportResponse>().Produces<ValidationProblemDetails>(400)
-            .Produces(404).Produces<ProblemDetails>(409);
+            .Produces(404).Produces<ProblemDetails>(409).Produces<ProblemDetails>(401).Produces<ProblemDetails>(403);
 
         group.MapDelete("/{id:guid}", async (Guid id, HttpContext http,
             IDbContextFactory<ApplicationDbContext> factory, CancellationToken ct) =>
@@ -92,7 +92,8 @@ internal static class SavedAnalyticsReportEndpoints
             try { await db.SaveChangesAsync(ct); }
             catch (DbUpdateConcurrencyException) { return Changed(); }
             return Results.NoContent();
-        }).WithName("DeleteSavedAnalyticsReport").Produces(204).Produces(404).Produces<ProblemDetails>(409);
+        }).WithName("DeleteSavedAnalyticsReport").Produces(204).Produces(404).Produces<ProblemDetails>(409)
+            .Produces<ProblemDetails>(401).Produces<ProblemDetails>(403);
 
         group.MapPost("/{id:guid}/preview", async (Guid id, HttpContext http,
             IDbContextFactory<ApplicationDbContext> factory, PmAnalyticsV3QueryService service,
@@ -113,7 +114,8 @@ internal static class SavedAnalyticsReportEndpoints
                 resolution.Plan.CyclesByCategory, PmAnalyticsV3QueryService.CreatePreviewSummary(resolution.Plan),
                 PmAnalyticsV3QueryService.ScopeNotesFor(resolution.Plan.Plan.Subject)));
         }).WithName("PreviewSavedAnalyticsReport").Produces<PmAnalyticsV3PreviewResponse>()
-            .Produces<ValidationProblemDetails>(400).Produces(404).Produces<ProblemDetails>(503);
+            .Produces<ValidationProblemDetails>(400).Produces(404).Produces<ProblemDetails>(503)
+            .Produces<ProblemDetails>(401).Produces<ProblemDetails>(403);
     }
 
     private static async Task<PmAnalyticsV3PlanResolution> Validate(SavedAnalyticsReportRequest request,
