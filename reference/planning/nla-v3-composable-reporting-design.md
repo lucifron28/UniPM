@@ -563,8 +563,9 @@ signatory details remain excluded from remote interpretation.
   open new previews, edit, rename or delete them. Reopening uses backend plan
   validation without another AI interpretation call. TEST-148 records a
   targeted InMemory backend check; TEST-149 records TypeScript checking.
-  The migration remains unapplied and browser/native SQL verification is
-  pending. See [usage and setup](../guides/how-to/use-saved-reports.md).
+  TEST-150 records a passing Chromium workflow with controlled API responses.
+  The migration remains unapplied and combined browser/native SQL verification
+  is pending. See [usage and setup](../guides/how-to/use-saved-reports.md).
   - Save the report settings, not a frozen result set. Each Run or Refresh
     calculates fresh results from currently authorized records.
   - Support clearly labeled fixed periods, such as 2025, and relative periods,

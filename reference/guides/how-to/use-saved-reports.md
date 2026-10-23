@@ -51,9 +51,13 @@ dotnet ef database update --project server/server.csproj
 ```
 
 Feature implementation did not apply this migration. SQL Server execution and
-browser acceptance remain unverified. See [TEST-148](../../evidence/test-runs/TEST-148-saved-reports-backend-verification.md)
-and [TEST-149](../../evidence/test-runs/TEST-149-saved-reports-web-typecheck.md)
-for the checks actually performed.
+a combined browser-to-database run remain unverified.
+[TEST-148](../../evidence/test-runs/TEST-148-saved-reports-backend-verification.md)
+records the backend InMemory check;
+[TEST-149](../../evidence/test-runs/TEST-149-saved-reports-web-typecheck.md)
+records TypeScript checking; and
+[TEST-150](../../evidence/test-runs/TEST-150-saved-reports-chromium-workflow.md)
+records the passing Chromium workflow with controlled API responses.
 
 ## Storage and execution rules
 
