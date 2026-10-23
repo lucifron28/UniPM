@@ -261,6 +261,11 @@ internal sealed class PmAnalyticsV3QuestionInterpreter : IDisposable
 
         if (useDeepSeek || reviewedCandidate is not null)
         {
+            if (useDeepSeek)
+            {
+                candidate = RecoverRankingClarification(sanitized, candidate, interpretationTimeUtc);
+            }
+
             if (!IsSafeModelEnvelope(candidate))
             {
                 throw InvalidModelOutput();
@@ -379,6 +384,55 @@ internal sealed class PmAnalyticsV3QuestionInterpreter : IDisposable
         string? detail,
         string interpreter = SafetyRulesInterpreter) =>
         new("Unsupported", null, [], code, detail, interpreter);
+
+    private static PmAnalyticsV3ModelOutput RecoverRankingClarification(
+        string question,
+        PmAnalyticsV3ModelOutput candidate,
+        DateTimeOffset nowUtc)
+    {
+        if (candidate.Status != "Valid"
+            || !candidate.ClarificationFields.SequenceEqual(new[] { "Top" }, StringComparer.Ordinal)
+            || candidate.Plan is not { Top: null, Mode: PmAnalyticsV3Mode.Aggregate } plan
+            || plan.Subject != PmAnalyticsV3Catalog.SubjectPmExecution
+            || !PmAnalyticsV3PlanValidator.TryNormalize(plan, out var actual, out _))
+        {
+            return candidate;
+        }
+
+        // Recovery requires independent, bounded support from the question. This is
+        // not a general fallback to the rule parser or a repair of arbitrary output.
+        var expected = PmAnalyticsV3RuleParser.Parse(question, nowUtc);
+        if (expected.Status != "NeedsClarification"
+            || !expected.ClarificationFields.SequenceEqual(new[] { "Top" }, StringComparer.Ordinal)
+            || expected.Plan is null
+            || !PmAnalyticsV3PlanValidator.TryNormalize(expected.Plan, out var reference, out _))
+        {
+            return candidate;
+        }
+
+        var left = actual.Plan;
+        var right = reference.Plan;
+        if (left.Subject != right.Subject || left.Mode != right.Mode || left.Period != right.Period
+            || !left.Categories.Order(StringComparer.Ordinal).SequenceEqual(right.Categories.Order(StringComparer.Ordinal), StringComparer.Ordinal)
+            || !left.Measures.Order(StringComparer.Ordinal).SequenceEqual(right.Measures.Order(StringComparer.Ordinal), StringComparer.Ordinal)
+            || !(left.GroupBy ?? []).SequenceEqual(right.GroupBy ?? [], StringComparer.Ordinal)
+            || !left.Columns.Order(StringComparer.Ordinal).SequenceEqual(right.Columns.Order(StringComparer.Ordinal), StringComparer.Ordinal)
+            || JsonSerializer.Serialize(left.BaseFilters) != JsonSerializer.Serialize(right.BaseFilters)
+            || JsonSerializer.Serialize(left.MatchingFilters) != JsonSerializer.Serialize(right.MatchingFilters)
+            || JsonSerializer.Serialize(left.AggregateFilters) != JsonSerializer.Serialize(right.AggregateFilters)
+            || JsonSerializer.Serialize(left.OrderBy) != JsonSerializer.Serialize(right.OrderBy)
+            || left.Presentation != right.Presentation)
+        {
+            return candidate;
+        }
+
+        return candidate with
+        {
+            Status = "NeedsClarification",
+            Code = "RecoveredRankingClarification",
+            Detail = "Choose which requested measure should determine the ranking. No ranking has been selected."
+        };
+    }
 
     private static bool IsSafeModelEnvelope(PmAnalyticsV3ModelOutput candidate)
     {
