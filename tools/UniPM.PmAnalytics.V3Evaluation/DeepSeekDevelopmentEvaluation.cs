@@ -67,7 +67,8 @@ internal static class DeepSeekDevelopmentEvaluation
             {
                 Id = Guid.Parse("00000000-0000-0000-0000-000000000001"),
                 AssetCode = "SYNTHETIC-EVAL-001", AssetCategory = "fire-extinguisher",
-                Building = "North Block", Department = "Synthetic Department", Status = "Active"
+                Building = CatalogEquivalenceComparison.Building,
+                Department = CatalogEquivalenceComparison.Department, Status = "Active"
             });
             await context.SaveChangesAsync();
         }
@@ -103,7 +104,11 @@ internal static class DeepSeekDevelopmentEvaluation
             catalogFixture = "One fire-extinguisher asset in fictional North Block; Research department absent",
             authorization = "User approved this 18-case Development-only DeepSeek comparison in chat on 2026-10-23",
             condition = "Explicit DeepSeek selection; actual interpreter including guard, constraints, validation and catalog resolution",
-            comparison = "Unchanged frozen expectations and original ComparePartial; raw model candidate scored separately"
+            comparison = "Unchanged frozen expectations and original ComparePartial; raw model candidate scored separately",
+            catalogEquivalenceVersion = CatalogEquivalenceComparison.Version,
+            catalogEquivalenceSha256 = CatalogEquivalenceComparison.Fingerprint,
+            catalogEquivalenceDefinition = CatalogEquivalenceComparison.Definition,
+            scoringProtocolSha256 = HashFile(Path.Combine(root, "reference/evaluation/manuscript-2026-10-23/catalog-equivalence-v1-protocol.md"))
         };
         await WriteJson(Path.Combine(outputDirectory, "identity.json"), identity);
         var outcomes = new List<CaseResult>();
@@ -137,13 +142,15 @@ internal static class DeepSeekDevelopmentEvaluation
             var candidate = handler.Candidate;
             var candidateScore = candidate is null ? null : Compare(item, candidate.Status, candidate.ClarificationFields, candidate.Plan);
             var actualScore = Compare(item, actual?.Status, actual?.ClarificationFields ?? [], actual?.Plan);
+            var catalogScore = Compare(item, actual?.Status, actual?.ClarificationFields ?? [], actual?.Plan, catalogEquivalent: true);
             if (error is not null) actualScore.Mismatches.Add("execution:" + error);
+            if (error is not null) catalogScore.Mismatches.Add("execution:" + error);
             outcomes.Add(new CaseResult(item.GetProperty("caseId").GetString()!, item.GetProperty("question").GetString()!,
                 item.GetProperty("caseClass").GetString()!, item.GetProperty("expectedStatus").GetString()!,
                 item.GetProperty("expectedClarificationFields").Deserialize<string[]>()!,
                 item.GetProperty("expectedPlanDisposition").GetString()!, item.GetProperty("expectedPlanAssertions").Clone(),
                 handler.Count - before, Math.Round(stopwatch.Elapsed.TotalMilliseconds, 2), error,
-                actual, actualScore, candidate, candidateScore));
+                actual, actualScore, candidate, candidateScore, catalogScore));
             await WriteJson(Path.Combine(outputDirectory, "cases.json"), outcomes);
             Console.WriteLine($"{outcomes[^1].CaseId}: {actual?.Status ?? error}; requests={handler.Count - before}; mismatches={actualScore.Mismatches.Count}");
         }
@@ -165,6 +172,9 @@ internal static class DeepSeekDevelopmentEvaluation
             planAssertionMatches = outcomes.Sum(item => item.Comparison.MatchedAssertions),
             planAssertions = outcomes.Sum(item => item.Comparison.Assertions),
             exactCases = outcomes.Count(item => item.Comparison.Mismatches.Count == 0),
+            catalogEquivalentExactCases = outcomes.Count(item => item.CatalogComparison.Mismatches.Count == 0),
+            catalogEquivalentAssertionMatches = outcomes.Sum(item => item.CatalogComparison.MatchedAssertions),
+            recoveredRankingCases = outcomes.Count(item => item.Actual?.Code == "RecoveredRankingClarification"),
             unexpectedExecutableCases = outcomes.Count(item => item.ExpectedStatus != "Valid" && item.Actual?.Status == "Valid" && item.Actual.Plan is not null),
             unsupportedRejectionMatches = outcomes.Count(item => item.ExpectedStatus == "Unsupported" && item.Actual?.Status == "Unsupported" && item.Actual.Plan is null),
             rawModelCandidateCases = outcomes.Count(item => item.ModelCandidate is not null),
@@ -177,11 +187,11 @@ internal static class DeepSeekDevelopmentEvaluation
             limits = "Fixed researcher-reviewed development set; two labels revised before freeze. No held-out, SQL Server, report execution, browser, respondent or historical-session verification. Strict original comparisons include representation differences. Backend safety rejections are not model responses."
         };
         await WriteJson(Path.Combine(outputDirectory, "report.json"), report);
-        Console.WriteLine($"Completed {outcomes.Count} cases; exact={report.exactCases}/18; assertions={report.planAssertionMatches}/{report.planAssertions}; provider requests={handler.Count}.");
+        Console.WriteLine($"Completed {outcomes.Count} cases; strict={report.exactCases}/18; catalog-equivalent={report.catalogEquivalentExactCases}/18; assertions={report.planAssertionMatches}/{report.planAssertions}; provider requests={handler.Count}.");
         return outcomes.Any(item => item.Error is not null) ? 1 : 0;
     }
 
-    private static Comparison Compare(JsonElement expected, string? status, IReadOnlyList<string> fields, PmAnalyticsV3ReportPlan? plan)
+    private static Comparison Compare(JsonElement expected, string? status, IReadOnlyList<string> fields, PmAnalyticsV3ReportPlan? plan, bool catalogEquivalent = false)
     {
         var statusMatch = expected.GetProperty("expectedStatus").GetString() == status;
         var clarificationMatch = expected.GetProperty("expectedClarificationFields").Deserialize<string[]>()!
@@ -199,6 +209,11 @@ internal static class DeepSeekDevelopmentEvaluation
         if (assertions.ValueKind == JsonValueKind.Object)
         {
             var serializedPlan = JsonSerializer.SerializeToElement(plan, JsonOptions);
+            if (catalogEquivalent)
+            {
+                assertions = CatalogEquivalenceComparison.Normalize(assertions);
+                serializedPlan = CatalogEquivalenceComparison.Normalize(serializedPlan);
+            }
             V3EvaluationHarness.ComparePartial(assertions, serializedPlan, "plan", mismatches, ref count, ref matches);
         }
         return new Comparison(statusMatch, clarificationMatch, dispositionMatch, count, matches, mismatches);
@@ -223,7 +238,8 @@ internal static class DeepSeekDevelopmentEvaluation
     private sealed record CaseResult(string CaseId, string Question, string CaseClass, string ExpectedStatus,
         string[] ExpectedClarificationFields, string ExpectedPlanDisposition, JsonElement ExpectedPlanAssertions,
         int ProviderRequests, double ElapsedMilliseconds, string? Error, PmAnalyticsV3InterpretationResponse? Actual,
-        Comparison Comparison, PmAnalyticsV3ModelOutput? ModelCandidate, Comparison? ModelCandidateComparison);
+        Comparison Comparison, PmAnalyticsV3ModelOutput? ModelCandidate, Comparison? ModelCandidateComparison,
+        Comparison CatalogComparison);
 
     private sealed class SingleAttemptHandler(string directory) : DelegatingHandler(new SocketsHttpHandler
     {

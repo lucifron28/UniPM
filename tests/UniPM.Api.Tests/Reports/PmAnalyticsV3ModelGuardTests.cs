@@ -8,6 +8,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using UniPM.Api.Data;
 using UniPM.Api.Features.Reports;
+using UniPM.PmAnalytics.V3Evaluation;
 
 namespace UniPM.Api.Tests;
 
@@ -191,6 +192,32 @@ public sealed class PmAnalyticsV3ModelGuardTests
             var exception = await Assert.ThrowsAsync<NaturalLanguageAnalyticsProviderException>(() => Interpret(text));
             Assert.Equal(NaturalLanguageAnalyticsProviderFailure.InvalidOutput, exception.Failure);
         }
+    }
+
+    [Fact]
+    public void Catalog_equivalence_preserves_scope_operators_and_identifiers()
+    {
+        const string expected = """{"baseFilters":[{"field":"building","operator":"Equal","values":["North Block"]}],"measures":["scheduledCount"]}""";
+        using var document = JsonDocument.Parse(expected);
+        var reference = CatalogEquivalenceComparison.Normalize(document.RootElement);
+        using var same = JsonDocument.Parse(expected.Replace("North Block", " NORTH BLOCK ", StringComparison.Ordinal));
+        Assert.True(JsonElement.DeepEquals(reference, CatalogEquivalenceComparison.Normalize(same.RootElement)));
+        foreach (var changed in new[]
+        {
+            expected.Replace("North Block", "South Block", StringComparison.Ordinal),
+            expected.Replace("Equal", "In", StringComparison.Ordinal),
+            expected.Replace("building", "Building", StringComparison.Ordinal),
+            expected.Replace("scheduledCount", "SCHEDULEDCOUNT", StringComparison.Ordinal),
+            expected.Replace("\"North Block\"", "\"North Block\",\"North Block\"", StringComparison.Ordinal)
+        })
+        {
+            using var changedDocument = JsonDocument.Parse(changed);
+            Assert.False(JsonElement.DeepEquals(reference, CatalogEquivalenceComparison.Normalize(changedDocument.RootElement)));
+        }
+        using var unknown = JsonDocument.Parse(expected.Replace("North Block", "Unknown Building", StringComparison.Ordinal));
+        using var unknownUpper = JsonDocument.Parse(expected.Replace("North Block", "UNKNOWN BUILDING", StringComparison.Ordinal));
+        Assert.False(JsonElement.DeepEquals(CatalogEquivalenceComparison.Normalize(unknown.RootElement),
+            CatalogEquivalenceComparison.Normalize(unknownUpper.RootElement)));
     }
 
     private sealed class CandidateHandler : HttpMessageHandler
