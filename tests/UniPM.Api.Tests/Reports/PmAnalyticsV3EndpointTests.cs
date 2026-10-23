@@ -21,17 +21,21 @@ public sealed class PmAnalyticsV3EndpointTests
     [Fact]
     public async Task Saved_reports_are_private_revalidated_and_execute_current_data_without_AI()
     {
-        var clock = new FixedTimeProvider(new DateTimeOffset(2026, 12, 31, 16, 5, 0, TimeSpan.Zero));
+        var clock = new FixedTimeProvider(new DateTimeOffset(2027, 1, 31, 16, 5, 0, TimeSpan.Zero));
         await using var application = new AnalyticsApplicationFactory(true, clock, AuthRoleCatalog.Gsd);
         using var client = application.CreateClient();
         await SeedAsync(application.Services);
         const string route = "/api/v1/analytics/pm/v3/saved-reports";
         var plan = new PmAnalyticsV3ReportPlan(3, PmAnalyticsV3Catalog.Version, "assetInventory",
             PmAnalyticsV3Mode.Aggregate, null, ["fire-extinguisher"], ["registeredAssetCount"], [],
-            [], [], [], [], null, PmAnalyticsV3Presentation.Summary, []);
+            [], [], [], [], null, PmAnalyticsV3Presentation.Summary, ["registeredAssetCount"]);
         var request = new SavedAnalyticsReportRequest("My inventory", plan);
+        using var missingColumns = await client.PostAsJsonAsync(route, request with { Plan = plan with { Columns = [] } });
+        Assert.Equal(HttpStatusCode.BadRequest, missingColumns.StatusCode);
+        var invalid = await missingColumns.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.True(invalid.GetProperty("errors").TryGetProperty("Columns", out _));
         using var create = await client.PostAsJsonAsync(route, request);
-        Assert.Equal(HttpStatusCode.Created, create.StatusCode);
+        Assert.True(create.StatusCode == HttpStatusCode.Created, await create.Content.ReadAsStringAsync());
         var saved = (await create.Content.ReadFromJsonAsync<SavedAnalyticsReportResponse>())!;
         var item = $"{route}/{saved.Id}";
         Assert.Single((await client.GetFromJsonAsync<SavedAnalyticsReportResponse[]>(route))!);
@@ -74,7 +78,7 @@ public sealed class PmAnalyticsV3EndpointTests
         Assert.Equal(before.AggregateRows[0].Measures["registeredAssetCount"].Value + 1,
             after.AggregateRows[0].Measures["registeredAssetCount"].Value);
 
-        var pm = plan with { Subject = "pmExecution", Measures = ["scheduledCount"],
+        var pm = plan with { Subject = "pmExecution", Measures = ["scheduledCount"], Columns = ["scheduledCount"],
             Period = new("pmCycle", PmAnalyticsV3PeriodKind.Year, 2024) };
         using var relativeCreate = await client.PostAsJsonAsync(route, new SavedAnalyticsReportRequest("Monthly", pm, "ThisMonth"));
         Assert.Equal(HttpStatusCode.Created, relativeCreate.StatusCode);
@@ -85,10 +89,11 @@ public sealed class PmAnalyticsV3EndpointTests
             Assert.Equal(HttpStatusCode.OK, result.StatusCode);
             return (await result.Content.ReadFromJsonAsync<PmAnalyticsV3PreviewResponse>())!.Plan.Period!;
         }
-        Assert.Equal(new PmAnalyticsV3Period("pmCycle", PmAnalyticsV3PeriodKind.Month, 2027, 1), await RelativePreview());
-        clock.Advance(TimeSpan.FromDays(32));
-        Assert.Equal(2, (await RelativePreview()).Month);
-        foreach (var (mode, year, month) in new[] { ("LastMonth", 2027, (int?)1), ("ThisYear", 2027, null), ("LastYear", 2026, null), ("Fixed", 2024, null) })
+        Assert.Equal(new PmAnalyticsV3Period("pmCycle", PmAnalyticsV3PeriodKind.Month, 2027, 2), await RelativePreview());
+        clock.Advance(TimeSpan.FromDays(89));
+        Assert.Equal(5, (await RelativePreview()).Month);
+        clock.Advance(TimeSpan.FromDays(31));
+        foreach (var (mode, year, month) in new[] { ("LastMonth", 2027, (int?)5), ("ThisYear", 2027, null), ("LastYear", 2026, null), ("Fixed", 2024, null) })
         {
             using var update = await client.PutAsJsonAsync($"{route}/{relative.Id}",
                 new SavedAnalyticsReportRequest("Period", pm, mode, relative.Revision));
