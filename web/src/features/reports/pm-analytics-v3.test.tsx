@@ -26,6 +26,11 @@ vi.mock('@/api/generated/endpoints', () => ({
   interpretPmAnalyticsV3Question: api.interpret,
   previewPmAnalyticsV3Report: api.preview,
   executePmAnalyticsV3Report: api.execute,
+  listSavedAnalyticsReports: vi.fn().mockResolvedValue([]),
+  createSavedAnalyticsReport: vi.fn(),
+  updateSavedAnalyticsReport: vi.fn(),
+  deleteSavedAnalyticsReport: vi.fn(),
+  previewSavedAnalyticsReport: vi.fn(),
 }))
 
 vi.mock('@tanstack/react-router', async (importOriginal) => {
