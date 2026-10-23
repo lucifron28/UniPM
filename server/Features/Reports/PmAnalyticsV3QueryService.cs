@@ -1454,7 +1454,15 @@ internal sealed class PmAnalyticsV3QueryService(
         AddError(errors, field, reason == "Unknown"
             ? $"Value '{value}' does not match the current authorized asset catalog."
             : $"Value '{value}' matches multiple current asset catalog values.");
-        clarificationFields.Add(field);
+        clarificationFields.Add(field switch
+        {
+            PmAnalyticsV3Catalog.Department => "Department",
+            PmAnalyticsV3Catalog.Building => "Building",
+            PmAnalyticsV3Catalog.Location => "Location",
+            PmAnalyticsV3Catalog.AssetCode => "AssetCode",
+            PmAnalyticsV3Catalog.AssetId => "AssetId",
+            _ => "Filters"
+        });
     }
 
     private static void AddError(Dictionary<string, string[]> errors, string field, string message)

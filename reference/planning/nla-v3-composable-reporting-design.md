@@ -558,8 +558,23 @@ signatory details remain excluded from remote interpretation.
 - Add bounded bar/line chart mappings using an existing suitable library if
   available. Validate field types, units, nulls and temporal axes. Tables remain
   the accessible alternative and numerical source of truth.
-- Consider saved report definitions only after a demonstrated need, with owner,
-  catalog-version revalidation and no persistence of unsafe prompts or secrets.
+- Saved reports / My reports: requested as a follow-up on October 23, 2026;
+  planned only, not implemented. Let users explicitly save a reviewed report
+  definition for repeated use, then run, edit, rename or delete it. Reopening
+  and running the saved definition uses the backend directly without another
+  AI interpretation call.
+  - Save the report settings, not a frozen result set. Each Run or Refresh
+    calculates fresh results from currently authorized records.
+  - Support clearly labeled fixed periods, such as 2025, and relative periods,
+    such as this month or last year. Resolve relative periods on each run and
+    display the actual scope before confirmation.
+  - Recheck ownership/access, current permissions, catalog/schema compatibility
+    and plan validity before execution. Preserve preview and confirmation.
+  - Do not automatically learn questions, add parser rules or approve reusable
+    interpretations. Persist no unsafe prompts, provider payloads or secrets.
+  - Automatic refresh while open, scheduled execution and shared saved reports
+    remain separate scope decisions. This follow-up does not block the current
+    clarification correction or change existing evaluation results.
 
 Exit: each new analysis has independent expectations and labels that disclose
 population changes. Charts match the returned table and execute no generated code.

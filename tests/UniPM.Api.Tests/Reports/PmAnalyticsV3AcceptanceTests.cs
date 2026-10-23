@@ -305,7 +305,7 @@ public sealed class PmAnalyticsV3AcceptanceTests
         Assert.NotNull(unknownInterpretation);
         Assert.Equal("NeedsClarification", unknownInterpretation.Status);
         Assert.Equal("UnknownCatalogValue", unknownInterpretation.Code);
-        Assert.Contains("building", unknownInterpretation.ClarificationFields);
+        Assert.Contains("Building", unknownInterpretation.ClarificationFields);
     }
 
     [Fact]

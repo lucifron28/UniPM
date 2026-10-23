@@ -531,6 +531,30 @@ internal sealed class PmAnalyticsV3QuestionInterpreter : IDisposable
                 fieldsToClarify.Add("Period");
                 clarificationDetails.Add("Confirm the requested scheduled PM-cycle period.");
             }
+
+            if (PmAnalyticsV3RuleParser.HasRankingIntent(question))
+            {
+                var requestedMeasures = PmAnalyticsV3RuleParser.ResolveMeasures(question);
+                var rankingMeasures = requestedMeasures.Count > 0 ? requestedMeasures : plan.Measures ?? [];
+                var expectedTop = PmAnalyticsV3RuleParser.ResolveTop(question, rankingMeasures);
+                if (plan.Mode != PmAnalyticsV3Mode.Aggregate || expectedTop is null || plan.Top != expectedTop)
+                {
+                    var guessedMeasure = plan.Top?.Measure;
+                    plan = plan with
+                    {
+                        Top = null,
+                        Measures = plan.Mode == PmAnalyticsV3Mode.Aggregate
+                            ? requestedMeasures.Concat(plan.Measures ?? []).Distinct(StringComparer.Ordinal).ToArray()
+                            : plan.Measures ?? [],
+                        OrderBy = (plan.OrderBy ?? []).Where(order => order.Field != guessedMeasure).ToArray()
+                    };
+                    fieldsToClarify.Add("Top");
+                    clarificationDetails.Add("State the ranking measure and top or bottom limit explicitly; the report will not choose between requested measures.");
+                }
+
+                if (plan.Mode != PmAnalyticsV3Mode.Aggregate) fieldsToClarify.Add("Mode");
+                if ((plan.GroupBy ?? []).Count == 0) fieldsToClarify.Add("GroupBy");
+            }
         }
 
         if (HasExplicitThresholdMismatch(question, plan))
@@ -765,7 +789,7 @@ internal static class PmAnalyticsV3RuleParser
         RegexOptions.CultureInvariant | RegexOptions.IgnoreCase,
         TimeSpan.FromMilliseconds(100));
     private static readonly Regex RankingIntentRegex = new(
-        @"\b(?:top|bottom|highest|lowest|most|(?<!at\s)least|rank(?:ed|ing)?)\b",
+        @"\b(?:top|bottom|highest|lowest|(?<!at\s)most|(?<!at\s)least|rank(?:ed|ing)?)\b",
         RegexOptions.CultureInvariant | RegexOptions.IgnoreCase,
         TimeSpan.FromMilliseconds(100));
     private static readonly Regex ExplicitSortIntentRegex = new(
@@ -961,7 +985,7 @@ internal static class PmAnalyticsV3RuleParser
         var groupBy = mode == PmAnalyticsV3Mode.Records ? [] : requestedGroupBy;
         var matchingFilters = mode == PmAnalyticsV3Mode.Records ? ResolveRecordFilters(question) : [];
         var aggregateFilters = mode == PmAnalyticsV3Mode.Aggregate ? ResolveThresholds(question, measures) : [];
-        var topRequested = mode == PmAnalyticsV3Mode.Aggregate && RankingIntentRegex.IsMatch(question);
+        var topRequested = mode == PmAnalyticsV3Mode.Aggregate && HasRankingIntent(question);
         var topMatch = PmAnalyticsV3QuestionParsing.FindTop(question);
         if (topRequested && topMatch.Success
             && int.TryParse(topMatch.Groups["limit"].Value, out var requestedTop)
@@ -1350,7 +1374,7 @@ internal static class PmAnalyticsV3RuleParser
         return null;
     }
 
-    private static List<string> ResolveMeasures(string question)
+    internal static List<string> ResolveMeasures(string question)
     {
         var matches = new List<string>();
         AddIf(question, "distinct assets", PmAnalyticsV3Catalog.DistinctAssetCount, matches);
@@ -1554,7 +1578,9 @@ internal static class PmAnalyticsV3RuleParser
         return result;
     }
 
-    private static PmAnalyticsV3Top? ResolveTop(
+    internal static bool HasRankingIntent(string question) => RankingIntentRegex.IsMatch(question);
+
+    internal static PmAnalyticsV3Top? ResolveTop(
         string question,
         IReadOnlyList<string> measures)
     {
@@ -1865,10 +1891,12 @@ internal static class PmAnalyticsV3ModelPrompt
             + schema + "\n"
             + "The top-level object is an interpretation envelope; never return the plan object at the root. Valid requires a complete plan and an empty clarificationFields array. NeedsClarification requires at least one clarification field. When the subject and some fields are clear, include a safe partial plan and preserve every resolved period, category, measure, grouping, filter, threshold, ordering, presentation, and column. Set unresolved period to null and unresolved categories to an empty array. Do not guess missing values. If the reporting subject itself is unclear, use a null plan and include Subject. Use only clarification field identifiers listed in the schema. Unsupported requires a null plan and an empty clarificationFields array. "
             + "Do not generate SQL, code, joins, formulas, writes, or answers. Do not invent a category, catalog value, date, group, measure, or filter. Use clarification when required information is missing or ambiguous. "
+            + "For top/bottom ranking, require a group, a limit and an unambiguous ranking measure. If several measures are requested without an explicit ranking criterion, ask for Top clarification, set top to null, and preserve the requested measures and grouping. Never pick the first measure or omit another requested measure to make ranking appear unambiguous. "
             + "Choose exactly one subject from the question. pmExecution means eligible persisted asset-cycle schedules and inspection outcomes; it requires a pmCycle period and uses only the PM execution catalog. assetInventory means current registered assets; it has no period and counts or lists one Asset row per unique asset ID without joining schedules, inspections, forms, acknowledgements, or referrals. "
             + "If intent is unclear, return NeedsClarification with Subject. If the question combines registered-asset inventory with PM execution, return Unsupported; never create cross-subject joins. Time periods for pmExecution use pmCycle in Asia/Manila. Relative dates use the supplied current Manila date. "
             + "Late means a completed PM item finished after its PM-cycle deadline. Overdue or missed means an incomplete scheduled item whose deadline has passed. Remaining means an incomplete item whose deadline has not passed. Wording such as 'finished past their deadline' means late; 'unfinished past the due date' means overdue. 'Falling behind' alone is ambiguous: ask whether it means overdue unfinished work, late completed work, or completion progress, while preserving clear grouping and category fields. Do not treat late completed work as overdue unfinished work, or the reverse. Use stored schedule and completion data only; do not forecast, predict, or project future maintenance activity. "
             + "Use BaseFilters for subject-supported population fields; MatchingFilters for PM outcome and workflow rows. Filters are flat AND. Percentage measures cannot have matching filters. Summary requires an ungrouped aggregate. Records mode has no measures, grouping, aggregate filters, or top selection. "
+            + "For unqualified completed-item wording without an explicit request for records, individual assets or source rows, use an Aggregate count report. Preserve explicitly named late or on-time measures; use completedCount only for generic completed items. Preserve explicit records requests as Records with the appropriate completion filter. Separate named months joined by 'and' do not imply a continuous range; ask for Period clarification and preserve the resolved mode and measures. "
             + "Department and building refer to current asset fields. Do not infer department or building values from grouping. Use only subject-specific catalog identifiers. Compliance, including PM compliance, means onTimeCompliancePercent, not progressPercent. Progress or completion progress means progressPercent. A percentage threshold must use the same measure in measures, aggregateFilters, and columns. Never drop or invert an explicit negation, date, category, status, scope, disjunction, or numeric threshold. If a constraint cannot be represented safely, return the relevant clarification or unsupported envelope.\n"
             + "For a Valid PM execution plan, enumerate every selected supported category. For all supported categories, enumerate all four category identifiers. Never use a wildcard such as all, assets, or *. If category is the missing detail in a NeedsClarification plan, set categories to an empty array and include Categories; do not guess. PM execution questions without a named category or explicit all-categories choice need clarification with Categories.\n"
             + "Supported asset categories:\n" + categories + "\nPM execution scheduled months by category:\n" + scheduledMonths
@@ -1879,6 +1907,7 @@ internal static class PmAnalyticsV3ModelPrompt
             + "\nAsset inventory dimensions: " + inventoryDimensions
             + "\nAsset inventory filters:\n" + inventoryFilters
             + "\nFor string filters, preserve the exact value phrase from the question; do not abbreviate or invent a canonical building or department name. The backend resolves it against current catalog values. For clarification, name the ambiguity and offer concise choices in plain language. A month paired with 'inspected in/during/on' may mean a PM cycle or an actual inspection date; ask which one, preserve other resolved plan fields, set period to null, and state that only PM-cycle periods are supported.\n"
+            + "A generic year such as 'in 2025' or 'during 2025' uses the scheduled PM-cycle year unless the question explicitly refers to inspection or completion dates. The word 'during' alone does not require time-basis clarification. Keep unsupported inspection/completion-date requests separate; never silently reinterpret an explicit date basis.\n"
             + "Examples (use the complete envelope shape and the relevant subject catalog):\n" + examples;
     }
 
