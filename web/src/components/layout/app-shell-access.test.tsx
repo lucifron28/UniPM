@@ -111,6 +111,16 @@ describe('app shell role access and layout', () => {
     expect(within(nav).queryByRole('link', { name: 'Schedules' })).toBeNull()
     expect(within(nav).queryByRole('link', { name: 'Form review' })).toBeNull()
     expect(within(nav).getByRole('link', { name: 'Admin' })).toBeVisible()
+
+    fireEvent.click(within(nav).getByRole('button', { name: 'Quick search' }))
+    const destinations = screen.getByRole('listbox', {
+      name: 'Available destinations',
+    })
+    expect(
+      within(destinations).getByText(
+        'No destinations match. Try another task or page name.',
+      ),
+    ).toBeInTheDocument()
   })
 
   it('keeps operational navigation for Admin with an operational role', async () => {
