@@ -773,7 +773,9 @@ void main() {
     tester,
   ) async {
     tester.view.physicalSize = const Size(800, 800);
+    tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     repository.dispose();
     repository = _ImmediateScheduleOfflineInspectionRepository(
       tester: tester,
