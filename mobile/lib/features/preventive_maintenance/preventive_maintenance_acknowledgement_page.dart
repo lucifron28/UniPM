@@ -107,6 +107,8 @@ class _PreventiveMaintenanceAcknowledgementPageState
             acknowledgement: acknowledgement,
             alreadyAcknowledged: form.status == 'Acknowledged',
             formNumber: form.fileNumber ?? 'Preventive-maintenance form',
+            operatorUserId: widget.controller.user.id,
+            operatorDisplayName: widget.controller.user.displayName,
           )
         else if (form.status == 'Submitted')
           _AcknowledgementForm(
@@ -731,7 +733,8 @@ class _AcknowledgementForm extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               const Text(
-                'Enter the signatory details and capture their signature.',
+                'Enter the Department Head\'s name, position, and signature. '
+                'UniPM records the signed-in account submitting this receipt separately.',
               ),
               const SizedBox(height: 16),
               TextFormField(
@@ -795,11 +798,15 @@ class _AcknowledgementReceipt extends StatelessWidget {
     required this.acknowledgement,
     required this.alreadyAcknowledged,
     required this.formNumber,
+    required this.operatorUserId,
+    required this.operatorDisplayName,
   });
 
   final PreventiveMaintenanceAcknowledgement? acknowledgement;
   final bool alreadyAcknowledged;
   final String formNumber;
+  final String operatorUserId;
+  final String operatorDisplayName;
 
   @override
   Widget build(BuildContext context) {
@@ -850,6 +857,9 @@ class _AcknowledgementReceipt extends StatelessWidget {
                     Text('Department Head: ${value.signatoryName}'),
                     Text('Position: ${value.signatoryPosition}'),
                     Text(
+                      'Recorded by: ${_operatorLabel(value, operatorUserId, operatorDisplayName)}',
+                    ),
+                    Text(
                       'Acknowledged: ${_dateTimeText(value.acknowledgedAt)}',
                     ),
                   ],
@@ -871,6 +881,20 @@ class _AcknowledgementReceipt extends StatelessWidget {
       ),
     );
   }
+}
+
+String _operatorLabel(
+  PreventiveMaintenanceAcknowledgement acknowledgement,
+  String operatorUserId,
+  String operatorDisplayName,
+) {
+  final displayName = acknowledgement.capturedByUserId == operatorUserId
+      ? operatorDisplayName.trim()
+      : '';
+  if (displayName.isEmpty) {
+    return 'account ${acknowledgement.capturedByUserId}';
+  }
+  return '$displayName (account ${acknowledgement.capturedByUserId})';
 }
 
 class _AcknowledgementInlineError extends StatelessWidget {

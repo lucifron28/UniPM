@@ -765,6 +765,13 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    expect(
+      find.text(
+        'Enter the Department Head\'s name, position, and signature. '
+        'UniPM records the signed-in account submitting this receipt separately.',
+      ),
+      findsOneWidget,
+    );
     await tester.enterText(
       find.byKey(const Key('ack-signatory-name')),
       'Synthetic Department Head',
@@ -838,6 +845,15 @@ void main() {
       find.descendant(
         of: receipt,
         matching: find.text('Position: Department Head'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: receipt,
+        matching: find.text(
+          'Recorded by: Synthetic Inspector (account $inspectorId)',
+        ),
       ),
       findsOneWidget,
     );
