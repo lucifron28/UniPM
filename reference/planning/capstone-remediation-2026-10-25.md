@@ -39,7 +39,7 @@ this baseline and will not be silently included in the remediation.
 | Phase | Work | Status |
 |---|---|---|
 | 0 | Branch comparison, source audit, baseline commands | Completed; findings below |
-| 1 | Corpus test assumptions and React render/ref lint | Ready for correction |
+| 1 | Corpus test assumptions and React render/ref lint | Backend passed; web regression failures remain; retry exception requested |
 | 2 | Authorization and record access | Pending |
 | 3 | Offline timestamp provenance and synchronization | Pending |
 | 4 | NLA routing, shortcuts, validation, evaluation boundaries | Pending |
@@ -106,7 +106,7 @@ remaining risks have been reproduced.
 Backend and client audit findings, baseline counts, corrections, and remaining
 risks will be added after their command outputs and diffs are reviewed.
 
-## Phase 1 changes awaiting verification
+## Phase 1 corrections and verification
 
 Commit `ca81bf8a95b3b287f484807cd296e2466766dda2` fixes RM-001 and
 addresses the repeated regex construction behind RM-006. The temporary test
@@ -118,4 +118,44 @@ case checks that the frozen reviewed corpus can be scored.
 The month guard caches independent patterns. Review rejected a union-pattern
 approach because non-overlapping regex matches would miss the second month in
 `Jan 2026 Feb`. The retained regression checks that this remains ambiguous.
-Post-change verification has not yet been recorded here.
+The full backend suite at that commit passed 597 tests, failed zero, and
+skipped 50, out of 647 total. Command:
+
+```powershell
+dotnet test UniPM.slnx --logger "trx;LogFileName=phase1.trx" --results-directory artifacts/remediation/backend
+```
+
+Exit 0; duration 2 minutes 35 seconds. SQL and real-provider verification
+remain outside this result.
+
+Commit `87cb905c86f3aa80638cd5fd00d032d9ea4c25f9` removes the generic
+clarification filter's render IIFE and adds a preview regression. Formatting
+and lint passed at that commit. Type checking found an unchecked array lookup
+in Back navigation. Commit
+`9b143d12e13864c351a0e2defe54ea8b8b65f122` guards that lookup and waits
+for the catalog option in the new test. Type checking and the production build
+passed at this later commit. Contract sanity and all seven negative contract
+checks passed at documentation-only intermediate commit `0bc5701`.
+
+The full web test attempt returned 246 passed and 10 failed out of 256.
+It was a diagnostic run with an uncommitted callback guard, so it is not
+accepted as exact-commit regression evidence. End-of-run source/test hashes
+are retained in its log. Nine failures concern existing UI tests; their
+causes remain unresolved. The new generic-filter test fails because
+`makeCatalog()` provides no filter fields. Its focused rerun at `9b143d1`
+also failed, with one failed and 18 deselected tests. Waiting cannot populate
+an empty fixture. A fixture correction requires adding the Department filter
+definition while preserving the preview-plan assertions.
+
+The repository retry limit was reached for this check. The main chat requested
+permission for one fixture correction and one additional focused run. No
+further correction or retry is authorized by elapsed time alone.
+
+Playwright at `9b143d1` executed 61 cases: 53 passed, 7 failed, 1 skipped.
+Its worktree-owned Vite child started on port 5173; the executor checked its
+listener/process identity rather than assuming an existing server belonged
+to this source. Browser failures remain unresolved. This is not a passing
+frontend CI result. Raw outputs remain in `artifacts/remediation/clients/`.
+
+Later phases have not been implemented. Their audit notes do not establish
+completed corrections or executed acceptance.
