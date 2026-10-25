@@ -40,6 +40,9 @@ AuthUser testUser({List<String> roles = const ['Inspector']}) => AuthUser(
   roles: roles,
 );
 
+String _formIdAt(int index) =>
+    '00000000-0000-4000-8000-${index.toString().padLeft(12, '0')}';
+
 void main() {
   test('form and inspection response timestamps are parsed and copied', () {
     final fieldWorkCompletedAt = DateTime.utc(2026, 2, 10, 9);
@@ -1206,6 +1209,79 @@ void main() {
     client.dispose();
   });
 
+  test('API form list drains all pages and preserves unique forms', () async {
+    final transportState = DraftTransportState();
+    transportState.formPages[1] = <String, dynamic>{
+      'items': List.generate(
+        100,
+        (index) => transportState.testFormJson(id: _formIdAt(index)),
+      ),
+      'page': 1,
+      'pageSize': 100,
+      'totalCount': 101,
+    };
+    transportState.formPages[2] = <String, dynamic>{
+      'items': [transportState.testFormJson(id: _formIdAt(100))],
+      'page': 2,
+      'pageSize': 100,
+      'totalCount': 101,
+    };
+    final client = ApiClient(
+      baseUrl: Uri.parse('http://localhost:5000/'),
+      httpClientFactory: () => DraftTransport(transportState),
+    );
+    final repository = ApiPreventiveMaintenanceRepository(client);
+
+    final forms = await repository.listForms();
+
+    expect(forms, hasLength(101));
+    expect(forms.map((form) => form.id).toSet(), hasLength(101));
+    expect(
+      transportState.requests.map((request) => request.url.queryParameters),
+      [
+        {'page': '1', 'pageSize': '100'},
+        {'page': '2', 'pageSize': '100'},
+      ],
+    );
+    client.dispose();
+  });
+
+  test(
+    'API form list rejects incomplete pages and duplicate-only overlap',
+    () async {
+      final transportState = DraftTransportState();
+      final firstPage = List.generate(
+        100,
+        (index) => transportState.testFormJson(id: _formIdAt(index)),
+      );
+      firstPage[99] = transportState.testFormJson(id: _formIdAt(0));
+      transportState.formPages[1] = <String, dynamic>{
+        'items': firstPage,
+        'page': 1,
+        'pageSize': 100,
+        'totalCount': 101,
+      };
+      transportState.formPages[2] = <String, dynamic>{
+        'items': [transportState.testFormJson(id: _formIdAt(0))],
+        'page': 2,
+        'pageSize': 100,
+        'totalCount': 101,
+      };
+      final client = ApiClient(
+        baseUrl: Uri.parse('http://localhost:5000/'),
+        httpClientFactory: () => DraftTransport(transportState),
+      );
+      final repository = ApiPreventiveMaintenanceRepository(client);
+
+      await expectLater(
+        repository.listForms(),
+        throwsA(isA<FormatException>()),
+      );
+      expect(transportState.requests, hasLength(2));
+      client.dispose();
+    },
+  );
+
   test(
     'schedule lookup filters by exact asset ID and preserves metadata',
     () async {
@@ -1887,6 +1963,7 @@ class DraftTransport extends http.BaseClient {
 
 class DraftTransportState {
   final requests = <http.BaseRequest>[];
+  final formPages = <int, Map<String, dynamic>>{};
   int conflictResponses = 0;
   int unauthorizedResponses = 0;
 
@@ -1904,6 +1981,19 @@ class DraftTransportState {
       case '/api/v1/schedules':
         return http.Response(jsonEncode([testScheduleJson()]), 200);
       case '/api/v1/preventive-maintenance-forms':
+        if (request.method == 'GET') {
+          final page =
+              int.tryParse(request.url.queryParameters['page'] ?? '') ?? 1;
+          final response =
+              formPages[page] ??
+              <String, dynamic>{
+                'items': <dynamic>[],
+                'page': page,
+                'pageSize': 100,
+                'totalCount': 0,
+              };
+          return http.Response(jsonEncode(response), 200);
+        }
         return http.Response(jsonEncode(testFormJson()), 201);
       case '/api/v1/preventive-maintenance-forms/$formId/inspections':
       case '/api/v1/preventive-maintenance-forms/$formId/inspections/$firstInspectionId':
@@ -1915,8 +2005,8 @@ class DraftTransportState {
     }
   }
 
-  Map<String, dynamic> testFormJson() => <String, dynamic>{
-    'id': formId,
+  Map<String, dynamic> testFormJson({String id = formId}) => <String, dynamic>{
+    'id': id,
     'fileNumber': null,
     'assetCategory': 'fire-extinguisher',
     'building': 'Main Building',
