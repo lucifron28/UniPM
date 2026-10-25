@@ -426,7 +426,7 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
     }
 
     [SqlServerFact]
-    public async Task Supervisor_reassignment_wins_lock_before_inspection_start_and_inspector_is_reauthorized()
+    public async Task Supervisor_reassignment_wins_lock_before_inspection_start_and_preserves_worker_assignment()
     {
         await using var database = await SqlServerTestDatabase.CreateAsync(RequireSqlServerConnection());
         await using var seedApplication = new SqlServerInspectionApplicationFactory(
@@ -446,8 +446,8 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
         using var inspectorClient = inspectorApplication.CreateClient();
 
         var assignmentTask = gsdClient.PutAsJsonAsync(
-            $"/api/v1/schedules/{scenario.ScheduleId}/supervisor-assignment",
-            new { supervisorUserId = scenario.NewSupervisorId });
+            $"/api/v1/schedules/{scenario.ScheduleId}/supervisor-reassignment",
+            new { assigneeUserId = scenario.NewSupervisorId, reason = "Supervisor reassignment race test" });
         await mutationGate.WaitForScheduleUpdateAsync();
         var inspectionTask = inspectorClient.PostAsJsonAsync(
             $"/api/v1/preventive-maintenance-forms/{scenario.FormId}/inspections",
@@ -467,17 +467,26 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
         using var assignmentResponse = await assignmentTask;
         using var inspectionResponse = await inspectionTask;
         Assert.Equal(HttpStatusCode.OK, assignmentResponse.StatusCode);
-        Assert.Equal(HttpStatusCode.Forbidden, inspectionResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.Created, inspectionResponse.StatusCode);
 
         await using var verificationContext = database.CreateContext();
         var schedule = await verificationContext.PreventiveMaintenanceSchedules.SingleAsync(
             candidate => candidate.Id == scenario.ScheduleId);
         Assert.Equal(scenario.NewSupervisorId, schedule.AssignedSupervisorUserId);
-        Assert.Null(schedule.AssignedToUserId);
-        Assert.Equal(ScheduleStatusCatalog.Due, schedule.Status);
-        Assert.Empty(await verificationContext.InspectionRecords
-            .Where(inspection => inspection.ScheduleId == scenario.ScheduleId)
-            .ToListAsync());
+        Assert.Equal(TestAuthenticationHandler.UserId, schedule.AssignedToUserId);
+        Assert.Equal(ScheduleStatusCatalog.Completed, schedule.Status);
+        Assert.NotNull(schedule.CompletedAt);
+        var inspection = await verificationContext.InspectionRecords
+            .SingleAsync(inspection => inspection.ScheduleId == scenario.ScheduleId);
+        Assert.Equal(TestAuthenticationHandler.UserId, inspection.InspectorUserId);
+        Assert.Equal(schedule.CompletedAt, inspection.CompletedAt);
+        var reassignment = await verificationContext.ScheduleAssignmentReassignmentAudits
+            .SingleAsync(audit => audit.ScheduleId == scenario.ScheduleId);
+        Assert.Equal("Supervisor", reassignment.AssignmentRole);
+        Assert.Equal(scenario.ExistingSupervisorId, reassignment.PreviousAssigneeUserId);
+        Assert.Equal(scenario.NewSupervisorId, reassignment.NewAssigneeUserId);
+        Assert.Equal(TestAuthenticationHandler.UserId, reassignment.ChangedByUserId);
+        Assert.Equal("Supervisor reassignment race test", reassignment.Reason);
     }
 
     [SqlServerFact]
@@ -505,8 +514,8 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
             NewInspectionRequest(scenario.ScheduleId, TestAuthenticationHandler.UserId));
         await mutationGate.WaitForScheduleUpdateAsync();
         var assignmentTask = gsdClient.PutAsJsonAsync(
-            $"/api/v1/schedules/{scenario.ScheduleId}/supervisor-assignment",
-            new { supervisorUserId = scenario.NewSupervisorId });
+            $"/api/v1/schedules/{scenario.ScheduleId}/supervisor-reassignment",
+            new { assigneeUserId = scenario.NewSupervisorId, reason = "Inspection start race test" });
         try
         {
             await WaitForApplicationLockWaitAsync(
@@ -555,8 +564,8 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
             AuthRoleCatalog.Gsd);
         using var client = application.CreateClient();
         var assignmentTask = client.PutAsJsonAsync(
-            $"/api/v1/schedules/{scenario.ScheduleId}/supervisor-assignment",
-            new { supervisorUserId = scenario.NewSupervisorId });
+            $"/api/v1/schedules/{scenario.ScheduleId}/supervisor-reassignment",
+            new { assigneeUserId = scenario.NewSupervisorId, reason = "Registration race test" });
         await mutationGate.WaitForScheduleUpdateAsync();
 
         var registrationTask = client.PostAsJsonAsync("/api/v1/assets/", new
@@ -609,7 +618,7 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
         var existingSchedule = await context.PreventiveMaintenanceSchedules
             .SingleAsync(schedule => schedule.Id == scenario.ScheduleId);
         Assert.Equal(scenario.NewSupervisorId, existingSchedule.AssignedSupervisorUserId);
-        Assert.Null(existingSchedule.AssignedToUserId);
+        Assert.Equal(TestAuthenticationHandler.UserId, existingSchedule.AssignedToUserId);
     }
 
     [SqlServer2019Fact]
@@ -809,8 +818,8 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
         using var client = application.CreateClient();
 
         var assignmentTask = client.PutAsJsonAsync(
-            $"/api/v1/schedules/{scenario.ScheduleId}/supervisor-assignment",
-            new { supervisorUserId = scenario.NewSupervisorId });
+            $"/api/v1/schedules/{scenario.ScheduleId}/supervisor-reassignment",
+            new { assigneeUserId = scenario.NewSupervisorId, reason = "Manual schedule race test" });
         await mutationGate.WaitForScheduleUpdateAsync();
         var scheduleCreationTask = client.PostAsJsonAsync("/api/v1/schedules/", new
         {
@@ -841,6 +850,7 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
         var assignedSchedule = await verificationContext.PreventiveMaintenanceSchedules
             .SingleAsync(schedule => schedule.Id == scenario.ScheduleId);
         Assert.Equal(scenario.NewSupervisorId, assignedSchedule.AssignedSupervisorUserId);
+        Assert.Equal(TestAuthenticationHandler.UserId, assignedSchedule.AssignedToUserId);
     }
 
     private static object NewInspectionRequest(Guid scheduleId, Guid inspectorUserId)
