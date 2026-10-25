@@ -41,8 +41,8 @@ this baseline and will not be silently included in the remediation.
 | 0 | Branch comparison, source audit, baseline commands | Completed; findings below |
 | 1 | Corpus test assumptions and React render/ref lint | Completed; local checks passed, skips retained |
 | 2 | Authorization and record access | Completed; TEST-155 records scope and local checks |
-| 3 | Offline timestamp provenance and synchronization | Implementation in progress |
-| 4 | NLA routing, shortcuts, validation, evaluation boundaries | Pending |
+| 3 | Offline timestamp provenance and synchronization | Completed; TEST-156 records policy, recovery and isolated SQL check |
+| 4 | NLA routing, shortcuts, validation, evaluation boundaries | Implementation in progress |
 | 5 | Acknowledgement integrity | Pending |
 | 6 | Reporting semantics and historical grouping | Pending |
 | 7 | Authorized pagination and bounded reporting | Pending |
