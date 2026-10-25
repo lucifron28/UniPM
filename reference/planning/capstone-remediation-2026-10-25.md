@@ -48,7 +48,7 @@ this baseline and will not be silently included in the remediation.
 | 6 | Reporting semantics and historical grouping | Completed; TEST-160 documents current metadata, stable counts and form headers |
 | 7 | Authorized pagination and bounded reporting | Completed; TEST-161 records page scope, both clients and bounded synthetic/SQL measurements |
 | 8 | Mobile recovery, offline boundaries, release configuration | Completed available checks; TEST-158/162 record recovery, identity and release boundaries; physical acceptance remains pending |
-| 9 | Evidence reconciliation and proposed manuscript corrections | Pending |
+| 9 | Evidence reconciliation and proposed manuscript corrections | Completed; separate revision proposal and accepted survey recalculation, no manuscript edits |
 | 10 | Security review and proposed institutional operations | Pending |
 | 11 | Final available regression checks and remaining risks | Pending |
 

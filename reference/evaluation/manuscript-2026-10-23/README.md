@@ -1,5 +1,22 @@
 # Manuscript evidence collection, October 23, 2026
 
+## Subsequent evidence, October 25
+
+The [evidence reconciliation](../../planning/capstone-evidence-reconciliation-2026-10-25.md)
+records the subsequently supplied, accepted item-level SUS CSV, role-specific
+ISO results and the researcher's attestation that all 32 BB cases were executed
+in the final evaluation report. The CSV recalculation gives web SUS 94.17,
+mobile 95.00 and pooled 94.75. Historical pending/unavailable statements below
+describe this October 23 collection, not the updated study source inventory.
+The register is preserved without invented case-level metadata. Later automated
+tests do not populate its historical execution fields.
+
+The remainder of this page retains the collection's original scope. Native
+SQL checks run during remediation are separate dated engineering records,
+TEST-156, TEST-157, TEST-159 and TEST-161.
+
+## Original collection scope
+
 This collection prepares the manuscript's existing BB-01 through BB-32 cases
 for traceable execution. It does not claim those 32 cases have passed.
 
