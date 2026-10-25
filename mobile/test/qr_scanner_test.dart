@@ -86,6 +86,12 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('fake-camera-preview')), findsOneWidget);
     expect(find.byKey(const Key('cancel-qr-scan')), findsOneWidget);
+    expect(
+      find.text(
+        'A QR match identifies the asset record; it does not verify physical presence.',
+      ),
+      findsOneWidget,
+    );
 
     emitScan!('UNIPM-FIRST');
     emitScan!('UNIPM-IGNORED');

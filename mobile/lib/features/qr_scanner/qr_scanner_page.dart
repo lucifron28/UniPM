@@ -102,9 +102,18 @@ class _QrScannerPageState extends State<QrScannerPage> {
       children: [
         const Padding(
           padding: EdgeInsets.fromLTRB(24, 20, 24, 16),
-          child: Text(
-            'Place one UniPM QR code inside the camera view.',
-            textAlign: TextAlign.center,
+          child: Column(
+            children: [
+              Text(
+                'Place one UniPM QR code inside the camera view.',
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 6),
+              Text(
+                'A QR match identifies the asset record; it does not verify physical presence.',
+                textAlign: TextAlign.center,
+              ),
+            ],
           ),
         ),
         Expanded(

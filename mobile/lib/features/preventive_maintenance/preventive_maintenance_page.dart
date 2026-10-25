@@ -1491,7 +1491,7 @@ class _OfflineDraftStatusCard extends StatelessWidget {
                   'Your local draft is preserved on this device.'
             : pending > 0
             ? '$pending change(s) for this draft are waiting to sync. '
-                  'Location verification, photo evidence, and submission need a connection.'
+                  'Photo evidence and form submission need a connection.'
             : 'This device has a cached copy. Connect to refresh schedules and sync changes.';
         return Card(
           color: hasConflict
