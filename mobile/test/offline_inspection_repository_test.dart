@@ -319,6 +319,7 @@ void main() {
       expect((await repository.getForm(form.id)).id, form.id);
 
       await repository.deactivate();
+      remote.connected = true;
       await repository.activate(_userB);
       expect(repository.isActiveFor(_userB), isTrue);
       expect(repository.pendingCount, 0);
