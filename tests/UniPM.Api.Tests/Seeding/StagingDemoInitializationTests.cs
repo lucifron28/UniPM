@@ -140,10 +140,10 @@ public sealed class StagingDemoInitializationTests
             // Only fixture setup applies migrations, to the owned local disposable database.
             await context.GetService<IMigrator>().MigrateAsync(migrations[^2]);
             await Assert.ThrowsAsync<InvalidOperationException>(userSeeder.SeedAsync);
-            Assert.Equal(21, (await context.Database.GetAppliedMigrationsAsync()).Count());
+            Assert.Equal(migrations[..^1], (await context.Database.GetAppliedMigrationsAsync()).ToArray());
             Assert.Empty(await context.Users.ToListAsync());
             await context.Database.MigrateAsync();
-            Assert.Equal(22, (await context.Database.GetAppliedMigrationsAsync()).Count());
+            Assert.Equal(migrations, (await context.Database.GetAppliedMigrationsAsync()).ToArray());
             await StagingDemoInitialization.EnsureReadyAsync(context, accountsCreated: false);
             var credentialName = shared ? "UNIPM_STAGING_DEMO_PASSWORD" : StagingDemoInitialization.PasswordSetting(AuthRoleCatalog.Gsd);
             var originalPassword = configuration[credentialName];
