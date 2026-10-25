@@ -288,7 +288,7 @@ void main() {
       remote.failNextAddInspectionStatusCodes.addAll([403, 409]);
       remote.connected = true;
       connectivity.setConnected(true);
-      await Future<void>.delayed(Duration.zero);
+      await tester.pump();
       await awaitRepositoryAction(
         tester,
         'sync reassigned schedule rows',
