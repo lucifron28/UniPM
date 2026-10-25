@@ -33,6 +33,7 @@ import { server } from '@/test/server'
 
 const meUrl = '*/api/v1/auth/me'
 const formsUrl = '*/api/v1/preventive-maintenance-forms'
+const formOptionsUrl = '*/api/v1/preventive-maintenance-forms/options'
 const supervisorOptionsUrl = '*/api/v1/schedules/supervisor-assignment-options'
 const formId = '22222222-2222-4222-8222-222222222222'
 const inspectionId = '33333333-3333-4333-8333-333333333333'
@@ -46,6 +47,23 @@ const currentSupervisorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaa0003'
 const timestamps = {
   createdAt: '2026-07-29T00:00:00Z',
   updatedAt: '2026-07-29T00:00:00Z',
+}
+
+function formPageResponse(
+  items: ReturnType<typeof form>[],
+  page = 1,
+  totalCount = items.length,
+) {
+  return { items, page, pageSize: 10, totalCount }
+}
+
+function defaultFormOptionsResponse() {
+  return {
+    categories: ['fire-extinguisher'],
+    departments: ['GSD'],
+    pmCycles: ['2026-07'],
+    totalCount: 1,
+  }
 }
 
 function form(status: 'Draft' | 'Submitted' | 'Acknowledged') {
@@ -137,7 +155,7 @@ function installDashboardNavigationHandlers(
 
   server.use(
     http.get(meUrl, () => HttpResponse.json(currentUser(['Inspector']))),
-    http.get(formsUrl, () => HttpResponse.json([reviewForm])),
+    http.get(formsUrl, () => HttpResponse.json(formPageResponse([reviewForm]))),
     http.get(`${formsUrl}/${formId}`, () => HttpResponse.json(reviewForm)),
     http.get('*/api/v1/pm-period-dashboard/cycles', () =>
       HttpResponse.json([
@@ -346,20 +364,30 @@ function currentUser(roles: string[], id = inspectorId) {
 describe('preventive-maintenance form review', () => {
   beforeEach(() => {
     setupAuth()
+    server.use(
+      http.get(formOptionsUrl, () =>
+        HttpResponse.json(defaultFormOptionsResponse()),
+      ),
+    )
   })
 
   it('renders lifecycle labels and registry metadata', async () => {
     server.use(
       http.get(meUrl, () => HttpResponse.json(currentUser(['GSD']))),
       http.get(formsUrl, () =>
-        HttpResponse.json([
-          form('Draft'),
-          { ...form('Submitted'), id: '77777777-7777-4777-8777-777777777777' },
-          {
-            ...form('Acknowledged'),
-            id: '88888888-8888-4888-8888-888888888888',
-          },
-        ]),
+        HttpResponse.json(
+          formPageResponse([
+            form('Draft'),
+            {
+              ...form('Submitted'),
+              id: '77777777-7777-4777-8777-777777777777',
+            },
+            {
+              ...form('Acknowledged'),
+              id: '88888888-8888-4888-8888-888888888888',
+            },
+          ]),
+        ),
       ),
     )
 
@@ -419,6 +447,41 @@ describe('preventive-maintenance form review', () => {
     )
   })
 
+  it.each([
+    {
+      search: {},
+      totalCount: 0,
+      message: 'No preventive-maintenance forms found.',
+    },
+    {
+      search: { status: 'Submitted' as const },
+      totalCount: 1,
+      message: 'No forms match these filters.',
+    },
+  ])(
+    'uses readable-form count to distinguish empty results: $message',
+    async ({ search, totalCount, message }) => {
+      server.use(
+        http.get(meUrl, () => HttpResponse.json(currentUser(['GSD']))),
+        http.get(formsUrl, () => HttpResponse.json(formPageResponse([]))),
+        http.get(formOptionsUrl, () =>
+          HttpResponse.json({
+            categories: [],
+            departments: [],
+            pmCycles: [],
+            totalCount,
+          }),
+        ),
+      )
+
+      renderWithProviders(
+        <FormRegistry search={search} onSearchChange={vi.fn()} />,
+      )
+
+      expect(await screen.findByText(message)).toBeInTheDocument()
+    },
+  )
+
   it('applies combined form filters and preserves them through the detail link', async () => {
     const requests: URL[] = []
     const submittedForm = { ...form('Submitted'), pmCycle: '2026-07' }
@@ -426,8 +489,14 @@ describe('preventive-maintenance form review', () => {
       http.get(meUrl, () => HttpResponse.json(currentUser(['GSD']))),
       http.get(formsUrl, ({ request }) => {
         requests.push(new URL(request.url))
-        return HttpResponse.json([submittedForm])
+        return HttpResponse.json(formPageResponse([submittedForm]))
       }),
+      http.get(formOptionsUrl, () =>
+        HttpResponse.json({
+          ...defaultFormOptionsResponse(),
+          pmCycles: ['2026-03', '2026-07'],
+        }),
+      ),
       http.get('*/api/v1/schedules/registry/options', () =>
         HttpResponse.json({
           categories: [
@@ -473,6 +542,11 @@ describe('preventive-maintenance form review', () => {
     })
     await actor.selectOptions(departmentFilter, 'GSD')
     const cycleFilter = screen.getByRole('combobox', { name: 'PM cycle' })
+    expect(
+      Array.from((cycleFilter as HTMLSelectElement).options)
+        .slice(1)
+        .map((option) => option.value),
+    ).toEqual(['2026-07', '2026-03'])
     await actor.selectOptions(cycleFilter, '2026-07')
     expect(requests).toHaveLength(1)
 
@@ -517,6 +591,75 @@ describe('preventive-maintenance form review', () => {
     })
   })
 
+  it('requests and renders server-paged forms without slicing the response', async () => {
+    const allForms = Array.from({ length: 11 }, (_, index) => ({
+      ...form('Submitted'),
+      id: `90000000-0000-4000-8000-${(index + 1).toString().padStart(12, '0')}`,
+      fileNumber: `PM-PAGED-${index + 1}`,
+    }))
+    const requests: URL[] = []
+    server.use(
+      http.get(meUrl, () => HttpResponse.json(currentUser(['GSD']))),
+      http.get(formsUrl, ({ request }) => {
+        const url = new URL(request.url)
+        requests.push(url)
+        const page = Number(url.searchParams.get('page'))
+        return HttpResponse.json(
+          formPageResponse(
+            allForms.slice((page - 1) * 10, page * 10),
+            page,
+            allForms.length,
+          ),
+        )
+      }),
+      http.get(formOptionsUrl, () =>
+        HttpResponse.json({
+          ...defaultFormOptionsResponse(),
+          totalCount: allForms.length,
+        }),
+      ),
+    )
+
+    function ControlledFormRegistry() {
+      const [search, setSearch] = useState<FormSearch>({})
+      return (
+        <FormRegistry
+          search={search}
+          onSearchChange={(next) => setSearch(next)}
+        />
+      )
+    }
+
+    renderWithProviders(<ControlledFormRegistry />)
+
+    expect(
+      await screen.findByRole('link', { name: 'PM-PAGED-1' }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Showing 1–10 of 11')).toBeInTheDocument()
+    expect(screen.getByText('Page 1 of 2')).toBeInTheDocument()
+    expect(requests[0]?.searchParams.get('page')).toBe('1')
+    expect(requests[0]?.searchParams.get('pageSize')).toBe('10')
+
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Next' }))
+
+    expect(
+      await screen.findByRole('link', { name: 'PM-PAGED-11' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'PM-PAGED-1' })).toBeNull()
+    expect(screen.getByText('Showing 11–11 of 11')).toBeInTheDocument()
+    expect(screen.getByText('Page 2 of 2')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(requests.some((url) => url.searchParams.get('page') === '2')).toBe(
+        true,
+      )
+    })
+    expect(
+      requests
+        .find((url) => url.searchParams.get('page') === '2')
+        ?.searchParams.get('pageSize'),
+    ).toBe('10')
+  })
+
   it('filters forms by current supervisor account without listing assignment details', async () => {
     const assignedForms = [
       {
@@ -552,9 +695,24 @@ describe('preventive-maintenance form review', () => {
         })),
       },
     ]
+    const listRequests: URL[] = []
     server.use(
       http.get(meUrl, () => HttpResponse.json(currentUser(['GSD']))),
-      http.get(formsUrl, () => HttpResponse.json(assignedForms)),
+      http.get(formsUrl, ({ request }) => {
+        const params = new URL(request.url).searchParams
+        listRequests.push(new URL(request.url))
+        const selectedSupervisor = params.get('supervisor')
+        const filteredForms = selectedSupervisor
+          ? assignedForms.filter((candidate) =>
+              candidate.inspections.some((row) =>
+                selectedSupervisor === 'unassigned'
+                  ? row.currentScheduleSupervisorUserId === null
+                  : row.currentScheduleSupervisorUserId === selectedSupervisor,
+              ),
+            )
+          : assignedForms
+        return HttpResponse.json(formPageResponse(filteredForms))
+      }),
       http.get(supervisorOptionsUrl, ({ request }) => {
         const params = new URL(request.url).searchParams
         const search = params.get('search')?.toLocaleLowerCase()
@@ -618,6 +776,11 @@ describe('preventive-maintenance form review', () => {
     })
     expect(firstFormLinks).toHaveLength(1)
     expect(
+      listRequests.some(
+        (url) => url.searchParams.get('supervisor') === firstSupervisorId,
+      ),
+    ).toBe(true)
+    expect(
       screen.queryByRole('link', { name: 'PM-SUPERVISOR-B' }),
     ).not.toBeInTheDocument()
     expect(
@@ -643,6 +806,11 @@ describe('preventive-maintenance form review', () => {
         screen.queryAllByRole('link', { name: 'PM-SUPERVISOR-A' }),
       ).toHaveLength(0)
     })
+    expect(
+      listRequests.some(
+        (url) => url.searchParams.get('supervisor') === 'unassigned',
+      ),
+    ).toBe(true)
   })
 
   it('keeps form filters mounted for a recoverable list failure', async () => {
@@ -653,7 +821,7 @@ describe('preventive-maintenance form review', () => {
         attempts += 1
         return attempts === 1
           ? HttpResponse.json({}, { status: 503 })
-          : HttpResponse.json([form('Submitted')])
+          : HttpResponse.json(formPageResponse([form('Submitted')]))
       }),
     )
 
@@ -759,7 +927,9 @@ describe('preventive-maintenance form review', () => {
       http.get(meUrl, () =>
         HttpResponse.json(currentUser(['Supervisor'], currentSupervisorId)),
       ),
-      http.get(formsUrl, () => HttpResponse.json([assignedForm])),
+      http.get(formsUrl, () =>
+        HttpResponse.json(formPageResponse([assignedForm])),
+      ),
       http.get(`${formsUrl}/${formId}`, () => HttpResponse.json(assignedForm)),
       http.post(`${formsUrl}/${formId}/acknowledge`, () => {
         acknowledgementPosts += 1
@@ -1561,7 +1731,9 @@ describe('preventive-maintenance form review', () => {
   it('keeps ordinary form-registry detail navigation scoped to the registry', async () => {
     server.use(
       http.get(meUrl, () => HttpResponse.json(currentUser(['Inspector']))),
-      http.get(formsUrl, () => HttpResponse.json([form('Submitted')])),
+      http.get(formsUrl, () =>
+        HttpResponse.json(formPageResponse([form('Submitted')])),
+      ),
       http.get(`${formsUrl}/${formId}`, () =>
         HttpResponse.json(form('Submitted')),
       ),

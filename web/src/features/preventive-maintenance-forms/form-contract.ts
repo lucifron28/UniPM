@@ -2,6 +2,8 @@ import { z } from 'zod'
 import type {
   CorrectiveMaintenanceHandoffResponse,
   InspectionWmsReferralDetailResponse,
+  PreventiveMaintenanceFormOptionsResponse,
+  PreventiveMaintenanceFormPageResponse,
   PreventiveMaintenanceFormResponse,
 } from '@/api/generated/models'
 
@@ -22,6 +24,10 @@ export const preventiveMaintenanceFormStatusCodes = [
 ] as const
 
 const optionalText = z.string().nullable()
+const integerResponseValue = z.union([
+  z.number().int(),
+  z.string().regex(/^\d+$/).transform(Number),
+])
 
 const inspectionRowSchema = z
   .object({
@@ -93,6 +99,28 @@ const formSchema = z
 
 export type PreventiveMaintenanceForm = z.infer<typeof formSchema>
 
+const formPageSchema = z
+  .object({
+    items: z.array(formSchema),
+    page: integerResponseValue.refine((value) => value > 0),
+    pageSize: integerResponseValue.refine((value) => value > 0),
+    totalCount: integerResponseValue.refine((value) => value >= 0),
+  })
+  .strict()
+
+export type PreventiveMaintenanceFormPage = z.infer<typeof formPageSchema>
+
+const formOptionsSchema = z
+  .object({
+    categories: z.array(z.string()),
+    departments: z.array(z.string()),
+    pmCycles: z.array(z.string()),
+    totalCount: integerResponseValue.refine((value) => value >= 0),
+  })
+  .strict()
+
+export type PreventiveMaintenanceFormOptions = z.infer<typeof formOptionsSchema>
+
 const handoffRowSchema = z
   .object({
     inspectionId: z.string().uuid(),
@@ -156,9 +184,15 @@ export type InspectionWmsReferralDetail = z.infer<
 >
 
 export function parsePreventiveMaintenanceForms(
-  values: PreventiveMaintenanceFormResponse[],
+  value: PreventiveMaintenanceFormPageResponse,
 ) {
-  return z.array(formSchema).parse(values)
+  return formPageSchema.parse(value)
+}
+
+export function parsePreventiveMaintenanceFormOptions(
+  value: PreventiveMaintenanceFormOptionsResponse,
+) {
+  return formOptionsSchema.parse(value)
 }
 
 export function parsePreventiveMaintenanceForm(

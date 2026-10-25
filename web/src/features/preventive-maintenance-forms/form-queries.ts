@@ -9,6 +9,7 @@ import {
   getGetInspectionRegistrySummaryQueryKey,
   getGetInspectionWmsReferralQueryKey,
   getGetPreventiveMaintenanceFormQueryKey,
+  getGetPreventiveMaintenanceFormOptionsQueryKey,
   getListInspectionsQueryKey,
   getListInspectionRegistryQueryKey,
   getGetScheduleRegistryOptionsQueryKey,
@@ -16,6 +17,7 @@ import {
   getListScheduleRegistryQueryKey,
   getListPreventiveMaintenanceFormsQueryKey,
   getInspectionWmsReferral,
+  getPreventiveMaintenanceFormOptions,
   listPreventiveMaintenanceForms,
   getPreventiveMaintenanceForm,
   useAcknowledgePreventiveMaintenanceForm,
@@ -26,6 +28,7 @@ import {
   parseCorrectiveMaintenanceHandoff,
   parseInspectionWmsReferralDetail,
   parsePreventiveMaintenanceForm,
+  parsePreventiveMaintenanceFormOptions,
   parsePreventiveMaintenanceForms,
 } from '@/features/preventive-maintenance-forms/form-contract'
 
@@ -72,6 +75,17 @@ export function usePreventiveMaintenanceForms(
         parsePreventiveMaintenanceForms,
       ),
     placeholderData: (previousData) => previousData,
+    enabled,
+  })
+}
+
+export function usePreventiveMaintenanceFormOptions(enabled = true) {
+  return useQuery({
+    queryKey: getGetPreventiveMaintenanceFormOptionsQueryKey(),
+    queryFn: ({ signal }) =>
+      getPreventiveMaintenanceFormOptions(signal).then(
+        parsePreventiveMaintenanceFormOptions,
+      ),
     enabled,
   })
 }
