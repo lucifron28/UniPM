@@ -315,7 +315,12 @@ internal static class PmAnalyticsV3Catalog
             new PmAnalyticsV3RecordColumnDefinition(Location, "General location", "string", "", "May be unknown; current asset value."),
             new PmAnalyticsV3RecordColumnDefinition(PmCycle, "PM cycle", "string", "yyyy-MM", null),
             new PmAnalyticsV3RecordColumnDefinition(Deadline, "Deadline", "date-time", "Asia/Manila", null),
-            new PmAnalyticsV3RecordColumnDefinition(CompletedAt, "Completed at", "date-time", "UTC", "Null when the inspection has no completion timestamp."),
+            new PmAnalyticsV3RecordColumnDefinition(
+                CompletedAt,
+                "Server-recorded completion time",
+                "date-time",
+                "UTC",
+                "The recorded receipt time, distinct from client-supplied DateInspected; it does not verify when field work occurred. Null when no completion timestamp is recorded."),
             new PmAnalyticsV3RecordColumnDefinition(ScheduleStatus, "Schedule status", "string", "", null),
             new PmAnalyticsV3RecordColumnDefinition(FormStatus, "Form status", "string", "", "Null when no linked form is recorded."),
             new PmAnalyticsV3RecordColumnDefinition(Condition, "Inspection condition", "string", "", "NotInspected when there is no completion timestamp."),

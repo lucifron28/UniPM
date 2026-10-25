@@ -437,6 +437,48 @@ public sealed class PmPeriodDashboardTests
     }
 
     [Fact]
+    public async Task Queued_inspection_uses_server_recorded_completion_for_timeliness()
+    {
+        var deadline = PreventiveMaintenanceCycle.DeadlineForCycle(PmCycle);
+        var queuedFieldWorkAt = deadline.AddDays(-1);
+        var onlineCompletedAt = deadline.AddDays(-1);
+        var queuedReceivedAt = deadline.AddTicks(1);
+        var response = await GetDashboardAsync(
+            CreateQuery(),
+            deadline.AddDays(1),
+            context =>
+            {
+                var queuedAsset = CreateAsset("FE-QUEUED-LATE", "CCMS");
+                var queuedSchedule = CreateSchedule(queuedAsset, PmCycle);
+                var queuedInspection = CreateInspection(
+                    queuedSchedule,
+                    queuedAsset,
+                    queuedReceivedAt,
+                    true,
+                    dateInspected: queuedFieldWorkAt);
+                var onlineAsset = CreateAsset("FE-ONLINE-ONTIME", "CCMS");
+                var onlineSchedule = CreateSchedule(onlineAsset, PmCycle);
+                var onlineInspection = CreateInspection(
+                    onlineSchedule,
+                    onlineAsset,
+                    onlineCompletedAt,
+                    true,
+                    dateInspected: onlineCompletedAt);
+
+                context.Assets.AddRange(queuedAsset, onlineAsset);
+                context.PreventiveMaintenanceSchedules.AddRange(queuedSchedule, onlineSchedule);
+                context.InspectionRecords.AddRange(queuedInspection, onlineInspection);
+            });
+
+        Assert.Equal(1, response.CompletedOnTime);
+        Assert.Equal(1, response.CompletedLate);
+        Assert.Equal(PmPeriodDashboardFilterCatalog.Late,
+            Assert.Single(response.Assets, asset => asset.AssetCode == "FE-QUEUED-LATE").Timeliness);
+        Assert.Equal(PmPeriodDashboardFilterCatalog.OnTime,
+            Assert.Single(response.Assets, asset => asset.AssetCode == "FE-ONLINE-ONTIME").Timeliness);
+    }
+
+    [Fact]
     public async Task Cancelled_schedules_are_excluded_from_the_official_compliance_denominator()
     {
         var response = await GetClosedDashboardAsync(CreateQuery(), context =>
@@ -699,7 +741,8 @@ public sealed class PmPeriodDashboardTests
         bool isOperational,
         Guid? formId = null,
         string? remarks = null,
-        string? actionsRecommendations = null)
+        string? actionsRecommendations = null,
+        DateTimeOffset? dateInspected = null)
     {
         return new InspectionRecord
         {
@@ -707,7 +750,7 @@ public sealed class PmPeriodDashboardTests
             ScheduleId = schedule.Id,
             AssetId = asset.Id,
             InspectorUserId = Guid.NewGuid(),
-            DateInspected = completedAt,
+            DateInspected = dateInspected ?? completedAt,
             CompletedAt = completedAt,
             DateAccomplished = completedAt,
             IsOperational = isOperational,

@@ -34,6 +34,13 @@ public sealed class PmAnalyticsV3EndpointTests
         Assert.Equal(
             JsonValueKind.Array,
             catalog.GetProperty("filterFields")[0].GetProperty("operators").ValueKind);
+        var completedAtColumn = catalog.GetProperty("recordColumns")
+            .EnumerateArray()
+            .Single(column => column.GetProperty("id").GetString() == PmAnalyticsV3Catalog.CompletedAt);
+        Assert.Equal("Server-recorded completion time", completedAtColumn.GetProperty("label").GetString());
+        Assert.Contains(
+            "does not verify when field work occurred",
+            completedAtColumn.GetProperty("nullSemantics").GetString());
 
         using var inventoryCatalogResponse = await client.GetAsync(
             "/api/v1/analytics/pm/v3/catalog?subject=assetInventory");
