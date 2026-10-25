@@ -243,6 +243,69 @@ void main() {
     },
   );
 
+  test(
+    'failed explicit logout keeps the owner and queued work active for retry',
+    () async {
+      connectivity.setConnected(false);
+      remote.connected = false;
+      await repository.activate(_userA);
+      final form = await repository.createForm(_createInput());
+      expect(repository.pendingCount, 1);
+
+      store.failNextWrite = true;
+      await expectLater(repository.deactivate(), throwsA(isA<StateError>()));
+
+      expect(repository.isActiveFor(_userA), isTrue);
+      expect(repository.pendingCount, 1);
+      expect((await repository.getForm(form.id)).id, form.id);
+
+      await repository.deactivate();
+      expect(repository.activeUserId, isNull);
+      expect(store.values[_userA], contains(form.id));
+
+      repository.dispose();
+      repository = createRepository();
+      await repository.activate(_userA);
+      expect(repository.pendingCount, 1);
+      expect((await repository.getForm(form.id)).id, form.id);
+    },
+  );
+
+  test(
+    'failed account switch locks retained work until its owner signs in again',
+    () async {
+      connectivity.setConnected(false);
+      remote.connected = false;
+      await repository.activate(_userA);
+      final form = await repository.createForm(_createInput());
+      expect(repository.pendingCount, 1);
+
+      store.failNextWrite = true;
+      await expectLater(
+        repository.deactivate(lockOnFailure: true),
+        throwsA(isA<StateError>()),
+      );
+      expect(repository.activeUserId, _userA);
+      expect(repository.isActiveFor(_userA), isFalse);
+
+      await repository.activate(_userB);
+      expect(repository.isActiveFor(_userB), isFalse);
+      await expectLater(repository.listForms(), throwsA(isA<StateError>()));
+      expect(store.values[_userA], contains(form.id));
+
+      await repository.activate(_userA);
+      expect(repository.isActiveFor(_userA), isTrue);
+      expect(repository.pendingCount, 1);
+      expect((await repository.getForm(form.id)).id, form.id);
+
+      await repository.deactivate();
+      await repository.activate(_userB);
+      expect(repository.isActiveFor(_userB), isTrue);
+      expect(repository.pendingCount, 0);
+      expect(await repository.listForms(), isEmpty);
+    },
+  );
+
   for (final statusCode in [403, 409]) {
     test(
       'stale schedule authorization HTTP $statusCode keeps the queued row',
@@ -1000,12 +1063,19 @@ ScheduleOption _schedule({
 
 class _MemoryStore implements OfflineSnapshotStore {
   final Map<String, String> values = <String, String>{};
+  bool failNextWrite = false;
 
   @override
   Future<String?> read(String userId) async => values[userId];
 
   @override
-  Future<void> write(String userId, String json) async => values[userId] = json;
+  Future<void> write(String userId, String json) async {
+    if (failNextWrite) {
+      failNextWrite = false;
+      throw StateError('Synthetic secure-storage write failure.');
+    }
+    values[userId] = json;
+  }
 
   @override
   Future<void> delete(String userId) async => values.remove(userId);

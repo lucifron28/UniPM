@@ -137,6 +137,7 @@ class OfflineInspectionRepository extends ChangeNotifier
   Future<void> _tail = Future<void>.value();
   _OfflineUserData _data = _OfflineUserData();
   String? _activeUserId;
+  String? _authorizedUserId;
   String? _loadedUserId;
   bool _hasNetwork = false;
   bool _isSyncing = false;
@@ -145,6 +146,10 @@ class OfflineInspectionRepository extends ChangeNotifier
   bool _disposed = false;
 
   String? get activeUserId => _activeUserId;
+  bool isActiveFor(String userId) =>
+      _activeUserId == userId &&
+      _authorizedUserId == userId &&
+      _loadedUserId == userId;
   int get pendingCount => _data.writes.length;
   int get conflictCount =>
       _data.writes.where((write) => write.state != 'pending').length;
@@ -222,26 +227,48 @@ class OfflineInspectionRepository extends ChangeNotifier
   Future<void> activate(String userId) async {
     try {
       await _exclusive(() async {
-        _activeUserId = userId;
-        await _ensureLoaded();
-        _reauthenticationRequired = false;
-        _hasNetwork = await _connectivity.hasNetwork();
-        _notifyListeners();
+        if (_activeUserId != null && _activeUserId != userId) {
+          _authorizedUserId = null;
+          _hasNetwork = false;
+          _lastIssue =
+              'Saved offline work is held for another account. Sign in with that account to recover it.';
+          _notifyListeners();
+          return;
+        }
+
+        _activeUserId ??= userId;
+        _authorizedUserId = userId;
+        try {
+          await _ensureLoaded();
+          _reauthenticationRequired = false;
+          _hasNetwork = await _connectivity.hasNetwork();
+          _lastIssue = null;
+          _notifyListeners();
+        } catch (_) {
+          _authorizedUserId = null;
+          rethrow;
+        }
       });
-      if (_hasNetwork) unawaited(syncNow());
+      if (isActiveFor(userId) && _hasNetwork) unawaited(syncNow());
     } catch (_) {
-      _lastIssue = 'Offline storage could not be opened for this account.';
+      _lastIssue =
+          'Offline data could not be opened for this account. The saved copy was left unchanged.';
       _hasNetwork = false;
+      _authorizedUserId = null;
       _notifyListeners();
     }
   }
 
-  /// Locks and clears the in-memory scope. An empty synced cache is removed;
-  /// queued work remains encrypted for the same account's next sign-in.
-  Future<void> deactivate() async {
+  /// Clears a persisted scope. On failure it keeps the owner's data in memory;
+  /// forced scope exits can lock that data from the next account.
+  Future<void> deactivate({bool lockOnFailure = false}) async {
     await _exclusive(() async {
       final userId = _activeUserId;
-      if (userId == null) return;
+      if (userId == null) {
+        _authorizedUserId = null;
+        return;
+      }
+      var deactivated = false;
       try {
         await _ensureLoaded();
         if (_data.writes.isEmpty) {
@@ -249,12 +276,24 @@ class OfflineInspectionRepository extends ChangeNotifier
         } else {
           await _persist();
         }
-      } finally {
-        _activeUserId = null;
-        _loadedUserId = null;
-        _data = _OfflineUserData();
-        _reauthenticationRequired = false;
+        deactivated = true;
         _lastIssue = null;
+      } catch (_) {
+        _lastIssue =
+            'Offline changes could not be secured. Stay signed in and retry.';
+        rethrow;
+      } finally {
+        if (deactivated) {
+          _activeUserId = null;
+          _authorizedUserId = null;
+          _loadedUserId = null;
+          _data = _OfflineUserData();
+          _reauthenticationRequired = false;
+        } else if (lockOnFailure) {
+          // A forced account-scope exit cannot keep this owner's cache
+          // available to the next authenticated account.
+          _authorizedUserId = null;
+        }
         _notifyListeners();
       }
     });
@@ -1392,6 +1431,9 @@ class OfflineInspectionRepository extends ChangeNotifier
     final userId = _activeUserId;
     if (userId == null) {
       throw StateError('Sign in to access offline inspection data.');
+    }
+    if (_authorizedUserId != userId) {
+      throw StateError('The offline account scope is locked.');
     }
     if (_loadedUserId == userId) return;
     final stored = await _store.read(userId);
