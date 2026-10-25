@@ -38,7 +38,7 @@ public sealed class PmAnalyticsV3RegressionTests
         var queryService = new PmAnalyticsV3QueryService(
             new TestContextFactory(options),
             TimeProvider.System);
-        using var configuration = new ConfigurationBuilder()
+        var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 [DeepSeekNaturalLanguageAnalyticsModelClient.ApiKeyEnvironmentVariable] = "synthetic-test-key"
@@ -74,7 +74,7 @@ public sealed class PmAnalyticsV3RegressionTests
         var queryService = new PmAnalyticsV3QueryService(
             new TestContextFactory(options),
             TimeProvider.System);
-        using var configuration = new ConfigurationBuilder()
+        var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 [DeepSeekNaturalLanguageAnalyticsModelClient.ApiKeyEnvironmentVariable] = "synthetic-test-key"
