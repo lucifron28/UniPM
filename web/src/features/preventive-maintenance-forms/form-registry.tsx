@@ -874,7 +874,7 @@ export function FormRegistry({ search, onSearchChange }: FormRegistryProps) {
             <FormPagination
               page={page}
               pageSize={pageSize}
-              total={rows.length}
+              total={totalCount}
               onPageChange={changePage}
             />
           </>
