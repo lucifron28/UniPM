@@ -47,7 +47,7 @@ this baseline and will not be silently included in the remediation.
 | 5 | Acknowledgement integrity | Completed; TEST-159 includes concurrent native SQL receipt capture |
 | 6 | Reporting semantics and historical grouping | Completed; TEST-160 documents current metadata, stable counts and form headers |
 | 7 | Authorized pagination and bounded reporting | Completed; TEST-161 records page scope, both clients and bounded synthetic/SQL measurements |
-| 8 | Mobile recovery, offline boundaries, release configuration | Urgent storage/account fix completed in TEST-158; release audit remains |
+| 8 | Mobile recovery, offline boundaries, release configuration | Completed available checks; TEST-158/162 record recovery, identity and release boundaries; physical acceptance remains pending |
 | 9 | Evidence reconciliation and proposed manuscript corrections | Pending |
 | 10 | Security review and proposed institutional operations | Pending |
 | 11 | Final available regression checks and remaining risks | Pending |
