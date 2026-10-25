@@ -1,6 +1,10 @@
 using UniPM.Api.Features.Auth;
 using UniPM.Api.Features.Reports;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 using UniPM.Api.Data;
 using UniPM.Api.Features.Schedules;
 using UniPM.Api.Models;
@@ -10,6 +14,49 @@ namespace UniPM.Api.Tests;
 
 public sealed class PmAnalyticsV3RegressionTests
 {
+    [Fact]
+    public async Task Production_environment_rejects_DeepSeek_and_uses_parser_when_provider_is_enabled()
+    {
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase($"unipm-pm-analytics-v3-production-interpreter-{Guid.NewGuid():N}")
+            .Options;
+        var queryService = new PmAnalyticsV3QueryService(
+            new TestContextFactory(options),
+            TimeProvider.System);
+        using var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                [DeepSeekNaturalLanguageAnalyticsModelClient.ApiKeyEnvironmentVariable] = "synthetic-test-key"
+            })
+            .Build();
+        using var interpreter = new PmAnalyticsV3QuestionInterpreter(
+            new FixedOptionsMonitor<NaturalLanguageAnalyticsOptions>(
+                new NaturalLanguageAnalyticsOptions { V3DeepSeekEnabled = true }),
+            new TestHostEnvironment(Environments.Production),
+            TimeProvider.System,
+            queryService,
+            configuration);
+
+        const string question = "SHOW LATE FIRE-EXTINGUISHER INSPECTIONS FOR THE 2026 PM CYCLES.";
+        var unavailable = await Assert.ThrowsAsync<NaturalLanguageAnalyticsProviderException>(() =>
+            interpreter.InterpretAsync(
+                question,
+                CancellationToken.None,
+                PmAnalyticsV3Interpreter.DeepSeek));
+        Assert.Equal(NaturalLanguageAnalyticsProviderFailure.ProviderUnavailable, unavailable.Failure);
+
+        var explicitParser = await interpreter.InterpretAsync(
+            question,
+            CancellationToken.None,
+            PmAnalyticsV3Interpreter.DeterministicParser);
+        Assert.Equal("Valid", explicitParser.Status);
+        Assert.Equal("DeterministicParser", explicitParser.Interpreter);
+
+        var defaultParser = await interpreter.InterpretAsync(question, CancellationToken.None);
+        Assert.Equal("Valid", defaultParser.Status);
+        Assert.Equal("DeterministicParser", defaultParser.Interpreter);
+    }
+
     [Fact]
     public void Scheduled_count_uses_population_even_when_matching_rows_are_filtered()
     {
@@ -792,5 +839,26 @@ public sealed class PmAnalyticsV3RegressionTests
         public override DateTimeOffset GetUtcNow() => _currentTime;
 
         internal void Advance(TimeSpan duration) => _currentTime += duration;
+    }
+
+    private sealed class FixedOptionsMonitor<TOptions>(TOptions currentValue) : IOptionsMonitor<TOptions>
+        where TOptions : class
+    {
+        public TOptions CurrentValue { get; } = currentValue;
+
+        public TOptions Get(string? name) => CurrentValue;
+
+        public IDisposable? OnChange(Action<TOptions, string?> listener) => null;
+    }
+
+    private sealed class TestHostEnvironment(string environmentName) : IHostEnvironment
+    {
+        public string EnvironmentName { get; set; } = environmentName;
+
+        public string ApplicationName { get; set; } = "UniPM.Api.Tests";
+
+        public string ContentRootPath { get; set; } = AppContext.BaseDirectory;
+
+        public IFileProvider ContentRootFileProvider { get; set; } = new NullFileProvider();
     }
 }
