@@ -822,9 +822,6 @@ void main() {
     expect(find.byKey(const Key('acknowledgement-receipt')), findsOneWidget);
     expect(find.text('Form acknowledged'), findsOneWidget);
     expect(find.text('PM form details'), findsOneWidget);
-    final acknowledgedAt = DateTime.parse(
-      '2026-02-10T09:00:00Z',
-    ).toLocal().toIso8601String().replaceFirst('T', ' ').substring(0, 16);
     final receipt = find.byKey(const Key('acknowledgement-receipt'));
     expect(
       find.descendant(of: receipt, matching: find.text('PM-2026-0001')),
@@ -847,7 +844,7 @@ void main() {
     expect(
       find.descendant(
         of: receipt,
-        matching: find.text('Acknowledged: $acknowledgedAt'),
+        matching: find.text('Acknowledged: 2026-02-10 17:00 Asia/Manila'),
       ),
       findsOneWidget,
     );
