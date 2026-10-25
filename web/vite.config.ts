@@ -29,7 +29,7 @@ export default defineConfig({
     strictPort: true,
   },
   test: {
-    pool: 'vmThreads',
+    pool: 'forks',
     maxWorkers: 2,
     exclude: ['e2e/**', 'node_modules/**'],
     environment: 'jsdom',
