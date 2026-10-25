@@ -61,6 +61,14 @@ const form = {
   ],
 }
 
+const formPageResponse = { items: [form], page: 1, pageSize: 10, totalCount: 1 }
+const formOptionsResponse = {
+  categories: ['fire-extinguisher'],
+  departments: ['GSD'],
+  pmCycles: ['2026-08'],
+  totalCount: 1,
+}
+
 const batch = {
   department: 'GSD',
   assetCategory: 'fire-extinguisher',
@@ -141,8 +149,13 @@ test('keeps Form Review content aligned and contained across desktop and mobile'
   page,
 }) => {
   await mockApi(page)
-  await page.route('**/api/v1/preventive-maintenance-forms**', (route) =>
-    route.fulfill(jsonResponse([form])),
+  await page.route(
+    /\/api\/v1\/preventive-maintenance-forms(?:\?.*)?$/,
+    (route) => route.fulfill(jsonResponse(formPageResponse)),
+  )
+  await page.route(
+    /\/api\/v1\/preventive-maintenance-forms\/options(?:\?.*)?$/,
+    (route) => route.fulfill(jsonResponse(formOptionsResponse)),
   )
   await page.setViewportSize({ width: 1280, height: 900 })
   await page.goto(
@@ -379,7 +392,11 @@ test('demonstrates the submitted PM batch acknowledgement review workflow', asyn
   await mockApi(page)
   await page.route(
     /\/api\/v1\/preventive-maintenance-forms(?:\?.*)?$/,
-    (route) => route.fulfill(jsonResponse([form])),
+    (route) => route.fulfill(jsonResponse(formPageResponse)),
+  )
+  await page.route(
+    /\/api\/v1\/preventive-maintenance-forms\/options(?:\?.*)?$/,
+    (route) => route.fulfill(jsonResponse(formOptionsResponse)),
   )
 
   const registrySearch = {
