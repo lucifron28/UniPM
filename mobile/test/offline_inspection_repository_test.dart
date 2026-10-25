@@ -340,7 +340,7 @@ void main() {
           ),
         ),
       );
-      await tester.pumpAndSettle();
+      await tester.pump();
       expect(find.text('This draft needs sync review'), findsOneWidget);
       expect(
         find.textContaining('Saved on this device (device local time):'),
