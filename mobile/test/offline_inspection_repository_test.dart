@@ -19,7 +19,9 @@ const _userB = '22222222-2222-4222-8222-222222222222';
 const _formId = '33333333-3333-4333-8333-333333333333';
 const _formBId = '33333333-3333-4333-8333-333333333334';
 const _scheduleId = '44444444-4444-4444-8444-444444444444';
+const _scheduleBId = '44444444-4444-4444-8444-444444444445';
 const _assetId = '55555555-5555-4555-8555-555555555555';
+const _assetBId = '55555555-5555-4555-8555-555555555556';
 const _inspectionId = '66666666-6666-4666-8666-666666666666';
 const _inspectionBId = '66666666-6666-4666-8666-666666666667';
 
@@ -140,6 +142,21 @@ void main() {
 
       final form = await repository.createForm(_createInput());
       final row = await repository.addInspection(form.id, _addInput());
+      final deviceSavedAt = row.completedAt;
+      expect(deviceSavedAt, isNotNull);
+      final queuedSnapshot =
+          jsonDecode(store.values[_userA]!) as Map<String, dynamic>;
+      final queuedWrites = (queuedSnapshot['writes'] as List<dynamic>)
+          .cast<Map<String, dynamic>>();
+      final queuedInspection = queuedWrites.singleWhere(
+        (write) => write['kind'] == 'addInspection',
+      );
+      expect(
+        (queuedInspection['data'] as Map<String, dynamic>).containsKey(
+          'completedAt',
+        ),
+        isFalse,
+      );
       await expectLater(
         repository.addInspection(form.id, _addInput()),
         throwsA(isA<ApiException>()),
@@ -189,6 +206,19 @@ void main() {
       expect(remote.forms.single.id, form.id);
       expect(remote.forms.single.inspections, hasLength(1));
       expect(remote.forms.single.inspections.single.id, row.id);
+      final serverCompletionAt = DateTime.utc(2026, 2, 20, 10);
+      expect(
+        remote.forms.single.inspections.single.completedAt,
+        serverCompletionAt,
+      );
+      expect(
+        remote.forms.single.inspections.single.completedAt,
+        isNot(deviceSavedAt),
+      );
+      expect(
+        (await repository.getForm(form.id)).inspections.single.completedAt,
+        serverCompletionAt,
+      );
       expect(remote.addedInspectionIds, [row.id, row.id]);
     },
   );
@@ -212,6 +242,117 @@ void main() {
       await repository.activate(_userA);
       expect(repository.pendingCount, 1);
       expect((await repository.getForm(form.id)).id, form.id);
+    },
+  );
+
+  testWidgets(
+    'stale schedule authorization keeps queued rows and labels local time',
+    (tester) async {
+      remote.forms = [
+        _form(inspections: const []),
+        _form(id: _formBId, inspections: const []),
+      ];
+      remote.schedules.add(
+        _schedule(
+          id: _scheduleBId,
+          assetId: _assetBId,
+          assetCode: 'FE-CCMS-002',
+        ),
+      );
+      await awaitRepositoryAction(
+        tester,
+        'activate user',
+        () => repository.activate(_userA),
+      );
+      await awaitRepositoryAction(tester, 'list forms', () async {
+        await repository.listForms();
+      });
+      await awaitRepositoryAction(tester, 'cache schedules', () async {
+        await repository.listSchedules();
+      });
+      connectivity.setConnected(false);
+      remote.connected = false;
+
+      final firstRow = await tester.runAsync(
+        () => repository
+            .addInspection(_formId, _addInput())
+            .timeout(const Duration(seconds: 5)),
+      );
+      final secondRow = await tester.runAsync(
+        () => repository
+            .addInspection(_formBId, _addInput(scheduleId: _scheduleBId))
+            .timeout(const Duration(seconds: 5)),
+      );
+      expect(firstRow, isNotNull);
+      expect(secondRow, isNotNull);
+      remote.failNextAddInspectionStatusCodes.addAll([403, 409]);
+      remote.connected = true;
+      connectivity.setConnected(true);
+      await Future<void>.delayed(Duration.zero);
+      await awaitRepositoryAction(
+        tester,
+        'sync reassigned schedule rows',
+        repository.syncNow,
+      );
+
+      expect(repository.pendingCountFor(_formId), 1);
+      expect(repository.pendingCountFor(_formBId), 1);
+      expect(repository.conflictsForForm(_formId).single.canRetry, isFalse);
+      expect(repository.conflictsForForm(_formId).single.canDiscard, isTrue);
+      expect(repository.conflictsForForm(_formBId).single.canRetry, isTrue);
+      expect(
+        repository.conflictsForForm(_formId).single.message,
+        contains('server rejected a saved change'),
+      );
+      expect(
+        repository.conflictsForForm(_formBId).single.message,
+        contains('server record changed or is no longer eligible'),
+      );
+      expect(
+        (await repository.getForm(_formId)).inspections.single.id,
+        firstRow!.id,
+      );
+      expect(
+        (await repository.getForm(_formBId)).inspections.single.id,
+        secondRow!.id,
+      );
+      expect(remote.forms.every((form) => form.inspections.isEmpty), isTrue);
+
+      final controller = PreventiveMaintenanceController(
+        repository: repository,
+        user: const AuthUser(
+          id: _userA,
+          email: 'inspector@example.test',
+          displayName: 'Synthetic Inspector',
+          roles: ['Inspector'],
+        ),
+      );
+      addTearDown(controller.dispose);
+      final localForm = await tester.runAsync(
+        () => repository.getForm(_formId).timeout(const Duration(seconds: 5)),
+      );
+      controller.selectForm(localForm!);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: PreventiveMaintenanceDraftPage(
+            controller: controller,
+            formId: _formId,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('This draft needs sync review'), findsOneWidget);
+      expect(
+        find.textContaining('Saved on this device (device local time):'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('Server recorded completion:'), findsNothing);
+      expect(
+        find.textContaining(
+          'Inspection dates are entered by the field worker; server completion is recorded at sync, so late syncs can be classified as late.',
+        ),
+        findsOneWidget,
+      );
     },
   );
 
@@ -831,14 +972,15 @@ CreatePreventiveMaintenanceFormInput _createInput() =>
       academicYear: '2025-2026',
     );
 
-AddInspectionInput _addInput() => AddInspectionInput(
-  scheduleId: _scheduleId,
-  inspectorUserId: _userA,
-  dateInspected: DateTime.utc(2026, 2, 20),
-  isOperational: false,
-  remarks: 'Initial observation.',
-  actionsRecommendations: 'GSD follow-up required.',
-);
+AddInspectionInput _addInput({String scheduleId = _scheduleId}) =>
+    AddInspectionInput(
+      scheduleId: scheduleId,
+      inspectorUserId: _userA,
+      dateInspected: DateTime.utc(2026, 2, 20),
+      isOperational: false,
+      remarks: 'Initial observation.',
+      actionsRecommendations: 'GSD follow-up required.',
+    );
 
 UpdateInspectionInput _updateInput({
   required String remarks,
@@ -894,30 +1036,35 @@ PreventiveMaintenanceInspection _inspection({
   updatedAt: updatedAt ?? DateTime.utc(2026, 2, 20),
 );
 
-ScheduleOption _schedule({String status = 'Due', DateTime? scheduleDate}) =>
-    ScheduleOption(
-      id: _scheduleId,
-      assetId: _assetId,
-      scheduleDate: scheduleDate ?? DateTime.utc(2026, 2, 28, 15, 59, 59),
-      pmCycle: '2026-02',
-      periodType: 'Quarter',
-      status: status,
-      quarter: 'Q1',
-      semester: null,
-      year: 2026,
-      academicYear: '2025-2026',
-      assignedToUserId: _userA,
-      asset: const ScheduleAssetOption(
-        id: _assetId,
-        assetCode: 'FE-CCMS-001',
-        assetCategory: 'fire-extinguisher',
-        building: 'CCMS Building',
-        department: 'CCMS',
-        location: 'CL-01',
-        status: 'Active',
-        qrCodeValue: 'UNIPM-LEGACY-CUSTOM-LABEL',
-      ),
-    );
+ScheduleOption _schedule({
+  String id = _scheduleId,
+  String assetId = _assetId,
+  String assetCode = 'FE-CCMS-001',
+  String status = 'Due',
+  DateTime? scheduleDate,
+}) => ScheduleOption(
+  id: id,
+  assetId: assetId,
+  scheduleDate: scheduleDate ?? DateTime.utc(2026, 2, 28, 15, 59, 59),
+  pmCycle: '2026-02',
+  periodType: 'Quarter',
+  status: status,
+  quarter: 'Q1',
+  semester: null,
+  year: 2026,
+  academicYear: '2025-2026',
+  assignedToUserId: _userA,
+  asset: ScheduleAssetOption(
+    id: assetId,
+    assetCode: assetCode,
+    assetCategory: 'fire-extinguisher',
+    building: 'CCMS Building',
+    department: 'CCMS',
+    location: 'CL-01',
+    status: 'Active',
+    qrCodeValue: 'UNIPM-LEGACY-CUSTOM-LABEL',
+  ),
+);
 
 class _MemoryStore implements OfflineSnapshotStore {
   final Map<String, String> values = <String, String>{};
@@ -1026,6 +1173,7 @@ class _FakeRemote
         AssetRepository {
   bool connected = true;
   bool failAcceptedAddOnce = false;
+  final List<int> failNextAddInspectionStatusCodes = <int>[];
   int? readFailureStatusCode;
   int? failNextCreateFormStatus;
   bool conflictNextUpdate = false;
@@ -1187,6 +1335,13 @@ class _FakeRemote
   ) async {
     _checkConnected();
     addedInspectionIds.add(id);
+    if (failNextAddInspectionStatusCodes.isNotEmpty) {
+      final statusCode = failNextAddInspectionStatusCodes.removeAt(0);
+      throw ApiException(
+        statusCode: statusCode,
+        message: 'Synthetic HTTP $statusCode add-inspection rejection.',
+      );
+    }
     final existing = forms
         .expand((form) => form.inspections)
         .where((inspection) => inspection.id == id)

@@ -60,6 +60,7 @@ Map<String, dynamic> _submittedFormJson({bool includeAssetMetadata = true}) =>
           if (includeAssetMetadata) 'location': 'Room 101',
           'inspectorUserId': inspectorId,
           'dateInspected': '2026-02-09T16:30:00Z',
+          'completedAt': '2026-02-10T08:45:00Z',
           'isOperational': false,
           'remarks': 'Low pressure',
           'actionsRecommendations': 'Inspect gauge',
@@ -268,6 +269,7 @@ void main() {
     expect(find.text('Awaiting acknowledgement'), findsOneWidget);
     expect(find.text('Fire Extinguisher'), findsOneWidget);
     expect(find.text('GSD · Main Building'), findsOneWidget);
+    expect(find.textContaining('Submitted to server:'), findsOneWidget);
     expect(find.text('1 total'), findsOneWidget);
     expect(find.text('0 operational'), findsOneWidget);
     expect(find.text('1 non-operational'), findsOneWidget);
@@ -287,7 +289,11 @@ void main() {
     final localInspectionDate = DateTime.parse(
       '2026-02-09T16:30:00Z',
     ).toLocal().toIso8601String().substring(0, 10);
-    expect(find.text('Inspection date: $localInspectionDate'), findsOneWidget);
+    expect(
+      find.text('Inspection date entered by inspector: $localInspectionDate'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('Server recorded completion:'), findsOneWidget);
     expect(find.text('Remarks: Low pressure'), findsOneWidget);
     expect(find.text('Recommendations: Inspect gauge'), findsOneWidget);
     expect(find.textContaining(inspectionId), findsNothing);
@@ -408,7 +414,9 @@ void main() {
       final finalDate = DateTime.parse(
         '2026-02-09T16:53:00Z',
       ).toLocal().toIso8601String().substring(0, 10);
-      final finalInspection = find.text('Inspection date: $finalDate');
+      final finalInspection = find.text(
+        'Inspection date entered by inspector: $finalDate',
+      );
       await tester.scrollUntilVisible(
         finalInspection.hitTestable(),
         200,

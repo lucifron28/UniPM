@@ -35,6 +35,7 @@ import {
   formStatusLabel,
   formatFormDate,
   formatFormPeriod,
+  formatServerDateTime,
   inspectionConditionLabel,
 } from '@/features/preventive-maintenance-forms/form-presentation'
 import type { PmAcknowledgementReviewContext } from '@/features/preventive-maintenance-forms/pm-acknowledgement-review'
@@ -117,7 +118,7 @@ function HandoffRow({
             {row.assetDeviceNumber
               ? `Device number: ${row.assetDeviceNumber} · `
               : ''}
-            Actual inspection date: {formatFormDate(row.inspectionDate)}
+            Entered inspection date: {formatFormDate(row.inspectionDate)}
           </p>
         </div>
         <Badge
@@ -447,8 +448,12 @@ function InspectionRow({
             {row.assetCode ?? `Inspection ${row.id}`}
           </p>
           <p className="mt-0.5 text-xs text-[var(--text-neutral)]">
-            Actual inspection date: {formatFormDate(row.dateInspected)}
+            Entered inspection date: {formatFormDate(row.dateInspected)}
             {row.location ? ` · ${row.location}` : ''}
+          </p>
+          <p className="mt-0.5 text-xs text-[var(--text-neutral)]">
+            Server recorded completion (Asia/Manila):{' '}
+            {formatServerDateTime(row.completedAt)}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">

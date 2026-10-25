@@ -347,7 +347,12 @@ export function InspectionDetail({
             {asset.data?.assetCode ?? 'Inspection record'}
           </h2>
           <p className="mt-2 text-[var(--text-secondary)]">
-            Actual inspection date: {formatInspectionDate(record.dateInspected)}
+            Entered inspection date:{' '}
+            {formatInspectionDate(record.dateInspected)}
+          </p>
+          <p className="mt-1 text-xs text-[var(--text-neutral)]">
+            This date is entered by staff; the server records completion
+            separately.
           </p>
         </div>
         <Badge

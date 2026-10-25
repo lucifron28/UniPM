@@ -75,6 +75,7 @@ function form(status: 'Draft' | 'Submitted' | 'Acknowledged') {
               assetId,
               inspectorUserId: inspectorId,
               dateInspected: '2026-07-28T02:00:00Z',
+              completedAt: '2026-07-28T03:00:00Z',
               isOperational: false,
               remarks: 'Pressure is low.',
               actionsRecommendations: 'Inspect and recharge the unit.',
@@ -700,6 +701,10 @@ describe('preventive-maintenance form review', () => {
     expect(await screen.findAllByText('WDS-MAIN-001')).toHaveLength(1)
     const inspectionRow = screen.getByText('WDS-MAIN-001').closest('article')
     expect(inspectionRow).toHaveTextContent(/Main Building lobby/)
+    expect(inspectionRow).toHaveTextContent('Entered inspection date:')
+    expect(inspectionRow).toHaveTextContent(
+      'Server recorded completion (Asia/Manila):',
+    )
     expect(screen.getByText('Awaiting acknowledgement')).toBeInTheDocument()
     expect(screen.getByText(/Corrective follow-up pending/)).toBeInTheDocument()
     const rowDetailsSummary = screen.getByText('Row details')
@@ -849,7 +854,7 @@ describe('preventive-maintenance form review', () => {
     if (!(handoffCard instanceof HTMLElement)) {
       throw new Error('Corrective-action finding card was not found')
     }
-    expect(handoffCard).toHaveTextContent('Actual inspection date:')
+    expect(handoffCard).toHaveTextContent('Entered inspection date:')
     const handoff = within(handoffCard)
     const technicalSummary = handoff.getByText('Technical identifiers')
     const technicalDetails = technicalSummary.closest('details')

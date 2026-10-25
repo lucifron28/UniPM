@@ -280,6 +280,12 @@ void main() {
     await scrollTo(tester, find.textContaining('Inspection rows (2)'));
     expect(find.textContaining('Inspection rows (2)'), findsOneWidget);
     expect(
+      find.text(
+        'This entered date is separate from server-recorded completion time.',
+      ),
+      findsWidgets,
+    );
+    expect(
       find.byKey(const Key('inspection-date-$firstInspectionId')),
       findsOneWidget,
     );

@@ -896,6 +896,17 @@ class _PreventiveMaintenanceDraftPageState
                     .intersection(progressScheduleIds)
                     .length;
                 final totalCount = progressScheduleIds.length;
+                final savedRow = currentForm?.inspections
+                    .where(
+                      (inspection) => inspection.scheduleId == input.scheduleId,
+                    )
+                    .firstOrNull;
+                final isCreatePending =
+                    savedRow != null &&
+                    (offlineRepository?.isInspectionCreatePending(
+                          savedRow.id,
+                        ) ??
+                        false);
 
                 await InspectionCompletionSheet.show(
                   this.context,
@@ -905,6 +916,7 @@ class _PreventiveMaintenanceDraftPageState
                   pmCycle: cycle,
                   completedCount: completedCount,
                   totalCount: totalCount,
+                  isCreatePending: isCreatePending,
                   onNextAsset: () {
                     Navigator.of(this.context).pop();
                     Navigator.of(
@@ -966,6 +978,8 @@ class _PreventiveMaintenanceDraftPageState
           (row) => _InspectionRowEditor(
             key: ValueKey(row.id),
             row: row,
+            isCreatePending:
+                offlineRepository?.isInspectionCreatePending(row.id) ?? false,
             assetCategory: form.assetCategory,
             schedule: scheduleById[row.scheduleId],
             form: form,
@@ -1413,6 +1427,7 @@ class _InspectionRowEditor extends StatefulWidget {
   const _InspectionRowEditor({
     super.key,
     required this.row,
+    required this.isCreatePending,
     required this.assetCategory,
     required this.form,
     this.schedule,
@@ -1427,6 +1442,7 @@ class _InspectionRowEditor extends StatefulWidget {
   });
 
   final PreventiveMaintenanceInspection row;
+  final bool isCreatePending;
   final String assetCategory;
   final PreventiveMaintenanceForm form;
   final ScheduleOption? schedule;
@@ -1507,6 +1523,12 @@ class _OfflineDraftStatusCard extends StatelessWidget {
                           ),
                           const SizedBox(height: 2),
                           Text(detail),
+                          if (pending > 0) ...[
+                            const SizedBox(height: 6),
+                            const Text(
+                              'Inspection dates are entered by the field worker; server completion is recorded at sync, so late syncs can be classified as late.',
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -1935,6 +1957,10 @@ class _InspectionRowEditorState extends State<_InspectionRowEditor> {
               Text('Due date: ${formatPmCycleDueDate(pmCycle)}'),
               if (widget.schedule != null)
                 Text('Schedule status: ${widget.schedule!.status}'),
+              if (widget.row.completedAt != null)
+                Text(
+                  '${widget.isCreatePending ? 'Saved on this device (device local time)' : 'Server recorded completion (Asia/Manila)'}: ${widget.isCreatePending ? _deviceDateTimeText(widget.row.completedAt!) : _serverDateTimeText(widget.row.completedAt!)}',
+                ),
               if (widget.schedule?.asset != null)
                 _AssetMetadata(
                   asset: widget.schedule!.asset!,
@@ -1951,6 +1977,8 @@ class _InspectionRowEditorState extends State<_InspectionRowEditor> {
                 readOnly: !widget.editable,
                 decoration: const InputDecoration(
                   labelText: 'Inspection date (YYYY-MM-DD)',
+                  helperText:
+                      'This entered date is separate from server-recorded completion time.',
                 ),
                 validator: (value) => _parseDate(value ?? '') == null
                     ? 'Enter a valid date.'
@@ -2140,4 +2168,22 @@ String _dateText(DateTime value) {
   final month = local.month.toString().padLeft(2, '0');
   final day = local.day.toString().padLeft(2, '0');
   return '${local.year}-$month-$day';
+}
+
+String _deviceDateTimeText(DateTime value) {
+  final local = value.toLocal();
+  final month = local.month.toString().padLeft(2, '0');
+  final day = local.day.toString().padLeft(2, '0');
+  final hour = local.hour.toString().padLeft(2, '0');
+  final minute = local.minute.toString().padLeft(2, '0');
+  return '${local.year}-$month-$day $hour:$minute';
+}
+
+String _serverDateTimeText(DateTime value) {
+  final manila = value.toUtc().add(const Duration(hours: 8));
+  final month = manila.month.toString().padLeft(2, '0');
+  final day = manila.day.toString().padLeft(2, '0');
+  final hour = manila.hour.toString().padLeft(2, '0');
+  final minute = manila.minute.toString().padLeft(2, '0');
+  return '${manila.year}-$month-$day $hour:$minute';
 }

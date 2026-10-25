@@ -297,6 +297,10 @@ class _SubmittedFormSummary extends StatelessWidget {
               style: Theme.of(context).textTheme.bodyMedium,
               softWrap: true,
             ),
+            if (form.submittedAt != null) ...[
+              const SizedBox(height: 4),
+              Text('Submitted to server: ${_dateTimeText(form.submittedAt!)}'),
+            ],
             const SizedBox(height: 12),
             Wrap(
               spacing: 8,
@@ -572,7 +576,7 @@ class _InspectionExpandedDetails extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _InspectionDetailLine(
-                label: 'Inspection date',
+                label: 'Inspection date entered by inspector',
                 value: _dateText(row.dateInspected),
               ),
               if (row.dateAccomplished != null)
@@ -587,7 +591,7 @@ class _InspectionExpandedDetails extends StatelessWidget {
                 ),
               if (row.completedAt != null)
                 _InspectionDetailLine(
-                  label: 'Completed',
+                  label: 'Server recorded completion',
                   value: _dateTimeText(row.completedAt!),
                 ),
             ],
@@ -1170,12 +1174,12 @@ String _dateText(DateTime value) {
 }
 
 String _dateTimeText(DateTime value) {
-  final local = value.toLocal();
-  final month = local.month.toString().padLeft(2, '0');
-  final day = local.day.toString().padLeft(2, '0');
-  final hour = local.hour.toString().padLeft(2, '0');
-  final minute = local.minute.toString().padLeft(2, '0');
-  return '${local.year}-$month-$day $hour:$minute';
+  final manila = value.toUtc().add(const Duration(hours: 8));
+  final month = manila.month.toString().padLeft(2, '0');
+  final day = manila.day.toString().padLeft(2, '0');
+  final hour = manila.hour.toString().padLeft(2, '0');
+  final minute = manila.minute.toString().padLeft(2, '0');
+  return '${manila.year}-$month-$day $hour:$minute Asia/Manila';
 }
 
 Uint8List _encodeSignaturePng(Size logicalSize, List<List<Offset>> strokes) {

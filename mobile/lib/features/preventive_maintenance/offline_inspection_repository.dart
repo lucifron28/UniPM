@@ -211,6 +211,11 @@ class OfflineInspectionRepository extends ChangeNotifier
   bool isInspectionPending(String inspectionId) =>
       _data.writes.any((write) => write.inspectionId == inspectionId);
 
+  bool isInspectionCreatePending(String inspectionId) => _data.writes.any(
+    (write) =>
+        write.kind == 'addInspection' && write.inspectionId == inspectionId,
+  );
+
   bool canEditPhoto(String inspectionId) =>
       _hasNetwork && !isInspectionPending(inspectionId);
 

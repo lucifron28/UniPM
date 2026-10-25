@@ -14,6 +14,7 @@ class InspectionCompletionSheet extends StatelessWidget {
     required this.pmCycle,
     required this.completedCount,
     required this.totalCount,
+    this.isCreatePending = false,
     required this.onNextAsset,
     required this.onViewBatch,
   });
@@ -24,6 +25,7 @@ class InspectionCompletionSheet extends StatelessWidget {
   final String pmCycle;
   final int completedCount;
   final int totalCount;
+  final bool isCreatePending;
   final VoidCallback onNextAsset;
   final VoidCallback onViewBatch;
 
@@ -35,6 +37,7 @@ class InspectionCompletionSheet extends StatelessWidget {
     required String pmCycle,
     required int completedCount,
     required int totalCount,
+    bool isCreatePending = false,
     required VoidCallback onNextAsset,
     required VoidCallback onViewBatch,
   }) {
@@ -53,6 +56,7 @@ class InspectionCompletionSheet extends StatelessWidget {
         pmCycle: pmCycle,
         completedCount: completedCount,
         totalCount: totalCount,
+        isCreatePending: isCreatePending,
         onNextAsset: onNextAsset,
         onViewBatch: onViewBatch,
       ),
@@ -61,6 +65,12 @@ class InspectionCompletionSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final title = isCreatePending
+        ? 'Saved on this device'
+        : 'Inspection Recorded';
+    final message = isCreatePending
+        ? 'Asset $assetCode is saved on this device. The server records completion at sync, so late syncs can be classified as late.'
+        : 'Asset $assetCode successfully inspected.';
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
@@ -87,9 +97,9 @@ class InspectionCompletionSheet extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        'Inspection Recorded',
-                        style: TextStyle(
+                      Text(
+                        title,
+                        style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w800,
                           color: AppColors.textPrimary,
@@ -97,7 +107,7 @@ class InspectionCompletionSheet extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'Asset $assetCode successfully inspected.',
+                        message,
                         style: const TextStyle(
                           fontSize: 13,
                           color: AppColors.textSecondary,

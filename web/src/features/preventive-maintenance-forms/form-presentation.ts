@@ -9,6 +9,16 @@ export function formatFormDate(value: string | null | undefined) {
   }).format(new Date(value))
 }
 
+export function formatServerDateTime(value: string | null | undefined) {
+  if (!value) return 'Not recorded'
+
+  return new Intl.DateTimeFormat('en-PH', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    timeZone: 'Asia/Manila',
+  }).format(new Date(value))
+}
+
 export function formatFormPeriod(
   form: Pick<
     PreventiveMaintenanceForm,
