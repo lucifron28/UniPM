@@ -40,8 +40,8 @@ this baseline and will not be silently included in the remediation.
 |---|---|---|
 | 0 | Branch comparison, source audit, baseline commands | Completed; findings below |
 | 1 | Corpus test assumptions and React render/ref lint | Completed; local checks passed, skips retained |
-| 2 | Authorization and record access | Implementation in progress |
-| 3 | Offline timestamp provenance and synchronization | Pending |
+| 2 | Authorization and record access | Completed; TEST-155 records scope and local checks |
+| 3 | Offline timestamp provenance and synchronization | Implementation in progress |
 | 4 | NLA routing, shortcuts, validation, evaluation boundaries | Pending |
 | 5 | Acknowledgement integrity | Pending |
 | 6 | Reporting semantics and historical grouping | Pending |
@@ -198,5 +198,6 @@ loading related records. Wrong roles receive 403 and unreadable detail IDs
 receive 404. Apply the same boundary to inspection and photo reads while
 retaining acknowledged-only official history.
 
-Phase 2 source work is in progress. Later-phase audit notes do not establish
+Phase 2 source work and its targeted verification are complete, as recorded
+in TEST-155. Later-phase audit notes do not establish
 completed corrections or executed acceptance.
