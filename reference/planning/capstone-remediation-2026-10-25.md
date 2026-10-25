@@ -39,8 +39,8 @@ this baseline and will not be silently included in the remediation.
 | Phase | Work | Status |
 |---|---|---|
 | 0 | Branch comparison, source audit, baseline commands | Completed; findings below |
-| 1 | Corpus test assumptions and React render/ref lint | Backend passed; web regression failures remain; retry exception requested |
-| 2 | Authorization and record access | Pending |
+| 1 | Corpus test assumptions and React render/ref lint | Completed; local checks passed, skips retained |
+| 2 | Authorization and record access | Implementation in progress |
 | 3 | Offline timestamp provenance and synchronization | Pending |
 | 4 | NLA routing, shortcuts, validation, evaluation boundaries | Pending |
 | 5 | Acknowledgement integrity | Pending |
@@ -147,15 +147,56 @@ also failed, with one failed and 18 deselected tests. Waiting cannot populate
 an empty fixture. A fixture correction requires adding the Department filter
 definition while preserving the preview-plan assertions.
 
-The repository retry limit was reached for this check. The main chat requested
-permission for one fixture correction and one additional focused run. No
-further correction or retry is authorized by elapsed time alone.
+The repository retry limit was reached for this check. The repository owner
+then explicitly authorized all remaining permissions for this task and asked
+that no more routine permission prompts be sent. This authorizes scoped
+correction and verification beyond the default retry limit. The original
+plan's prohibitions on deployment, paid calls, and institutional data access
+remain in force.
+
+Commit `008f3231fb75973b27d6186a627c46701a344d4c` adds the Department
+filter to this test's catalog fixture. Commit
+`3e166f405ec3026dbc41ab57b21d1883df227d82` selects the actual picker by
+its placeholder. The control has a linked label; its datalist gives it the
+native combobox role, so the earlier textbox query was incorrect. No missing
+label defect is established. The focused test now passes, with one passed
+and 18 deselected cases. The preview-plan assertions remain unchanged. A full
+unit run with two workers passed all 256 cases in 31 files at this source.
 
 Playwright at `9b143d1` executed 61 cases: 53 passed, 7 failed, 1 skipped.
 Its worktree-owned Vite child started on port 5173; the executor checked its
 listener/process identity rather than assuming an existing server belonged
-to this source. Browser failures remain unresolved. This is not a passing
-frontend CI result. Raw outputs remain in `artifacts/remediation/clients/`.
+to this source. Raw outputs remain in `artifacts/remediation/clients/`.
 
-Later phases have not been implemented. Their audit notes do not establish
+The isolated Playwright follow-up at `3e166f4`, with `CI=true`, port 5197
+and two workers, passed 60 cases with one skipped. Its owned server identity
+and initially free port are recorded. Commit
+`bb3f127e714043bf1d8eddfbcd986164d528b420` sets the unit-test worker
+limit to two in Vite configuration. The ordinary `npm run test:run` command
+then passed all 256 cases in 31 files, with no timeout or assertion changes.
+The earlier failed runs remain preserved separately in TEST-153.
+
+Formatting, lint and type checking each passed at `bb3f127`. API contract
+sanity and all seven negative checks passed earlier on the unchanged contract;
+the production build passed at `9b143d1`, with no application behavior changes
+after that build. This establishes local Phase 1 verification, not a remote
+GitHub Actions pass or native SQL/device/provider acceptance.
+
+## Phase 2 access decision
+
+The current AGENTS boundary and ADR-006 define Admin as technical
+administration. Remove standalone Admin operational grants while retaining
+Admin management routes. An account with another operational role retains
+that role's ordinary scope.
+
+GSD can read operational records. Inspectors can read their created forms,
+historical inspection work, and currently assigned form work. Supervisors can
+read the work covered by their existing schedule assignments. A legitimate
+member can read the shared multi-row form needed for whole-form receipt;
+this does not grant access to unrelated workers' Draft forms. Filter before
+loading related records. Wrong roles receive 403 and unreadable detail IDs
+receive 404. Apply the same boundary to inspection and photo reads while
+retaining acknowledged-only official history.
+
+Phase 2 source work is in progress. Later-phase audit notes do not establish
 completed corrections or executed acceptance.
