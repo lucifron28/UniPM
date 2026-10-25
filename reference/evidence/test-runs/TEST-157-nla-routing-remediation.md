@@ -16,8 +16,9 @@ shortcuts. The questions remain regression cases. A bounded parser grammar
 handles supported late-inspection phrases and excludes conjunctions and
 negations that require clarification. The frozen corpus and labels are unchanged.
 
-Default routing remains DeepSeek only when Development, enabled and configured
-with a key. Otherwise the parser runs. An explicit parser request is independent
+Default routing selects DeepSeek when Development and enabled. A missing key
+then produces ProviderUnavailable. When that environment/flag gate is false,
+default routing selects the parser. An explicit parser request is independent
 of provider availability. Provider errors remain visible errors, with no silent
 parser substitution. This record does not enable an external provider.
 

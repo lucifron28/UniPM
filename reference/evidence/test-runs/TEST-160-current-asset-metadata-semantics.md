@@ -38,9 +38,12 @@ Client commits `47d2208` and `892d950` label current asset/location information
 and retain the recorded form header. The focused submitted-form mobile detail
 case passed 1/1 at `4d4ad5c`; web inspection detail and form-row context cases
 each passed 1/1 at `589bba8`. These commits contain the same client source.
-Commands used the existing named cases in the draft mobile and inspection/form
-review web test files, with concurrency/maxWorkers two. Exact filters and
-outputs remain in the ignored phase6 client logs; no full client rerun is claimed.
+The mobile command selected `submitted form can be reviewed from the mobile registry`
+in `test/preventive_maintenance_form_acknowledgement_test.dart`, with concurrency
+two. Web commands selected `renders source text safely with linked asset and schedule context`
+in the inspection workflow file and `renders human-readable row context and water-station work items`
+in the form review file, with maxWorkers two. Outputs remain in the ignored
+phase6 client logs; no full client rerun is claimed.
 
 Raw backend command/TRX details remain in `artifacts/remediation/backend/phase6.md`
 and `phase6-current-metadata-and-official-history-rerun.trx`. Current metadata can
