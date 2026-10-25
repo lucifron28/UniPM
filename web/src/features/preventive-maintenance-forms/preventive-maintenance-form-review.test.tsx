@@ -41,6 +41,7 @@ const assetId = '55555555-5555-4555-8555-555555555555'
 const inspectorId = '66666666-6666-4666-8666-666666666666'
 const firstSupervisorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaa0001'
 const secondSupervisorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaa0002'
+const currentSupervisorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaa0003'
 
 const timestamps = {
   createdAt: '2026-07-29T00:00:00Z',
@@ -332,9 +333,9 @@ function openAcknowledgementReview(
   })
 }
 
-function currentUser(roles: string[]) {
+function currentUser(roles: string[], id = inspectorId) {
   return {
-    id: inspectorId,
+    id,
     email: 'reviewer@example.test',
     displayName: 'Synthetic Reviewer',
     roles,
@@ -731,6 +732,70 @@ describe('preventive-maintenance form review', () => {
     expect(
       await screen.findByRole('link', { name: 'Form review' }),
     ).toBeInTheDocument()
+  })
+
+  it('allows assigned-schedule Supervisor form review without acknowledgement actions', async () => {
+    const submittedForm = form('Submitted')
+    const assignedForm = {
+      ...submittedForm,
+      inspections: submittedForm.inspections.map((row) => ({
+        ...row,
+        currentScheduleSupervisorUserId: currentSupervisorId,
+        currentScheduleSupervisorIdentity: 'Synthetic Supervisor',
+      })),
+    }
+    let acknowledgementPosts = 0
+    let dashboardRequests = 0
+
+    server.use(
+      http.get(meUrl, () =>
+        HttpResponse.json(currentUser(['Supervisor'], currentSupervisorId)),
+      ),
+      http.get(formsUrl, () => HttpResponse.json([assignedForm])),
+      http.get(`${formsUrl}/${formId}`, () => HttpResponse.json(assignedForm)),
+      http.post(`${formsUrl}/${formId}/acknowledge`, () => {
+        acknowledgementPosts += 1
+        return HttpResponse.json({})
+      }),
+      http.get('*/api/v1/pm-period-dashboard*', () => {
+        dashboardRequests += 1
+        return HttpResponse.json({})
+      }),
+    )
+
+    const router = renderAppRouter('/app/preventive-maintenance-forms')
+
+    expect(
+      await screen.findByRole('heading', { name: 'Form review' }),
+    ).toBeInTheDocument()
+    expect(
+      await screen.findAllByRole('link', { name: 'GSD-SUBMITTED-001' }),
+    ).not.toHaveLength(0)
+    expect(screen.getByRole('link', { name: 'Form review' })).toBeVisible()
+
+    fireEvent.click(
+      screen.getAllByRole('link', { name: 'GSD-SUBMITTED-001' })[0],
+    )
+    expect(
+      await screen.findByRole('heading', { name: 'GSD-SUBMITTED-001' }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Supervisor read-only review')).toBeInTheDocument()
+    expect(
+      screen.queryByRole('heading', { name: 'Acknowledge submitted form' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Acknowledge form' }),
+    ).not.toBeInTheDocument()
+
+    await router.navigate({
+      to: '/app/preventive-maintenance-forms/$formId/review',
+      params: { formId },
+    })
+    expect(
+      await screen.findByRole('heading', { name: 'Access denied' }),
+    ).toBeInTheDocument()
+    expect(acknowledgementPosts).toBe(0)
+    expect(dashboardRequests).toBe(0)
   })
 
   it('renders acknowledged detail and GSD corrective handoff without signatures', async () => {

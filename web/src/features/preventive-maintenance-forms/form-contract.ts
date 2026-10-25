@@ -182,6 +182,16 @@ export function parseInspectionWmsReferralDetail(
 export function canReviewPreventiveMaintenanceForms(
   roles: readonly string[] | undefined,
 ) {
+  return (
+    roles?.some(
+      (role) => role === 'GSD' || role === 'Inspector' || role === 'Supervisor',
+    ) ?? false
+  )
+}
+
+export function canAcknowledgePreventiveMaintenanceForms(
+  roles: readonly string[] | undefined,
+) {
   return roles?.some((role) => role === 'GSD' || role === 'Inspector') ?? false
 }
 

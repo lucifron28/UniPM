@@ -1,5 +1,9 @@
-import { createFileRoute, redirect } from '@tanstack/react-router'
+import { createFileRoute, Link, redirect } from '@tanstack/react-router'
 import { z } from 'zod'
+import { PageHeading } from '@/components/layout/page-heading'
+import { Button } from '@/components/ui/button'
+import { useCurrentUser } from '@/features/auth/current-user'
+import { canReadOperationalData } from '@/features/auth/app-route-access'
 import {
   PmPeriodDashboard,
   type PmPeriodDashboardSearch,
@@ -48,6 +52,27 @@ export const Route = createFileRoute('/app/dashboard')({
 })
 
 function DashboardPage() {
+  const currentUser = useCurrentUser()
+  const roles = currentUser.data?.roles ?? []
+  if (
+    currentUser.isSuccess &&
+    roles.includes('Admin') &&
+    !canReadOperationalData(roles)
+  ) {
+    return (
+      <section className="max-w-3xl space-y-4">
+        <PageHeading
+          id="admin-landing-title"
+          eyebrow="UniPM administration"
+          title="Technical administration"
+          description="Administrative tools are available here. Preventive-maintenance records are reserved for operational roles."
+        />
+        <Button asChild>
+          <Link to="/app/admin">Open admin management</Link>
+        </Button>
+      </section>
+    )
+  }
   return <PreventiveMaintenanceDashboard />
 }
 

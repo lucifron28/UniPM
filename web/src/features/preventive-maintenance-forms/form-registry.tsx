@@ -19,6 +19,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { useCurrentUser } from '@/features/auth/current-user'
 import {
+  canAcknowledgePreventiveMaintenanceForms,
   canReviewPreventiveMaintenanceForms,
   isGsdRole,
   preventiveMaintenanceFormStatusCodes,
@@ -608,8 +609,12 @@ function FormRegistryFilters({
 
 export function FormRegistry({ search, onSearchChange }: FormRegistryProps) {
   const currentUser = useCurrentUser()
-  const canReview = canReviewPreventiveMaintenanceForms(currentUser.data?.roles)
-  const canFilterSupervisor = isGsdRole(currentUser.data?.roles)
+  const currentRoles = currentUser.data?.roles
+  const canReview = canReviewPreventiveMaintenanceForms(currentRoles)
+  const isReadOnlySupervisor =
+    currentRoles?.includes('Supervisor') === true &&
+    !canAcknowledgePreventiveMaintenanceForms(currentRoles)
+  const canFilterSupervisor = isGsdRole(currentRoles)
   const filters = useMemo(
     () => ({
       ...(search.status ? { status: search.status } : {}),
@@ -728,7 +733,7 @@ export function FormRegistry({ search, onSearchChange }: FormRegistryProps) {
     return (
       <AccessState
         title="Access denied"
-        message="Preventive-maintenance form review is available to GSD and Inspector users."
+        message="Preventive-maintenance form review is available to GSD, Inspector, and Supervisor users."
       />
     )
   }
@@ -763,7 +768,11 @@ export function FormRegistry({ search, onSearchChange }: FormRegistryProps) {
         id="forms-title"
         eyebrow="Preventive maintenance"
         title="Form review"
-        description="Review submitted forms and open their inspection source rows."
+        description={
+          isReadOnlySupervisor
+            ? 'Review forms available for your assigned schedules. Form details are read-only.'
+            : 'Review submitted forms and open their inspection source rows.'
+        }
       />
       <FormRegistryFilters
         key={JSON.stringify([

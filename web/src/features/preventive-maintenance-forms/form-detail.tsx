@@ -17,6 +17,7 @@ import { formatAssetCategory } from '@/features/assets/asset-presentation'
 import { excerpt } from '@/features/inspections/inspection-presentation'
 import { formatPmCycle } from '@/features/schedules/schedule-presentation'
 import {
+  canAcknowledgePreventiveMaintenanceForms,
   canReviewPreventiveMaintenanceForms,
   isGsdRole,
   type CorrectiveMaintenanceHandoff,
@@ -969,8 +970,13 @@ export function FormDetail({
   const [acknowledgement, setAcknowledgement] =
     useState<PreventiveMaintenanceAcknowledgementResponse | null>(null)
   const currentUser = useCurrentUser()
-  const canReview = canReviewPreventiveMaintenanceForms(currentUser.data?.roles)
-  const isGsd = isGsdRole(currentUser.data?.roles)
+  const currentRoles = currentUser.data?.roles
+  const canReview = canReviewPreventiveMaintenanceForms(currentRoles)
+  const canAcknowledge = canAcknowledgePreventiveMaintenanceForms(currentRoles)
+  const isReadOnlySupervisor =
+    currentRoles?.includes('Supervisor') === true && !canAcknowledge
+  const readOnlyView = readOnly || isReadOnlySupervisor
+  const isGsd = isGsdRole(currentRoles)
   const validId = uuidPattern.test(formId)
   const form = usePreventiveMaintenanceForm(formId, canReview && validId)
   const handoff = useCorrectiveMaintenanceHandoff(
@@ -991,7 +997,7 @@ export function FormDetail({
           search: reviewContext.search,
         },
       }
-    : readOnly && dashboardSearch
+    : readOnlyView && dashboardSearch
       ? { kind: 'dashboard', search: dashboardSearch }
       : { kind: 'formRegistry' }
 
@@ -1034,8 +1040,8 @@ export function FormDetail({
           Access restricted
         </h1>
         <p className="mt-2 text-sm text-[var(--text-secondary)]">
-          Preventive-maintenance form review is available to GSD and Inspector
-          users.
+          Preventive-maintenance form review is available to GSD, Inspector, and
+          Supervisor users.
         </p>
         <div className="mt-4">{backLink}</div>
       </Card>
@@ -1153,17 +1159,20 @@ export function FormDetail({
           value={String(record.inspections.length)}
         />
       </Card>
-      {readOnly && record.status === 'Submitted' && (
+      {isReadOnlySupervisor || (readOnly && record.status === 'Submitted') ? (
         <Card className="shadow-none" role="status">
           <p className="text-sm font-semibold tracking-[0.08em] text-[var(--primary)] uppercase">
-            Read-only submitted form
+            {isReadOnlySupervisor
+              ? 'Supervisor read-only review'
+              : 'Read-only submitted form'}
           </p>
           <p className="mt-2 text-sm text-[var(--text-secondary)]">
-            This view shows the complete submitted PM form without editing or
-            acknowledgement controls.
+            {isReadOnlySupervisor
+              ? 'This view is read-only. Editing, submission, and acknowledgement controls are unavailable.'
+              : 'This view shows the complete submitted PM form without editing or acknowledgement controls.'}
           </p>
         </Card>
-      )}
+      ) : null}
       <section aria-labelledby="form-inspections-title" className="space-y-4">
         <div>
           <h2
@@ -1201,12 +1210,15 @@ export function FormDetail({
       {acknowledgement && (
         <AcknowledgementSummary acknowledgement={acknowledgement} />
       )}
-      {!readOnly && record.status === 'Submitted' && !acknowledgement && (
-        <AcknowledgeForm
-          formId={record.id}
-          onAcknowledged={setAcknowledgement}
-        />
-      )}
+      {canAcknowledge &&
+        !readOnlyView &&
+        record.status === 'Submitted' &&
+        !acknowledgement && (
+          <AcknowledgeForm
+            formId={record.id}
+            onAcknowledged={setAcknowledgement}
+          />
+        )}
       {isGsd && record.status === 'Acknowledged' && (
         <CorrectiveHandoff query={handoff} />
       )}

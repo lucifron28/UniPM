@@ -97,20 +97,90 @@ describe('app shell role access and layout', () => {
       within(sidebar).getByRole('button', { name: 'Collapse navigation' }),
     ).toHaveAttribute('aria-expanded', 'true')
     expect(
-      within(nav).getByRole('link', { name: 'Dashboard' }),
+      within(nav).getByRole('link', { name: 'Admin' }),
     ).not.toHaveAttribute('title')
-    expect(within(nav).getByRole('link', { name: 'Dashboard' })).toHaveClass(
+    expect(within(nav).getByRole('link', { name: 'Admin' })).toHaveClass(
       'sidebar-nav-link',
     )
     expect(
-      within(nav)
-        .getByRole('link', { name: 'Dashboard' })
-        .querySelector('span'),
+      within(nav).getByRole('link', { name: 'Admin' }).querySelector('span'),
     ).toHaveClass('sidebar-nav-label')
-    expect(within(nav).getByRole('link', { name: 'Assets' })).toBeVisible()
-    expect(within(nav).getByRole('link', { name: 'Inspections' })).toBeVisible()
+    expect(within(nav).queryByRole('link', { name: 'Dashboard' })).toBeNull()
+    expect(within(nav).queryByRole('link', { name: 'Assets' })).toBeNull()
+    expect(within(nav).queryByRole('link', { name: 'Inspections' })).toBeNull()
     expect(within(nav).queryByRole('link', { name: 'Schedules' })).toBeNull()
     expect(within(nav).queryByRole('link', { name: 'Form review' })).toBeNull()
+    expect(within(nav).getByRole('link', { name: 'Admin' })).toBeVisible()
+  })
+
+  it('keeps operational navigation for Admin with an operational role', async () => {
+    server.use(
+      http.get(meUrl, () => HttpResponse.json(currentUser(['Admin', 'GSD']))),
+    )
+
+    renderShell()
+
+    await screen.findByLabelText('Account menu')
+    const sidebar = screen.getByRole('complementary')
+    const nav = within(sidebar).getByRole('navigation', { name: 'Primary' })
+    for (const label of [
+      'Dashboard',
+      'Assets',
+      'Schedules',
+      'Inspections',
+      'Form review',
+      'Admin',
+    ]) {
+      expect(within(nav).getByRole('link', { name: label })).toBeVisible()
+    }
+  })
+
+  it('does not expose operational navigation to DepartmentHead', async () => {
+    server.use(
+      http.get(meUrl, () => HttpResponse.json(currentUser(['DepartmentHead']))),
+    )
+
+    renderShell()
+
+    await screen.findByLabelText('Account menu')
+    const nav = within(screen.getByRole('complementary')).getByRole(
+      'navigation',
+      { name: 'Primary' },
+    )
+    for (const label of [
+      'Dashboard',
+      'Assets',
+      'Schedules',
+      'Inspections',
+      'Form review',
+      'Admin',
+    ]) {
+      expect(within(nav).queryByRole('link', { name: label })).toBeNull()
+    }
+  })
+
+  it('shows an Admin-only technical landing without operational data requests', async () => {
+    let operationalRequests = 0
+    server.use(
+      http.get('*/api/v1/*', ({ request }) => {
+        const pathname = new URL(request.url).pathname
+        if (pathname === '/api/v1/auth/me') {
+          return HttpResponse.json(currentUser(['Admin']))
+        }
+        operationalRequests += 1
+        return HttpResponse.json([])
+      }),
+    )
+
+    renderAppRoute('/app/dashboard')
+
+    expect(
+      await screen.findByRole('heading', { name: 'Technical administration' }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('link', { name: 'Open admin management' }),
+    ).toHaveAttribute('href', '/app/admin')
+    expect(operationalRequests).toBe(0)
   })
 
   it('preserves a saved collapsed preference and keeps account actions at the sidebar bottom', async () => {
@@ -182,6 +252,19 @@ describe('app shell role access and layout', () => {
     },
     { path: '/app/schedules/new', roles: ['Inspector'] },
     { path: '/app/assets/new', roles: ['Admin'] },
+    { path: '/app/assets', roles: ['Admin'] },
+    { path: '/app/assets', roles: ['DepartmentHead'] },
+    {
+      path: '/app/assets/55555555-5555-4555-8555-555555555555',
+      roles: ['DepartmentHead'],
+    },
+    { path: '/app/inspections', roles: ['Admin'] },
+    { path: '/app/inspections', roles: ['DepartmentHead'] },
+    {
+      path: '/app/inspections/33333333-3333-4333-8333-333333333333',
+      roles: ['DepartmentHead'],
+    },
+    { path: '/app/dashboard', roles: ['DepartmentHead'] },
     { path: '/app/preventive-maintenance-forms', roles: ['Admin'] },
     { path: '/app/analytics', roles: ['Admin'] },
     { path: '/app/analytics', roles: ['Inspector'] },

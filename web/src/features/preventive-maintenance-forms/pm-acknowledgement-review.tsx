@@ -15,7 +15,7 @@ import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useCurrentUser } from '@/features/auth/current-user'
 import {
-  canReviewPreventiveMaintenanceForms,
+  canAcknowledgePreventiveMaintenanceForms,
   type PreventiveMaintenanceForm,
 } from '@/features/preventive-maintenance-forms/form-contract'
 import { AcknowledgeForm } from '@/features/preventive-maintenance-forms/form-detail'
@@ -342,12 +342,17 @@ export function PmAcknowledgementReview({
 }) {
   const [acknowledgement, setAcknowledgement] = useState(false)
   const currentUser = useCurrentUser()
-  const canReview = canReviewPreventiveMaintenanceForms(currentUser.data?.roles)
+  const canAcknowledge = canAcknowledgePreventiveMaintenanceForms(
+    currentUser.data?.roles,
+  )
   const validId = uuidPattern.test(formId)
   const { returnContext, ...dashboardSearch } = search
-  const formQuery = usePreventiveMaintenanceForm(formId, canReview && validId)
+  const formQuery = usePreventiveMaintenanceForm(
+    formId,
+    canAcknowledge && validId,
+  )
   const formRecord =
-    canReview && validId && formQuery.isSuccess && !formQuery.isError
+    canAcknowledge && validId && formQuery.isSuccess && !formQuery.isError
       ? formQuery.data
       : undefined
   const assetCategory = search.assetCategory || formRecord?.assetCategory
@@ -390,7 +395,7 @@ export function PmAcknowledgementReview({
     )
   }
 
-  if (!canReview) {
+  if (!canAcknowledge) {
     return (
       <ReviewError
         context={returnContext}
