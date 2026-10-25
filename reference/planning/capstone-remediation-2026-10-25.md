@@ -65,7 +65,7 @@ Historical passes do not establish a pass on this branch.
 | RM-003 | High, confirmed routing behavior | `server/Features/Reports/PmAnalyticsV3QuestionInterpreter.cs` | Two exact question mappings bypass normal default interpreter selection. Remove implicit mappings or require explicit template selection with provenance. Preserve the questions as regressions. | Do not count a local mapping as independent provider interpretation or change backend calculations. |
 | RM-004 | Medium, documentation inconsistency | `reference/planning/mvp-definition.md`, `PROJECT.md`, evidence index | Some current-looking text still describes NLA as unimplemented or reviewed labels as pending. Reconcile current status with the integrated source and dated evidence, preserving historical records. | Avoid replacing historical limitations with unsupported present-day verification claims. |
 | RM-005 | High, evidence reconciliation | `reference/evaluation/manuscript-2026-10-23/` | The collection says SUS item responses are unavailable and BB cases were not executed in that collection. Later supplied survey files and the researcher's confirmation of a final execution report must be recorded as separate sources. | Do not infer a new execution or fabricate case-level dates, versions, tester identities, or captures. |
-| RM-006 | High, confirmed baseline failure | `OllamaNaturalLanguageAnalyticsModelClient`, interpretation tests | An invalid-output case throws `RegexMatchTimeoutException` instead of the expected bounded provider error. Inspect the exception boundary; retain fail-closed rejection and handle parser timeout consistently. | Do not accept malformed output or disguise failed validation as success. |
+| RM-006 | High, confirmed baseline failure | `NaturalLanguageAnalyticsQuestionGuard.FindMonths`, interpretation tests | A malformed-output test fails earlier in question assessment because repeated dynamic month regex construction times out. Cache independent abbreviation patterns while retaining their original matching rules and timeout. | Preserve overlapping month detection and fail-closed clarification; do not accept malformed output. |
 | RM-007 | Critical, confirmed access defect | `server/Features/PreventiveMaintenanceForms/PreventiveMaintenanceFormEndpoints.cs` | Authenticated form list/detail reads lack record-level filtering. Apply existing operational roles and ownership/assignment scope before materialization and detail retrieval. | Preserve authorized inspector history and supervisor/GSD work; do not invent final institutional RBAC. |
 | RM-008 | Critical, retained legacy exposure | `server/Features/Inspections/` | Some inspection list/detail/history routes retain anonymous reads, including remarks and recommendations. Require operational access and apply appropriate record scope consistently with form reads. | Existing anonymous integration tests must authenticate; preserve intentional acknowledged-only history filtering. |
 | RM-009 | High, instruction/code inconsistency | `server/Features/Auth/PreventiveMaintenanceScheduleAuthorization.cs` | Technical Admin receives operational schedule access. Audit recent administration requirements and remove implicit operational privileges unless an explicit approved exception exists. | A technical administrator with an additional operational role must retain that role's access. |
@@ -105,3 +105,17 @@ remaining risks have been reproduced.
 
 Backend and client audit findings, baseline counts, corrections, and remaining
 risks will be added after their command outputs and diffs are reviewed.
+
+## Phase 1 changes awaiting verification
+
+Commit `ca81bf8a95b3b287f484807cd296e2466766dda2` fixes RM-001 and
+addresses the repeated regex construction behind RM-006. The temporary test
+fixture copies the reviewed corpus and changes one review decision to pending.
+Its manifest stays frozen and hash-valid, so the check isolates the review
+gate. The approved corpus and historical labels remain unchanged. A second
+case checks that the frozen reviewed corpus can be scored.
+
+The month guard caches independent patterns. Review rejected a union-pattern
+approach because non-overlapping regex matches would miss the second month in
+`Jan 2026 Feb`. The retained regression checks that this remains ambiguous.
+Post-change verification has not yet been recorded here.
