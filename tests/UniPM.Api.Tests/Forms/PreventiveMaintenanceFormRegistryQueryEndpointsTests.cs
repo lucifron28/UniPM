@@ -260,15 +260,17 @@ public sealed class PreventiveMaintenanceFormRegistryQueryEndpointsTests
             var unrelatedForm = Form("PM-SCOPE-OTHER", PreventiveMaintenanceFormStatusCatalog.Draft,
                 now.AddMinutes(1), Guid.NewGuid(), "emergency-light", "Hidden", "2026-08");
             var sharedAsset = Asset("PM-SCOPE-SHARED-ASSET", "fire-extinguisher");
+            var sharedUnassignedAsset = Asset("PM-SCOPE-SHARED-UNASSIGNED-ASSET", "fire-extinguisher");
             var assignedAsset = Asset("PM-SCOPE-ASSIGNED-ASSET", "fire-alarm");
             var unrelatedAsset = Asset("PM-SCOPE-OTHER-ASSET", "emergency-light");
             var sharedSupervisorSchedule = Schedule(sharedAsset, actorId);
+            var unassignedSchedule = Schedule(sharedUnassignedAsset, null);
             var assignedSchedule = Schedule(assignedAsset, actorId);
             var unrelatedSchedule = Schedule(unrelatedAsset, otherSupervisorId);
             var inspections = new[]
             {
                 Inspection(sharedForm, sharedAsset, sharedSupervisorSchedule),
-                Inspection(sharedForm, sharedAsset, null),
+                Inspection(sharedForm, sharedUnassignedAsset, unassignedSchedule),
                 Inspection(assignedForm, assignedAsset, assignedSchedule),
                 Inspection(unrelatedForm, unrelatedAsset, unrelatedSchedule)
             };
@@ -276,9 +278,9 @@ public sealed class PreventiveMaintenanceFormRegistryQueryEndpointsTests
             await using var context = await Services
                 .GetRequiredService<IDbContextFactory<ApplicationDbContext>>()
                 .CreateDbContextAsync();
-            context.Assets.AddRange(sharedAsset, assignedAsset, unrelatedAsset);
+            context.Assets.AddRange(sharedAsset, sharedUnassignedAsset, assignedAsset, unrelatedAsset);
             context.PreventiveMaintenanceSchedules.AddRange(
-                sharedSupervisorSchedule, assignedSchedule, unrelatedSchedule);
+                sharedSupervisorSchedule, unassignedSchedule, assignedSchedule, unrelatedSchedule);
             context.PreventiveMaintenanceForms.AddRange(sharedForm, assignedForm, unrelatedForm);
             context.InspectionRecords.AddRange(inspections);
             await context.SaveChangesAsync();
