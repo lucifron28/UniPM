@@ -7,6 +7,7 @@ public static class AuthPolicyCatalog
     public const string CanManageSchedules = nameof(CanManageSchedules);
     public const string CanGenerateSchedules = nameof(CanGenerateSchedules);
     public const string CanReadSchedules = nameof(CanReadSchedules);
+    public const string CanReadOperationalData = nameof(CanReadOperationalData);
     public const string CanAssignScheduleSupervisors = nameof(CanAssignScheduleSupervisors);
     public const string CanAssignScheduleWorkers = nameof(CanAssignScheduleWorkers);
     public const string CanManagePreventiveMaintenanceForms = nameof(CanManagePreventiveMaintenanceForms);

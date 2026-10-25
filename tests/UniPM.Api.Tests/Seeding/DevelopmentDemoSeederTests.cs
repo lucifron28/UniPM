@@ -1,10 +1,12 @@
 extern alias DemoQrGenerator;
 
+using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 using UniPM.Api.Data;
 using UniPM.Api.Data.Seeding;
+using UniPM.Api.Features.Auth;
 using UniPM.Api.Features.ReferenceData;
 using UniPM.Api.Features.Reports;
 using UniPM.Api.Features.Schedules;
@@ -80,7 +82,8 @@ public sealed class DevelopmentDemoSeederTests
             new FixedTimeProvider(new DateTimeOffset(2026, 9, 22, 12, 0, 0, TimeSpan.FromHours(8))));
         var period = await dashboard.GetPeriodAsync(
             new PmPeriodDashboardQuery("2026-08", "fire-extinguisher", "Library", null, null, null),
-            CancellationToken.None);
+            CancellationToken.None,
+            GsdPrincipal());
         Assert.Equal(3, period.Scheduled);
         Assert.Equal(3, period.Inspected);
         Assert.Equal(2, period.CompletedOnTime);
@@ -91,7 +94,8 @@ public sealed class DevelopmentDemoSeederTests
 
         var futurePeriod = await dashboard.GetPeriodAsync(
             new PmPeriodDashboardQuery("2026-11", "fire-extinguisher", "CCMS", null, null, null),
-            CancellationToken.None);
+            CancellationToken.None,
+            GsdPrincipal());
         Assert.Equal("Future", futurePeriod.PeriodState);
         Assert.False(futurePeriod.ComplianceMeasurable);
         Assert.Null(futurePeriod.OnTimeCompliancePercent);
@@ -99,7 +103,8 @@ public sealed class DevelopmentDemoSeederTests
 
         var studentAffairsPeriod = await dashboard.GetPeriodAsync(
             new PmPeriodDashboardQuery("2026-06", "emergency-light", "Student Affairs Office", null, null, null),
-            CancellationToken.None);
+            CancellationToken.None,
+            GsdPrincipal());
         Assert.Equal(2, studentAffairsPeriod.Scheduled);
         Assert.Equal(2, studentAffairsPeriod.Inspected);
         Assert.Equal(1, studentAffairsPeriod.CompletedOnTime);
@@ -116,7 +121,8 @@ public sealed class DevelopmentDemoSeederTests
 
         var campusFacilitiesPeriod = await dashboard.GetPeriodAsync(
             new PmPeriodDashboardQuery("2026-06", "emergency-light", "Campus Facilities", null, null, null),
-            CancellationToken.None);
+            CancellationToken.None,
+            GsdPrincipal());
         Assert.Equal(1, campusFacilitiesPeriod.Scheduled);
         Assert.Equal(0, campusFacilitiesPeriod.Inspected);
         Assert.Equal(0, campusFacilitiesPeriod.CompletedOnTime);
@@ -436,6 +442,13 @@ public sealed class DevelopmentDemoSeederTests
             IsActive = true
         };
     }
+
+    private static ClaimsPrincipal GsdPrincipal() => new(
+        new ClaimsIdentity(
+            [new Claim(ClaimTypes.Role, AuthRoleCatalog.Gsd)],
+            "Test",
+            ClaimTypes.Name,
+            ClaimTypes.Role));
 
     private sealed class TestContextFactory : IDbContextFactory<ApplicationDbContext>
     {

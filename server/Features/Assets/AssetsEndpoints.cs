@@ -121,7 +121,8 @@ public static class AssetsEndpoints
         .WithName("GetAsset")
         .WithSummary("Gets an asset by its identifier")
         .Produces<AssetResponse>(StatusCodes.Status200OK)
-        .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status404NotFound);
+        .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status404NotFound)
+        .RequireAuthorization(AuthPolicyCatalog.CanReadOperationalData);
 
         group.MapGet("/{id}/verification-location", async (
             Guid id,
@@ -270,7 +271,7 @@ public static class AssetsEndpoints
         .WithSummary("Lists a bounded page of assets for the web registry")
         .Produces<AssetRegistryPageResponse>(StatusCodes.Status200OK)
         .Produces<Microsoft.AspNetCore.Mvc.ValidationProblemDetails>(StatusCodes.Status400BadRequest)
-        .RequireAuthorization();
+        .RequireAuthorization(AuthPolicyCatalog.CanReadOperationalData);
 
         group.MapGet("/registry/options", async (
             string? assetCategory,
@@ -330,7 +331,7 @@ public static class AssetsEndpoints
         .WithSummary("Lists small asset registry filter options")
         .Produces<AssetRegistryOptionsResponse>(StatusCodes.Status200OK)
         .Produces<Microsoft.AspNetCore.Mvc.ValidationProblemDetails>(StatusCodes.Status400BadRequest)
-        .RequireAuthorization();
+        .RequireAuthorization(AuthPolicyCatalog.CanReadOperationalData);
 
         group.MapGet("/registry/summary", async (
             IDbContextFactory<ApplicationDbContext> factory,
@@ -374,7 +375,7 @@ public static class AssetsEndpoints
         .WithName("GetAssetRegistrySummary")
         .WithSummary("Returns overall asset totals by category and status")
         .Produces<AssetRegistrySummaryResponse>(StatusCodes.Status200OK)
-        .RequireAuthorization();
+        .RequireAuthorization(AuthPolicyCatalog.CanReadOperationalData);
 
         group.MapGet("/", async (
             string? assetCategory,
@@ -442,7 +443,8 @@ public static class AssetsEndpoints
         .WithName("ListAssets")
         .WithSummary("Lists assets using supported category, status, location, search, and department-presence filters")
         .Produces<IReadOnlyList<AssetResponse>>(StatusCodes.Status200OK)
-        .Produces<Microsoft.AspNetCore.Mvc.ValidationProblemDetails>(StatusCodes.Status400BadRequest);
+        .Produces<Microsoft.AspNetCore.Mvc.ValidationProblemDetails>(StatusCodes.Status400BadRequest)
+        .RequireAuthorization(AuthPolicyCatalog.CanReadOperationalData);
 
         group.MapGet("/by-code/{assetCode}", async (
             string assetCode,
@@ -472,7 +474,8 @@ public static class AssetsEndpoints
         .WithSummary("Gets an asset by its canonical asset code")
         .Produces<AssetResponse>(StatusCodes.Status200OK)
         .Produces<Microsoft.AspNetCore.Mvc.ValidationProblemDetails>(StatusCodes.Status400BadRequest)
-        .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status404NotFound);
+        .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status404NotFound)
+        .RequireAuthorization(AuthPolicyCatalog.CanReadOperationalData);
 
         group.MapGet("/by-qr/{qrCodeValue}", async (
             string qrCodeValue,
@@ -502,7 +505,8 @@ public static class AssetsEndpoints
         .WithSummary("Gets an asset by its QR identifier")
         .Produces<AssetResponse>(StatusCodes.Status200OK)
         .Produces<Microsoft.AspNetCore.Mvc.ValidationProblemDetails>(StatusCodes.Status400BadRequest)
-        .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status404NotFound);
+        .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status404NotFound)
+        .RequireAuthorization(AuthPolicyCatalog.CanReadOperationalData);
 
         return endpoints;
     }

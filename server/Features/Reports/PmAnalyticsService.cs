@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using UniPM.Api.Features.ReferenceData;
 using UniPM.Api.Features.Schedules;
 
@@ -11,6 +12,7 @@ internal sealed class PmAnalyticsService(PmPeriodDashboardService dashboardServi
 
     internal async Task<PmAnalyticsExecutionResult> ExecuteAsync(
         PmAnalyticsPlan? candidate,
+        ClaimsPrincipal principal,
         CancellationToken cancellationToken)
     {
         if (!PmAnalyticsPlanValidator.TryNormalize(candidate, out var plan, out var error))
@@ -26,7 +28,8 @@ internal sealed class PmAnalyticsService(PmPeriodDashboardService dashboardServi
                 null,
                 null,
                 null),
-            cancellationToken);
+            cancellationToken,
+            principal);
 
         var groups = plan.GroupBy == PmAnalyticsGroupBy.Department
             ? dashboard.Batches

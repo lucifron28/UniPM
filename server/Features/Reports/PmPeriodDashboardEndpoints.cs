@@ -1,4 +1,7 @@
+using System.Security.Claims;
 using UniPM.Api.Data;
+using UniPM.Api.Features.Auth;
+using UniPM.Api.Features.Inspections;
 using UniPM.Api.Features.ReferenceData;
 using UniPM.Api.Features.Schedules;
 
@@ -12,11 +15,12 @@ public static class PmPeriodDashboardEndpoints
         var group = endpoints
             .MapGroup("/pm-period-dashboard")
             .WithTags("PM Period Dashboard")
-            .RequireAuthorization();
+            .RequireAuthorization(AuthPolicyCatalog.CanReadOperationalData);
 
         group.MapGet("/cycles", async (
             string? assetCategory,
             int? year,
+            ClaimsPrincipal principal,
             PmPeriodDashboardService service,
             CancellationToken cancellationToken) =>
         {
@@ -47,7 +51,8 @@ public static class PmPeriodDashboardEndpoints
             var cycles = await service.GetAvailableCyclesAsync(
                 normalizedCategory,
                 year,
-                cancellationToken);
+                cancellationToken,
+                principal);
             return Results.Ok(cycles);
         })
         .WithName("ListPmPeriodDashboardCycles")
@@ -62,6 +67,7 @@ public static class PmPeriodDashboardEndpoints
             string? condition,
             string? timeliness,
             string? search,
+            ClaimsPrincipal principal,
             PmPeriodDashboardService service,
             CancellationToken cancellationToken) =>
         {
@@ -124,7 +130,8 @@ public static class PmPeriodDashboardEndpoints
                     normalizedCondition,
                     normalizedTimeliness,
                     normalizedSearch),
-                cancellationToken);
+                cancellationToken,
+                principal);
             return Results.Ok(response);
         })
         .WithName("GetPmPeriodDashboard")

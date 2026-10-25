@@ -103,6 +103,7 @@ public static class PreventiveMaintenanceFormEndpoints
             string? department,
             string? pmCycle,
             string? search,
+            ClaimsPrincipal principal,
             IDbContextFactory<ApplicationDbContext> factory,
             CancellationToken cancellationToken) =>
         {
@@ -150,7 +151,9 @@ public static class PreventiveMaintenanceFormEndpoints
             }
 
             await using var context = await factory.CreateDbContextAsync(cancellationToken);
-            var query = context.PreventiveMaintenanceForms.AsNoTracking();
+            var query = context.PreventiveMaintenanceForms
+                .AsNoTracking()
+                .WhereReadableTo(principal);
 
             if (!string.IsNullOrWhiteSpace(status))
             {
@@ -219,16 +222,18 @@ public static class PreventiveMaintenanceFormEndpoints
         .WithSummary("Lists preventive-maintenance forms using supported status and metadata filters")
         .Produces<List<PreventiveMaintenanceFormResponse>>(StatusCodes.Status200OK)
         .Produces<Microsoft.AspNetCore.Mvc.ValidationProblemDetails>(StatusCodes.Status400BadRequest)
-        .RequireAuthorization();
+        .RequireAuthorization(AuthPolicyCatalog.CanReadOperationalData);
 
         group.MapGet("/{id}", async (
             Guid id,
+            ClaimsPrincipal principal,
             IDbContextFactory<ApplicationDbContext> factory,
             CancellationToken cancellationToken) =>
         {
             await using var context = await factory.CreateDbContextAsync(cancellationToken);
             var form = await context.PreventiveMaintenanceForms
                 .AsNoTracking()
+                .WhereReadableTo(principal)
                 .Include(candidate => candidate.Inspections)
                     .ThenInclude(inspection => inspection.Asset)
                 .Include(candidate => candidate.Inspections)
@@ -249,7 +254,7 @@ public static class PreventiveMaintenanceFormEndpoints
         .WithSummary("Gets a preventive-maintenance form")
         .Produces<PreventiveMaintenanceFormResponse>(StatusCodes.Status200OK)
         .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status404NotFound)
-        .RequireAuthorization();
+        .RequireAuthorization(AuthPolicyCatalog.CanReadOperationalData);
 
         group.MapPost("/{id}/submit", async (
             Guid id,

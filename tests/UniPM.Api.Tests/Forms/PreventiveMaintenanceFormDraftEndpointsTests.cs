@@ -24,9 +24,9 @@ public sealed class PreventiveMaintenanceFormDraftEndpointsTests
         "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl2lD8AAAAASUVORK5CYII=";
 
     [Fact]
-    public async Task Admin_can_create_a_valid_draft_inspection_row()
+    public async Task Admin_with_gsd_role_can_create_a_valid_draft_inspection_row()
     {
-        await using var application = new TestApplicationFactory(AuthRoleCatalog.Admin);
+        await using var application = new TestApplicationFactory(AuthRoleCatalog.Admin, AuthRoleCatalog.Gsd);
         using var client = application.CreateClient();
         await application.EnsureAuthenticatedUserAsync();
         var asset = await CreateAssetAsync(client, "FE-ADMIN-MANAGE-001", "fire-extinguisher");

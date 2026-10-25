@@ -1,5 +1,7 @@
+using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 using UniPM.Api.Data;
+using UniPM.Api.Features.Auth;
 using UniPM.Api.Features.Inspections;
 using UniPM.Api.Features.PreventiveMaintenanceForms;
 using UniPM.Api.Features.Reports;
@@ -525,8 +527,15 @@ public sealed class PmPeriodDashboardTests
         var service = new PmPeriodDashboardService(
             new TestContextFactory(options),
             new FixedTimeProvider(now));
-        return await service.GetPeriodAsync(query, CancellationToken.None);
+        return await service.GetPeriodAsync(query, CancellationToken.None, GsdPrincipal());
     }
+
+    private static ClaimsPrincipal GsdPrincipal() => new(
+        new ClaimsIdentity(
+            [new Claim(ClaimTypes.Role, AuthRoleCatalog.Gsd)],
+            "Test",
+            ClaimTypes.Name,
+            ClaimTypes.Role));
 
     private static void SeedClosedScenario(ApplicationDbContext context)
     {

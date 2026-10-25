@@ -150,7 +150,7 @@ public sealed class InspectionPhotoEvidenceEndpointsTests
         await gsdApplication.AddPhotoAsync(gsdScenario.InspectionId);
         var draftPhoto = await gsdClient.GetAsync(
             $"/api/v1/inspections/{gsdScenario.InspectionId}/photo");
-        Assert.Equal(HttpStatusCode.NotFound, draftPhoto.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, draftPhoto.StatusCode);
         await gsdApplication.SetFormStatusAsync(
             gsdScenario.FormId,
             PreventiveMaintenanceFormStatusCatalog.Acknowledged);
@@ -181,6 +181,7 @@ public sealed class InspectionPhotoEvidenceEndpointsTests
         var scenario = await application.CreateDraftAsync();
         await application.AddPhotoAsync(scenario.InspectionId);
         await application.ChangeInspectionOwnerAsync(scenario.InspectionId, Guid.NewGuid());
+        await application.ChangeFormCreatorAsync(scenario.FormId, Guid.NewGuid());
 
         var read = await client.GetAsync($"/api/v1/inspections/{scenario.InspectionId}/photo");
         using var content = new ByteArrayContent(MinimalJpeg());
@@ -373,6 +374,16 @@ public sealed class InspectionPhotoEvidenceEndpointsTests
             var inspection = await context.InspectionRecords
                 .SingleAsync(candidate => candidate.Id == inspectionId);
             inspection.InspectorUserId = ownerId;
+            await context.SaveChangesAsync();
+        }
+
+        public async Task ChangeFormCreatorAsync(Guid formId, Guid creatorId)
+        {
+            await using var scope = Services.CreateAsyncScope();
+            var factory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
+            await using var context = await factory.CreateDbContextAsync();
+            var form = await context.PreventiveMaintenanceForms.SingleAsync(candidate => candidate.Id == formId);
+            form.CreatedByUserId = creatorId;
             await context.SaveChangesAsync();
         }
 
