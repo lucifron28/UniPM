@@ -684,7 +684,7 @@ describe('preventive-maintenance form review', () => {
             {
               ...form('Submitted').inspections[0],
               assetCode: 'WDS-MAIN-001',
-              location: 'Main Building lobby',
+              location: 'Current registry location',
               skilledWorkerIdentity: 'Synthetic Inspector',
               dateAccomplished: '2026-07-28T03:00:00Z',
               waterReplaceCarbonFilter: true,
@@ -700,7 +700,10 @@ describe('preventive-maintenance form review', () => {
 
     expect(await screen.findAllByText('WDS-MAIN-001')).toHaveLength(1)
     const inspectionRow = screen.getByText('WDS-MAIN-001').closest('article')
-    expect(inspectionRow).toHaveTextContent(/Main Building lobby/)
+    expect(inspectionRow).toHaveTextContent('Current asset details')
+    expect(inspectionRow).toHaveTextContent('Current asset location')
+    expect(inspectionRow).toHaveTextContent('Current registry location')
+    expect(screen.getByText('Main Building')).toBeInTheDocument()
     expect(inspectionRow).toHaveTextContent('Entered inspection date:')
     expect(inspectionRow).toHaveTextContent(
       'Server recorded completion (Asia/Manila):',

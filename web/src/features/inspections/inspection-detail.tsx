@@ -366,7 +366,7 @@ export function InspectionDetail({
       <Card className="grid gap-6 shadow-none md:grid-cols-2 lg:grid-cols-3">
         <div>
           <dt className="text-xs font-semibold tracking-[0.08em] text-[var(--text-neutral)] uppercase">
-            Asset
+            Current asset
           </dt>
           <dd className="mt-1 text-sm">
             <Link

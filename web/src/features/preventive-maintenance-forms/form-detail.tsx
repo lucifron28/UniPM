@@ -444,12 +444,15 @@ function InspectionRow({
     <article className="rounded-lg border border-[var(--border-soft)] bg-white p-3">
       <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-start">
         <div>
+          <p className="text-xs text-[var(--text-neutral)]">
+            Current asset details
+          </p>
           <p className="text-sm font-semibold text-[var(--text-primary)]">
             {row.assetCode ?? `Inspection ${row.id}`}
           </p>
           <p className="mt-0.5 text-xs text-[var(--text-neutral)]">
             Entered inspection date: {formatFormDate(row.dateInspected)}
-            {row.location ? ` · ${row.location}` : ''}
+            {row.location ? ` · Current asset location: ${row.location}` : ''}
           </p>
           <p className="mt-0.5 text-xs text-[var(--text-neutral)]">
             Server recorded completion (Asia/Manila):{' '}
