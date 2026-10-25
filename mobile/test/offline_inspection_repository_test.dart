@@ -820,9 +820,11 @@ void main() {
     expect(find.text('Retry my saved change'), findsOneWidget);
     expect(find.text('Discard local change'), findsOneWidget);
 
-    await tester.tap(
-      find.byKey(Key('offline-conflict-discard-${conflict.writeId}')),
+    final discardButton = find.byKey(
+      Key('offline-conflict-discard-${conflict.writeId}'),
     );
+    await tester.ensureVisible(discardButton);
+    await tester.tap(discardButton);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.text('Discard this saved change?'), findsOneWidget);
