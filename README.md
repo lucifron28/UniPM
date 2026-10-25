@@ -83,13 +83,18 @@ provisional file number, while each row keeps its own inspection ID.
 
 The department head acknowledges the whole form through the skilled worker's
 authenticated mobile session and does not require a UniPM account. Field-work
-completion is recorded in each `InspectionRecord.CompletedAt` and completes the
+completion is recorded on the first server-accepted save in each
+`InspectionRecord.CompletedAt` and completes the
 linked schedule before form submission. Acknowledgement records receipt/noting,
 does not alter execution or compliance timestamps, does not complete schedules,
 and makes completed rows eligible for acknowledged-only official history. Draft
 and Submitted rows are not official history or retrieval evidence. Retired
 retrieval/RAG behavior is documented only as historical evidence
 by the current runtime.
+Queued offline work retains its device-recorded local time until
+synchronization. The server's recorded completion time determines timeliness;
+late synchronization can count as late completion. The entered inspection
+date does not override that clock or verify actual field-work time.
 Signatory names, positions, signatures, signature data, and signature checksums
 never enter retrieval, embeddings, prompts, or the corrective-handoff response.
 
