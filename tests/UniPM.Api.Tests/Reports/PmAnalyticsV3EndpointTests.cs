@@ -10,6 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using UniPM.Api.Data;
 using UniPM.Api.Features.Auth;
+using UniPM.Api.Features.PreventiveMaintenanceForms;
 using UniPM.Api.Features.Reports;
 using UniPM.Api.Features.Schedules;
 using UniPM.Api.Models;
@@ -170,6 +171,239 @@ public sealed class PmAnalyticsV3EndpointTests
         Assert.Equal(HttpStatusCode.Conflict, executeResponse.StatusCode);
         var problem = await executeResponse.Content.ReadFromJsonAsync<JsonElement>();
         Assert.Equal("PreviewUnavailable", problem.GetProperty("code").GetString());
+    }
+
+    [Fact]
+    public async Task Asset_transfer_updates_current_report_metadata_without_rewriting_acknowledged_history()
+    {
+        await using var application = new AnalyticsApplicationFactory(authenticated: true, AuthRoleCatalog.Gsd);
+        using var client = application.CreateClient();
+        var assetId = Guid.NewGuid();
+        var scheduleId = Guid.NewGuid();
+        var inspectionId = Guid.NewGuid();
+        var formId = Guid.NewGuid();
+        var cycle = "2024-02";
+        const string originalDepartment = "Synthetic Original Department";
+        const string originalBuilding = "Synthetic Original Building";
+        const string transferredDepartment = "Synthetic Current Department";
+        const string transferredBuilding = "Synthetic Current Building";
+        var deadline = PreventiveMaintenanceCycle.DeadlineForCycle(cycle);
+        var completedAt = deadline.AddHours(1);
+        var signatoryId = Guid.NewGuid();
+
+        await using (var scope = application.Services.CreateAsyncScope())
+        {
+            var factory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
+            await using var context = await factory.CreateDbContextAsync();
+            await context.Database.EnsureCreatedAsync();
+
+            var asset = new Asset
+            {
+                Id = assetId,
+                AssetCode = "FE-TRANSFER-001",
+                AssetCategory = "fire-extinguisher",
+                Department = originalDepartment,
+                Building = originalBuilding,
+                Location = "Synthetic Original Room",
+                Status = "Active"
+            };
+            var schedule = new PreventiveMaintenanceSchedule
+            {
+                Id = scheduleId,
+                AssetId = assetId,
+                Asset = asset,
+                PmCycle = cycle,
+                ScheduleDate = deadline,
+                PeriodType = "Quarter",
+                Quarter = "Q1",
+                Year = 2024,
+                Status = ScheduleStatusCatalog.Completed,
+                CompletedAt = completedAt
+            };
+            var form = new PreventiveMaintenanceForm
+            {
+                Id = formId,
+                FileNumber = "PMF-2024-1234",
+                AssetCategory = asset.AssetCategory,
+                Department = originalDepartment,
+                Building = originalBuilding,
+                PmCycle = cycle,
+                PeriodType = "Quarter",
+                Quarter = "Q1",
+                Year = 2024,
+                Status = PreventiveMaintenanceFormStatusCatalog.Acknowledged,
+                CreatedByUserId = signatoryId,
+                SubmittedByUserId = signatoryId,
+                SubmittedAt = completedAt.AddMinutes(1),
+                CreatedAt = completedAt,
+                UpdatedAt = completedAt.AddMinutes(2)
+            };
+            var inspection = new InspectionRecord
+            {
+                Id = inspectionId,
+                ScheduleId = scheduleId,
+                Schedule = schedule,
+                PreventiveMaintenanceFormId = formId,
+                PreventiveMaintenanceForm = form,
+                AssetId = assetId,
+                Asset = asset,
+                InspectorUserId = signatoryId,
+                DateInspected = completedAt,
+                CompletedAt = completedAt,
+                IsOperational = true,
+                Remarks = "Synthetic acknowledged transfer row",
+                CreatedAt = completedAt,
+                UpdatedAt = completedAt
+            };
+            form.Inspections.Add(inspection);
+            form.Acknowledgement = new PreventiveMaintenanceAcknowledgement
+            {
+                Id = Guid.NewGuid(),
+                FormId = formId,
+                Form = form,
+                SignatoryName = "Fictional Department Head",
+                SignatoryPosition = "Department Head",
+                CapturedByUserId = signatoryId,
+                AcknowledgedAt = completedAt.AddMinutes(2)
+            };
+            context.Assets.Add(asset);
+            context.PreventiveMaintenanceSchedules.Add(schedule);
+            context.PreventiveMaintenanceForms.Add(form);
+            context.InspectionRecords.Add(inspection);
+            await context.SaveChangesAsync();
+        }
+
+        var pmPeriod = new PmAnalyticsV3Period("pmCycle", PmAnalyticsV3PeriodKind.Year, Year: 2024);
+        var departmentCountPlan = new PmAnalyticsV3ReportPlan(
+            3,
+            PmAnalyticsV3Catalog.Version,
+            PmAnalyticsV3Catalog.SubjectPmExecution,
+            PmAnalyticsV3Mode.Aggregate,
+            pmPeriod,
+            ["fire-extinguisher"],
+            [PmAnalyticsV3Catalog.CompletedLateCount],
+            [PmAnalyticsV3Catalog.Department],
+            [],
+            [],
+            [],
+            [],
+            null,
+            PmAnalyticsV3Presentation.Table,
+            [PmAnalyticsV3Catalog.Department, PmAnalyticsV3Catalog.CompletedLateCount]);
+        var sourceRecordPlan = new PmAnalyticsV3ReportPlan(
+            3,
+            PmAnalyticsV3Catalog.Version,
+            PmAnalyticsV3Catalog.SubjectPmExecution,
+            PmAnalyticsV3Mode.Records,
+            pmPeriod,
+            ["fire-extinguisher"],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            null,
+            PmAnalyticsV3Presentation.Table,
+            [
+                PmAnalyticsV3Catalog.Department,
+                PmAnalyticsV3Catalog.Building,
+                PmAnalyticsV3Catalog.CompletedAt,
+                PmAnalyticsV3Catalog.Timeliness,
+                PmAnalyticsV3Catalog.FormStatus
+            ]);
+        var buildingInventoryPlan = CreateInventoryAggregatePlan(
+            ["fire-extinguisher"],
+            [PmAnalyticsV3Catalog.Building],
+            [PmAnalyticsV3Catalog.Building, PmAnalyticsV3Catalog.RegisteredAssetCount]);
+
+        var departmentCountsBefore = await ExecutePlanAsync(departmentCountPlan);
+        var sourceRowsBefore = await ExecutePlanAsync(sourceRecordPlan);
+        var buildingCountsBefore = await ExecutePlanAsync(buildingInventoryPlan);
+        var historyBefore = await ReadOfficialHistoryAsync();
+
+        Assert.Equal(1, departmentCountsBefore.Population.EligibleAssetCycleCount);
+        Assert.Equal(1, departmentCountsBefore.Population.MatchingAssetCycleCount);
+        Assert.Equal(originalDepartment, JsonText(Assert.Single(departmentCountsBefore.AggregateRows).Values[PmAnalyticsV3Catalog.Department]));
+        var lateBefore = Assert.Single(departmentCountsBefore.AggregateRows).Measures[PmAnalyticsV3Catalog.CompletedLateCount];
+        Assert.Equal(1m, lateBefore.Value);
+        Assert.Equal(1, lateBefore.Numerator);
+        Assert.Equal(1, sourceRowsBefore.Population.SourceTotalCount);
+        var sourceBefore = Assert.Single(sourceRowsBefore.Records);
+        Assert.Equal(inspectionId, sourceBefore.InspectionId);
+        Assert.Equal(originalDepartment, JsonText(sourceBefore.Values[PmAnalyticsV3Catalog.Department]));
+        Assert.Equal(originalBuilding, JsonText(sourceBefore.Values[PmAnalyticsV3Catalog.Building]));
+        Assert.Equal("Late", JsonText(sourceBefore.Values[PmAnalyticsV3Catalog.Timeliness]));
+        Assert.Equal("Acknowledged", JsonText(sourceBefore.Values[PmAnalyticsV3Catalog.FormStatus]));
+        var completedAtBefore = JsonText(sourceBefore.Values[PmAnalyticsV3Catalog.CompletedAt]);
+        var historyRowBefore = Assert.Single(historyBefore);
+        Assert.Equal(inspectionId, historyRowBefore.GetProperty("id").GetGuid());
+        Assert.Equal("Synthetic acknowledged transfer row", historyRowBefore.GetProperty("remarks").GetString());
+        Assert.Equal(originalBuilding, JsonText(Assert.Single(buildingCountsBefore.AggregateRows).Values[PmAnalyticsV3Catalog.Building]));
+        Assert.Equal(1m, Assert.Single(buildingCountsBefore.AggregateRows)
+            .Measures[PmAnalyticsV3Catalog.RegisteredAssetCount].Value);
+
+        await using (var scope = application.Services.CreateAsyncScope())
+        {
+            var factory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
+            await using var context = await factory.CreateDbContextAsync();
+            var asset = await context.Assets.SingleAsync(candidate => candidate.Id == assetId);
+            asset.Department = transferredDepartment;
+            asset.Building = transferredBuilding;
+            await context.SaveChangesAsync();
+        }
+
+        var departmentCountsAfter = await ExecutePlanAsync(departmentCountPlan);
+        var sourceRowsAfter = await ExecutePlanAsync(sourceRecordPlan);
+        var buildingCountsAfter = await ExecutePlanAsync(buildingInventoryPlan);
+        var historyAfter = await ReadOfficialHistoryAsync();
+
+        Assert.Equal(1, departmentCountsAfter.Population.EligibleAssetCycleCount);
+        Assert.Equal(1, departmentCountsAfter.Population.MatchingAssetCycleCount);
+        Assert.Equal(transferredDepartment, JsonText(Assert.Single(departmentCountsAfter.AggregateRows).Values[PmAnalyticsV3Catalog.Department]));
+        var lateAfter = Assert.Single(departmentCountsAfter.AggregateRows).Measures[PmAnalyticsV3Catalog.CompletedLateCount];
+        Assert.Equal(lateBefore.Value, lateAfter.Value);
+        Assert.Equal(lateBefore.Numerator, lateAfter.Numerator);
+        Assert.Equal(sourceRowsBefore.Population.SourceTotalCount, sourceRowsAfter.Population.SourceTotalCount);
+        var sourceAfter = Assert.Single(sourceRowsAfter.Records);
+        Assert.Equal(inspectionId, sourceAfter.InspectionId);
+        Assert.Equal(transferredDepartment, JsonText(sourceAfter.Values[PmAnalyticsV3Catalog.Department]));
+        Assert.Equal(transferredBuilding, JsonText(sourceAfter.Values[PmAnalyticsV3Catalog.Building]));
+        Assert.Equal("Late", JsonText(sourceAfter.Values[PmAnalyticsV3Catalog.Timeliness]));
+        Assert.Equal("Acknowledged", JsonText(sourceAfter.Values[PmAnalyticsV3Catalog.FormStatus]));
+        Assert.Equal(completedAtBefore, JsonText(sourceAfter.Values[PmAnalyticsV3Catalog.CompletedAt]));
+        var historyRowAfter = Assert.Single(historyAfter);
+        Assert.Equal(historyRowBefore.GetProperty("id").GetGuid(), historyRowAfter.GetProperty("id").GetGuid());
+        Assert.Equal(historyRowBefore.GetProperty("dateInspected").GetString(), historyRowAfter.GetProperty("dateInspected").GetString());
+        Assert.Equal(historyRowBefore.GetProperty("remarks").GetString(), historyRowAfter.GetProperty("remarks").GetString());
+        Assert.Equal(transferredBuilding, JsonText(Assert.Single(buildingCountsAfter.AggregateRows).Values[PmAnalyticsV3Catalog.Building]));
+        Assert.Equal(1m, Assert.Single(buildingCountsAfter.AggregateRows)
+            .Measures[PmAnalyticsV3Catalog.RegisteredAssetCount].Value);
+
+        await using (var scope = application.Services.CreateAsyncScope())
+        {
+            var factory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
+            await using var context = await factory.CreateDbContextAsync();
+            var form = await context.PreventiveMaintenanceForms.SingleAsync(candidate => candidate.Id == formId);
+            Assert.Equal(originalDepartment, form.Department);
+            Assert.Equal(originalBuilding, form.Building);
+            Assert.Equal(PreventiveMaintenanceFormStatusCatalog.Acknowledged, form.Status);
+        }
+
+        async Task<PmAnalyticsV3ExecutionResponse> ExecutePlanAsync(PmAnalyticsV3ReportPlan plan)
+        {
+            var preview = await CreatePreviewAsync(client, plan);
+            return await ExecuteAsync(client, preview.PreviewId);
+        }
+
+        async Task<JsonElement[]> ReadOfficialHistoryAsync()
+        {
+            using var response = await client.GetAsync($"/api/v1/inspections/history/{assetId}");
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            var history = await response.Content.ReadFromJsonAsync<List<JsonElement>>();
+            Assert.NotNull(history);
+            return history.ToArray();
+        }
     }
 
     [Fact]
