@@ -1307,6 +1307,9 @@ describe('PM analytics V3 workflow', () => {
     expect(
       await screen.findByRole('heading', { name: 'Clarify the report scope' }),
     ).toBeInTheDocument()
+    expect(
+      await screen.findByRole('option', { name: 'Department' }),
+    ).toBeInTheDocument()
     fireEvent.change(
       screen.getByRole('combobox', {
         name: 'Which filter should narrow the results?',

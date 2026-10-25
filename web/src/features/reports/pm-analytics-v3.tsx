@@ -2414,9 +2414,9 @@ export function PmAnalyticsV3Panel({
                             ? clarificationStepFields.length - 1
                             : activeClarificationStepIndex - 1
                         if (previousIndex >= 0) {
-                          reopenClarification(
-                            clarificationStepFields[previousIndex],
-                          )
+                          const previousField =
+                            clarificationStepFields[previousIndex]
+                          if (previousField) reopenClarification(previousField)
                         }
                       }}
                     >
