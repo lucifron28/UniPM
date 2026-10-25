@@ -772,6 +772,8 @@ void main() {
   testWidgets('conflict discard confirmation calls the repository', (
     tester,
   ) async {
+    tester.view.physicalSize = const Size(800, 800);
+    addTearDown(tester.view.resetPhysicalSize);
     repository.dispose();
     repository = _ImmediateScheduleOfflineInspectionRepository(
       tester: tester,
@@ -820,11 +822,9 @@ void main() {
     expect(find.text('Retry my saved change'), findsOneWidget);
     expect(find.text('Discard local change'), findsOneWidget);
 
-    final discardButton = find.byKey(
-      Key('offline-conflict-discard-${conflict.writeId}'),
+    await tester.tap(
+      find.byKey(Key('offline-conflict-discard-${conflict.writeId}')),
     );
-    await tester.ensureVisible(discardButton);
-    await tester.tap(discardButton);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.text('Discard this saved change?'), findsOneWidget);
