@@ -1285,6 +1285,12 @@ describe('PM analytics V3 workflow', () => {
 
   it('keeps a generic clarification filter in the preview plan', async () => {
     const partialPlan = makePlan()
+    api.catalog.mockResolvedValueOnce({
+      ...makeCatalog(),
+      filterFields: makeInventoryCatalog().filterFields.filter(
+        (field) => field.id === 'department',
+      ),
+    })
     api.interpret.mockResolvedValueOnce(
       makeInterpretation(partialPlan, {
         status: 'NeedsClarification',
