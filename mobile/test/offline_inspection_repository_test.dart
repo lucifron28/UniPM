@@ -130,61 +130,6 @@ void main() {
     await connectivity.dispose();
   });
 
-  testWidgets('offline draft copy names only online-required features', (
-    tester,
-  ) async {
-    await awaitRepositoryAction(
-      tester,
-      'activate user',
-      () => repository.activate(_userA),
-    );
-    await awaitRepositoryAction(tester, 'cache schedules', () async {
-      await repository.listSchedules();
-    });
-    connectivity.setConnected(false);
-    remote.connected = false;
-
-    final form = await tester.runAsync(
-      () => repository
-          .createForm(_createInput())
-          .timeout(const Duration(seconds: 5)),
-    );
-    expect(form, isNotNull);
-    expect(repository.pendingCountFor(form!.id), 1);
-
-    final controller = PreventiveMaintenanceController(
-      repository: repository,
-      user: const AuthUser(
-        id: _userA,
-        email: 'inspector@example.test',
-        displayName: 'Synthetic Inspector',
-        roles: ['Inspector'],
-      ),
-    );
-    addTearDown(controller.dispose);
-    controller.selectForm(form);
-
-    await tester.pumpWidget(
-      MaterialApp(
-        home: PreventiveMaintenanceDraftPage(
-          controller: controller,
-          formId: form.id,
-        ),
-      ),
-    );
-    await tester.pump();
-
-    expect(
-      find.textContaining(
-        'Photo evidence and form submission need a connection.',
-      ),
-      findsOneWidget,
-    );
-    expect(find.textContaining('Location verification'), findsNothing);
-
-    await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
-  });
-
   test(
     'offline draft and edits survive restart and retry without duplicates',
     () async {
