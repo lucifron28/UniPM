@@ -618,6 +618,15 @@ describe('preventive-maintenance form review', () => {
           totalCount: allForms.length,
         }),
       ),
+      http.get(supervisorOptionsUrl, () =>
+        HttpResponse.json({
+          supervisors: [],
+          page: 1,
+          pageSize: 20,
+          totalCount: 0,
+          selected: null,
+        }),
+      ),
     )
 
     function ControlledFormRegistry() {
@@ -635,8 +644,11 @@ describe('preventive-maintenance form review', () => {
     expect(
       await screen.findByRole('link', { name: 'PM-PAGED-1' }),
     ).toBeInTheDocument()
-    expect(screen.getByText('Showing 1–10 of 11')).toBeInTheDocument()
-    expect(screen.getByText('Page 1 of 2')).toBeInTheDocument()
+    const pagination = screen.getByRole('navigation', {
+      name: 'Form review pagination',
+    })
+    expect(pagination).toHaveTextContent('Showing 1–10 of 11')
+    expect(pagination).toHaveTextContent('Page 1 of 2')
     expect(requests[0]?.searchParams.get('page')).toBe('1')
     expect(requests[0]?.searchParams.get('pageSize')).toBe('10')
 
@@ -646,8 +658,8 @@ describe('preventive-maintenance form review', () => {
       await screen.findByRole('link', { name: 'PM-PAGED-11' }),
     ).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'PM-PAGED-1' })).toBeNull()
-    expect(screen.getByText('Showing 11–11 of 11')).toBeInTheDocument()
-    expect(screen.getByText('Page 2 of 2')).toBeInTheDocument()
+    expect(pagination).toHaveTextContent('Showing 11–11 of 11')
+    expect(pagination).toHaveTextContent('Page 2 of 2')
     await waitFor(() => {
       expect(requests.some((url) => url.searchParams.get('page') === '2')).toBe(
         true,
