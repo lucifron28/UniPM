@@ -202,8 +202,9 @@ public sealed class StagingDemoInitializationTests
             Assert.Equal(migrations, (await context.Database.GetAppliedMigrationsAsync()).ToArray());
             Assert.True((await context.Users.AsNoTracking().ToListAsync()).All(user => user.PasswordHash == hashes[user.Id]));
 
+            await context.Database.ExecuteSqlRawAsync("CREATE SCHEMA [UniPmStagingGuardTest]");
             await context.Database.ExecuteSqlRawAsync(
-                "CREATE SCHEMA [UniPmStagingGuardTest]; ALTER SCHEMA [UniPmStagingGuardTest] TRANSFER [dbo].[RefreshSessions];");
+                "ALTER SCHEMA [UniPmStagingGuardTest] TRANSFER [dbo].[RefreshSessions]");
             await Assert.ThrowsAsync<SqlException>(
                 () => StagingDemoInitialization.EnsureReadyAsync(context, accountsCreated: true));
             await context.Database.ExecuteSqlRawAsync(

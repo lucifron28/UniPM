@@ -1340,7 +1340,7 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
             await context.Database.MigrateAsync();
 
             var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
-            foreach (var role in new[] { AuthRoleCatalog.Inspector, AuthRoleCatalog.Supervisor })
+            foreach (var role in new[] { AuthRoleCatalog.Gsd, AuthRoleCatalog.Inspector, AuthRoleCatalog.Supervisor })
             {
                 if (!await roleManager.RoleExistsAsync(role))
                 {
@@ -1360,6 +1360,7 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
             };
             Assert.True((await userManager.CreateAsync(actor, "Demo-Account-123!")).Succeeded);
             Assert.True((await userManager.AddToRoleAsync(actor, AuthRoleCatalog.Inspector)).Succeeded);
+            Assert.True((await userManager.AddToRoleAsync(actor, AuthRoleCatalog.Gsd)).Succeeded);
 
             var existingSupervisor = await CreateActiveUserAsync(userManager, "existing-supervisor", AuthRoleCatalog.Supervisor);
             var newSupervisor = await CreateActiveUserAsync(userManager, "new-supervisor", AuthRoleCatalog.Supervisor);
