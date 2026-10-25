@@ -329,7 +329,7 @@ public sealed class PmAnalyticsV3EndpointTests
 
         Assert.Equal(1, departmentCountsBefore.Population.EligibleAssetCycleCount);
         Assert.Equal(1, departmentCountsBefore.Population.MatchingAssetCycleCount);
-        Assert.Equal(originalDepartment, JsonText(Assert.Single(departmentCountsBefore.AggregateRows).Values[PmAnalyticsV3Catalog.Department]));
+        Assert.Equal(originalDepartment.ToUpperInvariant(), JsonText(Assert.Single(departmentCountsBefore.AggregateRows).Values[PmAnalyticsV3Catalog.Department]));
         var lateBefore = Assert.Single(departmentCountsBefore.AggregateRows).Measures[PmAnalyticsV3Catalog.CompletedLateCount];
         Assert.Equal(1m, lateBefore.Value);
         Assert.Equal(1, lateBefore.Numerator);
@@ -344,7 +344,7 @@ public sealed class PmAnalyticsV3EndpointTests
         var historyRowBefore = Assert.Single(historyBefore);
         Assert.Equal(inspectionId, historyRowBefore.GetProperty("id").GetGuid());
         Assert.Equal("Synthetic acknowledged transfer row", historyRowBefore.GetProperty("remarks").GetString());
-        Assert.Equal(originalBuilding, JsonText(Assert.Single(buildingCountsBefore.AggregateRows).Values[PmAnalyticsV3Catalog.Building]));
+        Assert.Equal(originalBuilding.ToUpperInvariant(), JsonText(Assert.Single(buildingCountsBefore.AggregateRows).Values[PmAnalyticsV3Catalog.Building]));
         Assert.Equal(1m, Assert.Single(buildingCountsBefore.AggregateRows)
             .Measures[PmAnalyticsV3Catalog.RegisteredAssetCount].Value);
 
@@ -365,7 +365,7 @@ public sealed class PmAnalyticsV3EndpointTests
 
         Assert.Equal(1, departmentCountsAfter.Population.EligibleAssetCycleCount);
         Assert.Equal(1, departmentCountsAfter.Population.MatchingAssetCycleCount);
-        Assert.Equal(transferredDepartment, JsonText(Assert.Single(departmentCountsAfter.AggregateRows).Values[PmAnalyticsV3Catalog.Department]));
+        Assert.Equal(transferredDepartment.ToUpperInvariant(), JsonText(Assert.Single(departmentCountsAfter.AggregateRows).Values[PmAnalyticsV3Catalog.Department]));
         var lateAfter = Assert.Single(departmentCountsAfter.AggregateRows).Measures[PmAnalyticsV3Catalog.CompletedLateCount];
         Assert.Equal(lateBefore.Value, lateAfter.Value);
         Assert.Equal(lateBefore.Numerator, lateAfter.Numerator);
@@ -381,7 +381,7 @@ public sealed class PmAnalyticsV3EndpointTests
         Assert.Equal(historyRowBefore.GetProperty("id").GetGuid(), historyRowAfter.GetProperty("id").GetGuid());
         Assert.Equal(historyRowBefore.GetProperty("dateInspected").GetString(), historyRowAfter.GetProperty("dateInspected").GetString());
         Assert.Equal(historyRowBefore.GetProperty("remarks").GetString(), historyRowAfter.GetProperty("remarks").GetString());
-        Assert.Equal(transferredBuilding, JsonText(Assert.Single(buildingCountsAfter.AggregateRows).Values[PmAnalyticsV3Catalog.Building]));
+        Assert.Equal(transferredBuilding.ToUpperInvariant(), JsonText(Assert.Single(buildingCountsAfter.AggregateRows).Values[PmAnalyticsV3Catalog.Building]));
         Assert.Equal(1m, Assert.Single(buildingCountsAfter.AggregateRows)
             .Measures[PmAnalyticsV3Catalog.RegisteredAssetCount].Value);
 
