@@ -145,19 +145,29 @@ class OfflineInspectionRepository extends ChangeNotifier
   String? _lastIssue;
   bool _disposed = false;
 
-  String? get activeUserId => _activeUserId;
+  String? get activeUserId => _hasAuthorizedScope ? _activeUserId : null;
+  bool get _hasAuthorizedScope =>
+      _activeUserId != null && _authorizedUserId == _activeUserId;
+
+  void _ensureAuthorizedScope() {
+    if (!_hasAuthorizedScope) {
+      throw StateError('The offline account scope is locked.');
+    }
+  }
+
   bool isActiveFor(String userId) =>
-      _activeUserId == userId &&
-      _authorizedUserId == userId &&
-      _loadedUserId == userId;
-  int get pendingCount => _data.writes.length;
-  int get conflictCount =>
-      _data.writes.where((write) => write.state != 'pending').length;
+      _hasAuthorizedScope && _activeUserId == userId && _loadedUserId == userId;
+  int get pendingCount => _hasAuthorizedScope ? _data.writes.length : 0;
+  int get conflictCount => _hasAuthorizedScope
+      ? _data.writes.where((write) => write.state != 'pending').length
+      : 0;
   bool get hasNetwork => _hasNetwork;
-  bool get hasCachedSchedules => _data.schedules.isNotEmpty;
+  bool get hasCachedSchedules =>
+      _hasAuthorizedScope && _data.schedules.isNotEmpty;
   String? get lastIssue => _lastIssue;
 
   OfflineSyncState get syncState {
+    if (!_hasAuthorizedScope) return OfflineSyncState.attention;
     if (_isSyncing) return OfflineSyncState.syncing;
     if (conflictCount > 0) return OfflineSyncState.attention;
     if (pendingCount > 0) {
@@ -167,62 +177,77 @@ class OfflineInspectionRepository extends ChangeNotifier
   }
 
   bool isFormPending(String formId) =>
+      _hasAuthorizedScope &&
       _data.writes.any((write) => write.formId == formId);
 
-  int pendingCountFor(String formId) =>
-      _data.writes.where((write) => write.formId == formId).length;
+  int pendingCountFor(String formId) => _hasAuthorizedScope
+      ? _data.writes.where((write) => write.formId == formId).length
+      : 0;
 
-  bool hasConflictFor(String formId) => _data.writes.any(
-    (write) => write.formId == formId && write.state != 'pending',
-  );
+  bool hasConflictFor(String formId) =>
+      _hasAuthorizedScope &&
+      _data.writes.any(
+        (write) => write.formId == formId && write.state != 'pending',
+      );
 
-  List<OfflineConflictReview> conflictsForForm(String formId) => _data.writes
-      .where((write) => write.formId == formId && write.state != 'pending')
-      .map((write) {
-        final serverForm = _data.serverForms[formId];
-        final localInspection = write.inspectionId == null
-            ? null
-            : _findInspection(formId, write.inspectionId!);
-        final serverInspection = write.inspectionId == null
-            ? null
-            : serverForm?.inspections
-                      .where((row) => row.id == write.inspectionId)
-                      .firstOrNull ??
-                  (write.kind == 'addInspection'
-                      ? serverForm?.inspections
-                            .where(
-                              (row) =>
-                                  row.scheduleId == write.data['scheduleId'],
-                            )
-                            .firstOrNull
-                      : null);
-        return OfflineConflictReview(
-          writeId: write.id,
-          kind: write.kind,
-          message:
-              write.message ?? 'Review the saved local and server versions.',
-          canRetry: write.state == 'conflict',
-          canDiscard: serverForm != null || write.kind == 'createForm',
-          localForm: _data.forms[formId],
-          serverForm: serverForm,
-          localInspection: localInspection,
-          serverInspection: serverInspection,
-        );
-      })
-      .toList(growable: false);
+  List<OfflineConflictReview> conflictsForForm(String formId) =>
+      !_hasAuthorizedScope
+      ? const <OfflineConflictReview>[]
+      : _data.writes
+            .where(
+              (write) => write.formId == formId && write.state != 'pending',
+            )
+            .map((write) {
+              final serverForm = _data.serverForms[formId];
+              final localInspection = write.inspectionId == null
+                  ? null
+                  : _findInspection(formId, write.inspectionId!);
+              final serverInspection = write.inspectionId == null
+                  ? null
+                  : serverForm?.inspections
+                            .where((row) => row.id == write.inspectionId)
+                            .firstOrNull ??
+                        (write.kind == 'addInspection'
+                            ? serverForm?.inspections
+                                  .where(
+                                    (row) =>
+                                        row.scheduleId ==
+                                        write.data['scheduleId'],
+                                  )
+                                  .firstOrNull
+                            : null);
+              return OfflineConflictReview(
+                writeId: write.id,
+                kind: write.kind,
+                message:
+                    write.message ??
+                    'Review the saved local and server versions.',
+                canRetry: write.state == 'conflict',
+                canDiscard: serverForm != null || write.kind == 'createForm',
+                localForm: _data.forms[formId],
+                serverForm: serverForm,
+                localInspection: localInspection,
+                serverInspection: serverInspection,
+              );
+            })
+            .toList(growable: false);
 
-  bool canSubmitForm(String formId) => _hasNetwork && !isFormPending(formId);
+  bool canSubmitForm(String formId) =>
+      _hasAuthorizedScope && _hasNetwork && !isFormPending(formId);
 
   bool isInspectionPending(String inspectionId) =>
+      _hasAuthorizedScope &&
       _data.writes.any((write) => write.inspectionId == inspectionId);
 
   bool isInspectionCreatePending(String inspectionId) => _data.writes.any(
     (write) =>
-        write.kind == 'addInspection' && write.inspectionId == inspectionId,
+        _hasAuthorizedScope &&
+        write.kind == 'addInspection' &&
+        write.inspectionId == inspectionId,
   );
 
   bool canEditPhoto(String inspectionId) =>
-      _hasNetwork && !isInspectionPending(inspectionId);
+      _hasAuthorizedScope && _hasNetwork && !isInspectionPending(inspectionId);
 
   Future<void> activate(String userId) async {
     try {
@@ -262,6 +287,11 @@ class OfflineInspectionRepository extends ChangeNotifier
   /// Clears a persisted scope. On failure it keeps the owner's data in memory;
   /// forced scope exits can lock that data from the next account.
   Future<void> deactivate({bool lockOnFailure = false}) async {
+    if (lockOnFailure) {
+      // Invalidate the session before waiting behind any in-flight sync call.
+      _authorizedUserId = null;
+      _hasNetwork = false;
+    }
     await _exclusive(() async {
       final userId = _activeUserId;
       if (userId == null) {
@@ -270,7 +300,13 @@ class OfflineInspectionRepository extends ChangeNotifier
       }
       var deactivated = false;
       try {
-        await _ensureLoaded();
+        if (lockOnFailure && _loadedUserId != userId) {
+          // Nothing was loaded into memory. Keep any unreadable snapshot on
+          // disk unchanged, but release this empty in-memory account scope.
+          deactivated = true;
+          return;
+        }
+        if (!lockOnFailure) await _ensureLoaded();
         if (_data.writes.isEmpty) {
           await _store.delete(userId);
         } else {
@@ -472,13 +508,16 @@ class OfflineInspectionRepository extends ChangeNotifier
   @override
   Future<bool> startInspection(String scheduleId) => _exclusive(() async {
     await _ensureLoaded();
+    _ensureAuthorizedScope();
     if (!_hasNetwork || _remote is! ScheduleInspectionStartRepository) {
       return false;
     }
 
     try {
+      _ensureAuthorizedScope();
       final recorded = await (_remote as ScheduleInspectionStartRepository)
           .startInspection(scheduleId);
+      _ensureAuthorizedScope();
       _hasNetwork = true;
       return recorded;
     } on ApiException catch (error) {
@@ -766,7 +805,9 @@ class OfflineInspectionRepository extends ChangeNotifier
       );
     }
 
+    _ensureAuthorizedScope();
     final serverForm = await _remote.getForm(write.formId);
+    _ensureAuthorizedScope();
     _data.serverForms[write.formId] = serverForm;
     switch (write.kind) {
       case 'createForm':
@@ -1056,6 +1097,11 @@ class OfflineInspectionRepository extends ChangeNotifier
           .toSet();
       var index = 0;
       while (index < _data.writes.length) {
+        if (!_hasAuthorizedScope) {
+          _lastIssue =
+              'Sync stopped because the signed-in account changed. Saved work remains with its account.';
+          break;
+        }
         final write = _data.writes[index];
         if (write.state != 'pending') {
           blockedFormIds.add(write.formId);
@@ -1068,11 +1114,21 @@ class OfflineInspectionRepository extends ChangeNotifier
         }
         try {
           await _applyWrite(write);
+          if (!_hasAuthorizedScope) {
+            _lastIssue =
+                'Sync stopped because the signed-in account changed. Saved work remains with its account.';
+            break;
+          }
           _data.writes.removeAt(index);
           _hasNetwork = true;
           _lastIssue = null;
           await _persist();
         } on ApiException catch (error) {
+          if (!_hasAuthorizedScope) {
+            _lastIssue =
+                'Sync stopped because the signed-in account changed. Saved work remains with its account.';
+            break;
+          }
           if (error.statusCode == 409 || error.statusCode == 412) {
             write.state = 'conflict';
             write.message =
@@ -1107,6 +1163,11 @@ class OfflineInspectionRepository extends ChangeNotifier
             break;
           }
         } catch (_) {
+          if (!_hasAuthorizedScope) {
+            _lastIssue =
+                'Sync stopped because the signed-in account changed. Saved work remains with its account.';
+            break;
+          }
           _hasNetwork = false;
           _lastIssue =
               'Connection was lost. Saved changes are waiting to sync.';
@@ -1120,6 +1181,7 @@ class OfflineInspectionRepository extends ChangeNotifier
   }
 
   Future<void> _applyWrite(_PendingWrite write) async {
+    _ensureAuthorizedScope();
     if (_remote is! OfflineSafePreventiveMaintenanceRepository) {
       throw const ApiException(
         message: 'The service does not support safe offline synchronization.',
@@ -1132,6 +1194,7 @@ class OfflineInspectionRepository extends ChangeNotifier
           _formInputFromData(write.data, id: write.formId),
           write.formId,
         );
+        _ensureAuthorizedScope();
         _rememberRemoteForm(result);
         break;
       case 'addInspection':
@@ -1140,6 +1203,7 @@ class OfflineInspectionRepository extends ChangeNotifier
           _addInputFromData(write.data, id: write.inspectionId!),
           write.inspectionId!,
         );
+        _ensureAuthorizedScope();
         _rememberRemoteInspection(write.formId, result);
         _setFollowingDeleteVersion(write.inspectionId!, result.updatedAt);
         break;
@@ -1150,6 +1214,7 @@ class OfflineInspectionRepository extends ChangeNotifier
           _updateInputFromData(write.data),
           write.expectedUpdatedAt!,
         );
+        _ensureAuthorizedScope();
         _rememberRemoteInspection(write.formId, result);
         _setFollowingDeleteVersion(write.inspectionId!, result.updatedAt);
         break;
@@ -1159,6 +1224,7 @@ class OfflineInspectionRepository extends ChangeNotifier
           write.inspectionId!,
           write.expectedUpdatedAt,
         );
+        _ensureAuthorizedScope();
         _removeInspection(write.formId, write.inspectionId!);
         break;
       default:
@@ -1180,18 +1246,25 @@ class OfflineInspectionRepository extends ChangeNotifier
   }
 
   Future<void> _refreshConflictedForm(String formId) async {
+    _ensureAuthorizedScope();
     try {
       final serverForm = await _remote.getForm(formId);
+      _ensureAuthorizedScope();
       _data.serverForms[formId] = serverForm;
     } catch (_) {
+      _ensureAuthorizedScope();
       // Keep the last cached server form; local edits remain the active draft.
     }
   }
 
   Future<PreventiveMaintenanceForm?> _tryGetServerForm(String formId) async {
+    _ensureAuthorizedScope();
     try {
-      return await _remote.getForm(formId);
+      final form = await _remote.getForm(formId);
+      _ensureAuthorizedScope();
+      return form;
     } catch (_) {
+      _ensureAuthorizedScope();
       return null;
     }
   }
@@ -1432,11 +1505,10 @@ class OfflineInspectionRepository extends ChangeNotifier
     if (userId == null) {
       throw StateError('Sign in to access offline inspection data.');
     }
-    if (_authorizedUserId != userId) {
-      throw StateError('The offline account scope is locked.');
-    }
+    _ensureAuthorizedScope();
     if (_loadedUserId == userId) return;
     final stored = await _store.read(userId);
+    _ensureAuthorizedScope();
     _data = stored == null || stored.isEmpty
         ? _OfflineUserData()
         : _OfflineUserData.fromJson(jsonDecode(stored) as Map<String, dynamic>);

@@ -285,7 +285,7 @@ void main() {
         repository.deactivate(lockOnFailure: true),
         throwsA(isA<StateError>()),
       );
-      expect(repository.activeUserId, _userA);
+      expect(repository.activeUserId, isNull);
       expect(repository.isActiveFor(_userA), isFalse);
 
       await repository.activate(_userB);
@@ -303,6 +303,69 @@ void main() {
       expect(repository.isActiveFor(_userB), isTrue);
       expect(repository.pendingCount, 0);
       expect(await repository.listForms(), isEmpty);
+    },
+  );
+
+  test('forced scope exit stops sync before the next queued write', () async {
+    await repository.activate(_userA);
+    await repository.listSchedules();
+    connectivity.setConnected(false);
+    remote.connected = false;
+
+    final form = await repository.createForm(_createInput());
+    final row = await repository.addInspection(form.id, _addInput());
+    expect(repository.pendingCount, 2);
+
+    final createStarted = Completer<void>();
+    final heldCreate = Completer<PreventiveMaintenanceForm>();
+    remote.createFormStarted = createStarted;
+    remote.heldCreateForm = heldCreate;
+    remote.connected = true;
+    connectivity.connected = true;
+
+    final sync = repository.syncNow();
+    await createStarted.future.timeout(const Duration(seconds: 3));
+    final scopeExit = repository.deactivate(lockOnFailure: true);
+    expect(repository.isActiveFor(_userA), isFalse);
+
+    final acceptedForm = _form(
+      id: form.id,
+      inspections: const <PreventiveMaintenanceInspection>[],
+    );
+    remote.forms = [acceptedForm];
+    heldCreate.complete(acceptedForm);
+    await sync.timeout(const Duration(seconds: 3));
+    await scopeExit.timeout(const Duration(seconds: 3));
+
+    expect(remote.createFormCalls, 1);
+    expect(remote.addedInspectionIds, isEmpty);
+    final snapshot = jsonDecode(store.values[_userA]!) as Map<String, dynamic>;
+    expect(snapshot['writes'], hasLength(2));
+
+    remote.connected = false;
+    connectivity.connected = false;
+    await repository.activate(_userA);
+    expect(repository.pendingCount, 2);
+    expect((await repository.getForm(form.id)).inspections.single.id, row.id);
+  });
+
+  test(
+    'forced exit releases an unreadable empty scope without changing its snapshot',
+    () async {
+      const unreadableSnapshot = 'preserve these unreadable snapshot bytes';
+      store.values[_userA] = unreadableSnapshot;
+      store.failNextRead = true;
+
+      await repository.activate(_userA);
+      expect(repository.isActiveFor(_userA), isFalse);
+      await repository.deactivate(lockOnFailure: true);
+
+      expect(repository.activeUserId, isNull);
+      expect(store.values[_userA], unreadableSnapshot);
+      await repository.activate(_userB);
+      expect(repository.isActiveFor(_userB), isTrue);
+      expect(repository.pendingCount, 0);
+      expect(store.values[_userA], unreadableSnapshot);
     },
   );
 
@@ -1064,9 +1127,16 @@ ScheduleOption _schedule({
 class _MemoryStore implements OfflineSnapshotStore {
   final Map<String, String> values = <String, String>{};
   bool failNextWrite = false;
+  bool failNextRead = false;
 
   @override
-  Future<String?> read(String userId) async => values[userId];
+  Future<String?> read(String userId) async {
+    if (failNextRead) {
+      failNextRead = false;
+      throw StateError('Synthetic secure-storage read failure.');
+    }
+    return values[userId];
+  }
 
   @override
   Future<void> write(String userId, String json) async {
@@ -1180,6 +1250,8 @@ class _FakeRemote
   int? failNextCreateFormStatus;
   bool conflictNextUpdate = false;
   Completer<List<ScheduleOption>>? pendingScheduleResponse;
+  Completer<void>? createFormStarted;
+  Completer<PreventiveMaintenanceForm>? heldCreateForm;
   int submitCalls = 0;
   int acknowledgementCalls = 0;
   int createFormCalls = 0;
@@ -1236,6 +1308,12 @@ class _FakeRemote
         statusCode: failureStatus,
         message: 'Synthetic HTTP $failureStatus response.',
       );
+    }
+    final heldResponse = heldCreateForm;
+    if (heldResponse != null) {
+      heldCreateForm = null;
+      createFormStarted?.complete();
+      return heldResponse.future;
     }
     final existing = forms.where((form) => form.id == id).firstOrNull;
     if (existing != null) return existing;
