@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Security.Cryptography;
 using System.Text.Json;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -189,7 +190,8 @@ public sealed class PmAnalyticsV3EndpointTests
         const string transferredBuilding = "Synthetic Current Building";
         var deadline = PreventiveMaintenanceCycle.DeadlineForCycle(cycle);
         var completedAt = deadline.AddHours(1);
-        var signatoryId = Guid.NewGuid();
+        var operatorId = Guid.NewGuid();
+        const string signatureData = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl2lD8AAAAASUVORK5CYII=";
 
         await using (var scope = application.Services.CreateAsyncScope())
         {
@@ -232,8 +234,8 @@ public sealed class PmAnalyticsV3EndpointTests
                 Quarter = "Q1",
                 Year = 2024,
                 Status = PreventiveMaintenanceFormStatusCatalog.Acknowledged,
-                CreatedByUserId = signatoryId,
-                SubmittedByUserId = signatoryId,
+                CreatedByUserId = operatorId,
+                SubmittedByUserId = operatorId,
                 SubmittedAt = completedAt.AddMinutes(1),
                 CreatedAt = completedAt,
                 UpdatedAt = completedAt.AddMinutes(2)
@@ -247,7 +249,7 @@ public sealed class PmAnalyticsV3EndpointTests
                 PreventiveMaintenanceForm = form,
                 AssetId = assetId,
                 Asset = asset,
-                InspectorUserId = signatoryId,
+                InspectorUserId = operatorId,
                 DateInspected = completedAt,
                 CompletedAt = completedAt,
                 IsOperational = true,
@@ -263,7 +265,10 @@ public sealed class PmAnalyticsV3EndpointTests
                 Form = form,
                 SignatoryName = "Fictional Department Head",
                 SignatoryPosition = "Department Head",
-                CapturedByUserId = signatoryId,
+                SignatureData = signatureData,
+                SignatureContentType = "image/png",
+                SignatureChecksum = Convert.ToHexString(SHA256.HashData(Convert.FromBase64String(signatureData))),
+                CapturedByUserId = operatorId,
                 AcknowledgedAt = completedAt.AddMinutes(2)
             };
             context.Assets.Add(asset);
