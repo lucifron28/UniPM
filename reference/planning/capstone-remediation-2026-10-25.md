@@ -4,7 +4,8 @@
 
 The repository owner requested the twelve-phase comprehensive remediation plan
 and exactly two Luna Max executors. The main chat reviews changes, controls
-phase transitions, and owns commits. No deployment, paid provider calls,
+phase transitions, and reviews commits. Executors may commit their assigned
+files under the shared commit lock. No deployment, paid provider calls,
 institutional database access, or manuscript edits are authorized by this run.
 
 The integration baseline is `bdc07caeeb37c31ca7b524b7ef45cde5824a783c`
@@ -42,11 +43,11 @@ this baseline and will not be silently included in the remediation.
 | 1 | Corpus test assumptions and React render/ref lint | Completed; local checks passed, skips retained |
 | 2 | Authorization and record access | Completed; TEST-155 records scope and local checks |
 | 3 | Offline timestamp provenance and synchronization | Completed; TEST-156 records policy, recovery and isolated SQL check |
-| 4 | NLA routing, shortcuts, validation, evaluation boundaries | Implementation in progress |
-| 5 | Acknowledgement integrity | Pending |
-| 6 | Reporting semantics and historical grouping | Pending |
-| 7 | Authorized pagination and bounded reporting | Pending |
-| 8 | Mobile recovery, offline boundaries, release configuration | Pending |
+| 4 | NLA routing, shortcuts, validation, evaluation boundaries | Completed; TEST-157 distinguishes parser, fake provider and native SQL checks |
+| 5 | Acknowledgement integrity | Completed; TEST-159 includes concurrent native SQL receipt capture |
+| 6 | Reporting semantics and historical grouping | Completed; TEST-160 documents current metadata, stable counts and form headers |
+| 7 | Authorized pagination and bounded reporting | In progress under the shared pagination contract |
+| 8 | Mobile recovery, offline boundaries, release configuration | Urgent storage/account fix completed in TEST-158; release audit remains |
 | 9 | Evidence reconciliation and proposed manuscript corrections | Pending |
 | 10 | Security review and proposed institutional operations | Pending |
 | 11 | Final available regression checks and remaining risks | Pending |
@@ -72,6 +73,7 @@ Historical passes do not establish a pass on this branch.
 | RM-010 | High, intentional timestamp limitation | Mobile offline drafts, form save, reports | Server receipt determines authoritative completion time. A later synchronization can be late even if work was recorded offline earlier. Preserve this policy pending institutional review, expose its meaning, and test synchronization boundaries. | Do not trust device time for compliance or invent legacy field-work times. |
 | RM-011 | Medium, confirmed resource risk | PM form list | The list loads every matching form and related graphs. Add authorized, deterministic server pagination and update consumers together. | Apply visibility before total counts and pagination; avoid silently truncating clients. |
 | RM-012 | Medium, verification gap | Mobile release and acceptance | No device is attached. Inspect the placeholder application ID and release controls, then record unavailable physical acceptance separately. | Changing the application ID creates a distinct installed app and does not transfer unsynchronized local drafts. |
+| RM-013 | Critical, confirmed offline data-loss defect | `OfflineInspectionRepository.deactivate`, account-scope routing | Logout clears memory in `finally` even when secure persistence fails. Retain the owner's queued work on failure, lock forced exits, block cross-account access and stop in-flight sync before another account can issue subsequent requests. This recovery correction is brought forward from the mobile audit. | Data retention must not expose or transmit one account's work through another account's session. |
 
 ## Phase 0 baseline results
 

@@ -95,3 +95,11 @@ are retained, not represented as passed executions.
 These are synthetic InMemory/API and mocked-browser tests. No native SQL
 authorization translation, physical acceptance, live provider request,
 deployment or independent GSD approval is established by this record.
+
+## Command-retention correction, October 25
+
+The statement above that the Phase 2 lint raw log retained exact file arguments
+was incorrect. It contains only `EXIT=0`, without the command, file arguments,
+runtime or SHA. The lint outcome is executor-reported, with incomplete retained
+identity. TEST-156 records this provenance gap and a separate actual Phase 3
+command manifest. The backend TRX and web test/typecheck results are unaffected.
