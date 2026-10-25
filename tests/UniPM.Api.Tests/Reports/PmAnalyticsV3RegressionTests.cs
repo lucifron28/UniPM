@@ -200,6 +200,7 @@ public sealed class PmAnalyticsV3RegressionTests
         Assert.Equal("Valid", result.Status);
         Assert.NotNull(result.Plan);
         Assert.Equal([expectedCategory], result.Plan.Categories);
+        Assert.NotNull(result.Plan.Period);
         Assert.Equal(2026, result.Plan.Period.Year);
         Assert.Equal([PmAnalyticsV3Catalog.CompletedLateCount], result.Plan.Measures);
     }
