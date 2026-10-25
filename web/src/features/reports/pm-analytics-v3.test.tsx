@@ -1283,6 +1283,64 @@ describe('PM analytics V3 workflow', () => {
     ).not.toBeInTheDocument()
   })
 
+  it('keeps a generic clarification filter in the preview plan', async () => {
+    const partialPlan = makePlan()
+    api.interpret.mockResolvedValueOnce(
+      makeInterpretation(partialPlan, {
+        status: 'NeedsClarification',
+        clarificationFields: ['Filters'],
+        detail: 'Choose a filter to narrow the results.',
+      }),
+    )
+
+    render(<PmAnalyticsV3Panel />)
+    fireEvent.change(screen.getByRole('textbox', { name: 'Question' }), {
+      target: { value: 'Which extinguisher checks need attention?' },
+    })
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Generate report' }),
+      ).toBeEnabled(),
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Generate report' }))
+
+    expect(
+      await screen.findByRole('heading', { name: 'Clarify the report scope' }),
+    ).toBeInTheDocument()
+    fireEvent.change(
+      screen.getByRole('combobox', {
+        name: 'Which filter should narrow the results?',
+      }),
+      { target: { value: 'department' } },
+    )
+    const departmentInput = screen.getByRole('textbox', { name: 'Department' })
+    fireEvent.change(departmentInput, { target: { value: 'A' } })
+    fireEvent.keyDown(departmentInput, { key: 'Enter' })
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Use selected filter' }),
+    )
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Preview report' }),
+    )
+
+    await waitFor(() =>
+      expect(api.preview).toHaveBeenCalledWith(
+        {
+          plan: expect.objectContaining({
+            baseFilters: [
+              {
+                field: 'department',
+                operator: PmAnalyticsV3FilterOperator.Equal,
+                values: ['A'],
+              },
+            ],
+          }),
+        },
+        expect.any(AbortSignal),
+      ),
+    )
+  })
+
   it('guides clarification one question at a time and preserves answers when navigating back or changing them', async () => {
     const partialPlan = makePlan({
       categories: ['fire-extinguisher'],

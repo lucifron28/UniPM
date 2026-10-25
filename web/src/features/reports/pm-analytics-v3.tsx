@@ -1858,6 +1858,12 @@ export function PmAnalyticsV3Panel({
   const needsPeriodStep = activeClarificationField === 'Period'
   const needsGroupingStep = activeClarificationField === 'GroupBy'
   const needsGenericFilterStep = activeClarificationField === 'Filters'
+  const genericFilterField = baseFilterFields.find(
+    (field) => field.id === clarificationChoices.filterTarget,
+  )
+  const genericFilterActive = genericFilterField
+    ? findFilter(plan, genericFilterField.id)
+    : undefined
   const needsNamedFilterAnswers = requestedNamedFilterFields.filter(
     (field) => activeClarificationField === field,
   )
@@ -3229,58 +3235,54 @@ export function PmAnalyticsV3Panel({
                       {needsGenericFilterStep &&
                         clarificationChoices.filterTarget &&
                         clarificationChoices.filterTarget !== 'none' &&
-                        (() => {
-                          const field = baseFilterFields.find(
-                            (item) =>
-                              item.id === clarificationChoices.filterTarget,
-                          )
-                          if (!field) return null
-                          const active = findFilter(plan, field.id)
-                          return (
-                            <div className="space-y-2">
-                              <BaseFilterPicker
-                                subject={selectedSubject}
-                                field={field.id}
-                                label={field.label}
-                                categories={plan.categories}
-                                values={active?.values ?? []}
-                                isNull={active?.operator === 'IsNull'}
-                                maximumLength={field.maximumLength}
-                                allowNull={
-                                  field.operators?.includes('IsNull') ?? false
-                                }
-                                searchable={field.valueType === 'string'}
-                                disabled={
-                                  pending ||
-                                  catalogLoading ||
-                                  plan.categories.length === 0
-                                }
-                                onChange={(values, isNull) =>
-                                  updateClarificationFilterValues(
-                                    field.id,
-                                    values,
-                                    isNull,
-                                  )
-                                }
-                              />
-                              {active &&
-                                ((active.values?.length ?? 0) > 0 ||
-                                  active.operator === 'IsNull') &&
-                                !clarificationWasAnswered('Filters') && (
-                                  <Button
-                                    type="button"
-                                    variant="secondary"
-                                    disabled={pending || catalogLoading}
-                                    onClick={() =>
-                                      answerClarification('Filters')
-                                    }
-                                  >
-                                    Use selected filter
-                                  </Button>
-                                )}
-                            </div>
-                          )
-                        })()}
+                        genericFilterField && (
+                          <div className="space-y-2">
+                            <BaseFilterPicker
+                              subject={selectedSubject}
+                              field={genericFilterField.id}
+                              label={genericFilterField.label}
+                              categories={plan.categories}
+                              values={genericFilterActive?.values ?? []}
+                              isNull={
+                                genericFilterActive?.operator === 'IsNull'
+                              }
+                              maximumLength={genericFilterField.maximumLength}
+                              allowNull={
+                                genericFilterField.operators?.includes(
+                                  'IsNull',
+                                ) ?? false
+                              }
+                              searchable={
+                                genericFilterField.valueType === 'string'
+                              }
+                              disabled={
+                                pending ||
+                                catalogLoading ||
+                                plan.categories.length === 0
+                              }
+                              onChange={(values, isNull) =>
+                                updateClarificationFilterValues(
+                                  genericFilterField.id,
+                                  values,
+                                  isNull,
+                                )
+                              }
+                            />
+                            {genericFilterActive &&
+                              ((genericFilterActive.values?.length ?? 0) > 0 ||
+                                genericFilterActive.operator === 'IsNull') &&
+                              !clarificationWasAnswered('Filters') && (
+                                <Button
+                                  type="button"
+                                  variant="secondary"
+                                  disabled={pending || catalogLoading}
+                                  onClick={() => answerClarification('Filters')}
+                                >
+                                  Use selected filter
+                                </Button>
+                              )}
+                          </div>
+                        )}
                     </div>
 
                     {unsupportedStepActive && (
