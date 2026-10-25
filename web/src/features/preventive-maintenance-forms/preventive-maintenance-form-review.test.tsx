@@ -1114,6 +1114,11 @@ describe('preventive-maintenance form review', () => {
     ).toBeInTheDocument()
     expect(
       screen.getByText(
+        /records the signed-in account submitting the receipt separately/,
+      ),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(
         /This records the department head's receipt and signatory details\./,
       ),
     ).toBeInTheDocument()
@@ -1275,6 +1280,10 @@ describe('preventive-maintenance form review', () => {
     expect(screen.getByText('Acknowledgement recorded')).toBeInTheDocument()
     expect(screen.getByText('Synthetic Department Head')).toBeInTheDocument()
     expect(screen.getByText('Department Head')).toBeInTheDocument()
+    expect(screen.getByText('Recorded by')).toBeInTheDocument()
+    expect(
+      screen.getByText(`Synthetic Reviewer (account ${inspectorId})`),
+    ).toBeInTheDocument()
     expect(screen.getAllByText('Acknowledged')).toHaveLength(2)
     expect(
       screen.queryByRole('button', { name: 'Acknowledge form' }),

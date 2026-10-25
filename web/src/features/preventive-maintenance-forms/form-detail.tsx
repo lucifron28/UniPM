@@ -703,9 +703,19 @@ function acknowledgementError(error: unknown) {
 
 function AcknowledgementSummary({
   acknowledgement,
+  operator,
 }: {
   acknowledgement: PreventiveMaintenanceAcknowledgementResponse
+  operator: { id: string; displayName: string } | undefined
 }) {
+  const operatorDisplayName =
+    operator?.id === acknowledgement.capturedByUserId
+      ? operator.displayName.trim()
+      : ''
+  const capturedBy = operatorDisplayName
+    ? `${operatorDisplayName} (account ${acknowledgement.capturedByUserId})`
+    : `account ${acknowledgement.capturedByUserId}`
+
   return (
     <Card className="shadow-none" role="status">
       <p className="text-sm font-semibold tracking-[0.08em] text-[var(--primary)] uppercase">
@@ -720,6 +730,7 @@ function AcknowledgementSummary({
           label="Signatory position"
           value={acknowledgement.signatoryPosition}
         />
+        <DetailItem label="Recorded by" value={capturedBy} />
         <DetailItem
           label="Acknowledged"
           value={formatFormDate(acknowledgement.acknowledgedAt)}
@@ -811,6 +822,7 @@ export function AcknowledgeForm({
         </h2>
         <p className="mt-1 max-w-3xl text-sm text-[var(--text-secondary)]">
           This records the department head's receipt and signatory details. It
+          records the signed-in account submitting the receipt separately. It
           locks the form and makes its inspection rows eligible for official
           history. It does not approve corrective work or create an RMRF.
         </p>
@@ -1213,7 +1225,10 @@ export function FormDetail({
         )}
       </section>
       {acknowledgement && (
-        <AcknowledgementSummary acknowledgement={acknowledgement} />
+        <AcknowledgementSummary
+          acknowledgement={acknowledgement}
+          operator={currentUser.data}
+        />
       )}
       {canAcknowledge &&
         !readOnlyView &&
