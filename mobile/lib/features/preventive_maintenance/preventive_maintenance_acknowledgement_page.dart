@@ -430,6 +430,13 @@ class _InspectionDetails extends StatelessWidget {
             style: Theme.of(context).textTheme.titleMedium,
           ),
         ),
+        if (form.inspections.isNotEmpty)
+          const Padding(
+            padding: EdgeInsets.only(bottom: 6),
+            child: Text(
+              'Asset code and location below reflect current asset records.',
+            ),
+          ),
         if (form.inspections.isEmpty)
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 12),
@@ -489,8 +496,8 @@ class _InspectionSummary extends StatelessWidget {
                   children: [
                     Text(
                       row.location?.trim().isNotEmpty == true
-                          ? row.location!.trim()
-                          : 'Location not recorded',
+                          ? 'Current asset location: ${row.location!.trim()}'
+                          : 'Current asset location not recorded',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: colors.onSurfaceVariant,
                       ),

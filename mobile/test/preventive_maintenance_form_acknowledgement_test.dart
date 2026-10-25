@@ -269,12 +269,16 @@ void main() {
     expect(find.text('Awaiting acknowledgement'), findsOneWidget);
     expect(find.text('Fire Extinguisher'), findsOneWidget);
     expect(find.text('GSD · Main Building'), findsOneWidget);
+    expect(
+      find.text('Asset code and location below reflect current asset records.'),
+      findsOneWidget,
+    );
     expect(find.textContaining('Submitted to server:'), findsOneWidget);
     expect(find.text('1 total'), findsOneWidget);
     expect(find.text('0 operational'), findsOneWidget);
     expect(find.text('1 non-operational'), findsOneWidget);
     expect(find.text('FE-2026-0001'), findsOneWidget);
-    expect(find.text('Room 101'), findsOneWidget);
+    expect(find.text('Current asset location: Room 101'), findsOneWidget);
     expect(find.text('Non-operational'), findsOneWidget);
     expect(find.text('Remarks: Low pressure'), findsOneWidget);
     expect(find.text('Recommendations: Inspect gauge'), findsOneWidget);
@@ -338,7 +342,7 @@ void main() {
     await tester.tap(row);
     await tester.pumpAndSettle();
     expect(find.text('Asset details unavailable'), findsOneWidget);
-    expect(find.text('Location not recorded'), findsOneWidget);
+    expect(find.text('Current asset location not recorded'), findsOneWidget);
     expect(find.textContaining(inspectionId), findsNothing);
     expect(find.textContaining(scheduleId), findsNothing);
     controller.dispose();
