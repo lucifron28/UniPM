@@ -320,7 +320,7 @@ internal static class PmAnalyticsV3Catalog
                 "Server-recorded completion time",
                 "date-time",
                 "UTC",
-                "The recorded receipt time, distinct from client-supplied DateInspected; it does not verify when field work occurred. Null when no completion timestamp is recorded."),
+                "Time recorded on the first server-accepted save, separate from the entered inspection date; it does not verify when field work occurred. Null when no completion timestamp is recorded."),
             new PmAnalyticsV3RecordColumnDefinition(ScheduleStatus, "Schedule status", "string", "", null),
             new PmAnalyticsV3RecordColumnDefinition(FormStatus, "Form status", "string", "", "Null when no linked form is recorded."),
             new PmAnalyticsV3RecordColumnDefinition(Condition, "Inspection condition", "string", "", "NotInspected when there is no completion timestamp."),
