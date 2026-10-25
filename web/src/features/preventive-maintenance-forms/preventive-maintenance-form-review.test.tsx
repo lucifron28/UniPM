@@ -1284,7 +1284,9 @@ describe('preventive-maintenance form review', () => {
     expect(
       screen.getByText(`Synthetic Reviewer (account ${inspectorId})`),
     ).toBeInTheDocument()
-    expect(screen.getAllByText('Acknowledged')).toHaveLength(2)
+    expect(screen.getByText('Acknowledged (Asia/Manila)')).toBeInTheDocument()
+    expect(screen.getByText('Jul 29, 2026, 10:00 AM')).toBeInTheDocument()
+    expect(screen.getAllByText('Acknowledged')).toHaveLength(1)
     expect(
       screen.queryByRole('button', { name: 'Acknowledge form' }),
     ).not.toBeInTheDocument()

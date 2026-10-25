@@ -732,8 +732,8 @@ function AcknowledgementSummary({
         />
         <DetailItem label="Recorded by" value={capturedBy} />
         <DetailItem
-          label="Acknowledged"
-          value={formatFormDate(acknowledgement.acknowledgedAt)}
+          label="Acknowledged (Asia/Manila)"
+          value={formatServerDateTime(acknowledgement.acknowledgedAt)}
         />
       </dl>
     </Card>
