@@ -1322,7 +1322,9 @@ describe('PM analytics V3 workflow', () => {
       }),
       { target: { value: 'department' } },
     )
-    const departmentInput = screen.getByRole('textbox', { name: 'Department' })
+    const departmentInput = screen.getByPlaceholderText(
+      'Search current asset values',
+    )
     fireEvent.change(departmentInput, { target: { value: 'A' } })
     fireEvent.keyDown(departmentInput, { key: 'Enter' })
     fireEvent.click(
