@@ -180,7 +180,7 @@ class _OfflineSessionScopeState extends State<_OfflineSessionScope> {
       _hasError = !isReady;
       _errorMessage = isReady
           ? null
-          : repository?.lastIssue ??
+          : repository.lastIssue ??
                 'Offline account data could not be opened. Retry or sign out.';
     });
   }
