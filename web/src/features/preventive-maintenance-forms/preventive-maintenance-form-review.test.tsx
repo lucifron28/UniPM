@@ -768,14 +768,15 @@ describe('preventive-maintenance form review', () => {
     expect(
       await screen.findByRole('heading', { name: 'Form review' }),
     ).toBeInTheDocument()
-    expect(
-      await screen.findAllByRole('link', { name: 'GSD-SUBMITTED-001' }),
-    ).not.toHaveLength(0)
+    const formLinks = await screen.findAllByRole('link', {
+      name: 'GSD-SUBMITTED-001',
+    })
+    expect(formLinks).not.toHaveLength(0)
     expect(screen.getByRole('link', { name: 'Form review' })).toBeVisible()
 
-    fireEvent.click(
-      screen.getAllByRole('link', { name: 'GSD-SUBMITTED-001' })[0],
-    )
+    const firstFormLink = formLinks[0]
+    if (!firstFormLink) throw new Error('Expected a form detail link.')
+    fireEvent.click(firstFormLink)
     expect(
       await screen.findByRole('heading', { name: 'GSD-SUBMITTED-001' }),
     ).toBeInTheDocument()
