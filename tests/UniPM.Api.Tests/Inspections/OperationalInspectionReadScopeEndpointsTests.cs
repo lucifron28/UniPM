@@ -7,10 +7,12 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using UniPM.Api.Data;
+using UniPM.Api.Features.Assets;
 using UniPM.Api.Features.Auth;
 using UniPM.Api.Features.Inspections;
 using UniPM.Api.Features.PreventiveMaintenanceForms;
 using UniPM.Api.Features.Reports;
+using UniPM.Api.Features.Schedules;
 using UniPM.Api.Models;
 
 namespace UniPM.Api.Tests;
