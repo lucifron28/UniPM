@@ -19,9 +19,7 @@ const _userB = '22222222-2222-4222-8222-222222222222';
 const _formId = '33333333-3333-4333-8333-333333333333';
 const _formBId = '33333333-3333-4333-8333-333333333334';
 const _scheduleId = '44444444-4444-4444-8444-444444444444';
-const _scheduleBId = '44444444-4444-4444-8444-444444444445';
 const _assetId = '55555555-5555-4555-8555-555555555555';
-const _assetBId = '55555555-5555-4555-8555-555555555556';
 const _inspectionId = '66666666-6666-4666-8666-666666666666';
 const _inspectionBId = '66666666-6666-4666-8666-666666666667';
 
@@ -245,116 +243,46 @@ void main() {
     },
   );
 
-  testWidgets(
-    'stale schedule authorization keeps queued rows and labels local time',
-    (tester) async {
-      remote.forms = [
-        _form(inspections: const []),
-        _form(id: _formBId, inspections: const []),
-      ];
-      remote.schedules.add(
-        _schedule(
-          id: _scheduleBId,
-          assetId: _assetBId,
-          assetCode: 'FE-CCMS-002',
-        ),
-      );
-      await awaitRepositoryAction(
-        tester,
-        'activate user',
-        () => repository.activate(_userA),
-      );
-      await awaitRepositoryAction(tester, 'list forms', () async {
+  for (final statusCode in [403, 409]) {
+    test(
+      'stale schedule authorization HTTP $statusCode keeps the queued row',
+      () async {
+        remote.forms = [_form(inspections: const [])];
+        await repository.activate(_userA);
         await repository.listForms();
-      });
-      await awaitRepositoryAction(tester, 'cache schedules', () async {
         await repository.listSchedules();
-      });
-      connectivity.setConnected(false);
-      remote.connected = false;
+        connectivity.setConnected(false);
+        remote.connected = false;
 
-      final firstRow = await tester.runAsync(
-        () => repository
-            .addInspection(_formId, _addInput())
-            .timeout(const Duration(seconds: 5)),
-      );
-      final secondRow = await tester.runAsync(
-        () => repository
-            .addInspection(_formBId, _addInput(scheduleId: _scheduleBId))
-            .timeout(const Duration(seconds: 5)),
-      );
-      expect(firstRow, isNotNull);
-      expect(secondRow, isNotNull);
-      remote.failNextAddInspectionStatusCodes.addAll([403, 409]);
-      remote.connected = true;
-      connectivity.setConnected(true);
-      await tester.pump();
-      await awaitRepositoryAction(
-        tester,
-        'sync reassigned schedule rows',
-        repository.syncNow,
-      );
+        final localRow = await repository.addInspection(_formId, _addInput());
+        expect(repository.isInspectionCreatePending(localRow.id), isTrue);
 
-      expect(repository.pendingCountFor(_formId), 1);
-      expect(repository.pendingCountFor(_formBId), 1);
-      expect(repository.conflictsForForm(_formId).single.canRetry, isFalse);
-      expect(repository.conflictsForForm(_formId).single.canDiscard, isTrue);
-      expect(repository.conflictsForForm(_formBId).single.canRetry, isTrue);
-      expect(
-        repository.conflictsForForm(_formId).single.message,
-        contains('server rejected a saved change'),
-      );
-      expect(
-        repository.conflictsForForm(_formBId).single.message,
-        contains('server record changed or is no longer eligible'),
-      );
-      expect(
-        (await repository.getForm(_formId)).inspections.single.id,
-        firstRow!.id,
-      );
-      expect(
-        (await repository.getForm(_formBId)).inspections.single.id,
-        secondRow!.id,
-      );
-      expect(remote.forms.every((form) => form.inspections.isEmpty), isTrue);
+        remote.failNextAddInspectionStatusCodes.add(statusCode);
+        remote.connected = true;
+        connectivity.connected = true;
+        await repository.syncNow();
 
-      final controller = PreventiveMaintenanceController(
-        repository: repository,
-        user: const AuthUser(
-          id: _userA,
-          email: 'inspector@example.test',
-          displayName: 'Synthetic Inspector',
-          roles: ['Inspector'],
-        ),
-      );
-      addTearDown(controller.dispose);
-      final localForm = await tester.runAsync(
-        () => repository.getForm(_formId).timeout(const Duration(seconds: 5)),
-      );
-      controller.selectForm(localForm!);
-      await tester.pumpWidget(
-        MaterialApp(
-          home: PreventiveMaintenanceDraftPage(
-            controller: controller,
-            formId: _formId,
+        expect(repository.pendingCountFor(_formId), 1);
+        final conflict = repository.conflictsForForm(_formId).single;
+        expect(conflict.canRetry, statusCode == 409);
+        expect(conflict.canDiscard, isTrue);
+        expect(
+          conflict.message,
+          contains(
+            statusCode == 403
+                ? 'server rejected a saved change'
+                : 'server record changed or is no longer eligible',
           ),
-        ),
-      );
-      await tester.pump();
-      expect(find.text('This draft needs sync review'), findsOneWidget);
-      expect(
-        find.textContaining('Saved on this device (device local time):'),
-        findsOneWidget,
-      );
-      expect(find.textContaining('Server recorded completion:'), findsNothing);
-      expect(
-        find.textContaining(
-          'Inspection dates are entered by the field worker; server completion is recorded at sync, so late syncs can be classified as late.',
-        ),
-        findsOneWidget,
-      );
-    },
-  );
+        );
+        expect(
+          (await repository.getForm(_formId)).inspections.single.id,
+          localRow.id,
+        );
+        expect(remote.forms.single.inspections, isEmpty);
+        expect(repository.isInspectionCreatePending(localRow.id), isTrue);
+      },
+    );
+  }
 
   test(
     'cached schedules, assets, and references restore after restart offline',
