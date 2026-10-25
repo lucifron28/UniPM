@@ -19,20 +19,19 @@ namespace UniPM.Api.Tests;
 public sealed class PmAnalyticsV3AcceptanceTests
 {
     [Fact]
-    public async Task Scenario_1_and_9_Reviewed_exact_question_with_varied_casing_and_whitespace_uses_approved_interpretation_with_zero_provider_calls()
+    public async Task Former_exact_templates_use_the_deterministic_parser_with_explicit_provenance()
     {
-        // Configure V3DeepSeekEnabled = true but NO API key.
-        // If an AI provider call were attempted, it would throw ProviderUnavailable (503).
-        // Since it's a reviewed exact question, it MUST return ApprovedInterpretation with 0 provider calls.
         await using var application = new AcceptanceApplicationFactory(
             authenticated: true,
-            deepSeekEnabled: true,
+            deepSeekEnabled: false,
             apiKey: null,
             roles: [AuthRoleCatalog.Gsd]);
         using var client = application.CreateClient();
 
         const string exactQuestion = "SHOW LATE FIRE-EXTINGUISHER INSPECTIONS FOR THE 2026 PM CYCLES.";
         const string variedQuestion = "   show   late   fire-extinguisher   inspections   for  the   2026  pm   cycles.   ";
+        const string missedByDepartmentQuestion =
+            "SHOW MISSED FIRE-EXTINGUISHER INSPECTIONS BY DEPARTMENT FOR THE 2026 PM CYCLES.";
 
         using var exactResponse = await client.PostAsJsonAsync(
             "/api/v1/analytics/pm/v3/interpret",
@@ -41,7 +40,7 @@ public sealed class PmAnalyticsV3AcceptanceTests
         var exactInterpretation = await exactResponse.Content.ReadFromJsonAsync<PmAnalyticsV3InterpretationResponse>();
         Assert.NotNull(exactInterpretation);
         Assert.Equal("Valid", exactInterpretation.Status);
-        Assert.Equal("ApprovedInterpretation", exactInterpretation.Interpreter);
+        Assert.Equal("DeterministicParser", exactInterpretation.Interpreter);
         Assert.NotNull(exactInterpretation.Plan);
         Assert.Equal(PmAnalyticsV3Catalog.SubjectPmExecution, exactInterpretation.Plan.Subject);
         Assert.Equal(["fire-extinguisher"], exactInterpretation.Plan.Categories);
@@ -56,18 +55,33 @@ public sealed class PmAnalyticsV3AcceptanceTests
         var variedInterpretation = await variedResponse.Content.ReadFromJsonAsync<PmAnalyticsV3InterpretationResponse>();
         Assert.NotNull(variedInterpretation);
         Assert.Equal("Valid", variedInterpretation.Status);
-        Assert.Equal("ApprovedInterpretation", variedInterpretation.Interpreter);
+        Assert.Equal("DeterministicParser", variedInterpretation.Interpreter);
         Assert.NotNull(variedInterpretation.Plan);
         Assert.Equal(["fire-extinguisher"], variedInterpretation.Plan.Categories);
         Assert.NotNull(variedInterpretation.Plan.Period);
         Assert.Equal(2026, variedInterpretation.Plan.Period.Year);
         Assert.Equal([PmAnalyticsV3Catalog.CompletedLateCount], variedInterpretation.Plan.Measures);
+
+        using var missedResponse = await client.PostAsJsonAsync(
+            "/api/v1/analytics/pm/v3/interpret",
+            new PmAnalyticsV3InterpretRequest(missedByDepartmentQuestion));
+        Assert.Equal(HttpStatusCode.OK, missedResponse.StatusCode);
+        var missedInterpretation = await missedResponse.Content.ReadFromJsonAsync<PmAnalyticsV3InterpretationResponse>();
+        Assert.NotNull(missedInterpretation);
+        Assert.Equal("Valid", missedInterpretation.Status);
+        Assert.Equal("DeterministicParser", missedInterpretation.Interpreter);
+        Assert.NotNull(missedInterpretation.Plan);
+        Assert.Equal(PmAnalyticsV3Catalog.SubjectPmExecution, missedInterpretation.Plan.Subject);
+        Assert.Equal(["fire-extinguisher"], missedInterpretation.Plan.Categories);
+        Assert.Equal([PmAnalyticsV3Catalog.MissedCount], missedInterpretation.Plan.Measures);
+        Assert.Equal([PmAnalyticsV3Catalog.Department], missedInterpretation.Plan.GroupBy);
+        Assert.Equal(PmAnalyticsV3Presentation.Table, missedInterpretation.Plan.Presentation);
     }
 
     [Fact]
-    public async Task Scenario_10_Changed_reviewed_question_does_not_match_reviewed_cache()
+    public async Task Changed_questions_use_the_parser_when_disabled_and_provider_failure_does_not_fall_back()
     {
-        // 1. With DeepSeek disabled, a changed year or changed words falls back to DeterministicParser, NOT ApprovedInterpretation
+        // With DeepSeek disabled, changed wording is interpreted by the deterministic parser.
         await using var application = new AcceptanceApplicationFactory(
             authenticated: true,
             deepSeekEnabled: false,
@@ -75,6 +89,7 @@ public sealed class PmAnalyticsV3AcceptanceTests
             roles: [AuthRoleCatalog.Gsd]);
         using var client = application.CreateClient();
 
+        const string exactQuestion = "SHOW LATE FIRE-EXTINGUISHER INSPECTIONS FOR THE 2026 PM CYCLES.";
         const string changedYear = "SHOW LATE FIRE-EXTINGUISHER INSPECTIONS FOR THE 2025 PM CYCLES.";
         const string changedWords = "SHOW LATE FIRE-EXTINGUISHER CHECKS FOR THE 2026 PM CYCLES.";
 
@@ -84,7 +99,6 @@ public sealed class PmAnalyticsV3AcceptanceTests
         Assert.Equal(HttpStatusCode.OK, yearResponse.StatusCode);
         var yearInterpretation = await yearResponse.Content.ReadFromJsonAsync<PmAnalyticsV3InterpretationResponse>();
         Assert.NotNull(yearInterpretation);
-        Assert.NotEqual("ApprovedInterpretation", yearInterpretation.Interpreter);
         Assert.Equal("DeterministicParser", yearInterpretation.Interpreter);
 
         using var wordsResponse = await client.PostAsJsonAsync(
@@ -93,10 +107,9 @@ public sealed class PmAnalyticsV3AcceptanceTests
         Assert.Equal(HttpStatusCode.OK, wordsResponse.StatusCode);
         var wordsInterpretation = await wordsResponse.Content.ReadFromJsonAsync<PmAnalyticsV3InterpretationResponse>();
         Assert.NotNull(wordsInterpretation);
-        Assert.NotEqual("ApprovedInterpretation", wordsInterpretation.Interpreter);
         Assert.Equal("DeterministicParser", wordsInterpretation.Interpreter);
 
-        // 2. With DeepSeek enabled and no API key, a changed question attempts provider and fails with 503 ProviderUnavailable
+        // A former exact template is not exempt from the configured provider path.
         await using var deepSeekApp = new AcceptanceApplicationFactory(
             authenticated: true,
             deepSeekEnabled: true,
@@ -104,10 +117,24 @@ public sealed class PmAnalyticsV3AcceptanceTests
             roles: [AuthRoleCatalog.Gsd]);
         using var deepSeekClient = deepSeekApp.CreateClient();
 
+        using var explicitParserResponse = await deepSeekClient.PostAsJsonAsync(
+            "/api/v1/analytics/pm/v3/interpret",
+            new PmAnalyticsV3InterpretRequest(
+                exactQuestion,
+                PmAnalyticsV3Interpreter.DeterministicParser));
+        Assert.Equal(HttpStatusCode.OK, explicitParserResponse.StatusCode);
+        var explicitParserInterpretation = await explicitParserResponse.Content
+            .ReadFromJsonAsync<PmAnalyticsV3InterpretationResponse>();
+        Assert.NotNull(explicitParserInterpretation);
+        Assert.Equal("Valid", explicitParserInterpretation.Status);
+        Assert.Equal("DeterministicParser", explicitParserInterpretation.Interpreter);
+
         using var providerFailResponse = await deepSeekClient.PostAsJsonAsync(
             "/api/v1/analytics/pm/v3/interpret",
-            new PmAnalyticsV3InterpretRequest(changedYear));
+            new PmAnalyticsV3InterpretRequest(exactQuestion));
         Assert.Equal(HttpStatusCode.ServiceUnavailable, providerFailResponse.StatusCode);
+        using var providerFailure = JsonDocument.Parse(await providerFailResponse.Content.ReadAsStringAsync());
+        Assert.Equal("ProviderUnavailable", providerFailure.RootElement.GetProperty("code").GetString());
     }
 
     [Fact]

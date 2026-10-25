@@ -85,6 +85,24 @@ public sealed class PmAnalyticsV3RegressionTests
                 && filter.Values?.Contains("NonOperational", StringComparer.Ordinal) == true);
     }
 
+    [Theory]
+    [InlineData("Show late fire-extinguisher inspections for 2026 PM cycles", "fire-extinguisher")]
+    [InlineData("Show late water drinking station inspections for 2026 PM cycles", "water-drinking-station")]
+    public void Late_measure_accepts_a_category_between_the_outcome_and_inspection_noun(
+        string question,
+        string expectedCategory)
+    {
+        var result = PmAnalyticsV3RuleParser.Parse(
+            question,
+            new DateTimeOffset(2025, 6, 1, 0, 0, 0, TimeSpan.Zero));
+
+        Assert.Equal("Valid", result.Status);
+        Assert.NotNull(result.Plan);
+        Assert.Equal([expectedCategory], result.Plan.Categories);
+        Assert.Equal(2026, result.Plan.Period.Year);
+        Assert.Equal([PmAnalyticsV3Catalog.CompletedLateCount], result.Plan.Measures);
+    }
+
     [Fact]
     public void Comparing_multiple_categories_groups_results_by_category()
     {
@@ -191,6 +209,9 @@ public sealed class PmAnalyticsV3RegressionTests
         var disjunction = PmAnalyticsV3RuleParser.Parse(
             "Show late or non-operational fire extinguisher records in 2025",
             now);
+        var combinedOutcome = PmAnalyticsV3RuleParser.Parse(
+            "Show late and non-operational fire-extinguisher inspections in 2025",
+            now);
         var ambiguousRanking = PmAnalyticsV3RuleParser.Parse(
             "Show scheduled and completed fire extinguisher counts for the top 5 departments in 2024",
             now);
@@ -220,6 +241,8 @@ public sealed class PmAnalyticsV3RegressionTests
         Assert.Contains("Period", multipleMonths.ClarificationFields);
         Assert.Equal("NeedsClarification", disjunction.Status);
         Assert.Contains("Filters", disjunction.ClarificationFields);
+        Assert.Equal("NeedsClarification", combinedOutcome.Status);
+        Assert.Contains("Mode", combinedOutcome.ClarificationFields);
         Assert.Equal("NeedsClarification", ambiguousRanking.Status);
         Assert.Contains("Top", ambiguousRanking.ClarificationFields);
         Assert.Equal("Valid", explicitRanking.Status);
