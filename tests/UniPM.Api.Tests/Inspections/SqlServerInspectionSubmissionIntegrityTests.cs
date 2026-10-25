@@ -1048,13 +1048,20 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
         using var secondClient = application.CreateClient();
         saveChangesGate.Arm();
         var requestsStartedAt = DateTimeOffset.UtcNow;
+        var acknowledgementRequest = new
+        {
+            signatoryName = "Fictional Department Head",
+            signatoryPosition = "Department Head",
+            signatureData = TestPngSignatureBase64,
+            signatureContentType = "image/png"
+        };
         var requests = Task.WhenAll(
             firstClient.PostAsJsonAsync(
                 $"/api/v1/preventive-maintenance-forms/{formId}/acknowledge",
-                AcknowledgementRequest()),
+                acknowledgementRequest),
             secondClient.PostAsJsonAsync(
                 $"/api/v1/preventive-maintenance-forms/{formId}/acknowledge",
-                AcknowledgementRequest()));
+                acknowledgementRequest));
         try
         {
             await saveChangesGate.WaitForBothSavesAsync();
@@ -1068,7 +1075,8 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
         try
         {
             var successfulResponse = Assert.Single(
-                responses.Where(response => response.StatusCode == HttpStatusCode.OK));
+                responses,
+                response => response.StatusCode == HttpStatusCode.OK);
             Assert.Single(responses, response => response.StatusCode == HttpStatusCode.Conflict);
             var acknowledgementResponse = await successfulResponse.Content
                 .ReadFromJsonAsync<PreventiveMaintenanceAcknowledgementResponse>();
