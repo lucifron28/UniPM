@@ -40,6 +40,17 @@ internal sealed class PmAnalyticsV3QuestionInterpreter : IDisposable
         TimeProvider timeProvider,
         PmAnalyticsV3QueryService queryService,
         IConfiguration configuration)
+        : this(options, environment, timeProvider, queryService, configuration, modelHandler: null)
+    {
+    }
+
+    internal PmAnalyticsV3QuestionInterpreter(
+        IOptionsMonitor<NaturalLanguageAnalyticsOptions> options,
+        IHostEnvironment environment,
+        TimeProvider timeProvider,
+        PmAnalyticsV3QueryService queryService,
+        IConfiguration configuration,
+        HttpMessageHandler? modelHandler)
     {
         _options = options;
         _environment = environment;
@@ -50,6 +61,7 @@ internal sealed class PmAnalyticsV3QuestionInterpreter : IDisposable
         _modelClient = new DeepSeekNaturalLanguageAnalyticsModelClient(
             _deepSeekApiKey,
             new NaturalLanguageAnalyticsModelClientRunLedger(),
+            handler: modelHandler,
             promptProfile: PmAnalyticsV3ModelPrompt.Profile);
     }
 

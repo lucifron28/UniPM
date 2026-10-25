@@ -29,13 +29,15 @@ public sealed class PmAnalyticsV3RegressionTests
                 [DeepSeekNaturalLanguageAnalyticsModelClient.ApiKeyEnvironmentVariable] = "synthetic-test-key"
             })
             .Build();
+        using var modelHandler = new UnexpectedModelRequestHandler();
         using var interpreter = new PmAnalyticsV3QuestionInterpreter(
             new FixedOptionsMonitor<NaturalLanguageAnalyticsOptions>(
                 new NaturalLanguageAnalyticsOptions { V3DeepSeekEnabled = true }),
             new TestHostEnvironment(Environments.Production),
             TimeProvider.System,
             queryService,
-            configuration);
+            configuration,
+            modelHandler);
 
         const string question = "SHOW LATE FIRE-EXTINGUISHER INSPECTIONS FOR THE 2026 PM CYCLES.";
         var unavailable = await Assert.ThrowsAsync<NaturalLanguageAnalyticsProviderException>(() =>
@@ -55,6 +57,7 @@ public sealed class PmAnalyticsV3RegressionTests
         var defaultParser = await interpreter.InterpretAsync(question, CancellationToken.None);
         Assert.Equal("Valid", defaultParser.Status);
         Assert.Equal("DeterministicParser", defaultParser.Interpreter);
+        Assert.Equal(0, modelHandler.RequestCount);
     }
 
     [Fact]
@@ -860,5 +863,18 @@ public sealed class PmAnalyticsV3RegressionTests
         public string ContentRootPath { get; set; } = AppContext.BaseDirectory;
 
         public IFileProvider ContentRootFileProvider { get; set; } = new NullFileProvider();
+    }
+
+    private sealed class UnexpectedModelRequestHandler : HttpMessageHandler
+    {
+        internal int RequestCount { get; private set; }
+
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+        {
+            RequestCount++;
+            throw new InvalidOperationException("A provider request was unexpected in this test.");
+        }
     }
 }
