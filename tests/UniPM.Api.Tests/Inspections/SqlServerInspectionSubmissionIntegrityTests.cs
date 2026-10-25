@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Data.Common;
+using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Hosting;
@@ -192,11 +193,11 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
     public async Task Concurrent_wms_referral_first_writes_return_one_conflict_and_one_audit_row()
     {
         await using var database = await SqlServerTestDatabase.CreateAsync(RequireSqlServerConnection());
-        var writeGate = new WmsReferralSaveGate();
+        var writeGate = new ConcurrentSaveChangesGate();
         await using var application = new SqlServerInspectionApplicationFactory(
             database.ConnectionString,
             mutationGate: null,
-            wmsReferralWriteGate: writeGate,
+            saveChangesGate: writeGate,
             roles: [AuthRoleCatalog.Gsd]);
         var inspectionId = await application.SeedAcknowledgedNonOperationalInspectionAsync();
         writeGate.Arm();
@@ -234,11 +235,11 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
     public async Task Concurrent_wms_referral_corrections_return_one_conflict_without_extra_audit_history()
     {
         await using var database = await SqlServerTestDatabase.CreateAsync(RequireSqlServerConnection());
-        var writeGate = new WmsReferralSaveGate();
+        var writeGate = new ConcurrentSaveChangesGate();
         await using var application = new SqlServerInspectionApplicationFactory(
             database.ConnectionString,
             mutationGate: null,
-            wmsReferralWriteGate: writeGate,
+            saveChangesGate: writeGate,
             roles: [AuthRoleCatalog.Gsd]);
         var inspectionId = await application.SeedAcknowledgedNonOperationalInspectionAsync();
         using var firstClient = application.CreateClient();
@@ -993,6 +994,149 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
         });
     }
 
+    [SqlServer2019Fact]
+    public async Task Concurrent_acknowledgements_write_one_receipt_and_preserve_completion_timestamps()
+    {
+        await using var database = await SqlServerTestDatabase.CreateAsync(RequireSqlServer2019Connection());
+        await using var seedApplication = new SqlServerInspectionApplicationFactory(
+            database.ConnectionString,
+            AuthRoleCatalog.Gsd);
+        var formId = await seedApplication.SeedSubmittedFormAsync();
+        DateTimeOffset submittedAt;
+        DateTimeOffset formUpdatedAtBeforeAcknowledgement;
+        var scheduleStateBeforeAcknowledgement = new Dictionary<Guid, (string Status, DateTimeOffset? CompletedAt, DateTimeOffset UpdatedAt)>();
+        Dictionary<Guid, DateTimeOffset?> inspectionCompletionTimesBeforeAcknowledgement;
+        await using (var beforeContext = database.CreateContext())
+        {
+            var form = await beforeContext.PreventiveMaintenanceForms
+                .AsNoTracking()
+                .SingleAsync(candidate => candidate.Id == formId);
+            Assert.Equal(PreventiveMaintenanceFormStatusCatalog.Submitted, form.Status);
+            Assert.NotNull(form.SubmittedAt);
+            submittedAt = form.SubmittedAt.Value;
+            formUpdatedAtBeforeAcknowledgement = form.UpdatedAt;
+
+            var scheduleIds = await beforeContext.InspectionRecords
+                .Where(record => record.PreventiveMaintenanceFormId == formId)
+                .Select(record => record.ScheduleId)
+                .ToListAsync();
+            inspectionCompletionTimesBeforeAcknowledgement = await beforeContext.InspectionRecords
+                .Where(record => record.PreventiveMaintenanceFormId == formId)
+                .ToDictionaryAsync(record => record.Id, record => record.CompletedAt);
+            var schedules = await beforeContext.PreventiveMaintenanceSchedules
+                .Where(schedule => scheduleIds.Contains(schedule.Id))
+                .ToListAsync();
+            Assert.Equal(2, schedules.Count);
+            Assert.Equal(2, inspectionCompletionTimesBeforeAcknowledgement.Count);
+            Assert.All(schedules, schedule =>
+            {
+                Assert.Equal(ScheduleStatusCatalog.Completed, schedule.Status);
+                Assert.NotNull(schedule.CompletedAt);
+                scheduleStateBeforeAcknowledgement.Add(
+                    schedule.Id,
+                    (schedule.Status, schedule.CompletedAt, schedule.UpdatedAt));
+            });
+        }
+
+        var saveChangesGate = new ConcurrentSaveChangesGate();
+        await using var application = new SqlServerInspectionApplicationFactory(
+            database.ConnectionString,
+            mutationGate: null,
+            saveChangesGate: saveChangesGate,
+            roles: [AuthRoleCatalog.Gsd]);
+        using var firstClient = application.CreateClient();
+        using var secondClient = application.CreateClient();
+        saveChangesGate.Arm();
+        var requestsStartedAt = DateTimeOffset.UtcNow;
+        var requests = Task.WhenAll(
+            firstClient.PostAsJsonAsync(
+                $"/api/v1/preventive-maintenance-forms/{formId}/acknowledge",
+                AcknowledgementRequest()),
+            secondClient.PostAsJsonAsync(
+                $"/api/v1/preventive-maintenance-forms/{formId}/acknowledge",
+                AcknowledgementRequest()));
+        try
+        {
+            await saveChangesGate.WaitForBothSavesAsync();
+        }
+        finally
+        {
+            saveChangesGate.ReleaseSaves();
+        }
+
+        var responses = await requests;
+        try
+        {
+            var successfulResponse = Assert.Single(
+                responses.Where(response => response.StatusCode == HttpStatusCode.OK));
+            Assert.Single(responses, response => response.StatusCode == HttpStatusCode.Conflict);
+            var acknowledgementResponse = await successfulResponse.Content
+                .ReadFromJsonAsync<PreventiveMaintenanceAcknowledgementResponse>();
+            Assert.NotNull(acknowledgementResponse);
+            Assert.Equal(formId, acknowledgementResponse.FormId);
+            Assert.Equal("Fictional Department Head", acknowledgementResponse.SignatoryName);
+            Assert.Equal("Department Head", acknowledgementResponse.SignatoryPosition);
+            Assert.Equal(TestAuthenticationHandler.UserId, acknowledgementResponse.CapturedByUserId);
+            Assert.InRange(acknowledgementResponse.AcknowledgedAt, requestsStartedAt, DateTimeOffset.UtcNow);
+
+            await using var context = database.CreateContext();
+            var formAfterAcknowledgement = await context.PreventiveMaintenanceForms
+                .Include(candidate => candidate.Acknowledgement)
+                .SingleAsync(candidate => candidate.Id == formId);
+            var acknowledgement = Assert.IsType<PreventiveMaintenanceAcknowledgement>(
+                formAfterAcknowledgement.Acknowledgement);
+            Assert.Equal(PreventiveMaintenanceFormStatusCatalog.Acknowledged, formAfterAcknowledgement.Status);
+            Assert.Equal(submittedAt, formAfterAcknowledgement.SubmittedAt);
+            Assert.True(formAfterAcknowledgement.UpdatedAt > formUpdatedAtBeforeAcknowledgement);
+            Assert.Equal(acknowledgementResponse.AcknowledgedAt, formAfterAcknowledgement.UpdatedAt);
+            Assert.Equal(acknowledgementResponse.Id, acknowledgement.Id);
+            Assert.Equal("Fictional Department Head", acknowledgement.SignatoryName);
+            Assert.Equal("Department Head", acknowledgement.SignatoryPosition);
+            Assert.Equal("image/png", acknowledgement.SignatureContentType);
+            Assert.Equal(TestPngSignatureBase64, acknowledgement.SignatureData);
+            var expectedChecksum = Convert.ToHexString(
+                SHA256.HashData(Convert.FromBase64String(TestPngSignatureBase64)));
+            Assert.Equal(expectedChecksum, acknowledgement.SignatureChecksum);
+            Assert.Equal(acknowledgementResponse.SignatureChecksum, acknowledgement.SignatureChecksum);
+            Assert.Equal(TestAuthenticationHandler.UserId, acknowledgement.CapturedByUserId);
+            Assert.Equal(acknowledgementResponse.AcknowledgedAt, acknowledgement.AcknowledgedAt);
+            Assert.Equal(1, await context.PreventiveMaintenanceAcknowledgements
+                .CountAsync(record => record.FormId == formId));
+
+            var inspectionCompletionTimesAfterAcknowledgement = await context.InspectionRecords
+                .Where(record => record.PreventiveMaintenanceFormId == formId)
+                .ToDictionaryAsync(record => record.Id, record => record.CompletedAt);
+            Assert.Equal(inspectionCompletionTimesBeforeAcknowledgement.Count, inspectionCompletionTimesAfterAcknowledgement.Count);
+            foreach (var before in inspectionCompletionTimesBeforeAcknowledgement)
+            {
+                Assert.Equal(before.Value, inspectionCompletionTimesAfterAcknowledgement[before.Key]);
+            }
+
+            var scheduleIds = await context.InspectionRecords
+                .Where(record => record.PreventiveMaintenanceFormId == formId)
+                .Select(record => record.ScheduleId)
+                .ToListAsync();
+            var schedulesAfterAcknowledgement = await context.PreventiveMaintenanceSchedules
+                .Where(schedule => scheduleIds.Contains(schedule.Id))
+                .ToListAsync();
+            Assert.Equal(2, schedulesAfterAcknowledgement.Count);
+            Assert.All(schedulesAfterAcknowledgement, schedule =>
+            {
+                var before = scheduleStateBeforeAcknowledgement[schedule.Id];
+                Assert.Equal(before.Status, schedule.Status);
+                Assert.Equal(before.CompletedAt, schedule.CompletedAt);
+                Assert.Equal(before.UpdatedAt, schedule.UpdatedAt);
+            });
+        }
+        finally
+        {
+            foreach (var response in responses)
+            {
+                response.Dispose();
+            }
+        }
+    }
+
     private static PreventiveMaintenanceSchedule AddAssetAndSchedule(
         ApplicationDbContext context,
         int cycleMonth = 2,
@@ -1079,7 +1223,7 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
         private readonly string connectionString;
         private readonly string[] roles;
         private readonly ScheduleMutationCommandGate? mutationGate;
-        private readonly WmsReferralSaveGate? wmsReferralWriteGate;
+        private readonly ConcurrentSaveChangesGate? saveChangesGate;
 
         public string? ScheduleGenerationEffectiveDate { get; init; }
 
@@ -1099,12 +1243,12 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
         public SqlServerInspectionApplicationFactory(
             string connectionString,
             ScheduleMutationCommandGate? mutationGate,
-            WmsReferralSaveGate? wmsReferralWriteGate,
+            ConcurrentSaveChangesGate? saveChangesGate,
             params string[] roles)
         {
             this.connectionString = connectionString;
             this.mutationGate = mutationGate;
-            this.wmsReferralWriteGate = wmsReferralWriteGate;
+            this.saveChangesGate = saveChangesGate;
             this.roles = roles.Length == 0 ? [AuthRoleCatalog.Inspector] : roles;
         }
 
@@ -1129,9 +1273,9 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
                     {
                         options.AddInterceptors(mutationGate);
                     }
-                    if (wmsReferralWriteGate is not null)
+                    if (saveChangesGate is not null)
                     {
-                        options.AddInterceptors(wmsReferralWriteGate);
+                        options.AddInterceptors(saveChangesGate);
                     }
                 });
             });
@@ -1452,7 +1596,7 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
         }
     }
 
-    private sealed class WmsReferralSaveGate : SaveChangesInterceptor
+    private sealed class ConcurrentSaveChangesGate : SaveChangesInterceptor
     {
         private readonly TaskCompletionSource bothSavesReached = new(TaskCreationOptions.RunContinuationsAsynchronously);
         private readonly TaskCompletionSource releaseSaves = new(TaskCreationOptions.RunContinuationsAsynchronously);

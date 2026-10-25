@@ -7,6 +7,60 @@ namespace UniPM.Api.Tests.Forms;
 
 public sealed class PreventiveMaintenanceFormDomainTests
 {
+    private const string TestPngBase64 =
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl2lD8AAAAASUVORK5CYII=";
+
+    [Theory]
+    [InlineData("image/png", false)]
+    [InlineData(" IMAGE/PNG ", false)]
+    [InlineData("image/jpeg", true)]
+    public void Acknowledgement_signature_requires_png_media_type(string contentType, bool hasError)
+    {
+        var dto = NewAcknowledgementDto(TestPngBase64, contentType);
+
+        var errors = dto.Validate(out _);
+
+        Assert.Equal(hasError, errors.ContainsKey(nameof(dto.SignatureContentType)));
+    }
+
+    [Fact]
+    public void Acknowledgement_signature_rejects_base64_data_without_png_magic_bytes()
+    {
+        var dto = NewAcknowledgementDto(Convert.ToBase64String(new byte[] { 1, 2, 3, 4, 5, 6, 7, 8 }));
+
+        var errors = dto.Validate(out _);
+
+        Assert.Contains(nameof(dto.SignatureData), errors.Keys);
+        Assert.Contains("PNG", Assert.Single(errors[nameof(dto.SignatureData)]), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Acknowledgement_signature_enforces_decoded_and_base64_size_boundaries()
+    {
+        const int decodedLimit = 196_608;
+        const int base64Limit = 262_144;
+        var png = Convert.FromBase64String(TestPngBase64);
+        var atLimitBytes = new byte[decodedLimit];
+        png.CopyTo(atLimitBytes, 0);
+        var atLimitBase64 = Convert.ToBase64String(atLimitBytes);
+        Assert.Equal(base64Limit, atLimitBase64.Length);
+
+        var atLimitDto = NewAcknowledgementDto(atLimitBase64);
+        var atLimitErrors = atLimitDto.Validate(out var decodedAtLimit);
+        Assert.Empty(atLimitErrors);
+        Assert.Equal(decodedLimit, decodedAtLimit.Length);
+
+        var overLimitBytes = new byte[decodedLimit + 1];
+        png.CopyTo(overLimitBytes, 0);
+        var overLimitBase64 = Convert.ToBase64String(overLimitBytes);
+        Assert.True(overLimitBase64.Length > base64Limit);
+
+        var overLimitDto = NewAcknowledgementDto(overLimitBase64);
+        var overLimitErrors = overLimitDto.Validate(out _);
+        Assert.Contains(nameof(overLimitDto.SignatureData), overLimitErrors.Keys);
+        Assert.Contains("base64 characters", Assert.Single(overLimitErrors[nameof(overLimitDto.SignatureData)]), StringComparison.Ordinal);
+    }
+
     [Fact]
     public async Task One_form_can_contain_multiple_inspection_rows()
     {
@@ -69,5 +123,16 @@ public sealed class PreventiveMaintenanceFormDomainTests
             InspectorUserId = Guid.NewGuid(),
             DateInspected = DateTimeOffset.UtcNow,
             IsOperational = true
+        };
+
+    private static AcknowledgePreventiveMaintenanceFormDto NewAcknowledgementDto(
+        string signatureData,
+        string contentType = "image/png")
+        => new()
+        {
+            SignatoryName = "Fictional Department Head",
+            SignatoryPosition = "Department Head",
+            SignatureData = signatureData,
+            SignatureContentType = contentType
         };
 }
