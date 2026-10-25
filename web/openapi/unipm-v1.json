@@ -12,9 +12,7 @@
   "paths": {
     "/api/info": {
       "get": {
-        "tags": [
-          "Program"
-        ],
+        "tags": ["Program"],
         "operationId": "GetApiInfo",
         "responses": {
           "200": {
@@ -25,9 +23,7 @@
     },
     "/api/v1/reference-data/asset-categories": {
       "get": {
-        "tags": [
-          "Reference Data"
-        ],
+        "tags": ["Reference Data"],
         "summary": "Lists the asset categories included in the current study scope",
         "operationId": "ListAssetCategories",
         "responses": {
@@ -49,9 +45,7 @@
     },
     "/api/v1/reference-data/schedule-statuses": {
       "get": {
-        "tags": [
-          "Reference Data"
-        ],
+        "tags": ["Reference Data"],
         "summary": "Lists persisted preventive maintenance schedule statuses",
         "operationId": "ListScheduleStatuses",
         "responses": {
@@ -73,9 +67,7 @@
     },
     "/api/v1/reference-data/schedule-period-types": {
       "get": {
-        "tags": [
-          "Reference Data"
-        ],
+        "tags": ["Reference Data"],
         "summary": "Lists schedule period types accepted by the current API",
         "operationId": "ListSchedulePeriodTypes",
         "responses": {
@@ -97,9 +89,7 @@
     },
     "/api/v1/reference-data/schedule-quarters": {
       "get": {
-        "tags": [
-          "Reference Data"
-        ],
+        "tags": ["Reference Data"],
         "summary": "Lists controlled quarter metadata accepted by the current API",
         "operationId": "ListScheduleQuarters",
         "responses": {
@@ -121,9 +111,7 @@
     },
     "/api/v1/auth/login": {
       "post": {
-        "tags": [
-          "Authentication"
-        ],
+        "tags": ["Authentication"],
         "operationId": "Login",
         "requestBody": {
           "content": {
@@ -181,9 +169,7 @@
     },
     "/api/v1/auth/refresh": {
       "post": {
-        "tags": [
-          "Authentication"
-        ],
+        "tags": ["Authentication"],
         "operationId": "RefreshSession",
         "responses": {
           "200": {
@@ -221,9 +207,7 @@
     },
     "/api/v1/auth/logout": {
       "post": {
-        "tags": [
-          "Authentication"
-        ],
+        "tags": ["Authentication"],
         "operationId": "Logout",
         "responses": {
           "204": {
@@ -244,9 +228,7 @@
     },
     "/api/v1/auth/me": {
       "get": {
-        "tags": [
-          "Authentication"
-        ],
+        "tags": ["Authentication"],
         "operationId": "GetCurrentUser",
         "responses": {
           "200": {
@@ -274,9 +256,7 @@
     },
     "/api/v1/admin/accounts": {
       "get": {
-        "tags": [
-          "Admin account management"
-        ],
+        "tags": ["Admin account management"],
         "operationId": "ListAdminManagedAccounts",
         "parameters": [
           {
@@ -305,10 +285,7 @@
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
+              "type": ["integer", "string"],
               "format": "int32"
             }
           },
@@ -317,10 +294,7 @@
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
+              "type": ["integer", "string"],
               "format": "int32"
             }
           }
@@ -349,9 +323,7 @@
         }
       },
       "post": {
-        "tags": [
-          "Admin account management"
-        ],
+        "tags": ["Admin account management"],
         "operationId": "CreateAdminManagedAccount",
         "requestBody": {
           "content": {
@@ -399,9 +371,7 @@
     },
     "/api/v1/admin/accounts/{id}": {
       "put": {
-        "tags": [
-          "Admin account management"
-        ],
+        "tags": ["Admin account management"],
         "operationId": "UpdateAdminManagedAccount",
         "parameters": [
           {
@@ -468,9 +438,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "Admin account management"
-        ],
+        "tags": ["Admin account management"],
         "operationId": "DeleteAdminManagedAccount",
         "parameters": [
           {
@@ -519,9 +487,7 @@
     },
     "/api/v1/admin/accounts/{id}/reset-password": {
       "post": {
-        "tags": [
-          "Admin account management"
-        ],
+        "tags": ["Admin account management"],
         "operationId": "ResetAdminManagedAccountPassword",
         "parameters": [
           {
@@ -573,9 +539,7 @@
     },
     "/api/v1/admin/accounts/gsd-head": {
       "get": {
-        "tags": [
-          "Admin account management"
-        ],
+        "tags": ["Admin account management"],
         "operationId": "GetAdminGsdHead",
         "responses": {
           "200": {
@@ -591,9 +555,7 @@
         }
       },
       "patch": {
-        "tags": [
-          "Admin account management"
-        ],
+        "tags": ["Admin account management"],
         "operationId": "UpdateAdminGsdHead",
         "requestBody": {
           "content": {
@@ -649,9 +611,7 @@
         }
       },
       "put": {
-        "tags": [
-          "Admin account management"
-        ],
+        "tags": ["Admin account management"],
         "operationId": "ReplaceAdminGsdHead",
         "requestBody": {
           "content": {
@@ -709,9 +669,7 @@
     },
     "/api/v1/admin/overview": {
       "get": {
-        "tags": [
-          "Admin demonstration management"
-        ],
+        "tags": ["Admin demonstration management"],
         "operationId": "GetAdminOverview",
         "responses": {
           "200": {
@@ -729,9 +687,7 @@
     },
     "/api/v1/admin/assets": {
       "get": {
-        "tags": [
-          "Admin demonstration management"
-        ],
+        "tags": ["Admin demonstration management"],
         "operationId": "ListAdminAssets",
         "parameters": [
           {
@@ -760,10 +716,7 @@
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
+              "type": ["integer", "string"],
               "format": "int32"
             }
           },
@@ -772,10 +725,7 @@
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
+              "type": ["integer", "string"],
               "format": "int32"
             }
           }
@@ -804,9 +754,7 @@
         }
       },
       "post": {
-        "tags": [
-          "Admin demonstration management"
-        ],
+        "tags": ["Admin demonstration management"],
         "operationId": "CreateAdminAsset",
         "requestBody": {
           "content": {
@@ -854,9 +802,7 @@
     },
     "/api/v1/admin/assets/{id}": {
       "put": {
-        "tags": [
-          "Admin demonstration management"
-        ],
+        "tags": ["Admin demonstration management"],
         "operationId": "UpdateAdminAsset",
         "parameters": [
           {
@@ -923,9 +869,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "Admin demonstration management"
-        ],
+        "tags": ["Admin demonstration management"],
         "operationId": "DeleteAdminAsset",
         "parameters": [
           {
@@ -964,9 +908,7 @@
     },
     "/api/v1/admin/assets/bulk-delete": {
       "post": {
-        "tags": [
-          "Admin demonstration management"
-        ],
+        "tags": ["Admin demonstration management"],
         "operationId": "BulkDeleteAdminAssets",
         "requestBody": {
           "content": {
@@ -1004,9 +946,7 @@
     },
     "/api/v1/admin/assets/all": {
       "delete": {
-        "tags": [
-          "Admin demonstration management"
-        ],
+        "tags": ["Admin demonstration management"],
         "operationId": "ClearAdminAssets",
         "responses": {
           "200": {
@@ -1024,9 +964,7 @@
     },
     "/api/v1/admin/maintenance/schedules": {
       "get": {
-        "tags": [
-          "Admin demonstration management"
-        ],
+        "tags": ["Admin demonstration management"],
         "operationId": "ListAdminSchedules",
         "parameters": [
           {
@@ -1048,10 +986,7 @@
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
+              "type": ["integer", "string"],
               "format": "int32"
             }
           },
@@ -1060,10 +995,7 @@
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
+              "type": ["integer", "string"],
               "format": "int32"
             }
           }
@@ -1094,9 +1026,7 @@
     },
     "/api/v1/admin/maintenance/schedules/{id}": {
       "put": {
-        "tags": [
-          "Admin demonstration management"
-        ],
+        "tags": ["Admin demonstration management"],
         "operationId": "UpdateAdminSchedule",
         "parameters": [
           {
@@ -1163,9 +1093,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "Admin demonstration management"
-        ],
+        "tags": ["Admin demonstration management"],
         "operationId": "DeleteAdminSchedule",
         "parameters": [
           {
@@ -1204,9 +1132,7 @@
     },
     "/api/v1/admin/maintenance/schedules/bulk-delete": {
       "post": {
-        "tags": [
-          "Admin demonstration management"
-        ],
+        "tags": ["Admin demonstration management"],
         "operationId": "BulkDeleteAdminSchedules",
         "requestBody": {
           "content": {
@@ -1244,9 +1170,7 @@
     },
     "/api/v1/admin/maintenance/inspections": {
       "get": {
-        "tags": [
-          "Admin demonstration management"
-        ],
+        "tags": ["Admin demonstration management"],
         "operationId": "ListAdminInspections",
         "parameters": [
           {
@@ -1268,10 +1192,7 @@
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
+              "type": ["integer", "string"],
               "format": "int32"
             }
           },
@@ -1280,10 +1201,7 @@
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
+              "type": ["integer", "string"],
               "format": "int32"
             }
           }
@@ -1314,9 +1232,7 @@
     },
     "/api/v1/admin/maintenance/inspections/{id}": {
       "delete": {
-        "tags": [
-          "Admin demonstration management"
-        ],
+        "tags": ["Admin demonstration management"],
         "operationId": "DeleteAdminInspection",
         "parameters": [
           {
@@ -1355,9 +1271,7 @@
     },
     "/api/v1/admin/maintenance/inspections/bulk-delete": {
       "post": {
-        "tags": [
-          "Admin demonstration management"
-        ],
+        "tags": ["Admin demonstration management"],
         "operationId": "BulkDeleteAdminInspections",
         "requestBody": {
           "content": {
@@ -1395,9 +1309,7 @@
     },
     "/api/v1/admin/maintenance/forms": {
       "get": {
-        "tags": [
-          "Admin demonstration management"
-        ],
+        "tags": ["Admin demonstration management"],
         "operationId": "ListAdminForms",
         "parameters": [
           {
@@ -1419,10 +1331,7 @@
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
+              "type": ["integer", "string"],
               "format": "int32"
             }
           },
@@ -1431,10 +1340,7 @@
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
+              "type": ["integer", "string"],
               "format": "int32"
             }
           }
@@ -1465,9 +1371,7 @@
     },
     "/api/v1/admin/maintenance/forms/{id}": {
       "put": {
-        "tags": [
-          "Admin demonstration management"
-        ],
+        "tags": ["Admin demonstration management"],
         "operationId": "UpdateAdminForm",
         "parameters": [
           {
@@ -1534,9 +1438,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "Admin demonstration management"
-        ],
+        "tags": ["Admin demonstration management"],
         "operationId": "DeleteAdminForm",
         "parameters": [
           {
@@ -1575,9 +1477,7 @@
     },
     "/api/v1/admin/maintenance/forms/{id}/acknowledgement": {
       "delete": {
-        "tags": [
-          "Admin demonstration management"
-        ],
+        "tags": ["Admin demonstration management"],
         "operationId": "DeleteAdminAcknowledgement",
         "parameters": [
           {
@@ -1616,9 +1516,7 @@
     },
     "/api/v1/admin/maintenance/forms/{id}/return-to-draft": {
       "post": {
-        "tags": [
-          "Admin demonstration management"
-        ],
+        "tags": ["Admin demonstration management"],
         "operationId": "ReturnAdminFormToDraft",
         "parameters": [
           {
@@ -1660,9 +1558,7 @@
     },
     "/api/v1/admin/demo-data/maintenance": {
       "delete": {
-        "tags": [
-          "Admin demonstration management"
-        ],
+        "tags": ["Admin demonstration management"],
         "operationId": "ClearAdminMaintenanceData",
         "responses": {
           "200": {
@@ -1680,9 +1576,7 @@
     },
     "/api/v1/admin/demo-data/assets": {
       "delete": {
-        "tags": [
-          "Admin demonstration management"
-        ],
+        "tags": ["Admin demonstration management"],
         "operationId": "ClearAdminAssetsAndMaintenance",
         "responses": {
           "200": {
@@ -1700,9 +1594,7 @@
     },
     "/api/v1/admin/demo-data/validation/load": {
       "post": {
-        "tags": [
-          "Admin demonstration management"
-        ],
+        "tags": ["Admin demonstration management"],
         "operationId": "LoadAdminValidationDataset",
         "responses": {
           "200": {
@@ -1730,9 +1622,7 @@
     },
     "/api/v1/admin/demo-data/validation/reset": {
       "post": {
-        "tags": [
-          "Admin demonstration management"
-        ],
+        "tags": ["Admin demonstration management"],
         "operationId": "ResetAndSeedAdminValidationDataset",
         "responses": {
           "200": {
@@ -1760,9 +1650,7 @@
     },
     "/api/v1/assets": {
       "post": {
-        "tags": [
-          "Assets"
-        ],
+        "tags": ["Assets"],
         "summary": "Creates an asset in the current UniPM study scope",
         "operationId": "CreateAsset",
         "requestBody": {
@@ -1829,9 +1717,7 @@
         }
       },
       "get": {
-        "tags": [
-          "Assets"
-        ],
+        "tags": ["Assets"],
         "summary": "Lists assets using supported category, status, location, search, and department-presence filters",
         "operationId": "ListAssets",
         "parameters": [
@@ -1875,10 +1761,7 @@
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
+              "type": ["integer", "string"],
               "format": "int32"
             }
           },
@@ -1919,9 +1802,7 @@
     },
     "/api/v1/assets/{id}": {
       "get": {
-        "tags": [
-          "Assets"
-        ],
+        "tags": ["Assets"],
         "summary": "Gets an asset by its identifier",
         "operationId": "GetAsset",
         "parameters": [
@@ -1961,9 +1842,7 @@
     },
     "/api/v1/assets/{id}/verification-location": {
       "get": {
-        "tags": [
-          "Assets"
-        ],
+        "tags": ["Assets"],
         "summary": "Gets the verification location configuration for an asset",
         "operationId": "GetAssetVerificationLocation",
         "parameters": [
@@ -2021,9 +1900,7 @@
         }
       },
       "put": {
-        "tags": [
-          "Assets"
-        ],
+        "tags": ["Assets"],
         "summary": "Replaces or clears an asset verification location",
         "operationId": "UpdateAssetVerificationLocation",
         "parameters": [
@@ -2103,9 +1980,7 @@
     },
     "/api/v1/assets/registry": {
       "get": {
-        "tags": [
-          "Assets"
-        ],
+        "tags": ["Assets"],
         "summary": "Lists a bounded page of assets for the web registry",
         "operationId": "ListAssetRegistry",
         "parameters": [
@@ -2156,10 +2031,7 @@
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
+              "type": ["integer", "string"],
               "format": "int32"
             }
           },
@@ -2168,10 +2040,7 @@
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
+              "type": ["integer", "string"],
               "format": "int32"
             }
           }
@@ -2202,9 +2071,7 @@
     },
     "/api/v1/assets/registry/options": {
       "get": {
-        "tags": [
-          "Assets"
-        ],
+        "tags": ["Assets"],
         "summary": "Lists small asset registry filter options",
         "operationId": "GetAssetRegistryOptions",
         "parameters": [
@@ -2249,9 +2116,7 @@
     },
     "/api/v1/assets/registry/summary": {
       "get": {
-        "tags": [
-          "Assets"
-        ],
+        "tags": ["Assets"],
         "summary": "Returns overall asset totals by category and status",
         "operationId": "GetAssetRegistrySummary",
         "responses": {
@@ -2270,9 +2135,7 @@
     },
     "/api/v1/assets/by-code/{assetCode}": {
       "get": {
-        "tags": [
-          "Assets"
-        ],
+        "tags": ["Assets"],
         "summary": "Gets an asset by its canonical asset code",
         "operationId": "GetAssetByCode",
         "parameters": [
@@ -2321,9 +2184,7 @@
     },
     "/api/v1/assets/by-qr/{qrCodeValue}": {
       "get": {
-        "tags": [
-          "Assets"
-        ],
+        "tags": ["Assets"],
         "summary": "Gets an asset by its QR identifier",
         "operationId": "GetAssetByQr",
         "parameters": [
@@ -2372,9 +2233,7 @@
     },
     "/api/v1/schedules/{id}/start-inspection": {
       "post": {
-        "tags": [
-          "Schedules"
-        ],
+        "tags": ["Schedules"],
         "summary": "Marks an assigned PM schedule as in progress when field work starts",
         "operationId": "StartScheduleInspection",
         "parameters": [
@@ -2444,9 +2303,7 @@
     },
     "/api/v1/schedules/generate": {
       "post": {
-        "tags": [
-          "Schedules"
-        ],
+        "tags": ["Schedules"],
         "summary": "Ensures missing CPMP schedules for one calendar year",
         "operationId": "GeneratePreventiveMaintenanceSchedules",
         "requestBody": {
@@ -2505,9 +2362,7 @@
     },
     "/api/v1/schedules/coverage-review": {
       "get": {
-        "tags": [
-          "Schedules"
-        ],
+        "tags": ["Schedules"],
         "summary": "Lists past CPMP cycles missing both a schedule and a deferral for GSD review",
         "operationId": "ListScheduleCoverageReview",
         "parameters": [
@@ -2516,10 +2371,7 @@
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
+              "type": ["integer", "string"],
               "format": "int32"
             }
           },
@@ -2528,10 +2380,7 @@
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
+              "type": ["integer", "string"],
               "format": "int32"
             }
           }
@@ -2558,9 +2407,7 @@
     },
     "/api/v1/schedules/enrollment-deferrals": {
       "get": {
-        "tags": [
-          "Schedules"
-        ],
+        "tags": ["Schedules"],
         "summary": "Lists deferred asset cycles and their GSD review status",
         "operationId": "ListScheduleEnrollmentDeferrals",
         "parameters": [
@@ -2569,10 +2416,7 @@
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
+              "type": ["integer", "string"],
               "format": "int32"
             }
           },
@@ -2581,10 +2425,7 @@
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
+              "type": ["integer", "string"],
               "format": "int32"
             }
           },
@@ -2649,9 +2490,7 @@
     },
     "/api/v1/schedules/enrollment-deferrals/{assetId}/{pmCycle}/review": {
       "post": {
-        "tags": [
-          "Schedules"
-        ],
+        "tags": ["Schedules"],
         "summary": "Marks one deferred asset cycle as reviewed by GSD",
         "operationId": "ReviewScheduleEnrollmentDeferral",
         "parameters": [
@@ -2707,9 +2546,7 @@
     },
     "/api/v1/schedules/supervisor-assignment-options": {
       "get": {
-        "tags": [
-          "Schedules"
-        ],
+        "tags": ["Schedules"],
         "summary": "Searches a bounded page of active Supervisors for GSD batch assignment",
         "operationId": "ListScheduleSupervisorAssignmentOptions",
         "parameters": [
@@ -2725,10 +2562,7 @@
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
+              "type": ["integer", "string"],
               "format": "int32"
             }
           },
@@ -2737,10 +2571,7 @@
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
+              "type": ["integer", "string"],
               "format": "int32"
             }
           },
@@ -2785,9 +2616,7 @@
     },
     "/api/v1/schedules/assignment-options": {
       "get": {
-        "tags": [
-          "Schedules"
-        ],
+        "tags": ["Schedules"],
         "summary": "Searches a bounded page of active Inspectors for Supervisor batch assignment",
         "operationId": "ListScheduleWorkerAssignmentOptions",
         "parameters": [
@@ -2803,10 +2632,7 @@
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
+              "type": ["integer", "string"],
               "format": "int32"
             }
           },
@@ -2815,10 +2641,7 @@
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
+              "type": ["integer", "string"],
               "format": "int32"
             }
           },
@@ -2863,9 +2686,7 @@
     },
     "/api/v1/schedules": {
       "post": {
-        "tags": [
-          "Schedules"
-        ],
+        "tags": ["Schedules"],
         "summary": "Creates a preventive maintenance schedule for an existing asset",
         "operationId": "CreateSchedule",
         "requestBody": {
@@ -2942,9 +2763,7 @@
         }
       },
       "get": {
-        "tags": [
-          "Schedules"
-        ],
+        "tags": ["Schedules"],
         "summary": "Lists preventive maintenance schedules using supported filters",
         "operationId": "ListSchedules",
         "parameters": [
@@ -2991,10 +2810,7 @@
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
+              "type": ["integer", "string"],
               "format": "int32"
             }
           },
@@ -3055,9 +2871,7 @@
     },
     "/api/v1/schedules/{id}/supervisor-assignment": {
       "put": {
-        "tags": [
-          "Schedules"
-        ],
+        "tags": ["Schedules"],
         "summary": "Assigns a Supervisor to all schedules in one PM batch",
         "operationId": "AssignScheduleBatchSupervisor",
         "parameters": [
@@ -3133,9 +2947,7 @@
     },
     "/api/v1/schedules/{id}/assignment": {
       "put": {
-        "tags": [
-          "Schedules"
-        ],
+        "tags": ["Schedules"],
         "summary": "Assigns an Inspector to a PM batch owned by the authenticated Supervisor",
         "operationId": "AssignScheduleBatchWorker",
         "parameters": [
@@ -3211,9 +3023,7 @@
     },
     "/api/v1/schedules/{id}/supervisor-reassignment": {
       "put": {
-        "tags": [
-          "Schedules"
-        ],
+        "tags": ["Schedules"],
         "summary": "Reassigns a Supervisor for unfinished schedules in a PM batch",
         "operationId": "ReassignScheduleBatchSupervisor",
         "parameters": [
@@ -3289,9 +3099,7 @@
     },
     "/api/v1/schedules/{id}/inspector-reassignment": {
       "put": {
-        "tags": [
-          "Schedules"
-        ],
+        "tags": ["Schedules"],
         "summary": "Reassigns an Inspector for unfinished schedules in a PM batch",
         "operationId": "ReassignScheduleBatchInspector",
         "parameters": [
@@ -3367,9 +3175,7 @@
     },
     "/api/v1/schedules/assignment-batches": {
       "get": {
-        "tags": [
-          "Schedules"
-        ],
+        "tags": ["Schedules"],
         "summary": "Lists grouped PM schedule batches for assignment",
         "operationId": "ListScheduleAssignmentBatches",
         "parameters": [
@@ -3379,10 +3185,7 @@
             "required": true,
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
+              "type": ["integer", "string"],
               "format": "int32"
             }
           },
@@ -3456,10 +3259,7 @@
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
+              "type": ["integer", "string"],
               "format": "int32"
             }
           },
@@ -3468,10 +3268,7 @@
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
+              "type": ["integer", "string"],
               "format": "int32"
             }
           },
@@ -3516,9 +3313,7 @@
     },
     "/api/v1/schedules/registry": {
       "get": {
-        "tags": [
-          "Schedules"
-        ],
+        "tags": ["Schedules"],
         "summary": "Lists a bounded page of schedules for the web registry",
         "operationId": "ListScheduleRegistry",
         "parameters": [
@@ -3565,10 +3360,7 @@
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
+              "type": ["integer", "string"],
               "format": "int32"
             }
           },
@@ -3605,10 +3397,7 @@
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
+              "type": ["integer", "string"],
               "format": "int32"
             }
           },
@@ -3617,10 +3406,7 @@
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
+              "type": ["integer", "string"],
               "format": "int32"
             }
           }
@@ -3657,9 +3443,7 @@
     },
     "/api/v1/schedules/registry/options": {
       "get": {
-        "tags": [
-          "Schedules"
-        ],
+        "tags": ["Schedules"],
         "summary": "Lists scoped schedule registry filter options",
         "operationId": "GetScheduleRegistryOptions",
         "parameters": [
@@ -3710,9 +3494,7 @@
     },
     "/api/v1/schedules/registry/summary": {
       "get": {
-        "tags": [
-          "Schedules"
-        ],
+        "tags": ["Schedules"],
         "summary": "Returns status totals for the authenticated schedule read scope",
         "operationId": "GetScheduleRegistrySummary",
         "responses": {
@@ -3737,9 +3519,7 @@
     },
     "/api/v1/schedules/{id}": {
       "get": {
-        "tags": [
-          "Schedules"
-        ],
+        "tags": ["Schedules"],
         "summary": "Gets a preventive maintenance schedule by its identifier",
         "operationId": "GetSchedule",
         "parameters": [
@@ -3785,9 +3565,7 @@
     },
     "/api/v1/schedules/{scheduleId}/location-verification-attempts": {
       "post": {
-        "tags": [
-          "Schedules"
-        ],
+        "tags": ["Schedules"],
         "summary": "Records an inspection location verification attempt",
         "operationId": "CreateInspectionLocationAttempt",
         "parameters": [
@@ -3877,9 +3655,7 @@
     },
     "/api/v1/inspections/history/{assetId}": {
       "get": {
-        "tags": [
-          "Inspections"
-        ],
+        "tags": ["Inspections"],
         "summary": "Gets inspection history for an asset",
         "operationId": "GetInspectionHistory",
         "parameters": [
@@ -3912,9 +3688,7 @@
     },
     "/api/v1/inspections/{id}/wms-referral": {
       "get": {
-        "tags": [
-          "Inspections"
-        ],
+        "tags": ["Inspections"],
         "summary": "Gets the manually recorded WMS PM number and its change audit",
         "operationId": "GetInspectionWmsReferral",
         "parameters": [
@@ -3958,9 +3732,7 @@
         }
       },
       "put": {
-        "tags": [
-          "Inspections"
-        ],
+        "tags": ["Inspections"],
         "summary": "Records or corrects the external WMS PM number without changing the inspection",
         "operationId": "UpdateInspectionWmsReferral",
         "parameters": [
@@ -4036,9 +3808,7 @@
     },
     "/api/v1/inspections/registry": {
       "get": {
-        "tags": [
-          "Inspections"
-        ],
+        "tags": ["Inspections"],
         "summary": "Lists a bounded page of acknowledged or legacy official inspections for the web registry",
         "operationId": "ListInspectionRegistry",
         "parameters": [
@@ -4086,10 +3856,7 @@
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
+              "type": ["integer", "string"],
               "format": "int32"
             }
           },
@@ -4140,10 +3907,7 @@
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
+              "type": ["integer", "string"],
               "format": "int32"
             }
           },
@@ -4152,10 +3916,7 @@
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
+              "type": ["integer", "string"],
               "format": "int32"
             }
           }
@@ -4186,9 +3947,7 @@
     },
     "/api/v1/inspections/registry/options": {
       "get": {
-        "tags": [
-          "Inspections"
-        ],
+        "tags": ["Inspections"],
         "summary": "Lists lightweight official inspection filter options",
         "operationId": "GetInspectionRegistryOptions",
         "parameters": [
@@ -4233,9 +3992,7 @@
     },
     "/api/v1/inspections/registry/summary": {
       "get": {
-        "tags": [
-          "Inspections"
-        ],
+        "tags": ["Inspections"],
         "summary": "Returns overall official inspection totals",
         "operationId": "GetInspectionRegistrySummary",
         "responses": {
@@ -4254,9 +4011,7 @@
     },
     "/api/v1/inspections": {
       "get": {
-        "tags": [
-          "Inspections"
-        ],
+        "tags": ["Inspections"],
         "summary": "Lists inspection records using supported metadata filters",
         "operationId": "ListInspections",
         "parameters": [
@@ -4357,9 +4112,7 @@
     },
     "/api/v1/inspections/{id}": {
       "get": {
-        "tags": [
-          "Inspections"
-        ],
+        "tags": ["Inspections"],
         "summary": "Gets an inspection record by its identifier",
         "operationId": "GetInspection",
         "parameters": [
@@ -4399,9 +4152,7 @@
     },
     "/api/v1/inspections/{id}/photo": {
       "put": {
-        "tags": [
-          "UniPM.Api"
-        ],
+        "tags": ["UniPM.Api"],
         "summary": "Uploads or replaces one private JPEG photo for a draft inspection row",
         "operationId": "ReplaceInspectionPhotoEvidence",
         "parameters": [
@@ -4461,9 +4212,7 @@
         }
       },
       "get": {
-        "tags": [
-          "UniPM.Api"
-        ],
+        "tags": ["UniPM.Api"],
         "summary": "Gets authorized private JPEG photo evidence for an inspection row",
         "operationId": "GetInspectionPhotoEvidence",
         "parameters": [
@@ -4501,9 +4250,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "UniPM.Api"
-        ],
+        "tags": ["UniPM.Api"],
         "summary": "Removes optional photo evidence from a draft inspection row",
         "operationId": "DeleteInspectionPhotoEvidence",
         "parameters": [
@@ -4538,9 +4285,7 @@
     },
     "/api/v1/preventive-maintenance-forms": {
       "post": {
-        "tags": [
-          "Preventive Maintenance Forms"
-        ],
+        "tags": ["Preventive Maintenance Forms"],
         "summary": "Creates a preventive-maintenance form draft",
         "operationId": "CreatePreventiveMaintenanceFormDraft",
         "requestBody": {
@@ -4593,9 +4338,7 @@
         }
       },
       "get": {
-        "tags": [
-          "Preventive Maintenance Forms"
-        ],
+        "tags": ["Preventive Maintenance Forms"],
         "summary": "Lists preventive-maintenance forms using supported status and metadata filters",
         "operationId": "ListPreventiveMaintenanceForms",
         "parameters": [
@@ -4646,10 +4389,7 @@
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
+              "type": ["integer", "string"],
               "format": "int32"
             }
           },
@@ -4658,10 +4398,7 @@
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
+              "type": ["integer", "string"],
               "format": "int32"
             }
           }
@@ -4692,9 +4429,7 @@
     },
     "/api/v1/preventive-maintenance-forms/options": {
       "get": {
-        "tags": [
-          "Preventive Maintenance Forms"
-        ],
+        "tags": ["Preventive Maintenance Forms"],
         "summary": "Lists filter options from readable preventive-maintenance forms",
         "operationId": "GetPreventiveMaintenanceFormOptions",
         "responses": {
@@ -4713,9 +4448,7 @@
     },
     "/api/v1/preventive-maintenance-forms/{id}": {
       "get": {
-        "tags": [
-          "Preventive Maintenance Forms"
-        ],
+        "tags": ["Preventive Maintenance Forms"],
         "summary": "Gets a preventive-maintenance form",
         "operationId": "GetPreventiveMaintenanceForm",
         "parameters": [
@@ -4755,9 +4488,7 @@
     },
     "/api/v1/preventive-maintenance-forms/{id}/submit": {
       "post": {
-        "tags": [
-          "Preventive Maintenance Forms"
-        ],
+        "tags": ["Preventive Maintenance Forms"],
         "summary": "Submits a completed preventive-maintenance form using a provisional file number",
         "operationId": "SubmitPreventiveMaintenanceForm",
         "parameters": [
@@ -4813,9 +4544,7 @@
     },
     "/api/v1/preventive-maintenance-forms/{id}/acknowledge": {
       "post": {
-        "tags": [
-          "Preventive Maintenance Forms"
-        ],
+        "tags": ["Preventive Maintenance Forms"],
         "summary": "Acknowledges one submitted preventive-maintenance form",
         "operationId": "AcknowledgePreventiveMaintenanceForm",
         "parameters": [
@@ -4891,9 +4620,7 @@
     },
     "/api/v1/preventive-maintenance-forms/{id}/corrective-handoff": {
       "get": {
-        "tags": [
-          "Preventive Maintenance Forms"
-        ],
+        "tags": ["Preventive Maintenance Forms"],
         "summary": "Prepares acknowledged preventive-maintenance findings for corrective follow-up",
         "operationId": "GetCorrectiveMaintenanceHandoff",
         "parameters": [
@@ -4949,9 +4676,7 @@
     },
     "/api/v1/preventive-maintenance-forms/{id}/inspections": {
       "post": {
-        "tags": [
-          "Preventive Maintenance Forms"
-        ],
+        "tags": ["Preventive Maintenance Forms"],
         "summary": "Adds an inspection row to a preventive-maintenance form draft",
         "operationId": "AddPreventiveMaintenanceFormDraftInspection",
         "parameters": [
@@ -5037,9 +4762,7 @@
     },
     "/api/v1/preventive-maintenance-forms/{id}/inspections/{inspectionId}": {
       "put": {
-        "tags": [
-          "Preventive Maintenance Forms"
-        ],
+        "tags": ["Preventive Maintenance Forms"],
         "summary": "Updates an inspection row in a preventive-maintenance form draft",
         "operationId": "UpdatePreventiveMaintenanceFormDraftInspection",
         "parameters": [
@@ -5122,9 +4845,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "Preventive Maintenance Forms"
-        ],
+        "tags": ["Preventive Maintenance Forms"],
         "summary": "Removes an inspection row from a preventive-maintenance form draft",
         "operationId": "DeletePreventiveMaintenanceFormDraftInspection",
         "parameters": [
@@ -5190,9 +4911,7 @@
     },
     "/api/v1/pm-period-dashboard/cycles": {
       "get": {
-        "tags": [
-          "PM Period Dashboard"
-        ],
+        "tags": ["PM Period Dashboard"],
         "summary": "Lists available PM cycles grouped by asset category and year",
         "operationId": "ListPmPeriodDashboardCycles",
         "parameters": [
@@ -5208,10 +4927,7 @@
             "in": "query",
             "schema": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
+              "type": ["integer", "string"],
               "format": "int32"
             }
           }
@@ -5245,9 +4961,7 @@
     },
     "/api/v1/pm-period-dashboard": {
       "get": {
-        "tags": [
-          "PM Period Dashboard"
-        ],
+        "tags": ["PM Period Dashboard"],
         "summary": "Gets a filtered PM-period dashboard read model",
         "operationId": "GetPmPeriodDashboard",
         "parameters": [
@@ -5320,9 +5034,7 @@
     },
     "/api/v1/analytics/pm/v3/catalog": {
       "get": {
-        "tags": [
-          "PM Analytics"
-        ],
+        "tags": ["PM Analytics"],
         "summary": "Returns a versioned V3 report subject catalog",
         "operationId": "GetPmAnalyticsV3Catalog",
         "parameters": [
@@ -5370,9 +5082,7 @@
     },
     "/api/v1/analytics/pm/v3/catalog/values": {
       "get": {
-        "tags": [
-          "PM Analytics"
-        ],
+        "tags": ["PM Analytics"],
         "summary": "Searches current asset catalog values for a V3 population filter",
         "operationId": "GetPmAnalyticsV3FilterValues",
         "parameters": [
@@ -5454,9 +5164,7 @@
     },
     "/api/v1/analytics/pm/v2/interpret": {
       "post": {
-        "tags": [
-          "PM Analytics"
-        ],
+        "tags": ["PM Analytics"],
         "summary": "Interprets a bounded preventive-maintenance analytics question using the V2 deterministic grammar",
         "operationId": "InterpretPmAnalyticsV2Question",
         "requestBody": {
@@ -5515,9 +5223,7 @@
     },
     "/api/v1/analytics/pm/v3/preview": {
       "post": {
-        "tags": [
-          "PM Analytics"
-        ],
+        "tags": ["PM Analytics"],
         "summary": "Validates a V3 report plan and creates a short-lived user-bound preview",
         "operationId": "PreviewPmAnalyticsV3Report",
         "requestBody": {
@@ -5586,9 +5292,7 @@
     },
     "/api/v1/analytics/pm/v3/interpret": {
       "post": {
-        "tags": [
-          "PM Analytics"
-        ],
+        "tags": ["PM Analytics"],
         "summary": "Interprets a PM execution question into a V3 report plan without running it",
         "operationId": "InterpretPmAnalyticsV3Question",
         "requestBody": {
@@ -5657,9 +5361,7 @@
     },
     "/api/v1/analytics/pm/v3/execute": {
       "post": {
-        "tags": [
-          "PM Analytics"
-        ],
+        "tags": ["PM Analytics"],
         "summary": "Revalidates and executes a confirmed V3 PM execution report",
         "operationId": "ExecutePmAnalyticsV3Report",
         "requestBody": {
@@ -5738,9 +5440,7 @@
     },
     "/api/v1/analytics/pm/v2/query": {
       "post": {
-        "tags": [
-          "PM Analytics"
-        ],
+        "tags": ["PM Analytics"],
         "summary": "Executes a validated typed V2 preventive-maintenance analytics plan",
         "operationId": "QueryPmAnalyticsV2",
         "requestBody": {
@@ -5799,9 +5499,7 @@
     },
     "/api/v1/analytics/pm/query": {
       "post": {
-        "tags": [
-          "PM Analytics"
-        ],
+        "tags": ["PM Analytics"],
         "summary": "Runs a deterministic query over supported preventive-maintenance metrics",
         "operationId": "QueryPmAnalytics",
         "requestBody": {
@@ -5860,9 +5558,7 @@
     },
     "/api/v1/analytics/pm/interpret": {
       "post": {
-        "tags": [
-          "PM Analytics"
-        ],
+        "tags": ["PM Analytics"],
         "summary": "Interprets a preventive-maintenance analytics question without running it",
         "operationId": "InterpretPmAnalyticsQuestion",
         "requestBody": {
@@ -5965,45 +5661,28 @@
           },
           "currentAssignmentsCleared": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           }
         }
       },
       "AdminAccountPageResponse": {
-        "required": [
-          "totalCount",
-          "page",
-          "pageSize",
-          "items"
-        ],
+        "required": ["totalCount", "page", "pageSize", "items"],
         "type": "object",
         "properties": {
           "totalCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "page": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "pageSize": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "items": {
@@ -6015,13 +5694,7 @@
         }
       },
       "AdminAccountResponse": {
-        "required": [
-          "id",
-          "displayName",
-          "email",
-          "role",
-          "isActive"
-        ],
+        "required": ["id", "displayName", "email", "role", "isActive"],
         "type": "object",
         "properties": {
           "id": {
@@ -6043,36 +5716,22 @@
         }
       },
       "AdminAssetPageResponse": {
-        "required": [
-          "totalCount",
-          "page",
-          "pageSize",
-          "items"
-        ],
+        "required": ["totalCount", "page", "pageSize", "items"],
         "type": "object",
         "properties": {
           "totalCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "page": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "pageSize": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "items": {
@@ -6109,28 +5768,16 @@
             "type": "string"
           },
           "building": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "department": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "location": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "qrCodeValue": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "status": {
             "type": "string"
@@ -6146,9 +5793,7 @@
         }
       },
       "AdminBulkDeleteRequest": {
-        "required": [
-          "ids"
-        ],
+        "required": ["ids"],
         "type": "object",
         "properties": {
           "ids": {
@@ -6162,12 +5807,7 @@
         "additionalProperties": false
       },
       "AdminCreateAccountRequest": {
-        "required": [
-          "displayName",
-          "email",
-          "role",
-          "initialPassword"
-        ],
+        "required": ["displayName", "email", "role", "initialPassword"],
         "type": "object",
         "properties": {
           "displayName": {
@@ -6194,100 +5834,65 @@
         "properties": {
           "assetsRemoved": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32",
             "default": 0
           },
           "schedulesRemoved": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32",
             "default": 0
           },
           "inspectionsRemoved": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32",
             "default": 0
           },
           "formsRemoved": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32",
             "default": 0
           },
           "acknowledgementsRemoved": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32",
             "default": 0
           },
           "photoFilesRemoved": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32",
             "default": 0
           },
           "photoFileCleanupFailures": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32",
             "default": 0
           }
         }
       },
       "AdminFormPageResponse": {
-        "required": [
-          "totalCount",
-          "page",
-          "pageSize",
-          "items"
-        ],
+        "required": ["totalCount", "page", "pageSize", "items"],
         "type": "object",
         "properties": {
           "totalCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "page": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "pageSize": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "items": {
@@ -6323,71 +5928,43 @@
             "format": "uuid"
           },
           "fileNumber": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "assetCategory": {
             "type": "string"
           },
           "building": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "department": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "pmCycle": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "periodType": {
             "type": "string"
           },
           "quarter": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "semester": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "year": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "null",
-              "integer",
-              "string"
-            ],
+            "type": ["null", "integer", "string"],
             "format": "int32"
           },
           "academicYear": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "status": {
             "type": "string"
           },
           "inspectionCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "hasAcknowledgement": {
@@ -6400,11 +5977,7 @@
         }
       },
       "AdminGsdHeadResponse": {
-        "required": [
-          "activeHead",
-          "accounts",
-          "needsResolution"
-        ],
+        "required": ["activeHead", "accounts", "needsResolution"],
         "type": "object",
         "properties": {
           "activeHead": {
@@ -6427,44 +6000,27 @@
             "type": "boolean"
           },
           "replacementCreated": {
-            "type": [
-              "null",
-              "boolean"
-            ]
+            "type": ["null", "boolean"]
           }
         }
       },
       "AdminInspectionPageResponse": {
-        "required": [
-          "totalCount",
-          "page",
-          "pageSize",
-          "items"
-        ],
+        "required": ["totalCount", "page", "pageSize", "items"],
         "type": "object",
         "properties": {
           "totalCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "page": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "pageSize": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "items": {
@@ -6515,32 +6071,20 @@
             "format": "uuid"
           },
           "inspectorDisplayName": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "isOperational": {
             "type": "boolean"
           },
           "formId": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "uuid"
           },
           "formStatus": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "formFileNumber": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           }
         }
       },
@@ -6560,74 +6104,47 @@
         "properties": {
           "activeAccounts": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "inactiveAccounts": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "assets": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "schedules": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "inspections": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "draftForms": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "submittedForms": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "acknowledgedForms": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "acknowledgements": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           }
         }
@@ -6642,37 +6159,23 @@
         "type": "object",
         "properties": {
           "replacementUserId": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "uuid"
           },
           "displayName": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "email": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "initialPassword": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           }
         },
         "additionalProperties": false
       },
       "AdminResetPasswordRequest": {
-        "required": [
-          "newPassword"
-        ],
+        "required": ["newPassword"],
         "type": "object",
         "properties": {
           "newPassword": {
@@ -6682,36 +6185,22 @@
         "additionalProperties": false
       },
       "AdminSchedulePageResponse": {
-        "required": [
-          "totalCount",
-          "page",
-          "pageSize",
-          "items"
-        ],
+        "required": ["totalCount", "page", "pageSize", "items"],
         "type": "object",
         "properties": {
           "totalCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "page": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "pageSize": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "items": {
@@ -6760,10 +6249,7 @@
             "type": "string"
           },
           "department": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "scheduleDate": {
             "type": "string",
@@ -6779,74 +6265,41 @@
             "type": "string"
           },
           "quarter": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "semester": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "year": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "null",
-              "integer",
-              "string"
-            ],
+            "type": ["null", "integer", "string"],
             "format": "int32"
           },
           "academicYear": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "inspectorUserId": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "uuid"
           },
           "inspectorDisplayName": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "supervisorUserId": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "uuid"
           },
           "supervisorDisplayName": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "completedAt": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "date-time"
           }
         }
       },
       "AdminUpdateAccountRequest": {
-        "required": [
-          "displayName",
-          "email",
-          "role",
-          "isActive"
-        ],
+        "required": ["displayName", "email", "role", "isActive"],
         "type": "object",
         "properties": {
           "displayName": {
@@ -6888,48 +6341,27 @@
             "type": "string"
           },
           "building": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "department": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "location": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "verificationLatitude": {
             "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
-            "type": [
-              "null",
-              "number",
-              "string"
-            ],
+            "type": ["null", "number", "string"],
             "format": "double"
           },
           "verificationLongitude": {
             "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
-            "type": [
-              "null",
-              "number",
-              "string"
-            ],
+            "type": ["null", "number", "string"],
             "format": "double"
           },
           "verificationRadiusMeters": {
             "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
-            "type": [
-              "null",
-              "number",
-              "string"
-            ],
+            "type": ["null", "number", "string"],
             "format": "double"
           }
         },
@@ -6951,70 +6383,42 @@
         "type": "object",
         "properties": {
           "fileNumber": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "assetCategory": {
             "type": "string"
           },
           "building": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "department": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "pmCycle": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "periodType": {
             "type": "string"
           },
           "quarter": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "semester": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "year": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "null",
-              "integer",
-              "string"
-            ],
+            "type": ["null", "integer", "string"],
             "format": "int32"
           },
           "academicYear": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           }
         },
         "additionalProperties": false
       },
       "AdminUpdateGsdHeadRequest": {
-        "required": [
-          "displayName",
-          "email"
-        ],
+        "required": ["displayName", "email"],
         "type": "object",
         "properties": {
           "displayName": {
@@ -7052,38 +6456,23 @@
             "type": "string"
           },
           "quarter": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "semester": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "academicYear": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "status": {
             "type": "string"
           },
           "assignedToUserId": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "uuid"
           },
           "assignedSupervisorUserId": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "uuid"
           }
         },
@@ -7107,67 +6496,43 @@
           },
           "assetsSeeded": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "schedulesSeeded": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "inspectionsSeeded": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "formsSeeded": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "acknowledgementsSeeded": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "wmsReferralsSeeded": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "wmsReferralAuditsSeeded": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           }
         }
       },
       "AssetCategoryResponse": {
-        "required": [
-          "code",
-          "displayName"
-        ],
+        "required": ["code", "displayName"],
         "type": "object",
         "properties": {
           "code": {
@@ -7177,16 +6542,10 @@
             "type": "string"
           },
           "scheduledMonths": {
-            "type": [
-              "null",
-              "array"
-            ],
+            "type": ["null", "array"],
             "items": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
+              "type": ["integer", "string"],
               "format": "int32"
             }
           }
@@ -7211,45 +6570,28 @@
           },
           "totalCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "activeCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "inactiveCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "retiredCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           }
         }
       },
       "AssetRegistryOptionsResponse": {
-        "required": [
-          "categories",
-          "statuses",
-          "departments",
-          "buildings"
-        ],
+        "required": ["categories", "statuses", "departments", "buildings"],
         "type": "object",
         "properties": {
           "categories": {
@@ -7279,12 +6621,7 @@
         }
       },
       "AssetRegistryPageResponse": {
-        "required": [
-          "items",
-          "page",
-          "pageSize",
-          "totalCount"
-        ],
+        "required": ["items", "page", "pageSize", "totalCount"],
         "type": "object",
         "properties": {
           "items": {
@@ -7295,26 +6632,17 @@
           },
           "page": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "pageSize": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "totalCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           }
         }
@@ -7331,34 +6659,22 @@
         "properties": {
           "totalCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "activeCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "inactiveCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "retiredCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "categories": {
@@ -7396,28 +6712,16 @@
             "type": "string"
           },
           "building": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "department": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "location": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "qrCodeValue": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "status": {
             "type": "string"
@@ -7445,29 +6749,17 @@
         "properties": {
           "verificationLatitude": {
             "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
-            "type": [
-              "null",
-              "number",
-              "string"
-            ],
+            "type": ["null", "number", "string"],
             "format": "double"
           },
           "verificationLongitude": {
             "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
-            "type": [
-              "null",
-              "number",
-              "string"
-            ],
+            "type": ["null", "number", "string"],
             "format": "double"
           },
           "verificationRadiusMeters": {
             "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
-            "type": [
-              "null",
-              "number",
-              "string"
-            ],
+            "type": ["null", "number", "string"],
             "format": "double"
           }
         }
@@ -7491,12 +6783,7 @@
         }
       },
       "AuthUserResponse": {
-        "required": [
-          "id",
-          "email",
-          "displayName",
-          "roles"
-        ],
+        "required": ["id", "email", "displayName", "roles"],
         "type": "object",
         "properties": {
           "id": {
@@ -7535,26 +6822,17 @@
             "format": "uuid"
           },
           "fileNumber": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "acknowledgedAt": {
             "type": "string",
             "format": "date-time"
           },
           "department": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "building": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "assetCategory": {
             "type": "string"
@@ -7598,47 +6876,29 @@
             "format": "date-time"
           },
           "assetDeviceNumber": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "assetCode": {
             "type": "string"
           },
           "location": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "findingOrRemarks": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "isOperational": {
             "type": "boolean"
           },
           "recommendedCorrectiveAction": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "wmsPmNumber": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "wmsReferralRevision": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "followUpStatus": {
@@ -7652,10 +6912,7 @@
             "format": "uuid"
           },
           "skilledWorkerIdentity": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           }
         }
       },
@@ -7669,48 +6926,27 @@
             "type": "string"
           },
           "building": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "department": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "location": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "verificationLatitude": {
             "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
-            "type": [
-              "null",
-              "number",
-              "string"
-            ],
+            "type": ["null", "number", "string"],
             "format": "double"
           },
           "verificationLongitude": {
             "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
-            "type": [
-              "null",
-              "number",
-              "string"
-            ],
+            "type": ["null", "number", "string"],
             "format": "double"
           },
           "verificationRadiusMeters": {
             "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
-            "type": [
-              "null",
-              "number",
-              "string"
-            ],
+            "type": ["null", "number", "string"],
             "format": "double"
           }
         }
@@ -7726,37 +6962,24 @@
         "properties": {
           "latitude": {
             "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
-            "type": [
-              "number",
-              "string"
-            ],
+            "type": ["number", "string"],
             "format": "double"
           },
           "longitude": {
             "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
-            "type": [
-              "number",
-              "string"
-            ],
+            "type": ["number", "string"],
             "format": "double"
           },
           "accuracyMeters": {
             "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
-            "type": [
-              "null",
-              "number",
-              "string"
-            ],
+            "type": ["null", "number", "string"],
             "format": "double"
           },
           "hasAccuracy": {
             "type": "boolean"
           },
           "devicePositionTimestamp": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "date-time"
           },
           "isMocked": {
@@ -7767,10 +6990,7 @@
           },
           "acquisitionDurationMs": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           }
         }
@@ -7779,56 +6999,34 @@
         "type": "object",
         "properties": {
           "id": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "uuid"
           },
           "assetCategory": {
             "type": "string"
           },
           "building": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "department": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "periodType": {
             "type": "string"
           },
           "quarter": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "semester": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "year": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "null",
-              "integer",
-              "string"
-            ],
+            "type": ["null", "integer", "string"],
             "format": "int32"
           },
           "academicYear": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           }
         }
       },
@@ -7840,34 +7038,21 @@
             "format": "uuid"
           },
           "scheduleDate": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "date-time"
           },
           "pmCycle": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "periodType": {
             "type": "string"
           },
           "quarter": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "year": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "null",
-              "integer",
-              "string"
-            ],
+            "type": ["null", "integer", "string"],
             "format": "int32"
           }
         }
@@ -7876,10 +7061,7 @@
         "type": "object",
         "properties": {
           "id": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "uuid"
           },
           "scheduleId": {
@@ -7891,10 +7073,7 @@
             "format": "uuid"
           },
           "locationAttemptId": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "uuid"
           },
           "dateInspected": {
@@ -7902,44 +7081,26 @@
             "format": "date-time"
           },
           "dateAccomplished": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "date-time"
           },
           "isOperational": {
             "type": "boolean"
           },
           "remarks": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "actionsRecommendations": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "waterReplaceCarbonFilter": {
-            "type": [
-              "null",
-              "boolean"
-            ]
+            "type": ["null", "boolean"]
           },
           "waterReplaceSedimentFilter": {
-            "type": [
-              "null",
-              "boolean"
-            ]
+            "type": ["null", "boolean"]
           },
           "waterCheckUvLight": {
-            "type": [
-              "null",
-              "boolean"
-            ]
+            "type": ["null", "boolean"]
           }
         }
       },
@@ -7981,33 +7142,21 @@
             "format": "date-time"
           },
           "startedAt": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "date-time"
           },
           "completedAt": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "date-time"
           },
           "isOperational": {
             "type": "boolean"
           },
           "remarks": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "actionsRecommendations": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "createdAt": {
             "type": "string",
@@ -8018,77 +7167,44 @@
             "format": "date-time"
           },
           "dateAccomplished": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "date-time"
           },
           "waterReplaceCarbonFilter": {
-            "type": [
-              "null",
-              "boolean"
-            ]
+            "type": ["null", "boolean"]
           },
           "waterReplaceSedimentFilter": {
-            "type": [
-              "null",
-              "boolean"
-            ]
+            "type": ["null", "boolean"]
           },
           "waterCheckUvLight": {
-            "type": [
-              "null",
-              "boolean"
-            ]
+            "type": ["null", "boolean"]
           },
           "assetCode": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "location": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "skilledWorkerIdentity": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "hasPhotoEvidence": {
             "type": "boolean",
             "default": false
           },
           "currentScheduleInspectorUserId": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "uuid"
           },
           "currentScheduleInspectorIdentity": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "currentScheduleSupervisorUserId": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "uuid"
           },
           "currentScheduleSupervisorIdentity": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           }
         }
       },
@@ -8097,10 +7213,7 @@
         "properties": {
           "year": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           }
         }
@@ -8109,37 +7222,21 @@
         "type": "object",
         "properties": {
           "type": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "title": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "status": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "null",
-              "integer",
-              "string"
-            ],
+            "type": ["null", "integer", "string"],
             "format": "int32"
           },
           "detail": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "instance": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "errors": {
             "type": "object",
@@ -8174,41 +7271,23 @@
             "type": "boolean"
           },
           "remarks": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "actionsRecommendations": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "dateAccomplished": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "date-time"
           },
           "waterReplaceCarbonFilter": {
-            "type": [
-              "null",
-              "boolean"
-            ]
+            "type": ["null", "boolean"]
           },
           "waterReplaceSedimentFilter": {
-            "type": [
-              "null",
-              "boolean"
-            ]
+            "type": ["null", "boolean"]
           },
           "waterCheckUvLight": {
-            "type": [
-              "null",
-              "boolean"
-            ]
+            "type": ["null", "boolean"]
           }
         }
       },
@@ -8236,21 +7315,14 @@
           },
           "accuracyMeters": {
             "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
-            "type": [
-              "null",
-              "number",
-              "string"
-            ],
+            "type": ["null", "number", "string"],
             "format": "double"
           },
           "hasAccuracy": {
             "type": "boolean"
           },
           "devicePositionTimestamp": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "date-time"
           },
           "isMocked": {
@@ -8261,10 +7333,7 @@
           },
           "acquisitionDurationMs": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "outcome": {
@@ -8294,22 +7363,13 @@
             "type": "string"
           },
           "department": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "building": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "location": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           }
         }
       },
@@ -8357,16 +7417,10 @@
             "type": "boolean"
           },
           "remarks": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "actionsRecommendations": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "createdAt": {
             "type": "string",
@@ -8377,42 +7431,24 @@
             "format": "date-time"
           },
           "dateAccomplished": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "date-time"
           },
           "waterReplaceCarbonFilter": {
-            "type": [
-              "null",
-              "boolean"
-            ]
+            "type": ["null", "boolean"]
           },
           "waterReplaceSedimentFilter": {
-            "type": [
-              "null",
-              "boolean"
-            ]
+            "type": ["null", "boolean"]
           },
           "waterCheckUvLight": {
-            "type": [
-              "null",
-              "boolean"
-            ]
+            "type": ["null", "boolean"]
           },
           "externalPmNumber": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "wmsReferralRevision": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "correctiveFollowUpStatus": {
@@ -8486,13 +7522,7 @@
         }
       },
       "InspectionRegistryPageResponse": {
-        "required": [
-          "items",
-          "page",
-          "pageSize",
-          "totalCount",
-          "overallCount"
-        ],
+        "required": ["items", "page", "pageSize", "totalCount", "overallCount"],
         "type": "object",
         "properties": {
           "items": {
@@ -8503,43 +7533,28 @@
           },
           "page": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "pageSize": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "totalCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "overallCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           }
         }
       },
       "InspectionRegistryScheduleContext": {
-        "required": [
-          "id",
-          "pmCycle"
-        ],
+        "required": ["id", "pmCycle"],
         "type": "object",
         "properties": {
           "id": {
@@ -8564,50 +7579,32 @@
         "properties": {
           "totalCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "operationalCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "nonOperationalCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "noReferralCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "pendingFollowUpCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "referredCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           }
         }
@@ -8651,16 +7648,10 @@
             "type": "boolean"
           },
           "remarks": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "actionsRecommendations": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "createdAt": {
             "type": "string",
@@ -8671,42 +7662,24 @@
             "format": "date-time"
           },
           "dateAccomplished": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "date-time"
           },
           "waterReplaceCarbonFilter": {
-            "type": [
-              "null",
-              "boolean"
-            ]
+            "type": ["null", "boolean"]
           },
           "waterReplaceSedimentFilter": {
-            "type": [
-              "null",
-              "boolean"
-            ]
+            "type": ["null", "boolean"]
           },
           "waterCheckUvLight": {
-            "type": [
-              "null",
-              "boolean"
-            ]
+            "type": ["null", "boolean"]
           },
           "externalPmNumber": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "wmsReferralRevision": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32",
             "default": 0
           },
@@ -8731,20 +7704,14 @@
         "type": "object",
         "properties": {
           "previousExternalPmNumber": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "newExternalPmNumber": {
             "type": "string"
           },
           "revision": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "changedByUserId": {
@@ -8781,55 +7748,34 @@
             "type": "string"
           },
           "externalPmNumber": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "revision": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "recordedByUserId": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "uuid"
           },
           "recordedAt": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "date-time"
           },
           "lastUpdatedByUserId": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "uuid"
           },
           "lastUpdatedAt": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "date-time"
           },
           "canRecordReferral": {
             "type": "boolean"
           },
           "eligibilityMessage": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "audit": {
             "type": "array",
@@ -8861,10 +7807,7 @@
           },
           "revision": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "recordedByUserId": {
@@ -8901,11 +7844,7 @@
         "additionalProperties": false
       },
       "LoginResponse": {
-        "required": [
-          "accessToken",
-          "expiresAtUtc",
-          "user"
-        ],
+        "required": ["accessToken", "expiresAtUtc", "user"],
         "type": "object",
         "properties": {
           "accessToken": {
@@ -8921,16 +7860,11 @@
         }
       },
       "PmAnalyticsInterpretationRequest": {
-        "required": [
-          "question"
-        ],
+        "required": ["question"],
         "type": "object",
         "properties": {
           "question": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           }
         },
         "additionalProperties": false
@@ -8966,22 +7900,13 @@
             }
           },
           "presentation": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "code": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "canonicalQuestion": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           }
         }
       },
@@ -8997,34 +7922,21 @@
         "type": "object",
         "properties": {
           "department": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "numerator": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "denominator": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "value": {
             "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
-            "type": [
-              "null",
-              "number",
-              "string"
-            ],
+            "type": ["null", "number", "string"],
             "format": "double"
           },
           "unit": {
@@ -9055,10 +7967,7 @@
             "type": "string"
           },
           "department": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "groupBy": {
             "type": "string"
@@ -9066,16 +7975,11 @@
         }
       },
       "PmAnalyticsQuestionRequest": {
-        "required": [
-          "question"
-        ],
+        "required": ["question"],
         "type": "object",
         "properties": {
           "question": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           }
         },
         "additionalProperties": false
@@ -9121,10 +8025,7 @@
           },
           "totalSourceCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "sourcesTruncated": {
@@ -9160,20 +8061,14 @@
             "format": "uuid"
           },
           "inspectionId": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "uuid"
           },
           "assetCode": {
             "type": "string"
           },
           "department": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "pmCycle": {
             "type": "string"
@@ -9183,10 +8078,7 @@
             "format": "date-time"
           },
           "inspectionCompletedAt": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "date-time"
           },
           "timeliness": {
@@ -9196,18 +8088,12 @@
             "type": "string"
           },
           "formStatus": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           }
         }
       },
       "PmAnalyticsV2Comparison": {
-        "required": [
-          "earlierCycle",
-          "laterCycle"
-        ],
+        "required": ["earlierCycle", "laterCycle"],
         "type": "object",
         "properties": {
           "earlierCycle": {
@@ -9244,11 +8130,7 @@
           },
           "delta": {
             "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
-            "type": [
-              "null",
-              "number",
-              "string"
-            ],
+            "type": ["null", "number", "string"],
             "format": "double"
           },
           "deltaUnit": {
@@ -9257,18 +8139,10 @@
         }
       },
       "PmAnalyticsV2Condition": {
-        "enum": [
-          "Operational",
-          "NonOperational",
-          "NotInspected",
-          null
-        ]
+        "enum": ["Operational", "NonOperational", "NotInspected", null]
       },
       "PmAnalyticsV2CountBasis": {
-        "enum": [
-          "AssetCycles",
-          "DistinctAssets"
-        ]
+        "enum": ["AssetCycles", "DistinctAssets"]
       },
       "PmAnalyticsV2CycleResponse": {
         "required": [
@@ -9299,91 +8173,56 @@
           },
           "eligibleAssetCycleCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "eligibleDistinctAssetCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "inspectedCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "completedOnTimeCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "completedLateCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "nonOperationalCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "remainingCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "missedCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "legacyDateFallbackCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           }
         }
       },
       "PmAnalyticsV2Direction": {
-        "enum": [
-          "Highest",
-          "Lowest"
-        ]
+        "enum": ["Highest", "Lowest"]
       },
       "PmAnalyticsV2GroupBy": {
-        "enum": [
-          "None",
-          "Department",
-          "Building",
-          "PmCycle"
-        ]
+        "enum": ["None", "Department", "Building", "PmCycle"]
       },
       "PmAnalyticsV2GroupResponse": {
         "required": [
@@ -9401,56 +8240,35 @@
             "$ref": "#/components/schemas/PmAnalyticsV2GroupBy"
           },
           "value": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "result": {
             "$ref": "#/components/schemas/PmAnalyticsV2MeasureResponse"
           },
           "eligibleAssetCycleCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "eligibleDistinctAssetCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "matchingAssetCycleCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "matchingDistinctAssetCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           }
         }
       },
       "PmAnalyticsV2InterpretationResponse": {
-        "required": [
-          "status",
-          "plan",
-          "clarificationFields",
-          "code",
-          "detail"
-        ],
+        "required": ["status", "plan", "clarificationFields", "code", "detail"],
         "type": "object",
         "properties": {
           "status": {
@@ -9473,30 +8291,19 @@
             }
           },
           "code": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "detail": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           }
         }
       },
       "PmAnalyticsV2InterpretRequest": {
-        "required": [
-          "question"
-        ],
+        "required": ["question"],
         "type": "object",
         "properties": {
           "question": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           }
         },
         "additionalProperties": false
@@ -9514,27 +8321,17 @@
         "properties": {
           "numerator": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "denominator": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "value": {
             "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
-            "type": [
-              "null",
-              "number",
-              "string"
-            ],
+            "type": ["null", "number", "string"],
             "format": "double"
           },
           "unit": {
@@ -9544,10 +8341,7 @@
             "type": "boolean"
           },
           "unmeasurableReason": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           }
         }
       },
@@ -9562,9 +8356,7 @@
         ]
       },
       "PmAnalyticsV2Period": {
-        "required": [
-          "kind"
-        ],
+        "required": ["kind"],
         "type": "object",
         "properties": {
           "kind": {
@@ -9572,53 +8364,30 @@
           },
           "year": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "null",
-              "integer",
-              "string"
-            ],
+            "type": ["null", "integer", "string"],
             "format": "int32"
           },
           "month": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "null",
-              "integer",
-              "string"
-            ],
+            "type": ["null", "integer", "string"],
             "format": "int32"
           },
           "quarter": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "null",
-              "integer",
-              "string"
-            ],
+            "type": ["null", "integer", "string"],
             "format": "int32"
           },
           "startCycle": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "endCycle": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           }
         },
         "additionalProperties": false
       },
       "PmAnalyticsV2PeriodKind": {
-        "enum": [
-          "Month",
-          "Quarter",
-          "Year",
-          "Range"
-        ]
+        "enum": ["Month", "Quarter", "Year", "Range"]
       },
       "PmAnalyticsV2Plan": {
         "required": [
@@ -9641,10 +8410,7 @@
         "properties": {
           "schemaVersion": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "metric": {
@@ -9680,22 +8446,13 @@
             "$ref": "#/components/schemas/PmAnalyticsV2CountBasis"
           },
           "department": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "building": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "assetCode": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "condition": {
             "oneOf": [
@@ -9746,65 +8503,41 @@
         "properties": {
           "eligibleAssetCycleCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "eligibleDistinctAssetCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "matchingAssetCycleCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "matchingDistinctAssetCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "sourceTotalCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "totalPages": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           }
         }
       },
       "PmAnalyticsV2Presentation": {
-        "enum": [
-          "Count",
-          "Percent",
-          "Records"
-        ]
+        "enum": ["Count", "Percent", "Records"]
       },
       "PmAnalyticsV2QueryRequest": {
-        "required": [
-          "plan"
-        ],
+        "required": ["plan"],
         "type": "object",
         "properties": {
           "plan": {
@@ -9822,19 +8555,13 @@
           },
           "page": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32",
             "default": 1
           },
           "pageSize": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32",
             "default": 25
           }
@@ -9862,10 +8589,7 @@
         "properties": {
           "schemaVersion": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "asOfUtc": {
@@ -9880,18 +8604,12 @@
           },
           "page": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "pageSize": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "population": {
@@ -9947,18 +8665,12 @@
         }
       },
       "PmAnalyticsV2Ranking": {
-        "required": [
-          "limit",
-          "direction"
-        ],
+        "required": ["limit", "direction"],
         "type": "object",
         "properties": {
           "limit": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "direction": {
@@ -9968,17 +8680,11 @@
         "additionalProperties": false
       },
       "PmAnalyticsV2RankingExclusionResponse": {
-        "required": [
-          "department",
-          "reason"
-        ],
+        "required": ["department", "reason"],
         "type": "object",
         "properties": {
           "department": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "reason": {
             "type": "string"
@@ -10014,10 +8720,7 @@
             "format": "uuid"
           },
           "inspectionId": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "uuid"
           },
           "assetCode": {
@@ -10027,16 +8730,10 @@
             "type": "string"
           },
           "currentDepartment": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "currentBuilding": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "pmCycle": {
             "type": "string"
@@ -10046,20 +8743,14 @@
             "format": "date-time"
           },
           "completedAt": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "date-time"
           },
           "scheduleStatus": {
             "type": "string"
           },
           "formStatus": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "condition": {
             "type": "string"
@@ -10073,27 +8764,13 @@
         }
       },
       "PmAnalyticsV2SourceScope": {
-        "enum": [
-          "Matching",
-          "Calculation"
-        ]
+        "enum": ["Matching", "Calculation"]
       },
       "PmAnalyticsV2Timeliness": {
-        "enum": [
-          "OnTime",
-          "Late",
-          "Remaining",
-          "Missed",
-          "Future",
-          null
-        ]
+        "enum": ["OnTime", "Late", "Remaining", "Missed", "Future", null]
       },
       "PmAnalyticsV3AggregateFilter": {
-        "required": [
-          "measure",
-          "operator",
-          "value"
-        ],
+        "required": ["measure", "operator", "value"],
         "type": "object",
         "properties": {
           "measure": {
@@ -10104,20 +8781,14 @@
           },
           "value": {
             "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
-            "type": [
-              "number",
-              "string"
-            ],
+            "type": ["number", "string"],
             "format": "double"
           }
         },
         "additionalProperties": false
       },
       "PmAnalyticsV3AggregateRow": {
-        "required": [
-          "values",
-          "measures"
-        ],
+        "required": ["values", "measures"],
         "type": "object",
         "properties": {
           "values": {
@@ -10147,18 +8818,12 @@
         "properties": {
           "schemaVersion": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "catalogVersion": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "subject": {
@@ -10203,11 +8868,7 @@
         }
       },
       "PmAnalyticsV3CategoryDefinition": {
-        "required": [
-          "id",
-          "label",
-          "scheduledMonths"
-        ],
+        "required": ["id", "label", "scheduledMonths"],
         "type": "object",
         "properties": {
           "id": {
@@ -10220,23 +8881,14 @@
             "type": "array",
             "items": {
               "pattern": "^-?(?:0|[1-9]\\d*)$",
-              "type": [
-                "integer",
-                "string"
-              ],
+              "type": ["integer", "string"],
               "format": "int32"
             }
           }
         }
       },
       "PmAnalyticsV3Column": {
-        "required": [
-          "id",
-          "label",
-          "valueType",
-          "unit",
-          "nullSemantics"
-        ],
+        "required": ["id", "label", "valueType", "unit", "nullSemantics"],
         "type": "object",
         "properties": {
           "id": {
@@ -10252,10 +8904,7 @@
             "type": "string"
           },
           "nullSemantics": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           }
         }
       },
@@ -10291,9 +8940,7 @@
         }
       },
       "PmAnalyticsV3ExecuteRequest": {
-        "required": [
-          "previewId"
-        ],
+        "required": ["previewId"],
         "type": "object",
         "properties": {
           "previewId": {
@@ -10301,19 +8948,13 @@
           },
           "page": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32",
             "default": 1
           },
           "pageSize": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32",
             "default": 25
           }
@@ -10341,18 +8982,12 @@
         "properties": {
           "schemaVersion": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "catalogVersion": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "asOfUtc": {
@@ -10385,26 +9020,17 @@
           },
           "page": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "pageSize": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "totalPages": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "aggregateRows": {
@@ -10428,10 +9054,7 @@
         }
       },
       "PmAnalyticsV3Filter": {
-        "required": [
-          "field",
-          "operator"
-        ],
+        "required": ["field", "operator"],
         "type": "object",
         "properties": {
           "field": {
@@ -10441,10 +9064,7 @@
             "$ref": "#/components/schemas/PmAnalyticsV3FilterOperator"
           },
           "values": {
-            "type": [
-              "null",
-              "array"
-            ],
+            "type": ["null", "array"],
             "items": {
               "type": "string"
             }
@@ -10478,10 +9098,7 @@
           },
           "maximumLength": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "allowedValues": {
@@ -10499,18 +9116,10 @@
         }
       },
       "PmAnalyticsV3FilterOperator": {
-        "enum": [
-          "Equal",
-          "In",
-          "IsNull"
-        ]
+        "enum": ["Equal", "In", "IsNull"]
       },
       "PmAnalyticsV3FilterValuesResponse": {
-        "required": [
-          "field",
-          "values",
-          "hasMore"
-        ],
+        "required": ["field", "values", "hasMore"],
         "type": "object",
         "properties": {
           "field": {
@@ -10558,16 +9167,10 @@
             }
           },
           "code": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "detail": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "interpreter": {
             "type": "string"
@@ -10575,23 +9178,14 @@
         }
       },
       "PmAnalyticsV3Interpreter": {
-        "enum": [
-          "DeepSeek",
-          "DeterministicParser",
-          null
-        ]
+        "enum": ["DeepSeek", "DeterministicParser", null]
       },
       "PmAnalyticsV3InterpretRequest": {
-        "required": [
-          "question"
-        ],
+        "required": ["question"],
         "type": "object",
         "properties": {
           "question": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "interpreter": {
             "oneOf": [
@@ -10655,27 +9249,17 @@
         "properties": {
           "value": {
             "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
-            "type": [
-              "null",
-              "number",
-              "string"
-            ],
+            "type": ["null", "number", "string"],
             "format": "double"
           },
           "numerator": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "denominator": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "unit": {
@@ -10685,34 +9269,22 @@
             "type": "boolean"
           },
           "unmeasurableReason": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "eligibleRowCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "matchingRowCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           }
         }
       },
       "PmAnalyticsV3Mode": {
-        "enum": [
-          "Aggregate",
-          "Records"
-        ]
+        "enum": ["Aggregate", "Records"]
       },
       "PmAnalyticsV3NumericOperator": {
         "enum": [
@@ -10725,10 +9297,7 @@
         ]
       },
       "PmAnalyticsV3OrderBy": {
-        "required": [
-          "field",
-          "direction"
-        ],
+        "required": ["field", "direction"],
         "type": "object",
         "properties": {
           "field": {
@@ -10741,10 +9310,7 @@
         "additionalProperties": false
       },
       "PmAnalyticsV3Period": {
-        "required": [
-          "basis",
-          "kind"
-        ],
+        "required": ["basis", "kind"],
         "type": "object",
         "properties": {
           "basis": {
@@ -10755,53 +9321,30 @@
           },
           "year": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "null",
-              "integer",
-              "string"
-            ],
+            "type": ["null", "integer", "string"],
             "format": "int32"
           },
           "month": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "null",
-              "integer",
-              "string"
-            ],
+            "type": ["null", "integer", "string"],
             "format": "int32"
           },
           "quarter": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "null",
-              "integer",
-              "string"
-            ],
+            "type": ["null", "integer", "string"],
             "format": "int32"
           },
           "startCycle": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "endCycle": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           }
         },
         "additionalProperties": false
       },
       "PmAnalyticsV3PeriodKind": {
-        "enum": [
-          "Month",
-          "Quarter",
-          "Year",
-          "Range"
-        ]
+        "enum": ["Month", "Quarter", "Year", "Range"]
       },
       "PmAnalyticsV3Population": {
         "required": [
@@ -10818,80 +9361,51 @@
         "properties": {
           "eligibleAssetCycleCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "eligibleDistinctAssetCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "matchingAssetCycleCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "matchingDistinctAssetCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "sourceTotalCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "groupsBeforeAggregateFilters": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "groupsAfterAggregateFilters": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "groupsReturnedAfterTop": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           }
         }
       },
       "PmAnalyticsV3Presentation": {
-        "enum": [
-          "Table",
-          "Summary"
-        ]
+        "enum": ["Table", "Summary"]
       },
       "PmAnalyticsV3PreviewRequest": {
-        "required": [
-          "plan"
-        ],
+        "required": ["plan"],
         "type": "object",
         "properties": {
           "plan": {
@@ -10949,13 +9463,7 @@
         }
       },
       "PmAnalyticsV3RecordColumnDefinition": {
-        "required": [
-          "id",
-          "label",
-          "valueType",
-          "unit",
-          "nullSemantics"
-        ],
+        "required": ["id", "label", "valueType", "unit", "nullSemantics"],
         "type": "object",
         "properties": {
           "id": {
@@ -10971,27 +9479,16 @@
             "type": "string"
           },
           "nullSemantics": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           }
         }
       },
       "PmAnalyticsV3RecordRow": {
-        "required": [
-          "scheduleId",
-          "assetId",
-          "inspectionId",
-          "values"
-        ],
+        "required": ["scheduleId", "assetId", "inspectionId", "values"],
         "type": "object",
         "properties": {
           "scheduleId": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "uuid"
           },
           "assetId": {
@@ -10999,10 +9496,7 @@
             "format": "uuid"
           },
           "inspectionId": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "uuid"
           },
           "values": {
@@ -11032,18 +9526,12 @@
         "properties": {
           "schemaVersion": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "catalogVersion": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "subject": {
@@ -11075,10 +9563,7 @@
             }
           },
           "groupBy": {
-            "type": [
-              "null",
-              "array"
-            ],
+            "type": ["null", "array"],
             "items": {
               "type": "string"
             }
@@ -11130,18 +9615,10 @@
         "additionalProperties": false
       },
       "PmAnalyticsV3SortDirection": {
-        "enum": [
-          "Ascending",
-          "Descending"
-        ]
+        "enum": ["Ascending", "Descending"]
       },
       "PmAnalyticsV3SubjectDefinition": {
-        "required": [
-          "id",
-          "label",
-          "description",
-          "requiresPeriod"
-        ],
+        "required": ["id", "label", "description", "requiresPeriod"],
         "type": "object",
         "properties": {
           "id": {
@@ -11159,11 +9636,7 @@
         }
       },
       "PmAnalyticsV3Top": {
-        "required": [
-          "measure",
-          "limit",
-          "direction"
-        ],
+        "required": ["measure", "limit", "direction"],
         "type": "object",
         "properties": {
           "measure": {
@@ -11171,10 +9644,7 @@
           },
           "limit": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "direction": {
@@ -11222,10 +9692,7 @@
             "format": "uuid"
           },
           "inspectionId": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "uuid"
           },
           "assetCode": {
@@ -11235,22 +9702,13 @@
             "type": "string"
           },
           "building": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "location": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "department": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "pmCycle": {
             "type": "string"
@@ -11273,10 +9731,7 @@
             "type": "boolean"
           },
           "inspectionCompletedAt": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "date-time"
           },
           "timeliness": {
@@ -11286,51 +9741,30 @@
             "type": "string"
           },
           "remarks": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "actionsRecommendations": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "formId": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "uuid"
           },
           "formStatus": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "isAcknowledged": {
             "type": "boolean"
           },
           "acknowledgedAt": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "date-time"
           },
           "correctiveFollowUpStatus": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "externalPmNumber": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           }
         }
       },
@@ -11357,10 +9791,7 @@
         "type": "object",
         "properties": {
           "department": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "assetCategory": {
             "type": "string"
@@ -11370,112 +9801,68 @@
           },
           "scheduled": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "inspected": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "completedOnTime": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "onTimeCompliancePercent": {
             "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
-            "type": [
-              "null",
-              "number",
-              "string"
-            ],
+            "type": ["null", "number", "string"],
             "format": "double"
           },
           "completedLate": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "notCompleted": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "remaining": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "formId": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "uuid"
           },
           "formStatus": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "fileNumber": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "fieldWorkCompletedAt": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "date-time"
           },
           "submittedAt": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "date-time"
           },
           "isAcknowledged": {
             "type": "boolean"
           },
           "acknowledgedAt": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "date-time"
           }
         }
       },
       "PmPeriodDashboardCycleGroupResponse": {
-        "required": [
-          "assetCategory",
-          "year",
-          "cycles"
-        ],
+        "required": ["assetCategory", "year", "cycles"],
         "type": "object",
         "properties": {
           "assetCategory": {
@@ -11483,10 +9870,7 @@
           },
           "year": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "cycles": {
@@ -11498,10 +9882,7 @@
         }
       },
       "PmPeriodDashboardCycleOptionResponse": {
-        "required": [
-          "pmCycle",
-          "scheduled"
-        ],
+        "required": ["pmCycle", "scheduled"],
         "type": "object",
         "properties": {
           "pmCycle": {
@@ -11509,10 +9890,7 @@
           },
           "scheduled": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           }
         }
@@ -11548,10 +9926,7 @@
             "type": "string"
           },
           "department": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "deadline": {
             "type": "string",
@@ -11568,83 +9943,52 @@
           },
           "scheduled": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "inspected": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "completedOnTime": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "completedLate": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "notCompleted": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "remaining": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "operational": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "nonOperational": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "onTimeCompliancePercent": {
             "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
-            "type": [
-              "null",
-              "number",
-              "string"
-            ],
+            "type": ["null", "number", "string"],
             "format": "double"
           },
           "progressPercent": {
             "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
-            "type": [
-              "number",
-              "string"
-            ],
+            "type": ["number", "string"],
             "format": "double"
           },
           "batches": {
@@ -11705,12 +10049,7 @@
         }
       },
       "PreventiveMaintenanceFormOptionsResponse": {
-        "required": [
-          "categories",
-          "departments",
-          "pmCycles",
-          "totalCount"
-        ],
+        "required": ["categories", "departments", "pmCycles", "totalCount"],
         "type": "object",
         "properties": {
           "categories": {
@@ -11733,21 +10072,13 @@
           },
           "totalCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           }
         }
       },
       "PreventiveMaintenanceFormPageResponse": {
-        "required": [
-          "items",
-          "page",
-          "pageSize",
-          "totalCount"
-        ],
+        "required": ["items", "page", "pageSize", "totalCount"],
         "type": "object",
         "properties": {
           "items": {
@@ -11758,26 +10089,17 @@
           },
           "page": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "pageSize": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "totalCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           }
         }
@@ -11811,61 +10133,36 @@
             "format": "uuid"
           },
           "fileNumber": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "assetCategory": {
             "type": "string"
           },
           "building": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "department": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "pmCycle": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "periodType": {
             "type": "string"
           },
           "quarter": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "semester": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "year": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "null",
-              "integer",
-              "string"
-            ],
+            "type": ["null", "integer", "string"],
             "format": "int32"
           },
           "academicYear": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "status": {
             "type": "string"
@@ -11875,24 +10172,15 @@
             "format": "uuid"
           },
           "submittedByUserId": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "uuid"
           },
           "submittedAt": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "date-time"
           },
           "fieldWorkCompletedAt": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "date-time"
           },
           "createdAt": {
@@ -11915,37 +10203,21 @@
         "type": "object",
         "properties": {
           "type": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "title": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "status": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "null",
-              "integer",
-              "string"
-            ],
+            "type": ["null", "integer", "string"],
             "format": "int32"
           },
           "detail": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "instance": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           }
         }
       },
@@ -11985,39 +10257,24 @@
             "type": "string"
           },
           "building": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "department": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "location": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "status": {
             "type": "string"
           },
           "qrCodeValue": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           }
         }
       },
       "ScheduleAssigneeOption": {
-        "required": [
-          "id",
-          "displayName"
-        ],
+        "required": ["id", "displayName"],
         "type": "object",
         "properties": {
           "id": {
@@ -12052,17 +10309,11 @@
             "type": "string"
           },
           "workerUserId": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "uuid"
           },
           "workerDisplayName": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "supervisorUserId": {
             "type": "string",
@@ -12121,99 +10372,63 @@
           },
           "scheduleCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "unfinishedScheduleCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "activeUnfinishedScheduleCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "completedCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "ongoingCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "overdueCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "cancelledCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "activeScheduleCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "supervisorState": {
             "type": "string"
           },
           "supervisorUserId": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "uuid"
           },
           "supervisorDisplayName": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "inspectorState": {
             "type": "string"
           },
           "inspectorUserId": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "uuid"
           },
           "inspectorDisplayName": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "assignmentLocked": {
             "type": "boolean"
@@ -12246,34 +10461,22 @@
         "properties": {
           "totalScheduleCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "totalBatchCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "page": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "pageSize": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "summary": {
@@ -12304,34 +10507,22 @@
         "properties": {
           "notStartedBatchCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "inProgressBatchCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "ongoingScheduleCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "overdueScheduleCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           }
         }
@@ -12369,45 +10560,27 @@
         }
       },
       "ScheduleCoverageReviewPage": {
-        "required": [
-          "year",
-          "page",
-          "pageSize",
-          "total",
-          "items"
-        ],
+        "required": ["year", "page", "pageSize", "total", "items"],
         "type": "object",
         "properties": {
           "year": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "page": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "pageSize": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "total": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "items": {
@@ -12431,42 +10604,27 @@
         "properties": {
           "page": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "pageSize": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "total": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "pendingCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "reviewedCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "items": {
@@ -12529,44 +10687,27 @@
             "format": "date-time"
           },
           "reviewedAt": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "date-time"
           },
           "reviewedByUserId": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "uuid"
           },
           "reviewedByDisplayName": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "reviewNote": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           }
         }
       },
       "ScheduleEnrollmentDeferralReviewRequest": {
-        "required": [
-          "note"
-        ],
+        "required": ["note"],
         "type": "object",
         "properties": {
           "note": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           }
         }
       },
@@ -12583,59 +10724,38 @@
         "properties": {
           "year": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "eligibleAssets": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "existingSchedules": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "createdSchedules": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "deferredSchedules": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "cyclesRequiringGsdCoverageReview": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           }
         }
       },
       "ScheduleReferenceResponse": {
-        "required": [
-          "code",
-          "displayName"
-        ],
+        "required": ["code", "displayName"],
         "type": "object",
         "properties": {
           "code": {
@@ -12668,22 +10788,13 @@
             "type": "string"
           },
           "building": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "department": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "location": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           }
         }
       },
@@ -12728,37 +10839,21 @@
             "type": "string"
           },
           "quarter": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "semester": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "year": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "null",
-              "integer",
-              "string"
-            ],
+            "type": ["null", "integer", "string"],
             "format": "int32"
           },
           "academicYear": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "completedAt": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "date-time"
           },
           "createdAt": {
@@ -12782,12 +10877,7 @@
         }
       },
       "ScheduleRegistryOptionsResponse": {
-        "required": [
-          "categories",
-          "quarters",
-          "departments",
-          "years"
-        ],
+        "required": ["categories", "quarters", "departments", "years"],
         "type": "object",
         "properties": {
           "categories": {
@@ -12817,13 +10907,7 @@
         }
       },
       "ScheduleRegistryPageResponse": {
-        "required": [
-          "items",
-          "page",
-          "pageSize",
-          "totalCount",
-          "overallCount"
-        ],
+        "required": ["items", "page", "pageSize", "totalCount", "overallCount"],
         "type": "object",
         "properties": {
           "items": {
@@ -12834,34 +10918,22 @@
           },
           "page": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "pageSize": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "totalCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "overallCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           }
         }
@@ -12879,50 +10951,32 @@
         "properties": {
           "totalCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "dueCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "ongoingCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "overdueCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "completedCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "cancelledCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           }
         }
@@ -12970,51 +11024,29 @@
             "type": "string"
           },
           "quarter": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "semester": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "year": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "null",
-              "integer",
-              "string"
-            ],
+            "type": ["null", "integer", "string"],
             "format": "int32"
           },
           "academicYear": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "assignedToUserId": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "uuid"
           },
           "assignedSupervisorUserId": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "uuid"
           },
           "completedAt": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "date-time"
           },
           "createdAt": {
@@ -13055,26 +11087,17 @@
           },
           "page": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "pageSize": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "totalCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "selected": {
@@ -13090,13 +11113,7 @@
         }
       },
       "ScheduleWorkerAssignmentOptionsResponse": {
-        "required": [
-          "workers",
-          "page",
-          "pageSize",
-          "totalCount",
-          "selected"
-        ],
+        "required": ["workers", "page", "pageSize", "totalCount", "selected"],
         "type": "object",
         "properties": {
           "workers": {
@@ -13107,26 +11124,17 @@
           },
           "page": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "pageSize": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "totalCount": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           },
           "selected": {
@@ -13146,29 +11154,17 @@
         "properties": {
           "verificationLatitude": {
             "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
-            "type": [
-              "null",
-              "number",
-              "string"
-            ],
+            "type": ["null", "number", "string"],
             "format": "double"
           },
           "verificationLongitude": {
             "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
-            "type": [
-              "null",
-              "number",
-              "string"
-            ],
+            "type": ["null", "number", "string"],
             "format": "double"
           },
           "verificationRadiusMeters": {
             "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$",
-            "type": [
-              "null",
-              "number",
-              "string"
-            ],
+            "type": ["null", "number", "string"],
             "format": "double"
           }
         }
@@ -13177,10 +11173,7 @@
         "type": "object",
         "properties": {
           "expectedUpdatedAt": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "date-time"
           },
           "dateInspected": {
@@ -13188,44 +11181,26 @@
             "format": "date-time"
           },
           "dateAccomplished": {
-            "type": [
-              "null",
-              "string"
-            ],
+            "type": ["null", "string"],
             "format": "date-time"
           },
           "isOperational": {
             "type": "boolean"
           },
           "remarks": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "actionsRecommendations": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "waterReplaceCarbonFilter": {
-            "type": [
-              "null",
-              "boolean"
-            ]
+            "type": ["null", "boolean"]
           },
           "waterReplaceSedimentFilter": {
-            "type": [
-              "null",
-              "boolean"
-            ]
+            "type": ["null", "boolean"]
           },
           "waterCheckUvLight": {
-            "type": [
-              "null",
-              "boolean"
-            ]
+            "type": ["null", "boolean"]
           }
         }
       },
@@ -13237,10 +11212,7 @@
           },
           "expectedRevision": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "integer",
-              "string"
-            ],
+            "type": ["integer", "string"],
             "format": "int32"
           }
         }
@@ -13249,37 +11221,21 @@
         "type": "object",
         "properties": {
           "type": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "title": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "status": {
             "pattern": "^-?(?:0|[1-9]\\d*)$",
-            "type": [
-              "null",
-              "integer",
-              "string"
-            ],
+            "type": ["null", "integer", "string"],
             "format": "int32"
           },
           "detail": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "instance": {
-            "type": [
-              "null",
-              "string"
-            ]
+            "type": ["null", "string"]
           },
           "errors": {
             "type": "object",
