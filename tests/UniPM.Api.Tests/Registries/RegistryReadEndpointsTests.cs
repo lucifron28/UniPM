@@ -283,7 +283,11 @@ public sealed class RegistryReadEndpointsTests
         Assert.Equal(2, options.TotalCount);
         Assert.Equal(["fire-alarm", "fire-extinguisher"], options.Categories);
         Assert.DoesNotContain("emergency-light", options.Categories);
-        Assert.Equal(150, await database.GetCompatibilityLevelAsync());
+        await using var verification = new SqlConnection(database.ConnectionString);
+        await verification.OpenAsync();
+        await using var verificationCommand = verification.CreateCommand();
+        verificationCommand.CommandText = "SELECT CONVERT(int, DATABASEPROPERTYEX(DB_NAME(), 'CompatibilityLevel'));";
+        Assert.Equal(150, Convert.ToInt32(await verificationCommand.ExecuteScalarAsync()));
     }
 
     [Fact]
