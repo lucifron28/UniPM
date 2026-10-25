@@ -878,8 +878,8 @@ const formPageProperties =
   snapshot.components?.schemas?.PreventiveMaintenanceFormPageResponse
     ?.properties
 const formPageRequired = new Set(
-  snapshot.components?.schemas?.PreventiveMaintenanceFormPageResponse?.required ??
-    [],
+  snapshot.components?.schemas?.PreventiveMaintenanceFormPageResponse
+    ?.required ?? [],
 )
 if (
   !formPageProperties?.items ||
