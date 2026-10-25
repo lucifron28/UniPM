@@ -5,7 +5,7 @@ institution-approved IIS installation. It does not record an installation,
 deployment, restore drill or institutional approval.
 
 Source review closes at `f0f8a34e809ac364adc6e1dd389de1ae4afbb497`.
-Executed checks are recorded separately in TEST-152 through TEST-162.
+Executed checks are recorded separately in TEST-152 through TEST-163.
 
 ## Source review
 
@@ -24,13 +24,18 @@ Executed checks are recorded separately in TEST-152 through TEST-162.
 | Provider limits | 60-second logical timeout, 1,024 output tokens, 16 KiB response cap, bounded transient retry policy and no redirects. | Limits bound an individual call, not a daily financial quota. Institution must define usage approval and budget before enabling provider access. |
 | Logging / secrets | No request-body/provider-payload logging was found in the reviewed runtime paths. `.env`, key.properties, keystore and generated raw artifacts are ignored. | A source review is not a penetration test, secret-history scan or production log review. Retain only necessary sanitized support metadata. |
 
-A local read-only pattern scan at that commit, October 25 at 09:03:34 UTC,
-covered 1,105 tracked UTF-8 files up to 2 MiB.
+A follow-up local read-only pattern scan at `ac5787c`, October 25 at
+09:38:48 UTC, covered 1,107 tracked UTF-8 files up to 2 MiB.
 It emitted file paths/counts only and found no private-key blocks, common
 provider-token shapes, Azure AccountKey literals, JWT literals or tracked
 sensitive-name files. This limited scan does not prove that Git history,
 binary files or all possible credential formats are free of secrets. Raw
 aggregate output is ignored under `artifacts/remediation/security-source-scan-final.json`.
+
+Subsequent schema review corrected the staging initializer and its preflight
+script to the existing 23-migration schema, including schedule reassignment
+audits. TEST-163 records local isolated SQL verification. The staging script
+was syntax-checked only; it was not run against a deployment target.
 
 ## Hosting prerequisites and ownership
 

@@ -50,7 +50,7 @@ this baseline and will not be silently included in the remediation.
 | 8 | Mobile recovery, offline boundaries, release configuration | Completed available checks; TEST-158/162 record recovery, identity and release boundaries; physical acceptance remains pending |
 | 9 | Evidence reconciliation and proposed manuscript corrections | Completed; separate revision proposal and accepted survey recalculation, no manuscript edits |
 | 10 | Security review and proposed institutional operations | Completed source review and operating proposal; deployment and institutional decisions remain open |
-| 11 | Final available regression checks and remaining risks | In progress after source freeze; final execution record pending |
+| 11 | Final available regression checks and remaining risks | Completed available checks; TEST-163 records full backend/web/mobile results and explicit opt-in skips |
 
 Raw execution logs are ignored under `artifacts/remediation/`. Baseline
 commands refer to the integration SHA above. Later executions must identify
@@ -224,6 +224,9 @@ records the corrections and their remaining limits. Paths are repository-relativ
 | RM-011, Medium | Form list loaded complete graphs; web filtered/sliced downloaded forms locally. | Backend page/options contracts, generated web client/registry and mobile page draining now preserve caller scope and all filters. TEST-161 records paging, SQL and bounded scale checks. | Offset paging is not a concurrent snapshot. The API/client upgrade must be coordinated. |
 | RM-012, Medium | Android retained `com.example.mobile`; no device was attached. | Android namespace/application identity and Kotlin path use the selected UniPM identity. TEST-162 records release controls and available checks. | Signed distribution, old-queue migration and physical acceptance are not established. |
 | RM-013, Critical | `offline_inspection_repository.dart` cleared memory in a logout `finally` even when persistence failed. | Retained failed writes, separated authorized session/cache owner, locked forced exits and blocked cross-account sync. Router/session handling and regression tests changed. TEST-158: repository 24 and session 10 passed; analyzer clean. | Injected failures are not actual device storage exhaustion. Bytes never durably stored cannot survive physical process loss. |
+| RM-014, Medium | `StagingDemoInitialization.cs` and `scripts/initialize-azure-staging-demo.ps1` still expected 22 migrations while the source contained 23. | Updated exact schema manifests and fail-closed guards, without adding migrations or auto-updating a database. Native SQL full regression includes the corrected initializer cases. TEST-163. | The staging script was syntax-checked only, never executed against a deployment target. |
+| RM-015, Medium | Four SQL race fixtures used initial assignment for reassignment, and two browser files mocked the retired form-array contract. Staging fixture setup and persisted roles also prevented intended checks. | Corrected endpoint/DTO, roles, empty-database setup and page/options mocks. Preserved inspector-retention policy, race gates and workflow assertions. Full backend and browser runs passed. TEST-163. | These are engineering fixtures, not new GSD acceptance. Earlier failures remain recorded. |
+| RM-016, Medium | `web/vite.config.ts` used VM-based workers. Full-suite attempts showed a timeout and router/mock-context failures. | Changed only the Vitest pool to process-based `forks`, retaining two workers, assertions and timeouts. Node 22 focused 79/79 and full 270/270 passed. TEST-163. | The results support the runner correction, not a claim that every earlier failure had an independently proven internal cause. |
 
 ## Other reviewed corrections
 
@@ -243,6 +246,7 @@ No historical snapshot or new transfer workflow was introduced.
 - [Evidence reconciliation and proposed manuscript corrections](capstone-evidence-reconciliation-2026-10-25.md).
 - [Institutional operating and security proposal](capstone-institutional-operations.md).
 - [Remaining-risk register and defense boundaries](capstone-remaining-risks.md).
+- [Commit list](capstone-remediation-commits.md).
 - [Engineering execution records](../evidence/INDEX.md), TEST-152 onward.
 
 The evidence proposal preserves accepted SUS/ISO responses, the February 19
@@ -257,3 +261,38 @@ institutional policy approval and real-data recovery were not performed.
 
 The NLA roadmap's Phases 7–8 remain planning. They are separate from the
 numbered remediation phases in this report.
+
+## Final verification and defense readiness
+
+TEST-163 records the final locally executed regression. Backend build passed
+with zero warnings/errors; the full suite passed 672 and skipped the single
+opt-in external embedding smoke case, 673 total. Native SQL fixtures used
+fresh GUID databases on the local SQL Server 2019 host. No SQL test skipped.
+Web unit tests passed 270/270. Browser tests passed 60 with one opt-in live
+backend workflow skipped. Flutter passed 194/194 and produced a debug APK.
+Formatting, lint, production build and API generation checks passed at the
+source identities documented in that record; Flutter analysis is reused on
+the identical mobile subtree. These are local results, not a remote CI run.
+
+The final code/test-runner revision is
+`d6c2e9d1f576754e9635f948bd814f98605d8c5e`. Backend, client application
+and browser checks ran at `ac5787c`; the only later source change is the
+Vitest pool setting, which received its own focused and full unit checks.
+Closing documentation does not change executable source. The branch remains
+local and unmerged. The commit list identifies each logical correction.
+
+Confirmed defects are corrected within the available scope. Intentionally
+retained limitations include server-receipt compliance time, current asset
+grouping, Development-gated provider routing and receipt capture through an
+authenticated operator. Those choices require accurate explanation in the
+study; they are not evidence of verified physical inspection or signatory
+identity. The separate manuscript proposal records the necessary wording
+changes, historical provider evidence and accepted survey totals.
+
+Physical-device acceptance, release signing, independent evaluation,
+institutional hosting/restore approval and a new live-provider experiment
+remain outside this execution. Six appendix attachments and the identified
+historical BB report still require the documented follow-up. The original
+checkout's uncommitted work was preserved and was not part of this tested
+revision. Do not claim production readiness or a perfect standalone model
+score from these engineering checks.

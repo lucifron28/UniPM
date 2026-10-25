@@ -218,8 +218,10 @@ this branch.
 2. Complete physical-device acceptance of the selected build. Use the dated
    native SQL remediation records for their exact cases, not blanket acceptance.
 3. Use TEST-139 for the completed researcher-reviewed deterministic development
-   evaluation. Complete numerical, live-provider and broader acceptance checks
-   separately; do not generalize the development score.
+   evaluation. TEST-141 records controlled numerical results; the dated
+   remediation records distinguish native SQL cases. Historical live-provider
+   results and broader acceptance remain separate; do not generalize the
+   development score to a new version or unseen questions.
 4. Keep NLA roadmap Phases 7–8 and institutional source authorization, final RBAC, audit
    rules, and other unresolved policy decisions in planning until reviewed.
 
