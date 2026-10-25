@@ -96,10 +96,10 @@ idempotent; stale row updates remain queued as conflicts for review rather than
 overwriting newer server data.
 
 The mobile authentication session remains memory-only, so the same account
-must sign in again after an app restart before queued work can sync. Location
-verification, photo evidence, form submission, and acknowledgement remain
-online-only. A queued or conflicted form cannot be submitted. Sign-out locks the
-in-memory cache and preserves encrypted queued work for that account.
+must sign in again after an app restart before queued work can sync. Photo
+evidence, form submission, and acknowledgement remain online-only. A queued or
+conflicted form cannot be submitted. Sign-out locks the in-memory cache and
+preserves encrypted queued work for that account.
 
 The **Scan asset QR** entry sends the complete scanned UniPM QR value to the
 authenticated backend asset lookup. Backend asset data remains authoritative;
