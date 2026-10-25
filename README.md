@@ -1,5 +1,11 @@
 # UniPM
 
+The October 25 [capstone remediation report](reference/planning/capstone-remediation-2026-10-25.md)
+describes `feature/capstone-remediation`, its corrected authorization,
+offline recovery, interpreter routing and paged form contract. These changes
+are local and unmerged. See its separate evidence proposal, operating plan
+and remaining-risk register before selecting a defense or installation build.
+
 UniPM is a web and mobile preventive-maintenance system for the university
 General Services Department. The repository contains an ASP.NET Core API and
 multi-asset preventive-maintenance forms. The current validation baseline
@@ -65,7 +71,7 @@ The backend currently provides:
   maintenance forms;
 - preventive-maintenance form drafting and inspection-row management;
 - whole-form submission with provisional file-number allocation;
-- field-work-driven schedule completion from `InspectionRecord.CompletedAt`;
+- schedule completion at the first backend-accepted inspection save, using `InspectionRecord.CompletedAt`;
 - whole-form acknowledgement, which makes completed rows eligible for
   acknowledged-only official history;
 - a GSD-only corrective-action handoff read model for acknowledged forms;
@@ -232,9 +238,11 @@ Schema-constrained NLA V3 PM execution and registered asset inventory reporting
 are integrated into `main` and `deploy/azure-staging`. TEST-139 records
 researcher-reviewed deterministic agreement on 18/18 declared development
 outcomes and 69/69 assertions. This is not held-out, live-provider or GSD
-acceptance evidence. Native SQL Server 2019
-execution, GSD acceptance, and physical-device acceptance remain open. Phases
-7–8 are planning only. Core PMIS workflows remain independent of AI.
+acceptance evidence. Focused native SQL Server 2019 checks on the remediation
+branch are recorded in TEST-156, TEST-157, TEST-159 and TEST-161. They do not
+establish deployment or current-build GSD/physical-device acceptance. NLA
+roadmap Phases 7–8 remain planning, distinct from remediation phases.
+Core PMIS workflows remain independent of AI.
 
 See the historical [API description](reference/api/maintenance-review-v0.1.md)
 and [engineering evidence](reference/evidence/INDEX.md) for prior results.
@@ -406,9 +414,11 @@ Schema-constrained NLA V3 PM execution and registered asset inventory reporting
 are integrated into `main` and `deploy/azure-staging`. TEST-139 records
 researcher-reviewed deterministic agreement on 18/18 declared development
 outcomes and 69/69 assertions. This is not held-out, live-provider or GSD
-acceptance evidence. Native SQL Server 2019
-execution, GSD acceptance, and physical-device acceptance remain open. Phases
-7–8 are planning only. Core PMIS workflows remain independent of AI.
+acceptance evidence. Focused native SQL Server 2019 checks on the remediation
+branch are recorded in TEST-156, TEST-157, TEST-159 and TEST-161. They do not
+establish deployment or current-build GSD/physical-device acceptance. NLA
+roadmap Phases 7–8 remain planning, distinct from remediation phases.
+Core PMIS workflows remain independent of AI.
 
 Reference embeddings remain disabled by default. Remote providers require
 explicit configuration and a separate privacy review; ordinary PM workflows

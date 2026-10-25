@@ -49,8 +49,8 @@ this baseline and will not be silently included in the remediation.
 | 7 | Authorized pagination and bounded reporting | Completed; TEST-161 records page scope, both clients and bounded synthetic/SQL measurements |
 | 8 | Mobile recovery, offline boundaries, release configuration | Completed available checks; TEST-158/162 record recovery, identity and release boundaries; physical acceptance remains pending |
 | 9 | Evidence reconciliation and proposed manuscript corrections | Completed; separate revision proposal and accepted survey recalculation, no manuscript edits |
-| 10 | Security review and proposed institutional operations | Pending |
-| 11 | Final available regression checks and remaining risks | Pending |
+| 10 | Security review and proposed institutional operations | Completed source review and operating proposal; deployment and institutional decisions remain open |
+| 11 | Final available regression checks and remaining risks | In progress after source freeze; final execution record pending |
 
 Raw execution logs are ignored under `artifacts/remediation/`. Baseline
 commands refer to the integration SHA above. Later executions must identify
@@ -203,3 +203,57 @@ retaining acknowledged-only official history.
 Phase 2 source work and its targeted verification are complete, as recorded
 in TEST-155. Later-phase audit notes do not establish
 completed corrections or executed acceptance.
+
+## Correction ledger
+
+The initial findings above preserve the audit's starting state. This ledger
+records the corrections and their remaining limits. Paths are repository-relative.
+
+| Issue | Root cause and changed files | Correction and executed result | Remaining limit |
+|---|---|---|---|
+| RM-001, Critical | `tests/UniPM.Api.Tests/Reports/PmAnalyticsV3EvaluationHarnessTests.cs` assumed the frozen labels remained unreviewed. | An explicit copied pending-label fixture tests fail-closed behavior; a separate case accepts the approved corpus. Full backend Phase 1 passed 597, skipped 50. TEST-153. | Development corpus agreement is not independent accuracy. |
+| RM-002, Critical | `web/src/features/reports/pm-analytics-v3.tsx` reached ref-backed clarification state during render. | Removed the render IIFE, guarded Back navigation and corrected the regression fixture. Web unit 256 passed; browser 60 passed, one skipped. TEST-154. | Local checks do not establish remote CI or GSD acceptance. |
+| RM-003, High | `PmAnalyticsV3QuestionInterpreter.cs` selected two exact reviewed questions before normal routing. | Removed implicit runtime mappings, retained the questions as regressions and added a bounded generic phrase rule. TEST-157: backend 69 passed, UI 19 passed, parser 18/18 and 69/69. | Fake-provider tests are not a new live DeepSeek evaluation. |
+| RM-004, Medium | Current-looking planning summaries retained historical PMIS-only and SQL-verification claims. | README, PROJECT, planning headers and evidence index now distinguish dated baselines from this remediation. | Historical records are preserved; deployment and current-build physical acceptance remain pending. |
+| RM-005, High | The repository collection preceded the supplied item-level survey CSVs and later BB execution attestation. | Separate reconciliation proposal recalculates accepted survey totals and records the 32-case attestation. No raw responses or manuscript files were changed. | The particular BB case-level attachment still needs identification. Do not populate missing case metadata from automated tests. |
+| RM-006, High | `NaturalLanguageAnalyticsQuestionGuard.cs` repeatedly constructed month regexes and timed out before the intended malformed-output assertion. | Cached independent bounded patterns, preserving overlapping month detection. Full backend Phase 1 passed. TEST-153. | Regex timeouts remain a safety boundary. |
+| RM-007, Critical | `PreventiveMaintenanceFormEndpoints.cs` authenticated readers without applying form ownership/assignment scope. | Shared `OperationalInspectionReadScope.cs` applies GSD/Inspector/Supervisor scope before materialization, count and page; unreadable details return 404. TEST-155: 188 passed, one skipped, plus 28 passed. | Legitimate members can see the shared whole form. Final institutional RBAC remains provisional. |
+| RM-008, Critical | Inspection/history/photo read paths retained anonymous or insufficiently scoped access. | Inspection endpoints and photo reads now require operational access and the shared scope. Existing authenticated workflow assertions remain. TEST-155. | Official-history eligibility remains acknowledged-only plus documented legacy exceptions. |
+| RM-009, High | `PreventiveMaintenanceScheduleAuthorization.cs`, role policies and web guards treated technical Admin as an operational role. | Removed standalone Admin operational grants; retained explicit technical management tools and combined-role access. Web role 27 and form 21 passed. TEST-155. | Technical Admin tools remain privileged and mutable; institutional restrictions are a separate decision. |
+| RM-010, High | Mobile entered/device dates could be confused with backend completion time. | Form save/idempotency logic, mobile labels and report documentation identify first server-accepted save as the compliance clock. TEST-156: backend 63, isolated SQL one, plus focused client checks passed. | Delayed offline sync can count as late. No trusted physical-work timestamp was invented. |
+| RM-011, Medium | Form list loaded complete graphs; web filtered/sliced downloaded forms locally. | Backend page/options contracts, generated web client/registry and mobile page draining now preserve caller scope and all filters. TEST-161 records paging, SQL and bounded scale checks. | Offset paging is not a concurrent snapshot. The API/client upgrade must be coordinated. |
+| RM-012, Medium | Android retained `com.example.mobile`; no device was attached. | Android namespace/application identity and Kotlin path use the selected UniPM identity. TEST-162 records release controls and available checks. | Signed distribution, old-queue migration and physical acceptance are not established. |
+| RM-013, Critical | `offline_inspection_repository.dart` cleared memory in a logout `finally` even when persistence failed. | Retained failed writes, separated authorized session/cache owner, locked forced exits and blocked cross-account sync. Router/session handling and regression tests changed. TEST-158: repository 24 and session 10 passed; analyzer clean. | Injected failures are not actual device storage exhaustion. Bytes never durably stored cannot survive physical process loss. |
+
+## Other reviewed corrections
+
+TEST-159 records signature format/size, one acknowledgement per Submitted
+form, separate capture operator and signatory, and a concurrent SQL race.
+Backend 46 passed, mobile 11 and web 21 passed. The drawn signature is a
+receipt captured through an authenticated operator, not cryptographic signing.
+
+TEST-160 records current asset metadata explicitly in reports and inspection
+rows. The transfer regression passed four backend cases and focused web/mobile
+presentation cases. Counts, completion clocks, official-history eligibility
+and recorded form headers stay stable when current asset grouping changes.
+No historical snapshot or new transfer workflow was introduced.
+
+## Evidence and operational deliverables
+
+- [Evidence reconciliation and proposed manuscript corrections](capstone-evidence-reconciliation-2026-10-25.md).
+- [Institutional operating and security proposal](capstone-institutional-operations.md).
+- [Remaining-risk register and defense boundaries](capstone-remaining-risks.md).
+- [Engineering execution records](../evidence/INDEX.md), TEST-152 onward.
+
+The evidence proposal preserves accepted SUS/ISO responses, the February 19
+interview date and Engr. Ariel Nicolas's surname. It does not rewrite the
+submission files, claim a new live-provider score, or add the saved-query
+feature to the study. Six appendix attachment placeholders remain.
+
+The operating proposal covers IIS/.NET/SQL prerequisites, account roles,
+TLS and secrets, photo/database consistency, backup/restore, coordinated
+API/APK updates, support ownership and cost-estimation inputs. Deployment,
+institutional policy approval and real-data recovery were not performed.
+
+The NLA roadmap's Phases 7–8 remain planning. They are separate from the
+numbered remediation phases in this report.

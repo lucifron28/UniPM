@@ -251,9 +251,16 @@ record's evidence level and tested/source commit.
 
 ## Pending evidence
 
-- NLA V3 Phase 5: independent question-label review and corpus freeze, a
-  positive V3 scoring run, native SQL Server 2019 integration, and GSD
-  task-success acceptance remain pending. The focused browser scenario passed
+The October 25 [remediation report](../planning/capstone-remediation-2026-10-25.md)
+and TEST-156/157/159/161 add focused native SQL Server 2019 checks on their
+identified source versions. TEST-139 already completed the researcher-reviewed
+positive development-corpus run. Historical record limitations remain as
+recorded; broader acceptance and independent evaluation stay separate.
+
+- NLA V3 Phase 5: independent label review, held-out evaluation and GSD
+  task-success acceptance remain pending. TEST-139 records the completed
+  researcher-reviewed frozen development scoring run. Native SQL PM checks
+  are now recorded separately above. The focused browser scenario passed
   locally in TEST-113; full browser/accessibility acceptance remains open.
   Exact integration branch CI is recorded in TEST-123; no provider or held-out
   evaluation was run.

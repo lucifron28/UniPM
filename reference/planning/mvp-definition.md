@@ -1,5 +1,16 @@
 # UniPM Validation Baseline Definition (PMIS-Only GSD Baseline)
 
+## Later branch status, October 25, 2026
+
+The PMIS-only definition below preserves the earlier M3 branch decision.
+It does not describe NLA V3 as absent from later integrated source. Read the
+[capstone remediation report](capstone-remediation-2026-10-25.md) for the
+local unmerged corrections, tested commits and current limitations. Core PM
+operations remain independent of AI; maintenance-history RAG remains retired.
+The NLA roadmap's Phases 7–8 remain planning, separate from remediation phases.
+
+## Historical M3 definition
+
 ## Working Title
 
 **UniPM: A Preventive Maintenance Information System for University General
