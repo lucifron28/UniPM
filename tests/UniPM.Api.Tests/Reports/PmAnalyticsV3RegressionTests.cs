@@ -5,6 +5,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
+using System.Text.Json.Serialization;
 using UniPM.Api.Data;
 using UniPM.Api.Features.Schedules;
 using UniPM.Api.Models;
@@ -14,6 +15,56 @@ namespace UniPM.Api.Tests;
 
 public sealed class PmAnalyticsV3RegressionTests
 {
+    [Fact]
+    public async Task Development_default_uses_configured_fake_DeepSeek_for_former_exact_template()
+    {
+        const string question = "SHOW LATE FIRE-EXTINGUISHER INSPECTIONS FOR THE 2026 PM CYCLES.";
+        var fakeOutput = PmAnalyticsV3RuleParser.Parse(question, DateTimeOffset.UtcNow);
+        var modelContent = JsonSerializer.Serialize(
+            fakeOutput,
+            new JsonSerializerOptions(JsonSerializerDefaults.Web)
+            {
+                Converters = { new JsonStringEnumConverter() }
+            });
+        var providerResponse = JsonSerializer.Serialize(new
+        {
+            choices = new[] { new { message = new { content = modelContent } } },
+            usage = new { prompt_tokens = 10, completion_tokens = 5 }
+        });
+
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase($"unipm-pm-analytics-v3-development-interpreter-{Guid.NewGuid():N}")
+            .Options;
+        var queryService = new PmAnalyticsV3QueryService(
+            new TestContextFactory(options),
+            TimeProvider.System);
+        using var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                [DeepSeekNaturalLanguageAnalyticsModelClient.ApiKeyEnvironmentVariable] = "synthetic-test-key"
+            })
+            .Build();
+        using var modelHandler = new StubModelResponseHandler(providerResponse);
+        using var interpreter = new PmAnalyticsV3QuestionInterpreter(
+            new FixedOptionsMonitor<NaturalLanguageAnalyticsOptions>(
+                new NaturalLanguageAnalyticsOptions { V3DeepSeekEnabled = true }),
+            new TestHostEnvironment(Environments.Development),
+            TimeProvider.System,
+            queryService,
+            configuration,
+            modelHandler);
+
+        var result = await interpreter.InterpretAsync(question, CancellationToken.None);
+
+        Assert.Equal("Valid", result.Status);
+        Assert.Equal("DeepSeek", result.Interpreter);
+        Assert.NotNull(result.Plan);
+        Assert.Equal(PmAnalyticsV3Catalog.SubjectPmExecution, result.Plan.Subject);
+        Assert.Equal(["fire-extinguisher"], result.Plan.Categories);
+        Assert.Contains(PmAnalyticsV3Catalog.CompletedLateCount, result.Plan.Measures);
+        Assert.Equal(1, modelHandler.RequestCount);
+    }
+
     [Fact]
     public async Task Production_environment_rejects_DeepSeek_and_uses_parser_when_provider_is_enabled()
     {
@@ -875,6 +926,23 @@ public sealed class PmAnalyticsV3RegressionTests
         {
             RequestCount++;
             throw new InvalidOperationException("A provider request was unexpected in this test.");
+        }
+    }
+
+    private sealed class StubModelResponseHandler(string responseBody) : HttpMessageHandler
+    {
+        internal int RequestCount { get; private set; }
+
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            RequestCount++;
+            return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+            {
+                Content = new StringContent(responseBody, System.Text.Encoding.UTF8, "application/json")
+            });
         }
     }
 }
