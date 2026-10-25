@@ -103,10 +103,15 @@ public static class PreventiveMaintenanceFormEndpoints
             string? department,
             string? pmCycle,
             string? search,
+            string? supervisor,
+            int? page,
+            int? pageSize,
             ClaimsPrincipal principal,
             IDbContextFactory<ApplicationDbContext> factory,
             CancellationToken cancellationToken) =>
         {
+            var pageNumber = page ?? 1;
+            var size = pageSize ?? 25;
             var normalizedDepartment = string.IsNullOrWhiteSpace(department)
                 ? null
                 : department.Trim();
@@ -116,6 +121,44 @@ public static class PreventiveMaintenanceFormEndpoints
             var normalizedStatus = string.Empty;
             var normalizedCategory = string.Empty;
             var validationErrors = new Dictionary<string, string[]>();
+
+            if (pageNumber < 1)
+            {
+                validationErrors[nameof(page)] = ["Page must be greater than zero."];
+            }
+
+            if (size is < 1 or > 100)
+            {
+                validationErrors[nameof(pageSize)] = ["Page size must be between 1 and 100."];
+            }
+
+            var skip = size is >= 1 and <= 100 && pageNumber > 0
+                ? (long)(pageNumber - 1) * size
+                : 0;
+            if (skip > int.MaxValue)
+            {
+                validationErrors[nameof(page)] = ["Page and page size exceed the supported offset."];
+            }
+
+            Guid? supervisorId = null;
+            var unassignedSupervisor = false;
+            if (!string.IsNullOrWhiteSpace(supervisor))
+            {
+                var normalizedSupervisor = supervisor.Trim();
+                if (string.Equals(normalizedSupervisor, "unassigned", StringComparison.OrdinalIgnoreCase))
+                {
+                    unassignedSupervisor = true;
+                }
+                else if (Guid.TryParse(normalizedSupervisor, out var parsedSupervisorId)
+                    && parsedSupervisorId != Guid.Empty)
+                {
+                    supervisorId = parsedSupervisorId;
+                }
+                else
+                {
+                    validationErrors[nameof(supervisor)] = ["Supervisor must be an account GUID or unassigned."];
+                }
+            }
 
             if (!string.IsNullOrWhiteSpace(status)
                 && !PreventiveMaintenanceFormStatusCatalog.TryNormalize(status, out normalizedStatus))
@@ -201,6 +244,20 @@ public static class PreventiveMaintenanceFormEndpoints
                             || (inspection.Asset.Location != null && inspection.Asset.Location.ToUpper().Contains(searchKey)))));
             }
 
+            if (supervisorId is { } assignedSupervisorId)
+            {
+                query = query.Where(form => form.Inspections.Any(inspection =>
+                    inspection.Schedule != null
+                    && inspection.Schedule.AssignedSupervisorUserId == assignedSupervisorId));
+            }
+            else if (unassignedSupervisor)
+            {
+                query = query.Where(form => form.Inspections.Any(inspection =>
+                    inspection.Schedule == null
+                    || inspection.Schedule.AssignedSupervisorUserId == null));
+            }
+
+            var totalCount = await query.CountAsync(cancellationToken);
             var forms = await query
                 .Include(form => form.Inspections)
                     .ThenInclude(inspection => inspection.Asset)
@@ -210,18 +267,62 @@ public static class PreventiveMaintenanceFormEndpoints
                     .ThenInclude(inspection => inspection.PhotoEvidence)
                 .OrderByDescending(form => form.CreatedAt)
                 .ThenBy(form => form.Id)
+                .Skip((int)skip)
+                .Take(size)
                 .ToListAsync(cancellationToken);
 
             var users = await LoadUserDisplayNamesAsync(context, forms, cancellationToken);
 
-            return Results.Ok(forms
-                .Select(form => PreventiveMaintenanceFormResponse.FromForm(form, users))
-                .ToList());
+            return Results.Ok(new PreventiveMaintenanceFormPageResponse(
+                forms.Select(form => PreventiveMaintenanceFormResponse.FromForm(form, users)).ToArray(),
+                pageNumber,
+                size,
+                totalCount));
         })
         .WithName("ListPreventiveMaintenanceForms")
         .WithSummary("Lists preventive-maintenance forms using supported status and metadata filters")
-        .Produces<List<PreventiveMaintenanceFormResponse>>(StatusCodes.Status200OK)
+        .Produces<PreventiveMaintenanceFormPageResponse>(StatusCodes.Status200OK)
         .Produces<Microsoft.AspNetCore.Mvc.ValidationProblemDetails>(StatusCodes.Status400BadRequest)
+        .RequireAuthorization(AuthPolicyCatalog.CanReadOperationalData);
+
+        group.MapGet("/options", async (
+            ClaimsPrincipal principal,
+            IDbContextFactory<ApplicationDbContext> factory,
+            CancellationToken cancellationToken) =>
+        {
+            await using var context = await factory.CreateDbContextAsync(cancellationToken);
+            var query = context.PreventiveMaintenanceForms
+                .AsNoTracking()
+                .WhereReadableTo(principal);
+
+            var totalCount = await query.CountAsync(cancellationToken);
+            var categories = await query
+                .Select(form => form.AssetCategory.Trim())
+                .Distinct()
+                .OrderBy(category => category)
+                .ToListAsync(cancellationToken);
+            var departments = await query
+                .Where(form => form.Department != null && form.Department.Trim() != string.Empty)
+                .Select(form => form.Department!.Trim())
+                .Distinct()
+                .OrderBy(department => department)
+                .ToListAsync(cancellationToken);
+            var pmCycles = await query
+                .Where(form => form.PmCycle != null && form.PmCycle.Trim() != string.Empty)
+                .Select(form => form.PmCycle!.Trim())
+                .Distinct()
+                .OrderBy(pmCycle => pmCycle)
+                .ToListAsync(cancellationToken);
+
+            return Results.Ok(new PreventiveMaintenanceFormOptionsResponse(
+                categories,
+                departments,
+                pmCycles,
+                totalCount));
+        })
+        .WithName("GetPreventiveMaintenanceFormOptions")
+        .WithSummary("Lists filter options from readable preventive-maintenance forms")
+        .Produces<PreventiveMaintenanceFormOptionsResponse>(StatusCodes.Status200OK)
         .RequireAuthorization(AuthPolicyCatalog.CanReadOperationalData);
 
         group.MapGet("/{id}", async (
@@ -1733,6 +1834,18 @@ public sealed class UpdateDraftInspectionRowDto
             ActionsRecommendations);
     }
 }
+
+public sealed record PreventiveMaintenanceFormPageResponse(
+    IReadOnlyList<PreventiveMaintenanceFormResponse> Items,
+    int Page,
+    int PageSize,
+    int TotalCount);
+
+public sealed record PreventiveMaintenanceFormOptionsResponse(
+    IReadOnlyList<string> Categories,
+    IReadOnlyList<string> Departments,
+    IReadOnlyList<string> PmCycles,
+    int TotalCount);
 
 public sealed record PreventiveMaintenanceFormResponse(
     Guid Id,

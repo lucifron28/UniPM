@@ -34,6 +34,7 @@ public sealed class AuthorizationPolicyTests
             "/api/v1/assets/by-code/UNKNOWN",
             "/api/v1/assets/by-qr/UNKNOWN",
             "/api/v1/preventive-maintenance-forms/",
+            "/api/v1/preventive-maintenance-forms/options",
             $"/api/v1/preventive-maintenance-forms/{Guid.NewGuid()}",
             $"/api/v1/inspections/history/{assetId}",
             "/api/v1/inspections/",
@@ -91,11 +92,13 @@ public sealed class AuthorizationPolicyTests
 
         var assetList = await client.GetAsync("/api/v1/assets/");
         var formList = await client.GetAsync("/api/v1/preventive-maintenance-forms/");
+        var formOptions = await client.GetAsync("/api/v1/preventive-maintenance-forms/options");
         var inspectionSummary = await client.GetAsync("/api/v1/inspections/registry/summary");
         var dashboardCycles = await client.GetAsync("/api/v1/pm-period-dashboard/cycles");
 
         Assert.Equal((HttpStatusCode)expectedStatus, assetList.StatusCode);
         Assert.Equal((HttpStatusCode)expectedStatus, formList.StatusCode);
+        Assert.Equal((HttpStatusCode)expectedStatus, formOptions.StatusCode);
         Assert.Equal((HttpStatusCode)expectedStatus, inspectionSummary.StatusCode);
         Assert.Equal((HttpStatusCode)expectedStatus, dashboardCycles.StatusCode);
     }
@@ -108,6 +111,7 @@ public sealed class AuthorizationPolicyTests
 
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/v1/assets/")).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/v1/preventive-maintenance-forms/")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/v1/preventive-maintenance-forms/options")).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/v1/inspections/registry/summary")).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/v1/pm-period-dashboard/cycles")).StatusCode);
     }

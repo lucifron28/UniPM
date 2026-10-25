@@ -26,12 +26,17 @@ public sealed class OperationalInspectionReadScopeEndpointsTests
         using var client = application.CreateClient();
         var fixture = await application.SeedInspectorScenarioAsync();
 
-        var forms = await client.GetFromJsonAsync<List<PreventiveMaintenanceFormResponse>>(
+        var forms = await client.GetFromJsonAsync<PreventiveMaintenanceFormPageResponse>(
             "/api/v1/preventive-maintenance-forms/");
         Assert.NotNull(forms);
+        Assert.Equal(3, forms.TotalCount);
         Assert.Equal(
             new[] { fixture.SharedFormId, fixture.AssignedFormId, fixture.CreatedDraftFormId }.OrderBy(id => id),
-            forms.Select(form => form.Id).OrderBy(id => id));
+            forms.Items.Select(form => form.Id).OrderBy(id => id));
+        var formOptions = await client.GetFromJsonAsync<PreventiveMaintenanceFormOptionsResponse>(
+            "/api/v1/preventive-maintenance-forms/options");
+        Assert.NotNull(formOptions);
+        Assert.Equal(3, formOptions.TotalCount);
 
         var sharedFormResponse = await client.GetAsync($"/api/v1/preventive-maintenance-forms/{fixture.SharedFormId}");
         Assert.Equal(HttpStatusCode.OK, sharedFormResponse.StatusCode);
@@ -71,10 +76,15 @@ public sealed class OperationalInspectionReadScopeEndpointsTests
         using var client = application.CreateClient();
         var fixture = await application.SeedSupervisorScenarioAsync();
 
-        var forms = await client.GetFromJsonAsync<List<PreventiveMaintenanceFormResponse>>(
+        var forms = await client.GetFromJsonAsync<PreventiveMaintenanceFormPageResponse>(
             "/api/v1/preventive-maintenance-forms/");
         Assert.NotNull(forms);
-        Assert.Equal(fixture.AssignedFormId, Assert.Single(forms).Id);
+        Assert.Equal(1, forms.TotalCount);
+        Assert.Equal(fixture.AssignedFormId, Assert.Single(forms.Items).Id);
+        var formOptions = await client.GetFromJsonAsync<PreventiveMaintenanceFormOptionsResponse>(
+            "/api/v1/preventive-maintenance-forms/options");
+        Assert.NotNull(formOptions);
+        Assert.Equal(1, formOptions.TotalCount);
         Assert.Equal(
             HttpStatusCode.OK,
             (await client.GetAsync($"/api/v1/inspections/{fixture.AssignedInspectionId}")).StatusCode);
