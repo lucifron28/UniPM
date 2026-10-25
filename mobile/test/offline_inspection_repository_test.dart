@@ -246,18 +246,34 @@ void main() {
   test(
     'failed explicit logout keeps the owner and queued work active for retry',
     () async {
+      await repository.activate(_userA);
+      await repository.listSchedules();
       connectivity.setConnected(false);
       remote.connected = false;
-      await repository.activate(_userA);
       final form = await repository.createForm(_createInput());
       expect(repository.pendingCount, 1);
+
+      store.failNextWrite = true;
+      await expectLater(
+        repository.addInspection(form.id, _addInput()),
+        throwsA(isA<StateError>()),
+      );
+      final unsavedRow = (await repository.getForm(form.id)).inspections.single;
+      expect(repository.pendingCount, 2);
+      final storedSnapshot =
+          jsonDecode(store.values[_userA]!) as Map<String, dynamic>;
+      expect(storedSnapshot['writes'], hasLength(1));
 
       store.failNextWrite = true;
       await expectLater(repository.deactivate(), throwsA(isA<StateError>()));
 
       expect(repository.isActiveFor(_userA), isTrue);
-      expect(repository.pendingCount, 1);
+      expect(repository.pendingCount, 2);
       expect((await repository.getForm(form.id)).id, form.id);
+      expect(
+        (await repository.getForm(form.id)).inspections.single.id,
+        unsavedRow.id,
+      );
 
       await repository.deactivate();
       expect(repository.activeUserId, isNull);
@@ -266,8 +282,12 @@ void main() {
       repository.dispose();
       repository = createRepository();
       await repository.activate(_userA);
-      expect(repository.pendingCount, 1);
+      expect(repository.pendingCount, 2);
       expect((await repository.getForm(form.id)).id, form.id);
+      expect(
+        (await repository.getForm(form.id)).inspections.single.id,
+        unsavedRow.id,
+      );
     },
   );
 
