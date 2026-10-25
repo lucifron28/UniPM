@@ -30,6 +30,7 @@ export default defineConfig({
   },
   test: {
     pool: 'vmThreads',
+    maxWorkers: 2,
     exclude: ['e2e/**', 'node_modules/**'],
     environment: 'jsdom',
     env: { VITE_API_BASE_URL: 'http://localhost:5000' },
