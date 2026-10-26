@@ -11,6 +11,7 @@ import { ScheduleBatchAssignment } from '@/features/schedules/schedule-batch-ass
 import { useSchedule } from '@/features/schedules/schedule-queries'
 import type { ScheduleSearch } from '@/features/schedules/schedule-registry'
 import {
+  formatAssignmentPeriodDateTime,
   formatAssignmentPeriodStatus,
   formatPmCycle,
   formatPmCycleDueDate,
@@ -257,19 +258,19 @@ export function ScheduleDetail({
         <dl className="grid gap-4 sm:grid-cols-2">
           <DetailItem
             label="First Supervisor assignment"
-            value={formatScheduleDateTime(
+            value={formatAssignmentPeriodDateTime(
               record.firstSupervisorAssignedAt ?? null,
             )}
           />
           <DetailItem
             label="First Inspector assignment"
-            value={formatScheduleDateTime(
+            value={formatAssignmentPeriodDateTime(
               record.firstInspectorAssignedAt ?? null,
             )}
           />
           <DetailItem
             label="Inspector assignment due"
-            value={formatScheduleDateTime(
+            value={formatAssignmentPeriodDateTime(
               record.inspectorAssignmentDueAt ?? null,
             )}
           />

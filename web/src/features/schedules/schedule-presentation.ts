@@ -66,10 +66,32 @@ export function formatScheduleDateTime(value: string | null) {
     : 'Not recorded'
 }
 
+export function formatAssignmentPeriodDateTime(value: string | null) {
+  if (!value) return 'Not recorded'
+
+  const date = new Date(value)
+  if (!Number.isFinite(date.getTime())) return 'Not recorded'
+
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23',
+    timeZone: 'Asia/Manila',
+  }).formatToParts(date)
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((item) => item.type === type)?.value ?? ''
+
+  return `${part('day')} ${part('month')} ${part('year')}, ${part('hour')}:${part('minute')}:${part('second')} Asia/Manila`
+}
+
 export function formatAssignmentPeriodStatus(value: string | null | undefined) {
   switch (value) {
     case 'Unavailable':
-      return 'Initial Inspector assignment date unknown'
+      return 'Assignment period unavailable'
     case 'WithinPeriod':
       return 'Within 30 calendar days'
     case 'Overdue':

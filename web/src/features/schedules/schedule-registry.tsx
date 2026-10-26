@@ -46,6 +46,7 @@ import { ScheduleCoverageReview } from '@/features/schedules/schedule-coverage-r
 import { ScheduleBatchReassignmentDialog } from '@/features/schedules/schedule-batch-reassignment-dialog'
 import {
   fromDateTimeLocal,
+  formatAssignmentPeriodDateTime,
   formatAssignmentPeriodStatus,
   formatPmCycle,
   formatPmCycleDueDate,
@@ -195,11 +196,15 @@ function ScheduleHistoryRecord({
           </dd>
           <dd className="mt-0.5 text-xs text-[var(--text-secondary)]">
             First assigned:{' '}
-            {formatScheduleDateTime(schedule.firstInspectorAssignedAt ?? null)}
+            {formatAssignmentPeriodDateTime(
+              schedule.firstInspectorAssignedAt ?? null,
+            )}
           </dd>
           <dd className="mt-0.5 text-xs text-[var(--text-secondary)]">
             Assignment due:{' '}
-            {formatScheduleDateTime(schedule.inspectorAssignmentDueAt ?? null)}
+            {formatAssignmentPeriodDateTime(
+              schedule.inspectorAssignmentDueAt ?? null,
+            )}
           </dd>
         </div>
       </dl>

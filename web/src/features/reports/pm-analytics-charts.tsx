@@ -15,6 +15,39 @@ function groupLabel(value: unknown) {
     : String(value)
 }
 
+function temporalPeriodValues(dimension: string, cycles: string[]) {
+  const indexes = cycles.flatMap((cycle) => {
+    const match = /^(\d{4})-(0[1-9]|1[0-2])$/.exec(cycle)
+    if (!match) return []
+
+    const year = Number(match[1])
+    const month = Number(match[2])
+    if (dimension === 'pmCycle') return [year * 12 + month - 1]
+    if (dimension === 'calendarQuarter')
+      return [year * 4 + Math.floor((month - 1) / 3)]
+    if (dimension === 'calendarYear') return [year]
+    return []
+  })
+  if (indexes.length === 0) return []
+
+  const first = Math.min(...indexes)
+  const last = Math.max(...indexes)
+  return Array.from({ length: last - first + 1 }, (_, offset) => {
+    const index = first + offset
+    if (dimension === 'pmCycle') {
+      const year = Math.floor(index / 12)
+      const month = (index % 12) + 1
+      return `${year}-${String(month).padStart(2, '0')}`
+    }
+    if (dimension === 'calendarQuarter') {
+      const year = Math.floor(index / 4)
+      const quarter = (index % 4) + 1
+      return `${year}-Q${quarter}`
+    }
+    return String(index)
+  })
+}
+
 export function AnalyticsChartView({
   response,
   children,
@@ -113,43 +146,38 @@ export function AnalyticsChartView({
               ['pmCycle', 'calendarQuarter', 'calendarYear'].includes(
                 groupBy[0]!,
               )
-            if (
-              groupBy.length === 1 &&
-              groupBy[0] === 'pmCycle' &&
-              !response.plan.top
-            ) {
-              const cycles = Object.values(response.cyclesByCategory)
-                .flat()
-                .sort()
-              const first = cycles[0]
-              const last = cycles.at(-1)
-              if (first && last) {
-                const present = new Set(
-                  rows.map((row) => String(row.values.pmCycle)),
-                )
-                const cursor = new Date(`${first}-01T00:00:00Z`)
-                while (cursor.toISOString().slice(0, 7) <= last) {
-                  const cycle = cursor.toISOString().slice(0, 7)
-                  if (!present.has(cycle))
-                    chartRows.push({
-                      id: `missing-${cycle}`,
-                      label: `${columns.get('pmCycle')?.label ?? 'PM cycle'}: ${cycle}`,
-                      values: [
-                        {
-                          seriesId: measure,
-                          seriesLabel: columns.get(measure)?.label ?? measure,
-                          value: null,
-                          unit: columns.get(measure)?.unit ?? '',
-                          unavailableReason:
-                            'No group recorded; this cycle is unscheduled or empty for the selected scope.',
-                        },
-                      ],
-                    })
-                  cursor.setUTCMonth(cursor.getUTCMonth() + 1)
-                }
+            const completeTimeline =
+              temporal &&
+              !response.plan.top &&
+              response.plan.aggregateFilters.length === 0
+            if (completeTimeline) {
+              const dimension = groupBy[0]!
+              const periods = temporalPeriodValues(
+                dimension,
+                Object.values(response.cyclesByCategory).flat(),
+              )
+              const present = new Set(
+                rows.map((row) => String(row.values[dimension])),
+              )
+              for (const period of periods) {
+                if (present.has(period)) continue
+                chartRows.push({
+                  id: `missing-${dimension}-${period}`,
+                  label: `${columns.get(dimension)?.label ?? dimension}: ${period}`,
+                  values: [
+                    {
+                      seriesId: measure,
+                      seriesLabel: columns.get(measure)?.label ?? measure,
+                      value: null,
+                      unit: columns.get(measure)?.unit ?? '',
+                      unavailableReason:
+                        'No group was recorded for this period in the selected scope. This is unavailable, not zero.',
+                    },
+                  ],
+                })
               }
             }
-            if (temporal)
+            if (temporal && !response.plan.top)
               chartRows.sort((left, right) =>
                 left.label.localeCompare(right.label, undefined, {
                   numeric: true,
@@ -163,10 +191,10 @@ export function AnalyticsChartView({
                 title={columns.get(measure)?.label ?? measure}
                 description={
                   temporal
-                    ? `${scope} Points represent scheduled groups; missing or unavailable values do not mean zero.`
+                    ? `${scope} ${completeTimeline ? 'Points represent scheduled groups; missing or unavailable values do not mean zero.' : 'Temporal groups are shown as bars so this selected subset does not imply continuity across omitted periods.'}`
                     : scope
                 }
-                variant={temporal ? 'line' : 'bar'}
+                variant={completeTimeline ? 'line' : 'bar'}
                 rows={chartRows}
                 {...(canDrilldown
                   ? {
