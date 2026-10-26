@@ -398,7 +398,9 @@ test('saved reports reuse a fresh preview and guard stale deletes', async ({
     page.getByRole('heading', { name: 'Report preview', exact: true }),
   ).toBeVisible()
   await expect(
-    page.getByText('Reviewed PM report for 2026.', { exact: true }),
+    page
+      .locator('dl[aria-label="Report scope"]')
+      .getByText('Period based on scheduled PM cycles: 2026', { exact: true }),
   ).toBeVisible()
   expect(interpretationCalls).toBe(1)
   expect(executionCalls).toBe(0)
