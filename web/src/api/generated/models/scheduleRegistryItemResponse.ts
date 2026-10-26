@@ -29,4 +29,11 @@ export interface ScheduleRegistryItemResponse {
   createdAt: string
   updatedAt: string
   asset: null | ScheduleRegistryAssetContext
+  /** @nullable */
+  firstSupervisorAssignedAt?: string | null
+  /** @nullable */
+  firstInspectorAssignedAt?: string | null
+  /** @nullable */
+  inspectorAssignmentDueAt?: string | null
+  assignmentPeriodStatus?: string
 }
