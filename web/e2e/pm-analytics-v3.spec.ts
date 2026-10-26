@@ -430,7 +430,9 @@ test('saved reports reuse a fresh preview and guard stale deletes', async ({
     .getByRole('button', { name: 'Preview report', exact: true })
     .click()
   await expect(
-    page.getByText('Reviewed PM report for 2025.', { exact: true }),
+    page
+      .locator('dl[aria-label="Report scope"]')
+      .getByText('Period based on scheduled PM cycles: 2025', { exact: true }),
   ).toBeVisible()
   await page.getByLabel('Dates on future runs').selectOption('Fixed')
   await page
