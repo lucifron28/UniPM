@@ -562,7 +562,9 @@ test.describe('PM period dashboard', () => {
     ).toBeHidden()
     await page.emulateMedia({ media: 'screen' })
 
-    await page.getByLabel('Department').selectOption('OPS')
+    await page
+      .getByRole('combobox', { name: 'Department', exact: true })
+      .selectOption('OPS')
     await expectRequest(requests, { ...mayScope, department: 'OPS' })
     await expect(page).toHaveURL(/department=OPS/)
     await expect(
