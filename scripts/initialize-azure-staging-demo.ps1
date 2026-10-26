@@ -74,6 +74,7 @@ $expectedMigrationIds = @(
     '20261009234631_ReviewScheduleEnrollmentDeferrals'
     '20261010141251_AddInspectionPhotoEvidence'
     '20261020150946_AddScheduleAssignmentReassignmentAudits'
+    '20261023131748_AddSavedAnalyticsReports'
 )
 
 function Get-ConnectionStringValue {
@@ -386,10 +387,11 @@ INSERT INTO @expectedTables VALUES
 (N'PreventiveMaintenanceAcknowledgements'),(N'PreventiveMaintenanceForms'),
 (N'PreventiveMaintenanceSchedules'),(N'ReferenceDocumentApplicabilities'),
 (N'ReferenceDocuments'),(N'ReferenceDocumentSectionEmbeddings'),(N'ReferenceDocumentSections'),
-(N'RefreshSessions'),(N'ScheduleEnrollmentDeferrals'),(N'ScheduleAssignmentReassignmentAudits');
+(N'RefreshSessions'),(N'ScheduleEnrollmentDeferrals'),(N'ScheduleAssignmentReassignmentAudits'),
+(N'SavedAnalyticsReports');
 IF EXISTS (SELECT 1 FROM @expectedTables WHERE OBJECT_ID(N'dbo.' + QUOTENAME(Name), N'U') IS NULL)
-   OR (SELECT COUNT(*) FROM sys.tables WHERE is_ms_shipped = 0 AND name <> N'__EFMigrationsHistory') <> 23
-    THROW 51010, N'Expected exactly 23 application tables.', 1;
+   OR (SELECT COUNT(*) FROM sys.tables WHERE is_ms_shipped = 0 AND name <> N'__EFMigrationsHistory') <> 24
+    THROW 51010, N'Expected exactly 24 application tables.', 1;
 
 IF ISNULL(IS_ROLEMEMBER(N'db_owner'), 0) <> 1
    AND (ISNULL(IS_ROLEMEMBER(N'db_datareader'), 0) <> 1
@@ -407,7 +409,7 @@ VALUES
 IF (SELECT COUNT_BIG(*) FROM dbo.__EFMigrationsHistory) <> (SELECT COUNT_BIG(*) FROM @expectedMigrations)
    OR EXISTS (SELECT MigrationId FROM @expectedMigrations EXCEPT SELECT MigrationId FROM dbo.__EFMigrationsHistory)
    OR EXISTS (SELECT MigrationId FROM dbo.__EFMigrationsHistory EXCEPT SELECT MigrationId FROM @expectedMigrations)
-    THROW 51006, N'The migration history is not the exact expected 23-migration chain.', 1;
+    THROW 51006, N'The migration history is not the exact expected 24-migration chain.', 1;
 
 DECLARE @applicationDataEmpty bit = 1;
 DECLARE @tableName nvarchar(517);
@@ -439,7 +441,7 @@ SELECT CONCAT(
     DB_NAME(), N'|',
     CONVERT(nvarchar(10), @engineEdition), N'|',
     CONVERT(nvarchar(10), @compatibilityLevel), N'|',
-    @collation, N'|23|SEED_READ_WRITE'
+    @collation, N'|24|SEED_READ_WRITE'
 );
 "@
 
@@ -484,14 +486,14 @@ try {
         $preflightFields[1] -ne $expectedDatabase -or
         $preflightFields[2] -ne '5' -or
         $preflightFields[3] -ne '150' -or
-        $preflightFields[5] -ne '23' -or
+        $preflightFields[5] -ne '24' -or
         $preflightFields[6] -ne 'SEED_READ_WRITE') {
         throw 'The read-only SQL preflight returned unexpected target details. No seed commands were started.'
     }
 
     $collation = $preflightFields[4]
     $confirmation = "APP STOPPED $expectedDatabase collation $collation"
-    Write-Output "Read-only preflight passed for $expectedTarget (Azure SQL Database, compatibility 150, collation $collation, exact 23 migrations, empty application tables, and seed read/write permission)."
+    Write-Output "Read-only preflight passed for $expectedTarget (Azure SQL Database, compatibility 150, collation $collation, exact 24 migrations, empty application tables, and seed read/write permission)."
     Write-Output 'The migrations do not pin a required collation; review the reported value before continuing.'
     Write-Output 'Stop the App Service and all other database writers before running the seed commands; this preflight does not lock the database.'
     if ($AllowSharedDemoPassword) { Write-Output 'Explicit demo exception: all four accounts will share one password.' }

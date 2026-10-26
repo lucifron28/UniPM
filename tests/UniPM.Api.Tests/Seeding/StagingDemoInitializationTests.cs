@@ -137,6 +137,8 @@ public sealed class StagingDemoInitializationTests
             var userSeeder = scope.ServiceProvider.GetRequiredService<DevelopmentUserSeeder>();
             var demoSeeder = scope.ServiceProvider.GetRequiredService<DevelopmentDemoSeeder>();
             var migrations = context.Database.GetMigrations().ToArray();
+            Assert.Equal(24, migrations.Length);
+            Assert.Equal("20261023131748_AddSavedAnalyticsReports", migrations[^1]);
             // Only fixture setup applies migrations, to the owned local disposable database.
             await context.GetService<IMigrator>().MigrateAsync(migrations[^2]);
             await Assert.ThrowsAsync<InvalidOperationException>(userSeeder.SeedAsync);

@@ -50,9 +50,9 @@ internal static class StagingDemoInitialization
             throw new InvalidOperationException("Staging demo initialization requires the verified SQL Server schema.");
         var expected = context.Database.GetMigrations().ToArray();
         var applied = (await context.Database.GetAppliedMigrationsAsync(cancellationToken)).ToArray();
-        if (expected.Length != 23 || expected[^1] != "20261020150946_AddScheduleAssignmentReassignmentAudits"
+        if (expected.Length != 24 || expected[^1] != "20261023131748_AddSavedAnalyticsReports"
             || !expected.SequenceEqual(applied, StringComparer.Ordinal))
-            throw new InvalidOperationException("Staging demo initialization requires the exact 23 applied migrations; it never migrates automatically.");
+            throw new InvalidOperationException("Staging demo initialization requires the exact 24 applied migrations; it never migrates automatically.");
 
         var allowedCounts = accountsCreated ? new Dictionary<string, long>
         {
