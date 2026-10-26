@@ -16,6 +16,8 @@ class BatchPmCard extends StatelessWidget {
     required this.completedCount,
     required this.totalCount,
     this.building,
+    this.assignmentDeadlineSummary,
+    this.assignmentPeriodSummary,
     this.onTap,
     this.actionLabel,
     this.onAction,
@@ -28,6 +30,8 @@ class BatchPmCard extends StatelessWidget {
   final int completedCount;
   final int totalCount;
   final String? building;
+  final String? assignmentDeadlineSummary;
+  final String? assignmentPeriodSummary;
   final VoidCallback? onTap;
   final String? actionLabel;
   final VoidCallback? onAction;
@@ -136,6 +140,28 @@ class BatchPmCard extends StatelessWidget {
                   color: AppColors.textSecondary,
                 ),
               ),
+              if (assignmentDeadlineSummary != null ||
+                  assignmentPeriodSummary != null) ...[
+                const SizedBox(height: 6),
+                if (assignmentDeadlineSummary != null)
+                  Text(
+                    assignmentDeadlineSummary!,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                if (assignmentPeriodSummary != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    assignmentPeriodSummary!,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ],
               const SizedBox(height: 14),
               PmProgressIndicator(
                 completed: completedCount,
