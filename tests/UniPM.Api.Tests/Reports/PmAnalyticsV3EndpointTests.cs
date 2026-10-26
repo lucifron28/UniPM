@@ -62,7 +62,9 @@ public sealed class PmAnalyticsV3EndpointTests
         Assert.NotEqual(originalRevision, saved.Revision);
         Assert.Equal(HttpStatusCode.Conflict, (await client.PutAsJsonAsync(item,
             request with { Name = "Stale rename", Revision = originalRevision })).StatusCode);
-        Assert.Equal("Renamed", Assert.Single(await client.GetFromJsonAsync<SavedAnalyticsReportResponse[]>(route)).Name);
+        var reportsAfterStaleUpdate = await client.GetFromJsonAsync<SavedAnalyticsReportResponse[]>(route);
+        Assert.NotNull(reportsAfterStaleUpdate);
+        Assert.Equal("Renamed", Assert.Single(reportsAfterStaleUpdate).Name);
 
         async Task<PmAnalyticsV3ExecutionResponse> Run()
         {
