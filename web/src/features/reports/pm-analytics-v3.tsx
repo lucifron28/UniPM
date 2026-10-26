@@ -1269,7 +1269,7 @@ export function PmAnalyticsV3Panel({
     updatePlan(sourcePlan)
     setStage('preview')
     setDrilldownNotice(
-      `A records plan for ${measureLabel} is ready. Preview it to review the contributing source records.`,
+      `A records plan for ${measureLabel} is ready. Review the preview below before confirming the contributing source records.`,
     )
     void handlePreview(sourcePlan)
   }
@@ -2409,6 +2409,14 @@ export function PmAnalyticsV3Panel({
           </Button>
         )}
       </div>
+      {drilldownNotice && (
+        <p
+          role="status"
+          className="rounded-md bg-[var(--surface-muted)] p-3 text-sm text-[var(--text-secondary)]"
+        >
+          {drilldownNotice}
+        </p>
+      )}
       <Card
         className={
           scopeReviewActive
@@ -2758,14 +2766,6 @@ export function PmAnalyticsV3Panel({
             {catalogLoading && catalog?.subject !== selectedSubject && (
               <p role="status" className="text-sm text-[var(--text-secondary)]">
                 Loading the selected report subject…
-              </p>
-            )}
-            {drilldownNotice && (
-              <p
-                role="status"
-                className="rounded-md bg-[var(--surface-muted)] p-3 text-sm text-[var(--text-secondary)]"
-              >
-                {drilldownNotice}
               </p>
             )}
             {showClarificationPanel && clarificationInterpretation && (
