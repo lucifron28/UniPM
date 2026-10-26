@@ -204,6 +204,9 @@ test('saved reports reuse a fresh preview and guard stale deletes', async ({
   await page.route('**/api/v1/auth/me', (route) =>
     route.fulfill({ json: session.user }),
   )
+  await page.route('**/api/v1/analytics/pm/v3/saved-reports', (route) =>
+    route.fulfill({ json: [] }),
+  )
   await page.route('**/api/v1/analytics/pm/v3/catalog**', (route) =>
     route.fulfill({ json: catalog }),
   )
@@ -678,6 +681,9 @@ test('runs a registered asset inventory report without a PM period', async ({
   )
   await page.route('**/api/v1/auth/me', (route) =>
     route.fulfill({ json: session.user }),
+  )
+  await page.route('**/api/v1/analytics/pm/v3/saved-reports', (route) =>
+    route.fulfill({ json: [] }),
   )
 
   const inventoryCatalog = {
