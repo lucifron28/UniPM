@@ -519,6 +519,9 @@ class _ScheduleSummary extends StatelessWidget {
             schedule.inspectorAssignmentDueAt != null ||
             schedule.assignmentPeriodStatus != null) ...[
           const SizedBox(height: 8),
+          const Text(
+            'Assignment timing and status (as of the last server response)',
+          ),
           Text(
             'Initial Inspector assignment: ${formatAssignmentPeriodDate(schedule.firstInspectorAssignedAt)}',
             key: const Key('schedule-first-inspector-assignment'),
