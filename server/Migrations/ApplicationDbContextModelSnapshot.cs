@@ -1110,6 +1110,43 @@ namespace UniPM.Api.Migrations
                     b.ToTable("RefreshSessions", (string)null);
                 });
 
+            modelBuilder.Entity("UniPM.Api.Models.SavedAnalyticsReport", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<Guid>("OwnerUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("PeriodMode")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)");
+
+                    b.Property<string>("PlanJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("Revision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("UpdatedAtUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OwnerUserId", "UpdatedAtUtc");
+
+                    b.ToTable("SavedAnalyticsReports");
+                });
+
             modelBuilder.Entity("UniPM.Api.Models.ScheduleAssignmentReassignmentAudit", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1441,6 +1478,15 @@ namespace UniPM.Api.Migrations
                     b.Navigation("ReplacedBySession");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("UniPM.Api.Models.SavedAnalyticsReport", b =>
+                {
+                    b.HasOne("UniPM.Api.Models.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("OwnerUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("UniPM.Api.Models.ScheduleAssignmentReassignmentAudit", b =>

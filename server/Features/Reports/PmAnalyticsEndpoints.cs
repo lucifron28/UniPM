@@ -17,6 +17,8 @@ public static class PmAnalyticsEndpoints
                 .RequireAuthenticatedUser()
                 .RequireRole(AuthRoleCatalog.Gsd));
 
+        group.MapSavedAnalyticsReports();
+
         group.MapGet("/pm/v3/catalog", ([FromQuery] string? subject) =>
         {
             var selectedSubject = string.IsNullOrWhiteSpace(subject)
