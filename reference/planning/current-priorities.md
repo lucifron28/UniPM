@@ -1,5 +1,12 @@
 # Current Priorities - PMIS Validation Baseline
 
+## Recorded follow-ups, October 26, 2026
+
+[Dashboard/NLA charts and the proposed 30-day assignment working period](chart-and-assignment-followups-2026-10-26.md)
+are recorded for later work. The assignment allowance needs policy confirmation,
+including calendar versus working days and the effective assignment event.
+Original scheduled PM months and deadlines remain unchanged by this record.
+
 ## Later branch status, October 25, 2026
 
 This page preserves the earlier PMIS-only M3 plan below. Its statements that
