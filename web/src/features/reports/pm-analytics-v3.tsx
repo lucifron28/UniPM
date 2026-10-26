@@ -557,7 +557,7 @@ function hasExplicitInspectionDatePeriod(question: string) {
   )
 }
 
-function useScheduledPmCycleWording(question: string) {
+function rewriteAsScheduledPmCycleQuestion(question: string) {
   return question.replace(
     /\b(?:inspected|inspection|inspections)(?:\s+date)?\s+(?:in|during|on)\s+/gi,
     'for the scheduled PM cycle in ',
@@ -1689,7 +1689,7 @@ export function PmAnalyticsV3Panel({
     if (!interpretation?.plan) {
       const originalQuestion = submittedQuestion || question.trim()
       const scheduledCycleQuestion =
-        useScheduledPmCycleWording(originalQuestion)
+        rewriteAsScheduledPmCycleQuestion(originalQuestion)
       if (scheduledCycleQuestion === originalQuestion) {
         setError(
           'Edit the question and state the month and year as a scheduled PM cycle.',
