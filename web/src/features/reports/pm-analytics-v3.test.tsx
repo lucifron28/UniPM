@@ -711,7 +711,7 @@ describe('PM analytics V3 workflow', () => {
 
     fireEvent.click(await screen.findByText('My reports (1)'))
     fireEvent.click(
-      await screen.findByRole('button', { name: 'Open preview', exact: true }),
+      await screen.findByRole('button', { name: 'Open preview' }),
     )
     expect(api.previewSaved).toHaveBeenCalledWith(
       '99999999-9999-4999-8999-999999999999',

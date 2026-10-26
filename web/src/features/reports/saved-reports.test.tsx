@@ -107,9 +107,9 @@ describe('saved report controls', () => {
     fireEvent.click(await screen.findByText('My reports (1)'))
 
     current = report('Updated in another tab', revision2)
-    fireEvent.click(screen.getByRole('button', { name: 'Delete', exact: true }))
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
     fireEvent.click(
-      screen.getByRole('button', { name: 'Confirm delete', exact: true }),
+      screen.getByRole('button', { name: 'Confirm delete' }),
     )
     expect(await screen.findByRole('alert')).toHaveTextContent('changed')
     expect(api.delete).toHaveBeenNthCalledWith(1, reportId, {
@@ -121,7 +121,7 @@ describe('saved report controls', () => {
       await screen.findByText('Updated in another tab'),
     ).toBeInTheDocument()
     fireEvent.click(
-      screen.getByRole('button', { name: 'Confirm delete', exact: true }),
+      screen.getByRole('button', { name: 'Confirm delete' }),
     )
 
     await waitFor(() => expect(current).toBeNull())
