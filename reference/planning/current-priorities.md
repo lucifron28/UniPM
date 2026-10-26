@@ -2,10 +2,12 @@
 
 ## Recorded follow-ups, October 26, 2026
 
-[Dashboard/NLA charts and the proposed 30-day assignment working period](chart-and-assignment-followups-2026-10-26.md)
-are recorded for later work. The assignment allowance needs policy confirmation,
-including calendar versus working days and the effective assignment event.
-Original scheduled PM months and deadlines remain unchanged by this record.
+[Dashboard/NLA charts and the 30-calendar-day assignment period](chart-and-assignment-followups-2026-10-26.md)
+are implemented on `feature/dashboard-nla-charts`. The owner selected the first
+saved Inspector assignment as the start, retaining its due date after
+reassignment. Original PM months and deadlines remain unchanged. See
+[TEST-166](../evidence/test-runs/TEST-166-charts-and-assignment-period.md) for
+focused verification and migration/device acceptance limits.
 
 ## Later branch status, October 25, 2026
 
@@ -103,7 +105,7 @@ schedules.
   from the evaluated MVP.
 - Confirmed preventive-maintenance workflow: complete in the backend. One form
   contains multiple inspection rows; its lifecycle is `Draft -> Submitted ->
-  Acknowledged`. Field-work completion is recorded on each
+Acknowledged`. Field-work completion is recorded on each
   `InspectionRecord.CompletedAt` and completes linked schedules before form
   submission. Acknowledgement records separate receipt/noting, does not alter
   execution or compliance timestamps, and does not complete schedules. It makes

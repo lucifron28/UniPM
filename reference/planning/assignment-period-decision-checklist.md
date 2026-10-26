@@ -1,68 +1,87 @@
-# Assignment-period decisions and acceptance checklist
+# Assignment-period rules and acceptance checklist
 
-**Status:** Planning aid for FU-02. The GSD Head's explanation, as reported by the project owner, confirms that late assignment occurs. It does not approve a 30-day allowance, define its calculation, or select the event that starts it. This checklist records questions for GSD confirmation; it does not change application behavior or PM compliance.
+The project owner authorized implementation on October 26, 2026 and selected
+30 calendar days from the Inspector's saved assignment. The GSD Head's
+explanation, as reported by the owner, establishes that late assignment occurs.
+The allowance is the owner's implementation decision, not a claim of additional
+institutional approval or field acceptance.
 
-Related record: [Dashboard and assignment-period follow-ups](chart-and-assignment-followups-2026-10-26.md).
+Related record: [Charts and assignment follow-ups](chart-and-assignment-followups-2026-10-26.md).
 
-## Current facts
+## Selected rules
 
-- `PmCycle` and its original month-end deadline remain the scheduled PM identity. The deadline uses the Asia/Manila calendar. Assignment after the cycle begins must not move the cycle or overwrite that deadline.
-- Existing PM compliance uses the first server-accepted inspection `CompletedAt`. `DateInspected` is a separate entered date. The assignment allowance, if approved, must be a separate measure.
-- Schedules store current Inspector and Supervisor IDs plus general `CreatedAt` and `UpdatedAt` values. Initial assignment routes update the assignee and `UpdatedAt`, but do not create an assignment audit event (`SchedulesEndpoints.cs:630-752, 762-898`). `UpdatedAt` also changes for other operations and is not a reliable assignment timestamp.
-- `ScheduleAssignmentReassignmentAudit.ChangedAt` records reassignment events, not complete initial assignment history (`ScheduleAssignmentReassignmentAudit.cs:3-14`; `SchedulesEndpoints.cs:2399-2412`).
-- The server does not persist the queued device-local completion timestamp. Offline synchronization continues to use the first server-accepted `CompletedAt` for PM compliance.
+| Decision               | Selected behavior                                                                                    |
+| ---------------------- | ---------------------------------------------------------------------------------------------------- |
+| Duration               | 30 calendar days, including weekends and holidays                                                    |
+| Start                  | First persisted Inspector assignment timestamp, not notification delivery                            |
+| Due instant            | Initial Inspector assignment plus 30 days, displayed in Asia/Manila                                  |
+| Completion             | First server-accepted completion at or before the due instant is within the period                   |
+| PM identity            | Preserve the original PM month and PM deadline; report PM compliance separately                      |
+| Supervisor assignment  | Capture its initial timestamp separately; it does not start Inspector turnaround                     |
+| Reassignment           | Preserve the original first-assignment timestamp and due instant                                     |
+| Unassignment           | Keep the existing clock running and record the removal; subsequent assignment does not reset it      |
+| Cancellation           | Exclude cancelled schedules from aggregate assignment-period measures, as with PM measures           |
+| Offline completion     | Keep the first server-accepted save as the completion clock; do not promote a device timestamp       |
+| Legacy missing history | Leave first timestamps null and report unavailable outcomes; never substitute CreatedAt or UpdatedAt |
+| Notification           | Do not assert delivery or receipt; saved assignment starts the period                                |
 
-## Proposed direction for review
+The fixed UTC+08:00 institutional timezone has no daylight-saving transition.
+The calculation adds 30 days to the saved timestamp. It does not round to the
+end of a day or count the assignment date as a completed elapsed day.
 
-The current recommendation is to start a proposed Inspector turnaround allowance at the persisted Inspector assignment event. Keep Supervisor assignment as a separate event so the time spent distributing a batch remains visible. This is a recommendation only.
+## Example
 
-If GSD approves an allowance, report it separately from:
+A June-cycle schedule assigned to an Inspector on June 29 at 14:00 Asia/Manila
+retains its June 30 PM deadline. Its separate assignment due instant is July 29
+at 14:00 Asia/Manila. A July 10 completion is late for the June PM cycle and
+within the assignment period. Both results must remain visible.
 
-- the original PM deadline and schedule-compliance result;
-- the elapsed time before Inspector assignment; and
-- any notification or advance-notice measure.
+Reassignment on July 5 keeps July 29 at 14:00 as the assignment due instant.
+A server-accepted completion exactly at that instant is within the period; a
+later completion is late for the assignment period as well.
 
-Do not label an allowance due date as a notice deadline. Do not claim that a notification was delivered or received unless that event is explicitly captured and approved as the clock trigger.
+## Data and implementation boundaries
 
-## Decisions required before implementation
+- Nullable `FirstSupervisorAssignedAt` and `FirstInspectorAssignedAt` fields
+  store the first newly recorded assignment for each role.
+- Initial assignment, reassignment and unassignment events capture schedule,
+  role, prior/new assignee, actor, timestamp and reason in the existing audit
+  table, with an explicit event type. Existing events remain reassignment
+  events. No historical first timestamps are backfilled.
+- Batch assignment and technical-administration assignment paths use the same
+  event recorder. Account removal preserves events and first timestamps.
+- Schedule responses, dashboard summaries and NLA records/counts use a shared
+  assignment-period calculator. Missing completion evidence for a schedule
+  marked Completed also produces an unavailable outcome.
+- PM deadline, PM cycle, acknowledgement and offline synchronization rules
+  remain separate. The allowance never changes the stored PM deadline.
 
-| Decision | Options or question | Required definition |
-|---|---|---|
-| Day basis | 30 calendar days or 30 working days | Weekend and holiday calendar, if applicable |
-| Clock trigger | Persisted Inspector assignment, notification delivery, or another event | Authoritative timestamp, timezone, start boundary and inclusive/exclusive counting |
-| Relationship to PM deadline | Allowance after assignment, minimum advance notice before the PM deadline, or both | Separate names, formulas and chart labels if both apply |
-| Supervisor delay | Measure time between Supervisor assignment and Inspector assignment? | Whether this is a separate operational metric and its event boundaries |
-| Reassignment | Keep original Inspector due date, restart, pause, or another rule? | Preserve every prior assignment event and define any new allowance explicitly |
-| Unassignment | What happens while no Inspector is assigned? | Pause, continue, close, or another rule, including reassignment behavior |
-| Cancellation and completion | What ends or excludes an allowance? | Eligible schedule states and treatment of completed work |
-| Offline synchronization | Which timestamp applies to the assignment allowance? | Whether the existing server-accepted completion clock remains authoritative; do not promote device time implicitly |
-| Legacy missing events | How should incomplete assignment history appear? | Explicit unavailable/unknown treatment and denominator behavior; no inferred backfill |
+## Acceptance scenarios
 
-The 30-day duration itself also needs confirmation. “Working period” does not establish calendar versus working days. Do not calculate or promise a July 29 assignment due date until GSD selects the day basis, event, timezone, and counting boundary.
+1. June 29 and June 30 assignments preserve the original June cycle and PM
+   deadline, while producing their own 30-calendar-day due instants.
+2. Completion exactly at the assignment due instant is within the period;
+   completion after it is late. Unfinished work becomes overdue only after it.
+3. Supervisor assignment and Inspector assignment produce separate events and
+   timestamps. Only the Inspector event starts the working period.
+4. Reassignment and unassignment preserve the original due instant and retain
+   the event history. An idempotent repeated assignment creates no new event.
+5. A legacy assigned schedule with no first timestamp remains unavailable after
+   reassignment. General update timestamps are not assignment evidence.
+6. Offline work accepted after either deadline uses the server acceptance time.
+   No claim is made that the recorded completion proves the physical work time.
+7. Cancelled schedules are excluded from dashboard/NLA aggregate populations.
+8. Dashboard counts and NLA source filters distinguish assignment outcomes from
+   original PM timeliness. Missing required history stays visible separately.
 
-## Example to resolve counting rules
+These scenarios specify the required behavior. Execution evidence must state
+which cases actually ran; an existing regression test or source inspection
+alone does not establish that every new boundary case was executed.
 
-A June-cycle schedule keeps its original June 30 PM deadline even if assignment occurs later. If the Inspector is assigned on June 29, that is one calendar date before the original deadline; the remaining elapsed time depends on the event timestamp. The schedule must not be relabeled as a July cycle, and the assignment-based due date must remain unset until the counting policy is selected.
+## Sources
 
-The same schedule assigned on June 30 still retains its June 30 PM deadline. The policy decision must define whether assignment on the deadline date starts the allowance that day or the next day. The system must report the original PM result and any approved assignment-period result separately.
-
-## Data capture required after decisions
-
-Before calculating an assignment allowance, capture an immutable initial-assignment event for each relevant role. It should identify the schedule or batch, role, prior and new assignee where applicable, actor, event time, and event type. Keep reassignment events instead of overwriting them. If GSD chooses a notice event as the trigger, capture that notice event separately; do not assume notification receipt from assignment persistence.
-
-Use an explicit assignment-event timestamp. Do not derive it from schedule `CreatedAt`, general `UpdatedAt`, PM deadline, or current assignee ID. Preserve unknown values for legacy schedules and display their assignment calculation as unavailable until the chosen rule says otherwise.
-
-## Acceptance scenarios after policy approval
-
-- A June 29 Inspector assignment for a June-cycle schedule preserves the June cycle and original June 30 deadline. The assignment allowance is calculated only using the approved rule.
-- A June 30 assignment exercises the approved same-day counting boundary. No July 29 date is asserted before day-counting is decided.
-- Supervisor assignment followed by Inspector assignment records both events and reports any approved distribution interval separately from Inspector turnaround.
-- Reassignment retains the first assignment event and exposes the approved rule for the new assignee. It does not silently erase an earlier delay or restart a clock without an explicit rule.
-- Unassignment, reassignment after unassignment, cancellation, and schedule completion follow the selected behavior and denominator rules.
-- A completion entered offline before the PM deadline but first accepted by the server after the deadline remains late under existing PM compliance. Assignment-period reporting follows the separately approved offline rule and never silently trusts a device timestamp.
-- A legacy schedule with no initial assignment event displays an unavailable assignment calculation. The system does not substitute `UpdatedAt` or manufacture history.
-- Weekend and holiday boundary examples distinguish the approved calendar-day or working-day calculation and timezone.
-
-## Stop conditions
-
-Keep FU-02 in planning until GSD confirms the decisions above and the required initial-assignment history is available. Leave original `PmCycle`, original PM deadline, and existing server-accepted completion semantics unchanged. Do not add notification delivery/receipt claims or treat assignment allowance as PM compliance.
+- [Assignment calculator](../../server/Features/Schedules/ScheduleAssignmentPeriod.cs)
+- [Assignment event recorder](../../server/Features/Schedules/ScheduleAssignmentEventRecorder.cs)
+- [Schedule commands and responses](../../server/Features/Schedules/SchedulesEndpoints.cs)
+- [Report catalog](../../server/Features/Reports/PmAnalyticsV3Catalog.cs)
+- [Dashboard calculations](../../server/Features/Reports/PmPeriodDashboardService.cs)

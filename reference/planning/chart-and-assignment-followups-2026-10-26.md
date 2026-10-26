@@ -1,13 +1,17 @@
 # Charts and assignment-period follow-ups
 
-Recorded October 26, 2026, from the project owner's discussion. Both items are
-follow-up work. This record does not change the application, compliance
-formula, schedule dates or manuscript.
+Recorded October 26, 2026, from the project owner's discussion. The selected
+charts and owner-confirmed 30-calendar-day assignment period are implemented
+on `feature/dashboard-nla-charts`. Original PM compliance, schedule identities
+and deadlines remain separate. No manuscript edits are included.
 
-| Item | Recorded outcome | Next gate |
-|---|---|---|
-| FU-01 | Dashboard and NLA chart scope, priorities and data constraints | Select the first charts and verify their complete result scope before implementation |
-| FU-02 | Late-assignment problem, proposed working period and preserved schedule identity | Confirm the allowance rules before implementing deadline or compliance changes |
+Verification and remaining acceptance limits are recorded in
+[TEST-166](../evidence/test-runs/TEST-166-charts-and-assignment-period.md).
+
+| Item  | Recorded outcome                                                                                     | Next gate                                                                                     |
+| ----- | ---------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| FU-01 | Dashboard bars/stacked outcomes, NLA Chart/Table, cycle lines and two-dimension heatmaps implemented | Review the interface with GSD; additional inventory candidates remain optional                |
+| FU-02 | Owner-selected 30-calendar-day period and initial/event history implemented                          | Apply the additive migration when updating an application database; legacy dates stay unknown |
 
 Supporting records:
 
@@ -16,7 +20,7 @@ Supporting records:
 
 ## FU-01: Dashboard and NLA charts
 
-**Status:** Requested follow-up; implementation pending.
+**Status:** Selected charts implemented. Dashboard charts cover department workload, progress, PM outcomes, compliance, condition mix and assignment outcomes. NLA charts use complete same-execution grouped results, with bars, cycle lines and heatmaps. All 51 inventory candidates were not requested for implementation.
 
 Add charts to help GSD compare maintenance progress, findings and workload.
 Keep the existing tables, report-scope review, confirmation and source records.
@@ -61,14 +65,17 @@ work, not a commitment to implement 51 charts.
 scope, handle empty/null/paged results correctly, preserve backend calculations,
 and work on mobile-width screens and printed reports.
 
-These are implementation completion criteria. Recording the follow-up does not
-mark the charts implemented or tested.
+Charts retain exact-value tables and source review. NLA charts include at most
+200 complete groups; larger unranked results require narrower scope or the
+existing Top/Bottom limit. The inventory remains a list of possible later work.
 
 ## FU-02: Proposed 30-day working period after assignment
 
-**Status:** Late assignment is a confirmed operational occurrence, as reported
-by the project owner from the GSD Head's explanation. The 30-day allowance and
-its precise calculation remain a proposal pending policy confirmation.
+**Status:** Implementation authorized by the project owner on October 26, 2026.
+Use 30 calendar days from the first saved Inspector assignment, preserve that
+due date after reassignment, and measure completion at the first server-accepted
+save. Keep the original PM month and deadline separate. The linked checklist
+records the selected rules and preserves the earlier decision questions.
 
 **Problem:** A person assigned on June 29 may have only one day before a June
 30 PM deadline. Scheduled maintenance lateness alone cannot explain whether
@@ -79,53 +86,31 @@ deadline. A June schedule remains June if assignment or completion occurs in
 July. Show any assignment-based due date separately; do not silently move the
 PM deadline or rewrite historical schedule identities.
 
-Proposed direction for confirmation:
+Selected implementation rules:
 
-- Start the inspector's working-period clock when the inspector receives the
-  assignment, rather than when a supervisor is assigned.
-- Track supervisor assignment and subsequent inspector assignment separately
-  so distribution delay remains visible.
-- Distinguish original PM schedule compliance, assignment notice and inspector
-  turnaround in dashboards and NLA. Meeting an assignment allowance must not
-  silently make overdue scheduled maintenance appear on time.
-- Preserve assignment events and reassignment history. Reassignment must not
-  silently restart an allowance or erase an earlier delay.
+- Start at the first saved Inspector assignment and add 30 calendar days to
+  that instant. Completion at or before the due instant is within the period.
+- Capture Supervisor and Inspector assignments separately. Preserve initial
+  timestamps through reassignment and unassignment; the clock continues.
+- Keep original PM compliance and assignment turnaround separate in dashboard,
+  NLA, web schedule detail and mobile schedule displays.
+- Record initial assignment, reassignment and unassignment events. Legacy
+  schedules without reliable initial history remain unavailable.
+- Keep server-accepted completion authoritative, including offline uploads.
+  Do not assert notification delivery or physical work time.
 
-Decisions required before implementation:
-
-1. Whether the allowance is **30 calendar days or 30 working days**, including
-   weekend/holiday handling. "Working period" does not settle this distinction.
-2. The effective assignment event: persisted assignment, notification delivery
-   or another explicitly defined event. Define timezone and inclusive counting.
-3. Whether the 30 days are an allowance after assignment, minimum advance notice
-   before the original deadline, or two separate rules. These are different
-   measures and must not share an ambiguous label.
-4. Reassignment, cancellation, unassignment and retrospective-correction rules.
-5. The treatment of late offline synchronization. The current completion clock
-   is the first server-accepted save; this follow-up does not replace it.
-6. How legacy schedules without complete assignment timestamps will appear.
-
-Current schedules contain assignee IDs and general CreatedAt/UpdatedAt values.
-Recorded reassignment events do not provide complete initial-assignment history.
-Add reliable assignment-event capture before calculating notice or turnaround.
-Do not infer missing assignment dates from general update timestamps or backfill
-unrecorded history. Mark unavailable historical calculations explicitly.
+The [assignment checklist](assignment-period-decision-checklist.md) defines the
+selected rules, June/July example, data boundary and acceptance scenarios.
 
 **Completion criteria:** Approved rules and separate reporting definitions are
 documented; assignment events are captured; late-assignment and reassignment
 cases are verified; original PM months/deadlines remain intact; dashboard/NLA
 labels distinguish maintenance compliance from the assignment allowance.
 
-These are implementation completion criteria. The GSD Head's explanation
-confirms late assignments occur; it does not confirm a 30-day allowance or
-which assignment event should start it. Unanswered decisions remain open in
-the linked checklist.
-
-## Suggested sequence
-
-Confirm FU-02's day-counting and assignment rules first. Implement its data
-capture and separate measures before assignment-related charts. FU-01's
-existing PM and inventory charts can proceed independently once prioritized.
+The owner confirmed the calculation during this implementation. The GSD Head's
+explanation confirms the occurrence of late assignments, not separate approval
+of the new allowance. Native database migration execution and GSD/device
+acceptance are not established by the focused checks recorded in TEST-166.
 
 Source references:
 
