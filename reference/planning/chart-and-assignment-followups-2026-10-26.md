@@ -6,7 +6,8 @@ on `feature/dashboard-nla-charts`. Original PM compliance, schedule identities
 and deadlines remain separate. No manuscript edits are included.
 
 Verification and remaining acceptance limits are recorded in
-[TEST-166](../evidence/test-runs/TEST-166-charts-and-assignment-period.md).
+[TEST-166](../evidence/test-runs/TEST-166-charts-and-assignment-period.md) and the
+[review corrections in TEST-167](../evidence/test-runs/TEST-167-chart-assignment-review-corrections.md).
 
 | Item  | Recorded outcome                                                                                     | Next gate                                                                                     |
 | ----- | ---------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |

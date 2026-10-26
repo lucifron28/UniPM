@@ -48,11 +48,17 @@ later completion is late for the assignment period as well.
   role, prior/new assignee, actor, timestamp and reason in the existing audit
   table, with an explicit event type. Existing events remain reassignment
   events. No historical first timestamps are backfilled.
+- `AssignmentHistoryComplete` distinguishes schedules created with assignment
+  tracking from migrated legacy schedules. Migration defaults existing rows to
+  false. A legacy row with no assignee and no audit is still unknown, rather
+  than evidence that no prior assignment occurred.
 - Batch assignment and technical-administration assignment paths use the same
   event recorder. Account removal preserves events and first timestamps.
 - Schedule responses, dashboard summaries and NLA records/counts use a shared
   assignment-period calculator. Missing completion evidence for a schedule
-  marked Completed also produces an unavailable outcome.
+  marked Completed also produces an unavailable outcome. Administrative status
+  edits synchronize the schedule clock from the saved inspection timestamp;
+  they never invent completion from the edit time.
 - PM deadline, PM cycle, acknowledgement and offline synchronization rules
   remain separate. The allowance never changes the stored PM deadline.
 
