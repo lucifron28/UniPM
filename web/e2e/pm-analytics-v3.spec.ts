@@ -311,12 +311,17 @@ test('runs a V3 report through source-record review at a narrow viewport', async
     .getByRole('textbox', { name: 'Question' })
     .fill('Show progress for fire extinguishers during 2024')
   await page.getByRole('button', { name: 'Generate report' }).click()
-  await expect(page.getByText('Report ready for review')).toBeVisible()
+  await expect(
+    page.getByRole('heading', { name: 'Review your report' }),
+  ).toBeVisible()
   await page.getByRole('button', { name: 'Preview report' }).click()
   await expect(
     page.getByRole('heading', { name: 'Report preview' }),
   ).toBeVisible()
-  await expect(page.getByText(/Measure definitions/)).toBeVisible()
+  await page.getByText('Report details', { exact: true }).click()
+  await expect(
+    page.getByRole('heading', { name: 'Counting definitions and population' }),
+  ).toBeVisible()
   await page.getByRole('button', { name: 'Confirm and generate' }).click()
   await expect(page.getByText('100%', { exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'View contributing records' }).click()
@@ -571,7 +576,8 @@ test('runs a registered asset inventory report without a PM period', async ({
     .getByRole('textbox', { name: 'Question' })
     .fill('How many fire extinguishers are registered by status?')
   await page.getByRole('button', { name: 'Generate report' }).click()
-  await expect(page.getByText('Asset inventory')).toBeVisible()
+  await page.getByText('Report details', { exact: true }).click()
+  await expect(page.getByText('Registered asset inventory')).toBeVisible()
   await expect(page.getByLabel('Scheduled PM cycle period')).toHaveCount(0)
   await page.getByRole('button', { name: 'Preview report' }).click()
   await expect(
