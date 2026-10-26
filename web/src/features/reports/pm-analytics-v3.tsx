@@ -6,6 +6,7 @@ import {
   getPmAnalyticsV3FilterValues,
   interpretPmAnalyticsV3Question,
   previewPmAnalyticsV3Report,
+  previewSavedAnalyticsReport,
 } from '@/api/generated/endpoints'
 import type {
   PmAnalyticsV3AggregateFilter,
@@ -24,6 +25,7 @@ import type {
   PmAnalyticsV3ReportPlan,
   PmAnalyticsV3SortDirection,
   PmAnalyticsV3Top,
+  SavedAnalyticsReportResponse,
 } from '@/api/generated/models'
 import { ApiError } from '@/api/problem-details'
 import { Button } from '@/components/ui/button'
@@ -31,6 +33,7 @@ import { Card } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { DetailBackLink } from '@/features/shared/detail-back-link'
 import type { DetailReturnContext } from '@/features/shared/detail-navigation'
+import { SavedReports } from './saved-reports'
 
 type Mode = PmAnalyticsV3Mode
 type Presentation = PmAnalyticsV3Presentation
@@ -1459,6 +1462,45 @@ export function PmAnalyticsV3Panel({
     }
   }
 
+  const openSavedReport = async (
+    saved: SavedAnalyticsReportResponse,
+    edit: boolean,
+  ) => {
+    const request = beginRequest('Opening saved report')
+    try {
+      const result = edit
+        ? null
+        : await previewSavedAnalyticsReport(saved.id, request.controller.signal)
+      if (!request.isCurrent()) return false
+      const loadedPlan = result?.plan ?? saved.plan
+      setSelectedSubject(loadedPlan.subject)
+      setPlan(normalizePlan(loadedPlan))
+      setQuestion('')
+      setSubmittedQuestion('')
+      setInterpretation(null)
+      setClarificationChoices(emptyClarificationChoices())
+      setInterpretationFailureCode(null)
+      setParentReport(null)
+      setDrilldownNotice(null)
+      setIsEditingQuestion(false)
+      setEditingSnapshot(null)
+      setPreview(result)
+      setResponse(null)
+      setManualEditorOpen(edit)
+      setStage(edit ? 'plan' : 'preview')
+      return true
+    } catch (requestError) {
+      if (request.isCurrent()) setError(getErrorMessage(requestError))
+      return false
+    } finally {
+      if (request.isCurrent()) {
+        activeController.current = null
+        setPending(false)
+        setPendingLabel('')
+      }
+    }
+  }
+
   const executePage = async (page: number) => {
     if (!preview) return
     const request = beginRequest('Running the confirmed report')
@@ -2393,6 +2435,15 @@ export function PmAnalyticsV3Panel({
 
   return (
     <div className="space-y-4">
+      <SavedReports
+        reviewedPlan={
+          preview && (stage === 'preview' || stage === 'results')
+            ? preview.plan
+            : null
+        }
+        disabled={pending}
+        onOpen={openSavedReport}
+      />
       <div className="flex flex-wrap items-center gap-4">
         <DetailBackLink
           context={originContext}

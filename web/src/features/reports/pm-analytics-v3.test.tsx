@@ -18,6 +18,11 @@ const api = vi.hoisted(() => ({
   interpret: vi.fn(),
   preview: vi.fn(),
   execute: vi.fn(),
+  createSaved: vi.fn(),
+  deleteSaved: vi.fn(),
+  listSaved: vi.fn(),
+  previewSaved: vi.fn(),
+  updateSaved: vi.fn(),
 }))
 
 vi.mock('@/api/generated/endpoints', () => ({
@@ -26,6 +31,11 @@ vi.mock('@/api/generated/endpoints', () => ({
   interpretPmAnalyticsV3Question: api.interpret,
   previewPmAnalyticsV3Report: api.preview,
   executePmAnalyticsV3Report: api.execute,
+  createSavedAnalyticsReport: api.createSaved,
+  deleteSavedAnalyticsReport: api.deleteSaved,
+  listSavedAnalyticsReports: api.listSaved,
+  previewSavedAnalyticsReport: api.previewSaved,
+  updateSavedAnalyticsReport: api.updateSaved,
 }))
 
 vi.mock('@tanstack/react-router', async (importOriginal) => {
@@ -667,6 +677,11 @@ async function interpretAndPreview(
 
 describe('PM analytics V3 workflow', () => {
   beforeEach(() => {
+    api.createSaved.mockReset()
+    api.deleteSaved.mockReset()
+    api.listSaved.mockReset().mockResolvedValue([])
+    api.previewSaved.mockReset()
+    api.updateSaved.mockReset()
     api.catalog.mockReset().mockResolvedValue(makeCatalog())
     api.filterValues.mockReset()
     api.interpret.mockReset().mockResolvedValue(makeInterpretation())
@@ -676,6 +691,45 @@ describe('PM analytics V3 workflow', () => {
         makePreview(plan),
       )
     api.execute.mockReset()
+  })
+
+  it('reopens a saved report with a fresh preview and executes only after confirmation', async () => {
+    const savedPlan = makePlan()
+    api.listSaved.mockResolvedValueOnce([
+      {
+        id: '99999999-9999-4999-8999-999999999999',
+        name: 'Routine progress',
+        plan: savedPlan,
+        periodMode: 'Fixed',
+        revision: '00000000-0000-4000-8000-000000000001',
+        updatedAtUtc: '2026-10-26T00:00:00Z',
+      },
+    ])
+    api.previewSaved.mockResolvedValueOnce(makePreview(savedPlan))
+    api.execute.mockResolvedValueOnce(makeExecution(savedPlan))
+    render(<PmAnalyticsV3Panel />)
+
+    fireEvent.click(await screen.findByText('My reports (1)'))
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Open preview', exact: true }),
+    )
+    expect(api.previewSaved).toHaveBeenCalledWith(
+      '99999999-9999-4999-8999-999999999999',
+      expect.any(AbortSignal),
+    )
+    expect(api.interpret).not.toHaveBeenCalled()
+    expect(api.execute).not.toHaveBeenCalled()
+    expect(
+      await screen.findByRole('heading', { name: 'Report preview' }),
+    ).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm and generate' }))
+    expect(await screen.findByText('100%', { exact: true })).toBeInTheDocument()
+    expect(api.execute).toHaveBeenCalledWith(
+      { previewId: 'signed-preview-token', page: 1, pageSize: 25 },
+      expect.any(AbortSignal),
+    )
+    expect(api.interpret).not.toHaveBeenCalled()
   })
 
   it('starts with one question input and no subject or manual report controls', async () => {

@@ -90,6 +90,24 @@ const cases = [
         )
     },
   },
+  {
+    name: 'saved report delete revision query removed',
+    mutate: (data) => {
+      data.paths['/api/v1/analytics/pm/v3/saved-reports/{id}'].delete.parameters =
+        data.paths[
+          '/api/v1/analytics/pm/v3/saved-reports/{id}'
+        ].delete.parameters.filter((parameter) => parameter.name !== 'revision')
+    },
+  },
+  {
+    name: 'saved report delete revision query made optional',
+    mutate: (data) => {
+      const parameter = data.paths[
+        '/api/v1/analytics/pm/v3/saved-reports/{id}'
+      ].delete.parameters.find((item) => item.name === 'revision')
+      parameter.required = false
+    },
+  },
 ]
 
 let passedCases = 0

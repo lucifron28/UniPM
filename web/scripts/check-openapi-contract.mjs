@@ -641,6 +641,133 @@ for (const [
   }
 }
 
+const savedReportsPath = '/api/v1/analytics/pm/v3/saved-reports'
+const savedReportItemPath = `${savedReportsPath}/{id}`
+const savedReportPreviewPath = `${savedReportItemPath}/preview`
+const savedReportOperations = [
+  [savedReportsPath, 'get', 'ListSavedAnalyticsReports', '200'],
+  [
+    savedReportsPath,
+    'post',
+    'CreateSavedAnalyticsReport',
+    '201',
+    'SavedAnalyticsReportRequest',
+    'SavedAnalyticsReportResponse',
+  ],
+  [
+    savedReportItemPath,
+    'put',
+    'UpdateSavedAnalyticsReport',
+    '200',
+    'SavedAnalyticsReportRequest',
+    'SavedAnalyticsReportResponse',
+  ],
+  [savedReportItemPath, 'delete', 'DeleteSavedAnalyticsReport', '204'],
+  [
+    savedReportPreviewPath,
+    'post',
+    'PreviewSavedAnalyticsReport',
+    '200',
+    null,
+    'PmAnalyticsV3PreviewResponse',
+  ],
+]
+
+for (const [
+  path,
+  method,
+  operationId,
+  status,
+  requestSchemaName,
+  responseSchemaName,
+] of savedReportOperations) {
+  const operation = snapshot.paths?.[path]?.[method]
+  const requestSchema = requestSchemaName
+    ? operation?.requestBody?.content?.['application/json']?.schema
+    : null
+  const response = operation?.responses?.[status]
+  const responseSchema =
+    response?.content?.['application/json']?.schema
+  const idParameter = operation?.parameters?.find(
+    (parameter) => parameter.name === 'id' && parameter.in === 'path',
+  )
+
+  if (
+    operation?.operationId !== operationId ||
+    !response ||
+    (path.includes('{id}') &&
+      (!idParameter?.required ||
+        idParameter.schema?.type !== 'string' ||
+        idParameter.schema?.format !== 'uuid')) ||
+    (requestSchemaName &&
+      (operation?.requestBody?.required !== true ||
+        requestSchema?.$ref !==
+          `#/components/schemas/${requestSchemaName}`)) ||
+    (responseSchemaName &&
+      responseSchema?.$ref !== `#/components/schemas/${responseSchemaName}`)
+  ) {
+    throw new Error(
+      `Saved-report operation ${operationId} has an unexpected request or success response.`,
+    )
+  }
+}
+
+const savedReports =
+  snapshot.paths?.[savedReportsPath]?.get?.responses?.['200']?.content?.[
+    'application/json'
+  ]?.schema
+if (
+  savedReports?.type !== 'array' ||
+  savedReports.items?.$ref !==
+    '#/components/schemas/SavedAnalyticsReportResponse'
+) {
+  throw new Error(
+    'ListSavedAnalyticsReports must return SavedAnalyticsReportResponse items.',
+  )
+}
+
+const deleteSavedReport = snapshot.paths?.[savedReportItemPath]?.delete
+const deleteRevision = deleteSavedReport?.parameters?.find(
+  (parameter) => parameter.name === 'revision' && parameter.in === 'query',
+)
+if (
+  !deleteRevision?.required ||
+  deleteRevision.schema?.type !== 'string' ||
+  deleteRevision.schema?.format !== 'uuid'
+) {
+  throw new Error(
+    'DeleteSavedAnalyticsReport must require a UUID revision query parameter.',
+  )
+}
+
+const savedRequest =
+  snapshot.components?.schemas?.SavedAnalyticsReportRequest
+const savedRequestRequired = new Set(savedRequest?.required ?? [])
+if (
+  !savedRequest?.properties?.name ||
+  !savedRequest?.properties?.plan ||
+  !['name', 'plan'].every((field) => savedRequestRequired.has(field))
+) {
+  throw new Error(
+    'SavedAnalyticsReportRequest must require its name and validated plan.',
+  )
+}
+
+const savedResponse =
+  snapshot.components?.schemas?.SavedAnalyticsReportResponse
+const savedResponseRequired = new Set(savedResponse?.required ?? [])
+if (
+  !['id', 'name', 'plan', 'periodMode', 'revision', 'updatedAtUtc'].every(
+    (field) =>
+      field in (savedResponse?.properties ?? {}) &&
+      savedResponseRequired.has(field),
+  )
+) {
+  throw new Error(
+    'SavedAnalyticsReportResponse is missing required saved-report fields.',
+  )
+}
+
 const pmAnalyticsV3RequiredFields = {
   PmAnalyticsV3ReportPlan: [
     'schemaVersion',
@@ -1330,5 +1457,5 @@ if (
 }
 
 console.log(
-  'OpenAPI auth, Admin, asset, schedule, inspection registry, WMS referral, preventive-maintenance form, and PM analytics V2/V3 contract sanity check passed.',
+  'OpenAPI auth, Admin, asset, schedule, inspection registry, WMS referral, preventive-maintenance form, PM analytics V2/V3, and saved-report contract checks passed.',
 )

@@ -59,6 +59,7 @@ import type {
   CreatePreventiveMaintenanceFormDto,
   CreateScheduleDto,
   DeletePreventiveMaintenanceFormDraftInspectionParams,
+  DeleteSavedAnalyticsReportParams,
   DraftInspectionRowDto,
   DraftInspectionRowResponse,
   GenerateScheduleCyclesDto,
@@ -121,6 +122,8 @@ import type {
   PreventiveMaintenanceFormResponse,
   ProblemDetails,
   ReassignScheduleBatchDto,
+  SavedAnalyticsReportRequest,
+  SavedAnalyticsReportResponse,
   ScheduleAssignmentBatchResponse,
   ScheduleAssignmentQueueResponse,
   ScheduleCoverageReviewPage,
@@ -10846,6 +10849,473 @@ export function useGetPmPeriodDashboard<
   > & { queryKey: DataTag<QueryKey, TData, TError> }
 
   return withQueryKey(query, queryOptions.queryKey)
+}
+
+export const listSavedAnalyticsReports = (signal?: AbortSignal) => {
+  return customInstance<SavedAnalyticsReportResponse[]>({
+    url: `/api/v1/analytics/pm/v3/saved-reports`,
+    method: 'GET',
+    signal,
+  })
+}
+
+export const getListSavedAnalyticsReportsQueryKey = () => {
+  return [`/api/v1/analytics/pm/v3/saved-reports`] as const
+}
+
+export const getListSavedAnalyticsReportsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listSavedAnalyticsReports>>,
+  TError = ProblemDetails,
+>(options?: {
+  query?: Partial<
+    UseQueryOptions<
+      Awaited<ReturnType<typeof listSavedAnalyticsReports>>,
+      TError,
+      TData
+    >
+  >
+}) => {
+  const { query: queryOptions } = options ?? {}
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListSavedAnalyticsReportsQueryKey()
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listSavedAnalyticsReports>>
+  > = ({ signal }) => listSavedAnalyticsReports(signal)
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listSavedAnalyticsReports>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListSavedAnalyticsReportsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listSavedAnalyticsReports>>
+>
+export type ListSavedAnalyticsReportsQueryError = ProblemDetails
+
+export function useListSavedAnalyticsReports<
+  TData = Awaited<ReturnType<typeof listSavedAnalyticsReports>>,
+  TError = ProblemDetails,
+>(
+  options: {
+    query: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listSavedAnalyticsReports>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listSavedAnalyticsReports>>,
+          TError,
+          Awaited<ReturnType<typeof listSavedAnalyticsReports>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useListSavedAnalyticsReports<
+  TData = Awaited<ReturnType<typeof listSavedAnalyticsReports>>,
+  TError = ProblemDetails,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listSavedAnalyticsReports>>,
+        TError,
+        TData
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listSavedAnalyticsReports>>,
+          TError,
+          Awaited<ReturnType<typeof listSavedAnalyticsReports>>
+        >,
+        'initialData'
+      >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+export function useListSavedAnalyticsReports<
+  TData = Awaited<ReturnType<typeof listSavedAnalyticsReports>>,
+  TError = ProblemDetails,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listSavedAnalyticsReports>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+}
+
+export function useListSavedAnalyticsReports<
+  TData = Awaited<ReturnType<typeof listSavedAnalyticsReports>>,
+  TError = ProblemDetails,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<
+        Awaited<ReturnType<typeof listSavedAnalyticsReports>>,
+        TError,
+        TData
+      >
+    >
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & {
+  queryKey: DataTag<QueryKey, TData, TError>
+} {
+  const queryOptions = getListSavedAnalyticsReportsQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> }
+
+  return withQueryKey(query, queryOptions.queryKey)
+}
+
+export const createSavedAnalyticsReport = (
+  savedAnalyticsReportRequest: SavedAnalyticsReportRequest,
+  signal?: AbortSignal,
+) => {
+  return customInstance<SavedAnalyticsReportResponse>({
+    url: `/api/v1/analytics/pm/v3/saved-reports`,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    data: savedAnalyticsReportRequest,
+    signal,
+  })
+}
+
+export const getCreateSavedAnalyticsReportMutationOptions = <
+  TError = ValidationProblemDetails | ProblemDetails,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createSavedAnalyticsReport>>,
+    TError,
+    { data: SavedAnalyticsReportRequest },
+    TContext
+  >
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createSavedAnalyticsReport>>,
+  TError,
+  { data: SavedAnalyticsReportRequest },
+  TContext
+> => {
+  const mutationKey = ['createSavedAnalyticsReport']
+  const { mutation: mutationOptions } = options
+    ? options.mutation &&
+      'mutationKey' in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey } }
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createSavedAnalyticsReport>>,
+    { data: SavedAnalyticsReportRequest }
+  > = (props) => {
+    const { data } = props ?? {}
+
+    return createSavedAnalyticsReport(data)
+  }
+
+  return { mutationFn, ...mutationOptions }
+}
+
+export type CreateSavedAnalyticsReportMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createSavedAnalyticsReport>>
+>
+export type CreateSavedAnalyticsReportMutationBody = SavedAnalyticsReportRequest
+export type CreateSavedAnalyticsReportMutationError =
+  ValidationProblemDetails | ProblemDetails
+
+export const useCreateSavedAnalyticsReport = <
+  TError = ValidationProblemDetails | ProblemDetails,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof createSavedAnalyticsReport>>,
+      TError,
+      { data: SavedAnalyticsReportRequest },
+      TContext
+    >
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof createSavedAnalyticsReport>>,
+  TError,
+  { data: SavedAnalyticsReportRequest },
+  TContext
+> => {
+  return useMutation(
+    getCreateSavedAnalyticsReportMutationOptions(options),
+    queryClient,
+  )
+}
+
+export const updateSavedAnalyticsReport = (
+  id: string,
+  savedAnalyticsReportRequest: SavedAnalyticsReportRequest,
+  signal?: AbortSignal,
+) => {
+  return customInstance<SavedAnalyticsReportResponse>({
+    url: `/api/v1/analytics/pm/v3/saved-reports/${id}`,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    data: savedAnalyticsReportRequest,
+    signal,
+  })
+}
+
+export const getUpdateSavedAnalyticsReportMutationOptions = <
+  TError = ValidationProblemDetails | ProblemDetails | void,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateSavedAnalyticsReport>>,
+    TError,
+    { id: string; data: SavedAnalyticsReportRequest },
+    TContext
+  >
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateSavedAnalyticsReport>>,
+  TError,
+  { id: string; data: SavedAnalyticsReportRequest },
+  TContext
+> => {
+  const mutationKey = ['updateSavedAnalyticsReport']
+  const { mutation: mutationOptions } = options
+    ? options.mutation &&
+      'mutationKey' in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey } }
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateSavedAnalyticsReport>>,
+    { id: string; data: SavedAnalyticsReportRequest }
+  > = (props) => {
+    const { id, data } = props ?? {}
+
+    return updateSavedAnalyticsReport(id, data)
+  }
+
+  return { mutationFn, ...mutationOptions }
+}
+
+export type UpdateSavedAnalyticsReportMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateSavedAnalyticsReport>>
+>
+export type UpdateSavedAnalyticsReportMutationBody = SavedAnalyticsReportRequest
+export type UpdateSavedAnalyticsReportMutationError =
+  ValidationProblemDetails | ProblemDetails | void
+
+export const useUpdateSavedAnalyticsReport = <
+  TError = ValidationProblemDetails | ProblemDetails | void,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof updateSavedAnalyticsReport>>,
+      TError,
+      { id: string; data: SavedAnalyticsReportRequest },
+      TContext
+    >
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof updateSavedAnalyticsReport>>,
+  TError,
+  { id: string; data: SavedAnalyticsReportRequest },
+  TContext
+> => {
+  return useMutation(
+    getUpdateSavedAnalyticsReportMutationOptions(options),
+    queryClient,
+  )
+}
+
+export const deleteSavedAnalyticsReport = (
+  id: string,
+  params: DeleteSavedAnalyticsReportParams,
+  signal?: AbortSignal,
+) => {
+  return customInstance<void>({
+    url: `/api/v1/analytics/pm/v3/saved-reports/${id}`,
+    method: 'DELETE',
+    params,
+    signal,
+  })
+}
+
+export const getDeleteSavedAnalyticsReportMutationOptions = <
+  TError = ValidationProblemDetails | ProblemDetails | void,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteSavedAnalyticsReport>>,
+    TError,
+    { id: string; params: DeleteSavedAnalyticsReportParams },
+    TContext
+  >
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteSavedAnalyticsReport>>,
+  TError,
+  { id: string; params: DeleteSavedAnalyticsReportParams },
+  TContext
+> => {
+  const mutationKey = ['deleteSavedAnalyticsReport']
+  const { mutation: mutationOptions } = options
+    ? options.mutation &&
+      'mutationKey' in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey } }
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteSavedAnalyticsReport>>,
+    { id: string; params: DeleteSavedAnalyticsReportParams }
+  > = (props) => {
+    const { id, params } = props ?? {}
+
+    return deleteSavedAnalyticsReport(id, params)
+  }
+
+  return { mutationFn, ...mutationOptions }
+}
+
+export type DeleteSavedAnalyticsReportMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteSavedAnalyticsReport>>
+>
+
+export type DeleteSavedAnalyticsReportMutationError =
+  ValidationProblemDetails | ProblemDetails | void
+
+export const useDeleteSavedAnalyticsReport = <
+  TError = ValidationProblemDetails | ProblemDetails | void,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof deleteSavedAnalyticsReport>>,
+      TError,
+      { id: string; params: DeleteSavedAnalyticsReportParams },
+      TContext
+    >
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof deleteSavedAnalyticsReport>>,
+  TError,
+  { id: string; params: DeleteSavedAnalyticsReportParams },
+  TContext
+> => {
+  return useMutation(
+    getDeleteSavedAnalyticsReportMutationOptions(options),
+    queryClient,
+  )
+}
+
+export const previewSavedAnalyticsReport = (
+  id: string,
+  signal?: AbortSignal,
+) => {
+  return customInstance<PmAnalyticsV3PreviewResponse>({
+    url: `/api/v1/analytics/pm/v3/saved-reports/${id}/preview`,
+    method: 'POST',
+    signal,
+  })
+}
+
+export const getPreviewSavedAnalyticsReportMutationOptions = <
+  TError = ValidationProblemDetails | ProblemDetails | void,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof previewSavedAnalyticsReport>>,
+    TError,
+    { id: string },
+    TContext
+  >
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof previewSavedAnalyticsReport>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ['previewSavedAnalyticsReport']
+  const { mutation: mutationOptions } = options
+    ? options.mutation &&
+      'mutationKey' in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey } }
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof previewSavedAnalyticsReport>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {}
+
+    return previewSavedAnalyticsReport(id)
+  }
+
+  return { mutationFn, ...mutationOptions }
+}
+
+export type PreviewSavedAnalyticsReportMutationResult = NonNullable<
+  Awaited<ReturnType<typeof previewSavedAnalyticsReport>>
+>
+
+export type PreviewSavedAnalyticsReportMutationError =
+  ValidationProblemDetails | ProblemDetails | void
+
+export const usePreviewSavedAnalyticsReport = <
+  TError = ValidationProblemDetails | ProblemDetails | void,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof previewSavedAnalyticsReport>>,
+      TError,
+      { id: string },
+      TContext
+    >
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof previewSavedAnalyticsReport>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(
+    getPreviewSavedAnalyticsReportMutationOptions(options),
+    queryClient,
+  )
 }
 
 /**
