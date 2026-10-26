@@ -1932,8 +1932,14 @@ class _InspectionRowEditorState extends State<_InspectionRowEditor> {
   Widget build(BuildContext context) {
     final pmCycle = widget.schedule?.canonicalPmCycle ?? widget.form.pmCycle;
     return Card(
-      color: widget.highlighted
-          ? Theme.of(context).colorScheme.primaryContainer
+      shape: widget.highlighted
+          ? RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: BorderSide(
+                color: Theme.of(context).colorScheme.primary,
+                width: 1.5,
+              ),
+            )
           : null,
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -2017,6 +2023,7 @@ class _InspectionRowEditorState extends State<_InspectionRowEditor> {
                   onCheckUvLight: (value) =>
                       setState(() => waterCheckUvLight = value),
                 ),
+              const SizedBox(height: 16),
               TextField(
                 key: Key('inspection-remarks-${widget.row.id}'),
                 controller: remarksController,
@@ -2024,7 +2031,7 @@ class _InspectionRowEditorState extends State<_InspectionRowEditor> {
                 maxLines: 3,
                 decoration: const InputDecoration(labelText: 'Remarks'),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 16),
               TextField(
                 key: Key('inspection-actions-${widget.row.id}'),
                 controller: actionsController,
