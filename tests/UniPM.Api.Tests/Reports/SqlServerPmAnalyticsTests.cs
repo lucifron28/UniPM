@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Configuration;
@@ -130,6 +131,169 @@ public sealed class SqlServerPmAnalyticsTests
         }
 
         await AssertDatabaseWasDroppedAsync(baseConnectionString, database.DatabaseName);
+    }
+
+    [SqlServer2019Fact]
+    public async Task Saved_report_schema_upgrade_quota_lock_and_current_data_reexecution_work_on_sql_server_2019()
+    {
+        var baseConnectionString = RequireDisposableSqlServer2019Connection();
+        await AssertSqlServer2019AndFullTextAsync(baseConnectionString);
+        var database = await SqlServerPmAnalyticsDatabase.CreateAsync(baseConnectionString);
+        try
+        {
+            var plan = new PmAnalyticsV3ReportPlan(3, PmAnalyticsV3Catalog.Version, "assetInventory",
+                PmAnalyticsV3Mode.Aggregate, null, ["fire-extinguisher"], ["registeredAssetCount"], [],
+                [], [], [], [], null, PmAnalyticsV3Presentation.Summary, ["registeredAssetCount"]);
+            var planJson = JsonSerializer.Serialize(plan, WebJsonOptions);
+            var migrations = Array.Empty<string>();
+            await using (var context = database.CreateContext())
+            {
+                migrations = context.Database.GetMigrations().ToArray();
+                Assert.Equal(24, migrations.Length);
+                Assert.Equal("20261023131748_AddSavedAnalyticsReports", migrations[^1]);
+                await context.GetService<IMigrator>().MigrateAsync(migrations[^2]);
+                Assert.Equal(migrations[..^1], (await context.Database.GetAppliedMigrationsAsync()).ToArray());
+                await context.Database.MigrateAsync();
+                Assert.Equal(migrations, (await context.Database.GetAppliedMigrationsAsync()).ToArray());
+            }
+
+            Assert.Equal(150, await database.GetCompatibilityLevelAsync());
+            await AssertSavedReportSchemaAsync(database.ConnectionString);
+            await using (var context = database.CreateContext())
+            {
+                context.Users.Add(new ApplicationUser
+                {
+                    Id = TestAuthenticationHandler.UserId,
+                    UserName = "saved-report-owner@unipm.local",
+                    NormalizedUserName = "SAVED-REPORT-OWNER@UNIPM.LOCAL",
+                    Email = "saved-report-owner@unipm.local",
+                    NormalizedEmail = "SAVED-REPORT-OWNER@UNIPM.LOCAL",
+                    EmailConfirmed = true,
+                    DisplayName = "Synthetic Saved Report Owner",
+                    IsActive = true
+                });
+                context.Assets.Add(new Asset
+                {
+                    Id = Guid.NewGuid(),
+                    AssetCode = "SAVED-REPORT-SQL-01",
+                    AssetCategory = "fire-extinguisher",
+                    Department = "Synthetic GSD",
+                    Building = "Synthetic Building",
+                    Location = "Synthetic North",
+                    Status = "Active"
+                });
+                context.SavedAnalyticsReports.AddRange(Enumerable.Range(1, 99).Select(index =>
+                    new SavedAnalyticsReport
+                    {
+                        Id = Guid.NewGuid(),
+                        OwnerUserId = TestAuthenticationHandler.UserId,
+                        Name = $"Synthetic quota report {index}",
+                        PlanJson = planJson,
+                        PeriodMode = "Fixed",
+                        Revision = Guid.NewGuid(),
+                        UpdatedAtUtc = ClosedPeriodNow
+                    }));
+                await context.SaveChangesAsync();
+            }
+
+            await using (var application = new SqlServerPmAnalyticsApplicationFactory(
+                database.ConnectionString,
+                ClosedPeriodNow,
+                authenticated: true,
+                AuthRoleCatalog.Gsd))
+            using (var client = application.CreateClient())
+            {
+                const string route = "/api/v1/analytics/pm/v3/saved-reports";
+                var request = new SavedAnalyticsReportRequest("Concurrent report", plan);
+                var start = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+                async Task<HttpResponseMessage> CreateAfterReleaseAsync()
+                {
+                    await start.Task;
+                    return await client.PostAsJsonAsync(route, request);
+                }
+
+                var first = CreateAfterReleaseAsync();
+                var second = CreateAfterReleaseAsync();
+                start.SetResult(true);
+                var responses = await Task.WhenAll(first, second);
+                try
+                {
+                    Assert.Single(responses, response => response.StatusCode == HttpStatusCode.Created);
+                    Assert.Single(responses, response => response.StatusCode == HttpStatusCode.Conflict);
+                    await using (var verify = database.CreateContext())
+                    {
+                        Assert.Equal(100, await verify.SavedAnalyticsReports.CountAsync());
+                    }
+
+                    var created = responses.Single(response => response.StatusCode == HttpStatusCode.Created);
+                    var saved = (await created.Content.ReadFromJsonAsync<SavedAnalyticsReportResponse>())!;
+                    using var previewResponse = await client.PostAsync($"{route}/{saved.Id}/preview", null);
+                    Assert.Equal(HttpStatusCode.OK, previewResponse.StatusCode);
+                    var preview = (await previewResponse.Content.ReadFromJsonAsync<PmAnalyticsV3PreviewResponse>())!;
+                    using var executeResponse = await client.PostAsJsonAsync(
+                        "/api/v1/analytics/pm/v3/execute",
+                        new PmAnalyticsV3ExecuteRequest(preview.PreviewId));
+                    Assert.Equal(HttpStatusCode.OK, executeResponse.StatusCode);
+                    var firstExecution = (await executeResponse.Content.ReadFromJsonAsync<PmAnalyticsV3ExecutionResponse>())!;
+                    Assert.Equal(1, firstExecution.AggregateRows.Single()
+                        .Measures[PmAnalyticsV3Catalog.RegisteredAssetCount].Value);
+
+                    await using (var context = database.CreateContext())
+                    {
+                        context.Assets.Add(new Asset
+                        {
+                            Id = Guid.NewGuid(),
+                            AssetCode = "SAVED-REPORT-SQL-02",
+                            AssetCategory = "fire-extinguisher",
+                            Department = "Synthetic GSD",
+                            Building = "Synthetic Building",
+                            Location = "Synthetic South",
+                            Status = "Active"
+                        });
+                        await context.SaveChangesAsync();
+                    }
+
+                    using var currentPreviewResponse = await client.PostAsync($"{route}/{saved.Id}/preview", null);
+                    Assert.Equal(HttpStatusCode.OK, currentPreviewResponse.StatusCode);
+                    var currentPreview = (await currentPreviewResponse.Content.ReadFromJsonAsync<PmAnalyticsV3PreviewResponse>())!;
+                    using var currentExecuteResponse = await client.PostAsJsonAsync(
+                        "/api/v1/analytics/pm/v3/execute",
+                        new PmAnalyticsV3ExecuteRequest(currentPreview.PreviewId));
+                    Assert.Equal(HttpStatusCode.OK, currentExecuteResponse.StatusCode);
+                    var currentExecution = (await currentExecuteResponse.Content.ReadFromJsonAsync<PmAnalyticsV3ExecutionResponse>())!;
+                    Assert.Equal(2, currentExecution.AggregateRows.Single()
+                        .Measures[PmAnalyticsV3Catalog.RegisteredAssetCount].Value);
+                }
+                finally
+                {
+                    foreach (var response in responses) response.Dispose();
+                }
+            }
+        }
+        finally
+        {
+            await database.DisposeAsync();
+        }
+
+        await AssertDatabaseWasDroppedAsync(baseConnectionString, database.DatabaseName);
+    }
+
+    private static async Task AssertSavedReportSchemaAsync(string connectionString)
+    {
+        await using var connection = new SqlConnection(connectionString);
+        await connection.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT
+                (SELECT COUNT(*) FROM sys.tables WHERE schema_id = SCHEMA_ID(N'dbo') AND name = N'SavedAnalyticsReports'),
+                (SELECT COUNT(*) FROM sys.indexes WHERE object_id = OBJECT_ID(N'dbo.SavedAnalyticsReports') AND name = N'IX_SavedAnalyticsReports_OwnerUserId_UpdatedAtUtc'),
+                (SELECT COUNT(*) FROM sys.foreign_keys WHERE parent_object_id = OBJECT_ID(N'dbo.SavedAnalyticsReports') AND name = N'FK_SavedAnalyticsReports_AspNetUsers_OwnerUserId');
+            """;
+        await using var reader = await command.ExecuteReaderAsync();
+        Assert.True(await reader.ReadAsync());
+        Assert.Equal(1, reader.GetInt32(0));
+        Assert.Equal(1, reader.GetInt32(1));
+        Assert.Equal(1, reader.GetInt32(2));
     }
 
     private static async Task<string> SeedScenarioAsync(ApplicationDbContext context)
@@ -279,6 +443,26 @@ public sealed class SqlServerPmAnalyticsTests
         return Environment.GetEnvironmentVariable("UNIPM_SQLSERVER2019_TEST_CONNECTION")!;
     }
 
+    private static string RequireDisposableSqlServer2019Connection()
+    {
+        var connectionString = Environment.GetEnvironmentVariable("UNIPM_SQLSERVER2019_TEST_CONNECTION")
+            ?? throw new InvalidOperationException("Set UNIPM_SQLSERVER2019_TEST_CONNECTION to a disposable local SQL Server 2019 instance.");
+        var builder = new SqlConnectionStringBuilder(connectionString);
+        var server = builder.DataSource.Trim();
+        if (server.StartsWith("tcp:", StringComparison.OrdinalIgnoreCase)) server = server[4..];
+        var host = server.Split([',', '\\'], StringSplitOptions.TrimEntries)[0].Trim('[', ']');
+        if (!host.Equals("localhost", StringComparison.OrdinalIgnoreCase)
+            && !host.Equals("127.0.0.1", StringComparison.Ordinal)
+            && !host.Equals("::1", StringComparison.Ordinal)
+            && !host.Equals(".", StringComparison.Ordinal)
+            && !host.Equals("(local)", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("The saved-report SQL integration test only accepts disposable loopback SQL Server; remote hosts are rejected.");
+        }
+
+        return builder.ConnectionString;
+    }
+
     private static async Task AssertDatabaseWasDroppedAsync(
         string baseConnectionString,
         string databaseName)
@@ -321,7 +505,8 @@ public sealed class SqlServerPmAnalyticsTests
             builder.ConfigureAppConfiguration((_, configuration) =>
                 configuration.AddInMemoryCollection(new Dictionary<string, string?>
                 {
-                    ["PreventiveMaintenanceScheduleGeneration:WorkerEnabled"] = "false"
+                    ["PreventiveMaintenanceScheduleGeneration:WorkerEnabled"] = "false",
+                    ["NaturalLanguageAnalytics:V3DeepSeekEnabled"] = "false"
                 }));
             builder.ConfigureServices(services =>
             {
