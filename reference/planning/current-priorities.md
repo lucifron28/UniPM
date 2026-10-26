@@ -1,5 +1,16 @@
 # Current Priorities - PMIS Validation Baseline
 
+## Later branch status, October 25, 2026
+
+This page preserves the earlier PMIS-only M3 plan below. Its statements that
+NLA is unimplemented apply to that historical branch. NLA V3 is integrated
+in later baselines. The local [capstone remediation report](capstone-remediation-2026-10-25.md)
+records the current fixes and exact verification; its operating proposal and
+risk register define the remaining acceptance and institutional decisions.
+The NLA roadmap's Phases 7–8 remain separate planning work.
+
+## Historical M3 plan
+
 Read `AGENTS.md` first. These priorities apply to the
 `refactor/retire-maintenance-history-rag` branch.
 

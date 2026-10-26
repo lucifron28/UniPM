@@ -19,12 +19,16 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { useCurrentUser } from '@/features/auth/current-user'
 import {
+  canAcknowledgePreventiveMaintenanceForms,
   canReviewPreventiveMaintenanceForms,
   isGsdRole,
   preventiveMaintenanceFormStatusCodes,
   type PreventiveMaintenanceForm,
 } from '@/features/preventive-maintenance-forms/form-contract'
-import { usePreventiveMaintenanceForms } from '@/features/preventive-maintenance-forms/form-queries'
+import {
+  usePreventiveMaintenanceFormOptions,
+  usePreventiveMaintenanceForms,
+} from '@/features/preventive-maintenance-forms/form-queries'
 import { formatPmCycle } from '@/features/schedules/schedule-presentation'
 import { useScheduleSupervisorAssignmentOptions } from '@/features/schedules/schedule-queries'
 import {
@@ -608,8 +612,13 @@ function FormRegistryFilters({
 
 export function FormRegistry({ search, onSearchChange }: FormRegistryProps) {
   const currentUser = useCurrentUser()
-  const canReview = canReviewPreventiveMaintenanceForms(currentUser.data?.roles)
-  const canFilterSupervisor = isGsdRole(currentUser.data?.roles)
+  const currentRoles = currentUser.data?.roles
+  const canReview = canReviewPreventiveMaintenanceForms(currentRoles)
+  const isReadOnlySupervisor =
+    currentRoles?.includes('Supervisor') === true &&
+    !canAcknowledgePreventiveMaintenanceForms(currentRoles)
+  const canFilterSupervisor = isGsdRole(currentRoles)
+  const pageSize = 10
   const filters = useMemo(
     () => ({
       ...(search.status ? { status: search.status } : {}),
@@ -617,6 +626,9 @@ export function FormRegistry({ search, onSearchChange }: FormRegistryProps) {
       ...(search.department ? { department: search.department } : {}),
       ...(search.pmCycle ? { pmCycle: search.pmCycle } : {}),
       ...(search.search ? { search: search.search } : {}),
+      ...(search.supervisor ? { supervisor: search.supervisor } : {}),
+      page: search.page ?? 1,
+      pageSize,
     }),
     [
       search.status,
@@ -624,63 +636,36 @@ export function FormRegistry({ search, onSearchChange }: FormRegistryProps) {
       search.department,
       search.pmCycle,
       search.search,
+      search.supervisor,
+      search.page,
     ],
   )
-  const allForms = usePreventiveMaintenanceForms({}, canReview)
+  const options = usePreventiveMaintenanceFormOptions(canReview)
   const forms = usePreventiveMaintenanceForms(filters, canReview)
-  const responseRows = forms.data ?? emptyForms
-  const optionRows = allForms.data ?? responseRows
-  const rows = useMemo(() => {
-    if (!search.supervisor) return responseRows
-    return responseRows.filter((form) =>
-      form.inspections.some((row) =>
-        search.supervisor === 'unassigned'
-          ? row.currentScheduleSupervisorUserId === null
-          : row.currentScheduleSupervisorUserId === search.supervisor,
-      ),
-    )
-  }, [responseRows, search.supervisor])
-  const categories = useMemo(
-    () => [...new Set(optionRows.map((form) => form.assetCategory))].sort(),
-    [optionRows],
-  )
-  const departments = useMemo(
-    () =>
-      [
-        ...new Set(
-          optionRows
-            .map((form) => form.department)
-            .filter((value): value is string => Boolean(value)),
-        ),
-      ].sort(),
-    [optionRows],
-  )
+  const rows = forms.data?.items ?? emptyForms
+  const categories = options.data?.categories ?? []
+  const departments = options.data?.departments ?? []
   const cycles = useMemo(
     () =>
-      [
-        ...new Set(
-          optionRows
-            .map((form) => form.pmCycle)
-            .filter((value): value is string => Boolean(value)),
-        ),
-      ].sort((left, right) => right.localeCompare(left)),
-    [optionRows],
+      [...(options.data?.pmCycles ?? [])].sort((left, right) =>
+        right.localeCompare(left),
+      ),
+    [options.data?.pmCycles],
   )
-  const pageSize = 10
-  const pageCount = Math.max(1, Math.ceil(rows.length / pageSize))
+  const totalCount = forms.data?.totalCount ?? 0
+  const pageCount = Math.max(1, Math.ceil(totalCount / pageSize))
   const requestedPage = search.page ?? 1
-  const page = Math.min(Math.max(requestedPage, 1), pageCount)
-  const pageData = useMemo(
-    () => rows.slice((page - 1) * pageSize, page * pageSize),
-    [page, rows],
+  const page = Math.min(
+    Math.max(forms.data?.page ?? requestedPage, 1),
+    pageCount,
   )
+  const pageData = rows
 
   useEffect(() => {
     if (
       forms.isSuccess &&
       !forms.isPlaceholderData &&
-      search.page &&
-      search.page > pageCount
+      requestedPage > pageCount
     ) {
       onSearchChange(
         { ...search, page: pageCount > 1 ? pageCount : undefined },
@@ -692,6 +677,7 @@ export function FormRegistry({ search, onSearchChange }: FormRegistryProps) {
     forms.isPlaceholderData,
     onSearchChange,
     pageCount,
+    requestedPage,
     search,
   ])
 
@@ -728,7 +714,7 @@ export function FormRegistry({ search, onSearchChange }: FormRegistryProps) {
     return (
       <AccessState
         title="Access denied"
-        message="Preventive-maintenance form review is available to GSD and Inspector users."
+        message="Preventive-maintenance form review is available to GSD, Inspector, and Supervisor users."
       />
     )
   }
@@ -763,7 +749,11 @@ export function FormRegistry({ search, onSearchChange }: FormRegistryProps) {
         id="forms-title"
         eyebrow="Preventive maintenance"
         title="Form review"
-        description="Review submitted forms and open their inspection source rows."
+        description={
+          isReadOnlySupervisor
+            ? 'Review forms available for your assigned schedules. Form details are read-only.'
+            : 'Review submitted forms and open their inspection source rows.'
+        }
       />
       <FormRegistryFilters
         key={JSON.stringify([
@@ -779,12 +769,12 @@ export function FormRegistry({ search, onSearchChange }: FormRegistryProps) {
         departments={departments}
         cycles={cycles}
         isGsd={canFilterSupervisor}
-        optionsPending={allForms.isPending}
-        optionsError={allForms.isError}
+        optionsPending={options.isPending}
+        optionsError={options.isError}
         formsError={forms.isError}
         onSearchChange={onSearchChange}
         onRetryForms={() => void forms.refetch()}
-        onRetryOptions={() => void allForms.refetch()}
+        onRetryOptions={() => void options.refetch()}
       />
       <section
         aria-labelledby="form-records-title"
@@ -801,7 +791,7 @@ export function FormRegistry({ search, onSearchChange }: FormRegistryProps) {
             className="text-sm text-[var(--text-secondary)]"
             aria-live="polite"
           >
-            {rows.length.toLocaleString()} forms
+            {totalCount.toLocaleString()} forms
           </p>
         </header>
         {forms.isFetching && (
@@ -809,15 +799,15 @@ export function FormRegistry({ search, onSearchChange }: FormRegistryProps) {
             Updating results...
           </p>
         )}
-        {forms.isSuccess && rows.length === 0 ? (
+        {forms.isSuccess && rows.length === 0 && options.isSuccess ? (
           <Card className="text-center shadow-none">
             <h2 className="text-lg font-semibold text-[var(--text-primary)]">
-              {allForms.isSuccess && allForms.data.length === 0
+              {options.data.totalCount === 0
                 ? 'No preventive-maintenance forms found.'
                 : 'No forms match these filters.'}
             </h2>
             <p className="mt-2 text-sm text-[var(--text-secondary)]">
-              {allForms.isSuccess && allForms.data.length === 0
+              {options.data.totalCount === 0
                 ? 'Forms will appear here after they are created through the field workflow.'
                 : 'Clear the filters to return to all recorded forms.'}
             </p>
@@ -884,7 +874,7 @@ export function FormRegistry({ search, onSearchChange }: FormRegistryProps) {
             <FormPagination
               page={page}
               pageSize={pageSize}
-              total={rows.length}
+              total={totalCount}
               onPageChange={changePage}
             />
           </>

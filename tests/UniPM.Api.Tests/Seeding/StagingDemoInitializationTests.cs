@@ -140,10 +140,10 @@ public sealed class StagingDemoInitializationTests
             // Only fixture setup applies migrations, to the owned local disposable database.
             await context.GetService<IMigrator>().MigrateAsync(migrations[^2]);
             await Assert.ThrowsAsync<InvalidOperationException>(userSeeder.SeedAsync);
-            Assert.Equal(21, (await context.Database.GetAppliedMigrationsAsync()).Count());
+            Assert.Equal(migrations[..^1], (await context.Database.GetAppliedMigrationsAsync()).ToArray());
             Assert.Empty(await context.Users.ToListAsync());
             await context.Database.MigrateAsync();
-            Assert.Equal(22, (await context.Database.GetAppliedMigrationsAsync()).Count());
+            Assert.Equal(migrations, (await context.Database.GetAppliedMigrationsAsync()).ToArray());
             await StagingDemoInitialization.EnsureReadyAsync(context, accountsCreated: false);
             var credentialName = shared ? "UNIPM_STAGING_DEMO_PASSWORD" : StagingDemoInitialization.PasswordSetting(AuthRoleCatalog.Gsd);
             var originalPassword = configuration[credentialName];
@@ -202,14 +202,39 @@ public sealed class StagingDemoInitializationTests
             Assert.Equal(migrations, (await context.Database.GetAppliedMigrationsAsync()).ToArray());
             Assert.True((await context.Users.AsNoTracking().ToListAsync()).All(user => user.PasswordHash == hashes[user.Id]));
 
-            await context.Database.ExecuteSqlRawAsync(
-                "CREATE SCHEMA [UniPmStagingGuardTest]; ALTER SCHEMA [UniPmStagingGuardTest] TRANSFER [dbo].[RefreshSessions];");
-            await Assert.ThrowsAsync<SqlException>(
-                () => StagingDemoInitialization.EnsureReadyAsync(context, accountsCreated: true));
-            await context.Database.ExecuteSqlRawAsync(
-                "DROP TABLE [UniPmStagingGuardTest].[RefreshSessions]");
-            await Assert.ThrowsAsync<SqlException>(
-                () => StagingDemoInitialization.EnsureReadyAsync(context, accountsCreated: true));
+            var schemaGuardDatabaseName = $"UniPM_StagingSchemaGuardTest_{Guid.NewGuid():N}";
+            command.CommandText = $"CREATE DATABASE [{schemaGuardDatabaseName}]";
+            await command.ExecuteNonQueryAsync();
+            try
+            {
+                command.CommandText = $"ALTER DATABASE [{schemaGuardDatabaseName}] SET COMPATIBILITY_LEVEL = 150";
+                await command.ExecuteNonQueryAsync();
+                var schemaGuardConnection = new SqlConnectionStringBuilder(baseConnection.ConnectionString)
+                {
+                    InitialCatalog = schemaGuardDatabaseName
+                };
+                var schemaGuardOptions = new DbContextOptionsBuilder<ApplicationDbContext>()
+                    .UseUniPmSqlServer(schemaGuardConnection.ConnectionString)
+                    .Options;
+                await using var schemaGuardContext = new ApplicationDbContext(schemaGuardOptions);
+                await schemaGuardContext.Database.MigrateAsync();
+                await schemaGuardContext.Database.ExecuteSqlRawAsync("CREATE SCHEMA [UniPmStagingGuardTest]");
+                await schemaGuardContext.Database.ExecuteSqlRawAsync(
+                    "ALTER SCHEMA [UniPmStagingGuardTest] TRANSFER [dbo].[RefreshSessions]");
+                await Assert.ThrowsAsync<SqlException>(
+                    () => StagingDemoInitialization.EnsureReadyAsync(schemaGuardContext, accountsCreated: false));
+                await schemaGuardContext.Database.ExecuteSqlRawAsync(
+                    "ALTER SCHEMA [dbo] TRANSFER [UniPmStagingGuardTest].[RefreshSessions]");
+                await schemaGuardContext.Database.ExecuteSqlRawAsync("DROP SCHEMA [UniPmStagingGuardTest]");
+                await schemaGuardContext.Database.ExecuteSqlRawAsync("DROP TABLE [dbo].[RefreshSessions]");
+                await Assert.ThrowsAsync<SqlException>(
+                    () => StagingDemoInitialization.EnsureReadyAsync(schemaGuardContext, accountsCreated: false));
+            }
+            finally
+            {
+                command.CommandText = $"ALTER DATABASE [{schemaGuardDatabaseName}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [{schemaGuardDatabaseName}]";
+                await command.ExecuteNonQueryAsync();
+            }
         }
         finally
         {

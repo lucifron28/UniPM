@@ -16,27 +16,104 @@ namespace UniPM.Api.Tests;
 public sealed class AuthorizationPolicyTests
 {
     [Fact]
-    public async Task Anonymous_protected_request_returns_unauthorized_and_reads_remain_anonymous()
+    public async Task Anonymous_protected_operational_reads_and_writes_return_unauthorized()
     {
         await using var application = new AuthEndpointsTests.AuthApplicationFactory();
         using var client = application.CreateClient();
 
         var write = await client.PostAsJsonAsync("/api/v1/assets/", AssetRequest("AUTH-ANON"));
-        var read = await client.GetAsync("/api/v1/assets/");
+        var assetId = Guid.NewGuid();
+        var inspectionId = Guid.NewGuid();
+        var operationalReads = new[]
+        {
+            "/api/v1/assets/",
+            $"/api/v1/assets/{assetId}",
+            "/api/v1/assets/registry",
+            "/api/v1/assets/registry/options",
+            "/api/v1/assets/registry/summary",
+            "/api/v1/assets/by-code/UNKNOWN",
+            "/api/v1/assets/by-qr/UNKNOWN",
+            "/api/v1/preventive-maintenance-forms/",
+            "/api/v1/preventive-maintenance-forms/options",
+            $"/api/v1/preventive-maintenance-forms/{Guid.NewGuid()}",
+            $"/api/v1/inspections/history/{assetId}",
+            "/api/v1/inspections/",
+            "/api/v1/inspections/registry",
+            "/api/v1/inspections/registry/options",
+            "/api/v1/inspections/registry/summary",
+            $"/api/v1/inspections/{inspectionId}",
+            $"/api/v1/inspections/{inspectionId}/photo",
+            "/api/v1/pm-period-dashboard/cycles"
+        };
 
         Assert.Equal(HttpStatusCode.Unauthorized, write.StatusCode);
-        Assert.Equal(HttpStatusCode.OK, read.StatusCode);
+        foreach (var path in operationalReads)
+        {
+            Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync(path)).StatusCode);
+        }
     }
 
     [Fact]
-    public async Task Admin_can_manage_assets()
+    public async Task Admin_without_an_operational_role_cannot_manage_assets()
     {
         await using var application = new PolicyApplicationFactory(AuthRoleCatalog.Admin);
         using var client = application.CreateClient();
 
         var response = await client.PostAsJsonAsync("/api/v1/assets/", AssetRequest("AUTH-ADMIN"));
+        var formSubmit = await client.PostAsync(
+            $"/api/v1/preventive-maintenance-forms/{Guid.NewGuid()}/submit",
+            null);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, formSubmit.StatusCode);
+    }
+
+    [Fact]
+    public async Task Admin_with_gsd_role_can_manage_assets()
+    {
+        await using var application = new PolicyApplicationFactory(AuthRoleCatalog.Admin, AuthRoleCatalog.Gsd);
+        using var client = application.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/api/v1/assets/", AssetRequest("AUTH-ADMIN-GSD"));
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData(AuthRoleCatalog.Admin, (int)HttpStatusCode.Forbidden)]
+    [InlineData(AuthRoleCatalog.DepartmentHead, (int)HttpStatusCode.Forbidden)]
+    [InlineData(AuthRoleCatalog.Gsd, (int)HttpStatusCode.OK)]
+    [InlineData(AuthRoleCatalog.Inspector, (int)HttpStatusCode.OK)]
+    [InlineData(AuthRoleCatalog.Supervisor, (int)HttpStatusCode.OK)]
+    public async Task Operational_read_endpoints_require_an_operational_role(string role, int expectedStatus)
+    {
+        await using var application = new PolicyApplicationFactory(role);
+        using var client = application.CreateClient();
+
+        var assetList = await client.GetAsync("/api/v1/assets/");
+        var formList = await client.GetAsync("/api/v1/preventive-maintenance-forms/");
+        var formOptions = await client.GetAsync("/api/v1/preventive-maintenance-forms/options");
+        var inspectionSummary = await client.GetAsync("/api/v1/inspections/registry/summary");
+        var dashboardCycles = await client.GetAsync("/api/v1/pm-period-dashboard/cycles");
+
+        Assert.Equal((HttpStatusCode)expectedStatus, assetList.StatusCode);
+        Assert.Equal((HttpStatusCode)expectedStatus, formList.StatusCode);
+        Assert.Equal((HttpStatusCode)expectedStatus, formOptions.StatusCode);
+        Assert.Equal((HttpStatusCode)expectedStatus, inspectionSummary.StatusCode);
+        Assert.Equal((HttpStatusCode)expectedStatus, dashboardCycles.StatusCode);
+    }
+
+    [Fact]
+    public async Task Admin_with_an_operational_role_uses_ordinary_read_access()
+    {
+        await using var application = new PolicyApplicationFactory(AuthRoleCatalog.Admin, AuthRoleCatalog.Inspector);
+        using var client = application.CreateClient();
+
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/v1/assets/")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/v1/preventive-maintenance-forms/")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/v1/preventive-maintenance-forms/options")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/v1/inspections/registry/summary")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/v1/pm-period-dashboard/cycles")).StatusCode);
     }
 
     [Fact]
@@ -64,8 +141,7 @@ public sealed class AuthorizationPolicyTests
     [Theory]
     [InlineData(AuthRoleCatalog.Gsd)]
     [InlineData(AuthRoleCatalog.Supervisor)]
-    [InlineData(AuthRoleCatalog.Admin)]
-    public async Task Gsd_supervisor_and_admin_can_manage_schedules(string role)
+    public async Task Gsd_and_supervisor_can_manage_schedules(string role)
     {
         await using var application = new PolicyApplicationFactory(role);
         var assetId = await application.SeedAssetAsync();
@@ -82,24 +158,15 @@ public sealed class AuthorizationPolicyTests
     }
 
     [Fact]
-    public async Task Admin_can_start_inspection_on_a_schedule()
+    public async Task Admin_without_an_operational_role_cannot_start_inspection()
     {
         await using var application = new PolicyApplicationFactory(AuthRoleCatalog.Admin);
-        var assetId = await application.SeedAssetAsync();
+        var scheduleId = await application.SeedScheduleAsync();
         using var client = application.CreateClient();
-        var scheduleResponse = await client.PostAsJsonAsync("/api/v1/schedules/", new
-        {
-            assetId,
-            pmCycle = $"{DateTimeOffset.UtcNow.Year}-11",
-            periodType = "Quarter"
-        });
-        var schedule = await scheduleResponse.Content.ReadFromJsonAsync<ScheduleResponse>();
-        Assert.Equal(HttpStatusCode.Created, scheduleResponse.StatusCode);
-        Assert.NotNull(schedule);
 
-        var response = await client.PostAsync($"/api/v1/schedules/{schedule.Id}/start-inspection", null);
+        var response = await client.PostAsync($"/api/v1/schedules/{scheduleId}/start-inspection", null);
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
     private static object AssetRequest(string code) => new

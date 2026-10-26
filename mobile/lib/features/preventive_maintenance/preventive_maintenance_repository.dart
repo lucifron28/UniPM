@@ -72,10 +72,62 @@ class ApiPreventiveMaintenanceRepository
 
   @override
   Future<List<PreventiveMaintenanceForm>> listForms() async {
-    final values = await _client.getJsonList(
-      '/api/v1/preventive-maintenance-forms',
-    );
-    return values.map(_formFromValue).toList(growable: false);
+    const pageSize = 100;
+    final forms = <PreventiveMaintenanceForm>[];
+    final formIds = <String>{};
+    int? totalCount;
+    var page = 1;
+
+    while (totalCount == null || (page - 1) * pageSize < totalCount) {
+      final response = await _client.getJson(
+        '/api/v1/preventive-maintenance-forms?page=$page&pageSize=$pageSize',
+      );
+      final responsePage = response['page'];
+      final responsePageSize = response['pageSize'];
+      final responseTotalCount = response['totalCount'];
+      final values = response['items'];
+
+      if (responsePage is! int || responsePage != page) {
+        throw const FormatException('Invalid form page metadata.');
+      }
+      if (responsePageSize is! int || responsePageSize != pageSize) {
+        throw const FormatException('Invalid form page size metadata.');
+      }
+      if (responseTotalCount is! int || responseTotalCount < 0) {
+        throw const FormatException('Invalid form count metadata.');
+      }
+      if (values is! List) {
+        throw const FormatException('Invalid form page items.');
+      }
+      if (totalCount != null && responseTotalCount != totalCount) {
+        throw const FormatException('Form count changed while loading pages.');
+      }
+      totalCount ??= responseTotalCount;
+
+      final remainingCount = totalCount - ((page - 1) * pageSize);
+      final expectedPageCount = remainingCount > pageSize
+          ? pageSize
+          : remainingCount;
+      if (values.length != expectedPageCount) {
+        throw const FormatException('Incomplete form page response.');
+      }
+
+      for (final value in values) {
+        final form = _formFromValue(value);
+        if (formIds.add(form.id.toLowerCase())) forms.add(form);
+      }
+
+      if (page * pageSize >= totalCount) break;
+      if (values.isEmpty) {
+        throw const FormatException('Form pages ended before all rows loaded.');
+      }
+      page++;
+    }
+
+    if (forms.length != totalCount) {
+      throw const FormatException('Form pages ended before all rows loaded.');
+    }
+    return List<PreventiveMaintenanceForm>.unmodifiable(forms);
   }
 
   @override

@@ -398,6 +398,7 @@ public static class PmAnalyticsEndpoints
 
         group.MapPost("/pm/query", async (
             PmAnalyticsQuestionRequest request,
+            ClaimsPrincipal principal,
             PmAnalyticsService service,
             CancellationToken cancellationToken) =>
         {
@@ -413,7 +414,7 @@ public static class PmAnalyticsEndpoints
                 });
             }
 
-            var execution = await service.ExecuteAsync(candidate, cancellationToken);
+            var execution = await service.ExecuteAsync(candidate, principal, cancellationToken);
             if (execution.Response is null)
             {
                 return ApiErrors.Validation(new Dictionary<string, string[]>

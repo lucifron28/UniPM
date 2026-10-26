@@ -564,6 +564,37 @@ void main() {
   });
 
   group('InspectionCompletionSheet standalone', () {
+    testWidgets('labels an inspection waiting for sync as device-saved', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: InspectionCompletionSheet(
+              assetCode: 'FE-100',
+              department: 'GSD',
+              assetCategory: 'fire-extinguisher',
+              pmCycle: '2026-05',
+              completedCount: 1,
+              totalCount: 2,
+              isCreatePending: true,
+              onNextAsset: () {},
+              onViewBatch: () {},
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Saved on this device'), findsOneWidget);
+      expect(
+        find.text(
+          'Asset FE-100 is saved on this device. The server records completion at sync, so late syncs can be classified as late.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Inspection Recorded'), findsNothing);
+    });
+
     testWidgets('displays correct completed / total ratio and percentage', (
       tester,
     ) async {

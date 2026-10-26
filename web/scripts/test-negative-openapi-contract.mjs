@@ -53,6 +53,43 @@ const cases = [
       delete data.components.schemas.InspectionResponse.properties.scheduleId
     },
   },
+  {
+    name: 'form list page envelope removed',
+    mutate: (data) => {
+      data.paths['/api/v1/preventive-maintenance-forms'].get.responses[
+        '200'
+      ].content['application/json'].schema = {
+        type: 'array',
+        items: {
+          $ref: '#/components/schemas/PreventiveMaintenanceFormResponse',
+        },
+      }
+    },
+  },
+  {
+    name: 'form options endpoint removed',
+    mutate: (data) => {
+      delete data.paths['/api/v1/preventive-maintenance-forms/options']
+    },
+  },
+  {
+    name: 'form list supervisor filter removed',
+    mutate: (data) => {
+      data.paths['/api/v1/preventive-maintenance-forms'].get.parameters =
+        data.paths[
+          '/api/v1/preventive-maintenance-forms'
+        ].get.parameters.filter((parameter) => parameter.name !== 'supervisor')
+    },
+  },
+  {
+    name: 'form page totalCount is no longer required',
+    mutate: (data) => {
+      data.components.schemas.PreventiveMaintenanceFormPageResponse.required =
+        data.components.schemas.PreventiveMaintenanceFormPageResponse.required.filter(
+          (field) => field !== 'totalCount',
+        )
+    },
+  },
 ]
 
 let passedCases = 0

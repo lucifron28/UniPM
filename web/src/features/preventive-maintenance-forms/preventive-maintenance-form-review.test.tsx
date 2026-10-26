@@ -33,6 +33,7 @@ import { server } from '@/test/server'
 
 const meUrl = '*/api/v1/auth/me'
 const formsUrl = '*/api/v1/preventive-maintenance-forms'
+const formOptionsUrl = '*/api/v1/preventive-maintenance-forms/options'
 const supervisorOptionsUrl = '*/api/v1/schedules/supervisor-assignment-options'
 const formId = '22222222-2222-4222-8222-222222222222'
 const inspectionId = '33333333-3333-4333-8333-333333333333'
@@ -41,10 +42,28 @@ const assetId = '55555555-5555-4555-8555-555555555555'
 const inspectorId = '66666666-6666-4666-8666-666666666666'
 const firstSupervisorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaa0001'
 const secondSupervisorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaa0002'
+const currentSupervisorId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaa0003'
 
 const timestamps = {
   createdAt: '2026-07-29T00:00:00Z',
   updatedAt: '2026-07-29T00:00:00Z',
+}
+
+function formPageResponse(
+  items: ReturnType<typeof form>[],
+  page = 1,
+  totalCount = items.length,
+) {
+  return { items, page, pageSize: 10, totalCount }
+}
+
+function defaultFormOptionsResponse() {
+  return {
+    categories: ['fire-extinguisher'],
+    departments: ['GSD'],
+    pmCycles: ['2026-07'],
+    totalCount: 1,
+  }
 }
 
 function form(status: 'Draft' | 'Submitted' | 'Acknowledged') {
@@ -74,6 +93,7 @@ function form(status: 'Draft' | 'Submitted' | 'Acknowledged') {
               assetId,
               inspectorUserId: inspectorId,
               dateInspected: '2026-07-28T02:00:00Z',
+              completedAt: '2026-07-28T03:00:00Z',
               isOperational: false,
               remarks: 'Pressure is low.',
               actionsRecommendations: 'Inspect and recharge the unit.',
@@ -135,7 +155,7 @@ function installDashboardNavigationHandlers(
 
   server.use(
     http.get(meUrl, () => HttpResponse.json(currentUser(['Inspector']))),
-    http.get(formsUrl, () => HttpResponse.json([reviewForm])),
+    http.get(formsUrl, () => HttpResponse.json(formPageResponse([reviewForm]))),
     http.get(`${formsUrl}/${formId}`, () => HttpResponse.json(reviewForm)),
     http.get('*/api/v1/pm-period-dashboard/cycles', () =>
       HttpResponse.json([
@@ -332,9 +352,9 @@ function openAcknowledgementReview(
   })
 }
 
-function currentUser(roles: string[]) {
+function currentUser(roles: string[], id = inspectorId) {
   return {
-    id: inspectorId,
+    id,
     email: 'reviewer@example.test',
     displayName: 'Synthetic Reviewer',
     roles,
@@ -344,20 +364,30 @@ function currentUser(roles: string[]) {
 describe('preventive-maintenance form review', () => {
   beforeEach(() => {
     setupAuth()
+    server.use(
+      http.get(formOptionsUrl, () =>
+        HttpResponse.json(defaultFormOptionsResponse()),
+      ),
+    )
   })
 
   it('renders lifecycle labels and registry metadata', async () => {
     server.use(
       http.get(meUrl, () => HttpResponse.json(currentUser(['GSD']))),
       http.get(formsUrl, () =>
-        HttpResponse.json([
-          form('Draft'),
-          { ...form('Submitted'), id: '77777777-7777-4777-8777-777777777777' },
-          {
-            ...form('Acknowledged'),
-            id: '88888888-8888-4888-8888-888888888888',
-          },
-        ]),
+        HttpResponse.json(
+          formPageResponse([
+            form('Draft'),
+            {
+              ...form('Submitted'),
+              id: '77777777-7777-4777-8777-777777777777',
+            },
+            {
+              ...form('Acknowledged'),
+              id: '88888888-8888-4888-8888-888888888888',
+            },
+          ]),
+        ),
       ),
     )
 
@@ -417,6 +447,41 @@ describe('preventive-maintenance form review', () => {
     )
   })
 
+  it.each([
+    {
+      search: {},
+      totalCount: 0,
+      message: 'No preventive-maintenance forms found.',
+    },
+    {
+      search: { status: 'Submitted' as const },
+      totalCount: 1,
+      message: 'No forms match these filters.',
+    },
+  ])(
+    'uses readable-form count to distinguish empty results: $message',
+    async ({ search, totalCount, message }) => {
+      server.use(
+        http.get(meUrl, () => HttpResponse.json(currentUser(['GSD']))),
+        http.get(formsUrl, () => HttpResponse.json(formPageResponse([]))),
+        http.get(formOptionsUrl, () =>
+          HttpResponse.json({
+            categories: [],
+            departments: [],
+            pmCycles: [],
+            totalCount,
+          }),
+        ),
+      )
+
+      renderWithProviders(
+        <FormRegistry search={search} onSearchChange={vi.fn()} />,
+      )
+
+      expect(await screen.findByText(message)).toBeInTheDocument()
+    },
+  )
+
   it('applies combined form filters and preserves them through the detail link', async () => {
     const requests: URL[] = []
     const submittedForm = { ...form('Submitted'), pmCycle: '2026-07' }
@@ -424,8 +489,14 @@ describe('preventive-maintenance form review', () => {
       http.get(meUrl, () => HttpResponse.json(currentUser(['GSD']))),
       http.get(formsUrl, ({ request }) => {
         requests.push(new URL(request.url))
-        return HttpResponse.json([submittedForm])
+        return HttpResponse.json(formPageResponse([submittedForm]))
       }),
+      http.get(formOptionsUrl, () =>
+        HttpResponse.json({
+          ...defaultFormOptionsResponse(),
+          pmCycles: ['2026-03', '2026-07'],
+        }),
+      ),
       http.get('*/api/v1/schedules/registry/options', () =>
         HttpResponse.json({
           categories: [
@@ -471,6 +542,11 @@ describe('preventive-maintenance form review', () => {
     })
     await actor.selectOptions(departmentFilter, 'GSD')
     const cycleFilter = screen.getByRole('combobox', { name: 'PM cycle' })
+    expect(
+      Array.from((cycleFilter as HTMLSelectElement).options)
+        .slice(1)
+        .map((option) => option.value),
+    ).toEqual(['2026-07', '2026-03'])
     await actor.selectOptions(cycleFilter, '2026-07')
     expect(requests).toHaveLength(1)
 
@@ -515,6 +591,87 @@ describe('preventive-maintenance form review', () => {
     })
   })
 
+  it('requests and renders server-paged forms without slicing the response', async () => {
+    const allForms = Array.from({ length: 11 }, (_, index) => ({
+      ...form('Submitted'),
+      id: `90000000-0000-4000-8000-${(index + 1).toString().padStart(12, '0')}`,
+      fileNumber: `PM-PAGED-${index + 1}`,
+    }))
+    const requests: URL[] = []
+    server.use(
+      http.get(meUrl, () => HttpResponse.json(currentUser(['GSD']))),
+      http.get(formsUrl, ({ request }) => {
+        const url = new URL(request.url)
+        requests.push(url)
+        const page = Number(url.searchParams.get('page'))
+        return HttpResponse.json(
+          formPageResponse(
+            allForms.slice((page - 1) * 10, page * 10),
+            page,
+            allForms.length,
+          ),
+        )
+      }),
+      http.get(formOptionsUrl, () =>
+        HttpResponse.json({
+          ...defaultFormOptionsResponse(),
+          totalCount: allForms.length,
+        }),
+      ),
+      http.get(supervisorOptionsUrl, () =>
+        HttpResponse.json({
+          supervisors: [],
+          page: 1,
+          pageSize: 20,
+          totalCount: 0,
+          selected: null,
+        }),
+      ),
+    )
+
+    function ControlledFormRegistry() {
+      const [search, setSearch] = useState<FormSearch>({})
+      return (
+        <FormRegistry
+          search={search}
+          onSearchChange={(next) => setSearch(next)}
+        />
+      )
+    }
+
+    renderWithProviders(<ControlledFormRegistry />)
+
+    expect(
+      await screen.findByRole('link', { name: 'PM-PAGED-1' }),
+    ).toBeInTheDocument()
+    const pagination = screen.getByRole('navigation', {
+      name: 'Form review pagination',
+    })
+    expect(pagination).toHaveTextContent('Showing 1–10 of 11')
+    expect(pagination).toHaveTextContent('Page 1 of 2')
+    expect(requests[0]?.searchParams.get('page')).toBe('1')
+    expect(requests[0]?.searchParams.get('pageSize')).toBe('10')
+
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Next' }))
+
+    expect(
+      await screen.findByRole('link', { name: 'PM-PAGED-11' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'PM-PAGED-1' })).toBeNull()
+    expect(pagination).toHaveTextContent('Showing 11–11 of 11')
+    expect(pagination).toHaveTextContent('Page 2 of 2')
+    await waitFor(() => {
+      expect(requests.some((url) => url.searchParams.get('page') === '2')).toBe(
+        true,
+      )
+    })
+    expect(
+      requests
+        .find((url) => url.searchParams.get('page') === '2')
+        ?.searchParams.get('pageSize'),
+    ).toBe('10')
+  })
+
   it('filters forms by current supervisor account without listing assignment details', async () => {
     const assignedForms = [
       {
@@ -550,9 +707,24 @@ describe('preventive-maintenance form review', () => {
         })),
       },
     ]
+    const listRequests: URL[] = []
     server.use(
       http.get(meUrl, () => HttpResponse.json(currentUser(['GSD']))),
-      http.get(formsUrl, () => HttpResponse.json(assignedForms)),
+      http.get(formsUrl, ({ request }) => {
+        const params = new URL(request.url).searchParams
+        listRequests.push(new URL(request.url))
+        const selectedSupervisor = params.get('supervisor')
+        const filteredForms = selectedSupervisor
+          ? assignedForms.filter((candidate) =>
+              candidate.inspections.some((row) =>
+                selectedSupervisor === 'unassigned'
+                  ? row.currentScheduleSupervisorUserId === null
+                  : row.currentScheduleSupervisorUserId === selectedSupervisor,
+              ),
+            )
+          : assignedForms
+        return HttpResponse.json(formPageResponse(filteredForms))
+      }),
       http.get(supervisorOptionsUrl, ({ request }) => {
         const params = new URL(request.url).searchParams
         const search = params.get('search')?.toLocaleLowerCase()
@@ -616,6 +788,11 @@ describe('preventive-maintenance form review', () => {
     })
     expect(firstFormLinks).toHaveLength(1)
     expect(
+      listRequests.some(
+        (url) => url.searchParams.get('supervisor') === firstSupervisorId,
+      ),
+    ).toBe(true)
+    expect(
       screen.queryByRole('link', { name: 'PM-SUPERVISOR-B' }),
     ).not.toBeInTheDocument()
     expect(
@@ -641,6 +818,11 @@ describe('preventive-maintenance form review', () => {
         screen.queryAllByRole('link', { name: 'PM-SUPERVISOR-A' }),
       ).toHaveLength(0)
     })
+    expect(
+      listRequests.some(
+        (url) => url.searchParams.get('supervisor') === 'unassigned',
+      ),
+    ).toBe(true)
   })
 
   it('keeps form filters mounted for a recoverable list failure', async () => {
@@ -651,7 +833,7 @@ describe('preventive-maintenance form review', () => {
         attempts += 1
         return attempts === 1
           ? HttpResponse.json({}, { status: 503 })
-          : HttpResponse.json([form('Submitted')])
+          : HttpResponse.json(formPageResponse([form('Submitted')]))
       }),
     )
 
@@ -682,7 +864,7 @@ describe('preventive-maintenance form review', () => {
             {
               ...form('Submitted').inspections[0],
               assetCode: 'WDS-MAIN-001',
-              location: 'Main Building lobby',
+              location: 'Current registry location',
               skilledWorkerIdentity: 'Synthetic Inspector',
               dateAccomplished: '2026-07-28T03:00:00Z',
               waterReplaceCarbonFilter: true,
@@ -698,7 +880,14 @@ describe('preventive-maintenance form review', () => {
 
     expect(await screen.findAllByText('WDS-MAIN-001')).toHaveLength(1)
     const inspectionRow = screen.getByText('WDS-MAIN-001').closest('article')
-    expect(inspectionRow).toHaveTextContent(/Main Building lobby/)
+    expect(inspectionRow).toHaveTextContent('Current asset details')
+    expect(inspectionRow).toHaveTextContent('Current asset location')
+    expect(inspectionRow).toHaveTextContent('Current registry location')
+    expect(screen.getByText('Main Building')).toBeInTheDocument()
+    expect(inspectionRow).toHaveTextContent('Entered inspection date:')
+    expect(inspectionRow).toHaveTextContent(
+      'Server recorded completion (Asia/Manila):',
+    )
     expect(screen.getByText('Awaiting acknowledgement')).toBeInTheDocument()
     expect(screen.getByText(/Corrective follow-up pending/)).toBeInTheDocument()
     const rowDetailsSummary = screen.getByText('Row details')
@@ -731,6 +920,73 @@ describe('preventive-maintenance form review', () => {
     expect(
       await screen.findByRole('link', { name: 'Form review' }),
     ).toBeInTheDocument()
+  })
+
+  it('allows assigned-schedule Supervisor form review without acknowledgement actions', async () => {
+    const submittedForm = form('Submitted')
+    const assignedForm = {
+      ...submittedForm,
+      inspections: submittedForm.inspections.map((row) => ({
+        ...row,
+        currentScheduleSupervisorUserId: currentSupervisorId,
+        currentScheduleSupervisorIdentity: 'Synthetic Supervisor',
+      })),
+    }
+    let acknowledgementPosts = 0
+    let dashboardRequests = 0
+
+    server.use(
+      http.get(meUrl, () =>
+        HttpResponse.json(currentUser(['Supervisor'], currentSupervisorId)),
+      ),
+      http.get(formsUrl, () =>
+        HttpResponse.json(formPageResponse([assignedForm])),
+      ),
+      http.get(`${formsUrl}/${formId}`, () => HttpResponse.json(assignedForm)),
+      http.post(`${formsUrl}/${formId}/acknowledge`, () => {
+        acknowledgementPosts += 1
+        return HttpResponse.json({})
+      }),
+      http.get('*/api/v1/pm-period-dashboard*', () => {
+        dashboardRequests += 1
+        return HttpResponse.json({})
+      }),
+    )
+
+    const router = renderAppRouter('/app/preventive-maintenance-forms')
+
+    expect(
+      await screen.findByRole('heading', { name: 'Form review' }),
+    ).toBeInTheDocument()
+    const formLinks = await screen.findAllByRole('link', {
+      name: 'GSD-SUBMITTED-001',
+    })
+    expect(formLinks).not.toHaveLength(0)
+    expect(screen.getByRole('link', { name: 'Form review' })).toBeVisible()
+
+    const firstFormLink = formLinks[0]
+    if (!firstFormLink) throw new Error('Expected a form detail link.')
+    fireEvent.click(firstFormLink)
+    expect(
+      await screen.findByRole('heading', { name: 'GSD-SUBMITTED-001' }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Supervisor read-only review')).toBeInTheDocument()
+    expect(
+      screen.queryByRole('heading', { name: 'Acknowledge submitted form' }),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Acknowledge form' }),
+    ).not.toBeInTheDocument()
+
+    await router.navigate({
+      to: '/app/preventive-maintenance-forms/$formId/review',
+      params: { formId },
+    })
+    expect(
+      await screen.findByRole('heading', { name: 'Access denied' }),
+    ).toBeInTheDocument()
+    expect(acknowledgementPosts).toBe(0)
+    expect(dashboardRequests).toBe(0)
   })
 
   it('renders acknowledged detail and GSD corrective handoff without signatures', async () => {
@@ -783,7 +1039,7 @@ describe('preventive-maintenance form review', () => {
     if (!(handoffCard instanceof HTMLElement)) {
       throw new Error('Corrective-action finding card was not found')
     }
-    expect(handoffCard).toHaveTextContent('Actual inspection date:')
+    expect(handoffCard).toHaveTextContent('Entered inspection date:')
     const handoff = within(handoffCard)
     const technicalSummary = handoff.getByText('Technical identifiers')
     const technicalDetails = technicalSummary.closest('details')
@@ -1043,6 +1299,11 @@ describe('preventive-maintenance form review', () => {
     ).toBeInTheDocument()
     expect(
       screen.getByText(
+        /records the signed-in account submitting the receipt separately/,
+      ),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText(
         /This records the department head's receipt and signatory details\./,
       ),
     ).toBeInTheDocument()
@@ -1204,7 +1465,13 @@ describe('preventive-maintenance form review', () => {
     expect(screen.getByText('Acknowledgement recorded')).toBeInTheDocument()
     expect(screen.getByText('Synthetic Department Head')).toBeInTheDocument()
     expect(screen.getByText('Department Head')).toBeInTheDocument()
-    expect(screen.getAllByText('Acknowledged')).toHaveLength(2)
+    expect(screen.getByText('Recorded by')).toBeInTheDocument()
+    expect(
+      screen.getByText(`Synthetic Reviewer (account ${inspectorId})`),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Acknowledged (Asia/Manila)')).toBeInTheDocument()
+    expect(screen.getByText('Jul 29, 2026, 10:00 AM')).toBeInTheDocument()
+    expect(screen.getAllByText('Acknowledged')).toHaveLength(1)
     expect(
       screen.queryByRole('button', { name: 'Acknowledge form' }),
     ).not.toBeInTheDocument()
@@ -1476,7 +1743,9 @@ describe('preventive-maintenance form review', () => {
   it('keeps ordinary form-registry detail navigation scoped to the registry', async () => {
     server.use(
       http.get(meUrl, () => HttpResponse.json(currentUser(['Inspector']))),
-      http.get(formsUrl, () => HttpResponse.json([form('Submitted')])),
+      http.get(formsUrl, () =>
+        HttpResponse.json(formPageResponse([form('Submitted')])),
+      ),
       http.get(`${formsUrl}/${formId}`, () =>
         HttpResponse.json(form('Submitted')),
       ),

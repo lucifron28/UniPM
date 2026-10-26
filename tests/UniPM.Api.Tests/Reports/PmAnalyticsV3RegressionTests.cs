@@ -1,6 +1,11 @@
 using UniPM.Api.Features.Auth;
 using UniPM.Api.Features.Reports;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
+using System.Text.Json.Serialization;
 using UniPM.Api.Data;
 using UniPM.Api.Features.Schedules;
 using UniPM.Api.Models;
@@ -10,6 +15,102 @@ namespace UniPM.Api.Tests;
 
 public sealed class PmAnalyticsV3RegressionTests
 {
+    [Fact]
+    public async Task Development_default_uses_configured_fake_DeepSeek_for_former_exact_template()
+    {
+        const string question = "SHOW LATE FIRE-EXTINGUISHER INSPECTIONS FOR THE 2026 PM CYCLES.";
+        var fakeOutput = PmAnalyticsV3RuleParser.Parse(question, DateTimeOffset.UtcNow);
+        var modelContent = JsonSerializer.Serialize(
+            fakeOutput,
+            new JsonSerializerOptions(JsonSerializerDefaults.Web)
+            {
+                Converters = { new JsonStringEnumConverter() }
+            });
+        var providerResponse = JsonSerializer.Serialize(new
+        {
+            choices = new[] { new { message = new { content = modelContent } } },
+            usage = new { prompt_tokens = 10, completion_tokens = 5 }
+        });
+
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase($"unipm-pm-analytics-v3-development-interpreter-{Guid.NewGuid():N}")
+            .Options;
+        var queryService = new PmAnalyticsV3QueryService(
+            new TestContextFactory(options),
+            TimeProvider.System);
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                [DeepSeekNaturalLanguageAnalyticsModelClient.ApiKeyEnvironmentVariable] = "synthetic-test-key"
+            })
+            .Build();
+        using var modelHandler = new StubModelResponseHandler(providerResponse);
+        using var interpreter = new PmAnalyticsV3QuestionInterpreter(
+            new FixedOptionsMonitor<NaturalLanguageAnalyticsOptions>(
+                new NaturalLanguageAnalyticsOptions { V3DeepSeekEnabled = true }),
+            new TestHostEnvironment(Environments.Development),
+            TimeProvider.System,
+            queryService,
+            configuration,
+            modelHandler);
+
+        var result = await interpreter.InterpretAsync(question, CancellationToken.None);
+
+        Assert.Equal("Valid", result.Status);
+        Assert.Equal("DeepSeek", result.Interpreter);
+        Assert.NotNull(result.Plan);
+        Assert.Equal(PmAnalyticsV3Catalog.SubjectPmExecution, result.Plan.Subject);
+        Assert.Equal(["fire-extinguisher"], result.Plan.Categories);
+        Assert.Contains(PmAnalyticsV3Catalog.CompletedLateCount, result.Plan.Measures);
+        Assert.Equal(1, modelHandler.RequestCount);
+    }
+
+    [Fact]
+    public async Task Production_environment_rejects_DeepSeek_and_uses_parser_when_provider_is_enabled()
+    {
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase($"unipm-pm-analytics-v3-production-interpreter-{Guid.NewGuid():N}")
+            .Options;
+        var queryService = new PmAnalyticsV3QueryService(
+            new TestContextFactory(options),
+            TimeProvider.System);
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                [DeepSeekNaturalLanguageAnalyticsModelClient.ApiKeyEnvironmentVariable] = "synthetic-test-key"
+            })
+            .Build();
+        using var modelHandler = new UnexpectedModelRequestHandler();
+        using var interpreter = new PmAnalyticsV3QuestionInterpreter(
+            new FixedOptionsMonitor<NaturalLanguageAnalyticsOptions>(
+                new NaturalLanguageAnalyticsOptions { V3DeepSeekEnabled = true }),
+            new TestHostEnvironment(Environments.Production),
+            TimeProvider.System,
+            queryService,
+            configuration,
+            modelHandler);
+
+        const string question = "SHOW LATE FIRE-EXTINGUISHER INSPECTIONS FOR THE 2026 PM CYCLES.";
+        var unavailable = await Assert.ThrowsAsync<NaturalLanguageAnalyticsProviderException>(() =>
+            interpreter.InterpretAsync(
+                question,
+                CancellationToken.None,
+                PmAnalyticsV3Interpreter.DeepSeek));
+        Assert.Equal(NaturalLanguageAnalyticsProviderFailure.ProviderUnavailable, unavailable.Failure);
+
+        var explicitParser = await interpreter.InterpretAsync(
+            question,
+            CancellationToken.None,
+            PmAnalyticsV3Interpreter.DeterministicParser);
+        Assert.Equal("Valid", explicitParser.Status);
+        Assert.Equal("DeterministicParser", explicitParser.Interpreter);
+
+        var defaultParser = await interpreter.InterpretAsync(question, CancellationToken.None);
+        Assert.Equal("Valid", defaultParser.Status);
+        Assert.Equal("DeterministicParser", defaultParser.Interpreter);
+        Assert.Equal(0, modelHandler.RequestCount);
+    }
+
     [Fact]
     public void Scheduled_count_uses_population_even_when_matching_rows_are_filtered()
     {
@@ -83,6 +184,25 @@ public sealed class PmAnalyticsV3RegressionTests
         Assert.Contains(records.Plan.MatchingFilters, filter =>
             filter.Field == PmAnalyticsV3Catalog.Condition
                 && filter.Values?.Contains("NonOperational", StringComparer.Ordinal) == true);
+    }
+
+    [Theory]
+    [InlineData("Show late fire-extinguisher inspections for 2026 PM cycles", "fire-extinguisher")]
+    [InlineData("Show late water drinking station inspections for 2026 PM cycles", "water-drinking-station")]
+    public void Late_measure_accepts_a_category_between_the_outcome_and_inspection_noun(
+        string question,
+        string expectedCategory)
+    {
+        var result = PmAnalyticsV3RuleParser.Parse(
+            question,
+            new DateTimeOffset(2025, 6, 1, 0, 0, 0, TimeSpan.Zero));
+
+        Assert.Equal("Valid", result.Status);
+        Assert.NotNull(result.Plan);
+        Assert.Equal([expectedCategory], result.Plan.Categories);
+        Assert.NotNull(result.Plan.Period);
+        Assert.Equal(2026, result.Plan.Period.Year);
+        Assert.Equal([PmAnalyticsV3Catalog.CompletedLateCount], result.Plan.Measures);
     }
 
     [Fact]
@@ -191,6 +311,9 @@ public sealed class PmAnalyticsV3RegressionTests
         var disjunction = PmAnalyticsV3RuleParser.Parse(
             "Show late or non-operational fire extinguisher records in 2025",
             now);
+        var combinedOutcome = PmAnalyticsV3RuleParser.Parse(
+            "Show late and non-operational fire-extinguisher inspections in 2025",
+            now);
         var ambiguousRanking = PmAnalyticsV3RuleParser.Parse(
             "Show scheduled and completed fire extinguisher counts for the top 5 departments in 2024",
             now);
@@ -220,6 +343,8 @@ public sealed class PmAnalyticsV3RegressionTests
         Assert.Contains("Period", multipleMonths.ClarificationFields);
         Assert.Equal("NeedsClarification", disjunction.Status);
         Assert.Contains("Filters", disjunction.ClarificationFields);
+        Assert.Equal("NeedsClarification", combinedOutcome.Status);
+        Assert.Contains("Mode", combinedOutcome.ClarificationFields);
         Assert.Equal("NeedsClarification", ambiguousRanking.Status);
         Assert.Contains("Top", ambiguousRanking.ClarificationFields);
         Assert.Equal("Valid", explicitRanking.Status);
@@ -769,5 +894,56 @@ public sealed class PmAnalyticsV3RegressionTests
         public override DateTimeOffset GetUtcNow() => _currentTime;
 
         internal void Advance(TimeSpan duration) => _currentTime += duration;
+    }
+
+    private sealed class FixedOptionsMonitor<TOptions>(TOptions currentValue) : IOptionsMonitor<TOptions>
+        where TOptions : class
+    {
+        public TOptions CurrentValue { get; } = currentValue;
+
+        public TOptions Get(string? name) => CurrentValue;
+
+        public IDisposable? OnChange(Action<TOptions, string?> listener) => null;
+    }
+
+    private sealed class TestHostEnvironment(string environmentName) : IHostEnvironment
+    {
+        public string EnvironmentName { get; set; } = environmentName;
+
+        public string ApplicationName { get; set; } = "UniPM.Api.Tests";
+
+        public string ContentRootPath { get; set; } = AppContext.BaseDirectory;
+
+        public IFileProvider ContentRootFileProvider { get; set; } = new NullFileProvider();
+    }
+
+    private sealed class UnexpectedModelRequestHandler : HttpMessageHandler
+    {
+        internal int RequestCount { get; private set; }
+
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+        {
+            RequestCount++;
+            throw new InvalidOperationException("A provider request was unexpected in this test.");
+        }
+    }
+
+    private sealed class StubModelResponseHandler(string responseBody) : HttpMessageHandler
+    {
+        internal int RequestCount { get; private set; }
+
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            RequestCount++;
+            return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+            {
+                Content = new StringContent(responseBody, System.Text.Encoding.UTF8, "application/json")
+            });
+        }
     }
 }

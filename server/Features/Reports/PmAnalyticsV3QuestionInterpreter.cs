@@ -13,58 +13,9 @@ internal sealed class PmAnalyticsV3QuestionInterpreter : IDisposable
 {
     private const string DeepSeekInterpreter = "DeepSeek";
     private const string DeterministicInterpreter = "DeterministicParser";
-    private const string ApprovedInterpretationInterpreter = "ApprovedInterpretation";
     private const string SafetyRulesInterpreter = "SafetyRules";
-    private const int ReviewedSchemaVersion = 3;
-    private const int ReviewedCatalogVersion = 2;
     private const int MaximumQuestionLength = 512;
     private static readonly TimeSpan RegexTimeout = TimeSpan.FromMilliseconds(100);
-    private static readonly IReadOnlyDictionary<string, PmAnalyticsV3ModelOutput> ReviewedInterpretations =
-        new Dictionary<string, PmAnalyticsV3ModelOutput>(StringComparer.Ordinal)
-        {
-            ["SHOW LATE FIRE-EXTINGUISHER INSPECTIONS FOR THE 2026 PM CYCLES."] = new(
-                "Valid",
-                new PmAnalyticsV3ReportPlan(
-                    ReviewedSchemaVersion,
-                    ReviewedCatalogVersion,
-                    PmAnalyticsV3Catalog.SubjectPmExecution,
-                    PmAnalyticsV3Mode.Aggregate,
-                    new PmAnalyticsV3Period("pmCycle", PmAnalyticsV3PeriodKind.Year, 2026),
-                    ["fire-extinguisher"],
-                    [PmAnalyticsV3Catalog.CompletedLateCount],
-                    [],
-                    [],
-                    [],
-                    [],
-                    [],
-                    null,
-                    PmAnalyticsV3Presentation.Summary,
-                    [PmAnalyticsV3Catalog.CompletedLateCount]),
-                [],
-                null,
-                null),
-            ["SHOW MISSED FIRE-EXTINGUISHER INSPECTIONS BY DEPARTMENT FOR THE 2026 PM CYCLES."] = new(
-                "Valid",
-                new PmAnalyticsV3ReportPlan(
-                    ReviewedSchemaVersion,
-                    ReviewedCatalogVersion,
-                    PmAnalyticsV3Catalog.SubjectPmExecution,
-                    PmAnalyticsV3Mode.Aggregate,
-                    new PmAnalyticsV3Period("pmCycle", PmAnalyticsV3PeriodKind.Year, 2026),
-                    ["fire-extinguisher"],
-                    [PmAnalyticsV3Catalog.MissedCount],
-                    [PmAnalyticsV3Catalog.Department],
-                    [],
-                    [],
-                    [],
-                    [],
-                    null,
-                    PmAnalyticsV3Presentation.Table,
-                    [PmAnalyticsV3Catalog.Department, PmAnalyticsV3Catalog.MissedCount]),
-                [],
-                null,
-                null)
-        };
     internal static readonly Regex YearRegex = new(@"(?<!\d)(?<year>\d{4})(?!\d)", RegexOptions.CultureInvariant, RegexTimeout);
     internal static readonly Regex CycleRegex = new(@"(?<!\d)(?<start>\d{4}-(?:0[1-9]|1[0-2]))(?:\s+(?:through|to|until|–|-)\s+(?<end>\d{4}-(?:0[1-9]|1[0-2])))?(?!\d)", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase, RegexTimeout);
     internal static readonly Regex MonthRegex = new(@"\b(?<month>january|jan|february|feb|march|mar|april|apr|may|june|jun|july|jul|august|aug|september|sept|sep|october|oct|november|nov|december|dec)\b", RegexOptions.CultureInvariant | RegexOptions.IgnoreCase, RegexTimeout);
@@ -89,6 +40,17 @@ internal sealed class PmAnalyticsV3QuestionInterpreter : IDisposable
         TimeProvider timeProvider,
         PmAnalyticsV3QueryService queryService,
         IConfiguration configuration)
+        : this(options, environment, timeProvider, queryService, configuration, modelHandler: null)
+    {
+    }
+
+    internal PmAnalyticsV3QuestionInterpreter(
+        IOptionsMonitor<NaturalLanguageAnalyticsOptions> options,
+        IHostEnvironment environment,
+        TimeProvider timeProvider,
+        PmAnalyticsV3QueryService queryService,
+        IConfiguration configuration,
+        HttpMessageHandler? modelHandler)
     {
         _options = options;
         _environment = environment;
@@ -99,6 +61,7 @@ internal sealed class PmAnalyticsV3QuestionInterpreter : IDisposable
         _modelClient = new DeepSeekNaturalLanguageAnalyticsModelClient(
             _deepSeekApiKey,
             new NaturalLanguageAnalyticsModelClientRunLedger(),
+            handler: modelHandler,
             promptProfile: PmAnalyticsV3ModelPrompt.Profile);
     }
 
@@ -135,21 +98,14 @@ internal sealed class PmAnalyticsV3QuestionInterpreter : IDisposable
                 SafetyRulesInterpreter);
         }
 
-        PmAnalyticsV3ModelOutput? reviewedCandidate = null;
-        if (requestedInterpreter is null
-            && TryGetReviewedInterpretation(sanitized, out var exactReviewedCandidate))
-        {
-            reviewedCandidate = exactReviewedCandidate;
-        }
-
         var deepSeekAvailable = _environment.IsDevelopment() && _options.CurrentValue.V3DeepSeekEnabled;
-        var useDeepSeek = reviewedCandidate is null && (requestedInterpreter switch
+        var useDeepSeek = requestedInterpreter switch
         {
             null => deepSeekAvailable,
             PmAnalyticsV3Interpreter.DeepSeek => deepSeekAvailable,
             PmAnalyticsV3Interpreter.DeterministicParser => false,
             _ => false
-        });
+        };
         if (requestedInterpreter == PmAnalyticsV3Interpreter.DeepSeek && !deepSeekAvailable)
         {
             throw new NaturalLanguageAnalyticsProviderException(
@@ -162,12 +118,10 @@ internal sealed class PmAnalyticsV3QuestionInterpreter : IDisposable
                 NaturalLanguageAnalyticsProviderFailure.ProviderUnavailable);
         }
 
-        var interpreter = reviewedCandidate is not null
-            ? ApprovedInterpretationInterpreter
-            : useDeepSeek ? DeepSeekInterpreter : DeterministicInterpreter;
+        var interpreter = useDeepSeek ? DeepSeekInterpreter : DeterministicInterpreter;
         string? expectedSubject = null;
         var parserQuestion = sanitized;
-        if (reviewedCandidate is null && !useDeepSeek)
+        if (!useDeepSeek)
         {
             parserQuestion = PmAnalyticsV3RuleParser.NormalizeNegatedOperationalIntent(
                 sanitized,
@@ -237,11 +191,7 @@ internal sealed class PmAnalyticsV3QuestionInterpreter : IDisposable
 
         var interpretationTimeUtc = _timeProvider.GetUtcNow();
         PmAnalyticsV3ModelOutput candidate;
-        if (reviewedCandidate is not null)
-        {
-            candidate = reviewedCandidate;
-        }
-        else if (useDeepSeek)
+        if (useDeepSeek)
         {
             var manilaNow = interpretationTimeUtc.ToOffset(TimeSpan.FromHours(8));
             var modelInput = $"Current date in Asia/Manila: {manilaNow:yyyy-MM-dd}.\nQuestion: {sanitized}";
@@ -259,7 +209,7 @@ internal sealed class PmAnalyticsV3QuestionInterpreter : IDisposable
             throw InvalidModelOutput();
         }
 
-        if (useDeepSeek || reviewedCandidate is not null)
+        if (useDeepSeek)
         {
             if (!IsSafeModelEnvelope(candidate))
             {
@@ -397,28 +347,6 @@ internal sealed class PmAnalyticsV3QuestionInterpreter : IDisposable
             "Unsupported" => candidate.Plan is null && fields.Count == 0,
             _ => false
         };
-    }
-
-    private static bool TryGetReviewedInterpretation(
-        string question,
-        out PmAnalyticsV3ModelOutput candidate)
-    {
-        candidate = null!;
-        var normalized = Regex.Replace(question.Trim(), @"\s+", " ", RegexOptions.CultureInvariant).ToUpperInvariant();
-        if (!ReviewedInterpretations.TryGetValue(normalized, out var reviewed)
-            || !IsSafeModelEnvelope(reviewed)
-            || reviewed.Status != "Valid"
-            || reviewed.Plan is not { } plan
-            || PmAnalyticsV3Catalog.Version != 2
-            || plan.SchemaVersion != 3
-            || plan.CatalogVersion != 2
-            || !PmAnalyticsV3PlanValidator.TryNormalize(plan, out _, out _))
-        {
-            return false;
-        }
-
-        candidate = reviewed;
-        return true;
     }
 
     private static PmAnalyticsV3InterpretationResponse? ApplyInterpretedQuestionConstraints(
@@ -1359,6 +1287,14 @@ internal static class PmAnalyticsV3RuleParser
         AddIf(question, "late inspections", PmAnalyticsV3Catalog.CompletedLateCount, matches);
         AddIf(question, "late inspection", PmAnalyticsV3Catalog.CompletedLateCount, matches);
         AddIf(question, "late findings", PmAnalyticsV3Catalog.CompletedLateCount, matches);
+        if (Regex.IsMatch(
+                question,
+                @"\blate(?:\s+(?!(?:and|or|not|no|without|except|excluding)\b)[\p{L}\p{N}-]+){1,4}\s+inspections?\b",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant,
+                TimeSpan.FromMilliseconds(100)))
+        {
+            matches.Add(PmAnalyticsV3Catalog.CompletedLateCount);
+        }
         AddIf(question, "completed on time", PmAnalyticsV3Catalog.CompletedOnTimeCount, matches);
         AddIf(question, "on-time count", PmAnalyticsV3Catalog.CompletedOnTimeCount, matches);
         AddIf(question, "non-operational", PmAnalyticsV3Catalog.NonOperationalCount, matches);

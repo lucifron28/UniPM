@@ -94,13 +94,21 @@ internal static class AuthServiceCollectionExtensions
                 policy => policy.RequireRole(AuthRoleCatalog.Admin));
             options.AddPolicy(
                 AuthPolicyCatalog.CanManageAssets,
-                policy => policy.RequireRole(AuthRoleCatalog.Gsd, AuthRoleCatalog.Admin));
+                policy => policy.RequireRole(AuthRoleCatalog.Gsd));
             options.AddPolicy(
                 AuthPolicyCatalog.CanManageSchedules,
-                policy => policy.RequireRole(AuthRoleCatalog.Gsd, AuthRoleCatalog.Supervisor, AuthRoleCatalog.Admin));
+                policy => policy.RequireRole(AuthRoleCatalog.Gsd, AuthRoleCatalog.Supervisor));
             options.AddPolicy(
                 AuthPolicyCatalog.CanGenerateSchedules,
-                policy => policy.RequireRole(AuthRoleCatalog.Gsd, AuthRoleCatalog.Admin));
+                policy => policy.RequireRole(AuthRoleCatalog.Gsd));
+            options.AddPolicy(
+                AuthPolicyCatalog.CanReadOperationalData,
+                policy => policy
+                    .RequireAuthenticatedUser()
+                    .RequireRole(
+                        AuthRoleCatalog.Gsd,
+                        AuthRoleCatalog.Inspector,
+                        AuthRoleCatalog.Supervisor));
             options.AddPolicy(
                 AuthPolicyCatalog.CanReadSchedules,
                 policy => policy
@@ -108,22 +116,21 @@ internal static class AuthServiceCollectionExtensions
                     .RequireRole(
                         AuthRoleCatalog.Gsd,
                         AuthRoleCatalog.Inspector,
-                        AuthRoleCatalog.Supervisor,
-                        AuthRoleCatalog.Admin));
+                        AuthRoleCatalog.Supervisor));
             options.AddPolicy(
                 AuthPolicyCatalog.CanAssignScheduleSupervisors,
-                policy => policy.RequireRole(AuthRoleCatalog.Gsd, AuthRoleCatalog.Admin));
+                policy => policy.RequireRole(AuthRoleCatalog.Gsd));
             options.AddPolicy(
                 AuthPolicyCatalog.CanAssignScheduleWorkers,
-                policy => policy.RequireRole(AuthRoleCatalog.Supervisor, AuthRoleCatalog.Admin));
+                policy => policy.RequireRole(AuthRoleCatalog.Supervisor));
             options.AddPolicy(
                 AuthPolicyCatalog.CanManagePreventiveMaintenanceForms,
-                policy => policy.RequireRole(AuthRoleCatalog.Gsd, AuthRoleCatalog.Inspector, AuthRoleCatalog.Admin));
+                policy => policy.RequireRole(AuthRoleCatalog.Gsd, AuthRoleCatalog.Inspector));
             options.AddPolicy(
                 AuthPolicyCatalog.CanInspectPreventiveMaintenanceSchedule,
                 policy =>
                 {
-                    policy.RequireRole(AuthRoleCatalog.Gsd, AuthRoleCatalog.Inspector, AuthRoleCatalog.Admin);
+                    policy.RequireRole(AuthRoleCatalog.Gsd, AuthRoleCatalog.Inspector);
                     policy.AddRequirements(PreventiveMaintenanceScheduleAccessRequirement.Instance);
                 });
             options.AddPolicy(

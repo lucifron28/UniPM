@@ -11,4 +11,13 @@ export type ListPreventiveMaintenanceFormsParams = {
   department?: string
   pmCycle?: string
   search?: string
+  supervisor?: string
+  /**
+   * @pattern ^-?(?:0|[1-9]\d*)$
+   */
+  page?: number | string
+  /**
+   * @pattern ^-?(?:0|[1-9]\d*)$
+   */
+  pageSize?: number | string
 }

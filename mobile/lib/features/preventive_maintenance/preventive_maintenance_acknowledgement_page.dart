@@ -107,6 +107,8 @@ class _PreventiveMaintenanceAcknowledgementPageState
             acknowledgement: acknowledgement,
             alreadyAcknowledged: form.status == 'Acknowledged',
             formNumber: form.fileNumber ?? 'Preventive-maintenance form',
+            operatorUserId: widget.controller.user.id,
+            operatorDisplayName: widget.controller.user.displayName,
           )
         else if (form.status == 'Submitted')
           _AcknowledgementForm(
@@ -297,6 +299,10 @@ class _SubmittedFormSummary extends StatelessWidget {
               style: Theme.of(context).textTheme.bodyMedium,
               softWrap: true,
             ),
+            if (form.submittedAt != null) ...[
+              const SizedBox(height: 4),
+              Text('Submitted to server: ${_dateTimeText(form.submittedAt!)}'),
+            ],
             const SizedBox(height: 12),
             Wrap(
               spacing: 8,
@@ -424,6 +430,13 @@ class _InspectionDetails extends StatelessWidget {
             style: Theme.of(context).textTheme.titleMedium,
           ),
         ),
+        if (form.inspections.isNotEmpty)
+          const Padding(
+            padding: EdgeInsets.only(bottom: 6),
+            child: Text(
+              'Asset code and location below reflect current asset records.',
+            ),
+          ),
         if (form.inspections.isEmpty)
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 12),
@@ -483,8 +496,8 @@ class _InspectionSummary extends StatelessWidget {
                   children: [
                     Text(
                       row.location?.trim().isNotEmpty == true
-                          ? row.location!.trim()
-                          : 'Location not recorded',
+                          ? 'Current asset location: ${row.location!.trim()}'
+                          : 'Current asset location not recorded',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: colors.onSurfaceVariant,
                       ),
@@ -572,7 +585,7 @@ class _InspectionExpandedDetails extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _InspectionDetailLine(
-                label: 'Inspection date',
+                label: 'Inspection date entered by inspector',
                 value: _dateText(row.dateInspected),
               ),
               if (row.dateAccomplished != null)
@@ -587,7 +600,7 @@ class _InspectionExpandedDetails extends StatelessWidget {
                 ),
               if (row.completedAt != null)
                 _InspectionDetailLine(
-                  label: 'Completed',
+                  label: 'Server recorded completion',
                   value: _dateTimeText(row.completedAt!),
                 ),
             ],
@@ -727,7 +740,8 @@ class _AcknowledgementForm extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               const Text(
-                'Enter the signatory details and capture their signature.',
+                'Enter the Department Head\'s name, position, and signature. '
+                'UniPM records the signed-in account submitting this receipt separately.',
               ),
               const SizedBox(height: 16),
               TextFormField(
@@ -791,11 +805,15 @@ class _AcknowledgementReceipt extends StatelessWidget {
     required this.acknowledgement,
     required this.alreadyAcknowledged,
     required this.formNumber,
+    required this.operatorUserId,
+    required this.operatorDisplayName,
   });
 
   final PreventiveMaintenanceAcknowledgement? acknowledgement;
   final bool alreadyAcknowledged;
   final String formNumber;
+  final String operatorUserId;
+  final String operatorDisplayName;
 
   @override
   Widget build(BuildContext context) {
@@ -846,6 +864,9 @@ class _AcknowledgementReceipt extends StatelessWidget {
                     Text('Department Head: ${value.signatoryName}'),
                     Text('Position: ${value.signatoryPosition}'),
                     Text(
+                      'Recorded by: ${_operatorLabel(value, operatorUserId, operatorDisplayName)}',
+                    ),
+                    Text(
                       'Acknowledged: ${_dateTimeText(value.acknowledgedAt)}',
                     ),
                   ],
@@ -867,6 +888,20 @@ class _AcknowledgementReceipt extends StatelessWidget {
       ),
     );
   }
+}
+
+String _operatorLabel(
+  PreventiveMaintenanceAcknowledgement acknowledgement,
+  String operatorUserId,
+  String operatorDisplayName,
+) {
+  final displayName = acknowledgement.capturedByUserId == operatorUserId
+      ? operatorDisplayName.trim()
+      : '';
+  if (displayName.isEmpty) {
+    return 'account ${acknowledgement.capturedByUserId}';
+  }
+  return '$displayName (account ${acknowledgement.capturedByUserId})';
 }
 
 class _AcknowledgementInlineError extends StatelessWidget {
@@ -1170,12 +1205,12 @@ String _dateText(DateTime value) {
 }
 
 String _dateTimeText(DateTime value) {
-  final local = value.toLocal();
-  final month = local.month.toString().padLeft(2, '0');
-  final day = local.day.toString().padLeft(2, '0');
-  final hour = local.hour.toString().padLeft(2, '0');
-  final minute = local.minute.toString().padLeft(2, '0');
-  return '${local.year}-$month-$day $hour:$minute';
+  final manila = value.toUtc().add(const Duration(hours: 8));
+  final month = manila.month.toString().padLeft(2, '0');
+  final day = manila.day.toString().padLeft(2, '0');
+  final hour = manila.hour.toString().padLeft(2, '0');
+  final minute = manila.minute.toString().padLeft(2, '0');
+  return '${manila.year}-$month-$day $hour:$minute Asia/Manila';
 }
 
 Uint8List _encodeSignaturePng(Size logicalSize, List<List<Offset>> strokes) {

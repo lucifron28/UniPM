@@ -225,18 +225,17 @@ public static class InspectionPhotoEvidenceEndpoints
             IInspectionPhotoEvidenceStorage storage,
             CancellationToken cancellationToken) =>
         {
-            if (!TryGetActorId(principal, out var actorId))
-            {
-                return Results.Forbid();
-            }
-
             await using var context = await factory.CreateDbContextAsync(cancellationToken);
+            var readableForms = context.PreventiveMaintenanceForms
+                .AsNoTracking()
+                .WhereReadableTo(principal);
             var inspection = await context.InspectionRecords
                 .AsNoTracking()
+                .WhereReadableTo(principal, readableForms)
                 .Include(candidate => candidate.PreventiveMaintenanceForm)
                 .Include(candidate => candidate.PhotoEvidence)
                 .SingleOrDefaultAsync(candidate => candidate.Id == id, cancellationToken);
-            if (inspection is null || !CanReadPhoto(principal, actorId, inspection))
+            if (inspection is null)
             {
                 return ApiErrors.NotFound("Photo evidence not found.");
             }
@@ -255,7 +254,7 @@ public static class InspectionPhotoEvidenceEndpoints
             httpContext.Response.Headers.CacheControl = "private, no-store";
             return Results.File(contents, "image/jpeg");
         })
-        .RequireAuthorization(AuthPolicyCatalog.CanManagePreventiveMaintenanceForms)
+        .RequireAuthorization(AuthPolicyCatalog.CanReadOperationalData)
         .WithName("GetInspectionPhotoEvidence")
         .WithSummary("Gets authorized private JPEG photo evidence for an inspection row")
         .Produces<byte[]>(StatusCodes.Status200OK, contentType: "image/jpeg")
@@ -353,23 +352,6 @@ public static class InspectionPhotoEvidenceEndpoints
         .Produces(StatusCodes.Status409Conflict);
 
         return endpoints;
-    }
-
-    private static bool CanReadPhoto(
-        ClaimsPrincipal principal,
-        Guid actorId,
-        InspectionRecord inspection)
-    {
-        if (principal.IsInRole(AuthRoleCatalog.Inspector))
-        {
-            return inspection.InspectorUserId == actorId;
-        }
-
-        return (principal.IsInRole(AuthRoleCatalog.Gsd)
-            || principal.IsInRole(AuthRoleCatalog.Admin))
-            && (inspection.PreventiveMaintenanceFormId is null
-                || inspection.PreventiveMaintenanceForm?.Status
-                    == PreventiveMaintenanceFormStatusCatalog.Acknowledged);
     }
 
     private static async Task<IDbContextTransaction?> BeginPhotoMutationTransactionAsync(

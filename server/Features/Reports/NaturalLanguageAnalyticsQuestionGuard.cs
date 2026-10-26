@@ -66,6 +66,17 @@ internal static class NaturalLanguageAnalyticsQuestionGuard
         ("jul", 7), ("hul", 7), ("aug", 8), ("ago", 8), ("sep", 9),
         ("set", 9), ("oct", 10), ("okt", 10), ("nov", 11), ("dec", 12), ("dis", 12)
     ];
+    private static readonly (int Month, Regex Pattern)[] MonthAbbreviationPatterns =
+        MonthAbbreviations
+            .Select(abbreviation => (
+                Month: abbreviation.Month,
+                Pattern: new Regex(
+                    $@"(?<![\p{{L}}]){Regex.Escape(abbreviation.Alias)}\.?\s*,?\s*\d{{4}}\b"
+                    + $@"|\b\d{{4}}\s+{Regex.Escape(abbreviation.Alias)}\.?(?![\p{{L}}])"
+                    + $@"|\b(?:in|during|sa|noong)\s+{Regex.Escape(abbreviation.Alias)}\.?(?![\p{{L}}])",
+                    RegexOptions.IgnoreCase | RegexOptions.CultureInvariant,
+                    TimeSpan.FromMilliseconds(100))))
+            .ToArray();
 
     private static readonly Regex Email = new(
         @"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b",
@@ -358,15 +369,9 @@ internal static class NaturalLanguageAnalyticsQuestionGuard
             .Select(alias => alias.Month)
             .Distinct()
             .ToList();
-        foreach (var abbreviation in MonthAbbreviations)
+        foreach (var abbreviation in MonthAbbreviationPatterns)
         {
-            var token = Regex.Escape(abbreviation.Alias);
-            var hasExplicitContext = Regex.IsMatch(
-                question,
-                $@"(?<![\p{{L}}]){token}\.?\s*,?\s*\d{{4}}\b|\b\d{{4}}\s+{token}\.?(?![\p{{L}}])|\b(?:in|during|sa|noong)\s+{token}\.?(?![\p{{L}}])",
-                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant,
-                TimeSpan.FromMilliseconds(100));
-            if (hasExplicitContext && !months.Contains(abbreviation.Month))
+            if (abbreviation.Pattern.IsMatch(question) && !months.Contains(abbreviation.Month))
             {
                 months.Add(abbreviation.Month);
             }

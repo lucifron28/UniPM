@@ -5,6 +5,7 @@ import { Search, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
+  canReadOperationalData,
   canReadSchedules,
   canReviewForms,
 } from '@/features/auth/app-route-access'
@@ -33,29 +34,51 @@ export function QuickNavigation({
   const inputRef = useRef<HTMLInputElement>(null)
   const dialogRef = useRef<HTMLDivElement>(null)
   const returnFocusRef = useRef<HTMLElement | null>(null)
+  const canReadOperations = canReadOperationalData(roles)
 
   const destinations: Destination[] = [
-    {
-      id: 'dashboard',
-      title: 'Dashboard',
-      description: 'Choose a PM period and review its report.',
-      keywords: ['home', 'report', 'overview'],
-      navigate: () => void router.navigate({ to: '/app/dashboard' }),
-    },
-    {
-      id: 'assets',
-      title: 'Find asset',
-      description: 'Search the asset registry.',
-      keywords: ['asset', 'equipment', 'registry', 'search'],
-      navigate: () => void router.navigate({ to: '/app/assets' }),
-    },
-    {
-      id: 'inspection',
-      title: 'Find inspection',
-      description: 'Open recorded inspection results.',
-      keywords: ['inspection', 'record', 'history'],
-      navigate: () => void router.navigate({ to: '/app/inspections' }),
-    },
+    ...(canReadOperations
+      ? [
+          {
+            id: 'dashboard',
+            title: 'Dashboard',
+            description: 'Choose a PM period and review its report.',
+            keywords: ['home', 'report', 'overview'],
+            navigate: () => void router.navigate({ to: '/app/dashboard' }),
+          },
+          {
+            id: 'assets',
+            title: 'Find asset',
+            description: 'Search the asset registry.',
+            keywords: ['asset', 'equipment', 'registry', 'search'],
+            navigate: () => void router.navigate({ to: '/app/assets' }),
+          },
+          {
+            id: 'inspection',
+            title: 'Find inspection',
+            description: 'Open recorded inspection results.',
+            keywords: ['inspection', 'record', 'history'],
+            navigate: () => void router.navigate({ to: '/app/inspections' }),
+          },
+          {
+            id: 'non-operational-inspections',
+            title: 'Inspections / Non-operational results',
+            description:
+              'Open inspection records filtered to non-operational results.',
+            keywords: [
+              'non operational',
+              'condition',
+              'equipment',
+              'follow-up',
+            ],
+            navigate: () =>
+              void router.navigate({
+                to: '/app/inspections',
+                search: { isOperational: false },
+              }),
+          },
+        ]
+      : []),
     ...(canReadSchedules(roles)
       ? [
           {
@@ -96,18 +119,6 @@ export function QuickNavigation({
           },
         ]
       : []),
-    {
-      id: 'non-operational-inspections',
-      title: 'Inspections / Non-operational results',
-      description:
-        'Open inspection records filtered to non-operational results.',
-      keywords: ['non operational', 'condition', 'equipment', 'follow-up'],
-      navigate: () =>
-        void router.navigate({
-          to: '/app/inspections',
-          search: { isOperational: false },
-        }),
-    },
     ...(roles.includes('GSD')
       ? [
           {

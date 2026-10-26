@@ -10,6 +10,7 @@ using UniPM.Api.Data;
 using UniPM.Api.Features.Assets;
 using UniPM.Api.Features.Auth;
 using UniPM.Api.Features.Inspections;
+using UniPM.Api.Features.PreventiveMaintenanceForms;
 using UniPM.Api.Features.Schedules;
 using UniPM.Api.Models;
 
@@ -184,6 +185,111 @@ public sealed class RegistryReadEndpointsTests
         Assert.Equal(150, Convert.ToInt32(await verificationCommand.ExecuteScalarAsync()));
     }
 
+    [SqlServer2019Fact]
+    public async Task Sql_server_2019_pm_form_pages_scope_before_supervisor_filter_and_options()
+    {
+        var baseConnectionString = Environment.GetEnvironmentVariable(
+            "UNIPM_SQLSERVER2019_TEST_CONNECTION");
+        Assert.False(string.IsNullOrWhiteSpace(baseConnectionString));
+        var serverConnection = new SqlConnectionStringBuilder(baseConnectionString!);
+        var dataSource = serverConnection.DataSource.Trim();
+        if (dataSource.StartsWith("tcp:", StringComparison.OrdinalIgnoreCase))
+        {
+            dataSource = dataSource[4..];
+        }
+
+        var host = dataSource
+            .Split([',', '\\'], StringSplitOptions.TrimEntries)[0]
+            .Trim('[', ']');
+        Assert.True(
+            serverConnection.IntegratedSecurity
+            && (host.Equals("localhost", StringComparison.OrdinalIgnoreCase)
+                || host.Equals("127.0.0.1", StringComparison.Ordinal)
+                || host.Equals("::1", StringComparison.Ordinal)
+                || host.Equals(".", StringComparison.Ordinal)
+                || host.Equals("(local)", StringComparison.OrdinalIgnoreCase)),
+            "The form pagination SQL test requires Windows authentication to local SQL Server.");
+
+        await using var database = await SqlServerTestDatabase.CreateAsync(serverConnection.ConnectionString);
+        await database.SetCompatibilityLevel150Async();
+        await using (var context = database.CreateContext())
+        {
+            await context.Database.MigrateAsync();
+            var actorId = TestAuthenticationHandler.UserId;
+            var otherSupervisorId = Guid.NewGuid();
+            context.Users.AddRange(CreateSqlTestUser(actorId), CreateSqlTestUser(otherSupervisorId));
+
+            var sharedForm = CreateSqlTestForm(
+                "PM-SQL-SHARED",
+                "fire-extinguisher",
+                DateTimeOffset.UtcNow.AddMinutes(-1));
+            var assignedForm = CreateSqlTestForm(
+                "PM-SQL-ASSIGNED",
+                "fire-alarm",
+                DateTimeOffset.UtcNow);
+            var unrelatedForm = CreateSqlTestForm(
+                "PM-SQL-OTHER",
+                "emergency-light",
+                DateTimeOffset.UtcNow.AddMinutes(1));
+            var sharedAsset = CreateSqlTestAsset("PM-SQL-SHARED-1", "fire-extinguisher");
+            var sharedUnassignedAsset = CreateSqlTestAsset("PM-SQL-SHARED-2", "fire-extinguisher");
+            var assignedAsset = CreateSqlTestAsset("PM-SQL-ASSIGNED-1", "fire-alarm");
+            var unrelatedAsset = CreateSqlTestAsset("PM-SQL-OTHER-1", "emergency-light");
+            var schedules = new[]
+            {
+                CreateSqlTestSchedule(sharedAsset, actorId),
+                CreateSqlTestSchedule(sharedUnassignedAsset, null),
+                CreateSqlTestSchedule(assignedAsset, actorId),
+                CreateSqlTestSchedule(unrelatedAsset, otherSupervisorId)
+            };
+            var inspections = new[]
+            {
+                CreateSqlTestInspection(sharedForm, sharedAsset, schedules[0]),
+                CreateSqlTestInspection(sharedForm, sharedUnassignedAsset, schedules[1]),
+                CreateSqlTestInspection(assignedForm, assignedAsset, schedules[2]),
+                CreateSqlTestInspection(unrelatedForm, unrelatedAsset, schedules[3])
+            };
+
+            context.Assets.AddRange(sharedAsset, sharedUnassignedAsset, assignedAsset, unrelatedAsset);
+            context.PreventiveMaintenanceSchedules.AddRange(schedules);
+            context.PreventiveMaintenanceForms.AddRange(sharedForm, assignedForm, unrelatedForm);
+            context.InspectionRecords.AddRange(inspections);
+            await context.SaveChangesAsync();
+        }
+
+        await using var application = new TestApplicationFactory(
+            roles: [AuthRoleCatalog.Supervisor],
+            sqlConnectionString: database.ConnectionString);
+        using var client = application.CreateClient();
+        var firstPage = await client.GetFromJsonAsync<PreventiveMaintenanceFormPageResponse>(
+            "/api/v1/preventive-maintenance-forms?page=1&pageSize=1");
+        var secondPage = await client.GetFromJsonAsync<PreventiveMaintenanceFormPageResponse>(
+            "/api/v1/preventive-maintenance-forms?page=2&pageSize=1");
+        var unassignedPage = await client.GetFromJsonAsync<PreventiveMaintenanceFormPageResponse>(
+            "/api/v1/preventive-maintenance-forms?supervisor=unassigned&page=1&pageSize=1");
+        var options = await client.GetFromJsonAsync<PreventiveMaintenanceFormOptionsResponse>(
+            "/api/v1/preventive-maintenance-forms/options");
+
+        Assert.NotNull(firstPage);
+        Assert.Equal(2, firstPage.TotalCount);
+        Assert.Equal("PM-SQL-ASSIGNED", Assert.Single(firstPage.Items).FileNumber);
+        Assert.NotNull(secondPage);
+        Assert.Equal(2, secondPage.TotalCount);
+        Assert.Equal("PM-SQL-SHARED", Assert.Single(secondPage.Items).FileNumber);
+        Assert.NotNull(unassignedPage);
+        Assert.Equal(1, unassignedPage.TotalCount);
+        Assert.Equal("PM-SQL-SHARED", Assert.Single(unassignedPage.Items).FileNumber);
+        Assert.NotNull(options);
+        Assert.Equal(2, options.TotalCount);
+        Assert.Equal(["fire-alarm", "fire-extinguisher"], options.Categories);
+        Assert.DoesNotContain("emergency-light", options.Categories);
+        await using var verification = new SqlConnection(database.ConnectionString);
+        await verification.OpenAsync();
+        await using var verificationCommand = verification.CreateCommand();
+        verificationCommand.CommandText = "SELECT CONVERT(int, DATABASEPROPERTYEX(DB_NAME(), 'CompatibilityLevel'));";
+        Assert.Equal(150, Convert.ToInt32(await verificationCommand.ExecuteScalarAsync()));
+    }
+
     [Fact]
     public async Task Schedule_registry_pages_canonical_periods_and_preserves_inspector_scope()
     {
@@ -288,6 +394,88 @@ public sealed class RegistryReadEndpointsTests
         Assert.DoesNotContain(legacyInspections, item =>
             seeded.DraftInspectionIds.Contains(item.Id));
     }
+
+    private static ApplicationUser CreateSqlTestUser(Guid id) => new()
+    {
+        Id = id,
+        UserName = $"form-page-{id:N}@unipm.local",
+        NormalizedUserName = $"FORM-PAGE-{id:N}@UNIPM.LOCAL",
+        Email = $"form-page-{id:N}@unipm.local",
+        NormalizedEmail = $"FORM-PAGE-{id:N}@UNIPM.LOCAL",
+        EmailConfirmed = true,
+        DisplayName = "Synthetic form pagination supervisor",
+        IsActive = true
+    };
+
+    private static PreventiveMaintenanceForm CreateSqlTestForm(
+        string fileNumber,
+        string category,
+        DateTimeOffset createdAt) => new()
+    {
+        Id = Guid.NewGuid(),
+        FileNumber = fileNumber,
+        AssetCategory = category,
+        Department = "GSD",
+        Building = "Synthetic SQL Building",
+        PmCycle = "2026-02",
+        PeriodType = "Quarter",
+        Quarter = "Q1",
+        Year = 2026,
+        Status = PreventiveMaintenanceFormStatusCatalog.Draft,
+        CreatedByUserId = TestAuthenticationHandler.UserId,
+        CreatedAt = createdAt,
+        UpdatedAt = createdAt
+    };
+
+    private static Asset CreateSqlTestAsset(string code, string category) => new()
+    {
+        Id = Guid.NewGuid(),
+        AssetCode = code,
+        AssetCategory = category,
+        Department = "GSD",
+        Building = "Synthetic SQL Building",
+        Location = "Synthetic SQL Location",
+        Status = AssetStatusCatalog.Active,
+        CreatedAt = DateTimeOffset.UtcNow,
+        UpdatedAt = DateTimeOffset.UtcNow
+    };
+
+    private static PreventiveMaintenanceSchedule CreateSqlTestSchedule(
+        Asset asset,
+        Guid? supervisorId) => new()
+    {
+        Id = Guid.NewGuid(),
+        AssetId = asset.Id,
+        Asset = asset,
+        ScheduleDate = new DateTimeOffset(2026, 2, 28, 23, 59, 59, TimeSpan.FromHours(8)),
+        PmCycle = "2026-02",
+        PeriodType = "Quarter",
+        Quarter = "Q1",
+        Year = 2026,
+        Status = ScheduleStatusCatalog.Due,
+        AssignedSupervisorUserId = supervisorId,
+        CreatedAt = DateTimeOffset.UtcNow,
+        UpdatedAt = DateTimeOffset.UtcNow
+    };
+
+    private static InspectionRecord CreateSqlTestInspection(
+        PreventiveMaintenanceForm form,
+        Asset asset,
+        PreventiveMaintenanceSchedule schedule) => new()
+    {
+        Id = Guid.NewGuid(),
+        ScheduleId = schedule.Id,
+        Schedule = schedule,
+        AssetId = asset.Id,
+        Asset = asset,
+        PreventiveMaintenanceFormId = form.Id,
+        PreventiveMaintenanceForm = form,
+        InspectorUserId = TestAuthenticationHandler.UserId,
+        DateInspected = schedule.ScheduleDate,
+        IsOperational = true,
+        CreatedAt = DateTimeOffset.UtcNow,
+        UpdatedAt = DateTimeOffset.UtcNow
+    };
 
     private sealed class TestApplicationFactory(
         string[]? roles = null,

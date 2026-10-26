@@ -160,8 +160,11 @@ The scoped CPMP schedule months are February, May, August, and November for
 fire extinguishers and water drinking stations, and June and December for fire
 alarms and emergency lights. The selected month gives the `YYYY-MM` PM cycle.
 UniPM derives the deadline from the final instant of that month in
-Asia/Manila time. `InspectionRecord.CompletedAt` remains the actual field-work
-completion time.
+Asia/Manila time. `InspectionRecord.CompletedAt` records the first
+server-accepted save of a completed row and is the compliance clock. It is
+separate from the entered inspection date and does not independently verify
+physical field-work time. Offline work accepted after the deadline can count
+as late even when it was entered on the device earlier.
 
 This category schedule follows Section 2.4.2 of the CPMP manual (PDF page 3).
 Section 2.7 (PDF page 19) separately describes Water Drinking Stations as

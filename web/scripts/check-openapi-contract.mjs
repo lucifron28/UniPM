@@ -357,6 +357,11 @@ const preventiveMaintenanceFormOperations = [
     'ListPreventiveMaintenanceForms',
   ],
   [
+    '/api/v1/preventive-maintenance-forms/options',
+    'get',
+    'GetPreventiveMaintenanceFormOptions',
+  ],
+  [
     '/api/v1/preventive-maintenance-forms/{id}',
     'get',
     'GetPreventiveMaintenanceForm',
@@ -840,6 +845,98 @@ for (const [path, method, operationId] of preventiveMaintenanceFormOperations) {
       `Missing required preventive-maintenance form operation: ${operationId}.`,
     )
   }
+}
+
+const preventiveMaintenanceFormList =
+  snapshot.paths?.['/api/v1/preventive-maintenance-forms']?.get
+const preventiveMaintenanceFormListSchema =
+  preventiveMaintenanceFormList?.responses?.['200']?.content?.[
+    'application/json'
+  ]?.schema
+if (
+  preventiveMaintenanceFormListSchema?.$ref !==
+  '#/components/schemas/PreventiveMaintenanceFormPageResponse'
+) {
+  throw new Error(
+    'ListPreventiveMaintenanceForms must return PreventiveMaintenanceFormPageResponse.',
+  )
+}
+
+for (const name of ['page', 'pageSize', 'supervisor']) {
+  if (
+    !preventiveMaintenanceFormList?.parameters?.some(
+      (parameter) => parameter.name === name,
+    )
+  ) {
+    throw new Error(
+      `ListPreventiveMaintenanceForms is missing its ${name} parameter.`,
+    )
+  }
+}
+
+const formPageProperties =
+  snapshot.components?.schemas?.PreventiveMaintenanceFormPageResponse
+    ?.properties
+const formPageRequired = new Set(
+  snapshot.components?.schemas?.PreventiveMaintenanceFormPageResponse
+    ?.required ?? [],
+)
+if (
+  !formPageProperties?.items ||
+  formPageProperties.items.type !== 'array' ||
+  formPageProperties.items.items?.$ref !==
+    '#/components/schemas/PreventiveMaintenanceFormResponse' ||
+  !formPageProperties.page ||
+  !formPageProperties.pageSize ||
+  !formPageProperties.totalCount ||
+  ['items', 'page', 'pageSize', 'totalCount'].some(
+    (field) => !formPageRequired.has(field),
+  )
+) {
+  throw new Error(
+    'PreventiveMaintenanceFormPageResponse is missing its item or pagination fields.',
+  )
+}
+
+const formOptionsOperation =
+  snapshot.paths?.['/api/v1/preventive-maintenance-forms/options']?.get
+const formOptionsSchema =
+  formOptionsOperation?.responses?.['200']?.content?.['application/json']
+    ?.schema
+if (
+  formOptionsSchema?.$ref !==
+  '#/components/schemas/PreventiveMaintenanceFormOptionsResponse'
+) {
+  throw new Error(
+    'GetPreventiveMaintenanceFormOptions must return PreventiveMaintenanceFormOptionsResponse.',
+  )
+}
+
+const formOptionsProperties =
+  snapshot.components?.schemas?.PreventiveMaintenanceFormOptionsResponse
+    ?.properties
+const formOptionsRequired = new Set(
+  snapshot.components?.schemas?.PreventiveMaintenanceFormOptionsResponse
+    ?.required ?? [],
+)
+if (
+  !formOptionsProperties?.categories ||
+  formOptionsProperties.categories.type !== 'array' ||
+  formOptionsProperties.categories.items?.type !== 'string' ||
+  !formOptionsProperties.departments ||
+  formOptionsProperties.departments.type !== 'array' ||
+  formOptionsProperties.departments.items?.type !== 'string' ||
+  !formOptionsProperties.pmCycles ||
+  formOptionsProperties.pmCycles.type !== 'array' ||
+  formOptionsProperties.pmCycles.items?.type !== 'string' ||
+  !formOptionsProperties.totalCount ||
+  ['categories', 'departments', 'pmCycles', 'totalCount'].some(
+    (field) => !formOptionsRequired.has(field),
+  )
+) {
+  throw new Error(
+    'PreventiveMaintenanceFormOptionsResponse is missing its filter values or totalCount.',
+  )
 }
 
 for (const [path, method, operationId, status] of pmPeriodDashboardOperations) {

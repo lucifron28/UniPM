@@ -54,6 +54,13 @@ untracked `android/key.properties` file and its referenced keystore. Release
 configuration never falls back to the debug keystore. A release artifact built
 without project-owned signing material is not a distributable signed package.
 
+The Android package ID is `io.github.lucifron28.unipm`. It installs separately
+from the previous `com.example.mobile` app, and encrypted offline work is not
+migrated automatically. Before moving to the new app, sign in to the existing
+app and sync or recover its pending work while the old app and array-form API
+response are still supported. Keep the old app installed until that work is
+confirmed; do not uninstall it as part of the upgrade.
+
 ## Authentication Boundary
 
 The client uses the existing `/api/v1/auth/login`, `/api/v1/auth/me`, and
@@ -89,14 +96,17 @@ idempotent; stale row updates remain queued as conflicts for review rather than
 overwriting newer server data.
 
 The mobile authentication session remains memory-only, so the same account
-must sign in again after an app restart before queued work can sync. Location
-verification, photo evidence, form submission, and acknowledgement remain
-online-only. A queued or conflicted form cannot be submitted. Sign-out locks the
-in-memory cache and preserves encrypted queued work for that account.
+must sign in again after an app restart before queued work can sync. Photo
+evidence, form submission, and acknowledgement remain online-only. A queued or
+conflicted form cannot be submitted. Sign-out locks the in-memory cache and
+preserves encrypted queued work for that account.
 
 The **Scan asset QR** entry sends the complete scanned UniPM QR value to the
 authenticated backend asset lookup. Backend asset data remains authoritative;
 the mobile app does not derive an asset identity or category from the QR text.
+The lookup identifies an asset record; it does not prove physical presence.
+The app does not capture device coordinates, and any location data supplied by
+a client is advisory only.
 Eligible schedules are requested for the returned asset ID. The worker chooses
 when more than one applicable schedule exists, then starts a derived Draft,
 reuses a compatible Draft, chooses between multiple compatible Drafts, or

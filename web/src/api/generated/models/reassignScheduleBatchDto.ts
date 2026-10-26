@@ -6,7 +6,6 @@
  */
 
 export interface ReassignScheduleBatchDto {
-  assigneeUserId: string
-  /** @maxLength 500 */
-  reason: string
+  assigneeUserId?: string
+  reason?: string
 }

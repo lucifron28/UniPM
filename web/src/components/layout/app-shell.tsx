@@ -22,6 +22,7 @@ import { LogoutButton } from '@/features/auth/logout-button'
 import { useCurrentUser } from '@/features/auth/current-user'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
+  canReadOperationalData,
   canReadSchedules,
   canReviewForms,
   getRequiredAppRoles,
@@ -240,6 +241,8 @@ export function AppShell() {
   const hasPageAccess =
     requiredRoles === null ||
     (currentUser.isSuccess && hasAnyRole(roles, requiredRoles))
+  const showOperationalNavigation =
+    currentUser.isSuccess && canReadOperationalData(roles)
   const showSchedules = currentUser.isSuccess && canReadSchedules(roles)
   const showFormReview = currentUser.isSuccess && canReviewForms(roles)
   const showAdmin = currentUser.isSuccess && roles.includes('Admin')
@@ -248,9 +251,14 @@ export function AppShell() {
       to: '/app/dashboard',
       label: 'Dashboard',
       icon: LayoutDashboard,
-      visible: true,
+      visible: showOperationalNavigation,
     },
-    { to: '/app/assets', label: 'Assets', icon: Boxes, visible: true },
+    {
+      to: '/app/assets',
+      label: 'Assets',
+      icon: Boxes,
+      visible: showOperationalNavigation,
+    },
     {
       to: '/app/schedules',
       label: 'Schedules',
@@ -261,7 +269,7 @@ export function AppShell() {
       to: '/app/inspections',
       label: 'Inspections',
       icon: ClipboardCheck,
-      visible: true,
+      visible: showOperationalNavigation,
     },
     {
       to: '/app/preventive-maintenance-forms',

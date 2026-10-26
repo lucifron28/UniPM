@@ -20,6 +20,19 @@ record's evidence level and tested/source commit.
 
 | ID | Type | Title | Status | Evidence level | Tested/source commit | Record | Note |
 |---|---|---|---|---|---|---|---|
+| TEST-164 | test-run | Preserved redesign integration and NLA scope corrections | executed | locally-executed | `545b531b32f709df001257e9612fc5a0a677bc72` | [record](test-runs/TEST-164-preserved-redesign-integration.md) | NLA 24/24 and browser 2/2 passed; changed-component lint and production build passed. Explicit ordering, combined thresholds and visible drilldown status corrected. Earlier failures retained; no new full-suite, provider or device acceptance. |
+| TEST-163 | test-run | Final available capstone remediation regression | executed | locally-executed | `d6c2e9d1f576754e9635f948bd814f98605d8c5e`; component checks at `ac5787c` | [record](test-runs/TEST-163-final-capstone-remediation-regression.md) | Backend 672 passed/1 provider skip; web 270 passed; browser 60 passed/1 live skip; Flutter 194 passed and debug APK built. Native SQL fixtures passed. Earlier failures and source-identity reuse retained. No deployment, physical-device or new live-provider acceptance. |
+| TEST-162 | test-run | Mobile identity and release boundary review | executed | locally-executed | `8cea97a` | [record](test-runs/TEST-162-mobile-release-boundaries.md) | QR eight and URL configuration four passed, analyzer clean. Source release controls reviewed; no signing credentials or device available. |
+| TEST-161 | test-run | Authorized form pagination and bounded report scale | executed | locally-executed | backend `03ba54b`; clients `1dd8a75`/`30beffb`/`2d39255` | [record](test-runs/TEST-161-authorized-pagination-and-bounded-scale.md) | Scoped backend 22, InMemory scale one, native SQL scale one, mobile 48 and web 24 passed; eleven negative contract checks passed. Single-run measurements, no SLA claim. |
+| TEST-160 | test-run | Current asset metadata and historical report semantics | executed | locally-executed | `589bba8`; clients `4d4ad5c`/`589bba8` | [record](test-runs/TEST-160-current-asset-metadata-semantics.md) | Transfer/report/history filter 4 passed; focused mobile/web displays passed. Current grouping retained, recorded form header unchanged. |
+| TEST-159 | test-run | Acknowledgement integrity and capture-operator presentation | executed | locally-executed | backend `41b988e`; clients `a634282`/`6b28909` | [record](test-runs/TEST-159-acknowledgement-integrity-remediation.md) | Backend 46 passed including concurrent native SQL acknowledgement; mobile 11 and web 21 passed. No cryptographic identity claim. |
+| TEST-158 | test-run | Offline storage failure and account isolation recovery | executed | locally-executed | `e5d739c`/`3b895e3` | [record](test-runs/TEST-158-offline-storage-isolation-recovery.md) | Offline repository 24 and session widgets 10 passed, analysis clean. Injected failures, no physical-device storage claim. |
+| TEST-157 | test-run | NLA routing and deterministic evaluation remediation | executed | locally-executed | backend `b8f5522`; client `0087179` | [record](test-runs/TEST-157-nla-routing-remediation.md) | Backend 69 passed; frozen parser 18/18, 69/69; native V3 SQL 1 passed; UI 19 passed. Fake provider orchestration only. |
+| TEST-156 | test-run | Completion clocks and offline recovery verification | executed | locally-executed | backend `ca2b312`; clients `100007f2`/`0087179` | [record](test-runs/TEST-156-completion-clocks-and-offline-recovery.md) | Backend 63 passed; isolated native SQL2019 1 passed with cleanup; mobile 20+1+11+1 passed; web 7+21, analysis/typecheck/lint/format passed. Includes test-driver attempts and Phase2 lint-metadata correction. |
+| TEST-155 | test-run | Capstone operational authorization correction | executed | locally-executed | backend `a82ab836`; web `a82ab836`/`f0ea643` | [record](test-runs/TEST-155-capstone-operational-authorization.md) | Backend 188 passed/1 skipped plus 28 passed; web role 27 and form 21 passed, typecheck/lint passed. SQL execution remains separate. |
+| TEST-154 | test-run | Capstone remediation web regression recovery | executed | locally-executed | `3e166f4`; final default checks `bb3f127` | [record](test-runs/TEST-154-capstone-remediation-web-recovery.md) | Default web unit tests 256/256; browser 60 passed/1 skipped; format/lint/typecheck passed. Preserves failed prior attempts in TEST-153. |
+| TEST-153 | test-run | Capstone remediation Phase 1 verification and blockers | executed | locally-executed | backend `ca81bf8`; web identities in record, latest `9b143d1` | [record](test-runs/TEST-153-capstone-remediation-phase1.md) | Backend 597 passed/50 skipped; web build/typecheck passed; unit and browser failures remain. No passing frontend CI claim. |
+| TEST-152 | test-run | Capstone remediation baseline | executed | locally-executed | `bdc07caeeb37c31ca7b524b7ef45cde5824a783c`; lint at documentation-only `0591182` | [record](test-runs/TEST-152-capstone-remediation-baseline.md) | Backend 593 passed, 2 failed, 50 skipped; web ref lint reproduced on Node 22; Flutter analysis passed. No SQL/device/provider verification. |
 | TEST-141 | test-run | Controlled backend numerical and source-selection verification | executed | locally-executed | `89cdc38820e828bf66bab1fa5822236a73f1548c`, capture identity retained | [record](test-runs/TEST-141-controlled-nla-numerical-verification.md) | 10 controlled InMemory scenarios; 75/75 field matches after one numeric-representation checker correction. No SQL/provider/deployment operations. |
 | TEST-140 | test-run | Controlled numerical capture build blocker | executed | locally-executed | `89cdc38820e828bf66bab1fa5822236a73f1548c`, capture tool hashes retained locally | [record](test-runs/TEST-140-numerical-capture-build-blocker.md) | API executable locked during build. Zero numerical cases executed; no captured values or pass claims. |
 | TEST-139 | test-run | Researcher-reviewed deterministic NLA development evaluation | reviewed | locally-executed | `79852bf075ca082781365bdeb5981e8a2d0422a2`, revised frozen corpus hash in record | [record](test-runs/TEST-139-researcher-reviewed-nla-development-score.md) | 18/18 declared outcomes and 69/69 assertions matched. Researcher approval; two labels revised after diagnostics. Not DeepSeek, held-out, numerical or GSD acceptance evidence. |
@@ -240,9 +253,16 @@ record's evidence level and tested/source commit.
 
 ## Pending evidence
 
-- NLA V3 Phase 5: independent question-label review and corpus freeze, a
-  positive V3 scoring run, native SQL Server 2019 integration, and GSD
-  task-success acceptance remain pending. The focused browser scenario passed
+The October 25 [remediation report](../planning/capstone-remediation-2026-10-25.md)
+and TEST-156/157/159/161 add focused native SQL Server 2019 checks on their
+identified source versions. TEST-139 already completed the researcher-reviewed
+positive development-corpus run. Historical record limitations remain as
+recorded; broader acceptance and independent evaluation stay separate.
+
+- NLA V3 Phase 5: independent label review, held-out evaluation and GSD
+  task-success acceptance remain pending. TEST-139 records the completed
+  researcher-reviewed frozen development scoring run. Native SQL PM checks
+  are now recorded separately above. The focused browser scenario passed
   locally in TEST-113; full browser/accessibility acceptance remains open.
   Exact integration branch CI is recorded in TEST-123; no provider or held-out
   evaluation was run.

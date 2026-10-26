@@ -60,6 +60,7 @@ Map<String, dynamic> _submittedFormJson({bool includeAssetMetadata = true}) =>
           if (includeAssetMetadata) 'location': 'Room 101',
           'inspectorUserId': inspectorId,
           'dateInspected': '2026-02-09T16:30:00Z',
+          'completedAt': '2026-02-10T08:45:00Z',
           'isOperational': false,
           'remarks': 'Low pressure',
           'actionsRecommendations': 'Inspect gauge',
@@ -268,11 +269,16 @@ void main() {
     expect(find.text('Awaiting acknowledgement'), findsOneWidget);
     expect(find.text('Fire Extinguisher'), findsOneWidget);
     expect(find.text('GSD · Main Building'), findsOneWidget);
+    expect(
+      find.text('Asset code and location below reflect current asset records.'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('Submitted to server:'), findsOneWidget);
     expect(find.text('1 total'), findsOneWidget);
     expect(find.text('0 operational'), findsOneWidget);
     expect(find.text('1 non-operational'), findsOneWidget);
     expect(find.text('FE-2026-0001'), findsOneWidget);
-    expect(find.text('Room 101'), findsOneWidget);
+    expect(find.text('Current asset location: Room 101'), findsOneWidget);
     expect(find.text('Non-operational'), findsOneWidget);
     expect(find.text('Remarks: Low pressure'), findsOneWidget);
     expect(find.text('Recommendations: Inspect gauge'), findsOneWidget);
@@ -287,7 +293,11 @@ void main() {
     final localInspectionDate = DateTime.parse(
       '2026-02-09T16:30:00Z',
     ).toLocal().toIso8601String().substring(0, 10);
-    expect(find.text('Inspection date: $localInspectionDate'), findsOneWidget);
+    expect(
+      find.text('Inspection date entered by inspector: $localInspectionDate'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('Server recorded completion:'), findsOneWidget);
     expect(find.text('Remarks: Low pressure'), findsOneWidget);
     expect(find.text('Recommendations: Inspect gauge'), findsOneWidget);
     expect(find.textContaining(inspectionId), findsNothing);
@@ -332,7 +342,7 @@ void main() {
     await tester.tap(row);
     await tester.pumpAndSettle();
     expect(find.text('Asset details unavailable'), findsOneWidget);
-    expect(find.text('Location not recorded'), findsOneWidget);
+    expect(find.text('Current asset location not recorded'), findsOneWidget);
     expect(find.textContaining(inspectionId), findsNothing);
     expect(find.textContaining(scheduleId), findsNothing);
     controller.dispose();
@@ -408,7 +418,9 @@ void main() {
       final finalDate = DateTime.parse(
         '2026-02-09T16:53:00Z',
       ).toLocal().toIso8601String().substring(0, 10);
-      final finalInspection = find.text('Inspection date: $finalDate');
+      final finalInspection = find.text(
+        'Inspection date entered by inspector: $finalDate',
+      );
       await tester.scrollUntilVisible(
         finalInspection.hitTestable(),
         200,
@@ -757,6 +769,13 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    expect(
+      find.text(
+        'Enter the Department Head\'s name, position, and signature. '
+        'UniPM records the signed-in account submitting this receipt separately.',
+      ),
+      findsOneWidget,
+    );
     await tester.enterText(
       find.byKey(const Key('ack-signatory-name')),
       'Synthetic Department Head',
@@ -814,9 +833,6 @@ void main() {
     expect(find.byKey(const Key('acknowledgement-receipt')), findsOneWidget);
     expect(find.text('Form acknowledged'), findsOneWidget);
     expect(find.text('PM form details'), findsOneWidget);
-    final acknowledgedAt = DateTime.parse(
-      '2026-02-10T09:00:00Z',
-    ).toLocal().toIso8601String().replaceFirst('T', ' ').substring(0, 16);
     final receipt = find.byKey(const Key('acknowledgement-receipt'));
     expect(
       find.descendant(of: receipt, matching: find.text('PM-2026-0001')),
@@ -839,7 +855,16 @@ void main() {
     expect(
       find.descendant(
         of: receipt,
-        matching: find.text('Acknowledged: $acknowledgedAt'),
+        matching: find.text(
+          'Recorded by: Synthetic Inspector (account $inspectorId)',
+        ),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: receipt,
+        matching: find.text('Acknowledged: 2026-02-10 17:00 Asia/Manila'),
       ),
       findsOneWidget,
     );

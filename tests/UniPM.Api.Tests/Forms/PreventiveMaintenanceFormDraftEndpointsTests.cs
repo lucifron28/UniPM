@@ -24,9 +24,9 @@ public sealed class PreventiveMaintenanceFormDraftEndpointsTests
         "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl2lD8AAAAASUVORK5CYII=";
 
     [Fact]
-    public async Task Admin_can_create_a_valid_draft_inspection_row()
+    public async Task Admin_with_gsd_role_can_create_a_valid_draft_inspection_row()
     {
-        await using var application = new TestApplicationFactory(AuthRoleCatalog.Admin);
+        await using var application = new TestApplicationFactory(AuthRoleCatalog.Admin, AuthRoleCatalog.Gsd);
         using var client = application.CreateClient();
         await application.EnsureAuthenticatedUserAsync();
         var asset = await CreateAssetAsync(client, "FE-ADMIN-MANAGE-001", "fire-extinguisher");
@@ -152,9 +152,11 @@ public sealed class PreventiveMaintenanceFormDraftEndpointsTests
             actionsRecommendations = (string?)null
         };
 
+        var requestStartedAt = DateTimeOffset.UtcNow;
         var first = await client.PostAsJsonAsync(
             $"/api/v1/preventive-maintenance-forms/{form.Id}/inspections",
             request);
+        var firstResponseReceivedAt = DateTimeOffset.UtcNow;
         var firstRow = await first.Content.ReadFromJsonAsync<DraftInspectionRowResponse>();
         var retry = await client.PostAsJsonAsync(
             $"/api/v1/preventive-maintenance-forms/{form.Id}/inspections",
@@ -167,10 +169,18 @@ public sealed class PreventiveMaintenanceFormDraftEndpointsTests
         Assert.NotNull(retryRow);
         Assert.Equal(inspectionId, firstRow.Id);
         Assert.Equal(firstRow.Id, retryRow.Id);
+        Assert.Equal(request.dateInspected, firstRow.DateInspected);
+        Assert.NotNull(firstRow.CompletedAt);
+        Assert.InRange(firstRow.CompletedAt.Value, requestStartedAt, firstResponseReceivedAt);
+        Assert.NotEqual(firstRow.DateInspected, firstRow.CompletedAt);
+        Assert.Equal(firstRow.CompletedAt, retryRow.CompletedAt);
         await using var scope = application.Services.CreateAsyncScope();
         var factory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
         await using var context = await factory.CreateDbContextAsync();
         Assert.Equal(1, await context.InspectionRecords.CountAsync(row => row.ScheduleId == schedule.Id));
+        var persisted = await context.InspectionRecords.SingleAsync(row => row.ScheduleId == schedule.Id);
+        Assert.Equal(request.dateInspected, persisted.DateInspected);
+        Assert.Equal(firstRow.CompletedAt, persisted.CompletedAt);
     }
 
     [Fact]

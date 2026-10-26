@@ -20,11 +20,16 @@ public static class InspectionsEndpoints
 
         group.MapGet("/history/{assetId}", async (
             Guid assetId,
+            ClaimsPrincipal principal,
             IDbContextFactory<ApplicationDbContext> factory,
             CancellationToken cancellationToken) =>
         {
             await using var context = await factory.CreateDbContextAsync(cancellationToken);
+            var readableForms = context.PreventiveMaintenanceForms
+                .AsNoTracking()
+                .WhereReadableTo(principal);
             var history = await context.InspectionRecords
+                .WhereReadableTo(principal, readableForms)
                 .WhereOfficial()
                 .Where(i => i.AssetId == assetId)
                 .OrderByDescending(i => i.DateInspected)
@@ -44,7 +49,8 @@ public static class InspectionsEndpoints
         })
         .WithName("GetInspectionHistory")
         .WithSummary("Gets inspection history for an asset")
-        .Produces<List<InspectionHistoryResponse>>(StatusCodes.Status200OK);
+        .Produces<List<InspectionHistoryResponse>>(StatusCodes.Status200OK)
+        .RequireAuthorization(AuthPolicyCatalog.CanReadOperationalData);
 
         group.MapGet("/{id}/wms-referral", async (
             Guid id,
@@ -254,6 +260,7 @@ public static class InspectionsEndpoints
             string? wmsReferralStatus,
             int? page,
             int? pageSize,
+            ClaimsPrincipal principal,
             IDbContextFactory<ApplicationDbContext> factory,
             CancellationToken cancellationToken) =>
         {
@@ -283,9 +290,13 @@ public static class InspectionsEndpoints
             }
 
             await using var context = await factory.CreateDbContextAsync(cancellationToken);
+            var readableForms = context.PreventiveMaintenanceForms
+                .AsNoTracking()
+                .WhereReadableTo(principal);
             var officialQuery = context.InspectionRecords
                 .AsNoTracking()
-                .WhereOfficial();
+                .WhereOfficial()
+                .WhereReadableTo(principal, readableForms);
             var query = ApplyInspectionRegistryFilters(
                 officialQuery,
                 assetId,
@@ -359,11 +370,12 @@ public static class InspectionsEndpoints
         .WithSummary("Lists a bounded page of acknowledged or legacy official inspections for the web registry")
         .Produces<InspectionRegistryPageResponse>(StatusCodes.Status200OK)
         .Produces<Microsoft.AspNetCore.Mvc.ValidationProblemDetails>(StatusCodes.Status400BadRequest)
-        .RequireAuthorization();
+        .RequireAuthorization(AuthPolicyCatalog.CanReadOperationalData);
 
         group.MapGet("/registry/options", async (
             string? assetCategory,
             string? department,
+            ClaimsPrincipal principal,
             IDbContextFactory<ApplicationDbContext> factory,
             CancellationToken cancellationToken) =>
         {
@@ -394,9 +406,13 @@ public static class InspectionsEndpoints
             }
 
             await using var context = await factory.CreateDbContextAsync(cancellationToken);
+            var readableForms = context.PreventiveMaintenanceForms
+                .AsNoTracking()
+                .WhereReadableTo(principal);
             var officialQuery = context.InspectionRecords
                 .AsNoTracking()
-                .WhereOfficial();
+                .WhereOfficial()
+                .WhereReadableTo(principal, readableForms);
             var categoryQuery = officialQuery;
             if (normalizedCategory is not null)
             {
@@ -441,16 +457,21 @@ public static class InspectionsEndpoints
         .WithSummary("Lists lightweight official inspection filter options")
         .Produces<InspectionRegistryOptionsResponse>(StatusCodes.Status200OK)
         .Produces<Microsoft.AspNetCore.Mvc.ValidationProblemDetails>(StatusCodes.Status400BadRequest)
-        .RequireAuthorization();
+        .RequireAuthorization(AuthPolicyCatalog.CanReadOperationalData);
 
         group.MapGet("/registry/summary", async (
+            ClaimsPrincipal principal,
             IDbContextFactory<ApplicationDbContext> factory,
             CancellationToken cancellationToken) =>
         {
             await using var context = await factory.CreateDbContextAsync(cancellationToken);
+            var readableForms = context.PreventiveMaintenanceForms
+                .AsNoTracking()
+                .WhereReadableTo(principal);
             var groupedCounts = await context.InspectionRecords
                 .AsNoTracking()
                 .WhereOfficial()
+                .WhereReadableTo(principal, readableForms)
                 .GroupBy(inspection => new
                 {
                     inspection.IsOperational,
@@ -487,7 +508,7 @@ public static class InspectionsEndpoints
         .WithName("GetInspectionRegistrySummary")
         .WithSummary("Returns overall official inspection totals")
         .Produces<InspectionRegistrySummaryResponse>(StatusCodes.Status200OK)
-        .RequireAuthorization();
+        .RequireAuthorization(AuthPolicyCatalog.CanReadOperationalData);
 
         group.MapGet("/", async (
             Guid? assetId,
@@ -499,6 +520,7 @@ public static class InspectionsEndpoints
             string? assetCategory,
             string? search,
             string? wmsReferralStatus,
+            ClaimsPrincipal principal,
             IDbContextFactory<ApplicationDbContext> factory,
             CancellationToken cancellationToken) =>
         {
@@ -547,9 +569,13 @@ public static class InspectionsEndpoints
             }
 
             await using var context = await factory.CreateDbContextAsync(cancellationToken);
+            var readableForms = context.PreventiveMaintenanceForms
+                .AsNoTracking()
+                .WhereReadableTo(principal);
             var query = context.InspectionRecords
                 .AsNoTracking()
                 .WhereOfficial()
+                .WhereReadableTo(principal, readableForms)
                 .AsQueryable();
 
             if (assetId is not null)
@@ -655,16 +681,22 @@ public static class InspectionsEndpoints
         .WithName("ListInspections")
         .WithSummary("Lists inspection records using supported metadata filters")
         .Produces<List<InspectionResponse>>(StatusCodes.Status200OK)
-        .Produces<Microsoft.AspNetCore.Mvc.ValidationProblemDetails>(StatusCodes.Status400BadRequest);
+        .Produces<Microsoft.AspNetCore.Mvc.ValidationProblemDetails>(StatusCodes.Status400BadRequest)
+        .RequireAuthorization(AuthPolicyCatalog.CanReadOperationalData);
 
         group.MapGet("/{id}", async (
             Guid id,
+            ClaimsPrincipal principal,
             IDbContextFactory<ApplicationDbContext> factory,
             CancellationToken cancellationToken) =>
         {
             await using var context = await factory.CreateDbContextAsync(cancellationToken);
+            var readableForms = context.PreventiveMaintenanceForms
+                .AsNoTracking()
+                .WhereReadableTo(principal);
             var inspection = await context.InspectionRecords
                 .AsNoTracking()
+                .WhereReadableTo(principal, readableForms)
                 .Include(candidate => candidate.WmsReferral)
                 .Include(candidate => candidate.PhotoEvidence)
                 .WhereOfficial()
@@ -677,7 +709,8 @@ public static class InspectionsEndpoints
         .WithName("GetInspection")
         .WithSummary("Gets an inspection record by its identifier")
         .Produces<InspectionResponse>(StatusCodes.Status200OK)
-        .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status404NotFound);
+        .Produces<Microsoft.AspNetCore.Mvc.ProblemDetails>(StatusCodes.Status404NotFound)
+        .RequireAuthorization(AuthPolicyCatalog.CanReadOperationalData);
 
         return endpoints;
     }

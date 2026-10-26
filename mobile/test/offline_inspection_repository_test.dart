@@ -140,6 +140,21 @@ void main() {
 
       final form = await repository.createForm(_createInput());
       final row = await repository.addInspection(form.id, _addInput());
+      final deviceSavedAt = row.completedAt;
+      expect(deviceSavedAt, isNotNull);
+      final queuedSnapshot =
+          jsonDecode(store.values[_userA]!) as Map<String, dynamic>;
+      final queuedWrites = (queuedSnapshot['writes'] as List<dynamic>)
+          .cast<Map<String, dynamic>>();
+      final queuedInspection = queuedWrites.singleWhere(
+        (write) => write['kind'] == 'addInspection',
+      );
+      expect(
+        (queuedInspection['data'] as Map<String, dynamic>).containsKey(
+          'completedAt',
+        ),
+        isFalse,
+      );
       await expectLater(
         repository.addInspection(form.id, _addInput()),
         throwsA(isA<ApiException>()),
@@ -189,6 +204,19 @@ void main() {
       expect(remote.forms.single.id, form.id);
       expect(remote.forms.single.inspections, hasLength(1));
       expect(remote.forms.single.inspections.single.id, row.id);
+      final serverCompletionAt = DateTime.utc(2026, 2, 20, 10);
+      expect(
+        remote.forms.single.inspections.single.completedAt,
+        serverCompletionAt,
+      );
+      expect(
+        remote.forms.single.inspections.single.completedAt,
+        isNot(deviceSavedAt),
+      );
+      expect(
+        (await repository.getForm(form.id)).inspections.single.completedAt,
+        serverCompletionAt,
+      );
       expect(remote.addedInspectionIds, [row.id, row.id]);
     },
   );
@@ -214,6 +242,194 @@ void main() {
       expect((await repository.getForm(form.id)).id, form.id);
     },
   );
+
+  test(
+    'failed explicit logout keeps the owner and queued work active for retry',
+    () async {
+      await repository.activate(_userA);
+      await repository.listSchedules();
+      connectivity.setConnected(false);
+      remote.connected = false;
+      final form = await repository.createForm(_createInput());
+      expect(repository.pendingCount, 1);
+
+      store.failNextWrite = true;
+      await expectLater(
+        repository.addInspection(form.id, _addInput()),
+        throwsA(isA<StateError>()),
+      );
+      final unsavedRow = (await repository.getForm(form.id)).inspections.single;
+      expect(repository.pendingCount, 2);
+      final storedSnapshot =
+          jsonDecode(store.values[_userA]!) as Map<String, dynamic>;
+      expect(storedSnapshot['writes'], hasLength(1));
+
+      store.failNextWrite = true;
+      await expectLater(repository.deactivate(), throwsA(isA<StateError>()));
+
+      expect(repository.isActiveFor(_userA), isTrue);
+      expect(repository.pendingCount, 2);
+      expect((await repository.getForm(form.id)).id, form.id);
+      expect(
+        (await repository.getForm(form.id)).inspections.single.id,
+        unsavedRow.id,
+      );
+
+      await repository.deactivate();
+      expect(repository.activeUserId, isNull);
+      expect(store.values[_userA], contains(form.id));
+
+      repository.dispose();
+      repository = createRepository();
+      await repository.activate(_userA);
+      expect(repository.pendingCount, 2);
+      expect((await repository.getForm(form.id)).id, form.id);
+      expect(
+        (await repository.getForm(form.id)).inspections.single.id,
+        unsavedRow.id,
+      );
+    },
+  );
+
+  test(
+    'failed account switch locks retained work until its owner signs in again',
+    () async {
+      connectivity.setConnected(false);
+      remote.connected = false;
+      await repository.activate(_userA);
+      final form = await repository.createForm(_createInput());
+      expect(repository.pendingCount, 1);
+
+      store.failNextWrite = true;
+      await expectLater(
+        repository.deactivate(lockOnFailure: true),
+        throwsA(isA<StateError>()),
+      );
+      expect(repository.activeUserId, isNull);
+      expect(repository.isActiveFor(_userA), isFalse);
+
+      await repository.activate(_userB);
+      expect(repository.isActiveFor(_userB), isFalse);
+      await expectLater(repository.listForms(), throwsA(isA<StateError>()));
+      expect(store.values[_userA], contains(form.id));
+
+      await repository.activate(_userA);
+      expect(repository.isActiveFor(_userA), isTrue);
+      expect(repository.pendingCount, 1);
+      expect((await repository.getForm(form.id)).id, form.id);
+
+      await repository.deactivate();
+      remote.connected = true;
+      await repository.activate(_userB);
+      expect(repository.isActiveFor(_userB), isTrue);
+      expect(repository.pendingCount, 0);
+      expect(await repository.listForms(), isEmpty);
+    },
+  );
+
+  test('forced scope exit stops sync before the next queued write', () async {
+    await repository.activate(_userA);
+    await repository.listSchedules();
+    connectivity.setConnected(false);
+    remote.connected = false;
+
+    final form = await repository.createForm(_createInput());
+    final row = await repository.addInspection(form.id, _addInput());
+    expect(repository.pendingCount, 2);
+
+    final createStarted = Completer<void>();
+    final heldCreate = Completer<PreventiveMaintenanceForm>();
+    remote.createFormStarted = createStarted;
+    remote.heldCreateForm = heldCreate;
+    remote.connected = true;
+    connectivity.connected = true;
+
+    final sync = repository.syncNow();
+    await createStarted.future.timeout(const Duration(seconds: 3));
+    final scopeExit = repository.deactivate(lockOnFailure: true);
+    expect(repository.isActiveFor(_userA), isFalse);
+
+    final acceptedForm = _form(
+      id: form.id,
+      inspections: const <PreventiveMaintenanceInspection>[],
+    );
+    remote.forms = [acceptedForm];
+    heldCreate.complete(acceptedForm);
+    await sync.timeout(const Duration(seconds: 3));
+    await scopeExit.timeout(const Duration(seconds: 3));
+
+    expect(remote.createFormCalls, 1);
+    expect(remote.addedInspectionIds, isEmpty);
+    final snapshot = jsonDecode(store.values[_userA]!) as Map<String, dynamic>;
+    expect(snapshot['writes'], hasLength(2));
+
+    remote.connected = false;
+    connectivity.connected = false;
+    await repository.activate(_userA);
+    expect(repository.pendingCount, 2);
+    expect((await repository.getForm(form.id)).inspections.single.id, row.id);
+  });
+
+  test(
+    'forced exit releases an unreadable empty scope without changing its snapshot',
+    () async {
+      const unreadableSnapshot = 'preserve these unreadable snapshot bytes';
+      store.values[_userA] = unreadableSnapshot;
+      store.failNextRead = true;
+
+      await repository.activate(_userA);
+      expect(repository.isActiveFor(_userA), isFalse);
+      await repository.deactivate(lockOnFailure: true);
+
+      expect(repository.activeUserId, isNull);
+      expect(store.values[_userA], unreadableSnapshot);
+      await repository.activate(_userB);
+      expect(repository.isActiveFor(_userB), isTrue);
+      expect(repository.pendingCount, 0);
+      expect(store.values[_userA], unreadableSnapshot);
+    },
+  );
+
+  for (final statusCode in [403, 409]) {
+    test(
+      'stale schedule authorization HTTP $statusCode keeps the queued row',
+      () async {
+        remote.forms = [_form(inspections: const [])];
+        await repository.activate(_userA);
+        await repository.listForms();
+        await repository.listSchedules();
+        connectivity.setConnected(false);
+        remote.connected = false;
+
+        final localRow = await repository.addInspection(_formId, _addInput());
+        expect(repository.isInspectionCreatePending(localRow.id), isTrue);
+
+        remote.failNextAddInspectionStatusCodes.add(statusCode);
+        remote.connected = true;
+        connectivity.connected = true;
+        await repository.syncNow();
+
+        expect(repository.pendingCountFor(_formId), 1);
+        final conflict = repository.conflictsForForm(_formId).single;
+        expect(conflict.canRetry, statusCode == 409);
+        expect(conflict.canDiscard, isTrue);
+        expect(
+          conflict.message,
+          contains(
+            statusCode == 403
+                ? 'server rejected a saved change'
+                : 'server record changed or is no longer eligible',
+          ),
+        );
+        expect(
+          (await repository.getForm(_formId)).inspections.single.id,
+          localRow.id,
+        );
+        expect(remote.forms.single.inspections, isEmpty);
+        expect(repository.isInspectionCreatePending(localRow.id), isTrue);
+      },
+    );
+  }
 
   test(
     'cached schedules, assets, and references restore after restart offline',
@@ -703,6 +919,10 @@ void main() {
   testWidgets('conflict discard confirmation calls the repository', (
     tester,
   ) async {
+    tester.view.physicalSize = const Size(800, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     repository.dispose();
     repository = _ImmediateScheduleOfflineInspectionRepository(
       tester: tester,
@@ -831,14 +1051,15 @@ CreatePreventiveMaintenanceFormInput _createInput() =>
       academicYear: '2025-2026',
     );
 
-AddInspectionInput _addInput() => AddInspectionInput(
-  scheduleId: _scheduleId,
-  inspectorUserId: _userA,
-  dateInspected: DateTime.utc(2026, 2, 20),
-  isOperational: false,
-  remarks: 'Initial observation.',
-  actionsRecommendations: 'GSD follow-up required.',
-);
+AddInspectionInput _addInput({String scheduleId = _scheduleId}) =>
+    AddInspectionInput(
+      scheduleId: scheduleId,
+      inspectorUserId: _userA,
+      dateInspected: DateTime.utc(2026, 2, 20),
+      isOperational: false,
+      remarks: 'Initial observation.',
+      actionsRecommendations: 'GSD follow-up required.',
+    );
 
 UpdateInspectionInput _updateInput({
   required String remarks,
@@ -894,39 +1115,58 @@ PreventiveMaintenanceInspection _inspection({
   updatedAt: updatedAt ?? DateTime.utc(2026, 2, 20),
 );
 
-ScheduleOption _schedule({String status = 'Due', DateTime? scheduleDate}) =>
-    ScheduleOption(
-      id: _scheduleId,
-      assetId: _assetId,
-      scheduleDate: scheduleDate ?? DateTime.utc(2026, 2, 28, 15, 59, 59),
-      pmCycle: '2026-02',
-      periodType: 'Quarter',
-      status: status,
-      quarter: 'Q1',
-      semester: null,
-      year: 2026,
-      academicYear: '2025-2026',
-      assignedToUserId: _userA,
-      asset: const ScheduleAssetOption(
-        id: _assetId,
-        assetCode: 'FE-CCMS-001',
-        assetCategory: 'fire-extinguisher',
-        building: 'CCMS Building',
-        department: 'CCMS',
-        location: 'CL-01',
-        status: 'Active',
-        qrCodeValue: 'UNIPM-LEGACY-CUSTOM-LABEL',
-      ),
-    );
+ScheduleOption _schedule({
+  String id = _scheduleId,
+  String assetId = _assetId,
+  String assetCode = 'FE-CCMS-001',
+  String status = 'Due',
+  DateTime? scheduleDate,
+}) => ScheduleOption(
+  id: id,
+  assetId: assetId,
+  scheduleDate: scheduleDate ?? DateTime.utc(2026, 2, 28, 15, 59, 59),
+  pmCycle: '2026-02',
+  periodType: 'Quarter',
+  status: status,
+  quarter: 'Q1',
+  semester: null,
+  year: 2026,
+  academicYear: '2025-2026',
+  assignedToUserId: _userA,
+  asset: ScheduleAssetOption(
+    id: assetId,
+    assetCode: assetCode,
+    assetCategory: 'fire-extinguisher',
+    building: 'CCMS Building',
+    department: 'CCMS',
+    location: 'CL-01',
+    status: 'Active',
+    qrCodeValue: 'UNIPM-LEGACY-CUSTOM-LABEL',
+  ),
+);
 
 class _MemoryStore implements OfflineSnapshotStore {
   final Map<String, String> values = <String, String>{};
+  bool failNextWrite = false;
+  bool failNextRead = false;
 
   @override
-  Future<String?> read(String userId) async => values[userId];
+  Future<String?> read(String userId) async {
+    if (failNextRead) {
+      failNextRead = false;
+      throw StateError('Synthetic secure-storage read failure.');
+    }
+    return values[userId];
+  }
 
   @override
-  Future<void> write(String userId, String json) async => values[userId] = json;
+  Future<void> write(String userId, String json) async {
+    if (failNextWrite) {
+      failNextWrite = false;
+      throw StateError('Synthetic secure-storage write failure.');
+    }
+    values[userId] = json;
+  }
 
   @override
   Future<void> delete(String userId) async => values.remove(userId);
@@ -1026,10 +1266,13 @@ class _FakeRemote
         AssetRepository {
   bool connected = true;
   bool failAcceptedAddOnce = false;
+  final List<int> failNextAddInspectionStatusCodes = <int>[];
   int? readFailureStatusCode;
   int? failNextCreateFormStatus;
   bool conflictNextUpdate = false;
   Completer<List<ScheduleOption>>? pendingScheduleResponse;
+  Completer<void>? createFormStarted;
+  Completer<PreventiveMaintenanceForm>? heldCreateForm;
   int submitCalls = 0;
   int acknowledgementCalls = 0;
   int createFormCalls = 0;
@@ -1086,6 +1329,12 @@ class _FakeRemote
         statusCode: failureStatus,
         message: 'Synthetic HTTP $failureStatus response.',
       );
+    }
+    final heldResponse = heldCreateForm;
+    if (heldResponse != null) {
+      heldCreateForm = null;
+      createFormStarted?.complete();
+      return heldResponse.future;
     }
     final existing = forms.where((form) => form.id == id).firstOrNull;
     if (existing != null) return existing;
@@ -1187,6 +1436,13 @@ class _FakeRemote
   ) async {
     _checkConnected();
     addedInspectionIds.add(id);
+    if (failNextAddInspectionStatusCodes.isNotEmpty) {
+      final statusCode = failNextAddInspectionStatusCodes.removeAt(0);
+      throw ApiException(
+        statusCode: statusCode,
+        message: 'Synthetic HTTP $statusCode add-inspection rejection.',
+      );
+    }
     final existing = forms
         .expand((form) => form.inspections)
         .where((inspection) => inspection.id == id)

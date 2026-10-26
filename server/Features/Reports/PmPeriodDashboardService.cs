@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 using UniPM.Api.Data;
 using UniPM.Api.Features.Inspections;
@@ -15,13 +16,15 @@ internal sealed class PmPeriodDashboardService(
         GetAvailableCyclesAsync(
             string? assetCategory,
             int? year,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken,
+            ClaimsPrincipal principal)
     {
         await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
         var schedules = await context.PreventiveMaintenanceSchedules
             .AsNoTracking()
             .Include(schedule => schedule.Asset)
             .Where(schedule => schedule.Status != ScheduleStatusCatalog.Cancelled)
+            .WhereReadableSchedules(principal)
             .ToListAsync(cancellationToken);
 
         var cycles = schedules
@@ -51,13 +54,15 @@ internal sealed class PmPeriodDashboardService(
 
     internal async Task<PmPeriodDashboardResponse> GetPeriodAsync(
         PmPeriodDashboardQuery query,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        ClaimsPrincipal principal)
     {
         await using var context = await contextFactory.CreateDbContextAsync(cancellationToken);
         var schedules = await context.PreventiveMaintenanceSchedules
             .AsNoTracking()
             .Include(schedule => schedule.Asset)
             .Where(schedule => schedule.Status != ScheduleStatusCatalog.Cancelled)
+            .WhereReadableSchedules(principal)
             .ToListAsync(cancellationToken);
 
         var candidateSchedules = schedules
@@ -100,6 +105,7 @@ internal sealed class PmPeriodDashboardService(
             .Include(form => form.Acknowledgement)
             .Where(form => form.AssetCategory == query.AssetCategory
                 && form.PmCycle == query.PmCycle)
+            .WhereReadableTo(principal)
             .ToListAsync(cancellationToken);
 
         var inspectionBySchedule = inspections

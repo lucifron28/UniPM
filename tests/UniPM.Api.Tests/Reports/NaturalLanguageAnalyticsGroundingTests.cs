@@ -69,6 +69,7 @@ public sealed class NaturalLanguageAnalyticsGroundingTests
     [InlineData("Show progress for fire extinguishers in 2026", "Month", 1)]
     [InlineData("Show progress for fire extinguishers in November 2026 or November 2027", "Year", 0)]
     [InlineData("Show progress for fire extinguishers in August 2026 or November 2026", "Month", 0)]
+    [InlineData("Show progress for fire extinguishers in Jan 2026 Feb", "Month", 0)]
     public async Task Missing_or_conflicting_dates_are_clarified_from_the_question(
         string question,
         string expectedFieldName,

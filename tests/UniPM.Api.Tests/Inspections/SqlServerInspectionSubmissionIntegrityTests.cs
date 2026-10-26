@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Data.Common;
+using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Hosting;
@@ -192,11 +193,11 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
     public async Task Concurrent_wms_referral_first_writes_return_one_conflict_and_one_audit_row()
     {
         await using var database = await SqlServerTestDatabase.CreateAsync(RequireSqlServerConnection());
-        var writeGate = new WmsReferralSaveGate();
+        var writeGate = new ConcurrentSaveChangesGate();
         await using var application = new SqlServerInspectionApplicationFactory(
             database.ConnectionString,
             mutationGate: null,
-            wmsReferralWriteGate: writeGate,
+            saveChangesGate: writeGate,
             roles: [AuthRoleCatalog.Gsd]);
         var inspectionId = await application.SeedAcknowledgedNonOperationalInspectionAsync();
         writeGate.Arm();
@@ -234,11 +235,11 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
     public async Task Concurrent_wms_referral_corrections_return_one_conflict_without_extra_audit_history()
     {
         await using var database = await SqlServerTestDatabase.CreateAsync(RequireSqlServerConnection());
-        var writeGate = new WmsReferralSaveGate();
+        var writeGate = new ConcurrentSaveChangesGate();
         await using var application = new SqlServerInspectionApplicationFactory(
             database.ConnectionString,
             mutationGate: null,
-            wmsReferralWriteGate: writeGate,
+            saveChangesGate: writeGate,
             roles: [AuthRoleCatalog.Gsd]);
         var inspectionId = await application.SeedAcknowledgedNonOperationalInspectionAsync();
         using var firstClient = application.CreateClient();
@@ -425,7 +426,7 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
     }
 
     [SqlServerFact]
-    public async Task Supervisor_reassignment_wins_lock_before_inspection_start_and_inspector_is_reauthorized()
+    public async Task Supervisor_reassignment_wins_lock_before_inspection_start_and_preserves_worker_assignment()
     {
         await using var database = await SqlServerTestDatabase.CreateAsync(RequireSqlServerConnection());
         await using var seedApplication = new SqlServerInspectionApplicationFactory(
@@ -445,8 +446,8 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
         using var inspectorClient = inspectorApplication.CreateClient();
 
         var assignmentTask = gsdClient.PutAsJsonAsync(
-            $"/api/v1/schedules/{scenario.ScheduleId}/supervisor-assignment",
-            new { supervisorUserId = scenario.NewSupervisorId });
+            $"/api/v1/schedules/{scenario.ScheduleId}/supervisor-reassignment",
+            new { assigneeUserId = scenario.NewSupervisorId, reason = "Supervisor reassignment race test" });
         await mutationGate.WaitForScheduleUpdateAsync();
         var inspectionTask = inspectorClient.PostAsJsonAsync(
             $"/api/v1/preventive-maintenance-forms/{scenario.FormId}/inspections",
@@ -466,17 +467,26 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
         using var assignmentResponse = await assignmentTask;
         using var inspectionResponse = await inspectionTask;
         Assert.Equal(HttpStatusCode.OK, assignmentResponse.StatusCode);
-        Assert.Equal(HttpStatusCode.Forbidden, inspectionResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.Created, inspectionResponse.StatusCode);
 
         await using var verificationContext = database.CreateContext();
         var schedule = await verificationContext.PreventiveMaintenanceSchedules.SingleAsync(
             candidate => candidate.Id == scenario.ScheduleId);
         Assert.Equal(scenario.NewSupervisorId, schedule.AssignedSupervisorUserId);
-        Assert.Null(schedule.AssignedToUserId);
-        Assert.Equal(ScheduleStatusCatalog.Due, schedule.Status);
-        Assert.Empty(await verificationContext.InspectionRecords
-            .Where(inspection => inspection.ScheduleId == scenario.ScheduleId)
-            .ToListAsync());
+        Assert.Equal(TestAuthenticationHandler.UserId, schedule.AssignedToUserId);
+        Assert.Equal(ScheduleStatusCatalog.Completed, schedule.Status);
+        Assert.NotNull(schedule.CompletedAt);
+        var inspection = await verificationContext.InspectionRecords
+            .SingleAsync(inspection => inspection.ScheduleId == scenario.ScheduleId);
+        Assert.Equal(TestAuthenticationHandler.UserId, inspection.InspectorUserId);
+        Assert.Equal(schedule.CompletedAt, inspection.CompletedAt);
+        var reassignment = await verificationContext.ScheduleAssignmentReassignmentAudits
+            .SingleAsync(audit => audit.ScheduleId == scenario.ScheduleId);
+        Assert.Equal("Supervisor", reassignment.AssignmentRole);
+        Assert.Equal(scenario.ExistingSupervisorId, reassignment.PreviousAssigneeUserId);
+        Assert.Equal(scenario.NewSupervisorId, reassignment.NewAssigneeUserId);
+        Assert.Equal(TestAuthenticationHandler.UserId, reassignment.ChangedByUserId);
+        Assert.Equal("Supervisor reassignment race test", reassignment.Reason);
     }
 
     [SqlServerFact]
@@ -504,8 +514,8 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
             NewInspectionRequest(scenario.ScheduleId, TestAuthenticationHandler.UserId));
         await mutationGate.WaitForScheduleUpdateAsync();
         var assignmentTask = gsdClient.PutAsJsonAsync(
-            $"/api/v1/schedules/{scenario.ScheduleId}/supervisor-assignment",
-            new { supervisorUserId = scenario.NewSupervisorId });
+            $"/api/v1/schedules/{scenario.ScheduleId}/supervisor-reassignment",
+            new { assigneeUserId = scenario.NewSupervisorId, reason = "Inspection start race test" });
         try
         {
             await WaitForApplicationLockWaitAsync(
@@ -554,8 +564,8 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
             AuthRoleCatalog.Gsd);
         using var client = application.CreateClient();
         var assignmentTask = client.PutAsJsonAsync(
-            $"/api/v1/schedules/{scenario.ScheduleId}/supervisor-assignment",
-            new { supervisorUserId = scenario.NewSupervisorId });
+            $"/api/v1/schedules/{scenario.ScheduleId}/supervisor-reassignment",
+            new { assigneeUserId = scenario.NewSupervisorId, reason = "Registration race test" });
         await mutationGate.WaitForScheduleUpdateAsync();
 
         var registrationTask = client.PostAsJsonAsync("/api/v1/assets/", new
@@ -608,7 +618,7 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
         var existingSchedule = await context.PreventiveMaintenanceSchedules
             .SingleAsync(schedule => schedule.Id == scenario.ScheduleId);
         Assert.Equal(scenario.NewSupervisorId, existingSchedule.AssignedSupervisorUserId);
-        Assert.Null(existingSchedule.AssignedToUserId);
+        Assert.Equal(TestAuthenticationHandler.UserId, existingSchedule.AssignedToUserId);
     }
 
     [SqlServer2019Fact]
@@ -808,8 +818,8 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
         using var client = application.CreateClient();
 
         var assignmentTask = client.PutAsJsonAsync(
-            $"/api/v1/schedules/{scenario.ScheduleId}/supervisor-assignment",
-            new { supervisorUserId = scenario.NewSupervisorId });
+            $"/api/v1/schedules/{scenario.ScheduleId}/supervisor-reassignment",
+            new { assigneeUserId = scenario.NewSupervisorId, reason = "Manual schedule race test" });
         await mutationGate.WaitForScheduleUpdateAsync();
         var scheduleCreationTask = client.PostAsJsonAsync("/api/v1/schedules/", new
         {
@@ -840,6 +850,7 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
         var assignedSchedule = await verificationContext.PreventiveMaintenanceSchedules
             .SingleAsync(schedule => schedule.Id == scenario.ScheduleId);
         Assert.Equal(scenario.NewSupervisorId, assignedSchedule.AssignedSupervisorUserId);
+        Assert.Equal(TestAuthenticationHandler.UserId, assignedSchedule.AssignedToUserId);
     }
 
     private static object NewInspectionRequest(Guid scheduleId, Guid inspectorUserId)
@@ -993,6 +1004,157 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
         });
     }
 
+    [SqlServer2019Fact]
+    public async Task Concurrent_acknowledgements_write_one_receipt_and_preserve_completion_timestamps()
+    {
+        await using var database = await SqlServerTestDatabase.CreateAsync(RequireSqlServer2019Connection());
+        await using var seedApplication = new SqlServerInspectionApplicationFactory(
+            database.ConnectionString,
+            AuthRoleCatalog.Gsd);
+        var formId = await seedApplication.SeedSubmittedFormAsync();
+        DateTimeOffset submittedAt;
+        DateTimeOffset formUpdatedAtBeforeAcknowledgement;
+        var scheduleStateBeforeAcknowledgement = new Dictionary<Guid, (string Status, DateTimeOffset? CompletedAt, DateTimeOffset UpdatedAt)>();
+        Dictionary<Guid, DateTimeOffset?> inspectionCompletionTimesBeforeAcknowledgement;
+        await using (var beforeContext = database.CreateContext())
+        {
+            var form = await beforeContext.PreventiveMaintenanceForms
+                .AsNoTracking()
+                .SingleAsync(candidate => candidate.Id == formId);
+            Assert.Equal(PreventiveMaintenanceFormStatusCatalog.Submitted, form.Status);
+            Assert.NotNull(form.SubmittedAt);
+            submittedAt = form.SubmittedAt.Value;
+            formUpdatedAtBeforeAcknowledgement = form.UpdatedAt;
+
+            var scheduleIds = await beforeContext.InspectionRecords
+                .Where(record => record.PreventiveMaintenanceFormId == formId)
+                .Select(record => record.ScheduleId)
+                .ToListAsync();
+            inspectionCompletionTimesBeforeAcknowledgement = await beforeContext.InspectionRecords
+                .Where(record => record.PreventiveMaintenanceFormId == formId)
+                .ToDictionaryAsync(record => record.Id, record => record.CompletedAt);
+            var schedules = await beforeContext.PreventiveMaintenanceSchedules
+                .Where(schedule => scheduleIds.Contains(schedule.Id))
+                .ToListAsync();
+            Assert.Equal(2, schedules.Count);
+            Assert.Equal(2, inspectionCompletionTimesBeforeAcknowledgement.Count);
+            Assert.All(schedules, schedule =>
+            {
+                Assert.Equal(ScheduleStatusCatalog.Completed, schedule.Status);
+                Assert.NotNull(schedule.CompletedAt);
+                scheduleStateBeforeAcknowledgement.Add(
+                    schedule.Id,
+                    (schedule.Status, schedule.CompletedAt, schedule.UpdatedAt));
+            });
+        }
+
+        var saveChangesGate = new ConcurrentSaveChangesGate();
+        await using var application = new SqlServerInspectionApplicationFactory(
+            database.ConnectionString,
+            mutationGate: null,
+            saveChangesGate: saveChangesGate,
+            roles: [AuthRoleCatalog.Gsd]);
+        using var firstClient = application.CreateClient();
+        using var secondClient = application.CreateClient();
+        saveChangesGate.Arm();
+        var requestsStartedAt = DateTimeOffset.UtcNow;
+        var acknowledgementRequest = new
+        {
+            signatoryName = "Fictional Department Head",
+            signatoryPosition = "Department Head",
+            signatureData = TestPngSignatureBase64,
+            signatureContentType = "image/png"
+        };
+        var requests = Task.WhenAll(
+            firstClient.PostAsJsonAsync(
+                $"/api/v1/preventive-maintenance-forms/{formId}/acknowledge",
+                acknowledgementRequest),
+            secondClient.PostAsJsonAsync(
+                $"/api/v1/preventive-maintenance-forms/{formId}/acknowledge",
+                acknowledgementRequest));
+        try
+        {
+            await saveChangesGate.WaitForBothSavesAsync();
+        }
+        finally
+        {
+            saveChangesGate.ReleaseSaves();
+        }
+
+        var responses = await requests;
+        try
+        {
+            var successfulResponse = Assert.Single(
+                responses,
+                response => response.StatusCode == HttpStatusCode.OK);
+            Assert.Single(responses, response => response.StatusCode == HttpStatusCode.Conflict);
+            var acknowledgementResponse = await successfulResponse.Content
+                .ReadFromJsonAsync<PreventiveMaintenanceAcknowledgementResponse>();
+            Assert.NotNull(acknowledgementResponse);
+            Assert.Equal(formId, acknowledgementResponse.FormId);
+            Assert.Equal("Fictional Department Head", acknowledgementResponse.SignatoryName);
+            Assert.Equal("Department Head", acknowledgementResponse.SignatoryPosition);
+            Assert.Equal(TestAuthenticationHandler.UserId, acknowledgementResponse.CapturedByUserId);
+            Assert.InRange(acknowledgementResponse.AcknowledgedAt, requestsStartedAt, DateTimeOffset.UtcNow);
+
+            await using var context = database.CreateContext();
+            var formAfterAcknowledgement = await context.PreventiveMaintenanceForms
+                .Include(candidate => candidate.Acknowledgement)
+                .SingleAsync(candidate => candidate.Id == formId);
+            var acknowledgement = Assert.IsType<PreventiveMaintenanceAcknowledgement>(
+                formAfterAcknowledgement.Acknowledgement);
+            Assert.Equal(PreventiveMaintenanceFormStatusCatalog.Acknowledged, formAfterAcknowledgement.Status);
+            Assert.Equal(submittedAt, formAfterAcknowledgement.SubmittedAt);
+            Assert.True(formAfterAcknowledgement.UpdatedAt > formUpdatedAtBeforeAcknowledgement);
+            Assert.Equal(acknowledgementResponse.AcknowledgedAt, formAfterAcknowledgement.UpdatedAt);
+            Assert.Equal(acknowledgementResponse.Id, acknowledgement.Id);
+            Assert.Equal("Fictional Department Head", acknowledgement.SignatoryName);
+            Assert.Equal("Department Head", acknowledgement.SignatoryPosition);
+            Assert.Equal("image/png", acknowledgement.SignatureContentType);
+            Assert.Equal(TestPngSignatureBase64, acknowledgement.SignatureData);
+            var expectedChecksum = Convert.ToHexString(
+                SHA256.HashData(Convert.FromBase64String(TestPngSignatureBase64)));
+            Assert.Equal(expectedChecksum, acknowledgement.SignatureChecksum);
+            Assert.Equal(acknowledgementResponse.SignatureChecksum, acknowledgement.SignatureChecksum);
+            Assert.Equal(TestAuthenticationHandler.UserId, acknowledgement.CapturedByUserId);
+            Assert.Equal(acknowledgementResponse.AcknowledgedAt, acknowledgement.AcknowledgedAt);
+            Assert.Equal(1, await context.PreventiveMaintenanceAcknowledgements
+                .CountAsync(record => record.FormId == formId));
+
+            var inspectionCompletionTimesAfterAcknowledgement = await context.InspectionRecords
+                .Where(record => record.PreventiveMaintenanceFormId == formId)
+                .ToDictionaryAsync(record => record.Id, record => record.CompletedAt);
+            Assert.Equal(inspectionCompletionTimesBeforeAcknowledgement.Count, inspectionCompletionTimesAfterAcknowledgement.Count);
+            foreach (var before in inspectionCompletionTimesBeforeAcknowledgement)
+            {
+                Assert.Equal(before.Value, inspectionCompletionTimesAfterAcknowledgement[before.Key]);
+            }
+
+            var scheduleIds = await context.InspectionRecords
+                .Where(record => record.PreventiveMaintenanceFormId == formId)
+                .Select(record => record.ScheduleId)
+                .ToListAsync();
+            var schedulesAfterAcknowledgement = await context.PreventiveMaintenanceSchedules
+                .Where(schedule => scheduleIds.Contains(schedule.Id))
+                .ToListAsync();
+            Assert.Equal(2, schedulesAfterAcknowledgement.Count);
+            Assert.All(schedulesAfterAcknowledgement, schedule =>
+            {
+                var before = scheduleStateBeforeAcknowledgement[schedule.Id];
+                Assert.Equal(before.Status, schedule.Status);
+                Assert.Equal(before.CompletedAt, schedule.CompletedAt);
+                Assert.Equal(before.UpdatedAt, schedule.UpdatedAt);
+            });
+        }
+        finally
+        {
+            foreach (var response in responses)
+            {
+                response.Dispose();
+            }
+        }
+    }
+
     private static PreventiveMaintenanceSchedule AddAssetAndSchedule(
         ApplicationDbContext context,
         int cycleMonth = 2,
@@ -1079,7 +1241,7 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
         private readonly string connectionString;
         private readonly string[] roles;
         private readonly ScheduleMutationCommandGate? mutationGate;
-        private readonly WmsReferralSaveGate? wmsReferralWriteGate;
+        private readonly ConcurrentSaveChangesGate? saveChangesGate;
 
         public string? ScheduleGenerationEffectiveDate { get; init; }
 
@@ -1099,12 +1261,12 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
         public SqlServerInspectionApplicationFactory(
             string connectionString,
             ScheduleMutationCommandGate? mutationGate,
-            WmsReferralSaveGate? wmsReferralWriteGate,
+            ConcurrentSaveChangesGate? saveChangesGate,
             params string[] roles)
         {
             this.connectionString = connectionString;
             this.mutationGate = mutationGate;
-            this.wmsReferralWriteGate = wmsReferralWriteGate;
+            this.saveChangesGate = saveChangesGate;
             this.roles = roles.Length == 0 ? [AuthRoleCatalog.Inspector] : roles;
         }
 
@@ -1129,9 +1291,9 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
                     {
                         options.AddInterceptors(mutationGate);
                     }
-                    if (wmsReferralWriteGate is not null)
+                    if (saveChangesGate is not null)
                     {
-                        options.AddInterceptors(wmsReferralWriteGate);
+                        options.AddInterceptors(saveChangesGate);
                     }
                 });
             });
@@ -1178,7 +1340,7 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
             await context.Database.MigrateAsync();
 
             var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
-            foreach (var role in new[] { AuthRoleCatalog.Inspector, AuthRoleCatalog.Supervisor })
+            foreach (var role in new[] { AuthRoleCatalog.Gsd, AuthRoleCatalog.Inspector, AuthRoleCatalog.Supervisor })
             {
                 if (!await roleManager.RoleExistsAsync(role))
                 {
@@ -1198,6 +1360,7 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
             };
             Assert.True((await userManager.CreateAsync(actor, "Demo-Account-123!")).Succeeded);
             Assert.True((await userManager.AddToRoleAsync(actor, AuthRoleCatalog.Inspector)).Succeeded);
+            Assert.True((await userManager.AddToRoleAsync(actor, AuthRoleCatalog.Gsd)).Succeeded);
 
             var existingSupervisor = await CreateActiveUserAsync(userManager, "existing-supervisor", AuthRoleCatalog.Supervisor);
             var newSupervisor = await CreateActiveUserAsync(userManager, "new-supervisor", AuthRoleCatalog.Supervisor);
@@ -1452,7 +1615,7 @@ public sealed class SqlServerInspectionSubmissionIntegrityTests
         }
     }
 
-    private sealed class WmsReferralSaveGate : SaveChangesInterceptor
+    private sealed class ConcurrentSaveChangesGate : SaveChangesInterceptor
     {
         private readonly TaskCompletionSource bothSavesReached = new(TaskCreationOptions.RunContinuationsAsynchronously);
         private readonly TaskCompletionSource releaseSaves = new(TaskCreationOptions.RunContinuationsAsynchronously);

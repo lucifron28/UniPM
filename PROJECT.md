@@ -13,6 +13,13 @@
 
 ## Active Context
 
+The local, unmerged `feature/capstone-remediation` branch is documented in the
+[October 25 report](reference/planning/capstone-remediation-2026-10-25.md).
+It adds scoped operational reads, explicit interpreter routing without fixed
+question shortcuts, durable account-isolated retry handling and coordinated
+form pagination. The report separates implementation checks from respondent
+evaluation, physical acceptance and deployment.
+
 Maintenance-history RAG has been retired. Its review endpoint, summary
 provider, maintenance retrieval/fusion, projection, rebuild commands,
 benchmark, and experiment runners are removed.
@@ -27,7 +34,10 @@ workflow are integrated into `main` and `deploy/azure-staging`. GSD and
 physical-device acceptance remain pending. TEST-139 records researcher-reviewed
 deterministic development agreement on 18/18 declared outcomes and 69/69
 assertions; this is not held-out, live-provider or GSD acceptance evidence.
-Native SQL Server 2019 execution remains unverified. Phases 7–8 are planning only.
+Focused native SQL Server 2019 execution on the remediation branch is recorded
+in TEST-156, TEST-157, TEST-159 and TEST-161. This does not generalize TEST-139
+to SQL or live-model verification. NLA roadmap Phases 7–8 remain planning only;
+they are separate from the remediation phases.
 
 Older completed RAG entries below describe historical work only.
 
@@ -85,10 +95,11 @@ Older completed RAG entries below describe historical work only.
   - NLA V3 PM execution reporting and registered asset inventory are
     integrated into both maintained branches. Inventory reports use one
     registered asset per row. TEST-139 records the researcher-reviewed deterministic
-    development score; native SQL Server 2019 verification remains open.
+    development score; later native SQL checks are separately versioned in
+    TEST-156, TEST-157, TEST-159 and TEST-161.
   - Confirmed multi-asset preventive-maintenance form lifecycle:
     `Draft -> Submitted -> Acknowledged`, provisional form file numbers,
-    field-work-driven schedule completion from `InspectionRecord.CompletedAt`,
+    schedule completion at the first backend-accepted inspection save using `InspectionRecord.CompletedAt`,
     and whole-form acknowledgement. Acknowledgement records receipt/noting,
     does not alter execution or compliance timestamps, does not complete
     schedules, and makes completed rows eligible for acknowledged-only official
@@ -204,12 +215,14 @@ this branch.
 
 1. Demonstrate the integrated PMIS and mobile workflows to GSD and record
    operational feedback.
-2. Complete physical-device acceptance and native SQL Server 2019 execution
-   verification.
+2. Complete physical-device acceptance of the selected build. Use the dated
+   native SQL remediation records for their exact cases, not blanket acceptance.
 3. Use TEST-139 for the completed researcher-reviewed deterministic development
-   evaluation. Complete numerical, live-provider and broader acceptance checks
-   separately; do not generalize the development score.
-4. Keep Phases 7–8 and institutional source authorization, final RBAC, audit
+   evaluation. TEST-141 records controlled numerical results; the dated
+   remediation records distinguish native SQL cases. Historical live-provider
+   results and broader acceptance remain separate; do not generalize the
+   development score to a new version or unseen questions.
+4. Keep NLA roadmap Phases 7–8 and institutional source authorization, final RBAC, audit
    rules, and other unresolved policy decisions in planning until reviewed.
 
 NLA V3 through Phase 6 and the mobile offline/acknowledgement workflows are

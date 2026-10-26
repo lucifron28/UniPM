@@ -2093,8 +2093,7 @@ public static class SchedulesEndpoints
     {
         var query = context.PreventiveMaintenanceSchedules.AsNoTracking();
         if (user.IsInRole(AuthRoleCatalog.Gsd)
-            || user.IsInRole(AuthRoleCatalog.Supervisor)
-            || user.IsInRole(AuthRoleCatalog.Admin))
+            || user.IsInRole(AuthRoleCatalog.Supervisor))
         {
             return query;
         }

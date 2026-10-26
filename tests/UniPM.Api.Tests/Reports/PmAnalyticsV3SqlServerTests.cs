@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using UniPM.Api.Data;
@@ -5,12 +6,19 @@ using UniPM.Api.Features.Assets;
 using UniPM.Api.Features.Schedules;
 using UniPM.Api.Features.Reports;
 using UniPM.Api.Models;
+using Xunit.Abstractions;
 
 namespace UniPM.Api.Tests;
 
 public sealed class PmAnalyticsV3SqlServerTests
 {
     private static readonly DateTimeOffset AsOf = new(2026, 2, 1, 0, 0, 0, TimeSpan.FromHours(8));
+    private readonly ITestOutputHelper output;
+
+    public PmAnalyticsV3SqlServerTests(ITestOutputHelper output)
+    {
+        this.output = output;
+    }
 
     [SqlServer2019Fact]
     public async Task V3_quarter_drilldown_and_matching_denominators_translate_on_sql_server_2019()
@@ -131,6 +139,62 @@ public sealed class PmAnalyticsV3SqlServerTests
         }
     }
 
+    [SqlServer2019Fact]
+    public async Task Sql_server_2019_synthetic_pm_reports_measure_100_1000_and_10000_rows()
+    {
+        await using var database = await DisposableDatabase.CreateAsync(RequireConnection());
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseUniPmSqlServer(database.ConnectionString)
+            .Options;
+        await using (var context = new ApplicationDbContext(options))
+        {
+            await context.Database.MigrateAsync();
+            AddScaleRows(context, "fire-extinguisher", "2025-02", "FE", 100);
+            AddScaleRows(context, "fire-alarm", "2025-06", "FA", 1_000);
+            AddScaleRows(context, "emergency-light", "2025-06", "EL", 10_000);
+            await context.SaveChangesAsync();
+        }
+
+        Assert.Equal(150, await database.GetCompatibilityLevelAsync());
+        Assert.StartsWith("15.", await database.GetProductVersionAsync(), StringComparison.Ordinal);
+        var service = new PmAnalyticsV3QueryService(new SqlContextFactory(options), new FixedTimeProvider(AsOf));
+        foreach (var sample in new[]
+        {
+            (Category: "fire-extinguisher", ExpectedRows: 100),
+            (Category: "fire-alarm", ExpectedRows: 1_000),
+            (Category: "emergency-light", ExpectedRows: 10_000)
+        })
+        {
+            var plan = new PmAnalyticsV3ReportPlan(
+                3,
+                PmAnalyticsV3Catalog.Version,
+                PmAnalyticsV3Catalog.SubjectPmExecution,
+                PmAnalyticsV3Mode.Aggregate,
+                new PmAnalyticsV3Period("pmCycle", PmAnalyticsV3PeriodKind.Year, Year: 2025),
+                [sample.Category],
+                [PmAnalyticsV3Catalog.ScheduledCount],
+                [],
+                [],
+                [],
+                [],
+                [],
+                null,
+                PmAnalyticsV3Presentation.Table,
+                [PmAnalyticsV3Catalog.ScheduledCount]);
+            var resolution = await service.NormalizeAndResolveAsync(plan, CancellationToken.None);
+            Assert.NotNull(resolution.Plan);
+            var stopwatch = Stopwatch.StartNew();
+            var result = await service.ExecuteAsync(resolution.Plan, 1, 25, CancellationToken.None);
+            stopwatch.Stop();
+
+            Assert.Equal(sample.ExpectedRows, result.Population.EligibleAssetCycleCount);
+            Assert.Equal(sample.ExpectedRows, Assert.Single(result.AggregateRows)
+                .Measures[PmAnalyticsV3Catalog.ScheduledCount].Numerator);
+            output.WriteLine(
+                $"sql2019 synthetic pmExecution category={sample.Category} eligibleRows={sample.ExpectedRows} elapsedMs={stopwatch.Elapsed.TotalMilliseconds:F2} compatibility=150");
+        }
+    }
+
     private static async Task<PmAnalyticsV3ExecutionResponse> ExecuteRecordsAsync(
         PmAnalyticsV3QueryService service,
         int quarter)
@@ -235,6 +299,45 @@ public sealed class PmAnalyticsV3SqlServerTests
         Location = location,
         Status = AssetStatusCatalog.Active
     };
+
+    private static void AddScaleRows(
+        ApplicationDbContext context,
+        string category,
+        string cycle,
+        string prefix,
+        int count)
+    {
+        var month = int.Parse(cycle[^2..], System.Globalization.CultureInfo.InvariantCulture);
+        var assets = new List<Asset>(count);
+        var schedules = new List<PreventiveMaintenanceSchedule>(count);
+        for (var index = 0; index < count; index++)
+        {
+            var asset = new Asset
+            {
+                Id = Guid.NewGuid(),
+                AssetCode = $"SQLSCALE-{prefix}-{index:D6}",
+                AssetCategory = category,
+                Department = "SQL SYNTHETIC SCALE",
+                Building = "SQL SYNTHETIC BUILDING",
+                Location = "SQL SYNTHETIC ROOM",
+                Status = AssetStatusCatalog.Active
+            };
+            assets.Add(asset);
+            schedules.Add(new PreventiveMaintenanceSchedule
+            {
+                Id = Guid.NewGuid(),
+                AssetId = asset.Id,
+                Asset = asset,
+                PmCycle = cycle,
+                ScheduleDate = new DateTimeOffset(2025, month, 1, 0, 0, 0, TimeSpan.FromHours(8)),
+                PeriodType = "Quarter",
+                Status = ScheduleStatusCatalog.Due
+            });
+        }
+
+        context.Assets.AddRange(assets);
+        context.PreventiveMaintenanceSchedules.AddRange(schedules);
+    }
 
     private static string RequireConnection()
     {

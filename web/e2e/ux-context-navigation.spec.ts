@@ -436,10 +436,22 @@ async function installApi(page: Page, assetList = [asset]) {
   })
   await page.route('**/api/v1/preventive-maintenance-forms**', (route) => {
     const pathname = new URL(route.request().url()).pathname
+    if (pathname === '/api/v1/preventive-maintenance-forms/options') {
+      return route.fulfill(
+        jsonResponse({
+          categories: [],
+          departments: [],
+          pmCycles: [],
+          totalCount: 0,
+        }),
+      )
+    }
     if (pathname === '/api/v1/preventive-maintenance-forms/' + formId) {
       return route.fulfill(jsonResponse(form))
     }
-    return route.fulfill(jsonResponse([]))
+    return route.fulfill(
+      jsonResponse({ items: [], page: 1, pageSize: 10, totalCount: 0 }),
+    )
   })
 }
 

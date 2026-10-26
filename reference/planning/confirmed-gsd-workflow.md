@@ -25,9 +25,11 @@ M1 is finished and merged. M2 is finished and merged. M3 is current.
    `2026-06`). For new schedules, `ScheduleDate` stores the month-end deadline
    and does not name the planned inspection day. Existing historical records
    remain unchanged. Building does not split a batch.
-4. Completing an asset inspection records an authoritative field-work
-   completion timestamp and completes that asset's linked PM schedule. Schedule
-   completion does not wait for form submission or acknowledgement.
+4. The first server-accepted save of a completed inspection records
+   `InspectionRecord.CompletedAt` and completes that asset's linked PM
+   schedule. This is the server-recorded completion time, separate from the
+   entered inspection date. Schedule completion does not wait for form
+   submission or acknowledgement.
 5. The skilled worker submits the whole form only after every eligible schedule
    in the batch has a completed inspection row. UniPM assigns one provisional
    file number while each asset row keeps its own inspection ID. The persisted
@@ -55,6 +57,16 @@ completed on or before the deadline divided by all eligible non-cancelled
 scheduled assets in the selected scope. Completion and timeliness use only
 `InspectionRecord.CompletedAt`. Progress remains a separate
 inspected/scheduled measure. Acknowledgement cannot change either measure.
+
+The implemented completion clock is the first server-accepted save. A Draft
+saved offline has a device-recorded local time while queued; synchronization
+replaces that local representation with the API's recorded time. Work entered
+before a deadline but accepted by the server afterwards can therefore count
+as late. `DateInspected` is an entered date and does not override compliance.
+Neither value independently verifies when physical field work occurred. A
+different offline-compliance policy requires an institutional decision;
+device time is not silently promoted to authoritative evidence. Existing
+historical timestamps are retained without backfilling inferred field times.
 
 An acknowledged form is not required for on-time PM execution. Asset condition
 is `Operational` or `Non-operational`; `Completed` is a schedule state, not an
