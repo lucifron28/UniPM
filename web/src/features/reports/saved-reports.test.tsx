@@ -57,10 +57,16 @@ describe('saved report controls', () => {
   })
 
   it('does not show an empty list when the saved-report request fails', async () => {
-    api.list.mockRejectedValueOnce(new ApiError('Saved reports unavailable', 503))
+    api.list.mockRejectedValueOnce(
+      new ApiError('Saved reports unavailable', 503),
+    )
 
     render(
-      <SavedReports reviewedPlan={null} disabled={false} onOpen={async () => true} />,
+      <SavedReports
+        reviewedPlan={null}
+        disabled={false}
+        onOpen={async () => true}
+      />,
     )
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
@@ -92,7 +98,11 @@ describe('saved report controls', () => {
     )
 
     render(
-      <SavedReports reviewedPlan={null} disabled={false} onOpen={async () => true} />,
+      <SavedReports
+        reviewedPlan={null}
+        disabled={false}
+        onOpen={async () => true}
+      />,
     )
     fireEvent.click(await screen.findByText('My reports (1)'))
 
@@ -107,7 +117,9 @@ describe('saved report controls', () => {
     })
 
     fireEvent.click(screen.getByRole('button', { name: 'Reload my reports' }))
-    expect(await screen.findByText('Updated in another tab')).toBeInTheDocument()
+    expect(
+      await screen.findByText('Updated in another tab'),
+    ).toBeInTheDocument()
     fireEvent.click(
       screen.getByRole('button', { name: 'Confirm delete', exact: true }),
     )

@@ -22,7 +22,8 @@ type ExecutionResponse = {
 
 function registeredAssetCount(result: ExecutionResponse) {
   return result.aggregateRows.reduce(
-    (total, row) => total + Number(row.measures.registeredAssetCount?.value ?? 0),
+    (total, row) =>
+      total + Number(row.measures.registeredAssetCount?.value ?? 0),
     0,
   )
 }
@@ -79,8 +80,12 @@ test('saved report reuse reads new SQL Server asset data after confirmation', as
   await page
     .getByRole('textbox', { name: 'Question' })
     .fill('How many fire extinguishers are registered by status?')
-  await page.getByRole('button', { name: 'Generate report', exact: true }).click()
-  await page.getByRole('button', { name: 'Preview report', exact: true }).click()
+  await page
+    .getByRole('button', { name: 'Generate report', exact: true })
+    .click()
+  await page
+    .getByRole('button', { name: 'Preview report', exact: true })
+    .click()
   await expect(
     page.getByRole('heading', { name: 'Report preview', exact: true }),
   ).toBeVisible()

@@ -723,7 +723,9 @@ describe('PM analytics V3 workflow', () => {
       await screen.findByRole('heading', { name: 'Report preview' }),
     ).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Confirm and generate' }))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Confirm and generate' }),
+    )
     expect(await screen.findByText('100%', { exact: true })).toBeInTheDocument()
     expect(api.execute).toHaveBeenCalledWith(
       { previewId: 'signed-preview-token', page: 1, pageSize: 25 },

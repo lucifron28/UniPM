@@ -93,10 +93,11 @@ const cases = [
   {
     name: 'saved report delete revision query removed',
     mutate: (data) => {
-      data.paths['/api/v1/analytics/pm/v3/saved-reports/{id}'].delete.parameters =
-        data.paths[
-          '/api/v1/analytics/pm/v3/saved-reports/{id}'
-        ].delete.parameters.filter((parameter) => parameter.name !== 'revision')
+      data.paths[
+        '/api/v1/analytics/pm/v3/saved-reports/{id}'
+      ].delete.parameters = data.paths[
+        '/api/v1/analytics/pm/v3/saved-reports/{id}'
+      ].delete.parameters.filter((parameter) => parameter.name !== 'revision')
     },
   },
   {

@@ -181,7 +181,9 @@ const population = {
   groupsReturnedAfterTop: 1,
 }
 
-test('saved reports reuse a fresh preview and guard stale deletes', async ({ page }) => {
+test('saved reports reuse a fresh preview and guard stale deletes', async ({
+  page,
+}) => {
   test.setTimeout(60_000)
   await page.setViewportSize({ width: 390, height: 844 })
   const pageErrors: string[] = []
@@ -191,7 +193,10 @@ test('saved reports reuse a fresh preview and guard stale deletes', async ({ pag
     if (route.request().url().includes('/analytics/')) {
       unexpectedAnalytics.push(route.request().url())
     }
-    return route.fulfill({ status: 503, json: { title: 'Unmocked API request' } })
+    return route.fulfill({
+      status: 503,
+      json: { title: 'Unmocked API request' },
+    })
   })
   await page.route('**/api/v1/auth/refresh', (route) =>
     route.fulfill({ json: session }),
@@ -263,7 +268,9 @@ test('saved reports reuse a fresh preview and guard stale deletes', async ({ pag
       return route.fulfill({ json: makeCurrentPreview() })
     }
     if (request.method() === 'DELETE') {
-      const deletionRevision = new URL(request.url()).searchParams.get('revision')
+      const deletionRevision = new URL(request.url()).searchParams.get(
+        'revision',
+      )
       deleteRevisions.push(deletionRevision)
       if (!saved || deletionRevision !== saved.revision) {
         return route.fulfill({
@@ -354,8 +361,12 @@ test('saved reports reuse a fresh preview and guard stale deletes', async ({ pag
   await page
     .getByRole('textbox', { name: 'Question' })
     .fill('Show progress for fire extinguishers during 2024')
-  await page.getByRole('button', { name: 'Generate report', exact: true }).click()
-  await page.getByRole('button', { name: 'Preview report', exact: true }).click()
+  await page
+    .getByRole('button', { name: 'Generate report', exact: true })
+    .click()
+  await page
+    .getByRole('button', { name: 'Preview report', exact: true })
+    .click()
   await expect(
     page.getByRole('heading', { name: 'Report preview', exact: true }),
   ).toBeVisible()
@@ -364,7 +375,9 @@ test('saved reports reuse a fresh preview and guard stale deletes', async ({ pag
   await page.getByLabel('Dates on future runs').selectOption('ThisYear')
   rejectNextSave = true
   await page.getByRole('button', { name: 'Save as new report' }).click()
-  await expect(page.getByRole('alert')).toContainText('Choose another report name.')
+  await expect(page.getByRole('alert')).toContainText(
+    'Choose another report name.',
+  )
   await page.getByRole('button', { name: 'Save as new report' }).click()
   await expect(
     page.getByRole('status').filter({ hasText: 'Report settings saved.' }),
@@ -386,7 +399,9 @@ test('saved reports reuse a fresh preview and guard stale deletes', async ({ pag
   ).toBeVisible()
   expect(interpretationCalls).toBe(1)
   expect(executionCalls).toBe(0)
-  await page.getByRole('button', { name: 'Confirm and generate', exact: true }).click()
+  await page
+    .getByRole('button', { name: 'Confirm and generate', exact: true })
+    .click()
   await expect(page.getByText('50%', { exact: true })).toBeVisible()
 
   currentProgress = 100
@@ -395,7 +410,9 @@ test('saved reports reuse a fresh preview and guard stale deletes', async ({ pag
     page.getByRole('heading', { name: 'Report preview', exact: true }),
   ).toBeVisible()
   expect(executionCalls).toBe(1)
-  await page.getByRole('button', { name: 'Confirm and generate', exact: true }).click()
+  await page
+    .getByRole('button', { name: 'Confirm and generate', exact: true })
+    .click()
   await expect(page.getByText('100%', { exact: true })).toBeVisible()
   expect(executionCalls).toBe(2)
   expect(savedPreviewCalls).toBe(2)
@@ -403,7 +420,9 @@ test('saved reports reuse a fresh preview and guard stale deletes', async ({ pag
 
   await page.getByRole('button', { name: 'Edit settings', exact: true }).click()
   await page.getByLabel('Year', { exact: true }).fill('2025')
-  await page.getByRole('button', { name: 'Preview report', exact: true }).click()
+  await page
+    .getByRole('button', { name: 'Preview report', exact: true })
+    .click()
   await expect(
     page.getByText('Reviewed PM report for 2025.', { exact: true }),
   ).toBeVisible()
@@ -423,7 +442,10 @@ test('saved reports reuse a fresh preview and guard stale deletes', async ({ pag
     .fill('Annual progress')
   await page.getByRole('button', { name: 'Save name', exact: true }).click()
   await expect(page.getByText('Annual progress', { exact: true })).toBeVisible()
-  expect(writes[2]).toMatchObject({ name: 'Annual progress', periodMode: 'Fixed' })
+  expect(writes[2]).toMatchObject({
+    name: 'Annual progress',
+    periodMode: 'Fixed',
+  })
 
   const staleRevision = saved?.revision
   saved = {
@@ -432,7 +454,9 @@ test('saved reports reuse a fresh preview and guard stale deletes', async ({ pag
     revision: '00000000-0000-4000-8000-000000000004',
   }
   await page.getByRole('button', { name: 'Delete', exact: true }).click()
-  await page.getByRole('button', { name: 'Confirm delete', exact: true }).click()
+  await page
+    .getByRole('button', { name: 'Confirm delete', exact: true })
+    .click()
   await expect(page.getByRole('alert')).toContainText('changed')
   expect(saved).not.toBeNull()
   expect(deleteRevisions).toEqual([staleRevision])
@@ -441,9 +465,13 @@ test('saved reports reuse a fresh preview and guard stale deletes', async ({ pag
   await expect(
     page.getByText('Updated outside this tab', { exact: true }),
   ).toBeVisible()
-  await page.getByRole('button', { name: 'Confirm delete', exact: true }).click()
+  await page
+    .getByRole('button', { name: 'Confirm delete', exact: true })
+    .click()
   await expect(
-    page.getByText('No saved reports yet. Preview a report to save its settings.'),
+    page.getByText(
+      'No saved reports yet. Preview a report to save its settings.',
+    ),
   ).toBeVisible()
   expect(saved).toBeNull()
   expect(deleteRevisions).toEqual([
@@ -454,7 +482,9 @@ test('saved reports reuse a fresh preview and guard stale deletes', async ({ pag
   expect(executionCalls).toBe(2)
   expect(unexpectedAnalytics).toEqual([])
   expect(pageErrors).toEqual([])
-  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth),
+  ).toBeLessThanOrEqual(390)
 })
 
 test('runs a V3 report through source-record review at a narrow viewport', async ({

@@ -686,8 +686,7 @@ for (const [
     ? operation?.requestBody?.content?.['application/json']?.schema
     : null
   const response = operation?.responses?.[status]
-  const responseSchema =
-    response?.content?.['application/json']?.schema
+  const responseSchema = response?.content?.['application/json']?.schema
   const idParameter = operation?.parameters?.find(
     (parameter) => parameter.name === 'id' && parameter.in === 'path',
   )
@@ -701,8 +700,7 @@ for (const [
         idParameter.schema?.format !== 'uuid')) ||
     (requestSchemaName &&
       (operation?.requestBody?.required !== true ||
-        requestSchema?.$ref !==
-          `#/components/schemas/${requestSchemaName}`)) ||
+        requestSchema?.$ref !== `#/components/schemas/${requestSchemaName}`)) ||
     (responseSchemaName &&
       responseSchema?.$ref !== `#/components/schemas/${responseSchemaName}`)
   ) {
@@ -740,8 +738,7 @@ if (
   )
 }
 
-const savedRequest =
-  snapshot.components?.schemas?.SavedAnalyticsReportRequest
+const savedRequest = snapshot.components?.schemas?.SavedAnalyticsReportRequest
 const savedRequestRequired = new Set(savedRequest?.required ?? [])
 if (
   !savedRequest?.properties?.name ||
@@ -753,8 +750,7 @@ if (
   )
 }
 
-const savedResponse =
-  snapshot.components?.schemas?.SavedAnalyticsReportResponse
+const savedResponse = snapshot.components?.schemas?.SavedAnalyticsReportResponse
 const savedResponseRequired = new Set(savedResponse?.required ?? [])
 if (
   !['id', 'name', 'plan', 'periodMode', 'revision', 'updatedAtUtc'].every(
