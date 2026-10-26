@@ -771,6 +771,11 @@ namespace UniPM.Api.Migrations
                     b.Property<DateTimeOffset?>("FirstSupervisorAssignedAt")
                         .HasColumnType("datetimeoffset");
 
+                    b.Property<bool>("AssignmentHistoryComplete")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
                     b.Property<string>("PeriodType")
                         .IsRequired()
                         .HasMaxLength(32)

@@ -310,9 +310,13 @@ public static class AdminOperationalEndpoints
         if (await context.PreventiveMaintenanceSchedules.AnyAsync(candidate => candidate.Id != id
                 && candidate.AssetId == schedule.AssetId && candidate.PmCycle == cycle, cancellationToken))
             return ApiErrors.Conflict("A schedule already exists for this asset and PM cycle.");
-        var inspectionExists = await context.InspectionRecords.AnyAsync(inspection => inspection.ScheduleId == id, cancellationToken);
-        if (status == ScheduleStatusCatalog.Completed && !inspectionExists)
-            return ApiErrors.Conflict("A schedule cannot be marked completed without its inspection record.");
+        var inspectionCompletedAt = await context.InspectionRecords
+            .AsNoTracking()
+            .Where(inspection => inspection.ScheduleId == id)
+            .Select(inspection => inspection.CompletedAt)
+            .SingleOrDefaultAsync(cancellationToken);
+        if (status == ScheduleStatusCatalog.Completed && inspectionCompletedAt is null)
+            return ApiErrors.Conflict("A schedule cannot be marked completed without a completed inspection record.");
         if (request.AssignedToUserId is Guid inspectorId)
         {
             var inspector = await userManager.FindByIdAsync(inspectorId.ToString());
@@ -375,10 +379,7 @@ public static class AdminOperationalEndpoints
         schedule.Status = status;
         schedule.AssignedToUserId = request.AssignedToUserId;
         schedule.AssignedSupervisorUserId = request.AssignedSupervisorUserId;
-        if (status == ScheduleStatusCatalog.Completed)
-        {
-            schedule.CompletedAt ??= now;
-        }
+        schedule.CompletedAt = inspectionCompletedAt;
         schedule.UpdatedAt = now;
         await context.SaveChangesAsync(cancellationToken);
         if (transaction is not null) await transaction.CommitAsync(cancellationToken);

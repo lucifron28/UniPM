@@ -114,6 +114,8 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             .HasMaxLength(16);
         schedule.Property(entity => entity.AcademicYear)
             .HasMaxLength(16);
+        schedule.Property(entity => entity.AssignmentHistoryComplete)
+            .HasDefaultValue(false);
         schedule.HasIndex(entity => new { entity.AssetId, entity.PmCycle })
             .IsUnique()
             .HasDatabaseName(PreventiveMaintenanceScheduleGenerationService.UniqueIndexName);

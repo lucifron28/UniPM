@@ -52,6 +52,7 @@ internal static class ScheduleAssignmentEventRecorder
         };
         var isInitialAssignment = previousAssigneeUserId is null
             && newAssigneeUserId is not null
+            && schedule.AssignmentHistoryComplete
             && firstAssignedAt is null
             && !hasPriorAssignmentHistory
             && !isReassignmentOperation;
