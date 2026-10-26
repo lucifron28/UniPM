@@ -28,7 +28,18 @@ public sealed record PmPeriodDashboardResponse(
     decimal? OnTimeCompliancePercent,
     decimal ProgressPercent,
     IReadOnlyList<PmPeriodDashboardBatchResponse> Batches,
-    IReadOnlyList<PmPeriodDashboardAssetRowResponse> Assets);
+    IReadOnlyList<PmPeriodDashboardAssetRowResponse> Assets)
+{
+    public PmAssignmentPeriodSummary? AssignmentPeriod { get; init; }
+}
+
+public sealed record PmAssignmentPeriodSummary(
+    int KnownAssignmentCount,
+    int UnknownAssignmentCount,
+    int CompletedWithinPeriod,
+    int CompletedLate,
+    int OpenWithinPeriod,
+    int OverdueUnfinished);
 
 public sealed record PmPeriodDashboardBatchResponse(
     string? Department,
@@ -47,7 +58,10 @@ public sealed record PmPeriodDashboardBatchResponse(
     DateTimeOffset? FieldWorkCompletedAt,
     DateTimeOffset? SubmittedAt,
     bool IsAcknowledged,
-    DateTimeOffset? AcknowledgedAt);
+    DateTimeOffset? AcknowledgedAt)
+{
+    public decimal? ProgressPercent { get; init; }
+}
 
 public sealed record PmPeriodDashboardAssetRowResponse(
     Guid ScheduleId,
@@ -74,7 +88,13 @@ public sealed record PmPeriodDashboardAssetRowResponse(
     bool IsAcknowledged,
     DateTimeOffset? AcknowledgedAt,
     string? CorrectiveFollowUpStatus,
-    string? ExternalPmNumber);
+    string? ExternalPmNumber)
+{
+    public DateTimeOffset? FirstSupervisorAssignedAt { get; init; }
+    public DateTimeOffset? FirstInspectorAssignedAt { get; init; }
+    public DateTimeOffset? InspectorAssignmentDueAt { get; init; }
+    public string AssignmentPeriodStatus { get; init; } = "Unavailable";
+}
 
 internal sealed record PmPeriodDashboardQuery(
     string PmCycle,

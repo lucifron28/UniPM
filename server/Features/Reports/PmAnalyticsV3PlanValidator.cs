@@ -457,7 +457,7 @@ internal static class PmAnalyticsV3PlanValidator
                 allowed => string.Equals(allowed, value, StringComparison.OrdinalIgnoreCase)),
             "timeliness" => definition.AllowedValues.FirstOrDefault(
                 allowed => string.Equals(allowed, value, StringComparison.OrdinalIgnoreCase)),
-            "scheduleStatus" or "formStatus" or "registrationStatus" => definition.AllowedValues.FirstOrDefault(
+            "scheduleStatus" or "formStatus" or "registrationStatus" or "assignmentPeriodStatus" => definition.AllowedValues.FirstOrDefault(
                 allowed => string.Equals(allowed, value, StringComparison.OrdinalIgnoreCase)),
             _ => value
         };
