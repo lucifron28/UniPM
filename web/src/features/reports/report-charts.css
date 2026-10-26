@@ -1,0 +1,11 @@
+@media print {
+  .report-chart__line-svg {
+    min-width: 0 !important;
+  }
+
+  .report-chart__visual-row,
+  .report-chart__table-row {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}

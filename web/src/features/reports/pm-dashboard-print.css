@@ -58,6 +58,16 @@
     -webkit-print-color-adjust: exact;
   }
 
+  .pm-dashboard-report .report-chart-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 6pt !important;
+  }
+
+  .pm-dashboard-report .report-chart {
+    padding: 7pt !important;
+  }
+
   .pm-dashboard-report,
   .pm-dashboard-report * {
     box-sizing: border-box;

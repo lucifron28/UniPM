@@ -34,6 +34,7 @@ import { Label } from '@/components/ui/label'
 import { DetailBackLink } from '@/features/shared/detail-back-link'
 import type { DetailReturnContext } from '@/features/shared/detail-navigation'
 import { SavedReports } from './saved-reports'
+import { AnalyticsChartView } from './pm-analytics-charts'
 
 type Mode = PmAnalyticsV3Mode
 type Presentation = PmAnalyticsV3Presentation
@@ -157,6 +158,7 @@ const defaultRecordColumns = [
 ]
 
 const measuresWithSourceRows = new Set([
+  'registeredAssetCount',
   'scheduledCount',
   'completedCount',
   'completedOnTimeCount',
@@ -166,6 +168,11 @@ const measuresWithSourceRows = new Set([
   'missedCount',
   'progressPercent',
   'onTimeCompliancePercent',
+  'assignmentCompletedWithinCount',
+  'assignmentCompletedLateCount',
+  'assignmentOverdueCount',
+  'assignmentOpenCount',
+  'assignmentUnknownCount',
 ])
 
 function createMeasureSourcePlan(
@@ -182,8 +189,6 @@ function createMeasureSourcePlan(
   let categories = [...plan.categories]
   let period = plan.period
 
-  if (plan.subject !== 'pmExecution' || period === null) return null
-
   const setBaseFilter = (field: string, value: unknown) => {
     const existing = baseFilters.filter((filter) => filter.field !== field)
     existing.push(
@@ -193,6 +198,46 @@ function createMeasureSourcePlan(
     )
     baseFilters.splice(0, baseFilters.length, ...existing)
   }
+
+  if (
+    plan.subject === 'assetInventory' &&
+    measureId === 'registeredAssetCount'
+  ) {
+    for (const dimension of plan.groupBy) {
+      const value = groupValues?.[dimension]
+      if (!groupValues) break
+      if (dimension === 'assetCategory') {
+        if (typeof value !== 'string') return null
+        categories = [value]
+      } else {
+        setBaseFilter(dimension, value ?? null)
+      }
+    }
+    return {
+      ...plan,
+      categories,
+      mode: 'Records',
+      measures: [],
+      groupBy: [],
+      baseFilters,
+      matchingFilters: [],
+      aggregateFilters: [],
+      orderBy: [],
+      top: null,
+      presentation: 'Table',
+      columns: [
+        'assetId',
+        'assetCode',
+        'assetCategory',
+        'department',
+        'building',
+        'location',
+        'registrationStatus',
+      ],
+    }
+  }
+
+  if (plan.subject !== 'pmExecution' || period === null) return null
 
   if (groupValues) {
     for (const dimension of plan.groupBy) {
@@ -289,6 +334,14 @@ function createMeasureSourcePlan(
     nonOperationalCount: ['condition', ['NonOperational']],
     remainingCount: ['timeliness', ['Remaining']],
     missedCount: ['timeliness', ['Missed']],
+    assignmentCompletedWithinCount: [
+      'assignmentPeriodStatus',
+      ['CompletedWithinPeriod'],
+    ],
+    assignmentCompletedLateCount: ['assignmentPeriodStatus', ['CompletedLate']],
+    assignmentOverdueCount: ['assignmentPeriodStatus', ['Overdue']],
+    assignmentOpenCount: ['assignmentPeriodStatus', ['WithinPeriod']],
+    assignmentUnknownCount: ['assignmentPeriodStatus', ['Unavailable']],
     progressPercent: ['condition', ['Operational', 'NonOperational']],
     onTimeCompliancePercent: ['timeliness', ['OnTime']],
   }
@@ -5313,7 +5366,8 @@ export function PmAnalyticsV3Panel({
             )}
 
           {response.mode === 'Aggregate' &&
-            response.aggregateRows.length === 0 && (
+            response.aggregateRows.length === 0 &&
+            !response.chartRows?.length && (
               <p
                 role="status"
                 className="rounded-md bg-[var(--surface-muted)] p-4 text-sm text-[var(--text-secondary)]"
@@ -5323,30 +5377,42 @@ export function PmAnalyticsV3Panel({
             )}
           {response.mode === 'Aggregate' &&
             plan.presentation === 'Table' &&
-            response.aggregateRows.length > 0 && (
-              <ResultTable
-                columns={response.columns}
-                rows={response.aggregateRows}
-                mode="Aggregate"
-                catalog={catalog}
-                groupBy={plan.groupBy}
-                sourceReturnContext={{
-                  kind: 'analytics',
-                  sessionId: analyticsSessionId,
-                }}
-                onSourceNavigate={saveBeforeSourceNavigation}
-                {...(!isInventory && {
-                  onMeasureSource: (
-                    values: Record<string, unknown>,
-                    measure: string,
-                  ) =>
-                    handleMeasureSources(
-                      values,
-                      measure,
-                      response.cyclesByCategory,
-                    ),
-                })}
-              />
+            (response.aggregateRows.length > 0 ||
+              !!response.chartRows?.length) && (
+              <AnalyticsChartView
+                response={response}
+                onMeasureSource={(values, measure) =>
+                  handleMeasureSources(
+                    values,
+                    measure,
+                    response.cyclesByCategory,
+                  )
+                }
+              >
+                <ResultTable
+                  columns={response.columns}
+                  rows={response.aggregateRows}
+                  mode="Aggregate"
+                  catalog={catalog}
+                  groupBy={plan.groupBy}
+                  sourceReturnContext={{
+                    kind: 'analytics',
+                    sessionId: analyticsSessionId,
+                  }}
+                  onSourceNavigate={saveBeforeSourceNavigation}
+                  {...(!isInventory && {
+                    onMeasureSource: (
+                      values: Record<string, unknown>,
+                      measure: string,
+                    ) =>
+                      handleMeasureSources(
+                        values,
+                        measure,
+                        response.cyclesByCategory,
+                      ),
+                  })}
+                />
+              </AnalyticsChartView>
             )}
           {response.mode === 'Records' &&
             (response.records.length > 0 ? (
