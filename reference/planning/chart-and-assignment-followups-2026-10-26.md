@@ -4,6 +4,16 @@ Recorded October 26, 2026, from the project owner's discussion. Both items are
 follow-up work. This record does not change the application, compliance
 formula, schedule dates or manuscript.
 
+| Item | Recorded outcome | Next gate |
+|---|---|---|
+| FU-01 | Dashboard and NLA chart scope, priorities and data constraints | Select the first charts and verify their complete result scope before implementation |
+| FU-02 | Late-assignment problem, proposed working period and preserved schedule identity | Confirm the allowance rules before implementing deadline or compliance changes |
+
+Supporting records:
+
+- [Full chart inventory and data readiness](chart-opportunity-inventory.md)
+- [Assignment-period decisions and acceptance scenarios](assignment-period-decision-checklist.md)
+
 ## FU-01: Dashboard and NLA charts
 
 **Status:** Requested follow-up; implementation pending.
@@ -50,6 +60,9 @@ work, not a commitment to implement 51 charts.
 **Completion criteria:** Selected charts agree with their tables and source
 scope, handle empty/null/paged results correctly, preserve backend calculations,
 and work on mobile-width screens and printed reports.
+
+These are implementation completion criteria. Recording the follow-up does not
+mark the charts implemented or tested.
 
 ## FU-02: Proposed 30-day working period after assignment
 
@@ -102,6 +115,11 @@ unrecorded history. Mark unavailable historical calculations explicitly.
 documented; assignment events are captured; late-assignment and reassignment
 cases are verified; original PM months/deadlines remain intact; dashboard/NLA
 labels distinguish maintenance compliance from the assignment allowance.
+
+These are implementation completion criteria. The GSD Head's explanation
+confirms late assignments occur; it does not confirm a 30-day allowance or
+which assignment event should start it. Unanswered decisions remain open in
+the linked checklist.
 
 ## Suggested sequence
 
