@@ -66,5 +66,5 @@ String formatAssignmentPeriodStatus(String? value) => switch (value) {
   'CompletedLate' => 'Completed after 30 calendar days',
   'Cancelled' => 'Schedule cancelled',
   null || '' => 'Not available',
-  _ => value ?? 'Not available',
+  _ => value,
 };
