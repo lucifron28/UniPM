@@ -269,6 +269,9 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
         });
 
         var scheduleAssignmentAudit = modelBuilder.Entity<ScheduleAssignmentReassignmentAudit>();
+        scheduleAssignmentAudit.Property(entity => entity.EventType)
+            .HasMaxLength(24)
+            .HasDefaultValue(ScheduleAssignmentEventTypeCatalog.Reassignment);
         scheduleAssignmentAudit.Property(entity => entity.AssignmentRole).HasMaxLength(16);
         scheduleAssignmentAudit.Property(entity => entity.Reason).HasMaxLength(500);
         scheduleAssignmentAudit.HasIndex(entity => new { entity.ScheduleId, entity.ChangedAt });
@@ -290,6 +293,9 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
             .OnDelete(DeleteBehavior.NoAction);
         scheduleAssignmentAudit.ToTable("ScheduleAssignmentReassignmentAudits", table =>
         {
+            table.HasCheckConstraint(
+                "CK_ScheduleAssignmentReassignmentAudits_EventType_Allowed",
+                $"[EventType] IN ({SqlIn([ScheduleAssignmentEventTypeCatalog.InitialAssignment, ScheduleAssignmentEventTypeCatalog.Reassignment, ScheduleAssignmentEventTypeCatalog.Unassignment])})");
             table.HasCheckConstraint(
                 "CK_ScheduleAssignmentReassignmentAudits_AssignmentRole_Allowed",
                 "[AssignmentRole] IN ('Supervisor', 'Inspector')");

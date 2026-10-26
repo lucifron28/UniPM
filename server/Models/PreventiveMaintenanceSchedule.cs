@@ -40,6 +40,8 @@ public class PreventiveMaintenanceSchedule
 
     public Guid? AssignedToUserId { get; set; }
     public Guid? AssignedSupervisorUserId { get; set; }
+    public DateTimeOffset? FirstSupervisorAssignedAt { get; set; }
+    public DateTimeOffset? FirstInspectorAssignedAt { get; set; }
     public DateTimeOffset? CompletedAt { get; set; }
 
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;

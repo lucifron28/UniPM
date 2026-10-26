@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore.Storage;
 using UniPM.Api.Data;
 using UniPM.Api.Features;
 using UniPM.Api.Features.Auth;
+using UniPM.Api.Features.Schedules;
 using UniPM.Api.Models;
 
 namespace UniPM.Api.Features.AdminManagement;
@@ -268,6 +269,7 @@ public static class AdminAccountEndpoints
         ApplicationDbContext context,
         UserManager<ApplicationUser> userManager,
         RefreshSessionService refreshSessions,
+        TimeProvider timeProvider,
         CancellationToken cancellationToken)
     {
         if (!TryGetActorId(principal, out var adminId)) return Results.Forbid();
@@ -282,13 +284,44 @@ public static class AdminAccountEndpoints
         var currentAssignments = await context.PreventiveMaintenanceSchedules
             .Where(schedule => schedule.AssignedToUserId == id || schedule.AssignedSupervisorUserId == id)
             .ToListAsync(cancellationToken);
+        var now = timeProvider.GetUtcNow();
         foreach (var schedule in currentAssignments)
         {
-            if (schedule.AssignedToUserId == id) schedule.AssignedToUserId = null;
-            if (schedule.AssignedSupervisorUserId == id) schedule.AssignedSupervisorUserId = null;
+            if (schedule.AssignedToUserId == id)
+            {
+                ScheduleAssignmentEventRecorder.RecordChange(
+                    context,
+                    schedule,
+                    "Inspector",
+                    id,
+                    null,
+                    adminId,
+                    now,
+                    "Account deleted",
+                    hasPriorAssignmentHistory: true);
+                schedule.AssignedToUserId = null;
+            }
+
+            if (schedule.AssignedSupervisorUserId == id)
+            {
+                ScheduleAssignmentEventRecorder.RecordChange(
+                    context,
+                    schedule,
+                    "Supervisor",
+                    id,
+                    null,
+                    adminId,
+                    now,
+                    "Account deleted",
+                    hasPriorAssignmentHistory: true);
+                schedule.AssignedSupervisorUserId = null;
+            }
+
+            schedule.UpdatedAt = now;
         }
 
-        var retainedForHistory = await HasHistoricalReferencesAsync(context, id, cancellationToken);
+        var retainedForHistory = currentAssignments.Count > 0
+            || await HasHistoricalReferencesAsync(context, id, cancellationToken);
         if (retainedForHistory)
         {
             user.IsActive = false;

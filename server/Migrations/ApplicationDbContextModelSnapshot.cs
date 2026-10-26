@@ -765,6 +765,12 @@ namespace UniPM.Api.Migrations
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("datetimeoffset");
 
+                    b.Property<DateTimeOffset?>("FirstInspectorAssignedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<DateTimeOffset?>("FirstSupervisorAssignedAt")
+                        .HasColumnType("datetimeoffset");
+
                     b.Property<string>("PeriodType")
                         .IsRequired()
                         .HasMaxLength(32)
@@ -1164,7 +1170,14 @@ namespace UniPM.Api.Migrations
                     b.Property<Guid>("ChangedByUserId")
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<Guid>("NewAssigneeUserId")
+                    b.Property<string>("EventType")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(24)
+                        .HasColumnType("nvarchar(24)")
+                        .HasDefaultValue("Reassignment");
+
+                    b.Property<Guid?>("NewAssigneeUserId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid?>("PreviousAssigneeUserId")
@@ -1191,6 +1204,8 @@ namespace UniPM.Api.Migrations
                     b.ToTable("ScheduleAssignmentReassignmentAudits", null, t =>
                         {
                             t.HasCheckConstraint("CK_ScheduleAssignmentReassignmentAudits_AssignmentRole_Allowed", "[AssignmentRole] IN ('Supervisor', 'Inspector')");
+
+                            t.HasCheckConstraint("CK_ScheduleAssignmentReassignmentAudits_EventType_Allowed", "[EventType] IN ('InitialAssignment', 'Reassignment', 'Unassignment')");
 
                             t.HasCheckConstraint("CK_ScheduleAssignmentReassignmentAudits_Reason_NotBlank", "LEN(LTRIM(RTRIM([Reason]))) > 0");
                         });
@@ -1500,8 +1515,7 @@ namespace UniPM.Api.Migrations
                     b.HasOne("UniPM.Api.Models.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("NewAssigneeUserId")
-                        .OnDelete(DeleteBehavior.NoAction)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.NoAction);
 
                     b.HasOne("UniPM.Api.Models.ApplicationUser", null)
                         .WithMany()
