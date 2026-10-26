@@ -66,6 +66,27 @@ export function formatScheduleDateTime(value: string | null) {
     : 'Not recorded'
 }
 
+export function formatAssignmentPeriodStatus(value: string | null | undefined) {
+  switch (value) {
+    case 'Unavailable':
+      return 'Initial Inspector assignment date unknown'
+    case 'WithinPeriod':
+      return 'Within 30 calendar days'
+    case 'Overdue':
+      return 'Overdue and unfinished'
+    case 'CompletedWithinPeriod':
+      return 'Completed within 30 calendar days'
+    case 'CompletedLate':
+      return 'Completed after 30 calendar days'
+    case 'Cancelled':
+      return 'Schedule cancelled'
+    default:
+      return value
+        ? value.replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+        : 'Not available'
+  }
+}
+
 export function toDateTimeLocal(value: string | undefined) {
   if (!value) return ''
   const date = new Date(value)

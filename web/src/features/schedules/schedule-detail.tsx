@@ -11,6 +11,7 @@ import { ScheduleBatchAssignment } from '@/features/schedules/schedule-batch-ass
 import { useSchedule } from '@/features/schedules/schedule-queries'
 import type { ScheduleSearch } from '@/features/schedules/schedule-registry'
 import {
+  formatAssignmentPeriodStatus,
   formatPmCycle,
   formatPmCycleDueDate,
   formatScheduleDateTime,
@@ -233,6 +234,50 @@ export function ScheduleDetail({
           label="Last updated"
           value={formatScheduleDateTime(record.updatedAt)}
         />
+      </Card>
+
+      <Card
+        aria-labelledby="schedule-assignment-period-title"
+        className="space-y-4 p-5 shadow-none"
+      >
+        <div>
+          <h3
+            id="schedule-assignment-period-title"
+            className="text-lg font-semibold text-[var(--text-primary)]"
+          >
+            Inspector assignment period
+          </h3>
+          <p className="mt-1 text-sm text-[var(--text-secondary)]">
+            This is separate from the original PM due date above. The
+            30-calendar-day period starts at the first saved Inspector
+            assignment. Reassignment does not reset it or change the PM due
+            date.
+          </p>
+        </div>
+        <dl className="grid gap-4 sm:grid-cols-2">
+          <DetailItem
+            label="First Supervisor assignment"
+            value={formatScheduleDateTime(
+              record.firstSupervisorAssignedAt ?? null,
+            )}
+          />
+          <DetailItem
+            label="First Inspector assignment"
+            value={formatScheduleDateTime(
+              record.firstInspectorAssignedAt ?? null,
+            )}
+          />
+          <DetailItem
+            label="Inspector assignment due"
+            value={formatScheduleDateTime(
+              record.inspectorAssignmentDueAt ?? null,
+            )}
+          />
+          <DetailItem
+            label="Assignment-period status"
+            value={formatAssignmentPeriodStatus(record.assignmentPeriodStatus)}
+          />
+        </dl>
       </Card>
 
       <ScheduleBatchAssignment

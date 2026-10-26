@@ -43,6 +43,17 @@ export function quartersForScheduledMonths(
 }
 
 const optionalText = z.string().max(256).nullable()
+const optionalAssignmentTimestamp = z
+  .string()
+  .datetime({ offset: true })
+  .nullable()
+  .optional()
+const optionalAssignmentPeriodStatus = z
+  .string()
+  .trim()
+  .min(1)
+  .max(32)
+  .optional()
 const scheduleAssetSchema = z
   .object({
     id: z.string().uuid(),
@@ -78,6 +89,10 @@ export const scheduleSchema = z
     academicYear: z.string().max(32).nullable(),
     assignedToUserId: z.string().uuid().nullable(),
     assignedSupervisorUserId: z.string().uuid().nullable(),
+    firstSupervisorAssignedAt: optionalAssignmentTimestamp,
+    firstInspectorAssignedAt: optionalAssignmentTimestamp,
+    inspectorAssignmentDueAt: optionalAssignmentTimestamp,
+    assignmentPeriodStatus: optionalAssignmentPeriodStatus,
     completedAt: z.string().datetime({ offset: true }).nullable(),
     createdAt: z.string().datetime({ offset: true }),
     updatedAt: z.string().datetime({ offset: true }),
@@ -191,6 +206,10 @@ const scheduleRegistryItemSchema = z
       z.number().int().nullable(),
     ),
     academicYear: z.string().max(32).nullable(),
+    firstSupervisorAssignedAt: optionalAssignmentTimestamp,
+    firstInspectorAssignedAt: optionalAssignmentTimestamp,
+    inspectorAssignmentDueAt: optionalAssignmentTimestamp,
+    assignmentPeriodStatus: optionalAssignmentPeriodStatus,
     completedAt: z.string().datetime({ offset: true }).nullable(),
     createdAt: z.string().datetime({ offset: true }),
     updatedAt: z.string().datetime({ offset: true }),
