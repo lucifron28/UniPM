@@ -52,7 +52,6 @@ test('saved report reuse reads new SQL Server asset data after confirmation', as
 
   const suffix = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
   const reportName = `Saved inventory ${suffix}`
-  let accessToken = ''
   let interpretationCalls = 0
   page.on('response', (response) => {
     if (response.url().endsWith('/api/v1/analytics/pm/v3/interpret')) {
@@ -73,7 +72,7 @@ test('saved report reuse reads new SQL Server asset data after confirmation', as
   expect(loginResponse.status()).toBe(200)
   const session = (await loginResponse.json()) as LoginResponse
   expect(session.user.roles).toContain('GSD')
-  accessToken = session.accessToken
+  const accessToken = session.accessToken
   await expect(page).toHaveURL(/\/app\/dashboard$/)
 
   await page.goto('/app/analytics')

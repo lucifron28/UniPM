@@ -66,7 +66,6 @@ export function SavedReports({
 
   useEffect(() => {
     const controller = new AbortController()
-    setLoading(true)
     void listSavedAnalyticsReports(controller.signal)
       .then((rows) => {
         if (!controller.signal.aborted) {
@@ -152,7 +151,10 @@ export function SavedReports({
             type="button"
             variant="secondary"
             disabled={disabled || busy || loading}
-            onClick={() => setAttempt((value) => value + 1)}
+            onClick={() => {
+              setLoading(true)
+              setAttempt((value) => value + 1)
+            }}
           >
             Reload my reports
           </Button>
