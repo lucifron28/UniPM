@@ -2351,7 +2351,10 @@ export function PmAnalyticsV3Panel({
         )
       return { label: category.label, months }
     })
-    .filter((item) => item !== null && item.months.length > 0)
+    .filter(
+      (item): item is { label: string; months: string[] } =>
+        item !== null && item.months.length > 0,
+    )
   const showClarificationPanel =
     clarificationInterpretation !== null &&
     stage === 'question' &&
@@ -2379,10 +2382,10 @@ export function PmAnalyticsV3Panel({
     reopenClarification(field)
   }
   const goBackFromScopeReview = () => {
-    if (showClarificationPanel && clarificationStepFields.length > 0) {
-      changeReviewScope(
-        clarificationStepFields[clarificationStepFields.length - 1],
-      )
+    const lastClarificationField =
+      clarificationStepFields[clarificationStepFields.length - 1]
+    if (showClarificationPanel && lastClarificationField) {
+      changeReviewScope(lastClarificationField)
       return
     }
     startEditingQuestion()

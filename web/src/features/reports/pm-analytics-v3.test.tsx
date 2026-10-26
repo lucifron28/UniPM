@@ -1571,6 +1571,11 @@ describe('PM analytics V3 workflow', () => {
       fireEvent.change(screen.getByRole('textbox', { name: 'Question' }), {
         target: { value: question },
       })
+      await waitFor(() =>
+        expect(
+          screen.getByRole('button', { name: 'Generate report' }),
+        ).toBeEnabled(),
+      )
       fireEvent.click(screen.getByRole('button', { name: 'Generate report' }))
       expect(
         await screen.findByRole('heading', { name: 'Review your report' }),
@@ -1629,6 +1634,11 @@ describe('PM analytics V3 workflow', () => {
           'Which departments are falling behind on extinguisher checks with at least 70% completion progress?',
       },
     })
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Generate report' }),
+      ).toBeEnabled(),
+    )
     fireEvent.click(screen.getByRole('button', { name: 'Generate report' }))
     expect(
       await screen.findByRole('heading', { name: 'Review your report' }),
