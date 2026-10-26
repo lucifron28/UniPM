@@ -402,6 +402,7 @@ test('saved reports reuse a fresh preview and guard stale deletes', async ({
       .locator('dl[aria-label="Report scope"]')
       .getByText('Period based on scheduled PM cycles: 2026', { exact: true }),
   ).toBeVisible()
+  expect(activePlan.period.year).toBe(2026)
   expect(interpretationCalls).toBe(1)
   expect(executionCalls).toBe(0)
   await page
