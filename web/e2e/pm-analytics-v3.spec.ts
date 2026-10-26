@@ -434,6 +434,7 @@ test('saved reports reuse a fresh preview and guard stale deletes', async ({
       .locator('dl[aria-label="Report scope"]')
       .getByText('Period based on scheduled PM cycles: 2025', { exact: true }),
   ).toBeVisible()
+  expect(activePlan.period.year).toBe(2025)
   await page.getByLabel('Dates on future runs').selectOption('Fixed')
   await page
     .getByRole('button', { name: 'Replace settings for Routine progress' })
