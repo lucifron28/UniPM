@@ -64,6 +64,16 @@ internal static class PmAnalyticsV3Catalog
     internal const string OnTimeCompliancePercent = "onTimeCompliancePercent";
     internal const string DistinctAssetCount = "distinctAssetCount";
 
+    internal const string AssignmentCompletedWithinCount = "assignmentCompletedWithinCount";
+    internal const string AssignmentCompletedLateCount = "assignmentCompletedLateCount";
+    internal const string AssignmentOverdueCount = "assignmentOverdueCount";
+    internal const string AssignmentOpenCount = "assignmentOpenCount";
+    internal const string AssignmentUnknownCount = "assignmentUnknownCount";
+    internal const string FirstSupervisorAssignedAt = "firstSupervisorAssignedAt";
+    internal const string FirstInspectorAssignedAt = "firstInspectorAssignedAt";
+    internal const string InspectorAssignmentDueAt = "inspectorAssignmentDueAt";
+    internal const string AssignmentPeriodStatus = "assignmentPeriodStatus";
+
     internal const string AssetCategory = "assetCategory";
     internal const string Department = "department";
     internal const string Building = "building";
@@ -183,6 +193,31 @@ internal static class PmAnalyticsV3Catalog
                 "eligible population",
                 "On-time count divided by eligible scheduled count, multiplied by 100; unmeasurable while any selected cycle is active or future."),
             new PmAnalyticsV3MeasureDefinition(
+                AssignmentCompletedWithinCount, "Completed within Inspector period", "integer", "asset-cycles",
+                "one eligible persisted schedule for one asset and PM cycle",
+                "matching schedules; assignment-period counts use only known initial assignment timestamps",
+                "Count first server-accepted completions at or before 30 calendar days after the first saved Inspector assignment. Original PM compliance is separate; reassignment never resets the clock."),
+            new PmAnalyticsV3MeasureDefinition(
+                AssignmentCompletedLateCount, "Completed after Inspector period", "integer", "asset-cycles",
+                "one eligible persisted schedule for one asset and PM cycle",
+                "matching schedules; assignment-period counts use only known initial assignment timestamps",
+                "Count first server-accepted completions after 30 calendar days from the first saved Inspector assignment. Original PM compliance is separate; reassignment never resets the clock."),
+            new PmAnalyticsV3MeasureDefinition(
+                AssignmentOverdueCount, "Inspector period overdue and unfinished", "integer", "asset-cycles",
+                "one eligible persisted schedule for one asset and PM cycle",
+                "matching schedules; assignment-period counts use only known initial assignment timestamps",
+                "Count unfinished schedules after the original 30-calendar-day Inspector assignment due instant. Original PM compliance is separate; reassignment never resets the clock."),
+            new PmAnalyticsV3MeasureDefinition(
+                AssignmentOpenCount, "Inspector period open and unfinished", "integer", "asset-cycles",
+                "one eligible persisted schedule for one asset and PM cycle",
+                "matching schedules; assignment-period counts use only known initial assignment timestamps",
+                "Count unfinished schedules at or before the original 30-calendar-day Inspector assignment due instant. Original PM compliance is separate; reassignment never resets the clock."),
+            new PmAnalyticsV3MeasureDefinition(
+                AssignmentUnknownCount, "Inspector assignment time unavailable", "integer", "asset-cycles",
+                "one eligible persisted schedule for one asset and PM cycle",
+                "matching schedules; assignment-period counts use only known initial assignment timestamps",
+                "Count schedules without a reliable first saved Inspector assignment timestamp. These are excluded from assignment-period denominators. Original PM compliance is separate; reassignment never resets the clock."),
+            new PmAnalyticsV3MeasureDefinition(
                 DistinctAssetCount,
                 "Distinct assets",
                 "integer",
@@ -285,6 +320,7 @@ internal static class PmAnalyticsV3Catalog
             FilterField(Condition, "Inspection condition", isBase: false, "condition", 24, allowedValues: ["Operational", "NonOperational", "NotInspected"]),
             FilterField(Timeliness, "Timeliness", isBase: false, "timeliness", 16, allowedValues: ["OnTime", "Late", "Remaining", "Missed", "Future"]),
             FilterField(ScheduleStatus, "Schedule status", isBase: false, "scheduleStatus", 16, allowedValues: ScheduleStatusCatalog.PersistedValues.Where(value => value != ScheduleStatusCatalog.Cancelled).ToArray()),
+            FilterField(AssignmentPeriodStatus, "Inspector assignment period", isBase: false, "assignmentPeriodStatus", 32, allowedValues: ["Unavailable", "WithinPeriod", "Overdue", "CompletedWithinPeriod", "CompletedLate"]),
             FilterField(FormStatus, "Form status", isBase: false, "formStatus", 16, allowNull: true, allowedValues: PreventiveMaintenanceFormStatusCatalog.PersistedValues)
         });
 
@@ -325,6 +361,10 @@ internal static class PmAnalyticsV3Catalog
             new PmAnalyticsV3RecordColumnDefinition(FormStatus, "Form status", "string", "", "Null when no linked form is recorded."),
             new PmAnalyticsV3RecordColumnDefinition(Condition, "Inspection condition", "string", "", "NotInspected when there is no completion timestamp."),
             new PmAnalyticsV3RecordColumnDefinition(Timeliness, "Timeliness", "string", "", null),
+            new PmAnalyticsV3RecordColumnDefinition(FirstSupervisorAssignedAt, "First Supervisor assignment", "date-time", "UTC", "Unknown for legacy schedules; never inferred from UpdatedAt."),
+            new PmAnalyticsV3RecordColumnDefinition(FirstInspectorAssignedAt, "First Inspector assignment", "date-time", "UTC", "Unknown for legacy schedules; reassignment does not replace this timestamp."),
+            new PmAnalyticsV3RecordColumnDefinition(InspectorAssignmentDueAt, "Inspector assignment due", "date-time", "UTC", "First saved Inspector assignment plus 30 calendar days, separate from the PM deadline. Null for unknown initial assignments."),
+            new PmAnalyticsV3RecordColumnDefinition(AssignmentPeriodStatus, "Inspector assignment period", "string", "", "Uses first server-accepted completion; original PM compliance remains separate."),
             new PmAnalyticsV3RecordColumnDefinition(UsedLegacyDateFallback, "Used legacy cycle fallback", "boolean", "", null)
         });
 

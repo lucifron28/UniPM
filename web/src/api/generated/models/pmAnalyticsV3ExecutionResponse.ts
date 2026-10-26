@@ -32,4 +32,8 @@ export interface PmAnalyticsV3ExecutionResponse {
   aggregateRows: PmAnalyticsV3AggregateRow[]
   records: PmAnalyticsV3RecordRow[]
   scopeNotes: string[]
+  /** @nullable */
+  chartRows?: PmAnalyticsV3AggregateRow[] | null
+  /** @nullable */
+  chartUnavailableReason?: string | null
 }

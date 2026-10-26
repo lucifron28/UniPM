@@ -4,6 +4,7 @@
  * UniPM.Api | v1
  * OpenAPI spec version: 1.0.0
  */
+import type { PmAssignmentPeriodSummary } from './pmAssignmentPeriodSummary'
 import type { PmPeriodDashboardAssetRowResponse } from './pmPeriodDashboardAssetRowResponse'
 import type { PmPeriodDashboardBatchResponse } from './pmPeriodDashboardBatchResponse'
 
@@ -41,4 +42,5 @@ export interface PmPeriodDashboardResponse {
   progressPercent: number | string
   batches: PmPeriodDashboardBatchResponse[]
   assets: PmPeriodDashboardAssetRowResponse[]
+  assignmentPeriod?: null | PmAssignmentPeriodSummary
 }

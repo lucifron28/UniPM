@@ -81,7 +81,7 @@ public static class SchedulesEndpoints
             if (string.Equals(schedule.Status, ScheduleStatusCatalog.Ongoing, StringComparison.OrdinalIgnoreCase))
             {
                 await mutationLock.CommitAsync(cancellationToken);
-                return Results.Ok(ScheduleResponse.FromSchedule(schedule));
+                return Results.Ok(ScheduleResponse.FromSchedule(schedule, timeProvider.GetUtcNow()));
             }
 
             if ((!string.Equals(schedule.Status, ScheduleStatusCatalog.Due, StringComparison.OrdinalIgnoreCase)
@@ -96,7 +96,7 @@ public static class SchedulesEndpoints
             await context.SaveChangesAsync(cancellationToken);
             await mutationLock.CommitAsync(cancellationToken);
 
-            return Results.Ok(ScheduleResponse.FromSchedule(schedule));
+            return Results.Ok(ScheduleResponse.FromSchedule(schedule, timeProvider.GetUtcNow()));
         })
         .WithName("StartScheduleInspection")
         .WithSummary("Marks an assigned PM schedule as in progress when field work starts")
@@ -615,7 +615,9 @@ public static class SchedulesEndpoints
                 return ApiErrors.Conflict("The PM batch changed while the schedule was being created. Retry the request.");
             }
 
-            return Results.Created($"/api/v1/schedules/{schedule.Id}", ScheduleResponse.FromSchedule(schedule));
+            return Results.Created(
+                $"/api/v1/schedules/{schedule.Id}",
+                ScheduleResponse.FromSchedule(schedule, now));
         })
         .WithName("CreateSchedule")
         .WithSummary("Creates a preventive maintenance schedule for an existing asset")
@@ -630,14 +632,21 @@ public static class SchedulesEndpoints
         group.MapPut("/{id:guid}/supervisor-assignment", async (
             Guid id,
             AssignScheduleSupervisorDto dto,
+            ClaimsPrincipal principal,
             IDbContextFactory<ApplicationDbContext> factory,
             UserManager<ApplicationUser> userManager,
+            TimeProvider timeProvider,
             CancellationToken cancellationToken) =>
         {
             var errors = dto.Validate();
             if (errors.Count > 0)
             {
                 return ApiErrors.Validation(errors);
+            }
+
+            if (!Guid.TryParse(principal.FindFirst(JwtRegisteredClaimNames.Sub)?.Value, out var actorId))
+            {
+                return Results.Forbid();
             }
 
             var supervisor = await userManager.FindByIdAsync(dto.SupervisorUserId.ToString());
@@ -724,9 +733,25 @@ public static class SchedulesEndpoints
                     batch.Select(schedule => schedule.Id).ToArray()));
             }
 
-            var now = DateTimeOffset.UtcNow;
+            var now = timeProvider.GetUtcNow();
+            var batchIds = batch.Select(schedule => schedule.Id).ToArray();
+            var priorAssignmentHistory = await ScheduleAssignmentEventRecorder.FindHistoryScheduleIdsAsync(
+                context,
+                batchIds,
+                "Supervisor",
+                cancellationToken);
             foreach (var schedule in batch)
             {
+                ScheduleAssignmentEventRecorder.RecordChange(
+                    context,
+                    schedule,
+                    "Supervisor",
+                    schedule.AssignedSupervisorUserId,
+                    supervisor.Id,
+                    actorId,
+                    now,
+                    "Assignment through planning flow",
+                    priorAssignmentHistory.Contains(schedule.Id));
                 schedule.AssignedSupervisorUserId = supervisor.Id;
                 schedule.UpdatedAt = now;
             }
@@ -765,6 +790,7 @@ public static class SchedulesEndpoints
             ClaimsPrincipal principal,
             IDbContextFactory<ApplicationDbContext> factory,
             UserManager<ApplicationUser> userManager,
+            TimeProvider timeProvider,
             CancellationToken cancellationToken) =>
         {
             var errors = dto.Validate();
@@ -874,9 +900,25 @@ public static class SchedulesEndpoints
                     assignableSchedules.Select(schedule => schedule.Id).ToArray()));
             }
 
-            var now = DateTimeOffset.UtcNow;
+            var now = timeProvider.GetUtcNow();
+            var batchIds = assignableSchedules.Select(schedule => schedule.Id).ToArray();
+            var priorAssignmentHistory = await ScheduleAssignmentEventRecorder.FindHistoryScheduleIdsAsync(
+                context,
+                batchIds,
+                "Inspector",
+                cancellationToken);
             foreach (var schedule in assignableSchedules)
             {
+                ScheduleAssignmentEventRecorder.RecordChange(
+                    context,
+                    schedule,
+                    "Inspector",
+                    schedule.AssignedToUserId,
+                    worker.Id,
+                    supervisor.Id,
+                    now,
+                    "Assignment through planning flow",
+                    priorAssignmentHistory.Contains(schedule.Id));
                 schedule.AssignedToUserId = worker.Id;
                 schedule.UpdatedAt = now;
             }
@@ -1074,6 +1116,7 @@ public static class SchedulesEndpoints
             }
 
             await using var context = await factory.CreateDbContextAsync(cancellationToken);
+            var assignmentAsOfUtc = timeProvider.GetUtcNow();
             var query = context.PreventiveMaintenanceSchedules
                 .AsNoTracking()
                 .Where(schedule => schedule.Year == year && schedule.Asset != null);
@@ -1123,9 +1166,30 @@ public static class SchedulesEndpoints
                             schedule.Asset.Department,
                             schedule.Asset.Location,
                             schedule.Asset.Status,
-                            schedule.Asset.QrCodeValue)),
+                            schedule.Asset.QrCodeValue))
+                    {
+                        FirstSupervisorAssignedAt = schedule.FirstSupervisorAssignedAt,
+                        FirstInspectorAssignedAt = schedule.FirstInspectorAssignedAt
+                    },
                     context.InspectionRecords.Any(inspection => inspection.ScheduleId == schedule.Id)))
                 .ToListAsync(cancellationToken);
+
+            rows = rows.Select(row =>
+            {
+                var period = ScheduleAssignmentPeriod.Calculate(
+                    row.Schedule.FirstInspectorAssignedAt,
+                    row.Schedule.CompletedAt,
+                    row.Schedule.Status,
+                    assignmentAsOfUtc);
+                return row with
+                {
+                    Schedule = row.Schedule with
+                    {
+                        InspectorAssignmentDueAt = period.InspectorAssignmentDueAt,
+                        AssignmentPeriodStatus = period.AssignmentPeriodStatus
+                    }
+                };
+            }).ToList();
 
             var assignedUserIds = rows
                 .SelectMany(row => new Guid?[]
@@ -1189,7 +1253,7 @@ public static class SchedulesEndpoints
             var resultBatches = batches.AsEnumerable();
             if (isTracking)
             {
-                var institutionalNow = PreventiveMaintenanceCycle.ToInstitutionalTime(timeProvider.GetUtcNow());
+                var institutionalNow = PreventiveMaintenanceCycle.ToInstitutionalTime(assignmentAsOfUtc);
                 resultBatches = trackingBaseBatches.Select(batch => batch with
                 {
                     OverdueCount = rowsByBatchKey[batch.BatchKey].Count(row => IsScheduleOverdueAt(
@@ -1337,6 +1401,7 @@ public static class SchedulesEndpoints
                 return Results.Forbid();
             }
 
+            var now = timeProvider.GetUtcNow();
             var overallCount = await scopedQuery.CountAsync(cancellationToken);
             var query = ApplyScheduleRegistryFilters(
                 scopedQuery,
@@ -1350,7 +1415,7 @@ public static class SchedulesEndpoints
                 normalizedDepartment,
                 normalizedCategory,
                 normalizedSearch,
-                PreventiveMaintenanceCycle.ToInstitutionalTime(timeProvider.GetUtcNow()));
+                PreventiveMaintenanceCycle.ToInstitutionalTime(now));
             var totalCount = await query.CountAsync(cancellationToken);
             var skip = (long)(pageNumber - 1) * size;
             List<ScheduleRegistryItemResponse> items = skip > int.MaxValue
@@ -1382,12 +1447,26 @@ public static class SchedulesEndpoints
                                 schedule.Asset.AssetCategory,
                                 schedule.Asset.Building,
                                 schedule.Asset.Department,
-                                schedule.Asset.Location)))
+                                schedule.Asset.Location))
+                    {
+                        FirstSupervisorAssignedAt = schedule.FirstSupervisorAssignedAt,
+                        FirstInspectorAssignedAt = schedule.FirstInspectorAssignedAt
+                    })
                     .ToListAsync(cancellationToken);
-            var institutionalNow = PreventiveMaintenanceCycle.ToInstitutionalTime(timeProvider.GetUtcNow());
-            items = items.Select(item => item with
+            var institutionalNow = PreventiveMaintenanceCycle.ToInstitutionalTime(now);
+            items = items.Select(item =>
             {
-                Status = CanonicalScheduleStatus(item.Status, item.CompletedAt, item.ScheduleDate, institutionalNow)
+                var period = ScheduleAssignmentPeriod.Calculate(
+                    item.FirstInspectorAssignedAt,
+                    item.CompletedAt,
+                    item.Status,
+                    now);
+                return item with
+                {
+                    Status = CanonicalScheduleStatus(item.Status, item.CompletedAt, item.ScheduleDate, institutionalNow),
+                    InspectorAssignmentDueAt = period.InspectorAssignmentDueAt,
+                    AssignmentPeriodStatus = period.AssignmentPeriodStatus
+                };
             }).ToList();
 
             return Results.Ok(new ScheduleRegistryPageResponse(
@@ -1410,6 +1489,7 @@ public static class SchedulesEndpoints
             string? department,
             ClaimsPrincipal user,
             IDbContextFactory<ApplicationDbContext> factory,
+            TimeProvider timeProvider,
             CancellationToken cancellationToken) =>
         {
             var normalizedDepartment = string.IsNullOrWhiteSpace(department) ? null : department.Trim();
@@ -1533,6 +1613,7 @@ public static class SchedulesEndpoints
             string? search,
             ClaimsPrincipal user,
             IDbContextFactory<ApplicationDbContext> factory,
+            TimeProvider timeProvider,
             CancellationToken cancellationToken) =>
         {
             Guid? assignedUserId = null;
@@ -1709,10 +1790,27 @@ public static class SchedulesEndpoints
                             schedule.Asset.Department,
                             schedule.Asset.Location,
                             schedule.Asset.Status,
-                            schedule.Asset.QrCodeValue)))
+                            schedule.Asset.QrCodeValue))
+                {
+                    FirstSupervisorAssignedAt = schedule.FirstSupervisorAssignedAt,
+                    FirstInspectorAssignedAt = schedule.FirstInspectorAssignedAt
+                })
                 .ToListAsync(cancellationToken);
 
-            return Results.Ok(schedules);
+            var now = timeProvider.GetUtcNow();
+            return Results.Ok(schedules.Select(schedule =>
+            {
+                var period = ScheduleAssignmentPeriod.Calculate(
+                    schedule.FirstInspectorAssignedAt,
+                    schedule.CompletedAt,
+                    schedule.Status,
+                    now);
+                return schedule with
+                {
+                    InspectorAssignmentDueAt = period.InspectorAssignmentDueAt,
+                    AssignmentPeriodStatus = period.AssignmentPeriodStatus
+                };
+            }).ToArray());
         })
         .WithName("ListSchedules")
         .WithSummary("Lists preventive maintenance schedules using supported filters")
@@ -1726,6 +1824,7 @@ public static class SchedulesEndpoints
             Guid id,
             ClaimsPrincipal user,
             IDbContextFactory<ApplicationDbContext> factory,
+            TimeProvider timeProvider,
             CancellationToken cancellationToken) =>
         {
             await using var context = await factory.CreateDbContextAsync(cancellationToken);
@@ -1748,7 +1847,7 @@ public static class SchedulesEndpoints
                 .FirstOrDefaultAsync(schedule => schedule.Id == id, cancellationToken);
 
             return schedule is not null
-                ? Results.Ok(ScheduleResponse.FromSchedule(schedule))
+                ? Results.Ok(ScheduleResponse.FromSchedule(schedule, timeProvider.GetUtcNow()))
                 : ApiErrors.NotFound("Schedule not found.");
         })
         .WithName("GetSchedule")
@@ -2400,17 +2499,17 @@ public static class SchedulesEndpoints
         var now = DateTimeOffset.UtcNow;
         foreach (var schedule in changed)
         {
-            context.ScheduleAssignmentReassignmentAudits.Add(new ScheduleAssignmentReassignmentAudit
-            {
-                Id = Guid.NewGuid(),
-                ScheduleId = schedule.Id,
-                AssignmentRole = assignmentRole,
-                PreviousAssigneeUserId = CurrentAssignee(schedule),
-                NewAssigneeUserId = target.Id,
-                ChangedByUserId = actorId,
-                ChangedAt = now,
-                Reason = dto.Reason.Trim()
-            });
+            ScheduleAssignmentEventRecorder.RecordChange(
+                context,
+                schedule,
+                assignmentRole,
+                CurrentAssignee(schedule),
+                target.Id,
+                actorId,
+                now,
+                dto.Reason.Trim(),
+                hasPriorAssignmentHistory: true,
+                isReassignmentOperation: true);
 
             if (isSupervisorAssignment)
             {
@@ -2472,8 +2571,20 @@ public sealed record ScheduleResponse(
     DateTimeOffset UpdatedAt,
     ScheduleAssetResponse? Asset)
 {
-    internal static ScheduleResponse FromSchedule(PreventiveMaintenanceSchedule schedule)
+    public DateTimeOffset? FirstSupervisorAssignedAt { get; init; }
+    public DateTimeOffset? FirstInspectorAssignedAt { get; init; }
+    public DateTimeOffset? InspectorAssignmentDueAt { get; init; }
+    public string AssignmentPeriodStatus { get; init; } = "Unavailable";
+
+    internal static ScheduleResponse FromSchedule(
+        PreventiveMaintenanceSchedule schedule,
+        DateTimeOffset now)
     {
+        var period = ScheduleAssignmentPeriod.Calculate(
+            schedule.FirstInspectorAssignedAt,
+            schedule.CompletedAt,
+            schedule.Status,
+            now);
         return new ScheduleResponse(
             schedule.Id,
             schedule.AssetId,
@@ -2500,7 +2611,13 @@ public sealed record ScheduleResponse(
                     schedule.Asset.Department,
                     schedule.Asset.Location,
                     schedule.Asset.Status,
-                    schedule.Asset.QrCodeValue));
+                    schedule.Asset.QrCodeValue))
+        {
+            FirstSupervisorAssignedAt = schedule.FirstSupervisorAssignedAt,
+            FirstInspectorAssignedAt = schedule.FirstInspectorAssignedAt,
+            InspectorAssignmentDueAt = period.InspectorAssignmentDueAt,
+            AssignmentPeriodStatus = period.AssignmentPeriodStatus
+        };
     }
 }
 
@@ -2525,7 +2642,13 @@ public sealed record ScheduleRegistryItemResponse(
     DateTimeOffset? CompletedAt,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
-    ScheduleRegistryAssetContext? Asset);
+    ScheduleRegistryAssetContext? Asset)
+{
+    public DateTimeOffset? FirstSupervisorAssignedAt { get; init; }
+    public DateTimeOffset? FirstInspectorAssignedAt { get; init; }
+    public DateTimeOffset? InspectorAssignmentDueAt { get; init; }
+    public string AssignmentPeriodStatus { get; init; } = "Unavailable";
+}
 
 public sealed record ScheduleRegistryAssetContext(
     Guid Id,

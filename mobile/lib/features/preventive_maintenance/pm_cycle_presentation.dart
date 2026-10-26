@@ -46,3 +46,25 @@ String formatPmCycleDueDate(String? value) {
 
   return '${_monthNames[dueDate.month - 1]} ${dueDate.day}, ${dueDate.year}';
 }
+
+String formatAssignmentPeriodDate(DateTime? value) {
+  if (value == null) return 'Not available';
+
+  final manila = value.toUtc().add(const Duration(hours: 8));
+  final hour = manila.hour.toString().padLeft(2, '0');
+  final minute = manila.minute.toString().padLeft(2, '0');
+  final second = manila.second.toString().padLeft(2, '0');
+  return '${_monthNames[manila.month - 1]} ${manila.day}, ${manila.year} '
+      '$hour:$minute:$second Asia/Manila';
+}
+
+String formatAssignmentPeriodStatus(String? value) => switch (value) {
+  'Unavailable' => 'Assignment period unavailable',
+  'WithinPeriod' => 'Within 30 calendar days',
+  'Overdue' => 'Overdue and unfinished',
+  'CompletedWithinPeriod' => 'Completed within 30 calendar days',
+  'CompletedLate' => 'Completed after 30 calendar days',
+  'Cancelled' => 'Schedule cancelled',
+  null || '' => 'Not available',
+  _ => value,
+};

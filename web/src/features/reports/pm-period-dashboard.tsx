@@ -21,6 +21,7 @@ import {
   formatPmCycle,
   formatPmCycleDueDate,
 } from '@/features/schedules/schedule-presentation'
+import { ReportChart, type ReportChartRow } from './report-charts'
 import './pm-dashboard-print.css'
 
 export type PmPeriodDashboardSearch = {
@@ -55,6 +56,35 @@ function formatPmCycleMonth(pmCycle: string) {
 
 function formatPercent(value: number | string | null) {
   return value === null ? 'Not measurable yet' : `${value}%`
+}
+
+function toChartNumber(value: number | string | null) {
+  if (value === null) return null
+
+  const parsed = typeof value === 'number' ? value : Number(value)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+type AssignmentPeriodSummary = {
+  knownAssignmentCount: number | string
+  unknownAssignmentCount: number | string
+  completedWithinPeriod: number | string
+  completedLate: number | string
+  openWithinPeriod: number | string
+  overdueUnfinished: number | string
+}
+
+type DashboardBatchWithProgress =
+  PmPeriodDashboardResponse['batches'][number] & {
+    progressPercent?: number | string | null
+  }
+
+type DashboardWithAssignmentPeriod = Omit<
+  PmPeriodDashboardResponse,
+  'batches'
+> & {
+  batches: DashboardBatchWithProgress[]
+  assignmentPeriod?: AssignmentPeriodSummary | null
 }
 
 function reportPeriodState(value: string) {
@@ -210,6 +240,318 @@ function DashboardMetrics({
           : {})}
       />
     </div>
+  )
+}
+
+function DashboardCharts({
+  dashboard,
+}: {
+  dashboard: DashboardWithAssignmentPeriod
+}) {
+  const closed = dashboard.periodState === 'Closed'
+  const periodDescription = `${formatAssetCategory(dashboard.assetCategory)} · ${formatPmCycle(dashboard.pmCycle)} · ${dashboard.department ?? 'All departments'}`
+  const cohortDescription = `Selected scope: ${periodDescription}. Groups use current asset department metadata. Condition, timeliness and text filters in the detailed rows do not change these server totals.`
+  const departmentRows: ReportChartRow[] = dashboard.batches.map((batch) => {
+    const department = batch.department ?? 'Department not recorded'
+    const id = `${batch.assetCategory}:${batch.pmCycle}:${batch.department ?? 'not-recorded'}`
+
+    return {
+      id,
+      label: department,
+      values: [
+        {
+          seriesId: 'scheduled',
+          seriesLabel: 'Scheduled',
+          value: toChartNumber(batch.scheduled),
+          unit: 'schedules',
+        },
+        {
+          seriesId: 'inspected',
+          seriesLabel: 'Inspected',
+          value: toChartNumber(batch.inspected),
+          unit: 'schedules',
+        },
+      ],
+    }
+  })
+  const outcomeRows: ReportChartRow[] = dashboard.batches.map((batch) => {
+    const department = batch.department ?? 'Department not recorded'
+    const id = `${batch.assetCategory}:${batch.pmCycle}:${batch.department ?? 'not-recorded'}`
+
+    return {
+      id,
+      label: department,
+      values: [
+        {
+          seriesId: 'completed-on-time',
+          seriesLabel: 'Completed on time',
+          value: toChartNumber(batch.completedOnTime),
+          unit: 'schedules',
+        },
+        {
+          seriesId: 'completed-late',
+          seriesLabel: 'Completed late',
+          value: toChartNumber(batch.completedLate),
+          unit: 'schedules',
+        },
+        closed
+          ? {
+              seriesId: 'not-completed',
+              seriesLabel: 'Not completed',
+              value: toChartNumber(batch.notCompleted),
+              unit: 'schedules',
+            }
+          : {
+              seriesId: 'remaining',
+              seriesLabel: 'Remaining',
+              value: toChartNumber(batch.remaining),
+              unit: 'schedules',
+            },
+      ],
+    }
+  })
+  const complianceRows: ReportChartRow[] = dashboard.batches.map((batch) => {
+    const compliance = dashboard.complianceMeasurable
+      ? toChartNumber(batch.onTimeCompliancePercent)
+      : null
+    const completedOnTime = toChartNumber(batch.completedOnTime)
+    const scheduled = toChartNumber(batch.scheduled)
+
+    return {
+      id: `${batch.assetCategory}:${batch.pmCycle}:${batch.department ?? 'not-recorded'}`,
+      label: batch.department ?? 'Department not recorded',
+      values: [
+        {
+          seriesId: 'on-time-compliance',
+          seriesLabel: 'On-time compliance',
+          value: compliance,
+          unit: '%',
+          ...(compliance === null
+            ? {
+                unavailableReason: dashboard.complianceMeasurable
+                  ? 'No measurable scheduled denominator is available.'
+                  : 'Available after the PM deadline.',
+              }
+            : {
+                ...(completedOnTime !== null
+                  ? { numerator: completedOnTime }
+                  : {}),
+                ...(scheduled !== null ? { denominator: scheduled } : {}),
+              }),
+        },
+      ],
+    }
+  })
+  const progressRows: ReportChartRow[] = dashboard.batches.map((batch) => {
+    const progress = toChartNumber(batch.progressPercent ?? null)
+    const inspected = toChartNumber(batch.inspected)
+    const scheduled = toChartNumber(batch.scheduled)
+
+    return {
+      id: `${batch.assetCategory}:${batch.pmCycle}:${batch.department ?? 'not-recorded'}`,
+      label: batch.department ?? 'Department not recorded',
+      values: [
+        {
+          seriesId: 'inspection-progress',
+          seriesLabel: 'Inspection progress',
+          value: progress,
+          unit: '%',
+          ...(progress === null
+            ? { unavailableReason: 'Department progress is not available.' }
+            : {
+                ...(inspected !== null ? { numerator: inspected } : {}),
+                ...(scheduled !== null ? { denominator: scheduled } : {}),
+              }),
+        },
+      ],
+    }
+  })
+  const hasDepartmentProgress = dashboard.batches.some(
+    (batch) => batch.progressPercent !== undefined,
+  )
+  const conditionValuesAvailable = dashboard.inspectionResultsAvailable
+  const conditionRows: ReportChartRow[] = [
+    {
+      id: `condition:${dashboard.assetCategory}:${dashboard.pmCycle}:${dashboard.department ?? 'all-departments'}`,
+      label: dashboard.department ?? 'All departments',
+      values: [
+        {
+          seriesId: 'operational',
+          seriesLabel: 'Operational',
+          value: conditionValuesAvailable
+            ? toChartNumber(dashboard.operational)
+            : null,
+          unit: 'inspection results',
+          ...(!conditionValuesAvailable
+            ? { unavailableReason: 'No inspection results are available.' }
+            : {}),
+        },
+        {
+          seriesId: 'non-operational',
+          seriesLabel: 'Non-operational',
+          value: conditionValuesAvailable
+            ? toChartNumber(dashboard.nonOperational)
+            : null,
+          unit: 'inspection results',
+          ...(!conditionValuesAvailable
+            ? { unavailableReason: 'No inspection results are available.' }
+            : {}),
+        },
+      ],
+    },
+  ]
+  const assignmentPeriod = dashboard.assignmentPeriod
+  const assignmentScope = dashboard.department ?? 'All departments'
+  const assignmentCoverageRows: ReportChartRow[] = assignmentPeriod
+    ? [
+        {
+          id: `assignment-coverage:${dashboard.assetCategory}:${dashboard.pmCycle}:${assignmentScope}`,
+          label: assignmentScope,
+          values: [
+            {
+              seriesId: 'known-assignment-period',
+              seriesLabel: 'Measurable assignment period',
+              value: toChartNumber(assignmentPeriod.knownAssignmentCount),
+              unit: 'schedules',
+            },
+            {
+              seriesId: 'unknown-assignment-period',
+              seriesLabel: 'Unavailable assignment period',
+              value: toChartNumber(assignmentPeriod.unknownAssignmentCount),
+              unit: 'schedules',
+            },
+          ],
+        },
+      ]
+    : []
+  const assignmentOutcomeRows: ReportChartRow[] = assignmentPeriod
+    ? [
+        {
+          id: `assignment-outcomes:${dashboard.assetCategory}:${dashboard.pmCycle}:${assignmentScope}`,
+          label: assignmentScope,
+          values: [
+            {
+              seriesId: 'assignment-completed-within',
+              seriesLabel: 'Completed within 30 days',
+              value: toChartNumber(assignmentPeriod.completedWithinPeriod),
+              unit: 'schedules',
+            },
+            {
+              seriesId: 'assignment-completed-late',
+              seriesLabel: 'Completed after 30 days',
+              value: toChartNumber(assignmentPeriod.completedLate),
+              unit: 'schedules',
+            },
+            {
+              seriesId: 'assignment-open-within',
+              seriesLabel: 'Unfinished, within 30 days',
+              value: toChartNumber(assignmentPeriod.openWithinPeriod),
+              unit: 'schedules',
+            },
+            {
+              seriesId: 'assignment-overdue-unfinished',
+              seriesLabel: 'Unfinished, over 30 days',
+              value: toChartNumber(assignmentPeriod.overdueUnfinished),
+              unit: 'schedules',
+            },
+          ],
+        },
+      ]
+    : []
+
+  return (
+    <section aria-labelledby="pm-dashboard-charts" className="space-y-3">
+      <div>
+        <h2
+          id="pm-dashboard-charts"
+          className="text-lg font-semibold text-[var(--text-primary)]"
+        >
+          Period charts
+        </h2>
+        <p className="mt-1 text-sm text-[var(--text-secondary)]">
+          {cohortDescription}
+        </p>
+      </div>
+      {dashboard.batches.length === 0 ? (
+        <p
+          role="status"
+          className="rounded-md border border-[var(--border-soft)] px-3 py-3 text-sm text-[var(--text-secondary)]"
+        >
+          No department groups are available for this period.
+        </p>
+      ) : (
+        <div className="report-chart-grid grid gap-3 xl:grid-cols-2">
+          <ReportChart
+            title={
+              dashboard.department
+                ? `Scheduled and inspected schedules for ${dashboard.department}`
+                : 'Scheduled and inspected schedules by department'
+            }
+            description="Counts come from the selected PM category and cycle. Inspected schedules remain part of the scheduled total."
+            variant="grouped"
+            rows={departmentRows}
+          />
+          <ReportChart
+            title={
+              dashboard.department
+                ? `PM schedule outcomes for ${dashboard.department}`
+                : 'PM schedule outcomes by department'
+            }
+            description={
+              closed
+                ? 'Closed periods separate on-time, late and not-completed schedules.'
+                : 'Open periods separate completed schedules from work remaining before the deadline.'
+            }
+            variant="stacked"
+            rows={outcomeRows}
+          />
+          <ReportChart
+            title={
+              dashboard.department
+                ? `On-time compliance for ${dashboard.department}`
+                : 'On-time compliance by department'
+            }
+            description="The percentage uses the server-reported on-time count and scheduled denominator. Compliance is unavailable before the PM deadline."
+            variant="bar"
+            rows={complianceRows}
+          />
+          {hasDepartmentProgress && (
+            <ReportChart
+              title={
+                dashboard.department
+                  ? `Inspection progress for ${dashboard.department}`
+                  : 'Inspection progress by department'
+              }
+              description="Server-reported progress uses inspected schedules over scheduled schedules. The exact count and denominator are shown below."
+              variant="bar"
+              rows={progressRows}
+            />
+          )}
+          <ReportChart
+            title="Inspection result condition mix"
+            description="Counts include schedules with recorded inspection results. Uninspected schedules have no condition result."
+            variant="stacked"
+            rows={conditionRows}
+          />
+          {assignmentPeriod && (
+            <ReportChart
+              title="Inspector assignment-period coverage"
+              description="Server counts for the selected scope. Unavailable periods include records without the required assignment or server completion timestamp. Values are counts, not percentages."
+              variant="grouped"
+              rows={assignmentCoverageRows}
+            />
+          )}
+          {assignmentPeriod && (
+            <ReportChart
+              title="Inspector 30-calendar-day outcomes"
+              description="Server-counted outcomes start at the first saved Inspector assignment. Reassignment does not restart the period. Cancelled and unavailable periods are excluded."
+              variant="grouped"
+              rows={assignmentOutcomeRows}
+            />
+          )}
+        </div>
+      )}
+    </section>
   )
 }
 
@@ -446,6 +788,7 @@ export function PmPeriodDashboardPresentation({
     <>
       <DashboardMetrics dashboard={dashboard} />
       <InspectionBreakdown dashboard={dashboard} />
+      <DashboardCharts dashboard={dashboard} />
       <CorrectiveFollowUpSection
         dashboard={dashboard}
         {...(search ? { search } : {})}

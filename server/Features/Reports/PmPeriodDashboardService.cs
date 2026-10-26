@@ -127,7 +127,8 @@ internal sealed class PmPeriodDashboardService(
                 formById,
                 forms,
                 periodState,
-                deadline))
+                deadline,
+                now))
             .ToArray();
 
         var displayRows = authoritativeRows
@@ -181,7 +182,16 @@ internal sealed class PmPeriodDashboardService(
             onTimeCompliancePercent,
             scheduled == 0 ? 0 : ToPercent(inspected, scheduled),
             batches,
-            displayRows.Select(row => row.Response).ToArray());
+            displayRows.Select(row => row.Response).ToArray())
+        {
+            AssignmentPeriod = new PmAssignmentPeriodSummary(
+                authoritativeRows.Count(row => row.Response.AssignmentPeriodStatus != "Unavailable"),
+                authoritativeRows.Count(row => row.Response.AssignmentPeriodStatus == "Unavailable"),
+                authoritativeRows.Count(row => row.Response.AssignmentPeriodStatus == "CompletedWithinPeriod"),
+                authoritativeRows.Count(row => row.Response.AssignmentPeriodStatus == "CompletedLate"),
+                authoritativeRows.Count(row => row.Response.AssignmentPeriodStatus == "WithinPeriod"),
+                authoritativeRows.Count(row => row.Response.AssignmentPeriodStatus == "Overdue"))
+        };
     }
 
     private static CycleSnapshot? ToCycleSnapshot(PreventiveMaintenanceSchedule schedule)
@@ -211,7 +221,11 @@ internal sealed class PmPeriodDashboardService(
             schedule.Status,
             schedule.Asset.AssetCode,
             schedule.Asset.Building,
-            schedule.Asset.Location);
+            schedule.Asset.Location)
+        {
+            FirstSupervisorAssignedAt = schedule.FirstSupervisorAssignedAt,
+            FirstInspectorAssignedAt = schedule.FirstInspectorAssignedAt
+        };
     }
 
     private static DashboardRow ToDashboardRow(
@@ -220,7 +234,8 @@ internal sealed class PmPeriodDashboardService(
         IReadOnlyDictionary<Guid, PreventiveMaintenanceForm> formById,
         IReadOnlyList<PreventiveMaintenanceForm> forms,
         string periodState,
-        DateTimeOffset deadline)
+        DateTimeOffset deadline,
+        DateTimeOffset now)
     {
         var isInspected = inspection?.CompletedAt is not null;
         var timeliness = !isInspected
@@ -255,6 +270,8 @@ internal sealed class PmPeriodDashboardService(
                     inspection.IsOperational,
                     inspection.ExternalPmNumber is not null)
                 : null;
+        var assignmentPeriod = ScheduleAssignmentPeriod.Calculate(
+            snapshot.FirstInspectorAssignedAt, inspection?.CompletedAt, snapshot.ScheduleStatus, now);
         var response = new PmPeriodDashboardAssetRowResponse(
             snapshot.ScheduleId,
             snapshot.AssetId,
@@ -282,7 +299,13 @@ internal sealed class PmPeriodDashboardService(
             correctiveFollowUpStatus,
             correctiveFollowUpStatus == InspectionFollowUpStatusCatalog.ReferredToWms
                 ? inspection?.ExternalPmNumber
-                : null);
+                : null)
+        {
+            FirstSupervisorAssignedAt = snapshot.FirstSupervisorAssignedAt,
+            FirstInspectorAssignedAt = snapshot.FirstInspectorAssignedAt,
+            InspectorAssignmentDueAt = assignmentPeriod.InspectorAssignmentDueAt,
+            AssignmentPeriodStatus = assignmentPeriod.AssignmentPeriodStatus
+        };
 
         return new DashboardRow(
             snapshot.Department,
@@ -390,7 +413,10 @@ internal sealed class PmPeriodDashboardService(
             fieldWorkCompletedAt,
             form?.SubmittedAt,
             form?.Acknowledgement is not null,
-            form?.Acknowledgement?.AcknowledgedAt);
+            form?.Acknowledgement?.AcknowledgedAt)
+        {
+            ProgressPercent = scheduled == 0 ? null : ToPercent(group.Count(row => row.IsInspected), scheduled)
+        };
     }
 
     private static bool MatchesSearch(
@@ -464,7 +490,11 @@ internal sealed class PmPeriodDashboardService(
         string ScheduleStatus,
         string AssetCode,
         string? Building,
-        string? Location);
+        string? Location)
+    {
+        internal DateTimeOffset? FirstSupervisorAssignedAt { get; init; }
+        internal DateTimeOffset? FirstInspectorAssignedAt { get; init; }
+    }
 
     private sealed record InspectionSnapshot(
         Guid InspectionId,

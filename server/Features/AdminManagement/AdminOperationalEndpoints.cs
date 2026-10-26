@@ -310,9 +310,13 @@ public static class AdminOperationalEndpoints
         if (await context.PreventiveMaintenanceSchedules.AnyAsync(candidate => candidate.Id != id
                 && candidate.AssetId == schedule.AssetId && candidate.PmCycle == cycle, cancellationToken))
             return ApiErrors.Conflict("A schedule already exists for this asset and PM cycle.");
-        var inspectionExists = await context.InspectionRecords.AnyAsync(inspection => inspection.ScheduleId == id, cancellationToken);
-        if (status == ScheduleStatusCatalog.Completed && !inspectionExists)
-            return ApiErrors.Conflict("A schedule cannot be marked completed without its inspection record.");
+        var inspectionCompletedAt = await context.InspectionRecords
+            .AsNoTracking()
+            .Where(inspection => inspection.ScheduleId == id)
+            .Select(inspection => inspection.CompletedAt)
+            .SingleOrDefaultAsync(cancellationToken);
+        if (status == ScheduleStatusCatalog.Completed && inspectionCompletedAt is null)
+            return ApiErrors.Conflict("A schedule cannot be marked completed without a completed inspection record.");
         if (request.AssignedToUserId is Guid inspectorId)
         {
             var inspector = await userManager.FindByIdAsync(inspectorId.ToString());
@@ -332,9 +336,37 @@ public static class AdminOperationalEndpoints
                 });
         }
 
-        var actorId = Guid.TryParse(principal.FindFirst("sub")?.Value, out var parsedActor) ? parsedActor : Guid.Empty;
-        AddAssignmentAudit(context, schedule, "Inspector", schedule.AssignedToUserId, request.AssignedToUserId, actorId, timeProvider.GetUtcNow());
-        AddAssignmentAudit(context, schedule, "Supervisor", schedule.AssignedSupervisorUserId, request.AssignedSupervisorUserId, actorId, timeProvider.GetUtcNow());
+        if (!Guid.TryParse(principal.FindFirst("sub")?.Value, out var actorId))
+            return Results.Forbid();
+        var now = timeProvider.GetUtcNow();
+        HashSet<Guid> inspectorHistory = schedule.AssignedToUserId is null && request.AssignedToUserId is not null
+            ? await ScheduleAssignmentEventRecorder.FindHistoryScheduleIdsAsync(
+                context, [schedule.Id], "Inspector", cancellationToken)
+            : [];
+        HashSet<Guid> supervisorHistory = schedule.AssignedSupervisorUserId is null && request.AssignedSupervisorUserId is not null
+            ? await ScheduleAssignmentEventRecorder.FindHistoryScheduleIdsAsync(
+                context, [schedule.Id], "Supervisor", cancellationToken)
+            : [];
+        ScheduleAssignmentEventRecorder.RecordChange(
+            context,
+            schedule,
+            "Inspector",
+            schedule.AssignedToUserId,
+            request.AssignedToUserId,
+            actorId,
+            now,
+            "Admin demonstration record update",
+            inspectorHistory.Contains(schedule.Id));
+        ScheduleAssignmentEventRecorder.RecordChange(
+            context,
+            schedule,
+            "Supervisor",
+            schedule.AssignedSupervisorUserId,
+            request.AssignedSupervisorUserId,
+            actorId,
+            now,
+            "Admin demonstration record update",
+            supervisorHistory.Contains(schedule.Id));
         schedule.ScheduleDate = request.ScheduleDate;
         schedule.PmCycle = cycle;
         schedule.PeriodType = periodType;
@@ -347,13 +379,11 @@ public static class AdminOperationalEndpoints
         schedule.Status = status;
         schedule.AssignedToUserId = request.AssignedToUserId;
         schedule.AssignedSupervisorUserId = request.AssignedSupervisorUserId;
-        schedule.CompletedAt = status == ScheduleStatusCatalog.Completed
-            ? schedule.CompletedAt ?? timeProvider.GetUtcNow()
-            : null;
-        schedule.UpdatedAt = timeProvider.GetUtcNow();
+        schedule.CompletedAt = inspectionCompletedAt;
+        schedule.UpdatedAt = now;
         await context.SaveChangesAsync(cancellationToken);
         if (transaction is not null) await transaction.CommitAsync(cancellationToken);
-        return Results.Ok(ScheduleResponse.FromSchedule(schedule));
+        return Results.Ok(ScheduleResponse.FromSchedule(schedule, now));
     }
 
     private static async Task<IResult> DeleteScheduleAsync(
@@ -525,24 +555,6 @@ public static class AdminOperationalEndpoints
         if (page is < 1) errors[nameof(page)] = ["Page must be greater than zero."];
         if (pageSize is < 1 or > 100) errors[nameof(pageSize)] = ["Page size must be between 1 and 100."];
         return errors;
-    }
-
-    private static void AddAssignmentAudit(
-        ApplicationDbContext context,
-        PreventiveMaintenanceSchedule schedule,
-        string role,
-        Guid? previous,
-        Guid? next,
-        Guid actorId,
-        DateTimeOffset now)
-    {
-        if (previous == next || next is null) return;
-        context.ScheduleAssignmentReassignmentAudits.Add(new ScheduleAssignmentReassignmentAudit
-        {
-            Id = Guid.NewGuid(), ScheduleId = schedule.Id, AssignmentRole = role,
-            PreviousAssigneeUserId = previous, NewAssigneeUserId = next.Value,
-            ChangedByUserId = actorId, ChangedAt = now, Reason = "Admin demonstration record update"
-        });
     }
 
     private static async Task<IDbContextTransaction?> BeginTransactionAsync(

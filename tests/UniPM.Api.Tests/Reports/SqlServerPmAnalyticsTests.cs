@@ -149,8 +149,8 @@ public sealed class SqlServerPmAnalyticsTests
             await using (var context = database.CreateContext())
             {
                 migrations = context.Database.GetMigrations().ToArray();
-                Assert.Equal(24, migrations.Length);
-                Assert.Equal("20261023131748_AddSavedAnalyticsReports", migrations[^1]);
+                Assert.Equal(26, migrations.Length);
+                Assert.Equal("20261026210000_AddAssignmentHistoryCompleteness", migrations[^1]);
                 await context.GetService<IMigrator>().MigrateAsync(migrations[^2]);
                 Assert.Equal(migrations[..^1], (await context.Database.GetAppliedMigrationsAsync()).ToArray());
                 await context.Database.MigrateAsync();

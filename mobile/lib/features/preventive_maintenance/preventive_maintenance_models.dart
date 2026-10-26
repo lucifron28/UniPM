@@ -253,6 +253,10 @@ class ScheduleOption {
     this.assignedSupervisorUserId,
     this.completedAt,
     this.updatedAt,
+    this.firstSupervisorAssignedAt,
+    this.firstInspectorAssignedAt,
+    this.inspectorAssignmentDueAt,
+    this.assignmentPeriodStatus,
   });
 
   final String id;
@@ -270,6 +274,10 @@ class ScheduleOption {
   final String? assignedSupervisorUserId;
   final DateTime? completedAt;
   final DateTime? updatedAt;
+  final DateTime? firstSupervisorAssignedAt;
+  final DateTime? firstInspectorAssignedAt;
+  final DateTime? inspectorAssignmentDueAt;
+  final String? assignmentPeriodStatus;
 
   String get canonicalPmCycle {
     final persistedCycle = pmCycle?.trim();
@@ -307,6 +315,10 @@ class ScheduleOption {
     assignedSupervisorUserId: assignedSupervisorUserId,
     completedAt: status == 'Completed' ? DateTime.now().toUtc() : completedAt,
     updatedAt: status == 'Completed' ? DateTime.now().toUtc() : updatedAt,
+    firstSupervisorAssignedAt: firstSupervisorAssignedAt,
+    firstInspectorAssignedAt: firstInspectorAssignedAt,
+    inspectorAssignmentDueAt: inspectorAssignmentDueAt,
+    assignmentPeriodStatus: assignmentPeriodStatus,
   );
 
   Map<String, dynamic> toJson() => <String, dynamic>{
@@ -324,6 +336,16 @@ class ScheduleOption {
     'assignedSupervisorUserId': assignedSupervisorUserId,
     'completedAt': completedAt?.toUtc().toIso8601String(),
     'updatedAt': updatedAt?.toUtc().toIso8601String(),
+    'firstSupervisorAssignedAt': firstSupervisorAssignedAt
+        ?.toUtc()
+        .toIso8601String(),
+    'firstInspectorAssignedAt': firstInspectorAssignedAt
+        ?.toUtc()
+        .toIso8601String(),
+    'inspectorAssignmentDueAt': inspectorAssignmentDueAt
+        ?.toUtc()
+        .toIso8601String(),
+    'assignmentPeriodStatus': assignmentPeriodStatus,
     'asset': asset?.toJson(),
   };
 
@@ -348,6 +370,19 @@ class ScheduleOption {
       assignedSupervisorUserId: _nullableUuid(json, 'assignedSupervisorUserId'),
       completedAt: _nullableDateTime(json, 'completedAt'),
       updatedAt: _nullableDateTime(json, 'updatedAt'),
+      firstSupervisorAssignedAt: _nullableDateTime(
+        json,
+        'firstSupervisorAssignedAt',
+      ),
+      firstInspectorAssignedAt: _nullableDateTime(
+        json,
+        'firstInspectorAssignedAt',
+      ),
+      inspectorAssignmentDueAt: _nullableDateTime(
+        json,
+        'inspectorAssignmentDueAt',
+      ),
+      assignmentPeriodStatus: _nullableString(json, 'assignmentPeriodStatus'),
     );
   }
 }

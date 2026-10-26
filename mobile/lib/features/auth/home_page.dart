@@ -8,6 +8,7 @@ import '../../ui/app_colors.dart';
 import '../../ui/widgets/batch_pm_card.dart';
 import '../preventive_maintenance/offline_inspection_repository.dart';
 import '../preventive_maintenance/preventive_maintenance_models.dart';
+import '../preventive_maintenance/pm_cycle_presentation.dart';
 import '../preventive_maintenance/preventive_maintenance_repository.dart';
 
 class HomePage extends StatefulWidget {
@@ -241,11 +242,51 @@ class _HomePageState extends State<HomePage> {
           status: status,
           totalCount: total > 0 ? total : scheds.length,
           building: first.asset?.building,
+          assignmentDeadlineSummary: _assignmentDeadlineSummary(scheds),
+          assignmentPeriodSummary: _assignmentPeriodSummary(scheds),
         ),
       );
     }
 
     return batches;
+  }
+
+  String _assignmentDeadlineSummary(List<ScheduleOption> schedules) {
+    final deadlines =
+        schedules
+            .map((schedule) => schedule.inspectorAssignmentDueAt)
+            .whereType<DateTime>()
+            .toList()
+          ..sort((left, right) => left.compareTo(right));
+    final missingCount = schedules.length - deadlines.length;
+
+    if (deadlines.isEmpty) {
+      return 'Inspector assignment due date: Not available';
+    }
+
+    final first = formatAssignmentPeriodDate(deadlines.first);
+    final last = formatAssignmentPeriodDate(deadlines.last);
+    final range = first == last
+        ? 'Inspector assignment due: $first'
+        : 'Inspector assignment due dates vary by schedule: $first to $last';
+    return missingCount == 0
+        ? range
+        : '$range · $missingCount schedule(s) without a due date';
+  }
+
+  String _assignmentPeriodSummary(List<ScheduleOption> schedules) {
+    final statusCounts = <String, int>{};
+    for (final schedule in schedules) {
+      final label = formatAssignmentPeriodStatus(
+        schedule.assignmentPeriodStatus,
+      );
+      statusCounts.update(label, (count) => count + 1, ifAbsent: () => 1);
+    }
+
+    final statuses = statusCounts.entries
+        .map((entry) => '${entry.value} ${entry.key}')
+        .join(' · ');
+    return 'Assignment period status by schedule (last server response): $statuses';
   }
 
   int _statusOrder(String status) => switch (status.toLowerCase()) {
@@ -381,6 +422,8 @@ class _HomePageState extends State<HomePage> {
         completedCount: 0,
         totalCount: batch.totalCount,
         building: batch.building,
+        assignmentDeadlineSummary: batch.assignmentDeadlineSummary,
+        assignmentPeriodSummary: batch.assignmentPeriodSummary,
         actionLabel: (widget.onStartBatch != null || widget.onScanQr != null)
             ? 'Start inspection'
             : null,
@@ -1071,6 +1114,8 @@ class _AssignedPmBatch {
     required this.status,
     required this.totalCount,
     this.building,
+    required this.assignmentDeadlineSummary,
+    required this.assignmentPeriodSummary,
   });
 
   final String department;
@@ -1079,4 +1124,6 @@ class _AssignedPmBatch {
   final String status;
   final int totalCount;
   final String? building;
+  final String assignmentDeadlineSummary;
+  final String assignmentPeriodSummary;
 }

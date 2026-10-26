@@ -40,4 +40,9 @@ export interface PmPeriodDashboardBatchResponse {
   isAcknowledged: boolean
   /** @nullable */
   acknowledgedAt: string | null
+  /**
+   * @nullable
+   * @pattern ^-?(?:0|[1-9]\d*)(?:\.\d+)?$
+   */
+  progressPercent?: number | string | null
 }

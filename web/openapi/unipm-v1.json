@@ -6,7 +6,7 @@
   },
   "servers": [
     {
-      "url": "http://127.0.0.1:5198/"
+      "url": "http://127.0.0.1:63669/"
     }
   ],
   "paths": {
@@ -3544,6 +3544,12 @@
               }
             }
           },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
           "404": {
             "description": "Not Found",
             "content": {
@@ -3553,12 +3559,6 @@
                 }
               }
             }
-          },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
           }
         }
       }
@@ -4181,12 +4181,6 @@
           "204": {
             "description": "No Content"
           },
-          "401": {
-            "description": "Unauthorized"
-          },
-          "403": {
-            "description": "Forbidden"
-          },
           "400": {
             "description": "Bad Request",
             "content": {
@@ -4196,6 +4190,12 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
           },
           "404": {
             "description": "Not Found"
@@ -5106,16 +5106,6 @@
               }
             }
           },
-          "409": {
-            "description": "Conflict",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
           "401": {
             "description": "Unauthorized",
             "content": {
@@ -5128,6 +5118,16 @@
           },
           "403": {
             "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
             "content": {
               "application/json": {
                 "schema": {
@@ -5185,19 +5185,6 @@
               }
             }
           },
-          "404": {
-            "description": "Not Found"
-          },
-          "409": {
-            "description": "Conflict",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
           "401": {
             "description": "Unauthorized",
             "content": {
@@ -5210,6 +5197,19 @@
           },
           "403": {
             "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict",
             "content": {
               "application/json": {
                 "schema": {
@@ -5257,19 +5257,6 @@
               }
             }
           },
-          "404": {
-            "description": "Not Found"
-          },
-          "409": {
-            "description": "Conflict",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
           "401": {
             "description": "Unauthorized",
             "content": {
@@ -5282,6 +5269,19 @@
           },
           "403": {
             "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Conflict",
             "content": {
               "application/json": {
                 "schema": {
@@ -5329,19 +5329,6 @@
               }
             }
           },
-          "404": {
-            "description": "Not Found"
-          },
-          "503": {
-            "description": "Service Unavailable",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
           "401": {
             "description": "Unauthorized",
             "content": {
@@ -5354,6 +5341,19 @@
           },
           "403": {
             "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "503": {
+            "description": "Service Unavailable",
             "content": {
               "application/json": {
                 "schema": {
@@ -5925,16 +5925,6 @@
               }
             }
           },
-          "503": {
-            "description": "Service Unavailable",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProblemDetails"
-                }
-              }
-            }
-          },
           "401": {
             "description": "Unauthorized",
             "content": {
@@ -5947,6 +5937,16 @@
           },
           "403": {
             "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
             "content": {
               "application/json": {
                 "schema": {
@@ -9383,6 +9383,15 @@
             "items": {
               "type": "string"
             }
+          },
+          "chartRows": {
+            "type": ["null", "array"],
+            "items": {
+              "$ref": "#/components/schemas/PmAnalyticsV3AggregateRow"
+            }
+          },
+          "chartUnavailableReason": {
+            "type": ["null", "string"]
           }
         }
       },
@@ -9986,6 +9995,49 @@
         },
         "additionalProperties": false
       },
+      "PmAssignmentPeriodSummary": {
+        "required": [
+          "knownAssignmentCount",
+          "unknownAssignmentCount",
+          "completedWithinPeriod",
+          "completedLate",
+          "openWithinPeriod",
+          "overdueUnfinished"
+        ],
+        "type": "object",
+        "properties": {
+          "knownAssignmentCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "unknownAssignmentCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "completedWithinPeriod": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "completedLate": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "openWithinPeriod": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          },
+          "overdueUnfinished": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": ["integer", "string"],
+            "format": "int32"
+          }
+        }
+      },
       "PmPeriodDashboardAssetRowResponse": {
         "required": [
           "scheduleId",
@@ -10098,6 +10150,21 @@
           },
           "externalPmNumber": {
             "type": ["null", "string"]
+          },
+          "firstSupervisorAssignedAt": {
+            "type": ["null", "string"],
+            "format": "date-time"
+          },
+          "firstInspectorAssignedAt": {
+            "type": ["null", "string"],
+            "format": "date-time"
+          },
+          "inspectorAssignmentDueAt": {
+            "type": ["null", "string"],
+            "format": "date-time"
+          },
+          "assignmentPeriodStatus": {
+            "type": "string"
           }
         }
       },
@@ -10191,6 +10258,11 @@
           "acknowledgedAt": {
             "type": ["null", "string"],
             "format": "date-time"
+          },
+          "progressPercent": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": ["null", "number", "string"],
+            "format": "double"
           }
         }
       },
@@ -10335,6 +10407,16 @@
             "items": {
               "$ref": "#/components/schemas/PmPeriodDashboardAssetRowResponse"
             }
+          },
+          "assignmentPeriod": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/PmAssignmentPeriodSummary"
+              }
+            ]
           }
         }
       },
@@ -11268,6 +11350,21 @@
                 "$ref": "#/components/schemas/ScheduleRegistryAssetContext"
               }
             ]
+          },
+          "firstSupervisorAssignedAt": {
+            "type": ["null", "string"],
+            "format": "date-time"
+          },
+          "firstInspectorAssignedAt": {
+            "type": ["null", "string"],
+            "format": "date-time"
+          },
+          "inspectorAssignmentDueAt": {
+            "type": ["null", "string"],
+            "format": "date-time"
+          },
+          "assignmentPeriodStatus": {
+            "type": "string"
           }
         }
       },
@@ -11461,6 +11558,21 @@
                 "$ref": "#/components/schemas/ScheduleAssetResponse"
               }
             ]
+          },
+          "firstSupervisorAssignedAt": {
+            "type": ["null", "string"],
+            "format": "date-time"
+          },
+          "firstInspectorAssignedAt": {
+            "type": ["null", "string"],
+            "format": "date-time"
+          },
+          "inspectorAssignmentDueAt": {
+            "type": ["null", "string"],
+            "format": "date-time"
+          },
+          "assignmentPeriodStatus": {
+            "type": "string"
           }
         }
       },

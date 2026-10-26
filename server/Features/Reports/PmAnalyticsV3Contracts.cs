@@ -228,7 +228,11 @@ public sealed record PmAnalyticsV3ExecutionResponse(
     int TotalPages,
     IReadOnlyList<PmAnalyticsV3AggregateRow> AggregateRows,
     IReadOnlyList<PmAnalyticsV3RecordRow> Records,
-    IReadOnlyList<string> ScopeNotes);
+    IReadOnlyList<string> ScopeNotes)
+{
+    public IReadOnlyList<PmAnalyticsV3AggregateRow>? ChartRows { get; init; }
+    public string? ChartUnavailableReason { get; init; }
+}
 
 public sealed record PmAnalyticsV3InterpretRequest(
     [property: JsonRequired]

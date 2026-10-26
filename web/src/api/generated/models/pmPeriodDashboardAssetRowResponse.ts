@@ -43,4 +43,11 @@ export interface PmPeriodDashboardAssetRowResponse {
   correctiveFollowUpStatus: string | null
   /** @nullable */
   externalPmNumber: string | null
+  /** @nullable */
+  firstSupervisorAssignedAt?: string | null
+  /** @nullable */
+  firstInspectorAssignedAt?: string | null
+  /** @nullable */
+  inspectorAssignmentDueAt?: string | null
+  assignmentPeriodStatus?: string
 }

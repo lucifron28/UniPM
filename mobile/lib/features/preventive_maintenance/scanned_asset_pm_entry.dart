@@ -515,6 +515,26 @@ class _ScheduleSummary extends StatelessWidget {
           'Schedule status: ${schedule.status}',
           key: const Key('schedule-status'),
         ),
+        if (schedule.firstInspectorAssignedAt != null ||
+            schedule.inspectorAssignmentDueAt != null ||
+            schedule.assignmentPeriodStatus != null) ...[
+          const SizedBox(height: 8),
+          const Text(
+            'Assignment timing and status (as of the last server response)',
+          ),
+          Text(
+            'Initial Inspector assignment: ${formatAssignmentPeriodDate(schedule.firstInspectorAssignedAt)}',
+            key: const Key('schedule-first-inspector-assignment'),
+          ),
+          Text(
+            'Inspector assignment due (separate 30-day period): ${formatAssignmentPeriodDate(schedule.inspectorAssignmentDueAt)}',
+            key: const Key('schedule-inspector-assignment-due'),
+          ),
+          Text(
+            'Assignment period: ${formatAssignmentPeriodStatus(schedule.assignmentPeriodStatus)}',
+            key: const Key('schedule-assignment-period-status'),
+          ),
+        ],
       ],
     );
   }

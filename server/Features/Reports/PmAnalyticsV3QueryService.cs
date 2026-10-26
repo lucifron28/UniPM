@@ -42,8 +42,11 @@ internal sealed class PmAnalyticsV3QueryService(
     internal const int MaximumPageSize = 100;
     internal const int MaximumPage = 100_000;
     internal const int MaximumRowsPerExecution = 50_000;
+    internal const int MaximumChartGroups = 200;
     private const int MaximumFilterCatalogMatches = 2;
     private const int MaximumCatalogValueResults = 50;
+    private const string ChartUnavailableReason =
+        "This report has more than 200 groups. Narrow the scope or apply an existing Top/Bottom 20 limit to chart the results.";
 
     internal static IReadOnlyList<string> ScopeNotes { get; } = Array.AsReadOnly(new[]
     {
@@ -52,7 +55,8 @@ internal sealed class PmAnalyticsV3QueryService(
         "PM cycle boundaries and deadlines use Asia/Manila (UTC+08:00).",
         "Department, building and general location are current Asset fields, not historical snapshots.",
         "Blank stored PM cycles use ScheduleDate as an explicit fallback. Missing schedules are not inferred as missed.",
-        "A non-operational count is a finding recorded on an inspection, not a current inventory-condition claim."
+        "A non-operational count is a finding recorded on an inspection, not a current inventory-condition claim.",
+        "Inspector turnaround uses 30 calendar days from the first saved Inspector assignment; reassignment does not reset it. Legacy missing assignment timestamps are unavailable, not inferred. Original PM deadlines and compliance remain separate."
     });
 
     internal static IReadOnlyList<string> InventoryScopeNotes { get; } = Array.AsReadOnly(new[]
@@ -400,6 +404,8 @@ internal sealed class PmAnalyticsV3QueryService(
                 Department = asset.Department,
                 Building = asset.Building,
                 Location = asset.Location,
+                FirstSupervisorAssignedAt = schedule.FirstSupervisorAssignedAt,
+                FirstInspectorAssignedAt = schedule.FirstInspectorAssignedAt,
                 StoredPmCycle = schedule.PmCycle,
                 ScheduleDate = schedule.ScheduleDate,
                 ScheduleStatus = schedule.Status,
@@ -455,7 +461,11 @@ internal sealed class PmAnalyticsV3QueryService(
                 row.ScheduleStatus,
                 row.FormStatus,
                 row.IsOperational,
-                usedFallback));
+                usedFallback)
+            {
+                FirstSupervisorAssignedAt = row.FirstSupervisorAssignedAt,
+                FirstInspectorAssignedAt = row.FirstInspectorAssignedAt
+            });
         }
 
         return result.ToArray();
@@ -642,6 +652,17 @@ internal sealed class PmAnalyticsV3QueryService(
         SortInventoryGroups(groups, normalized.Plan);
         var returnedAfterTop = groups.Count;
         var totalPages = PageCount(groups.Count, pageSize);
+        var chartRows = groupBy.Count > 0 && groups.Count <= MaximumChartGroups
+            ? groups.Select(group => new PmAnalyticsV3AggregateRow(
+                normalized.Plan.Columns.ToDictionary(
+                    column => column,
+                    column => AggregateColumnValue(group.Key, group.Measures, column),
+                    StringComparer.Ordinal),
+                group.Measures)).ToArray()
+            : null;
+        var chartUnavailableReason = groupBy.Count > 0 && groups.Count > MaximumChartGroups
+            ? ChartUnavailableReason
+            : null;
         var rows = groups
             .Skip(checked((page - 1) * pageSize))
             .Take(pageSize)
@@ -676,7 +697,11 @@ internal sealed class PmAnalyticsV3QueryService(
             totalPages,
             rows,
             [],
-            InventoryScopeNotes);
+            InventoryScopeNotes)
+        {
+            ChartRows = chartRows,
+            ChartUnavailableReason = chartUnavailableReason
+        };
     }
 
     private static PmAnalyticsV3GroupKey CreateInventoryGroupKey(
@@ -804,6 +829,7 @@ internal sealed class PmAnalyticsV3QueryService(
             {
                 PmAnalyticsV3Catalog.Condition => Condition(row),
                 PmAnalyticsV3Catalog.Timeliness => Timeliness(row, now),
+                PmAnalyticsV3Catalog.AssignmentPeriodStatus => AssignmentPeriod(row, now).AssignmentPeriodStatus,
                 PmAnalyticsV3Catalog.ScheduleStatus => row.ScheduleStatus,
                 PmAnalyticsV3Catalog.FormStatus => row.FormStatus,
                 _ => null
@@ -970,6 +996,17 @@ internal sealed class PmAnalyticsV3QueryService(
         var returnedAfterTop = groups.Count;
         var totalPages = PageCount(groups.Count, pageSize);
         var skip = checked((page - 1) * pageSize);
+        var chartRows = groupBy.Count > 0 && groups.Count <= MaximumChartGroups
+            ? groups.Select(group => new PmAnalyticsV3AggregateRow(
+                normalized.Plan.Columns.ToDictionary(
+                    column => column,
+                    column => AggregateColumnValue(group.Key, group.Measures, column),
+                    StringComparer.Ordinal),
+                group.Measures)).ToArray()
+            : null;
+        var chartUnavailableReason = groupBy.Count > 0 && groups.Count > MaximumChartGroups
+            ? ChartUnavailableReason
+            : null;
         var outputRows = groups
             .Skip(skip)
             .Take(pageSize)
@@ -1004,7 +1041,11 @@ internal sealed class PmAnalyticsV3QueryService(
             totalPages,
             outputRows,
             [],
-            ScopeNotes);
+            ScopeNotes)
+        {
+            ChartRows = chartRows,
+            ChartUnavailableReason = chartUnavailableReason
+        };
     }
 
     private static List<PmAnalyticsV3Group> BuildGroups(
@@ -1092,6 +1133,28 @@ internal sealed class PmAnalyticsV3QueryService(
                 denominator = eligible.Count;
                 unit = "asset-cycles";
                 value = numerator;
+                break;
+            case PmAnalyticsV3Catalog.AssignmentCompletedWithinCount:
+            case PmAnalyticsV3Catalog.AssignmentCompletedLateCount:
+            case PmAnalyticsV3Catalog.AssignmentOverdueCount:
+            case PmAnalyticsV3Catalog.AssignmentOpenCount:
+            case PmAnalyticsV3Catalog.AssignmentUnknownCount:
+                var selectedStatus = measure switch
+                {
+                    PmAnalyticsV3Catalog.AssignmentCompletedWithinCount => "CompletedWithinPeriod",
+                    PmAnalyticsV3Catalog.AssignmentCompletedLateCount => "CompletedLate",
+                    PmAnalyticsV3Catalog.AssignmentOverdueCount => "Overdue",
+                    PmAnalyticsV3Catalog.AssignmentOpenCount => "WithinPeriod",
+                    _ => "Unavailable"
+                };
+                numerator = matching.Count(row => AssignmentPeriod(row, now).AssignmentPeriodStatus == selectedStatus);
+                denominator = measure == PmAnalyticsV3Catalog.AssignmentUnknownCount
+                    ? eligible.Count
+                    : eligible.Count(row => AssignmentPeriod(row, now).AssignmentPeriodStatus != "Unavailable");
+                unit = "asset-cycles";
+                measurable = denominator > 0;
+                value = measurable ? numerator : null;
+                reason = measurable ? null : "No schedules with the required assignment history are available in this group.";
                 break;
             case PmAnalyticsV3Catalog.DistinctAssetCount:
                 numerator = matching.Select(row => row.AssetId).Distinct().Count();
@@ -1263,6 +1326,10 @@ internal sealed class PmAnalyticsV3QueryService(
             PmAnalyticsV3Catalog.PmCycle => row.PmCycle,
             PmAnalyticsV3Catalog.Deadline => row.Deadline,
             PmAnalyticsV3Catalog.CompletedAt => row.CompletedAt,
+            PmAnalyticsV3Catalog.FirstSupervisorAssignedAt => row.FirstSupervisorAssignedAt,
+            PmAnalyticsV3Catalog.FirstInspectorAssignedAt => row.FirstInspectorAssignedAt,
+            PmAnalyticsV3Catalog.InspectorAssignmentDueAt => AssignmentPeriod(row, now).InspectorAssignmentDueAt,
+            PmAnalyticsV3Catalog.AssignmentPeriodStatus => AssignmentPeriod(row, now).AssignmentPeriodStatus,
             PmAnalyticsV3Catalog.ScheduleStatus => row.ScheduleStatus,
             PmAnalyticsV3Catalog.FormStatus => row.FormStatus,
             PmAnalyticsV3Catalog.Condition => Condition(row),
@@ -1305,6 +1372,9 @@ internal sealed class PmAnalyticsV3QueryService(
             PmAnalyticsV3Catalog.CalendarYear => int.Parse(row.PmCycle[..4], CultureInfo.InvariantCulture),
             _ => null
         };
+
+    private static ScheduleAssignmentPeriodResult AssignmentPeriod(PmAnalyticsV3Source row, DateTimeOffset now) =>
+        ScheduleAssignmentPeriod.Calculate(row.FirstInspectorAssignedAt, row.CompletedAt, row.ScheduleStatus, now);
 
     private static string Condition(PmAnalyticsV3Source row) => row.CompletedAt is null
         ? "NotInspected"
@@ -1477,6 +1547,8 @@ internal sealed class PmAnalyticsV3QueryService(
         public string? Department { get; init; }
         public string? Building { get; init; }
         public string? Location { get; init; }
+        public DateTimeOffset? FirstSupervisorAssignedAt { get; init; }
+        public DateTimeOffset? FirstInspectorAssignedAt { get; init; }
         public string StoredPmCycle { get; init; } = string.Empty;
         public DateTimeOffset ScheduleDate { get; init; }
         public string ScheduleStatus { get; init; } = string.Empty;
@@ -1517,6 +1589,8 @@ internal sealed class PmAnalyticsV3QueryService(
         bool? IsOperational,
         bool UsedLegacyDateFallback)
     {
+        internal DateTimeOffset? FirstSupervisorAssignedAt { get; init; }
+        internal DateTimeOffset? FirstInspectorAssignedAt { get; init; }
         internal DateTimeOffset CycleStart => PmAnalyticsV3QueryService.CycleStart(PmCycle);
     }
 
