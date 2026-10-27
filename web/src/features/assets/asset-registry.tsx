@@ -20,7 +20,6 @@ import {
   useAssetCategories,
   useAssetRegistry,
   useAssetRegistryOptions,
-  useAssetRegistrySummary,
 } from '@/features/assets/asset-queries'
 import { categoryLabel } from '@/features/assets/asset-presentation'
 import { useCurrentUser } from '@/features/auth/current-user'
@@ -103,48 +102,6 @@ const createColumns = (search: AssetSearch) => [
   }),
 ]
 
-function SummaryCard({
-  category,
-  selected,
-  onSelect,
-}: {
-  category: {
-    assetCategory: Asset['assetCategory']
-    displayName: string
-    totalCount: number
-    activeCount: number
-    inactiveCount: number
-    retiredCount: number
-  }
-  selected: boolean
-  onSelect: () => void
-}) {
-  return (
-    <button
-      type="button"
-      aria-pressed={selected}
-      onClick={onSelect}
-      className={`rounded-xl border bg-white p-4 text-left transition-colors hover:border-[var(--primary)] focus-visible:ring-2 focus-visible:ring-[var(--primary)] focus-visible:outline-none ${
-        selected
-          ? 'border-[var(--primary)] ring-1 ring-[var(--primary)]'
-          : 'border-[var(--border-soft)]'
-      }`}
-    >
-      <span className="block text-xs font-semibold tracking-[0.08em] text-[var(--text-neutral)] uppercase">
-        {category.displayName}
-      </span>
-      <span className="mt-2 block text-2xl font-bold text-[var(--text-primary)]">
-        {category.totalCount.toLocaleString()}
-      </span>
-      <span className="mt-1 block text-xs text-[var(--text-secondary)]">
-        Overall total · Active {category.activeCount.toLocaleString()} ·
-        Inactive {category.inactiveCount.toLocaleString()} · Retired{' '}
-        {category.retiredCount.toLocaleString()}
-      </span>
-    </button>
-  )
-}
-
 export function AssetRegistry({
   search,
   onSearchChange,
@@ -158,7 +115,6 @@ export function AssetRegistry({
   const currentUser = useCurrentUser()
   const recordZoom = useRegistryZoom()
   const categories = useAssetCategories()
-  const summary = useAssetRegistrySummary()
   const pageSize = 25
   const serverFilters = {
     ...(search.assetCategory ? { assetCategory: search.assetCategory } : {}),
@@ -403,79 +359,6 @@ export function AssetRegistry({
       : []),
   ]
 
-  const summarySection = (
-    <section aria-labelledby="asset-inventory-title" className="space-y-2">
-      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-        <h2
-          id="asset-inventory-title"
-          className="text-sm font-semibold text-[var(--text-primary)]"
-        >
-          Overall asset inventory
-        </h2>
-        <p className="text-xs text-[var(--text-secondary)]">
-          Totals cover all assets, independent of registry filters.
-        </p>
-      </div>
-      {summary.isPending ? (
-        <div
-          className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4"
-          role="status"
-          aria-label="Loading summary statistics"
-        >
-          <span className="sr-only">Loading summary statistics...</span>
-          {Array.from({ length: 4 }, (_, i) => (
-            <Card key={i} className="p-3 shadow-none">
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="mt-2 h-8 w-12" />
-            </Card>
-          ))}
-        </div>
-      ) : summary.isError ? (
-        <Card
-          role="alert"
-          className="border-[var(--error)] p-4 text-[var(--error)] shadow-none"
-        >
-          <p className="font-semibold">
-            Summary statistics are currently unavailable.
-          </p>
-          <Button
-            type="button"
-            className="mt-3 text-xs"
-            onClick={() => void summary.refetch()}
-          >
-            Retry summary
-          </Button>
-        </Card>
-      ) : (
-        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-          {summary.data.categories.map((category) => (
-            <SummaryCard
-              key={category.assetCategory}
-              category={category}
-              selected={search.assetCategory === category.assetCategory}
-              onSelect={() => {
-                const nextCategory =
-                  search.assetCategory === category.assetCategory
-                    ? undefined
-                    : category.assetCategory
-                setAssetCategory(nextCategory ?? '')
-                setStatus('')
-                setText('')
-                setBuilding('')
-                setDepartment('')
-                setFilterNotice(null)
-                onSearchChange(
-                  { assetCategory: nextCategory, page: 1 },
-                  { preserveScroll: true },
-                )
-              }}
-            />
-          ))}
-        </div>
-      )}
-    </section>
-  )
-
   return (
     <section aria-labelledby="assets-title" className="space-y-4">
       <PageHeading
@@ -666,8 +549,6 @@ export function AssetRegistry({
         </Card>
       </section>
 
-      {summarySection}
-
       <section aria-labelledby="asset-records-title" className="space-y-4">
         <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -681,8 +562,7 @@ export function AssetRegistry({
               className="mt-1 text-sm text-[var(--text-secondary)]"
               aria-live="polite"
             >
-              Filtered results: {totalCount.toLocaleString()} · Overall assets:{' '}
-              {summary.data?.totalCount.toLocaleString() ?? 'Loading'}
+              {totalCount.toLocaleString()} matching assets
             </p>
           </div>
           <RegistryZoomControls
@@ -720,7 +600,7 @@ export function AssetRegistry({
               Retry
             </Button>
           </Card>
-        ) : records.length === 0 && summary.data?.totalCount === 0 ? (
+        ) : records.length === 0 && activeFilters.length === 0 ? (
           <Card className="p-6 text-center shadow-none">
             <h2 className="text-lg font-semibold text-[var(--text-primary)]">
               No assets are registered yet.
@@ -760,7 +640,7 @@ export function AssetRegistry({
                               : ''
                           } ${
                             header.column.id === 'action'
-                              ? 'sticky right-0 z-20 bg-[var(--page-background)] shadow-[-8px_0_12px_-12px_rgba(0,0,0,0.35)]'
+                              ? 'sticky right-0 z-20 bg-[var(--page-background)]'
                               : ''
                           }`}
                         >
@@ -794,7 +674,7 @@ export function AssetRegistry({
                               : ''
                           } ${
                             cell.column.id === 'action'
-                              ? 'sticky right-0 z-[1] bg-white shadow-[-8px_0_12px_-12px_rgba(0,0,0,0.6)] group-hover:bg-[var(--page-background)]'
+                              ? 'sticky right-0 z-[1] bg-white group-hover:bg-[var(--page-background)]'
                               : ''
                           }`}
                         >
