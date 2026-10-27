@@ -97,8 +97,9 @@ INSERT INTO ScheduleAssignmentReassignmentAudits(Id,ScheduleId,EventType,Assignm
 SELECT NEWID(),Id,'Unassignment','Inspector',@inspector,NULL,@supervisor,DATEADD(day,1,AssignedAt),'Synthetic scenario v2: temporary unassignment' FROM #Rows WHERE Scenario='Ongoing' AND AssetNo=1
 UNION ALL SELECT NEWID(),Id,'Reassignment','Inspector',NULL,@inspector,@supervisor,DATEADD(day,2,AssignedAt),'Synthetic scenario v2: original period retained' FROM #Rows WHERE Scenario='Ongoing' AND AssetNo=1;
 INSERT INTO InspectionWmsReferrals(InspectionId,ExternalPmNumber,Revision,RecordedByUserId,RecordedAt,LastUpdatedByUserId,LastUpdatedAt)
-SELECT i.Id,CONCAT('SYN-WMS-',REPLACE(r.AssetCode,' ','-'),'-',r.Cycle),1,@gsd,DATEADD(day,2,r.CompletedAt),@gsd,DATEADD(day,2,r.CompletedAt)
-FROM InspectionRecords i JOIN #Rows r ON r.Id=i.ScheduleId WHERE r.Scenario='Acknowledged' AND i.IsOperational=0 AND r.AssetNo%2=0;
+SELECT i.Id,CONCAT('SYN-WMS-',REPLACE(r.AssetCode,' ','-'),'-',r.Cycle),1,@gsd,DATEADD(day,2,f.FinishedAt),@gsd,DATEADD(day,2,f.FinishedAt)
+FROM InspectionRecords i JOIN #Rows r ON r.Id=i.ScheduleId JOIN #Forms f ON f.Id=i.PreventiveMaintenanceFormId
+WHERE r.Scenario='Acknowledged' AND i.IsOperational=0 AND r.AssetNo%2=0;
 INSERT INTO InspectionWmsReferralAudits(Id,InspectionId,PreviousExternalPmNumber,NewExternalPmNumber,Revision,ChangedByUserId,ChangedAt)
 SELECT NEWID(),InspectionId,NULL,ExternalPmNumber,1,RecordedByUserId,RecordedAt FROM InspectionWmsReferrals;
 SELECT TOP 1 i.Id InspectionId,i.AssetId,i.ScheduleId,i.InspectorUserId,i.StartedAt INTO #Evidence FROM InspectionRecords i JOIN #Rows r ON r.Id=i.ScheduleId WHERE r.Scenario='DraftComplete' ORDER BY r.Cat,r.Department,r.AssetCode;
