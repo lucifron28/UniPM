@@ -98,6 +98,7 @@ async function signIn(page: Page, email: string, userPassword: string) {
 }
 
 async function signOut(page: Page) {
+  await page.getByLabel('Account menu').click()
   await page.getByRole('button', { name: 'Sign out' }).first().click()
   await expect(page).toHaveURL(/\/login$/)
 }
@@ -110,6 +111,7 @@ test('GSD, Supervisor, and Inspector complete an assigned PM batch through WMS r
   page,
   request,
 }, testInfo) => {
+  test.setTimeout(120_000)
   test.skip(
     apiOrigin.hostname !== 'localhost' || apiOrigin.port !== '5262',
     'Live workflow is restricted to the owned disposable API on localhost:5262.',
@@ -212,9 +214,9 @@ test('GSD, Supervisor, and Inspector complete an assigned PM batch through WMS r
     page.getByRole('heading', { name: 'Batch assignment' }),
   ).toBeVisible()
   await expect(page.getByLabel('Supervisor (oversight)')).toBeVisible()
-  await expect(page.getByLabel('Skilled worker (Inspector)')).toHaveCount(0)
+  await expect(page.getByLabel('Inspector')).toHaveCount(0)
   const supervisorPicker = page.getByLabel('Supervisor (oversight)')
-  await supervisorPicker.fill(supervisor!.displayName)
+  await supervisorPicker.fill(supervisor!.displayName.slice(0, -1))
   await page.getByRole('option', { name: supervisor!.displayName }).click()
 
   const gsdAssignmentPromise = page.waitForResponse(
@@ -237,7 +239,7 @@ test('GSD, Supervisor, and Inspector complete an assigned PM batch through WMS r
   await expect(
     page.getByText('Supervisor assignment saved for 2 schedules.'),
   ).toBeVisible()
-  await expect(page.getByLabel('Skilled worker (Inspector)')).toHaveCount(0)
+  await expect(page.getByLabel('Inspector')).toHaveCount(0)
   await page.screenshot({
     path: testInfo.outputPath('gsd-supervisor-stage.png'),
     fullPage: true,
@@ -290,10 +292,10 @@ test('GSD, Supervisor, and Inspector complete an assigned PM batch through WMS r
   await expect(
     page.getByRole('heading', { name: 'Batch assignment' }),
   ).toBeVisible()
-  await expect(page.getByLabel('Skilled worker (Inspector)')).toBeVisible()
+  await expect(page.getByLabel('Inspector')).toBeVisible()
   await expect(page.getByLabel('Supervisor (oversight)')).toHaveCount(0)
-  const workerPicker = page.getByLabel('Skilled worker (Inspector)')
-  await workerPicker.fill(worker!.displayName)
+  const workerPicker = page.getByLabel('Inspector')
+  await workerPicker.fill(worker!.displayName.slice(0, -1))
   await page.getByRole('option', { name: worker!.displayName }).click()
 
   const supervisorAssignmentPromise = page.waitForResponse(
@@ -350,7 +352,7 @@ test('GSD, Supervisor, and Inspector complete an assigned PM batch through WMS r
   await expect(
     page.getByRole('heading', { name: 'Batch assignment' }),
   ).toBeVisible()
-  await expect(page.getByLabel('Skilled worker (Inspector)')).toHaveCount(0)
+  await expect(page.getByLabel('Inspector')).toHaveCount(0)
   await expect(page.getByLabel('Supervisor (oversight)')).toHaveCount(0)
   await expect(
     page.getByText('Inspector assigned', { exact: true }),
