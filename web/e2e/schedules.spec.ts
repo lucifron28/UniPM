@@ -989,16 +989,27 @@ test.describe('Schedule workflows', () => {
     await expect(
       page.getByRole('heading', { name: 'GSD · Fire extinguishers' }),
     ).toBeVisible()
-    const viewBatchLink = page.getByRole('link', {
+    const viewBatchButton = page.getByRole('button', {
       name: 'View schedules in batch',
     })
-    await expect(viewBatchLink).toHaveAttribute('href', /view=history/)
+    await expect(viewBatchButton).toBeEnabled()
     await page.screenshot({
       path: 'test-results/web-ui-polish-schedules-planning-desktop.png',
       fullPage: true,
       animations: 'disabled',
     })
-    await viewBatchLink.click()
+    await viewBatchButton.click()
+    const batchPanel = page.getByRole('dialog', {
+      name: 'GSD · Fire extinguishers',
+    })
+    await expect(batchPanel).toBeVisible()
+    await expect(batchPanel).toContainText('August 2026')
+    await expect(batchPanel.getByRole('table')).toBeVisible()
+    await batchPanel.getByRole('button', { name: 'Back to batches' }).click()
+    await expect(batchPanel).toHaveCount(0)
+    await page.goto(
+      '/app/schedules?view=history&year=2026&department=GSD&assetCategory=fire-extinguisher&pmCycle=2026-08',
+    )
     await expect(page).toHaveURL(/view=history/)
     await expect(page).toHaveURL(/year=2026/)
     await expect(page).toHaveURL(/department=GSD/)
