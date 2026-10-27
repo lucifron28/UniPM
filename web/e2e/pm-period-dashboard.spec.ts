@@ -521,15 +521,14 @@ test.describe('PM period dashboard', () => {
     await expect(
       metricCard(page, 'On-time compliance').locator('p').nth(1),
     ).toHaveText('Not measurable yet')
-    const breakdown = page
-      .getByRole('heading', { name: 'Inspection breakdown' })
-      .locator('..')
-    await expect(breakdown.locator('dt')).toHaveText([
-      'Completed on time',
-      'Completed late',
-      'Pending',
+    const outcomes = page.getByRole('region', {
+      name: 'Completion against the PM deadline',
+    })
+    await expect(outcomes.getByRole('listitem')).toHaveText([
+      'On time',
+      'Late',
+      'Still due',
     ])
-    await expect(breakdown.locator('dd')).toHaveText(['1', '1', '1'])
     await expect(
       report.getByText(
         'No acknowledged non-operational findings are recorded for this PM period.',
@@ -647,14 +646,13 @@ test.describe('PM period dashboard', () => {
     await expect(metricCard(page, 'Progress').locator('p').nth(1)).toHaveText(
       '0%',
     )
-    const breakdown = () =>
-      page.getByRole('heading', { name: 'Inspection breakdown' }).locator('..')
-    await expect(breakdown().locator('dt')).toHaveText([
-      'Completed on time',
-      'Completed late',
-      'Scheduled',
+    const outcomes = () =>
+      page.getByRole('region', { name: 'Completion against the PM deadline' })
+    await expect(outcomes().getByRole('listitem')).toHaveText([
+      'On time',
+      'Late',
+      'Still due',
     ])
-    await expect(breakdown().locator('dd')).toHaveText(['0', '0', '1'])
 
     const futureRequestCount = requests.length
     await page.getByRole('button', { name: 'Change period' }).click()
@@ -674,12 +672,11 @@ test.describe('PM period dashboard', () => {
     await expect(metricCard(page, 'Progress').locator('p').nth(1)).toHaveText(
       '67%',
     )
-    await expect(breakdown().locator('dt')).toHaveText([
-      'Completed on time',
-      'Completed late',
-      'Pending',
+    await expect(outcomes().getByRole('listitem')).toHaveText([
+      'On time',
+      'Late',
+      'Still due',
     ])
-    await expect(breakdown().locator('dd')).toHaveText(['1', '1', '1'])
 
     const activeRequestCount = requests.length
     await page.getByRole('button', { name: 'Change period' }).click()
@@ -702,12 +699,11 @@ test.describe('PM period dashboard', () => {
     await expect(
       metricCard(page, 'On-time compliance').locator('p').nth(1),
     ).toHaveText('50%')
-    await expect(breakdown().locator('dt')).toHaveText([
-      'Completed on time',
-      'Completed late',
-      'Not completed',
+    await expect(outcomes().getByRole('listitem')).toHaveText([
+      'On time',
+      'Late',
+      'Unfinished',
     ])
-    await expect(breakdown().locator('dd')).toHaveText(['1', '1', '1'])
 
     const correctiveTable = page.getByRole('table', {
       name: 'Corrective follow-up for acknowledged non-operational findings',

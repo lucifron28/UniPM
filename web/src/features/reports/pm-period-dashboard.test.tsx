@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import {
@@ -258,7 +258,7 @@ describe('PM period dashboard period terminology', () => {
     resetApiRuntimeForTests()
   })
 
-  it('shows concise upcoming metrics and breakdown for Future periods', () => {
+  it('shows upcoming metrics and inspection completion without a duplicate breakdown', () => {
     renderState('Future')
 
     expectMetricValue('Inspected / scheduled', '3 / 5')
@@ -266,9 +266,12 @@ describe('PM period dashboard period terminology', () => {
     expectMetricValue('On-time compliance', 'Not measurable yet')
     expectMetricValue('Non-operational', '1')
     expect(
-      screen.getByRole('heading', { name: 'Inspection breakdown' }),
-    ).toBeInTheDocument()
-    expectMetricValue('Scheduled', '2')
+      screen.queryByRole('heading', { name: 'Inspection breakdown' }),
+    ).not.toBeInTheDocument()
+    const chart = screen.getByRole('region', {
+      name: 'Completion against the PM deadline',
+    })
+    expect(within(chart).getByRole('list')).toHaveTextContent('Still due')
     expect(
       screen.queryByText('Not completed', { exact: true }),
     ).not.toBeInTheDocument()
@@ -280,7 +283,10 @@ describe('PM period dashboard period terminology', () => {
     expectMetricValue('Inspected / scheduled', '3 / 5')
     expectMetricValue('Progress', '60%')
     expectMetricValue('On-time compliance', 'Not measurable yet')
-    expectMetricValue('Pending', '2')
+    const chart = screen.getByRole('region', {
+      name: 'Completion against the PM deadline',
+    })
+    expect(within(chart).getByRole('list')).toHaveTextContent('Still due')
     expect(
       screen.queryByText('Not completed', { exact: true }),
     ).not.toBeInTheDocument()
@@ -293,9 +299,21 @@ describe('PM period dashboard period terminology', () => {
     expectMetricValue('Progress', '60%')
     expectMetricValue('On-time compliance', '50%')
     expectMetricValue('Non-operational', '1')
-    expectMetricValue('Completed on time', '2')
-    expectMetricValue('Completed late', '1')
-    expectMetricValue('Not completed', '1')
+    const chart = screen.getByRole('region', {
+      name: 'Completion against the PM deadline',
+    })
+    expect(
+      within(chart)
+        .getAllByRole('listitem')
+        .map((item) => item.textContent),
+    ).toEqual(['On time', 'Late', 'Unfinished'])
+    fireEvent.click(within(chart).getByText('View data', { exact: true }))
+    const row = within(chart).getByRole('row', { name: /CCMS/ })
+    expect(
+      within(row)
+        .getAllByRole('cell')
+        .map((cell) => cell.textContent),
+    ).toEqual(['2 schedules', '1 schedule', '1 schedule'])
     expect(
       screen.queryByText('Remaining', { exact: true }),
     ).not.toBeInTheDocument()
@@ -515,7 +533,7 @@ describe('PM period dashboard period selection', () => {
       }),
     ).toBeInTheDocument()
     expect(
-      screen.getByRole('heading', { name: 'Inspection breakdown' }),
+      screen.getByRole('heading', { name: 'Preventive maintenance overview' }),
     ).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Change period' }))

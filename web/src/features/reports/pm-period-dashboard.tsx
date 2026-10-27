@@ -216,10 +216,12 @@ function DashboardMetrics({
       <DashboardMetric
         label="Inspected / scheduled"
         value={`${formatNumber(dashboard.inspected)} / ${formatNumber(dashboard.scheduled)}`}
+        note="Inspections completed out of scheduled work"
       />
       <DashboardMetric
         label="Progress"
         value={formatPercent(dashboard.progressPercent)}
+        note="Share of scheduled inspections completed"
       />
       <DashboardMetric
         label="On-time compliance"
@@ -285,26 +287,26 @@ function DashboardCharts({
       values: [
         {
           seriesId: 'completed-on-time',
-          seriesLabel: 'Completed on time',
+          seriesLabel: 'On time',
           value: toChartNumber(batch.completedOnTime),
           unit: 'schedules',
         },
         {
           seriesId: 'completed-late',
-          seriesLabel: 'Completed late',
+          seriesLabel: 'Late',
           value: toChartNumber(batch.completedLate),
           unit: 'schedules',
         },
         closed
           ? {
               seriesId: 'not-completed',
-              seriesLabel: 'Not completed',
+              seriesLabel: 'Unfinished',
               value: toChartNumber(batch.notCompleted),
               unit: 'schedules',
             }
           : {
               seriesId: 'remaining',
-              seriesLabel: 'Remaining',
+              seriesLabel: 'Still due',
               value: toChartNumber(batch.remaining),
               unit: 'schedules',
             },
@@ -403,6 +405,12 @@ function DashboardCharts({
   ]
   const assignmentPeriod = dashboard.assignmentPeriod
   const assignmentScope = dashboard.department ?? 'All departments'
+  const knownAssignmentCount = toChartNumber(
+    assignmentPeriod?.knownAssignmentCount ?? null,
+  )
+  const unknownAssignmentCount = toChartNumber(
+    assignmentPeriod?.unknownAssignmentCount ?? null,
+  )
   const assignmentCoverageRows: ReportChartRow[] = assignmentPeriod
     ? [
         {
@@ -463,21 +471,27 @@ function DashboardCharts({
   const comparisons = [
     {
       id: 'compliance',
-      label: 'On-time compliance',
+      label: 'Inspections completed by the PM deadline',
+      subtitle:
+        'Percentage of scheduled inspections completed on time, by department.',
       rows: complianceRows,
       variant: 'bar' as const,
       note: 'Completed by the original PM deadline / scheduled. Available after the deadline.',
     },
     {
       id: 'condition',
-      label: 'Condition findings',
+      label: 'Condition recorded during inspection',
+      subtitle:
+        'Counts of inspected assets recorded as operational or non-operational.',
       rows: conditionRows,
       variant: 'stacked' as const,
       note: 'Recorded inspection findings only. Uninspected schedules have no condition result.',
     },
     {
       id: 'workload',
-      label: 'Scheduled and inspected workload',
+      label: 'Scheduled and completed inspections',
+      subtitle:
+        'Inspection counts by department. Completed inspections are included in scheduled work.',
       rows: departmentRows,
       variant: 'grouped' as const,
       note: 'Inspected work is part of the scheduled total; these counts overlap.',
@@ -486,7 +500,9 @@ function DashboardCharts({
       ? [
           {
             id: 'turnaround',
-            label: 'Inspector turnaround',
+            label: 'Inspector assignment turnaround',
+            subtitle:
+              'Completion within 30 calendar days of the first saved Inspector assignment.',
             rows: assignmentOutcomeRows,
             variant: 'grouped' as const,
             note: '30 calendar days from first saved Inspector assignment. Reassignment does not restart the period. Cancelled and unavailable periods are excluded.',
@@ -494,6 +510,8 @@ function DashboardCharts({
           {
             id: 'coverage',
             label: 'Assignment-period data availability',
+            subtitle:
+              'Schedules with usable timing records compared with schedules that cannot be assessed.',
             rows: assignmentCoverageRows,
             variant: 'grouped' as const,
             note: 'Unavailable outcomes lack a required assignment or server completion timestamp. Counts, not percentages.',
@@ -511,7 +529,7 @@ function DashboardCharts({
             id="pm-dashboard-charts"
             className="text-lg font-semibold text-[var(--text-primary)]"
           >
-            Period overview
+            Preventive maintenance overview
           </h2>
           <p className="mt-1 text-sm text-[var(--text-secondary)]">
             {periodDescription}
@@ -537,9 +555,15 @@ function DashboardCharts({
             <ReportChart
               title={
                 hasDepartmentProgress
-                  ? 'Department progress'
-                  : 'Scheduled and inspected workload'
+                  ? 'Inspection completion by department'
+                  : 'Scheduled and completed inspections'
               }
+              subtitle={
+                hasDepartmentProgress
+                  ? 'Completed inspections out of scheduled inspections. Bars use a 0 to 100% scale.'
+                  : 'Inspection counts by department. Completed inspections are part of scheduled work.'
+              }
+              groupLabel="Department"
               description={
                 hasDepartmentProgress
                   ? 'Inspected / scheduled. Percentage scale: 0 to 100%.'
@@ -550,7 +574,9 @@ function DashboardCharts({
               compact
             />
             <ReportChart
-              title="PM outcomes"
+              title="Completion against the PM deadline"
+              subtitle={`Inspection counts by department. PM deadline: ${formatPmCycleDueDate(dashboard.pmCycle)}.`}
+              groupLabel="Department"
               description={
                 closed
                   ? 'On-time, late and unfinished schedules, measured against the original PM deadline.'
@@ -578,61 +604,62 @@ function DashboardCharts({
             </select>
           </div>
           {selected && (
-            <ReportChart
-              key={selected.id}
-              title={selected.label}
-              description={selected.note}
-              variant={selected.variant}
-              rows={selected.rows}
-              compact
-            />
+            <div className="space-y-2">
+              {selected.id === 'turnaround' &&
+              (knownAssignmentCount === null || knownAssignmentCount === 0) ? (
+                <Card className="p-5 shadow-none" role="status">
+                  <h3 className="font-semibold">
+                    Inspector assignment turnaround
+                  </h3>
+                  <p className="mt-2 font-medium">
+                    No assignment-period results are available for this scope.
+                  </p>
+                  <p className="mt-1 text-sm text-[var(--text-secondary)]">
+                    {unknownAssignmentCount !== null &&
+                    unknownAssignmentCount > 0
+                      ? `${formatNumber(unknownAssignmentCount)} ${unknownAssignmentCount === 1 ? 'schedule cannot' : 'schedules cannot'} be assessed because the original assignment time or recorded completion time is unavailable.`
+                      : 'No schedules with usable assignment and completion timing are available.'}{' '}
+                    This does not mean inspectors completed zero work.
+                    Inspection completion and PM deadline results remain
+                    available above.
+                  </p>
+                </Card>
+              ) : (
+                <>
+                  {selected.id === 'turnaround' && (
+                    <p
+                      className="text-sm text-[var(--text-secondary)]"
+                      role="status"
+                    >
+                      Based on {formatNumber(knownAssignmentCount ?? 0)}{' '}
+                      {knownAssignmentCount === 1 ? 'schedule' : 'schedules'}{' '}
+                      with usable timing.
+                      {unknownAssignmentCount !== null &&
+                        unknownAssignmentCount > 0 &&
+                        ` ${formatNumber(unknownAssignmentCount)} ${unknownAssignmentCount === 1 ? 'schedule is' : 'schedules are'} excluded because timing is unavailable.`}
+                    </p>
+                  )}
+                  <ReportChart
+                    key={selected.id}
+                    title={selected.label}
+                    subtitle={selected.subtitle}
+                    description={selected.note}
+                    variant={selected.variant}
+                    rows={selected.rows}
+                    groupLabel={
+                      ['compliance', 'workload'].includes(selected.id)
+                        ? 'Department'
+                        : 'Scope'
+                    }
+                    compact
+                  />
+                </>
+              )}
+            </div>
           )}
         </>
       )}
     </section>
-  )
-}
-
-function InspectionBreakdown({
-  dashboard,
-}: {
-  dashboard: PmPeriodDashboardResponse
-}) {
-  const incompleteLabel =
-    dashboard.periodState === 'Closed'
-      ? 'Not completed'
-      : dashboard.periodState === 'Active'
-        ? 'Pending'
-        : 'Scheduled'
-  const incompleteCount =
-    dashboard.periodState === 'Closed'
-      ? dashboard.notCompleted
-      : dashboard.remaining
-  const items: Array<{ label: string; value: number | string }> = [
-    { label: 'Completed on time', value: dashboard.completedOnTime },
-    { label: 'Completed late', value: dashboard.completedLate },
-    { label: incompleteLabel, value: incompleteCount },
-  ]
-
-  return (
-    <Card className="content-card p-4 sm:p-5">
-      <h2 className="text-base font-semibold text-[var(--text-primary)]">
-        Inspection breakdown
-      </h2>
-      <dl className="mt-3 grid grid-cols-3 gap-3">
-        {items.map(({ label, value }) => (
-          <div
-            key={label}
-            className="min-w-0 border-l-2 border-[var(--border-soft)] pl-3"
-          >
-            <dt className="text-xs text-[var(--text-secondary)]">{label}</dt>
-            <dd className="mt-1 text-lg font-semibold text-[var(--text-primary)]">
-              {formatNumber(value)}
-            </dd>
-          </div>
-        ))}
-      </dl>
-    </Card>
   )
 }
 
@@ -825,7 +852,6 @@ export function PmPeriodDashboardPresentation({
   return (
     <>
       <DashboardMetrics dashboard={dashboard} />
-      <InspectionBreakdown dashboard={dashboard} />
       <DashboardCharts dashboard={dashboard} />
       <CorrectiveFollowUpSection
         dashboard={dashboard}

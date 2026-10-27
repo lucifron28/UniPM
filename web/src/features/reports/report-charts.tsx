@@ -10,6 +10,27 @@ const SERIES_COLORS = [
   'var(--text-neutral)',
 ] as const
 
+const OUTCOME_COLORS: Record<string, string> = {
+  'completed-on-time': 'var(--success)',
+  'completed-late': 'var(--warning)',
+  'not-completed': 'var(--text-neutral)',
+  remaining: 'var(--text-neutral)',
+  operational: 'var(--success)',
+  'non-operational': 'var(--error)',
+  'assignment-completed-within': 'var(--success)',
+  'assignment-completed-late': 'var(--warning)',
+  'assignment-open-within': 'var(--information)',
+  'assignment-overdue-unfinished': 'var(--error)',
+  'unknown-assignment-period': 'var(--text-neutral)',
+}
+
+function seriesColor(id: string, index: number) {
+  return (
+    OUTCOME_COLORS[id] ??
+    SERIES_COLORS[Math.max(index, 0) % SERIES_COLORS.length]
+  )
+}
+
 export type ReportChartValue = {
   seriesId: string
   seriesLabel: string
@@ -31,6 +52,8 @@ export type ReportChartVariant = 'bar' | 'grouped' | 'stacked' | 'line'
 export type ReportChartProps = {
   title: string
   description?: string
+  subtitle?: string
+  groupLabel?: string
   variant: ReportChartVariant
   rows: ReportChartRow[]
   compact?: boolean
@@ -46,7 +69,15 @@ function formatValue(value: ReportChartValue) {
     return value.unavailableReason ?? 'Not available'
   }
 
-  const unit = value.unit.trim()
+  const singular: Record<string, string> = {
+    schedules: 'schedule',
+    assets: 'asset',
+    'asset-cycles': 'asset-cycle',
+    'inspection results': 'inspection result',
+  }
+  const rawUnit = value.unit.trim()
+  const unit =
+    Math.abs(value.value) === 1 ? (singular[rawUnit] ?? rawUnit) : rawUnit
   const unitLabel =
     unit === '%' || unit.toLowerCase() === 'percent'
       ? '%'
@@ -196,7 +227,7 @@ function ReportLineChart({
               key={`${line.id}:${pathIndex}`}
               d={path}
               fill="none"
-              stroke={SERIES_COLORS[seriesIndex % SERIES_COLORS.length]}
+              stroke={seriesColor(line.id, seriesIndex)}
               strokeWidth="2.5"
               strokeLinejoin="round"
               strokeLinecap="round"
@@ -212,7 +243,7 @@ function ReportLineChart({
                   cy={point.y}
                   r="4"
                   fill="white"
-                  stroke={SERIES_COLORS[seriesIndex % SERIES_COLORS.length]}
+                  stroke={seriesColor(line.id, seriesIndex)}
                   strokeWidth="2"
                 />
                 <text
@@ -265,6 +296,8 @@ function ReportLineChart({
 export function ReportChart({
   title,
   description,
+  subtitle,
+  groupLabel = 'Group',
   variant,
   rows,
   onDrilldown,
@@ -312,6 +345,9 @@ export function ReportChart({
       >
         {title}
       </h3>
+      {subtitle && (
+        <p className="mt-1 text-sm text-[var(--text-secondary)]">{subtitle}</p>
+      )}
       {description &&
         (compact ? (
           <details className="mt-1 text-sm text-[var(--text-secondary)] print:hidden">
@@ -343,8 +379,7 @@ export function ReportChart({
                     aria-hidden="true"
                     className="h-3 w-3 shrink-0 rounded-sm"
                     style={{
-                      backgroundColor:
-                        SERIES_COLORS[index % SERIES_COLORS.length],
+                      backgroundColor: seriesColor(item.id, index),
                     }}
                   />
                   {item.label}
@@ -388,11 +423,10 @@ export function ReportChart({
                                 className="h-full"
                                 style={{
                                   width: `${Math.min(100, width)}%`,
-                                  backgroundColor:
-                                    SERIES_COLORS[
-                                      Math.max(colorIndex, 0) %
-                                        SERIES_COLORS.length
-                                    ],
+                                  backgroundColor: seriesColor(
+                                    value.seriesId,
+                                    colorIndex,
+                                  ),
                                 }}
                               />
                             )
@@ -440,11 +474,10 @@ export function ReportChart({
                                 className="block h-full rounded-full"
                                 style={{
                                   width: `${Math.min(100, width)}%`,
-                                  backgroundColor:
-                                    SERIES_COLORS[
-                                      Math.max(colorIndex, 0) %
-                                        SERIES_COLORS.length
-                                    ],
+                                  backgroundColor: seriesColor(
+                                    value.seriesId,
+                                    colorIndex,
+                                  ),
                                 }}
                               />
                             </span>
@@ -483,7 +516,7 @@ export function ReportChart({
                       scope="col"
                       className="px-2 py-2 font-semibold text-[var(--text-primary)]"
                     >
-                      Group
+                      {groupLabel}
                     </th>
                     {series.map((item) => (
                       <th
