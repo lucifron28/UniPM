@@ -300,7 +300,10 @@ test('GSD, Supervisor, and Inspector complete an assigned PM batch through WMS r
     page.getByRole('combobox', { name: 'Inspector', exact: true }),
   ).toBeVisible()
   await expect(page.getByLabel('Supervisor (oversight)')).toHaveCount(0)
-  const workerPicker = page.getByRole('combobox', { name: 'Inspector', exact: true })
+  const workerPicker = page.getByRole('combobox', {
+    name: 'Inspector',
+    exact: true,
+  })
   await workerPicker.fill(worker!.displayName.slice(0, -1))
   await page.getByRole('option', { name: worker!.displayName }).click()
 

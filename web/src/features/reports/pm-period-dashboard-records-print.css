@@ -55,7 +55,8 @@
   body:has(.pm-records-print) .app-sidebar,
   body:has(.pm-records-print) .app-page-header,
   body:has(.pm-records-print) .tsqd-parent-container,
-  body:has(.pm-records-print) footer:has([aria-label='Open TanStack Router Devtools']),
+  body:has(.pm-records-print)
+    footer:has([aria-label='Open TanStack Router Devtools']),
   body:has(.pm-records-print) [aria-label='Close navigation'],
   body:has(.pm-records-print) .app-workspace > :not(.pm-records-page) {
     display: none !important;
