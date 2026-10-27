@@ -214,7 +214,9 @@ test('GSD, Supervisor, and Inspector complete an assigned PM batch through WMS r
     page.getByRole('heading', { name: 'Batch assignment' }),
   ).toBeVisible()
   await expect(page.getByLabel('Supervisor (oversight)')).toBeVisible()
-  await expect(page.getByLabel('Inspector')).toHaveCount(0)
+  await expect(
+    page.getByRole('combobox', { name: 'Inspector', exact: true }),
+  ).toHaveCount(0)
   const supervisorPicker = page.getByLabel('Supervisor (oversight)')
   await supervisorPicker.fill(supervisor!.displayName.slice(0, -1))
   await page.getByRole('option', { name: supervisor!.displayName }).click()
@@ -239,7 +241,9 @@ test('GSD, Supervisor, and Inspector complete an assigned PM batch through WMS r
   await expect(
     page.getByText('Supervisor assignment saved for 2 schedules.'),
   ).toBeVisible()
-  await expect(page.getByLabel('Inspector')).toHaveCount(0)
+  await expect(
+    page.getByRole('combobox', { name: 'Inspector', exact: true }),
+  ).toHaveCount(0)
   await page.screenshot({
     path: testInfo.outputPath('gsd-supervisor-stage.png'),
     fullPage: true,
@@ -292,9 +296,11 @@ test('GSD, Supervisor, and Inspector complete an assigned PM batch through WMS r
   await expect(
     page.getByRole('heading', { name: 'Batch assignment' }),
   ).toBeVisible()
-  await expect(page.getByLabel('Inspector')).toBeVisible()
+  await expect(
+    page.getByRole('combobox', { name: 'Inspector', exact: true }),
+  ).toBeVisible()
   await expect(page.getByLabel('Supervisor (oversight)')).toHaveCount(0)
-  const workerPicker = page.getByLabel('Inspector')
+  const workerPicker = page.getByRole('combobox', { name: 'Inspector', exact: true })
   await workerPicker.fill(worker!.displayName.slice(0, -1))
   await page.getByRole('option', { name: worker!.displayName }).click()
 
@@ -352,7 +358,9 @@ test('GSD, Supervisor, and Inspector complete an assigned PM batch through WMS r
   await expect(
     page.getByRole('heading', { name: 'Batch assignment' }),
   ).toBeVisible()
-  await expect(page.getByLabel('Inspector')).toHaveCount(0)
+  await expect(
+    page.getByRole('combobox', { name: 'Inspector', exact: true }),
+  ).toHaveCount(0)
   await expect(page.getByLabel('Supervisor (oversight)')).toHaveCount(0)
   await expect(
     page.getByText('Inspector assigned', { exact: true }),
