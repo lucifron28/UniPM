@@ -210,6 +210,45 @@ Refreshing the fixture after a demonstration requires review of changed
 records, not automatic adoption. Generated IDs can change across resets;
 asset codes, scenario selection and counts are reproducible for a fixed date.
 
+## Restore the starting point after practice
+
+Capture a clean baseline once, while the scenario manifest still matches the
+database. The baseline backup is stored in SQL Server's private backup
+directory; its local record is `artifacts/demo-rebuild/clean-baseline.json`.
+The record includes the backup-set identifier and a copy of the fixture
+manifest. Do not commit either the backup or the record.
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File reference/demo/demo-baseline.ps1 -Mode Capture
+powershell -NoProfile -ExecutionPolicy Bypass -File reference/demo/demo-baseline.ps1 -Mode Verify
+```
+
+Verify restores into a uniquely named disposable database, changes a fixture
+row, restores again and compares all eleven fixture-table fingerprints. It
+then drops that disposable database. It leaves UniPMDb unchanged.
+
+After practicing, stop the local API, then restore the starting point:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File reference/demo/demo-baseline.ps1 -Mode Restore -TargetDatabase UniPMDb
+```
+
+This explicit command restores the entire local demonstration database,
+including its accounts and session state, to the captured baseline. It creates
+and checksum-verifies a backup of the current database first, so practice
+changes remain recoverable. It restores the fixture manifest and synthetic
+photo, then verifies the fixture fingerprints. Restart the API and sign in
+again afterward. This is the restoration path for a disposable demonstration
+database, not a way to merge later work into a baseline. The conservative seed
+reset continues to refuse changed records.
+
+For isolated acceptance checks, Restore also accepts an explicitly named
+`UniPMDb_DemoCheck_` database followed by twelve hexadecimal characters. No
+other database targets are accepted. Real-device GPS and QR-camera capture
+still require separate physical-device testing.
+
+## Photo fixture and scope
+
 Photo storage uses the API's default private `server/App_Data/InspectionPhotos`
 directory, or the process variable `InspectionPhotoEvidence__StorageDirectory`.
 Pass `-PhotoDirectory` if the running API uses another private filesystem
