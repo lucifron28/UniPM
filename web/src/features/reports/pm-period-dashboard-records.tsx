@@ -1,4 +1,5 @@
-import { Link } from '@tanstack/react-router'
+import { Link, useCanGoBack, useRouter } from '@tanstack/react-router'
+import { ArrowLeft } from 'lucide-react'
 import { useMemo } from 'react'
 import { PageHeading } from '@/components/layout/page-heading'
 import { Button } from '@/components/ui/button'
@@ -480,6 +481,33 @@ function scopeLabel(search: PmPeriodDashboardRecordsSearch) {
   ].join(' · ')
 }
 
+function RecordsBackButton({
+  search,
+}: {
+  search: PmPeriodDashboardRecordsSearch
+}) {
+  const router = useRouter()
+  const canGoBack = useCanGoBack()
+  return (
+    <Button
+      type="button"
+      variant="secondary"
+      className="min-h-12 gap-2 border-[var(--primary)] px-5 text-base text-[var(--primary)] print:hidden"
+      onClick={() => {
+        if (canGoBack) router.history.back()
+        else
+          void router.navigate({
+            to: '/app/dashboard',
+            search: scopeSearch(search),
+          })
+      }}
+    >
+      <ArrowLeft className="h-5 w-5" aria-hidden="true" />
+      Back
+    </Button>
+  )
+}
+
 export function PmPeriodDashboardRecords({
   search,
   onSearchChange,
@@ -530,18 +558,12 @@ export function PmPeriodDashboardRecords({
   if (!hasScope) {
     return (
       <section className="space-y-4">
+        <RecordsBackButton search={search} />
         <PageHeading
           id="pm-dashboard-records-title"
           eyebrow="PM records"
           title="Choose a reporting period"
           description="Select a category, year, and scheduled month on the dashboard first."
-          actions={
-            <Button asChild>
-              <Link to="/app/dashboard" search={scopeSearch(search)}>
-                Back to dashboard
-              </Link>
-            </Button>
-          }
         />
       </section>
     )
@@ -553,6 +575,7 @@ export function PmPeriodDashboardRecords({
         className="space-y-4"
         aria-labelledby="pm-dashboard-records-title"
       >
+        <RecordsBackButton search={search} />
         <PageHeading
           id="pm-dashboard-records-title"
           eyebrow="PM records"
@@ -572,18 +595,12 @@ export function PmPeriodDashboardRecords({
         className="space-y-4"
         aria-labelledby="pm-dashboard-records-title"
       >
+        <RecordsBackButton search={search} />
         <PageHeading
           id="pm-dashboard-records-title"
           eyebrow="PM records"
           title="Records could not be loaded"
           description={scopeLabel(search)}
-          actions={
-            <Button asChild variant="secondary">
-              <Link to="/app/dashboard" search={scopeSearch(search)}>
-                Back to dashboard
-              </Link>
-            </Button>
-          }
         />
         <Card className="p-5 shadow-none">
           <p className="text-sm text-[var(--text-secondary)]">
@@ -615,6 +632,7 @@ export function PmPeriodDashboardRecords({
         className="pm-records-screen space-y-4"
         aria-labelledby="pm-dashboard-records-title"
       >
+        <RecordsBackButton search={search} />
         <PageHeading
           id="pm-dashboard-records-title"
           eyebrow="PM records"
@@ -622,11 +640,6 @@ export function PmPeriodDashboardRecords({
           description={scopeLabel(search)}
           actions={
             <div className="flex flex-wrap gap-2">
-              <Button asChild variant="secondary">
-                <Link to="/app/dashboard" search={scope}>
-                  Back to dashboard
-                </Link>
-              </Button>
               <Button type="button" onClick={() => window.print()}>
                 Print detailed report
               </Button>
